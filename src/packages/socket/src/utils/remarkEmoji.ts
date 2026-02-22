@@ -3,6 +3,8 @@ import type { PhrasingContent, Root, Text } from "mdast";
 import type { Plugin } from "unified";
 import { CONTINUE, visit } from "unist-util-visit";
 
+import { getCustomEmojis } from "./emojiData";
+
 export type CustomEmojiEntry = {
   name: string;
   url: string;
@@ -10,15 +12,21 @@ export type CustomEmojiEntry = {
 
 /**
  * Replace custom emoji shortcodes in a raw content string before markdown
- * parsing. This runs under React's `useMemo` so the latest emoji list is
- * always used, avoiding stale-closure issues inside remark plugin pipelines.
+ * parsing. Checks both the passed list and the global custom emoji cache
+ * so newly-uploaded emojis are always resolved.
  */
 export function preprocessCustomEmojis(
   content: string,
   customEmojis: CustomEmojiEntry[],
 ): string {
-  if (customEmojis.length === 0) return content;
-  const map = new Map(customEmojis.map((e) => [e.name, e.url]));
+  const map = new Map<string, string>();
+  for (const e of getCustomEmojis()) {
+    if (e.url) map.set(e.name, e.url);
+  }
+  for (const e of customEmojis) {
+    map.set(e.name, e.url);
+  }
+  if (map.size === 0) return content;
 
   return content.replace(/:([a-zA-Z0-9_+-]+):/g, (match, code) => {
     if (nameToEmoji[code]) return match;

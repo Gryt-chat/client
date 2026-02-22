@@ -38,4 +38,5 @@ export interface SFUInterface {
   isConnecting: boolean;
   // Debug-only accessors (optional)
   getPeerConnection?: () => RTCPeerConnection | null;
+  activeSfuUrl?: string | null;
 }

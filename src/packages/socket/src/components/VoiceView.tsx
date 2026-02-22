@@ -3,6 +3,9 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo,useRef, useState } from "react";
 import { MdMicOff, MdVolumeOff } from "react-icons/md";
 
+import { useVoiceLatency } from "@/audio";
+import { getUploadsFileUrl } from "@/common";
+import { useSettings } from "@/settings";
 import { Controls } from "@/webRTC";
 
 import type { PeerLatencyStats } from "../hooks/usePeerLatency";
@@ -11,8 +14,6 @@ import type { AdminActions,MemberInfo } from "./MemberSidebar";
 import { SkeletonBase } from "./skeletons";
 
 type Role = "owner" | "admin" | "mod" | "member";
-import { getUploadsFileUrl } from "@/common";
-import { useSettings } from "@/settings";
 
 import { UserContextMenu } from "./UserContextMenu";
 
@@ -59,6 +60,7 @@ export const VoiceView = ({
   adminActions?: AdminActions;
 }) => {
   const { showPeerLatency } = useSettings();
+  const { latency: selfLatency } = useVoiceLatency(showPeerLatency);
   const gridRef = useRef<HTMLDivElement>(null);
   const [gridHeight, setGridHeight] = useState(0);
 
@@ -240,20 +242,30 @@ export const VoiceView = ({
                           <Text>
                             {client.nickname}
                           </Text>
-                          {showPeerLatency && peerLatency?.[id]?.estimatedOneWayMs != null && (
-                            <Tooltip content={`RTT: ${peerLatency[id].networkRttMs?.toFixed(0) ?? "—"}ms · Jitter: ${peerLatency[id].jitterMs?.toFixed(1) ?? "—"}ms · ${peerLatency[id].codec ?? "—"}`}>
-                              <Text
-                                size="1"
-                                style={{
-                                  color: latencyColor(peerLatency[id].estimatedOneWayMs),
-                                  fontVariantNumeric: "tabular-nums",
-                                  cursor: "default",
-                                }}
-                              >
-                                {Math.round(peerLatency[id].estimatedOneWayMs!)}ms
-                              </Text>
-                            </Tooltip>
-                          )}
+                          {showPeerLatency && (() => {
+                            const stats = isSelf ? selfLatency : peerLatency?.[id];
+                            const oneWay = isSelf ? stats?.estimatedOneWayMs : (stats as PeerLatencyStats | undefined)?.estimatedOneWayMs;
+                            const rtt = isSelf ? stats?.networkRttMs : (stats as PeerLatencyStats | undefined)?.networkRttMs;
+                            const jitter = isSelf ? stats?.jitterMs : (stats as PeerLatencyStats | undefined)?.jitterMs;
+                            const codecStr = isSelf ? stats?.codec : (stats as PeerLatencyStats | undefined)?.codec;
+                            if (oneWay == null) return null;
+                            const tooltipParts = [`RTT: ${rtt?.toFixed(0) ?? "—"}ms`, `Jitter: ${jitter?.toFixed(1) ?? "—"}ms`, codecStr ?? "—"];
+                            if (isSelf && selfLatency.remoteAddress) tooltipParts.push(`ICE: ${selfLatency.remoteAddress}`);
+                            return (
+                              <Tooltip content={tooltipParts.join(" · ")}>
+                                <Text
+                                  size="1"
+                                  style={{
+                                    color: latencyColor(oneWay),
+                                    fontVariantNumeric: "tabular-nums",
+                                    cursor: "default",
+                                  }}
+                                >
+                                  {Math.round(oneWay)}ms
+                                </Text>
+                              </Tooltip>
+                            );
+                          })()}
                         </Flex>
                       </Flex>
                     </motion.div>

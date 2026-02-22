@@ -8,7 +8,7 @@ import {
 import { unzipSync } from "fflate";
 import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { MdClose, MdDelete, MdFileUpload } from "react-icons/md";
+import { MdCheck, MdClose, MdDelete, MdEdit, MdFileUpload } from "react-icons/md";
 
 import { getServerAccessToken, getServerHttpBase } from "@/common";
 
@@ -32,6 +32,7 @@ interface PendingEmoji {
   name: string;
   nameError: string | null;
   status: "pending" | "uploading" | "done" | "error";
+  progress: number;
 }
 
 function deriveEmojiName(filename: string): string {
@@ -119,6 +120,10 @@ export function ServerEmojisTab({
   const [uploading, setUploading] = useState(false);
   const [deletingName, setDeletingName] = useState<string | null>(null);
   const [pendingEmojis, setPendingEmojis] = useState<PendingEmoji[]>([]);
+  const [editingEmoji, setEditingEmoji] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
+  const [editingError, setEditingError] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const effectiveAccessToken = useMemo(
@@ -179,6 +184,7 @@ export function ServerEmojisTab({
           name,
           nameError: validateName(name, existingNames, allBatchNames, selfIndex),
           status: "pending",
+          progress: 0,
         };
       });
       return [...prev, ...newItems];
@@ -267,147 +273,78 @@ export function ServerEmojisTab({
     });
   };
 
-  const uploadOne = async (item: PendingEmoji): Promise<boolean> => {
+  const uploadOne = (item: PendingEmoji): Promise<boolean> => {
     if (!effectiveAccessToken) {
-      console.warn("[EmojiUpload] No access token found.", { host, accessTokenProp: !!accessToken, storageToken: !!getServerAccessToken(host) });
       toast.error("Not authenticated. Join the server first.");
-      return false;
+      return Promise.resolve(false);
     }
 
-    setPendingEmojis((prev) => prev.map((p) => (p.id === item.id ? { ...p, status: "uploading" } : p)));
+    setPendingEmojis((prev) => prev.map((p) => (p.id === item.id ? { ...p, status: "uploading", progress: 0 } : p)));
 
-    try {
+    return new Promise<boolean>((resolve) => {
+      const xhr = new XMLHttpRequest();
+      xhr.upload.addEventListener("progress", (e) => {
+        if (e.lengthComputable) {
+          const pct = Math.round((e.loaded / e.total) * 100);
+          setPendingEmojis((prev) => prev.map((p) => (p.id === item.id ? { ...p, progress: pct } : p)));
+        }
+      });
+
+      xhr.addEventListener("load", () => {
+        let data: Record<string, unknown> = {};
+        try { data = JSON.parse(xhr.responseText); } catch { /* not JSON */ }
+        if (xhr.status >= 200 && xhr.status < 300) {
+          toast.success(`Emoji :${item.name}: uploaded!`);
+          setPendingEmojis((prev) => prev.map((p) => (p.id === item.id ? { ...p, status: "done", progress: 100 } : p)));
+          resolve(true);
+        } else {
+          const errMsg = (typeof data?.message === "string" && data.message) ||
+            (typeof data?.error === "string" && data.error) ||
+            `HTTP ${xhr.status}`;
+          toast.error(`:${item.name}: — ${errMsg}`);
+          setPendingEmojis((prev) => prev.map((p) => (p.id === item.id ? { ...p, status: "error", progress: 0 } : p)));
+          resolve(false);
+        }
+      });
+
+      xhr.addEventListener("error", () => {
+        toast.error(`:${item.name}: — Upload failed.`);
+        setPendingEmojis((prev) => prev.map((p) => (p.id === item.id ? { ...p, status: "error", progress: 0 } : p)));
+        resolve(false);
+      });
+
       const form = new FormData();
       form.append("file", item.file);
       form.append("name", item.name);
 
-      console.log("[EmojiUpload] uploadOne: fetching", `${base}/api/emojis`, { name: item.name });
-      const resp = await fetch(`${base}/api/emojis`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${effectiveAccessToken}` },
-        body: form,
-      });
-
-      const rawText = await resp.text();
-      console.log("[EmojiUpload] uploadOne response:", { status: resp.status, ok: resp.ok, body: rawText });
-      let data: Record<string, unknown> = {};
-      try { data = JSON.parse(rawText); } catch { console.warn("[EmojiUpload] uploadOne: response not JSON:", rawText); }
-
-      if (!resp.ok) {
-        const errMsg = (typeof data?.message === "string" && data.message) ||
-          (typeof data?.error === "string" && data.error) ||
-          `HTTP ${resp.status}`;
-        console.error("[EmojiUpload] uploadOne failed:", { name: item.name, status: resp.status, error: errMsg, data });
-        throw new Error(errMsg);
-      }
-
-      console.log("[EmojiUpload] uploadOne success:", { name: item.name, file_id: data.file_id });
-      toast.success(`Emoji :${item.name}: uploaded!`);
-      setPendingEmojis((prev) => prev.map((p) => (p.id === item.id ? { ...p, status: "done" } : p)));
-      return true;
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Upload failed.";
-      console.error("[EmojiUpload] uploadOne catch:", { name: item.name, error: e });
-      toast.error(`:${item.name}: — ${msg}`);
-      setPendingEmojis((prev) => prev.map((p) => (p.id === item.id ? { ...p, status: "error" } : p)));
-      return false;
-    }
+      xhr.open("POST", `${base}/api/emojis`);
+      xhr.setRequestHeader("Authorization", `Bearer ${effectiveAccessToken}`);
+      xhr.send(form);
+    });
   };
 
   const handleUploadAll = async () => {
     const toUpload = pendingEmojis.filter((p) => p.status === "pending" && !p.nameError);
-    console.log("[EmojiUpload] handleUploadAll:", {
-      pending: pendingEmojis.length,
-      uploadable: toUpload.length,
-      statuses: pendingEmojis.map((p) => p.status),
-      nameErrors: pendingEmojis.map((p) => p.nameError),
-      hasToken: !!effectiveAccessToken,
-      host,
-      base,
-    });
     if (toUpload.length === 0) return;
     if (!effectiveAccessToken) {
-      console.warn("[EmojiUpload] No access token found.", { host, accessTokenProp: !!accessToken, storageToken: !!getServerAccessToken(host) });
       toast.error("Not authenticated. Join the server first.");
       return;
     }
 
     setUploading(true);
-    const uploadIds = new Set(toUpload.map((p) => p.id));
-    setPendingEmojis((prev) => prev.map((p) => uploadIds.has(p.id) ? { ...p, status: "uploading" as const } : p));
+    let successCount = 0;
 
-    try {
-      const form = new FormData();
-      const names: string[] = [];
-      for (const item of toUpload) {
-        form.append("files", item.file);
-        names.push(item.name);
-      }
-      form.append("names", JSON.stringify(names));
-
-      console.log("[EmojiUpload] handleUploadAll: fetching", `${base}/api/emojis`, { count: toUpload.length, names });
-      const resp = await fetch(`${base}/api/emojis`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${effectiveAccessToken}` },
-        body: form,
-      });
-
-      const rawText = await resp.text();
-      console.log("[EmojiUpload] handleUploadAll response:", { status: resp.status, ok: resp.ok, bodyLength: rawText.length, body: rawText.slice(0, 500) });
-      let data: Record<string, unknown> = {};
-      try { data = JSON.parse(rawText); } catch { console.warn("[EmojiUpload] handleUploadAll: response not JSON:", rawText.slice(0, 200)); }
-
-      if (Array.isArray(data.results)) {
-        const results = data.results as Array<{ name: string; ok: boolean; file_id?: string; error?: string; message?: string }>;
-        const resultByName = new Map<string, { ok: boolean; file_id?: string; error?: string; message?: string }>();
-        for (const r of results) resultByName.set(r.name, r);
-
-        console.log("[EmojiUpload] handleUploadAll: batch results:", JSON.stringify(data.results));
-        let successCount = 0;
-        for (const item of toUpload) {
-          const r = resultByName.get(item.name);
-          if (r?.ok) successCount++;
-          else if (r) { console.warn("[EmojiUpload] handleUploadAll: item failed:", { name: item.name, error: r.error, message: r.message }); toast.error(`:${item.name}: — ${r.message || r.error || "Failed"}`); }
-          else console.warn("[EmojiUpload] handleUploadAll: no result for:", item.name);
-        }
-
-        setPendingEmojis((prev) => prev.map((p) => {
-          if (!uploadIds.has(p.id)) return p;
-          const r = resultByName.get(p.name);
-          if (r?.ok) return { ...p, status: "done" as const };
-          if (r) return { ...p, status: "error" as const };
-          return p;
-        }));
-
-        if (successCount > 0) {
-          toast.success(`Uploaded ${successCount} emoji(s)!`);
-          await refresh();
-        }
-      } else if (resp.ok) {
-        console.log("[EmojiUpload] handleUploadAll: ok with no results array, treating all as done");
-        setPendingEmojis((prev) => prev.map((p) => uploadIds.has(p.id) ? { ...p, status: "done" as const } : p));
-        toast.success(`Uploaded ${toUpload.length} emoji(s)!`);
-        await refresh();
-      } else {
-        const errMsg = (typeof data?.message === "string" && data.message) ||
-          (typeof data?.error === "string" && data.error) ||
-          `HTTP ${resp.status}`;
-        console.error("[EmojiUpload] handleUploadAll: server error:", { status: resp.status, error: errMsg, data });
-        throw new Error(errMsg);
-      }
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Upload failed.";
-      console.error("[EmojiUpload] handleUploadAll catch:", e);
-      toast.error(msg);
-      setPendingEmojis((prev) => prev.map((p) =>
-        uploadIds.has(p.id) && p.status === "uploading" ? { ...p, status: "error" as const } : p,
-      ));
+    for (const item of toUpload) {
+      const ok = await uploadOne(item);
+      if (ok) successCount++;
     }
+
+    if (successCount > 0) await refresh();
 
     setPendingEmojis((prev) => {
       const remaining = prev
         .filter((p) => p.status !== "done")
-        .map((p) => (p.status === "error" ? { ...p, status: "pending" as const } : p));
+        .map((p) => (p.status === "error" ? { ...p, status: "pending" as const, progress: 0 } : p));
       const batchNames = remaining.map((p) => p.name);
       return remaining.map((p, i) => ({
         ...p,
@@ -466,6 +403,60 @@ export function ServerEmojisTab({
       toast.error(e instanceof Error ? e.message : "Failed to delete emoji.");
     } finally {
       setDeletingName(null);
+    }
+  };
+
+  const startEditing = (emojiName: string) => {
+    setEditingEmoji(emojiName);
+    setEditingName(emojiName);
+    setEditingError(null);
+  };
+
+  const cancelEditing = () => {
+    setEditingEmoji(null);
+    setEditingName("");
+    setEditingError(null);
+  };
+
+  const handleRename = async () => {
+    if (!editingEmoji || !effectiveAccessToken) return;
+    const newName = editingName.trim().toLowerCase();
+    if (newName === editingEmoji) { cancelEditing(); return; }
+    if (!EMOJI_NAME_RE.test(newName)) {
+      setEditingError("2-32 lowercase letters, numbers, or underscores.");
+      return;
+    }
+    if (existingNames.has(newName)) {
+      setEditingError(`":${newName}:" already exists.`);
+      return;
+    }
+
+    setRenaming(true);
+    try {
+      const resp = await fetch(`${base}/api/emojis/${encodeURIComponent(editingEmoji)}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${effectiveAccessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: newName }),
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        throw new Error(
+          (typeof data?.message === "string" && data.message) ||
+          (typeof data?.error === "string" && data.error) ||
+          `HTTP ${resp.status}`,
+        );
+      }
+      toast.success(`Renamed :${editingEmoji}: to :${newName}:`);
+      cancelEditing();
+      await refresh();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Rename failed.";
+      setEditingError(msg);
+    } finally {
+      setRenaming(false);
     }
   };
 
@@ -552,10 +543,27 @@ export function ServerEmojisTab({
                       {p.nameError}
                     </Text>
                   )}
+                  {p.status === "uploading" && (
+                    <div style={{
+                      width: "100%",
+                      height: 4,
+                      borderRadius: 2,
+                      background: "var(--gray-a4)",
+                      overflow: "hidden",
+                    }}>
+                      <div style={{
+                        width: `${p.progress}%`,
+                        height: "100%",
+                        borderRadius: 2,
+                        background: "var(--accent-9)",
+                        transition: "width 150ms ease",
+                      }} />
+                    </div>
+                  )}
                 </Flex>
                 {p.status === "uploading" && (
-                  <Text size="1" color="gray" style={{ flexShrink: 0 }}>
-                    Uploading...
+                  <Text size="1" color="gray" style={{ flexShrink: 0, minWidth: 32, textAlign: "right" }}>
+                    {p.progress}%
                   </Text>
                 )}
                 {p.status === "error" && (
@@ -652,20 +660,81 @@ export function ServerEmojisTab({
                     objectFit: "contain",
                   }}
                 />
-                <Text size="2" style={{ flex: 1 }}>
-                  <code>:{e.name}:</code>
-                </Text>
-                <IconButton
-                  variant="ghost"
-                  color="red"
-                  size="1"
-                  onClick={() => handleDelete(e.name)}
-                  disabled={deletingName === e.name}
-                  title={`Delete :${e.name}:`}
-                  style={{ cursor: "pointer" }}
-                >
-                  <MdDelete size={14} />
-                </IconButton>
+                {editingEmoji === e.name ? (
+                  <Flex direction="column" gap="1" style={{ flex: 1, minWidth: 0 }}>
+                    <Flex align="center" gap="1">
+                      <TextField.Root
+                        size="1"
+                        value={editingName}
+                        onChange={(ev: ChangeEvent<HTMLInputElement>) => {
+                          const v = ev.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "");
+                          setEditingName(v);
+                          setEditingError(null);
+                        }}
+                        onKeyDown={(ev: React.KeyboardEvent) => {
+                          if (ev.key === "Enter") handleRename();
+                          if (ev.key === "Escape") cancelEditing();
+                        }}
+                        disabled={renaming}
+                        autoFocus
+                        style={{ flex: 1 }}
+                      />
+                      <IconButton
+                        variant="ghost"
+                        size="1"
+                        title="Save"
+                        disabled={renaming}
+                        onClick={handleRename}
+                        style={{ cursor: "pointer", flexShrink: 0 }}
+                      >
+                        <MdCheck size={14} />
+                      </IconButton>
+                      <IconButton
+                        variant="ghost"
+                        size="1"
+                        title="Cancel"
+                        disabled={renaming}
+                        onClick={cancelEditing}
+                        style={{ cursor: "pointer", flexShrink: 0 }}
+                      >
+                        <MdClose size={14} />
+                      </IconButton>
+                    </Flex>
+                    {editingError && (
+                      <Text size="1" color="red" style={{ lineHeight: 1.2 }}>
+                        {editingError}
+                      </Text>
+                    )}
+                  </Flex>
+                ) : (
+                  <Text size="2" style={{ flex: 1 }}>
+                    <code>:{e.name}:</code>
+                  </Text>
+                )}
+                {editingEmoji !== e.name && (
+                  <>
+                    <IconButton
+                      variant="ghost"
+                      size="1"
+                      onClick={() => startEditing(e.name)}
+                      title={`Rename :${e.name}:`}
+                      style={{ cursor: "pointer" }}
+                    >
+                      <MdEdit size={14} />
+                    </IconButton>
+                    <IconButton
+                      variant="ghost"
+                      color="red"
+                      size="1"
+                      onClick={() => handleDelete(e.name)}
+                      disabled={deletingName === e.name}
+                      title={`Delete :${e.name}:`}
+                      style={{ cursor: "pointer" }}
+                    >
+                      <MdDelete size={14} />
+                    </IconButton>
+                  </>
+                )}
               </Flex>
             ))}
           </Flex>

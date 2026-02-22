@@ -205,6 +205,7 @@ export interface ConnectParams {
     registeredTracksRef: MutableRefObject<RTCRtpSender[]>;
     connectionTimeoutRef: MutableRefObject<NodeJS.Timeout | null>;
     microphoneBufferRef: MutableRefObject<{ processedStream?: MediaStream; mediaStream?: MediaStream }>;
+    activeSfuUrlRef: MutableRefObject<string | null>;
   };
   connectionState: SFUConnectionStateInternal;
   isConnected: boolean;
@@ -236,7 +237,7 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
   const {
     isConnectingRef, isDisconnectingRef, peerConnectionRef,
     sfuWebSocketRef, registeredTracksRef, connectionTimeoutRef,
-    microphoneBufferRef,
+    microphoneBufferRef, activeSfuUrlRef,
   } = refs;
 
   const isStale = () => connectSeqRef.current !== connectSeq;
@@ -517,6 +518,7 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
       peerConnectionRef.current = null;
       return;
     }
+    activeSfuUrlRef.current = sfuUrl;
     voiceLog.step("CONNECT", 7, "Connecting WebSocket to SFU", { sfu_url: sfuUrl, eSportsModeEnabled });
     let sfuWebSocket: WebSocket;
     try {

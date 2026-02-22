@@ -4,6 +4,7 @@ import {
   type EmojiEntry,
   getCustomEmojis,
   getStandardEmojisByCategory,
+  onCustomEmojisChange,
   searchEmojis,
 } from "../utils/emojiData";
 import { getRecentReactions } from "../utils/recentReactions";
@@ -208,7 +209,9 @@ export const EmojiPicker = ({ onSelect, onClose }: EmojiPickerProps) => {
       .filter((e): e is EmojiEntry => e !== null);
   }, []);
 
-  const customEntries = useMemo(() => getCustomEmojis(), []);
+  const [customVersion, setCustomVersion] = useState(0);
+  useEffect(() => onCustomEmojisChange(() => setCustomVersion((v) => v + 1)), []);
+  const customEntries = useMemo(() => getCustomEmojis(), [customVersion]);
   const standardCategories = useMemo(() => getStandardEmojisByCategory(), []);
 
   const searchResults = useMemo(() => {

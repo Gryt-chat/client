@@ -28,7 +28,7 @@ export const EmojiAutocomplete = ({ query, visible, onSelect, onClose }: EmojiAu
       setSelectedIndex(0);
       return;
     }
-    const matched = searchEmojis(query, 8);
+    const matched = searchEmojis(query);
     setResults(matched);
     setIsRecent(false);
     setSelectedIndex(0);

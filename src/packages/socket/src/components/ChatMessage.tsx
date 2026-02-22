@@ -191,7 +191,7 @@ export const MessageHoverToolbar = ({
           onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gray-4)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
         >
-          {emoji}
+          <EmojiText text={emoji} emojiSize={18} />
         </button>
       ))}
 

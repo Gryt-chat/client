@@ -25,6 +25,12 @@ export interface LatencyBreakdown {
   bitrateKbps: number | null;
   availableOutKbps: number | null;
 
+  // Connection info
+  sfuEndpoint: string | null;
+  remoteAddress: string | null;
+  localAddress: string | null;
+  candidateType: string | null;
+
   // Estimated totals
   localPipelineMs: number | null;
   estimatedOneWayMs: number | null;
@@ -45,6 +51,10 @@ const EMPTY: LatencyBreakdown = {
   codec: null,
   bitrateKbps: null,
   availableOutKbps: null,
+  sfuEndpoint: null,
+  remoteAddress: null,
+  localAddress: null,
+  candidateType: null,
   localPipelineMs: null,
   estimatedOneWayMs: null,
   estimatedRoundTripMs: null,
@@ -52,7 +62,7 @@ const EMPTY: LatencyBreakdown = {
 
 export function useVoiceLatency(enabled: boolean) {
   const { rnnoiseEnabled, eSportsModeEnabled, inputMode } = useSettings();
-  const { getPeerConnection, isConnected } = useSFU();
+  const { getPeerConnection, isConnected, activeSfuUrl } = useSFU();
   const { audioContext, microphoneBuffer } = useMicrophone(false);
 
   const [latency, setLatency] = useState<LatencyBreakdown>(EMPTY);
@@ -106,16 +116,28 @@ export function useVoiceLatency(enabled: boolean) {
       let codec: string | null = null;
       let bitrateKbps: number | null = null;
       let availableOutKbps: number | null = null;
+      let remoteAddress: string | null = null;
+      let localAddress: string | null = null;
+      let candidateType: string | null = null;
 
       const pc = getPeerConnection?.();
       if (pc && isConnected) {
         try {
           const report = await pc.getStats();
           const codecMap = new Map<string, string>();
+          const candidateMap = new Map<string, { address: string; port: number; candidateType: string; protocol: string }>();
 
           report.forEach((stat) => {
             if (stat.type === "codec") {
               codecMap.set(stat.id, (stat as { mimeType?: string }).mimeType || "unknown");
+            }
+            if (stat.type === "remote-candidate" || stat.type === "local-candidate") {
+              candidateMap.set(stat.id, {
+                address: stat.address ?? stat.ip ?? "?",
+                port: stat.port ?? 0,
+                candidateType: stat.candidateType ?? "?",
+                protocol: stat.protocol ?? "?",
+              });
             }
           });
 
@@ -126,6 +148,15 @@ export function useVoiceLatency(enabled: boolean) {
               }
               if (typeof stat.availableOutgoingBitrate === "number") {
                 availableOutKbps = stat.availableOutgoingBitrate / 1000;
+              }
+              const remote = candidateMap.get(stat.remoteCandidateId);
+              if (remote) {
+                remoteAddress = `${remote.address}:${remote.port}`;
+                candidateType = `${remote.candidateType} (${remote.protocol})`;
+              }
+              const local = candidateMap.get(stat.localCandidateId);
+              if (local) {
+                localAddress = `${local.address}:${local.port}`;
               }
             }
 
@@ -202,6 +233,10 @@ export function useVoiceLatency(enabled: boolean) {
           codec,
           bitrateKbps,
           availableOutKbps,
+          sfuEndpoint: activeSfuUrl ?? null,
+          remoteAddress,
+          localAddress,
+          candidateType,
           localPipelineMs: local.totalMs,
           estimatedOneWayMs,
           estimatedRoundTripMs,

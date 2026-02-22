@@ -4,7 +4,7 @@ import { MdCloudUpload } from "react-icons/md";
 
 import { getServerAccessToken, getUploadsFileUrl } from "@/common";
 
-import { fetchCustomEmojis, getCustomEmojiUrl, setCustomEmojis } from "../utils/emojiData";
+import { fetchCustomEmojis, getCustomEmojiUrl, getCustomEmojis, onCustomEmojisChange, setCustomEmojis } from "../utils/emojiData";
 import { recordReaction } from "../utils/recentReactions";
 import type { CustomEmojiEntry } from "../utils/remarkEmoji";
 import { ChatEditor, type ChatEditorHandle } from "./ChatEditor";
@@ -85,18 +85,26 @@ export const ChatView = ({
 
   const [customEmojiList, setCustomEmojiList] = useState<CustomEmojiEntry[]>([]);
 
+  const syncCustomEmojiList = useCallback(() => {
+    const emojis = getCustomEmojis();
+    setCustomEmojiList(
+      emojis.filter((e) => e.url).map((e) => ({ name: e.name, url: e.url! })),
+    );
+  }, []);
+
   useEffect(() => {
     if (!serverHost) return;
     let cancelled = false;
     fetchCustomEmojis(serverHost).then((emojis) => {
       if (cancelled) return;
       setCustomEmojis(emojis, serverHost);
-      setCustomEmojiList(
-        emojis.map((e) => ({ name: e.name, url: getCustomEmojiUrl(serverHost, e.name) })),
-      );
     });
     return () => { cancelled = true; };
   }, [serverHost]);
+
+  useEffect(() => {
+    return onCustomEmojisChange(syncCustomEmojiList);
+  }, [syncCustomEmojiList]);
 
   const handleViewDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -524,7 +532,7 @@ export const ChatView = ({
                             )}
                           </div>
                           {m.reactions && m.reactions.length > 0 && (
-                            <Flex gap="2" wrap="wrap" style={{ marginTop: "4px" }}>
+                            <Flex gap="3" wrap="wrap" style={{ marginTop: "6px" }}>
                               {m.reactions.map((reaction, rIdx) => (
                                 <Tooltip
                                   key={`${reaction.src}-${rIdx}`}
@@ -535,27 +543,31 @@ export const ChatView = ({
                                   }).join(", ")}
                                   delayDuration={200}
                                 >
-                                  <Button
-                                    variant="ghost"
-                                    size="1"
+                                  <button
                                     onClick={() => handleReaction(reaction.src, m)}
                                     style={{
-                                      padding: "4px 8px",
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: "4px",
+                                      padding: "3px 8px",
                                       minWidth: "36px",
                                       minHeight: "26px",
                                       fontSize: "13px",
                                       lineHeight: 1,
-                                      height: "auto",
                                       background: "var(--gray-3)",
-                                      borderRadius: "var(--radius-5)",
-                                      transition: "all 0.2s ease",
+                                      border: "1px solid var(--gray-5)",
+                                      borderRadius: "var(--radius-pill)",
+                                      cursor: "pointer",
+                                      transition: "background 0.15s, border-color 0.15s",
                                       whiteSpace: "nowrap",
+                                      color: "var(--gray-12)",
                                     }}
-                                    onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gray-4)"; }}
-                                    onMouseLeave={(e) => { e.currentTarget.style.background = "var(--gray-3)"; }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gray-4)"; e.currentTarget.style.borderColor = "var(--gray-6)"; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.background = "var(--gray-3)"; e.currentTarget.style.borderColor = "var(--gray-5)"; }}
                                   >
-                                    <EmojiText text={reaction.src} emojiSize={18} /> {reaction.amount}
-                                  </Button>
+                                    <EmojiText text={reaction.src} emojiSize={18} />
+                                    <span style={{ fontWeight: 500, fontSize: "12px" }}>{reaction.amount}</span>
+                                  </button>
                                 </Tooltip>
                               ))}
                             </Flex>

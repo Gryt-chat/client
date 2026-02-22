@@ -64,6 +64,14 @@ export function getStandardEmojisByCategory(): Map<string, EmojiEntryWithCategor
 
 let customEmojisCache: EmojiEntry[] = [];
 
+type EmojiChangeListener = () => void;
+const emojiChangeListeners = new Set<EmojiChangeListener>();
+
+export function onCustomEmojisChange(fn: EmojiChangeListener): () => void {
+  emojiChangeListeners.add(fn);
+  return () => { emojiChangeListeners.delete(fn); };
+}
+
 export function getCustomEmojiUrl(serverHost: string, name: string): string {
   return `${getServerHttpBase(serverHost)}/api/emojis/img/${encodeURIComponent(name)}`;
 }
@@ -77,6 +85,7 @@ export function setCustomEmojis(emojis: { name: string; file_id: string }[], ser
     tags: [],
     aliases: [],
   }));
+  emojiChangeListeners.forEach((fn) => fn());
 }
 
 export function getCustomEmojis(): EmojiEntry[] {

@@ -32,6 +32,7 @@ function useSfuHook(): SFUInterface {
     serverId: null,
     error: null,
   });
+  const activeSfuUrlRef = useRef<string | null>(null);
 
   const [streams, setStreams] = useState<Streams>({});
   const [streamSources, setStreamSources] = useState<StreamSources>({});
@@ -162,7 +163,7 @@ function useSfuHook(): SFUInterface {
       refs: {
         isConnectingRef, isDisconnectingRef, peerConnectionRef,
         sfuWebSocketRef, registeredTracksRef, connectionTimeoutRef,
-        microphoneBufferRef,
+        microphoneBufferRef, activeSfuUrlRef,
       },
       connectionState,
       isConnected,
@@ -349,6 +350,7 @@ function useSfuHook(): SFUInterface {
     connectionState: connectionState.state,
     isConnecting,
     getPeerConnection: () => peerConnectionRef.current,
+    activeSfuUrl: activeSfuUrlRef.current,
   };
 }
 
@@ -363,6 +365,7 @@ const init: SFUInterface = {
   isConnected: false,
   connectionState: SFUConnectionState.DISCONNECTED,
   isConnecting: false,
+  activeSfuUrl: null,
 };
 
 const SFUHook = singletonHook(init, useSfuHook);

@@ -184,6 +184,45 @@ export function LatencyPanel() {
         </Flex>
       )}
 
+      {/* Connection info */}
+      {hasNetworkData && (latency.sfuEndpoint || latency.remoteAddress) && (
+        <Flex direction="column" gap="1">
+          <Text size="1" weight="bold" color="gray">Connection</Text>
+          {latency.sfuEndpoint && (
+            <Flex justify="between" align="center" py="1">
+              <Text size="1" color="gray">SFU endpoint</Text>
+              <Text size="1" weight="medium" style={{ fontFamily: "var(--code-font-family)", maxWidth: "60%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "right" }}>
+                {latency.sfuEndpoint.replace(/^wss?:\/\//, "")}
+              </Text>
+            </Flex>
+          )}
+          {latency.remoteAddress && (
+            <Flex justify="between" align="center" py="1">
+              <Text size="1" color="gray">ICE remote</Text>
+              <Text size="1" weight="medium" style={{ fontFamily: "var(--code-font-family)" }}>
+                {latency.remoteAddress}
+              </Text>
+            </Flex>
+          )}
+          {latency.localAddress && (
+            <Flex justify="between" align="center" py="1">
+              <Text size="1" color="gray">ICE local</Text>
+              <Text size="1" weight="medium" style={{ fontFamily: "var(--code-font-family)" }}>
+                {latency.localAddress}
+              </Text>
+            </Flex>
+          )}
+          {latency.candidateType && (
+            <Flex justify="between" align="center" py="1">
+              <Text size="1" color="gray">Candidate type</Text>
+              <Text size="1" weight="medium" style={{ fontFamily: "var(--code-font-family)" }}>
+                {latency.candidateType}
+              </Text>
+            </Flex>
+          )}
+        </Flex>
+      )}
+
       {/* Transport stats */}
       {hasNetworkData && (
         <Flex direction="column" gap="1">
