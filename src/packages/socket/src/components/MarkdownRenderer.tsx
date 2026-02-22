@@ -6,6 +6,14 @@ import remarkGfm from "remark-gfm";
 
 import { type CustomEmojiEntry,remarkEmoji } from "../utils/remarkEmoji";
 
+const UNICODE_EMOJI_RE = /\p{Extended_Pictographic}/u;
+const SHORTCODE_RE = /:([a-zA-Z0-9_+-]+):/g;
+
+function isEmojiOnly(text: string): boolean {
+  const stripped = text.replace(SHORTCODE_RE, "").replace(/\p{Extended_Pictographic}\uFE0F?/gu, "").replace(/\u200D/g, "").trim();
+  return stripped.length === 0 && (UNICODE_EMOJI_RE.test(text) || /:([a-zA-Z0-9_+-]+):/.test(text));
+}
+
 const components: Components = {
   h1: ({ children }) => (
     <span style={{ fontSize: "1.4em", fontWeight: 700, display: "block", margin: "4px 0 2px" }}>
@@ -172,11 +180,12 @@ export const MarkdownRenderer = memo(({
   customEmojis?: CustomEmojiEntry[];
 }) => {
   const emojiPlugin = useMemo(() => remarkEmoji(customEmojis), [customEmojis]);
+  const emojiOnly = useMemo(() => content ? isEmojiOnly(content) : false, [content]);
 
   if (!content) return null;
 
   return (
-    <div className="markdown-message">
+    <div className={`markdown-message${emojiOnly ? " emoji-only" : ""}`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm, emojiPlugin]}
         rehypePlugins={[rehypeHighlight]}

@@ -443,6 +443,16 @@ body {
   margin-bottom: 0;
 }
 
+.markdown-message.emoji-only {
+  font-size: 32px;
+  line-height: 1.25;
+}
+
+.markdown-message.emoji-only .inline-emoji {
+  height: 32px !important;
+  width: 32px !important;
+}
+
 /* ── Code highlighting (highlight.js compatible) ───────────── */
 
 .hljs {
