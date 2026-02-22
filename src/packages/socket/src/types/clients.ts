@@ -13,6 +13,9 @@ export type Client = {
   isAFK: boolean;
   cameraEnabled?: boolean;
   cameraStreamID?: string;
+  screenShareEnabled?: boolean;
+  screenShareVideoStreamID?: string;
+  screenShareAudioStreamID?: string;
   status?: UserStatus;
   lastSeen?: Date;
 };

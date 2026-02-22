@@ -110,6 +110,9 @@ export interface Settings {
   cameraMirrored: boolean;
   setCameraMirrored: (mirrored: boolean) => void;
 
+  screenShareQuality: string;
+  setScreenShareQuality: (quality: string) => void;
+
   userVolumes: Record<string, number>;
   updateUserVolume: (serverUserId: string, volume: number) => void;
   resetUserVolume: (serverUserId: string) => void;
@@ -241,6 +244,9 @@ export const settingsInit: Settings = {
   setCameraQuality: () => {},
   cameraMirrored: localStorage.getItem("cameraMirrored") !== "false",
   setCameraMirrored: () => {},
+
+  screenShareQuality: localStorage.getItem("screenShareQuality") || "native",
+  setScreenShareQuality: () => {},
 
   userVolumes: JSON.parse(localStorage.getItem("userVolumes") || "{}"),
   updateUserVolume: () => {},

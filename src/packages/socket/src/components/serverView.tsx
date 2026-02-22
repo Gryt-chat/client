@@ -33,7 +33,7 @@ export const ServerView = () => {
     eSportsModeEnabled, setESportsModeEnabled, noiseGate, setNoiseGate,
   } = useSettings();
   const { currentlyViewingServer, setShowRemoveServer, setLastSelectedChannelForServer } = useServerManagement();
-  const { connect, currentServerConnected, isConnected, isConnecting, videoStreams } = useSFU();
+  const { connect, currentServerConnected, isConnected, isConnecting, videoStreams, streamSources } = useSFU();
   const { serverDetailsList, clients, memberLists, serverProfiles } = useSockets();
 
   const {
@@ -498,6 +498,7 @@ export const ServerView = () => {
               currentUserRole={currentUserRole}
               adminActions={currentAdminActions}
               videoStreams={videoStreams}
+              streamSources={streamSources}
             />
 
             {!isCompact && (isDraggingResize || (showVoiceView && voiceWidth !== "0px")) && (

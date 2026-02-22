@@ -128,6 +128,10 @@ function useSettingsHook() {
     localStorage.getItem("cameraMirrored") !== "false"
   );
 
+  const [screenShareQuality, setScreenShareQuality] = useState(
+    localStorage.getItem("screenShareQuality") || "native"
+  );
+
   const [userVolumes, setUserVolumes] = useState<Record<string, number>>(
     () => JSON.parse(localStorage.getItem("userVolumes") || "{}")
   );
@@ -356,6 +360,11 @@ function useSettingsHook() {
     localStorage.setItem("cameraMirrored", mirrored.toString());
   }
 
+  function updateScreenShareQuality(quality: string) {
+    setScreenShareQuality(quality);
+    localStorage.setItem("screenShareQuality", quality);
+  }
+
   function updateUserVolume(serverUserId: string, volume: number) {
     setUserVolumes((prev) => {
       const next = { ...prev, [serverUserId]: volume };
@@ -541,6 +550,8 @@ function useSettingsHook() {
     setCameraQuality: updateCameraQuality,
     cameraMirrored,
     setCameraMirrored: updateCameraMirrored,
+    screenShareQuality,
+    setScreenShareQuality: updateScreenShareQuality,
     userVolumes,
     updateUserVolume,
     resetUserVolume,

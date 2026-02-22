@@ -7,7 +7,7 @@ import disconnectMp3 from "@/audio/src/assets/disconnect.mp3";
 import { useSettings } from "@/settings";
 import { useServerManagement,useSockets } from "@/socket";
 
-import { SFUConnectionState, SFUInterface, Streams, StreamSources, VideoStreams } from "../types/SFU";
+import { ScreenShareAudioSources, ScreenShareStreams, SFUConnectionState, SFUInterface, Streams, StreamSources, VideoStreams } from "../types/SFU";
 import { CleanupRefs,performSfuCleanup, performUnmountCleanup } from "./sfuCleanup";
 import { sfuConnect } from "./sfuConnectFlow";
 import { SFUConnectionStateInternal } from "./sfuTypes";
@@ -37,7 +37,11 @@ function useSfuHook(): SFUInterface {
   const [streams, setStreams] = useState<Streams>({});
   const [streamSources, setStreamSources] = useState<StreamSources>({});
   const [videoStreams, setVideoStreams] = useState<VideoStreams>({});
+  const [screenShareStreams, setScreenShareStreams] = useState<ScreenShareStreams>({});
+  const [screenShareAudioSources, setScreenShareAudioSources] = useState<ScreenShareAudioSources>({});
   const videoSenderRef = useRef<RTCRtpSender | null>(null);
+  const screenVideoSenderRef = useRef<RTCRtpSender | null>(null);
+  const screenAudioSenderRef = useRef<RTCRtpSender | null>(null);
 
   // Dependencies
   const {
@@ -110,6 +114,8 @@ function useSfuHook(): SFUInterface {
     streamSources,
     setStreamSources,
     setVideoStreams,
+    setScreenShareStreams,
+    setScreenShareAudioSources,
     audioContext,
     outputVolume,
     isDeafened,
@@ -248,6 +254,44 @@ function useSfuHook(): SFUInterface {
     videoSenderRef.current = null;
   }, []);
 
+  const addScreenVideoTrack = useCallback((track: MediaStreamTrack, stream: MediaStream) => {
+    const pc = peerConnectionRef.current;
+    if (!pc || pc.connectionState === "closed") return;
+    if (screenVideoSenderRef.current) {
+      screenVideoSenderRef.current.replaceTrack(track).catch(() => {});
+      return;
+    }
+    const sender = pc.addTrack(track, stream);
+    screenVideoSenderRef.current = sender;
+  }, []);
+
+  const removeScreenVideoTrack = useCallback(() => {
+    const pc = peerConnectionRef.current;
+    const sender = screenVideoSenderRef.current;
+    if (!pc || !sender || pc.connectionState === "closed") return;
+    try { pc.removeTrack(sender); } catch { /* already removed */ }
+    screenVideoSenderRef.current = null;
+  }, []);
+
+  const addScreenAudioTrack = useCallback((track: MediaStreamTrack, stream: MediaStream) => {
+    const pc = peerConnectionRef.current;
+    if (!pc || pc.connectionState === "closed") return;
+    if (screenAudioSenderRef.current) {
+      screenAudioSenderRef.current.replaceTrack(track).catch(() => {});
+      return;
+    }
+    const sender = pc.addTrack(track, stream);
+    screenAudioSenderRef.current = sender;
+  }, []);
+
+  const removeScreenAudioTrack = useCallback(() => {
+    const pc = peerConnectionRef.current;
+    const sender = screenAudioSenderRef.current;
+    if (!pc || !sender || pc.connectionState === "closed") return;
+    try { pc.removeTrack(sender); } catch { /* already removed */ }
+    screenAudioSenderRef.current = null;
+  }, []);
+
   // Listen for server-initiated disconnects (device switching)
   useEffect(() => {
     const handleServerDisconnect = (event: CustomEvent) => {
@@ -367,10 +411,16 @@ function useSfuHook(): SFUInterface {
     error: connectionState.error,
     streamSources,
     videoStreams,
+    screenShareStreams,
+    screenShareAudioSources,
     connect,
     disconnect,
     addVideoTrack,
     removeVideoTrack,
+    addScreenVideoTrack,
+    removeScreenVideoTrack,
+    addScreenAudioTrack,
+    removeScreenAudioTrack,
     currentServerConnected: connectionState.serverId || "",
     isConnected,
     currentChannelConnected: connectionState.roomId || "",
@@ -386,10 +436,16 @@ const init: SFUInterface = {
   streams: {},
   streamSources: {},
   videoStreams: {},
+  screenShareStreams: {},
+  screenShareAudioSources: {},
   connect: () => Promise.resolve(),
   disconnect: () => Promise.resolve(),
   addVideoTrack: () => {},
   removeVideoTrack: () => {},
+  addScreenVideoTrack: () => {},
+  removeScreenVideoTrack: () => {},
+  addScreenAudioTrack: () => {},
+  removeScreenAudioTrack: () => {},
   currentChannelConnected: "",
   currentServerConnected: "",
   isConnected: false,

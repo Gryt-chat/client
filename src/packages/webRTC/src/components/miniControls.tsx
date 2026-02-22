@@ -1,8 +1,8 @@
 import { Box, Button, Heading, HoverCard, IconButton } from "@radix-ui/themes";
 import { AnimatePresence, motion, Variants } from "motion/react";
-import { MdArrowForward, MdCallEnd, MdMic, MdMicOff, MdVideocam, MdVideocamOff, MdVolumeOff, MdVolumeUp } from "react-icons/md";
+import { MdArrowForward, MdCallEnd, MdMic, MdMicOff, MdScreenShare, MdStopScreenShare, MdVideocam, MdVideocamOff, MdVolumeOff, MdVolumeUp } from "react-icons/md";
 
-import { useCamera } from "@/audio";
+import { useCamera, useScreenShare } from "@/audio";
 import { getServerHttpBase } from "@/common";
 import { useSettings } from "@/settings";
 import { useServerManagement,useSockets } from "@/socket";
@@ -50,6 +50,7 @@ export function MiniControls({
   } = useSFU();
 
   const { cameraEnabled, setCameraEnabled } = useCamera();
+  const { screenShareActive, startScreenShare, stopScreenShare } = useScreenShare();
 
   const { getChannelDetails, serverDetailsList } = useSockets();
 
@@ -110,10 +111,25 @@ export function MiniControls({
             <motion.div variants={buttonAnimations}>
               <IconButton
                 size="1"
+                color={screenShareActive ? "green" : "gray"}
+                variant="soft"
+                onClick={() => {
+                  if (screenShareActive) stopScreenShare();
+                  else startScreenShare(true);
+                }}
+              >
+                {screenShareActive ? <MdStopScreenShare size={12} /> : <MdScreenShare size={12} />}
+              </IconButton>
+            </motion.div>
+
+            <motion.div variants={buttonAnimations}>
+              <IconButton
+                size="1"
                 variant="soft"
                 color="red"
                 onClick={() => {
                   if (cameraEnabled) setCameraEnabled(false);
+                  if (screenShareActive) stopScreenShare();
                   void disconnect();
                 }}
               >

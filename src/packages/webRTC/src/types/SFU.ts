@@ -10,6 +10,15 @@ export interface StreamData {
 
 export type VideoStreams = Record<string, MediaStream>;
 
+export type ScreenShareStreams = Record<string, MediaStream>;
+
+export type ScreenShareAudioSources = Record<string, {
+  gain: GainNode;
+  analyser: AnalyserNode;
+  source: MediaStreamAudioSourceNode | MediaElementAudioSourceNode;
+  audioElement?: HTMLAudioElement;
+}>;
+
 export type StreamSources = {
   [id: string]: {
     gain: GainNode;
@@ -33,10 +42,16 @@ export interface SFUInterface {
   error: string | null;
   streamSources: StreamSources;
   videoStreams: VideoStreams;
+  screenShareStreams: ScreenShareStreams;
+  screenShareAudioSources: ScreenShareAudioSources;
   connect: (channelID: string, channelEsportsMode?: boolean, channelMaxBitrate?: number | null) => Promise<void>;
   disconnect: (playSound?: boolean, onDisconnect?: () => void) => Promise<void>;
   addVideoTrack: (track: MediaStreamTrack, stream: MediaStream) => void;
   removeVideoTrack: () => void;
+  addScreenVideoTrack: (track: MediaStreamTrack, stream: MediaStream) => void;
+  removeScreenVideoTrack: () => void;
+  addScreenAudioTrack: (track: MediaStreamTrack, stream: MediaStream) => void;
+  removeScreenAudioTrack: () => void;
   currentServerConnected: string;
   currentChannelConnected: string;
   isConnected: boolean;
