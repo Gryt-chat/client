@@ -1,12 +1,13 @@
 import { Box, Dialog, Flex, IconButton, Tabs, Text } from "@radix-ui/themes";
 import { useEffect, useMemo, useState } from "react";
 import { FiX } from "react-icons/fi";
-import { MdFactCheck, MdGroup, MdLink, MdSettings } from "react-icons/md";
+import { MdEmojiEmotions, MdFactCheck, MdGroup, MdLink, MdSettings } from "react-icons/md";
 
 import { getServerAccessToken } from "@/common";
 
 import { useSockets } from "../hooks/useSockets";
 import { ServerAuditTab } from "./ServerAuditTab";
+import { ServerEmojisTab } from "./ServerEmojisTab";
 import { ServerInvitesTab } from "./ServerInvitesTab";
 import { type ServerOverviewInitialSettings,ServerOverviewTab } from "./ServerOverviewTab";
 import { ServerRolesTab } from "./ServerRolesTab";
@@ -106,6 +107,12 @@ export function ServerSettingsModal() {
       label: "Roles",
       icon: MdGroup,
       content: <ServerRolesTab host={host} socket={socket} accessToken={accessToken} />,
+    },
+    {
+      value: "emojis",
+      label: "Emojis",
+      icon: MdEmojiEmotions,
+      content: <ServerEmojisTab host={host} accessToken={accessToken} />,
     },
     {
       value: "audit",
