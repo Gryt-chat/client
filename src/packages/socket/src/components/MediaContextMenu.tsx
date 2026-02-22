@@ -1,4 +1,4 @@
-import { ContextMenu } from "@radix-ui/themes";
+import { ContextMenu, Flex } from "@radix-ui/themes";
 import React, { type ReactNode } from "react";
 import { MdCloudDownload, MdContentCopy, MdOpenInNew } from "react-icons/md";
 
@@ -41,17 +41,23 @@ export function MediaContextMenu({ children, src, fileName }: MediaContextMenuPr
       </ContextMenu.Trigger>
       <ContextMenu.Content style={{ minWidth: 180 }}>
         <ContextMenu.Item onClick={() => triggerDownload(src, fileName)}>
-          <MdCloudDownload size={14} style={{ marginRight: 8, flexShrink: 0 }} />
-          Save As
+          <Flex align="center" gap="1">
+            <MdCloudDownload size={14} />
+            Save As
+          </Flex>
         </ContextMenu.Item>
         <ContextMenu.Item onClick={() => copyToClipboard(src)}>
-          <MdContentCopy size={14} style={{ marginRight: 8, flexShrink: 0 }} />
-          Copy Link
+          <Flex align="center" gap="1">
+            <MdContentCopy size={14} />
+            Copy Link
+          </Flex>
         </ContextMenu.Item>
         <ContextMenu.Separator />
         <ContextMenu.Item onClick={() => window.open(src, "_blank", "noopener,noreferrer")}>
-          <MdOpenInNew size={14} style={{ marginRight: 8, flexShrink: 0 }} />
-          Open in Browser
+          <Flex align="center" gap="1">
+            <MdOpenInNew size={14} />
+            Open in Browser
+          </Flex>
         </ContextMenu.Item>
       </ContextMenu.Content>
     </ContextMenu.Root>

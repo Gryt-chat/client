@@ -122,7 +122,7 @@ export const ChannelList = ({
           <Flex align="center" style={{ flexShrink: 0 }}>
             {channel?.type === "voice" ? <MdVolumeUp size={16} /> : <MdChat size={16} />}
           </Flex>
-          <Text truncate style={{ flex: 1, minWidth: 0 }}>
+          <Text truncate style={{ flex: 1, minWidth: 0, textAlign: "left", display: "block" }}>
             {channel?.name || "(missing channel)"}
           </Text>
           {hasIndicators && (

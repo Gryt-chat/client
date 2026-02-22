@@ -10,7 +10,7 @@ import {
   IconButton,
   Tooltip,
 } from "@radix-ui/themes";
-import { MdAdd, MdMic, MdPushPin, MdSettings } from "react-icons/md";
+import { MdAdd, MdBugReport, MdLightbulb, MdMic, MdPushPin, MdSettings } from "react-icons/md";
 
 import { useAccount } from "@/common";
 import { useSettings } from "@/settings";
@@ -123,8 +123,10 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
                 </ContextMenu.Label>
                 {index !== 0 && (
                   <ContextMenu.Item>
-                    <MdPushPin size={16} />
-                    Pin to top
+                    <Flex align="center" gap="1">
+                      <MdPushPin size={16} />
+                      Pin to top
+                    </Flex>
                   </ContextMenu.Item>
                 )}
                 <ContextMenu.Item>Edit</ContextMenu.Item>
@@ -198,9 +200,26 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
           </DropdownMenu.Trigger>
           <DropdownMenu.Content>
             <DropdownMenu.Item onClick={() => setShowSettings(true)}>
-              <Flex gap="1" align="center">
+              <Flex align="center" gap="1">
                 <MdSettings size={14} />
                 Settings
+              </Flex>
+            </DropdownMenu.Item>
+            <DropdownMenu.Separator />
+            <DropdownMenu.Item
+              onClick={() => window.open("https://github.com/Gryt-chat/gryt/issues/new?template=bug_report.yml", "_blank")}
+            >
+              <Flex align="center" gap="1">
+                <MdBugReport size={14} />
+                Report a bug
+              </Flex>
+            </DropdownMenu.Item>
+            <DropdownMenu.Item
+              onClick={() => window.open("https://github.com/Gryt-chat/gryt/issues/new?template=feature_request.yml", "_blank")}
+            >
+              <Flex align="center" gap="1">
+                <MdLightbulb size={14} />
+                Suggest a feature
               </Flex>
             </DropdownMenu.Item>
             <DropdownMenu.Separator />
