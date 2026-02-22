@@ -1,7 +1,7 @@
 import { Dispatch, MutableRefObject, SetStateAction, useEffect, useRef } from "react";
 import { Socket } from "socket.io-client";
 
-import { ScreenShareAudioSources, ScreenShareStreams, Streams, StreamSources, VideoStreams } from "../types/SFU";
+import { Streams, StreamSources, VideoStreams } from "../types/SFU";
 import { voiceLog } from "./voiceLogger";
 
 interface UseSFUStreamsParams {
@@ -10,8 +10,6 @@ interface UseSFUStreamsParams {
   streamSources: StreamSources;
   setStreamSources: Dispatch<SetStateAction<StreamSources>>;
   setVideoStreams: Dispatch<SetStateAction<VideoStreams>>;
-  setScreenShareStreams: Dispatch<SetStateAction<ScreenShareStreams>>;
-  setScreenShareAudioSources: Dispatch<SetStateAction<ScreenShareAudioSources>>;
   audioContext: AudioContext | null | undefined;
   outputVolume: number;
   isDeafened: boolean;
@@ -27,10 +25,6 @@ export function useSFUStreams({
   streamSources,
   setStreamSources,
   setVideoStreams,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  setScreenShareStreams: _setScreenShareStreams,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  setScreenShareAudioSources: _setScreenShareAudioSources,
   audioContext,
   outputVolume,
   isDeafened,

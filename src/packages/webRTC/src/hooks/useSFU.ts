@@ -37,8 +37,8 @@ function useSfuHook(): SFUInterface {
   const [streams, setStreams] = useState<Streams>({});
   const [streamSources, setStreamSources] = useState<StreamSources>({});
   const [videoStreams, setVideoStreams] = useState<VideoStreams>({});
-  const [screenShareStreams, setScreenShareStreams] = useState<ScreenShareStreams>({});
-  const [screenShareAudioSources, setScreenShareAudioSources] = useState<ScreenShareAudioSources>({});
+  const [screenShareStreams] = useState<ScreenShareStreams>({});
+  const [screenShareAudioSources] = useState<ScreenShareAudioSources>({});
   const videoSenderRef = useRef<RTCRtpSender | null>(null);
   const screenVideoSenderRef = useRef<RTCRtpSender | null>(null);
   const screenAudioSenderRef = useRef<RTCRtpSender | null>(null);
@@ -114,8 +114,6 @@ function useSfuHook(): SFUInterface {
     streamSources,
     setStreamSources,
     setVideoStreams,
-    setScreenShareStreams,
-    setScreenShareAudioSources,
     audioContext,
     outputVolume,
     isDeafened,
