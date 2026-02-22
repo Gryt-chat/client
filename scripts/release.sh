@@ -205,6 +205,38 @@ ELECTRON=1 npx vite build
 
 ok "Vite build complete"
 
+# ── Git commit & tag (before publish so the tag is authoritative) ────────
+if [ "$RERELEASE" = false ]; then
+  echo ""
+  info "Committing version bump…"
+
+  COMMIT_SUFFIX=""
+  if [ "$BETA_RELEASE" = true ]; then
+    COMMIT_SUFFIX=" (beta)"
+  fi
+
+  cd "$CLIENT_DIR"
+  git add package.json
+  git commit -m "release: v${NEW_VERSION}${COMMIT_SUFFIX}"
+  git push
+
+  REPO_ROOT="$(cd "$CLIENT_DIR/.." && git rev-parse --show-toplevel 2>/dev/null || echo "")"
+  if [ -n "$REPO_ROOT" ] && [ -f "$REPO_ROOT/.gitmodules" ]; then
+    cd "$REPO_ROOT"
+    git add packages/client
+    git commit -m "release: client v${NEW_VERSION}${COMMIT_SUFFIX}"
+    git tag "v${NEW_VERSION}"
+    git push
+    git push origin "v${NEW_VERSION}"
+    ok "Committed submodule + monorepo, tagged and pushed ${BOLD}v${NEW_VERSION}${RESET}"
+  else
+    cd "$CLIENT_DIR"
+    git tag "v${NEW_VERSION}"
+    git push origin "v${NEW_VERSION}"
+    ok "Committed, tagged, and pushed ${BOLD}v${NEW_VERSION}${RESET}"
+  fi
+fi
+
 # ── Publish ──────────────────────────────────────────────────────────────
 info "Packaging & publishing to ${BOLD}${OWNER}/${REPO}${RESET}…"
 
@@ -259,40 +291,6 @@ if [ "$VERIFY_FAILED" = true ]; then
   if [[ ! "$CONTINUE_ANYWAY" =~ ^[Yy]$ ]]; then
     warn "Aborted. Fix the release manifests before proceeding."
     exit 1
-  fi
-fi
-
-# ── Git commit & tag (only for new versions, not re-releases) ─────────
-if [ "$RERELEASE" = false ]; then
-  echo ""
-  info "Committing version bump…"
-
-  COMMIT_SUFFIX=""
-  if [ "$BETA_RELEASE" = true ]; then
-    COMMIT_SUFFIX=" (beta)"
-  fi
-
-  cd "$CLIENT_DIR"
-  git add package.json
-  git commit -m "release: v${NEW_VERSION}${COMMIT_SUFFIX}"
-  git push
-
-  REPO_ROOT="$(cd "$CLIENT_DIR/.." && git rev-parse --show-toplevel 2>/dev/null || echo "")"
-  if [ -n "$REPO_ROOT" ] && [ -f "$REPO_ROOT/.gitmodules" ]; then
-    cd "$REPO_ROOT"
-    git add packages/client
-    git commit -m "release: client v${NEW_VERSION}${COMMIT_SUFFIX}"
-    # Tag may already exist (created by electron-builder's GitHub publish)
-    git tag "v${NEW_VERSION}" 2>/dev/null && info "Created tag v${NEW_VERSION}" \
-      || git tag -f "v${NEW_VERSION}" && info "Updated existing tag v${NEW_VERSION}"
-    git push
-    git push origin "v${NEW_VERSION}" --force
-    ok "Committed submodule + monorepo, tagged and pushed ${BOLD}v${NEW_VERSION}${RESET}"
-  else
-    cd "$CLIENT_DIR"
-    git tag "v${NEW_VERSION}" 2>/dev/null || git tag -f "v${NEW_VERSION}"
-    git push origin "v${NEW_VERSION}" --force
-    ok "Committed, tagged, and pushed ${BOLD}v${NEW_VERSION}${RESET}"
   fi
 fi
 

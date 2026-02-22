@@ -136,11 +136,13 @@ export const MessageHoverToolbar = ({
   onReply,
   onDelete,
   canDelete,
+  onPickerOpenChange,
 }: {
   onReaction: (reactionSrc: string) => void;
   onReply?: () => void;
   onDelete?: () => void;
   canDelete?: boolean;
+  onPickerOpenChange?: (open: boolean) => void;
 }) => {
   const [pickerOpen, setPickerOpen] = useState(false);
   const recentReactions = getRecentReactions(6);
@@ -194,7 +196,11 @@ export const MessageHoverToolbar = ({
 
       <div style={{ position: "relative", display: "inline-flex" }}>
         <button
-          onClick={() => setPickerOpen((v) => !v)}
+          onClick={() => {
+            const next = !pickerOpen;
+            setPickerOpen(next);
+            onPickerOpenChange?.(next);
+          }}
           title="More reactions"
           style={{
             background: "none",
@@ -218,7 +224,10 @@ export const MessageHoverToolbar = ({
         {pickerOpen && (
           <EmojiPicker
             onSelect={(src) => onReaction(src)}
-            onClose={() => setPickerOpen(false)}
+            onClose={() => {
+              setPickerOpen(false);
+              onPickerOpenChange?.(false);
+            }}
           />
         )}
       </div>

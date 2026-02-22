@@ -132,11 +132,24 @@ export const ChatView = ({
       chatMessages.length !== prevMessageCountRef.current ||
       lastId !== prevLastMessageIdRef.current;
 
+    const wasBulkLoad = prevMessageCountRef.current === 0 && chatMessages.length > 1;
+
     prevMessageCountRef.current = chatMessages.length;
     prevLastMessageIdRef.current = lastId;
 
     if (isNewMessage) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      if (wasBulkLoad) {
+        requestAnimationFrame(() => {
+          const viewport = messagesEndRef.current?.closest<HTMLElement>('[data-radix-scroll-area-viewport]');
+          if (viewport) {
+            viewport.scrollTop = viewport.scrollHeight;
+          } else {
+            messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
+          }
+        });
+      } else {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }
     }
   }, [chatMessages]);
 
@@ -174,6 +187,7 @@ export const ChatView = ({
   }, [chatMessages]);
 
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
+  const [emojiPickerMessageId, setEmojiPickerMessageId] = useState<string | null>(null);
 
   const [contextMenu, setContextMenu] = useState<{
     message: ChatMessage;
@@ -182,6 +196,7 @@ export const ChatView = ({
 
   const handleMessageRightClick = (event: React.MouseEvent, message: ChatMessage) => {
     event.preventDefault();
+    setEmojiPickerMessageId(null);
     setContextMenu({
       message,
       position: { x: event.clientX, y: event.clientY }
@@ -401,11 +416,13 @@ export const ChatView = ({
                             setHoveredMessageId(m.message_id);
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.background = "transparent";
+                            if (emojiPickerMessageId !== m.message_id) {
+                              e.currentTarget.style.background = "transparent";
+                            }
                             setHoveredMessageId((prev) => prev === m.message_id ? null : prev);
                           }}
                         >
-                          {hoveredMessageId === m.message_id && !contextMenu && (
+                          {((hoveredMessageId === m.message_id && !emojiPickerMessageId) || emojiPickerMessageId === m.message_id) && !contextMenu && (
                             <MessageHoverToolbar
                               onReaction={(emoji) => handleReaction(emoji, m)}
                               onReply={() => handleReply(m)}
@@ -415,6 +432,15 @@ export const ChatView = ({
                                   ? () => requestDelete(m)
                                   : undefined
                               }
+                              onPickerOpenChange={(open) => {
+                                setEmojiPickerMessageId(open ? m.message_id : null);
+                                if (!open) {
+                                  const el = messageRefs.current.get(m.message_id);
+                                  if (el && hoveredMessageId !== m.message_id) {
+                                    el.style.background = "transparent";
+                                  }
+                                }
+                              }}
                             />
                           )}
                           {m.reply_to_message_id && (
