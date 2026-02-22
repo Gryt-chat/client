@@ -7,7 +7,7 @@ import disconnectMp3 from "@/audio/src/assets/disconnect.mp3";
 import { useSettings } from "@/settings";
 import { useServerManagement,useSockets } from "@/socket";
 
-import { ScreenShareAudioSources, ScreenShareStreams, SFUConnectionState, SFUInterface, Streams, StreamSources, VideoStreams } from "../types/SFU";
+import { SFUConnectionState, SFUInterface, Streams, StreamSources, VideoStreams } from "../types/SFU";
 import { CleanupRefs,performSfuCleanup, performUnmountCleanup } from "./sfuCleanup";
 import { sfuConnect } from "./sfuConnectFlow";
 import { SFUConnectionStateInternal } from "./sfuTypes";
@@ -37,8 +37,6 @@ function useSfuHook(): SFUInterface {
   const [streams, setStreams] = useState<Streams>({});
   const [streamSources, setStreamSources] = useState<StreamSources>({});
   const [videoStreams, setVideoStreams] = useState<VideoStreams>({});
-  const [screenShareStreams] = useState<ScreenShareStreams>({});
-  const [screenShareAudioSources] = useState<ScreenShareAudioSources>({});
   const videoSenderRef = useRef<RTCRtpSender | null>(null);
   const screenVideoSenderRef = useRef<RTCRtpSender | null>(null);
   const screenAudioSenderRef = useRef<RTCRtpSender | null>(null);
@@ -409,8 +407,6 @@ function useSfuHook(): SFUInterface {
     error: connectionState.error,
     streamSources,
     videoStreams,
-    screenShareStreams,
-    screenShareAudioSources,
     connect,
     disconnect,
     addVideoTrack,
@@ -434,8 +430,6 @@ const init: SFUInterface = {
   streams: {},
   streamSources: {},
   videoStreams: {},
-  screenShareStreams: {},
-  screenShareAudioSources: {},
   connect: () => Promise.resolve(),
   disconnect: () => Promise.resolve(),
   addVideoTrack: () => {},
