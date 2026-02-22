@@ -127,12 +127,14 @@ export function Settings() {
                         key={value}
                         value={value}
                         style={{
+                          display: "flex",
+                          alignItems: "center",
                           justifyContent: "flex-start",
                           padding: "12px 16px",
                           gap: "8px",
                         }}
                       >
-                        <Icon size={16} />
+                        <Icon size={16} style={{ flexShrink: 0 }} />
                         {label}
                       </Tabs.Trigger>
                     ))}
