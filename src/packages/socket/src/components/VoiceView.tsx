@@ -1,7 +1,7 @@
 import { closestCenter, DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { arrayMove, rectSortingStrategy, SortableContext, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Avatar, Flex, Slider, Text, Tooltip } from "@radix-ui/themes";
+import { Avatar, ContextMenu, Flex, Slider, Text, Tooltip } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
 import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -16,6 +16,7 @@ import type { StreamSources } from "@/webRTC/src/types/SFU";
 import type { PeerLatencyStats } from "../hooks/usePeerLatency";
 import type { Client } from "../types/clients";
 import type { AdminActions, MemberInfo } from "./MemberSidebar";
+import { popoutStream } from "../utils/popoutVideo";
 import { SkeletonBase } from "./skeletons";
 import { UserContextMenu } from "./UserContextMenu";
 
@@ -220,14 +221,13 @@ function SortableParticipant({ id, children }: { id: string; children: ReactNode
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
 
   const style: CSSProperties = {
-    transform: CSS.Transform.toString(transform),
+    transform: CSS.Translate.toString(transform),
     transition,
     opacity: isDragging ? 0.85 : 1,
     zIndex: isDragging ? 10 : undefined,
     cursor: isDragging ? "grabbing" : "grab",
     borderRadius: "var(--radius-5)",
     boxShadow: isDragging ? "0 8px 24px rgba(0,0,0,0.35)" : undefined,
-    scale: isDragging ? "1.05" : undefined,
   };
 
   return (
@@ -238,6 +238,7 @@ function SortableParticipant({ id, children }: { id: string; children: ReactNode
 }
 
 interface FocusedStreamInfo {
+  itemId: string;
   stream: MediaStream;
   title: string;
   audioStreamId?: string;
@@ -383,6 +384,11 @@ export const VoiceView = ({
 
   const isFocused = !!focusedStream;
 
+  const displayItems = useMemo(() => {
+    if (!focusedStream) return orderedItems;
+    return orderedItems.filter((id) => id !== focusedStream.itemId);
+  }, [orderedItems, focusedStream]);
+
   // Close focused view if the underlying stream ends
   useEffect(() => {
     if (!focusedStream) return;
@@ -398,360 +404,286 @@ export const VoiceView = ({
   }, [focusedStream, onFocusChange]);
 
   const handleFocus = useCallback((info: FocusedStreamInfo) => {
-    setFocusedStream(info);
-    onFocusChange?.(true);
-  }, [onFocusChange]);
+    setFocusedStream((prev) => {
+      if (prev?.itemId === info.itemId) return null;
+      return info;
+    });
+  }, []);
 
   const handleCloseFocus = useCallback(() => {
     setFocusedStream(null);
-    onFocusChange?.(false);
-  }, [onFocusChange]);
+  }, []);
+
+  const renderCardContent = (itemId: string, compact?: boolean) => {
+    const isScreenTile = itemId.startsWith("screen:");
+    const clientId = isScreenTile ? itemId.slice(7) : itemId;
+    const client = clientsForHost[clientId];
+    if (!client) return null;
+
+    const isSelf = clientId === currentConnectionId;
+    const serverUserId: string | undefined = client?.serverUserId;
+    const avatarFileId = serverUserId ? avatarByServerUserId.get(serverUserId) : undefined;
+    const isUserConnecting = clientId === currentConnectionId && isConnecting;
+
+    if (isScreenTile) {
+      const screenStream = isSelf
+        ? localScreenStream
+        : (client.screenShareVideoStreamID && videoStreams?.[client.screenShareVideoStreamID])
+          ? videoStreams[client.screenShareVideoStreamID]
+          : null;
+      if (!screenStream) return null;
+      const screenTitle = isSelf ? "Your Screen" : `${client.nickname}'s Screen`;
+
+      return (
+        <ContextMenu.Root>
+          <ContextMenu.Trigger>
+            <VideoCard
+              stream={screenStream}
+              nickname={screenTitle}
+              objectFit="contain"
+              statusIcons={<MdScreenShare size={10} color="var(--blue-9)" />}
+              onClick={() => handleFocus({
+                itemId,
+                stream: screenStream,
+                title: screenTitle,
+                audioStreamId: (!isSelf && client.screenShareAudioStreamID) || undefined,
+                objectFit: "contain",
+              })}
+            />
+          </ContextMenu.Trigger>
+          <ContextMenu.Content style={{ minWidth: 160 }} onCloseAutoFocus={(e) => e.preventDefault()}>
+            <ContextMenu.Label style={{ fontWeight: "bold" }}>{screenTitle}</ContextMenu.Label>
+            <ContextMenu.Separator />
+            <ContextMenu.Item onClick={() => popoutStream(screenStream, screenTitle)}>Pop out video</ContextMenu.Item>
+          </ContextMenu.Content>
+        </ContextMenu.Root>
+      );
+    }
+
+    return (
+      <UserContextMenu
+        serverUserId={serverUserId}
+        nickname={client.nickname}
+        isSelf={isSelf}
+        canDisconnect={!!onDisconnectUser}
+        isInVoice={true}
+        onDisconnectFromVoice={onDisconnectUser && serverUserId ? () => onDisconnectUser(serverUserId) : undefined}
+        role={currentUserRole}
+        targetRole={serverUserId ? memberByServerUserId.get(serverUserId)?.role : undefined}
+        isServerMuted={serverUserId ? memberByServerUserId.get(serverUserId)?.isServerMuted : undefined}
+        isServerDeafened={serverUserId ? memberByServerUserId.get(serverUserId)?.isServerDeafened : undefined}
+        onKick={adminActions?.onKickUser && serverUserId ? () => adminActions.onKickUser!(serverUserId) : undefined}
+        onBan={adminActions?.onBanUser && serverUserId ? () => adminActions.onBanUser!(serverUserId) : undefined}
+        onServerMute={adminActions?.onServerMuteUser && serverUserId ? (muted) => adminActions.onServerMuteUser!(serverUserId, muted) : undefined}
+        onServerDeafen={adminActions?.onServerDeafenUser && serverUserId ? (deafened) => adminActions.onServerDeafenUser!(serverUserId, deafened) : undefined}
+        onChangeRole={adminActions?.onChangeRole && serverUserId ? (role) => adminActions.onChangeRole!(serverUserId, role) : undefined}
+        onPopoutVideo={(() => {
+          const cam = isSelf
+            ? localCameraStream
+            : (client.cameraEnabled && client.cameraStreamID && videoStreams?.[client.cameraStreamID]) || null;
+          if (!cam) return undefined;
+          return () => { popoutStream(cam, isSelf ? "Your Camera" : `${client.nickname}'s Camera`); };
+        })()}
+      >
+        {(() => {
+          const hasCameraStream =
+            (isSelf && localCameraStream) ||
+            (!isSelf && client.cameraEnabled && client.cameraStreamID && videoStreams?.[client.cameraStreamID]);
+
+          const statusBadges = (
+            <>
+              {(client.isMuted || client.isDeafened) && (
+                client.isDeafened
+                  ? <MdVolumeOff size={12} color="var(--red-9)" />
+                  : <MdMicOff size={12} color="var(--red-9)" />
+              )}
+              {client.isAFK && <Text size="1" weight="bold" style={{ color: "#fff" }}>AFK</Text>}
+              {client.screenShareEnabled && <MdScreenShare size={10} color="var(--blue-9)" />}
+            </>
+          );
+
+          if (hasCameraStream) {
+            const camStream = isSelf ? localCameraStream! : videoStreams![client.cameraStreamID!];
+            return (
+              <Flex direction="column" gap="1" align="center" style={{ width: "100%" }}>
+                <VideoCard
+                  stream={camStream}
+                  nickname={client.nickname}
+                  mirrored={isSelf ? cameraMirrored : false}
+                  isSpeaking={clientsSpeaking[clientId]}
+                  statusIcons={statusBadges}
+                  onClick={() => handleFocus({
+                    itemId,
+                    stream: camStream,
+                    title: isSelf ? "Your Camera" : `${client.nickname}'s Camera`,
+                    objectFit: "cover",
+                    mirrored: isSelf ? cameraMirrored : false,
+                  })}
+                />
+                {!compact && showPeerLatency && (() => {
+                  const stats = isSelf ? selfLatency : peerLatency?.[clientId];
+                  const oneWay = isSelf ? stats?.estimatedOneWayMs : (stats as PeerLatencyStats | undefined)?.estimatedOneWayMs;
+                  const rtt = isSelf ? stats?.networkRttMs : (stats as PeerLatencyStats | undefined)?.networkRttMs;
+                  const jitter = isSelf ? stats?.jitterMs : (stats as PeerLatencyStats | undefined)?.jitterMs;
+                  const codecStr = isSelf ? stats?.codec : (stats as PeerLatencyStats | undefined)?.codec;
+                  if (oneWay == null) return null;
+                  const tooltipParts = [`RTT: ${rtt?.toFixed(0) ?? "—"}ms`, `Jitter: ${jitter?.toFixed(1) ?? "—"}ms`, codecStr ?? "—"];
+                  if (isSelf && selfLatency.remoteAddress) tooltipParts.push(`ICE: ${selfLatency.remoteAddress}`);
+                  return (
+                    <Tooltip content={tooltipParts.join(" · ")}>
+                      <Text size="1" style={{ color: latencyColor(oneWay), fontVariantNumeric: "tabular-nums", cursor: "default" }}>
+                        {Math.round(oneWay)}ms
+                      </Text>
+                    </Tooltip>
+                  );
+                })()}
+              </Flex>
+            );
+          }
+
+          return (
+            <Flex align="center" justify="center" direction={compact ? "row" : "column"} gap="1" px={compact ? "2" : "4"} py={compact ? "1" : "3"}>
+              <Flex align="center" justify="center" position="relative">
+                <Avatar
+                  size={compact ? "2" : "3"}
+                  fallback={client.nickname[0]}
+                  src={avatarFileId ? getUploadsFileUrl(serverHost, avatarFileId) : undefined}
+                  style={{
+                    outline: "2.5px solid",
+                    outlineColor: clientsSpeaking[clientId] ? "var(--accent-9)" : "transparent",
+                    transition: "outline-color 0.1s ease",
+                  }}
+                />
+                {client.cameraEnabled && (
+                  <Flex position="absolute" top="-4px" right="-4px" style={{ background: "var(--green-9)", borderRadius: "50%", padding: "2px" }}>
+                    <MdVideocam size={10} color="white" />
+                  </Flex>
+                )}
+                {client.screenShareEnabled && (
+                  <Flex position="absolute" top="-4px" left="-4px" style={{ background: "var(--blue-9)", borderRadius: "50%", padding: "2px" }}>
+                    <MdScreenShare size={10} color="white" />
+                  </Flex>
+                )}
+                {isUserConnecting && (
+                  <Flex position="absolute" align="center" justify="center" style={{ top: 0, left: 0, right: 0, bottom: 0, background: "var(--color-panel-translucent)", borderRadius: "50%" }}>
+                    <SkeletonBase width="24px" height="24px" borderRadius="50%" />
+                  </Flex>
+                )}
+                {(client.isMuted || client.isDeafened || client.isAFK) && (
+                  <Flex position="absolute" bottom="-4px" right="-4px" gap="1" style={{ background: "var(--gray-3)", borderRadius: "var(--radius-4)", padding: "2px 4px", border: "1px solid var(--gray-6)" }}>
+                    {client.isDeafened ? <MdVolumeOff size={12} color="var(--red-9)" /> : client.isMuted ? <MdMicOff size={12} color="var(--red-9)" /> : null}
+                    {client.isAFK && <Text size="1" weight="bold" color="orange">AFK</Text>}
+                  </Flex>
+                )}
+              </Flex>
+              <Flex direction="column" align="center" gap="1">
+                <Text size={compact ? "1" : undefined}>{client.nickname}</Text>
+                {!compact && showPeerLatency && (() => {
+                  const stats = isSelf ? selfLatency : peerLatency?.[clientId];
+                  const oneWay = isSelf ? stats?.estimatedOneWayMs : (stats as PeerLatencyStats | undefined)?.estimatedOneWayMs;
+                  const rtt = isSelf ? stats?.networkRttMs : (stats as PeerLatencyStats | undefined)?.networkRttMs;
+                  const jitter = isSelf ? stats?.jitterMs : (stats as PeerLatencyStats | undefined)?.jitterMs;
+                  const codecStr = isSelf ? stats?.codec : (stats as PeerLatencyStats | undefined)?.codec;
+                  if (oneWay == null) return null;
+                  const tooltipParts = [`RTT: ${rtt?.toFixed(0) ?? "—"}ms`, `Jitter: ${jitter?.toFixed(1) ?? "—"}ms`, codecStr ?? "—"];
+                  if (isSelf && selfLatency.remoteAddress) tooltipParts.push(`ICE: ${selfLatency.remoteAddress}`);
+                  return (
+                    <Tooltip content={tooltipParts.join(" · ")}>
+                      <Text size="1" style={{ color: latencyColor(oneWay), fontVariantNumeric: "tabular-nums", cursor: "default" }}>{Math.round(oneWay)}ms</Text>
+                    </Tooltip>
+                  );
+                })()}
+              </Flex>
+            </Flex>
+          );
+        })()}
+      </UserContextMenu>
+    );
+  };
 
   return (
     <motion.div
       transition={isDragging ? { duration: 0 } : { type: "spring", stiffness: 300, damping: 30 }}
-      animate={isFocused ? {
-        paddingRight: 8,
-      } : {
+      animate={{
         width: showVoiceView ? voiceWidth : 0,
         paddingRight: !showVoiceView || voiceWidth === "0px" ? 0 : 8,
       }}
-      style={{
-        overflow: "hidden",
-        ...(isFocused ? { flex: 2, width: "auto" } : {}),
-      }}
+      style={{ overflow: "hidden" }}
     >
       <Flex
-        style={{
-          background: "var(--gray-3)",
-          borderRadius: "var(--radius-5)",
-        }}
+        style={{ background: "var(--gray-3)", borderRadius: "var(--radius-5)" }}
         height="100%"
         width="100%"
         direction="column"
         p="3"
       >
-        {/* Focused / expanded view */}
-        {isFocused && (
-          <FocusedVideoView
-            stream={focusedStream.stream}
-            title={focusedStream.title}
-            audioStreamId={focusedStream.audioStreamId}
-            streamSources={streamSources}
-            objectFit={focusedStream.objectFit}
-            mirrored={focusedStream.mirrored}
-            onClose={handleCloseFocus}
-          />
-        )}
-
-        {/* Participant + screen share grid */}
         <div
           ref={gridRef}
-          style={{
-            flexGrow: isFocused ? 0 : 1,
-            flexShrink: 0,
-            position: "relative",
-            overflow: "hidden",
-          }}
+          style={{ flexGrow: 1, position: "relative", overflow: "hidden", display: "flex", flexDirection: "column" }}
         >
+          {/* Focused video at top */}
+          {isFocused && (
+            <FocusedVideoView
+              stream={focusedStream.stream}
+              title={focusedStream.title}
+              audioStreamId={focusedStream.audioStreamId}
+              streamSources={streamSources}
+              objectFit={focusedStream.objectFit}
+              mirrored={focusedStream.mirrored}
+              onClose={handleCloseFocus}
+            />
+          )}
+
+          {/* Cards grid / strip */}
           <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={orderedItems} strategy={rectSortingStrategy}>
               <div
-                style={{
-                  display: isFocused ? "flex" : "grid",
-                  gridTemplateColumns: isFocused
-                    ? undefined
-                    : useAutoLayout
-                      ? "1fr"
-                      : `repeat(${columns}, 1fr)`,
+                style={isFocused ? {
+                  display: "flex",
+                  gap: "var(--space-2)",
+                  overflowX: "auto",
+                  overflowY: "hidden",
+                  paddingTop: "var(--space-2)",
+                  flexShrink: 0,
+                } : {
+                  display: "grid",
+                  gridTemplateColumns: useAutoLayout ? "1fr" : `repeat(${columns}, 1fr)`,
                   gap: "var(--space-2)",
                   justifyItems: "center",
-                  alignContent: isFocused ? "flex-start" : "center",
-                  alignItems: isFocused ? "center" : undefined,
-                  overflowX: isFocused ? "auto" : undefined,
-                  overflowY: isFocused ? undefined : "auto",
-                  paddingTop: isFocused ? "var(--space-2)" : undefined,
-                  paddingBottom: isFocused ? undefined : "60px",
-                  height: isFocused ? undefined : "100%",
+                  alignContent: "center",
+                  overflowY: "auto",
+                  paddingBottom: "60px",
+                  height: "100%",
                 }}
               >
                 <AnimatePresence>
-                  {currentServerConnected === serverHost &&
-                    orderedItems.map((itemId) => {
-                      const isScreenTile = itemId.startsWith("screen:");
-                      const clientId = isScreenTile ? itemId.slice(7) : itemId;
-                      const client = clientsForHost[clientId];
-                      if (!client) return null;
-
-                      const isSelf = clientId === currentConnectionId;
-                      const serverUserId: string | undefined = client?.serverUserId;
-                      const avatarFileId = serverUserId ? avatarByServerUserId.get(serverUserId) : undefined;
-                      const isUserConnecting = clientId === currentConnectionId && isConnecting;
-
-                      if (isScreenTile) {
-                        // Screen share tile
-                        const screenStream = isSelf
-                          ? localScreenStream
-                          : (client.screenShareVideoStreamID && videoStreams?.[client.screenShareVideoStreamID])
-                            ? videoStreams[client.screenShareVideoStreamID]
-                            : null;
-
-                        if (!screenStream) return null;
-
-                        const screenTitle = isSelf
-                          ? "Your Screen"
-                          : `${client.nickname}'s Screen`;
-
-                        return (
-                          <motion.div
-                            key={itemId}
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.2 }}
-                            style={{ width: isFocused ? undefined : "100%" }}
-                          >
-                            <SortableParticipant id={itemId}>
-                              <VideoCard
-                                stream={screenStream}
-                                nickname={screenTitle}
-                                objectFit="contain"
-                                statusIcons={<MdScreenShare size={10} color="var(--blue-9)" />}
-                                onClick={() => handleFocus({
-                                  stream: screenStream,
-                                  title: screenTitle,
-                                  audioStreamId: (!isSelf && client.screenShareAudioStreamID) || undefined,
-                                  objectFit: "contain",
-                                })}
-                              />
-                            </SortableParticipant>
-                          </motion.div>
-                        );
-                      }
-
-                      // Participant tile
-                      return (
-                        <motion.div
-                          key={itemId}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ duration: 0.2 }}
-                          style={{ width: isFocused ? undefined : "100%" }}
-                        >
-                          <SortableParticipant id={itemId}>
-                            <UserContextMenu
-                              serverUserId={serverUserId}
-                              nickname={client.nickname}
-                              isSelf={isSelf}
-                              canDisconnect={!!onDisconnectUser}
-                              isInVoice={true}
-                              onDisconnectFromVoice={onDisconnectUser && serverUserId ? () => onDisconnectUser(serverUserId) : undefined}
-                              role={currentUserRole}
-                              targetRole={serverUserId ? memberByServerUserId.get(serverUserId)?.role : undefined}
-                              isServerMuted={serverUserId ? memberByServerUserId.get(serverUserId)?.isServerMuted : undefined}
-                              isServerDeafened={serverUserId ? memberByServerUserId.get(serverUserId)?.isServerDeafened : undefined}
-                              onKick={adminActions?.onKickUser && serverUserId ? () => adminActions.onKickUser!(serverUserId) : undefined}
-                              onBan={adminActions?.onBanUser && serverUserId ? () => adminActions.onBanUser!(serverUserId) : undefined}
-                              onServerMute={adminActions?.onServerMuteUser && serverUserId ? (muted) => adminActions.onServerMuteUser!(serverUserId, muted) : undefined}
-                              onServerDeafen={adminActions?.onServerDeafenUser && serverUserId ? (deafened) => adminActions.onServerDeafenUser!(serverUserId, deafened) : undefined}
-                              onChangeRole={adminActions?.onChangeRole && serverUserId ? (role) => adminActions.onChangeRole!(serverUserId, role) : undefined}
-                            >
-                              {(() => {
-                                const hasCameraStream =
-                                  (isSelf && localCameraStream) ||
-                                  (!isSelf && client.cameraEnabled && client.cameraStreamID && videoStreams?.[client.cameraStreamID]);
-
-                                const statusBadges = (
-                                  <>
-                                    {(client.isMuted || client.isDeafened) && (
-                                      client.isDeafened
-                                        ? <MdVolumeOff size={12} color="var(--red-9)" />
-                                        : <MdMicOff size={12} color="var(--red-9)" />
-                                    )}
-                                    {client.isAFK && (
-                                      <Text size="1" weight="bold" style={{ color: "#fff" }}>AFK</Text>
-                                    )}
-                                    {client.screenShareEnabled && <MdScreenShare size={10} color="var(--blue-9)" />}
-                                  </>
-                                );
-
-                                if (hasCameraStream) {
-                                  const camStream = isSelf
-                                    ? localCameraStream!
-                                    : videoStreams![client.cameraStreamID!];
-                                  return (
-                                    <Flex direction="column" gap="1" align="center" style={{ width: "100%" }}>
-                                      <VideoCard
-                                        stream={camStream}
-                                        nickname={client.nickname}
-                                        mirrored={isSelf ? cameraMirrored : false}
-                                        isSpeaking={clientsSpeaking[clientId]}
-                                        statusIcons={statusBadges}
-                                        onClick={() => handleFocus({
-                                          stream: camStream,
-                                          title: isSelf ? "Your Camera" : `${client.nickname}'s Camera`,
-                                          objectFit: "cover",
-                                          mirrored: isSelf ? cameraMirrored : false,
-                                        })}
-                                      />
-                                      {showPeerLatency && (() => {
-                                        const stats = isSelf ? selfLatency : peerLatency?.[clientId];
-                                        const oneWay = isSelf ? stats?.estimatedOneWayMs : (stats as PeerLatencyStats | undefined)?.estimatedOneWayMs;
-                                        const rtt = isSelf ? stats?.networkRttMs : (stats as PeerLatencyStats | undefined)?.networkRttMs;
-                                        const jitter = isSelf ? stats?.jitterMs : (stats as PeerLatencyStats | undefined)?.jitterMs;
-                                        const codecStr = isSelf ? stats?.codec : (stats as PeerLatencyStats | undefined)?.codec;
-                                        if (oneWay == null) return null;
-                                        const tooltipParts = [`RTT: ${rtt?.toFixed(0) ?? "—"}ms`, `Jitter: ${jitter?.toFixed(1) ?? "—"}ms`, codecStr ?? "—"];
-                                        if (isSelf && selfLatency.remoteAddress) tooltipParts.push(`ICE: ${selfLatency.remoteAddress}`);
-                                        return (
-                                          <Tooltip content={tooltipParts.join(" · ")}>
-                                            <Text size="1" style={{ color: latencyColor(oneWay), fontVariantNumeric: "tabular-nums", cursor: "default" }}>
-                                              {Math.round(oneWay)}ms
-                                            </Text>
-                                          </Tooltip>
-                                        );
-                                      })()}
-                                    </Flex>
-                                  );
-                                }
-
-                                return (
-                                  <Flex
-                                    align="center"
-                                    justify="center"
-                                    direction={isFocused ? "row" : "column"}
-                                    gap="1"
-                                    px={isFocused ? "2" : "4"}
-                                    py={isFocused ? "1" : "3"}
-                                  >
-                                    <Flex align="center" justify="center" position="relative">
-                                      <Avatar
-                                        size={isFocused ? "2" : "3"}
-                                        fallback={client.nickname[0]}
-                                        src={avatarFileId ? getUploadsFileUrl(serverHost, avatarFileId) : undefined}
-                                        style={{
-                                          outline: "2.5px solid",
-                                          outlineColor: clientsSpeaking[clientId] ? "var(--accent-9)" : "transparent",
-                                          transition: "outline-color 0.1s ease",
-                                        }}
-                                      />
-                                      {client.cameraEnabled && (
-                                        <Flex
-                                          position="absolute"
-                                          top="-4px"
-                                          right="-4px"
-                                          style={{
-                                            background: "var(--green-9)",
-                                            borderRadius: "50%",
-                                            padding: "2px",
-                                          }}
-                                        >
-                                          <MdVideocam size={10} color="white" />
-                                        </Flex>
-                                      )}
-                                      {client.screenShareEnabled && (
-                                        <Flex
-                                          position="absolute"
-                                          top="-4px"
-                                          left="-4px"
-                                          style={{
-                                            background: "var(--blue-9)",
-                                            borderRadius: "50%",
-                                            padding: "2px",
-                                          }}
-                                        >
-                                          <MdScreenShare size={10} color="white" />
-                                        </Flex>
-                                      )}
-                                      {isUserConnecting && (
-                                        <Flex
-                                          position="absolute"
-                                          align="center"
-                                          justify="center"
-                                          style={{
-                                            top: 0, left: 0, right: 0, bottom: 0,
-                                            background: "var(--color-panel-translucent)",
-                                            borderRadius: "50%",
-                                          }}
-                                        >
-                                          <SkeletonBase width="24px" height="24px" borderRadius="50%" />
-                                        </Flex>
-                                      )}
-                                      {(client.isMuted || client.isDeafened || client.isAFK) && (
-                                        <Flex
-                                          position="absolute"
-                                          bottom="-4px"
-                                          right="-4px"
-                                          gap="1"
-                                          style={{
-                                            background: "var(--gray-3)",
-                                            borderRadius: "var(--radius-4)",
-                                            padding: "2px 4px",
-                                            border: "1px solid var(--gray-6)",
-                                          }}
-                                        >
-                                          {client.isDeafened ? (
-                                            <MdVolumeOff size={12} color="var(--red-9)" />
-                                          ) : client.isMuted ? (
-                                            <MdMicOff size={12} color="var(--red-9)" />
-                                          ) : null}
-                                          {client.isAFK && (
-                                            <Text size="1" weight="bold" color="orange">AFK</Text>
-                                          )}
-                                        </Flex>
-                                      )}
-                                    </Flex>
-                                    <Flex direction="column" align="center" gap="1">
-                                      <Text size={isFocused ? "1" : undefined}>{client.nickname}</Text>
-                                      {!isFocused && showPeerLatency && (() => {
-                                        const stats = isSelf ? selfLatency : peerLatency?.[clientId];
-                                        const oneWay = isSelf ? stats?.estimatedOneWayMs : (stats as PeerLatencyStats | undefined)?.estimatedOneWayMs;
-                                        const rtt = isSelf ? stats?.networkRttMs : (stats as PeerLatencyStats | undefined)?.networkRttMs;
-                                        const jitter = isSelf ? stats?.jitterMs : (stats as PeerLatencyStats | undefined)?.jitterMs;
-                                        const codecStr = isSelf ? stats?.codec : (stats as PeerLatencyStats | undefined)?.codec;
-                                        if (oneWay == null) return null;
-                                        const tooltipParts = [`RTT: ${rtt?.toFixed(0) ?? "—"}ms`, `Jitter: ${jitter?.toFixed(1) ?? "—"}ms`, codecStr ?? "—"];
-                                        if (isSelf && selfLatency.remoteAddress) tooltipParts.push(`ICE: ${selfLatency.remoteAddress}`);
-                                        return (
-                                          <Tooltip content={tooltipParts.join(" · ")}>
-                                            <Text
-                                              size="1"
-                                              style={{
-                                                color: latencyColor(oneWay),
-                                                fontVariantNumeric: "tabular-nums",
-                                                cursor: "default",
-                                              }}
-                                            >
-                                              {Math.round(oneWay)}ms
-                                            </Text>
-                                          </Tooltip>
-                                        );
-                                      })()}
-                                    </Flex>
-                                  </Flex>
-                                );
-                              })()}
-                            </UserContextMenu>
-                          </SortableParticipant>
-                        </motion.div>
-                      );
-                    })}
+                  {currentServerConnected === serverHost && displayItems.map((itemId) => (
+                    <motion.div
+                      key={itemId}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      style={isFocused ? { flexShrink: 0, width: 140 } : { width: "100%" }}
+                    >
+                      <SortableParticipant id={itemId}>
+                        {renderCardContent(itemId, isFocused)}
+                      </SortableParticipant>
+                    </motion.div>
+                  ))}
                 </AnimatePresence>
               </div>
             </SortableContext>
           </DndContext>
 
-          {/* Controls overlay */}
+          {/* Controls overlay (normal mode) */}
           {!isFocused && (
             <AnimatePresence>
               {currentServerConnected && (
                 <motion.div
                   style={{
                     position: "absolute",
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
+                    bottom: 0, left: 0, right: 0,
                     display: "flex",
                     justifyContent: "center",
                     padding: "12px",
@@ -770,7 +702,7 @@ export const VoiceView = ({
           )}
         </div>
 
-        {/* Controls below grid in focused mode */}
+        {/* Controls below (focused mode) */}
         {isFocused && currentServerConnected && (
           <Flex justify="center" py="2" flexShrink="0">
             <Controls onDisconnect={onDisconnect} />

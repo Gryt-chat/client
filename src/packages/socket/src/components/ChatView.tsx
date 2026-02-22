@@ -15,6 +15,7 @@ import { type AttachmentMeta, type ChatMessage, DateSeparator,MessageTimestamp, 
 import { EmojiText } from "./EmojiText";
 import { FileCard } from "./FileCard";
 import { ImageLightbox } from "./ImageLightbox";
+import { MessageEmbeds } from "./LinkEmbed";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { MediaContextMenu } from "./MediaContextMenu";
 
@@ -480,6 +481,9 @@ export const ChatView = ({
                           )}
                           <div style={{ opacity: m.pending ? 0.6 : m.failed ? 0.5 : 1, wordBreak: "break-word" }}>
                             <MarkdownRenderer content={m.text} customEmojis={customEmojiList} />
+                            {serverHost && !m.pending && (
+                              <MessageEmbeds messageId={m.message_id} text={m.text} serverHost={serverHost} />
+                            )}
                             {m.attachments && m.attachments.length > 0 && serverHost && (
                               <Flex gap="2" wrap="wrap" direction="column" style={{ marginTop: "4px" }}>
                                 {m.attachments.map((fileId, attIdx) => {
