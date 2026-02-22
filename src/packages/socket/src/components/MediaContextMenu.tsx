@@ -1,6 +1,6 @@
 import { ContextMenu } from "@radix-ui/themes";
 import React, { type ReactNode } from "react";
-import { FaCloudDownloadAlt, FaCopy, FaExternalLinkAlt } from "react-icons/fa";
+import { CloudDownload as FaCloudDownloadAlt, Copy as FaCopy, ExternalLink as FaExternalLinkAlt } from "lucide-react";
 
 interface MediaContextMenuProps {
   children: ReactNode;

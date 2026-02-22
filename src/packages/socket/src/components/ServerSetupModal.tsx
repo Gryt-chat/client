@@ -1,4 +1,4 @@
-import { Cross2Icon, GearIcon } from "@radix-ui/react-icons";
+import { X as Cross2Icon, Settings as GearIcon } from "lucide-react";
 import {
   Button,
   Dialog,
@@ -10,7 +10,7 @@ import {
 } from "@radix-ui/themes";
 import { type ChangeEvent, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { FiEye, FiEyeOff } from "react-icons/fi";
+import { Eye as FiEye, EyeOff as FiEyeOff } from "lucide-react";
 
 import { getServerAccessToken, getServerHttpBase, getValidIdentityToken } from "@/common";
 import { useSettings } from "@/settings";

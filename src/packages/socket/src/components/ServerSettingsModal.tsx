@@ -1,7 +1,7 @@
 import { Box, Dialog, Flex, IconButton, Tabs, Text } from "@radix-ui/themes";
 import { useEffect, useMemo, useState } from "react";
-import { FiX } from "react-icons/fi";
-import { MdEmojiEmotions, MdFactCheck, MdGroup, MdLink, MdSettings } from "react-icons/md";
+import { X as FiX } from "lucide-react";
+import { Smile as MdEmojiEmotions, ClipboardCheck as MdFactCheck, Users as MdGroup, Link as MdLink, Settings as MdSettings } from "lucide-react";
 
 import { getServerAccessToken } from "@/common";
 

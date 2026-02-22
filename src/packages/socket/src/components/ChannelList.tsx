@@ -1,9 +1,9 @@
-import { ChatBubbleIcon, SpeakerLoudIcon } from "@radix-ui/react-icons";
+import { MessageSquare as ChatBubbleIcon, Volume2 as SpeakerLoudIcon } from "lucide-react";
 import { Box, Button, ContextMenu, Flex, Text, Tooltip } from "@radix-ui/themes";
 import { AnimatePresence, LayoutGroup, motion, Reorder } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { HiMiniSignal } from "react-icons/hi2";
-import { MdKeyboard, MdSportsEsports } from "react-icons/md";
+import { Radio as HiMiniSignal } from "lucide-react";
+import { Keyboard as MdKeyboard, Gamepad2 as MdSportsEsports } from "lucide-react";
 
 import { getUploadsFileUrl } from "@/common";
 import { Channel, SidebarItem } from "@/settings/src/types/server";

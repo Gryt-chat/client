@@ -1,4 +1,4 @@
-import { PinTopIcon } from "@radix-ui/react-icons";
+import { Pin as PinTopIcon } from "lucide-react";
 import {
   Avatar,
   Box,
@@ -11,8 +11,8 @@ import {
   IconButton,
   Tooltip,
 } from "@radix-ui/themes";
-import { FiSettings } from "react-icons/fi";
-import { MdAdd, MdMic } from "react-icons/md";
+import { Settings as FiSettings } from "lucide-react";
+import { Plus as MdAdd, Mic as MdMic } from "lucide-react";
 
 import { useAccount } from "@/common";
 import { useSettings } from "@/settings";

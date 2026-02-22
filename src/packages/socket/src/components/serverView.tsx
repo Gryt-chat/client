@@ -1,9 +1,8 @@
-import { Cross2Icon } from "@radix-ui/react-icons";
+import { X as Cross2Icon } from "lucide-react";
 import { AlertDialog, Box, Button, Dialog, Flex, IconButton, Select, Spinner, Switch, Text, TextField } from "@radix-ui/themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { FiWifiOff } from "react-icons/fi";
-import { IoMdRefresh } from "react-icons/io";
+import { RefreshCw as IoMdRefresh, WifiOff as FiWifiOff } from "lucide-react";
 
 import { useIsCompact,useIsMobile } from "@/mobile";
 import { useSettings } from "@/settings";

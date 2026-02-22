@@ -2,9 +2,27 @@
   <img src="https://raw.githubusercontent.com/Gryt-chat/client/main/public/logo.svg" width="80" alt="Gryt logo" />
   <h1>Gryt Web Client</h1>
   <p>React web client for the <a href="https://github.com/Gryt-chat/gryt">Gryt</a> voice chat platform.<br />Built with TypeScript, Vite, and Radix UI.</p>
+  <p>A hosted version is available at <strong><a href="https://app.gryt.chat">app.gryt.chat</a></strong> — try Gryt without downloading anything.</p>
 </div>
 
 <br />
+
+## Docker
+
+```bash
+docker pull ghcr.io/gryt-chat/client:latest
+docker run -p 80:80 ghcr.io/gryt-chat/client:latest
+```
+
+The entrypoint injects runtime configuration via environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `GRYT_OIDC_ISSUER` | `https://auth.gryt.chat/realms/gryt` | OIDC issuer URL |
+| `GRYT_OIDC_REALM` | `gryt` | Keycloak realm |
+| `GRYT_OIDC_CLIENT_ID` | `gryt-web` | OIDC client ID |
+
+Browse tags at [ghcr.io/gryt-chat/client](https://github.com/Gryt-chat/client/pkgs/container/client).
 
 ## Quick Start
 

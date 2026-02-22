@@ -1,4 +1,4 @@
-import { ExclamationTriangleIcon } from "@radix-ui/react-icons";
+import { TriangleAlert as ExclamationTriangleIcon } from "lucide-react";
 import {
   Avatar,
   Box,
@@ -13,7 +13,7 @@ import {
 } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
-import { FiWifi, FiX } from "react-icons/fi";
+import { Wifi as FiWifi, X as FiX } from "lucide-react";
 import { io, Socket } from "socket.io-client";
 
 import { getServerHttpBase, getServerWsBase } from "@/common";

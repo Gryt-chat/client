@@ -1,8 +1,7 @@
 import { Box, Button, Heading, HoverCard, IconButton } from "@radix-ui/themes";
 import { AnimatePresence, motion, Variants } from "motion/react";
-import { BsVolumeOffFill, BsVolumeUpFill } from "react-icons/bs";
-import { ImPhoneHangUp } from "react-icons/im";
-import { MdArrowForward, MdMic, MdMicOff } from "react-icons/md";
+import { VolumeX as BsVolumeOffFill, Volume2 as BsVolumeUpFill, PhoneOff as ImPhoneHangUp } from "lucide-react";
+import { ArrowRight as MdArrowForward, Mic as MdMic, MicOff as MdMicOff } from "lucide-react";
 
 import { getServerHttpBase } from "@/common";
 import { useSettings } from "@/settings";

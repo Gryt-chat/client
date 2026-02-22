@@ -504,37 +504,19 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
 
         if (errorInfo.error === 'token_invalid') {
           removeServerAccessToken(host);
+          removeServerRefreshToken(host);
 
           if (!canAttemptTokenHeal(host)) return;
 
-          const refreshToken = getServerRefreshToken(host);
-          if (refreshToken) {
-            (async () => {
-              const identityToken = await getValidIdentityToken().catch(() => undefined);
-              if (identityToken) {
-                socket.emit("token:refresh", { refreshToken, identityToken });
-              } else {
-                removeServerRefreshToken(host);
-                const id = await getValidIdentityToken().catch(() => undefined);
-                socket.emit("server:join", {
-                  password: "",
-                  nickname,
-                  identityToken: id,
-                  inviteCode: serversRef.current[host]?.token || undefined,
-                });
-              }
-            })();
-          } else {
-            (async () => {
-              const identityToken = await getValidIdentityToken().catch(() => undefined);
-              socket.emit("server:join", {
-                password: "",
-                nickname,
-                identityToken,
-                inviteCode: serversRef.current[host]?.token || undefined,
-              });
-            })();
-          }
+          (async () => {
+            const identityToken = await getValidIdentityToken().catch(() => undefined);
+            socket.emit("server:join", {
+              password: "",
+              nickname,
+              identityToken,
+              inviteCode: serversRef.current[host]?.token || undefined,
+            });
+          })();
           return;
         } else {
           toast.error(`Failed to join server ${host}: ${errorInfo.error}`);

@@ -7,8 +7,8 @@ import {
   useState,
 } from "react";
 import toast from "react-hot-toast";
-import { FaFile,FaFileAlt, FaFileArchive, FaFileAudio, FaFileCode, FaFileImage, FaFilePdf, FaFileVideo } from "react-icons/fa";
-import { IoMdAttach } from "react-icons/io";
+import { File as FaFile, FileText as FaFileAlt, FileArchive as FaFileArchive, FileAudio as FaFileAudio, FileCode as FaFileCode, FileImage as FaFileImage, FileVideo as FaFileVideo, Paperclip as IoMdAttach } from "lucide-react";
+const FaFilePdf = FaFileAlt;
 
 import type { EmojiEntry } from "../utils/emojiData";
 import { EmojiAutocomplete } from "./EmojiAutocomplete";

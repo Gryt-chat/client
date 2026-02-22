@@ -1,4 +1,4 @@
-import { CopyIcon, Cross2Icon, PlusIcon } from "@radix-ui/react-icons";
+import { Copy as CopyIcon, X as Cross2Icon, Plus as PlusIcon } from "lucide-react";
 import { Button, Card,Dialog, Flex, IconButton, Text, TextField } from "@radix-ui/themes";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";

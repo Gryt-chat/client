@@ -1,7 +1,7 @@
 import { Avatar, Flex, Text } from "@radix-ui/themes";
 import { motion } from "motion/react";
-import { BsVolumeOffFill } from "react-icons/bs";
-import { MdMicOff } from "react-icons/md";
+import { VolumeX as BsVolumeOffFill } from "lucide-react";
+import { MicOff as MdMicOff } from "lucide-react";
 
 import { SkeletonBase } from "./skeletons";
 import { UserContextMenu } from "./UserContextMenu";

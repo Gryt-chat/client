@@ -1,6 +1,6 @@
 import { Dialog, Flex, IconButton } from "@radix-ui/themes";
 import Fireworks from "react-canvas-confetti/dist/presets/explosion";
-import { FiX } from "react-icons/fi";
+import { X as FiX } from "lucide-react";
 
 import { useSettings } from "@/settings";
 

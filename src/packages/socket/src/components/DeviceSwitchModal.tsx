@@ -1,4 +1,4 @@
-import { Cross2Icon, ExclamationTriangleIcon } from "@radix-ui/react-icons";
+import { X as Cross2Icon, TriangleAlert as ExclamationTriangleIcon } from "lucide-react";
 import { Button, Dialog, Flex, IconButton,Text } from "@radix-ui/themes";
 import { useEffect,useState } from "react";
 

@@ -1,7 +1,6 @@
 import { Avatar, Box,Flex, Text } from "@radix-ui/themes";
-import { BsVolumeOffFill } from "react-icons/bs";
-import { HiSpeakerWave } from "react-icons/hi2";
-import { MdMicOff } from "react-icons/md";
+import { VolumeX as BsVolumeOffFill, Volume2 as HiSpeakerWave } from "lucide-react";
+import { MicOff as MdMicOff } from "lucide-react";
 
 import { getUploadsFileUrl } from "@/common";
 

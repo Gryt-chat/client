@@ -1,4 +1,4 @@
-import { Cross1Icon, TrashIcon, UploadIcon } from "@radix-ui/react-icons";
+import { X as Cross1Icon, Trash2 as TrashIcon, Upload as UploadIcon } from "lucide-react";
 import {
   Button,
   Flex,

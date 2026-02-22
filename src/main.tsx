@@ -9,6 +9,7 @@ import { Toaster } from "react-hot-toast";
 import { useTheme } from "@/common";
 
 import { App } from "./App.tsx";
+import { BrowserBanner } from "./components/browserBanner";
 import { Titlebar } from "./components/titlebar";
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -37,6 +38,7 @@ function ThemedApp() {
       }}
     >
       <Titlebar />
+      <BrowserBanner />
       <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
         <App />
       </div>

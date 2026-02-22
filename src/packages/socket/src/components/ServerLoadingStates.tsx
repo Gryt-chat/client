@@ -1,6 +1,5 @@
 import { Box, Button, Flex, Spinner, Text } from "@radix-ui/themes";
-import { FiAlertCircle, FiClock,FiWifiOff } from "react-icons/fi";
-import { IoMdRefresh } from "react-icons/io";
+import { CircleAlert as FiAlertCircle, Clock as FiClock, RefreshCw as IoMdRefresh, WifiOff as FiWifiOff } from "lucide-react";
 
 import { ServerDetailsSkeleton } from "./skeletons";
 

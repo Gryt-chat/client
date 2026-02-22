@@ -1,4 +1,4 @@
-import { ExclamationTriangleIcon, ReloadIcon } from "@radix-ui/react-icons";
+import { TriangleAlert as ExclamationTriangleIcon, RefreshCw as ReloadIcon } from "lucide-react";
 import {
   Callout,
   Flex,

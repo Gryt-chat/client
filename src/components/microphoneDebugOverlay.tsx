@@ -15,7 +15,7 @@ export function MicrophoneDebugOverlay({ isVisible }: MicrophoneDebugOverlayProp
   const { 
     microphoneBuffer, 
     audioContext
-  } = useMicrophone(true);
+  } = useMicrophone(isVisible);
   
   const { devices, isLoading: devicesLoading, error: devicesError } = useDeviceEnumeration();
   const { micID, micVolume, noiseGate, isMuted, isDeafened } = useSettings();

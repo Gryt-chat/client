@@ -1,4 +1,4 @@
-import { ReloadIcon } from "@radix-ui/react-icons";
+import { RefreshCw as ReloadIcon } from "lucide-react";
 import {
   Button,
   Flex,
@@ -9,7 +9,7 @@ import {
   Tooltip,
 } from "@radix-ui/themes";
 import { useEffect, useRef, useState } from "react";
-import { FiPlay, FiSquare } from "react-icons/fi";
+import { Play as FiPlay, Square as FiSquare } from "lucide-react";
 import useSound from "use-sound";
 
 interface SoundSettingsProps {

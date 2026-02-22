@@ -1,8 +1,8 @@
 import { Avatar, Flex, Text, Tooltip } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo,useRef, useState } from "react";
-import { BsVolumeOffFill } from "react-icons/bs";
-import { MdMicOff } from "react-icons/md";
+import { VolumeX as BsVolumeOffFill } from "lucide-react";
+import { MicOff as MdMicOff } from "lucide-react";
 
 import { Controls } from "@/webRTC";
 

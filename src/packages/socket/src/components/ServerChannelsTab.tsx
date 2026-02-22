@@ -1,4 +1,4 @@
-import { PlusIcon, TrashIcon } from "@radix-ui/react-icons";
+import { Plus as PlusIcon, Trash2 as TrashIcon } from "lucide-react";
 import { AlertDialog, Button, Card, Flex, Select, Switch, Text, TextField } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
