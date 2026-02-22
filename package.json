@@ -35,6 +35,7 @@
     "audio-buffer": "^5.0.0",
     "axios": "^1.13.5",
     "electron-updater": "^6.8.3",
+    "fflate": "^0.8.2",
     "gemoji": "^8.1.0",
     "highlight.js": "^11.11.1",
     "jwt-decode": "^4.0.0",
