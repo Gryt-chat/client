@@ -27,6 +27,7 @@ export type serverDetails = {
   sidebar_items?: SidebarItem[];
   channels: Channel[];
   sfu_host: string;
+  sfu_hosts?: string[];
   stun_hosts: string[];
   voice_capacity_max?: number | null;
   clients?: Record<string, unknown>;

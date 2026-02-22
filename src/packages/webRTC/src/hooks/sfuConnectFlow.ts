@@ -5,7 +5,7 @@ import { Socket } from "socket.io-client";
 import { handleRateLimitError } from "@/socket/src/utils/rateLimitHandler";
 
 import { SFUConnectionState, Streams } from "../types/SFU";
-import { selectBestSfuUrl } from "./selectBestSfuUrl";
+import { getCachedSfuUrl, selectBestSfuUrl } from "./selectBestSfuUrl";
 import { connectToSfuWebSocket } from "./sfuConnection";
 import { RoomAccessData,SFUConnectionStateInternal } from "./sfuTypes";
 import { voiceLog } from "./voiceLogger";
@@ -510,7 +510,7 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
 
     // ---- Step 7: Connect to SFU WebSocket ----
     const sfuCandidates = roomData.sfu_urls?.length ? roomData.sfu_urls : [roomData.sfu_url];
-    const sfuUrl = await selectBestSfuUrl(sfuCandidates);
+    const sfuUrl = getCachedSfuUrl(currentlyViewingServer.host) ?? await selectBestSfuUrl(sfuCandidates, currentlyViewingServer.host);
     if (isStale()) {
       voiceLog.info("CONNECT", "Superseded before SFU WebSocket — aborting");
       peerConnection.close();

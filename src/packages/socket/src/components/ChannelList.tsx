@@ -8,6 +8,7 @@ import { Channel, SidebarItem } from "@/settings/src/types/server";
 
 import type { Client } from "../types/clients";
 import { ConnectedUser } from "./connectedUser";
+import { EmojiText } from "./EmojiText";
 import type { AdminActions,MemberInfo } from "./MemberSidebar";
 import { SkeletonBase } from "./skeletons";
 
@@ -82,7 +83,7 @@ export const ChannelList = ({
       <Box style={{ height: 1, background: "var(--gray-6)", flex: 1, opacity: 0.7 }} />
       {item.label ? (
         <Text size="1" color="gray">
-          {item.label}
+          <EmojiText text={item.label} />
         </Text>
       ) : null}
       <Box style={{ height: 1, background: "var(--gray-6)", flex: 1, opacity: 0.7 }} />
@@ -123,7 +124,7 @@ export const ChannelList = ({
             {channel?.type === "voice" ? <MdVolumeUp size={16} /> : <MdChat size={16} />}
           </Flex>
           <Text truncate style={{ flex: 1, minWidth: 0, textAlign: "left", display: "block" }}>
-            {channel?.name || "(missing channel)"}
+            <EmojiText text={channel?.name || "(missing channel)"} />
           </Text>
           {hasIndicators && (
             <Flex gap="1" align="center" style={{ marginLeft: "auto", flexShrink: 0 }}>
@@ -255,7 +256,7 @@ export const ChannelList = ({
         <ContextMenu.Trigger>{content}</ContextMenu.Trigger>
         <ContextMenu.Content>
           <ContextMenu.Label style={{ fontWeight: "bold" }}>
-            {label}
+            <EmojiText text={label} />
           </ContextMenu.Label>
           <ContextMenu.Item onClick={() => onEditItem?.(item)}>
             Edit

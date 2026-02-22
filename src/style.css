@@ -444,13 +444,13 @@ body {
 }
 
 .markdown-message.emoji-only {
-  font-size: 32px;
+  font-size: var(--emoji-only-size, 64px);
   line-height: 1.25;
 }
 
 .markdown-message.emoji-only .inline-emoji {
-  height: 32px !important;
-  width: 32px !important;
+  height: var(--emoji-only-size, 64px) !important;
+  width: var(--emoji-only-size, 64px) !important;
 }
 
 /* ── Code highlighting (highlight.js compatible) ───────────── */

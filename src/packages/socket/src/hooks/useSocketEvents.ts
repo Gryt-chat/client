@@ -21,6 +21,7 @@ import {
   serverDetailsList,
   Servers,
 } from "@/settings/src/types/server";
+import { warmSfuSelection } from "@/webRTC/src/hooks/selectBestSfuUrl";
 
 import { MemberInfo } from "../components/MemberSidebar";
 import { Clients } from "../types/clients";
@@ -284,6 +285,10 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
         }
 
         setServerDetailsList((old) => ({ ...old, [host]: data }));
+
+        if (data.sfu_hosts?.length) {
+          warmSfuSelection(host, data.sfu_hosts);
+        }
 
         setFailedServerDetails(prev => {
           const updated = { ...prev };

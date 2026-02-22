@@ -11,6 +11,7 @@ import { ChatEditor, type ChatEditorHandle } from "./ChatEditor";
 import { ChatMediaPlayer } from "./ChatMediaPlayer";
 import { MessageContextMenu, MessageHoverToolbar, MessageSkeleton, WelcomeMessage } from "./ChatMessage";
 import { type AttachmentMeta, type ChatMessage, DateSeparator,MessageTimestamp, toDate } from "./chatUtils";
+import { EmojiText } from "./EmojiText";
 import { FileCard } from "./FileCard";
 import { ImageLightbox } from "./ImageLightbox";
 import { MarkdownRenderer } from "./MarkdownRenderer";
@@ -346,7 +347,7 @@ export const ChatView = ({
         {channelName && (
           <Flex align="center" style={{ marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid var(--gray-6)" }}>
             <Text size="4" weight="bold" style={{ color: "var(--gray-12)" }}>
-              #{channelName}
+              #<EmojiText text={channelName} />
             </Text>
           </Flex>
         )}
@@ -553,7 +554,7 @@ export const ChatView = ({
                                     onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gray-4)"; }}
                                     onMouseLeave={(e) => { e.currentTarget.style.background = "var(--gray-3)"; }}
                                   >
-                                    {reaction.src} {reaction.amount}
+                                    <EmojiText text={reaction.src} emojiSize={18} /> {reaction.amount}
                                   </Button>
                                 </Tooltip>
                               ))}

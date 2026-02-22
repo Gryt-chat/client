@@ -1,4 +1,4 @@
-import { Flex, Heading, RadioGroup, Select, Text } from "@radix-ui/themes";
+import { Flex, Heading, RadioGroup, Select, Slider, Text } from "@radix-ui/themes";
 import { useMemo } from "react";
 
 import { accentColors, grayColors, useTheme } from "@/common";
@@ -15,6 +15,8 @@ export function AppearanceSettings() {
     setGrayColor,
     radius,
     setRadius,
+    emojiSize,
+    setEmojiSize,
   } = useTheme();
 
   const appearanceOptions = useMemo(() => [
@@ -82,6 +84,24 @@ export function AppearanceSettings() {
             ))}
           </Select.Content>
         </Select.Root>
+      </Flex>
+
+      <Flex direction="column" gap="2">
+        <Flex justify="between" align="center">
+          <Text weight="medium" size="2">Standalone emoji size</Text>
+          <Text size="1" color="gray">{emojiSize}px</Text>
+        </Flex>
+        <Slider
+          min={12}
+          max={96}
+          step={4}
+          value={[emojiSize]}
+          onValueChange={([v]) => setEmojiSize(v)}
+        />
+        <Flex align="center" gap="2" pt="1">
+          <Text size="1" color="gray">Preview:</Text>
+          <span style={{ fontSize: emojiSize, lineHeight: 1.25 }}>😀</span>
+        </Flex>
       </Flex>
 
     </SettingsContainer>

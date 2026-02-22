@@ -99,7 +99,7 @@ interface ScoredEntry {
   tier: MatchTier;
 }
 
-export function searchEmojis(query: string, limit = 8): EmojiEntry[] {
+export function searchEmojis(query: string, limit = 0): EmojiEntry[] {
   if (!query) return [];
   const q = query.toLowerCase();
   const all = getAllEmojis();
@@ -144,7 +144,7 @@ export function searchEmojis(query: string, limit = 8): EmojiEntry[] {
     if (seen.has(key)) continue;
     seen.add(key);
     results.push(s.entry);
-    if (results.length >= limit) break;
+    if (limit > 0 && results.length >= limit) break;
   }
 
   return results;

@@ -4,6 +4,8 @@ import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
 
+import { useTheme } from "@/common";
+
 import { type CustomEmojiEntry, preprocessCustomEmojis, remarkEmoji } from "../utils/remarkEmoji";
 
 const UNICODE_EMOJI_RE = /\p{Extended_Pictographic}/u;
@@ -188,6 +190,7 @@ export const MarkdownRenderer = memo(({
   content: string | null;
   customEmojis?: CustomEmojiEntry[];
 }) => {
+  const { emojiSize } = useTheme();
   const emojiOnly = useMemo(() => content ? isEmojiOnly(content) : false, [content]);
   const processed = useMemo(
     () => content ? preprocessCustomEmojis(content, customEmojis ?? []) : null,
@@ -197,7 +200,10 @@ export const MarkdownRenderer = memo(({
   if (!processed) return null;
 
   return (
-    <div className={`markdown-message${emojiOnly ? " emoji-only" : ""}`}>
+    <div
+      className={`markdown-message${emojiOnly ? " emoji-only" : ""}`}
+      style={emojiOnly ? { "--emoji-only-size": `${emojiSize}px` } as React.CSSProperties : undefined}
+    >
       <ReactMarkdown
         remarkPlugins={remarkPlugins}
         rehypePlugins={rehypePlugins}

@@ -213,7 +213,7 @@ export const EmojiPicker = ({ onSelect, onClose }: EmojiPickerProps) => {
 
   const searchResults = useMemo(() => {
     if (!search.trim()) return null;
-    return searchEmojis(search.trim(), 80);
+    return searchEmojis(search.trim());
   }, [search]);
 
   const handleSelect = useCallback(

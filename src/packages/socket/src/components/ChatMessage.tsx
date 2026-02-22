@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { getRecentReactions } from "../utils/recentReactions";
 import { EmojiPicker } from "./EmojiPicker";
+import { EmojiText } from "./EmojiText";
 
 export const MessageContextMenu = ({
   position,
@@ -335,11 +336,11 @@ export const WelcomeMessage = ({ channelName }: { channelName?: string }) => (
     </Box>
 
     <Text size="7" weight="bold" style={{ marginBottom: "12px", color: "var(--gray-12)" }}>
-      Welcome to #{channelName || "channel"}!
+      Welcome to #<EmojiText text={channelName || "channel"} />!
     </Text>
 
     <Text size="4" color="gray" style={{ marginBottom: "24px", maxWidth: "500px", lineHeight: 1.5 }}>
-      This is the start of the <Text weight="medium" color="gray">#{channelName || "channel"}</Text> channel.
+      This is the start of the <Text weight="medium" color="gray">#<EmojiText text={channelName || "channel"} /></Text> channel.
       Start a conversation by typing a message below.
     </Text>
 

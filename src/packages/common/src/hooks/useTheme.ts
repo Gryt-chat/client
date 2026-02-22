@@ -42,6 +42,9 @@ export interface ThemeSettings {
   radius: "none" | "small" | "medium" | "large" | "full";
   setRadius: (value: "none" | "small" | "medium" | "large" | "full") => void;
 
+  emojiSize: number;
+  setEmojiSize: (value: number) => void;
+
   // Derived, read-only
   resolvedAppearance: AppearanceResolved;
 }
@@ -58,6 +61,9 @@ function useThemeHook(): ThemeSettings {
   );
   const [radius, setRadiusState] = useState<"none" | "small" | "medium" | "large" | "full">(
     ((localStorage.getItem("theme.radius") as "none" | "small" | "medium" | "large" | "full") || "full")
+  );
+  const [emojiSize, setEmojiSizeState] = useState<number>(
+    Number(localStorage.getItem("theme.emojiSize")) || 64
   );
 
   // System color scheme listener when preference is 'system'
@@ -99,6 +105,12 @@ function useThemeHook(): ThemeSettings {
     localStorage.setItem("theme.appearancePreference", value);
   }
 
+  function setEmojiSize(value: number) {
+    const clamped = Math.round(Math.max(12, Math.min(96, value)) / 4) * 4;
+    setEmojiSizeState(clamped);
+    localStorage.setItem("theme.emojiSize", clamped.toString());
+  }
+
   return {
     appearancePreference,
     setAppearancePreference,
@@ -108,6 +120,8 @@ function useThemeHook(): ThemeSettings {
     setGrayColor,
     radius,
     setRadius,
+    emojiSize,
+    setEmojiSize,
     resolvedAppearance,
   };
 }
@@ -121,6 +135,8 @@ const init: ThemeSettings = {
   setGrayColor: () => {},
   radius: ((localStorage.getItem("theme.radius") as "none" | "small" | "medium" | "large" | "full") || "full"),
   setRadius: () => {},
+  emojiSize: Number(localStorage.getItem("theme.emojiSize")) || 64,
+  setEmojiSize: () => {},
   // Resolve initial appearance from system preference to avoid initial flash
   resolvedAppearance: (typeof window !== "undefined" && (window.matchMedia?.("(prefers-color-scheme: dark)").matches)) ? "dark" : "light",
 };
