@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MdCloudUpload } from "react-icons/md";
 
 import { getServerAccessToken, getUploadsFileUrl } from "@/common";
+import { useSettings } from "@/settings";
 
 import { fetchCustomEmojis, getCustomEmojis, onCustomEmojisChange, setCustomEmojis } from "../utils/emojiData";
 import { recordReaction } from "../utils/recentReactions";
@@ -73,6 +74,7 @@ export const ChatView = ({
   canDeleteAny?: boolean;
   maxFileSize?: number | null;
 }) => {
+  const { chatMediaVolume, setChatMediaVolume } = useSettings();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<ChatEditorHandle>(null);
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -501,14 +503,14 @@ export const ChatView = ({
                                   if (mime.startsWith("audio/")) {
                                     return (
                                       <MediaContextMenu key={fileId} src={url} fileName={meta?.original_name}>
-                                        <ChatMediaPlayer src={url} type="audio" fileName={meta?.original_name} />
+                                        <ChatMediaPlayer src={url} type="audio" fileName={meta?.original_name} volume={chatMediaVolume} onVolumeChange={setChatMediaVolume} />
                                       </MediaContextMenu>
                                     );
                                   }
                                   if (mime.startsWith("video/")) {
                                     return (
                                       <MediaContextMenu key={fileId} src={url} fileName={meta?.original_name}>
-                                        <ChatMediaPlayer src={url} type="video" poster={thumbUrl} fileName={meta?.original_name} />
+                                        <ChatMediaPlayer src={url} type="video" poster={thumbUrl} fileName={meta?.original_name} volume={chatMediaVolume} onVolumeChange={setChatMediaVolume} />
                                       </MediaContextMenu>
                                     );
                                   }

@@ -114,6 +114,10 @@ function useSettingsHook() {
     localStorage.getItem("customMessageSoundFile") || null
   );
 
+  const [chatMediaVolume, setChatMediaVolume] = useState(
+    Number(localStorage.getItem("chatMediaVolume")) || 50
+  );
+
   const [userVolumes, setUserVolumes] = useState<Record<string, number>>(
     () => JSON.parse(localStorage.getItem("userVolumes") || "{}")
   );
@@ -322,6 +326,11 @@ function useSettingsHook() {
     }
   }
 
+  function updateChatMediaVolume(volume: number) {
+    setChatMediaVolume(volume);
+    localStorage.setItem("chatMediaVolume", volume.toString());
+  }
+
   function updateUserVolume(serverUserId: string, volume: number) {
     setUserVolumes((prev) => {
       const next = { ...prev, [serverUserId]: volume };
@@ -499,6 +508,8 @@ function useSettingsHook() {
     setMessageSoundVolume: updateMessageSoundVolume,
     customMessageSoundFile,
     setCustomMessageSoundFile: updateCustomMessageSoundFile,
+    chatMediaVolume,
+    setChatMediaVolume: updateChatMediaVolume,
     userVolumes,
     updateUserVolume,
     resetUserVolume,

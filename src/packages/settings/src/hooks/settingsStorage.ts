@@ -100,6 +100,9 @@ export interface Settings {
   customMessageSoundFile: string | null;
   setCustomMessageSoundFile: (value: string | null) => void;
 
+  chatMediaVolume: number;
+  setChatMediaVolume: (value: number) => void;
+
   userVolumes: Record<string, number>;
   updateUserVolume: (serverUserId: string, volume: number) => void;
   resetUserVolume: (serverUserId: string) => void;
@@ -221,6 +224,9 @@ export const settingsInit: Settings = {
   setMessageSoundVolume: () => {},
   customMessageSoundFile: localStorage.getItem("customMessageSoundFile") || null,
   setCustomMessageSoundFile: () => {},
+
+  chatMediaVolume: Number(localStorage.getItem("chatMediaVolume")) || 50,
+  setChatMediaVolume: () => {},
 
   userVolumes: JSON.parse(localStorage.getItem("userVolumes") || "{}"),
   updateUserVolume: () => {},
