@@ -238,6 +238,7 @@ if [ "$RERELEASE" = false ]; then
 fi
 
 # ── Publish ──────────────────────────────────────────────────────────────
+cd "$CLIENT_DIR"
 info "Packaging & publishing to ${BOLD}${OWNER}/${REPO}${RESET}…"
 
 MAX_ATTEMPTS=3
