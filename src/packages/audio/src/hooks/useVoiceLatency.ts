@@ -252,7 +252,7 @@ export function useVoiceLatency(enabled: boolean) {
       clearInterval(interval);
       prevBytesRef.current = null;
     };
-  }, [enabled, computeLocalPipeline, getPeerConnection, isConnected]);
+  }, [enabled, computeLocalPipeline, getPeerConnection, isConnected, activeSfuUrl]);
 
   const modeLabel = eSportsModeEnabled
     ? "eSports"

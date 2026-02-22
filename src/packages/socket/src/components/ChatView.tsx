@@ -4,7 +4,7 @@ import { MdCloudUpload } from "react-icons/md";
 
 import { getServerAccessToken, getUploadsFileUrl } from "@/common";
 
-import { fetchCustomEmojis, getCustomEmojiUrl, getCustomEmojis, onCustomEmojisChange, setCustomEmojis } from "../utils/emojiData";
+import { fetchCustomEmojis, getCustomEmojis, onCustomEmojisChange, setCustomEmojis } from "../utils/emojiData";
 import { recordReaction } from "../utils/recentReactions";
 import type { CustomEmojiEntry } from "../utils/remarkEmoji";
 import { ChatEditor, type ChatEditorHandle } from "./ChatEditor";

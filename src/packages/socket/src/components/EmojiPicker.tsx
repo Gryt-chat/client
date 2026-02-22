@@ -211,6 +211,7 @@ export const EmojiPicker = ({ onSelect, onClose }: EmojiPickerProps) => {
 
   const [customVersion, setCustomVersion] = useState(0);
   useEffect(() => onCustomEmojisChange(() => setCustomVersion((v) => v + 1)), []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const customEntries = useMemo(() => getCustomEmojis(), [customVersion]);
   const standardCategories = useMemo(() => getStandardEmojisByCategory(), []);
 
