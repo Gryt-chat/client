@@ -49,6 +49,9 @@ win:
   legalTrademarks: "Gryt Chat is a trademark of Gryt Chat"
   requestedExecutionLevel: asInvoker
 
+portable:
+  artifactName: "${productName}-${version}-${os}-${arch}-portable.${ext}"
+
 nsis:
   oneClick: true
   perMachine: false

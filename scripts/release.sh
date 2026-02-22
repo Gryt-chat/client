@@ -208,13 +208,29 @@ ok "Vite build complete"
 # ── Publish ──────────────────────────────────────────────────────────────
 info "Packaging & publishing to ${BOLD}${OWNER}/${REPO}${RESET}…"
 
-npx electron-builder \
-  --linux --mac --win \
-  --publish always \
-  -c.publish.provider=github \
-  -c.publish.owner="$OWNER" \
-  -c.publish.repo="$REPO" \
-  -c.publish.releaseType="$RELEASE_TYPE"
+MAX_ATTEMPTS=3
+ATTEMPT=0
+until [ $ATTEMPT -ge $MAX_ATTEMPTS ]; do
+  ATTEMPT=$((ATTEMPT + 1))
+  if [ $ATTEMPT -gt 1 ]; then
+    WAIT=$((ATTEMPT * 15))
+    warn "Attempt ${ATTEMPT}/${MAX_ATTEMPTS} — retrying in ${WAIT}s…"
+    sleep "$WAIT"
+  fi
+  npx electron-builder \
+    --linux --mac --win \
+    --publish always \
+    -c.publish.provider=github \
+    -c.publish.owner="$OWNER" \
+    -c.publish.repo="$REPO" \
+    -c.publish.releaseType="$RELEASE_TYPE" \
+    && break
+done
+
+if [ $ATTEMPT -ge $MAX_ATTEMPTS ]; then
+  err "electron-builder failed after ${MAX_ATTEMPTS} attempts"
+  exit 1
+fi
 
 echo ""
 ok "Release ${BOLD}v${NEW_VERSION}${RESET} published to ${GREEN}https://github.com/${OWNER}/${REPO}/releases${RESET}"
