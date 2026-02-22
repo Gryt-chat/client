@@ -1,0 +1,59 @@
+appId: com.gryt.chat
+productName: Gryt Chat
+executableName: gryt-chat
+copyright: "Copyright © 2024-2026 Gryt Chat. All rights reserved."
+artifactName: "${productName}-${version}-${os}-${arch}.${ext}"
+
+directories:
+  buildResources: build
+  output: release
+files:
+  - dist/**/*
+  - dist-electron/**/*
+  - electron/splash.html
+
+publish:
+  provider: github
+  owner: Gryt-chat
+  repo: gryt
+  releaseType: release
+
+protocols:
+  - name: Gryt
+    schemes:
+      - gryt
+
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Network
+  synopsis: "Real-time voice chat"
+  description: "Gryt Chat — real-time voice chat desktop client"
+  mimeTypes:
+    - x-scheme-handler/gryt
+
+mac:
+  target:
+    - zip
+  hardenedRuntime: true
+  category: public.app-category.social-networking
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+
+win:
+  icon: build/icon.ico
+  target:
+    - nsis
+    - portable
+  legalTrademarks: "Gryt Chat is a trademark of Gryt Chat"
+  requestedExecutionLevel: asInvoker
+
+nsis:
+  oneClick: true
+  perMachine: false
+  allowToChangeInstallationDirectory: false
+  deleteAppDataOnUninstall: false
+  displayLanguageSelector: false
+  uninstallDisplayName: "Gryt Chat"
+  shortcutName: "Gryt Chat"

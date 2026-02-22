@@ -1,0 +1,461 @@
+import { app, BrowserWindow, ipcMain, shell } from "electron";
+import { autoUpdater, UpdateInfo } from "electron-updater";
+import { readFileSync, writeFileSync } from "fs";
+import { dirname, join, resolve } from "path";
+import { uIOhook, UiohookKey } from "uiohook-napi";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const appIcon = join(__dirname, "../build/icon.png");
+
+const PROTOCOL = "gryt";
+let pendingDeepLinkUrl: string | null = null;
+let splashWindow: BrowserWindow | null = null;
+let mainWindow: BrowserWindow | null = null;
+let pttDown = false;
+
+// ── Deep link protocol ───────────────────────────────────────────────────
+
+if (process.defaultApp) {
+  if (process.argv.length >= 2) {
+    app.setAsDefaultProtocolClient(PROTOCOL, process.execPath, [
+      resolve(process.argv[1]),
+    ]);
+  }
+} else {
+  app.setAsDefaultProtocolClient(PROTOCOL);
+}
+
+function handleDeepLink(url: string): void {
+  if (!url.startsWith(`${PROTOCOL}://`)) return;
+
+  if (mainWindow) {
+    mainWindow.webContents.send("auth-callback", url);
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  } else {
+    pendingDeepLinkUrl = url;
+  }
+}
+
+// ── Persistent config (userData/gryt-config.json) ───────────────────────
+
+const configPath = join(app.getPath("userData"), "gryt-config.json");
+
+function readConfig(): Record<string, unknown> {
+  try { return JSON.parse(readFileSync(configPath, "utf8")); }
+  catch { return {}; }
+}
+
+function writeConfig(patch: Record<string, unknown>) {
+  const config = { ...readConfig(), ...patch };
+  writeFileSync(configPath, JSON.stringify(config, null, 2));
+}
+
+// ── Auto-updater config ─────────────────────────────────────────────────
+
+autoUpdater.autoDownload = true;
+autoUpdater.autoInstallOnAppQuit = true;
+autoUpdater.allowPrerelease = readConfig().betaChannel === true;
+
+function sendToSplash(status: string, info?: Record<string, unknown>) {
+  splashWindow?.webContents.send("update-status", { status, ...info });
+}
+
+function sendToMain(status: string, info?: Record<string, unknown>) {
+  mainWindow?.webContents.send("update-status", { status, ...info });
+}
+
+// ── Splash window ───────────────────────────────────────────────────────
+
+function createSplashWindow(): void {
+  splashWindow = new BrowserWindow({
+    width: 420,
+    height: 320,
+    frame: false,
+    resizable: false,
+    center: true,
+    alwaysOnTop: true,
+    skipTaskbar: false,
+    icon: appIcon,
+    backgroundColor: "#111318",
+    webPreferences: {
+      preload: join(__dirname, "splash-preload.cjs"),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+    title: "Gryt.chat — Updating",
+  });
+
+  splashWindow.loadFile(join(__dirname, "../electron/splash.html"));
+
+  splashWindow.on("closed", () => {
+    splashWindow = null;
+  });
+}
+
+function closeSplashAndShowMain(): void {
+  if (splashWindow) {
+    splashWindow.close();
+    splashWindow = null;
+  }
+  if (mainWindow) {
+    mainWindow.setAlwaysOnTop(true);
+    mainWindow.show();
+    mainWindow.focus();
+    setTimeout(() => {
+      mainWindow?.setAlwaysOnTop(false);
+    }, 1000);
+  }
+}
+
+// ── Splash update flow ──────────────────────────────────────────────────
+// Returns a promise that resolves once we should show the main window.
+
+function runSplashUpdateCheck(): Promise<void> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = () => {
+      if (settled) return;
+      settled = true;
+      resolve();
+    };
+
+    // Safety timeout — never block the user longer than 15 s
+    const timeout = setTimeout(done, 15_000);
+
+    const onChecking = () => sendToSplash("checking");
+
+    const onAvailable = (info: UpdateInfo) => {
+      sendToSplash("available", { version: info.version });
+    };
+
+    const onNotAvailable = (info: UpdateInfo) => {
+      sendToSplash("not-available", { version: info.version });
+      // Brief pause so the user sees "Up to date!"
+      setTimeout(done, 800);
+    };
+
+    const onProgress = (progress: { percent: number; transferred: number; total: number }) => {
+      sendToSplash("downloading", {
+        percent: Math.round(progress.percent),
+        transferred: progress.transferred,
+        total: progress.total,
+      });
+    };
+
+    const onDownloaded = (info: UpdateInfo) => {
+      sendToSplash("downloaded", { version: info.version });
+      setTimeout(() => {
+        cleanup();
+        clearTimeout(timeout);
+        // Let the event loop drain before quitting — improves reliability
+        // across platforms (NSIS on Windows, AppImage on Linux).
+        setImmediate(() => {
+          try {
+            autoUpdater.quitAndInstall(false, true);
+          } catch {
+            // If quitAndInstall fails, show the main window so the user
+            // isn't stuck with a blank screen. The update will apply on
+            // next restart via autoInstallOnAppQuit.
+            done();
+          }
+        });
+      }, 1500);
+    };
+
+    const onError = () => {
+      sendToSplash("error");
+      setTimeout(done, 1200);
+    };
+
+    function cleanup() {
+      autoUpdater.off("checking-for-update", onChecking);
+      autoUpdater.off("update-available", onAvailable);
+      autoUpdater.off("update-not-available", onNotAvailable);
+      autoUpdater.off("download-progress", onProgress);
+      autoUpdater.off("update-downloaded", onDownloaded);
+      autoUpdater.off("error", onError);
+    }
+
+    autoUpdater.on("checking-for-update", onChecking);
+    autoUpdater.on("update-available", onAvailable);
+    autoUpdater.on("update-not-available", onNotAvailable);
+    autoUpdater.on("download-progress", onProgress);
+    autoUpdater.on("update-downloaded", onDownloaded);
+    autoUpdater.on("error", onError);
+
+    autoUpdater.checkForUpdates().catch(() => {
+      onError();
+    });
+  });
+}
+
+// ── Background update listeners (after main window is open) ─────────────
+
+function initBackgroundUpdater() {
+  autoUpdater.on("checking-for-update", () => sendToMain("checking"));
+  autoUpdater.on("update-available", (info) => sendToMain("available", { version: info.version }));
+  autoUpdater.on("update-not-available", (info) => sendToMain("not-available", { version: info.version }));
+  autoUpdater.on("download-progress", (p) =>
+    sendToMain("downloading", { percent: Math.round(p.percent), transferred: p.transferred, total: p.total })
+  );
+  autoUpdater.on("update-downloaded", (info) => sendToMain("downloaded", { version: info.version }));
+  autoUpdater.on("error", (err) => sendToMain("error", { message: err.message }));
+}
+
+// ── Main window ─────────────────────────────────────────────────────────
+
+function createMainWindow(): void {
+  mainWindow = new BrowserWindow({
+    width: 1600,
+    height: 900,
+    minWidth: 800,
+    minHeight: 600,
+    show: false,
+    titleBarStyle: "hidden",
+    titleBarOverlay: {
+      color: "#0d0f13",
+      symbolColor: "#e0e0e6",
+      height: 36,
+    },
+    icon: appIcon,
+    backgroundColor: "#111318",
+    webPreferences: {
+      preload: join(__dirname, "preload.cjs"),
+      contextIsolation: true,
+      nodeIntegration: false,
+      backgroundThrottling: false,
+    },
+    autoHideMenuBar: true,
+    title: "Gryt.chat",
+  });
+
+  if (process.env.VITE_DEV_SERVER_URL) {
+    mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
+  } else {
+    mainWindow.loadFile(join(__dirname, "../dist/index.html"));
+  }
+
+  // Safety: if splash flow hasn't shown us within 20s, show anyway
+  setTimeout(() => {
+    if (mainWindow && !mainWindow.isVisible()) {
+      closeSplashAndShowMain();
+    }
+  }, 20_000);
+
+  mainWindow.webContents.on("before-input-event", (_event, input) => {
+    if (input.key === "F12" && input.type === "keyDown") {
+      mainWindow?.webContents.toggleDevTools();
+    }
+  });
+
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: "deny" };
+  });
+
+  mainWindow.on("closed", () => {
+    mainWindow = null;
+  });
+
+  mainWindow.on("focus", () => {
+    mainWindow?.webContents.send("window-focus-change", true);
+  });
+
+  mainWindow.on("blur", () => {
+    mainWindow?.webContents.send("window-focus-change", false);
+  });
+}
+
+// ── PTT helpers (uiohook – passive, does NOT consume key events) ────────
+
+const DOM_CODE_TO_UIOHOOK: Record<string, number> = {
+  KeyA: UiohookKey.A, KeyB: UiohookKey.B, KeyC: UiohookKey.C,
+  KeyD: UiohookKey.D, KeyE: UiohookKey.E, KeyF: UiohookKey.F,
+  KeyG: UiohookKey.G, KeyH: UiohookKey.H, KeyI: UiohookKey.I,
+  KeyJ: UiohookKey.J, KeyK: UiohookKey.K, KeyL: UiohookKey.L,
+  KeyM: UiohookKey.M, KeyN: UiohookKey.N, KeyO: UiohookKey.O,
+  KeyP: UiohookKey.P, KeyQ: UiohookKey.Q, KeyR: UiohookKey.R,
+  KeyS: UiohookKey.S, KeyT: UiohookKey.T, KeyU: UiohookKey.U,
+  KeyV: UiohookKey.V, KeyW: UiohookKey.W, KeyX: UiohookKey.X,
+  KeyY: UiohookKey.Y, KeyZ: UiohookKey.Z,
+  Digit0: UiohookKey["0"], Digit1: UiohookKey["1"], Digit2: UiohookKey["2"],
+  Digit3: UiohookKey["3"], Digit4: UiohookKey["4"], Digit5: UiohookKey["5"],
+  Digit6: UiohookKey["6"], Digit7: UiohookKey["7"], Digit8: UiohookKey["8"],
+  Digit9: UiohookKey["9"],
+  Space: UiohookKey.Space, Backspace: UiohookKey.Backspace,
+  Tab: UiohookKey.Tab, Enter: UiohookKey.Enter,
+  CapsLock: UiohookKey.CapsLock, Escape: UiohookKey.Escape,
+  Insert: UiohookKey.Insert, Delete: UiohookKey.Delete,
+  Home: UiohookKey.Home, End: UiohookKey.End,
+  PageUp: UiohookKey.PageUp, PageDown: UiohookKey.PageDown,
+  ArrowUp: UiohookKey.ArrowUp, ArrowDown: UiohookKey.ArrowDown,
+  ArrowLeft: UiohookKey.ArrowLeft, ArrowRight: UiohookKey.ArrowRight,
+  F1: UiohookKey.F1, F2: UiohookKey.F2, F3: UiohookKey.F3,
+  F4: UiohookKey.F4, F5: UiohookKey.F5, F6: UiohookKey.F6,
+  F7: UiohookKey.F7, F8: UiohookKey.F8, F9: UiohookKey.F9,
+  F10: UiohookKey.F10, F11: UiohookKey.F11, F12: UiohookKey.F12,
+  Numpad0: UiohookKey.Numpad0, Numpad1: UiohookKey.Numpad1,
+  Numpad2: UiohookKey.Numpad2, Numpad3: UiohookKey.Numpad3,
+  Numpad4: UiohookKey.Numpad4, Numpad5: UiohookKey.Numpad5,
+  Numpad6: UiohookKey.Numpad6, Numpad7: UiohookKey.Numpad7,
+  Numpad8: UiohookKey.Numpad8, Numpad9: UiohookKey.Numpad9,
+  NumpadMultiply: UiohookKey.NumpadMultiply, NumpadAdd: UiohookKey.NumpadAdd,
+  NumpadSubtract: UiohookKey.NumpadSubtract, NumpadDecimal: UiohookKey.NumpadDecimal,
+  NumpadDivide: UiohookKey.NumpadDivide,
+  Semicolon: UiohookKey.Semicolon, Equal: UiohookKey.Equal,
+  Comma: UiohookKey.Comma, Minus: UiohookKey.Minus,
+  Period: UiohookKey.Period, Slash: UiohookKey.Slash,
+  Backquote: UiohookKey.Backquote, BracketLeft: UiohookKey.BracketLeft,
+  Backslash: UiohookKey.Backslash, BracketRight: UiohookKey.BracketRight,
+  Quote: UiohookKey.Quote,
+};
+
+let pttKeycode: number | null = null;
+let pttNeedsCtrl = false;
+let pttNeedsShift = false;
+let pttNeedsAlt = false;
+let pttNeedsMeta = false;
+
+function registerPttShortcut(pttKey: string): void {
+  pttDown = false;
+  pttKeycode = null;
+  pttNeedsCtrl = false;
+  pttNeedsShift = false;
+  pttNeedsAlt = false;
+  pttNeedsMeta = false;
+
+  if (!pttKey) return;
+
+  const parts = pttKey.split("+");
+  const baseKey = parts[parts.length - 1];
+  const keycode = DOM_CODE_TO_UIOHOOK[baseKey];
+  if (keycode == null) {
+    console.warn(`No uiohook mapping for PTT key "${baseKey}"`);
+    return;
+  }
+
+  pttKeycode = keycode;
+  pttNeedsCtrl = parts.includes("Ctrl");
+  pttNeedsShift = parts.includes("Shift");
+  pttNeedsAlt = parts.includes("Alt");
+  pttNeedsMeta = parts.includes("Meta");
+}
+
+function initUiohook(): void {
+  uIOhook.on("keydown", (e) => {
+    if (pttKeycode == null) return;
+    if (e.keycode !== pttKeycode) return;
+    if (e.ctrlKey !== pttNeedsCtrl) return;
+    if (e.shiftKey !== pttNeedsShift) return;
+    if (e.altKey !== pttNeedsAlt) return;
+    if (e.metaKey !== pttNeedsMeta) return;
+
+    if (!pttDown) {
+      pttDown = true;
+      mainWindow?.webContents.send("ptt-down");
+    }
+  });
+
+  uIOhook.on("keyup", (e) => {
+    if (!pttDown || pttKeycode == null) return;
+    if (e.keycode !== pttKeycode) return;
+
+    pttDown = false;
+    mainWindow?.webContents.send("ptt-up");
+  });
+
+  uIOhook.start();
+}
+
+// ── App lifecycle ───────────────────────────────────────────────────────
+
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on("second-instance", (_event, argv) => {
+    const deepLink = argv.find((arg) => arg.startsWith(`${PROTOCOL}://`));
+    if (deepLink) {
+      handleDeepLink(deepLink);
+    } else if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
+
+  app.on("open-url", (event, url) => {
+    event.preventDefault();
+    handleDeepLink(url);
+  });
+
+  app.whenReady().then(async () => {
+    ipcMain.handle("get-app-version", () => app.getVersion());
+    ipcMain.handle("get-beta-channel", () => readConfig().betaChannel === true);
+    ipcMain.on("set-beta-channel", (_event, enabled: boolean) => {
+      writeConfig({ betaChannel: enabled });
+      autoUpdater.allowPrerelease = enabled;
+    });
+
+    initUiohook();
+    createMainWindow();
+
+    try {
+      createSplashWindow();
+      await runSplashUpdateCheck();
+    } catch (_) {
+      // Ensure main window shows even if splash/updater fails
+    }
+
+    closeSplashAndShowMain();
+    initBackgroundUpdater();
+
+    // ── IPC handlers ──────────────────────────────────────────────────
+
+    ipcMain.on("auth:open-external", (_event, url: string) => {
+      shell.openExternal(url);
+    });
+
+    // Send any deep link URL that arrived before the renderer was ready
+    if (pendingDeepLinkUrl) {
+      mainWindow?.webContents.send("auth-callback", pendingDeepLinkUrl);
+      pendingDeepLinkUrl = null;
+    }
+
+    ipcMain.on("check-for-updates", () => {
+      autoUpdater.checkForUpdates().catch((err) => {
+        sendToMain("error", { message: err.message });
+      });
+    });
+
+    ipcMain.on("install-update", () => {
+      autoUpdater.quitAndInstall(false, true);
+    });
+
+    ipcMain.on("ptt-set-key", (_event, pttKey: string) => {
+      registerPttShortcut(pttKey);
+    });
+
+    ipcMain.on("set-badge-count", (_event, count: number) => {
+      app.setBadgeCount(count);
+    });
+
+    app.on("activate", () => {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        createMainWindow();
+        mainWindow?.show();
+      }
+    });
+  });
+
+  app.on("window-all-closed", () => {
+    if (process.platform !== "darwin") app.quit();
+  });
+
+  app.on("will-quit", () => {
+    uIOhook.stop();
+  });
+}

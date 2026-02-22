@@ -1,0 +1,15 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>silent-check-sso</title>
+  </head>
+  <body>
+    <script>
+      // Used by keycloak-js for silent SSO checks.
+      // It just needs to exist and post the current URL back to the parent.
+      parent.postMessage(location.href, location.origin);
+    </script>
+  </body>
+</html>
+

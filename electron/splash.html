@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gryt</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #111318;
+      color: #e0e0e6;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      -webkit-app-region: drag;
+      user-select: none;
+      overflow: hidden;
+    }
+
+    .logo-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 36px;
+    }
+
+    .logo-container svg {
+      filter: drop-shadow(0 0 24px rgba(150, 143, 248, 0.3));
+    }
+
+    .brand {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: #e0e0e6;
+    }
+
+    .steps {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: #555;
+      transition: color 0.3s, opacity 0.3s;
+    }
+
+    .step.active { color: #968FF8; }
+    .step.done { color: #4ade80; }
+
+    .step-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #333;
+      transition: background 0.3s, box-shadow 0.3s;
+      flex-shrink: 0;
+    }
+
+    .step.active .step-dot {
+      background: #968FF8;
+      box-shadow: 0 0 8px rgba(150, 143, 248, 0.5);
+    }
+
+    .step.done .step-dot {
+      background: #4ade80;
+    }
+
+    .step-connector {
+      width: 24px;
+      height: 2px;
+      background: #333;
+      transition: background 0.3s;
+    }
+
+    .step-connector.done { background: #4ade80; }
+
+    .progress-track {
+      width: 280px;
+      height: 4px;
+      background: #1e2028;
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #968FF8, #b4afff);
+      border-radius: 2px;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    .progress-bar.indeterminate {
+      width: 40%;
+      animation: indeterminate 1.4s ease-in-out infinite;
+    }
+
+    @keyframes indeterminate {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(350%); }
+    }
+
+    .status {
+      font-size: 12px;
+      color: #888;
+      text-align: center;
+      min-height: 18px;
+      transition: color 0.3s;
+    }
+
+    .status.error { color: #f87171; }
+
+    .version {
+      position: absolute;
+      bottom: 12px;
+      font-size: 10px;
+      color: #444;
+    }
+  </style>
+</head>
+<body>
+  <div class="logo-container">
+    <svg width="72" height="72" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <g clip-path="url(#c)">
+        <rect width="512" height="512" rx="256" fill="#968FF8"/>
+        <ellipse cx="144.56" cy="321.963" rx="74.5603" ry="125.871" fill="#2B303D"/>
+        <ellipse cx="368.56" cy="321.963" rx="74.5603" ry="125.871" fill="#2B303D"/>
+        <ellipse cx="254.397" cy="368.463" rx="157.138" ry="186.802" fill="#1A1D24"/>
+        <path d="M167.009 115.118C140.552 133.557 110.621 186.471 104.474 216.135C104.474 216.135 146.164 282.678 256 282.678C365.836 282.678 409 221.266 409 216.135C409 209.721 393.897 140.773 365.836 121.532C337.776 102.29 311.319 91.8677 259.207 91.066C207.095 90.2643 193.465 96.6781 167.009 115.118Z" fill="#1A1D24"/>
+        <path d="M258.736 232.014C258.214 234.003 255.389 234.003 254.867 232.014L247.045 202.207C246.712 200.939 247.669 199.7 248.98 199.7L264.624 199.7C265.935 199.7 266.891 200.939 266.558 202.207L258.736 232.014Z" fill="#CBCBCE"/>
+        <path d="M203.08 162C216.959 162 221.986 169.702 222.773 173.951C223.299 177.67 223.246 186.062 218.835 189.887C213.321 194.667 195.473 200.325 190.476 185.106C186.814 173.951 188.375 169.171 188.113 169.171C190.476 163.631 195.256 162 203.08 162Z" fill="#CBCBCE"/>
+        <path d="M308.124 160.851C294.151 160.851 289.09 168.637 288.297 172.932C287.768 176.691 287.821 185.174 292.262 189.04C297.814 193.873 315.782 199.592 320.813 184.208C324.5 172.932 322.928 168.1 323.192 168.1C320.813 162.5 316 160.851 308.124 160.851Z" fill="#CBCBCE"/>
+      </g>
+      <defs><clipPath id="c"><rect width="512" height="512" rx="256" fill="white"/></clipPath></defs>
+    </svg>
+    <span class="brand">Gryt.chat</span>
+  </div>
+
+  <div class="steps">
+    <div class="step active" id="step-check">
+      <span class="step-dot"></span>
+      <span>Checking</span>
+    </div>
+    <div class="step-connector" id="conn-1"></div>
+    <div class="step" id="step-download">
+      <span class="step-dot"></span>
+      <span>Download</span>
+    </div>
+    <div class="step-connector" id="conn-2"></div>
+    <div class="step" id="step-install">
+      <span class="step-dot"></span>
+      <span>Install</span>
+    </div>
+  </div>
+
+  <div class="progress-track">
+    <div class="progress-bar indeterminate" id="progress"></div>
+  </div>
+
+  <div class="status" id="status">Checking for updates…</div>
+  <div class="version" id="version"></div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    function setStep(activeIdx, states) {
+      const steps = ["step-check", "step-download", "step-install"];
+      const conns = ["conn-1", "conn-2"];
+
+      steps.forEach((id, i) => {
+        const el = $(id);
+        el.classList.remove("active", "done");
+        if (states && states[i]) el.classList.add(states[i]);
+        else if (i < activeIdx) el.classList.add("done");
+        else if (i === activeIdx) el.classList.add("active");
+      });
+
+      conns.forEach((id, i) => {
+        const el = $(id);
+        el.classList.remove("done");
+        if (i < activeIdx) el.classList.add("done");
+      });
+    }
+
+    function setProgress(percent) {
+      const bar = $("progress");
+      bar.classList.remove("indeterminate");
+      bar.style.width = percent + "%";
+    }
+
+    function setIndeterminate() {
+      const bar = $("progress");
+      bar.style.width = "";
+      bar.classList.add("indeterminate");
+    }
+
+    function setStatus(text, isError) {
+      const el = $("status");
+      el.textContent = text;
+      el.classList.toggle("error", !!isError);
+    }
+
+    if (window.splashAPI) {
+      window.splashAPI.onUpdateStatus((data) => {
+        switch (data.status) {
+          case "checking":
+            setStep(0);
+            setIndeterminate();
+            setStatus("Checking for updates…");
+            break;
+
+          case "available":
+            setStep(1);
+            setIndeterminate();
+            setStatus("Update v" + data.version + " available, downloading…");
+            break;
+
+          case "downloading":
+            setStep(1);
+            setProgress(data.percent || 0);
+            setStatus("Downloading… " + (data.percent || 0) + "%");
+            break;
+
+          case "downloaded":
+            setStep(2, { 0: "done", 1: "done", 2: "active" });
+            setProgress(100);
+            setStatus("Installing update v" + data.version + "…");
+            break;
+
+          case "not-available":
+            setStep(0, { 0: "done" });
+            setProgress(100);
+            setStatus("Up to date!");
+            break;
+
+          case "error":
+            setStatus("Update check failed — launching app…", true);
+            break;
+        }
+      });
+
+      window.splashAPI.getAppVersion().then((v) => {
+        $("version").textContent = "v" + v;
+      });
+    }
+  </script>
+</body>
+</html>
