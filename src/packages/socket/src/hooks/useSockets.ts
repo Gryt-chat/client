@@ -55,10 +55,15 @@ function useSocketsHook() {
   const [serverProfiles, setServerProfiles] = useState<Record<string, { nickname: string; avatarFileId: string | null; avatarUrl: string | null }>>({});
   const [serverConnectionStatus, setServerConnectionStatus] = useState<Record<string, 'connected' | 'disconnected' | 'connecting' | 'reconnecting'>>({});
   const wasEverConnectedRef = useRef<Record<string, boolean>>({});
+  const serverDetailsListRef = useRef(serverDetailsList);
 
   useEffect(() => {
     serversRef.current = servers;
   }, [servers]);
+
+  useEffect(() => {
+    serverDetailsListRef.current = serverDetailsList;
+  }, [serverDetailsList]);
 
   const connectSoundFile = customConnectSoundFile || connectMp3;
   const disconnectSoundFile = customDisconnectSoundFile || disconnectMp3;
@@ -215,6 +220,36 @@ function useSocketsHook() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [servers]);
 
+  // Retry server:join / server:details for sockets that are connected but
+  // haven't received details yet.  Runs 3 s after each connection-status
+  // change so we don't race the normal first-connect flow.
+  useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    Object.keys(sockets).forEach((host) => {
+      const socket = sockets[host];
+      if (!socket?.connected) return;
+      if (serverDetailsList[host]) return; // already have details
+
+      timers.push(setTimeout(() => {
+        if (serverDetailsListRef.current[host]) return;
+        const accessToken = getServerAccessToken(host);
+        if (accessToken) {
+          socket.emit("server:details");
+        } else {
+          (async () => {
+            const identityToken = await getValidIdentityToken().catch(() => undefined);
+            const inviteCode = serversRef.current[host]?.token || undefined;
+            socket.emit("server:join", { password: "", nickname, identityToken, inviteCode });
+          })();
+        }
+      }, 3_000));
+    });
+
+    return () => timers.forEach(clearTimeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sockets, serverConnectionStatus, serverDetailsList]);
+
   // Proactive access token refresh: run once shortly after startup, then every 4 minutes
   useEffect(() => {
     const refreshServerTokens = () => {
@@ -224,7 +259,6 @@ function useSocketsHook() {
         const accessToken = getServerAccessToken(host);
 
         if (!accessToken) {
-          // Token is missing — attempt recovery via refresh token or rejoin
           const refreshToken = getServerRefreshToken(host);
           if (refreshToken) {
             (async () => {
@@ -262,7 +296,7 @@ function useSocketsHook() {
       });
     };
 
-    const initialTimeout = setTimeout(refreshServerTokens, 10_000);
+    const initialTimeout = setTimeout(refreshServerTokens, 3_000);
     const interval = setInterval(refreshServerTokens, 4 * 60 * 1000);
     return () => {
       clearTimeout(initialTimeout);
