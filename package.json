@@ -1,7 +1,7 @@
 {
   "name": "client",
   "private": true,
-  "version": "1.0.41",
+  "version": "1.0.42",
   "description": "Gryt Chat — real-time voice chat desktop client",
   "author": {
     "name": "Gryt Chat",
