@@ -35,7 +35,7 @@ interface PendingEmoji {
 }
 
 function deriveEmojiName(filename: string): string {
-  const base = filename.replace(/\.[^.]+$/, "");
+  const base = filename.replace(/\.[^.]+$/, "").replace(/^\d+[-_]/, "");
   const sanitized = base.toLowerCase().replace(/[^a-z0-9_]/g, "_");
   const trimmed = sanitized.replace(/^_+|_+$/g, "").replace(/_{2,}/g, "_");
   if (trimmed.length < 2) return trimmed.padEnd(2, "_");
