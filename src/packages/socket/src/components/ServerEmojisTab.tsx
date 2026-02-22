@@ -294,15 +294,73 @@ export function ServerEmojisTab({
   const handleUploadAll = async () => {
     const toUpload = pendingEmojis.filter((p) => p.status === "pending" && !p.nameError);
     if (toUpload.length === 0) return;
-
-    setUploading(true);
-    let successCount = 0;
-    for (const item of toUpload) {
-      const ok = await uploadOne(item);
-      if (ok) successCount++;
+    if (!effectiveAccessToken) {
+      toast.error("Not authenticated. Join the server first.");
+      return;
     }
 
-    if (successCount > 0) await refresh();
+    setUploading(true);
+    const uploadIds = new Set(toUpload.map((p) => p.id));
+    setPendingEmojis((prev) => prev.map((p) => uploadIds.has(p.id) ? { ...p, status: "uploading" as const } : p));
+
+    try {
+      const form = new FormData();
+      const names: string[] = [];
+      for (const item of toUpload) {
+        form.append("files", item.file);
+        names.push(item.name);
+      }
+      form.append("names", JSON.stringify(names));
+
+      const resp = await fetch(`${base}/api/emojis`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${effectiveAccessToken}` },
+        body: form,
+      });
+
+      const data = await resp.json().catch(() => ({}));
+
+      if (data.results) {
+        const resultByName = new Map<string, { ok: boolean; file_id?: string; error?: string; message?: string }>();
+        for (const r of data.results) resultByName.set(r.name, r);
+
+        let successCount = 0;
+        for (const item of toUpload) {
+          const r = resultByName.get(item.name);
+          if (r?.ok) successCount++;
+          else if (r) toast.error(`:${item.name}: — ${r.message || r.error || "Failed"}`);
+        }
+
+        setPendingEmojis((prev) => prev.map((p) => {
+          if (!uploadIds.has(p.id)) return p;
+          const r = resultByName.get(p.name);
+          if (r?.ok) return { ...p, status: "done" as const };
+          if (r) return { ...p, status: "error" as const };
+          return p;
+        }));
+
+        if (successCount > 0) {
+          toast.success(`Uploaded ${successCount} emoji(s)!`);
+          await refresh();
+        }
+      } else if (resp.ok) {
+        setPendingEmojis((prev) => prev.map((p) => uploadIds.has(p.id) ? { ...p, status: "done" as const } : p));
+        toast.success(`Uploaded ${toUpload.length} emoji(s)!`);
+        await refresh();
+      } else {
+        throw new Error(
+          (typeof data?.message === "string" && data.message) ||
+          (typeof data?.error === "string" && data.error) ||
+          `HTTP ${resp.status}`,
+        );
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Upload failed.";
+      toast.error(msg);
+      setPendingEmojis((prev) => prev.map((p) =>
+        uploadIds.has(p.id) && p.status === "uploading" ? { ...p, status: "error" as const } : p,
+      ));
+    }
 
     setPendingEmojis((prev) => {
       const remaining = prev

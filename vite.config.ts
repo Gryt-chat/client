@@ -56,6 +56,6 @@ export default defineConfig({
   },
   server: {
     port: 3666,
-    allowedHosts: ["gryt.example.com"]
+    allowedHosts: ["app.gryt.chat"]
   }
 });
