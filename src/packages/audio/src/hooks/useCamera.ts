@@ -14,15 +14,35 @@ const QUALITY_CONSTRAINTS: Record<CameraQuality, { width: number; height: number
 export interface CameraInterface {
   cameraStream: MediaStream | null;
   cameraEnabled: boolean;
+  cameraError: string | null;
   setCameraEnabled: (enabled: boolean) => void;
+  retryCamera: () => void;
   devices: MediaDeviceInfo[];
   getDevices: () => Promise<void>;
+}
+
+function friendlyCameraError(err: unknown): string {
+  const name = err instanceof DOMException ? err.name : "";
+  switch (name) {
+    case "NotReadableError":
+    case "AbortError":
+      return "Failed to start camera — is it in use by another application?";
+    case "NotAllowedError":
+      return "Camera access was denied. Check your browser or system permissions.";
+    case "NotFoundError":
+      return "No camera detected. Make sure one is connected.";
+    case "OverconstrainedError":
+      return "Camera doesn't support the selected quality. Try a lower setting.";
+    default:
+      return "Failed to start camera. Please try again.";
+  }
 }
 
 function useCameraHook(): CameraInterface {
   const { cameraID, setCameraID, cameraQuality } = useSettings();
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [cameraEnabled, setCameraEnabledState] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -66,8 +86,8 @@ function useCameraHook(): CameraInterface {
       }
       streamRef.current = stream;
       setCameraStream(stream);
+      setCameraError(null);
 
-      // Update device list after permission grant
       const allDevices = await navigator.mediaDevices.enumerateDevices();
       const videoDevices = allDevices.filter((d) => d.kind === "videoinput");
       setDevices(videoDevices);
@@ -78,6 +98,7 @@ function useCameraHook(): CameraInterface {
       }
     } catch (error) {
       console.error("[Camera] getUserMedia failed:", error);
+      setCameraError(friendlyCameraError(error));
       setCameraEnabledState(false);
     }
   }, [cameraID, cameraQuality, setCameraID]);
@@ -93,11 +114,18 @@ function useCameraHook(): CameraInterface {
   const setCameraEnabled = useCallback((enabled: boolean) => {
     setCameraEnabledState(enabled);
     if (enabled) {
+      setCameraError(null);
       startCamera();
     } else {
       stopCamera();
     }
   }, [startCamera, stopCamera]);
+
+  const retryCamera = useCallback(() => {
+    setCameraError(null);
+    setCameraEnabledState(true);
+    startCamera();
+  }, [startCamera]);
 
   // Restart when device or quality changes while camera is on
   useEffect(() => {
@@ -119,7 +147,9 @@ function useCameraHook(): CameraInterface {
   return {
     cameraStream,
     cameraEnabled,
+    cameraError,
     setCameraEnabled,
+    retryCamera,
     devices,
     getDevices,
   };
@@ -128,7 +158,9 @@ function useCameraHook(): CameraInterface {
 const cameraInit: CameraInterface = {
   cameraStream: null,
   cameraEnabled: false,
+  cameraError: null,
   setCameraEnabled: () => {},
+  retryCamera: () => {},
   devices: [],
   getDevices: async () => {},
 };

@@ -1,4 +1,5 @@
 import { Button, Checkbox, Dialog, Flex, IconButton, Select, Text } from "@radix-ui/themes";
+import { RotateCw } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MdClose, MdVideocam } from "react-icons/md";
 
@@ -41,10 +42,12 @@ export function CameraPreviewModal({
 }: CameraPreviewModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [previewStream, setPreviewStream] = useState<MediaStream | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [localCameraID, setLocalCameraID] = useState(cameraID);
   const [localQuality, setLocalQuality] = useState(quality);
   const [localMirrored, setLocalMirrored] = useState(mirrored);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     if (open) {
@@ -76,6 +79,23 @@ export function CameraPreviewModal({
     }
   }, []);
 
+  function friendlyPreviewError(err: unknown): string {
+    const name = err instanceof DOMException ? err.name : "";
+    switch (name) {
+      case "NotReadableError":
+      case "AbortError":
+        return "Failed to start camera — is it in use by another application?";
+      case "NotAllowedError":
+        return "Camera access was denied. Check your permissions.";
+      case "NotFoundError":
+        return "No camera detected. Make sure one is connected.";
+      case "OverconstrainedError":
+        return "Camera doesn't support the selected quality. Try a lower setting.";
+      default:
+        return "Failed to start camera. Please try again.";
+    }
+  }
+
   const loadDevices = useCallback(async () => {
     const all = await navigator.mediaDevices.enumerateDevices();
     const video = all.filter((d) => d.kind === "videoinput");
@@ -95,27 +115,36 @@ export function CameraPreviewModal({
     }
 
     let cancelled = false;
+    setPreviewError(null);
 
     (async () => {
       await loadDevices();
 
-      const stream = await startPreview(localCameraID, localQuality);
-      if (cancelled) {
-        stream.getTracks().forEach((t) => t.stop());
-        return;
-      }
-      setPreviewStream((prev) => {
-        if (prev) prev.getTracks().forEach((t) => t.stop());
-        return stream;
-      });
+      try {
+        const stream = await startPreview(localCameraID, localQuality);
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        setPreviewStream((prev) => {
+          if (prev) prev.getTracks().forEach((t) => t.stop());
+          return stream;
+        });
+        setPreviewError(null);
 
-      const all = await navigator.mediaDevices.enumerateDevices();
-      const video = all.filter((d) => d.kind === "videoinput");
-      setDevices(video);
+        const all = await navigator.mediaDevices.enumerateDevices();
+        const video = all.filter((d) => d.kind === "videoinput");
+        setDevices(video);
 
-      const actual = stream.getVideoTracks()[0]?.getSettings().deviceId;
-      if (actual && actual !== localCameraID) {
-        setLocalCameraID(actual);
+        const actual = stream.getVideoTracks()[0]?.getSettings().deviceId;
+        if (actual && actual !== localCameraID) {
+          setLocalCameraID(actual);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error("[Camera] Preview failed:", err);
+          setPreviewError(friendlyPreviewError(err));
+        }
       }
     })();
 
@@ -123,7 +152,7 @@ export function CameraPreviewModal({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, localCameraID, localQuality]);
+  }, [open, localCameraID, localQuality, retryCount]);
 
   useEffect(() => {
     if (videoRef.current && previewStream) {
@@ -192,9 +221,19 @@ export function CameraPreviewModal({
               <Flex
                 align="center"
                 justify="center"
+                direction="column"
+                gap="2"
                 style={{ position: "absolute", inset: 0 }}
               >
-                <Text size="2" color="gray">Starting camera...</Text>
+                <Text size="2" color={previewError ? "red" : "gray"}>
+                  {previewError ?? "Starting camera..."}
+                </Text>
+                {previewError && (
+                  <Button variant="soft" size="1" onClick={() => setRetryCount((c) => c + 1)}>
+                    <RotateCw size={14} />
+                    Retry
+                  </Button>
+                )}
               </Flex>
             )}
           </div>

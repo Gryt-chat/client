@@ -1,4 +1,5 @@
-import { Flex, Heading, Select, Separator, Text } from "@radix-ui/themes";
+import { Button, Flex, Heading, Select, Separator, Text } from "@radix-ui/themes";
+import { RotateCw } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 import { useCamera } from "@/audio";
@@ -22,7 +23,7 @@ export function CameraSettings() {
     setCameraMirrored,
   } = useSettings();
 
-  const { cameraStream, cameraEnabled, setCameraEnabled, devices, getDevices } = useCamera();
+  const { cameraStream, cameraEnabled, cameraError, setCameraEnabled, retryCamera, devices, getDevices } = useCamera();
   const videoRef = useRef<HTMLVideoElement>(null);
   const wasEnabledRef = useRef(false);
 
@@ -83,7 +84,17 @@ export function CameraSettings() {
               }}
             />
           ) : (
-            <Text size="2" color="gray">No camera detected</Text>
+            <Flex direction="column" align="center" gap="2" p="4">
+              <Text size="2" color={cameraError ? "red" : "gray"}>
+                {cameraError ?? "No camera detected"}
+              </Text>
+              {cameraError && (
+                <Button variant="soft" size="1" onClick={retryCamera}>
+                  <RotateCw size={14} />
+                  Retry
+                </Button>
+              )}
+            </Flex>
           )}
         </Flex>
       </Flex>

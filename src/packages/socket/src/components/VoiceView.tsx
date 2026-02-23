@@ -608,7 +608,7 @@ export const VoiceView = ({
         width: showVoiceView ? voiceWidth : 0,
         paddingRight: !showVoiceView || voiceWidth === "0px" ? 0 : 8,
       }}
-      style={{ overflow: "hidden" }}
+      style={{ overflow: "hidden", maxWidth: "90%" }}
     >
       <Flex
         style={{ background: "var(--gray-3)", borderRadius: "var(--radius-5)" }}

@@ -91,7 +91,7 @@ export function ConnectedUser({
           transition: "opacity 0.3s ease",
         }}
       >
-        <Flex gap="2" align="center" style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+        <Flex gap="2" align="center" style={{ flex: 1, minWidth: 0 }}>
           <Avatar
             radius="full"
             size="1"
