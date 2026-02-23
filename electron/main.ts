@@ -201,6 +201,23 @@ function runSplashUpdateCheck(): Promise<void> {
 
 // ── Background update listeners (after main window is open) ─────────────
 
+function friendlyUpdateError(err: Error): string {
+  const msg = err.message;
+  if (msg.includes("latest.yml") || msg.includes("latest-linux.yml") || msg.includes("latest-mac.yml")) {
+    return "No update available for this channel yet. The release may still be building — try again in a few minutes.";
+  }
+  if (msg.includes("net::ERR_") || msg.includes("ENOTFOUND") || msg.includes("ETIMEDOUT")) {
+    return "Could not reach the update server. Check your internet connection and try again.";
+  }
+  if (msg.includes("HttpError: 403") || msg.includes("HttpError: 401")) {
+    return "Access denied while checking for updates. The release may be private or your token has expired.";
+  }
+  if (msg.includes("sha512 checksum mismatch")) {
+    return "Downloaded update failed integrity check. Try checking for updates again.";
+  }
+  return msg;
+}
+
 function initBackgroundUpdater() {
   autoUpdater.on("checking-for-update", () => sendToMain("checking"));
   autoUpdater.on("update-available", (info) => sendToMain("available", { version: info.version }));
@@ -209,7 +226,7 @@ function initBackgroundUpdater() {
     sendToMain("downloading", { percent: Math.round(p.percent), transferred: p.transferred, total: p.total })
   );
   autoUpdater.on("update-downloaded", (info) => sendToMain("downloaded", { version: info.version }));
-  autoUpdater.on("error", (err) => sendToMain("error", { message: err.message }));
+  autoUpdater.on("error", (err) => sendToMain("error", { message: friendlyUpdateError(err) }));
 }
 
 // ── Main window ─────────────────────────────────────────────────────────
@@ -520,7 +537,7 @@ if (!gotSingleInstanceLock) {
 
     ipcMain.on("check-for-updates", () => {
       autoUpdater.checkForUpdates().catch((err) => {
-        sendToMain("error", { message: err.message });
+        sendToMain("error", { message: friendlyUpdateError(err) });
       });
     });
 
