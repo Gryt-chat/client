@@ -43,7 +43,7 @@ export const ServerView = () => {
     clientsSpeaking, voiceWidth, setVoiceWidth, userVoiceWidth, setUserVoiceWidth,
     selectedChannelId, setSelectedChannelId,
     handleVoiceDisconnect, setPendingChannelId, currentChannelId,
-    currentConnection, accessToken, activeConversationId, serverFailure, hasTimeout,
+    currentConnection, accessToken, activeConversationId, serverFailure, hasTimedOut,
     currentConnectionStatus, reconnectServer,
   } = useServerState();
 
@@ -333,7 +333,7 @@ export const ServerView = () => {
     return (
       <ServerLoadingStates
         serverFailure={serverFailure}
-        hasTimeout={hasTimeout}
+        hasTimedOut={hasTimedOut}
         connectionStatus={currentConnectionStatus}
         onReconnect={() => currentlyViewingServer && reconnectServer(currentlyViewingServer.host)}
       />

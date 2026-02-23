@@ -5,7 +5,7 @@ import { ServerDetailsSkeleton } from "./skeletons";
 
 interface ServerLoadingStatesProps {
   serverFailure?: { error: string; message?: string };
-  hasTimeout: boolean;
+  hasTimedOut: boolean;
   connectionStatus?: 'connected' | 'disconnected' | 'connecting' | 'reconnecting';
   onReconnect?: () => void;
 }
@@ -33,7 +33,7 @@ const iconWrapStyle = (bg: string): React.CSSProperties => ({
 
 export const ServerLoadingStates = ({
   serverFailure,
-  hasTimeout,
+  hasTimedOut,
   connectionStatus,
   onReconnect,
 }: ServerLoadingStatesProps) => {
@@ -127,41 +127,41 @@ export const ServerLoadingStates = ({
     );
   }
 
-  if (!hasTimeout) {
+  if (!hasTimedOut) {
     return (
-      <Flex width="100%" height="100%" align="center" justify="center" p="4">
-        <Box style={cardStyle}>
-          <Flex direction="column" align="center" gap="4">
-            <div style={iconWrapStyle("var(--orange-a3)")}>
-              <MdSchedule size={26} color="var(--orange-9)" />
-            </div>
-            <Flex direction="column" gap="2" align="center">
-              <Text size="4" weight="bold">
-                Taking longer than expected
-              </Text>
-              <Text size="2" color="gray" style={{ lineHeight: 1.5 }}>
-                The server is taking a while to respond. This could be due to network conditions or the server being under load.
-              </Text>
-            </Flex>
-            <Button
-              onClick={onReconnect ?? (() => window.location.reload())}
-              variant="solid"
-              size="2"
-              style={{ marginTop: 4 }}
-            >
-              <MdRefresh size={16} />
-              Retry
-            </Button>
-          </Flex>
+      <Flex width="100%" height="100%" gap="4">
+        <Box width={{ sm: "240px", initial: "100%" }}>
+          <ServerDetailsSkeleton />
         </Box>
       </Flex>
     );
   }
 
   return (
-    <Flex width="100%" height="100%" gap="4">
-      <Box width={{ sm: "240px", initial: "100%" }}>
-        <ServerDetailsSkeleton />
+    <Flex width="100%" height="100%" align="center" justify="center" p="4">
+      <Box style={cardStyle}>
+        <Flex direction="column" align="center" gap="4">
+          <div style={iconWrapStyle("var(--orange-a3)")}>
+            <MdSchedule size={26} color="var(--orange-9)" />
+          </div>
+          <Flex direction="column" gap="2" align="center">
+            <Text size="4" weight="bold">
+              Taking longer than expected
+            </Text>
+            <Text size="2" color="gray" style={{ lineHeight: 1.5 }}>
+              The server is taking a while to respond. This could be due to network conditions or the server being under load.
+            </Text>
+          </Flex>
+          <Button
+            onClick={onReconnect ?? (() => window.location.reload())}
+            variant="solid"
+            size="2"
+            style={{ marginTop: 4 }}
+          >
+            <MdRefresh size={16} />
+            Retry
+          </Button>
+        </Flex>
       </Box>
     </Flex>
   );

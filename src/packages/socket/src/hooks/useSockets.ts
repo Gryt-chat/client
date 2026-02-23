@@ -338,11 +338,74 @@ function useSocketsHook() {
 
   const reconnectServer = useCallback((host: string) => {
     const socket = sockets[host];
-    if (socket) {
-      setServerConnectionStatus(prev => ({ ...prev, [host]: 'connecting' }));
-      socket.connect();
+    if (!socket) return;
+
+    const requestServerState = async () => {
+      const accessToken = getServerAccessToken(host);
+      if (accessToken) {
+        socket.emit("server:details");
+        socket.emit("members:fetch");
+        return;
+      }
+
+      const identityToken = await getValidIdentityToken().catch(() => undefined);
+      const inviteCode = serversRef.current[host]?.token || undefined;
+      socket.emit("server:join", {
+        password: "",
+        nickname,
+        identityToken,
+        inviteCode,
+      });
+    };
+
+    if (socket.connected) {
+      void requestServerState();
+      return;
     }
-  }, [sockets]);
+
+    setServerConnectionStatus((prev) => ({ ...prev, [host]: "connecting" }));
+    socket.connect();
+    socket.once("connect", () => {
+      void requestServerState();
+    });
+  }, [sockets, nickname]);
+
+  // When returning to the app after being idle, re-request server details if we are connected
+  // but never received details (prevents being stuck on the skeleton forever).
+  useEffect(() => {
+    const refreshIfStuck = () => {
+      Object.keys(sockets).forEach((host) => {
+        const socket = sockets[host];
+        if (!socket?.connected) return;
+        if (serverDetailsListRef.current[host]) return;
+        if (failedServerDetails[host]) return;
+
+        const accessToken = getServerAccessToken(host);
+        if (accessToken) {
+          socket.emit("server:details");
+          socket.emit("members:fetch");
+          return;
+        }
+
+        void (async () => {
+          const identityToken = await getValidIdentityToken().catch(() => undefined);
+          const inviteCode = serversRef.current[host]?.token || undefined;
+          socket.emit("server:join", { password: "", nickname, identityToken, inviteCode });
+        })();
+      });
+    };
+
+    const onVisibilityChange = () => {
+      if (!document.hidden) refreshIfStuck();
+    };
+
+    window.addEventListener("focus", refreshIfStuck);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.removeEventListener("focus", refreshIfStuck);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [sockets, nickname, failedServerDetails]);
 
   const leaveServer = (host: string) => {
     const socket = sockets[host];

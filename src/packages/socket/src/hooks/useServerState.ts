@@ -76,9 +76,8 @@ export function useServerState() {
   const [clientsSpeaking, setClientsSpeaking] = useState<
     Record<string, boolean>
   >({});
-  const [serverLoadingTimeouts, setServerLoadingTimeouts] = useState<
-    Record<string, number>
-  >({});
+  const serverLoadingTimerRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const [serverLoadingTimedOut, setServerLoadingTimedOut] = useState<Record<string, boolean>>({});
   const [voiceWidth, setVoiceWidth] = useState("0px");
   const [userVoiceWidth, setUserVoiceWidth] = useState(400);
   const [pendingChannelId, setPendingChannelId] = useState<string | null>(null);
@@ -140,34 +139,39 @@ export function useServerState() {
     const host = currentlyViewingServer.host;
     const hasDetails = !!serverDetailsList[host];
     const hasFailed = !!failedServerDetails[host];
-    const hasTimeout = !!serverLoadingTimeouts[host];
 
-    if (!hasDetails && !hasFailed && !hasTimeout) {
-      const timeoutId = window.setTimeout(() => {
-        setServerLoadingTimeouts((prev) => {
+    if (hasDetails || hasFailed) {
+      const t = serverLoadingTimerRef.current[host];
+      if (t) {
+        clearTimeout(t);
+        delete serverLoadingTimerRef.current[host];
+      }
+      if (serverLoadingTimedOut[host]) {
+        setServerLoadingTimedOut((prev) => {
+          if (!prev[host]) return prev;
           const updated = { ...prev };
           delete updated[host];
           return updated;
         });
-      }, 10000);
-
-      setServerLoadingTimeouts((prev) => ({ ...prev, [host]: timeoutId }));
+      }
+      return;
     }
 
-    if ((hasDetails || hasFailed) && hasTimeout) {
-      clearTimeout(serverLoadingTimeouts[host]);
-      setServerLoadingTimeouts((prev) => {
-        const updated = { ...prev };
-        delete updated[host];
-        return updated;
-      });
+    if (!serverLoadingTimedOut[host] && !serverLoadingTimerRef.current[host]) {
+      serverLoadingTimerRef.current[host] = setTimeout(() => {
+        delete serverLoadingTimerRef.current[host];
+        setServerLoadingTimedOut((prev) => ({ ...prev, [host]: true }));
+      }, 10_000);
     }
-  }, [
-    currentlyViewingServer,
-    serverDetailsList,
-    failedServerDetails,
-    serverLoadingTimeouts,
-  ]);
+  }, [currentlyViewingServer, serverDetailsList, failedServerDetails, serverLoadingTimedOut]);
+
+  // Clear any pending timers on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(serverLoadingTimerRef.current).forEach((t) => clearTimeout(t));
+      serverLoadingTimerRef.current = {};
+    };
+  }, []);
 
   // Clear selected channel when switching servers
   useEffect(() => {
@@ -427,8 +431,8 @@ export function useServerState() {
   const serverFailure = currentlyViewingServer
     ? failedServerDetails[currentlyViewingServer.host]
     : undefined;
-  const hasTimeout = currentlyViewingServer
-    ? !!serverLoadingTimeouts[currentlyViewingServer.host]
+  const hasTimedOut = currentlyViewingServer
+    ? !!serverLoadingTimedOut[currentlyViewingServer.host]
     : false;
   const currentConnectionStatus = currentlyViewingServer
     ? (serverConnectionStatus[currentlyViewingServer.host] || 'disconnected')
@@ -449,7 +453,7 @@ export function useServerState() {
     accessToken,
     activeConversationId,
     serverFailure,
-    hasTimeout,
+    hasTimedOut,
     currentConnectionStatus,
     reconnectServer,
   };
