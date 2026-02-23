@@ -12,8 +12,7 @@ import {
   MdVolumeUp,
 } from "react-icons/md";
 
-import { estimateBitrate, getIsBrowserSupported, useCamera, useScreenShare } from "@/audio";
-import type { ScreenShareQuality } from "@/audio";
+import { estimateBitrate, getIsBrowserSupported, type ScreenShareQuality,useCamera, useScreenShare } from "@/audio";
 import { useSettings } from "@/settings";
 import { useSockets } from "@/socket";
 import { useSFU } from "@/webRTC";

@@ -72,10 +72,10 @@ function useSettingsHook() {
     localStorage.getItem("disconnectSoundEnabled") !== "false"
   );
   const [connectSoundVolume, setConnectSoundVolume] = useState(
-    Number(localStorage.getItem("connectSoundVolume")) || 10
+    Number(localStorage.getItem("connectSoundVolume")) || 30
   );
   const [disconnectSoundVolume, setDisconnectSoundVolume] = useState(
-    Number(localStorage.getItem("disconnectSoundVolume")) || 10
+    Number(localStorage.getItem("disconnectSoundVolume")) || 30
   );
   const [customConnectSoundFile, setCustomConnectSoundFile] = useState<string | null>(
     localStorage.getItem("customConnectSoundFile") || null
