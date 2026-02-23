@@ -222,7 +222,7 @@ function MessageContent({
   onPickerOpenChange,
 }: {
   m: ChatMessage;
-  rowRef: React.RefObject<HTMLDivElement | null>;
+  rowRef: React.RefObject<HTMLDivElement>;
   mentionBg: string | undefined;
   showToolbar: boolean;
   canDelete: boolean;
