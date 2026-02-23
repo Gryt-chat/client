@@ -7,6 +7,21 @@ function wsUrlToHealthUrl(wsUrl: string): string {
     .replace(/\/?$/, "/health");
 }
 
+function isHttpsPage(): boolean {
+  try {
+    return typeof window !== "undefined" && window.location?.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function filterWsUrlsForPage(wsUrls: string[]): string[] {
+  // Browsers will block `ws://` (and `http://` health pings) when the page is loaded over HTTPS.
+  // Filter them out so we don't spam mixed-content warnings and we don't ever "fallback" to an unusable SFU URL.
+  if (!isHttpsPage()) return wsUrls;
+  return wsUrls.filter((u) => !u.startsWith("ws://"));
+}
+
 interface PingResult {
   url: string;
   latencyMs: number;
@@ -56,6 +71,13 @@ function setCachedSfuUrl(host: string, url: string) {
  * if every ping fails or times out.
  */
 export async function selectBestSfuUrl(wsUrls: string[], host?: string): Promise<string> {
+  const originalUrls = wsUrls;
+  wsUrls = filterWsUrlsForPage(wsUrls);
+  if (wsUrls.length === 0) {
+    voiceLog.warn("SFU-SELECT", "No SFU URLs compatible with this page context — falling back to original list");
+    wsUrls = originalUrls;
+  }
+
   if (wsUrls.length <= 1) {
     if (host && wsUrls[0]) setCachedSfuUrl(host, wsUrls[0]);
     return wsUrls[0];
@@ -69,6 +91,10 @@ export async function selectBestSfuUrl(wsUrls: string[], host?: string): Promise
     const healthUrl = wsUrlToHealthUrl(wsUrl);
     const start = performance.now();
     try {
+      if (isHttpsPage() && healthUrl.startsWith("http://")) {
+        voiceLog.info("SFU-SELECT", `Skipping mixed-content ping: ${healthUrl}`);
+        return null;
+      }
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), PING_TIMEOUT_MS);
       await fetch(healthUrl, { method: "GET", signal: controller.signal, cache: "no-store" });

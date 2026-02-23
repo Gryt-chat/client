@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+/// <reference types="react" />
 
 declare global {
   const __APP_VERSION__: string;
@@ -9,6 +10,13 @@ declare global {
       GRYT_OIDC_REALM?: string;
       GRYT_OIDC_CLIENT_ID?: string;
     };
+  }
+}
+
+declare module "react" {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface HTMLAttributes<T> {
+    inert?: boolean;
   }
 }
 

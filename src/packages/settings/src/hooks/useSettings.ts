@@ -138,6 +138,13 @@ function useSettingsHook() {
 
   const [showVoiceView, setShowVoiceView] = useState(true);
 
+  const [pinChannelsSidebar, setPinChannelsSidebarState] = useState(
+    localStorage.getItem("pinChannelsSidebar") === "true"
+  );
+  const [pinMembersSidebar, setPinMembersSidebarState] = useState(
+    localStorage.getItem("pinMembersSidebar") === "true"
+  );
+
   const [isAFK, setIsAFK] = useState(false);
   const [afkTimeoutMinutes, setAfkTimeoutMinutes] = useState(
     Number(localStorage.getItem("afkTimeoutMinutes")) || 5
@@ -395,6 +402,16 @@ function useSettingsHook() {
     setShowSettings(true);
   }
 
+  function updatePinChannelsSidebar(pinned: boolean) {
+    setPinChannelsSidebarState(pinned);
+    localStorage.setItem("pinChannelsSidebar", pinned.toString());
+  }
+
+  function updatePinMembersSidebar(pinned: boolean) {
+    setPinMembersSidebarState(pinned);
+    localStorage.setItem("pinMembersSidebar", pinned.toString());
+  }
+
   function setIsMuted(muted: boolean) {
     if (muted) {
       setIsMutedState(true);
@@ -502,6 +519,12 @@ function useSettingsHook() {
     updateHasSeenWelcome,
     showVoiceView,
     setShowVoiceView,
+
+    pinChannelsSidebar,
+    setPinChannelsSidebar: updatePinChannelsSidebar,
+    pinMembersSidebar,
+    setPinMembersSidebar: updatePinMembersSidebar,
+
     connectSoundEnabled,
     setConnectSoundEnabled: updateConnectSoundEnabled,
     disconnectSoundEnabled,

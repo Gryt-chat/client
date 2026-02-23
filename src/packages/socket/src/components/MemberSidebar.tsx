@@ -1,4 +1,5 @@
-import { Avatar, Box,Flex, Text } from "@radix-ui/themes";
+import { Avatar, Box, Flex, IconButton, Text, Tooltip } from "@radix-ui/themes";
+import { MdPushPin } from "react-icons/md";
 import { MdMicOff, MdVolumeOff, MdVolumeUp } from "react-icons/md";
 
 import { getUploadsFileUrl } from "@/common";
@@ -44,6 +45,8 @@ interface MemberSidebarProps {
   currentServerConnected: string | null;
   serverHost: string;
   adminActions?: AdminActions;
+  pinned?: boolean;
+  onTogglePinned?: () => void;
 }
 
 const statusConfig: Record<UserStatus, { label: string; color: string }> = {
@@ -165,6 +168,8 @@ export const MemberSidebar = ({
   clientsSpeaking,
   serverHost,
   adminActions,
+  pinned,
+  onTogglePinned,
 }: MemberSidebarProps) => {
   const sortedMembers = [...members].sort((a, b) => {
     const priorityDiff = statusPriority[a.status] - statusPriority[b.status];
@@ -189,9 +194,24 @@ export const MemberSidebar = ({
         gap="1"
       >
         <Box pb="2">
-          <Text size="2" weight="bold" color="gray">
-            Members — {members.length}
-          </Text>
+          <Flex align="center" justify="between" gap="2">
+            <Text size="2" weight="bold" color="gray">
+              Members — {members.length}
+            </Text>
+            {onTogglePinned && (
+              <Tooltip content={pinned ? "Unpin sidebar" : "Pin sidebar"} delayDuration={200}>
+                <IconButton
+                  size="1"
+                  variant={pinned ? "solid" : "soft"}
+                  color={pinned ? "amber" : "gray"}
+                  onClick={onTogglePinned}
+                  aria-label={pinned ? "Unpin sidebar" : "Pin sidebar"}
+                >
+                  <MdPushPin size={14} />
+                </IconButton>
+              </Tooltip>
+            )}
+          </Flex>
         </Box>
 
         <Flex direction="column" gap="2" style={{ overflow: "auto", flex: 1 }}>

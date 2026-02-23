@@ -65,6 +65,11 @@ export interface Settings {
   showVoiceView: boolean;
   setShowVoiceView: (value: boolean) => void;
 
+  pinChannelsSidebar: boolean;
+  setPinChannelsSidebar: (value: boolean) => void;
+  pinMembersSidebar: boolean;
+  setPinMembersSidebar: (value: boolean) => void;
+
   settingsTab: string;
   setSettingsTab: (value: string) => void;
   openSettings: (tab?: string) => void;
@@ -185,6 +190,12 @@ export const settingsInit: Settings = {
   updateHasSeenWelcome: () => {},
   showVoiceView: true,
   setShowVoiceView: () => {},
+
+  pinChannelsSidebar: localStorage.getItem("pinChannelsSidebar") === "true",
+  setPinChannelsSidebar: () => {},
+  pinMembersSidebar: localStorage.getItem("pinMembersSidebar") === "true",
+  setPinMembersSidebar: () => {},
+
   connectSoundEnabled: localStorage.getItem("connectSoundEnabled") !== "false",
   setConnectSoundEnabled: () => {},
   disconnectSoundEnabled: localStorage.getItem("disconnectSoundEnabled") !== "false",

@@ -1,4 +1,5 @@
-import { Badge, Button, Card, DropdownMenu, Flex, Text } from "@radix-ui/themes";
+import { Badge, Button, Card, DropdownMenu, Flex, IconButton, Text, Tooltip } from "@radix-ui/themes";
+import { MdPushPin } from "react-icons/md";
 
 export const ServerHeader = ({
   serverName,
@@ -7,6 +8,8 @@ export const ServerHeader = ({
   onOpenReports,
   role,
   pendingReportCount,
+  pinned,
+  onTogglePinned,
 }: {
   serverName?: string;
   onLeave: () => void;
@@ -14,6 +17,8 @@ export const ServerHeader = ({
   onOpenReports?: () => void;
   role?: "owner" | "admin" | "mod" | "member";
   pendingReportCount?: number;
+  pinned?: boolean;
+  onTogglePinned?: () => void;
 }) => {
   const canManage = role === "owner" || role === "admin";
   return (
@@ -25,34 +30,50 @@ export const ServerHeader = ({
     >
       <Flex justify="between" align="center">
         <Text>{serverName}</Text>
-        <DropdownMenu.Root>
-          <DropdownMenu.Trigger>
-            <Button variant="soft" size="1" color="gray">
-              <DropdownMenu.TriggerIcon />
-            </Button>
-          </DropdownMenu.Trigger>
-          <DropdownMenu.Content>
-            {canManage && onOpenSettings && (
-              <DropdownMenu.Item onClick={onOpenSettings}>Server settings</DropdownMenu.Item>
-            )}
-            {canManage && onOpenReports && (
-              <DropdownMenu.Item onClick={onOpenReports}>
-                <Flex align="center" gap="2">
-                  Reports
-                  {!!pendingReportCount && pendingReportCount > 0 && (
-                    <Badge color="red" variant="solid" size="1" radius="full">
-                      {pendingReportCount}
-                    </Badge>
-                  )}
-                </Flex>
+        <Flex align="center" gap="2">
+          {onTogglePinned && (
+            <Tooltip content={pinned ? "Unpin sidebar" : "Pin sidebar"} delayDuration={200}>
+              <IconButton
+                size="1"
+                variant={pinned ? "solid" : "soft"}
+                color={pinned ? "amber" : "gray"}
+                onClick={onTogglePinned}
+                aria-label={pinned ? "Unpin sidebar" : "Pin sidebar"}
+              >
+                <MdPushPin size={14} />
+              </IconButton>
+            </Tooltip>
+          )}
+
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger>
+              <Button variant="soft" size="1" color="gray">
+                <DropdownMenu.TriggerIcon />
+              </Button>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Content>
+              {canManage && onOpenSettings && (
+                <DropdownMenu.Item onClick={onOpenSettings}>Server settings</DropdownMenu.Item>
+              )}
+              {canManage && onOpenReports && (
+                <DropdownMenu.Item onClick={onOpenReports}>
+                  <Flex align="center" gap="2">
+                    Reports
+                    {!!pendingReportCount && pendingReportCount > 0 && (
+                      <Badge color="red" variant="solid" size="1" radius="full">
+                        {pendingReportCount}
+                      </Badge>
+                    )}
+                  </Flex>
+                </DropdownMenu.Item>
+              )}
+              <DropdownMenu.Separator />
+              <DropdownMenu.Item color="red" onClick={onLeave}>
+                Leave
               </DropdownMenu.Item>
-            )}
-            <DropdownMenu.Separator />
-            <DropdownMenu.Item color="red" onClick={onLeave}>
-              Leave
-            </DropdownMenu.Item>
-          </DropdownMenu.Content>
-        </DropdownMenu.Root>
+            </DropdownMenu.Content>
+          </DropdownMenu.Root>
+        </Flex>
       </Flex>
     </Card>
   );

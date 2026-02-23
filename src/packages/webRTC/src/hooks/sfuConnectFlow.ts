@@ -10,6 +10,101 @@ import { connectToSfuWebSocket } from "./sfuConnection";
 import { RoomAccessData,SFUConnectionStateInternal } from "./sfuTypes";
 import { voiceLog } from "./voiceLogger";
 
+type IceCandidateStat = {
+  address: string;
+  port: number;
+  candidateType: string;
+  protocol: string;
+  networkType?: string;
+};
+
+type IceCandidatePairStat = RTCIceCandidatePairStats & { selected?: boolean };
+type TransportStat = RTCTransportStats & { selectedCandidatePairId?: string };
+
+async function dumpIceSelectedPair(pc: RTCPeerConnection, label: string) {
+  try {
+    const report = await pc.getStats();
+
+    const candidateMap = new Map<string, IceCandidateStat>();
+    const pairStats: IceCandidatePairStat[] = [];
+    let transportSelectedPairId: string | null = null;
+
+    report.forEach((stat) => {
+      if (stat.type === "local-candidate" || stat.type === "remote-candidate") {
+        const c = stat as RTCIceCandidateStats & { ip?: string; networkType?: string };
+        candidateMap.set(c.id, {
+          address: c.address ?? c.ip ?? "?",
+          port: c.port ?? 0,
+          candidateType: c.candidateType ?? "?",
+          protocol: c.protocol ?? "?",
+          networkType: c.networkType,
+        });
+        return;
+      }
+
+      if (stat.type === "candidate-pair") {
+        pairStats.push(stat as IceCandidatePairStat);
+        return;
+      }
+
+      if (stat.type === "transport") {
+        const t = stat as TransportStat;
+        if (typeof t.selectedCandidatePairId === "string") {
+          transportSelectedPairId = t.selectedCandidatePairId;
+        }
+      }
+    });
+
+    const selectedPair =
+      (transportSelectedPairId ? pairStats.find((p) => p.id === transportSelectedPairId) : null) ||
+      pairStats.find((p) => ("selected" in p ? p.selected === true : false)) ||
+      pairStats.find((p) => p.nominated === true && p.state === "succeeded") ||
+      pairStats.find((p) => p.state === "succeeded") ||
+      null;
+
+    if (!selectedPair) {
+      voiceLog.warn("WEBRTC", `ICE debug (${label}): no candidate-pair selected yet`, {
+        connectionState: pc.connectionState,
+        iceConnectionState: pc.iceConnectionState,
+        signalingState: pc.signalingState,
+      });
+      return;
+    }
+
+    const local = candidateMap.get(selectedPair.localCandidateId);
+    const remote = candidateMap.get(selectedPair.remoteCandidateId);
+
+    voiceLog.info("WEBRTC", `ICE debug (${label}): selected candidate pair`, {
+      pair: {
+        id: selectedPair.id,
+        state: selectedPair.state,
+        nominated: selectedPair.nominated,
+        selected: selectedPair.selected,
+        currentRoundTripTimeMs: typeof selectedPair.currentRoundTripTime === "number" ? Math.round(selectedPair.currentRoundTripTime * 1000) : null,
+        availableOutgoingBitrateKbps: typeof selectedPair.availableOutgoingBitrate === "number" ? Math.round(selectedPair.availableOutgoingBitrate / 1000) : null,
+      },
+      local: local ? { ...local, address: `${local.address}:${local.port}` } : null,
+      remote: remote ? { ...remote, address: `${remote.address}:${remote.port}` } : null,
+    });
+
+    const nonFrozen = pairStats.filter((p) => p.state && p.state !== "frozen");
+    if (nonFrozen.length > 0) {
+      const sample = nonFrozen.slice(0, 8).map((p) => {
+        const r = candidateMap.get(p.remoteCandidateId);
+        return {
+          state: p.state,
+          nominated: p.nominated,
+          selected: p.selected,
+          remote: r ? `${r.address}:${r.port} (${r.candidateType}/${r.protocol})` : p.remoteCandidateId,
+        };
+      });
+      voiceLog.info("WEBRTC", `ICE debug (${label}): candidate-pair sample`, sample);
+    }
+  } catch (error) {
+    voiceLog.warn("WEBRTC", `ICE debug (${label}) failed`, error);
+  }
+}
+
 export function requestRoomAccess(roomId: string, socket: Socket): Promise<RoomAccessData> {
   return new Promise((resolve, reject) => {
     voiceLog.step("CONNECT", 4, "Requesting room access from server", { roomId });
@@ -61,6 +156,7 @@ export interface SetupPeerConnectionDeps {
   isDisconnectingRef: MutableRefObject<boolean>;
   setStreams: Dispatch<SetStateAction<Streams>>;
   setConnectionState: Dispatch<SetStateAction<SFUConnectionStateInternal>>;
+  performCleanup?: (skipServerUpdate?: boolean) => Promise<void>;
 }
 
 export function setupPeerConnection(
@@ -68,7 +164,7 @@ export function setupPeerConnection(
   deps: SetupPeerConnectionDeps,
   eSportsModeEnabled: boolean = false,
 ): RTCPeerConnection {
-  const { sfuWebSocketRef, connectionTimeoutRef, isDisconnectingRef, setStreams, setConnectionState } = deps;
+  const { sfuWebSocketRef, connectionTimeoutRef, isDisconnectingRef, setStreams, setConnectionState, performCleanup } = deps;
 
   const config: RTCConfiguration = {
     iceServers: [{ urls: stunServers }],
@@ -80,6 +176,12 @@ export function setupPeerConnection(
   };
 
   const pc = new RTCPeerConnection(config);
+  let iceDebugDumped = false;
+  const dumpIceOnce = (label: string) => {
+    if (iceDebugDumped) return;
+    iceDebugDumped = true;
+    dumpIceSelectedPair(pc, label).catch(() => undefined);
+  };
 
   pc.onicecandidate = (event) => {
     if (event.candidate) {
@@ -105,8 +207,10 @@ export function setupPeerConnection(
     const state = pc.iceConnectionState;
     if (state === 'connected' || state === 'completed') {
       voiceLog.ok("WEBRTC", "ICE", `ICE connection state → ${state}`);
+      dumpIceOnce(`ice-${state}`);
     } else if (state === 'failed' || state === 'disconnected') {
       voiceLog.fail("WEBRTC", "ICE", `ICE connection state → ${state}`);
+      dumpIceOnce(`ice-${state}`);
     } else {
       voiceLog.info("WEBRTC", `ICE connection state → ${state}`);
     }
@@ -144,6 +248,7 @@ export function setupPeerConnection(
       case 'connected':
         voiceLog.ok("CONNECT", 9, "WebRTC CONNECTED — voice chat is live!", detail);
         voiceLog.divider("VOICE CONNECTED");
+        dumpIceOnce("pc-connected");
         if (connectionTimeoutRef.current) {
           clearTimeout(connectionTimeoutRef.current);
           connectionTimeoutRef.current = null;
@@ -161,12 +266,18 @@ export function setupPeerConnection(
       case 'failed':
       case 'closed':
         voiceLog.fail("WEBRTC", "PC", `Connection state → ${state}`, detail);
+        dumpIceOnce(`pc-${state}`);
         if (!isDisconnectingRef.current) {
+          toast.error(
+            "Voice connection failed (ICE). Your network may block UDP/WebRTC. Try VPN or another network.",
+            { id: "voice-ice-failed" },
+          );
           setConnectionState(prev => ({
             ...prev,
             state: SFUConnectionState.FAILED,
             error: "WebRTC connection failed",
           }));
+          performCleanup?.(false).catch(() => undefined);
         }
         break;
       default:
@@ -435,6 +546,7 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
     const peerConnection = setupPeerConnection(stunHosts, {
       sfuWebSocketRef, connectionTimeoutRef, isDisconnectingRef,
       setStreams, setConnectionState,
+      performCleanup,
     }, eSportsModeEnabled);
     peerConnectionRef.current = peerConnection;
     voiceLog.ok("CONNECT", 5, "RTCPeerConnection created", {
@@ -448,7 +560,11 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
           pcState: peerConnectionRef.current.connectionState,
           iceState: peerConnectionRef.current.iceConnectionState,
         });
-        toast.error("Connection timed out. Please try again.");
+        dumpIceSelectedPair(peerConnectionRef.current, "timeout").catch(() => undefined);
+        toast.error(
+          "Voice connection timed out (ICE). Your network may block UDP/WebRTC. Try VPN or another network.",
+          { id: "voice-ice-failed" },
+        );
         setConnectionState({
           state: SFUConnectionState.DISCONNECTED,
           roomId: null,
