@@ -407,6 +407,7 @@ export const ChatView = memo(({
   const showMessages = !showVoiceDisabled && !isLoadingMessages && chatMessages.length > 0;
 
   const handleStartReached = useCallback(() => {
+    console.log("[startReached] fired", { hasOlderMessages, isLoadingOlder, hasCallback: !!onLoadOlder });
     if (hasOlderMessages && !isLoadingOlder && onLoadOlder) onLoadOlder();
   }, [hasOlderMessages, isLoadingOlder, onLoadOlder]);
 
@@ -542,7 +543,7 @@ export const ChatView = memo(({
           ) : showMessages ? (
             <Virtuoso
               ref={virtuosoRef}
-              style={{ flex: 1, minWidth: 0 }}
+              style={{ flex: 1, minWidth: 0, marginBottom: 4 }}
               data={chatMessages}
               firstItemIndex={firstItemIndex}
               initialTopMostItemIndex={chatMessages.length - 1}

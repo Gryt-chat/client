@@ -259,14 +259,21 @@ export function useChat({
     };
 
     const onHistory = (payload: HistoryPayload) => {
+      console.log("[onHistory]", { convId: payload.conversation_id, itemCount: payload.items.length, hasMore: payload.hasMore, before: payload.before });
       const setHasOlder = (v: boolean) => {
+        console.log("[onHistory] setHasOlder", v);
         const key = cacheKeyFor(payload.conversation_id);
         if (key) setHasOlderMap((prev) => ({ ...prev, [key]: v }));
       };
-      if (payload.before && payload.conversation_id === activeConversationId && payload.items.length > 0) {
-        setFirstItemIndex((prev) => prev - payload.items.length);
-      }
-      handleHistoryPayload(payload, activeConversationId, cacheKeyFor, inFlightFetchRef, setMessageCache, setChatMessages, setIsLoadingMessages, setHasOlder, setIsLoadingOlder);
+      const onPrepended = (count: number) => {
+        if (count > 0) {
+          setFirstItemIndex((prev) => {
+            console.log("[onHistory] shifting firstItemIndex", prev, "->", prev - count, "(actual new items)");
+            return prev - count;
+          });
+        }
+      };
+      handleHistoryPayload(payload, activeConversationId, cacheKeyFor, inFlightFetchRef, setMessageCache, setChatMessages, setIsLoadingMessages, setHasOlder, setIsLoadingOlder, onPrepended);
     };
 
     const onReaction = (updatedMessage: ChatMessage) =>
@@ -586,10 +593,15 @@ export function useChat({
   }, [currentConnection, currentlyViewingServer?.host, activeConversationId, cacheKeyFor, sendMessageWithToken, uploadFile]);
 
   const fetchOlderMessages = useCallback(() => {
-    if (!currentConnection || !activeConversationId || isLoadingOlder || !hasOlderMessages) return;
+    console.log("[fetchOlder] called", { hasConnection: !!currentConnection, activeConversationId, isLoadingOlder, hasOlderMessages, msgCount: chatMessages.length });
+    if (!currentConnection || !activeConversationId || isLoadingOlder || !hasOlderMessages) {
+      console.log("[fetchOlder] BLOCKED", { noConn: !currentConnection, noConv: !activeConversationId, isLoadingOlder, noMore: !hasOlderMessages });
+      return;
+    }
     const oldest = chatMessages[0];
-    if (!oldest) return;
+    if (!oldest) { console.log("[fetchOlder] no oldest message"); return; }
     const before = new Date(oldest.created_at).toISOString();
+    console.log("[fetchOlder] emitting chat:fetch", { before, oldestId: oldest.message_id });
     setIsLoadingOlder(true);
     const scopedKey = cacheKeyFor(activeConversationId);
     inFlightFetchRef.current.add(scopedKey);
