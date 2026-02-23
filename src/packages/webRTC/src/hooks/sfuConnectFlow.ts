@@ -1,6 +1,7 @@
 import { Dispatch, MutableRefObject, SetStateAction } from "react";
 import { Socket } from "socket.io-client";
 
+import { sliderToGain } from "@/lib/audioVolume";
 import { handleRateLimitError } from "@/socket/src/utils/rateLimitHandler";
 
 import { SFUConnectionState, Streams } from "../types/SFU";
@@ -691,7 +692,7 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
     if (connectSoundEnabled) {
       try {
         const audio = new Audio(connectSoundFile);
-        audio.volume = Math.max(0, Math.min(1, connectSoundVolume / 100));
+        audio.volume = sliderToGain(connectSoundVolume);
         audio.play().catch(() => {});
       } catch (error) {
         voiceLog.warn("CONNECT", "Failed to play connect sound", error);

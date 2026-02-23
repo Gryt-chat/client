@@ -1,6 +1,8 @@
 import { Dispatch, MutableRefObject, SetStateAction, useEffect, useRef } from "react";
 import { Socket } from "socket.io-client";
 
+import { sliderToOutputGain } from "@/lib/audioVolume";
+
 import { Streams, StreamSources, VideoStreams } from "../types/SFU";
 import { voiceLog } from "./voiceLogger";
 
@@ -145,8 +147,7 @@ export function useSFUStreams({
         const analyserNode = audioContext.createAnalyser();
         const gainNode = audioContext.createGain();
 
-        const baseOutputGain = outputVolume / 50;
-        const outputGain = isDeafened ? 0 : baseOutputGain;
+        const outputGain = isDeafened ? 0 : sliderToOutputGain(outputVolume);
         gainNode.gain.value = outputGain;
 
         sourceNode.connect(analyserNode);
@@ -179,8 +180,7 @@ export function useSFUStreams({
 
   // Update output volume for all streams when setting changes
   useEffect(() => {
-    const baseOutputGain = outputVolume / 50;
-    const outputGain = isDeafened ? 0 : baseOutputGain;
+    const outputGain = isDeafened ? 0 : sliderToOutputGain(outputVolume);
 
     Object.values(streamSources).forEach(({ gain }) => {
       if (gain) {

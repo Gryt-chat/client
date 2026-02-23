@@ -15,6 +15,7 @@ import {
   setServerAccessToken,
   setServerRefreshToken,
 } from "@/common";
+import { sliderToGain } from "@/lib/audioVolume";
 import {
   Server,
   serverDetails,
@@ -590,7 +591,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
         if (!connectSoundEnabledRef.current) return;
         try {
           const audio = new Audio(connectSoundFileRef.current);
-          audio.volume = Math.max(0, Math.min(1, connectSoundVolumeRef.current / 100));
+          audio.volume = sliderToGain(connectSoundVolumeRef.current);
           audio.play().catch(() => {});
         } catch (error) {
           console.error("Error playing peer join sound:", error);
@@ -601,7 +602,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
         if (!disconnectSoundEnabledRef.current) return;
         try {
           const audio = new Audio(disconnectSoundFileRef.current);
-          audio.volume = Math.max(0, Math.min(1, disconnectSoundVolumeRef.current / 100));
+          audio.volume = sliderToGain(disconnectSoundVolumeRef.current);
           audio.play().catch(() => {});
         } catch (error) {
           console.error("Error playing peer leave sound:", error);

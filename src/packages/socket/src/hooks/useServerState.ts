@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { isSpeaking, useMicrophone, useSpeakers } from "@/audio";
 import { getServerAccessToken } from "@/common";
+import { sliderToOutputGain } from "@/lib/audioVolume";
 import { useSettings } from "@/settings";
 import { useSFU } from "@/webRTC";
 
@@ -384,7 +385,7 @@ export function useServerState() {
   useEffect(() => {
     if (!currentlyViewingServer || !audioContext) return;
     const hostClients = clients[currentlyViewingServer.host] || {};
-    const baseGain = outputVolume / 50;
+    const baseGain = sliderToOutputGain(outputVolume);
 
     Object.values(hostClients).forEach((client) => {
       if (!client.streamID || !streamSources[client.streamID]) return;

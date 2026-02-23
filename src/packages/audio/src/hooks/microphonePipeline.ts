@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 
+import { sliderToOutputGain } from "@/lib/audioVolume";
+
 import { MicrophoneBufferType } from "../types/Microphone";
 
 export interface CreateMicrophoneBufferParams {
@@ -187,8 +189,7 @@ export function usePipelineControls({
   // Volume control updates
   useEffect(() => {
     if (microphoneBuffer.volumeGain) {
-      const gainValue = micVolume / 50;
-      microphoneBuffer.volumeGain.gain.setValueAtTime(gainValue, audioContext?.currentTime || 0);
+      microphoneBuffer.volumeGain.gain.setValueAtTime(sliderToOutputGain(micVolume), audioContext?.currentTime || 0);
     }
   }, [micVolume, microphoneBuffer.volumeGain, audioContext]);
 

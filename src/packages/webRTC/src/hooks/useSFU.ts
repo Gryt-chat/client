@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { singletonHook } from "react-singleton-hook";
 
 import { useMicrophone, useSpeakers } from "@/audio";
+import { sliderToGain } from "@/lib/audioVolume";
 import connectMp3 from "@/audio/src/assets/connect.mp3";
 import disconnectMp3 from "@/audio/src/assets/disconnect.mp3";
 import { useSettings } from "@/settings";
@@ -228,7 +229,7 @@ function useSfuHook(): SFUInterface {
     if (shouldPlaySound) {
       try {
         const audio = new Audio(disconnectSoundFile);
-        audio.volume = Math.max(0, Math.min(1, disconnectSoundVolume / 100));
+        audio.volume = sliderToGain(disconnectSoundVolume);
         audio.play().catch(() => {});
       } catch (error) {
         console.error("Error playing disconnect sound:", error);
