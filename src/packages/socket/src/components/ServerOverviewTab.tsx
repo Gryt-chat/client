@@ -67,15 +67,15 @@ export function ServerOverviewTab({
   const [iconCacheBuster, setIconCacheBuster] = useState(0);
   const iconInputRef = useRef<HTMLInputElement>(null);
 
-  const [profanityMode, setProfanityMode] = useState<ProfanityMode>("off");
-  const [censorStyle, setCensorStyle] = useState<CensorStyle>("grawlix");
+  const [profanityMode, setProfanityMode] = useState<ProfanityMode>("censor");
+  const [censorStyle, setCensorStyle] = useState<CensorStyle>("emoji");
 
   const [password, setPassword] = useState("");
   const [clearPassword, setClearPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [autosaving, setAutosaving] = useState(false);
-  const pendingSaveRef = useRef(false);
+  const pendingSaveCountRef = useRef(0);
   const lastSettingsRef = useRef<{
     displayName: string;
     description: string;
@@ -119,7 +119,7 @@ export function ServerOverviewTab({
 
     const onSettings = (payload: unknown) => {
       if (!isServerSettingsPayload(payload)) return;
-      const wasSaving = pendingSaveRef.current;
+      const wasSaving = pendingSaveCountRef.current > 0;
 
       setIsOwner(!!payload.isOwner);
       setHasPassword(!!payload.hasPassword);
@@ -131,8 +131,8 @@ export function ServerOverviewTab({
         return (Math.round(mb * 10) / 10).toString();
       };
 
-      setProfanityMode(payload.profanityMode ?? "off");
-      setCensorStyle(payload.profanityCensorStyle ?? "grawlix");
+      setProfanityMode(payload.profanityMode ?? "censor");
+      setCensorStyle(payload.profanityCensorStyle ?? "emoji");
 
       if (!wasSaving) {
         setDisplayName(payload.displayName || "");
@@ -143,16 +143,16 @@ export function ServerOverviewTab({
         toast.success("Settings saved");
       }
 
-      setAutosaving(false);
-      pendingSaveRef.current = false;
+      pendingSaveCountRef.current = Math.max(0, pendingSaveCountRef.current - 1);
+      if (pendingSaveCountRef.current === 0) setAutosaving(false);
 
       lastSettingsRef.current = {
         displayName: payload.displayName || "",
         description: payload.description || "",
         avatarMaxBytes: (typeof payload.avatarMaxBytes === "number" && Number.isFinite(payload.avatarMaxBytes)) ? payload.avatarMaxBytes : null,
         uploadMaxBytes: (typeof payload.uploadMaxBytes === "number" && Number.isFinite(payload.uploadMaxBytes)) ? payload.uploadMaxBytes : null,
-        profanityMode: payload.profanityMode ?? "off",
-        profanityCensorStyle: payload.profanityCensorStyle ?? "grawlix",
+        profanityMode: payload.profanityMode ?? "censor",
+        profanityCensorStyle: payload.profanityCensorStyle ?? "emoji",
       };
     };
 
@@ -198,7 +198,7 @@ export function ServerOverviewTab({
       lastSettingsRef.current = { ...lastSettingsRef.current, ...patch };
     }
 
-    pendingSaveRef.current = true;
+    pendingSaveCountRef.current += 1;
     setAutosaving(true);
     socket.emit("server:settings:update", {
       accessToken: effectiveAccessToken,

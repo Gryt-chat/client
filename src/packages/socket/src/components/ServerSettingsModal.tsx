@@ -26,7 +26,7 @@ type SetupRequiredDetail = {
 type SettingsOpenDetail = { host: string };
 
 export function ServerSettingsModal() {
-  const { sockets, serverDetailsList } = useSockets();
+  const { sockets, serverDetailsList, tokenRevision } = useSockets();
 
   const [isOpen, setIsOpen] = useState(false);
   const [host, setHost] = useState<string>("");
@@ -34,7 +34,7 @@ export function ServerSettingsModal() {
   const [initialOverviewSettings, setInitialOverviewSettings] = useState<ServerOverviewInitialSettings | undefined>(undefined);
 
   const socket = useMemo(() => (host ? sockets[host] : undefined), [sockets, host]);
-  const accessToken = useMemo(() => (host ? getServerAccessToken(host) : null), [host]);
+  const accessToken = useMemo(() => (host ? getServerAccessToken(host) : null), [host, tokenRevision]);
 
   const serverInfo = host ? serverDetailsList[host]?.server_info : undefined;
   const role = serverInfo?.role;
