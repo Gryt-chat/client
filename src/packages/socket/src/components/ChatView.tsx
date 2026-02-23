@@ -406,10 +406,13 @@ export const ChatView = memo(({
   const showVoiceDisabled = !canViewVoiceChannelText && isVoiceChannelTextChat;
   const showMessages = !showVoiceDisabled && !isLoadingMessages && chatMessages.length > 0;
 
-  const handleAtTopStateChange = useCallback((atTop: boolean) => {
-    console.log("[atTopStateChange]", { atTop, hasOlderMessages, isLoadingOlder, hasCallback: !!onLoadOlder });
-    if (atTop && hasOlderMessages && !isLoadingOlder && onLoadOlder) onLoadOlder();
-  }, [hasOlderMessages, isLoadingOlder, onLoadOlder]);
+  const handleRangeChanged = useCallback((range: { startIndex: number; endIndex: number }) => {
+    const distFromTop = range.startIndex - (firstItemIndex ?? 100_000);
+    if (distFromTop < 20 && hasOlderMessages && !isLoadingOlder && onLoadOlder) {
+      console.log("[rangeChanged] near top, loading older", { startIndex: range.startIndex, firstItemIndex, distFromTop });
+      onLoadOlder();
+    }
+  }, [firstItemIndex, hasOlderMessages, isLoadingOlder, onLoadOlder]);
 
   const followOutput = useCallback((isAtBottom: boolean) => {
     return isAtBottom ? "smooth" as const : false as const;
@@ -548,7 +551,7 @@ export const ChatView = memo(({
               firstItemIndex={firstItemIndex}
               initialTopMostItemIndex={chatMessages.length - 1}
               followOutput={followOutput}
-              atTopStateChange={handleAtTopStateChange}
+              rangeChanged={handleRangeChanged}
               overscan={400}
               increaseViewportBy={{ top: 200, bottom: 200 }}
               itemContent={itemContent}
