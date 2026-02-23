@@ -361,7 +361,7 @@ export const ChatView = ({
 
   const editorPlaceholder =
     !canViewVoiceChannelText && isVoiceChannelTextChat
-      ? "Connect to voice channel to send messages"
+      ? "Text chat is not available in this voice channel"
       : isRateLimited && rateLimitCountdown
         ? `Please wait ${rateLimitCountdown} seconds...`
         : channelName
@@ -419,7 +419,7 @@ export const ChatView = ({
         {isVoiceChannelTextChat && !canViewVoiceChannelText && (
           <Flex align="center" justify="center" style={{ padding: "24px", textAlign: "center" }}>
             <Text size="3" color="gray" style={{ maxWidth: "300px" }}>
-              🔒 You must be connected to this voice channel to view its messages
+              Text chat is not available in this voice channel
             </Text>
           </Flex>
         )}
@@ -428,7 +428,7 @@ export const ChatView = ({
         <Flex direction="column" justify="end" flexGrow="1" style={{ gap: 12, paddingBottom: "16px" }}>
           {!canViewVoiceChannelText && isVoiceChannelTextChat ? (
               <Text size="2" color="gray" style={{ textAlign: "center", padding: "16px" }}>
-                Voice channel messages are private to connected users
+                Text chat is disabled in this voice channel
               </Text>
           ) : isLoadingMessages ? (
               <MessageSkeleton />

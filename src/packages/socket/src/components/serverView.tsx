@@ -1,6 +1,6 @@
 import { AlertDialog, Box, Button, Dialog, Flex, IconButton, Select, Spinner, Switch, Text, TextField } from "@radix-ui/themes";
 import { motion } from "motion/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { MdClose, MdRefresh, MdWifiOff } from "react-icons/md";
 
@@ -55,6 +55,7 @@ export const ServerView = () => {
     setSheetChannelIsVoice, sheetRequirePtt, setSheetRequirePtt,
     sheetDisableRnnoise, setSheetDisableRnnoise, sheetMaxBitrate,
     setSheetMaxBitrate, sheetEsportsMode, setSheetEsportsMode,
+    sheetTextInVoice, setSheetTextInVoice,
     sheetSpacerHeight, setSheetSpacerHeight,
     sheetSeparatorLabel, setSheetSeparatorLabel, closeEditDialog,
     reorderSidebar, insertFromPalette, pendingDeleteItem,
@@ -90,6 +91,29 @@ export const ServerView = () => {
       setShowVoiceView(true);
     }
   }, [isCompact, setShowVoiceView, showVoiceView]);
+
+  const mediaAutoShownRef = useRef(false);
+  const serverClients = currentlyViewingServer ? clients[currentlyViewingServer.host] : undefined;
+  const anyMediaActive = useMemo(() => {
+    if (!serverClients || !currentChannelId || !isConnected) return false;
+    return Object.values(serverClients).some(
+      (c) => c.voiceChannelId === currentChannelId && (c.screenShareEnabled || c.cameraEnabled),
+    );
+  }, [serverClients, currentChannelId, isConnected]);
+
+  useEffect(() => {
+    if (!isConnected) {
+      mediaAutoShownRef.current = false;
+      return;
+    }
+    if (anyMediaActive && !showVoiceView) {
+      mediaAutoShownRef.current = true;
+      setShowVoiceView(true);
+    } else if (!anyMediaActive && showVoiceView && mediaAutoShownRef.current) {
+      mediaAutoShownRef.current = false;
+      setShowVoiceView(false);
+    }
+  }, [anyMediaActive, isConnected, showVoiceView, setShowVoiceView]);
 
   const [voiceFocused, setVoiceFocused] = useState(false);
   const [isDraggingResize, setIsDraggingResize] = useState(false);
@@ -153,6 +177,23 @@ export const ServerView = () => {
   }, [rightSidebarOpen]);
 
   const VOICE_MIN_WIDTH = 200;
+  const MIN_CHAT_WIDTH = 320;
+  const voiceContainerRef = useRef<HTMLDivElement>(null);
+  const [voiceContainerWidth, setVoiceContainerWidth] = useState(0);
+
+  useEffect(() => {
+    const el = voiceContainerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      setVoiceContainerWidth(entry.contentRect.width);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const voiceMaxWidth = voiceContainerWidth > 0
+    ? voiceContainerWidth - MIN_CHAT_WIDTH
+    : 0;
 
   const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -174,8 +215,9 @@ export const ServerView = () => {
           setVoiceWidth("0px");
         }
       } else {
+        const maxW = voiceMaxWidth > 0 ? voiceMaxWidth : Infinity;
         dragMinimizedRef.current = false;
-        setVoiceWidth(`${rawWidth}px`);
+        setVoiceWidth(`${Math.min(rawWidth, maxW)}px`);
       }
     };
 
@@ -187,7 +229,8 @@ export const ServerView = () => {
         setShowVoiceView(false);
         setVoiceWidth(`${userVoiceWidth}px`);
       } else {
-        const clamped = Math.max(VOICE_MIN_WIDTH, rawWidth);
+        const maxW = voiceMaxWidth > 0 ? voiceMaxWidth : Infinity;
+        const clamped = Math.min(Math.max(VOICE_MIN_WIDTH, rawWidth), maxW);
         setVoiceWidth(`${clamped}px`);
         setUserVoiceWidth(clamped);
       }
@@ -200,7 +243,7 @@ export const ServerView = () => {
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [isDraggingResize, userVoiceWidth, setShowVoiceView, setVoiceWidth, setUserVoiceWidth]);
+  }, [isDraggingResize, userVoiceWidth, voiceMaxWidth, setShowVoiceView, setVoiceWidth, setUserVoiceWidth]);
 
   const prevSettingsRef = useRef<{ inputMode: string; rnnoiseEnabled: boolean; eSportsModeEnabled: boolean; noiseGate: number } | null>(null);
 
@@ -384,6 +427,7 @@ export const ServerView = () => {
           isConnected && currentServerConnected === currentlyViewingServer.host && currentChannelId === channel.id;
 
         if (isAlreadyConnectedToThis) {
+          mediaAutoShownRef.current = false;
           if (selectedChannelId === channel.id) {
             setShowVoiceView(!showVoiceView);
           } else {
@@ -394,12 +438,12 @@ export const ServerView = () => {
         }
 
         if (isConnecting && currentChannelId === channel.id) {
+          mediaAutoShownRef.current = false;
           setSelectedChannelId(channel.id);
-          setShowVoiceView(true);
+          setShowVoiceView(!showVoiceView);
           return;
         }
 
-        setShowVoiceView(true);
         setPendingChannelId(null);
         applyChannelSettings(channel);
         connect(channel.id, channel.eSportsMode, channel.maxBitrate).catch((error) => {
@@ -665,10 +709,11 @@ export const ServerView = () => {
               </motion.div>
             </div>
 
-            <Flex flexGrow="1">
+            <Flex flexGrow="1" ref={voiceContainerRef}>
               <VoiceView
                 showVoiceView={showVoiceView && !isCompact}
                 voiceWidth={voiceWidth}
+                maxWidth={voiceMaxWidth}
                 serverHost={currentlyViewingServer.host}
                 currentServerConnected={currentServerConnected}
                 currentChannelId={currentChannelId}
@@ -911,6 +956,13 @@ export const ServerView = () => {
                           <Select.Item value="510000">510 kbps</Select.Item>
                         </Select.Content>
                       </Select.Root>
+                    </Flex>
+                    <Flex align="center" justify="between">
+                      <Flex direction="column" gap="1">
+                        <Text size="2" weight="medium">Enable Text Chat</Text>
+                        <Text size="1" color="gray">Allow text messages in this voice channel</Text>
+                      </Flex>
+                      <Switch checked={sheetTextInVoice} onCheckedChange={(v) => { setSheetTextInVoice(v); debouncedSaveSidebar(); }} />
                     </Flex>
                   </>
                 )}

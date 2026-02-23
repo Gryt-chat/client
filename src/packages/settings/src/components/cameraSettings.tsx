@@ -8,6 +8,8 @@ import { useSettings } from "@/settings";
 import { SettingsContainer, ToggleSetting } from "./settingsComponents";
 
 const QUALITY_OPTIONS = [
+  { value: "native", label: "Native (camera default)" },
+  { value: "1080p", label: "1080p (1920×1080)" },
   { value: "720p", label: "720p (1280×720)" },
   { value: "480p", label: "480p (854×480)" },
   { value: "360p", label: "360p (640×360)" },
@@ -40,15 +42,18 @@ export function CameraSettings() {
 
   const startPreview = useCallback(async () => {
     if (cameraEnabled) return;
-    const quality = QUALITY_CONSTRAINTS[cameraQuality as CameraQuality] ?? QUALITY_CONSTRAINTS["720p"];
+    const quality = QUALITY_CONSTRAINTS[cameraQuality as CameraQuality] ?? QUALITY_CONSTRAINTS.native;
+    const videoConstraints: MediaTrackConstraints = {
+      ...(cameraID ? { deviceId: { exact: cameraID } } : {}),
+      frameRate: { ideal: quality.frameRate },
+    };
+    if (quality.width) {
+      videoConstraints.width = { ideal: quality.width };
+      videoConstraints.height = { ideal: quality.height };
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          ...(cameraID ? { deviceId: { exact: cameraID } } : {}),
-          width: { ideal: quality.width },
-          height: { ideal: quality.height },
-          frameRate: { ideal: quality.frameRate },
-        },
+        video: videoConstraints,
         audio: false,
       });
       if (previewStreamRef.current) {

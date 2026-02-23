@@ -7,6 +7,7 @@ export type Channel = {
   disableRnnoise?: boolean;
   maxBitrate?: number | null;
   eSportsMode?: boolean;
+  textInVoice?: boolean;
 };
 
 export type SidebarItemKind = "channel" | "separator" | "spacer";

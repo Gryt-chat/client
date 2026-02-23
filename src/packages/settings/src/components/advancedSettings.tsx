@@ -16,6 +16,8 @@ export function AdvancedSettings() {
     setShowDebugOverlay,
     showPeerLatency,
     setShowPeerLatency,
+    experimentalScreenShare,
+    setExperimentalScreenShare,
   } = useSettings();
 
   const inElectron = isElectron();
@@ -69,6 +71,20 @@ export function AdvancedSettings() {
 
       {/* ── Latency ── */}
       <LatencyPanel />
+
+      <Separator size="4" />
+
+      {/* ── Experimental Screen Share ── */}
+      <ToggleSetting
+        title="Experimental Screen Share"
+        description="Unlock high frame rate options (144, 165, 240 FPS) for screen sharing. These require significant bandwidth and may not work on all hardware."
+        checked={experimentalScreenShare}
+        onCheckedChange={setExperimentalScreenShare}
+        statusText={experimentalScreenShare
+          ? "High FPS options (144, 165, 240) are available in the screen share picker"
+          : undefined
+        }
+      />
 
       <Separator size="4" />
 

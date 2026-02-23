@@ -1,12 +1,11 @@
-import { Box, Button, Heading, HoverCard, IconButton } from "@radix-ui/themes";
+import { IconButton } from "@radix-ui/themes";
 import { AnimatePresence, motion, Variants } from "motion/react";
 import { useCallback, useState } from "react";
-import { MdArrowForward, MdCallEnd, MdMic, MdMicOff, MdScreenShare, MdStopScreenShare, MdVideocam, MdVideocamOff, MdVolumeOff, MdVolumeUp } from "react-icons/md";
+import { MdCallEnd, MdMic, MdMicOff, MdScreenShare, MdStopScreenShare, MdVideocam, MdVideocamOff, MdVolumeOff, MdVolumeUp } from "react-icons/md";
 
 import { type ScreenShareQuality,useCamera, useScreenShare } from "@/audio";
-import { getServerHttpBase } from "@/common";
 import { useSettings } from "@/settings";
-import { useServerManagement,useSockets } from "@/socket";
+import { useServerManagement } from "@/socket";
 
 import { useSFU } from "../hooks/useSFU";
 import { CameraPreviewModal } from "./CameraPreviewModal";
@@ -36,19 +35,16 @@ export function MiniControls({
     setIsMuted,
     isDeafened,
     showVoiceView,
-    setShowVoiceView,
     setIsDeafened,
   } = useSettings();
   
   const {
-    switchToServer,
     currentlyViewingServer,
   } = useServerManagement();
 
   const {
     currentServerConnected,
     disconnect,
-    currentChannelConnected,
     isConnected,
   } = useSFU();
 
@@ -56,6 +52,8 @@ export function MiniControls({
   const { screenShareActive, startScreenShare, stopScreenShare } = useScreenShare();
   const {
     screenShareQuality, setScreenShareQuality,
+    screenShareFps, setScreenShareFps,
+    experimentalScreenShare,
     cameraID, setCameraID, cameraQuality, setCameraQuality,
     cameraMirrored, setCameraMirrored,
   } = useSettings();
@@ -73,7 +71,9 @@ export function MiniControls({
     else setShowScreenShareModal(true);
   }, [screenShareActive, stopScreenShare]);
 
-  const { getChannelDetails, serverDetailsList } = useSockets();
+  const isColumn = direction === "column";
+  const btnSize = isColumn ? "2" : "1" as const;
+  const iconSize = isColumn ? 14 : 12;
 
   return (
     <>
@@ -88,130 +88,82 @@ export function MiniControls({
             exit="hidden"
             style={{
               display: "flex",
-              flexDirection: direction === "column" ? "column" : "row-reverse",
+              flexDirection: isColumn ? "column" : "row-reverse",
               alignItems: "center",
-              gap: "8px",
+              gap: isColumn ? "2px" : "8px",
+              ...(isColumn ? {
+                background: "var(--gray-a3)",
+                borderRadius: "9999px",
+                padding: "2px",
+              } : {}),
             }}
           >
             <motion.div variants={buttonAnimations}>
               <IconButton
-                size="1"
+                size={btnSize}
                 color={isMuted ? "red" : "gray"}
                 variant="soft"
+                radius="full"
                 onClick={() => setIsMuted(!isMuted)}
               >
-                {isMuted ? <MdMicOff size={12} /> : <MdMic size={12} />}
+                {isMuted ? <MdMicOff size={iconSize} /> : <MdMic size={iconSize} />}
               </IconButton>
             </motion.div>
 
             <motion.div variants={buttonAnimations}>
               <IconButton
-                size="1"
+                size={btnSize}
                 color={isDeafened ? "red" : "gray"}
                 variant="soft"
+                radius="full"
                 onClick={() => setIsDeafened(!isDeafened)}
               >
                 {isDeafened ? (
-                  <MdVolumeOff size={12} />
+                  <MdVolumeOff size={iconSize} />
                 ) : (
-                  <MdVolumeUp size={12} />
+                  <MdVolumeUp size={iconSize} />
                 )}
               </IconButton>
             </motion.div>
 
             <motion.div variants={buttonAnimations}>
               <IconButton
-                size="1"
+                size={btnSize}
                 color={cameraEnabled ? "green" : "gray"}
                 variant="soft"
+                radius="full"
                 onClick={handleCameraClick}
               >
-                {cameraEnabled ? <MdVideocam size={12} /> : <MdVideocamOff size={12} />}
+                {cameraEnabled ? <MdVideocam size={iconSize} /> : <MdVideocamOff size={iconSize} />}
               </IconButton>
             </motion.div>
 
             <motion.div variants={buttonAnimations}>
               <IconButton
-                size="1"
+                size={btnSize}
                 color={screenShareActive ? "green" : "gray"}
                 variant="soft"
+                radius="full"
                 onClick={handleScreenShareClick}
               >
-                {screenShareActive ? <MdStopScreenShare size={12} /> : <MdScreenShare size={12} />}
+                {screenShareActive ? <MdStopScreenShare size={iconSize} /> : <MdScreenShare size={iconSize} />}
               </IconButton>
             </motion.div>
 
             <motion.div variants={buttonAnimations}>
               <IconButton
-                size="1"
+                size={btnSize}
                 variant="soft"
                 color="red"
+                radius="full"
                 onClick={() => {
                   if (cameraEnabled) setCameraEnabled(false);
                   if (screenShareActive) stopScreenShare();
                   void disconnect();
                 }}
               >
-                <MdCallEnd size={12} />
+                <MdCallEnd size={iconSize} />
               </IconButton>
-            </motion.div>
-            <motion.div variants={buttonAnimations}>
-              <HoverCard.Root
-                openDelay={100}
-                closeDelay={0}
-                key={currentServerConnected}
-              >
-                <HoverCard.Trigger>
-                  <Button
-                    variant="soft"
-                    style={{
-                      height: "32px",
-                      width: "32px",
-                      padding: "0",
-                      position: "relative",
-                      overflow: "hidden",
-                    }}
-                    color="gray"
-                    onClick={() => {
-                      switchToServer(currentServerConnected);
-                      setShowVoiceView(true);
-                    }}
-                  >
-                    <img
-                      style={{
-                        position: "absolute",
-                        width: "24px",
-                        height: "24px",
-                        borderRadius: "100%",
-                        opacity: 0.25,
-                        objectFit: "cover",
-                        objectPosition: "center",
-                      }}
-                      src={`${getServerHttpBase(currentServerConnected)}/icon${currentServerConnected && serverDetailsList[currentServerConnected]?.server_info?.icon_url ? `?v=${encodeURIComponent(serverDetailsList[currentServerConnected].server_info!.icon_url!)}` : ''}`}
-                    />
-
-                    <MdArrowForward size={12} />
-                  </Button>
-                </HoverCard.Trigger>
-                <HoverCard.Content
-                  maxWidth="300px"
-                  side="right"
-                  size="1"
-                  align="center"
-                >
-                  <Box>
-                    <Heading size="1">
-                      Go to{" "}
-                      {
-                        getChannelDetails(
-                          currentServerConnected,
-                          currentChannelConnected
-                        )?.name
-                      }
-                    </Heading>
-                  </Box>
-                </HoverCard.Content>
-              </HoverCard.Root>
             </motion.div>
           </motion.div>
         )}
@@ -234,6 +186,9 @@ export function MiniControls({
         onOpenChange={setShowScreenShareModal}
         quality={screenShareQuality as ScreenShareQuality}
         onQualityChange={setScreenShareQuality}
+        fps={screenShareFps}
+        onFpsChange={setScreenShareFps}
+        experimentalScreenShare={experimentalScreenShare}
         onStart={({ sourceId, withAudio }) => startScreenShare(withAudio, sourceId)}
       />
     </>

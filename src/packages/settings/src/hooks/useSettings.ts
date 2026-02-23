@@ -126,7 +126,7 @@ function useSettingsHook() {
     localStorage.getItem("cameraID") || ""
   );
   const [cameraQuality, setCameraQuality] = useState(
-    localStorage.getItem("cameraQuality") || "720p"
+    localStorage.getItem("cameraQuality") || "native"
   );
   const [cameraMirrored, setCameraMirrored] = useState(
     localStorage.getItem("cameraMirrored") !== "false"
@@ -134,6 +134,12 @@ function useSettingsHook() {
 
   const [screenShareQuality, setScreenShareQuality] = useState(
     localStorage.getItem("screenShareQuality") || "native"
+  );
+  const [screenShareFps, setScreenShareFps] = useState(
+    Number(localStorage.getItem("screenShareFps")) || 30
+  );
+  const [experimentalScreenShare, setExperimentalScreenShare] = useState(
+    localStorage.getItem("experimentalScreenShare") === "true"
   );
 
   const [userVolumes, setUserVolumes] = useState<Record<string, number>>(
@@ -381,6 +387,16 @@ function useSettingsHook() {
     localStorage.setItem("screenShareQuality", quality);
   }
 
+  function updateScreenShareFps(fps: number) {
+    setScreenShareFps(fps);
+    localStorage.setItem("screenShareFps", fps.toString());
+  }
+
+  function updateExperimentalScreenShare(enabled: boolean) {
+    setExperimentalScreenShare(enabled);
+    localStorage.setItem("experimentalScreenShare", enabled.toString());
+  }
+
   function updateUserVolume(serverUserId: string, volume: number) {
     setUserVolumes((prev) => {
       const next = { ...prev, [serverUserId]: volume };
@@ -586,6 +602,10 @@ function useSettingsHook() {
     setCameraMirrored: updateCameraMirrored,
     screenShareQuality,
     setScreenShareQuality: updateScreenShareQuality,
+    screenShareFps,
+    setScreenShareFps: updateScreenShareFps,
+    experimentalScreenShare,
+    setExperimentalScreenShare: updateExperimentalScreenShare,
     userVolumes,
     updateUserVolume,
     resetUserVolume,

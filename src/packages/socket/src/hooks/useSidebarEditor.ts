@@ -30,6 +30,7 @@ export function useSidebarEditor({
   const [sheetDisableRnnoise, setSheetDisableRnnoise] = useState(false);
   const [sheetMaxBitrate, setSheetMaxBitrate] = useState("");
   const [sheetEsportsMode, setSheetEsportsMode] = useState(false);
+  const [sheetTextInVoice, setSheetTextInVoice] = useState(false);
   const [sheetSpacerHeight, setSheetSpacerHeight] = useState("16");
   const [sheetSeparatorLabel, setSheetSeparatorLabel] = useState("");
 
@@ -75,6 +76,7 @@ export function useSidebarEditor({
       setSheetDisableRnnoise(ch?.disableRnnoise || false);
       setSheetMaxBitrate(ch?.maxBitrate ? String(ch.maxBitrate) : "");
       setSheetEsportsMode(ch?.eSportsMode || false);
+      setSheetTextInVoice(ch?.textInVoice || false);
     } else if (selectedSidebarItem.kind === "spacer") {
       setSheetSpacerHeight(String(selectedSidebarItem.spacerHeight ?? 16));
     } else if (selectedSidebarItem.kind === "separator") {
@@ -256,6 +258,7 @@ export function useSidebarEditor({
         disableRnnoise: sheetEsportsMode || sheetDisableRnnoise,
         maxBitrate: !isNaN(parsedBitrate) && parsedBitrate > 0 ? parsedBitrate : null,
         eSportsMode: sheetEsportsMode,
+        textInVoice: sheetTextInVoice,
       });
       return;
     }
@@ -299,6 +302,7 @@ export function useSidebarEditor({
     sheetDisableRnnoise,
     sheetMaxBitrate,
     sheetEsportsMode,
+    sheetTextInVoice,
     sheetSpacerHeight,
     sheetSeparatorLabel,
   ]);
@@ -322,6 +326,8 @@ export function useSidebarEditor({
     setSheetMaxBitrate,
     sheetEsportsMode,
     setSheetEsportsMode,
+    sheetTextInVoice,
+    setSheetTextInVoice,
     sheetSpacerHeight,
     setSheetSpacerHeight,
     sheetSeparatorLabel,

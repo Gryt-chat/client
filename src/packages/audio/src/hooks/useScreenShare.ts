@@ -5,21 +5,36 @@ import { useSettings } from "@/settings";
 
 import { isElectron } from "../../../../lib/electron";
 
-export type ScreenShareQuality = "native" | "1080p" | "720p" | "480p";
+export type ScreenShareQuality = "native" | "4k" | "1440p" | "1080p" | "720p" | "480p";
 
-const QUALITY_CONSTRAINTS: Record<ScreenShareQuality, { width?: number; height?: number; frameRate: number }> = {
-  native: { frameRate: 30 },
-  "1080p": { width: 1920, height: 1080, frameRate: 30 },
-  "720p": { width: 1280, height: 720, frameRate: 30 },
-  "480p": { width: 854, height: 480, frameRate: 15 },
+export type ScreenShareFps = 30 | 60 | 90 | 120 | 144 | 165 | 240;
+
+export const STANDARD_FPS_OPTIONS: ScreenShareFps[] = [30, 60, 90, 120];
+export const EXPERIMENTAL_FPS_OPTIONS: ScreenShareFps[] = [144, 165, 240];
+
+const RESOLUTION_CONSTRAINTS: Record<ScreenShareQuality, { width?: number; height?: number }> = {
+  native: {},
+  "4k": { width: 3840, height: 2160 },
+  "1440p": { width: 2560, height: 1440 },
+  "1080p": { width: 1920, height: 1080 },
+  "720p": { width: 1280, height: 720 },
+  "480p": { width: 854, height: 480 },
 };
 
-export const QUALITY_BITRATES: Record<ScreenShareQuality, number | null> = {
+const BASE_BITRATES_30FPS: Record<ScreenShareQuality, number | null> = {
   native: null,
+  "4k": 20_000_000,
+  "1440p": 12_000_000,
   "1080p": 6_000_000,
   "720p": 3_000_000,
   "480p": 1_500_000,
 };
+
+export function estimateBitrate(quality: ScreenShareQuality, fps: number): number | null {
+  const base = BASE_BITRATES_30FPS[quality];
+  if (base === null) return null;
+  return Math.round(base * (fps / 30));
+}
 
 export interface ScreenShareInterface {
   screenVideoStream: MediaStream | null;
@@ -30,7 +45,7 @@ export interface ScreenShareInterface {
 }
 
 function useScreenShareHook(): ScreenShareInterface {
-  const { screenShareQuality } = useSettings();
+  const { screenShareQuality, screenShareFps } = useSettings();
   const [screenVideoStream, setScreenVideoStream] = useState<MediaStream | null>(null);
   const [screenAudioStream, setScreenAudioStream] = useState<MediaStream | null>(null);
   const [screenShareActive, setScreenShareActive] = useState(false);
@@ -47,7 +62,8 @@ function useScreenShareHook(): ScreenShareInterface {
   }, []);
 
   const startScreenShare = useCallback(async (withAudio: boolean, sourceId?: string) => {
-    const q = QUALITY_CONSTRAINTS[screenShareQuality as ScreenShareQuality] ?? QUALITY_CONSTRAINTS.native;
+    const res = RESOLUTION_CONSTRAINTS[screenShareQuality as ScreenShareQuality] ?? RESOLUTION_CONSTRAINTS.native;
+    const fps = screenShareFps || 30;
 
     try {
       let stream: MediaStream;
@@ -65,11 +81,11 @@ function useScreenShareHook(): ScreenShareInterface {
         const mandatory: ChromeDesktopMandatory = {
           chromeMediaSource: "desktop",
           chromeMediaSourceId: sourceId,
-          maxFrameRate: q.frameRate,
+          maxFrameRate: fps,
         };
-        if (q.width) {
-          mandatory.maxWidth = q.width;
-          mandatory.maxHeight = q.height;
+        if (res.width) {
+          mandatory.maxWidth = res.width;
+          mandatory.maxHeight = res.height;
         }
 
         const video: ChromeDesktopConstraints = { mandatory };
@@ -85,11 +101,11 @@ function useScreenShareHook(): ScreenShareInterface {
         stream = await navigator.mediaDevices.getUserMedia(constraints);
       } else {
         const videoConstraints: MediaTrackConstraints = {
-          frameRate: { ideal: q.frameRate },
+          frameRate: { ideal: fps },
         };
-        if (q.width) {
-          videoConstraints.width = { ideal: q.width };
-          videoConstraints.height = { ideal: q.height };
+        if (res.width) {
+          videoConstraints.width = { ideal: res.width };
+          videoConstraints.height = { ideal: res.height };
         }
 
         stream = await navigator.mediaDevices.getDisplayMedia({
@@ -125,7 +141,7 @@ function useScreenShareHook(): ScreenShareInterface {
       console.error("[ScreenShare] getDisplayMedia failed:", error);
       setScreenShareActive(false);
     }
-  }, [screenShareQuality, stopScreenShare]);
+  }, [screenShareQuality, screenShareFps, stopScreenShare]);
 
   useEffect(() => {
     return () => {

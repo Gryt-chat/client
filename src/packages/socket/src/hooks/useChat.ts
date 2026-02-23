@@ -387,8 +387,12 @@ export function useChat({
 
   // Voice channel text chat permission checks
   const isVoiceChannelTextChat = activeConversationId === currentChannelId;
-  const canSendToVoiceChannel = !isVoiceChannelTextChat || isConnected;
-  const canViewVoiceChannelText = !isVoiceChannelTextChat || isConnected;
+  const activeVoiceChannel = isVoiceChannelTextChat && currentlyViewingServer
+    ? serverDetailsList[currentlyViewingServer.host]?.channels?.find((c) => c.id === currentChannelId)
+    : undefined;
+  const textInVoiceEnabled = activeVoiceChannel?.textInVoice === true;
+  const canSendToVoiceChannel = !isVoiceChannelTextChat || (isConnected && textInVoiceEnabled);
+  const canViewVoiceChannelText = !isVoiceChannelTextChat || (isConnected && textInVoiceEnabled);
 
   const canSend = !!currentConnection &&
                   !!activeConversationId &&
@@ -441,7 +445,9 @@ export function useChat({
 
     if (!canSend) {
       if (isRateLimited) return;
-      if (isVoiceChannelTextChat && !isConnected) {
+      if (isVoiceChannelTextChat && !textInVoiceEnabled) {
+        toast.error("Text chat is disabled in this voice channel");
+      } else if (isVoiceChannelTextChat && !isConnected) {
         toast.error("You must be connected to this voice channel to send messages");
       }
       return;

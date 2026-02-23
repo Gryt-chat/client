@@ -61,7 +61,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("toggle-always-on-top", pinned);
   },
 
-  getDesktopSources(): Promise<Array<{ id: string; name: string; thumbnail: string; appIcon: string; sourceType: "screen" | "window" }>> {
+  getDesktopSources(): Promise<Array<{ id: string; name: string; thumbnail: string; appIcon: string; sourceType: "screen" | "window"; width?: number; height?: number }>> {
     return ipcRenderer.invoke("get-desktop-sources");
   },
 

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, desktopCapturer, ipcMain, Menu, nativeImage, session, shell, Tray } from "electron";
+import { app, BrowserWindow, desktopCapturer, ipcMain, Menu, nativeImage, screen, session, shell, Tray } from "electron";
 import { autoUpdater, UpdateInfo } from "electron-updater";
 import { readFileSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
@@ -514,13 +514,29 @@ if (!gotSingleInstanceLock) {
         types: ["screen", "window"],
         thumbnailSize: { width: 320, height: 180 },
       });
-      return sources.map((s) => ({
-        id: s.id,
-        name: s.name,
-        thumbnail: s.thumbnail.toDataURL(),
-        appIcon: s.appIcon ? s.appIcon.toDataURL() : "",
-        sourceType: s.id.startsWith("screen:") ? "screen" as const : "window" as const,
-      }));
+      const displays = screen.getAllDisplays();
+      return sources.map((s) => {
+        const isScreen = s.id.startsWith("screen:");
+        let width: number | undefined;
+        let height: number | undefined;
+        if (isScreen) {
+          const displayIndex = parseInt(s.id.split(":")[1], 10);
+          const display = displays[displayIndex];
+          if (display) {
+            width = display.size.width * display.scaleFactor;
+            height = display.size.height * display.scaleFactor;
+          }
+        }
+        return {
+          id: s.id,
+          name: s.name,
+          thumbnail: s.thumbnail.toDataURL(),
+          appIcon: s.appIcon ? s.appIcon.toDataURL() : "",
+          sourceType: isScreen ? "screen" as const : "window" as const,
+          width,
+          height,
+        };
+      });
     });
 
     // ── IPC handlers ──────────────────────────────────────────────────

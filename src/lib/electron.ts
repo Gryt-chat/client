@@ -11,6 +11,8 @@ export interface DesktopSource {
   thumbnail: string;
   appIcon: string;
   sourceType: "screen" | "window";
+  width?: number;
+  height?: number;
 }
 
 export interface ElectronAPI {

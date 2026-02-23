@@ -1,8 +1,9 @@
 import { Badge, Button, Checkbox, Dialog, Flex, IconButton, Select, Text } from "@radix-ui/themes";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { MdClose, MdMonitor, MdScreenShare, MdWindow } from "react-icons/md";
 
-import type { ScreenShareQuality } from "@/audio";
+import type { ScreenShareFps, ScreenShareQuality } from "@/audio";
+import { estimateBitrate, EXPERIMENTAL_FPS_OPTIONS, STANDARD_FPS_OPTIONS } from "@/audio";
 
 import { type DesktopSource, isElectron } from "../../../../lib/electron";
 
@@ -11,19 +12,38 @@ interface ScreenSharePickerModalProps {
   onOpenChange: (open: boolean) => void;
   quality: ScreenShareQuality;
   onQualityChange: (q: ScreenShareQuality) => void;
+  fps: number;
+  onFpsChange: (fps: number) => void;
+  experimentalScreenShare: boolean;
   onStart: (opts: { sourceId?: string; withAudio: boolean }) => void;
 }
 
-const QUALITY_OPTIONS: { value: ScreenShareQuality; label: string }[] = [
-  { value: "native", label: "Native" },
-  { value: "1080p", label: "1080p" },
-  { value: "720p", label: "720p" },
-  { value: "480p", label: "480p" },
+const ALL_QUALITY_OPTIONS: { value: ScreenShareQuality; label: string; height: number }[] = [
+  { value: "4k", label: "4K (3840\u00d72160)", height: 2160 },
+  { value: "1440p", label: "1440p (2560\u00d71440)", height: 1440 },
+  { value: "1080p", label: "1080p (1920\u00d71080)", height: 1080 },
+  { value: "720p", label: "720p (1280\u00d7720)", height: 720 },
+  { value: "480p", label: "480p (854\u00d7480)", height: 480 },
 ];
+
+function formatBitrate(bps: number): string {
+  const mbps = bps / 1_000_000;
+  return mbps >= 10 ? `${Math.round(mbps)} Mbps` : `${mbps.toFixed(1)} Mbps`;
+}
+
+function bitrateColor(bps: number): "green" | "yellow" | "red" {
+  const mbps = bps / 1_000_000;
+  if (mbps < 10) return "green";
+  if (mbps <= 30) return "yellow";
+  return "red";
+}
 
 type Tab = "screens" | "windows";
 
-export function ScreenSharePickerModal({ open, onOpenChange, quality, onQualityChange, onStart }: ScreenSharePickerModalProps) {
+export function ScreenSharePickerModal({
+  open, onOpenChange, quality, onQualityChange,
+  fps, onFpsChange, experimentalScreenShare, onStart,
+}: ScreenSharePickerModalProps) {
   const [sources, setSources] = useState<DesktopSource[]>([]);
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<Tab>("screens");
@@ -66,6 +86,35 @@ export function ScreenSharePickerModal({ open, onOpenChange, quality, onQualityC
 
   const filteredSources = sources.filter((s) =>
     tab === "screens" ? s.sourceType === "screen" : s.sourceType === "window",
+  );
+
+  const selectedSource = sources.find((s) => s.id === selected);
+  const qualityOptions = useMemo(() => {
+    const nativeOpt: { value: ScreenShareQuality; label: string }[] = [
+      { value: "native", label: selectedSource?.height ? `Native (${selectedSource.width}\u00d7${selectedSource.height})` : "Native" },
+    ];
+    const sourceHeight = selectedSource?.height;
+    const filtered = sourceHeight
+      ? ALL_QUALITY_OPTIONS.filter((o) => o.height <= sourceHeight)
+      : ALL_QUALITY_OPTIONS;
+    return [...nativeOpt, ...filtered];
+  }, [selectedSource]);
+
+  const fpsOptions = useMemo(() => {
+    const options: { value: ScreenShareFps; label: string }[] = STANDARD_FPS_OPTIONS.map(
+      (f) => ({ value: f, label: `${f} FPS` }),
+    );
+    if (experimentalScreenShare) {
+      for (const f of EXPERIMENTAL_FPS_OPTIONS) {
+        options.push({ value: f, label: `${f} FPS (Experimental)` });
+      }
+    }
+    return options;
+  }, [experimentalScreenShare]);
+
+  const estimatedBps = useMemo(
+    () => estimateBitrate(quality, fps),
+    [quality, fps],
   );
 
   const handleShare = () => {
@@ -199,13 +248,63 @@ export function ScreenSharePickerModal({ open, onOpenChange, quality, onQualityC
               <Select.Root value={quality} onValueChange={(v) => onQualityChange(v as ScreenShareQuality)}>
                 <Select.Trigger variant="soft" />
                 <Select.Content>
-                  {QUALITY_OPTIONS.map((o) => (
+                  {qualityOptions.map((o) => (
                     <Select.Item key={o.value} value={o.value}>{o.label}</Select.Item>
                   ))}
                 </Select.Content>
               </Select.Root>
             </Flex>
+
+            <Flex align="center" gap="2">
+              <Text size="2">FPS</Text>
+              <Select.Root value={String(fps)} onValueChange={(v) => onFpsChange(Number(v))}>
+                <Select.Trigger variant="soft" />
+                <Select.Content>
+                  {fpsOptions.map((o) => (
+                    <Select.Item key={o.value} value={String(o.value)}>{o.label}</Select.Item>
+                  ))}
+                </Select.Content>
+              </Select.Root>
+            </Flex>
           </Flex>
+
+          {estimatedBps !== null ? (
+            <Flex
+              align="center"
+              gap="2"
+              px="3"
+              py="2"
+              style={{
+                borderRadius: "var(--radius-2)",
+                background: "var(--gray-3)",
+              }}
+            >
+              <Text size="2" weight="medium">Estimated bandwidth:</Text>
+              <Badge color={bitrateColor(estimatedBps)} variant="soft" size="1">
+                {formatBitrate(estimatedBps)}
+              </Badge>
+              {estimatedBps / 1_000_000 > 30 && (
+                <Text size="1" color="red">
+                  Very high &mdash; ensure your connection can handle this
+                </Text>
+              )}
+            </Flex>
+          ) : (
+            <Flex
+              align="center"
+              gap="2"
+              px="3"
+              py="2"
+              style={{
+                borderRadius: "var(--radius-2)",
+                background: "var(--gray-3)",
+              }}
+            >
+              <Text size="2" color="gray">
+                Bandwidth varies by source resolution (native mode)
+              </Text>
+            </Flex>
+          )}
 
           <Flex justify="end" gap="2">
             <Button variant="soft" color="gray" onClick={() => onOpenChange(false)}>

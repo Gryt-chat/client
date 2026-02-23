@@ -17,12 +17,16 @@ interface CameraPreviewModalProps {
 }
 
 const QUALITY_OPTIONS: { value: CameraQuality; label: string }[] = [
+  { value: "native", label: "Native" },
+  { value: "1080p", label: "1080p" },
   { value: "720p", label: "720p" },
   { value: "480p", label: "480p" },
   { value: "360p", label: "360p" },
 ];
 
-const QUALITY_CONSTRAINTS: Record<string, { width: number; height: number; frameRate: number }> = {
+const QUALITY_CONSTRAINTS: Record<string, { width?: number; height?: number; frameRate: number }> = {
+  native: { frameRate: 30 },
+  "1080p": { width: 1920, height: 1080, frameRate: 30 },
   "720p": { width: 1280, height: 720, frameRate: 30 },
   "480p": { width: 854, height: 480, frameRate: 30 },
   "360p": { width: 640, height: 360, frameRate: 30 },
@@ -57,15 +61,18 @@ export function CameraPreviewModal({
   }, [open, cameraID, quality, mirrored]);
 
   const startPreview = useCallback(async (deviceId: string, q: string) => {
-    const qc = QUALITY_CONSTRAINTS[q] ?? QUALITY_CONSTRAINTS["720p"];
+    const qc = QUALITY_CONSTRAINTS[q] ?? QUALITY_CONSTRAINTS.native;
+    const videoConstraints: MediaTrackConstraints = {
+      ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
+      frameRate: { ideal: qc.frameRate },
+    };
+    if (qc.width) {
+      videoConstraints.width = { ideal: qc.width };
+      videoConstraints.height = { ideal: qc.height };
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
-          width: { ideal: qc.width },
-          height: { ideal: qc.height },
-          frameRate: { ideal: qc.frameRate },
-        },
+        video: videoConstraints,
         audio: false,
       });
       return stream;

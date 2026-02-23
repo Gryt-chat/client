@@ -9,6 +9,7 @@ import { MdClose, MdMicOff, MdScreenShare, MdVideocam, MdVolumeOff, MdVolumeUp }
 
 import { useCamera as useLocalCamera, useScreenShare as useLocalScreenShare, useVoiceLatency } from "@/audio";
 import { getUploadsFileUrl } from "@/common";
+import { sliderToGain } from "@/lib/audioVolume";
 import { useSettings } from "@/settings";
 import { Controls } from "@/webRTC";
 import type { StreamSources } from "@/webRTC/src/types/SFU";
@@ -130,7 +131,7 @@ function FocusedVideoView({
     setVolume(v);
     if (audioStreamId && streamSources?.[audioStreamId]) {
       const gain = streamSources[audioStreamId].gain;
-      gain.gain.setValueAtTime(v / 100, 0);
+      gain.gain.setValueAtTime(sliderToGain(v, 200), 0);
     }
   }, [audioStreamId, streamSources]);
 
@@ -249,6 +250,7 @@ interface FocusedStreamInfo {
 export const VoiceView = ({
   showVoiceView,
   voiceWidth,
+  maxWidth,
   serverHost,
   currentServerConnected,
   currentChannelId,
@@ -269,6 +271,7 @@ export const VoiceView = ({
 }: {
   showVoiceView: boolean;
   voiceWidth: string;
+  maxWidth?: number;
   serverHost: string;
   currentServerConnected: string | null;
   currentChannelId?: string;
@@ -608,7 +611,7 @@ export const VoiceView = ({
         width: showVoiceView ? voiceWidth : 0,
         paddingRight: !showVoiceView || voiceWidth === "0px" ? 0 : 8,
       }}
-      style={{ overflow: "hidden", maxWidth: "90%" }}
+      style={{ overflow: "hidden", maxWidth: maxWidth && maxWidth > 0 ? `${maxWidth}px` : undefined }}
     >
       <Flex
         style={{ background: "var(--gray-3)", borderRadius: "var(--radius-5)" }}

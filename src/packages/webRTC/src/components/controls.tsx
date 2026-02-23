@@ -12,8 +12,8 @@ import {
   MdVolumeUp,
 } from "react-icons/md";
 
-import { getIsBrowserSupported, useCamera, useScreenShare } from "@/audio";
-import { QUALITY_BITRATES, type ScreenShareQuality } from "@/audio/src/hooks/useScreenShare";
+import { estimateBitrate, getIsBrowserSupported, useCamera, useScreenShare } from "@/audio";
+import type { ScreenShareQuality } from "@/audio";
 import { useSettings } from "@/settings";
 import { useSockets } from "@/socket";
 import { useSFU } from "@/webRTC";
@@ -46,6 +46,8 @@ export function Controls({ onDisconnect }: ControlsProps) {
   const {
     setIsMuted, isMuted, isDeafened, setIsDeafened,
     screenShareQuality, setScreenShareQuality,
+    screenShareFps, setScreenShareFps,
+    experimentalScreenShare,
     cameraID, setCameraID, cameraQuality, setCameraQuality,
     cameraMirrored, setCameraMirrored,
   } = useSettings();
@@ -80,7 +82,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
         addScreenVideoTrack(videoTrack, screenVideoStream);
         prevScreenVideoRef.current = screenVideoStream;
 
-        const bitrate = QUALITY_BITRATES[screenShareQuality as ScreenShareQuality];
+        const bitrate = estimateBitrate(screenShareQuality as ScreenShareQuality, screenShareFps);
         if (bitrate && getPeerConnection) {
           const pc = getPeerConnection();
           if (pc) {
@@ -100,7 +102,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
       removeScreenVideoTrack();
       prevScreenVideoRef.current = null;
     }
-  }, [screenShareActive, screenVideoStream, isConnected, addScreenVideoTrack, removeScreenVideoTrack, screenShareQuality, getPeerConnection]);
+  }, [screenShareActive, screenVideoStream, isConnected, addScreenVideoTrack, removeScreenVideoTrack, screenShareQuality, screenShareFps, getPeerConnection]);
 
   // Sync screen share audio track to WebRTC
   useEffect(() => {
@@ -242,6 +244,9 @@ export function Controls({ onDisconnect }: ControlsProps) {
         onOpenChange={setShowScreenShareModal}
         quality={screenShareQuality as ScreenShareQuality}
         onQualityChange={setScreenShareQuality}
+        fps={screenShareFps}
+        onFpsChange={setScreenShareFps}
+        experimentalScreenShare={experimentalScreenShare}
         onStart={({ sourceId, withAudio }) => startScreenShare(withAudio, sourceId)}
       />
     </>

@@ -120,6 +120,11 @@ export interface Settings {
 
   screenShareQuality: string;
   setScreenShareQuality: (quality: string) => void;
+  screenShareFps: number;
+  setScreenShareFps: (fps: number) => void;
+
+  experimentalScreenShare: boolean;
+  setExperimentalScreenShare: (enabled: boolean) => void;
 
   userVolumes: Record<string, number>;
   updateUserVolume: (serverUserId: string, volume: number) => void;
@@ -257,13 +262,18 @@ export const settingsInit: Settings = {
 
   cameraID: localStorage.getItem("cameraID") || "",
   setCameraID: () => {},
-  cameraQuality: localStorage.getItem("cameraQuality") || "720p",
+  cameraQuality: localStorage.getItem("cameraQuality") || "native",
   setCameraQuality: () => {},
   cameraMirrored: localStorage.getItem("cameraMirrored") !== "false",
   setCameraMirrored: () => {},
 
   screenShareQuality: localStorage.getItem("screenShareQuality") || "native",
   setScreenShareQuality: () => {},
+  screenShareFps: Number(localStorage.getItem("screenShareFps")) || 30,
+  setScreenShareFps: () => {},
+
+  experimentalScreenShare: localStorage.getItem("experimentalScreenShare") === "true",
+  setExperimentalScreenShare: () => {},
 
   userVolumes: JSON.parse(localStorage.getItem("userVolumes") || "{}"),
   updateUserVolume: () => {},

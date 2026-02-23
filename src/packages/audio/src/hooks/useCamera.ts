@@ -3,9 +3,11 @@ import { singletonHook } from "react-singleton-hook";
 
 import { useSettings } from "@/settings";
 
-export type CameraQuality = "720p" | "480p" | "360p";
+export type CameraQuality = "native" | "1080p" | "720p" | "480p" | "360p";
 
-export const QUALITY_CONSTRAINTS: Record<CameraQuality, { width: number; height: number; frameRate: number }> = {
+export const QUALITY_CONSTRAINTS: Record<CameraQuality, { width?: number; height?: number; frameRate: number }> = {
+  native: { frameRate: 30 },
+  "1080p": { width: 1920, height: 1080, frameRate: 30 },
   "720p": { width: 1280, height: 720, frameRate: 30 },
   "480p": { width: 854, height: 480, frameRate: 30 },
   "360p": { width: 640, height: 360, frameRate: 30 },
@@ -68,14 +70,17 @@ function useCameraHook(): CameraInterface {
   }, [getDevices]);
 
   const startCamera = useCallback(async () => {
-    const quality = QUALITY_CONSTRAINTS[cameraQuality as CameraQuality] ?? QUALITY_CONSTRAINTS["720p"];
+    const quality = QUALITY_CONSTRAINTS[cameraQuality as CameraQuality] ?? QUALITY_CONSTRAINTS.native;
+    const videoConstraints: MediaTrackConstraints = {
+      ...(cameraID ? { deviceId: { exact: cameraID } } : {}),
+      frameRate: { ideal: quality.frameRate },
+    };
+    if (quality.width) {
+      videoConstraints.width = { ideal: quality.width };
+      videoConstraints.height = { ideal: quality.height };
+    }
     const constraints: MediaStreamConstraints = {
-      video: {
-        ...(cameraID ? { deviceId: { exact: cameraID } } : {}),
-        width: { ideal: quality.width },
-        height: { ideal: quality.height },
-        frameRate: { ideal: quality.frameRate },
-      },
+      video: videoConstraints,
       audio: false,
     };
 
