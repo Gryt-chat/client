@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useRef, useState } from "react";
+import { cloneElement, isValidElement, memo, useCallback, useMemo, useRef, useState } from "react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import { MdCheck, MdContentCopy } from "react-icons/md";
@@ -9,6 +9,67 @@ import { useTheme } from "@/common";
 
 import { MediaContextMenu } from "./MediaContextMenu";
 import { type CustomEmojiEntry, preprocessCustomEmojis, remarkEmoji } from "../utils/remarkEmoji";
+import { createRemarkMention } from "../utils/remarkMention";
+import type { ProfanityMatchRange } from "./chatUtils";
+import { BlurredWord } from "./ProfanityBlur";
+
+const PROFANITY_START = "\uE000";
+const PROFANITY_END = "\uE001";
+const PROFANITY_RE = /\uE000([\s\S]*?)\uE001/g;
+
+function insertProfanityMarkers(
+  text: string,
+  matches: ProfanityMatchRange[],
+): string {
+  if (matches.length === 0) return text;
+  const sorted = [...matches].sort((a, b) => a.startIndex - b.startIndex);
+  let result = "";
+  let cursor = 0;
+  for (const m of sorted) {
+    const start = Math.max(0, m.startIndex);
+    const end = Math.min(text.length, m.endIndex + 1);
+    if (start < cursor) continue;
+    result += text.slice(cursor, start);
+    result += PROFANITY_START + text.slice(start, end) + PROFANITY_END;
+    cursor = end;
+  }
+  result += text.slice(cursor);
+  return result;
+}
+
+function processProfanityInChildren(node: React.ReactNode, keyPrefix = ""): React.ReactNode {
+  if (typeof node === "string") {
+    if (!node.includes(PROFANITY_START)) return node;
+    const parts: React.ReactNode[] = [];
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+    PROFANITY_RE.lastIndex = 0;
+    while ((match = PROFANITY_RE.exec(node)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push(node.slice(lastIndex, match.index));
+      }
+      parts.push(<BlurredWord key={`${keyPrefix}b${match.index}`} word={match[1]} />);
+      lastIndex = match.index + match[0].length;
+    }
+    if (lastIndex < node.length) parts.push(node.slice(lastIndex));
+    return parts.length === 1 ? parts[0] : <>{parts}</>;
+  }
+
+  if (Array.isArray(node)) {
+    return node.map((child, i) => processProfanityInChildren(child, `${keyPrefix}${i}-`));
+  }
+
+  if (isValidElement(node) && node.props && typeof (node.props as Record<string, unknown>).children !== "undefined") {
+    const props = node.props as Record<string, unknown>;
+    return cloneElement(
+      node,
+      {},
+      processProfanityInChildren(props.children as React.ReactNode, `${keyPrefix}c-`),
+    );
+  }
+
+  return node;
+}
 
 const UNICODE_EMOJI_RE = /\p{Extended_Pictographic}/u;
 
@@ -97,16 +158,33 @@ const components: Components = {
   p: ({ children }) => (
     <span style={{ display: "block", margin: "2px 0", lineHeight: 1.5 }}>{children}</span>
   ),
-  a: ({ href, children }) => (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      style={{ color: "var(--accent-11)", textDecoration: "underline" }}
-    >
-      {children}
-    </a>
-  ),
+  a: ({ href, children }) => {
+    if (href === "mention:") {
+      return (
+        <span
+          style={{
+            color: "var(--accent-11)",
+            fontWeight: 600,
+            background: "var(--accent-a3)",
+            borderRadius: "var(--radius-2)",
+            padding: "0 2px",
+          }}
+        >
+          {children}
+        </span>
+      );
+    }
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ color: "var(--accent-11)", textDecoration: "underline" }}
+      >
+        {children}
+      </a>
+    );
+  },
   code: ({ className, children, ...props }) => {
     const isBlock = className?.includes("language-") || className?.includes("hljs");
     if (isBlock) {
@@ -226,22 +304,60 @@ const components: Components = {
   ),
 };
 
-const remarkPlugins = [remarkGfm, remarkEmoji];
+const baseRemarkPlugins = [remarkGfm, remarkEmoji];
 const rehypePlugins = [rehypeHighlight];
 
 export const MarkdownRenderer = memo(({
   content,
   customEmojis,
+  memberNicknames,
+  profanityMatches,
+  blurProfanity,
 }: {
   content: string | null;
   customEmojis?: CustomEmojiEntry[];
+  memberNicknames?: string[];
+  profanityMatches?: ProfanityMatchRange[];
+  blurProfanity?: boolean;
 }) => {
   const { emojiSize } = useTheme();
   const emojiOnly = useMemo(() => content ? isEmojiOnly(content) : false, [content]);
+  const hasProfanity = !!(blurProfanity && profanityMatches && profanityMatches.length > 0);
+
+  const markedContent = useMemo(() => {
+    if (!content) return null;
+    if (hasProfanity) return insertProfanityMarkers(content, profanityMatches!);
+    return content;
+  }, [content, hasProfanity, profanityMatches]);
+
   const processed = useMemo(
-    () => content ? preprocessCustomEmojis(content, customEmojis ?? []) : null,
-    [content, customEmojis],
+    () => markedContent ? preprocessCustomEmojis(markedContent, customEmojis ?? []) : null,
+    [markedContent, customEmojis],
   );
+
+  const remarkPlugins = useMemo(() => {
+    if (!memberNicknames || memberNicknames.length === 0) return baseRemarkPlugins;
+    return [...baseRemarkPlugins, createRemarkMention(memberNicknames)];
+  }, [memberNicknames]);
+
+  const activeComponents = useMemo(() => {
+    if (!hasProfanity) return components;
+    const wrap = (Component: React.FC<{ children?: React.ReactNode }>) =>
+      ({ children, ...rest }: { children?: React.ReactNode }) => (
+        <Component {...rest}>{processProfanityInChildren(children)}</Component>
+      );
+
+    return {
+      ...components,
+      p: wrap(components.p as React.FC<{ children?: React.ReactNode }>),
+      h1: wrap(components.h1 as React.FC<{ children?: React.ReactNode }>),
+      h2: wrap(components.h2 as React.FC<{ children?: React.ReactNode }>),
+      h3: wrap(components.h3 as React.FC<{ children?: React.ReactNode }>),
+      li: wrap(components.li as React.FC<{ children?: React.ReactNode }>),
+      td: wrap(components.td as React.FC<{ children?: React.ReactNode }>),
+      th: wrap(components.th as React.FC<{ children?: React.ReactNode }>),
+    } as Components;
+  }, [hasProfanity]);
 
   if (!processed) return null;
 
@@ -253,7 +369,7 @@ export const MarkdownRenderer = memo(({
       <ReactMarkdown
         remarkPlugins={remarkPlugins}
         rehypePlugins={rehypePlugins}
-        components={components}
+        components={activeComponents}
       >
         {processed}
       </ReactMarkdown>

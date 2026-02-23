@@ -108,6 +108,9 @@ export interface Settings {
   chatMediaVolume: number;
   setChatMediaVolume: (value: number) => void;
 
+  blurProfanity: boolean;
+  setBlurProfanity: (enabled: boolean) => void;
+
   cameraID: string;
   setCameraID: (id: string) => void;
   cameraQuality: string;
@@ -248,6 +251,9 @@ export const settingsInit: Settings = {
 
   chatMediaVolume: Number(localStorage.getItem("chatMediaVolume")) || 50,
   setChatMediaVolume: () => {},
+
+  blurProfanity: localStorage.getItem("blurProfanity") !== "false",
+  setBlurProfanity: () => {},
 
   cameraID: localStorage.getItem("cameraID") || "",
   setCameraID: () => {},

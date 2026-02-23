@@ -23,6 +23,8 @@ export function NotificationSettings() {
     setMessageSoundVolume,
     customMessageSoundFile,
     setCustomMessageSoundFile,
+    blurProfanity,
+    setBlurProfanity,
   } = useSettings();
 
   const [alertDialog, setAlertDialog] = useState<{
@@ -70,6 +72,17 @@ export function NotificationSettings() {
         onCustomSoundFileChange={setCustomMessageSoundFile}
         defaultSoundSrc={messageSoundMp3}
         showAlert={showAlert}
+      />
+
+      <Separator size="4" />
+
+      <Heading size="4">Chat</Heading>
+
+      <ToggleSetting
+        title="Blur Profanity"
+        description="Blur profane words in messages when the server has profanity filtering enabled. Click a blurred word to reveal it."
+        checked={blurProfanity}
+        onCheckedChange={setBlurProfanity}
       />
 
       {alertDialog.open && (

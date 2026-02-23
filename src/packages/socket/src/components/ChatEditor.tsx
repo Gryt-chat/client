@@ -13,6 +13,7 @@ const FaFilePdf = MdDescription;
 import { type EmojiEntry, getCustomEmojis, recordRecentEmoji } from "../utils/emojiData";
 import { EmojiAutocomplete } from "./EmojiAutocomplete";
 import { EmojiPicker } from "./EmojiPicker";
+import { MentionAutocomplete, type MentionMember } from "./MentionAutocomplete";
 
 export interface ChatEditorHandle {
   clear: () => void;
@@ -37,6 +38,7 @@ interface ChatEditorProps {
   onArrowUpEmpty?: () => void;
   onCancel?: () => void;
   isEditing?: boolean;
+  memberList?: MentionMember[];
 }
 
 function getFileIcon(mime: string) {
@@ -104,6 +106,58 @@ function getEmojiQueryAtCursor(): string | null {
   return match[1];
 }
 
+function getMentionQueryAtCursor(): string | null {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0 || !sel.isCollapsed) return null;
+
+  const range = sel.getRangeAt(0);
+  const node = range.startContainer;
+  if (node.nodeType !== Node.TEXT_NODE) return null;
+
+  const text = node.textContent || "";
+  const offset = range.startOffset;
+  const before = text.slice(0, offset);
+
+  const match = before.match(/(^|[\s])@([a-zA-Z0-9_ ]*)$/);
+  if (!match) return null;
+
+  const afterCursor = text.slice(offset);
+  if (afterCursor.length > 0 && /^[a-zA-Z0-9_]/.test(afterCursor)) return null;
+
+  return match[2];
+}
+
+function replaceMentionQueryAtCursor(nickname: string): void {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return;
+
+  const range = sel.getRangeAt(0);
+  const node = range.startContainer;
+  if (node.nodeType !== Node.TEXT_NODE) return;
+
+  const text = node.textContent || "";
+  const offset = range.startOffset;
+  const before = text.slice(0, offset);
+
+  const match = before.match(/(^|[\s])@([a-zA-Z0-9_ ]*)$/);
+  if (!match) return;
+
+  const atStart = offset - match[0].length + match[1].length;
+
+  const replaceRange = document.createRange();
+  replaceRange.setStart(node, atStart);
+  replaceRange.setEnd(node, offset);
+  replaceRange.deleteContents();
+
+  const textNode = document.createTextNode(`@${nickname} `);
+  replaceRange.insertNode(textNode);
+  sel.removeAllRanges();
+  const newRange = document.createRange();
+  newRange.setStartAfter(textNode);
+  newRange.collapse(true);
+  sel.addRange(newRange);
+}
+
 function replaceEmojiQueryAtCursor(entry: EmojiEntry): void {
   const sel = window.getSelection();
   if (!sel || sel.rangeCount === 0) return;
@@ -154,7 +208,7 @@ function replaceEmojiQueryAtCursor(entry: EmojiEntry): void {
 }
 
 export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
-  ({ placeholder, disabled, maxFileSize, onSend, onArrowUpEmpty, onCancel, isEditing }, ref) => {
+  ({ placeholder, disabled, maxFileSize, onSend, onArrowUpEmpty, onCancel, isEditing, memberList }, ref) => {
     const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
     const pendingFilesRef = useRef<PendingFile[]>([]);
     pendingFilesRef.current = pendingFiles;
@@ -168,10 +222,24 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
     const [showAutocomplete, setShowAutocomplete] = useState(false);
     const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
 
-    const updateEmojiQuery = useCallback(() => {
-      const q = getEmojiQueryAtCursor();
-      setEmojiQuery(q);
-      setShowAutocomplete(q !== null);
+    const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+    const [showMentionAutocomplete, setShowMentionAutocomplete] = useState(false);
+
+    const updateAutocompleteQueries = useCallback(() => {
+      const mq = getMentionQueryAtCursor();
+      if (mq !== null) {
+        setMentionQuery(mq);
+        setShowMentionAutocomplete(true);
+        setEmojiQuery(null);
+        setShowAutocomplete(false);
+        return;
+      }
+      setMentionQuery(null);
+      setShowMentionAutocomplete(false);
+
+      const eq = getEmojiQueryAtCursor();
+      setEmojiQuery(eq);
+      setShowAutocomplete(eq !== null);
     }, []);
 
     const handleSend = useCallback(() => {
@@ -190,6 +258,8 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
       setPendingFiles([]);
       setShowAutocomplete(false);
       setEmojiQuery(null);
+      setShowMentionAutocomplete(false);
+      setMentionQuery(null);
     }, []);
 
     const addFiles = useCallback((files: FileList | File[]) => {
@@ -207,7 +277,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
 
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent<HTMLDivElement>) => {
-        if (showAutocomplete) return;
+        if (showAutocomplete || showMentionAutocomplete) return;
         if (e.key === "Enter" && !e.shiftKey) {
           e.preventDefault();
           handleSend();
@@ -227,7 +297,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
           }
         }
       },
-      [handleSend, showAutocomplete, isEditing, onCancel, onArrowUpEmpty]
+      [handleSend, showAutocomplete, showMentionAutocomplete, isEditing, onCancel, onArrowUpEmpty]
     );
 
     const handlePaste = useCallback(
@@ -269,8 +339,8 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
 
     const handleInput = useCallback(() => {
       if (editorRef.current) autoResize(editorRef.current);
-      updateEmojiQuery();
-    }, [updateEmojiQuery]);
+      updateAutocompleteQueries();
+    }, [updateAutocompleteQueries]);
 
     const handleEmojiSelect = useCallback((entry: EmojiEntry) => {
       replaceEmojiQueryAtCursor(entry);
@@ -283,6 +353,18 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
     const handleAutocompleteClose = useCallback(() => {
       setShowAutocomplete(false);
       setEmojiQuery(null);
+    }, []);
+
+    const handleMentionSelect = useCallback((nickname: string) => {
+      replaceMentionQueryAtCursor(nickname);
+      setShowMentionAutocomplete(false);
+      setMentionQuery(null);
+      if (editorRef.current) autoResize(editorRef.current);
+    }, []);
+
+    const handleMentionAutocompleteClose = useCallback(() => {
+      setShowMentionAutocomplete(false);
+      setMentionQuery(null);
     }, []);
 
     const handlePickerEmojiSelect = useCallback((src: string) => {
@@ -403,6 +485,13 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
           onSelect={handleEmojiSelect}
           onClose={handleAutocompleteClose}
         />
+        <MentionAutocomplete
+          query={mentionQuery || ""}
+          visible={showMentionAutocomplete}
+          members={memberList || []}
+          onSelect={handleMentionSelect}
+          onClose={handleMentionAutocompleteClose}
+        />
         <div className="chat-editor-input-row">
           <button
             className="chat-editor-attach-btn"
@@ -451,7 +540,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
             onPaste={handlePaste}
             onDrop={handleDrop}
             onInput={handleInput}
-            onClick={updateEmojiQuery}
+            onClick={updateAutocompleteQueries}
           />
           <button
             className="chat-editor-send-btn"

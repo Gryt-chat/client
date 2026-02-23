@@ -3,6 +3,7 @@ import {
   Button,
   Flex,
   IconButton,
+  Select,
   Text,
   TextArea,
   TextField,
@@ -14,6 +15,8 @@ import { MdCameraAlt, MdClose, MdVisibility, MdVisibilityOff } from "react-icons
 import { getServerAccessToken, getServerHttpBase, getValidIdentityToken } from "@/common";
 import { useSettings } from "@/settings";
 
+type ProfanityMode = "off" | "flag" | "censor" | "block";
+
 type ServerSettingsPayload = {
   serverId: string;
   isOwner: boolean;
@@ -24,6 +27,7 @@ type ServerSettingsPayload = {
   hasPassword: boolean;
   avatarMaxBytes?: number | null;
   uploadMaxBytes?: number | null;
+  profanityMode?: ProfanityMode;
 };
 
 export type ServerOverviewInitialSettings = {
@@ -61,6 +65,8 @@ export function ServerOverviewTab({
   const [iconCacheBuster, setIconCacheBuster] = useState(0);
   const iconInputRef = useRef<HTMLInputElement>(null);
 
+  const [profanityMode, setProfanityMode] = useState<ProfanityMode>("off");
+
   const [password, setPassword] = useState("");
   const [clearPassword, setClearPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -73,6 +79,7 @@ export function ServerOverviewTab({
     description: string;
     avatarMaxBytes: number | null;
     uploadMaxBytes: number | null;
+    profanityMode: ProfanityMode;
   } | null>(null);
 
   const [avatarMaxMb, setAvatarMaxMb] = useState<string>("");
@@ -121,8 +128,9 @@ export function ServerOverviewTab({
         return (Math.round(mb * 10) / 10).toString();
       };
 
+      setProfanityMode(payload.profanityMode ?? "off");
+
       if (!wasSaving) {
-        // Initial fetch or external update — refresh all fields
         setDisplayName(payload.displayName || "");
         setDescription(payload.description || "");
         setAvatarMaxMb(toMbString(payload.avatarMaxBytes));
@@ -139,6 +147,7 @@ export function ServerOverviewTab({
         description: payload.description || "",
         avatarMaxBytes: (typeof payload.avatarMaxBytes === "number" && Number.isFinite(payload.avatarMaxBytes)) ? payload.avatarMaxBytes : null,
         uploadMaxBytes: (typeof payload.uploadMaxBytes === "number" && Number.isFinite(payload.uploadMaxBytes)) ? payload.uploadMaxBytes : null,
+        profanityMode: payload.profanityMode ?? "off",
       };
     };
 
@@ -518,6 +527,32 @@ export function ServerOverviewTab({
           />
         </Flex>
 
+      </Flex>
+
+      <Flex direction="column" gap="2">
+        <Text size="2" weight="medium">
+          Profanity filter
+        </Text>
+        <Text size="1" color="gray" style={{ lineHeight: 1.4 }}>
+          Controls how profane messages are handled on this server.
+        </Text>
+        <Select.Root
+          value={profanityMode}
+          onValueChange={(v) => {
+            const mode = v as ProfanityMode;
+            setProfanityMode(mode);
+            queueAutoSave({ profanityMode: mode });
+          }}
+          disabled={submitting || !isOwner}
+        >
+          <Select.Trigger />
+          <Select.Content>
+            <Select.Item value="off">Off — no filtering</Select.Item>
+            <Select.Item value="flag">Flag — blur profanity (clients can reveal)</Select.Item>
+            <Select.Item value="censor">Censor — replace with symbols</Select.Item>
+            <Select.Item value="block">Block — reject message entirely</Select.Item>
+          </Select.Content>
+        </Select.Root>
       </Flex>
 
       {(password.trim().length > 0 || clearPassword) ? (

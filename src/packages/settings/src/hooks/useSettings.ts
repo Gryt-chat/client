@@ -118,6 +118,10 @@ function useSettingsHook() {
     Number(localStorage.getItem("chatMediaVolume")) || 50
   );
 
+  const [blurProfanity, setBlurProfanityState] = useState(
+    localStorage.getItem("blurProfanity") !== "false"
+  );
+
   const [cameraID, setCameraID] = useState(
     localStorage.getItem("cameraID") || ""
   );
@@ -352,6 +356,11 @@ function useSettingsHook() {
     localStorage.setItem("chatMediaVolume", volume.toString());
   }
 
+  function updateBlurProfanity(enabled: boolean) {
+    setBlurProfanityState(enabled);
+    localStorage.setItem("blurProfanity", enabled.toString());
+  }
+
   function updateCameraID(id: string) {
     setCameraID(id);
     localStorage.setItem("cameraID", id);
@@ -567,6 +576,8 @@ function useSettingsHook() {
     setCustomMessageSoundFile: updateCustomMessageSoundFile,
     chatMediaVolume,
     setChatMediaVolume: updateChatMediaVolume,
+    blurProfanity,
+    setBlurProfanity: updateBlurProfanity,
     cameraID,
     setCameraID: updateCameraID,
     cameraQuality,

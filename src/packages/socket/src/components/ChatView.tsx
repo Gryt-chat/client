@@ -77,7 +77,7 @@ export const ChatView = ({
   canDeleteAny?: boolean;
   maxFileSize?: number | null;
 }) => {
-  const { chatMediaVolume, setChatMediaVolume } = useSettings();
+  const { chatMediaVolume, setChatMediaVolume, blurProfanity } = useSettings();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<ChatEditorHandle>(null);
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -197,6 +197,20 @@ export const ChatView = ({
     if (fileId && serverHost) return getUploadsFileUrl(serverHost, fileId);
     return undefined;
   };
+
+  const mentionMembers = useMemo(() => {
+    if (!memberList) return [];
+    return Object.values(memberList).map((m) => ({
+      nickname: m.nickname,
+      serverUserId: m.serverUserId,
+      avatarUrl: m.avatarFileId && serverHost ? getUploadsFileUrl(serverHost, m.avatarFileId) : null,
+    }));
+  }, [memberList, serverHost]);
+
+  const memberNicknames = useMemo(
+    () => mentionMembers.map((m) => m.nickname),
+    [mentionMembers],
+  );
 
   const findMessage = useCallback((messageId: string): ChatMessage | undefined => {
     return chatMessages.find((m) => m.message_id === messageId);
@@ -452,6 +466,9 @@ export const ChatView = ({
                       </Flex>
                       {group.messages.map((m) => {
                         const replyOriginal = m.reply_to_message_id ? findMessage(m.reply_to_message_id) : null;
+                        const isMentioned = !!(currentUserNickname && m.text
+                          && m.text.toLowerCase().includes(`@${currentUserNickname.toLowerCase()}`));
+                        const mentionBg = isMentioned ? "var(--accent-a3)" : undefined;
 
                         return (
                         <Flex
@@ -469,6 +486,7 @@ export const ChatView = ({
                             transition: "background 0.3s ease",
                             cursor: "context-menu",
                             position: "relative",
+                            background: mentionBg,
                           }}
                           onMouseEnter={(e) => {
                             e.currentTarget.style.background = "var(--gray-4)";
@@ -476,7 +494,7 @@ export const ChatView = ({
                           }}
                           onMouseLeave={(e) => {
                             if (emojiPickerMessageId !== m.message_id) {
-                              e.currentTarget.style.background = "transparent";
+                              e.currentTarget.style.background = mentionBg || "transparent";
                             }
                             setHoveredMessageId((prev) => prev === m.message_id ? null : prev);
                           }}
@@ -526,7 +544,7 @@ export const ChatView = ({
                             </div>
                           )}
                           <div style={{ opacity: m.pending ? 0.6 : m.failed ? 0.5 : 1, wordBreak: "break-word" }}>
-                            <MarkdownRenderer content={m.text} customEmojis={customEmojiList} />
+                            <MarkdownRenderer content={m.text} customEmojis={customEmojiList} memberNicknames={memberNicknames} profanityMatches={m.profanity_matches} blurProfanity={blurProfanity} />
                             {m.edited_at && m !== group.messages[0] && (
                               <Tooltip content={`Edited ${new Date(m.edited_at).toLocaleString()}`} delayDuration={200}>
                                 <Text style={{ fontSize: 10, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gray-8)" }}>
@@ -716,6 +734,7 @@ export const ChatView = ({
           onArrowUpEmpty={handleArrowUpEmpty}
           onCancel={editingMessage ? cancelEditing : undefined}
           isEditing={!!editingMessage}
+          memberList={mentionMembers}
         />
       </Flex>
     </Box>

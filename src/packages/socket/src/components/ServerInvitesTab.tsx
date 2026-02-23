@@ -19,9 +19,24 @@ function toDate(v: string | Date | null | undefined): Date | null {
   return Number.isFinite(d.getTime()) ? d : null;
 }
 
-function fmt(d: Date | null): string {
+function formatExpiry(d: Date | null): string {
   if (!d) return "Never";
-  return d.toLocaleString();
+  const diff = d.getTime() - Date.now();
+  if (diff <= 0) return "Expired";
+  const days = Math.floor(diff / 86_400_000);
+  const hours = Math.floor((diff % 86_400_000) / 3_600_000);
+  const minutes = Math.floor((diff % 3_600_000) / 60_000);
+  const parts: string[] = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  if (minutes > 0 || parts.length === 0) parts.push(`${minutes}m`);
+  return parts.join(" ");
+}
+
+function formatUses(remaining: number | undefined, max: number | undefined): string {
+  if (remaining === undefined) return "?";
+  if (max !== undefined) return `${remaining} / ${max}`;
+  return String(remaining);
 }
 
 export function ServerInvitesTab({
@@ -40,6 +55,14 @@ export function ServerInvitesTab({
   const [maxUses, setMaxUses] = useState<string>("1");
   const [expiresInHours, setExpiresInHours] = useState<string>("");
   const [note, setNote] = useState<string>("");
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    const hasExpiring = invites.some((i) => !i.revoked && i.expiresAt);
+    if (!hasExpiring) return;
+    const id = setInterval(() => setTick((t) => t + 1), 60_000);
+    return () => clearInterval(id);
+  }, [invites]);
 
   const refresh = async () => {
     if (!socket || !socket.connected) {
@@ -128,8 +151,7 @@ export function ServerInvitesTab({
 
   const copy = async (code: string) => {
     try {
-      const origin = typeof window !== "undefined" ? window.location.origin : "https://app.gryt.chat";
-      const url = `${origin}/invite?host=${encodeURIComponent(host)}&code=${encodeURIComponent(code)}`;
+      const url = `https://gryt.chat/invite?host=${encodeURIComponent(host)}&code=${encodeURIComponent(code)}`;
       await navigator.clipboard.writeText(url);
       toast.success("Copied invite link");
     } catch {
@@ -191,9 +213,8 @@ export function ServerInvitesTab({
           </Text>
         ) : (
           invites.map((i) => {
-            const createdAt = fmt(toDate(i.createdAt));
-            const expiresAt = fmt(toDate(i.expiresAt));
-            const remaining = typeof i.usesRemaining === "number" ? i.usesRemaining : undefined;
+            const expiry = formatExpiry(toDate(i.expiresAt));
+            const uses = formatUses(i.usesRemaining, i.maxUses);
             return (
               <Card key={i.code}>
                 <Flex direction="column" gap="2">
@@ -203,7 +224,7 @@ export function ServerInvitesTab({
                         {i.code}
                       </Text>
                       <Text size="1" color="gray">
-                        Remaining: {remaining ?? "?"} · Expires: {expiresAt} · Created: {createdAt}
+                        Uses: {uses} · Expires: {expiry}
                         {i.revoked ? " · Revoked" : ""}
                       </Text>
                       {i.note ? (

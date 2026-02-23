@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { useGlobalHotkeys } from "@/audio";
-import { capturePendingInviteFromUrl, clearPendingInvite, readPendingInvite, useAccount } from "@/common";
+import { capturePendingInviteFromUrl, clearPendingInvite, type PendingInvite, readPendingInvite, useAccount } from "@/common";
 import { AddNewServer, Nickname, PushToTalkModal, Settings, useSettings } from "@/settings";
 import { SignUpModal } from "@/signUp";
-import { DeviceSwitchModal, ServerPasswordModal, ServerSettingsModal, useServerManagement } from "@/socket";
+import { DeviceSwitchModal, InviteAcceptModal, ServerPasswordModal, ServerSettingsModal, useServerManagement } from "@/socket";
 import { useSFU } from "@/webRTC";
 
 import { AuthLoadingOverlay } from "./components/AuthLoadingOverlay";
@@ -27,21 +27,32 @@ export function App() {
   useGlobalHotkeys(handleHotkeyDisconnect);
 
   const [showSplash, setShowSplash] = useState(true);
+  const [pendingInvite, setPendingInvite] = useState<PendingInvite | null>(null);
 
   // Capture invite links early (even before sign-in), then clean the URL.
   useEffect(() => {
     capturePendingInviteFromUrl({ defaultLegacyHost: "app.gryt.chat" });
   }, []);
 
-  // After sign-in, apply any captured invite by upserting the server + token.
+  // After sign-in, show the invite acceptance modal instead of silently adding.
   useEffect(() => {
     if (!isSignedIn) return;
     const pending = readPendingInvite();
     if (!pending) return;
+    setPendingInvite(pending);
+  }, [isSignedIn]);
 
-    addServer({ host: pending.host, name: pending.host, token: pending.code }, true);
+  const handleAcceptInvite = useCallback(() => {
+    if (!pendingInvite) return;
+    addServer({ host: pendingInvite.host, name: pendingInvite.host, token: pendingInvite.code }, true);
     clearPendingInvite();
-  }, [addServer, isSignedIn]);
+    setPendingInvite(null);
+  }, [addServer, pendingInvite]);
+
+  const handleDismissInvite = useCallback(() => {
+    clearPendingInvite();
+    setPendingInvite(null);
+  }, []);
 
   useEffect(() => {
     if (isSignedIn === undefined) {
@@ -65,6 +76,7 @@ export function App() {
           <DeviceSwitchModal />
           <ServerPasswordModal />
           <ServerSettingsModal />
+          <InviteAcceptModal invite={pendingInvite} onAccept={handleAcceptInvite} onDismiss={handleDismissInvite} />
           <PushToTalkModal />
           <MicrophoneDebugOverlay isVisible={showDebugOverlay} />
         </>

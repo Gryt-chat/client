@@ -16,6 +16,11 @@ export type AttachmentMeta = {
   has_thumbnail: boolean;
 };
 
+export interface ProfanityMatchRange {
+  startIndex: number;
+  endIndex: number;
+}
+
 export type ChatMessage = {
   conversation_id: string;
   message_id: string;
@@ -32,6 +37,7 @@ export type ChatMessage = {
   nonce?: string;
   sender_nickname?: string;
   sender_avatar_file_id?: string;
+  profanity_matches?: ProfanityMatchRange[];
 };
 
 // eslint-disable-next-line react-refresh/only-export-components
