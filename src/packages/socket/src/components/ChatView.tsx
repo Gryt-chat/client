@@ -1,7 +1,7 @@
 import { AlertDialog, Box, Button, Flex, Text } from "@radix-ui/themes";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MdCloudUpload } from "react-icons/md";
-import { Virtuoso,type VirtuosoHandle } from "react-virtuoso";
+import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 
 import { getServerAccessToken, getUploadsFileUrl } from "@/common";
 import { useSettings } from "@/settings";
@@ -34,6 +34,13 @@ function getReplyPreview(msg: ChatMessage | null | undefined, maxLen: number): s
 }
 
 const GROUP_GAP_MS = 5 * 60 * 1000;
+
+const VirtuosoScroller = forwardRef<HTMLDivElement, React.ComponentPropsWithRef<"div">>(
+  ({ style, ...props }, ref) => (
+    <div ref={ref} style={{ ...style, overflowX: "hidden" }} {...props} />
+  ),
+);
+VirtuosoScroller.displayName = "VirtuosoScroller";
 
 export const ChatView = memo(({
   chatMessages,
@@ -98,6 +105,18 @@ export const ChatView = memo(({
   const focusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevConversationIdRef = useRef<string | undefined>(undefined);
   const prevLastIdRef = useRef<string | undefined>(undefined);
+
+  const seenMessageIdsRef = useRef<Set<string>>(new Set());
+  const prevConversationForAnimRef = useRef<string | undefined>(undefined);
+
+  useMemo(() => {
+    const conversationId = chatMessages[0]?.conversation_id;
+    if (conversationId !== prevConversationForAnimRef.current) {
+      seenMessageIdsRef.current.clear();
+      chatMessages.forEach((m) => seenMessageIdsRef.current.add(m.message_id));
+      prevConversationForAnimRef.current = conversationId;
+    }
+  }, [chatMessages]);
 
   const [customEmojiList, setCustomEmojiList] = useState<CustomEmojiEntry[]>([]);
 
@@ -406,12 +425,16 @@ export const ChatView = memo(({
     const replyPreviewText = m.reply_to_message_id ? getReplyPreview(replyOriginal ?? null, 100) : null;
     const isMentioned = !!(currentUserNickname && m.text && m.text.toLowerCase().includes(`@${currentUserNickname.toLowerCase()}`));
 
+    const isNew = !seenMessageIdsRef.current.has(m.message_id) && localIdx >= chatMessages.length - 10;
+    seenMessageIdsRef.current.add(m.message_id);
+
     return (
       <MessageRow
         message={m}
         meta={meta}
         replyPreviewText={replyPreviewText}
         isMentioned={isMentioned}
+        isNew={isNew}
         customEmojiList={customEmojiList}
         memberNicknames={memberNicknames}
         blurProfanity={blurProfanity}
@@ -519,17 +542,16 @@ export const ChatView = memo(({
           ) : showMessages ? (
             <Virtuoso
               ref={virtuosoRef}
-              style={{ flex: 1 }}
+              style={{ flex: 1, minWidth: 0 }}
               data={chatMessages}
               firstItemIndex={firstItemIndex}
               initialTopMostItemIndex={chatMessages.length - 1}
               followOutput={followOutput}
-              alignToBottom
               startReached={handleStartReached}
               overscan={400}
               increaseViewportBy={{ top: 200, bottom: 200 }}
               itemContent={itemContent}
-              components={{ Header: headerContent }}
+              components={{ Header: headerContent, Scroller: VirtuosoScroller }}
             />
           ) : null}
 

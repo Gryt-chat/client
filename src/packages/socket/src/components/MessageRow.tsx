@@ -1,5 +1,6 @@
 import { Avatar, Flex, Text, Tooltip } from "@radix-ui/themes";
 import { memo, useCallback, useRef, useState } from "react";
+import { motion } from "motion/react";
 
 import { getUploadsFileUrl } from "@/common";
 
@@ -46,6 +47,7 @@ interface MessageRowProps {
   onDelete: (msg: ChatMessage) => void;
   scrollToMessage: (messageId: string) => void;
   onLightboxOpen: (src: string, alt?: string) => void;
+  isNew?: boolean;
 }
 
 export const MessageRow = memo(({
@@ -70,6 +72,7 @@ export const MessageRow = memo(({
   onDelete,
   scrollToMessage,
   onLightboxOpen,
+  isNew,
 }: MessageRowProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
@@ -99,8 +102,8 @@ export const MessageRow = memo(({
 
   const showToolbar = (isHovered || isEmojiPickerOpen) && !isContextMenuOpen;
 
-  return (
-    <div style={{ width: "100%" }}>
+  const content = (
+    <>
       {meta.showNewMessageDivider && <NewMessagesDivider />}
       {meta.dayBreak && <DateSeparator date={meta.dayBreak} />}
 
@@ -188,8 +191,23 @@ export const MessageRow = memo(({
           </Flex>
         </Flex>
       )}
-    </div>
+    </>
   );
+
+  if (isNew) {
+    return (
+      <motion.div
+        style={{ width: "100%" }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+      >
+        {content}
+      </motion.div>
+    );
+  }
+
+  return <div style={{ width: "100%" }}>{content}</div>;
 });
 
 MessageRow.displayName = "MessageRow";

@@ -27,6 +27,7 @@ interface BttvEmoteWithMeta extends BttvEmote {
   selected: boolean;
   name: string;
   nameError: string | null;
+  nameWarning: string | null;
 }
 
 function sanitizeName(code: string): string {
@@ -41,16 +42,17 @@ function validateName(
   existingNames: Set<string>,
   batchNames: string[],
   selfIndex: number,
-): string | null {
-  if (!name) return "Name is required.";
+): { error: string | null; warning: string | null } {
+  if (!name) return { error: "Name is required.", warning: null };
   if (!EMOJI_NAME_RE.test(name))
-    return "2-32 lowercase letters, numbers, or underscores.";
-  if (existingNames.has(name))
-    return `":${name}:" already exists on the server.`;
+    return { error: "2-32 lowercase letters, numbers, or underscores.", warning: null };
   for (let i = 0; i < batchNames.length; i++) {
-    if (i !== selfIndex && batchNames[i] === name) return "Duplicate name in batch.";
+    if (i !== selfIndex && batchNames[i] === name)
+      return { error: "Duplicate name in batch.", warning: null };
   }
-  return null;
+  if (existingNames.has(name))
+    return { error: null, warning: "Already exists — will replace." };
+  return { error: null, warning: null };
 }
 
 export function BttvImport({
@@ -103,12 +105,10 @@ export function BttvImport({
         .filter((e) => e.selected)
         .map((e) => e.name);
       return items.map((e) => {
-        if (!e.selected) return { ...e, nameError: null };
+        if (!e.selected) return { ...e, nameError: null, nameWarning: null };
         const idx = selectedNames.indexOf(e.name);
-        return {
-          ...e,
-          nameError: validateName(e.name, existingNames, selectedNames, idx),
-        };
+        const { error, warning } = validateName(e.name, existingNames, selectedNames, idx);
+        return { ...e, nameError: error, nameWarning: warning };
       });
     },
     [existingNames],
@@ -146,6 +146,7 @@ export function BttvImport({
         selected: true,
         name: sanitizeName(e.code),
         nameError: null,
+        nameWarning: null,
       }));
       const validated = revalidateAll(withMeta);
       setEmotes(validated);
@@ -426,6 +427,11 @@ export function BttvImport({
                   {e.selected && e.nameError && (
                     <Text size="1" color="red" style={{ lineHeight: 1.2 }}>
                       {e.nameError}
+                    </Text>
+                  )}
+                  {e.selected && !e.nameError && e.nameWarning && (
+                    <Text size="1" color="yellow" style={{ lineHeight: 1.2 }}>
+                      {e.nameWarning}
                     </Text>
                   )}
                 </Flex>

@@ -39,8 +39,7 @@ export function handleNewMessage(
     const filtered = existing.filter((m) => !isPendingMatch(m));
     const existingIds = new Set(filtered.map((m) => m.message_id));
     const merged = existingIds.has(msg.message_id) ? filtered : [...filtered, msg];
-    const bounded = merged.length > 200 ? merged.slice(merged.length - 200) : merged;
-    return { ...prev, [key]: bounded };
+    return { ...prev, [key]: merged };
   });
 
   if (msg.conversation_id === activeConversationId) {
@@ -93,8 +92,7 @@ export function handleHistoryPayload(
     const existingIds = new Set(existing.map((m) => m.message_id));
     const newItems = payload.items.filter((it) => !existingIds.has(it.message_id));
     const merged = isPrepend ? [...newItems, ...existing] : [...existing, ...newItems];
-    const bounded = merged.length > 200 ? merged.slice(merged.length - 200) : merged;
-    return { ...prev, [key]: bounded };
+    return { ...prev, [key]: merged };
   });
 
   if (payload.conversation_id !== activeConversationId) return;

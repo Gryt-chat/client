@@ -1,4 +1,5 @@
 import {
+  AlertDialog,
   Button,
   Flex,
   IconButton,
@@ -20,8 +21,8 @@ import {
 import { BttvImport } from "./BttvImport";
 
 const EMOJI_NAME_RE = /^[a-z0-9_]{2,32}$/;
-const IMAGE_MIME_RE = /^image\/(png|jpeg|webp|gif|svg\+xml)$/i;
-const IMAGE_EXT_RE = /\.(png|jpe?g|webp|gif|svg)$/i;
+const IMAGE_MIME_RE = /^image\/(png|jpeg|webp|gif|svg\+xml|avif)$/i;
+const IMAGE_EXT_RE = /\.(png|jpe?g|webp|gif|svg|avif)$/i;
 const ZIP_TYPES = new Set(["application/zip", "application/x-zip-compressed", "application/x-zip"]);
 
 type EmojiItem = { name: string; file_id: string };
@@ -32,6 +33,7 @@ interface PendingEmoji {
   previewUrl: string;
   name: string;
   nameError: string | null;
+  nameWarning: string | null;
   status: "pending" | "uploading" | "done" | "error";
   progress: number;
 }
@@ -51,6 +53,7 @@ function extToMime(ext: string): string {
   if (lower === "webp") return "image/webp";
   if (lower === "gif") return "image/gif";
   if (lower === "svg") return "image/svg+xml";
+  if (lower === "avif") return "image/avif";
   return "application/octet-stream";
 }
 
@@ -99,14 +102,19 @@ function deduplicateNames(names: string[], existingNames: Set<string>): string[]
   return result;
 }
 
-function validateName(name: string, existingNames: Set<string>, batchNames: string[], selfIndex: number): string | null {
-  if (!name) return "Name is required.";
-  if (!EMOJI_NAME_RE.test(name)) return "2-32 lowercase letters, numbers, or underscores.";
-  if (existingNames.has(name)) return `":${name}:" already exists on the server.`;
+function validateName(
+  name: string,
+  existingNames: Set<string>,
+  batchNames: string[],
+  selfIndex: number,
+): { error: string | null; warning: string | null } {
+  if (!name) return { error: "Name is required.", warning: null };
+  if (!EMOJI_NAME_RE.test(name)) return { error: "2-32 lowercase letters, numbers, or underscores.", warning: null };
   for (let i = 0; i < batchNames.length; i++) {
-    if (i !== selfIndex && batchNames[i] === name) return "Duplicate name in batch.";
+    if (i !== selfIndex && batchNames[i] === name) return { error: "Duplicate name in batch.", warning: null };
   }
-  return null;
+  if (existingNames.has(name)) return { error: null, warning: "Already exists — will replace." };
+  return { error: null, warning: null };
 }
 
 export function ServerEmojisTab({
@@ -178,12 +186,14 @@ export function ServerEmojisTab({
       const newItems: PendingEmoji[] = validFiles.map((file, i) => {
         const name = uniqueNames[i];
         const selfIndex = prev.length + i;
+        const { error, warning } = validateName(name, existingNames, allBatchNames, selfIndex);
         return {
           id: `emoji-${Date.now()}-${Math.random().toString(36).slice(2)}-${i}`,
           file,
           previewUrl: URL.createObjectURL(file),
           name,
-          nameError: validateName(name, existingNames, allBatchNames, selfIndex),
+          nameError: error,
+          nameWarning: warning,
           status: "pending",
           progress: 0,
         };
@@ -218,7 +228,7 @@ export function ServerEmojisTab({
         imageFiles.push(f);
       } else {
         console.warn("[EmojiUpload] handleFileSelect: rejected file:", f.name, "type:", f.type);
-        toast.error(`"${f.name}": unsupported format. Use PNG, JPEG, WebP, GIF, SVG, or ZIP.`);
+        toast.error(`"${f.name}": unsupported format. Use PNG, JPEG, WebP, GIF, AVIF, SVG, or ZIP.`);
       }
     }
 
@@ -249,15 +259,17 @@ export function ServerEmojisTab({
       const updated = prev.map((p, i) => {
         if (i === idx) {
           const batchNames = prev.map((pp, j) => (j === idx ? sanitized : pp.name));
-          return { ...p, name: sanitized, nameError: validateName(sanitized, existingNames, batchNames, idx) };
+          const { error, warning } = validateName(sanitized, existingNames, batchNames, idx);
+          return { ...p, name: sanitized, nameError: error, nameWarning: warning };
         }
         return p;
       });
       const batchNames = updated.map((p) => p.name);
-      return updated.map((p, i) => ({
-        ...p,
-        nameError: p.status === "done" ? null : validateName(p.name, existingNames, batchNames, i),
-      }));
+      return updated.map((p, i) => {
+        if (p.status === "done") return { ...p, nameError: null, nameWarning: null };
+        const { error, warning } = validateName(p.name, existingNames, batchNames, i);
+        return { ...p, nameError: error, nameWarning: warning };
+      });
     });
   };
 
@@ -267,10 +279,11 @@ export function ServerEmojisTab({
       if (item) URL.revokeObjectURL(item.previewUrl);
       const remaining = prev.filter((p) => p.id !== id);
       const batchNames = remaining.map((p) => p.name);
-      return remaining.map((p, i) => ({
-        ...p,
-        nameError: p.status === "done" ? null : validateName(p.name, existingNames, batchNames, i),
-      }));
+      return remaining.map((p, i) => {
+        if (p.status === "done") return { ...p, nameError: null, nameWarning: null };
+        const { error, warning } = validateName(p.name, existingNames, batchNames, i);
+        return { ...p, nameError: error, nameWarning: warning };
+      });
     });
   };
 
@@ -347,10 +360,10 @@ export function ServerEmojisTab({
         .filter((p) => p.status !== "done")
         .map((p) => (p.status === "error" ? { ...p, status: "pending" as const, progress: 0 } : p));
       const batchNames = remaining.map((p) => p.name);
-      return remaining.map((p, i) => ({
-        ...p,
-        nameError: validateName(p.name, existingNames, batchNames, i),
-      }));
+      return remaining.map((p, i) => {
+        const { error, warning } = validateName(p.name, existingNames, batchNames, i);
+        return { ...p, nameError: error, nameWarning: warning };
+      });
     });
     setUploading(false);
   };
@@ -367,10 +380,10 @@ export function ServerEmojisTab({
       setPendingEmojis((prev) => {
         const remaining = prev.filter((p) => p.status !== "done");
         const batchNames = remaining.map((p) => p.name);
-        return remaining.map((p, i) => ({
-          ...p,
-          nameError: validateName(p.name, existingNames, batchNames, i),
-        }));
+        return remaining.map((p, i) => {
+          const { error, warning } = validateName(p.name, existingNames, batchNames, i);
+          return { ...p, nameError: error, nameWarning: warning };
+        });
       });
     }
     setUploading(false);
@@ -404,6 +417,39 @@ export function ServerEmojisTab({
       toast.error(e instanceof Error ? e.message : "Failed to delete emoji.");
     } finally {
       setDeletingName(null);
+    }
+  };
+
+  const [deletingAll, setDeletingAll] = useState(false);
+
+  const handleDeleteAll = async () => {
+    if (!effectiveAccessToken) {
+      toast.error("Not authenticated.");
+      return;
+    }
+
+    setDeletingAll(true);
+    try {
+      const resp = await fetch(`${base}/api/emojis/all`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${effectiveAccessToken}` },
+      });
+
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        throw new Error(
+          (typeof data?.message === "string" && data.message) ||
+          (typeof data?.error === "string" && data.error) ||
+          `HTTP ${resp.status}`,
+        );
+      }
+
+      toast.success(`Deleted ${data.deleted ?? "all"} emoji(s).`);
+      await refresh();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete emojis.");
+    } finally {
+      setDeletingAll(false);
     }
   };
 
@@ -499,7 +545,7 @@ export function ServerEmojisTab({
             ref={fileInputRef}
             type="file"
             multiple
-            accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml,.svg,.zip,application/zip"
+            accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml,image/avif,.svg,.avif,.zip,application/zip"
             style={{ display: "none" }}
             onChange={handleFileSelect}
           />
@@ -542,6 +588,11 @@ export function ServerEmojisTab({
                   {p.nameError && (
                     <Text size="1" color="red" style={{ lineHeight: 1.2 }}>
                       {p.nameError}
+                    </Text>
+                  )}
+                  {!p.nameError && p.nameWarning && (
+                    <Text size="1" color="yellow" style={{ lineHeight: 1.2 }}>
+                      {p.nameWarning}
                     </Text>
                   )}
                   {p.status === "uploading" && (
@@ -633,9 +684,37 @@ export function ServerEmojisTab({
 
       {/* Emoji list */}
       <Flex direction="column" gap="2">
-        <Text size="2" weight="medium">
-          Custom emojis {!loading && `(${emojis.length})`}
-        </Text>
+        <Flex justify="between" align="center">
+          <Text size="2" weight="medium">
+            Custom emojis {!loading && `(${emojis.length})`}
+          </Text>
+          {emojis.length > 0 && (
+            <AlertDialog.Root>
+              <AlertDialog.Trigger>
+                <Button variant="soft" color="red" size="1" disabled={deletingAll}>
+                  <MdDelete size={14} />
+                  {deletingAll ? "Deleting..." : "Delete all"}
+                </Button>
+              </AlertDialog.Trigger>
+              <AlertDialog.Content maxWidth="420px">
+                <AlertDialog.Title>Delete all emojis?</AlertDialog.Title>
+                <AlertDialog.Description size="2">
+                  This will permanently delete all {emojis.length} custom emoji{emojis.length !== 1 ? "s" : ""} from this server. This cannot be undone.
+                </AlertDialog.Description>
+                <Flex gap="3" mt="4" justify="end">
+                  <AlertDialog.Cancel>
+                    <Button variant="soft" color="gray">Cancel</Button>
+                  </AlertDialog.Cancel>
+                  <AlertDialog.Action>
+                    <Button variant="solid" color="red" onClick={handleDeleteAll}>
+                      Delete all
+                    </Button>
+                  </AlertDialog.Action>
+                </Flex>
+              </AlertDialog.Content>
+            </AlertDialog.Root>
+          )}
+        </Flex>
 
         {loading ? (
           <Text size="2" color="gray">
