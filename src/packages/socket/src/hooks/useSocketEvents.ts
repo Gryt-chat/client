@@ -582,7 +582,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
       socket.on("server:clients", (data: Clients) => {
         setClients((old) => ({ ...old, [host]: data }));
 
-        const myEntry = data[socket.id];
+        const myEntry = socket.id ? data[socket.id] : undefined;
         if (myEntry) {
           setIsServerMuted(!!myEntry.isServerMuted);
           setIsServerDeafened(!!myEntry.isServerDeafened);
