@@ -9,7 +9,7 @@ import { getServerAccessToken, getServerHttpBase, getServerRefreshToken, getVali
 import { useSettings } from "@/settings";
 import { serverDetailsList as ServerDetailsList } from "@/settings/src/types/server";
 
-import { ChatMessage } from "../components/ChatView";
+import type { ChatMessage } from "../components/chatUtils";
 import { shouldRefreshToken } from "../utils/tokenManager";
 import {
   ChatErrorPayload,
@@ -34,6 +34,8 @@ interface UseChatParams {
   currentUserId?: string;
 }
 
+const VIRTUOSO_START_INDEX = 100_000;
+
 interface UseChatReturn {
   chatMessages: ChatMessage[];
   canSend: boolean;
@@ -50,6 +52,7 @@ interface UseChatReturn {
   fetchOlderMessages: () => void;
   isLoadingOlder: boolean;
   hasOlderMessages: boolean;
+  firstItemIndex: number;
 }
 
 export function useChat({
@@ -89,6 +92,7 @@ export function useChat({
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isLoadingOlder, setIsLoadingOlder] = useState(false);
   const [hasOlderMap, setHasOlderMap] = useState<Record<string, boolean>>({});
+  const [firstItemIndex, setFirstItemIndex] = useState(VIRTUOSO_START_INDEX);
   const [isRateLimited, setIsRateLimited] = useState(false);
   const [rateLimitCountdown, setRateLimitCountdown] = useState(0);
   const rateLimitIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -259,6 +263,9 @@ export function useChat({
         const key = cacheKeyFor(payload.conversation_id);
         if (key) setHasOlderMap((prev) => ({ ...prev, [key]: v }));
       };
+      if (payload.before && payload.conversation_id === activeConversationId && payload.items.length > 0) {
+        setFirstItemIndex((prev) => prev - payload.items.length);
+      }
       handleHistoryPayload(payload, activeConversationId, cacheKeyFor, inFlightFetchRef, setMessageCache, setChatMessages, setIsLoadingMessages, setHasOlder, setIsLoadingOlder);
     };
 
@@ -321,6 +328,7 @@ export function useChat({
   // Reset chat list when conversation changes and load history
   useEffect(() => {
     setIsLoadingOlder(false);
+    setFirstItemIndex(VIRTUOSO_START_INDEX);
 
     const cachedMessages = getCachedMessages(activeConversationId);
     if (cachedMessages.length > 0) {
@@ -612,5 +620,6 @@ export function useChat({
     fetchOlderMessages,
     isLoadingOlder,
     hasOlderMessages,
+    firstItemIndex,
   };
 }

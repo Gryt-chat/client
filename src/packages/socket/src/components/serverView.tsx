@@ -294,7 +294,7 @@ export const ServerView = () => {
     chatMessages, canSend, sendChat, editMessage, isLoadingMessages,
     isRateLimited, rateLimitCountdown, isVoiceChannelTextChat,
     canViewVoiceChannelText, activeChannelName, restoreText, clearRestoreText,
-    fetchOlderMessages, isLoadingOlder, hasOlderMessages,
+    fetchOlderMessages, isLoadingOlder, hasOlderMessages, firstItemIndex,
   } = useChat({
     currentConnection, activeConversationId, currentlyViewingServer,
     currentChannelId, isConnected, serverDetailsList, nickname,
@@ -582,6 +582,7 @@ export const ServerView = () => {
             onLoadOlder={fetchOlderMessages}
             isLoadingOlder={isLoadingOlder}
             hasOlderMessages={hasOlderMessages}
+            firstItemIndex={firstItemIndex}
             voiceWidth={voiceWidth}
             clientsForHost={clients[currentlyViewingServer.host] || {}}
             onVoiceDisconnect={handleVoiceDisconnect}
@@ -725,7 +726,7 @@ export const ServerView = () => {
             <Flex flexGrow="1" ref={voiceContainerRef}>
               <VoiceView
                 showVoiceView={showVoiceView && !isCompact}
-                voiceWidth={voiceWidth}
+                voiceWidth={voiceFocused ? `${voiceMaxWidth}px` : voiceWidth}
                 maxWidth={voiceMaxWidth}
                 serverHost={currentlyViewingServer.host}
                 currentServerConnected={currentServerConnected}
@@ -804,6 +805,7 @@ export const ServerView = () => {
                   onLoadOlder={fetchOlderMessages}
                   isLoadingOlder={isLoadingOlder}
                   hasOlderMessages={hasOlderMessages}
+                  firstItemIndex={firstItemIndex}
                   {...(isLoadingMessages !== undefined && { isLoadingMessages })}
                 />
               </div>

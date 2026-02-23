@@ -1,6 +1,6 @@
 import { Dispatch, MutableRefObject, SetStateAction } from "react";
 
-import { ChatMessage } from "../components/ChatView";
+import type { ChatMessage } from "../components/chatUtils";
 import { handleRateLimitError } from "../utils/rateLimitHandler";
 
 export const CHAT_CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
