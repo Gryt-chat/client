@@ -1,6 +1,6 @@
 import { Avatar, Flex, Text, Tooltip } from "@radix-ui/themes";
-import { memo, useCallback, useRef, useState } from "react";
 import { motion } from "motion/react";
+import { memo, useCallback, useRef, useState } from "react";
 
 import { getUploadsFileUrl } from "@/common";
 

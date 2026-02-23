@@ -34,7 +34,10 @@ export function ServerSettingsModal() {
   const [initialOverviewSettings, setInitialOverviewSettings] = useState<ServerOverviewInitialSettings | undefined>(undefined);
 
   const socket = useMemo(() => (host ? sockets[host] : undefined), [sockets, host]);
-  const accessToken = useMemo(() => (host ? getServerAccessToken(host) : null), [host, tokenRevision]);
+  const accessToken = useMemo(() => {
+    void tokenRevision;
+    return host ? getServerAccessToken(host) : null;
+  }, [host, tokenRevision]);
 
   const serverInfo = host ? serverDetailsList[host]?.server_info : undefined;
   const role = serverInfo?.role;
