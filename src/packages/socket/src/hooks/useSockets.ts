@@ -6,6 +6,7 @@ import { io, Socket } from "socket.io-client";
 import connectMp3 from "@/audio/src/assets/connect.mp3";
 import disconnectMp3 from "@/audio/src/assets/disconnect.mp3";
 import { getServerAccessToken, getServerRefreshToken, getServerWsBase, getValidIdentityToken,removeServerAccessToken, removeServerRefreshToken } from "@/common";
+import { initKeycloak } from "@/common/src/auth/keycloak";
 import { useSettings } from "@/settings";
 import { useServerSettings } from "@/settings/src/hooks/useServerSettings";
 import {
@@ -23,6 +24,7 @@ type Sockets = { [host: string]: Socket };
 function useSocketsHook() {
   const [sockets, setSockets] = useState<Sockets>({});
   const [tokenRevision, setTokenRevision] = useState(0);
+  const [identityReady, setIdentityReady] = useState(false);
   const lastInviteJoinAttemptRef = useRef<Record<string, string | undefined>>({});
   const serversRef = useRef<Servers>({});
   
@@ -114,6 +116,16 @@ function useSocketsHook() {
 
   const bumpTokenRevision = useCallback(() => setTokenRevision((n) => n + 1), []);
 
+  // Wait for Keycloak to initialise before opening any server sockets.
+  // This prevents racing with stale/missing identity tokens on cold start.
+  useEffect(() => {
+    let cancelled = false;
+    initKeycloak()
+      .then(() => { if (!cancelled) setIdentityReady(true); })
+      .catch(() => { if (!cancelled) setIdentityReady(true); });
+    return () => { cancelled = true; };
+  }, []);
+
   // Register all socket event handlers via the extracted hook
   useSocketEvents(sockets, {
     servers,
@@ -136,8 +148,10 @@ function useSocketsHook() {
     onTokenRefreshed: bumpTokenRevision,
   });
 
-  // Create sockets for all servers
+  // Create sockets for all servers (only after Keycloak is ready)
   useEffect(() => {
+    if (!identityReady) return;
+
     const newSockets = { ...sockets };
     let changed = false;
 
@@ -218,7 +232,7 @@ function useSocketsHook() {
       setSockets(newSockets);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [servers]);
+  }, [servers, identityReady]);
 
   // Retry server:join / server:details for sockets that are connected but
   // haven't received details yet.  Runs 3 s after each connection-status
@@ -342,12 +356,15 @@ function useSocketsHook() {
 
     const requestServerState = async () => {
       const accessToken = getServerAccessToken(host);
-      if (accessToken) {
+
+      if (accessToken && serverDetailsListRef.current[host]) {
         socket.emit("server:details");
         socket.emit("members:fetch");
         return;
       }
 
+      // Token is likely stale if we never got details — do a fresh join
+      removeServerAccessToken(host);
       const identityToken = await getValidIdentityToken().catch(() => undefined);
       const inviteCode = serversRef.current[host]?.token || undefined;
       socket.emit("server:join", {

@@ -332,4 +332,19 @@ if [[ "$DOCKER_CONFIRM" =~ ^[Yy]$ ]]; then
   ok "Docker image pushed: ${BOLD}${DOCKER_IMAGE}:${NEW_VERSION}${RESET}"
 fi
 
+# ── Deploy to production ──────────────────────────────────────────
+echo ""
+read -rp "$(echo -e "${CYAN}?${RESET}  Deploy to production (pull & restart prod containers)? ${YELLOW}[Y/n]${RESET}: ")" DEPLOY_PROD
+DEPLOY_PROD="${DEPLOY_PROD:-Y}"
+if [[ "$DEPLOY_PROD" =~ ^[Yy]$ ]]; then
+  REPO_ROOT="$(cd "$CLIENT_DIR/../.." && pwd)"
+  if [ -f "$REPO_ROOT/scripts/update-prod.sh" ]; then
+    info "Running production deployment…"
+    bash "$REPO_ROOT/scripts/update-prod.sh"
+    ok "Production deployment complete"
+  else
+    warn "update-prod.sh not found at $REPO_ROOT/scripts/update-prod.sh"
+  fi
+fi
+
 echo ""

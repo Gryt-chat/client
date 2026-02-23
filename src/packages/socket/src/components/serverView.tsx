@@ -20,6 +20,7 @@ import { emitAuthenticated } from "../utils/tokenManager";
 import { ChannelList } from "./ChannelList";
 import { ChatView } from "./ChatView";
 import { MemberSidebar } from "./MemberSidebar";
+import { MobileServerView } from "./MobileServerView";
 import { ReportsPanel } from "./ReportsPanel";
 import { ServerHeader } from "./ServerHeader";
 import { ServerLoadingStates } from "./ServerLoadingStates";
@@ -106,7 +107,6 @@ export const ServerView = () => {
   const rightSidebarContentRef = useRef<HTMLDivElement | null>(null);
 
   const leftSidebarOpen = pinChannelsSidebar || hoverLeftSidebar;
-  const rightSidebarAllowed = !isMobile;
   const rightSidebarOpen = pinMembersSidebar || hoverRightSidebar;
 
   useEffect(() => {
@@ -126,8 +126,6 @@ export const ServerView = () => {
   }, [rightSidebarOpen]);
 
   const VOICE_MIN_WIDTH = 200;
-
-  // (rightSidebarAllowed is referenced later in render)
 
   const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -437,83 +435,83 @@ export const ServerView = () => {
             )}
           </Flex>
         )}
-        <Flex
-          width="100%"
-          style={{
-            flex: 1,
-            overflow: "hidden",
-            ...(isServerUnreachable && !isConnectedToVoiceOnThisServer && {
-              opacity: 0.5,
-              pointerEvents: 'none' as const,
-            }),
-            transition: 'opacity 0.3s ease',
-          }}
-          gap="4"
-        >
-          {isMobile ? (
-            <Box
-              width={{ sm: "240px", initial: "100%" }}
-              style={{
-                position: "relative",
-                ...(isConnectedToVoiceOnThisServer && isServerUnreachable && {
-                  opacity: 0.5,
-                  pointerEvents: 'none' as const,
-                }),
-                transition: 'opacity 0.3s ease',
-              }}
-            >
-              <Flex
-                direction="column"
-                height="100%"
-                width="100%"
-                align="center"
-                gap="4"
-              >
-                <ServerHeader
-                  serverName={serverDetailsList[currentlyViewingServer.host]?.server_info?.name || currentlyViewingServer?.name}
-                  role={serverDetailsList[currentlyViewingServer.host]?.server_info?.role}
-                  onOpenSettings={() => {
-                    window.dispatchEvent(new CustomEvent("server_settings_open", {
-                      detail: { host: currentlyViewingServer.host }
-                    }));
-                  }}
-                  onOpenReports={() => setReportsOpen(true)}
-                  pendingReportCount={pendingReportCount}
-                  onLeave={() =>
-                    currentlyViewingServer &&
-                    setShowRemoveServer(currentlyViewingServer.host)
-                  }
-                />
-
-                <Box style={{ flex: 1, width: "100%", minHeight: 0, display: "flex", flexDirection: "column", overflowY: "auto" }}>
-                  <ChannelList
-                    channels={serverDetailsList[currentlyViewingServer.host]?.channels || []}
-                    items={effectiveSidebarItems}
-                    serverHost={currentlyViewingServer.host}
-                    clients={clients[currentlyViewingServer.host] || {}}
-                    members={memberLists[currentlyViewingServer.host] || []}
-                    currentChannelId={currentChannelId}
-                    currentServerConnected={currentServerConnected}
-                    showVoiceView={showVoiceView}
-                    isConnecting={isConnecting}
-                    currentConnectionId={currentConnection?.id}
-                    selectedChannelId={selectedChannelId}
-                    onChannelClick={handleChannelClick}
-                    clientsSpeaking={clientsSpeaking}
-                    canManage={canManage}
-                    onEditItem={handleEditItem}
-                    onDeleteItem={requestDeleteSidebarItem}
-                    onMoveItem={handleMoveItem}
-                    onReorder={reorderSidebar}
-                    onAddItem={handleAddItem}
-                    onDisconnectUser={canManage ? requestDisconnectUser : undefined}
-                    currentUserRole={currentUserRole}
-                    adminActions={currentAdminActions}
-                  />
-                </Box>
-              </Flex>
-            </Box>
-          ) : (
+        {isMobile ? (
+          <MobileServerView
+            serverName={serverDetailsList[currentlyViewingServer.host]?.server_info?.name || currentlyViewingServer?.name}
+            serverRole={serverDetailsList[currentlyViewingServer.host]?.server_info?.role}
+            isServerUnreachable={isServerUnreachable}
+            isConnectedToVoiceOnThisServer={isConnectedToVoiceOnThisServer}
+            onOpenSettings={() => {
+              window.dispatchEvent(new CustomEvent("server_settings_open", {
+                detail: { host: currentlyViewingServer.host }
+              }));
+            }}
+            onOpenReports={() => setReportsOpen(true)}
+            pendingReportCount={pendingReportCount}
+            onLeave={() => currentlyViewingServer && setShowRemoveServer(currentlyViewingServer.host)}
+            channels={serverDetailsList[currentlyViewingServer.host]?.channels || []}
+            sidebarItems={effectiveSidebarItems}
+            serverHost={currentlyViewingServer.host}
+            clients={clients[currentlyViewingServer.host] || {}}
+            members={memberLists[currentlyViewingServer.host] || []}
+            currentChannelId={currentChannelId}
+            currentServerConnected={currentServerConnected}
+            showVoiceView={showVoiceView}
+            isConnecting={isConnecting}
+            currentConnectionId={currentConnection?.id}
+            selectedChannelId={selectedChannelId}
+            onChannelClick={handleChannelClick}
+            clientsSpeaking={clientsSpeaking}
+            canManage={canManage}
+            onEditItem={handleEditItem}
+            onDeleteItem={requestDeleteSidebarItem}
+            onMoveItem={handleMoveItem}
+            onReorder={reorderSidebar}
+            onAddItem={handleAddItem}
+            onDisconnectUser={canManage ? requestDisconnectUser : undefined}
+            currentUserRole={currentUserRole}
+            adminActions={currentAdminActions}
+            chatMessages={chatMessages}
+            canSend={canSend}
+            sendChat={sendChat}
+            currentUserId={currentServerUserId}
+            channelName={activeChannelName}
+            currentUserNickname={serverNickname}
+            socketConnection={currentConnection}
+            memberList={memberLists[currentlyViewingServer.host]?.reduce((acc, member) => {
+              acc[member.serverUserId] = { ...member };
+              return acc;
+            }, {} as Record<string, { nickname: string; serverUserId: string; avatarFileId?: string | null }>) || {}}
+            isRateLimited={isRateLimited}
+            rateLimitCountdown={rateLimitCountdown}
+            canViewVoiceChannelText={canViewVoiceChannelText}
+            isVoiceChannelTextChat={isVoiceChannelTextChat}
+            isLoadingMessages={isLoadingMessages}
+            restoreText={restoreText}
+            clearRestoreText={clearRestoreText}
+            canDeleteAny={serverDetails?.server_info?.role === "owner"}
+            maxFileSize={serverDetails?.server_info?.upload_max_bytes}
+            voiceWidth={voiceWidth}
+            clientsForHost={clients[currentlyViewingServer.host] || {}}
+            onVoiceDisconnect={handleVoiceDisconnect}
+            peerLatency={peerLatency}
+            videoStreams={videoStreams}
+            streamSources={streamSources}
+          />
+        ) : (
+          <Flex
+            width="100%"
+            style={{
+              flex: 1,
+              overflow: "hidden",
+              ...(isServerUnreachable && !isConnectedToVoiceOnThisServer && {
+                opacity: 0.5,
+                pointerEvents: 'none' as const,
+              }),
+              transition: 'opacity 0.3s ease',
+            }}
+            gap="4"
+          >
             <div
               onMouseLeave={() => setHoverLeftSidebar(false)}
               style={{ flexShrink: 0, display: "flex" }}
@@ -612,100 +610,113 @@ export const ServerView = () => {
                 animate={{ width: leftSidebarOpen ? 0 : SIDEBAR_HOVER_PX }}
                 initial={false}
                 transition={{ type: "spring", stiffness: 380, damping: 34 }}
-                style={{ flexShrink: 0 }}
-              />
-            </div>
-          )}
-        {!isMobile && (
-          <Flex flexGrow="1">
-            <VoiceView
-              showVoiceView={showVoiceView && !isCompact}
-              voiceWidth={voiceWidth}
-              serverHost={currentlyViewingServer.host}
-              currentServerConnected={currentServerConnected}
-              currentChannelId={currentChannelId}
-              clientsForHost={clients[currentlyViewingServer.host] || {}}
-              members={memberLists[currentlyViewingServer.host] || []}
-              clientsSpeaking={clientsSpeaking}
-              isConnecting={isConnecting}
-              currentConnectionId={currentConnection?.id}
-              onDisconnect={handleVoiceDisconnect}
-              peerLatency={peerLatency}
-              onDisconnectUser={canManage ? requestDisconnectUser : undefined}
-              isDragging={isDraggingResize}
-              currentUserRole={currentUserRole}
-              adminActions={currentAdminActions}
-              videoStreams={videoStreams}
-              streamSources={streamSources}
-              onFocusChange={setVoiceFocused}
-            />
-
-            {!isCompact && !voiceFocused && (isDraggingResize || (showVoiceView && voiceWidth !== "0px")) && (
-              <div
-                onMouseDown={handleResizeMouseDown}
                 style={{
-                  width: "8px",
-                  marginRight: "8px",
-                  cursor: isDraggingResize ? "grabbing" : "grab",
                   flexShrink: 0,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  userSelect: "none",
+                  overflow: "hidden",
                 }}
               >
                 <div
                   style={{
-                    width: "3px",
-                    height: "40px",
-                    borderRadius: "2px",
-                    background: isDraggingResize ? "var(--accent-9)" : "var(--gray-6)",
+                    width: "100%",
+                    height: 128,
+                    borderRadius: 9999,
+                    background: "var(--gray-a4)",
                     transition: "background 0.15s",
                   }}
                 />
-              </div>
-            )}
-
-            <div style={{
-              display: 'flex',
-              flex: voiceFocused ? '0 0 320px' : 1,
-              minWidth: 0,
-              ...(isConnectedToVoiceOnThisServer && isServerUnreachable && {
-                opacity: 0.5,
-                pointerEvents: 'none' as const,
-              }),
-              transition: 'opacity 0.3s ease, flex 0.3s ease',
-            }}>
-              <ChatView
-                chatMessages={chatMessages}
-                canSend={canSend}
-                sendChat={sendChat}
-                currentUserId={currentServerUserId}
-                channelName={activeChannelName}
-                currentUserNickname={serverNickname}
-                socketConnection={currentConnection}
-                serverHost={currentlyViewingServer.host}
-                memberList={memberLists[currentlyViewingServer.host]?.reduce((acc, member) => {
-                  acc[member.serverUserId] = {
-                    ...member
-                  };
-                  return acc;
-                }, {} as Record<string, { nickname: string; serverUserId: string; avatarFileId?: string | null }>) || {}}
-                isRateLimited={isRateLimited}
-                rateLimitCountdown={rateLimitCountdown}
-                canViewVoiceChannelText={canViewVoiceChannelText}
-                isVoiceChannelTextChat={isVoiceChannelTextChat}
-                restoreText={restoreText}
-                clearRestoreText={clearRestoreText}
-                canDeleteAny={serverDetails?.server_info?.role === "owner"}
-                maxFileSize={serverDetails?.server_info?.upload_max_bytes}
-                {...(isLoadingMessages !== undefined && { isLoadingMessages })}
-              />
+              </motion.div>
             </div>
-          </Flex>
-        )}
 
-          {rightSidebarAllowed && (
+            <Flex flexGrow="1">
+              <VoiceView
+                showVoiceView={showVoiceView && !isCompact}
+                voiceWidth={voiceWidth}
+                serverHost={currentlyViewingServer.host}
+                currentServerConnected={currentServerConnected}
+                currentChannelId={currentChannelId}
+                clientsForHost={clients[currentlyViewingServer.host] || {}}
+                members={memberLists[currentlyViewingServer.host] || []}
+                clientsSpeaking={clientsSpeaking}
+                isConnecting={isConnecting}
+                currentConnectionId={currentConnection?.id}
+                onDisconnect={handleVoiceDisconnect}
+                peerLatency={peerLatency}
+                onDisconnectUser={canManage ? requestDisconnectUser : undefined}
+                isDragging={isDraggingResize}
+                currentUserRole={currentUserRole}
+                adminActions={currentAdminActions}
+                videoStreams={videoStreams}
+                streamSources={streamSources}
+                onFocusChange={setVoiceFocused}
+              />
+
+              {!isCompact && !voiceFocused && (isDraggingResize || (showVoiceView && voiceWidth !== "0px")) && (
+                <div
+                  onMouseDown={handleResizeMouseDown}
+                  style={{
+                    width: "8px",
+                    marginRight: "8px",
+                    cursor: isDraggingResize ? "grabbing" : "grab",
+                    flexShrink: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    userSelect: "none",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: "3px",
+                      height: "40px",
+                      borderRadius: "2px",
+                      background: isDraggingResize ? "var(--accent-9)" : "var(--gray-6)",
+                      transition: "background 0.15s",
+                    }}
+                  />
+                </div>
+              )}
+
+              <div style={{
+                display: 'flex',
+                flex: voiceFocused ? '0 0 320px' : 1,
+                minWidth: 0,
+                ...(isConnectedToVoiceOnThisServer && isServerUnreachable && {
+                  opacity: 0.5,
+                  pointerEvents: 'none' as const,
+                }),
+                transition: 'opacity 0.3s ease, flex 0.3s ease',
+              }}>
+                <ChatView
+                  chatMessages={chatMessages}
+                  canSend={canSend}
+                  sendChat={sendChat}
+                  currentUserId={currentServerUserId}
+                  channelName={activeChannelName}
+                  currentUserNickname={serverNickname}
+                  socketConnection={currentConnection}
+                  serverHost={currentlyViewingServer.host}
+                  memberList={memberLists[currentlyViewingServer.host]?.reduce((acc, member) => {
+                    acc[member.serverUserId] = {
+                      ...member
+                    };
+                    return acc;
+                  }, {} as Record<string, { nickname: string; serverUserId: string; avatarFileId?: string | null }>) || {}}
+                  isRateLimited={isRateLimited}
+                  rateLimitCountdown={rateLimitCountdown}
+                  canViewVoiceChannelText={canViewVoiceChannelText}
+                  isVoiceChannelTextChat={isVoiceChannelTextChat}
+                  restoreText={restoreText}
+                  clearRestoreText={clearRestoreText}
+                  canDeleteAny={serverDetails?.server_info?.role === "owner"}
+                  maxFileSize={serverDetails?.server_info?.upload_max_bytes}
+                  {...(isLoadingMessages !== undefined && { isLoadingMessages })}
+                />
+              </div>
+            </Flex>
+
             <div
               onMouseLeave={() => setHoverRightSidebar(false)}
               style={{ flexShrink: 0, display: "flex" }}
@@ -715,8 +726,24 @@ export const ServerView = () => {
                 animate={{ width: rightSidebarOpen ? 0 : SIDEBAR_HOVER_PX }}
                 initial={false}
                 transition={{ type: "spring", stiffness: 380, damping: 34 }}
-                style={{ flexShrink: 0 }}
-              />
+                style={{
+                  flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    width: "100%",
+                    height: 128,
+                    borderRadius: 9999,
+                    background: "var(--gray-a4)",
+                    transition: "background 0.15s",
+                  }}
+                />
+              </motion.div>
 
               <motion.div
                 animate={{ width: rightSidebarOpen ? SIDEBAR_WIDTH_PX : 0 }}
@@ -766,8 +793,8 @@ export const ServerView = () => {
                 </div>
               </motion.div>
             </div>
-          )}
-        </Flex>
+          </Flex>
+        )}
       </Flex>
 
       <Dialog.Root open={editDialogOpen} onOpenChange={(open) => { if (!open) { flushSaveSidebar(); closeEditDialog(); } }}>
