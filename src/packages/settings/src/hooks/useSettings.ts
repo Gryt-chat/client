@@ -21,6 +21,8 @@ function useSettingsHook() {
   const [isMuted, setIsMutedState] = useState(false);
   const [isDeafened, setIsDeafenedState] = useState(false);
   const [preDeafenMuteState, setPreDeafenMuteState] = useState(false);
+  const [isServerMuted, setIsServerMuted] = useState(false);
+  const [isServerDeafened, setIsServerDeafened] = useState(false);
 
   const [rnnoiseEnabled, setRnnoiseEnabled] = useState(
     localStorage.getItem("rnnoiseEnabled") !== "false"
@@ -533,6 +535,10 @@ function useSettingsHook() {
     setIsMuted,
     isDeafened,
     setIsDeafened,
+    isServerMuted,
+    setIsServerMuted,
+    isServerDeafened,
+    setIsServerDeafened,
     showSettings,
     setShowSettings,
     settingsTab,

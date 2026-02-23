@@ -5,7 +5,7 @@ import { singletonHook } from "react-singleton-hook";
 import { useMicrophone, useSpeakers } from "@/audio";
 import connectMp3 from "@/audio/src/assets/connect.mp3";
 import disconnectMp3 from "@/audio/src/assets/disconnect.mp3";
-import { sliderToGain } from "@/lib/audioVolume";
+import { playNotificationSound } from "@/lib/notificationSound";
 import { useSettings } from "@/settings";
 import { useServerManagement,useSockets } from "@/socket";
 
@@ -53,8 +53,10 @@ function useSfuHook(): SFUInterface {
     customConnectSoundFile,
     customDisconnectSoundFile,
     isDeafened,
+    isServerDeafened,
     eSportsModeEnabled,
   } = useSettings();
+  const effectiveDeafened = isDeafened || isServerDeafened;
 
   const {
     currentlyViewingServer,
@@ -91,7 +93,7 @@ function useSfuHook(): SFUInterface {
   const { microphoneBuffer } = useMicrophone(isConnecting || isConnected);
   const microphoneBufferRef = useRef(microphoneBuffer);
   useEffect(() => { microphoneBufferRef.current = microphoneBuffer; }, [microphoneBuffer]);
-  const { audioContext } = useSpeakers();
+  const { audioContext, remoteBusNode } = useSpeakers();
 
   // Stable refs bundle for cleanup helpers
   const cleanupRefs: CleanupRefs = useMemo(() => ({
@@ -116,8 +118,9 @@ function useSfuHook(): SFUInterface {
     setStreamSources,
     setVideoStreams,
     audioContext,
+    remoteBusNode,
     outputVolume,
-    isDeafened,
+    isDeafened: effectiveDeafened,
     isConnected,
     connectionServerId: connectionState.serverId,
     sockets,
@@ -227,13 +230,7 @@ function useSfuHook(): SFUInterface {
     });
 
     if (shouldPlaySound) {
-      try {
-        const audio = new Audio(disconnectSoundFile);
-        audio.volume = sliderToGain(disconnectSoundVolume);
-        audio.play().catch(() => {});
-      } catch (error) {
-        console.error("Error playing disconnect sound:", error);
-      }
+      playNotificationSound(disconnectSoundFile, disconnectSoundVolume);
     }
 
     if (onDisconnect) {

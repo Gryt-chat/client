@@ -15,7 +15,7 @@ import {
   setServerAccessToken,
   setServerRefreshToken,
 } from "@/common";
-import { sliderToGain } from "@/lib/audioVolume";
+import { playNotificationSound, preloadNotificationSound } from "@/lib/notificationSound";
 import {
   Server,
   serverDetails,
@@ -91,6 +91,8 @@ export interface SocketEventDeps {
   setClients: Dispatch<SetStateAction<{ [host: string]: Clients }>>;
   setMemberLists: Dispatch<SetStateAction<{ [host: string]: MemberInfo[] }>>;
   setServerProfiles: Dispatch<SetStateAction<Record<string, { nickname: string; avatarFileId: string | null; avatarUrl: string | null }>>>;
+  setIsServerMuted: (value: boolean) => void;
+  setIsServerDeafened: (value: boolean) => void;
   onTokenRefreshed: () => void;
 }
 
@@ -122,6 +124,8 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
     setClients,
     setMemberLists,
     setServerProfiles,
+    setIsServerMuted,
+    setIsServerDeafened,
     onTokenRefreshed,
   } = deps;
 
@@ -135,8 +139,8 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
 
   useEffect(() => { connectSoundEnabledRef.current = connectSoundEnabled; }, [connectSoundEnabled]);
   useEffect(() => { disconnectSoundEnabledRef.current = disconnectSoundEnabled; }, [disconnectSoundEnabled]);
-  useEffect(() => { connectSoundFileRef.current = connectSoundFile; }, [connectSoundFile]);
-  useEffect(() => { disconnectSoundFileRef.current = disconnectSoundFile; }, [disconnectSoundFile]);
+  useEffect(() => { connectSoundFileRef.current = connectSoundFile; preloadNotificationSound(connectSoundFile); }, [connectSoundFile]);
+  useEffect(() => { disconnectSoundFileRef.current = disconnectSoundFile; preloadNotificationSound(disconnectSoundFile); }, [disconnectSoundFile]);
   useEffect(() => { connectSoundVolumeRef.current = connectSoundVolume; }, [connectSoundVolume]);
   useEffect(() => { disconnectSoundVolumeRef.current = disconnectSoundVolume; }, [disconnectSoundVolume]);
   useEffect(() => { onTokenRefreshedRef.current = onTokenRefreshed; }, [onTokenRefreshed]);
@@ -215,12 +219,14 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
       });
 
       socket.on("server:muted", (data: { muted: boolean }) => {
+        setIsServerMuted(data.muted);
         toast(data.muted ? "You have been server muted by an admin." : "Your server mute has been removed.", {
           icon: data.muted ? "🔇" : "🔊",
         });
       });
 
       socket.on("server:deafened", (data: { deafened: boolean }) => {
+        setIsServerDeafened(data.deafened);
         toast(data.deafened ? "You have been server deafened by an admin." : "Your server deafen has been removed.", {
           icon: data.deafened ? "🔇" : "🔊",
         });
@@ -575,6 +581,12 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
 
       socket.on("server:clients", (data: Clients) => {
         setClients((old) => ({ ...old, [host]: data }));
+
+        const myEntry = data[socket.id];
+        if (myEntry) {
+          setIsServerMuted(!!myEntry.isServerMuted);
+          setIsServerDeafened(!!myEntry.isServerDeafened);
+        }
       });
 
       socket.on("members:list", (data: MemberInfo[]) => {
@@ -589,24 +601,12 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
 
       socket.on("voice:peer:joined", () => {
         if (!connectSoundEnabledRef.current) return;
-        try {
-          const audio = new Audio(connectSoundFileRef.current);
-          audio.volume = sliderToGain(connectSoundVolumeRef.current);
-          audio.play().catch(() => {});
-        } catch (error) {
-          console.error("Error playing peer join sound:", error);
-        }
+        playNotificationSound(connectSoundFileRef.current, connectSoundVolumeRef.current);
       });
 
       socket.on("voice:peer:left", () => {
         if (!disconnectSoundEnabledRef.current) return;
-        try {
-          const audio = new Audio(disconnectSoundFileRef.current);
-          audio.volume = sliderToGain(disconnectSoundVolumeRef.current);
-          audio.play().catch(() => {});
-        } catch (error) {
-          console.error("Error playing peer leave sound:", error);
-        }
+        playNotificationSound(disconnectSoundFileRef.current, disconnectSoundVolumeRef.current);
       });
 
       // ---- Generic errors ----

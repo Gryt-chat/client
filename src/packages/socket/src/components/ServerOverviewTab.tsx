@@ -16,6 +16,7 @@ import { getServerAccessToken, getServerHttpBase, getValidIdentityToken } from "
 import { useSettings } from "@/settings";
 
 type ProfanityMode = "off" | "flag" | "censor" | "block";
+type CensorStyle = "grawlix" | "emoji" | "asterisks" | "block" | "hearts";
 
 type ServerSettingsPayload = {
   serverId: string;
@@ -28,6 +29,7 @@ type ServerSettingsPayload = {
   avatarMaxBytes?: number | null;
   uploadMaxBytes?: number | null;
   profanityMode?: ProfanityMode;
+  profanityCensorStyle?: CensorStyle;
 };
 
 export type ServerOverviewInitialSettings = {
@@ -66,13 +68,13 @@ export function ServerOverviewTab({
   const iconInputRef = useRef<HTMLInputElement>(null);
 
   const [profanityMode, setProfanityMode] = useState<ProfanityMode>("off");
+  const [censorStyle, setCensorStyle] = useState<CensorStyle>("grawlix");
 
   const [password, setPassword] = useState("");
   const [clearPassword, setClearPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [autosaving, setAutosaving] = useState(false);
-  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSaveRef = useRef(false);
   const lastSettingsRef = useRef<{
     displayName: string;
@@ -80,6 +82,7 @@ export function ServerOverviewTab({
     avatarMaxBytes: number | null;
     uploadMaxBytes: number | null;
     profanityMode: ProfanityMode;
+    profanityCensorStyle: CensorStyle;
   } | null>(null);
 
   const [avatarMaxMb, setAvatarMaxMb] = useState<string>("");
@@ -129,6 +132,7 @@ export function ServerOverviewTab({
       };
 
       setProfanityMode(payload.profanityMode ?? "off");
+      setCensorStyle(payload.profanityCensorStyle ?? "grawlix");
 
       if (!wasSaving) {
         setDisplayName(payload.displayName || "");
@@ -148,6 +152,7 @@ export function ServerOverviewTab({
         avatarMaxBytes: (typeof payload.avatarMaxBytes === "number" && Number.isFinite(payload.avatarMaxBytes)) ? payload.avatarMaxBytes : null,
         uploadMaxBytes: (typeof payload.uploadMaxBytes === "number" && Number.isFinite(payload.uploadMaxBytes)) ? payload.uploadMaxBytes : null,
         profanityMode: payload.profanityMode ?? "off",
+        profanityCensorStyle: payload.profanityCensorStyle ?? "grawlix",
       };
     };
 
@@ -159,14 +164,6 @@ export function ServerOverviewTab({
     };
   }, [host, socket]);
 
-  useEffect(() => {
-    return () => {
-      if (autosaveTimerRef.current) {
-        window.clearTimeout(autosaveTimerRef.current);
-        autosaveTimerRef.current = null;
-      }
-    };
-  }, []);
 
   const ensureJoined = async () => {
     if (!socket?.connected) return;
@@ -188,6 +185,7 @@ export function ServerOverviewTab({
     avatarMaxBytes: number | null;
     uploadMaxBytes: number | null;
     profanityMode: ProfanityMode;
+    profanityCensorStyle: CensorStyle;
   }>) => {
     if (!host) return;
     if (!socket || !socket.connected) return;
@@ -208,18 +206,14 @@ export function ServerOverviewTab({
     });
   };
 
-  const queueAutoSave = (patch: Parameters<typeof emitSettingsUpdate>[0]) => {
+  const saveIfChanged = (patch: Parameters<typeof emitSettingsUpdate>[0]) => {
     const last = lastSettingsRef.current;
     if (last) {
       const entries = Object.entries(patch) as Array<[keyof typeof patch, string | number | null | undefined]>;
       const changed = entries.some(([k, v]) => last[k] !== v);
       if (!changed) return;
     }
-    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
-    autosaveTimerRef.current = setTimeout(() => {
-      autosaveTimerRef.current = null;
-      emitSettingsUpdate(patch).catch(() => undefined);
-    }, 800);
+    emitSettingsUpdate(patch).catch(() => undefined);
   };
 
   const submit = async () => {
@@ -342,7 +336,7 @@ export function ServerOverviewTab({
         <TextField.Root
           value={displayName}
           onChange={(e: ChangeEvent<HTMLInputElement>) => setDisplayName(e.target.value)}
-          onBlur={() => queueAutoSave({ displayName: displayName.trim() })}
+          onBlur={() => saveIfChanged({ displayName: displayName.trim() })}
           placeholder="My Gryt Server"
           disabled={submitting || !isOwner}
         />
@@ -355,7 +349,7 @@ export function ServerOverviewTab({
         <TextArea
           value={description}
           onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
-          onBlur={() => queueAutoSave({ description: description.trim() })}
+          onBlur={() => saveIfChanged({ description: description.trim() })}
           placeholder="A place to hang out"
           disabled={submitting || !isOwner}
           style={{ minHeight: 90 }}
@@ -505,7 +499,7 @@ export function ServerOverviewTab({
             min="0"
             value={avatarMaxMb}
             onChange={(e) => setAvatarMaxMb(e.target.value)}
-            onBlur={() => queueAutoSave({ avatarMaxBytes: parseMbToBytes(avatarMaxMb) })}
+            onBlur={() => saveIfChanged({ avatarMaxBytes: parseMbToBytes(avatarMaxMb) })}
             placeholder="e.g. 5"
             disabled={submitting || !isOwner}
           />
@@ -522,7 +516,7 @@ export function ServerOverviewTab({
             min="0"
             value={uploadMaxMb}
             onChange={(e) => setUploadMaxMb(e.target.value)}
-            onBlur={() => queueAutoSave({ uploadMaxBytes: parseMbToBytes(uploadMaxMb) })}
+            onBlur={() => saveIfChanged({ uploadMaxBytes: parseMbToBytes(uploadMaxMb) })}
             placeholder="e.g. 25"
             disabled={submitting || !isOwner}
           />
@@ -537,23 +531,49 @@ export function ServerOverviewTab({
         <Text size="1" color="gray" style={{ lineHeight: 1.4 }}>
           Controls how profane messages are handled on this server.
         </Text>
-        <Select.Root
-          value={profanityMode}
-          onValueChange={(v) => {
-            const mode = v as ProfanityMode;
-            setProfanityMode(mode);
-            queueAutoSave({ profanityMode: mode });
-          }}
-          disabled={submitting || !isOwner}
-        >
-          <Select.Trigger />
-          <Select.Content>
-            <Select.Item value="off">Off — no filtering</Select.Item>
-            <Select.Item value="flag">Flag — blur profanity (clients can reveal)</Select.Item>
-            <Select.Item value="censor">Censor — replace with symbols</Select.Item>
-            <Select.Item value="block">Block — reject message entirely</Select.Item>
-          </Select.Content>
-        </Select.Root>
+        <Flex gap="2" wrap="wrap">
+          <div style={{ flex: "1 1 180px" }}>
+            <Select.Root
+              value={profanityMode}
+              onValueChange={(v) => {
+                const mode = v as ProfanityMode;
+                setProfanityMode(mode);
+                saveIfChanged({ profanityMode: mode });
+              }}
+              disabled={submitting || !isOwner}
+            >
+              <Select.Trigger style={{ width: "100%" }} />
+              <Select.Content>
+                <Select.Item value="off">Off — no filtering</Select.Item>
+                <Select.Item value="flag">Flag — blur profanity (clients can reveal)</Select.Item>
+                <Select.Item value="censor">Censor — replace profanity</Select.Item>
+                <Select.Item value="block">Block — reject message entirely</Select.Item>
+              </Select.Content>
+            </Select.Root>
+          </div>
+          {profanityMode === "censor" && (
+            <div style={{ flex: "1 1 180px" }}>
+              <Select.Root
+                value={censorStyle}
+                onValueChange={(v) => {
+                  const style = v as CensorStyle;
+                  setCensorStyle(style);
+                  saveIfChanged({ profanityCensorStyle: style });
+                }}
+                disabled={submitting || !isOwner}
+              >
+                <Select.Trigger style={{ width: "100%" }} placeholder="Replacement style" />
+                <Select.Content>
+                  <Select.Item value="grawlix">Symbols — $#@!%&*</Select.Item>
+                  <Select.Item value="asterisks">Asterisks — ****</Select.Item>
+                  <Select.Item value="emoji">Swear emoji — 🤬🤬</Select.Item>
+                  <Select.Item value="block">Black bars — ████</Select.Item>
+                  <Select.Item value="hearts">Hearts — ♥♥♥♥</Select.Item>
+                </Select.Content>
+              </Select.Root>
+            </div>
+          )}
+        </Flex>
       </Flex>
 
       {(password.trim().length > 0 || clearPassword) ? (

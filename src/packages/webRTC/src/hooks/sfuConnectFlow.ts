@@ -1,7 +1,7 @@
 import { Dispatch, MutableRefObject, SetStateAction } from "react";
 import { Socket } from "socket.io-client";
 
-import { sliderToGain } from "@/lib/audioVolume";
+import { playNotificationSound } from "@/lib/notificationSound";
 import { handleRateLimitError } from "@/socket/src/utils/rateLimitHandler";
 
 import { SFUConnectionState, Streams } from "../types/SFU";
@@ -186,6 +186,7 @@ export function setupPeerConnection(
   const pc = new RTCPeerConnection(config);
   let iceDebugDumped = false;
   let wasConnected = false;
+  let disconnectedTimeoutId: ReturnType<typeof setTimeout> | null = null;
   const dumpIceOnce = (label: string) => {
     if (iceDebugDumped) return;
     iceDebugDumped = true;
@@ -231,9 +232,27 @@ export function setupPeerConnection(
     voiceLog.info("WEBRTC", `Signaling state → ${pc.signalingState}`);
   };
 
+  pc.onnegotiationneeded = () => {
+    const ws = sfuWebSocketRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN || isDisconnectingRef.current) return;
+    voiceLog.info("WEBRTC", "Negotiation needed — requesting SFU renegotiation");
+    try {
+      ws.send(JSON.stringify({ event: "renegotiate", data: "" }));
+    } catch {
+      voiceLog.warn("WEBRTC", "Failed to send renegotiate request");
+    }
+  };
+
   pc.ontrack = (event) => {
     const remoteStream = event.streams[0] ?? new MediaStream([event.track]);
     voiceLog.ok("WEBRTC", "TRACK", `Remote track received: kind=${event.track.kind} streamId=${remoteStream.id} trackId=${event.track.id}`);
+
+    // Hint the browser to keep the jitter buffer tight for low-latency voice
+    const receiver = event.receiver as RTCRtpReceiver & { playoutDelayHint?: number };
+    if (event.track.kind === "audio" && "playoutDelayHint" in receiver) {
+      receiver.playoutDelayHint = 0;
+    }
+
     setStreams(prev => ({
       ...prev,
       [remoteStream.id]: { stream: remoteStream, isLocal: false },
@@ -260,6 +279,10 @@ export function setupPeerConnection(
         wasConnected = true;
         iceDebugDumped = false;
         dumpIceOnce("pc-connected");
+        if (disconnectedTimeoutId) {
+          clearTimeout(disconnectedTimeoutId);
+          disconnectedTimeoutId = null;
+        }
         if (connectionTimeoutRef.current) {
           clearTimeout(connectionTimeoutRef.current);
           connectionTimeoutRef.current = null;
@@ -274,13 +297,33 @@ export function setupPeerConnection(
       case 'disconnected':
         voiceLog.warn("WEBRTC", `Connection state → disconnected — attempting ICE recovery`, detail);
         dumpIceOnce("pc-disconnected");
-        try { pc.restartIce(); } catch { /* restartIce not supported */ }
+        try { pc.restartIce(); } catch { /* ignored */ }
+        disconnectedTimeoutId = setTimeout(() => {
+          disconnectedTimeoutId = null;
+          if (pc.connectionState !== 'connected' && pc.connectionState !== 'closed' && !isDisconnectingRef.current) {
+            voiceLog.fail("WEBRTC", "PC", "ICE recovery timed out after 5s — forcing reconnect", {
+              connectionState: pc.connectionState,
+              iceState: pc.iceConnectionState,
+            });
+            dumpIceOnce("ice-recovery-timeout");
+            setConnectionState(prev => ({
+              ...prev,
+              state: SFUConnectionState.FAILED,
+              error: "Connection lost",
+            }));
+            performCleanup?.(false).catch(() => undefined);
+          }
+        }, 5_000);
         break;
       case 'connecting':
         voiceLog.info("WEBRTC", `Connection state → ${state}`, detail);
         break;
       case 'failed':
       case 'closed':
+        if (disconnectedTimeoutId) {
+          clearTimeout(disconnectedTimeoutId);
+          disconnectedTimeoutId = null;
+        }
         voiceLog.fail("WEBRTC", "PC", `Connection state → ${state}`, detail);
         dumpIceOnce(`pc-${state}`);
         if (!isDisconnectingRef.current) {
@@ -690,13 +733,7 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
     });
 
     if (connectSoundEnabled) {
-      try {
-        const audio = new Audio(connectSoundFile);
-        audio.volume = sliderToGain(connectSoundVolume);
-        audio.play().catch(() => {});
-      } catch (error) {
-        voiceLog.warn("CONNECT", "Failed to play connect sound", error);
-      }
+      playNotificationSound(connectSoundFile, connectSoundVolume);
     }
 
   } catch (error) {

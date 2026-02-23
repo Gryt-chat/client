@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import toast from "react-hot-toast";
 
 import { useSettings } from "@/settings";
 
@@ -33,6 +34,8 @@ export function useGlobalHotkeys(onDisconnect?: () => void) {
     setIsMuted,
     isDeafened,
     setIsDeafened,
+    isServerMuted,
+    isServerDeafened,
     muteHotkey,
     deafenHotkey,
     disconnectHotkey,
@@ -44,12 +47,20 @@ export function useGlobalHotkeys(onDisconnect?: () => void) {
 
       if (matchesHotkey(e, muteHotkey)) {
         e.preventDefault();
+        if (isServerMuted) {
+          toast("You are server muted by an admin.", { icon: "🔇", id: "server-muted" });
+          return;
+        }
         setIsMuted(!isMuted);
         return;
       }
 
       if (matchesHotkey(e, deafenHotkey)) {
         e.preventDefault();
+        if (isServerDeafened) {
+          toast("You are server deafened by an admin.", { icon: "🔇", id: "server-deafened" });
+          return;
+        }
         setIsDeafened(!isDeafened);
         return;
       }
@@ -69,6 +80,8 @@ export function useGlobalHotkeys(onDisconnect?: () => void) {
     disconnectHotkey,
     isMuted,
     isDeafened,
+    isServerMuted,
+    isServerDeafened,
     setIsMuted,
     setIsDeafened,
     onDisconnect,

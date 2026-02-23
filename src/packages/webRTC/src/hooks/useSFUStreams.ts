@@ -13,6 +13,7 @@ interface UseSFUStreamsParams {
   setStreamSources: Dispatch<SetStateAction<StreamSources>>;
   setVideoStreams: Dispatch<SetStateAction<VideoStreams>>;
   audioContext: AudioContext | null | undefined;
+  remoteBusNode: GainNode | undefined;
   outputVolume: number;
   isDeafened: boolean;
   isConnected: boolean;
@@ -28,6 +29,7 @@ export function useSFUStreams({
   setStreamSources,
   setVideoStreams,
   audioContext,
+  remoteBusNode,
   outputVolume,
   isDeafened,
   isConnected,
@@ -152,7 +154,8 @@ export function useSFUStreams({
 
         sourceNode.connect(analyserNode);
         analyserNode.connect(gainNode);
-        gainNode.connect(audioContext.destination);
+        const destination = remoteBusNode ?? audioContext.destination;
+        gainNode.connect(destination);
 
         voiceLog.ok("WEBRTC", "PLAY", `Playback connected: stream ${streamID} → analyser → gain(${outputGain.toFixed(2)}) → speakers`, {
           audioContextState: audioContext.state,
@@ -217,16 +220,32 @@ export function useSFUStreams({
     return () => clearInterval(interval);
   }, [isConnected, setStreams]);
 
+  // Track the first stream ID seen for each track so we can alias after
+  // SFU renegotiations that assign new stream IDs to the same tracks.
+  const trackToOriginalStreamRef = useRef<Map<string, string>>(new Map());
+
   // Extract video MediaStreams from remote streams for rendering in VoiceView
   useEffect(() => {
     const nextVideo: VideoStreams = {};
+    const trackMap = trackToOriginalStreamRef.current;
+
     Object.entries(streams).forEach(([streamId, data]) => {
       if (data.isLocal) return;
       const videoTracks = data.stream.getVideoTracks();
       if (videoTracks.length > 0 && videoTracks.some(t => t.readyState === "live")) {
         nextVideo[streamId] = data.stream;
+
+        for (const track of videoTracks) {
+          const originalId = trackMap.get(track.id);
+          if (!originalId) {
+            trackMap.set(track.id, streamId);
+          } else if (originalId !== streamId) {
+            nextVideo[originalId] = data.stream;
+          }
+        }
       }
     });
+
     setVideoStreams(prev => {
       const prevKeys = Object.keys(prev).sort().join(",");
       const nextKeys = Object.keys(nextVideo).sort().join(",");

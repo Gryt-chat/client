@@ -4,6 +4,8 @@ import { singletonHook } from "react-singleton-hook";
 import { useSettings } from "@/settings";
 
 import { isElectron } from "../../../../lib/electron";
+import { createScreenAudioCleaner, ScreenAudioCleanerResult } from "./screenAudioCleaner";
+import { useSpeakers } from "./useSpeakers";
 
 export type ScreenShareQuality = "native" | "4k" | "1440p" | "1080p" | "720p" | "480p";
 
@@ -46,12 +48,20 @@ export interface ScreenShareInterface {
 
 function useScreenShareHook(): ScreenShareInterface {
   const { screenShareQuality, screenShareFps } = useSettings();
+  const { audioContext, remoteBusNode } = useSpeakers();
   const [screenVideoStream, setScreenVideoStream] = useState<MediaStream | null>(null);
   const [screenAudioStream, setScreenAudioStream] = useState<MediaStream | null>(null);
   const [screenShareActive, setScreenShareActive] = useState(false);
   const rawStreamRef = useRef<MediaStream | null>(null);
+  const cleanerRef = useRef<ScreenAudioCleanerResult | null>(null);
+  const rawScreenAudioRef = useRef<MediaStream | null>(null);
 
   const stopScreenShare = useCallback(() => {
+    if (cleanerRef.current) {
+      cleanerRef.current.dispose();
+      cleanerRef.current = null;
+    }
+    rawScreenAudioRef.current = null;
     if (rawStreamRef.current) {
       rawStreamRef.current.getTracks().forEach((t) => t.stop());
       rawStreamRef.current = null;
@@ -132,9 +142,10 @@ function useScreenShareHook(): ScreenShareInterface {
 
       const audioTracks = stream.getAudioTracks();
       if (audioTracks.length > 0) {
-        const audioOnly = new MediaStream(audioTracks);
-        setScreenAudioStream(audioOnly);
+        rawScreenAudioRef.current = new MediaStream(audioTracks);
+        setScreenAudioStream(rawScreenAudioRef.current);
       } else {
+        rawScreenAudioRef.current = null;
         setScreenAudioStream(null);
       }
     } catch (error) {
@@ -143,8 +154,36 @@ function useScreenShareHook(): ScreenShareInterface {
     }
   }, [screenShareQuality, screenShareFps, stopScreenShare]);
 
+  // When screen audio + remote bus are both available, swap in a cleaned stream
+  // that has the app's own playback subtracted out.
+  useEffect(() => {
+    const rawAudio = rawScreenAudioRef.current;
+    if (!screenShareActive || !rawAudio || !audioContext || !remoteBusNode) return;
+
+    const track = rawAudio.getAudioTracks()[0];
+    if (!track || track.readyState !== "live") return;
+
+    if (cleanerRef.current) {
+      cleanerRef.current.dispose();
+      cleanerRef.current = null;
+    }
+
+    const cleaner = createScreenAudioCleaner(audioContext, track, remoteBusNode);
+    cleanerRef.current = cleaner;
+    setScreenAudioStream(cleaner.cleanedStream);
+
+    return () => {
+      cleaner.dispose();
+      if (cleanerRef.current === cleaner) cleanerRef.current = null;
+    };
+  }, [screenShareActive, audioContext, remoteBusNode]);
+
   useEffect(() => {
     return () => {
+      if (cleanerRef.current) {
+        cleanerRef.current.dispose();
+        cleanerRef.current = null;
+      }
       if (rawStreamRef.current) {
         rawStreamRef.current.getTracks().forEach((t) => t.stop());
       }

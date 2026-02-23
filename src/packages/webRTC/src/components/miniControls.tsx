@@ -1,6 +1,7 @@
 import { IconButton } from "@radix-ui/themes";
 import { AnimatePresence, motion, Variants } from "motion/react";
 import { useCallback, useState } from "react";
+import toast from "react-hot-toast";
 import { MdCallEnd, MdMic, MdMicOff, MdScreenShare, MdStopScreenShare, MdVideocam, MdVideocamOff, MdVolumeOff, MdVolumeUp } from "react-icons/md";
 
 import { type ScreenShareQuality,useCamera, useScreenShare } from "@/audio";
@@ -36,6 +37,8 @@ export function MiniControls({
     isDeafened,
     showVoiceView,
     setIsDeafened,
+    isServerMuted,
+    isServerDeafened,
   } = useSettings();
   
   const {
@@ -90,7 +93,7 @@ export function MiniControls({
               display: "flex",
               flexDirection: isColumn ? "column" : "row-reverse",
               alignItems: "center",
-              gap: isColumn ? "2px" : "8px",
+              gap: isColumn ? "4px" : "8px",
               ...(isColumn ? {
                 background: "var(--gray-a3)",
                 borderRadius: "9999px",
@@ -101,24 +104,38 @@ export function MiniControls({
             <motion.div variants={buttonAnimations}>
               <IconButton
                 size={btnSize}
-                color={isMuted ? "red" : "gray"}
+                color={(isMuted || isServerMuted) ? "red" : "gray"}
                 variant="soft"
                 radius="full"
-                onClick={() => setIsMuted(!isMuted)}
+                style={isServerMuted ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
+                onClick={() => {
+                  if (isServerMuted) {
+                    toast("You are server muted by an admin.", { icon: "🔇", id: "server-muted" });
+                    return;
+                  }
+                  setIsMuted(!isMuted);
+                }}
               >
-                {isMuted ? <MdMicOff size={iconSize} /> : <MdMic size={iconSize} />}
+                {(isMuted || isServerMuted) ? <MdMicOff size={iconSize} /> : <MdMic size={iconSize} />}
               </IconButton>
             </motion.div>
 
             <motion.div variants={buttonAnimations}>
               <IconButton
                 size={btnSize}
-                color={isDeafened ? "red" : "gray"}
+                color={(isDeafened || isServerDeafened) ? "red" : "gray"}
                 variant="soft"
                 radius="full"
-                onClick={() => setIsDeafened(!isDeafened)}
+                style={isServerDeafened ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
+                onClick={() => {
+                  if (isServerDeafened) {
+                    toast("You are server deafened by an admin.", { icon: "🔇", id: "server-deafened" });
+                    return;
+                  }
+                  setIsDeafened(!isDeafened);
+                }}
               >
-                {isDeafened ? (
+                {(isDeafened || isServerDeafened) ? (
                   <MdVolumeOff size={iconSize} />
                 ) : (
                   <MdVolumeUp size={iconSize} />

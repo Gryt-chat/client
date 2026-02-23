@@ -39,6 +39,8 @@ function useSocketsHook() {
     disconnectSoundVolume,
     customConnectSoundFile,
     customDisconnectSoundFile,
+    setIsServerMuted,
+    setIsServerDeafened,
   } = useSettings();
   
   const { 
@@ -145,6 +147,8 @@ function useSocketsHook() {
     setClients,
     setMemberLists,
     setServerProfiles,
+    setIsServerMuted,
+    setIsServerDeafened,
     onTokenRefreshed: bumpTokenRevision,
   });
 

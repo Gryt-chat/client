@@ -33,14 +33,15 @@ export function usePushToTalk(
   microphoneBuffer: MicrophoneBufferType,
   audioContext: AudioContext | undefined
 ) {
-  const { inputMode, pushToTalkKey, isMuted } = useSettings();
+  const { inputMode, pushToTalkKey, isMuted, isServerMuted } = useSettings();
+  const effectiveMuted = isMuted || isServerMuted;
   const isPttActiveRef = useRef(false);
   const inElectron = isElectron();
 
   // Set initial mute state when entering PTT mode
   useEffect(() => {
     if (inputMode !== "push_to_talk" || !microphoneBuffer.muteGain || !audioContext) return;
-    if (!isMuted) {
+    if (!effectiveMuted) {
       microphoneBuffer.muteGain.gain.setValueAtTime(0, audioContext.currentTime);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -63,7 +64,7 @@ export function usePushToTalk(
     const removePttDown = api.onPttDown(() => {
       if (isPttActiveRef.current) return;
       isPttActiveRef.current = true;
-      if (!isMuted) {
+      if (!effectiveMuted) {
         microphoneBuffer.muteGain!.gain.setValueAtTime(1, audioContext!.currentTime);
       }
     });
@@ -78,7 +79,7 @@ export function usePushToTalk(
       removePttDown();
       removePttUp();
     };
-  }, [inElectron, inputMode, microphoneBuffer.muteGain, audioContext, isMuted]);
+  }, [inElectron, inputMode, microphoneBuffer.muteGain, audioContext, effectiveMuted]);
 
   // Browser keyboard listeners (always active — also works inside Electron
   // when the window IS focused, providing immediate response without IPC lag)
@@ -91,7 +92,7 @@ export function usePushToTalk(
       if (!matchesPttKey(e, pushToTalkKey)) return;
 
       isPttActiveRef.current = true;
-      if (!isMuted) {
+      if (!effectiveMuted) {
         microphoneBuffer.muteGain!.gain.setValueAtTime(1, audioContext!.currentTime);
       }
     };
@@ -124,7 +125,7 @@ export function usePushToTalk(
       window.removeEventListener("keyup", handleKeyUp);
       window.removeEventListener("blur", handleBlur);
     };
-  }, [inputMode, pushToTalkKey, microphoneBuffer.muteGain, audioContext, isMuted, inElectron]);
+  }, [inputMode, pushToTalkKey, microphoneBuffer.muteGain, audioContext, effectiveMuted, inElectron]);
 
   return { isPttActive: isPttActiveRef };
 }

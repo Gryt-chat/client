@@ -5,6 +5,8 @@ export type Client = {
   nickname: string;
   isMuted: boolean;
   isDeafened: boolean;
+  isServerMuted?: boolean;
+  isServerDeafened?: boolean;
   color: string;
   streamID: string;
   hasJoinedChannel: boolean;

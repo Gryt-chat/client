@@ -393,6 +393,16 @@ export const ServerView = () => {
     currentConnection.emit("server:roles:set", { accessToken, serverUserId: targetServerUserId, role });
   }, [currentConnection, accessToken]);
 
+  const memberListMap = useMemo(() => {
+    const members = currentlyViewingServer ? memberLists[currentlyViewingServer.host] : undefined;
+    if (!members) return {};
+    const map: Record<string, { nickname: string; serverUserId: string; avatarFileId?: string | null }> = {};
+    for (const member of members) {
+      map[member.serverUserId] = { nickname: member.nickname, serverUserId: member.serverUserId, avatarFileId: member.avatarFileId };
+    }
+    return map;
+  }, [currentlyViewingServer, memberLists]);
+
   if (!currentlyViewingServer) return null;
   const serverDetails = serverDetailsList[currentlyViewingServer.host];
   const serverNickname = serverProfiles[currentlyViewingServer.host]?.nickname || nickname;
@@ -429,24 +439,26 @@ export const ServerView = () => {
 
         if (isAlreadyConnectedToThis) {
           mediaAutoShownRef.current = false;
-          if (selectedChannelId === channel.id) {
-            setShowVoiceView(!showVoiceView);
-          } else {
+          if (selectedChannelId !== channel.id && channel.textInVoice) {
             setSelectedChannelId(channel.id);
-            setShowVoiceView(true);
           }
+          setShowVoiceView(!showVoiceView);
           return;
         }
 
         if (isConnecting && currentChannelId === channel.id) {
           mediaAutoShownRef.current = false;
-          setSelectedChannelId(channel.id);
+          if (channel.textInVoice) {
+            setSelectedChannelId(channel.id);
+          }
           setShowVoiceView(!showVoiceView);
           return;
         }
 
         setPendingChannelId(null);
         applyChannelSettings(channel);
+        mediaAutoShownRef.current = false;
+        setShowVoiceView(false);
         connect(channel.id, channel.eSportsMode, channel.maxBitrate).catch((error) => {
           console.error("SFU connection failed:", error);
           if (error instanceof Error && error.message.includes("Microphone not available")) {
@@ -557,10 +569,7 @@ export const ServerView = () => {
             channelName={activeChannelName}
             currentUserNickname={serverNickname}
             socketConnection={currentConnection}
-            memberList={memberLists[currentlyViewingServer.host]?.reduce((acc, member) => {
-              acc[member.serverUserId] = { ...member };
-              return acc;
-            }, {} as Record<string, { nickname: string; serverUserId: string; avatarFileId?: string | null }>) || {}}
+            memberList={memberListMap}
             isRateLimited={isRateLimited}
             rateLimitCountdown={rateLimitCountdown}
             canViewVoiceChannelText={canViewVoiceChannelText}
@@ -783,12 +792,7 @@ export const ServerView = () => {
                   currentUserNickname={serverNickname}
                   socketConnection={currentConnection}
                   serverHost={currentlyViewingServer.host}
-                  memberList={memberLists[currentlyViewingServer.host]?.reduce((acc, member) => {
-                    acc[member.serverUserId] = {
-                      ...member
-                    };
-                    return acc;
-                  }, {} as Record<string, { nickname: string; serverUserId: string; avatarFileId?: string | null }>) || {}}
+                  memberList={memberListMap}
                   isRateLimited={isRateLimited}
                   rateLimitCountdown={rateLimitCountdown}
                   canViewVoiceChannelText={canViewVoiceChannelText}

@@ -387,6 +387,10 @@ export const VoiceView = ({
 
   const isFocused = !!focusedStream;
 
+  useEffect(() => {
+    onFocusChange?.(isFocused);
+  }, [isFocused, onFocusChange]);
+
   const displayItems = useMemo(() => {
     if (!focusedStream) return orderedItems;
     return orderedItems.filter((id) => id !== focusedStream.itemId);
@@ -399,12 +403,34 @@ export const VoiceView = ({
     const onEnded = () => {
       if (focusedStream.stream.getTracks().every((t) => t.readyState === "ended")) {
         setFocusedStream(null);
-        onFocusChange?.(false);
       }
     };
     for (const t of tracks) t.addEventListener("ended", onEnded);
     return () => { for (const t of tracks) t.removeEventListener("ended", onEnded); };
-  }, [focusedStream, onFocusChange]);
+  }, [focusedStream]);
+
+  // Swap the focused stream when the SFU renegotiates and assigns a new
+  // MediaStream to the same track (the stream ID aliasing in useSFUStreams
+  // keeps the same key but the underlying MediaStream object changes).
+  useEffect(() => {
+    if (!focusedStream) return;
+
+    const isScreenTile = focusedStream.itemId.startsWith("screen:");
+    const clientId = isScreenTile ? focusedStream.itemId.slice(7) : focusedStream.itemId;
+    if (clientId === currentConnectionId) return;
+
+    const client = clientsForHost[clientId];
+    if (!client) return;
+
+    const streamKey = isScreenTile
+      ? client.screenShareVideoStreamID
+      : client.cameraStreamID;
+    const currentStream = streamKey ? videoStreams?.[streamKey] : undefined;
+
+    if (currentStream && currentStream !== focusedStream.stream) {
+      setFocusedStream((prev) => prev ? { ...prev, stream: currentStream } : null);
+    }
+  }, [focusedStream, clientsForHost, currentConnectionId, videoStreams]);
 
   const handleFocus = useCallback((info: FocusedStreamInfo) => {
     setFocusedStream((prev) => {

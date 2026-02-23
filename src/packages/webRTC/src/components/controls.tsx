@@ -1,5 +1,6 @@
-import { Flex, IconButton } from "@radix-ui/themes";
+import { Flex, IconButton, Tooltip } from "@radix-ui/themes";
 import { useCallback, useEffect, useRef, useState } from "react";
+import toast from "react-hot-toast";
 import {
   MdCallEnd,
   MdMic,
@@ -44,6 +45,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
   const { sockets } = useSockets();
   const {
     setIsMuted, isMuted, isDeafened, setIsDeafened,
+    isServerMuted, isServerDeafened,
     screenShareQuality, setScreenShareQuality,
     screenShareFps, setScreenShareFps,
     experimentalScreenShare,
@@ -171,10 +173,18 @@ export function Controls({ onDisconnect }: ControlsProps) {
   }, [screenShareActive, stopScreenShare]);
 
   function handleMute() {
+    if (isServerMuted) {
+      toast("You are server muted by an admin.", { icon: "🔇", id: "server-muted" });
+      return;
+    }
     setIsMuted(!isMuted);
   }
 
   function handleDeafen() {
+    if (isServerDeafened) {
+      toast("You are server deafened by an admin.", { icon: "🔇", id: "server-deafened" });
+      return;
+    }
     setIsDeafened(!isDeafened);
   }
 
@@ -188,21 +198,27 @@ export function Controls({ onDisconnect }: ControlsProps) {
     <>
       {isBrowserSupported && (
         <Flex align="center" justify="center" gap="4">
-          <IconButton
-            color={isMuted ? "red" : "gray"}
-            variant="soft"
-            onClick={handleMute}
-          >
-            {isMuted ? <MdMicOff size={16} /> : <MdMic size={16} />}
-          </IconButton>
+          <Tooltip content={isServerMuted ? "Server muted by admin" : undefined} delayDuration={300}>
+            <IconButton
+              color={(isMuted || isServerMuted) ? "red" : "gray"}
+              variant="soft"
+              onClick={handleMute}
+              style={isServerMuted ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
+            >
+              {(isMuted || isServerMuted) ? <MdMicOff size={16} /> : <MdMic size={16} />}
+            </IconButton>
+          </Tooltip>
 
-          <IconButton
-            color={isDeafened ? "red" : "gray"}
-            variant="soft"
-            onClick={handleDeafen}
-          >
-            {isDeafened ? <MdVolumeOff size={16} /> : <MdVolumeUp size={16} />}
-          </IconButton>
+          <Tooltip content={isServerDeafened ? "Server deafened by admin" : undefined} delayDuration={300}>
+            <IconButton
+              color={(isDeafened || isServerDeafened) ? "red" : "gray"}
+              variant="soft"
+              onClick={handleDeafen}
+              style={isServerDeafened ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
+            >
+              {(isDeafened || isServerDeafened) ? <MdVolumeOff size={16} /> : <MdVolumeUp size={16} />}
+            </IconButton>
+          </Tooltip>
 
           <IconButton
             color={cameraEnabled ? "green" : "gray"}

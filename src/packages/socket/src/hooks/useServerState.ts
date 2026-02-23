@@ -28,7 +28,6 @@ function extractChannelIdFromRoomId(roomId: string, serverId: string): string {
 
 export function useServerState() {
   const {
-    setShowVoiceView,
     micID,
     isAFK,
     setIsAFK,
@@ -227,7 +226,6 @@ export function useServerState() {
   // Connect to pending voice channel once mic is available
   useEffect(() => {
     if (micID && pendingChannelId) {
-      setShowVoiceView(true);
       const pendingChannel = currentlyViewingServer
         ? serverDetailsList[currentlyViewingServer.host]?.channels?.find((c) => c.id === pendingChannelId)
         : undefined;
@@ -238,9 +236,12 @@ export function useServerState() {
           setPendingChannelId(null);
         });
     }
-  }, [micID, pendingChannelId, connect, setShowVoiceView, currentlyViewingServer, serverDetailsList]);
+  }, [micID, pendingChannelId, connect, currentlyViewingServer, serverDetailsList]);
 
   // Speaking detection polling (50ms in eSports mode, 100ms normally)
+  const clientsSpeakingRef = useRef(clientsSpeaking);
+  clientsSpeakingRef.current = clientsSpeaking;
+
   useEffect(() => {
     const pollRate = eSportsModeEnabled ? 50 : 100;
     const interval = setInterval(() => {
@@ -250,31 +251,31 @@ export function useServerState() {
         !currentConnection
       )
         return;
+
+      const prev = clientsSpeakingRef.current;
+      const next: Record<string, boolean> = {};
+      let changed = false;
+
       Object.keys(clients[currentlyViewingServer.host]).forEach((clientID) => {
         const client = clients[currentlyViewingServer.host][clientID];
+        let speaking = false;
 
         if (clientID === currentConnection.id) {
           if (inputMode === "push_to_talk") {
-            setClientsSpeaking((old) => ({
-              ...old,
-              [clientID]: isPttActive.current,
-            }));
+            speaking = isPttActive.current;
           } else if (microphoneBuffer.finalAnalyser) {
-            // Use post-noise-gate analyser so the indicator respects the gate
-            setClientsSpeaking((old) => ({
-              ...old,
-              [clientID]: isSpeaking(microphoneBuffer.finalAnalyser!, 0.5),
-            }));
+            speaking = isSpeaking(microphoneBuffer.finalAnalyser!, 0.5);
           }
         } else {
           if (!client.streamID || !streamSources[client.streamID]) return;
-          const stream = streamSources[client.streamID];
-          setClientsSpeaking((old) => ({
-            ...old,
-            [clientID]: isSpeaking(stream.analyser, 0.1),
-          }));
+          speaking = isSpeaking(streamSources[client.streamID].analyser, 0.1);
         }
+
+        next[clientID] = speaking;
+        if (prev[clientID] !== speaking) changed = true;
       });
+
+      if (changed) setClientsSpeaking(next);
     }, pollRate);
 
     return () => clearInterval(interval);

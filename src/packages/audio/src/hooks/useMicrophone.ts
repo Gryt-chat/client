@@ -18,7 +18,8 @@ function useCreateMicrophoneHook() {
     loopbackEnabled, 
     micID, 
     micVolume, 
-    isMuted, 
+    isMuted,
+    isServerMuted,
     noiseGate,
     rnnoiseEnabled,
     inputMode,
@@ -28,6 +29,7 @@ function useCreateMicrophoneHook() {
     compressorEnabled,
     compressorAmount,
   } = useSettings();
+  const effectiveMuted = isMuted || isServerMuted;
   
   const audioContext = useSharedAudioContext();
   const [devices, setDevices] = useState<InputDeviceInfo[]>([]);
@@ -114,7 +116,7 @@ function useCreateMicrophoneHook() {
     audioContext,
     micStream,
     micVolume,
-    isMuted,
+    isMuted: effectiveMuted,
     noiseGate,
     loopbackEnabled,
     inputMode,

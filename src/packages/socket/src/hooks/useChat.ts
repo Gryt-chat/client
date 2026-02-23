@@ -88,7 +88,7 @@ export function useChat({
   const inFlightFetchRef = useRef<Set<string>>(new Set());
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isLoadingOlder, setIsLoadingOlder] = useState(false);
-  const [hasOlderMessages, setHasOlderMessages] = useState(true);
+  const [hasOlderMap, setHasOlderMap] = useState<Record<string, boolean>>({});
   const [isRateLimited, setIsRateLimited] = useState(false);
   const [rateLimitCountdown, setRateLimitCountdown] = useState(0);
   const rateLimitIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -107,6 +107,9 @@ export function useChat({
     if (!conversationId) return "";
     return serverHost ? `${serverHost}::${conversationId}` : conversationId;
   }, [serverHost]);
+
+  const activeCacheKey = cacheKeyFor(activeConversationId);
+  const hasOlderMessages = hasOlderMap[activeCacheKey] ?? true;
 
   const getCachedMessages = useCallback(
     (conversationId: string): ChatMessage[] => messageCache[cacheKeyFor(conversationId)] || [],
@@ -234,7 +237,9 @@ export function useChat({
 
     const onNew = (msg: ChatMessage) => {
       for (const [pendingId, entry] of retryQueueRef.current) {
-        if (msg.text && entry.text === msg.text.trim()) {
+        const matchByNonce = msg.nonce && entry.nonce === msg.nonce;
+        const matchByText = msg.text && entry.text === msg.text.trim();
+        if (matchByNonce || matchByText) {
           if (entry.timeoutId) clearTimeout(entry.timeoutId);
           retryQueueRef.current.delete(pendingId);
           break;
@@ -249,8 +254,13 @@ export function useChat({
       }
     };
 
-    const onHistory = (payload: HistoryPayload) =>
-      handleHistoryPayload(payload, activeConversationId, cacheKeyFor, inFlightFetchRef, setMessageCache, setChatMessages, setIsLoadingMessages, setHasOlderMessages, setIsLoadingOlder);
+    const onHistory = (payload: HistoryPayload) => {
+      const setHasOlder = (v: boolean) => {
+        const key = cacheKeyFor(payload.conversation_id);
+        if (key) setHasOlderMap((prev) => ({ ...prev, [key]: v }));
+      };
+      handleHistoryPayload(payload, activeConversationId, cacheKeyFor, inFlightFetchRef, setMessageCache, setChatMessages, setIsLoadingMessages, setHasOlder, setIsLoadingOlder);
+    };
 
     const onReaction = (updatedMessage: ChatMessage) =>
       handleReactionUpdate(updatedMessage, activeConversationId, cacheKeyFor, setMessageCache, setChatMessages);
@@ -310,7 +320,6 @@ export function useChat({
 
   // Reset chat list when conversation changes and load history
   useEffect(() => {
-    setHasOlderMessages(true);
     setIsLoadingOlder(false);
 
     const cachedMessages = getCachedMessages(activeConversationId);
@@ -410,7 +419,7 @@ export function useChat({
                   canSendToVoiceChannel &&
                   !isRateLimited;
 
-  const sendMessageWithToken = (accessToken: string, messageText: string, attachments: string[] | null, replyToMessageId?: string, nonce?: string) => {
+  const sendMessageWithToken = useCallback((accessToken: string, messageText: string, attachments: string[] | null, replyToMessageId?: string, nonce?: string) => {
     const payload: Record<string, unknown> = {
       conversationId: activeConversationId,
       accessToken,
@@ -420,9 +429,9 @@ export function useChat({
     if (replyToMessageId) payload.replyToMessageId = replyToMessageId;
     if (nonce) payload.nonce = nonce;
     currentConnection!.emit("chat:send", payload);
-  };
+  }, [activeConversationId, currentConnection]);
 
-  const uploadFile = async (file: File): Promise<string> => {
+  const uploadFile = useCallback(async (file: File): Promise<string> => {
     const accessToken = getServerAccessToken(serverHost);
     if (!accessToken) throw new Error("Not authenticated with this server");
     const base = getServerHttpBase(serverHost);
@@ -446,17 +455,32 @@ export function useChat({
     }
     const data = await resp.json();
     return data.fileId as string;
-  };
+  }, [serverHost]);
 
-  const sendChat = (text: string, files: File[], replyToMessageId?: string) => {
+  const canSendRef = useRef(canSend);
+  canSendRef.current = canSend;
+  const isRateLimitedRef = useRef(isRateLimited);
+  isRateLimitedRef.current = isRateLimited;
+  const isVoiceChannelTextChatRef = useRef(isVoiceChannelTextChat);
+  isVoiceChannelTextChatRef.current = isVoiceChannelTextChat;
+  const textInVoiceEnabledRef = useRef(textInVoiceEnabled);
+  textInVoiceEnabledRef.current = textInVoiceEnabled;
+  const isConnectedRef = useRef(isConnected);
+  isConnectedRef.current = isConnected;
+  const nicknameRef = useRef(nickname);
+  nicknameRef.current = nickname;
+  const currentUserIdRef = useRef(currentUserId);
+  currentUserIdRef.current = currentUserId;
+
+  const sendChat = useCallback((text: string, files: File[], replyToMessageId?: string) => {
     const body = text.trim();
     if (!body && files.length === 0) return;
 
-    if (!canSend) {
-      if (isRateLimited) return;
-      if (isVoiceChannelTextChat && !textInVoiceEnabled) {
+    if (!canSendRef.current) {
+      if (isRateLimitedRef.current) return;
+      if (isVoiceChannelTextChatRef.current && !textInVoiceEnabledRef.current) {
         toast.error("Text chat is disabled in this voice channel");
-      } else if (isVoiceChannelTextChat && !isConnected) {
+      } else if (isVoiceChannelTextChatRef.current && !isConnectedRef.current) {
         toast.error("You must be connected to this voice channel to send messages");
       }
       return;
@@ -465,13 +489,13 @@ export function useChat({
     let accessToken = getServerAccessToken(currentlyViewingServer?.host || "");
 
     if (!accessToken) {
-      if (currentConnection && nickname) {
+      if (currentConnection && nicknameRef.current) {
         setTimeout(() => {
           (async () => {
             const identityToken = await getValidIdentityToken().catch(() => undefined);
             currentConnection.emit("server:join", {
               password: "",
-              nickname,
+              nickname: nicknameRef.current,
               identityToken,
             });
           })();
@@ -485,7 +509,7 @@ export function useChat({
     const optimistic: ChatMessage = {
       conversation_id: activeConversationId,
       message_id: pendingId,
-      sender_server_id: currentUserId || "temp",
+      sender_server_id: currentUserIdRef.current || "temp",
       text: body || null,
       attachments: null,
       created_at: new Date(),
@@ -493,7 +517,7 @@ export function useChat({
       reply_to_message_id: replyToMessageId || null,
       pending: true,
       nonce,
-      sender_nickname: nickname || undefined,
+      sender_nickname: nicknameRef.current || undefined,
     };
     setChatMessages((prev) => [...prev, optimistic]);
     setMessageCache((prev) => ({
@@ -551,7 +575,7 @@ export function useChat({
     };
 
     doSend();
-  };
+  }, [currentConnection, currentlyViewingServer?.host, activeConversationId, cacheKeyFor, sendMessageWithToken, uploadFile]);
 
   const fetchOlderMessages = useCallback(() => {
     if (!currentConnection || !activeConversationId || isLoadingOlder || !hasOlderMessages) return;
@@ -564,13 +588,13 @@ export function useChat({
     currentConnection.emit("chat:fetch", { conversationId: activeConversationId, limit: 50, before });
   }, [currentConnection, activeConversationId, isLoadingOlder, hasOlderMessages, chatMessages, cacheKeyFor]);
 
-  const editMessage = (messageId: string, conversationId: string, newText: string) => {
+  const editMessage = useCallback((messageId: string, conversationId: string, newText: string) => {
     const text = newText.trim();
     if (!text || !currentConnection) return;
     const accessToken = getServerAccessToken(currentlyViewingServer?.host || "");
     if (!accessToken) return;
     currentConnection.emit("chat:edit", { conversationId, messageId, text, accessToken });
-  };
+  }, [currentConnection, currentlyViewingServer?.host]);
 
   return {
     chatMessages,

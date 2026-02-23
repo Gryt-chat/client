@@ -4,12 +4,18 @@ import toast from "react-hot-toast";
 import { MdBlock, MdCheck, MdDelete, MdWarning } from "react-icons/md";
 import type { Socket } from "socket.io-client";
 
-import { getServerAccessToken } from "@/common";
+import { getServerAccessToken, getUploadsFileUrl } from "@/common";
+
+import type { AttachmentMeta } from "./chatUtils";
+import { FileCard } from "./FileCard";
+import { ImageLightbox } from "./ImageLightbox";
 
 export interface AggregatedReport {
   messageId: string;
   conversationId: string;
   messageText: string | null;
+  attachments: string[] | null;
+  enrichedAttachments: AttachmentMeta[] | null;
   senderServerUserId: string;
   senderNickname: string | null;
   reportCount: number;
@@ -179,6 +185,7 @@ export function ReportsPanel({
                     key={report.messageId}
                     report={report}
                     getNickname={getNickname}
+                    serverHost={serverHost}
                     onApprove={() => handleApprove(report)}
                     onDelete={() => setConfirmAction({ report, action: "delete" })}
                     onDeleteAllAndBan={() =>
@@ -255,111 +262,178 @@ export function ReportsPanel({
 function ReportCard({
   report,
   getNickname,
+  serverHost,
   onApprove,
   onDelete,
   onDeleteAllAndBan,
 }: {
   report: AggregatedReport;
   getNickname: (id: string) => string;
+  serverHost: string;
   onApprove: () => void;
   onDelete: () => void;
   onDeleteAllAndBan: () => void;
 }) {
-  return (
-    <Box
-      style={{
-        border: "1px solid var(--gray-6)",
-        borderRadius: "var(--radius-5)",
-        padding: "14px",
-        background: "var(--gray-2)",
-      }}
-    >
-      <Flex gap="3" align="start">
-        {/* Message content on the left */}
-        <Flex direction="column" gap="2" style={{ flex: 1, minWidth: 0 }}>
-          <Flex align="center" gap="2" wrap="wrap">
-            <Text size="2" weight="bold" style={{ color: "var(--gray-12)" }}>
-              {report.senderNickname || getNickname(report.senderServerUserId)}
-            </Text>
-            <Badge color="red" variant="soft" size="1">
-              {report.reportCount} {report.reportCount === 1 ? "report" : "reports"}
-            </Badge>
-          </Flex>
+  const [lightboxImage, setLightboxImage] = useState<{ src: string; alt: string } | null>(null);
 
-          <Box
-            style={{
-              background: "var(--gray-3)",
-              borderRadius: "var(--radius-4)",
-              padding: "10px 12px",
-              borderLeft: "3px solid var(--red-8)",
-            }}
-          >
-            <Text
-              size="2"
+  return (
+    <>
+      <Box
+        style={{
+          border: "1px solid var(--gray-6)",
+          borderRadius: "var(--radius-5)",
+          padding: "14px",
+          background: "var(--gray-2)",
+        }}
+      >
+        <Flex gap="3" align="start">
+          <Flex direction="column" gap="2" style={{ flex: 1, minWidth: 0 }}>
+            <Flex align="center" gap="2" wrap="wrap">
+              <Text size="2" weight="bold" style={{ color: "var(--gray-12)" }}>
+                {report.senderNickname || getNickname(report.senderServerUserId)}
+              </Text>
+              <Badge color="red" variant="soft" size="1">
+                {report.reportCount} {report.reportCount === 1 ? "report" : "reports"}
+              </Badge>
+            </Flex>
+
+            <Box
               style={{
-                color: "var(--gray-11)",
-                wordBreak: "break-word",
-                whiteSpace: "pre-wrap",
+                background: "var(--gray-3)",
+                borderRadius: "var(--radius-4)",
+                padding: "10px 12px",
+                borderLeft: "3px solid var(--red-8)",
               }}
             >
-              {report.messageText || (
-                <Text color="gray" style={{ fontStyle: "italic" }}>
-                  (attachment only)
+              {report.messageText && (
+                <Text
+                  size="2"
+                  style={{
+                    color: "var(--gray-11)",
+                    wordBreak: "break-word",
+                    whiteSpace: "pre-wrap",
+                  }}
+                >
+                  {report.messageText}
                 </Text>
               )}
-            </Text>
-          </Box>
 
-          <Flex align="center" gap="1">
-            <Text size="1" color="gray">
-              Reported by:{" "}
-              {report.reporters.map((r) => getNickname(r)).join(", ")}
-            </Text>
+              {report.attachments && report.attachments.length > 0 && serverHost && (
+                <Flex gap="2" wrap="wrap" direction="column" style={{ marginTop: report.messageText ? "8px" : undefined }}>
+                  {report.attachments.map((fileId, idx) => {
+                    const meta = report.enrichedAttachments?.[idx];
+                    const url = getUploadsFileUrl(serverHost, fileId);
+                    const mime = meta?.mime || "";
+
+                    if (mime.startsWith("image/")) {
+                      return (
+                        <img
+                          key={fileId}
+                          src={url}
+                          alt={meta?.original_name || "Attachment"}
+                          style={{
+                            maxWidth: "100%",
+                            maxHeight: 200,
+                            borderRadius: "var(--radius-3)",
+                            cursor: "pointer",
+                            objectFit: "contain",
+                          }}
+                          onClick={() => setLightboxImage({ src: url, alt: meta?.original_name || "Attachment" })}
+                        />
+                      );
+                    }
+
+                    if (mime.startsWith("video/")) {
+                      const thumbUrl = meta?.has_thumbnail ? getUploadsFileUrl(serverHost, fileId, { thumb: true }) : undefined;
+                      return (
+                        <video
+                          key={fileId}
+                          src={url}
+                          poster={thumbUrl}
+                          controls
+                          style={{ maxWidth: "100%", maxHeight: 200, borderRadius: "var(--radius-3)" }}
+                        />
+                      );
+                    }
+
+                    return (
+                      <FileCard
+                        key={fileId}
+                        fileId={fileId}
+                        mime={meta?.mime ?? null}
+                        size={meta?.size ?? null}
+                        originalName={meta?.original_name ?? null}
+                        serverHost={serverHost}
+                      />
+                    );
+                  })}
+                </Flex>
+              )}
+
+              {!report.messageText && (!report.attachments || report.attachments.length === 0) && (
+                <Text size="2" color="gray" style={{ fontStyle: "italic" }}>
+                  (empty message)
+                </Text>
+              )}
+            </Box>
+
+            <Flex align="center" gap="1">
+              <Text size="1" color="gray">
+                Reported by:{" "}
+                {report.reporters.map((r) => getNickname(r)).join(", ")}
+              </Text>
+            </Flex>
+          </Flex>
+
+          <Flex direction="column" gap="2" align="center" style={{ flexShrink: 0 }}>
+            <Tooltip content="Dismiss (message is fine)">
+              <IconButton
+                variant="soft"
+                color="green"
+                size="3"
+                radius="full"
+                onClick={onApprove}
+                style={{ cursor: "pointer" }}
+              >
+                <MdCheck size={18} />
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip content="Delete this message">
+              <IconButton
+                variant="soft"
+                color="red"
+                size="3"
+                radius="full"
+                onClick={onDelete}
+                style={{ cursor: "pointer" }}
+              >
+                <MdDelete size={18} />
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip content="Delete all messages from user & ban">
+              <IconButton
+                variant="solid"
+                color="red"
+                size="3"
+                radius="full"
+                onClick={onDeleteAllAndBan}
+                style={{ cursor: "pointer" }}
+              >
+                <MdBlock size={18} />
+              </IconButton>
+            </Tooltip>
           </Flex>
         </Flex>
-
-        {/* Action buttons on the right */}
-        <Flex direction="column" gap="2" align="center" style={{ flexShrink: 0 }}>
-          <Tooltip content="Dismiss (message is fine)">
-            <IconButton
-              variant="soft"
-              color="green"
-              size="3"
-              radius="full"
-              onClick={onApprove}
-              style={{ cursor: "pointer" }}
-            >
-              <MdCheck size={18} />
-            </IconButton>
-          </Tooltip>
-
-          <Tooltip content="Delete this message">
-            <IconButton
-              variant="soft"
-              color="red"
-              size="3"
-              radius="full"
-              onClick={onDelete}
-              style={{ cursor: "pointer" }}
-            >
-              <MdDelete size={18} />
-            </IconButton>
-          </Tooltip>
-
-          <Tooltip content="Delete all messages from user & ban">
-            <IconButton
-              variant="solid"
-              color="red"
-              size="3"
-              radius="full"
-              onClick={onDeleteAllAndBan}
-              style={{ cursor: "pointer" }}
-            >
-              <MdBlock size={18} />
-            </IconButton>
-          </Tooltip>
-        </Flex>
-      </Flex>
-    </Box>
+      </Box>
+      {lightboxImage && (
+        <ImageLightbox
+          src={lightboxImage.src}
+          alt={lightboxImage.alt}
+          onClose={() => setLightboxImage(null)}
+        />
+      )}
+    </>
   );
 }

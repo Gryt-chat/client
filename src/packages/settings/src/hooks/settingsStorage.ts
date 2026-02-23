@@ -47,6 +47,10 @@ export interface Settings {
   setIsMuted: (value: boolean) => void;
   isDeafened: boolean;
   setIsDeafened: (value: boolean) => void;
+  isServerMuted: boolean;
+  setIsServerMuted: (value: boolean) => void;
+  isServerDeafened: boolean;
+  setIsServerDeafened: (value: boolean) => void;
 
   isAFK: boolean;
   setIsAFK: (value: boolean) => void;
@@ -185,6 +189,10 @@ export const settingsInit: Settings = {
   setIsMuted: () => {},
   isDeafened: false,
   setIsDeafened: () => {},
+  isServerMuted: false,
+  setIsServerMuted: () => {},
+  isServerDeafened: false,
+  setIsServerDeafened: () => {},
   showSettings: false,
   setShowSettings: () => {},
   showNickname: false,

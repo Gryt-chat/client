@@ -30,11 +30,13 @@ export function handleNewMessage(
   const key = getCacheKey(msg.conversation_id);
   if (!key) return;
 
+  const isPendingMatch = (m: ChatMessage) =>
+    m.pending && m.conversation_id === msg.conversation_id &&
+    (msg.nonce ? m.nonce === msg.nonce : m.text === msg.text);
+
   setMessageCache((prev) => {
     const existing = prev[key] || [];
-    const filtered = existing.filter(
-      (m) => !(m.pending && m.text === msg.text && m.conversation_id === msg.conversation_id)
-    );
+    const filtered = existing.filter((m) => !isPendingMatch(m));
     const existingIds = new Set(filtered.map((m) => m.message_id));
     const merged = existingIds.has(msg.message_id) ? filtered : [...filtered, msg];
     const bounded = merged.length > 200 ? merged.slice(merged.length - 200) : merged;
@@ -43,9 +45,7 @@ export function handleNewMessage(
 
   if (msg.conversation_id === activeConversationId) {
     setChatMessages((prev) => {
-      const filtered = prev.filter(
-        (m) => !(m.pending && m.text === msg.text && m.conversation_id === msg.conversation_id)
-      );
+      const filtered = prev.filter((m) => !isPendingMatch(m));
       const existingIds = new Set(filtered.map((m) => m.message_id));
       return existingIds.has(msg.message_id) ? filtered : [...filtered, msg];
     });

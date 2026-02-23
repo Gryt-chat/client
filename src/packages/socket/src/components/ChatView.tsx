@@ -1,5 +1,5 @@
 import { AlertDialog, Avatar, Box, Button, Flex, ScrollArea, Text, Tooltip } from "@radix-ui/themes";
-import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { MdCloudUpload } from "react-icons/md";
 
 import { getServerAccessToken, getUploadsFileUrl } from "@/common";
@@ -36,7 +36,7 @@ function getReplyPreview(msg: ChatMessage | null | undefined, maxLen: number): s
 
 export type { AttachmentMeta,ChatMessage, Reaction } from "./chatUtils";
 
-export const ChatView = ({
+export const ChatView = memo(({
   chatMessages,
   canSend,
   sendChat,
@@ -226,8 +226,8 @@ export const ChatView = ({
       setNewMessageMarkerId((prev) => prev ?? previousLastId);
     }
 
-    if (isNewMessage) {
-      if (wasBulkLoad) {
+    if (isNewMessage || conversationSwitched) {
+      if (wasBulkLoad || conversationSwitched) {
         if (viewport) {
           viewport.scrollTop = viewport.scrollHeight;
         } else {
@@ -282,19 +282,18 @@ export const ChatView = ({
     }
   }, [restoreText, clearRestoreText]);
 
-  const getSenderName = (msg: ChatMessage): string => {
+  const getSenderName = useCallback((msg: ChatMessage): string => {
     if (msg.sender_nickname) return msg.sender_nickname;
     if (!memberList) return 'Unknown User';
-    const member = Object.values(memberList).find(m => m.serverUserId === msg.sender_server_id);
-    return member?.nickname || 'Unknown User';
-  };
+    return memberList[msg.sender_server_id]?.nickname || 'Unknown User';
+  }, [memberList]);
 
-  const getSenderAvatarUrl = (msg: ChatMessage): string | undefined => {
+  const getSenderAvatarUrl = useCallback((msg: ChatMessage): string | undefined => {
     const fileId = msg.sender_avatar_file_id
-      || (memberList && Object.values(memberList).find(m => m.serverUserId === msg.sender_server_id)?.avatarFileId);
+      || memberList?.[msg.sender_server_id]?.avatarFileId;
     if (fileId && serverHost) return getUploadsFileUrl(serverHost, fileId);
     return undefined;
-  };
+  }, [memberList, serverHost]);
 
   const mentionMembers = useMemo(() => {
     if (!memberList) return [];
@@ -876,4 +875,6 @@ export const ChatView = ({
     </AlertDialog.Root>
     </>
   );
-};
+});
+
+ChatView.displayName = "ChatView";
