@@ -232,7 +232,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
               serverHost={props.serverHost}
               clients={props.clients}
               members={props.members}
-              currentChannelId={props.currentChannelId}
+              currentChannelId={props.currentChannelId ?? ""}
               currentServerConnected={props.currentServerConnected}
               showVoiceView={props.showVoiceView}
               isConnecting={props.isConnecting}
