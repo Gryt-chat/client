@@ -201,6 +201,18 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
         }));
       });
 
+      socket.on("server:session:replaced", (data: { message?: string }) => {
+        toast(data?.message || "You signed in from another device or tab.", {
+          icon: "🔄",
+          duration: 8000,
+        });
+        removeServerAccessToken(host);
+        removeServerRefreshToken(host);
+        window.dispatchEvent(new CustomEvent("server_voice_disconnect", {
+          detail: { host, reason: "session_replaced" },
+        }));
+      });
+
       socket.on("server:muted", (data: { muted: boolean }) => {
         toast(data.muted ? "You have been server muted by an admin." : "Your server mute has been removed.", {
           icon: data.muted ? "🔇" : "🔊",
