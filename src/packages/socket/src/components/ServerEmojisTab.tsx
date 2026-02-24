@@ -153,25 +153,6 @@ export function ServerEmojisTab({
 
   const existingNames = useMemo(() => new Set(emojis.map((e) => e.name)), [emojis]);
 
-  useEffect(() => {
-    if (!socket || !socket.connected) return;
-
-    const onSettings = (payload: unknown) => {
-      const p = (payload && typeof payload === "object") ? (payload as Record<string, unknown>) : {};
-      const v = p.emojiMaxBytes;
-      if (typeof v === "number" && Number.isFinite(v) && v > 0) {
-        setEmojiMaxBytes(v);
-      }
-    };
-
-    socket.on("server:settings", onSettings);
-    socket.emit("server:settings:get");
-
-    return () => {
-      socket.off("server:settings", onSettings);
-    };
-  }, [socket]);
-
   const refresh = useCallback(async () => {
     console.log("[EmojiUpload] refresh: fetching emojis for host:", host);
     setLoading(true);
@@ -191,6 +172,31 @@ export function ServerEmojisTab({
   useEffect(() => {
     if (host) refresh();
   }, [host, refresh]);
+
+  useEffect(() => {
+    if (!socket || !socket.connected) return;
+
+    const onEmojisUpdated = () => {
+      void refresh();
+    };
+
+    const onSettings = (payload: unknown) => {
+      const p = (payload && typeof payload === "object") ? (payload as Record<string, unknown>) : {};
+      const v = p.emojiMaxBytes;
+      if (typeof v === "number" && Number.isFinite(v) && v > 0) {
+        setEmojiMaxBytes(v);
+      }
+    };
+
+    socket.on("server:settings", onSettings);
+    socket.on("server:emojis:updated", onEmojisUpdated);
+    socket.emit("server:settings:get");
+
+    return () => {
+      socket.off("server:settings", onSettings);
+      socket.off("server:emojis:updated", onEmojisUpdated);
+    };
+  }, [socket, refresh]);
 
   useEffect(() => {
     return () => {

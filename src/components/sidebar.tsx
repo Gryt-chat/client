@@ -10,10 +10,10 @@ import {
   IconButton,
   Tooltip,
 } from "@radix-ui/themes";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MdAdd, MdBugReport, MdEmojiEmotions, MdLightbulb, MdMic, MdPushPin, MdSettings } from "react-icons/md";
 
-import { getServerAccessToken, getServerHttpBase, useAccount } from "@/common";
+import { getServerAccessToken, useAccount } from "@/common";
 import { useSettings } from "@/settings";
 import { EmojiQueueModal, useServerManagement, useSockets } from "@/socket";
 import { useSFU } from "@/webRTC";
@@ -51,44 +51,21 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
   const [emojiQueueOpen, setEmojiQueueOpen] = useState(false);
   const [emojiQueueCount, setEmojiQueueCount] = useState(0);
 
-  const refreshEmojiQueueCount = useCallback(async () => {
-    if (!currentHost) { setEmojiQueueCount(0); return; }
-    const token = getServerAccessToken(currentHost);
-    if (!token) { setEmojiQueueCount(0); return; }
-    const base = getServerHttpBase(currentHost);
-    try {
-      const resp = await fetch(`${base}/api/emojis/queue?limit=150`, {
-        headers: { Authorization: `Bearer ${token}` },
-        cache: "no-store",
-      });
-      if (!resp.ok) { setEmojiQueueCount(0); return; }
-      const data: unknown = await resp.json().catch(() => null);
-      const root = (data && typeof data === "object") ? (data as Record<string, unknown>) : {};
-      const jobsRaw = root.jobs;
-      const jobs = Array.isArray(jobsRaw) ? jobsRaw : [];
-      const pending = jobs.filter((j) => {
-        const obj = (j && typeof j === "object") ? (j as Record<string, unknown>) : {};
-        const status = obj.status;
-        return status === "queued" || status === "processing";
-      }).length;
-      setEmojiQueueCount(pending);
-    } catch {
-      setEmojiQueueCount(0);
-    }
-  }, [currentHost]);
-
-  useEffect(() => {
-    void refreshEmojiQueueCount();
-  }, [refreshEmojiQueueCount]);
-
   useEffect(() => {
     if (!currentSocket) return;
-    const handler = () => void refreshEmojiQueueCount();
-    currentSocket.on?.("server:emojiQueue:updated", handler);
-    return () => {
-      currentSocket.off?.("server:emojiQueue:updated", handler);
+    const token = currentHost ? getServerAccessToken(currentHost) : null;
+    if (token) currentSocket.emit?.("server:emojiQueue:get", { accessToken: token });
+
+    const handler = (payload: unknown) => {
+      const root = (payload && typeof payload === "object") ? (payload as Record<string, unknown>) : {};
+      const pendingCount = root.pendingCount;
+      setEmojiQueueCount(typeof pendingCount === "number" ? pendingCount : 0);
     };
-  }, [currentSocket, refreshEmojiQueueCount]);
+    currentSocket.on?.("server:emojiQueue:state", handler);
+    return () => {
+      currentSocket.off?.("server:emojiQueue:state", handler);
+    };
+  }, [currentHost, currentSocket]);
 
   return (
     <Flex

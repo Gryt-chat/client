@@ -48,7 +48,10 @@ export function shouldRefreshToken(token: string): boolean {
 
 export interface TokenRefreshSocketLike {
   connected?: boolean;
-  emit: (event: "token:refresh", payload: { refreshToken?: string; identityToken?: string; accessToken?: string }) => void;
+  emit: {
+    (event: "token:refresh", payload: { refreshToken?: string; identityToken?: string; accessToken?: string }): void;
+    (event: string, ...args: unknown[]): void;
+  };
 }
 
 async function triggerTokenRefresh(host: string, socket: TokenRefreshSocketLike, accessToken: string): Promise<void> {

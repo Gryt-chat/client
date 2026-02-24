@@ -13,6 +13,7 @@ const appIcon = app.isPackaged
   : join(__dirname, "../build/icon.png");
 
 const PROTOCOL = "gryt";
+const AUTO_START_ARG = "--gryt-autostart";
 let pendingDeepLinkUrl: string | null = null;
 let splashWindow: BrowserWindow | null = null;
 let mainWindow: BrowserWindow | null = null;
@@ -20,6 +21,7 @@ let tray: Tray | null = null;
 let isQuitting = false;
 let closeToTray = true;
 let pttDown = false;
+let startHiddenOnLaunch = false;
 
 // ── Deep link protocol ───────────────────────────────────────────────────
 
@@ -38,6 +40,7 @@ function handleDeepLink(url: string): void {
 
   if (mainWindow) {
     mainWindow.webContents.send("auth-callback", url);
+    if (!mainWindow.isVisible()) mainWindow.show();
     if (mainWindow.isMinimized()) mainWindow.restore();
     mainWindow.focus();
   } else {
@@ -73,11 +76,12 @@ closeToTray = (readConfig().closeToTray ?? true) as boolean;
 let startWithWindows = process.platform === "win32"
   ? readBoolConfig("startWithWindows", true)
   : false;
+let startMinimizedOnLogin = readBoolConfig("startMinimizedOnLogin", false);
 
 function applyStartWithWindowsSetting(enabled: boolean) {
   if (process.platform !== "win32") return;
   try {
-    app.setLoginItemSettings({ openAtLogin: enabled });
+    app.setLoginItemSettings({ openAtLogin: enabled, args: [AUTO_START_ARG] });
   } catch {
     // Best-effort: some environments (portable/dev) may not support this.
   }
@@ -279,12 +283,14 @@ function createMainWindow(): void {
     mainWindow.loadFile(join(__dirname, "../dist/index.html"));
   }
 
-  // Safety: if splash flow hasn't shown us within 20s, show anyway
-  setTimeout(() => {
-    if (mainWindow && !mainWindow.isVisible()) {
-      closeSplashAndShowMain();
-    }
-  }, 20_000);
+  if (!startHiddenOnLaunch) {
+    // Safety: if splash flow hasn't shown us within 20s, show anyway
+    setTimeout(() => {
+      if (mainWindow && !mainWindow.isVisible()) {
+        closeSplashAndShowMain();
+      }
+    }, 20_000);
+  }
 
   mainWindow.webContents.on("before-input-event", (_event, input) => {
     if (input.key === "F12" && input.type === "keyDown") {
@@ -511,22 +517,41 @@ if (!gotSingleInstanceLock) {
       applyStartWithWindowsSetting(startWithWindows);
     });
 
+    ipcMain.handle("get-start-minimized-on-login", () => startMinimizedOnLogin);
+    ipcMain.on("set-start-minimized-on-login", (_event, enabled: boolean) => {
+      startMinimizedOnLogin = !!enabled;
+      writeConfig({ startMinimizedOnLogin });
+    });
+
     // Apply at startup (default enabled on Windows).
     applyStartWithWindowsSetting(startWithWindows);
+
+    const launchedFromAutoStart = process.argv.includes(AUTO_START_ARG) || (() => {
+      try {
+        return app.getLoginItemSettings().wasOpenedAtLogin === true;
+      } catch {
+        return false;
+      }
+    })();
+    startHiddenOnLaunch = launchedFromAutoStart && startMinimizedOnLogin;
 
     initUiohook();
     createMainWindow();
     createTray();
 
-    try {
-      createSplashWindow();
-      await runSplashUpdateCheck();
-    } catch (_) {
-      // Ensure main window shows even if splash/updater fails
+    if (startHiddenOnLaunch) {
+      initBackgroundUpdater();
+      autoUpdater.checkForUpdates().catch(() => {});
+    } else {
+      try {
+        createSplashWindow();
+        await runSplashUpdateCheck();
+      } catch (_) {
+        // Ensure main window shows even if splash/updater fails
+      }
+      closeSplashAndShowMain();
+      initBackgroundUpdater();
     }
-
-    closeSplashAndShowMain();
-    initBackgroundUpdater();
 
     // ── Screen capture ────────────────────────────────────────────────
     // Allow getDisplayMedia by providing a default handler.

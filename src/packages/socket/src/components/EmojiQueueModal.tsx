@@ -1,10 +1,8 @@
 import { Badge, Box, Dialog, Flex, IconButton, Text } from "@radix-ui/themes";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MdClose } from "react-icons/md";
 
-import { getServerHttpBase } from "@/common";
-
-import { getFreshServerAccessToken,type TokenRefreshSocketLike } from "../utils/tokenManager";
+import { getFreshServerAccessToken, type TokenRefreshSocketLike } from "../utils/tokenManager";
 
 type EmojiJobStatus = "queued" | "processing" | "done" | "error" | "superseded";
 
@@ -17,6 +15,11 @@ interface EmojiJobListItem {
   updated_at: string;
 }
 
+interface EmojiQueueState {
+  pendingCount: number;
+  jobs: EmojiJobListItem[];
+}
+
 function statusColor(status: EmojiJobStatus): "gray" | "amber" | "green" | "red" {
   if (status === "queued") return "gray";
   if (status === "processing") return "amber";
@@ -27,8 +30,8 @@ function statusColor(status: EmojiJobStatus): "gray" | "amber" | "green" | "red"
 function hasOnOff(
   socket: TokenRefreshSocketLike,
 ): socket is TokenRefreshSocketLike & {
-  on: (event: "server:emojiQueue:updated", handler: () => void) => void;
-  off: (event: "server:emojiQueue:updated", handler: () => void) => void;
+  on: (event: "server:emojiQueue:state", handler: (payload: EmojiQueueState) => void) => void;
+  off: (event: "server:emojiQueue:state", handler: (payload: EmojiQueueState) => void) => void;
 } {
   const maybe = socket as { on?: unknown; off?: unknown };
   return typeof maybe.on === "function" && typeof maybe.off === "function";
@@ -45,57 +48,45 @@ export function EmojiQueueModal({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const base = useMemo(() => getServerHttpBase(host), [host]);
   const [loading, setLoading] = useState(false);
   const [jobs, setJobs] = useState<EmojiJobListItem[]>([]);
   const [error, setError] = useState<string | null>(null);
-
-  const fetchJobs = useCallback(async () => {
-    if (!host) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const token = await getFreshServerAccessToken(host, socket);
-      if (!token) throw new Error("Not authenticated.");
-      const resp = await fetch(`${base}/api/emojis/queue?limit=150`, {
-        headers: { Authorization: `Bearer ${token}` },
-        cache: "no-store",
-      });
-      const data: unknown = await resp.json().catch(() => null);
-      if (!resp.ok) {
-        const root = (data && typeof data === "object") ? (data as Record<string, unknown>) : {};
-        const msg = typeof root.message === "string" ? root.message : `HTTP ${resp.status}`;
-        throw new Error(msg);
-      }
-      const root = (data && typeof data === "object") ? (data as Record<string, unknown>) : {};
-      const rawJobs = root.jobs;
-      setJobs(Array.isArray(rawJobs) ? (rawJobs as EmojiJobListItem[]) : []);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to load emoji queue.");
-      setJobs([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [base, host, socket]);
-
-  useEffect(() => {
-    if (!open) return;
-    void fetchJobs();
-  }, [fetchJobs, open]);
 
   useEffect(() => {
     if (!open) return;
     if (!socket || socket.connected === false) return;
     if (!hasOnOff(socket)) return;
 
-    const handler = () => {
-      void fetchJobs();
+    setLoading(true);
+    setError(null);
+    (async () => {
+      const token = await getFreshServerAccessToken(host, socket);
+      if (!token) {
+        setLoading(false);
+        setError("Not authenticated.");
+        return;
+      }
+      socket.emit("server:emojiQueue:get", { accessToken: token });
+    })().catch((e: unknown) => {
+      setLoading(false);
+      setError(e instanceof Error ? e.message : "Failed to load emoji queue.");
+    });
+  }, [host, open, socket]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (!socket || socket.connected === false) return;
+    if (!hasOnOff(socket)) return;
+
+    const handler = (payload: EmojiQueueState) => {
+      setJobs(Array.isArray(payload.jobs) ? payload.jobs : []);
+      setLoading(false);
     };
-    socket.on("server:emojiQueue:updated", handler);
+    socket.on("server:emojiQueue:state", handler);
     return () => {
-      socket.off("server:emojiQueue:updated", handler);
+      socket.off("server:emojiQueue:state", handler);
     };
-  }, [fetchJobs, open, socket]);
+  }, [open, socket]);
 
   const pendingCount = useMemo(
     () => jobs.filter((j) => j.status === "queued" || j.status === "processing").length,

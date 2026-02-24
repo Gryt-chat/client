@@ -24,6 +24,7 @@ export function AdvancedSettings() {
   const [closeToTray, setCloseToTray] = useState(true);
   const [startWithWindowsSupported, setStartWithWindowsSupported] = useState(false);
   const [startWithWindows, setStartWithWindows] = useState(true);
+  const [startMinimizedOnLogin, setStartMinimizedOnLogin] = useState(false);
   const [persistTokens, setPersistTokens] = useState(true);
 
   useEffect(() => {
@@ -45,6 +46,11 @@ export function AdvancedSettings() {
     });
   }, [inElectron]);
 
+  useEffect(() => {
+    if (!inElectron) return;
+    getElectronAPI()?.getStartMinimizedOnLogin().then(setStartMinimizedOnLogin);
+  }, [inElectron]);
+
   const handleCloseToTrayToggle = useCallback((enabled: boolean) => {
     setCloseToTray(enabled);
     getElectronAPI()?.setCloseToTray(enabled);
@@ -53,6 +59,11 @@ export function AdvancedSettings() {
   const handleStartWithWindowsToggle = useCallback((enabled: boolean) => {
     setStartWithWindows(enabled);
     getElectronAPI()?.setStartWithWindows(enabled);
+  }, []);
+
+  const handleStartMinimizedOnLoginToggle = useCallback((enabled: boolean) => {
+    setStartMinimizedOnLogin(enabled);
+    getElectronAPI()?.setStartMinimizedOnLogin(enabled);
   }, []);
 
   return (
@@ -69,6 +80,17 @@ export function AdvancedSettings() {
                 checked={startWithWindows}
                 onCheckedChange={handleStartWithWindowsToggle}
               />
+              {startWithWindows && (
+                <>
+                  <Separator size="4" />
+                  <ToggleSetting
+                    title="Start minimized on login"
+                    description="Only applies when Gryt.chat is launched automatically on sign-in. Manual launches will still show the window."
+                    checked={startMinimizedOnLogin}
+                    onCheckedChange={handleStartMinimizedOnLoginToggle}
+                  />
+                </>
+              )}
               <Separator size="4" />
             </>
           )}

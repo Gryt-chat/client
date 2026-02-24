@@ -59,6 +59,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("set-start-with-windows", enabled);
   },
 
+  getStartMinimizedOnLogin(): Promise<boolean> {
+    return ipcRenderer.invoke("get-start-minimized-on-login");
+  },
+
+  setStartMinimizedOnLogin(enabled: boolean) {
+    ipcRenderer.send("set-start-minimized-on-login", enabled);
+  },
+
   onUpdateStatus(callback: (status: { status: string; version?: string; percent?: number; message?: string }) => void) {
     const handler = (_event: Electron.IpcRendererEvent, data: { status: string; version?: string; percent?: number; message?: string }) => callback(data);
     ipcRenderer.on("update-status", handler);
