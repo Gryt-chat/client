@@ -6,7 +6,7 @@ import {
   Text,
   TextField,
 } from "@radix-ui/themes";
-import { type ChangeEvent, useCallback, useMemo, useState } from "react";
+import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { MdClose, MdDownload, MdSearch } from "react-icons/md";
 
@@ -56,6 +56,68 @@ function mimeToExt(mime: string): string | null {
   return null;
 }
 
+async function downloadAsFileWithProgress({
+  url,
+  name,
+  fallbackMime,
+  onProgress,
+}: {
+  url: string;
+  name: string;
+  fallbackMime: string;
+  onProgress: (pct: number) => void;
+}): Promise<File> {
+  const resp = await fetch(url, { cache: "no-store" });
+  if (!resp.ok) {
+    const data: unknown = await resp.json().catch(() => null);
+    const root = (data && typeof data === "object") ? (data as Record<string, unknown>) : {};
+    const msg = typeof root.message === "string" ? root.message : `Failed to fetch emote file (${resp.status})`;
+    throw new Error(msg);
+  }
+
+  const mime = resp.headers.get("content-type") || fallbackMime;
+  const ext = mimeToExt(mime) ?? "bin";
+  const contentLengthHeader = resp.headers.get("content-length");
+  const totalBytes = contentLengthHeader ? Number(contentLengthHeader) : null;
+
+  const body = resp.body;
+  if (!body) {
+    const blob = await resp.blob();
+    onProgress(100);
+    return new File([blob], `${name}.${ext}`, { type: mime });
+  }
+
+  const reader = body.getReader();
+  const chunks: Array<Uint8Array<ArrayBuffer>> = [];
+  let received = 0;
+  onProgress(0);
+
+  let done = false;
+  while (!done) {
+    const result = await reader.read();
+    done = result.done;
+    const value = result.value;
+    if (!value) continue;
+
+    // Copy into an ArrayBuffer-backed Uint8Array (avoids SharedArrayBuffer typing issues).
+    const copy = new Uint8Array(value.byteLength);
+    copy.set(value);
+    chunks.push(copy);
+    received += value.byteLength;
+    if (typeof totalBytes === "number" && Number.isFinite(totalBytes) && totalBytes > 0) {
+      const pct = Math.round((received / totalBytes) * 100);
+      onProgress(Math.max(0, Math.min(100, pct)));
+    } else {
+      // Unknown total size; show “activity” by snapping to 99 until finished.
+      onProgress(Math.min(99, Math.max(1, Math.round(received / 1024))));
+    }
+  }
+
+  onProgress(100);
+  const blob = new Blob(chunks, { type: mime });
+  return new File([blob], `${name}.${ext}`, { type: mime });
+}
+
 function validateName(
   name: string,
   existingNames: Set<string>,
@@ -97,6 +159,22 @@ export function BttvImport({
     [accessToken, host],
   );
   const base = useMemo(() => getServerHttpBase(host), [host]);
+
+  const refreshTimerRef = useRef<number | null>(null);
+  const requestRefresh = useCallback(() => {
+    if (refreshTimerRef.current) return;
+    refreshTimerRef.current = window.setTimeout(() => {
+      refreshTimerRef.current = null;
+      onImportComplete();
+    }, 350);
+  }, [onImportComplete]);
+
+  useEffect(() => {
+    return () => {
+      if (typeof refreshTimerRef.current === "number") window.clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = null;
+    };
+  }, []);
 
   const selectedEmotes = useMemo(
     () => emotes.filter((e) => e.selected),
@@ -277,7 +355,7 @@ export function BttvImport({
       let successCount = 0;
       let failCount = 0;
 
-      for (const emote of toImport) {
+      const importOne = async (emote: BttvEmoteWithMeta) => {
         console.log("[BttvImport] emote: start", { id: emote.id, name: emote.name, code: emote.code });
         setEmotes((prev) => prev.map((e) => (
           e.id === emote.id
@@ -286,18 +364,22 @@ export function BttvImport({
         )));
 
         try {
-          const fileResp = await fetch(`${base}/api/emojis/bttv/file/${emote.id}`, { cache: "no-store" });
-          if (!fileResp.ok) {
-            const data: unknown = await fileResp.json().catch(() => null);
-            const root = (data && typeof data === "object") ? (data as Record<string, unknown>) : {};
-            const msg = typeof root.message === "string" ? root.message : `Failed to fetch emote file (${fileResp.status})`;
-            throw new Error(msg);
-          }
-
-          const blob = await fileResp.blob();
-          const mime = blob.type || (emote.imageType === "gif" ? "image/gif" : emote.imageType === "webp" ? "image/webp" : "image/png");
-          const ext = mimeToExt(mime) ?? (emote.imageType || "png");
-          const file = new File([blob], `${emote.name}.${ext}`, { type: mime });
+          const fallbackMime =
+            emote.imageType === "gif" ? "image/gif"
+              : emote.imageType === "webp" ? "image/webp"
+              : "image/png";
+          const file = await downloadAsFileWithProgress({
+            url: `${base}/api/emojis/bttv/file/${emote.id}`,
+            name: emote.name,
+            fallbackMime,
+            onProgress: (pct) => {
+              setEmotes((prev) => prev.map((e) => (
+                e.id === emote.id
+                  ? { ...e, status: "downloading", progress: pct, lastError: null }
+                  : e
+              )));
+            },
+          });
 
           setEmotes((prev) => prev.map((e) => (
             e.id === emote.id
@@ -339,7 +421,7 @@ export function BttvImport({
             successCount++;
             toast.success(`:${emote.name}: imported!`);
             setEmotes((prev) => prev.filter((e) => e.id !== emote.id));
-            onImportComplete();
+            requestRefresh();
           } else {
             failCount++;
             toast.error(`:${emote.name}: — ${result.message}`);
@@ -359,7 +441,21 @@ export function BttvImport({
               : e
           )));
         }
-      }
+      };
+
+      const concurrencyLimit = Math.min(3, toImport.length);
+      let nextIndex = 0;
+      const worker = async () => {
+        while (nextIndex < toImport.length) {
+          const i = nextIndex;
+          nextIndex++;
+          const emote = toImport[i];
+          if (!emote) break;
+          await importOne(emote);
+        }
+      };
+
+      await Promise.all(Array.from({ length: concurrencyLimit }, worker));
 
       console.log("[BttvImport] done", { successCount, failCount, ms: Date.now() - startedAt });
       if (successCount > 0) {
@@ -372,7 +468,7 @@ export function BttvImport({
     } finally {
       setImporting(false);
     }
-  }, [selectedEmotes, effectiveAccessToken, base, onImportComplete]);
+  }, [selectedEmotes, effectiveAccessToken, base, requestRefresh]);
 
   const handleClear = useCallback(() => {
     setEmotes([]);
@@ -511,12 +607,12 @@ export function BttvImport({
                     <div className="emoji-upload-preview-overlay">
                       <div className="emoji-upload-preview-label">
                         {e.status === "downloading"
-                          ? "DL"
+                          ? `DL ${e.progress}%`
                           : e.status === "processing"
                             ? "PROC"
                             : `${e.progress}%`}
                       </div>
-                      {(e.status === "uploading" || e.status === "processing") && (
+                      {(e.status === "downloading" || e.status === "uploading" || e.status === "processing") && (
                         <div className="emoji-upload-preview-bar">
                           <div
                             className="emoji-upload-preview-bar-inner"
