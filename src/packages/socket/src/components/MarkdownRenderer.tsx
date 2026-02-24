@@ -1,3 +1,4 @@
+import { Tooltip } from "@radix-ui/themes";
 import { cloneElement, isValidElement, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MdCheck, MdContentCopy } from "react-icons/md";
 import type { Components } from "react-markdown";
@@ -322,20 +323,29 @@ const components: Components = {
       || Boolean(props["data-emoji-name"])
       || (alt && /^:[a-zA-Z0-9_+-]+:$/.test(alt));
     if (isCustomEmoji) {
+      const emojiId =
+        (props["data-emoji-name"] ? `:${props["data-emoji-name"]}:` : null)
+        ?? (alt && /^:[a-zA-Z0-9_+-]+:$/.test(alt) ? alt : null)
+        ?? alt
+        ?? "";
       return (
-        <img
-          src={src}
-          alt={alt || ""}
-          className="inline-emoji"
-          style={{
-            height: "1.4em",
-            width: "auto",
-            verticalAlign: "middle",
-            display: "inline",
-            objectFit: "contain",
-            margin: "0 1px",
-          }}
-        />
+        <Tooltip content={emojiId} delayDuration={200}>
+          <img
+            src={src}
+            alt={alt || ""}
+            title={emojiId}
+            className="inline-emoji"
+            style={{
+              height: "1.4em",
+              width: "auto",
+              verticalAlign: "middle",
+              display: "inline",
+              objectFit: "contain",
+              margin: "0 1px",
+              cursor: "default",
+            }}
+          />
+        </Tooltip>
       );
     }
 
@@ -464,20 +474,29 @@ export const MarkdownRenderer = memo(({
           || Boolean(props["data-emoji-name"])
           || (alt && /^:[a-zA-Z0-9_+-]+:$/.test(alt));
         if (isCustomEmoji) {
+          const emojiId =
+            (props["data-emoji-name"] ? `:${props["data-emoji-name"]}:` : null)
+            ?? (alt && /^:[a-zA-Z0-9_+-]+:$/.test(alt) ? alt : null)
+            ?? alt
+            ?? "";
           return (
-            <img
-              src={src}
-              alt={alt || ""}
-              className="inline-emoji"
-              style={{
-                height: "1.4em",
-                width: "auto",
-                verticalAlign: "middle",
-                display: "inline",
-                objectFit: "contain",
-                margin: "0 1px",
-              }}
-            />
+            <Tooltip content={emojiId} delayDuration={200}>
+              <img
+                src={src}
+                alt={alt || ""}
+                title={emojiId}
+                className="inline-emoji"
+                style={{
+                  height: "1.4em",
+                  width: "auto",
+                  verticalAlign: "middle",
+                  display: "inline",
+                  objectFit: "contain",
+                  margin: "0 1px",
+                  cursor: "default",
+                }}
+              />
+            </Tooltip>
           );
         }
 

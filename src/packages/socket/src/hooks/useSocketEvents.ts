@@ -1,4 +1,4 @@
-import { Dispatch, MutableRefObject, SetStateAction,useEffect, useRef } from "react";
+import { Dispatch, MutableRefObject, SetStateAction, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import { Socket } from "socket.io-client";
 
@@ -106,6 +106,7 @@ export interface SocketEventDeps {
  */
 export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
   const registeredRef = useRef<Set<string>>(new Set());
+  const myVoiceStateByHostRef = useRef<Record<string, { hasJoinedChannel: boolean; voiceChannelId: string }>>({});
 
   const {
     servers,
@@ -274,7 +275,6 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
             (async () => {
               const identityToken = await getValidIdentityToken().catch(() => undefined);
               socket.emit("server:join", {
-                password: "",
                 nickname,
                 identityToken,
                 inviteCode: servers[host]?.token || undefined,
@@ -408,7 +408,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
         });
       });
 
-      socket.on("token:revoked", (info: { reason?: string; message?: string; requiresPassword?: boolean }) => {
+      socket.on("token:revoked", (info: { reason?: string; message?: string }) => {
         removeServerAccessToken(host);
 
         const refreshToken = getServerRefreshToken(host);
@@ -420,7 +420,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
             } else {
               removeServerRefreshToken(host);
               if (info?.message) toast.error(info.message);
-              socket.emit("server:join", { password: "", nickname, identityToken: undefined, inviteCode: servers[host]?.token || undefined });
+              socket.emit("server:join", { nickname, identityToken: undefined, inviteCode: servers[host]?.token || undefined });
             }
           })();
         } else {
@@ -428,7 +428,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
           setTimeout(() => {
             (async () => {
               const identityToken = await getValidIdentityToken().catch(() => undefined);
-              socket.emit("server:join", { password: "", nickname, identityToken, inviteCode: servers[host]?.token || undefined });
+              socket.emit("server:join", { nickname, identityToken, inviteCode: servers[host]?.token || undefined });
             })();
           }, 300);
         }
@@ -480,7 +480,6 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
             (async () => {
               const identityToken = await getValidIdentityToken().catch(() => undefined);
               socket.emit("server:join", {
-                password: "",
                 nickname,
                 identityToken,
                 inviteCode: serversRef.current[host]?.token || undefined,
@@ -506,35 +505,16 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
           return;
         }
 
-        if (errorInfo.error === 'invalid_password') {
-          const message = errorInfo.message || 'Invalid server password.';
+        if (errorInfo.error === "invite_rate_limited") {
+          const message = errorInfo.message || "Too many incorrect invite attempts. Please wait.";
           toast.error(message, { duration: 6000 });
-          window.dispatchEvent(new CustomEvent('server_password_required', {
-            detail: { host, message, reason: "invalid_password" }
-          }));
           return;
         }
 
-        if (errorInfo.error === 'password_rate_limited') {
-          const message = errorInfo.message || 'Too many incorrect password attempts.';
+        if (errorInfo.error === "invite_required") {
+          const message = errorInfo.message || "This server is invite-only.";
           toast.error(message, { duration: 6000 });
-          window.dispatchEvent(new CustomEvent('server_password_required', {
-            detail: {
-              host,
-              message,
-              reason: "password_rate_limited",
-              retryAfterMs: typeof errorInfo.retryAfterMs === "number" ? errorInfo.retryAfterMs : undefined,
-            }
-          }));
-          return;
-        }
-
-        if (errorInfo.error === 'password_required') {
-          const message = errorInfo.message || 'This server requires a password to join.';
-          toast.error(message, { duration: 6000 });
-          window.dispatchEvent(new CustomEvent('server_password_required', {
-            detail: { host, message, reason: "password_required" }
-          }));
+          toast(`Open an invite link to join ${host}.`, { duration: 8000 });
           return;
         }
 
@@ -571,7 +551,6 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
             } else {
               removeServerRefreshToken(host);
               socket.emit("server:join", {
-                password: "",
                 nickname,
                 identityToken,
                 inviteCode: serversRef.current[host]?.token || undefined,
@@ -590,6 +569,10 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
         setClients((old) => ({ ...old, [host]: data }));
 
         const myEntry = socket.id ? data[socket.id] : undefined;
+        myVoiceStateByHostRef.current[host] = {
+          hasJoinedChannel: !!myEntry?.hasJoinedChannel,
+          voiceChannelId: myEntry?.voiceChannelId || "",
+        };
         if (myEntry) {
           setIsServerMuted(!!myEntry.isServerMuted);
           setIsServerDeafened(!!myEntry.isServerDeafened);
@@ -606,13 +589,21 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
 
       // ---- Peer join/leave sound notifications ----
 
-      socket.on("voice:peer:joined", () => {
+      socket.on("voice:peer:joined", (payload: { clientId: string; nickname: string; channelId?: string }) => {
         if (!connectSoundEnabledRef.current) return;
+        if (!payload?.channelId) return;
+        if (payload.clientId === socket.id) return;
+        const mine = myVoiceStateByHostRef.current[host];
+        if (mine && (!mine.hasJoinedChannel || payload.channelId !== mine.voiceChannelId)) return;
         playNotificationSound(connectSoundFileRef.current, connectSoundVolumeRef.current);
       });
 
-      socket.on("voice:peer:left", () => {
+      socket.on("voice:peer:left", (payload: { clientId: string; nickname: string; channelId?: string }) => {
         if (!disconnectSoundEnabledRef.current) return;
+        if (!payload?.channelId) return;
+        if (payload.clientId === socket.id) return;
+        const mine = myVoiceStateByHostRef.current[host];
+        if (mine && (!mine.hasJoinedChannel || payload.channelId !== mine.voiceChannelId)) return;
         playNotificationSound(disconnectSoundFileRef.current, disconnectSoundVolumeRef.current);
       });
 

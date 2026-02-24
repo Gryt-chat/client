@@ -1,4 +1,4 @@
-import { Button, Card, Flex, Text, TextField } from "@radix-ui/themes";
+import { Button, Card, Flex, Switch, Text, TextField } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { MdAdd, MdContentCopy } from "react-icons/md";
@@ -9,9 +9,19 @@ export type InviteItem = {
   expiresAt?: string | Date | null;
   maxUses?: number;
   usesRemaining?: number;
+  usesConsumed?: number;
   revoked?: boolean;
   note?: string | null;
 };
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null;
+}
+
+function isInviteItem(v: unknown): v is InviteItem {
+  if (!isRecord(v)) return false;
+  return typeof v.code === "string" && v.code.trim().length > 0;
+}
 
 function toDate(v: string | Date | null | undefined): Date | null {
   if (!v) return null;
@@ -34,8 +44,10 @@ function formatExpiry(d: Date | null): string {
 }
 
 function formatUses(remaining: number | undefined, max: number | undefined): string {
+  const isInfinite = typeof max === "number" && max < 0;
+  if (isInfinite) return "∞";
   if (remaining === undefined) return "?";
-  if (max !== undefined) return `${remaining} / ${max}`;
+  if (typeof max === "number") return `${remaining} / ${max}`;
   return String(remaining);
 }
 
@@ -53,6 +65,7 @@ export function ServerInvitesTab({
   const [creating, setCreating] = useState(false);
 
   const [maxUses, setMaxUses] = useState<string>("1");
+  const [infiniteUses, setInfiniteUses] = useState(false);
   const [expiresInHours, setExpiresInHours] = useState<string>("");
   const [note, setNote] = useState<string>("");
   const [, setTick] = useState(0);
@@ -84,34 +97,32 @@ export function ServerInvitesTab({
   useEffect(() => {
     if (!socket) return;
 
-    const onInvites = (payload: { invites: InviteItem[] }) => {
-      setInvites(Array.isArray(payload?.invites) ? payload.invites : []);
+    const onInvites = (payload: unknown) => {
+      const raw = isRecord(payload) ? payload.invites : undefined;
+      const items = Array.isArray(raw) ? raw.filter(isInviteItem) : [];
+      setInvites(items);
     };
-    const onInviteCreated = (payload: { invite?: InviteItem }) => {
-      const inv = payload?.invite;
-      if (!inv?.code) return;
-      setInvites((prev) => [inv, ...prev.filter((p) => p.code !== inv.code)]);
+    const onInviteCreated = (payload: unknown) => {
+      const raw = isRecord(payload) ? payload.invite : undefined;
+      if (!isInviteItem(raw)) return;
+      setInvites((prev) => [raw, ...prev.filter((p) => p.code !== raw.code)]);
       toast.success("Invite created");
     };
-    const onInviteRevoked = (payload: { code: string; revoked: boolean }) => {
-      setInvites((prev) =>
-        prev.map((i) => (i.code === payload.code ? { ...i, revoked: payload.revoked } : i))
-      );
+    const onInviteRevoked = (payload: unknown) => {
+      if (!isRecord(payload)) return;
+      const code = payload.code;
+      const revoked = payload.revoked;
+      if (typeof code !== "string" || typeof revoked !== "boolean") return;
+      setInvites((prev) => prev.map((i) => (i.code === code ? { ...i, revoked } : i)));
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    socket.on("server:invites", onInvites as any);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    socket.on("server:invite:created", onInviteCreated as any);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    socket.on("server:invite:revoked", onInviteRevoked as any);
+    socket.on("server:invites", onInvites);
+    socket.on("server:invite:created", onInviteCreated);
+    socket.on("server:invite:revoked", onInviteRevoked);
     return () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      socket.off("server:invites", onInvites as any);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      socket.off("server:invite:created", onInviteCreated as any);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      socket.off("server:invite:revoked", onInviteRevoked as any);
+      socket.off("server:invites", onInvites);
+      socket.off("server:invite:created", onInviteCreated);
+      socket.off("server:invite:revoked", onInviteRevoked);
     };
   }, [socket]);
 
@@ -134,7 +145,7 @@ export function ServerInvitesTab({
     try {
       socket.emit("server:invites:create", {
         accessToken,
-        maxUses: mu,
+        ...(infiniteUses ? { infinite: true } : { maxUses: mu }),
         expiresInHours: typeof eh === "number" && eh > 0 ? eh : undefined,
         note: note.trim().length ? note.trim() : null,
       });
@@ -143,10 +154,10 @@ export function ServerInvitesTab({
     }
   };
 
-  const revoke = async (code: string, revoked: boolean) => {
+  const revoke = async (code: string) => {
     if (!socket || !socket.connected) return toast.error("Not connected to the server yet.");
     if (!accessToken) return toast.error("Join the server first.");
-    socket.emit("server:invites:revoke", { accessToken, code, revoked });
+    socket.emit("server:invites:revoke", { accessToken, code });
   };
 
   const copy = async (code: string) => {
@@ -162,17 +173,28 @@ export function ServerInvitesTab({
   return (
     <Flex direction="column" gap="4">
       <Text size="2" color="gray">
-        Create invite codes you can share instead of the server password.
+        This server is invite-only. Create invite codes to share with people you want to join.
       </Text>
 
       <Card>
         <Flex direction="column" gap="3">
           <Flex gap="3" wrap="wrap">
+            <Flex align="center" gap="2" style={{ minWidth: 170, paddingTop: 22 }}>
+              <Switch checked={infiniteUses} onCheckedChange={setInfiniteUses} />
+              <Text size="2" weight="medium">
+                Infinite uses
+              </Text>
+            </Flex>
             <Flex direction="column" gap="1" style={{ minWidth: 140 }}>
               <Text size="2" weight="medium">
                 Max uses
               </Text>
-              <TextField.Root value={maxUses} onChange={(e) => setMaxUses(e.target.value)} placeholder="1" />
+              <TextField.Root
+                value={infiniteUses ? "∞" : maxUses}
+                onChange={(e) => setMaxUses(e.target.value)}
+                placeholder="1"
+                disabled={infiniteUses}
+              />
             </Flex>
             <Flex direction="column" gap="1" style={{ minWidth: 180 }}>
               <Text size="2" weight="medium">
@@ -214,7 +236,10 @@ export function ServerInvitesTab({
         ) : (
           invites.map((i) => {
             const expiry = formatExpiry(toDate(i.expiresAt));
-            const uses = formatUses(i.usesRemaining, i.maxUses);
+            const isInfinite = typeof i.maxUses === "number" && i.maxUses < 0;
+            const uses = isInfinite
+              ? `${typeof i.usesConsumed === "number" ? i.usesConsumed : 0} / ∞`
+              : formatUses(i.usesRemaining, i.maxUses);
             return (
               <Card key={i.code}>
                 <Flex direction="column" gap="2">
@@ -239,11 +264,12 @@ export function ServerInvitesTab({
                         Copy
                       </Button>
                       <Button
-                        color={i.revoked ? "green" : "red"}
+                        color="red"
                         variant="soft"
-                        onClick={() => revoke(i.code, !i.revoked)}
+                        disabled={!!i.revoked}
+                        onClick={() => revoke(i.code)}
                       >
-                        {i.revoked ? "Unrevoke" : "Revoke"}
+                        Revoke
                       </Button>
                     </Flex>
                   </Flex>

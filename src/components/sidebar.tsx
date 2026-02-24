@@ -272,7 +272,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
             </DropdownMenu.Item>
             <DropdownMenu.Separator />
             <DropdownMenu.Item
-              onClick={() => window.open("https://github.com/Gryt-chat/gryt/issues/new?template=bug_report.yml", "_blank")}
+              onClick={() => window.open("https://feedback.gryt.chat", "_blank")}
             >
               <Flex align="center" gap="1">
                 <MdBugReport size={14} />
@@ -280,7 +280,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
               </Flex>
             </DropdownMenu.Item>
             <DropdownMenu.Item
-              onClick={() => window.open("https://github.com/Gryt-chat/gryt/issues/new?template=feature_request.yml", "_blank")}
+              onClick={() => window.open("https://feedback.gryt.chat", "_blank")}
             >
               <Flex align="center" gap="1">
                 <MdLightbulb size={14} />

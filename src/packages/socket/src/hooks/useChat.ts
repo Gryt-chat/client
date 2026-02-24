@@ -509,7 +509,6 @@ export function useChat({
           (async () => {
             const identityToken = await getValidIdentityToken().catch(() => undefined);
             currentConnection.emit("server:join", {
-              password: "",
               nickname: nicknameRef.current,
               identityToken,
             });

@@ -18,7 +18,6 @@ type SetupRequiredDetail = {
     displayName?: string;
     description?: string;
     iconUrl?: string | null;
-    hasPassword?: boolean;
     isConfigured?: boolean;
   };
 };
@@ -75,7 +74,6 @@ export function ServerSettingsModal() {
       setInitialOverviewSettings({
         displayName: event.detail?.settings?.displayName,
         description: event.detail?.settings?.description,
-        hasPassword: event.detail?.settings?.hasPassword,
       });
       setTab("overview");
       setIsOpen(true);

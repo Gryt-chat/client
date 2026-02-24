@@ -4,7 +4,7 @@ import { useGlobalHotkeys } from "@/audio";
 import { capturePendingInviteFromUrl, clearPendingInvite, type PendingInvite, readPendingInvite, useAccount } from "@/common";
 import { AddNewServer, Nickname, PushToTalkModal, Settings, useSettings } from "@/settings";
 import { SignUpModal } from "@/signUp";
-import { DeviceSwitchModal, InviteAcceptModal, ServerPasswordModal, ServerSettingsModal, useServerManagement } from "@/socket";
+import { DeviceSwitchModal, InviteAcceptModal, ServerSettingsModal, useServerManagement } from "@/socket";
 import { useSFU } from "@/webRTC";
 
 import { AuthLoadingOverlay } from "./components/AuthLoadingOverlay";
@@ -74,7 +74,6 @@ export function App() {
           <AddNewServer showAddServer={showAddServer} setShowAddServer={setShowAddServer} />
           <LeaveServer />
           <DeviceSwitchModal />
-          <ServerPasswordModal />
           <ServerSettingsModal />
           <InviteAcceptModal invite={pendingInvite} onAccept={handleAcceptInvite} onDismiss={handleDismissInvite} />
           <PushToTalkModal />

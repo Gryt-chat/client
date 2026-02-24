@@ -397,14 +397,23 @@ function MessageContent({
         <Flex wrap="wrap" style={{ marginTop: "4px", gap: "2px" }}>
           {m.reactions.map((reaction, rIdx) => {
             const isMine = !!(currentUserId && reaction.users.includes(currentUserId));
+            const emojiId = reaction.src;
+            const usersLabel = reaction.users
+              .map((uid) => {
+                if (currentUserId && uid === currentUserId) return currentUserNickname || "You";
+                const member = memberList && Object.values(memberList).find((mb) => mb.serverUserId === uid);
+                return member?.nickname || uid;
+              })
+              .join(", ");
             return (
               <Tooltip
                 key={`${reaction.src}-${rIdx}`}
-                content={reaction.users.map((uid) => {
-                  if (currentUserId && uid === currentUserId) return currentUserNickname || "You";
-                  const member = memberList && Object.values(memberList).find((mb) => mb.serverUserId === uid);
-                  return member?.nickname || uid;
-                }).join(", ")}
+                content={(
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <div style={{ fontWeight: 600 }}>{emojiId}</div>
+                    <div style={{ opacity: 0.9 }}>{usersLabel}</div>
+                  </div>
+                )}
                 delayDuration={200}
               >
                 <button

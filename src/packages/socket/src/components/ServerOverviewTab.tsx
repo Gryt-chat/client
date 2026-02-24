@@ -3,7 +3,6 @@ import {
   Avatar,
   Button,
   Flex,
-  IconButton,
   Select,
   Text,
   TextArea,
@@ -11,7 +10,7 @@ import {
 } from "@radix-ui/themes";
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { MdCameraAlt, MdClose, MdDelete, MdVisibility, MdVisibilityOff } from "react-icons/md";
+import { MdCameraAlt, MdDelete } from "react-icons/md";
 
 import { getServerAccessToken, getServerHttpBase, getValidIdentityToken } from "@/common";
 import { useSettings } from "@/settings";
@@ -26,7 +25,6 @@ type ServerSettingsPayload = {
   displayName: string;
   description: string;
   iconUrl: string | null;
-  hasPassword: boolean;
   avatarMaxBytes?: number | null;
   uploadMaxBytes?: number | null;
   emojiMaxBytes?: number | null;
@@ -37,7 +35,6 @@ type ServerSettingsPayload = {
 export type ServerOverviewInitialSettings = {
   displayName?: string;
   description?: string;
-  hasPassword?: boolean;
 };
 
 export function ServerOverviewTab({
@@ -63,7 +60,6 @@ export function ServerOverviewTab({
   const [isOwner, setIsOwner] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [description, setDescription] = useState("");
-  const [hasPassword, setHasPassword] = useState(false);
   const [isUploadingIcon, setIsUploadingIcon] = useState(false);
   const [isClearingIcon, setIsClearingIcon] = useState(false);
   const [iconUrl, setIconUrl] = useState<string | null>(null);
@@ -76,10 +72,6 @@ export function ServerOverviewTab({
   const [profanityMode, setProfanityMode] = useState<ProfanityMode>("censor");
   const [censorStyle, setCensorStyle] = useState<CensorStyle>("emoji");
 
-  const [password, setPassword] = useState("");
-  const [clearPassword, setClearPassword] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
   const [autosaving, setAutosaving] = useState(false);
   const pendingSaveCountRef = useRef(0);
   const lastSettingsRef = useRef<{
@@ -100,12 +92,9 @@ export function ServerOverviewTab({
 
   // Apply any initial settings when host changes (best-effort prefill).
   useEffect(() => {
-    setPassword("");
-    setClearPassword(false);
     if (!initialSettings) return;
     if (typeof initialSettings.displayName === "string") setDisplayName(initialSettings.displayName);
     if (typeof initialSettings.description === "string") setDescription(initialSettings.description);
-    if (typeof initialSettings.hasPassword === "boolean") setHasPassword(initialSettings.hasPassword);
   }, [host, initialSettings]);
 
   const isServerSettingsPayload = (x: unknown): x is ServerSettingsPayload => {
@@ -116,7 +105,7 @@ export function ServerOverviewTab({
       typeof p.isConfigured === "boolean" &&
       typeof p.displayName === "string" &&
       typeof p.description === "string" &&
-      typeof p.hasPassword === "boolean";
+      typeof p.iconUrl !== "undefined";
   };
 
   // Fetch current settings when opened/host changes.
@@ -130,7 +119,6 @@ export function ServerOverviewTab({
       const wasSaving = pendingSaveCountRef.current > 0;
 
       setIsOwner(!!payload.isOwner);
-      setHasPassword(!!payload.hasPassword);
       setIconUrl(payload.iconUrl || null);
 
       const toMbString = (bytes?: number | null) => {
@@ -179,7 +167,7 @@ export function ServerOverviewTab({
     if (!socket?.connected) return;
     if (!nickname) return;
     const identityToken = await getValidIdentityToken().catch(() => undefined);
-    socket.emit("server:join", { password: "", nickname, identityToken });
+    socket.emit("server:join", { nickname, identityToken });
   };
 
   const parseMbToBytes = (s: string): number | null => {
@@ -225,41 +213,6 @@ export function ServerOverviewTab({
       if (!changed) return;
     }
     emitSettingsUpdate(patch).catch(() => undefined);
-  };
-
-  const submit = async () => {
-    if (!host) return;
-    if (!socket || !socket.connected) {
-      toast.error("Not connected to the server.");
-      return;
-    }
-    if (!effectiveAccessToken) {
-      await ensureJoined();
-      return;
-    }
-    if (!isOwner) {
-      toast.error("Only the server owner can change settings.");
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      socket.emit("server:settings:update", {
-        accessToken: effectiveAccessToken,
-        displayName: displayName.trim(),
-        description: description.trim(),
-        ...(clearPassword ? { clearPassword: true } : {}),
-        ...(password.trim().length > 0 ? { password: password.trim() } : {}),
-        avatarMaxBytes: parseMbToBytes(avatarMaxMb),
-        uploadMaxBytes: parseMbToBytes(uploadMaxMb),
-        emojiMaxBytes: parseMbToBytes(emojiMaxMb),
-      });
-      toast.success("Server settings saved");
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Failed to update settings");
-    } finally {
-      setSubmitting(false);
-    }
   };
 
   const uploadIcon = async (file: File) => {
@@ -382,7 +335,7 @@ export function ServerOverviewTab({
     <Flex direction="column" gap="4">
       <Text size="2" color="gray">
         {isOwner
-          ? "Update the server display name, icon and password."
+          ? "Update the server display name and icon."
           : "You can view settings, but only the owner can make changes."}
       </Text>
 
@@ -404,7 +357,7 @@ export function ServerOverviewTab({
           onChange={(e: ChangeEvent<HTMLInputElement>) => setDisplayName(e.target.value)}
           onBlur={() => saveIfChanged({ displayName: displayName.trim() })}
           placeholder="My Gryt Server"
-          disabled={submitting || !isOwner}
+          disabled={!isOwner}
         />
       </Flex>
 
@@ -417,7 +370,7 @@ export function ServerOverviewTab({
           onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
           onBlur={() => saveIfChanged({ description: description.trim() })}
           placeholder="A place to hang out"
-          disabled={submitting || !isOwner}
+          disabled={!isOwner}
           style={{ minHeight: 90 }}
         />
       </Flex>
@@ -441,12 +394,12 @@ export function ServerOverviewTab({
         >
           <button
             type="button"
-            disabled={!isOwner || iconBusy || submitting}
+            disabled={!isOwner || iconBusy}
             onClick={() => iconInputRef.current?.click()}
             aria-label="Change server icon"
             style={{
               all: "unset",
-              cursor: isOwner && !iconBusy && !submitting ? "pointer" : "default",
+              cursor: isOwner && !iconBusy ? "pointer" : "default",
               borderRadius: 9999,
             }}
           >
@@ -494,7 +447,7 @@ export function ServerOverviewTab({
             <Button
               variant="soft"
               color="red"
-              disabled={submitting || isUploadingIcon || isClearingIcon}
+              disabled={isUploadingIcon || isClearingIcon}
               onClick={() => setShowClearIconConfirm(true)}
               style={{ alignSelf: "center" }}
             >
@@ -533,71 +486,13 @@ export function ServerOverviewTab({
           type="file"
           accept="image/png,image/jpeg,image/webp,image/gif,image/avif"
           style={{ display: "none" }}
-          disabled={submitting || !isOwner || isUploadingIcon || isClearingIcon}
+          disabled={!isOwner || isUploadingIcon || isClearingIcon}
           onChange={(e) => {
             const f = e.target.files?.[0];
             if (f) uploadIcon(f);
             e.currentTarget.value = "";
           }}
         />
-      </Flex>
-
-      <Flex direction="column" gap="2">
-        <Text size="2" weight="medium">
-          Server password
-        </Text>
-        <TextField.Root
-          type={showPassword ? "text" : "password"}
-          value={clearPassword ? "" : password}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => {
-            if (clearPassword) setClearPassword(false);
-            setPassword(e.target.value);
-          }}
-          placeholder={clearPassword ? "Password will be cleared" : hasPassword ? "Enter new password to change" : "Set a password"}
-          disabled={submitting || !isOwner || clearPassword}
-        >
-          <TextField.Slot side="right">
-            <Flex align="center" gap="1">
-              {hasPassword && !clearPassword && (
-                <IconButton
-                  size="1"
-                  variant="ghost"
-                  color="red"
-                  onClick={() => { setClearPassword(true); setPassword(""); }}
-                  disabled={submitting || !isOwner}
-                  title="Clear password"
-                  style={{ cursor: "pointer" }}
-                >
-                  <MdClose size={14} />
-                </IconButton>
-              )}
-              {clearPassword && (
-                <IconButton
-                  size="1"
-                  variant="ghost"
-                  color="gray"
-                  onClick={() => setClearPassword(false)}
-                  disabled={submitting || !isOwner}
-                  title="Cancel clear"
-                  style={{ cursor: "pointer" }}
-                >
-                  <Text size="1">Undo</Text>
-                </IconButton>
-              )}
-              <IconButton
-                size="1"
-                variant="ghost"
-                color="gray"
-                onClick={() => setShowPassword((v) => !v)}
-                disabled={submitting || !isOwner}
-                title={showPassword ? "Hide password" : "Show password"}
-                style={{ cursor: "pointer" }}
-              >
-                {showPassword ? <MdVisibilityOff size={14} /> : <MdVisibility size={14} />}
-              </IconButton>
-            </Flex>
-          </TextField.Slot>
-        </TextField.Root>
       </Flex>
 
       <Flex direction="column" gap="2">
@@ -621,7 +516,7 @@ export function ServerOverviewTab({
             onChange={(e) => setAvatarMaxMb(e.target.value)}
             onBlur={() => saveIfChanged({ avatarMaxBytes: parseMbToBytes(avatarMaxMb) })}
             placeholder="e.g. 5"
-            disabled={submitting || !isOwner}
+            disabled={!isOwner}
           />
         </Flex>
 
@@ -638,7 +533,7 @@ export function ServerOverviewTab({
             onChange={(e) => setUploadMaxMb(e.target.value)}
             onBlur={() => saveIfChanged({ uploadMaxBytes: parseMbToBytes(uploadMaxMb) })}
             placeholder="e.g. 25"
-            disabled={submitting || !isOwner}
+            disabled={!isOwner}
           />
         </Flex>
 
@@ -655,7 +550,7 @@ export function ServerOverviewTab({
             onChange={(e) => setEmojiMaxMb(e.target.value)}
             onBlur={() => saveIfChanged({ emojiMaxBytes: parseMbToBytes(emojiMaxMb) })}
             placeholder="e.g. 5"
-            disabled={submitting || !isOwner}
+            disabled={!isOwner}
           />
         </Flex>
 
@@ -677,7 +572,7 @@ export function ServerOverviewTab({
                 setProfanityMode(mode);
                 saveIfChanged({ profanityMode: mode });
               }}
-              disabled={submitting || !isOwner}
+              disabled={!isOwner}
             >
               <Select.Trigger style={{ width: "100%" }} />
               <Select.Content>
@@ -697,7 +592,7 @@ export function ServerOverviewTab({
                   setCensorStyle(style);
                   saveIfChanged({ profanityCensorStyle: style });
                 }}
-                disabled={submitting || !isOwner}
+                disabled={!isOwner}
               >
                 <Select.Trigger style={{ width: "100%" }} placeholder="Replacement style" />
                 <Select.Content>
@@ -713,13 +608,7 @@ export function ServerOverviewTab({
         </Flex>
       </Flex>
 
-      {(password.trim().length > 0 || clearPassword) ? (
-        <Flex justify="end" gap="2">
-          <Button onClick={submit} disabled={submitting || !isOwner}>
-            Save Password
-          </Button>
-        </Flex>
-      ) : autosaving ? (
+      {autosaving ? (
         <Flex justify="end">
           <Text size="2" color="gray">Saving…</Text>
         </Flex>

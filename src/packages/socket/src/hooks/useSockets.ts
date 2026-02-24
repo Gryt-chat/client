@@ -222,7 +222,6 @@ function useSocketsHook() {
           (async () => {
             const identityToken = await getValidIdentityToken().catch(() => undefined);
             socket.emit("server:join", {
-              password: "",
               nickname,
               identityToken,
               inviteCode: servers[host]?.token || undefined,
@@ -258,7 +257,7 @@ function useSocketsHook() {
           (async () => {
             const identityToken = await getValidIdentityToken().catch(() => undefined);
             const inviteCode = serversRef.current[host]?.token || undefined;
-            socket.emit("server:join", { password: "", nickname, identityToken, inviteCode });
+            socket.emit("server:join", { nickname, identityToken, inviteCode });
           })();
         }
       }, 3_000));
@@ -285,14 +284,14 @@ function useSocketsHook() {
                 socket.emit("token:refresh", { refreshToken, identityToken });
               } else {
                 const inviteCode = serversRef.current[host]?.token || undefined;
-                socket.emit("server:join", { password: "", nickname, identityToken: undefined, inviteCode });
+                  socket.emit("server:join", { nickname, identityToken: undefined, inviteCode });
               }
             })();
           } else {
             (async () => {
               const identityToken = await getValidIdentityToken().catch(() => undefined);
               const inviteCode = serversRef.current[host]?.token || undefined;
-              socket.emit("server:join", { password: "", nickname, identityToken, inviteCode });
+              socket.emit("server:join", { nickname, identityToken, inviteCode });
             })();
           }
           return;
@@ -345,7 +344,6 @@ function useSocketsHook() {
       (async () => {
         const identityToken = await getValidIdentityToken().catch(() => undefined);
         socket.emit("server:join", {
-          password: "",
           nickname,
           identityToken,
           inviteCode: token,
@@ -372,7 +370,6 @@ function useSocketsHook() {
       const identityToken = await getValidIdentityToken().catch(() => undefined);
       const inviteCode = serversRef.current[host]?.token || undefined;
       socket.emit("server:join", {
-        password: "",
         nickname,
         identityToken,
         inviteCode,
@@ -411,7 +408,7 @@ function useSocketsHook() {
         void (async () => {
           const identityToken = await getValidIdentityToken().catch(() => undefined);
           const inviteCode = serversRef.current[host]?.token || undefined;
-          socket.emit("server:join", { password: "", nickname, identityToken, inviteCode });
+          socket.emit("server:join", { nickname, identityToken, inviteCode });
         })();
       });
     };

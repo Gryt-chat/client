@@ -22,6 +22,7 @@ export const EmojiText = memo(({ text, emojiSize }: EmojiTextProps) => {
   for (const match of text.matchAll(/:([a-zA-Z0-9_+-]+):/g)) {
     const code = match[1];
     const start = match.index!;
+    const emojiId = `:${code}:`;
 
     if (start > lastIndex) {
       parts.push(text.slice(lastIndex, start));
@@ -29,7 +30,11 @@ export const EmojiText = memo(({ text, emojiSize }: EmojiTextProps) => {
 
     const unicode = nameToEmoji[code];
     if (unicode) {
-      parts.push(unicode);
+      parts.push(
+        <span key={`emoji-${start}`} title={emojiId} style={{ cursor: "default" }}>
+          {unicode}
+        </span>,
+      );
     } else {
       const url = customMap.get(code);
       if (url) {
@@ -39,7 +44,9 @@ export const EmojiText = memo(({ text, emojiSize }: EmojiTextProps) => {
           <img
             key={`emoji-${start}`}
             src={url}
-            alt={`:${code}:`}
+            alt={emojiId}
+            title={emojiId}
+            data-emoji-name={code}
             className="inline-emoji"
             style={{
               height: cssVal,

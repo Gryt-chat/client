@@ -96,6 +96,9 @@ export const ChatView = memo(({
   const { chatMediaVolume, setChatMediaVolume, blurProfanity } = useSettings();
   const editorRef = useRef<ChatEditorHandle>(null);
   const virtuosoRef = useRef<VirtuosoHandle>(null);
+  const isAtBottomRef = useRef(true);
+  const lastMessageIdRef = useRef<string | undefined>(undefined);
+  const forceScrollToBottomRef = useRef(false);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -392,6 +395,7 @@ export const ChatView = memo(({
       return;
     }
     if (!canSend && !isRateLimited) return;
+    forceScrollToBottomRef.current = true;
     sendChat(markdown, files, replyingTo?.message_id);
     setReplyingTo(null);
   }, [canSend, isRateLimited, sendChat, replyingTo, editingMessage, editMessage]);
@@ -458,6 +462,29 @@ export const ChatView = memo(({
       pendingInitialScrollRef.current = null;
     });
   }, [conversationKey, chatMessages.length, firstItemIndex]);
+
+  useEffect(() => {
+    lastMessageIdRef.current = undefined;
+    forceScrollToBottomRef.current = false;
+  }, [conversationKey]);
+
+  useEffect(() => {
+    const lastMessageId = chatMessages[chatMessages.length - 1]?.message_id;
+    if (!lastMessageId) return;
+
+    const prev = lastMessageIdRef.current;
+    lastMessageIdRef.current = lastMessageId;
+
+    if (!prev) return;
+    if (!isAtBottomRef.current && !forceScrollToBottomRef.current) return;
+    if (pendingInitialScrollRef.current === conversationKey) return;
+
+    const lastIndex = (firstItemIndex ?? 100_000) + chatMessages.length - 1;
+    requestAnimationFrame(() => {
+      virtuosoRef.current?.scrollToIndex({ index: lastIndex, align: "end", behavior: "smooth" });
+    });
+    forceScrollToBottomRef.current = false;
+  }, [chatMessages, conversationKey, firstItemIndex]);
 
   const itemContent = useCallback((_index: number, m: ChatMessage) => {
     const localIdx = messageIndexById.get(m.message_id);
@@ -589,6 +616,10 @@ export const ChatView = memo(({
               style={{ flex: 1, minWidth: 0, marginBottom: 12 }}
               data={chatMessages}
               firstItemIndex={firstItemIndex}
+              atBottomThreshold={120}
+              atBottomStateChange={(atBottom) => {
+                isAtBottomRef.current = atBottom;
+              }}
               initialTopMostItemIndex={{
                 index: (firstItemIndex ?? 100_000) + chatMessages.length - 1,
                 align: "end",

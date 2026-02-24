@@ -37,7 +37,6 @@ export type serverDetails = {
     name?: string;
     description?: string;
     icon_url?: string | null;
-    has_password?: boolean;
     is_owner?: boolean;
     role?: "owner" | "admin" | "mod" | "member";
     max_members?: number;
@@ -57,7 +56,7 @@ export type serverDetailsList = {
 export type Server = {
   host: string;
   name: string;
-  // Optional invite code used as an alternative to the server password.
+  // Optional invite code used to join invite-only servers.
   token?: string;
 };
 
