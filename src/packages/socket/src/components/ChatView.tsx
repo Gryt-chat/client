@@ -433,13 +433,30 @@ export const ChatView = memo(({
   const showVoiceDisabled = !canViewVoiceChannelText && isVoiceChannelTextChat;
   const showMessages = !showVoiceDisabled && !isLoadingMessages && chatMessages.length > 0;
 
+  const visibleRangeRef = useRef<{ startIndex: number; endIndex: number } | null>(null);
+
   const handleRangeChanged = useCallback((range: { startIndex: number; endIndex: number }) => {
+    visibleRangeRef.current = range;
     const distFromTop = range.startIndex - (firstItemIndex ?? 100_000);
     if (distFromTop < 20 && hasOlderMessages && !isLoadingOlder && onLoadOlder) {
       console.log("[rangeChanged] near top, loading older", { startIndex: range.startIndex, firstItemIndex, distFromTop });
       onLoadOlder();
     }
   }, [firstItemIndex, hasOlderMessages, isLoadingOlder, onLoadOlder]);
+
+  useEffect(() => {
+    const onFullscreenExit = () => {
+      if (document.fullscreenElement) return;
+      const range = visibleRangeRef.current;
+      if (!range) return;
+      const mid = Math.floor((range.startIndex + range.endIndex) / 2);
+      requestAnimationFrame(() => {
+        virtuosoRef.current?.scrollToIndex({ index: mid, align: "center", behavior: "auto" });
+      });
+    };
+    document.addEventListener("fullscreenchange", onFullscreenExit);
+    return () => document.removeEventListener("fullscreenchange", onFullscreenExit);
+  }, []);
 
   const followOutput = useCallback((isAtBottom: boolean) => {
     if (!isAtBottom) return false as const;
