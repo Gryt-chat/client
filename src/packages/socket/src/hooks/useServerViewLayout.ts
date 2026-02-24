@@ -67,8 +67,8 @@ function useSidebarHover({ pinChannelsSidebar, pinMembersSidebar, isDraggingResi
   const leftCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const rightCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const leftSidebarContentRef = useRef<HTMLDivElement | null>(null);
-  const rightSidebarContentRef = useRef<HTMLDivElement | null>(null);
+  const leftSidebarContentRef = useRef<HTMLDivElement>(null);
+  const rightSidebarContentRef = useRef<HTMLDivElement>(null);
 
   const leftSidebarOpen = pinChannelsSidebar || hoverLeftSidebar;
   const rightSidebarOpen = pinMembersSidebar || hoverRightSidebar;

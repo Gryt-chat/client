@@ -17,8 +17,8 @@ interface UseChatActionsParams {
   isRateLimited?: boolean;
   sendChat: (text: string, files: File[], replyToMessageId?: string) => void;
   editMessage?: (messageId: string, conversationId: string, newText: string) => void;
-  editorRef: RefObject<ChatEditorHandle | null>;
-  forceScrollToBottomRef: RefObject<boolean>;
+  editorRef: RefObject<ChatEditorHandle>;
+  forceScrollToBottomRef: { current: boolean };
 }
 
 export function useChatActions({

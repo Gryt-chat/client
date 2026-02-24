@@ -8,7 +8,7 @@ import { getReplyPreview } from "./chatViewHelpers";
 interface ChatEditorBarProps {
   replyingTo: ChatMessage | null;
   editingMessage: ChatMessage | null;
-  editorRef: RefObject<ChatEditorHandle | null>;
+  editorRef: RefObject<ChatEditorHandle>;
   placeholder: string;
   disabled: boolean;
   maxFileSize?: number | null;
