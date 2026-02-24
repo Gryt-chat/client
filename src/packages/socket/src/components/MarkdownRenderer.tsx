@@ -329,7 +329,7 @@ const components: Components = {
           className="inline-emoji"
           style={{
             height: "1.4em",
-            width: "1.4em",
+            width: "auto",
             verticalAlign: "middle",
             display: "inline",
             objectFit: "contain",
@@ -471,7 +471,7 @@ export const MarkdownRenderer = memo(({
               className="inline-emoji"
               style={{
                 height: "1.4em",
-                width: "1.4em",
+                width: "auto",
                 verticalAlign: "middle",
                 display: "inline",
                 objectFit: "contain",

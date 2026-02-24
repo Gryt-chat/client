@@ -142,7 +142,7 @@ body {
 
 .chat-editor-textarea img.inline-emoji {
   height: 1.4em;
-  width: 1.4em;
+  width: auto;
   vertical-align: middle;
   display: inline;
   object-fit: contain;
@@ -838,7 +838,7 @@ body {
 
 .markdown-message.emoji-only .inline-emoji {
   height: var(--emoji-only-size, 64px) !important;
-  width: var(--emoji-only-size, 64px) !important;
+  width: auto !important;
 }
 
 /* ── Code highlighting (highlight.js compatible) ───────────── */

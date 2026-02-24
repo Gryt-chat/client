@@ -1,4 +1,5 @@
 import {
+  AlertDialog,
   Avatar,
   Button,
   Flex,
@@ -10,7 +11,7 @@ import {
 } from "@radix-ui/themes";
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { MdCameraAlt, MdClose, MdVisibility, MdVisibilityOff } from "react-icons/md";
+import { MdCameraAlt, MdClose, MdDelete, MdVisibility, MdVisibilityOff } from "react-icons/md";
 
 import { getServerAccessToken, getServerHttpBase, getValidIdentityToken } from "@/common";
 import { useSettings } from "@/settings";
@@ -63,9 +64,13 @@ export function ServerOverviewTab({
   const [description, setDescription] = useState("");
   const [hasPassword, setHasPassword] = useState(false);
   const [isUploadingIcon, setIsUploadingIcon] = useState(false);
+  const [isClearingIcon, setIsClearingIcon] = useState(false);
   const [iconUrl, setIconUrl] = useState<string | null>(null);
   const [iconCacheBuster, setIconCacheBuster] = useState(0);
   const iconInputRef = useRef<HTMLInputElement>(null);
+  const [showClearIconConfirm, setShowClearIconConfirm] = useState(false);
+
+  const iconBusy = isUploadingIcon || isClearingIcon;
 
   const [profanityMode, setProfanityMode] = useState<ProfanityMode>("censor");
   const [censorStyle, setCensorStyle] = useState<CensorStyle>("emoji");
@@ -312,6 +317,60 @@ export function ServerOverviewTab({
     }
   };
 
+  const clearIcon = async () => {
+    if (!host) return;
+    if (!socket || !socket.connected) {
+      toast.error("Not connected to the server.");
+      return;
+    }
+    if (!effectiveAccessToken) {
+      await ensureJoined();
+      return;
+    }
+    if (!isOwner) {
+      toast.error("Only the server owner can change the icon.");
+      return;
+    }
+
+    setIsClearingIcon(true);
+    try {
+      const resp = await fetch(`${getServerHttpBase(host)}/api/server/icon`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${effectiveAccessToken}`,
+        },
+      });
+      const raw = await resp.text().catch(() => "");
+      let data: Record<string, unknown> = {};
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        data = {};
+      }
+      if (!resp.ok) {
+        const msg =
+          (typeof data?.message === "string" && data.message.trim().length > 0)
+            ? data.message
+            : (typeof data?.error === "string" && data.error.trim().length > 0)
+              ? data.error
+              : (raw && raw.trim().length > 0)
+                ? raw.trim()
+                : `HTTP ${resp.status} ${resp.statusText || ""}`.trim();
+        throw new Error(msg);
+      }
+
+      setIconUrl(null);
+      setIconCacheBuster((v) => v + 1);
+      toast.success("Icon cleared");
+      socket?.emit("server:settings:get");
+      socket?.emit("server:details");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to clear icon");
+    } finally {
+      setIsClearingIcon(false);
+    }
+  };
+
   return (
     <Flex direction="column" gap="4">
       <Text size="2" color="gray">
@@ -360,60 +419,114 @@ export function ServerOverviewTab({
         <Text size="2" weight="medium">
           Server icon
         </Text>
+        {/** Only the avatar is clickable (not whitespace). */}
         <Flex
           direction="column"
           align="center"
           gap="2"
           style={{
-            cursor: isOwner ? "pointer" : "default",
-            opacity: isUploadingIcon ? 0.6 : 1,
+            cursor: "default",
+            opacity: iconBusy ? 0.6 : 1,
             transition: "opacity 200ms",
             paddingTop: 8,
             paddingBottom: 4,
           }}
-          onClick={() => {
-            if (isOwner && !isUploadingIcon && !submitting) {
-              iconInputRef.current?.click();
-            }
-          }}
         >
-          <div style={{ position: "relative" }}>
-            <Avatar
-              size="7"
-              radius="full"
-              src={iconUrl ? `${getServerHttpBase(host)}/icon?v=${iconCacheBuster}` : undefined}
-              fallback={displayName?.[0]?.toUpperCase() || "S"}
-            />
-            {isOwner && (
-              <Flex
-                align="center"
-                justify="center"
-                style={{
-                  position: "absolute",
-                  bottom: 0,
-                  right: 0,
-                  width: 28,
-                  height: 28,
-                  borderRadius: "50%",
-                  background: "var(--accent-9)",
-                  color: "var(--accent-contrast)",
-                  boxShadow: "0 1px 4px var(--gray-a5)",
-                }}
-              >
-                <MdCameraAlt size={14} />
-              </Flex>
-            )}
-          </div>
+          <button
+            type="button"
+            disabled={!isOwner || iconBusy || submitting}
+            onClick={() => iconInputRef.current?.click()}
+            aria-label="Change server icon"
+            style={{
+              all: "unset",
+              cursor: isOwner && !iconBusy && !submitting ? "pointer" : "default",
+              borderRadius: 9999,
+            }}
+          >
+            <div style={{ position: "relative" }}>
+              <Avatar
+                size="7"
+                radius="full"
+                src={iconUrl ? `${getServerHttpBase(host)}/icon?v=${iconCacheBuster}` : undefined}
+                fallback={displayName?.[0]?.toUpperCase() || "S"}
+              />
+              {isOwner && (
+                <Flex
+                  align="center"
+                  justify="center"
+                  style={{
+                    position: "absolute",
+                    bottom: 0,
+                    right: 0,
+                    width: 28,
+                    height: 28,
+                    borderRadius: "50%",
+                    background: "var(--accent-9)",
+                    color: "var(--accent-contrast)",
+                    boxShadow: "0 1px 4px var(--gray-a5)",
+                  }}
+                >
+                  <MdCameraAlt size={14} />
+                </Flex>
+              )}
+            </div>
+          </button>
           <Text size="1" color="gray">
-            {isUploadingIcon ? "Uploading..." : isOwner ? "Click to change icon" : "Server icon"}
+            {isUploadingIcon
+              ? "Uploading..."
+              : isClearingIcon
+                ? "Clearing..."
+                : isOwner
+                  ? "Click to change icon"
+                  : "Server icon"}
           </Text>
         </Flex>
+
+        {isOwner && iconUrl ? (
+          <>
+            <Button
+              variant="soft"
+              color="red"
+              disabled={submitting || isUploadingIcon || isClearingIcon}
+              onClick={() => setShowClearIconConfirm(true)}
+              style={{ alignSelf: "center" }}
+            >
+              <MdDelete size={16} />
+              Clear icon
+            </Button>
+            <AlertDialog.Root
+              open={showClearIconConfirm}
+              onOpenChange={(open) => { if (!open) setShowClearIconConfirm(false); }}
+            >
+              <AlertDialog.Content maxWidth="420px">
+                <AlertDialog.Title>Clear server icon?</AlertDialog.Title>
+                <AlertDialog.Description size="2">
+                  This will remove the current server icon. You can upload a new one at any time.
+                </AlertDialog.Description>
+                <Flex gap="3" mt="4" justify="end">
+                  <AlertDialog.Cancel>
+                    <Button variant="soft" color="gray">Cancel</Button>
+                  </AlertDialog.Cancel>
+                  <AlertDialog.Action>
+                    <Button
+                      variant="solid"
+                      color="red"
+                      onClick={() => { clearIcon(); setShowClearIconConfirm(false); }}
+                    >
+                      Clear icon
+                    </Button>
+                  </AlertDialog.Action>
+                </Flex>
+              </AlertDialog.Content>
+            </AlertDialog.Root>
+          </>
+        ) : null}
         <input
           ref={iconInputRef}
           type="file"
           accept="image/png,image/jpeg,image/webp,image/gif,image/avif"
           style={{ display: "none" }}
-          disabled={submitting || !isOwner || isUploadingIcon}
+          disabled={submitting || !isOwner || isUploadingIcon || isClearingIcon}
           onChange={(e) => {
             const f = e.target.files?.[0];
             if (f) uploadIcon(f);

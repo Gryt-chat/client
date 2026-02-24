@@ -12,7 +12,8 @@ import { MdClose, MdDownload, MdSearch } from "react-icons/md";
 
 import { getServerAccessToken, getServerHttpBase } from "@/common";
 
-const BTTV_URL_RE = /betterttv\.com\/users\/([a-f0-9]{20,30})/;
+const BTTV_USER_URL_RE = /betterttv\.com\/users\/([a-f0-9]{20,30})/;
+const BTTV_EMOTE_URL_RE = /betterttv\.com\/emotes\/([a-f0-9]{20,30})/;
 const BTTV_CDN = "https://cdn.betterttv.net/emote";
 const EMOJI_NAME_RE = /^[A-Za-z0-9_]{2,32}$/;
 
@@ -115,43 +116,83 @@ export function BttvImport({
   );
 
   const handleFetch = useCallback(async () => {
-    const match = url.match(BTTV_URL_RE);
-    if (!match) {
-      toast.error("Invalid BetterTTV URL. Expected: https://betterttv.com/users/...");
+    const trimmed = url.trim();
+    const userMatch = trimmed.match(BTTV_USER_URL_RE);
+    const emoteMatch = trimmed.match(BTTV_EMOTE_URL_RE);
+    if (!userMatch && !emoteMatch) {
+      toast.error("Invalid BetterTTV URL. Expected: https://betterttv.com/users/... or https://betterttv.com/emotes/...");
       return;
     }
-    const userId = match[1];
+
     setFetching(true);
     try {
-      const resp = await fetch(`${base}/api/emojis/bttv/user/${userId}`);
-      if (!resp.ok) {
-        const data = await resp.json().catch(() => ({}));
-        throw new Error(
-          (typeof data?.message === "string" && data.message) ||
-            `Failed to fetch (${resp.status})`,
-        );
+      if (emoteMatch) {
+        const emoteId = emoteMatch[1];
+        const resp = await fetch(`${base}/api/emojis/bttv/emote/${emoteId}`);
+        if (!resp.ok) {
+          const data = await resp.json().catch(() => ({}));
+          throw new Error(
+            (typeof data?.message === "string" && data.message) ||
+              `Failed to fetch (${resp.status})`,
+          );
+        }
+        const data: unknown = await resp.json();
+        const root = (data && typeof data === "object") ? (data as Record<string, unknown>) : {};
+        const emoteRaw = (root.emote && typeof root.emote === "object") ? (root.emote as Record<string, unknown>) : null;
+        const id = typeof emoteRaw?.id === "string" ? emoteRaw.id : emoteId;
+        const code = typeof emoteRaw?.code === "string" ? emoteRaw.code : "";
+        const imageType = typeof emoteRaw?.imageType === "string" ? emoteRaw.imageType : "png";
+        const animated = typeof emoteRaw?.animated === "boolean" ? emoteRaw.animated : imageType.toLowerCase() === "gif";
+        if (!code) throw new Error("BetterTTV returned an invalid emote payload.");
+
+        const withMeta: BttvEmoteWithMeta[] = [
+          {
+            id,
+            code,
+            imageType,
+            animated,
+            selected: true,
+            name: sanitizeName(code),
+            nameError: null,
+            nameWarning: null,
+          },
+        ];
+        const validated = revalidateAll(withMeta);
+        setEmotes(validated);
+        setUsername("Single emote");
+        toast.success("Found 1 emote");
+      } else if (userMatch) {
+        const userId = userMatch[1];
+        const resp = await fetch(`${base}/api/emojis/bttv/user/${userId}`);
+        if (!resp.ok) {
+          const data = await resp.json().catch(() => ({}));
+          throw new Error(
+            (typeof data?.message === "string" && data.message) ||
+              `Failed to fetch (${resp.status})`,
+          );
+        }
+        const data = await resp.json();
+        const all: BttvEmote[] = [
+          ...(data.channelEmotes || []),
+          ...(data.sharedEmotes || []),
+        ];
+        if (all.length === 0) {
+          toast.error("No emotes found for this user.");
+          setFetching(false);
+          return;
+        }
+        const withMeta: BttvEmoteWithMeta[] = all.map((e) => ({
+          ...e,
+          selected: true,
+          name: sanitizeName(e.code),
+          nameError: null,
+          nameWarning: null,
+        }));
+        const validated = revalidateAll(withMeta);
+        setEmotes(validated);
+        setUsername(data.username || null);
+        toast.success(`Found ${all.length} emote(s)`);
       }
-      const data = await resp.json();
-      const all: BttvEmote[] = [
-        ...(data.channelEmotes || []),
-        ...(data.sharedEmotes || []),
-      ];
-      if (all.length === 0) {
-        toast.error("No emotes found for this user.");
-        setFetching(false);
-        return;
-      }
-      const withMeta: BttvEmoteWithMeta[] = all.map((e) => ({
-        ...e,
-        selected: true,
-        name: sanitizeName(e.code),
-        nameError: null,
-        nameWarning: null,
-      }));
-      const validated = revalidateAll(withMeta);
-      setEmotes(validated);
-      setUsername(data.username || null);
-      toast.success(`Found ${all.length} emote(s)`);
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Failed to fetch BetterTTV emotes.",
@@ -287,7 +328,7 @@ export function BttvImport({
       <Flex gap="2" align="center">
         <TextField.Root
           size="1"
-          placeholder="https://betterttv.com/users/..."
+          placeholder="https://betterttv.com/users/... or https://betterttv.com/emotes/..."
           value={url}
           onChange={(e: ChangeEvent<HTMLInputElement>) => setUrl(e.target.value)}
           onKeyDown={(e: React.KeyboardEvent) => {

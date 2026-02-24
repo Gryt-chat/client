@@ -130,34 +130,45 @@ function ProfileEditor({
         direction="column"
         align="center"
         gap="2"
-        style={{ cursor: "pointer", opacity: uploading || removing ? 0.6 : 1, transition: "opacity 200ms" }}
-        onClick={onPickAvatar}
+        style={{ cursor: "default", opacity: uploading || removing ? 0.6 : 1, transition: "opacity 200ms" }}
       >
-        <div style={{ position: "relative" }}>
-          <Avatar
-            size="7"
-            radius="full"
-            src={avatarUrl || undefined}
-            fallback={initial}
-          />
-          <Flex
-            align="center"
-            justify="center"
-            style={{
-              position: "absolute",
-              bottom: 0,
-              right: 0,
-              width: 28,
-              height: 28,
-              borderRadius: "50%",
-              background: "var(--accent-9)",
-              color: "var(--accent-contrast)",
-              boxShadow: "0 1px 4px var(--gray-a5)",
-            }}
-          >
-            <MdCameraAlt size={14} />
-          </Flex>
-        </div>
+        <button
+          type="button"
+          disabled={uploading || removing}
+          onClick={onPickAvatar}
+          aria-label="Change avatar"
+          style={{
+            all: "unset",
+            cursor: uploading || removing ? "default" : "pointer",
+            borderRadius: 9999,
+          }}
+        >
+          <div style={{ position: "relative" }}>
+            <Avatar
+              size="7"
+              radius="full"
+              src={avatarUrl || undefined}
+              fallback={initial}
+            />
+            <Flex
+              align="center"
+              justify="center"
+              style={{
+                position: "absolute",
+                bottom: 0,
+                right: 0,
+                width: 28,
+                height: 28,
+                borderRadius: "50%",
+                background: "var(--accent-9)",
+                color: "var(--accent-contrast)",
+                boxShadow: "0 1px 4px var(--gray-a5)",
+              }}
+            >
+              <MdCameraAlt size={14} />
+            </Flex>
+          </div>
+        </button>
         <Text size="1" color="gray">
           {uploading ? "Uploading..." : removing ? "Removing..." : "Click to change avatar"}
         </Text>

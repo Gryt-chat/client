@@ -43,7 +43,7 @@ export const EmojiText = memo(({ text, emojiSize }: EmojiTextProps) => {
             className="inline-emoji"
             style={{
               height: cssVal,
-              width: cssVal,
+              width: "auto",
               verticalAlign: "middle",
               display: "inline",
               objectFit: "contain",
