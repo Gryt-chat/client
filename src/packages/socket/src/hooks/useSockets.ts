@@ -164,7 +164,6 @@ function useSocketsHook() {
         const accessToken = getServerAccessToken(host);
         
         const socket = io(`${getServerWsBase(host)}`, {
-          transports: ["websocket"],
           auth: {
             token: servers[host].token,
             accessToken: accessToken || undefined,

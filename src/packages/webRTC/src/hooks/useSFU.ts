@@ -152,6 +152,10 @@ function useSfuHook(): SFUInterface {
 
   // Track the last channel ID so we can reconnect after server restart
   const lastChannelIdRef = useRef<string>("");
+  // Tracks whether the last disconnect was user/server-initiated (true) vs
+  // a network/SFU failure (false).  Starts true so we don't auto-reconnect
+  // on initial page load.
+  const intentionalDisconnectRef = useRef(true);
 
   // Enhanced connect function — delegates to sfuConnectFlow
   const connect = useCallback(async (channelID: string, channelEsportsMode?: boolean, channelMaxBitrate?: number | null): Promise<void> => {
@@ -170,6 +174,7 @@ function useSfuHook(): SFUInterface {
       reconnectAttemptsRef.current = 0;
     }
 
+    intentionalDisconnectRef.current = false;
     lastChannelIdRef.current = channelID;
     const seq = ++connectSeqRef.current;
 
@@ -216,6 +221,7 @@ function useSfuHook(): SFUInterface {
   const disconnect = useCallback(async (playSound?: boolean, onDisconnect?: () => void): Promise<void> => {
     const shouldPlaySound = playSound !== false && disconnectSoundEnabled;
 
+    intentionalDisconnectRef.current = true;
     reconnectAttemptsRef.current = 0;
     if (reconnectTimerRef.current) {
       clearTimeout(reconnectTimerRef.current);
@@ -351,30 +357,50 @@ function useSfuHook(): SFUInterface {
   useEffect(() => {
     const handleServerReconnected = (event: CustomEvent) => {
       const { host } = event.detail;
+
+      const channelId = lastChannelIdRef.current;
+      if (!channelId || intentionalDisconnectRef.current) return;
+
       const cs = connectionStateRef.current;
 
+      // If voice is connected/connecting to a *different* server, don't interfere
       if (
-        (cs.state !== SFUConnectionState.CONNECTED && cs.state !== SFUConnectionState.CONNECTING) ||
+        (cs.state === SFUConnectionState.CONNECTED || cs.state === SFUConnectionState.CONNECTING) &&
         cs.serverId !== host
       ) {
         return;
       }
 
-      const channelId = lastChannelIdRef.current;
-      if (!channelId) return;
+      console.info("[Voice Recovery] Server reconnected — will rejoin voice channel:", channelId);
 
-      console.info("[Voice Recovery] Server reconnected — will disconnect and rejoin voice channel:", channelId);
+      reconnectAttemptsRef.current = 0;
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
 
-      disconnectRef.current(false).then(() => {
-        setTimeout(() => {
-          console.info("[Voice Recovery] Attempting voice reconnect to channel:", channelId);
-          connectRef.current(channelId).catch((error) => {
-            console.error("[Voice Recovery] Failed to reconnect voice:", error);
-          });
-        }, 2500);
-      }).catch((error) => {
-        console.error("[Voice Recovery] Error during disconnect:", error);
-      });
+      const doReconnect = () => {
+        intentionalDisconnectRef.current = false;
+        console.info("[Voice Recovery] Attempting voice reconnect to channel:", channelId);
+        connectRef.current(channelId).catch((error) => {
+          console.error("[Voice Recovery] Failed to reconnect voice:", error);
+        });
+      };
+
+      const voiceStillActive =
+        (cs.state === SFUConnectionState.CONNECTED || cs.state === SFUConnectionState.CONNECTING) &&
+        cs.serverId === host;
+
+      if (voiceStillActive) {
+        disconnectRef.current(false).then(() => {
+          intentionalDisconnectRef.current = false;
+          setTimeout(doReconnect, 2500);
+        }).catch((error) => {
+          console.error("[Voice Recovery] Error during disconnect:", error);
+        });
+      } else {
+        setTimeout(doReconnect, 1000);
+      }
     };
 
     window.addEventListener("server_socket_reconnected", handleServerReconnected as EventListener);
@@ -393,11 +419,27 @@ function useSfuHook(): SFUInterface {
     }
   }, [connectionState.state]);
 
+  const socketsRef = useRef(sockets);
+  useEffect(() => { socketsRef.current = sockets; }, [sockets]);
+
   useEffect(() => {
     if (connectionState.state !== SFUConnectionState.FAILED) return;
 
     const channelId = lastChannelIdRef.current;
-    if (!channelId) return;
+    if (!channelId || intentionalDisconnectRef.current) return;
+
+    const targetSocket = connectionState.serverId
+      ? socketsRef.current[connectionState.serverId]
+      : null;
+
+    if (!targetSocket?.connected) {
+      console.info("[Voice Recovery] Socket not connected — waiting for socket reconnect before retrying voice");
+      setConnectionState(prev => ({
+        ...prev,
+        state: SFUConnectionState.RECONNECTING,
+      }));
+      return;
+    }
 
     if (reconnectAttemptsRef.current >= MAX_RECONNECT_ATTEMPTS) {
       console.warn("[Voice Recovery] Max reconnect attempts reached — giving up");
@@ -436,7 +478,7 @@ function useSfuHook(): SFUInterface {
         reconnectTimerRef.current = null;
       }
     };
-  }, [connectionState.state]);
+  }, [connectionState.state, connectionState.serverId]);
 
   // Monitor processedStream changes and update WebRTC tracks
   useEffect(() => {
