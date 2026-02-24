@@ -10,11 +10,12 @@ import {
   IconButton,
   Tooltip,
 } from "@radix-ui/themes";
-import { MdAdd, MdBugReport, MdLightbulb, MdMic, MdPushPin, MdSettings } from "react-icons/md";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { MdAdd, MdBugReport, MdEmojiEmotions, MdLightbulb, MdMic, MdPushPin, MdSettings } from "react-icons/md";
 
-import { useAccount } from "@/common";
+import { getServerAccessToken, getServerHttpBase, useAccount } from "@/common";
 import { useSettings } from "@/settings";
-import { useServerManagement, useSockets } from "@/socket";
+import { EmojiQueueModal, useServerManagement, useSockets } from "@/socket";
 import { useSFU } from "@/webRTC";
 import { MiniControls } from "@/webRTC/src/components/miniControls";
 
@@ -39,12 +40,55 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
   
 
   const { currentServerConnected, isConnected } = useSFU();
-  const { serverConnectionStatus, serverProfiles, serverDetailsList } = useSockets();
+  const { sockets, serverConnectionStatus, serverProfiles, serverDetailsList } = useSockets();
 
   const currentHost = currentlyViewingServer?.host;
   const activeProfile = currentHost ? serverProfiles[currentHost] : undefined;
   const displayNickname = activeProfile?.nickname || nickname;
   const displayAvatarUrl = activeProfile?.avatarUrl || avatarDataUrl;
+  const currentSocket = useMemo(() => (currentHost ? sockets[currentHost] : undefined), [currentHost, sockets]);
+
+  const [emojiQueueOpen, setEmojiQueueOpen] = useState(false);
+  const [emojiQueueCount, setEmojiQueueCount] = useState(0);
+
+  const refreshEmojiQueueCount = useCallback(async () => {
+    if (!currentHost) { setEmojiQueueCount(0); return; }
+    const token = getServerAccessToken(currentHost);
+    if (!token) { setEmojiQueueCount(0); return; }
+    const base = getServerHttpBase(currentHost);
+    try {
+      const resp = await fetch(`${base}/api/emojis/queue?limit=150`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+      if (!resp.ok) { setEmojiQueueCount(0); return; }
+      const data: unknown = await resp.json().catch(() => null);
+      const root = (data && typeof data === "object") ? (data as Record<string, unknown>) : {};
+      const jobsRaw = root.jobs;
+      const jobs = Array.isArray(jobsRaw) ? jobsRaw : [];
+      const pending = jobs.filter((j) => {
+        const obj = (j && typeof j === "object") ? (j as Record<string, unknown>) : {};
+        const status = obj.status;
+        return status === "queued" || status === "processing";
+      }).length;
+      setEmojiQueueCount(pending);
+    } catch {
+      setEmojiQueueCount(0);
+    }
+  }, [currentHost]);
+
+  useEffect(() => {
+    void refreshEmojiQueueCount();
+  }, [refreshEmojiQueueCount]);
+
+  useEffect(() => {
+    if (!currentSocket) return;
+    const handler = () => void refreshEmojiQueueCount();
+    currentSocket.on?.("server:emojiQueue:updated", handler);
+    return () => {
+      currentSocket.off?.("server:emojiQueue:updated", handler);
+    };
+  }, [currentSocket, refreshEmojiQueueCount]);
 
   return (
     <Flex
@@ -192,6 +236,50 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
       <Flex justify="center" align="center" direction="column" gap="3" pb="3">
         {/* Voice chat controls */}
         <MiniControls direction="column" />
+        {currentHost && (
+          <>
+            <Tooltip content="Emoji queue" delayDuration={100} side="right">
+              <Box position="relative">
+                <IconButton
+                  variant="soft"
+                  color="gray"
+                  onClick={() => setEmojiQueueOpen(true)}
+                >
+                  <MdEmojiEmotions size={16} />
+                </IconButton>
+                {emojiQueueCount > 0 && (
+                  <Box
+                    position="absolute"
+                    top="-2px"
+                    right="-2px"
+                    style={{
+                      width: "16px",
+                      height: "16px",
+                      borderRadius: "50%",
+                      backgroundColor: "var(--amber-9)",
+                      border: "2px solid var(--color-background)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      zIndex: 1,
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: "var(--amber-contrast)",
+                    }}
+                  >
+                    {emojiQueueCount > 9 ? "9+" : emojiQueueCount}
+                  </Box>
+                )}
+              </Box>
+            </Tooltip>
+            <EmojiQueueModal
+              host={currentHost}
+              socket={currentSocket}
+              open={emojiQueueOpen}
+              onOpenChange={setEmojiQueueOpen}
+            />
+          </>
+        )}
         <DropdownMenu.Root>
           <DropdownMenu.Trigger>
             <IconButton>

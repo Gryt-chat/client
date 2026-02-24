@@ -1,7 +1,7 @@
-import { jwtDecode } from 'jwt-decode';
-import { Socket } from 'socket.io-client';
+import { jwtDecode } from "jwt-decode";
+import type { Socket } from "socket.io-client";
 
-import { getServerAccessToken, getServerRefreshToken, getValidIdentityToken } from '@/common';
+import { getServerAccessToken, getServerRefreshToken, getValidIdentityToken } from "@/common";
 
 interface TokenPayload {
   grytUserId: string;
@@ -37,13 +37,54 @@ export function shouldRefreshToken(token: string): boolean {
     const decoded = jwtDecode<TokenPayload>(token);
     const currentTime = Date.now() / 1000;
     const timeUntilExpiry = decoded.exp - currentTime;
-    
+
     // Refresh if token expires in less than 5 minutes
     return timeUntilExpiry < 300;
   } catch (error) {
-    console.error('Failed to decode token:', error);
+    console.error("Failed to decode token:", error);
     return true;
   }
+}
+
+export interface TokenRefreshSocketLike {
+  connected?: boolean;
+  emit: (event: "token:refresh", payload: { refreshToken?: string; identityToken?: string; accessToken?: string }) => void;
+}
+
+async function triggerTokenRefresh(host: string, socket: TokenRefreshSocketLike, accessToken: string): Promise<void> {
+  const refreshToken = getServerRefreshToken(host);
+  const identityToken = await getValidIdentityToken().catch(() => undefined);
+  if (refreshToken && identityToken) {
+    socket.emit("token:refresh", { refreshToken, identityToken });
+  } else {
+    socket.emit("token:refresh", { accessToken });
+  }
+}
+
+export async function getFreshServerAccessToken(
+  host: string,
+  socket: TokenRefreshSocketLike | null | undefined,
+  options?: { force?: boolean },
+): Promise<string | null> {
+  const current = getServerAccessToken(host);
+  if (!current) return null;
+
+  const force = options?.force === true;
+  const needsRefresh = force || shouldRefreshToken(current);
+  if (!needsRefresh) return current;
+
+  if (!socket || socket.connected === false) return current;
+
+  const staleToken = current;
+  await triggerTokenRefresh(host, socket, staleToken);
+
+  for (let i = 0; i < 20; i++) {
+    await new Promise((r) => setTimeout(r, 150));
+    const fresh = getServerAccessToken(host);
+    if (fresh && fresh !== staleToken) return fresh;
+  }
+
+  return getServerAccessToken(host) ?? staleToken;
 }
 
 /**
@@ -64,13 +105,7 @@ export async function emitAuthenticated(
   if (!accessToken) return false;
 
   if (shouldRefreshToken(accessToken)) {
-    const refreshToken = getServerRefreshToken(host);
-    const identityToken = await getValidIdentityToken().catch(() => undefined);
-    if (refreshToken && identityToken) {
-      socket.emit("token:refresh", { refreshToken, identityToken });
-    } else {
-      socket.emit("token:refresh", { accessToken });
-    }
+    await triggerTokenRefresh(host, socket, accessToken);
     const staleToken = accessToken;
     for (let i = 0; i < 20; i++) {
       await new Promise((r) => setTimeout(r, 150));

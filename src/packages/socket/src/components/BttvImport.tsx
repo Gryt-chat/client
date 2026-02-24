@@ -6,13 +6,14 @@ import {
   Text,
   TextField,
 } from "@radix-ui/themes";
-import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ChangeEvent, useCallback, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { MdClose, MdDownload, MdSearch } from "react-icons/md";
 
 import { getServerAccessToken, getServerHttpBase } from "@/common";
 
-import { uploadEmojiViaXhr } from "../utils/uploadEmojiViaXhr";
+import { stageEmojiViaXhr } from "../utils/stageEmojiViaXhr";
+import { getFreshServerAccessToken, type TokenRefreshSocketLike } from "../utils/tokenManager";
 
 const BTTV_USER_URL_RE = /betterttv\.com\/users\/([a-f0-9]{20,30})/;
 const BTTV_EMOTE_URL_RE = /betterttv\.com\/emotes\/([a-f0-9]{20,30})/;
@@ -129,7 +130,7 @@ function validateName(
     return { error: "2-32 letters (case-sensitive), numbers, or underscores.", warning: null };
   for (let i = 0; i < batchNames.length; i++) {
     if (i !== selfIndex && batchNames[i] === name)
-      return { error: "Duplicate name in batch.", warning: null };
+      return { error: null, warning: "Duplicate in selection — last one wins." };
   }
   if (existingNames.has(name))
     return { error: null, warning: "Already exists — will replace." };
@@ -139,13 +140,13 @@ function validateName(
 export function BttvImport({
   host,
   accessToken,
+  socket,
   existingNames,
-  onImportComplete,
 }: {
   host: string;
   accessToken: string | null;
+  socket: TokenRefreshSocketLike | null;
   existingNames: Set<string>;
-  onImportComplete: () => void;
 }) {
   const [url, setUrl] = useState("");
   const [fetching, setFetching] = useState(false);
@@ -159,22 +160,6 @@ export function BttvImport({
     [accessToken, host],
   );
   const base = useMemo(() => getServerHttpBase(host), [host]);
-
-  const refreshTimerRef = useRef<number | null>(null);
-  const requestRefresh = useCallback(() => {
-    if (refreshTimerRef.current) return;
-    refreshTimerRef.current = window.setTimeout(() => {
-      refreshTimerRef.current = null;
-      onImportComplete();
-    }, 350);
-  }, [onImportComplete]);
-
-  useEffect(() => {
-    return () => {
-      if (typeof refreshTimerRef.current === "number") window.clearTimeout(refreshTimerRef.current);
-      refreshTimerRef.current = null;
-    };
-  }, []);
 
   const selectedEmotes = useMemo(
     () => emotes.filter((e) => e.selected),
@@ -340,11 +325,22 @@ export function BttvImport({
   );
 
   const handleImport = useCallback(async () => {
-    const toImport = selectedEmotes.filter((e) => !e.nameError);
-    if (toImport.length === 0) return;
+    const toImportRaw = selectedEmotes.filter((e) => !e.nameError);
+    if (toImportRaw.length === 0) return;
     if (!effectiveAccessToken) {
       toast.error("Not authenticated. Join the server first.");
       return;
+    }
+
+    // Enforce deterministic “last wins” for duplicates.
+    const byName = new Map<string, BttvEmoteWithMeta>();
+    for (const e of toImportRaw) {
+      if (byName.has(e.name)) byName.delete(e.name);
+      byName.set(e.name, e);
+    }
+    const toImport = Array.from(byName.values());
+    if (toImport.length !== toImportRaw.length) {
+      toast(`Duplicate emoji IDs detected — importing ${toImport.length}/${toImportRaw.length} (last wins).`);
     }
 
     setImporting(true);
@@ -388,9 +384,12 @@ export function BttvImport({
           )));
 
           const uploadStartedAt = Date.now();
-          const result = await uploadEmojiViaXhr({
+          const token = await getFreshServerAccessToken(host, socket);
+          if (!token) throw new Error("Not authenticated. Join the server first.");
+
+          let result = await stageEmojiViaXhr({
             base,
-            accessToken: effectiveAccessToken,
+            accessToken: token,
             file,
             name: emote.name,
             onProgress: (pct) => {
@@ -409,6 +408,32 @@ export function BttvImport({
             },
           });
 
+          if (!result.ok && result.status === 401 && (result.error === "token_invalid" || result.error === "token_stale")) {
+            const refreshed = await getFreshServerAccessToken(host, socket, { force: true });
+            if (refreshed) {
+              result = await stageEmojiViaXhr({
+                base,
+                accessToken: refreshed,
+                file,
+                name: emote.name,
+                onProgress: (pct) => {
+                  setEmotes((prev) => prev.map((e) => (
+                    e.id === emote.id
+                      ? { ...e, status: "uploading", progress: pct }
+                      : e
+                  )));
+                },
+                onUploadFinished: () => {
+                  setEmotes((prev) => prev.map((e) => (
+                    e.id === emote.id && e.status === "uploading"
+                      ? { ...e, status: "processing", progress: 100 }
+                      : e
+                  )));
+                },
+              });
+            }
+          }
+
           console.log("[BttvImport] emote: upload result", {
             id: emote.id,
             name: emote.name,
@@ -419,9 +444,8 @@ export function BttvImport({
 
           if (result.ok) {
             successCount++;
-            toast.success(`:${emote.name}: imported!`);
+            toast.success(`:${emote.name}: queued for processing.`);
             setEmotes((prev) => prev.filter((e) => e.id !== emote.id));
-            requestRefresh();
           } else {
             failCount++;
             toast.error(`:${emote.name}: — ${result.message}`);
@@ -468,7 +492,7 @@ export function BttvImport({
     } finally {
       setImporting(false);
     }
-  }, [selectedEmotes, effectiveAccessToken, base, requestRefresh]);
+  }, [selectedEmotes, base, effectiveAccessToken, host, socket]);
 
   const handleClear = useCallback(() => {
     setEmotes([]);

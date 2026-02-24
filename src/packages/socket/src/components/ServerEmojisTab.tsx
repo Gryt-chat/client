@@ -18,7 +18,8 @@ import {
   getCustomEmojiUrl,
   setCustomEmojis,
 } from "../utils/emojiData";
-import { uploadEmojiViaXhr } from "../utils/uploadEmojiViaXhr";
+import { stageEmojiViaXhr } from "../utils/stageEmojiViaXhr";
+import { getFreshServerAccessToken } from "../utils/tokenManager";
 import { BttvImport } from "./BttvImport";
 
 const EMOJI_NAME_RE = /^[A-Za-z0-9_]{2,32}$/;
@@ -91,28 +92,6 @@ async function extractImagesFromZip(zipFile: File, maxEmojiBytes: number): Promi
   return { images, skippedNonImage, skippedTooLarge, skippedEmpty };
 }
 
-function deduplicateNames(names: string[], existingNames: Set<string>): string[] {
-  const result: string[] = [];
-  const taken = new Set(existingNames);
-
-  for (const name of names) {
-    if (!taken.has(name)) {
-      result.push(name);
-      taken.add(name);
-    } else {
-      let suffix = 2;
-      let candidate = `${name}_${suffix}`.slice(0, 32);
-      while (taken.has(candidate)) {
-        suffix++;
-        candidate = `${name}_${suffix}`.slice(0, 32);
-      }
-      result.push(candidate);
-      taken.add(candidate);
-    }
-  }
-  return result;
-}
-
 function validateName(
   name: string,
   existingNames: Set<string>,
@@ -122,7 +101,7 @@ function validateName(
   if (!name) return { error: "Name is required.", warning: null };
   if (!EMOJI_NAME_RE.test(name)) return { error: "2-32 letters (case-sensitive), numbers, or underscores.", warning: null };
   for (let i = 0; i < batchNames.length; i++) {
-    if (i !== selfIndex && batchNames[i] === name) return { error: "Duplicate name in batch.", warning: null };
+    if (i !== selfIndex && batchNames[i] === name) return { error: null, warning: "Duplicate in selection — last one wins." };
   }
   if (existingNames.has(name)) return { error: null, warning: "Already exists — will replace." };
   return { error: null, warning: null };
@@ -224,30 +203,38 @@ export function ServerEmojisTab({
     console.log("[EmojiUpload] addImageFiles:", validFiles.length, "file(s)", validFiles.map(f => ({ name: f.name, type: f.type, size: f.size })));
     if (validFiles.length === 0) { console.log("[EmojiUpload] addImageFiles: empty array, bailing"); return; }
 
-    const rawNames = validFiles.map((f) => deriveEmojiName(f.name));
-
     setPendingEmojis((prev) => {
-      const prevNames = new Set(prev.map((p) => p.name));
-      const allExisting = new Set([...existingNames, ...prevNames]);
-      const uniqueNames = deduplicateNames(rawNames, allExisting);
-      const allBatchNames = [...prev.map((p) => p.name), ...uniqueNames];
-
       const newItems: PendingEmoji[] = validFiles.map((file, i) => {
-        const name = uniqueNames[i];
-        const selfIndex = prev.length + i;
-        const { error, warning } = validateName(name, existingNames, allBatchNames, selfIndex);
+        const name = deriveEmojiName(file.name);
         return {
           id: `emoji-${Date.now()}-${Math.random().toString(36).slice(2)}-${i}`,
           file,
           previewUrl: URL.createObjectURL(file),
           name,
-          nameError: error,
-          nameWarning: warning,
+          nameError: null,
+          nameWarning: null,
           status: "pending",
           progress: 0,
         };
       });
-      return [...prev, ...newItems];
+
+      // Keep the pending list unique by name — last selection wins.
+      const byName = new Map<string, PendingEmoji>();
+      for (const item of [...prev, ...newItems]) {
+        const existing = byName.get(item.name);
+        if (existing) {
+          URL.revokeObjectURL(existing.previewUrl);
+          byName.delete(item.name);
+        }
+        byName.set(item.name, item);
+      }
+
+      const deduped = Array.from(byName.values());
+      const batchNames = deduped.map((p) => p.name);
+      return deduped.map((p, idx) => {
+        const { error, warning } = validateName(p.name, existingNames, batchNames, idx);
+        return { ...p, nameError: error, nameWarning: warning };
+      });
     });
   }, [existingNames]);
 
@@ -339,17 +326,15 @@ export function ServerEmojisTab({
     setPendingEmojis((prev) => {
       const idx = prev.findIndex((p) => p.id === id);
       if (idx === -1) return prev;
-      const updated = prev.map((p, i) => {
-        if (i === idx) {
-          const batchNames = prev.map((pp, j) => (j === idx ? sanitized : pp.name));
-          const { error, warning } = validateName(sanitized, existingNames, batchNames, idx);
-          return { ...p, name: sanitized, nameError: error, nameWarning: warning };
-        }
-        return p;
-      });
-      const batchNames = updated.map((p) => p.name);
-      return updated.map((p, i) => {
-        if (p.status === "done") return { ...p, nameError: null, nameWarning: null };
+      const updated = prev.map((p, i) => (i === idx ? { ...p, name: sanitized } : p));
+
+      // Enforce “last wins” if the rename creates duplicates: keep this item.
+      const duplicates = updated.filter((p) => p.id !== id && p.name === sanitized);
+      for (const d of duplicates) URL.revokeObjectURL(d.previewUrl);
+
+      const remaining = updated.filter((p) => !(p.id !== id && p.name === sanitized));
+      const batchNames = remaining.map((p) => p.name);
+      return remaining.map((p, i) => {
         const { error, warning } = validateName(p.name, existingNames, batchNames, i);
         return { ...p, nameError: error, nameWarning: warning };
       });
@@ -370,10 +355,11 @@ export function ServerEmojisTab({
     });
   };
 
-  const uploadOne = (item: PendingEmoji): Promise<boolean> => {
-    if (!effectiveAccessToken) {
+  const uploadOne = async (item: PendingEmoji): Promise<boolean> => {
+    const token = await getFreshServerAccessToken(host, socket);
+    if (!token) {
       toast.error("Not authenticated. Join the server first.");
-      return Promise.resolve(false);
+      return false;
     }
 
     console.log("[EmojiUpload] uploadOne: start", {
@@ -389,9 +375,9 @@ export function ServerEmojisTab({
     const startedAt = Date.now();
     let lastLoggedMilestone = -1;
 
-    return uploadEmojiViaXhr({
+    let result = await stageEmojiViaXhr({
       base,
-      accessToken: effectiveAccessToken,
+      accessToken: token,
       file: item.file,
       name: item.name,
       onProgress: (pct) => {
@@ -403,57 +389,71 @@ export function ServerEmojisTab({
         setPendingEmojis((prev) => prev.map((p) => (p.id === item.id ? { ...p, progress: pct } : p)));
       },
       onUploadFinished: () => {
-        // Upload finished; server may still be converting to AVIF/WebP.
-        console.log("[EmojiUpload] uploadOne: upload finished; waiting for server response", { id: item.id, name: item.name });
+        // Upload finished; waiting for server to acknowledge queueing.
+        console.log("[EmojiUpload] uploadOne: upload finished; waiting for queue response", { id: item.id, name: item.name });
         setPendingEmojis((prev) => prev.map((p) => (
           p.id === item.id && p.status === "uploading"
             ? { ...p, status: "processing", progress: 100 }
             : p
         )));
       },
-    }).then((result) => {
-      console.log("[EmojiUpload] uploadOne: server response", {
-        id: item.id,
-        name: item.name,
-        status: result.status,
-        ok: result.ok,
-        ms: Date.now() - startedAt,
-      });
-
-      if (result.ok) {
-        toast.success(`Emoji :${item.name}: uploaded!`);
-        console.log("[EmojiUpload] uploadOne: applying optimistic list update", {
-          id: item.id,
-          uploadedName: result.name,
-          uploadedFileId: result.file_id,
-        });
-        setEmojis((prev) => {
-          const next = [
-            ...prev.filter((e) => e.name !== result.name),
-            { name: result.name, file_id: result.file_id },
-          ].sort((a, b) => a.name.localeCompare(b.name));
-          setCustomEmojis(next, host);
-          return next;
-        });
-
-        setPendingEmojis((prev) => {
-          const existing = prev.find((p) => p.id === item.id);
-          if (existing) URL.revokeObjectURL(existing.previewUrl);
-          const remaining = prev.filter((p) => p.id !== item.id);
-          const batchNames = remaining.map((p) => p.name);
-          console.log("[EmojiUpload] uploadOne: removed from pending", { id: item.id, name: item.name, remaining: remaining.length });
-          return remaining.map((p, i) => {
-            const { error, warning } = validateName(p.name, existingNames, batchNames, i);
-            return { ...p, nameError: error, nameWarning: warning };
-          });
-        });
-        return true;
-      }
-
-      toast.error(`:${item.name}: — ${result.message}`);
-      setPendingEmojis((prev) => prev.map((p) => (p.id === item.id ? { ...p, status: "error", progress: 0 } : p)));
-      return false;
     });
+
+    if (!result.ok && result.status === 401 && (result.error === "token_invalid" || result.error === "token_stale")) {
+      const refreshed = await getFreshServerAccessToken(host, socket, { force: true });
+      if (refreshed) {
+        result = await stageEmojiViaXhr({
+          base,
+          accessToken: refreshed,
+          file: item.file,
+          name: item.name,
+          onProgress: (pct) => {
+            const milestone = Math.floor(pct / 25) * 25;
+            if (milestone !== lastLoggedMilestone) {
+              lastLoggedMilestone = milestone;
+              console.log("[EmojiUpload] uploadOne: progress", { id: item.id, name: item.name, pct });
+            }
+            setPendingEmojis((prev) => prev.map((p) => (p.id === item.id ? { ...p, progress: pct } : p)));
+          },
+          onUploadFinished: () => {
+            console.log("[EmojiUpload] uploadOne: upload finished; waiting for queue response", { id: item.id, name: item.name });
+            setPendingEmojis((prev) => prev.map((p) => (
+              p.id === item.id && p.status === "uploading"
+                ? { ...p, status: "processing", progress: 100 }
+                : p
+            )));
+          },
+        });
+      }
+    }
+
+    console.log("[EmojiUpload] uploadOne: server response", {
+      id: item.id,
+      name: item.name,
+      status: result.status,
+      ok: result.ok,
+      ms: Date.now() - startedAt,
+    });
+
+    if (result.ok) {
+      toast.success(`Emoji :${item.name}: queued for processing.`);
+      setPendingEmojis((prev) => {
+        const existing = prev.find((p) => p.id === item.id);
+        if (existing) URL.revokeObjectURL(existing.previewUrl);
+        const remaining = prev.filter((p) => p.id !== item.id);
+        const batchNames = remaining.map((p) => p.name);
+        console.log("[EmojiUpload] uploadOne: removed from pending", { id: item.id, name: item.name, remaining: remaining.length });
+        return remaining.map((p, i) => {
+          const { error, warning } = validateName(p.name, existingNames, batchNames, i);
+          return { ...p, nameError: error, nameWarning: warning };
+        });
+      });
+      return true;
+    }
+
+    toast.error(`:${item.name}: — ${result.message}`);
+    setPendingEmojis((prev) => prev.map((p) => (p.id === item.id ? { ...p, status: "error", progress: 0 } : p)));
+    return false;
   };
 
   const handleUploadAll = async () => {
@@ -487,7 +487,9 @@ export function ServerEmojisTab({
 
     await Promise.all(Array.from({ length: concurrencyLimit }, worker));
 
-    if (successCount > 0) await refresh();
+    if (successCount > 0) {
+      toast.success(`Queued ${successCount} emoji(s) for processing.`);
+    }
 
     setPendingEmojis((prev) => {
       const remaining = prev
@@ -508,18 +510,7 @@ export function ServerEmojisTab({
     if (!item || item.nameError) return;
 
     setUploading(true);
-    const ok = await uploadOne(item);
-    if (ok) {
-      await refresh();
-      setPendingEmojis((prev) => {
-        const remaining = prev.filter((p) => p.status !== "done");
-        const batchNames = remaining.map((p) => p.name);
-        return remaining.map((p, i) => {
-          const { error, warning } = validateName(p.name, existingNames, batchNames, i);
-          return { ...p, nameError: error, nameWarning: warning };
-        });
-      });
-    }
+    await uploadOne(item);
     setUploading(false);
   };
 
@@ -824,8 +815,8 @@ export function ServerEmojisTab({
       <BttvImport
         host={host}
         accessToken={effectiveAccessToken}
+        socket={socket ?? null}
         existingNames={existingNames}
-        onImportComplete={refresh}
       />
 
       {/* Emoji list */}
