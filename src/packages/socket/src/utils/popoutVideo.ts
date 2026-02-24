@@ -1,16 +1,7 @@
-interface DocumentPictureInPicture {
-  requestWindow(options?: { width?: number; height?: number }): Promise<Window>;
-}
-
-declare global {
-  interface Window {
-    documentPictureInPicture?: DocumentPictureInPicture;
-  }
-}
-
 export interface PopoutHandle {
   close: () => void;
   isOpen: () => boolean;
+  updateStream: (stream: MediaStream) => void;
 }
 
 const PIN_SVG = [
@@ -23,7 +14,7 @@ const PIN_SVG = [
   "</svg>",
 ].join("");
 
-const PIP_STYLES = `
+const POPUP_STYLES = `
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     background: #000;
@@ -75,16 +66,15 @@ const PIP_STYLES = `
   }
 `;
 
-function setupPipWindow(
-  pipWin: Window,
+function setupPopupWindow(
+  win: Window,
   stream: MediaStream,
   title: string,
-  onClose?: () => void,
-): void {
-  const doc = pipWin.document;
+): HTMLVideoElement {
+  const doc = win.document;
 
   const style = doc.createElement("style");
-  style.textContent = PIP_STYLES;
+  style.textContent = POPUP_STYLES;
   doc.head.appendChild(style);
 
   doc.title = title;
@@ -121,72 +111,79 @@ function setupPipWindow(
   video.muted = true;
   doc.body.appendChild(video);
 
+  return video;
+}
+
+function addTrackEndedListeners(
+  videoEl: HTMLVideoElement,
+  stream: MediaStream,
+  closePopup: () => void,
+) {
   for (const track of stream.getTracks()) {
     track.addEventListener("ended", () => {
-      if (stream.getTracks().every((t) => t.readyState === "ended")) {
-        pipWin.close();
-        onClose?.();
+      const current = videoEl.srcObject as MediaStream | null;
+      if (current && current.getTracks().every((t) => t.readyState === "ended")) {
+        closePopup();
       }
     });
   }
 }
 
-export async function popoutStream(
+export function popoutStream(
   stream: MediaStream,
   title: string,
-  options?: { width?: number; height?: number },
-): Promise<PopoutHandle | null> {
-  const { width = 640, height = 480 } = options ?? {};
+  options?: { width?: number; height?: number; onClose?: () => void },
+): PopoutHandle | null {
+  const { width = 640, height = 480, onClose } = options ?? {};
 
-  if (window.documentPictureInPicture) {
-    try {
-      const pipWin = await window.documentPictureInPicture.requestWindow({
-        width,
-        height,
-      });
-
-      let open = true;
-      const markClosed = () => { open = false; };
-
-      setupPipWindow(pipWin, stream, title, markClosed);
-      pipWin.addEventListener("pagehide", markClosed);
-
-      return {
-        close: () => {
-          if (open) { pipWin.close(); open = false; }
-        },
-        isOpen: () => open,
-      };
-    } catch (err) {
-      console.warn("[Popout] Document PiP failed, trying fallback:", err);
-    }
-  }
-
-  // Fallback: window.open with about:blank (works in Electron and browsers)
   try {
-    const popup = window.open("about:blank", "_blank", `width=${width},height=${height},resizable=yes`);
+    const popup = window.open(
+      "about:blank",
+      "_blank",
+      `width=${width},height=${height},resizable=yes`,
+    );
     if (!popup) throw new Error("Popup blocked");
 
     let open = true;
-    const markClosed = () => { open = false; };
+    let activeStream = stream;
 
-    setupPipWindow(popup, stream, title, markClosed);
+    const markClosed = () => {
+      if (!open) return;
+      open = false;
+      clearInterval(checkInterval);
+      onClose?.();
+    };
+
+    const videoEl = setupPopupWindow(popup, stream, title);
+    addTrackEndedListeners(videoEl, stream, () => {
+      popup.close();
+      markClosed();
+    });
 
     const checkInterval = setInterval(() => {
-      if (popup.closed) { markClosed(); clearInterval(checkInterval); }
+      if (popup.closed) markClosed();
     }, 500);
 
     popup.addEventListener("beforeunload", markClosed);
 
     return {
       close: () => {
-        if (open) { popup.close(); open = false; }
-        clearInterval(checkInterval);
+        markClosed();
+        try { popup.close(); } catch { /* already closed */ }
       },
       isOpen: () => open && !popup.closed,
+      updateStream: (newStream: MediaStream) => {
+        if (newStream === activeStream) return;
+        activeStream = newStream;
+        videoEl.srcObject = newStream;
+        addTrackEndedListeners(videoEl, newStream, () => {
+          popup.close();
+          markClosed();
+        });
+      },
     };
   } catch (err) {
-    console.warn("[Popout] window.open fallback also failed:", err);
+    console.warn("[Popout] window.open failed:", err);
     return null;
   }
 }

@@ -302,10 +302,10 @@ export const ServerView = () => {
               currentUserRole={currentUserRole}
               adminActions={currentAdminActions}
             />
-            <Flex flexGrow="1" ref={voiceContainerRef}>
+            <Flex flexGrow="1" ref={voiceContainerRef} style={{ position: "relative" }}>
               <VoiceView
-                showVoiceView={showVoiceView && !isCompact}
-                voiceWidth={voiceFocused ? `${voiceMaxWidth}px` : voiceWidth}
+                showVoiceView={showVoiceView && (!isCompact || voiceFocused)}
+                voiceWidth={voiceFocused ? (voiceMaxWidth > 0 ? `${voiceMaxWidth}px` : voiceWidth) : voiceWidth}
                 maxWidth={voiceMaxWidth}
                 serverHost={host}
                 currentServerConnected={currentServerConnected}
@@ -345,7 +345,7 @@ export const ServerView = () => {
               <div style={{
                 display: "flex", flex: voiceFocused ? "0 0 320px" : 1, minWidth: 0,
                 ...(isVoiceOnThisServer && isServerUnreachable && { opacity: 0.5, pointerEvents: "none" as const }),
-                transition: "opacity 0.3s ease, flex 0.3s ease",
+                transition: "opacity 0.3s ease",
               }}>
                 <ChatView
                   chatMessages={chatMessages}

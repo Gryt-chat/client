@@ -24,6 +24,11 @@ const ALL_QUALITY_OPTIONS: { value: ScreenShareQuality; label: string; height: n
   { value: "1080p", label: "1080p (1920\u00d71080)", height: 1080 },
   { value: "720p", label: "720p (1280\u00d7720)", height: 720 },
   { value: "480p", label: "480p (854\u00d7480)", height: 480 },
+  { value: "360p", label: "360p (640\u00d7360)", height: 360 },
+  { value: "240p", label: "240p (426\u00d7240)", height: 240 },
+  { value: "144p", label: "144p (256\u00d7144)", height: 144 },
+  { value: "96p", label: "96p (170\u00d796)", height: 96 },
+  { value: "64p", label: "64p (114\u00d764)", height: 64 },
 ];
 
 function formatBitrate(bps: number): string {

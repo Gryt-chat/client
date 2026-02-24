@@ -7,7 +7,7 @@ import { isElectron } from "../../../../lib/electron";
 import { createScreenAudioCleaner, ScreenAudioCleanerResult } from "./screenAudioCleaner";
 import { useSpeakers } from "./useSpeakers";
 
-export type ScreenShareQuality = "native" | "4k" | "1440p" | "1080p" | "720p" | "480p";
+export type ScreenShareQuality = "native" | "4k" | "1440p" | "1080p" | "720p" | "480p" | "360p" | "240p" | "144p" | "96p" | "64p";
 
 export type ScreenShareFps = 30 | 60 | 90 | 120 | 144 | 165 | 240;
 
@@ -21,6 +21,11 @@ const RESOLUTION_CONSTRAINTS: Record<ScreenShareQuality, { width?: number; heigh
   "1080p": { width: 1920, height: 1080 },
   "720p": { width: 1280, height: 720 },
   "480p": { width: 854, height: 480 },
+  "360p": { width: 640, height: 360 },
+  "240p": { width: 426, height: 240 },
+  "144p": { width: 256, height: 144 },
+  "96p": { width: 170, height: 96 },
+  "64p": { width: 114, height: 64 },
 };
 
 const BASE_BITRATES_30FPS: Record<ScreenShareQuality, number | null> = {
@@ -30,6 +35,11 @@ const BASE_BITRATES_30FPS: Record<ScreenShareQuality, number | null> = {
   "1080p": 6_000_000,
   "720p": 3_000_000,
   "480p": 1_500_000,
+  "360p": 800_000,
+  "240p": 400_000,
+  "144p": 150_000,
+  "96p": 80_000,
+  "64p": 40_000,
 };
 
 export function estimateBitrate(quality: ScreenShareQuality, fps: number): number | null {
@@ -47,7 +57,7 @@ export interface ScreenShareInterface {
 }
 
 function useScreenShareHook(): ScreenShareInterface {
-  const { screenShareQuality, screenShareFps } = useSettings();
+  const { screenShareQuality, screenShareFps, screenShareAudioDelay } = useSettings();
   const { audioContext, remoteBusNode } = useSpeakers();
   const [screenVideoStream, setScreenVideoStream] = useState<MediaStream | null>(null);
   const [screenAudioStream, setScreenAudioStream] = useState<MediaStream | null>(null);
@@ -168,7 +178,8 @@ function useScreenShareHook(): ScreenShareInterface {
       cleanerRef.current = null;
     }
 
-    const cleaner = createScreenAudioCleaner(audioContext, track, remoteBusNode);
+    const latencySec = screenShareAudioDelay / 1000;
+    const cleaner = createScreenAudioCleaner(audioContext, track, remoteBusNode, latencySec);
     cleanerRef.current = cleaner;
     setScreenAudioStream(cleaner.cleanedStream);
 
@@ -176,7 +187,15 @@ function useScreenShareHook(): ScreenShareInterface {
       cleaner.dispose();
       if (cleanerRef.current === cleaner) cleanerRef.current = null;
     };
+    // screenShareAudioDelay intentionally excluded — updated live via the effect below
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screenShareActive, audioContext, remoteBusNode]);
+
+  // Live-update the delay offset without rebuilding the audio graph
+  useEffect(() => {
+    if (!cleanerRef.current) return;
+    cleanerRef.current.delayNode.delayTime.value = screenShareAudioDelay / 1000;
+  }, [screenShareAudioDelay]);
 
   useEffect(() => {
     return () => {

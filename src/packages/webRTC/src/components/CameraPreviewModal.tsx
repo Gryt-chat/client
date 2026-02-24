@@ -1,4 +1,4 @@
-import { Button, Checkbox, Dialog, Flex, IconButton, Select, Text } from "@radix-ui/themes";
+import { Badge, Button, Checkbox, Dialog, Flex, IconButton, Select, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MdClose, MdRefresh, MdVideocam } from "react-icons/md";
 
@@ -22,6 +22,10 @@ const QUALITY_OPTIONS: { value: CameraQuality; label: string }[] = [
   { value: "720p", label: "720p" },
   { value: "480p", label: "480p" },
   { value: "360p", label: "360p" },
+  { value: "240p", label: "240p" },
+  { value: "144p", label: "144p" },
+  { value: "96p", label: "96p" },
+  { value: "64p", label: "64p" },
 ];
 
 const QUALITY_CONSTRAINTS: Record<string, { width?: number; height?: number; frameRate: number }> = {
@@ -30,6 +34,10 @@ const QUALITY_CONSTRAINTS: Record<string, { width?: number; height?: number; fra
   "720p": { width: 1280, height: 720, frameRate: 30 },
   "480p": { width: 854, height: 480, frameRate: 30 },
   "360p": { width: 640, height: 360, frameRate: 30 },
+  "240p": { width: 426, height: 240, frameRate: 24 },
+  "144p": { width: 256, height: 144, frameRate: 15 },
+  "96p": { width: 170, height: 96, frameRate: 10 },
+  "64p": { width: 114, height: 64, frameRate: 10 },
 };
 
 export function CameraPreviewModal({
@@ -160,10 +168,28 @@ export function CameraPreviewModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, localCameraID, localQuality, retryCount]);
 
+  const [actualRes, setActualRes] = useState<{ w: number; h: number } | null>(null);
+
   useEffect(() => {
     if (videoRef.current && previewStream) {
       videoRef.current.srcObject = previewStream;
     }
+  }, [previewStream]);
+
+  useEffect(() => {
+    if (!previewStream) {
+      setActualRes(null);
+      return;
+    }
+    const track = previewStream.getVideoTracks()[0];
+    if (!track) return;
+    const readRes = () => {
+      const { width, height } = track.getSettings();
+      if (width && height) setActualRes({ w: width, h: height });
+    };
+    readRes();
+    const id = window.setInterval(readRes, 1000);
+    return () => window.clearInterval(id);
   }, [previewStream]);
 
   const handleClose = () => {
@@ -223,6 +249,23 @@ export function CameraPreviewModal({
                 transform: localMirrored ? "scaleX(-1)" : undefined,
               }}
             />
+            {previewStream && actualRes && (
+              <Badge
+                variant="solid"
+                size="1"
+                style={{
+                  position: "absolute",
+                  top: 8,
+                  right: 8,
+                  background: "rgba(0,0,0,0.65)",
+                  backdropFilter: "blur(4px)",
+                  color: "#fff",
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                {actualRes.w}×{actualRes.h}
+              </Badge>
+            )}
             {!previewStream && (
               <Flex
                 align="center"

@@ -266,6 +266,10 @@ export function useServerState() {
           } else if (microphoneBuffer.finalAnalyser) {
             speaking = isSpeaking(microphoneBuffer.finalAnalyser!, 0.5);
           }
+          if (speaking) {
+            lastActivityTimeRef.current = Date.now();
+            if (isAFKRef.current) setIsAFK(false);
+          }
         } else {
           if (!client.streamID || !streamSources[client.streamID]) return;
           speaking = isSpeaking(streamSources[client.streamID].analyser, 0.1);
@@ -289,6 +293,7 @@ export function useServerState() {
     eSportsModeEnabled,
     inputMode,
     isPttActive,
+    setIsAFK,
   ]);
 
   // AFK detection — combines audio, focus, visibility, and user interaction
@@ -324,33 +329,6 @@ export function useServerState() {
     );
 
     const checkAFK = () => {
-      // Audio activity: voice above the noise gate resets the timer
-      if (microphoneBuffer.analyser) {
-        const bufferLength = microphoneBuffer.analyser.frequencyBinCount;
-        const dataArray = new Uint8Array(bufferLength);
-        microphoneBuffer.analyser.getByteFrequencyData(dataArray);
-
-        let sum = 0;
-        for (let i = 0; i < bufferLength; i++) {
-          sum += dataArray[i] * dataArray[i];
-        }
-        const rms = Math.sqrt(sum / bufferLength);
-        const rawVolume = (rms / 255) * 100;
-
-        if (rawVolume > noiseGate) {
-          markActivity();
-          return;
-        }
-      }
-
-      // Window focused → user is present
-      if (document.hasFocus()) {
-        lastActivityTimeRef.current = Date.now();
-        if (isAFKRef.current) setIsAFK(false);
-        return;
-      }
-
-      // Timeout check
       const timeSinceActivity = Date.now() - lastActivityTimeRef.current;
       const timeoutMs = afkTimeoutMinutes * 60 * 1000;
       if (timeSinceActivity >= timeoutMs && !isAFKRef.current) {
@@ -376,10 +354,8 @@ export function useServerState() {
     currentServerConnected,
     currentlyViewingServer,
     currentConnection,
-    microphoneBuffer.analyser,
     setIsAFK,
     afkTimeoutMinutes,
-    noiseGate,
   ]);
 
   // Per-user volume: override individual stream gain nodes

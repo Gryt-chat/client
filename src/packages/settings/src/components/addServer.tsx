@@ -98,6 +98,7 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
     });
 
     if (!result.ok) {
+      console.warn(`[AddServer] Join failed for ${normalizedHost}:`, result.error);
       if (result.error.error === "invite_required") {
         setInviteRequired(true);
         setJoinError(result.error.message || "This server is invite-only. Paste an invite code to join.");
@@ -106,6 +107,10 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
         setJoinError(result.error.message || "Invalid invite code.");
       } else if (result.error.error === "invite_rate_limited" || result.error.error === "rate_limited") {
         setJoinError(result.error.message || "Too many attempts. Please wait and try again.");
+      } else if (result.error.error === "connect_error") {
+        setJoinError(result.error.message || "Could not connect to the server. Check the address and your network.");
+      } else if (result.error.error === "timeout") {
+        setJoinError(result.error.message || "Connection timed out. The server may be down or unreachable.");
       } else {
         setJoinError(result.error.message || `Failed to join server: ${result.error.error}`);
       }

@@ -184,7 +184,14 @@ function useSocketsHook() {
         });
         
         socket.on("connect_error", (error) => {
-          console.error(`Connection error to server ${host}:`, error);
+          const msg = error instanceof Error ? error.message : String(error);
+          console.error(`[Socket] connect_error for ${host}:`, msg);
+          console.debug(`[Socket] connect_error diagnostics:`, {
+            host,
+            transport: socket.io.engine?.transport?.name ?? "unknown",
+            wasEverConnected: wasEverConnectedRef.current[host] ?? false,
+            online: navigator.onLine,
+          });
           if (!wasEverConnectedRef.current[host]) {
             setServerConnectionStatus(prev => ({ ...prev, [host]: 'disconnected' }));
           }

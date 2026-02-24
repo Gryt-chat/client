@@ -40,6 +40,8 @@ export function AudioSettings() {
     compressorAmount,
     setCompressorAmount,
     inputMode,
+    screenShareAudioDelay,
+    setScreenShareAudioDelay,
   } = useSettings();
 
   const { devices, microphoneBuffer, getDevices, audioContext } = useMicrophone(true);
@@ -361,6 +363,21 @@ export function AudioSettings() {
         description="Controls volume of all incoming audio (50% = normal, 100% = 2x boost)"
         value={outputVolume}
         onChange={setOutputVolume}
+      />
+
+      <Separator size="4" />
+
+      {/* ── Screen Share ── */}
+      <Text size="3" weight="bold" color="gray">Screen Share</Text>
+
+      <SliderSetting
+        title={`Audio Delay Offset: ${screenShareAudioDelay} ms`}
+        description="Compensates for OS audio pipeline latency when cancelling voice echo from screen share audio. Increase if others hear echo; typical values are 10–50 ms."
+        value={screenShareAudioDelay}
+        onChange={setScreenShareAudioDelay}
+        min={0}
+        max={100}
+        step={1}
       />
 
       <Separator size="4" />

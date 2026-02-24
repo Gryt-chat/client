@@ -48,14 +48,15 @@ export function InviteAcceptModal({
     setPreview(null);
 
     const wsBase = getServerWsBase(invite.host);
+    console.log(`[InvitePreview] Connecting to ${invite.host} (${wsBase})…`);
     const sock = io(wsBase, {
-      transports: ["websocket"],
       reconnection: false,
       timeout: 8000,
     });
     socketRef.current = sock;
 
     sock.on("connect", () => {
+      console.log(`[InvitePreview] Connected to ${invite.host}`);
       sock.emit("server:info");
     });
 
@@ -68,7 +69,8 @@ export function InviteAcceptModal({
       setLoading(false);
     });
 
-    sock.on("connect_error", () => {
+    sock.on("connect_error", (err) => {
+      console.warn(`[InvitePreview] connect_error for ${invite.host}:`, err?.message || err);
       setPreview({ name: invite.host });
       setLoading(false);
     });

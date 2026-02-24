@@ -4,7 +4,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Flex } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
 import type { CSSProperties, ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { useCamera as useLocalCamera, useScreenShare as useLocalScreenShare, useVoiceLatency } from "@/audio";
 import { useSettings } from "@/settings";
@@ -12,6 +12,7 @@ import { Controls } from "@/webRTC";
 import type { StreamSources } from "@/webRTC/src/types/SFU";
 
 import type { PeerLatencyStats } from "../hooks/usePeerLatency";
+import { usePopoutStreams } from "../hooks/usePopoutStreams";
 import type { Client } from "../types/clients";
 import { FocusedVideoView } from "./FocusedVideoView";
 import type { AdminActions, MemberInfo } from "./MemberSidebar";
@@ -19,6 +20,48 @@ import type { FocusedStreamInfo } from "./VoiceParticipantCard";
 import { VoiceParticipantCard } from "./VoiceParticipantCard";
 
 type Role = "owner" | "admin" | "mod" | "member";
+
+const GRID_GAP = 8;
+const MIN_TILE_WIDTH = 140;
+const CONTROLS_HEIGHT = 80;
+const TILE_ASPECT = 4 / 3;
+
+/**
+ * Tries every possible column count and picks the one that maximises
+ * tile area while keeping tiles at least MIN_TILE_WIDTH wide.
+ * Scores each candidate against a target aspect ratio so the layout
+ * looks balanced regardless of container shape (same idea as Zoom/Meet).
+ */
+function computeOptimalColumns(
+  width: number,
+  height: number,
+  count: number,
+): number {
+  if (count <= 0 || width <= 0 || height <= 0) return 1;
+
+  let bestCols = 1;
+  let bestArea = 0;
+
+  for (let cols = 1; cols <= count; cols++) {
+    const rows = Math.ceil(count / cols);
+    const tileW = (width - (cols - 1) * GRID_GAP) / cols;
+    const tileH = (height - (rows - 1) * GRID_GAP) / rows;
+
+    if (tileW < MIN_TILE_WIDTH) break;
+
+    const widthConstrained = tileW / tileH <= TILE_ASPECT;
+    const w = widthConstrained ? tileW : tileH * TILE_ASPECT;
+    const h = widthConstrained ? tileW / TILE_ASPECT : tileH;
+    const area = w * h;
+
+    if (area > bestArea) {
+      bestArea = area;
+      bestCols = cols;
+    }
+  }
+
+  return bestCols;
+}
 
 function SortableParticipant({ id, children }: { id: string; children: ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
@@ -130,6 +173,8 @@ export const VoiceView = ({
     return items;
   }, [visibleClients, clientsForHost, currentConnectionId, localScreenActive, localScreenStream]);
 
+  const { poppedOutItems, popout: handlePopout, updatePopoutStream } = usePopoutStreams(gridItems);
+
   const [customOrder, setCustomOrder] = useState<string[]>([]);
 
   const orderedItems = useMemo(() => {
@@ -164,29 +209,27 @@ export const VoiceView = ({
     return () => ro.disconnect();
   }, []);
 
-  const itemCount = gridItems.length;
-  const useAutoLayout = gridWidth > 0 && gridWidth < 300;
-
-  const columns = useMemo(() => {
-    if (itemCount <= 0) return 1;
-    const ITEM_HEIGHT = 100;
-    const CONTROLS_RESERVED = 80;
-    const usable = gridHeight - CONTROLS_RESERVED;
-    if (usable <= 0) return 1;
-    const maxRows = Math.max(1, Math.floor(usable / ITEM_HEIGHT));
-    return Math.max(1, Math.ceil(itemCount / maxRows));
-  }, [itemCount, gridHeight]);
-
   const isFocused = !!focusedStream;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     onFocusChange?.(isFocused);
   }, [isFocused, onFocusChange]);
 
   const displayItems = useMemo(() => {
-    if (!focusedStream) return orderedItems;
-    return orderedItems.filter((id) => id !== focusedStream.itemId);
-  }, [orderedItems, focusedStream]);
+    let items = orderedItems;
+    if (focusedStream) {
+      items = items.filter((id) => id !== focusedStream.itemId);
+    }
+    if (poppedOutItems.size > 0) {
+      items = items.filter((id) => !poppedOutItems.has(id));
+    }
+    return items;
+  }, [orderedItems, focusedStream, poppedOutItems]);
+
+  const columns = useMemo(
+    () => computeOptimalColumns(gridWidth, gridHeight - CONTROLS_HEIGHT, displayItems.length),
+    [gridWidth, gridHeight, displayItems.length],
+  );
 
   useEffect(() => {
     if (!focusedStream) return;
@@ -219,6 +262,25 @@ export const VoiceView = ({
       setFocusedStream((prev) => prev ? { ...prev, stream: currentStream } : null);
     }
   }, [focusedStream, clientsForHost, currentConnectionId, videoStreams]);
+
+  useEffect(() => {
+    if (poppedOutItems.size === 0) return;
+    for (const itemId of poppedOutItems) {
+      const isScreenTile = itemId.startsWith("screen:");
+      const clientId = isScreenTile ? itemId.slice(7) : itemId;
+      const isSelf = clientId === currentConnectionId;
+      const client = clientsForHost[clientId];
+      if (!client) continue;
+
+      const currentStream = isScreenTile
+        ? (isSelf ? localScreenStream : (client.screenShareVideoStreamID ? videoStreams?.[client.screenShareVideoStreamID] : null))
+        : (isSelf ? localCameraStream : (client.cameraStreamID ? videoStreams?.[client.cameraStreamID] : null));
+
+      if (currentStream) {
+        updatePopoutStream(itemId, currentStream);
+      }
+    }
+  }, [poppedOutItems, videoStreams, clientsForHost, currentConnectionId, localCameraStream, localScreenStream, updatePopoutStream]);
 
   const handleFocus = useCallback((info: FocusedStreamInfo) => {
     setFocusedStream((prev) => {
@@ -292,16 +354,16 @@ export const VoiceView = ({
                   gap: "var(--space-2)",
                   overflowX: "auto",
                   overflowY: "hidden",
-                  paddingTop: "var(--space-2)",
+                  padding: "var(--space-2) 3px 3px",
                   flexShrink: 0,
                 } : {
                   display: "grid",
-                  gridTemplateColumns: useAutoLayout ? "1fr" : `repeat(${columns}, 1fr)`,
+                  gridTemplateColumns: `repeat(${columns}, 1fr)`,
                   gap: "var(--space-2)",
                   justifyItems: "center",
                   alignContent: "center",
                   overflowY: "auto",
-                  paddingBottom: "60px",
+                  padding: "3px 3px 60px",
                   height: "100%",
                 }}
               >
@@ -340,6 +402,7 @@ export const VoiceView = ({
                             localScreenStream={localScreenStream}
                             videoStreams={videoStreams}
                             onFocus={handleFocus}
+                            onPopout={handlePopout}
                             onDisconnectUser={onDisconnectUser}
                             currentUserRole={currentUserRole}
                             memberInfo={serverUserId ? memberByServerUserId.get(serverUserId) : undefined}

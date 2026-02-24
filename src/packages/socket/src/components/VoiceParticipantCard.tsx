@@ -6,7 +6,6 @@ import { MdMicOff, MdScreenShare, MdVideocam, MdVolumeOff } from "react-icons/md
 import { getUploadsFileUrl } from "@/common";
 
 import type { Client } from "../types/clients";
-import { popoutStream } from "../utils/popoutVideo";
 import type { AdminActions, MemberInfo } from "./MemberSidebar";
 import { SkeletonBase } from "./skeletons";
 import { UserContextMenu } from "./UserContextMenu";
@@ -142,6 +141,7 @@ export function VoiceParticipantCard({
   localScreenStream,
   videoStreams,
   onFocus,
+  onPopout,
   onDisconnectUser,
   currentUserRole,
   memberInfo,
@@ -162,6 +162,7 @@ export function VoiceParticipantCard({
   localScreenStream: MediaStream | null;
   videoStreams?: Record<string, MediaStream>;
   onFocus: (info: FocusedStreamInfo) => void;
+  onPopout: (itemId: string, stream: MediaStream, title: string) => void;
   onDisconnectUser?: (targetServerUserId: string) => void;
   currentUserRole?: Role;
   memberInfo?: MemberInfo;
@@ -199,7 +200,7 @@ export function VoiceParticipantCard({
         <ContextMenu.Content style={{ minWidth: 160 }} onCloseAutoFocus={(e) => e.preventDefault()}>
           <ContextMenu.Label style={{ fontWeight: "bold" }}>{screenTitle}</ContextMenu.Label>
           <ContextMenu.Separator />
-          <ContextMenu.Item onClick={() => popoutStream(screenStream, screenTitle)}>Pop out video</ContextMenu.Item>
+          <ContextMenu.Item onClick={() => onPopout(itemId, screenStream, screenTitle)}>Pop out video</ContextMenu.Item>
         </ContextMenu.Content>
       </ContextMenu.Root>
     );
@@ -308,7 +309,7 @@ export function VoiceParticipantCard({
           ? localCameraStream
           : (client.cameraEnabled && client.cameraStreamID && videoStreams?.[client.cameraStreamID]) || null;
         if (!cam) return undefined;
-        return () => { popoutStream(cam, isSelf ? "Your Camera" : `${client.nickname}'s Camera`); };
+        return () => { onPopout(itemId, cam, isSelf ? "Your Camera" : `${client.nickname}'s Camera`); };
       })()}
     >
       {hasCameraStream ? cameraView() : avatarView()}

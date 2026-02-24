@@ -153,7 +153,7 @@ function useVoiceResize({
   }, []);
 
   const voiceMaxWidth = voiceContainerWidth > 0
-    ? voiceContainerWidth - MIN_CHAT_WIDTH
+    ? Math.max(0, voiceContainerWidth - MIN_CHAT_WIDTH)
     : 0;
 
   const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {

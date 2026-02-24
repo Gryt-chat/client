@@ -3,7 +3,7 @@ import { singletonHook } from "react-singleton-hook";
 
 import { useSettings } from "@/settings";
 
-export type CameraQuality = "native" | "1080p" | "720p" | "480p" | "360p";
+export type CameraQuality = "native" | "1080p" | "720p" | "480p" | "360p" | "240p" | "144p" | "96p" | "64p";
 
 export const QUALITY_CONSTRAINTS: Record<CameraQuality, { width?: number; height?: number; frameRate: number }> = {
   native: { frameRate: 30 },
@@ -11,6 +11,10 @@ export const QUALITY_CONSTRAINTS: Record<CameraQuality, { width?: number; height
   "720p": { width: 1280, height: 720, frameRate: 30 },
   "480p": { width: 854, height: 480, frameRate: 30 },
   "360p": { width: 640, height: 360, frameRate: 30 },
+  "240p": { width: 426, height: 240, frameRate: 24 },
+  "144p": { width: 256, height: 144, frameRate: 15 },
+  "96p": { width: 170, height: 96, frameRate: 10 },
+  "64p": { width: 114, height: 64, frameRate: 10 },
 };
 
 export interface CameraInterface {

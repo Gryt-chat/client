@@ -1,4 +1,4 @@
-import { Button, Flex, Heading, Select, Separator, Text } from "@radix-ui/themes";
+import { Badge, Button, Flex, Heading, Select, Separator, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MdRefresh } from "react-icons/md";
 
@@ -13,6 +13,10 @@ const QUALITY_OPTIONS = [
   { value: "720p", label: "720p (1280×720)" },
   { value: "480p", label: "480p (854×480)" },
   { value: "360p", label: "360p (640×360)" },
+  { value: "240p", label: "240p (426×240)" },
+  { value: "144p", label: "144p (256×144)" },
+  { value: "96p", label: "96p (170×96)" },
+  { value: "64p", label: "64p (114×64)" },
 ];
 
 export function CameraSettings() {
@@ -31,6 +35,7 @@ export function CameraSettings() {
   const previewStreamRef = useRef<MediaStream | null>(null);
   const [previewStream, setPreviewStream] = useState<MediaStream | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [actualRes, setActualRes] = useState<{ w: number; h: number } | null>(null);
 
   const activeStream = cameraEnabled ? globalStream : previewStream;
   const activeError = cameraEnabled ? null : previewError;
@@ -117,6 +122,22 @@ export function CameraSettings() {
     el.srcObject = activeStream ?? null;
   }, [activeStream]);
 
+  useEffect(() => {
+    if (!activeStream) {
+      setActualRes(null);
+      return;
+    }
+    const track = activeStream.getVideoTracks()[0];
+    if (!track) return;
+    const readRes = () => {
+      const { width, height } = track.getSettings();
+      if (width && height) setActualRes({ w: width, h: height });
+    };
+    readRes();
+    const id = window.setInterval(readRes, 1000);
+    return () => window.clearInterval(id);
+  }, [activeStream]);
+
   return (
     <SettingsContainer>
       <Heading size="4">Camera</Heading>
@@ -135,18 +156,37 @@ export function CameraSettings() {
           }}
         >
           {activeStream ? (
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                transform: cameraMirrored ? "scaleX(-1)" : undefined,
-              }}
-            />
+            <div style={{ position: "relative", width: "100%", height: "100%" }}>
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  transform: cameraMirrored ? "scaleX(-1)" : undefined,
+                }}
+              />
+              {actualRes && (
+                <Badge
+                  variant="solid"
+                  size="1"
+                  style={{
+                    position: "absolute",
+                    top: 8,
+                    right: 8,
+                    background: "rgba(0,0,0,0.65)",
+                    backdropFilter: "blur(4px)",
+                    color: "#fff",
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                >
+                  {actualRes.w}×{actualRes.h}
+                </Badge>
+              )}
+            </div>
           ) : (
             <Flex direction="column" align="center" gap="2" p="4">
               <Text size="2" color={activeError ? "red" : "gray"}>
