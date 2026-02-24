@@ -32,7 +32,6 @@ export function useServerState() {
     isAFK,
     setIsAFK,
     afkTimeoutMinutes,
-    noiseGate,
     eSportsModeEnabled,
     inputMode,
     userVolumes,
