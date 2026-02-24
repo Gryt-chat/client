@@ -11,13 +11,11 @@ import {
   TextField,
 } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MdClose, MdInfoOutline, MdWarning, MdWifi } from "react-icons/md";
-import { io, Socket } from "socket.io-client";
 
 import {
   getServerHttpBase,
-  getServerWsBase,
   getValidIdentityToken,
   normalizeCode,
   normalizeHost,
@@ -49,7 +47,7 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
   const [serverInfo, setServerInfo] = useState<FetchInfo | null>(null);
   const [hasError, setHasError] = useState("");
   const [isSearching, setIsSearching] = useState(false);
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const [isJoining, setIsJoining] = useState(false);
   const [inviteRequired, setInviteRequired] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
@@ -65,8 +63,8 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
       setServerInfo(null);
       setHasError("");
       setIsSearching(false);
-      socket?.close();
-      setSocket(null);
+      abortRef.current?.abort();
+      abortRef.current = null;
       setIsJoining(false);
       setInviteRequired(false);
       setInviteCode("");
@@ -147,6 +145,10 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
     const normalizedHost = normalizeHost(serverHost);
     if (!normalizedHost) return;
 
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setIsSearching(true);
     setHasError("");
     setServerInfo(null);
@@ -154,28 +156,25 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
     setInviteCode("");
     setJoinError("");
 
-    const new_socket = io(`${getServerWsBase(normalizedHost)}`, {
-      transports: ["websocket"],
-      reconnectionAttempts: 0,
-      timeout: 8000,
-    });
-
-    new_socket.on("connect_error", (error) => {
-      setHasError(error.message);
-      setIsSearching(false);
-      new_socket.close();
-    });
-
-    new_socket.on("connect", () => {
-      setSocket(new_socket);
-      new_socket.emit("server:info");
-    });
-
-    new_socket.on("server:info", (info: FetchInfo) => {
-      setIsSearching(false);
-      setServerInfo(info);
-      setServerHost(normalizedHost);
-    });
+    const base = getServerHttpBase(normalizedHost);
+    fetch(`${base}/info`, { signal: controller.signal })
+      .then((res) => {
+        if (!res.ok) throw new Error(`Server responded with ${res.status}`);
+        return res.json() as Promise<FetchInfo>;
+      })
+      .then((info) => {
+        setServerInfo(info);
+        setServerHost(normalizedHost);
+      })
+      .catch((err: unknown) => {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        const message =
+          err instanceof Error ? err.message : "Server is not responding";
+        setHasError(message);
+      })
+      .finally(() => {
+        setIsSearching(false);
+      });
   }
 
   const handleEnterKey = (event: { key: string }) => {
