@@ -99,8 +99,8 @@ export const ServerView = () => {
   const {
     chatMessages, canSend, sendChat, editMessage, isLoadingMessages,
     isRateLimited, rateLimitCountdown, isVoiceChannelTextChat,
-    canViewVoiceChannelText, activeChannelName, restoreText, clearRestoreText,
-    fetchOlderMessages, isLoadingOlder, hasOlderMessages,
+    canViewVoiceChannelText, activeChannelName, activeChannelType,
+    restoreText, clearRestoreText, fetchOlderMessages, isLoadingOlder, hasOlderMessages,
   } = useChat({
     currentConnection, activeConversationId, currentlyViewingServer,
     currentChannelId, isConnected, serverDetailsList, nickname,
@@ -233,6 +233,7 @@ export const ServerView = () => {
             editMessage={editMessage}
             currentUserId={currentServerUserId}
             channelName={activeChannelName}
+            channelType={activeChannelType}
             currentUserNickname={serverNickname}
             socketConnection={currentConnection}
             memberList={memberListMap}
@@ -356,6 +357,7 @@ export const ServerView = () => {
                   editMessage={editMessage}
                   currentUserId={currentServerUserId}
                   channelName={activeChannelName}
+                  channelType={activeChannelType}
                   currentUserNickname={serverNickname}
                   socketConnection={currentConnection}
                   serverHost={host}

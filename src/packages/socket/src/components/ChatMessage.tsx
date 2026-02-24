@@ -1,5 +1,6 @@
 import { Box, Button, Flex, Skeleton, Text } from "@radix-ui/themes";
 import { useEffect, useRef, useState } from "react";
+import { MdChat, MdVolumeUp } from "react-icons/md";
 
 import { getRecentReactions } from "../utils/recentReactions";
 import { EmojiPicker } from "./EmojiPicker";
@@ -331,7 +332,10 @@ export const MessageSkeleton = () => {
   );
 };
 
-export const WelcomeMessage = ({ channelName }: { channelName?: string }) => (
+const ChannelIcon = ({ type, size }: { type: "text" | "voice"; size: number }) =>
+  type === "voice" ? <MdVolumeUp size={size} /> : <MdChat size={size} />;
+
+export const WelcomeMessage = ({ channelName, channelType = "text" }: { channelName?: string; channelType?: "text" | "voice" }) => (
   <Flex direction="column" style={{ padding: "48px 24px", alignItems: "center", textAlign: "center" }}>
     <Box
       style={{
@@ -344,21 +348,25 @@ export const WelcomeMessage = ({ channelName }: { channelName?: string }) => (
         justifyContent: "center",
         marginBottom: "24px",
         border: "3px solid var(--gray-6)",
-        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)"
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+        color: "var(--gray-9)",
       }}
     >
-      <Text size="8" weight="bold" color="gray">
-        #
-      </Text>
+      <ChannelIcon type={channelType} size={48} />
     </Box>
 
-    <Text size="7" weight="bold" style={{ marginBottom: "12px", color: "var(--gray-12)" }}>
-      Welcome to #<EmojiText text={channelName || "channel"} />!
-    </Text>
+    <Flex align="center" gap="2" style={{ marginBottom: "12px" }}>
+      <Text size="7" weight="bold" style={{ color: "var(--gray-12)", display: "inline-flex", alignItems: "center", gap: "8px" }}>
+        Welcome to <ChannelIcon type={channelType} size={24} /> <EmojiText text={channelName || "channel"} />!
+      </Text>
+    </Flex>
 
     <Text size="4" color="gray" style={{ marginBottom: "24px", maxWidth: "500px", lineHeight: 1.5 }}>
-      This is the start of the <Text weight="medium" color="gray">#<EmojiText text={channelName || "channel"} /></Text> channel.
-      Start a conversation by typing a message below.
+      This is the start of the{" "}
+      <Text weight="medium" color="gray" style={{ display: "inline-flex", alignItems: "center", gap: "4px", verticalAlign: "middle" }}>
+        <ChannelIcon type={channelType} size={16} /> <EmojiText text={channelName || "channel"} />
+      </Text>{" "}
+      channel. Start a conversation by typing a message below.
     </Text>
 
     <Flex

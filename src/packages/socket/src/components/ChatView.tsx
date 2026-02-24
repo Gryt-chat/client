@@ -1,6 +1,6 @@
 import { AlertDialog, Box, Button, Flex, Text } from "@radix-ui/themes";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MdCloudUpload } from "react-icons/md";
+import { MdChat, MdCloudUpload, MdVolumeUp } from "react-icons/md";
 
 import { getUploadsFileUrl } from "@/common";
 import { useSettings } from "@/settings";
@@ -32,6 +32,7 @@ export const ChatView = memo(({
   serverHost,
   memberList,
   channelName,
+  channelType,
   isRateLimited,
   rateLimitCountdown,
   canViewVoiceChannelText,
@@ -56,6 +57,7 @@ export const ChatView = memo(({
   serverHost?: string;
   memberList?: Record<string, { nickname: string; serverUserId: string; avatarFileId?: string | null; [key: string]: unknown }>;
   channelName?: string;
+  channelType?: "text" | "voice";
   isRateLimited?: boolean;
   rateLimitCountdown?: number;
   canViewVoiceChannelText?: boolean;
@@ -264,9 +266,10 @@ export const ChatView = memo(({
         )}
         <Flex height="100%" width="100%" direction="column" p="3">
           {channelName && (
-            <Flex align="center" style={{ marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid var(--gray-6)" }}>
+            <Flex align="center" gap="2" style={{ marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid var(--gray-6)" }}>
+              {channelType === "voice" ? <MdVolumeUp size={18} style={{ color: "var(--gray-11)", flexShrink: 0 }} /> : <MdChat size={18} style={{ color: "var(--gray-11)", flexShrink: 0 }} />}
               <Text size="4" weight="bold" style={{ color: "var(--gray-12)" }}>
-                #<EmojiText text={channelName} />
+                <EmojiText text={channelName} />
               </Text>
             </Flex>
           )}
@@ -291,7 +294,7 @@ export const ChatView = memo(({
             </Flex>
           ) : chatMessages.length === 0 ? (
             <Flex flexGrow="1" direction="column" justify="end" style={{ paddingBottom: "16px" }}>
-              <WelcomeMessage channelName={channelName} />
+              <WelcomeMessage channelName={channelName} channelType={channelType} />
             </Flex>
           ) : showMessages ? (
             <div

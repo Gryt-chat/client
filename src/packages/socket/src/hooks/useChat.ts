@@ -44,6 +44,7 @@ interface UseChatReturn {
   isVoiceChannelTextChat: boolean;
   canViewVoiceChannelText: boolean;
   activeChannelName: string;
+  activeChannelType: "text" | "voice";
   restoreText: string | null;
   clearRestoreText: () => void;
   fetchOlderMessages: () => void;
@@ -189,12 +190,14 @@ export function useChat({
     setRestoreText(null);
   }, [activeConversationId]);
 
-  const activeChannelName = useMemo(() => {
-    if (!currentlyViewingServer) return "";
+  const activeChannel = useMemo(() => {
+    if (!currentlyViewingServer) return undefined;
     const channels = serverDetailsList[currentlyViewingServer.host]?.channels || [];
-    const found = channels.find((c) => c.id === activeConversationId);
-    return found?.name || "";
+    return channels.find((c) => c.id === activeConversationId);
   }, [currentlyViewingServer, serverDetailsList, activeConversationId]);
+
+  const activeChannelName = activeChannel?.name || "";
+  const activeChannelType: "text" | "voice" = activeChannel?.type || "text";
 
   // Chat event listeners
   useEffect(() => {
@@ -392,6 +395,7 @@ export function useChat({
     isVoiceChannelTextChat,
     canViewVoiceChannelText,
     activeChannelName,
+    activeChannelType,
     restoreText,
     clearRestoreText,
     fetchOlderMessages,

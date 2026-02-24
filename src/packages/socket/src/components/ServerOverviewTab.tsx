@@ -14,6 +14,7 @@ import { MdCameraAlt, MdDelete } from "react-icons/md";
 
 import { getServerAccessToken, getServerHttpBase, getValidIdentityToken } from "@/common";
 import { useSettings } from "@/settings";
+import type { Channel } from "@/settings/src/types/server";
 
 type ProfanityMode = "off" | "flag" | "censor" | "block";
 type CensorStyle = "grawlix" | "emoji" | "asterisks" | "block" | "hearts";
@@ -30,6 +31,7 @@ type ServerSettingsPayload = {
   emojiMaxBytes?: number | null;
   profanityMode?: ProfanityMode;
   profanityCensorStyle?: CensorStyle;
+  systemChannelId?: string | null;
 };
 
 export type ServerOverviewInitialSettings = {
@@ -42,6 +44,7 @@ export function ServerOverviewTab({
   socket,
   accessToken,
   initialSettings,
+  channels = [],
 }: {
   host: string;
   socket?: {
@@ -52,6 +55,7 @@ export function ServerOverviewTab({
   };
   accessToken: string | null;
   initialSettings?: ServerOverviewInitialSettings;
+  channels?: Channel[];
 }) {
   const { nickname } = useSettings();
 
@@ -71,6 +75,7 @@ export function ServerOverviewTab({
 
   const [profanityMode, setProfanityMode] = useState<ProfanityMode>("censor");
   const [censorStyle, setCensorStyle] = useState<CensorStyle>("emoji");
+  const [systemChannelId, setSystemChannelId] = useState<string | null>(null);
 
   const [autosaving, setAutosaving] = useState(false);
   const pendingSaveCountRef = useRef(0);
@@ -82,6 +87,7 @@ export function ServerOverviewTab({
     emojiMaxBytes: number | null;
     profanityMode: ProfanityMode;
     profanityCensorStyle: CensorStyle;
+    systemChannelId: string | null;
   } | null>(null);
 
   const [avatarMaxMb, setAvatarMaxMb] = useState<string>("");
@@ -89,6 +95,11 @@ export function ServerOverviewTab({
   const [emojiMaxMb, setEmojiMaxMb] = useState<string>("");
 
   const effectiveAccessToken = useMemo(() => accessToken || getServerAccessToken(host), [accessToken, host]);
+
+  const textChannels = useMemo(
+    () => channels.filter((c) => c.type === "text"),
+    [channels],
+  );
 
   // Apply any initial settings when host changes (best-effort prefill).
   useEffect(() => {
@@ -129,6 +140,7 @@ export function ServerOverviewTab({
 
       setProfanityMode(payload.profanityMode ?? "censor");
       setCensorStyle(payload.profanityCensorStyle ?? "emoji");
+      setSystemChannelId(payload.systemChannelId ?? null);
 
       if (!wasSaving) {
         setDisplayName(payload.displayName || "");
@@ -151,6 +163,7 @@ export function ServerOverviewTab({
         emojiMaxBytes: (typeof payload.emojiMaxBytes === "number" && Number.isFinite(payload.emojiMaxBytes)) ? payload.emojiMaxBytes : null,
         profanityMode: payload.profanityMode ?? "censor",
         profanityCensorStyle: payload.profanityCensorStyle ?? "emoji",
+        systemChannelId: payload.systemChannelId ?? null,
       };
     };
 
@@ -185,6 +198,7 @@ export function ServerOverviewTab({
     emojiMaxBytes: number | null;
     profanityMode: ProfanityMode;
     profanityCensorStyle: CensorStyle;
+    systemChannelId: string | null;
   }>) => {
     if (!host) return;
     if (!socket || !socket.connected) return;
@@ -606,6 +620,34 @@ export function ServerOverviewTab({
             </div>
           )}
         </Flex>
+      </Flex>
+
+      <Flex direction="column" gap="2">
+        <Text size="2" weight="medium">
+          System messages channel
+        </Text>
+        <Text size="1" color="gray" style={{ lineHeight: 1.4 }}>
+          Choose which text channel receives system messages like &ldquo;user joined&rdquo; and &ldquo;user left&rdquo;.
+        </Text>
+        <Select.Root
+          value={systemChannelId ?? "__auto__"}
+          onValueChange={(v) => {
+            const id = v === "__auto__" ? null : v;
+            setSystemChannelId(id);
+            saveIfChanged({ systemChannelId: id });
+          }}
+          disabled={!isOwner}
+        >
+          <Select.Trigger style={{ width: "100%", maxWidth: 320 }} />
+          <Select.Content>
+            <Select.Item value="__auto__">Auto (first text channel)</Select.Item>
+            {textChannels.map((ch) => (
+              <Select.Item key={ch.id} value={ch.id}>
+                #{ch.name}
+              </Select.Item>
+            ))}
+          </Select.Content>
+        </Select.Root>
       </Flex>
 
       {autosaving ? (

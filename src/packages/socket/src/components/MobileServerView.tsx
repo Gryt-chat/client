@@ -62,6 +62,7 @@ interface MobileServerViewProps {
   editMessage?: (messageId: string, conversationId: string, newText: string) => void;
   currentUserId?: string;
   channelName?: string;
+  channelType?: "text" | "voice";
   currentUserNickname?: string;
   socketConnection?: unknown;
   memberList: Record<string, { nickname: string; serverUserId: string; avatarFileId?: string | null }>;
@@ -169,6 +170,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
           editMessage={props.editMessage}
           currentUserId={props.currentUserId}
           channelName={props.channelName}
+          channelType={props.channelType}
           currentUserNickname={props.currentUserNickname}
           socketConnection={props.socketConnection}
           serverHost={props.serverHost}

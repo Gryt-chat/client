@@ -96,15 +96,10 @@ export const TwitchEmbed = ({ url, onDismiss }: { url: string; onDismiss: () => 
   })();
 
   const src = (() => {
-    if (embed.kind === "clip") {
-      const u = new URL("https://clips.twitch.tv/embed");
-      u.searchParams.set("clip", embed.value);
-      u.searchParams.set("parent", parent);
-      u.searchParams.set("autoplay", "false");
-      return u.toString();
-    }
     const u = new URL("https://player.twitch.tv/");
-    if (embed.kind === "video") {
+    if (embed.kind === "clip") {
+      u.searchParams.set("clip", embed.value);
+    } else if (embed.kind === "video") {
       u.searchParams.set("video", embed.value);
     } else {
       u.searchParams.set("channel", embed.value);

@@ -93,6 +93,7 @@ export function ServerSettingsModal() {
           socket={socket}
           accessToken={accessToken}
           initialSettings={initialOverviewSettings}
+          channels={host ? serverDetailsList[host]?.channels ?? [] : []}
         />
       ),
     },
