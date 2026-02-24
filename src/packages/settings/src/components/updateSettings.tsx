@@ -143,10 +143,17 @@ export function UpdateSettings() {
         </Box>
 
         {statusText && (
-          <Flex align="center" gap="2">
-            {status?.status === "not-available" && <MdCheckCircle size={16} color="var(--green-9)" />}
-            {status?.status === "error" && <MdCancel size={16} color="var(--red-9)" />}
-            <Text size="2" color={statusColor}>{statusText}</Text>
+          <Flex direction="column" gap="1">
+            <Flex align="center" gap="2">
+              {status?.status === "not-available" && <MdCheckCircle size={16} color="var(--green-9)" />}
+              {status?.status === "error" && <MdCancel size={16} color="var(--red-9)" />}
+              <Text size="2" color={statusColor}>{statusText}</Text>
+            </Flex>
+            {status?.status === "error" && (
+              <Text size="1" color="gray">
+                This often happens right after a new version is released. Wait a few minutes and try again.
+              </Text>
+            )}
           </Flex>
         )}
 

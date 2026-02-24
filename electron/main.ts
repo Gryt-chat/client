@@ -450,6 +450,14 @@ function buildTrayContextMenu(): Menu {
         }
       },
     },
+    {
+      label: "Check for Updates",
+      click: () => {
+        isQuitting = true;
+        app.relaunch();
+        app.quit();
+      },
+    },
     { type: "separator" },
     {
       label: "Quit",
@@ -594,6 +602,18 @@ if (!gotSingleInstanceLock) {
           }
         }
         callback({ requestHeaders: details.requestHeaders });
+      },
+    );
+
+    // Strip Content-Security-Policy from embed provider responses so
+    // frame-ancestors doesn't block embedding inside Electron (file://).
+    session.defaultSession.webRequest.onHeadersReceived(
+      { urls: allEmbedPatterns },
+      (details, callback) => {
+        const headers = { ...details.responseHeaders };
+        delete headers["Content-Security-Policy"];
+        delete headers["content-security-policy"];
+        callback({ responseHeaders: headers });
       },
     );
 
