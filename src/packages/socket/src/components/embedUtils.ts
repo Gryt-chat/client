@@ -225,6 +225,21 @@ export function isEmbedDismissed(messageId: string, url: string): boolean {
   return getDismissedEmbeds().has(`${messageId}:${url}`);
 }
 
+export function clearDismissedForMessage(messageId: string): void {
+  const dismissed = getDismissedEmbeds();
+  const prefix = `${messageId}:`;
+  let changed = false;
+  for (const key of dismissed) {
+    if (key.startsWith(prefix)) {
+      dismissed.delete(key);
+      changed = true;
+    }
+  }
+  if (changed) {
+    localStorage.setItem(DISMISSED_KEY, JSON.stringify([...dismissed]));
+  }
+}
+
 export const imageEmbedSizeCache = new Map<string, { width: number; height: number }>();
 
 export type RemoteImageMetadata = { width: number | null; height: number | null };

@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useRef,useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { singletonHook } from "react-singleton-hook";
+
+import { useUserId } from "@/common";
 
 import { Server, Servers } from "../types/server";
 
@@ -12,19 +14,77 @@ interface ServerSettings {
   setLastSelectedChannel: (host: string, channelId: string) => void;
 }
 
+function serversKey(userId: string): string {
+  return `servers:${userId}`;
+}
+
+function channelsKey(userId: string): string {
+  return `lastSelectedChannels:${userId}`;
+}
+
+/**
+ * Migrate legacy global keys to per-user keys on first sign-in after upgrade.
+ * Only migrates if the per-user key doesn't already exist.
+ */
+function migrateGlobalToUser(userId: string): void {
+  const GLOBAL_SERVERS = "servers";
+  const GLOBAL_CHANNELS = "lastSelectedChannels";
+
+  if (!localStorage.getItem(serversKey(userId))) {
+    const global = localStorage.getItem(GLOBAL_SERVERS);
+    if (global) {
+      localStorage.setItem(serversKey(userId), global);
+      localStorage.removeItem(GLOBAL_SERVERS);
+    }
+  }
+
+  if (!localStorage.getItem(channelsKey(userId))) {
+    const global = localStorage.getItem(GLOBAL_CHANNELS);
+    if (global) {
+      localStorage.setItem(channelsKey(userId), global);
+      localStorage.removeItem(GLOBAL_CHANNELS);
+    }
+  }
+}
+
+function loadServersForUser(userId: string | null): Servers {
+  if (!userId) return {};
+  const raw = localStorage.getItem(serversKey(userId));
+  return raw ? (JSON.parse(raw) as Servers) : {};
+}
+
+function loadChannelsForUser(userId: string | null): Record<string, string> {
+  if (!userId) return {};
+  const raw = localStorage.getItem(channelsKey(userId));
+  return raw ? (JSON.parse(raw) as Record<string, string>) : {};
+}
+
 function useServerSettingsHook(): ServerSettings {
-  const [servers, setServers] = useState<Servers>(
-    JSON.parse(localStorage.getItem("servers") || "{}")
-  );
+  const userId = useUserId();
+  const userIdRef = useRef(userId);
+  const [servers, setServersRaw] = useState<Servers>({});
   const [currentlyViewingServer, setCurrentlyViewingServer] = useState<Server | null>(null);
-  const [lastSelectedChannels, setLastSelectedChannels] = useState<Record<string, string>>(
-    JSON.parse(localStorage.getItem("lastSelectedChannels") || "{}")
-  );
+  const [lastSelectedChannels, setLastSelectedChannelsRaw] = useState<Record<string, string>>({});
   const hasAutoFocused = useRef(false);
 
+  useEffect(() => {
+    if (!userId) return;
+
+    migrateGlobalToUser(userId);
+    userIdRef.current = userId;
+    hasAutoFocused.current = false;
+
+    const loadedServers = loadServersForUser(userId);
+    const loadedChannels = loadChannelsForUser(userId);
+    setServersRaw(loadedServers);
+    setLastSelectedChannelsRaw(loadedChannels);
+  }, [userId]);
+
   const updateServers = useCallback((newServers: Servers) => {
-    setServers(newServers);
-    localStorage.setItem("servers", JSON.stringify(newServers));
+    setServersRaw(newServers);
+    if (userIdRef.current) {
+      localStorage.setItem(serversKey(userIdRef.current), JSON.stringify(newServers));
+    }
   }, []);
 
   const updateCurrentlyViewingServer = useCallback((host: string | null) => {
@@ -44,9 +104,11 @@ function useServerSettingsHook(): ServerSettings {
   }, [servers]);
 
   const updateLastSelectedChannel = useCallback((host: string, channelId: string) => {
-    setLastSelectedChannels(prev => {
+    setLastSelectedChannelsRaw(prev => {
       const newChannels = { ...prev, [host]: channelId };
-      localStorage.setItem("lastSelectedChannels", JSON.stringify(newChannels));
+      if (userIdRef.current) {
+        localStorage.setItem(channelsKey(userIdRef.current), JSON.stringify(newChannels));
+      }
       return newChannels;
     });
   }, []);
@@ -54,8 +116,7 @@ function useServerSettingsHook(): ServerSettings {
   useEffect(() => {
     const serverKeys = Object.keys(servers);
     if (serverKeys.length > 0 && !hasAutoFocused.current) {
-      const currentServers = JSON.parse(localStorage.getItem("servers") || "{}");
-      const server = currentServers[serverKeys[0]];
+      const server = servers[serverKeys[0]];
       if (server) {
         setCurrentlyViewingServer(server);
         hasAutoFocused.current = true;
@@ -83,11 +144,11 @@ function useServerSettingsHook(): ServerSettings {
 }
 
 const init: ServerSettings = {
-  servers: JSON.parse(localStorage.getItem("servers") || "{}"),
+  servers: {},
   setServers: () => {},
   currentlyViewingServer: null,
   setCurrentlyViewingServer: () => {},
-  lastSelectedChannels: JSON.parse(localStorage.getItem("lastSelectedChannels") || "{}"),
+  lastSelectedChannels: {},
   setLastSelectedChannel: () => {},
 };
 

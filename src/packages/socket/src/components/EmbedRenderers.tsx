@@ -90,25 +90,28 @@ export const TwitchEmbed = ({ url, onDismiss }: { url: string; onDismiss: () => 
   const parent = (() => {
     try {
       const h = window.location.hostname;
+      if (h === "127.0.0.1" || h === "localhost") return "localhost";
       return h || "localhost";
     } catch { return "localhost"; }
   })();
-  const base = "https://player.twitch.tv/";
+
   const src = (() => {
-    const u = new URL(base);
     if (embed.kind === "clip") {
+      const u = new URL("https://clips.twitch.tv/embed");
       u.searchParams.set("clip", embed.value);
+      u.searchParams.set("parent", parent);
       u.searchParams.set("autoplay", "false");
-    } else if (embed.kind === "video") {
+      return u.toString();
+    }
+    const u = new URL("https://player.twitch.tv/");
+    if (embed.kind === "video") {
       u.searchParams.set("video", embed.value);
-      u.searchParams.set("autoplay", "false");
-      u.searchParams.set("muted", "true");
     } else {
       u.searchParams.set("channel", embed.value);
-      u.searchParams.set("autoplay", "false");
-      u.searchParams.set("muted", "true");
     }
     u.searchParams.set("parent", parent);
+    u.searchParams.set("autoplay", "false");
+    u.searchParams.set("muted", "true");
     return u.toString();
   })();
 

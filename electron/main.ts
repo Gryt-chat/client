@@ -313,7 +313,7 @@ function startLocalServer(): Promise<string> {
       createReadStream(filePath).pipe(res);
     });
 
-    server.listen(0, "127.0.0.1", () => {
+    server.listen(15738, "127.0.0.1", () => {
       const addr = server.address();
       if (!addr || typeof addr === "string") {
         reject(new Error("Failed to start local server"));

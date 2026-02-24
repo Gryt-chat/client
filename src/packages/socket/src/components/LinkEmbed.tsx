@@ -1,5 +1,5 @@
-import { Flex } from "@radix-ui/themes";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { AlertDialog, Button, Flex } from "@radix-ui/themes";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getServerAccessToken, getServerHttpBase } from "@/common";
 
@@ -18,6 +18,7 @@ import {
   YouTubeEmbed,
 } from "./EmbedRenderers";
 import {
+  clearDismissedForMessage,
   dismissEmbed,
   extractUrls,
   getEmbedType,
@@ -185,6 +186,7 @@ export const MessageEmbeds = memo(({
   serverHost: string;
 }) => {
   const urls = useMemo(() => extractUrls(text), [text]);
+  const prevTextRef = useRef(text);
 
   const [dismissed, setDismissed] = useState<Set<string>>(() => {
     const set = new Set<string>();
@@ -194,47 +196,79 @@ export const MessageEmbeds = memo(({
     return set;
   });
 
-  const handleDismiss = useCallback((url: string) => {
-    dismissEmbed(messageId, url);
-    setDismissed((prev) => new Set(prev).add(url));
-  }, [messageId]);
+  useEffect(() => {
+    if (prevTextRef.current !== text) {
+      prevTextRef.current = text;
+      clearDismissedForMessage(messageId);
+      setDismissed(new Set());
+    }
+  }, [text, messageId]);
+
+  const [pendingDismissUrl, setPendingDismissUrl] = useState<string | null>(null);
+
+  const confirmDismiss = useCallback(() => {
+    if (!pendingDismissUrl) return;
+    dismissEmbed(messageId, pendingDismissUrl);
+    setDismissed((prev) => new Set(prev).add(pendingDismissUrl));
+    setPendingDismissUrl(null);
+  }, [messageId, pendingDismissUrl]);
 
   const visibleUrls = useMemo(() => urls.filter((u) => !dismissed.has(u)), [urls, dismissed]);
 
   if (visibleUrls.length === 0) return null;
 
   return (
-    <Flex direction="column" gap="2" style={{ marginTop: "4px" }}>
-      {visibleUrls.map((url) => {
-        const type = getEmbedType(url);
-        switch (type) {
-          case "image":
-            return <ImageEmbed key={url} url={url} serverHost={serverHost} onDismiss={() => handleDismiss(url)} />;
-          case "video":
-            return <VideoEmbed key={url} url={url} onDismiss={() => handleDismiss(url)} />;
-          case "audio":
-            return <AudioEmbed key={url} url={url} onDismiss={() => handleDismiss(url)} />;
-          case "youtube":
-            return <YouTubeEmbed key={url} url={url} onDismiss={() => handleDismiss(url)} />;
-          case "vimeo":
-            return <VimeoEmbed key={url} url={url} onDismiss={() => handleDismiss(url)} />;
-          case "twitch":
-            return <TwitchEmbed key={url} url={url} onDismiss={() => handleDismiss(url)} />;
-          case "soundcloud":
-            return <SoundCloudEmbed key={url} url={url} onDismiss={() => handleDismiss(url)} />;
-          case "spotify":
-            return <SpotifyEmbed key={url} url={url} onDismiss={() => handleDismiss(url)} />;
-          case "tiktok":
-            return <TikTokEmbed key={url} url={url} onDismiss={() => handleDismiss(url)} />;
-          case "instagram":
-            return <InstagramEmbed key={url} url={url} onDismiss={() => handleDismiss(url)} />;
-          case "x":
-            return <XEmbed key={url} url={url} serverHost={serverHost} onDismiss={() => handleDismiss(url)} />;
-          case "link":
-            return <LinkPreviewCard key={url} url={url} serverHost={serverHost} onDismiss={() => handleDismiss(url)} />;
-        }
-      })}
-    </Flex>
+    <>
+      <Flex direction="column" gap="2" style={{ marginTop: "4px" }}>
+        {visibleUrls.map((url) => {
+          const onDismiss = () => setPendingDismissUrl(url);
+          const type = getEmbedType(url);
+          switch (type) {
+            case "image":
+              return <ImageEmbed key={url} url={url} serverHost={serverHost} onDismiss={onDismiss} />;
+            case "video":
+              return <VideoEmbed key={url} url={url} onDismiss={onDismiss} />;
+            case "audio":
+              return <AudioEmbed key={url} url={url} onDismiss={onDismiss} />;
+            case "youtube":
+              return <YouTubeEmbed key={url} url={url} onDismiss={onDismiss} />;
+            case "vimeo":
+              return <VimeoEmbed key={url} url={url} onDismiss={onDismiss} />;
+            case "twitch":
+              return <TwitchEmbed key={url} url={url} onDismiss={onDismiss} />;
+            case "soundcloud":
+              return <SoundCloudEmbed key={url} url={url} onDismiss={onDismiss} />;
+            case "spotify":
+              return <SpotifyEmbed key={url} url={url} onDismiss={onDismiss} />;
+            case "tiktok":
+              return <TikTokEmbed key={url} url={url} onDismiss={onDismiss} />;
+            case "instagram":
+              return <InstagramEmbed key={url} url={url} onDismiss={onDismiss} />;
+            case "x":
+              return <XEmbed key={url} url={url} serverHost={serverHost} onDismiss={onDismiss} />;
+            case "link":
+              return <LinkPreviewCard key={url} url={url} serverHost={serverHost} onDismiss={onDismiss} />;
+          }
+        })}
+      </Flex>
+
+      <AlertDialog.Root open={!!pendingDismissUrl} onOpenChange={(open) => { if (!open) setPendingDismissUrl(null); }}>
+        <AlertDialog.Content maxWidth="400px">
+          <AlertDialog.Title>Remove embed?</AlertDialog.Title>
+          <AlertDialog.Description size="2">
+            This hides the embed for you. Edit the message to bring it back.
+          </AlertDialog.Description>
+          <Flex gap="3" mt="4" justify="end">
+            <AlertDialog.Cancel>
+              <Button variant="soft" color="gray">Cancel</Button>
+            </AlertDialog.Cancel>
+            <AlertDialog.Action>
+              <Button variant="solid" color="red" onClick={confirmDismiss}>Remove</Button>
+            </AlertDialog.Action>
+          </Flex>
+        </AlertDialog.Content>
+      </AlertDialog.Root>
+    </>
   );
 });
 
