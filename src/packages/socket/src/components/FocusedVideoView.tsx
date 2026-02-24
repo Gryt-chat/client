@@ -93,6 +93,7 @@ export function FocusedVideoView({
         </Flex>
       </Flex>
       <div
+        onClick={onClose}
         style={{
           flex: 1,
           position: "relative",
@@ -100,6 +101,7 @@ export function FocusedVideoView({
           overflow: "hidden",
           background: "#000",
           minHeight: 0,
+          cursor: "pointer",
         }}
       >
         <video
@@ -114,6 +116,7 @@ export function FocusedVideoView({
             width: "100%",
             height: "100%",
             objectFit,
+            pointerEvents: "none",
             transform: mirrored ? "scaleX(-1)" : undefined,
           }}
         />
