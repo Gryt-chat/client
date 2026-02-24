@@ -17,6 +17,7 @@ import {
 
 import { MemberInfo } from "../components/MemberSidebar";
 import { Clients } from "../types/clients";
+import { syncAvatarToHost } from "../utils/syncAvatarToHost";
 import { useSocketEvents } from "./useSocketEvents";
 
 type Sockets = { [host: string]: Socket };
@@ -224,6 +225,9 @@ function useSocketsHook() {
           setTimeout(() => {
             socket.emit("server:details");
             socket.emit("members:fetch");
+            const existingAvatarFileId = localStorage.getItem(`avatarFileId:${host}`);
+            syncAvatarToHost(host, existingAccessToken, existingAvatarFileId, socket, setServerProfiles)
+              .catch(() => {});
           }, 1000);
         } else {
           (async () => {

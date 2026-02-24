@@ -3,11 +3,8 @@ import toast from "react-hot-toast";
 import { Socket } from "socket.io-client";
 
 import {
-  getAvatarHash,
   getServerAccessToken,
-  getServerHttpBase,
   getServerRefreshToken,
-  getStoredAvatar,
   getUploadsFileUrl,
   getValidIdentityToken,
   removeServerAccessToken,
@@ -27,39 +24,7 @@ import { MemberInfo } from "../components/MemberSidebar";
 import { Clients } from "../types/clients";
 import { fetchCustomEmojis, setCustomEmojis } from "../utils/emojiData";
 import { handleRateLimitError } from "../utils/rateLimitHandler";
-
-function extForMime(mime: string): string {
-  switch ((mime || "").toLowerCase()) {
-    case "image/gif": return "gif";
-    case "image/png": return "png";
-    case "image/jpeg": return "jpg";
-    case "image/webp": return "webp";
-    default: return "bin";
-  }
-}
-
-async function uploadAvatarToServer(host: string, accessToken: string, blob: Blob): Promise<{ avatarFileId?: string }> {
-  const form = new FormData();
-  const ext = extForMime(blob.type || "");
-  form.append("file", blob, `avatar.${ext}`);
-  const base = getServerHttpBase(host);
-  const r = await fetch(`${base}/api/uploads/avatar`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${accessToken}` },
-    body: form,
-  });
-  let data: Record<string, unknown> = {};
-  try {
-    data = await r.json();
-  } catch {
-    data = {};
-  }
-  if (!r.ok) {
-    console.warn(`[Avatar] auto-sync upload failed for ${host}: ${r.status}`, data);
-    return {};
-  }
-  return data as { avatarFileId?: string };
-}
+import { syncAvatarToHost } from "../utils/syncAvatarToHost";
 
 const TOKEN_HEAL_COOLDOWN_MS = 10_000;
 const tokenHealLastAttempt = new Map<string, number>();
@@ -201,30 +166,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     socket.emit("members:fetch");
 
     if (joinInfo.accessToken) {
-      Promise.resolve()
-        .then(async () => {
-          const stored = await getStoredAvatar().catch(() => null);
-          if (!stored?.blob) return;
-
-          const localHash = await getAvatarHash(stored.blob);
-          const lastUploadedHash = localStorage.getItem(`avatarHash:${host}`);
-          if (joinInfo.avatarFileId && localHash === lastUploadedHash) return;
-
-          const result = await uploadAvatarToServer(host, joinInfo.accessToken, stored.blob);
-          if (result.avatarFileId) {
-            localStorage.setItem(`avatarFileId:${host}`, result.avatarFileId);
-            localStorage.setItem(`avatarHash:${host}`, localHash);
-            setServerProfiles(prev => ({
-              ...prev,
-              [host]: {
-                ...prev[host],
-                avatarFileId: result.avatarFileId!,
-                avatarUrl: getUploadsFileUrl(host, result.avatarFileId!),
-              },
-            }));
-            socket.emit("avatar:updated");
-          }
-        })
+      syncAvatarToHost(host, joinInfo.accessToken, joinInfo.avatarFileId, socket, setServerProfiles)
         .catch(() => {});
     }
   });
