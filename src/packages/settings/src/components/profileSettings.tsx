@@ -19,7 +19,7 @@ function extForMime(mime: string): string {
   }
 }
 
-async function uploadAvatarToHost(host: string, file: Blob): Promise<{ avatarFileId?: string }> {
+async function uploadAvatarToHost(host: string, file: Blob): Promise<{ avatarFileId?: string; processing?: boolean }> {
   const token = getServerAccessToken(host);
   if (!token) throw new Error("Not authenticated with this server. Try reconnecting.");
   const form = new FormData();
@@ -49,7 +49,7 @@ async function uploadAvatarToHost(host: string, file: Blob): Promise<{ avatarFil
             : `HTTP ${r.status} ${r.statusText || ""}`.trim();
     throw new Error(msg);
   }
-  return (data || {}) as { avatarFileId?: string };
+  return (data || {}) as { avatarFileId?: string; processing?: boolean };
 }
 
 async function removeAvatarFromHost(host: string): Promise<void> {
@@ -266,12 +266,8 @@ export function ProfileSettings() {
 
     let uploadFile: File = file;
 
-    if ((file.type || "").toLowerCase() === "image/gif") {
-      if (file.size > minAvatarMaxBytes) {
-        toast.error(`GIF avatar too large (max ${(minAvatarMaxBytes / (1024 * 1024)).toFixed(1)}MB). Upload a smaller GIF or a static image.`);
-        return;
-      }
-    } else {
+    const isAnimatedFormat = ["image/gif", "image/webp"].includes((file.type || "").toLowerCase());
+    if (!isAnimatedFormat) {
       try {
         const blob = await compressStaticAvatarToLimit(file, { maxBytes: minAvatarMaxBytes, sizePx: 256 });
         if (blob instanceof Blob) {
@@ -298,6 +294,7 @@ export function ProfileSettings() {
 
       const failed: Array<{ host: string; reason: string }> = [];
       let anySuccess = false;
+      let anyProcessing = false;
 
       results.forEach((r, idx) => {
         const host = hosts[idx];
@@ -311,6 +308,7 @@ export function ProfileSettings() {
         }
 
         anySuccess = true;
+        if (r.value.processing) anyProcessing = true;
         if (r.value.avatarFileId) {
           localStorage.setItem(`avatarFileId:${host}`, r.value.avatarFileId);
           if (uploadHash) localStorage.setItem(`avatarHash:${host}`, uploadHash);
@@ -337,6 +335,8 @@ export function ProfileSettings() {
         } else {
           toast.error(`Avatar upload failed for ${failed.length}/${hosts.length} servers`);
         }
+      } else if (anySuccess && anyProcessing) {
+        toast("Your avatar has been uploaded. It's being processed by the server \u2014 once done, your avatar will be animated.");
       } else if (anySuccess) {
         toast.success("Avatar updated");
       }

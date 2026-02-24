@@ -1,8 +1,9 @@
-import { Box, Dialog, Flex, IconButton, Tabs, Text } from "@radix-ui/themes";
-import { MdClose, MdKeyboard, MdMic, MdNotifications, MdPalette, MdPerson, MdRefresh, MdTune, MdVideocam, MdVolumeUp } from "react-icons/md";
+import { Box, Dialog, Flex, IconButton, Tabs } from "@radix-ui/themes";
+import { MdClose, MdInfoOutline, MdKeyboard, MdMic, MdNotifications, MdPalette, MdPerson, MdTune, MdVideocam, MdVolumeUp } from "react-icons/md";
 
 import { useSettings } from "@/settings";
 
+import { AboutSettings } from "./aboutSettings";
 import { AdvancedSettings } from "./advancedSettings";
 import { AudioSettings } from "./audioSettings";
 import { CameraSettings } from "./cameraSettings";
@@ -10,7 +11,6 @@ import { HotkeySettings } from "./hotkeySettings";
 import { NotificationSettings } from "./notificationSettings";
 import { ProfileSettings } from "./profileSettings";
 import { AppearanceSettings } from "./theme/appearanceSettings";
-import { UpdateSettings } from "./updateSettings";
 import { VoiceCallSettings } from "./voiceCallSettings";
 
 const TAB_CONFIG = [
@@ -65,10 +65,10 @@ const TAB_CONFIG = [
     content: <AdvancedSettings />,
   },
   {
-    value: "updates",
-    label: "Updates",
-    icon: MdRefresh,
-    content: <UpdateSettings />,
+    value: "about",
+    label: "About",
+    icon: MdInfoOutline,
+    content: <AboutSettings />,
   },
 ];
 
@@ -138,13 +138,6 @@ export function Settings() {
                       </Tabs.Trigger>
                     ))}
                   </Tabs.List>
-                  <Text
-                    size="1"
-                    color="gray"
-                    style={{ fontFamily: "var(--code-font-family)", padding: "12px 16px", opacity: 0.5 }}
-                  >
-                    v{__APP_VERSION__}
-                  </Text>
                 </Box>
 
                 {/* Tab Content */}

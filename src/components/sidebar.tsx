@@ -10,7 +10,7 @@ import {
   IconButton,
   Tooltip,
 } from "@radix-ui/themes";
-import { MdAdd, MdBugReport, MdLightbulb, MdMic, MdPushPin, MdSettings } from "react-icons/md";
+import { MdAdd, MdFeedback, MdMic, MdPushPin, MdSettings } from "react-icons/md";
 
 import { useAccount } from "@/common";
 import { useSettings } from "@/settings";
@@ -209,16 +209,8 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
               onClick={() => window.open("https://feedback.gryt.chat", "_blank")}
             >
               <Flex align="center" gap="1">
-                <MdBugReport size={14} />
-                Report a bug
-              </Flex>
-            </DropdownMenu.Item>
-            <DropdownMenu.Item
-              onClick={() => window.open("https://feedback.gryt.chat", "_blank")}
-            >
-              <Flex align="center" gap="1">
-                <MdLightbulb size={14} />
-                Suggest a feature
+                <MdFeedback size={14} />
+                Give feedback
               </Flex>
             </DropdownMenu.Item>
             <DropdownMenu.Separator />

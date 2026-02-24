@@ -1,27 +1,36 @@
-import { Badge, Box, Button, Card, Flex, Heading, Progress, Separator, Switch, Text } from "@radix-ui/themes";
+import { Badge, Box, Button, Card, Flex, Heading, Link, Progress, Separator, Switch, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useState } from "react";
-import { MdCancel, MdCheckCircle, MdDesktopWindows, MdDownload, MdOpenInNew, MdRefresh } from "react-icons/md";
+import {
+  MdCancel,
+  MdCheckCircle,
+  MdDesktopWindows,
+  MdDownload,
+  MdFeedback,
+  MdOpenInNew,
+  MdRefresh,
+} from "react-icons/md";
+import { FaGithub } from "react-icons/fa";
 
 import { getElectronAPI, isElectron, UpdateStatus } from "../../../../lib/electron";
 import { SettingsContainer } from "./settingsComponents";
 
-const RELEASES_URL = "https://github.com/Gryt-chat/gryt/releases/latest";
+const GITHUB_URL = "https://github.com/Gryt-chat/gryt";
+const FEEDBACK_URL = "https://feedback.gryt.chat";
+const RELEASES_URL = `${GITHUB_URL}/releases/latest`;
 
-export function UpdateSettings() {
+function UpdateControls() {
   const [status, setStatus] = useState<UpdateStatus | null>(null);
   const [appVersion, setAppVersion] = useState<string>("…");
   const [betaChannel, setBetaChannel] = useState(false);
-  const inElectron = isElectron();
 
   useEffect(() => {
-    if (!inElectron) return;
     const api = getElectronAPI();
     if (!api) return;
 
     api.getAppVersion().then(setAppVersion);
     api.getBetaChannel().then(setBetaChannel);
     return api.onUpdateStatus(setStatus);
-  }, [inElectron]);
+  }, []);
 
   const handleCheckForUpdates = useCallback(() => {
     getElectronAPI()?.checkForUpdates();
@@ -38,49 +47,6 @@ export function UpdateSettings() {
     api.setBetaChannel(enabled);
     api.checkForUpdates();
   }, []);
-
-  if (!inElectron) {
-    return (
-      <SettingsContainer>
-        <Heading size="4">Updates</Heading>
-
-        <Card size="2">
-          <Flex direction="column" gap="3">
-            <Flex align="center" gap="2">
-              <MdDesktopWindows size={18} />
-              <Text size="3" weight="medium">Get the desktop app</Text>
-            </Flex>
-            <Text size="2" color="gray">
-              The desktop app includes auto-updates, system tray integration,
-              push-to-talk hotkeys, and native notifications.
-            </Text>
-            <Separator size="4" />
-            <Text size="2" color="gray">
-              Available for Windows, macOS, and Linux.
-            </Text>
-            <Button variant="solid" size="3" asChild>
-              <a
-                href={RELEASES_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <MdDownload size={18} />
-                Download Gryt Desktop
-                <MdOpenInNew size={14} />
-              </a>
-            </Button>
-          </Flex>
-        </Card>
-
-        <Box>
-          <Text size="2" color="gray">
-            You&apos;re using the web version. The web client is always up to date
-            and doesn&apos;t require manual updates.
-          </Text>
-        </Box>
-      </SettingsContainer>
-    );
-  }
 
   const statusText = (() => {
     if (!status) return null;
@@ -122,8 +88,10 @@ export function UpdateSettings() {
   const isReady = status?.status === "downloaded";
 
   return (
-    <SettingsContainer>
-      <Heading size="4">Updates</Heading>
+    <>
+      <Separator size="4" />
+
+      <Heading size="3">Updates</Heading>
 
       <Flex direction="column" gap="4">
         <Flex align="center" gap="3">
@@ -185,6 +153,85 @@ export function UpdateSettings() {
           )}
         </Flex>
       </Flex>
+    </>
+  );
+}
+
+function DesktopAppCard() {
+  return (
+    <>
+      <Separator size="4" />
+
+      <Card size="2">
+        <Flex direction="column" gap="3">
+          <Flex align="center" gap="2">
+            <MdDesktopWindows size={18} />
+            <Text size="3" weight="medium">Get the desktop app</Text>
+          </Flex>
+          <Text size="2" color="gray">
+            The desktop app includes auto-updates, system tray integration,
+            push-to-talk hotkeys, and native notifications.
+          </Text>
+          <Text size="2" color="gray">
+            Available for Windows, macOS, and Linux.
+          </Text>
+          <Button variant="solid" size="2" asChild>
+            <a href={RELEASES_URL} target="_blank" rel="noopener noreferrer">
+              <MdDownload size={16} />
+              Download Gryt Desktop
+              <MdOpenInNew size={14} />
+            </a>
+          </Button>
+        </Flex>
+      </Card>
+    </>
+  );
+}
+
+export function AboutSettings() {
+  const inElectron = isElectron();
+
+  return (
+    <SettingsContainer>
+      <Heading size="4">About</Heading>
+
+      <Flex direction="column" gap="1">
+        <Text size="5" weight="bold">Gryt.chat</Text>
+        <Text size="2" color="gray" style={{ fontFamily: "var(--code-font-family)" }}>
+          v{__APP_VERSION__}
+        </Text>
+      </Flex>
+
+      <Flex direction="column" gap="1">
+        <Text size="1" color="gray">&copy; 2022–2026 Sivert Gullberg Hansen</Text>
+        <Text size="1" color="gray">
+          Licensed under{" "}
+          <Link
+            href={`${GITHUB_URL}/blob/main/LICENSE`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            AGPL-3.0-or-later
+          </Link>
+        </Text>
+      </Flex>
+
+      <Flex gap="3" wrap="wrap">
+        <Button variant="soft" color="gray" asChild>
+          <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
+            <FaGithub size={16} />
+            GitHub
+          </a>
+        </Button>
+        <Button variant="soft" color="gray" asChild>
+          <a href={FEEDBACK_URL} target="_blank" rel="noopener noreferrer">
+            <MdFeedback size={16} />
+            Give feedback
+          </a>
+        </Button>
+      </Flex>
+
+      {inElectron ? <UpdateControls /> : <DesktopAppCard />}
     </SettingsContainer>
   );
 }
