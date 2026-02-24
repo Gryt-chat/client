@@ -162,6 +162,7 @@ export interface SetupPeerConnectionDeps {
   sfuWebSocketRef: MutableRefObject<WebSocket | null>;
   connectionTimeoutRef: MutableRefObject<NodeJS.Timeout | null>;
   isDisconnectingRef: MutableRefObject<boolean>;
+  isNegotiatingRef: MutableRefObject<boolean>;
   setStreams: Dispatch<SetStateAction<Streams>>;
   setConnectionState: Dispatch<SetStateAction<SFUConnectionStateInternal>>;
   performCleanup?: (skipServerUpdate?: boolean) => Promise<void>;
@@ -172,7 +173,7 @@ export function setupPeerConnection(
   deps: SetupPeerConnectionDeps,
   eSportsModeEnabled: boolean = false,
 ): RTCPeerConnection {
-  const { sfuWebSocketRef, connectionTimeoutRef, isDisconnectingRef, setStreams, setConnectionState, performCleanup } = deps;
+  const { sfuWebSocketRef, connectionTimeoutRef, isDisconnectingRef, isNegotiatingRef, setStreams, setConnectionState, performCleanup } = deps;
 
   const config: RTCConfiguration = {
     iceServers: [{ urls: stunServers }],
@@ -235,6 +236,7 @@ export function setupPeerConnection(
   pc.onnegotiationneeded = () => {
     const ws = sfuWebSocketRef.current;
     if (!ws || ws.readyState !== WebSocket.OPEN || isDisconnectingRef.current) return;
+    if (isNegotiatingRef.current) return;
     voiceLog.info("WEBRTC", "Negotiation needed — requesting SFU renegotiation");
     try {
       ws.send(JSON.stringify({ event: "renegotiate", data: "" }));
@@ -382,6 +384,7 @@ export interface ConnectParams {
     isDisconnectingRef: MutableRefObject<boolean>;
     sfuWebSocketRef: MutableRefObject<WebSocket | null>;
     peerConnectionRef: MutableRefObject<RTCPeerConnection | null>;
+    isNegotiatingRef: MutableRefObject<boolean>;
   };
   connectSoundFile: string;
   connectSoundVolume: number;
@@ -600,6 +603,7 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
     voiceLog.step("CONNECT", 5, "Creating RTCPeerConnection", { stunServers: stunHosts, eSportsModeEnabled });
     const peerConnection = setupPeerConnection(stunHosts, {
       sfuWebSocketRef, connectionTimeoutRef, isDisconnectingRef,
+      isNegotiatingRef: sfuConnectionRefs.isNegotiatingRef,
       setStreams, setConnectionState,
       performCleanup,
     }, eSportsModeEnabled);

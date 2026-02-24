@@ -55,6 +55,11 @@ export function useChatScroll(
   const prevScrollHeightRef = useRef(0);
 
   useLayoutEffect(() => {
+    prevFirstMsgIdRef.current = undefined;
+    prevScrollHeightRef.current = 0;
+  }, [conversationKey]);
+
+  useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     const firstMsgId = chatMessages[0]?.message_id;
@@ -79,7 +84,10 @@ export function useChatScroll(
     if (!lastId) return;
     const prev = lastMessageIdRef.current;
     lastMessageIdRef.current = lastId;
-    if (!prev) return;
+    if (!prev) {
+      requestAnimationFrame(() => scrollToBottom("auto"));
+      return;
+    }
     if (!isAtBottomRef.current && !forceScrollToBottomRef.current) return;
     requestAnimationFrame(() => {
       scrollToBottom(initialLoadDoneRef.current ? "smooth" : "auto");

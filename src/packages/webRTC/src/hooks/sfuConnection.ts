@@ -20,6 +20,7 @@ interface SFUConnectionRefs {
   isDisconnectingRef: MutableRefObject<boolean>;
   sfuWebSocketRef: MutableRefObject<WebSocket | null>;
   peerConnectionRef: MutableRefObject<RTCPeerConnection | null>;
+  isNegotiatingRef: MutableRefObject<boolean>;
 }
 
 export async function connectToSfuWebSocket(
@@ -28,7 +29,7 @@ export async function connectToSfuWebSocket(
   refs: SFUConnectionRefs,
   eSportsModeEnabled: boolean = false,
 ): Promise<WebSocket> {
-  const { isDisconnectingRef, sfuWebSocketRef, peerConnectionRef } = refs;
+  const { isDisconnectingRef, sfuWebSocketRef, peerConnectionRef, isNegotiatingRef } = refs;
 
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(sfuUrl);
@@ -145,6 +146,7 @@ export async function connectToSfuWebSocket(
       }
 
       offerProcessingInProgress = true;
+      isNegotiatingRef.current = true;
 
       peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(offer))
         .then(() => {
@@ -189,6 +191,7 @@ export async function connectToSfuWebSocket(
         })
         .finally(() => {
           offerProcessingInProgress = false;
+          isNegotiatingRef.current = false;
           if (pendingOffer) {
             voiceLog.info("SFU-WS", "Processing queued offer…");
             const next = pendingOffer;

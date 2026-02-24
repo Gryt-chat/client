@@ -24,6 +24,7 @@ function useSfuHook(): SFUInterface {
   const previousRemoteStreamsRef = useRef<Set<string>>(new Set());
   const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isDisconnectingRef = useRef<boolean>(false);
+  const isNegotiatingRef = useRef<boolean>(false);
   const isConnectingRef = useRef<boolean>(false);
   const connectSeqRef = useRef<number>(0);
 
@@ -148,6 +149,7 @@ function useSfuHook(): SFUInterface {
     isDisconnectingRef,
     sfuWebSocketRef,
     peerConnectionRef,
+    isNegotiatingRef,
   }), []);
 
   // Track the last channel ID so we can reconnect after server restart

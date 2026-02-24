@@ -11,8 +11,8 @@ import {
   TextField,
 } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useState } from "react";
-import { MdClose, MdWarning, MdWifi } from "react-icons/md";
+import { useEffect, useMemo, useState } from "react";
+import { MdClose, MdInfoOutline, MdWarning, MdWifi } from "react-icons/md";
 import { io, Socket } from "socket.io-client";
 
 import {
@@ -54,6 +54,11 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
   const [inviteRequired, setInviteRequired] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
   const [joinError, setJoinError] = useState("");
+
+  const alreadyMember = useMemo(
+    () => serverHost.length > 0 && !!servers[normalizeHost(serverHost)],
+    [serverHost, servers],
+  );
 
   function closeDialog() {
     if (!isSearching && !isJoining) {
@@ -163,6 +168,7 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
 
     new_socket.on("connect", () => {
       setSocket(new_socket);
+      new_socket.emit("server:info");
     });
 
     new_socket.on("server:info", (info: FetchInfo) => {
@@ -232,6 +238,25 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
                 {isSearching ? "Connecting" : "Connect"}
               </Button>
             </Flex>
+
+            <AnimatePresence>
+              {alreadyMember && !serverInfo && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                >
+                  <Callout.Root color="blue">
+                    <Callout.Icon>
+                      <MdInfoOutline size={16} />
+                    </Callout.Icon>
+                    <Callout.Text>
+                      You are already a member of this server.
+                    </Callout.Text>
+                  </Callout.Root>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <AnimatePresence>
               {hasError.length > 0 && (
