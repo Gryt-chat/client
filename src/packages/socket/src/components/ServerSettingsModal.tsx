@@ -114,7 +114,7 @@ export function ServerSettingsModal() {
       value: "emojis",
       label: "Emojis",
       icon: MdEmojiEmotions,
-      content: <ServerEmojisTab host={host} accessToken={accessToken} />,
+      content: <ServerEmojisTab host={host} socket={socket} accessToken={accessToken} />,
     },
     {
       value: "audit",

@@ -29,6 +29,7 @@ type ServerSettingsPayload = {
   hasPassword: boolean;
   avatarMaxBytes?: number | null;
   uploadMaxBytes?: number | null;
+  emojiMaxBytes?: number | null;
   profanityMode?: ProfanityMode;
   profanityCensorStyle?: CensorStyle;
 };
@@ -86,12 +87,14 @@ export function ServerOverviewTab({
     description: string;
     avatarMaxBytes: number | null;
     uploadMaxBytes: number | null;
+    emojiMaxBytes: number | null;
     profanityMode: ProfanityMode;
     profanityCensorStyle: CensorStyle;
   } | null>(null);
 
   const [avatarMaxMb, setAvatarMaxMb] = useState<string>("");
   const [uploadMaxMb, setUploadMaxMb] = useState<string>("");
+  const [emojiMaxMb, setEmojiMaxMb] = useState<string>("");
 
   const effectiveAccessToken = useMemo(() => accessToken || getServerAccessToken(host), [accessToken, host]);
 
@@ -144,6 +147,7 @@ export function ServerOverviewTab({
         setDescription(payload.description || "");
         setAvatarMaxMb(toMbString(payload.avatarMaxBytes));
         setUploadMaxMb(toMbString(payload.uploadMaxBytes));
+        setEmojiMaxMb(toMbString(payload.emojiMaxBytes));
       } else {
         toast.success("Settings saved");
       }
@@ -156,6 +160,7 @@ export function ServerOverviewTab({
         description: payload.description || "",
         avatarMaxBytes: (typeof payload.avatarMaxBytes === "number" && Number.isFinite(payload.avatarMaxBytes)) ? payload.avatarMaxBytes : null,
         uploadMaxBytes: (typeof payload.uploadMaxBytes === "number" && Number.isFinite(payload.uploadMaxBytes)) ? payload.uploadMaxBytes : null,
+        emojiMaxBytes: (typeof payload.emojiMaxBytes === "number" && Number.isFinite(payload.emojiMaxBytes)) ? payload.emojiMaxBytes : null,
         profanityMode: payload.profanityMode ?? "censor",
         profanityCensorStyle: payload.profanityCensorStyle ?? "emoji",
       };
@@ -189,6 +194,7 @@ export function ServerOverviewTab({
     description: string;
     avatarMaxBytes: number | null;
     uploadMaxBytes: number | null;
+    emojiMaxBytes: number | null;
     profanityMode: ProfanityMode;
     profanityCensorStyle: CensorStyle;
   }>) => {
@@ -246,6 +252,7 @@ export function ServerOverviewTab({
         ...(password.trim().length > 0 ? { password: password.trim() } : {}),
         avatarMaxBytes: parseMbToBytes(avatarMaxMb),
         uploadMaxBytes: parseMbToBytes(uploadMaxMb),
+        emojiMaxBytes: parseMbToBytes(emojiMaxMb),
       });
       toast.success("Server settings saved");
     } catch (e: unknown) {
@@ -631,6 +638,23 @@ export function ServerOverviewTab({
             onChange={(e) => setUploadMaxMb(e.target.value)}
             onBlur={() => saveIfChanged({ uploadMaxBytes: parseMbToBytes(uploadMaxMb) })}
             placeholder="e.g. 25"
+            disabled={submitting || !isOwner}
+          />
+        </Flex>
+
+        <Flex direction="column" gap="2">
+          <Text size="2" weight="medium">
+            Max emoji upload (MB)
+          </Text>
+          <TextField.Root
+            type="number"
+            inputMode="decimal"
+            step="0.5"
+            min="0"
+            value={emojiMaxMb}
+            onChange={(e) => setEmojiMaxMb(e.target.value)}
+            onBlur={() => saveIfChanged({ emojiMaxBytes: parseMbToBytes(emojiMaxMb) })}
+            placeholder="e.g. 5"
             disabled={submitting || !isOwner}
           />
         </Flex>

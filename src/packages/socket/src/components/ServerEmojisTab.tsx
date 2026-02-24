@@ -24,6 +24,7 @@ const EMOJI_NAME_RE = /^[A-Za-z0-9_]{2,32}$/;
 const IMAGE_MIME_RE = /^image\/(png|jpeg|webp|gif|svg\+xml|avif)$/i;
 const IMAGE_EXT_RE = /\.(png|jpe?g|webp|gif|svg|avif)$/i;
 const ZIP_TYPES = new Set(["application/zip", "application/x-zip-compressed", "application/x-zip"]);
+const DEFAULT_MAX_EMOJI_BYTES = 5 * 1024 * 1024;
 
 type EmojiItem = { name: string; file_id: string };
 
@@ -61,23 +62,32 @@ function isZipFile(file: File): boolean {
   return ZIP_TYPES.has(file.type) || file.name.toLowerCase().endsWith(".zip");
 }
 
-async function extractImagesFromZip(zipFile: File): Promise<File[]> {
+async function extractImagesFromZip(zipFile: File, maxEmojiBytes: number): Promise<{
+  images: File[];
+  skippedNonImage: number;
+  skippedTooLarge: number;
+  skippedEmpty: number;
+}> {
   const buf = await zipFile.arrayBuffer();
   const entries = unzipSync(new Uint8Array(buf));
   const images: File[] = [];
+  let skippedNonImage = 0;
+  let skippedTooLarge = 0;
+  let skippedEmpty = 0;
 
   for (const [path, data] of Object.entries(entries)) {
     if (path.startsWith("__MACOSX/") || path.endsWith("/")) continue;
     const filename = path.split("/").pop() || path;
-    if (!IMAGE_EXT_RE.test(filename)) continue;
-    if (data.length === 0 || data.length > 5 * 1024 * 1024) continue;
+    if (!IMAGE_EXT_RE.test(filename)) { skippedNonImage++; continue; }
+    if (data.length === 0) { skippedEmpty++; continue; }
+    if (data.length > maxEmojiBytes) { skippedTooLarge++; continue; }
     const ext = filename.split(".").pop() || "png";
     const mime = extToMime(ext);
     const copied = new Uint8Array(data) as BlobPart;
     images.push(new File([copied], filename, { type: mime }));
   }
 
-  return images;
+  return { images, skippedNonImage, skippedTooLarge, skippedEmpty };
 }
 
 function deduplicateNames(names: string[], existingNames: Set<string>): string[] {
@@ -119,14 +129,33 @@ function validateName(
 
 export function ServerEmojisTab({
   host,
+  socket,
   accessToken,
 }: {
   host: string;
+  socket?: {
+    connected: boolean;
+    emit: (event: string, data?: unknown) => void;
+    on: (event: string, handler: (payload: unknown) => void) => void;
+    off: (event: string, handler: (payload: unknown) => void) => void;
+  };
   accessToken: string | null;
 }) {
+  const [lastSelectSummary, setLastSelectSummary] = useState<{
+    selected: number;
+    added: number;
+    skippedTooLarge: number;
+    skippedUnsupported: number;
+    skippedZipNonImage: number;
+    skippedZipTooLarge: number;
+    skippedZipEmpty: number;
+    tooLargeExamples: string[];
+    unsupportedExamples: string[];
+  } | null>(null);
   const [emojis, setEmojis] = useState<EmojiItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [emojiMaxBytes, setEmojiMaxBytes] = useState<number>(DEFAULT_MAX_EMOJI_BYTES);
   const [deletingName, setDeletingName] = useState<string | null>(null);
   const [pendingEmojis, setPendingEmojis] = useState<PendingEmoji[]>([]);
   const [editingEmoji, setEditingEmoji] = useState<string | null>(null);
@@ -143,6 +172,25 @@ export function ServerEmojisTab({
   const base = useMemo(() => getServerHttpBase(host), [host]);
 
   const existingNames = useMemo(() => new Set(emojis.map((e) => e.name)), [emojis]);
+
+  useEffect(() => {
+    if (!socket || !socket.connected) return;
+
+    const onSettings = (payload: unknown) => {
+      const p = (payload && typeof payload === "object") ? (payload as Record<string, unknown>) : {};
+      const v = p.emojiMaxBytes;
+      if (typeof v === "number" && Number.isFinite(v) && v > 0) {
+        setEmojiMaxBytes(v);
+      }
+    };
+
+    socket.on("server:settings", onSettings);
+    socket.emit("server:settings:get");
+
+    return () => {
+      socket.off("server:settings", onSettings);
+    };
+  }, [socket]);
 
   const refresh = useCallback(async () => {
     console.log("[EmojiUpload] refresh: fetching emojis for host:", host);
@@ -213,6 +261,13 @@ export function ServerEmojisTab({
 
     const imageFiles: File[] = [];
     const zipFiles: File[] = [];
+    let skippedTooLarge = 0;
+    let skippedUnsupported = 0;
+    let skippedZipNonImage = 0;
+    let skippedZipTooLarge = 0;
+    let skippedZipEmpty = 0;
+    const tooLargeExamples: string[] = [];
+    const unsupportedExamples: string[] = [];
 
     for (const f of files) {
       const isImage = IMAGE_MIME_RE.test(f.type) || IMAGE_EXT_RE.test(f.name);
@@ -221,25 +276,30 @@ export function ServerEmojisTab({
       if (isZip) {
         zipFiles.push(f);
       } else if (isImage) {
-        if (f.size > 5 * 1024 * 1024) {
-          toast.error(`"${f.name}": too large (max 5 MB).`);
+        if (f.size > emojiMaxBytes) {
+          skippedTooLarge++;
+          if (tooLargeExamples.length < 3) tooLargeExamples.push(f.name);
           continue;
         }
         imageFiles.push(f);
       } else {
         console.warn("[EmojiUpload] handleFileSelect: rejected file:", f.name, "type:", f.type);
-        toast.error(`"${f.name}": unsupported format. Use PNG, JPEG, WebP, GIF, AVIF, SVG, or ZIP.`);
+        skippedUnsupported++;
+        if (unsupportedExamples.length < 3) unsupportedExamples.push(f.name);
       }
     }
 
     for (const zip of zipFiles) {
       try {
-        const extracted = await extractImagesFromZip(zip);
-        if (extracted.length === 0) {
+        const extracted = await extractImagesFromZip(zip, emojiMaxBytes);
+        skippedZipNonImage += extracted.skippedNonImage;
+        skippedZipTooLarge += extracted.skippedTooLarge;
+        skippedZipEmpty += extracted.skippedEmpty;
+        if (extracted.images.length === 0) {
           toast.error(`"${zip.name}": no valid images found in archive.`);
         } else {
-          toast.success(`Extracted ${extracted.length} image(s) from "${zip.name}".`);
-          imageFiles.push(...extracted);
+          toast.success(`Extracted ${extracted.images.length} image(s) from "${zip.name}".`);
+          imageFiles.push(...extracted.images);
         }
       } catch (err) {
         console.error("[EmojiUpload] handleFileSelect: zip extraction failed:", zip.name, err);
@@ -248,6 +308,28 @@ export function ServerEmojisTab({
     }
 
     console.log("[EmojiUpload] handleFileSelect: passing", imageFiles.length, "image(s) to addImageFiles");
+    const selected = files.length;
+    const added = imageFiles.length;
+    setLastSelectSummary({
+      selected,
+      added,
+      skippedTooLarge,
+      skippedUnsupported,
+      skippedZipNonImage,
+      skippedZipTooLarge,
+      skippedZipEmpty,
+      tooLargeExamples,
+      unsupportedExamples,
+    });
+    const skippedTotal = skippedTooLarge + skippedUnsupported + skippedZipNonImage + skippedZipTooLarge + skippedZipEmpty;
+    if (skippedTotal > 0) {
+      const parts = [
+        skippedTooLarge > 0 ? `${skippedTooLarge} too large (>${Math.round((emojiMaxBytes / (1024 * 1024)) * 10) / 10} MB)` : null,
+        skippedUnsupported > 0 ? `${skippedUnsupported} unsupported` : null,
+        (skippedZipTooLarge + skippedZipEmpty) > 0 ? `${skippedZipTooLarge + skippedZipEmpty} zip entries too large/empty` : null,
+      ].filter((p): p is string => p !== null);
+      toast.error(`Skipped ${skippedTotal} item(s). ${parts.join(", ")}`);
+    }
     addImageFiles(imageFiles);
   };
 
@@ -293,18 +375,40 @@ export function ServerEmojisTab({
       return Promise.resolve(false);
     }
 
+    console.log("[EmojiUpload] uploadOne: start", {
+      id: item.id,
+      name: item.name,
+      fileName: item.file.name,
+      type: item.file.type,
+      size: item.file.size,
+      base,
+    });
     setPendingEmojis((prev) => prev.map((p) => (p.id === item.id ? { ...p, status: "uploading", progress: 0 } : p)));
 
     return new Promise<boolean>((resolve) => {
       const xhr = new XMLHttpRequest();
+      let lastLoggedPct = -1;
+      const startedAt = Date.now();
+
+      xhr.upload.addEventListener("loadstart", () => {
+        console.log("[EmojiUpload] uploadOne: xhr upload loadstart", { id: item.id, name: item.name });
+      });
       xhr.upload.addEventListener("progress", (e) => {
         if (e.lengthComputable) {
           const pct = Math.round((e.loaded / e.total) * 100);
+          if (pct >= 0 && pct <= 100) {
+            const milestone = Math.floor(pct / 25) * 25;
+            if (milestone !== lastLoggedPct) {
+              lastLoggedPct = milestone;
+              console.log("[EmojiUpload] uploadOne: progress", { id: item.id, name: item.name, pct });
+            }
+          }
           setPendingEmojis((prev) => prev.map((p) => (p.id === item.id ? { ...p, progress: pct } : p)));
         }
       });
       xhr.upload.addEventListener("loadend", () => {
         // Upload finished; server may still be converting to AVIF.
+        console.log("[EmojiUpload] uploadOne: upload finished; waiting for server response", { id: item.id, name: item.name });
         setPendingEmojis((prev) => prev.map((p) => (
           p.id === item.id && p.status === "uploading"
             ? { ...p, status: "processing", progress: 100 }
@@ -315,9 +419,39 @@ export function ServerEmojisTab({
       xhr.addEventListener("load", () => {
         let data: Record<string, unknown> = {};
         try { data = JSON.parse(xhr.responseText); } catch { /* not JSON */ }
+        console.log("[EmojiUpload] uploadOne: server response", {
+          id: item.id,
+          name: item.name,
+          status: xhr.status,
+          ok: xhr.status >= 200 && xhr.status < 300,
+          ms: Date.now() - startedAt,
+        });
         if (xhr.status >= 200 && xhr.status < 300) {
           toast.success(`Emoji :${item.name}: uploaded!`);
-          setPendingEmojis((prev) => prev.map((p) => (p.id === item.id ? { ...p, status: "done", progress: 100 } : p)));
+          const uploadedName = typeof data.name === "string" ? data.name : null;
+          const uploadedFileId = typeof data.file_id === "string" ? data.file_id : null;
+          if (uploadedName && uploadedFileId) {
+            console.log("[EmojiUpload] uploadOne: applying optimistic list update", { id: item.id, uploadedName, uploadedFileId });
+            setEmojis((prev) => {
+              const next = [
+                ...prev.filter((e) => e.name !== uploadedName),
+                { name: uploadedName, file_id: uploadedFileId },
+              ].sort((a, b) => a.name.localeCompare(b.name));
+              setCustomEmojis(next, host);
+              return next;
+            });
+          }
+          setPendingEmojis((prev) => {
+            const existing = prev.find((p) => p.id === item.id);
+            if (existing) URL.revokeObjectURL(existing.previewUrl);
+            const remaining = prev.filter((p) => p.id !== item.id);
+            const batchNames = remaining.map((p) => p.name);
+            console.log("[EmojiUpload] uploadOne: removed from pending", { id: item.id, name: item.name, remaining: remaining.length });
+            return remaining.map((p, i) => {
+              const { error, warning } = validateName(p.name, existingNames, batchNames, i);
+              return { ...p, nameError: error, nameWarning: warning };
+            });
+          });
           resolve(true);
         } else {
           const errMsg = (typeof data?.message === "string" && data.message) ||
@@ -331,6 +465,7 @@ export function ServerEmojisTab({
 
       xhr.addEventListener("error", () => {
         toast.error(`:${item.name}: — Upload failed.`);
+        console.log("[EmojiUpload] uploadOne: xhr error", { id: item.id, name: item.name, ms: Date.now() - startedAt });
         setPendingEmojis((prev) => prev.map((p) => (p.id === item.id ? { ...p, status: "error", progress: 0 } : p)));
         resolve(false);
       });
@@ -353,6 +488,10 @@ export function ServerEmojisTab({
       return;
     }
 
+    console.log("[EmojiUpload] handleUploadAll: start", {
+      totalPending: pendingEmojis.length,
+      toUpload: toUpload.length,
+    });
     setUploading(true);
     const concurrencyLimit = Math.min(6, toUpload.length);
     let nextIndex = 0;
@@ -364,6 +503,7 @@ export function ServerEmojisTab({
         nextIndex++;
         const item = toUpload[i];
         if (!item) break;
+        console.log("[EmojiUpload] handleUploadAll: worker uploading", { idx: i, id: item.id, name: item.name });
         const ok = await uploadOne(item);
         if (ok) successCount++;
       }
@@ -569,6 +709,23 @@ export function ServerEmojisTab({
           />
         </Flex>
 
+        {lastSelectSummary && (() => {
+          const skippedTotal = lastSelectSummary.skippedTooLarge +
+            lastSelectSummary.skippedUnsupported +
+            lastSelectSummary.skippedZipNonImage +
+            lastSelectSummary.skippedZipTooLarge +
+            lastSelectSummary.skippedZipEmpty;
+          if (skippedTotal === 0) return null;
+          const parts: string[] = [];
+          if (lastSelectSummary.tooLargeExamples.length > 0) parts.push(`Too large: ${lastSelectSummary.tooLargeExamples.join(", ")}`);
+          if (lastSelectSummary.unsupportedExamples.length > 0) parts.push(`Unsupported: ${lastSelectSummary.unsupportedExamples.join(", ")}`);
+          return (
+            <Text size="1" color="yellow">
+              Skipped {skippedTotal} item(s) from your selection{parts.length > 0 ? ` (${parts.join(" · ")})` : ""}.
+            </Text>
+          );
+        })()}
+
         {pendingEmojis.length > 0 && (
           <Flex direction="column" gap="2" style={{ maxHeight: 300, overflowY: "auto" }}>
             {pendingEmojis.map((p) => (
@@ -581,12 +738,11 @@ export function ServerEmojisTab({
                 style={{
                   border: "1px solid var(--gray-a4)",
                   borderRadius: "var(--radius-1)",
-                  opacity: p.status === "uploading" || p.status === "processing" ? 0.6 : 1,
                 }}
               >
                 <div
                   className="emoji-upload-preview-wrap"
-                  aria-busy={p.status === "uploading"}
+                  aria-busy={p.status === "uploading" || p.status === "processing"}
                   data-status={p.status}
                 >
                   <img
@@ -596,6 +752,9 @@ export function ServerEmojisTab({
                   />
                   {(p.status === "uploading" || p.status === "processing") && (
                     <div className="emoji-upload-preview-overlay" aria-hidden="true">
+                      <div className="emoji-upload-preview-label">
+                        {p.status === "processing" ? "Converting…" : `${p.progress}%`}
+                      </div>
                       <div className="emoji-upload-preview-bar">
                         <div
                           className="emoji-upload-preview-bar-inner"

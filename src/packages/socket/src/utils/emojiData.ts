@@ -222,9 +222,10 @@ export function getRecentEmojis(limit = 8): EmojiEntry[] {
 
 export async function fetchCustomEmojis(serverHost: string): Promise<{ name: string; file_id: string }[]> {
   const base = getServerHttpBase(serverHost);
-  console.log("[EmojiData] fetchCustomEmojis:", { serverHost, url: `${base}/api/emojis` });
+  const url = `${base}/api/emojis?t=${Date.now()}`;
+  console.log("[EmojiData] fetchCustomEmojis:", { serverHost, url });
   try {
-    const res = await fetch(`${base}/api/emojis`);
+    const res = await fetch(url, { cache: "no-store" });
     console.log("[EmojiData] fetchCustomEmojis response:", { status: res.status, ok: res.ok });
     if (!res.ok) {
       const text = await res.text().catch(() => "");

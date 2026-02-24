@@ -26,6 +26,7 @@ import { warmSfuSelection } from "@/webRTC/src/hooks/selectBestSfuUrl";
 
 import { MemberInfo } from "../components/MemberSidebar";
 import { Clients } from "../types/clients";
+import { fetchCustomEmojis, setCustomEmojis } from "../utils/emojiData";
 import { handleRateLimitError } from "../utils/rateLimitHandler";
 
 type Sockets = { [host: string]: Socket };
@@ -313,6 +314,12 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
           const updated = { ...prev };
           delete updated[host];
           return updated;
+        });
+      });
+
+      socket.on("server:emojis:updated", () => {
+        fetchCustomEmojis(host).then((list) => {
+          setCustomEmojis(list, host);
         });
       });
 
