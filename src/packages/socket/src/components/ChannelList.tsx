@@ -76,7 +76,10 @@ export const ChannelList = ({
           position: (idx + 1) * 10,
         }));
 
-  const channelById = new Map(channels.map((c) => [c.id, c]));
+  const channelById = useMemo(
+    () => new Map(channels.map((c) => [c.id, c])),
+    [channels],
+  );
 
   const stableKeyById = useMemo(() => {
     const keys = new Map<string, string>();
