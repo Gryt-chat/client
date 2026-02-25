@@ -94,6 +94,7 @@ function readBoolConfig(key: string, defaultValue: boolean): boolean {
 autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
 autoUpdater.allowPrerelease = readConfig().betaChannel === true;
+autoUpdater.logger = console;
 closeToTray = (readConfig().closeToTray ?? true) as boolean;
 let startWithWindows = process.platform === "win32"
   ? readBoolConfig("startWithWindows", true)
