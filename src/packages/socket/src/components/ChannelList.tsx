@@ -1,6 +1,6 @@
 import { Box, Button, ContextMenu, Flex, Text, Tooltip } from "@radix-ui/themes";
 import { AnimatePresence, LayoutGroup, motion, Reorder } from "motion/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MdChat, MdKeyboard, MdRadio, MdSportsEsports, MdVolumeUp } from "react-icons/md";
 
 import { getUploadsFileUrl } from "@/common";
@@ -77,6 +77,33 @@ export const ChannelList = ({
         }));
 
   const channelById = new Map(channels.map((c) => [c.id, c]));
+
+  const stableKeyById = useMemo(() => {
+    const keys = new Map<string, string>();
+    const seen = new Map<string, number>();
+    for (const item of effectiveItems) {
+      let base: string;
+      switch (item.kind) {
+        case "channel": {
+          const ch = channelById.get(item.channelId ?? item.id);
+          base = ch ? `${ch.type}:${ch.name}` : `ch:${item.id}`;
+          break;
+        }
+        case "separator":
+          base = `sep:${item.label ?? ""}`;
+          break;
+        case "spacer":
+          base = `spc:${item.spacerHeight ?? 16}`;
+          break;
+        default:
+          base = item.id;
+      }
+      const count = seen.get(base) ?? 0;
+      seen.set(base, count + 1);
+      keys.set(item.id, count > 0 ? `${base}#${count}` : base);
+    }
+    return keys;
+  }, [effectiveItems, channelById]);
 
   const renderSeparator = (item: SidebarItem) => (
     <Flex width="100%" position="relative" align="center" gap="2">
@@ -310,7 +337,7 @@ export const ChannelList = ({
         <AnimatePresence initial={false} mode="popLayout">
           {displayItems.map((item, index) => (
             <motion.div
-              key={serverHost + item.id}
+              key={stableKeyById.get(item.id) ?? item.id}
               layout
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -343,7 +370,7 @@ export const ChannelList = ({
       <AnimatePresence initial={false} mode="popLayout">
         {localItems.map((item, index) => (
           <Reorder.Item
-            key={serverHost + item.id}
+            key={stableKeyById.get(item.id) ?? item.id}
             value={item}
             as="div"
             layout
