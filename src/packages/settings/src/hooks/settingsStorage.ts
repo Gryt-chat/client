@@ -150,19 +150,28 @@ export function readNumeric(key: string, fallback: number): number {
   return Number.isNaN(n) ? fallback : n;
 }
 
-export function updateStorage(key: string, value: string, state: (d: string) => void) {
+export function updateStorage(
+  key: string,
+  value: string,
+  state: (d: string) => void,
+) {
   state(value);
   localStorage.setItem(key, value);
 }
 
-export function updateRnnoiseEnabled(value: boolean, setter: (value: boolean) => void) {
+export function updateRnnoiseEnabled(
+  value: boolean,
+  setter: (value: boolean) => void,
+) {
   setter(value);
   localStorage.setItem("rnnoiseEnabled", value.toString());
 }
 
 export function readInitialMicID(): string | undefined {
   const stored = localStorage.getItem("micID");
-  return (stored && stored !== "undefined" && stored.trim() !== "") ? stored : undefined;
+  return stored && stored !== "undefined" && stored.trim() !== ""
+    ? stored
+    : undefined;
 }
 
 export function readInitialMicVolume(): number {
@@ -186,7 +195,7 @@ export const settingsInit: Settings = {
   setMicVolume: () => {},
   outputVolume: readNumeric("outputVolume", 50),
   setOutputVolume: () => {},
-  noiseGate: readNumeric("noiseGate", 10),
+  noiseGate: readNumeric("noiseGate", 1),
   setNoiseGate: () => {},
   loopbackEnabled: false,
   setLoopbackEnabled: () => {},
@@ -229,15 +238,18 @@ export const settingsInit: Settings = {
 
   connectSoundEnabled: localStorage.getItem("connectSoundEnabled") !== "false",
   setConnectSoundEnabled: () => {},
-  disconnectSoundEnabled: localStorage.getItem("disconnectSoundEnabled") !== "false",
+  disconnectSoundEnabled:
+    localStorage.getItem("disconnectSoundEnabled") !== "false",
   setDisconnectSoundEnabled: () => {},
   connectSoundVolume: readNumeric("connectSoundVolume", 30),
   setConnectSoundVolume: () => {},
   disconnectSoundVolume: readNumeric("disconnectSoundVolume", 30),
   setDisconnectSoundVolume: () => {},
-  customConnectSoundFile: localStorage.getItem("customConnectSoundFile") || null,
+  customConnectSoundFile:
+    localStorage.getItem("customConnectSoundFile") || null,
   setCustomConnectSoundFile: () => {},
-  customDisconnectSoundFile: localStorage.getItem("customDisconnectSoundFile") || null,
+  customDisconnectSoundFile:
+    localStorage.getItem("customDisconnectSoundFile") || null,
   setCustomDisconnectSoundFile: () => {},
   settingsTab: "profile",
   setSettingsTab: () => {},
@@ -252,7 +264,9 @@ export const settingsInit: Settings = {
   eSportsModeEnabled: localStorage.getItem("eSportsModeEnabled") === "true",
   setESportsModeEnabled: () => {},
 
-  inputMode: (localStorage.getItem("inputMode") as "voice_activity" | "push_to_talk") || "voice_activity",
+  inputMode:
+    (localStorage.getItem("inputMode") as "voice_activity" | "push_to_talk") ||
+    "voice_activity",
   setInputMode: () => {},
 
   pushToTalkKey: localStorage.getItem("pushToTalkKey") || "",
@@ -267,14 +281,16 @@ export const settingsInit: Settings = {
   showPeerLatency: localStorage.getItem("showPeerLatency") !== "false",
   setShowPeerLatency: () => {},
 
-  notificationBadgeEnabled: localStorage.getItem("notificationBadgeEnabled") !== "false",
+  notificationBadgeEnabled:
+    localStorage.getItem("notificationBadgeEnabled") !== "false",
   setNotificationBadgeEnabled: () => {},
 
   messageSoundEnabled: localStorage.getItem("messageSoundEnabled") !== "false",
   setMessageSoundEnabled: () => {},
   messageSoundVolume: readNumeric("messageSoundVolume", 30),
   setMessageSoundVolume: () => {},
-  customMessageSoundFile: localStorage.getItem("customMessageSoundFile") || null,
+  customMessageSoundFile:
+    localStorage.getItem("customMessageSoundFile") || null,
   setCustomMessageSoundFile: () => {},
 
   chatMediaVolume: readNumeric("chatMediaVolume", 50),
@@ -299,7 +315,8 @@ export const settingsInit: Settings = {
   screenShareAudioDelay: readNumeric("screenShareAudioDelay", 0),
   setScreenShareAudioDelay: () => {},
 
-  experimentalScreenShare: localStorage.getItem("experimentalScreenShare") === "true",
+  experimentalScreenShare:
+    localStorage.getItem("experimentalScreenShare") === "true",
   setExperimentalScreenShare: () => {},
 
   userVolumes: JSON.parse(localStorage.getItem("userVolumes") || "{}"),

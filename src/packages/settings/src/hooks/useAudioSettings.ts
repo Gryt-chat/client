@@ -41,7 +41,7 @@ export function useAudioSettings() {
     readNumeric("outputVolume", 50)
   );
   const [noiseGate, setNoiseGate] = useState(
-    readNumeric("noiseGate", 10)
+    readNumeric("noiseGate", 1)
   );
 
   const [eSportsModeEnabled, setESportsModeEnabled] = useState(
