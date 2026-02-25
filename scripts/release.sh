@@ -132,6 +132,10 @@ if [ "$RERELEASE" = false ]; then
   fi
 fi
 
+# All releases are prerelease until promoted via promote-beta.sh.
+# This gates Electron auto-updates behind the promotion step.
+RELEASE_TYPE="prerelease"
+
 cd "$CLIENT_DIR"
 if [ "$RERELEASE" = true ]; then
   ok "Re-releasing ${BOLD}v${NEW_VERSION}${RESET}"
