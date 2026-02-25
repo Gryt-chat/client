@@ -7,7 +7,7 @@ import { getUploadsFileUrl } from "@/common";
 import type { CustomEmojiEntry } from "../utils/remarkEmoji";
 import { ChatMediaPlayer } from "./ChatMediaPlayer";
 import { MessageHoverToolbar } from "./ChatMessage";
-import type { AttachmentMeta, ChatMessage } from "./chatUtils";
+import type { AttachmentMeta, ChatMessage, Reaction } from "./chatUtils";
 import { DateSeparator, MessageTimestamp, NewMessagesDivider, toDate } from "./chatUtils";
 import { EmojiText } from "./EmojiText";
 import { FileCard } from "./FileCard";
@@ -153,6 +153,13 @@ export const MessageRow = memo(({
                 serverHost={serverHost}
               />
             </Text>
+            <ReactionBadges
+              reactions={m.reactions}
+              currentUserId={currentUserId}
+              currentUserNickname={currentUserNickname}
+              memberList={memberList}
+              onReaction={(src) => onReaction(src, m)}
+            />
           </Flex>
         </Flex>
       ) : meta.isFirstInGroup ? (
@@ -441,58 +448,81 @@ function MessageContent({
           </Text>
         )}
       </div>
-      {m.reactions && m.reactions.length > 0 && (
-        <Flex wrap="wrap" style={{ marginTop: "4px", gap: "2px" }}>
-          {m.reactions.map((reaction, rIdx) => {
-            const isMine = !!(currentUserId && reaction.users.includes(currentUserId));
-            const emojiId = reaction.src;
-            const usersLabel = reaction.users
-              .map((uid) => {
-                if (currentUserId && uid === currentUserId) return currentUserNickname || "You";
-                const member = memberList && Object.values(memberList).find((mb) => mb.serverUserId === uid);
-                return member?.nickname || uid;
-              })
-              .join(", ");
-            return (
-              <Tooltip
-                key={`${reaction.src}-${rIdx}`}
-                content={(
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    <div style={{ fontWeight: 600 }}>{emojiId}</div>
-                    <div style={{ opacity: 0.9 }}>{usersLabel}</div>
-                  </div>
-                )}
-                delayDuration={200}
-              >
-                <button
-                  onClick={() => onReaction(reaction.src, m)}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "4px",
-                    padding: "2px 6px",
-                    minHeight: "24px",
-                    fontSize: "13px",
-                    lineHeight: 1,
-                    background: isMine ? "var(--accent-3)" : "var(--gray-3)",
-                    border: `1px solid ${isMine ? "var(--accent-7)" : "var(--gray-5)"}`,
-                    borderRadius: "var(--radius-3)",
-                    cursor: "pointer",
-                    transition: "background 0.15s, border-color 0.15s",
-                    whiteSpace: "nowrap",
-                    color: isMine ? "var(--accent-11)" : "var(--gray-12)",
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = isMine ? "var(--accent-4)" : "var(--gray-4)"; e.currentTarget.style.borderColor = isMine ? "var(--accent-8)" : "var(--gray-6)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = isMine ? "var(--accent-3)" : "var(--gray-3)"; e.currentTarget.style.borderColor = isMine ? "var(--accent-7)" : "var(--gray-5)"; }}
-                >
-                  <EmojiText text={reaction.src} emojiSize={16} />
-                  <span style={{ fontWeight: 500, fontSize: "12px" }}>{reaction.amount}</span>
-                </button>
-              </Tooltip>
-            );
-          })}
-        </Flex>
-      )}
+      <ReactionBadges
+        reactions={m.reactions}
+        currentUserId={currentUserId}
+        currentUserNickname={currentUserNickname}
+        memberList={memberList}
+        onReaction={(src) => onReaction(src, m)}
+      />
+    </Flex>
+  );
+}
+
+function ReactionBadges({
+  reactions,
+  currentUserId,
+  currentUserNickname,
+  memberList,
+  onReaction,
+}: {
+  reactions: Reaction[] | null | undefined;
+  currentUserId: string | undefined;
+  currentUserNickname: string | undefined;
+  memberList?: Record<string, { nickname: string; serverUserId: string; avatarFileId?: string | null; [key: string]: unknown }>;
+  onReaction: (src: string) => void;
+}) {
+  if (!reactions || reactions.length === 0) return null;
+  return (
+    <Flex wrap="wrap" style={{ marginTop: "4px", gap: "2px" }}>
+      {reactions.map((reaction, rIdx) => {
+        const isMine = !!(currentUserId && reaction.users.includes(currentUserId));
+        const emojiId = reaction.src;
+        const usersLabel = reaction.users
+          .map((uid) => {
+            if (currentUserId && uid === currentUserId) return currentUserNickname || "You";
+            const member = memberList && Object.values(memberList).find((mb) => mb.serverUserId === uid);
+            return member?.nickname || uid;
+          })
+          .join(", ");
+        return (
+          <Tooltip
+            key={`${reaction.src}-${rIdx}`}
+            content={(
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <div style={{ fontWeight: 600 }}>{emojiId}</div>
+                <div style={{ opacity: 0.9 }}>{usersLabel}</div>
+              </div>
+            )}
+            delayDuration={200}
+          >
+            <button
+              onClick={() => onReaction(reaction.src)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
+                padding: "2px 6px",
+                minHeight: "24px",
+                fontSize: "13px",
+                lineHeight: 1,
+                background: isMine ? "var(--accent-3)" : "var(--gray-3)",
+                border: `1px solid ${isMine ? "var(--accent-7)" : "var(--gray-5)"}`,
+                borderRadius: "var(--radius-3)",
+                cursor: "pointer",
+                transition: "background 0.15s, border-color 0.15s",
+                whiteSpace: "nowrap",
+                color: isMine ? "var(--accent-11)" : "var(--gray-12)",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = isMine ? "var(--accent-4)" : "var(--gray-4)"; e.currentTarget.style.borderColor = isMine ? "var(--accent-8)" : "var(--gray-6)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = isMine ? "var(--accent-3)" : "var(--gray-3)"; e.currentTarget.style.borderColor = isMine ? "var(--accent-7)" : "var(--gray-5)"; }}
+            >
+              <EmojiText text={reaction.src} emojiSize={16} />
+              <span style={{ fontWeight: 500, fontSize: "12px" }}>{reaction.amount}</span>
+            </button>
+          </Tooltip>
+        );
+      })}
     </Flex>
   );
 }
