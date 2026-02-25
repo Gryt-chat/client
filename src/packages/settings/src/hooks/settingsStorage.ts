@@ -1,6 +1,8 @@
 export interface Settings {
   micID?: string;
   setMicID: (id: string) => void;
+  outputDeviceID: string;
+  setOutputDeviceID: (id: string) => void;
   micVolume: number;
   setMicVolume: (num: number) => void;
   outputVolume: number;
@@ -178,6 +180,8 @@ export function readInitialMicVolume(): number {
 export const settingsInit: Settings = {
   micID: readInitialMicID(),
   setMicID: () => {},
+  outputDeviceID: localStorage.getItem("outputDeviceID") || "",
+  setOutputDeviceID: () => {},
   micVolume: readNumeric("micVolume", 50),
   setMicVolume: () => {},
   outputVolume: readNumeric("outputVolume", 50),

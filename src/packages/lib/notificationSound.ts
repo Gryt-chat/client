@@ -8,6 +8,10 @@
 
 import { sliderToGain } from "./audioVolume";
 
+interface AudioContextWithSink extends AudioContext {
+  setSinkId?(sinkId: string): Promise<void>;
+}
+
 let ctx: AudioContext | null = null;
 const bufferCache = new Map<string, AudioBuffer>();
 
@@ -78,5 +82,23 @@ export function preloadNotificationSound(url: string): void {
  * so that later programmatic playback is allowed by the browser.
  */
 export function warmNotificationContext(): void {
-  getContext();
+  const actx = getContext();
+  const saved = localStorage.getItem("outputDeviceID");
+  if (saved) {
+    const ctx = actx as AudioContextWithSink;
+    if (typeof ctx.setSinkId === "function") {
+      ctx.setSinkId(saved).catch(() => {});
+    }
+  }
+}
+
+/**
+ * Route notification sounds to a specific output device.
+ * Uses AudioContext.setSinkId() when available (Chrome 110+, Electron).
+ */
+export function setNotificationOutputDevice(deviceId: string): void {
+  const actx = getContext() as AudioContextWithSink;
+  if (typeof actx.setSinkId === "function") {
+    actx.setSinkId(deviceId).catch(() => {});
+  }
 }

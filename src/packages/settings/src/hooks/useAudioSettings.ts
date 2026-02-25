@@ -33,6 +33,9 @@ export function useAudioSettings() {
   );
 
   const [micID, setMicID] = useState<string | undefined>(readInitialMicID);
+  const [outputDeviceID, setOutputDeviceID] = useState(
+    localStorage.getItem("outputDeviceID") || ""
+  );
   const [micVolume, setMicVolume] = useState(readInitialMicVolume);
   const [outputVolume, setOutputVolume] = useState(
     readNumeric("outputVolume", 50)
@@ -96,6 +99,15 @@ export function useAudioSettings() {
   function updateMicID(newID: string) {
     if (!newID || newID.trim() === "") return;
     updateStorage("micID", newID, setMicID);
+  }
+
+  function updateOutputDeviceID(id: string) {
+    setOutputDeviceID(id);
+    if (id) {
+      localStorage.setItem("outputDeviceID", id);
+    } else {
+      localStorage.removeItem("outputDeviceID");
+    }
   }
 
   function updateMicVolume(newVol: number) {
@@ -272,6 +284,8 @@ export function useAudioSettings() {
   return {
     micID,
     setMicID: updateMicID,
+    outputDeviceID,
+    setOutputDeviceID: updateOutputDeviceID,
     micVolume,
     setMicVolume: updateMicVolume,
     outputVolume,

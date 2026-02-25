@@ -12,7 +12,8 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MdRefresh, MdWarning } from "react-icons/md";
 
-import { useMicrophone } from "@/audio";
+import { useMicrophone, useSpeakers } from "@/audio";
+import { setNotificationOutputDevice } from "@/lib/notificationSound";
 import { useSettings } from "@/settings";
 import { useSFU } from "@/webRTC";
 
@@ -22,6 +23,8 @@ export function AudioSettings() {
   const {
     micID,
     setMicID,
+    outputDeviceID,
+    setOutputDeviceID,
     micVolume,
     setMicVolume,
     outputVolume,
@@ -49,6 +52,13 @@ export function AudioSettings() {
 
   const { isConnected } = useSFU();
   const { devices, microphoneBuffer, getDevices, audioContext } = useMicrophone(true);
+  const { devices: outputDevices, getOutputDevices, applyOutputDevice } = useSpeakers();
+
+  const handleOutputDeviceChange = useCallback((id: string) => {
+    setOutputDeviceID(id);
+    applyOutputDevice(id);
+    setNotificationOutputDevice(id);
+  }, [setOutputDeviceID, applyOutputDevice]);
 
   const handleLoopbackChange = useCallback((enabled: boolean) => {
     setLoopbackEnabled(enabled);
@@ -180,19 +190,18 @@ export function AudioSettings() {
         </Callout.Root>
       )}
 
-      {/* ── Input ── */}
-      <Text size="3" weight="bold" color="gray">Input</Text>
+      {/* ── Devices ── */}
+      <Text size="3" weight="bold" color="gray">Devices</Text>
 
       <Flex direction="column" gap="2">
         <Flex align="center" justify="between">
-          <Text weight="medium" size="2">Microphone Device</Text>
+          <Text weight="medium" size="2">Microphone</Text>
           <Tooltip content="Refresh device list">
             <IconButton variant="soft" size="1" onClick={getDevices}>
               <MdRefresh size={12} />
             </IconButton>
           </Tooltip>
         </Flex>
-
         <Select.Root value={micID || ""} onValueChange={setMicID}>
           <Select.Trigger placeholder="Select microphone device" />
           <Select.Content>
@@ -205,10 +214,43 @@ export function AudioSettings() {
         </Select.Root>
       </Flex>
 
+      <Flex direction="column" gap="2">
+        <Flex align="center" justify="between">
+          <Text weight="medium" size="2">Speaker</Text>
+          <Tooltip content="Refresh device list">
+            <IconButton variant="soft" size="1" onClick={getOutputDevices}>
+              <MdRefresh size={12} />
+            </IconButton>
+          </Tooltip>
+        </Flex>
+        <Select.Root value={outputDeviceID || "default"} onValueChange={handleOutputDeviceChange}>
+          <Select.Trigger placeholder="Select output device" />
+          <Select.Content>
+            <Select.Item value="default">Default</Select.Item>
+            {outputDevices.map((device) => (
+              <Select.Item key={device.deviceId || device.label} value={device.deviceId || `device-${device.label}`}>
+                {device.label || `Speaker ${device.deviceId.slice(0, 8)}`}
+              </Select.Item>
+            ))}
+          </Select.Content>
+        </Select.Root>
+      </Flex>
+
+      <Separator size="4" />
+
+      {/* ── Input ── */}
+      <Text size="3" weight="bold" color="gray">Input</Text>
+
+      <SliderSetting
+        title={`Microphone Volume: ${micVolume}%`}
+        description="Your microphone input level (50% = normal volume, 100% = 2x boost)"
+        value={micVolume}
+        onChange={setMicVolume}
+      />
+
       {audioContext && (
         <Flex direction="column" gap="2">
           <Text weight="medium" size="2">Audio Levels</Text>
-
           <Flex direction="column" gap="1">
             <Text size="1" color="gray">Audio Spectrum (Raw Input)</Text>
             <div style={{
@@ -224,7 +266,6 @@ export function AudioSettings() {
               <AudioVisualizer />
             </div>
           </Flex>
-
           <Flex direction="column" gap="1">
             <Text size="1" color="gray">
               Status: {audioContext ? "Active" : "Inactive"}
@@ -310,11 +351,20 @@ export function AudioSettings() {
         onCheckedChange={handleLoopbackChange}
       />
 
-      <SliderSetting
-        title={`Microphone Volume: ${micVolume}%`}
-        description="Your microphone input level (50% = normal volume, 100% = 2x boost)"
-        value={micVolume}
-        onChange={setMicVolume}
+      <Separator size="4" />
+
+      {/* ── Voice Processing ── */}
+      <Text size="3" weight="bold" color="gray">Voice Processing</Text>
+
+      <ToggleSetting
+        title="Noise Reduction (RNNoise)"
+        description="AI-powered noise reduction. Processes audio off the main thread via AudioWorklet for low-latency noise suppression (~20 ms)."
+        checked={rnnoiseEnabled}
+        onCheckedChange={setRnnoiseEnabled}
+        statusText={rnnoiseEnabled
+          ? "RNNoise is active — background noise will be filtered"
+          : undefined
+        }
       />
 
       <ToggleSetting
@@ -359,17 +409,6 @@ export function AudioSettings() {
           onChange={setCompressorAmount}
         />
       )}
-
-      <ToggleSetting
-        title="Noise Reduction (RNNoise)"
-        description="Experimental AI-powered noise reduction. Processes audio off the main thread via AudioWorklet for low-latency noise suppression (~20 ms)."
-        checked={rnnoiseEnabled}
-        onCheckedChange={setRnnoiseEnabled}
-        statusText={rnnoiseEnabled
-          ? "RNNoise is active — background noise will be filtered"
-          : undefined
-        }
-      />
 
       <Separator size="4" />
 
