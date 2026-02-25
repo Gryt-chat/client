@@ -275,7 +275,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
 
       socket.on("chat:new", (msg: { sender_server_id: string }) => {
         if (host === currentlyViewingServerRef.current?.host) return;
-        const myId = clientsRef.current[host]?.[socket.id]?.serverUserId;
+        const myId = socket.id ? clientsRef.current[host]?.[socket.id]?.serverUserId : undefined;
         if (myId && msg.sender_server_id === myId) return;
         if (messageSoundEnabledRef.current) {
           playNotificationSound(messageSoundFileRef.current, messageSoundVolumeRef.current);

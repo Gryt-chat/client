@@ -5,7 +5,6 @@ import { useCallback, useMemo } from "react";
 import { useSettings } from "@/settings";
 
 import { SMILEY_ENTRIES } from "../../../socket/src/utils/remarkEmoji";
-
 import { ToggleSetting } from "./settingsComponents";
 
 const CATEGORY_ORDER: { label: string; shortcodes: string[] }[] = [

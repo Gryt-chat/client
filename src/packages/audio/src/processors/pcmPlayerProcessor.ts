@@ -82,4 +82,4 @@ function getWorkletUrl(): string {
   return workletBlobUrl;
 }
 
-export { PCM_PLAYER_WORKLET_NAME, getWorkletUrl };
+export { getWorkletUrl,PCM_PLAYER_WORKLET_NAME };

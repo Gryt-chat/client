@@ -138,11 +138,15 @@ function useScreenShareHook(): ScreenShareInterface {
           videoConstraints.height = { ideal: res.height };
         }
 
-        stream = await navigator.mediaDevices.getDisplayMedia({
+        interface DisplayMediaWithSystemAudio extends DisplayMediaStreamOptions {
+          systemAudio?: "include" | "exclude";
+        }
+        const displayOpts: DisplayMediaWithSystemAudio = {
           video: videoConstraints,
           audio: withAudio,
           systemAudio: "exclude",
-        });
+        };
+        stream = await navigator.mediaDevices.getDisplayMedia(displayOpts);
       }
 
       if (rawStreamRef.current) {
