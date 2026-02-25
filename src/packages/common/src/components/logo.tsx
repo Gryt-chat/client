@@ -32,7 +32,7 @@ function LogoIcon({ size = 48 }: { size?: number }) {
 export function Logo() {
   return (
     <Flex justify="center" align="center" gap="3">
-      <Heading size="8">Gryt.chat</Heading>
+      <Heading size="8">Gryt</Heading>
       <LogoIcon />
     </Flex>
   );

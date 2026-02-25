@@ -33,7 +33,7 @@ export const EmojiText = memo(({ text, emojiSize }: EmojiTextProps) => {
     if (unicode) {
       parts.push(
         <Tooltip key={`emoji-${start}`} content={emojiId} delayDuration={200}>
-          <span style={{ cursor: "default" }}>
+          <span style={{ cursor: "inherit" }}>
             {unicode}
           </span>
         </Tooltip>,
@@ -57,7 +57,7 @@ export const EmojiText = memo(({ text, emojiSize }: EmojiTextProps) => {
                 display: "inline",
                 objectFit: "contain",
                 margin: "0 1px",
-                cursor: "default",
+                cursor: "inherit",
               }}
             />
           </Tooltip>,

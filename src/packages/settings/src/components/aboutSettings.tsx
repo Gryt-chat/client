@@ -196,7 +196,7 @@ export function AboutSettings() {
       <Heading size="4">About</Heading>
 
       <Flex direction="column" gap="1">
-        <Text size="5" weight="bold">Gryt.chat</Text>
+        <Text size="5" weight="bold">Gryt</Text>
         <Text size="2" color="gray" style={{ fontFamily: "var(--code-font-family)" }}>
           v{__APP_VERSION__}
         </Text>

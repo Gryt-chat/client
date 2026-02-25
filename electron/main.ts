@@ -124,7 +124,7 @@ function createSplashWindow(): void {
       contextIsolation: true,
       nodeIntegration: false,
     },
-    title: "Gryt.chat — Updating",
+    title: "Gryt — Updating",
   });
 
   splashWindow.loadFile(join(__dirname, "../electron/splash.html"));
@@ -352,7 +352,7 @@ function createMainWindow(): void {
       backgroundThrottling: false,
     },
     autoHideMenuBar: true,
-    title: "Gryt.chat",
+    title: "Gryt",
   });
 
   mainWindow.loadURL(localServerUrl ?? process.env.VITE_DEV_SERVER_URL ?? "about:blank");
@@ -538,7 +538,7 @@ function buildTrayContextMenu(): Menu {
 function createTray(): void {
   const icon = nativeImage.createFromPath(appIcon);
   tray = new Tray(icon.resize({ width: 24, height: 24 }));
-  tray.setToolTip("Gryt.chat");
+  tray.setToolTip("Gryt");
 
   tray.on("click", () => {
     if (mainWindow?.isVisible()) {

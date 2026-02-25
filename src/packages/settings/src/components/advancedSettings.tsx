@@ -76,7 +76,7 @@ export function AdvancedSettings() {
             <>
               <ToggleSetting
                 title="Start with Windows"
-                description="Automatically launch Gryt.chat when you sign in to Windows."
+                description="Automatically launch Gryt when you sign in to Windows."
                 checked={startWithWindows}
                 onCheckedChange={handleStartWithWindowsToggle}
               />
@@ -85,7 +85,7 @@ export function AdvancedSettings() {
                   <Separator size="4" />
                   <ToggleSetting
                     title="Start minimized on login"
-                    description="Only applies when Gryt.chat is launched automatically on sign-in. Manual launches will still show the window."
+                    description="Only applies when Gryt is launched automatically on sign-in. Manual launches will still show the window."
                     checked={startMinimizedOnLogin}
                     onCheckedChange={handleStartMinimizedOnLoginToggle}
                   />
