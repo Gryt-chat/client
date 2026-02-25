@@ -850,8 +850,8 @@ body {
 .markdown-image {
   max-width: 100%;
   max-height: 300px;
+  width: auto;
   height: auto;
-  object-fit: contain;
   border-radius: var(--radius-4);
   display: block;
   cursor: pointer;

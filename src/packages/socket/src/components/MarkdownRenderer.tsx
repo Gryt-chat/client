@@ -80,10 +80,9 @@ const RemoteMarkdownImage = memo(({
           src={src}
           alt={alt}
           className="markdown-image"
-          width={size?.width}
-          height={size?.height}
           loading="lazy"
           decoding="async"
+          style={size ? { aspectRatio: `${size.width} / ${size.height}` } : undefined}
           onLoad={(e) => {
             const img = e.currentTarget;
             if (img.naturalWidth > 0 && img.naturalHeight > 0) {
@@ -363,10 +362,9 @@ const components: Components = {
             src={src}
             alt={alt || ""}
             className="markdown-image"
-            width={cached?.width}
-            height={cached?.height}
             loading="lazy"
             decoding="async"
+            style={cached ? { aspectRatio: `${cached.width} / ${cached.height}` } : undefined}
             onLoad={(e) => {
               const img = e.currentTarget;
               if (!cacheKey) return;
