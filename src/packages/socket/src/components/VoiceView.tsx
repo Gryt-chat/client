@@ -293,6 +293,12 @@ export const VoiceView = ({
     setFocusedStream(null);
   }, []);
 
+  const handleFocusedPopout = useCallback(() => {
+    if (!focusedStream) return;
+    handlePopout(focusedStream.itemId, focusedStream.stream, focusedStream.title);
+    setFocusedStream(null);
+  }, [focusedStream, handlePopout]);
+
   const getLatencyStats = (clientId: string, isSelf: boolean) => {
     if (!showPeerLatency) return undefined;
     if (isSelf) {
@@ -348,6 +354,7 @@ export const VoiceView = ({
               objectFit={focusedStream.objectFit}
               mirrored={focusedStream.mirrored}
               onClose={handleCloseFocus}
+              onPopout={handleFocusedPopout}
             />
           )}
 

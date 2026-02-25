@@ -1,4 +1,4 @@
-import { Avatar, ContextMenu, Flex, Text, Tooltip } from "@radix-ui/themes";
+import { Avatar, Flex, Text, Tooltip } from "@radix-ui/themes";
 import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
 import { MdMicOff, MdScreenShare, MdVideocam, MdVolumeOff } from "react-icons/md";
@@ -181,28 +181,38 @@ export function VoiceParticipantCard({
     const screenTitle = isSelf ? "Your Screen" : `${client.nickname}'s Screen`;
 
     return (
-      <ContextMenu.Root>
-        <ContextMenu.Trigger>
-          <VideoCard
-            stream={screenStream}
-            nickname={screenTitle}
-            objectFit="contain"
-            statusIcons={<MdScreenShare size={10} color="var(--blue-9)" />}
-            onClick={() => onFocus({
-              itemId,
-              stream: screenStream,
-              title: screenTitle,
-              audioStreamId: (!isSelf && client.screenShareAudioStreamID) || undefined,
-              objectFit: "contain",
-            })}
-          />
-        </ContextMenu.Trigger>
-        <ContextMenu.Content style={{ minWidth: 160 }} onCloseAutoFocus={(e) => e.preventDefault()}>
-          <ContextMenu.Label style={{ fontWeight: "bold" }}>{screenTitle}</ContextMenu.Label>
-          <ContextMenu.Separator />
-          <ContextMenu.Item onClick={() => onPopout(itemId, screenStream, screenTitle)}>Pop out video</ContextMenu.Item>
-        </ContextMenu.Content>
-      </ContextMenu.Root>
+      <UserContextMenu
+        serverUserId={serverUserId}
+        nickname={client.nickname}
+        isSelf={isSelf}
+        canDisconnect={!!onDisconnectUser}
+        isInVoice={true}
+        onDisconnectFromVoice={onDisconnectUser && serverUserId ? () => onDisconnectUser(serverUserId) : undefined}
+        role={currentUserRole}
+        targetRole={memberInfo?.role}
+        isServerMuted={memberInfo?.isServerMuted}
+        isServerDeafened={memberInfo?.isServerDeafened}
+        onKick={adminActions?.onKickUser && serverUserId ? () => adminActions.onKickUser!(serverUserId) : undefined}
+        onBan={adminActions?.onBanUser && serverUserId ? () => adminActions.onBanUser!(serverUserId) : undefined}
+        onServerMute={adminActions?.onServerMuteUser && serverUserId ? (muted) => adminActions.onServerMuteUser!(serverUserId, muted) : undefined}
+        onServerDeafen={adminActions?.onServerDeafenUser && serverUserId ? (deafened) => adminActions.onServerDeafenUser!(serverUserId, deafened) : undefined}
+        onChangeRole={adminActions?.onChangeRole && serverUserId ? (role) => adminActions.onChangeRole!(serverUserId, role) : undefined}
+        onPopoutVideo={() => onPopout(itemId, screenStream, screenTitle)}
+      >
+        <VideoCard
+          stream={screenStream}
+          nickname={screenTitle}
+          objectFit="contain"
+          statusIcons={<MdScreenShare size={10} color="var(--blue-9)" />}
+          onClick={() => onFocus({
+            itemId,
+            stream: screenStream,
+            title: screenTitle,
+            audioStreamId: (!isSelf && client.screenShareAudioStreamID) || undefined,
+            objectFit: "contain",
+          })}
+        />
+      </UserContextMenu>
     );
   }
 
