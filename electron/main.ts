@@ -345,8 +345,8 @@ function createMainWindow(): void {
   mainWindow = new BrowserWindow({
     width: 1600,
     height: 900,
-    minWidth: 800,
-    minHeight: 600,
+    minWidth: 300,
+    minHeight: 300,
     show: false,
     titleBarStyle: "hidden",
     titleBarOverlay: {
