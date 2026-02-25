@@ -1,10 +1,11 @@
 import { ContextMenu, Flex } from "@radix-ui/themes";
-import React, { type ReactNode } from "react";
+import React, { type ReactNode, useMemo } from "react";
 import {
   MdCloudDownload,
   MdContentCopy,
   MdDelete,
   MdEdit,
+  MdEmojiEmotions,
   MdFlag,
   MdImage,
   MdOpenInNew,
@@ -12,6 +13,8 @@ import {
 } from "react-icons/md";
 
 import { copyImageToClipboard } from "../utils/mediaClipboard";
+import { getRecentReactions } from "../utils/recentReactions";
+import { EmojiText } from "./EmojiText";
 
 export interface MessageActions {
   messageText?: string | null;
@@ -34,6 +37,8 @@ interface MessageContextMenuProps {
   media?: MediaProps;
   messageActions?: MessageActions;
   onOpenChange?: (open: boolean) => void;
+  onReaction?: (src: string) => void;
+  onAddReaction?: () => void;
 }
 
 function triggerDownload(url: string, fileName?: string | null) {
@@ -95,6 +100,60 @@ function MediaItems({ media }: { media: MediaProps }) {
   );
 }
 
+function QuickReactions({
+  onReaction,
+  onAddReaction,
+}: {
+  onReaction: (src: string) => void;
+  onAddReaction: () => void;
+}) {
+  const recent = useMemo(() => getRecentReactions(4), []);
+
+  return (
+    <>
+      <Flex gap="1" px="2" py="1" justify="center">
+        {recent.map((src) => (
+          <ContextMenu.Item
+            key={src}
+            onSelect={() => onReaction(src)}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 36,
+              height: 36,
+              minWidth: "unset",
+              borderRadius: "var(--radius-2)",
+              padding: 0,
+              flex: "0 0 auto",
+            }}
+          >
+            <EmojiText text={src} emojiSize={22} />
+          </ContextMenu.Item>
+        ))}
+        <ContextMenu.Item
+          onSelect={onAddReaction}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 36,
+            height: 36,
+            minWidth: "unset",
+            borderRadius: "var(--radius-2)",
+            padding: 0,
+            flex: "0 0 auto",
+            color: "var(--gray-10)",
+          }}
+        >
+          <MdEmojiEmotions size={20} />
+        </ContextMenu.Item>
+      </Flex>
+      <ContextMenu.Separator />
+    </>
+  );
+}
+
 function MessageActionItems({ actions }: { actions: MessageActions }) {
   return (
     <>
@@ -142,7 +201,14 @@ function MessageActionItems({ actions }: { actions: MessageActions }) {
   );
 }
 
-export function MessageContextMenu({ children, media, messageActions, onOpenChange }: MessageContextMenuProps) {
+export function MessageContextMenu({
+  children,
+  media,
+  messageActions,
+  onOpenChange,
+  onReaction,
+  onAddReaction,
+}: MessageContextMenuProps) {
   const hasMessageActions = messageActions && (
     messageActions.onReply || messageActions.onEdit || messageActions.onReport || messageActions.onDelete
   );
@@ -153,6 +219,9 @@ export function MessageContextMenu({ children, media, messageActions, onOpenChan
         {children}
       </ContextMenu.Trigger>
       <ContextMenu.Content style={{ minWidth: 180 }}>
+        {onReaction && onAddReaction && (
+          <QuickReactions onReaction={onReaction} onAddReaction={onAddReaction} />
+        )}
         {media && <MediaItems media={media} />}
         {media && hasMessageActions && <ContextMenu.Separator />}
         {hasMessageActions && <MessageActionItems actions={messageActions} />}

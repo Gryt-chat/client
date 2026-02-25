@@ -12,6 +12,8 @@ import { getRecentReactions } from "../utils/recentReactions";
 interface EmojiPickerProps {
   onSelect: (reactionSrc: string) => void;
   onClose: () => void;
+  anchorEl?: HTMLElement | null;
+  placement?: "above" | "beside";
 }
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -115,7 +117,7 @@ function CategorySection({
   );
 }
 
-export const EmojiPicker = ({ onSelect, onClose }: EmojiPickerProps) => {
+export const EmojiPicker = ({ onSelect, onClose, anchorEl, placement = "above" }: EmojiPickerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [search, setSearch] = useState("");
@@ -125,31 +127,59 @@ export const EmojiPicker = ({ onSelect, onClose }: EmojiPickerProps) => {
   const PICKER_WIDTH = 340;
   const PICKER_MAX_HEIGHT = 400;
   const VIEWPORT_PAD = 8;
+  const GAP = 6;
 
   useLayoutEffect(() => {
-    const anchor = containerRef.current?.parentElement;
+    const anchor = anchorEl ?? containerRef.current?.parentElement;
     if (!anchor) return;
 
     const compute = () => {
       const rect = anchor.getBoundingClientRect();
-      const spaceAbove = rect.top;
-      const spaceBelow = window.innerHeight - rect.bottom;
 
-      let top: number | undefined;
-      let bottom: number | undefined;
-      if (spaceAbove >= PICKER_MAX_HEIGHT || spaceAbove >= spaceBelow) {
-        bottom = window.innerHeight - rect.top + 6;
+      if (placement === "beside") {
+        let top: number = rect.top;
+        if (top + PICKER_MAX_HEIGHT > window.innerHeight - VIEWPORT_PAD) {
+          top = window.innerHeight - PICKER_MAX_HEIGHT - VIEWPORT_PAD;
+        }
+        if (top < VIEWPORT_PAD) top = VIEWPORT_PAD;
+
+        const spaceRight = window.innerWidth - rect.right - VIEWPORT_PAD;
+        const spaceLeft = rect.left - VIEWPORT_PAD;
+        let left: number;
+
+        if (spaceRight >= PICKER_WIDTH + GAP) {
+          left = rect.right + GAP;
+        } else if (spaceLeft >= PICKER_WIDTH + GAP) {
+          left = rect.left - PICKER_WIDTH - GAP;
+        } else {
+          left = rect.left + rect.width / 2 - PICKER_WIDTH / 2;
+          if (left < VIEWPORT_PAD) left = VIEWPORT_PAD;
+          if (left + PICKER_WIDTH > window.innerWidth - VIEWPORT_PAD) {
+            left = window.innerWidth - PICKER_WIDTH - VIEWPORT_PAD;
+          }
+        }
+
+        setFixedPos({ top, bottom: undefined, left });
       } else {
-        top = rect.bottom + 6;
-      }
+        const spaceAbove = rect.top;
+        const spaceBelow = window.innerHeight - rect.bottom;
 
-      let left = rect.right - PICKER_WIDTH;
-      if (left < VIEWPORT_PAD) left = VIEWPORT_PAD;
-      if (left + PICKER_WIDTH > window.innerWidth - VIEWPORT_PAD) {
-        left = window.innerWidth - PICKER_WIDTH - VIEWPORT_PAD;
-      }
+        let top: number | undefined;
+        let bottom: number | undefined;
+        if (spaceAbove >= PICKER_MAX_HEIGHT || spaceAbove >= spaceBelow) {
+          bottom = window.innerHeight - rect.top + GAP;
+        } else {
+          top = rect.bottom + GAP;
+        }
 
-      setFixedPos({ top, bottom, left });
+        let left = rect.right - PICKER_WIDTH;
+        if (left < VIEWPORT_PAD) left = VIEWPORT_PAD;
+        if (left + PICKER_WIDTH > window.innerWidth - VIEWPORT_PAD) {
+          left = window.innerWidth - PICKER_WIDTH - VIEWPORT_PAD;
+        }
+
+        setFixedPos({ top, bottom, left });
+      }
     };
 
     compute();
@@ -159,7 +189,7 @@ export const EmojiPicker = ({ onSelect, onClose }: EmojiPickerProps) => {
       window.removeEventListener("resize", compute);
       window.removeEventListener("scroll", compute, true);
     };
-  }, []);
+  }, [anchorEl, placement]);
 
   useEffect(() => {
     inputRef.current?.focus({ preventScroll: true });

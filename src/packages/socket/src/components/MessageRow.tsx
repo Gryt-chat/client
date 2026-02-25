@@ -81,14 +81,16 @@ export const MessageRow = memo(({
   isNew,
 }: MessageRowProps) => {
   const [isHovered, setIsHovered] = useState(false);
-  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [isCtxMenuOpen, setIsCtxMenuOpen] = useState(false);
+  const [isReactionPickerOpen, setIsReactionPickerOpen] = useState(false);
+  const [pickerPlacement, setPickerPlacement] = useState<"above" | "beside">("above");
   const rowRef = useRef<HTMLDivElement>(null);
+  const pickerAnchorRef = useRef<HTMLElement | null>(null);
 
   const canDelete = !!canDeleteAny || (!!currentUserId && m.sender_server_id === currentUserId);
   const canEdit = !!currentUserId && m.sender_server_id === currentUserId && !!m.text;
 
-  const bgColor = (isHovered || isEmojiPickerOpen || isCtxMenuOpen)
+  const bgColor = (isHovered || isReactionPickerOpen || isCtxMenuOpen)
     ? "var(--gray-4)"
     : isMentioned ? "var(--accent-a3)" : "transparent";
 
@@ -110,15 +112,31 @@ export const MessageRow = memo(({
     setIsHovered(false);
   }, []);
 
-  const handlePickerOpenChange = useCallback((open: boolean) => {
-    setIsEmojiPickerOpen(open);
-  }, []);
-
   const handleCtxMenuOpenChange = useCallback((open: boolean) => {
     setIsCtxMenuOpen(open);
   }, []);
 
-  const showToolbar = (isHovered || isEmojiPickerOpen) && !isCtxMenuOpen;
+  const handleOpenReactionPicker = useCallback((anchorEl?: HTMLElement) => {
+    if (anchorEl) {
+      pickerAnchorRef.current = anchorEl;
+      setPickerPlacement("beside");
+    } else {
+      pickerAnchorRef.current = rowRef.current;
+      setPickerPlacement("above");
+    }
+    setIsReactionPickerOpen(true);
+  }, []);
+
+  const handleReactionPickerSelect = useCallback((src: string) => {
+    onReaction(src, m);
+    setIsReactionPickerOpen(false);
+  }, [onReaction, m]);
+
+  const handleReactionPickerClose = useCallback(() => {
+    setIsReactionPickerOpen(false);
+  }, []);
+
+  const showToolbar = isHovered && !isCtxMenuOpen && !isReactionPickerOpen;
 
   const content = (
     <>
@@ -126,7 +144,7 @@ export const MessageRow = memo(({
       {meta.dayBreak && <DateSeparator date={meta.dayBreak} />}
 
       {meta.isSystem ? (
-        <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange}>
+        <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange} onReaction={(src) => onReaction(src, m)} onAddReaction={handleOpenReactionPicker}>
         <motion.div
           animate={{ marginBottom: m.reactions?.length ? 30 : 0, background: bgColor }}
           transition={{ type: "spring", stiffness: 500, damping: 30 }}
@@ -188,15 +206,14 @@ export const MessageRow = memo(({
                   currentUserNickname={currentUserNickname}
                   memberList={memberList}
                   onReaction={(src) => onReaction(src, m)}
-                  showAddReaction={showToolbar}
-                  onPickerOpenChange={handlePickerOpenChange}
+                  onOpenPicker={handleOpenReactionPicker}
                 />
               </Flex>
             </Flex>
           </motion.div>
         </MessageContextMenu>
       ) : meta.isFirstInGroup ? (
-        <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange}>
+        <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange} onReaction={(src) => onReaction(src, m)} onAddReaction={handleOpenReactionPicker}>
           <Flex gap="3" style={{ width: "100%", marginTop: 12 }} align="start">
             <Avatar
               radius="full"
@@ -245,13 +262,13 @@ export const MessageRow = memo(({
                 onLightboxOpen={onLightboxOpen}
                 onMouseEnter={handleMouseEnter}
                 onMouseLeave={handleMouseLeave}
-                onPickerOpenChange={handlePickerOpenChange}
+                onOpenReactionPicker={handleOpenReactionPicker}
               />
             </Flex>
           </Flex>
         </MessageContextMenu>
       ) : (
-        <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange}>
+        <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange} onReaction={(src) => onReaction(src, m)} onAddReaction={handleOpenReactionPicker}>
           <Flex style={{ width: "100%", paddingLeft: 63 }}>
             <Flex direction="column" style={{ flex: 1, minWidth: 0 }}>
               <MessageContent
@@ -281,7 +298,7 @@ export const MessageRow = memo(({
                 onLightboxOpen={onLightboxOpen}
                 onMouseEnter={handleMouseEnter}
                 onMouseLeave={handleMouseLeave}
-                onPickerOpenChange={handlePickerOpenChange}
+                onOpenReactionPicker={handleOpenReactionPicker}
               />
             </Flex>
           </Flex>
@@ -299,6 +316,14 @@ export const MessageRow = memo(({
       transition={{ type: "spring", stiffness: 500, damping: 30 }}
     >
       {content}
+      {isReactionPickerOpen && (
+        <EmojiPicker
+          onSelect={handleReactionPickerSelect}
+          onClose={handleReactionPickerClose}
+          anchorEl={pickerAnchorRef.current}
+          placement={pickerPlacement}
+        />
+      )}
     </motion.div>
   );
 });
@@ -332,7 +357,7 @@ function MessageContent({
   onLightboxOpen,
   onMouseEnter,
   onMouseLeave,
-  onPickerOpenChange,
+  onOpenReactionPicker,
 }: {
   m: ChatMessage;
   rowRef: React.RefObject<HTMLDivElement>;
@@ -360,7 +385,7 @@ function MessageContent({
   onLightboxOpen: (src: string, alt?: string) => void;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
-  onPickerOpenChange: (open: boolean) => void;
+  onOpenReactionPicker: (anchorEl?: HTMLElement) => void;
 }) {
   const hasReactions = !!(m.reactions && m.reactions.length > 0);
   return (
@@ -512,8 +537,7 @@ function MessageContent({
         currentUserNickname={currentUserNickname}
         memberList={memberList}
         onReaction={(src) => onReaction(src, m)}
-        showAddReaction={showToolbar}
-        onPickerOpenChange={onPickerOpenChange}
+        onOpenPicker={onOpenReactionPicker}
       />
     </Flex>
     </motion.div>
@@ -526,21 +550,17 @@ function ReactionBadges({
   currentUserNickname,
   memberList,
   onReaction,
-  showAddReaction,
-  onPickerOpenChange,
+  onOpenPicker,
 }: {
   reactions: Reaction[] | null | undefined;
   currentUserId: string | undefined;
   currentUserNickname: string | undefined;
   memberList?: Record<string, { nickname: string; serverUserId: string; avatarFileId?: string | null; [key: string]: unknown }>;
   onReaction: (src: string) => void;
-  showAddReaction?: boolean;
-  onPickerOpenChange?: (open: boolean) => void;
+  onOpenPicker: (anchorEl?: HTMLElement) => void;
 }) {
-  const [pickerOpen, setPickerOpen] = useState(false);
-
   const hasReactions = reactions && reactions.length > 0;
-  if (!hasReactions && !showAddReaction) return null;
+  if (!hasReactions) return null;
 
   return (
     <Flex wrap="wrap" align="center" style={{
@@ -552,7 +572,7 @@ function ReactionBadges({
       zIndex: 1,
     }}>
       <AnimatePresence mode="popLayout">
-        {reactions?.map((reaction, rIdx) => {
+        {reactions.map((reaction, rIdx) => {
           const isMine = !!(currentUserId && reaction.users.includes(currentUserId));
           const emojiId = reaction.src;
           const usersLabel = reaction.users
@@ -609,52 +629,30 @@ function ReactionBadges({
           );
         })}
       </AnimatePresence>
-      {(showAddReaction || pickerOpen) && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.6 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ type: "spring", stiffness: 500, damping: 25 }}
-          style={{ position: "relative", display: "inline-flex" }}
-        >
-          <button
-            onClick={() => {
-              const next = !pickerOpen;
-              setPickerOpen(next);
-              onPickerOpenChange?.(next);
-            }}
-            title="Add reaction"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: "28px",
-              minHeight: "28px",
-              background: "var(--gray-3)",
-              border: "1px solid var(--gray-5)",
-              borderRadius: "var(--radius-3)",
-              cursor: "pointer",
-              transition: "background 0.15s, border-color 0.15s",
-              color: "var(--gray-10)",
-              fontSize: "16px",
-              lineHeight: 1,
-              padding: 0,
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gray-4)"; e.currentTarget.style.borderColor = "var(--gray-6)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "var(--gray-3)"; e.currentTarget.style.borderColor = "var(--gray-5)"; }}
-          >
-            +
-          </button>
-          {pickerOpen && (
-            <EmojiPicker
-              onSelect={(src) => onReaction(src)}
-              onClose={() => {
-                setPickerOpen(false);
-                onPickerOpenChange?.(false);
-              }}
-            />
-          )}
-        </motion.div>
-      )}
+      <button
+        onClick={(e) => onOpenPicker(e.currentTarget)}
+        title="Add reaction"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: "28px",
+          minHeight: "28px",
+          background: "var(--gray-3)",
+          border: "1px solid var(--gray-5)",
+          borderRadius: "var(--radius-3)",
+          cursor: "pointer",
+          transition: "background 0.15s, border-color 0.15s",
+          color: "var(--gray-10)",
+          fontSize: "16px",
+          lineHeight: 1,
+          padding: 0,
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gray-4)"; e.currentTarget.style.borderColor = "var(--gray-6)"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = "var(--gray-3)"; e.currentTarget.style.borderColor = "var(--gray-5)"; }}
+      >
+        +
+      </button>
     </Flex>
   );
 }
