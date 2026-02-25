@@ -85,6 +85,23 @@ case "$VERSION_CHOICE" in
   *) err "Invalid choice"; exit 1 ;;
 esac
 
+# ── Beta / prerelease ────────────────────────────────────────────────────
+BETA_RELEASE=false
+
+if [ "$RERELEASE" = false ]; then
+  if [[ "$NEW_VERSION" =~ -beta\. ]]; then
+    BETA_RELEASE=true
+  fi
+
+  if [ "$BETA_RELEASE" = false ]; then
+    read -rp "$(echo -e "${CYAN}?${RESET}  Release as beta? ${YELLOW}[y/N]${RESET}: ")" BETA_ASK
+    if [[ "$BETA_ASK" =~ ^[Yy]$ ]]; then
+      BETA_RELEASE=true
+      NEW_VERSION="${NEW_VERSION}-beta.1"
+    fi
+  fi
+fi
+
 cd "$PKG_DIR"
 
 if [ "$RERELEASE" = true ]; then
@@ -110,7 +127,7 @@ else
   echo -e "  Version:   ${GREEN}v${NEW_VERSION}${RESET}"
 fi
 echo -e "  Image:     ${GREEN}${IMAGE}:${NEW_VERSION}${RESET}"
-echo -e "  Tags:      ${GREEN}${NEW_VERSION}, ${V_MAJOR}.${V_MINOR}, ${V_MAJOR}, latest${RESET}"
+echo -e "  Tags:      ${GREEN}${NEW_VERSION}, ${V_MAJOR}.${V_MINOR}, ${V_MAJOR}, latest-beta${RESET}"
 echo -e "${BOLD}─────────────────────────────────────────${RESET}"
 echo ""
 read -rp "$(echo -e "${CYAN}?${RESET}  Build, push, and tag? ${YELLOW}[Y/n]${RESET}: ")" CONFIRM
@@ -153,13 +170,13 @@ ok "Built ${IMAGE}:${NEW_VERSION}"
 info "Tagging…"
 docker tag "${IMAGE}:${NEW_VERSION}" "${IMAGE}:${V_MAJOR}.${V_MINOR}"
 docker tag "${IMAGE}:${NEW_VERSION}" "${IMAGE}:${V_MAJOR}"
-docker tag "${IMAGE}:${NEW_VERSION}" "${IMAGE}:latest"
+docker tag "${IMAGE}:${NEW_VERSION}" "${IMAGE}:latest-beta"
 
 info "Pushing to ghcr.io…"
 docker push "${IMAGE}:${NEW_VERSION}"
 docker push "${IMAGE}:${V_MAJOR}.${V_MINOR}"
 docker push "${IMAGE}:${V_MAJOR}"
-docker push "${IMAGE}:latest"
+docker push "${IMAGE}:latest-beta"
 ok "Pushed all tags"
 
 # ── Git commit & tag ─────────────────────────────────────────────────────

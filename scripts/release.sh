@@ -259,27 +259,27 @@ ok "Built ${DOCKER_IMAGE}:${NEW_VERSION}"
 info "Tagging…"
 docker tag "${DOCKER_IMAGE}:${NEW_VERSION}" "${DOCKER_IMAGE}:${V_MAJOR}.${V_MINOR}"
 docker tag "${DOCKER_IMAGE}:${NEW_VERSION}" "${DOCKER_IMAGE}:${V_MAJOR}"
-docker tag "${DOCKER_IMAGE}:${NEW_VERSION}" "${DOCKER_IMAGE}:latest"
+docker tag "${DOCKER_IMAGE}:${NEW_VERSION}" "${DOCKER_IMAGE}:latest-beta"
 
 info "Pushing to ghcr.io…"
 docker push "${DOCKER_IMAGE}:${NEW_VERSION}"
 docker push "${DOCKER_IMAGE}:${V_MAJOR}.${V_MINOR}"
 docker push "${DOCKER_IMAGE}:${V_MAJOR}"
-docker push "${DOCKER_IMAGE}:latest"
+docker push "${DOCKER_IMAGE}:latest-beta"
 ok "Docker image pushed: ${BOLD}${DOCKER_IMAGE}:${NEW_VERSION}${RESET}"
 
-# ── Deploy to production ──────────────────────────────────────────
+# ── Deploy to beta ────────────────────────────────────────────────
 echo ""
-read -rp "$(echo -e "${CYAN}?${RESET}  Deploy to production (pull & restart prod containers)? ${YELLOW}[Y/n]${RESET}: ")" DEPLOY_PROD
-DEPLOY_PROD="${DEPLOY_PROD:-Y}"
-if [[ "$DEPLOY_PROD" =~ ^[Yy]$ ]]; then
-  REPO_ROOT="$(cd "$CLIENT_DIR/../.." && pwd)"
-  if [ -f "$REPO_ROOT/scripts/update-prod.sh" ]; then
-    info "Running production deployment…"
-    bash "$REPO_ROOT/scripts/update-prod.sh"
-    ok "Production deployment complete"
+REPO_ROOT="$(cd "$CLIENT_DIR/../.." && pwd)"
+read -rp "$(echo -e "${CYAN}?${RESET}  Deploy to beta (pull & restart beta containers)? ${YELLOW}[Y/n]${RESET}: ")" DEPLOY_BETA
+DEPLOY_BETA="${DEPLOY_BETA:-Y}"
+if [[ "$DEPLOY_BETA" =~ ^[Yy]$ ]]; then
+  if [ -f "$REPO_ROOT/scripts/update-beta.sh" ]; then
+    info "Running beta deployment…"
+    bash "$REPO_ROOT/scripts/update-beta.sh"
+    ok "Beta deployment complete"
   else
-    warn "update-prod.sh not found at $REPO_ROOT/scripts/update-prod.sh"
+    warn "update-beta.sh not found at $REPO_ROOT/scripts/update-beta.sh"
   fi
 fi
 

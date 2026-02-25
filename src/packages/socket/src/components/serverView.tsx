@@ -14,7 +14,7 @@ import { usePeerLatency } from "../hooks/usePeerLatency";
 import { useServerManagement } from "../hooks/useServerManagement";
 import { useServerReports } from "../hooks/useServerReports";
 import { useServerState } from "../hooks/useServerState";
-import { SIDEBAR_HOVER_PX, SIDEBAR_WIDTH_PX, useMediaAutoShow, useSidebarHover, useVoiceResize } from "../hooks/useServerViewLayout";
+import { MIN_CHAT_WIDTH, SIDEBAR_HOVER_PX, SIDEBAR_WIDTH_PX, useMediaAutoShow, useSidebarHover, useVoiceResize } from "../hooks/useServerViewLayout";
 import { useSidebarEditor } from "../hooks/useSidebarEditor";
 import { useSockets } from "../hooks/useSockets";
 import { ChatView } from "./ChatView";
@@ -70,7 +70,7 @@ export const ServerView = () => {
     leftSidebarOpen, rightSidebarOpen,
     leftSidebarContentRef, rightSidebarContentRef,
     openLeftSidebar, closeLeftSidebar, openRightSidebar, closeRightSidebar,
-  } = useSidebarHover({ pinChannelsSidebar, pinMembersSidebar, isDraggingResize });
+  } = useSidebarHover({ pinChannelsSidebar, pinMembersSidebar, isDraggingResize, isCompact });
 
   const serverClients = currentlyViewingServer ? clients[currentlyViewingServer.host] : undefined;
   const { mediaAutoShownRef } = useMediaAutoShow({
@@ -345,7 +345,7 @@ export const ServerView = () => {
                 </div>
               )}
               <div style={{
-                display: "flex", flex: voiceFocused ? "0 0 320px" : 1, minWidth: 0,
+                display: "flex", flex: voiceFocused ? `0 0 ${MIN_CHAT_WIDTH}px` : 1, minWidth: 0,
                 ...(isVoiceOnThisServer && isServerUnreachable && { opacity: 0.5, pointerEvents: "none" as const }),
                 transition: "opacity 0.3s ease",
               }}>

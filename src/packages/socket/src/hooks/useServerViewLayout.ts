@@ -4,7 +4,7 @@ const SIDEBAR_WIDTH_PX = 240;
 const SIDEBAR_HOVER_PX = 8;
 const SIDEBAR_CLOSE_DELAY = 1000;
 const VOICE_MIN_WIDTH = 200;
-const MIN_CHAT_WIDTH = 320;
+const MIN_CHAT_WIDTH = 200;
 
 interface UseMediaAutoShowParams {
   showVoiceView: boolean;
@@ -59,9 +59,10 @@ interface UseSidebarHoverParams {
   pinChannelsSidebar: boolean;
   pinMembersSidebar: boolean;
   isDraggingResize: boolean;
+  isCompact: boolean;
 }
 
-function useSidebarHover({ pinChannelsSidebar, pinMembersSidebar, isDraggingResize }: UseSidebarHoverParams) {
+function useSidebarHover({ pinChannelsSidebar, pinMembersSidebar, isDraggingResize, isCompact }: UseSidebarHoverParams) {
   const [hoverLeftSidebar, setHoverLeftSidebar] = useState(false);
   const [hoverRightSidebar, setHoverRightSidebar] = useState(false);
   const leftCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -70,8 +71,8 @@ function useSidebarHover({ pinChannelsSidebar, pinMembersSidebar, isDraggingResi
   const leftSidebarContentRef = useRef<HTMLDivElement>(null);
   const rightSidebarContentRef = useRef<HTMLDivElement>(null);
 
-  const leftSidebarOpen = pinChannelsSidebar || hoverLeftSidebar;
-  const rightSidebarOpen = pinMembersSidebar || hoverRightSidebar;
+  const leftSidebarOpen = (!isCompact && pinChannelsSidebar) || hoverLeftSidebar;
+  const rightSidebarOpen = (!isCompact && pinMembersSidebar) || hoverRightSidebar;
 
   const openLeftSidebar = useCallback(() => {
     if (leftCloseTimer.current) { clearTimeout(leftCloseTimer.current); leftCloseTimer.current = null; }
