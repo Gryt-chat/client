@@ -86,7 +86,8 @@ function CategorySection({
           top: 0,
           zIndex: 2,
           background: "var(--color-panel-solid)",
-          padding: "6px 4px 4px",
+          padding: "6px 6px 4px",
+          margin: "0 -6px",
           fontSize: 12,
           fontWeight: 600,
           color: "var(--gray-10)",
@@ -231,8 +232,16 @@ export const EmojiPicker = ({ onSelect, onClose }: EmojiPickerProps) => {
   const categoryNames = useMemo(() => Array.from(standardCategories.keys()), [standardCategories]);
 
   const scrollToCategory = useCallback((category: string) => {
-    const el = scrollRef.current?.querySelector(`[data-category="${CSS.escape(category)}"]`);
-    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const container = scrollRef.current;
+    if (!container) return;
+    const el = container.querySelector(`[data-category="${CSS.escape(category)}"]`) as HTMLElement | null;
+    if (!el) return;
+    const containerRect = container.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    container.scrollTo({
+      top: container.scrollTop + elRect.top - containerRect.top,
+      behavior: "smooth",
+    });
   }, []);
 
   return (
@@ -305,7 +314,7 @@ export const EmojiPicker = ({ onSelect, onClose }: EmojiPickerProps) => {
       )}
 
       {/* Emoji grid */}
-      <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: "4px 6px 8px" }}>
+      <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: "0 6px 8px" }}>
         {searchResults ? (
           <div
             style={{
