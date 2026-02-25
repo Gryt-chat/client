@@ -173,13 +173,13 @@ export const ChatView = memo(({
 
   // ── Sender helpers ────────────────────────────────────────────
   const getSenderName = useCallback((msg: ChatMessage): string => {
-    if (msg.sender_nickname) return msg.sender_nickname;
-    if (!memberList) return "Unknown User";
-    return memberList[msg.sender_server_id]?.nickname || "Unknown User";
+    const fromList = memberList?.[msg.sender_server_id]?.nickname;
+    if (fromList) return fromList;
+    return msg.sender_nickname || "Unknown User";
   }, [memberList]);
 
   const getSenderAvatarUrl = useCallback((msg: ChatMessage): string | undefined => {
-    const fileId = msg.sender_avatar_file_id || memberList?.[msg.sender_server_id]?.avatarFileId;
+    const fileId = memberList?.[msg.sender_server_id]?.avatarFileId || msg.sender_avatar_file_id;
     if (fileId && serverHost) return getUploadsFileUrl(serverHost, fileId);
     return undefined;
   }, [memberList, serverHost]);

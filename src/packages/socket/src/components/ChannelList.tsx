@@ -89,24 +89,24 @@ export const ChannelList = ({
       switch (item.kind) {
         case "channel": {
           const ch = channelById.get(item.channelId ?? item.id);
-          base = ch ? `${ch.type}:${ch.name}` : `ch:${item.id}`;
+          base = ch ? `${serverHost}:${ch.type}:${ch.name}` : `${serverHost}:ch:${item.id}`;
           break;
         }
         case "separator":
-          base = `sep:${item.label ?? ""}`;
+          base = `${serverHost}:sep:${item.label ?? ""}`;
           break;
         case "spacer":
-          base = `spc:${item.spacerHeight ?? 16}`;
+          base = `${serverHost}:spc:${item.spacerHeight ?? 16}`;
           break;
         default:
-          base = item.id;
+          base = `${serverHost}:${item.id}`;
       }
       const count = seen.get(base) ?? 0;
       seen.set(base, count + 1);
       keys.set(item.id, count > 0 ? `${base}#${count}` : base);
     }
     return keys;
-  }, [effectiveItems, channelById]);
+  }, [effectiveItems, channelById, serverHost]);
 
   const renderSeparator = (item: SidebarItem) => (
     <Flex width="100%" position="relative" align="center" gap="2">
@@ -335,7 +335,7 @@ export const ChannelList = ({
   const displayItems = canManage ? localItems : effectiveItems;
 
   const staticList = (
-    <LayoutGroup>
+    <LayoutGroup id={serverHost}>
       <Flex direction="column" gap="3" align="center" width="100%">
         <AnimatePresence initial={false} mode="popLayout">
           {displayItems.map((item, index) => (
