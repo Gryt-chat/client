@@ -39,6 +39,7 @@ interface ChatEditorProps {
   onCancel?: () => void;
   isEditing?: boolean;
   memberList?: MentionMember[];
+  serverHost?: string;
 }
 
 function getFileIcon(mime: string) {
@@ -225,7 +226,7 @@ function replaceEmojiQueryAtCursor(entry: EmojiEntry): void {
 }
 
 export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
-  ({ placeholder, disabled, maxFileSize, onSend, onArrowUpEmpty, onCancel, isEditing, memberList }, ref) => {
+  ({ placeholder, disabled, maxFileSize, onSend, onArrowUpEmpty, onCancel, isEditing, memberList, serverHost }, ref) => {
     const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
     const pendingFilesRef = useRef<PendingFile[]>([]);
     pendingFilesRef.current = pendingFiles;
@@ -361,11 +362,11 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
 
     const handleEmojiSelect = useCallback((entry: EmojiEntry) => {
       replaceEmojiQueryAtCursor(entry);
-      recordRecentEmoji(entry.name, entry.isCustom);
+      recordRecentEmoji(entry.name, entry.isCustom, serverHost);
       setShowAutocomplete(false);
       setEmojiQuery(null);
       if (editorRef.current) autoResize(editorRef.current);
-    }, []);
+    }, [serverHost]);
 
     const handleAutocompleteClose = useCallback(() => {
       setShowAutocomplete(false);
@@ -403,7 +404,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
           img.draggable = false;
           img.contentEditable = "false";
           el.appendChild(img);
-          recordRecentEmoji(name, true);
+          recordRecentEmoji(name, true, serverHost);
         }
       } else {
         el.appendChild(document.createTextNode(src));
@@ -422,7 +423,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
 
       autoResize(el);
       setEmojiPickerOpen(false);
-    }, []);
+    }, [serverHost]);
 
     useImperativeHandle(ref, () => ({
       clear: () => {
@@ -501,6 +502,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
           visible={showAutocomplete}
           onSelect={handleEmojiSelect}
           onClose={handleAutocompleteClose}
+          serverHost={serverHost}
         />
         <MentionAutocomplete
           query={mentionQuery || ""}
@@ -543,6 +545,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
               <EmojiPicker
                 onSelect={handlePickerEmojiSelect}
                 onClose={() => setEmojiPickerOpen(false)}
+                serverHost={serverHost}
               />
             )}
           </div>

@@ -350,6 +350,7 @@ export const ChatView = memo(({
             onCancelEditing={cancelEditing}
             onSend={handleEditorSend}
             onArrowUpEmpty={handleArrowUpEmpty}
+            serverHost={serverHost}
           />
         </Flex>
       </Box>

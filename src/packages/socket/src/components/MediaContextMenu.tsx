@@ -39,6 +39,7 @@ interface MessageContextMenuProps {
   onOpenChange?: (open: boolean) => void;
   onReaction?: (src: string) => void;
   onAddReaction?: () => void;
+  serverHost?: string;
 }
 
 function triggerDownload(url: string, fileName?: string | null) {
@@ -103,11 +104,13 @@ function MediaItems({ media }: { media: MediaProps }) {
 function QuickReactions({
   onReaction,
   onAddReaction,
+  serverHost,
 }: {
   onReaction: (src: string) => void;
   onAddReaction: () => void;
+  serverHost?: string;
 }) {
-  const recent = useMemo(() => getRecentReactions(4), []);
+  const recent = useMemo(() => getRecentReactions(4, serverHost), [serverHost]);
 
   return (
     <>
@@ -208,6 +211,7 @@ export function MessageContextMenu({
   onOpenChange,
   onReaction,
   onAddReaction,
+  serverHost,
 }: MessageContextMenuProps) {
   const hasMessageActions = messageActions && (
     messageActions.onReply || messageActions.onEdit || messageActions.onReport || messageActions.onDelete
@@ -220,7 +224,7 @@ export function MessageContextMenu({
       </ContextMenu.Trigger>
       <ContextMenu.Content style={{ minWidth: 180 }}>
         {onReaction && onAddReaction && (
-          <QuickReactions onReaction={onReaction} onAddReaction={onAddReaction} />
+          <QuickReactions onReaction={onReaction} onAddReaction={onAddReaction} serverHost={serverHost} />
         )}
         {media && <MediaItems media={media} />}
         {media && hasMessageActions && <ContextMenu.Separator />}

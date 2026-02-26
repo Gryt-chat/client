@@ -159,7 +159,7 @@ export function searchEmojis(query: string, limit = 0): EmojiEntry[] {
   return results;
 }
 
-const RECENT_KEY = "gryt:recentEmojis";
+const RECENT_PREFIX = "gryt:recentEmojis";
 const MAX_RECENT = 30;
 const DEFAULT_RECENT = ["thumbsup", "heart", "joy", "open_mouth", "cry", "thumbsdown", "fire", "100"];
 
@@ -168,9 +168,13 @@ interface StoredRecent {
   custom: boolean;
 }
 
-function readRecentStorage(): StoredRecent[] {
+function recentStorageKey(serverHost: string | undefined): string {
+  return serverHost ? `${RECENT_PREFIX}:${serverHost}` : RECENT_PREFIX;
+}
+
+function readRecentStorage(serverHost: string | undefined): StoredRecent[] {
   try {
-    const raw = localStorage.getItem(RECENT_KEY);
+    const raw = localStorage.getItem(recentStorageKey(serverHost));
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) return parsed;
@@ -178,21 +182,21 @@ function readRecentStorage(): StoredRecent[] {
   return [];
 }
 
-function writeRecentStorage(list: StoredRecent[]): void {
+function writeRecentStorage(serverHost: string | undefined, list: StoredRecent[]): void {
   try {
-    localStorage.setItem(RECENT_KEY, JSON.stringify(list));
+    localStorage.setItem(recentStorageKey(serverHost), JSON.stringify(list));
   } catch { /* storage full */ }
 }
 
-export function recordRecentEmoji(name: string, isCustom: boolean): void {
-  const stored = readRecentStorage();
+export function recordRecentEmoji(name: string, isCustom: boolean, serverHost?: string): void {
+  const stored = readRecentStorage(serverHost);
   const entry: StoredRecent = { name, custom: isCustom };
   const updated = [entry, ...stored.filter((s) => !(s.name === name && s.custom === isCustom))].slice(0, MAX_RECENT);
-  writeRecentStorage(updated);
+  writeRecentStorage(serverHost, updated);
 }
 
-export function getRecentEmojis(limit = 8): EmojiEntry[] {
-  const stored = readRecentStorage();
+export function getRecentEmojis(limit = 8, serverHost?: string): EmojiEntry[] {
+  const stored = readRecentStorage(serverHost);
   const all = getAllEmojis();
   const byKey = new Map<string, EmojiEntry>();
   for (const e of all) {

@@ -14,6 +14,7 @@ interface EmojiPickerProps {
   onClose: () => void;
   anchorEl?: HTMLElement | null;
   placement?: "above" | "beside";
+  serverHost?: string;
 }
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -117,7 +118,7 @@ function CategorySection({
   );
 }
 
-export const EmojiPicker = ({ onSelect, onClose, anchorEl, placement = "above" }: EmojiPickerProps) => {
+export const EmojiPicker = ({ onSelect, onClose, anchorEl, placement = "above", serverHost }: EmojiPickerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [search, setSearch] = useState("");
@@ -223,7 +224,7 @@ export const EmojiPicker = ({ onSelect, onClose, anchorEl, placement = "above" }
   }, [onClose]);
 
   const recentEntries = useMemo((): EmojiEntry[] => {
-    const recent = getRecentReactions(16);
+    const recent = getRecentReactions(16, serverHost);
     const customEmojis = getCustomEmojis();
     const byCategory = getStandardEmojisByCategory();
     const allStandard: EmojiEntry[] = [];
@@ -238,7 +239,7 @@ export const EmojiPicker = ({ onSelect, onClose, anchorEl, placement = "above" }
         return allStandard.find((e) => e.emoji === src) ?? null;
       })
       .filter((e): e is EmojiEntry => e !== null);
-  }, []);
+  }, [serverHost]);
 
   const [customVersion, setCustomVersion] = useState(0);
   useEffect(() => onCustomEmojisChange(() => setCustomVersion((v) => v + 1)), []);

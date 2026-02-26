@@ -7,9 +7,10 @@ interface EmojiAutocompleteProps {
   visible: boolean;
   onSelect: (entry: EmojiEntry) => void;
   onClose: () => void;
+  serverHost?: string;
 }
 
-export const EmojiAutocomplete = ({ query, visible, onSelect, onClose }: EmojiAutocompleteProps) => {
+export const EmojiAutocomplete = ({ query, visible, onSelect, onClose, serverHost }: EmojiAutocompleteProps) => {
   const [results, setResults] = useState<EmojiEntry[]>([]);
   const [isRecent, setIsRecent] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -23,7 +24,7 @@ export const EmojiAutocomplete = ({ query, visible, onSelect, onClose }: EmojiAu
       return;
     }
     if (!query) {
-      setResults(getRecentEmojis(8));
+      setResults(getRecentEmojis(8, serverHost));
       setIsRecent(true);
       setSelectedIndex(0);
       return;
@@ -32,7 +33,7 @@ export const EmojiAutocomplete = ({ query, visible, onSelect, onClose }: EmojiAu
     setResults(matched);
     setIsRecent(false);
     setSelectedIndex(0);
-  }, [query, visible]);
+  }, [query, visible, serverHost]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {

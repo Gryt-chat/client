@@ -93,13 +93,12 @@ BETA_RELEASE=false
 RELEASE_TYPE="release"
 
 if [ "$RERELEASE" = false ]; then
-  if [[ "$CURRENT_VERSION" =~ ^([0-9]+\.[0-9]+\.[0-9]+)-beta\.([0-9]+)$ ]]; then
+  if [[ "$CURRENT_VERSION" =~ ^([0-9]+\.[0-9]+\.[0-9]+)-beta(\.[0-9]+)?$ ]]; then
     CUR_BASE="${BASH_REMATCH[1]}"
-    CUR_BETA="${BASH_REMATCH[2]}"
-    NEXT_BETA="${CUR_BASE}-beta.$((CUR_BETA + 1))"
+    NEXT_BETA="$(bump_version "$CURRENT_VERSION" patch)-beta"
     echo ""
     info "Current version is beta (${BOLD}v${CURRENT_VERSION}${RESET}). Quick options:"
-    echo "   a) Next beta iteration → v${NEXT_BETA}  (default)"
+    echo "   a) Next beta patch     → v${NEXT_BETA}  (default)"
     echo "   b) Promote to stable   → v${CUR_BASE}"
     echo "   c) Keep selected       → v${NEW_VERSION}"
     echo ""
@@ -114,17 +113,17 @@ if [ "$RERELEASE" = false ]; then
   fi
 
   # Custom version with beta suffix already set
-  if [[ "$NEW_VERSION" =~ -beta\. ]]; then
+  if [[ "$NEW_VERSION" =~ -beta ]]; then
     BETA_RELEASE=true
   fi
 
   # For stable versions, offer to make it a beta
-  if [ "$BETA_RELEASE" = false ] && [[ ! "$NEW_VERSION" =~ -beta\. ]]; then
+  if [ "$BETA_RELEASE" = false ] && [[ ! "$NEW_VERSION" =~ -beta ]]; then
     read -rp "$(echo -e "${CYAN}?${RESET}  Release as beta? ${YELLOW}[Y/n]${RESET}: ")" BETA_ASK
     BETA_ASK="${BETA_ASK:-Y}"
     if [[ "$BETA_ASK" =~ ^[Yy]$ ]]; then
       BETA_RELEASE=true
-      NEW_VERSION="${NEW_VERSION}-beta.1"
+      NEW_VERSION="${NEW_VERSION}-beta"
     fi
   fi
 

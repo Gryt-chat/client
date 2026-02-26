@@ -42,7 +42,7 @@ export function useChatActions({
     if (!socketConnection || !currentUserId) return;
     const accessToken = getServerAccessToken(serverHost || "");
     if (!accessToken) return;
-    recordReaction(reactionSrc);
+    recordReaction(reactionSrc, serverHost);
     (socketConnection as { emit: (event: string, data: unknown) => void }).emit("chat:react", {
       conversationId: message.conversation_id,
       messageId: message.message_id,

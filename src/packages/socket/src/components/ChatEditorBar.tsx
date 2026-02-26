@@ -18,6 +18,7 @@ interface ChatEditorBarProps {
   onCancelEditing: () => void;
   onSend: (markdown: string, files: File[]) => void;
   onArrowUpEmpty: () => void;
+  serverHost?: string;
 }
 
 export function ChatEditorBar({
@@ -33,6 +34,7 @@ export function ChatEditorBar({
   onCancelEditing,
   onSend,
   onArrowUpEmpty,
+  serverHost,
 }: ChatEditorBarProps) {
   return (
     <>
@@ -107,6 +109,7 @@ export function ChatEditorBar({
         onCancel={editingMessage ? onCancelEditing : undefined}
         isEditing={!!editingMessage}
         memberList={memberList}
+        serverHost={serverHost}
       />
     </>
   );
