@@ -33,8 +33,11 @@ export function InviteAcceptModal({
   const [loading, setLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
+  const host = invite?.host ?? "";
+  const code = invite?.code ?? "";
+
   useEffect(() => {
-    if (!invite) {
+    if (!host) {
       setPreview(null);
       abortRef.current?.abort();
       abortRef.current = null;
@@ -48,24 +51,24 @@ export function InviteAcceptModal({
     const ac = new AbortController();
     abortRef.current = ac;
 
-    const httpBase = getServerHttpBase(invite.host);
+    const httpBase = getServerHttpBase(host);
     fetch(`${httpBase}/info`, { signal: ac.signal })
       .then((r) => (r.ok ? (r.json() as Promise<ServerPreview>) : Promise.reject()))
       .then((data) => {
         setPreview({
-          name: data.name || invite.host,
+          name: data.name || host,
           description: data.description,
           members: data.members,
         });
       })
       .catch((err: unknown) => {
         if (err instanceof DOMException && err.name === "AbortError") return;
-        setPreview({ name: invite.host });
+        setPreview({ name: host });
       })
       .finally(() => setLoading(false));
 
     return () => ac.abort();
-  }, [invite?.host, invite?.code]);
+  }, [host, code]);
 
   const isOpen = invite !== null;
   const displayName = preview?.name || invite?.host || "";
