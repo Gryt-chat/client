@@ -33,7 +33,8 @@ import { Welcome } from "./components/welcome";
 
 export function App() {
   const { isSignedIn } = useAccount();
-  const { showAddServer, setShowAddServer, addServer } = useServerManagement();
+  const { showAddServer, setShowAddServer, addServer, hasServer, switchToServer } =
+    useServerManagement();
   const { nickname, showDebugOverlay } = useSettings();
   const { disconnect } = useSFU();
 
@@ -122,6 +123,16 @@ export function App() {
     setInviteJoinState({ joining: false, error: "" });
   }, [inviteJoinState.joining]);
 
+  const alreadyMember = pendingInvite ? hasServer(normalizeHost(pendingInvite.host)) : false;
+
+  const handleGoToServer = useCallback(() => {
+    if (!pendingInvite) return;
+    switchToServer(normalizeHost(pendingInvite.host));
+    clearPendingInvite();
+    setPendingInvite(null);
+    setInviteJoinState({ joining: false, error: "" });
+  }, [pendingInvite, switchToServer]);
+
   useEffect(() => {
     if (isSignedIn === undefined) {
       setShowSplash(true);
@@ -147,8 +158,10 @@ export function App() {
             invite={pendingInvite}
             joinError={inviteJoinState.error}
             joining={inviteJoinState.joining}
+            alreadyMember={alreadyMember}
             onAccept={handleAcceptInvite}
             onDismiss={handleDismissInvite}
+            onGoToServer={handleGoToServer}
           />
           <PushToTalkModal />
           <MicrophoneDebugOverlay isVisible={showDebugOverlay} />
