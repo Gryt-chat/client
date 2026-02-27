@@ -51,6 +51,7 @@ interface ServerSidebarProps {
   onDisconnectUser: ((id: string) => void) | undefined;
   currentUserRole: Role | undefined;
   adminActions: AdminActions | undefined;
+  unreadChannelIds?: Set<string>;
 }
 
 export const ServerSidebar = ({
@@ -64,7 +65,7 @@ export const ServerSidebar = ({
   isConnecting, currentConnectionId, selectedChannelId,
   onChannelClick, clientsSpeaking,
   canManage, onEditItem, onDeleteItem, onMoveItem, onReorder, onAddItem,
-  onDisconnectUser, currentUserRole, adminActions,
+  onDisconnectUser, currentUserRole, adminActions, unreadChannelIds,
 }: ServerSidebarProps) => (
   <div
     onMouseLeave={onMouseLeave}
@@ -135,6 +136,7 @@ export const ServerSidebar = ({
                 onDisconnectUser={onDisconnectUser}
                 currentUserRole={currentUserRole}
                 adminActions={adminActions}
+                unreadChannelIds={unreadChannelIds}
               />
             </Box>
           </Flex>

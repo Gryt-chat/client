@@ -4,7 +4,7 @@ import { Socket } from "socket.io-client";
 import useSound from "use-sound";
 
 import messageSoundMp3 from "@/audio/src/assets/universfield-computer-mouse-click-02-383961.mp3";
-import { getServerAccessToken, isUserAuthenticated, useUnreadBadge } from "@/common";
+import { getServerAccessToken, isUserAuthenticated, markChannelUnread, useUnreadBadge } from "@/common";
 import { useSettings } from "@/settings";
 import { serverDetailsList as ServerDetailsList } from "@/settings/src/types/server";
 
@@ -214,6 +214,9 @@ export function useChat({
         }
       }
       handleNewMessage(msg, activeConversationId, cacheKeyFor, setMessageCache, setChatMessages);
+      if (msg.conversation_id !== activeConversationId && msg.sender_server_id !== currentUserId) {
+        markChannelUnread(serverHost, msg.conversation_id);
+      }
       if (msg.sender_server_id !== currentUserId && !document.hasFocus()) {
         if (notificationBadgeEnabledRef.current) incrementUnread();
         if (messageSoundEnabledRef.current) {

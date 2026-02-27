@@ -6,7 +6,7 @@ import { io, Socket } from "socket.io-client";
 import connectMp3 from "@/audio/src/assets/connect.mp3";
 import disconnectMp3 from "@/audio/src/assets/disconnect.mp3";
 import messageSoundMp3 from "@/audio/src/assets/universfield-computer-mouse-click-02-383961.mp3";
-import { getServerAccessToken, getServerRefreshToken, getServerWsBase, getValidIdentityToken, removeServerAccessToken, removeServerRefreshToken, useUnreadBadge } from "@/common";
+import { getServerAccessToken, getServerRefreshToken, getServerWsBase, removeServerAccessToken, removeServerRefreshToken, useUnreadBadge } from "@/common";
 import { initKeycloak } from "@/common/src/auth/keycloak";
 import { useSettings } from "@/settings";
 import { useServerSettings } from "@/settings/src/hooks/useServerSettings";
@@ -253,14 +253,10 @@ function useSocketsHook() {
               .catch(() => {});
           }, 1000);
         } else {
-          (async () => {
-            const identityToken = await getValidIdentityToken().catch(() => undefined);
-            socket.emit("server:join", {
-              nickname,
-              identityToken,
-              inviteCode: servers[host]?.token || undefined,
-            });
-          })();
+          socket.emit("server:join", {
+            nickname,
+            inviteCode: servers[host]?.token || undefined,
+          });
         }
       }
     });
@@ -288,11 +284,8 @@ function useSocketsHook() {
         if (accessToken) {
           socket.emit("server:details");
         } else {
-          (async () => {
-            const identityToken = await getValidIdentityToken().catch(() => undefined);
-            const inviteCode = serversRef.current[host]?.token || undefined;
-            socket.emit("server:join", { nickname, identityToken, inviteCode });
-          })();
+          const inviteCode = serversRef.current[host]?.token || undefined;
+          socket.emit("server:join", { nickname, inviteCode });
         }
       }, 3_000));
     });
@@ -325,35 +318,17 @@ function useSocketsHook() {
         if (!accessToken) {
           const refreshToken = getServerRefreshToken(host);
           if (refreshToken) {
-            (async () => {
-              const identityToken = await getValidIdentityToken().catch(() => undefined);
-              if (identityToken) {
-                socket.emit("token:refresh", { refreshToken, identityToken });
-              } else {
-                const inviteCode = serversRef.current[host]?.token || undefined;
-                  socket.emit("server:join", { nickname, identityToken: undefined, inviteCode });
-              }
-            })();
+            socket.emit("token:refresh", { refreshToken });
           } else {
-            (async () => {
-              const identityToken = await getValidIdentityToken().catch(() => undefined);
-              const inviteCode = serversRef.current[host]?.token || undefined;
-              socket.emit("server:join", { nickname, identityToken, inviteCode });
-            })();
+            const inviteCode = serversRef.current[host]?.token || undefined;
+            socket.emit("server:join", { nickname, inviteCode });
           }
           return;
         }
 
         const refreshToken = getServerRefreshToken(host);
         if (refreshToken) {
-          (async () => {
-            const identityToken = await getValidIdentityToken().catch(() => undefined);
-            if (identityToken) {
-              socket.emit("token:refresh", { refreshToken, identityToken });
-            } else {
-              socket.emit("token:refresh", { accessToken });
-            }
-          })();
+          socket.emit("token:refresh", { refreshToken });
         } else {
           socket.emit("token:refresh", { accessToken });
         }
@@ -388,14 +363,10 @@ function useSocketsHook() {
       if (lastAttemptToken === token) return;
       lastInviteJoinAttemptRef.current[host] = token;
 
-      (async () => {
-        const identityToken = await getValidIdentityToken().catch(() => undefined);
-        socket.emit("server:join", {
-          nickname,
-          identityToken,
-          inviteCode: token,
-        });
-      })();
+      socket.emit("server:join", {
+        nickname,
+        inviteCode: token,
+      });
     });
   }, [servers, sockets, nickname, serverConnectionStatus]);
 
@@ -412,15 +383,9 @@ function useSocketsHook() {
         return;
       }
 
-      // Token is likely stale if we never got details — do a fresh join
       removeServerAccessToken(host);
-      const identityToken = await getValidIdentityToken().catch(() => undefined);
       const inviteCode = serversRef.current[host]?.token || undefined;
-      socket.emit("server:join", {
-        nickname,
-        identityToken,
-        inviteCode,
-      });
+      socket.emit("server:join", { nickname, inviteCode });
     };
 
     if (socket.connected) {
@@ -452,11 +417,8 @@ function useSocketsHook() {
           return;
         }
 
-        void (async () => {
-          const identityToken = await getValidIdentityToken().catch(() => undefined);
-          const inviteCode = serversRef.current[host]?.token || undefined;
-          socket.emit("server:join", { nickname, identityToken, inviteCode });
-        })();
+        const inviteCode = serversRef.current[host]?.token || undefined;
+        socket.emit("server:join", { nickname, inviteCode });
       });
     };
 

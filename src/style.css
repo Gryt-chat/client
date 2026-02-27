@@ -458,8 +458,7 @@ body {
 /* ── Attachment images in messages ─────────────────────────── */
 
 .chat-attachment-image {
-  max-width: 300px;
-  max-height: 300px;
+  max-width: min(var(--img-w, 480px), 480px, 100%);
   width: auto;
   height: auto;
   border-radius: var(--radius-4);
@@ -938,8 +937,7 @@ body {
 
 @media (min-width: 1800px) {
   .chat-attachment-image {
-    max-width: 480px;
-    max-height: 480px;
+    max-width: min(var(--img-w, 620px), 620px, 100%);
   }
 
   .link-embed-container {

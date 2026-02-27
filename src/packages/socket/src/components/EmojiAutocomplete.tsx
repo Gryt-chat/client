@@ -15,6 +15,7 @@ export const EmojiAutocomplete = ({ query, visible, onSelect, onClose, serverHos
   const [isRecent, setIsRecent] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const keyboardNavRef = useRef(false);
 
   useEffect(() => {
     if (!visible) {
@@ -41,9 +42,11 @@ export const EmojiAutocomplete = ({ query, visible, onSelect, onClose, serverHos
 
       if (e.key === "ArrowDown") {
         e.preventDefault();
+        keyboardNavRef.current = true;
         setSelectedIndex((i) => (i + 1) % results.length);
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
+        keyboardNavRef.current = true;
         setSelectedIndex((i) => (i - 1 + results.length) % results.length);
       } else if (e.key === "Enter" || e.key === "Tab") {
         e.preventDefault();
@@ -74,6 +77,7 @@ export const EmojiAutocomplete = ({ query, visible, onSelect, onClose, serverHos
     <div
       ref={containerRef}
       className="emoji-autocomplete"
+      onMouseMove={() => { keyboardNavRef.current = false; }}
       style={{
         position: "absolute",
         bottom: "100%",
@@ -112,7 +116,7 @@ export const EmojiAutocomplete = ({ query, visible, onSelect, onClose, serverHos
             e.preventDefault();
             onSelect(entry);
           }}
-          onMouseEnter={() => setSelectedIndex(idx)}
+          onMouseEnter={() => { if (!keyboardNavRef.current) setSelectedIndex(idx); }}
           style={{
             display: "flex",
             alignItems: "center",

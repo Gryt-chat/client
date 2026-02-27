@@ -12,7 +12,7 @@ import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { MdCameraAlt, MdDelete } from "react-icons/md";
 
-import { getServerAccessToken, getServerHttpBase, getValidIdentityToken } from "@/common";
+import { getServerAccessToken, getServerHttpBase } from "@/common";
 import { useSettings } from "@/settings";
 import type { Channel } from "@/settings/src/types/server";
 
@@ -176,11 +176,10 @@ export function ServerOverviewTab({
   }, [host, socket]);
 
 
-  const ensureJoined = async () => {
+  const ensureJoined = () => {
     if (!socket?.connected) return;
     if (!nickname) return;
-    const identityToken = await getValidIdentityToken().catch(() => undefined);
-    socket.emit("server:join", { nickname, identityToken });
+    socket.emit("server:join", { nickname });
   };
 
   const parseMbToBytes = (s: string): number | null => {

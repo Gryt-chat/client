@@ -109,7 +109,7 @@ function getEmojiQueryAtCursor(): string | null {
   if (afterCursor.length > 0 && /^[a-zA-Z0-9_+-]/.test(afterCursor)) return null;
 
   const query = match[1];
-  if (query.length === 1) return null;
+  if (query.length < 2) return null;
 
   return query;
 }

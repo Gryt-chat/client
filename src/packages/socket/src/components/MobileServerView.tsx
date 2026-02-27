@@ -54,6 +54,7 @@ interface MobileServerViewProps {
   onDisconnectUser?: (targetServerUserId: string) => void;
   currentUserRole?: Role;
   adminActions?: AdminActions;
+  unreadChannelIds?: Set<string>;
 
   // ChatView
   chatMessages: ChatMessage[];
@@ -259,6 +260,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
               onDisconnectUser={props.canManage ? props.onDisconnectUser : undefined}
               currentUserRole={props.currentUserRole}
               adminActions={props.adminActions}
+              unreadChannelIds={props.unreadChannelIds}
             />
           </Box>
         </Flex>

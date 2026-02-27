@@ -1,6 +1,7 @@
 import { Flex } from "@radix-ui/themes";
 import { useCallback, useMemo } from "react";
 
+import { useUnreadTracker } from "@/common";
 import { useIsCompact, useIsMobile } from "@/mobile";
 import { useSettings } from "@/settings";
 import { SidebarItem } from "@/settings/src/types/server";
@@ -92,6 +93,8 @@ export const ServerView = () => {
     requestDisconnectUser, requestKickUser, requestBanUser,
   } = useAdminActions({ currentConnection, currentlyViewingServer, accessToken, memberLists });
 
+  const { getUnreadChannels } = useUnreadTracker();
+
   const currentServerUserId = currentlyViewingServer && currentConnection?.id
     ? clients[currentlyViewingServer.host]?.[currentConnection.id]?.serverUserId
     : undefined;
@@ -173,6 +176,7 @@ export const ServerView = () => {
   }
 
   const host = currentlyViewingServer.host;
+  const unreadChannelIds = getUnreadChannels(host);
   const isServerUnreachable = currentConnectionStatus === "disconnected" || currentConnectionStatus === "reconnecting";
   const isVoiceOnThisServer = isConnected && currentServerConnected === host;
   const currentUserRole = serverDetails?.server_info?.role;
@@ -227,6 +231,7 @@ export const ServerView = () => {
             onDisconnectUser={canManage ? requestDisconnectUser : undefined}
             currentUserRole={currentUserRole}
             adminActions={currentAdminActions}
+            unreadChannelIds={unreadChannelIds}
             chatMessages={chatMessages}
             canSend={canSend}
             sendChat={sendChat}
@@ -303,6 +308,7 @@ export const ServerView = () => {
               onDisconnectUser={canManage ? requestDisconnectUser : undefined}
               currentUserRole={currentUserRole}
               adminActions={currentAdminActions}
+              unreadChannelIds={unreadChannelIds}
             />
             <Flex flexGrow="1" ref={voiceContainerRef} style={{ position: "relative", minWidth: 0 }}>
               <VoiceView

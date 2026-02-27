@@ -3,11 +3,14 @@ import toast from "react-hot-toast";
 import { Socket } from "socket.io-client";
 
 import {
+  getCertificateSub,
   getServerRefreshToken,
-  getValidIdentityToken,
+  getValidCertificate,
   removeServerAccessToken,
   removeServerRefreshToken,
   setServerAccessToken,
+  markChannelUnread,
+  signAssertion,
 } from "@/common";
 import { playNotificationSound, preloadNotificationSound } from "@/lib/notificationSound";
 import {
@@ -179,6 +182,20 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
         });
       });
 
+      // ---- Challenge-response identity authentication ----
+
+      socket.on("server:challenge", async (challenge: { nonce: string; serverHost: string }) => {
+        try {
+          const certificate = await getValidCertificate();
+          const sub = getCertificateSub() || "";
+          const assertion = await signAssertion(sub, challenge.serverHost, challenge.nonce);
+          socket.emit("server:verify", { certificate, assertion });
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          console.error(`[Auth:Socket] Failed to answer challenge for ${host}:`, msg);
+        }
+      });
+
       // ---- Token lifecycle ----
 
       socket.on("token:refreshed", (refreshInfo: { accessToken: string }) => {
@@ -199,23 +216,11 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
 
         const refreshToken = getServerRefreshToken(host);
         if (refreshToken) {
-          (async () => {
-            const identityToken = await getValidIdentityToken().catch(() => undefined);
-            if (identityToken) {
-              socket.emit("token:refresh", { refreshToken, identityToken });
-            } else {
-              removeServerRefreshToken(host);
-              if (info?.message) toast.error(info.message);
-              socket.emit("server:join", { nickname, identityToken: undefined, inviteCode: servers[host]?.token || undefined });
-            }
-          })();
+          socket.emit("token:refresh", { refreshToken });
         } else {
           if (info?.message) toast.error(info.message);
           setTimeout(() => {
-            (async () => {
-              const identityToken = await getValidIdentityToken().catch(() => undefined);
-              socket.emit("server:join", { nickname, identityToken, inviteCode: servers[host]?.token || undefined });
-            })();
+            socket.emit("server:join", { nickname, inviteCode: servers[host]?.token || undefined });
           }, 300);
         }
       });
@@ -233,17 +238,8 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
 
         const refreshToken = getServerRefreshToken(host);
         if (refreshToken) {
-          (async () => {
-            const identityToken = await getValidIdentityToken().catch(() => undefined);
-            if (identityToken) {
-              console.log(`[Auth:Socket] token:error for ${host} — attempting refresh with refresh token`);
-              socket.emit("token:refresh", { refreshToken, identityToken });
-            } else {
-              removeServerRefreshToken(host);
-              const msg = errorInfo.message || errorInfo.error;
-              toast.error(`Auth failed for ${host}: ${msg}`);
-            }
-          })();
+          console.log(`[Auth:Socket] token:error for ${host} — attempting refresh with refresh token`);
+          socket.emit("token:refresh", { refreshToken });
         } else {
           removeServerRefreshToken(host);
           const msg = errorInfo.message || errorInfo.error;
@@ -273,10 +269,13 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
 
       // ---- Background chat notification (non-focused servers) ----
 
-      socket.on("chat:new", (msg: { sender_server_id: string }) => {
+      socket.on("chat:new", (msg: { sender_server_id: string; conversation_id?: string }) => {
         if (host === currentlyViewingServerRef.current?.host) return;
         const myId = socket.id ? clientsRef.current[host]?.[socket.id]?.serverUserId : undefined;
         if (myId && msg.sender_server_id === myId) return;
+        if (msg.conversation_id) {
+          markChannelUnread(host, msg.conversation_id);
+        }
         if (messageSoundEnabledRef.current) {
           playNotificationSound(messageSoundFileRef.current, messageSoundVolumeRef.current);
         }

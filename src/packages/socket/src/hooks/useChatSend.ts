@@ -3,7 +3,7 @@ import toast from "react-hot-toast";
 import { Socket } from "socket.io-client";
 import { v4 as uuidv4 } from "uuid";
 
-import { getServerAccessToken, getServerRefreshToken, getValidIdentityToken } from "@/common";
+import { getServerAccessToken, getServerRefreshToken } from "@/common";
 
 import type { ChatMessage } from "../components/chatUtils";
 import { shouldRefreshToken } from "../utils/tokenManager";
@@ -174,13 +174,9 @@ export function useChatSend({
     if (!accessToken) {
       if (currentConnection && nicknameRef.current) {
         setTimeout(() => {
-          (async () => {
-            const identityToken = await getValidIdentityToken().catch(() => undefined);
-            currentConnection.emit("server:join", {
-              nickname: nicknameRef.current,
-              identityToken,
-            });
-          })();
+          currentConnection.emit("server:join", {
+            nickname: nicknameRef.current,
+          });
         }, 250);
       }
       return;
@@ -211,9 +207,8 @@ export function useChatSend({
       if (shouldRefreshToken(accessToken!)) {
         const host = currentlyViewingServer?.host || "";
         const refreshToken = getServerRefreshToken(host);
-        const identityToken = await getValidIdentityToken().catch(() => undefined);
-        if (refreshToken && identityToken) {
-          currentConnection!.emit("token:refresh", { refreshToken, identityToken });
+        if (refreshToken) {
+          currentConnection!.emit("token:refresh", { refreshToken });
         } else {
           currentConnection!.emit("token:refresh", { accessToken });
         }

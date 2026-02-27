@@ -256,21 +256,17 @@ echo ""
 IFS='.' read -r V_MAJOR V_MINOR V_PATCH <<< "${NEW_VERSION%%-*}"
 cd "$CLIENT_DIR"
 
-info "Building Docker image…"
-docker build -t "${DOCKER_IMAGE}:${NEW_VERSION}" .
-ok "Built ${DOCKER_IMAGE}:${NEW_VERSION}"
+PLATFORMS="linux/amd64,linux/arm64"
+info "Building & pushing multi-arch Docker image (${PLATFORMS})…"
 
-info "Tagging…"
-docker tag "${DOCKER_IMAGE}:${NEW_VERSION}" "${DOCKER_IMAGE}:${V_MAJOR}.${V_MINOR}"
-docker tag "${DOCKER_IMAGE}:${NEW_VERSION}" "${DOCKER_IMAGE}:${V_MAJOR}"
-docker tag "${DOCKER_IMAGE}:${NEW_VERSION}" "${DOCKER_IMAGE}:latest-beta"
-
-info "Pushing to ghcr.io…"
-docker push "${DOCKER_IMAGE}:${NEW_VERSION}"
-docker push "${DOCKER_IMAGE}:${V_MAJOR}.${V_MINOR}"
-docker push "${DOCKER_IMAGE}:${V_MAJOR}"
-docker push "${DOCKER_IMAGE}:latest-beta"
-ok "Docker image pushed: ${BOLD}${DOCKER_IMAGE}:${NEW_VERSION}${RESET}"
+docker buildx build \
+  --platform "$PLATFORMS" \
+  -t "${DOCKER_IMAGE}:${NEW_VERSION}" \
+  -t "${DOCKER_IMAGE}:${V_MAJOR}.${V_MINOR}" \
+  -t "${DOCKER_IMAGE}:${V_MAJOR}" \
+  -t "${DOCKER_IMAGE}:latest-beta" \
+  --push .
+ok "Pushed ${DOCKER_IMAGE}:${NEW_VERSION} (${PLATFORMS})"
 
 # ── Deploy to beta ────────────────────────────────────────────────
 echo ""

@@ -12,7 +12,7 @@ import {
 } from "@radix-ui/themes";
 import { MdAdd, MdFeedback, MdMic, MdPushPin, MdSettings } from "react-icons/md";
 
-import { useAccount } from "@/common";
+import { useAccount, useUnreadTracker } from "@/common";
 import { useSettings } from "@/settings";
 import { useServerManagement, useSockets } from "@/socket";
 import { useSFU } from "@/webRTC";
@@ -40,6 +40,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
 
   const { currentServerConnected, isConnected } = useSFU();
   const { serverConnectionStatus, serverProfiles, serverDetailsList } = useSockets();
+  const { serverHasUnread } = useUnreadTracker();
 
   const currentHost = currentlyViewingServer?.host;
   const activeProfile = currentHost ? serverProfiles[currentHost] : undefined;
@@ -112,6 +113,23 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
                       >
                         <MdMic size={8} color="var(--accent-contrast)" />
                       </Box>
+                    )}
+                    {/* Unread message badge */}
+                    {serverHasUnread(host) && (
+                      <Box
+                        position="absolute"
+                        bottom="-2px"
+                        right="-2px"
+                        style={{
+                          width: 10,
+                          height: 10,
+                          borderRadius: "50%",
+                          backgroundColor: "var(--accent-9)",
+                          border: "2px solid var(--color-background)",
+                          zIndex: 1,
+                          pointerEvents: "none",
+                        }}
+                      />
                     )}
                   </Box>
                 </HoverCard.Trigger>

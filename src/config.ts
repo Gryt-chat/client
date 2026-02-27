@@ -2,6 +2,7 @@ export type GrytRuntimeConfig = {
   GRYT_OIDC_ISSUER?: string;
   GRYT_OIDC_REALM?: string;
   GRYT_OIDC_CLIENT_ID?: string;
+  GRYT_IDENTITY_URL?: string;
 };
 
 function readWindowConfig(): GrytRuntimeConfig | undefined {
@@ -30,10 +31,16 @@ export function getGrytConfig(): Required<GrytRuntimeConfig> {
     import.meta.env.VITE_GRYT_OIDC_CLIENT_ID ||
     'gryt-web';
 
+  const identityUrl =
+    win?.GRYT_IDENTITY_URL ||
+    import.meta.env.VITE_GRYT_IDENTITY_URL ||
+    'https://id.gryt.chat';
+
   return {
     GRYT_OIDC_ISSUER: issuer,
     GRYT_OIDC_REALM: realm,
     GRYT_OIDC_CLIENT_ID: clientId,
+    GRYT_IDENTITY_URL: identityUrl,
   };
 }
 

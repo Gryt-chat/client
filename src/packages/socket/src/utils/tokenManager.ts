@@ -1,7 +1,7 @@
 import { jwtDecode } from "jwt-decode";
 import type { Socket } from "socket.io-client";
 
-import { getServerAccessToken, getServerRefreshToken, getValidIdentityToken } from "@/common";
+import { getServerAccessToken, getServerRefreshToken } from "@/common";
 
 interface TokenPayload {
   grytUserId: string;
@@ -49,16 +49,15 @@ export function shouldRefreshToken(token: string): boolean {
 export interface TokenRefreshSocketLike {
   connected?: boolean;
   emit: {
-    (event: "token:refresh", payload: { refreshToken?: string; identityToken?: string; accessToken?: string }): void;
+    (event: "token:refresh", payload: { refreshToken?: string; accessToken?: string }): void;
     (event: string, ...args: unknown[]): void;
   };
 }
 
-async function triggerTokenRefresh(host: string, socket: TokenRefreshSocketLike, accessToken: string): Promise<void> {
+function triggerTokenRefresh(host: string, socket: TokenRefreshSocketLike, accessToken: string): void {
   const refreshToken = getServerRefreshToken(host);
-  const identityToken = await getValidIdentityToken().catch(() => undefined);
-  if (refreshToken && identityToken) {
-    socket.emit("token:refresh", { refreshToken, identityToken });
+  if (refreshToken) {
+    socket.emit("token:refresh", { refreshToken });
   } else {
     socket.emit("token:refresh", { accessToken });
   }
@@ -79,7 +78,7 @@ export async function getFreshServerAccessToken(
   if (!socket || socket.connected === false) return current;
 
   const staleToken = current;
-  await triggerTokenRefresh(host, socket, staleToken);
+  triggerTokenRefresh(host, socket, staleToken);
 
   for (let i = 0; i < 20; i++) {
     await new Promise((r) => setTimeout(r, 150));
@@ -108,7 +107,7 @@ export async function emitAuthenticated(
   if (!accessToken) return false;
 
   if (shouldRefreshToken(accessToken)) {
-    await triggerTokenRefresh(host, socket, accessToken);
+    triggerTokenRefresh(host, socket, accessToken);
     const staleToken = accessToken;
     for (let i = 0; i < 20; i++) {
       await new Promise((r) => setTimeout(r, 150));

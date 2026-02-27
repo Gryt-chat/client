@@ -4,7 +4,6 @@ import { useGlobalHotkeys } from "@/audio";
 import {
   capturePendingInviteFromUrl,
   clearPendingInvite,
-  getValidIdentityToken,
   normalizeCode,
   normalizeHost,
   type PendingInvite,
@@ -87,11 +86,9 @@ export function App() {
 
       setInviteJoinState({ joining: true, error: "" });
 
-      const identityToken = await getValidIdentityToken().catch(() => undefined);
       const result = await joinServerOnce({
         host,
         nickname,
-        identityToken,
         inviteCode: code,
       });
       // Note: we don't persist invite codes; we just use it for the initial join.

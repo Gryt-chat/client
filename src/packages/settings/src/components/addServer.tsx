@@ -16,7 +16,6 @@ import { MdClose, MdInfoOutline, MdWarning, MdWifi } from "react-icons/md";
 
 import {
   getServerHttpBase,
-  getValidIdentityToken,
   normalizeCode,
   normalizeHost,
   setServerAccessToken,
@@ -89,11 +88,9 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
     setIsJoining(true);
     setJoinError("");
 
-    const identityToken = await getValidIdentityToken().catch(() => undefined);
     const result = await joinServerOnce({
       host: normalizedHost,
       nickname,
-      identityToken,
       inviteCode: code.length > 0 ? code : undefined,
     });
 

@@ -1,11 +1,10 @@
 import { io } from "socket.io-client";
 
-import { getServerWsBase } from "@/common";
+import { getServerWsBase, getValidCertificate, getCertificateSub, signAssertion } from "@/common";
 
 export type JoinServerOnceRequest = {
   host: string;
   nickname?: string;
-  identityToken?: string;
   inviteCode?: string;
 };
 
@@ -111,9 +110,26 @@ export async function joinServerOnce(
       console.log(`[JoinServer] Connected to ${req.host}, sending join request…`);
       socket.emit("server:join", {
         nickname: req.nickname,
-        identityToken: req.identityToken,
         inviteCode: req.inviteCode,
       });
+    });
+
+    socket.on("server:challenge", async (challenge: { nonce: string; serverHost: string }) => {
+      console.log(`[JoinServer] Received challenge from ${req.host}, signing assertion…`);
+      try {
+        const certificate = await getValidCertificate();
+        const sub = getCertificateSub() || "";
+        const assertion = await signAssertion(sub, challenge.serverHost, challenge.nonce);
+        socket.emit("server:verify", { certificate, assertion });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error(`[JoinServer] Failed to answer challenge for ${req.host}:`, msg);
+        clearTimeout(timer);
+        finish({
+          ok: false,
+          error: { error: "identity_error", message: `Identity verification failed: ${msg}` },
+        });
+      }
     });
 
     socket.on("server:joined", (joinInfo: JoinServerOnceSuccess) => {

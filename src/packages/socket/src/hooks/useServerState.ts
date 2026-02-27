@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { isSpeaking, useMicrophone, useSpeakers } from "@/audio";
-import { getServerAccessToken } from "@/common";
+import { getServerAccessToken, markChannelRead } from "@/common";
 import { sliderToOutputGain } from "@/lib/audioVolume";
 import { useSettings } from "@/settings";
 import { useSFU } from "@/webRTC";
@@ -202,6 +202,13 @@ export function useServerState() {
     selectedChannelId,
     getLastSelectedChannel,
   ]);
+
+  // Mark the selected channel as read
+  useEffect(() => {
+    if (currentlyViewingServer && selectedChannelId) {
+      markChannelRead(currentlyViewingServer.host, selectedChannelId);
+    }
+  }, [currentlyViewingServer?.host, selectedChannelId]);
 
   // Fallback when selected channel is deleted
   useEffect(() => {

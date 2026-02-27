@@ -164,13 +164,7 @@ export const VoiceView = ({
       const client = clientsForHost[id];
       const isSelf = id === currentConnectionId;
 
-      const hasCamera = isSelf
-        ? !!localCameraStream
-        : !!(client.cameraEnabled && client.cameraStreamID);
-
-      if (hasCamera) {
-        items.push(id);
-      }
+      items.push(id);
 
       if (isSelf && localScreenActive && localScreenStream) {
         items.push(`screen:${id}`);
@@ -179,7 +173,7 @@ export const VoiceView = ({
       }
     }
     return items;
-  }, [visibleClients, clientsForHost, currentConnectionId, localScreenActive, localScreenStream, localCameraStream]);
+  }, [visibleClients, clientsForHost, currentConnectionId, localScreenActive, localScreenStream]);
 
   const { poppedOutItems, popout: handlePopout, updatePopoutStream } = usePopoutStreams(gridItems);
 

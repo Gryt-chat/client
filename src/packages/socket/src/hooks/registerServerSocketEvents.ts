@@ -6,7 +6,6 @@ import {
   getServerAccessToken,
   getServerRefreshToken,
   getUploadsFileUrl,
-  getValidIdentityToken,
   removeServerAccessToken,
   removeServerRefreshToken,
   setServerAccessToken,
@@ -80,28 +79,17 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       if (existingAccessToken) {
         const refreshToken = getServerRefreshToken(host);
         if (refreshToken) {
-          (async () => {
-            const identityToken = await getValidIdentityToken().catch(() => undefined);
-            if (identityToken) {
-              socket.emit("token:refresh", { refreshToken, identityToken });
-            } else {
-              socket.emit("token:refresh", { accessToken: existingAccessToken });
-            }
-          })();
+          socket.emit("token:refresh", { refreshToken });
         } else {
           socket.emit("token:refresh", { accessToken: existingAccessToken });
         }
         return;
       }
       setTimeout(() => {
-        (async () => {
-          const identityToken = await getValidIdentityToken().catch(() => undefined);
-          socket.emit("server:join", {
-            nickname,
-            identityToken,
-            inviteCode: servers[host]?.token || undefined,
-          });
-        })();
+        socket.emit("server:join", {
+          nickname,
+          inviteCode: servers[host]?.token || undefined,
+        });
       }, 500);
       return;
     }
@@ -220,14 +208,10 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
 
     if (errorInfo.error === "join_required") {
       setTimeout(() => {
-        (async () => {
-          const identityToken = await getValidIdentityToken().catch(() => undefined);
-          socket.emit("server:join", {
-            nickname,
-            identityToken,
-            inviteCode: serversRef.current[host]?.token || undefined,
-          });
-        })();
+        socket.emit("server:join", {
+          nickname,
+          inviteCode: serversRef.current[host]?.token || undefined,
+        });
       }, 500);
       return;
     }
@@ -285,21 +269,16 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
 
       if (!canAttemptTokenHeal(host)) return;
 
-      (async () => {
-        const refreshToken = getServerRefreshToken(host);
-        const identityToken = await getValidIdentityToken().catch(() => undefined);
-
-        if (refreshToken && identityToken) {
-          socket.emit("token:refresh", { refreshToken, identityToken });
-        } else {
-          removeServerRefreshToken(host);
-          socket.emit("server:join", {
-            nickname,
-            identityToken,
-            inviteCode: serversRef.current[host]?.token || undefined,
-          });
-        }
-      })();
+      const refreshToken = getServerRefreshToken(host);
+      if (refreshToken) {
+        socket.emit("token:refresh", { refreshToken });
+      } else {
+        removeServerRefreshToken(host);
+        socket.emit("server:join", {
+          nickname,
+          inviteCode: serversRef.current[host]?.token || undefined,
+        });
+      }
       return;
     } else {
       toast.error(`Failed to join server ${host}: ${errorInfo.error}`);

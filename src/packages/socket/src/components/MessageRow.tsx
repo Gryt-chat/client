@@ -493,7 +493,7 @@ function MessageContent({
                       className="chat-attachment-image"
                       loading="lazy"
                       decoding="async"
-                      style={w && h ? { aspectRatio: `${w} / ${h}` } : undefined}
+                      style={w && h ? { aspectRatio: `${w} / ${h}`, "--img-w": `${w}px` } as React.CSSProperties : undefined}
                       onClick={() => onLightboxOpen(url, attachMeta?.original_name || "Attachment")}
                     />
                   </MessageContextMenu>

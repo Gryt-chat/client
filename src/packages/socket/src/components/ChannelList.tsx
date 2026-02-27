@@ -36,6 +36,7 @@ export const ChannelList = ({
   onDisconnectUser,
   currentUserRole,
   adminActions,
+  unreadChannelIds,
 }: {
   channels: Channel[];
   items?: SidebarItem[];
@@ -59,6 +60,7 @@ export const ChannelList = ({
   onDisconnectUser?: (targetServerUserId: string) => void;
   currentUserRole?: Role;
   adminActions?: AdminActions;
+  unreadChannelIds?: Set<string>;
 }) => {
   const memberByServerUserId = new Map(
     (members || []).map((m) => [m.serverUserId, m])
@@ -135,9 +137,25 @@ export const ChannelList = ({
     const channelId = item.channelId ?? item.id;
     const channel = channelById.get(channelId);
     const hasIndicators = channel?.type === "voice" && (channel?.eSportsMode || channel?.requirePushToTalk || channel?.disableRnnoise || channel?.maxBitrate);
+    const isUnread = !!channel && channel.id !== selectedChannelId && !!unreadChannelIds?.has(channel.id);
 
     return (
       <Flex direction="column" align="start" width="100%" position="relative">
+        {isUnread && (
+          <Box
+            position="absolute"
+            top="-2px"
+            right="-2px"
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              backgroundColor: "var(--accent-9)",
+              zIndex: 1,
+              pointerEvents: "none",
+            }}
+          />
+        )}
         <Button
           variant={channel?.id === selectedChannelId ? "solid" : "soft"}
           radius="large"
