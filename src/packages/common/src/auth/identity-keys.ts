@@ -85,15 +85,15 @@ export async function getPublicKeyJwk(): Promise<JsonWebKey> {
   return crypto.subtle.exportKey("jwk", publicKey);
 }
 
-function base64UrlEncode(buf: ArrayBuffer): string {
-  const bytes = new Uint8Array(buf);
+function base64UrlEncode(buf: ArrayBuffer | Uint8Array): string {
+  const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
   let binary = "";
   for (const b of bytes) binary += String.fromCharCode(b);
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-function utf8ToBuffer(str: string): Uint8Array {
-  return new TextEncoder().encode(str);
+function utf8ToBuffer(str: string): Uint8Array<ArrayBuffer> {
+  return new TextEncoder().encode(str) as Uint8Array<ArrayBuffer>;
 }
 
 /**
