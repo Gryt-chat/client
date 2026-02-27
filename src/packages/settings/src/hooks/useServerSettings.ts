@@ -38,7 +38,9 @@ function useServerSettingsHook(): ServerSettings {
       await loadForUser(userId);
       if (cancelled) return;
 
-      setServersRaw(getUserValue<Servers>("servers", {}));
+      const loaded = getUserValue<Servers>("servers", {});
+      console.log("[ServerSettings] Loaded servers for", userId, "→", Object.keys(loaded).length, "servers:", Object.keys(loaded).join(", "));
+      setServersRaw(loaded);
       setLastSelectedChannelsRaw(getUserValue<Record<string, string>>("lastSelectedChannels", {}));
     })();
 
@@ -49,6 +51,8 @@ function useServerSettingsHook(): ServerSettings {
     setServersRaw(newServers);
     if (userIdRef.current) {
       setUserValue("servers", newServers);
+    } else {
+      console.warn("[ServerSettings] updateServers: skipped persist — userIdRef not set yet, count:", Object.keys(newServers).length);
     }
   }, []);
 

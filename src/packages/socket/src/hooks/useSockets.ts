@@ -109,27 +109,32 @@ function useSocketsHook() {
     });
   }, [isMuted, isDeafened, isAFK, sockets]);
 
-  // Add new or update servers to the list
+  // Merge incoming server:info updates into the saved list in a single write.
+  // Previously each iteration spread the same stale `servers` closure, so
+  // only the last server's update survived — silently dropping earlier ones.
   useEffect(() => {
-    if (newServerInfo.length > 0) {
-      newServerInfo.forEach((server, index) => {
-        const existingServer = servers[server.host];
-        if (existingServer && existingServer.name === server.name) {
-          return;
-        }
-        
-        const newServers = { ...servers, [server.host]: server };
-        setServers(newServers);
-        
-        if (!currentlyViewingServer && index === 0) {
-          setTimeout(() => {
-            setCurrentlyViewingServer(server.host);
-          }, 100);
-        }
-      });
-      
-      setNewServerInfo([]);
+    if (newServerInfo.length === 0) return;
+
+    let updated = { ...servers };
+    let changed = false;
+
+    for (const server of newServerInfo) {
+      const existing = updated[server.host];
+      if (existing && existing.name === server.name) continue;
+      updated = { ...updated, [server.host]: server };
+      changed = true;
     }
+
+    if (changed) setServers(updated);
+
+    if (!currentlyViewingServer && Object.keys(updated).length > 0) {
+      const first = newServerInfo[0];
+      if (first) {
+        setTimeout(() => setCurrentlyViewingServer(first.host), 100);
+      }
+    }
+
+    setNewServerInfo([]);
   }, [newServerInfo, servers, setServers, currentlyViewingServer, setCurrentlyViewingServer]);
 
   const bumpTokenRevision = useCallback(() => setTokenRevision((n) => n + 1), []);

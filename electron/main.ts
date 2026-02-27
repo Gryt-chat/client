@@ -7,7 +7,7 @@ import { uIOhook, UiohookKey } from "uiohook-napi";
 import { fileURLToPath } from "url";
 
 import { isNativeAudioCaptureAvailable, startNativeAudioCapture, stopNativeAudioCapture } from "./audioCaptureManager";
-import { initUserStore, loadUser, patchUser, saveUser } from "./userStore";
+import { flushUserStore, initUserStore, loadUser, patchUser, saveUser } from "./userStore";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -851,6 +851,8 @@ if (!gotSingleInstanceLock) {
   });
 
   app.on("will-quit", () => {
+    console.log("[Main] will-quit: flushing user store and cleaning up");
+    flushUserStore();
     uIOhook.stop();
     localServer?.close();
     localServer = null;

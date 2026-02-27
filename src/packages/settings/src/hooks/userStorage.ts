@@ -11,9 +11,16 @@ function webKey(userId: string, key: string): string {
 }
 
 export async function loadForUser(userId: string): Promise<UserData> {
-  if (cachedUserId === userId && pendingLoad) return pendingLoad;
-  if (cachedUserId === userId && Object.keys(cache).length > 0) return cache;
+  if (cachedUserId === userId && pendingLoad) {
+    console.log("[UserStore] loadForUser: returning pending load for", userId);
+    return pendingLoad;
+  }
+  if (cachedUserId === userId && Object.keys(cache).length > 0) {
+    console.log("[UserStore] loadForUser: returning cache for", userId, "keys:", Object.keys(cache).length);
+    return cache;
+  }
 
+  console.log("[UserStore] loadForUser: loading data for", userId, "prev:", cachedUserId);
   cachedUserId = userId;
 
   pendingLoad = (async () => {
@@ -23,6 +30,7 @@ export async function loadForUser(userId: string): Promise<UserData> {
       const api = getElectronAPI();
       if (api) {
         data = await api.loadUserData(userId);
+        console.log("[UserStore] loadForUser: Electron IPC returned", Object.keys(data).length, "keys, hasServers:", data["servers"] !== undefined);
       }
     } else {
       const prefix = `user:${userId}:`;
@@ -40,11 +48,20 @@ export async function loadForUser(userId: string): Promise<UserData> {
           }
         }
       }
+      console.log("[UserStore] loadForUser: localStorage returned", Object.keys(data).length, "keys, hasServers:", data["servers"] !== undefined);
     }
 
     const hasExistingData = Object.keys(data).length > 0;
     if (!hasExistingData) {
+      console.log("[UserStore] loadForUser: no existing data, running migration");
       data = migrateFromLocalStorage(userId, data);
+    }
+
+    const servers = data["servers"];
+    if (servers && typeof servers === "object") {
+      console.log("[UserStore] loadForUser: loaded", Object.keys(servers).length, "servers:", Object.keys(servers).join(", "));
+    } else {
+      console.warn("[UserStore] loadForUser: no servers in loaded data");
     }
 
     cache = data;
@@ -63,7 +80,14 @@ export function getUserValue<T>(key: string, fallback: T): T {
 export function setUserValue(key: string, value: unknown): void {
   cache[key] = value;
 
-  if (!cachedUserId) return;
+  if (!cachedUserId) {
+    console.warn("[UserStore] setUserValue: skipping save — no cachedUserId, key:", key);
+    return;
+  }
+
+  if (key === "servers" && value && typeof value === "object") {
+    console.log("[UserStore] setUserValue: saving", Object.keys(value).length, "servers for", cachedUserId, "→", Object.keys(value).join(", "));
+  }
 
   if (isElectron()) {
     const api = getElectronAPI();
