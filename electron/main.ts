@@ -670,8 +670,8 @@ if (!gotSingleInstanceLock) {
       initBackgroundUpdater();
     }
 
-    // Manual checks from Settings should only check, not auto-download.
-    autoUpdater.autoDownload = false;
+    // Background updates auto-download and install on quit
+    // (autoDownload + autoInstallOnAppQuit are both true).
 
     // ── Embed origin fix ────────────────────────────────────────────
     // Third-party embed players (YouTube, Vimeo, Spotify, etc.) reject

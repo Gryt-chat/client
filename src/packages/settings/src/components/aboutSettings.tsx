@@ -9,6 +9,7 @@ import {
   MdFeedback,
   MdOpenInNew,
   MdRefresh,
+  MdUpdate,
 } from "react-icons/md";
 
 import { getElectronAPI, isElectron, UpdateStatus } from "../../../../lib/electron";
@@ -37,14 +38,6 @@ function UpdateControls() {
     getElectronAPI()?.checkForUpdates();
   }, []);
 
-  const handleDownloadUpdate = useCallback(() => {
-    getElectronAPI()?.downloadUpdate();
-  }, []);
-
-  const handleInstallUpdate = useCallback(() => {
-    getElectronAPI()?.installUpdate();
-  }, []);
-
   const confirmChannelSwitch = useCallback(() => {
     if (pendingSwitch === null) return;
     getElectronAPI()?.switchUpdateChannel(pendingSwitch);
@@ -58,11 +51,10 @@ function UpdateControls() {
       case "checking":
         return "Checking for updates…";
       case "available":
-        return `Update available: v${status.version}`;
       case "downloading":
-        return `Downloading update… ${status.percent ?? 0}%`;
+        return `Downloading v${status.version}… ${status.percent != null ? `${status.percent}%` : ""}`;
       case "downloaded":
-        return `Update v${status.version} ready to install`;
+        return `v${status.version} will be installed on next restart`;
       case "not-available":
         return "You're on the latest version";
       case "error":
@@ -88,9 +80,9 @@ function UpdateControls() {
   })();
 
   const isChecking = status?.status === "checking";
-  const isAvailable = status?.status === "available";
   const isDownloading = status?.status === "downloading";
   const isReady = status?.status === "downloaded";
+  const isBusy = isChecking || isDownloading;
 
   return (
     <>
@@ -122,6 +114,7 @@ function UpdateControls() {
         {statusText && (
           <Flex direction="column" gap="1">
             <Flex align="center" gap="2">
+              {isReady && <MdUpdate size={16} color="var(--green-9)" />}
               {status?.status === "not-available" && <MdCheckCircle size={16} color="var(--green-9)" />}
               {status?.status === "error" && <MdCancel size={16} color="var(--red-9)" />}
               <Text size="2" color={statusColor}>{statusText}</Text>
@@ -138,40 +131,15 @@ function UpdateControls() {
           <Progress value={status.percent} size="2" />
         )}
 
-        <Flex gap="3">
-          {!isAvailable && !isDownloading && !isReady && (
-            <Button
-              variant="soft"
-              onClick={handleCheckForUpdates}
-              disabled={isChecking}
-            >
-              <MdRefresh size={16} />
-              {isChecking ? "Checking…" : "Check for Updates"}
-            </Button>
-          )}
-
-          {isAvailable && (
-            <Button
-              variant="solid"
-              color="blue"
-              onClick={handleDownloadUpdate}
-            >
-              <MdDownload size={16} />
-              Download & Install
-            </Button>
-          )}
-
-          {isReady && (
-            <Button
-              variant="solid"
-              color="green"
-              onClick={handleInstallUpdate}
-            >
-              <MdDownload size={16} />
-              Restart & Install Update
-            </Button>
-          )}
-        </Flex>
+        <Button
+          variant="soft"
+          onClick={handleCheckForUpdates}
+          disabled={isBusy}
+          style={{ alignSelf: "flex-start" }}
+        >
+          <MdRefresh size={16} />
+          {isChecking ? "Checking…" : "Check for Updates"}
+        </Button>
       </Flex>
 
       <AlertDialog.Root open={pendingSwitch !== null} onOpenChange={(open) => { if (!open) setPendingSwitch(null); }}>
