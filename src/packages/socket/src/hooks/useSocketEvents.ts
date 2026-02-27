@@ -6,10 +6,10 @@ import {
   getCertificateSub,
   getServerRefreshToken,
   getValidCertificate,
+  markChannelUnread,
   removeServerAccessToken,
   removeServerRefreshToken,
   setServerAccessToken,
-  markChannelUnread,
   signAssertion,
 } from "@/common";
 import { playNotificationSound, preloadNotificationSound } from "@/lib/notificationSound";

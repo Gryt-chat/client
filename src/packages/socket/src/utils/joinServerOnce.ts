@@ -1,6 +1,6 @@
 import { io } from "socket.io-client";
 
-import { getServerWsBase, getValidCertificate, getCertificateSub, signAssertion } from "@/common";
+import { getCertificateSub, getServerWsBase, getValidCertificate, signAssertion } from "@/common";
 
 export type JoinServerOnceRequest = {
   host: string;

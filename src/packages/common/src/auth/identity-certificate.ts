@@ -6,8 +6,8 @@
  */
 
 import { getGrytConfig } from "../../../../config";
-import { getValidIdentityToken } from "./keycloak";
 import { getPublicKeyJwk } from "./identity-keys";
+import { getValidIdentityToken } from "./keycloak";
 
 const CERT_STORAGE_KEY = "gryt_identity_certificate";
 const RENEW_BUFFER_MS = 24 * 60 * 60 * 1000; // Renew 24h before expiry

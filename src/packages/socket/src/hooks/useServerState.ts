@@ -208,7 +208,7 @@ export function useServerState() {
     if (currentlyViewingServer && selectedChannelId) {
       markChannelRead(currentlyViewingServer.host, selectedChannelId);
     }
-  }, [currentlyViewingServer?.host, selectedChannelId]);
+  }, [currentlyViewingServer, selectedChannelId]);
 
   // Fallback when selected channel is deleted
   useEffect(() => {
