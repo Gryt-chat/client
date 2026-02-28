@@ -33,7 +33,13 @@ export function useNativeAudioCapture(): NativeAudioCapture {
   useEffect(() => {
     if (!isElectron()) return;
     const api = getElectronAPI();
-    api?.isNativeAudioCaptureAvailable().then(setAvailable).catch(() => {});
+    api
+      ?.isNativeAudioCaptureAvailable()
+      .then((v) => {
+        console.log(`[NativeAudioCapture] availability probe: ${v}`);
+        setAvailable(v);
+      })
+      .catch(() => {});
   }, []);
 
   const stop = useCallback(() => {

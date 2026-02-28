@@ -1,5 +1,5 @@
 import { Badge, Button, Checkbox, Dialog, Flex, IconButton, Select, Text } from "@radix-ui/themes";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MdClose, MdRefresh, MdVideocam } from "react-icons/md";
 
 import type { CameraQuality } from "@/audio";
@@ -20,6 +20,8 @@ interface CameraPreviewModalProps {
 
 const QUALITY_OPTIONS: { value: CameraQuality; label: string }[] = [
   { value: "native", label: "Native" },
+  { value: "4k", label: "4K" },
+  { value: "1440p", label: "1440p" },
   { value: "1080p", label: "1080p" },
   { value: "720p", label: "720p" },
   { value: "480p", label: "480p" },
@@ -28,10 +30,18 @@ const QUALITY_OPTIONS: { value: CameraQuality; label: string }[] = [
   { value: "144p", label: "144p" },
   { value: "96p", label: "96p" },
   { value: "64p", label: "64p" },
+  { value: "48p", label: "48p" },
+  { value: "32p", label: "32p" },
+  { value: "24p", label: "24p" },
+  { value: "16p", label: "16p" },
+  { value: "8p", label: "8p" },
+  { value: "4p", label: "4p" },
 ];
 
 const QUALITY_CONSTRAINTS: Record<string, { width?: number; height?: number; frameRate: number }> = {
   native: { frameRate: 30 },
+  "4k": { width: 3840, height: 2160, frameRate: 30 },
+  "1440p": { width: 2560, height: 1440, frameRate: 30 },
   "1080p": { width: 1920, height: 1080, frameRate: 30 },
   "720p": { width: 1280, height: 720, frameRate: 30 },
   "480p": { width: 854, height: 480, frameRate: 30 },
@@ -40,6 +50,12 @@ const QUALITY_CONSTRAINTS: Record<string, { width?: number; height?: number; fra
   "144p": { width: 256, height: 144, frameRate: 15 },
   "96p": { width: 170, height: 96, frameRate: 10 },
   "64p": { width: 114, height: 64, frameRate: 10 },
+  "48p": { width: 85, height: 48, frameRate: 10 },
+  "32p": { width: 57, height: 32, frameRate: 5 },
+  "24p": { width: 43, height: 24, frameRate: 5 },
+  "16p": { width: 28, height: 16, frameRate: 5 },
+  "8p": { width: 14, height: 8, frameRate: 2 },
+  "4p": { width: 7, height: 4, frameRate: 1 },
 };
 
 export function CameraPreviewModal({
@@ -64,6 +80,7 @@ export function CameraPreviewModal({
   const [localMirrored, setLocalMirrored] = useState(mirrored);
   const [localFlipped, setLocalFlipped] = useState(flipped);
   const [retryCount, setRetryCount] = useState(0);
+  const [maxCameraHeight, setMaxCameraHeight] = useState<number | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -198,6 +215,38 @@ export function CameraPreviewModal({
     return () => window.clearInterval(id);
   }, [previewStream]);
 
+  useEffect(() => {
+    if (!previewStream) {
+      setMaxCameraHeight(null);
+      return;
+    }
+    const track = previewStream.getVideoTracks()[0];
+    if (!track) return;
+    try {
+      const caps = track.getCapabilities();
+      setMaxCameraHeight(caps.height?.max ?? null);
+    } catch {
+      setMaxCameraHeight(null);
+    }
+  }, [previewStream]);
+
+  const filteredOptions = useMemo(() => {
+    if (!maxCameraHeight) return QUALITY_OPTIONS;
+    return QUALITY_OPTIONS.filter((opt) => {
+      if (opt.value === "native") return true;
+      const c = QUALITY_CONSTRAINTS[opt.value];
+      return !c?.height || c.height <= maxCameraHeight;
+    });
+  }, [maxCameraHeight]);
+
+  useEffect(() => {
+    if (!maxCameraHeight) return;
+    const c = QUALITY_CONSTRAINTS[localQuality];
+    if (c?.height && c.height > maxCameraHeight) {
+      setLocalQuality("native");
+    }
+  }, [maxCameraHeight, localQuality]);
+
   const handleClose = () => {
     if (previewStream) {
       previewStream.getTracks().forEach((t) => t.stop());
@@ -318,7 +367,7 @@ export function CameraPreviewModal({
               <Select.Root value={localQuality} onValueChange={setLocalQuality}>
                 <Select.Trigger variant="soft" style={{ flex: 1 }} />
                 <Select.Content>
-                  {QUALITY_OPTIONS.map((o) => (
+                  {filteredOptions.map((o) => (
                     <Select.Item key={o.value} value={o.value}>{o.label}</Select.Item>
                   ))}
                 </Select.Content>

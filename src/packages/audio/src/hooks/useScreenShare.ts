@@ -7,7 +7,9 @@ import { isElectron } from "../../../../lib/electron";
 import { useNativeAudioCapture } from "./useNativeAudioCapture";
 import { useSpeakers } from "./useSpeakers";
 
-export type ScreenShareQuality = "native" | "4k" | "1440p" | "1080p" | "720p" | "480p" | "360p" | "240p" | "144p" | "96p" | "64p";
+export type ScreenShareQuality =
+  | "native" | "4k" | "1440p" | "1080p" | "720p" | "480p" | "360p" | "240p"
+  | "144p" | "96p" | "64p" | "48p" | "32p" | "24p" | "16p" | "8p" | "4p";
 
 export type ScreenShareFps = 30 | 60 | 90 | 120 | 144 | 165 | 240;
 
@@ -26,6 +28,12 @@ const RESOLUTION_CONSTRAINTS: Record<ScreenShareQuality, { width?: number; heigh
   "144p": { width: 256, height: 144 },
   "96p": { width: 170, height: 96 },
   "64p": { width: 114, height: 64 },
+  "48p": { width: 85, height: 48 },
+  "32p": { width: 57, height: 32 },
+  "24p": { width: 43, height: 24 },
+  "16p": { width: 28, height: 16 },
+  "8p": { width: 14, height: 8 },
+  "4p": { width: 7, height: 4 },
 };
 
 const BASE_BITRATES_30FPS: Record<ScreenShareQuality, number | null> = {
@@ -40,6 +48,12 @@ const BASE_BITRATES_30FPS: Record<ScreenShareQuality, number | null> = {
   "144p": 150_000,
   "96p": 80_000,
   "64p": 40_000,
+  "48p": 25_000,
+  "32p": 15_000,
+  "24p": 10_000,
+  "16p": 5_000,
+  "8p": 2_000,
+  "4p": 1_000,
 };
 
 export function estimateBitrate(quality: ScreenShareQuality, fps: number): number | null {
@@ -92,6 +106,9 @@ function useScreenShareHook(): ScreenShareInterface {
     const res = RESOLUTION_CONSTRAINTS[screenShareQuality as ScreenShareQuality] ?? RESOLUTION_CONSTRAINTS.native;
     const fps = screenShareFps || 30;
     const useNativeAudio = withAudio && nativeAvailable;
+    console.log(
+      `[ScreenShare] startScreenShare withAudio=${withAudio} nativeAvailable=${nativeAvailable} useNativeAudio=${useNativeAudio} isElectron=${isElectron()} sourceId=${sourceId ?? "none"}`,
+    );
 
     try {
       let stream: MediaStream;
@@ -168,14 +185,20 @@ function useScreenShareHook(): ScreenShareInterface {
       }
 
       if (useNativeAudio && audioContext) {
+        console.log("[ScreenShare] attempting native audio capture...");
         const started = await nativeStart(audioContext);
         if (started) {
+          console.log("[ScreenShare] native audio capture STARTED");
           usingNativeAudioRef.current = true;
         } else {
+          console.warn("[ScreenShare] native audio capture FAILED, falling back to raw loopback");
           usingNativeAudioRef.current = false;
           extractRawAudio(stream);
         }
       } else {
+        console.log(
+          `[ScreenShare] using raw loopback audio (nativeAvailable=${nativeAvailable} audioContext=${!!audioContext})`,
+        );
         extractRawAudio(stream);
       }
     } catch (error) {

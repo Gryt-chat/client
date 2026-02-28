@@ -38,6 +38,7 @@ export interface ElectronAPI {
   setHardwareAcceleration(enabled: boolean): void;
   setBadgeCount(count: number): void;
   toggleAlwaysOnTop(pinned: boolean): void;
+  getScreenCaptureAccess(): Promise<"not-determined" | "granted" | "denied" | "restricted">;
   getDesktopSources(): Promise<DesktopSource[]>;
   isNativeAudioCaptureAvailable(): Promise<boolean>;
   startNativeAudioCapture(): Promise<boolean>;

@@ -19,9 +19,45 @@
 #include <io.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <tlhelp32.h>
 
 #pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "mmdevapi.lib")
+
+typedef LONG(WINAPI *RtlGetVersionPtr)(OSVERSIONINFOEXW *);
+
+static void logWindowsBuild() {
+    HMODULE ntdll = GetModuleHandleW(L"ntdll.dll");
+    if (!ntdll) return;
+    auto fn = reinterpret_cast<RtlGetVersionPtr>(GetProcAddress(ntdll, "RtlGetVersion"));
+    if (!fn) return;
+    OSVERSIONINFOEXW ver = {};
+    ver.dwOSVersionInfoSize = sizeof(ver);
+    if (fn(&ver) == 0) {
+        fprintf(stderr, "[diag] Windows %lu.%lu build %lu\n",
+                ver.dwMajorVersion, ver.dwMinorVersion, ver.dwBuildNumber);
+    }
+}
+
+static void logProcessTree(DWORD rootPid) {
+    fprintf(stderr, "[diag] Process tree for PID %lu:\n", rootPid);
+    HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (snap == INVALID_HANDLE_VALUE) {
+        fprintf(stderr, "[diag]   (failed to take process snapshot)\n");
+        return;
+    }
+    PROCESSENTRY32W pe = {};
+    pe.dwSize = sizeof(pe);
+    if (Process32FirstW(snap, &pe)) {
+        do {
+            if (pe.th32ProcessID == rootPid || pe.th32ParentProcessID == rootPid) {
+                fprintf(stderr, "[diag]   PID %6lu  PPID %6lu  %ls\n",
+                        pe.th32ProcessID, pe.th32ParentProcessID, pe.szExeFile);
+            }
+        } while (Process32NextW(snap, &pe));
+    }
+    CloseHandle(snap);
+}
 
 // Minimal IActivateAudioInterfaceCompletionHandler --------------------------
 
@@ -88,16 +124,22 @@ int wmain(int argc, wchar_t *argv[]) {
         return 1;
     }
 
-    // Put stdout into binary mode so PCM bytes aren't mangled by text-mode
+    fprintf(stderr, "[diag] audio-capture started, own PID %lu\n", GetCurrentProcessId());
+    fprintf(stderr, "[diag] excluding target PID %lu (and its process tree)\n", pid);
+    logWindowsBuild();
+    logProcessTree(pid);
+
     _setmode(_fileno(stdout), _O_BINARY);
 
     HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
-    if (FAILED(hr)) return 1;
+    if (FAILED(hr)) {
+        fprintf(stderr, "[diag] CoInitializeEx failed: 0x%08lx\n", hr);
+        return 1;
+    }
 
     g_activateEvent = CreateEventW(nullptr, FALSE, FALSE, nullptr);
     g_stopEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
 
-    // Activate a process-loopback audio client that EXCLUDES our target PID
     AUDIOCLIENT_ACTIVATION_PARAMS acParams = {};
     acParams.ActivationType = AUDIOCLIENT_ACTIVATION_TYPE_PROCESS_LOOPBACK;
     acParams.ProcessLoopbackParams.ProcessLoopbackMode =
@@ -123,12 +165,14 @@ int wmain(int argc, wchar_t *argv[]) {
     if (asyncOp) asyncOp->Release();
     handler->Release();
 
+    fprintf(stderr, "[diag] activation completed: 0x%08lx, audioClient=%s\n",
+            g_activateHr, g_audioClient ? "OK" : "NULL");
+
     if (FAILED(g_activateHr) || !g_audioClient) {
         fprintf(stderr, "Audio activation failed: 0x%08lx\n", g_activateHr);
         return 1;
     }
 
-    // Configure capture: 48 kHz, 16-bit, stereo
     WAVEFORMATEX fmt = {};
     fmt.wFormatTag = WAVE_FORMAT_PCM;
     fmt.nChannels = 2;
@@ -142,6 +186,7 @@ int wmain(int argc, wchar_t *argv[]) {
         AUDCLNT_STREAMFLAGS_LOOPBACK | AUDCLNT_STREAMFLAGS_EVENTCALLBACK |
             AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY,
         0, 0, &fmt, nullptr);
+    fprintf(stderr, "[diag] AudioClient::Initialize: 0x%08lx\n", hr);
     if (FAILED(hr)) {
         fprintf(stderr, "AudioClient::Initialize failed: 0x%08lx\n", hr);
         return 1;
@@ -153,23 +198,27 @@ int wmain(int argc, wchar_t *argv[]) {
     IAudioCaptureClient *captureClient = nullptr;
     hr = g_audioClient->GetService(__uuidof(IAudioCaptureClient),
                                    reinterpret_cast<void **>(&captureClient));
+    fprintf(stderr, "[diag] GetService(IAudioCaptureClient): 0x%08lx\n", hr);
     if (FAILED(hr)) {
         fprintf(stderr, "GetService(IAudioCaptureClient) failed: 0x%08lx\n", hr);
         return 1;
     }
 
-    // Spawn a thread to watch stdin for the stop signal
     CreateThread(nullptr, 0, stdinWatcher, nullptr, 0, nullptr);
 
     g_audioClient->Start();
+    fprintf(stderr, "[diag] capture started, entering loop...\n");
 
-    // Capture loop
     HANDLE waits[] = {bufferEvent, g_stopEvent};
     bool running = true;
+    UINT64 totalFrames = 0;
+    UINT64 silentFrames = 0;
+    UINT64 packetCount = 0;
+    DWORD lastReportTick = GetTickCount();
+
     while (running) {
         DWORD waitResult = WaitForMultipleObjects(2, waits, FALSE, 2000);
         if (waitResult == WAIT_OBJECT_0 + 1) {
-            // Stop signal
             break;
         }
 
@@ -181,9 +230,12 @@ int wmain(int argc, wchar_t *argv[]) {
             hr = captureClient->GetBuffer(&data, &framesAvailable, &flags, nullptr, nullptr);
             if (FAILED(hr)) break;
 
+            packetCount++;
+            totalFrames += framesAvailable;
             DWORD bytes = framesAvailable * fmt.nBlockAlign;
+
             if (flags & AUDCLNT_BUFFERFLAGS_SILENT) {
-                // Write silence
+                silentFrames += framesAvailable;
                 static const BYTE silence[4096] = {};
                 DWORD remaining = bytes;
                 while (remaining > 0) {
@@ -198,7 +250,19 @@ int wmain(int argc, wchar_t *argv[]) {
 
             captureClient->ReleaseBuffer(framesAvailable);
         }
+
+        DWORD now = GetTickCount();
+        if (now - lastReportTick >= 5000) {
+            fprintf(stderr, "[diag] packets=%llu  totalFrames=%llu  silentFrames=%llu (%.1f%%)\n",
+                    packetCount, totalFrames, silentFrames,
+                    totalFrames > 0 ? 100.0 * silentFrames / totalFrames : 0.0);
+            lastReportTick = now;
+        }
     }
+
+    fprintf(stderr, "[diag] capture stopped. total packets=%llu frames=%llu silent=%.1f%%\n",
+            packetCount, totalFrames,
+            totalFrames > 0 ? 100.0 * silentFrames / totalFrames : 0.0);
 
     g_audioClient->Stop();
     captureClient->Release();

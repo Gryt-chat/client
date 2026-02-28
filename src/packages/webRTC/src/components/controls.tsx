@@ -77,6 +77,19 @@ export function Controls({ onDisconnect }: ControlsProps) {
         });
         addVideoTrack(videoTrack, cameraStream);
         prevCameraStreamRef.current = cameraStream;
+
+        if (getPeerConnection) {
+          const pc = getPeerConnection();
+          if (pc) {
+            const senders = pc.getSenders();
+            const cameraSender = senders.find(s => s.track === videoTrack);
+            if (cameraSender) {
+              const params = cameraSender.getParameters();
+              params.degradationPreference = "maintain-framerate";
+              cameraSender.setParameters(params).catch(() => {});
+            }
+          }
+        }
       }
     } else if (prevCameraStreamRef.current) {
       voiceLog.step("CAMERA", "sync", "Removing camera track", {
@@ -85,7 +98,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
       removeVideoTrack();
       prevCameraStreamRef.current = null;
     }
-  }, [cameraEnabled, cameraStream, isConnected, addVideoTrack, removeVideoTrack]);
+  }, [cameraEnabled, cameraStream, isConnected, addVideoTrack, removeVideoTrack, getPeerConnection]);
 
   // Sync screen share video track to WebRTC
   useEffect(() => {

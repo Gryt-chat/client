@@ -1,5 +1,5 @@
 import { Badge, Button, Flex, Heading, Select, Separator, Text } from "@radix-ui/themes";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MdRefresh } from "react-icons/md";
 
 import { type CameraQuality, QUALITY_CONSTRAINTS, useCamera } from "@/audio";
@@ -9,6 +9,8 @@ import { SettingsContainer, ToggleSetting } from "./settingsComponents";
 
 const QUALITY_OPTIONS = [
   { value: "native", label: "Native (camera default)" },
+  { value: "4k", label: "4K (3840×2160)" },
+  { value: "1440p", label: "1440p (2560×1440)" },
   { value: "1080p", label: "1080p (1920×1080)" },
   { value: "720p", label: "720p (1280×720)" },
   { value: "480p", label: "480p (854×480)" },
@@ -44,6 +46,7 @@ export function CameraSettings() {
   const [previewStream, setPreviewStream] = useState<MediaStream | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [actualRes, setActualRes] = useState<{ w: number; h: number } | null>(null);
+  const [maxCameraHeight, setMaxCameraHeight] = useState<number | null>(null);
 
   const activeStream = cameraEnabled ? globalStream : previewStream;
   const activeError = cameraEnabled ? null : previewError;
@@ -146,6 +149,38 @@ export function CameraSettings() {
     return () => window.clearInterval(id);
   }, [activeStream]);
 
+  useEffect(() => {
+    if (!activeStream) {
+      setMaxCameraHeight(null);
+      return;
+    }
+    const track = activeStream.getVideoTracks()[0];
+    if (!track) return;
+    try {
+      const caps = track.getCapabilities();
+      setMaxCameraHeight(caps.height?.max ?? null);
+    } catch {
+      setMaxCameraHeight(null);
+    }
+  }, [activeStream]);
+
+  const filteredOptions = useMemo(() => {
+    if (!maxCameraHeight) return QUALITY_OPTIONS;
+    return QUALITY_OPTIONS.filter((opt) => {
+      if (opt.value === "native") return true;
+      const c = QUALITY_CONSTRAINTS[opt.value as CameraQuality];
+      return !c?.height || c.height <= maxCameraHeight;
+    });
+  }, [maxCameraHeight]);
+
+  useEffect(() => {
+    if (!maxCameraHeight) return;
+    const c = QUALITY_CONSTRAINTS[cameraQuality as CameraQuality];
+    if (c?.height && c.height > maxCameraHeight) {
+      setCameraQuality("native");
+    }
+  }, [maxCameraHeight, cameraQuality, setCameraQuality]);
+
   return (
     <SettingsContainer>
       <Heading size="4">Camera</Heading>
@@ -244,7 +279,7 @@ export function CameraSettings() {
         >
           <Select.Trigger />
           <Select.Content>
-            {QUALITY_OPTIONS.map((opt) => (
+            {filteredOptions.map((opt) => (
               <Select.Item key={opt.value} value={opt.value}>
                 {opt.label}
               </Select.Item>

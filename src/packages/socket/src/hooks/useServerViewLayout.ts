@@ -32,6 +32,8 @@ function useMediaAutoShow({
   }, [isCompact, setShowVoiceView, showVoiceView]);
 
   const mediaAutoShownRef = useRef(false);
+  const prevAnyMediaActiveRef = useRef(false);
+
   const anyMediaActive = useMemo(() => {
     if (!serverClients || !currentChannelId || !isConnected) return false;
     return Object.values(serverClients).some(
@@ -42,14 +44,21 @@ function useMediaAutoShow({
   useEffect(() => {
     if (!isConnected) {
       mediaAutoShownRef.current = false;
+      prevAnyMediaActiveRef.current = false;
       return;
     }
-    if (anyMediaActive && !showVoiceView) {
+
+    const mediaJustActivated = anyMediaActive && !prevAnyMediaActiveRef.current;
+    prevAnyMediaActiveRef.current = anyMediaActive;
+
+    if (mediaJustActivated && !showVoiceView) {
       mediaAutoShownRef.current = true;
       setShowVoiceView(true);
     } else if (!anyMediaActive && showVoiceView && mediaAutoShownRef.current) {
       mediaAutoShownRef.current = false;
       setShowVoiceView(false);
+    } else if (!anyMediaActive) {
+      mediaAutoShownRef.current = false;
     }
   }, [anyMediaActive, isConnected, showVoiceView, setShowVoiceView]);
 

@@ -34,7 +34,9 @@ function getNativeBinaryPath(): string | null {
 }
 
 export function isNativeAudioCaptureAvailable(): boolean {
-  return getNativeBinaryPath() !== null;
+  const path = getNativeBinaryPath();
+  console.log(`[NativeAudioCapture] available check: binary=${path ?? "NOT FOUND"}`);
+  return path !== null;
 }
 
 export function startNativeAudioCapture(window: BrowserWindow): boolean {
@@ -43,20 +45,38 @@ export function startNativeAudioCapture(window: BrowserWindow): boolean {
   }
 
   const binaryPath = getNativeBinaryPath();
-  if (!binaryPath) return false;
+  if (!binaryPath) {
+    console.warn("[NativeAudioCapture] binary not found, cannot start");
+    return false;
+  }
 
   const pid = process.pid.toString();
+  console.log(
+    `[NativeAudioCapture] spawning: binary=${binaryPath} excludePID=${pid} (main process)`,
+  );
 
   captureProcess = spawn(binaryPath, [pid], {
     stdio: ["pipe", "pipe", "pipe"],
   });
+
+  const childPid = captureProcess.pid;
+  console.log(`[NativeAudioCapture] child process PID=${childPid}`);
+
+  let bytesReceived = 0;
+  let firstDataLogged = false;
 
   captureProcess.stdout?.on("data", (chunk: Buffer) => {
     if (window.isDestroyed()) {
       stopNativeAudioCapture();
       return;
     }
-    // Transfer the ArrayBuffer for zero-copy where possible
+    bytesReceived += chunk.byteLength;
+    if (!firstDataLogged) {
+      console.log(
+        `[NativeAudioCapture] first PCM data received: ${chunk.byteLength} bytes`,
+      );
+      firstDataLogged = true;
+    }
     const ab = chunk.buffer.slice(
       chunk.byteOffset,
       chunk.byteOffset + chunk.byteLength,
@@ -65,11 +85,13 @@ export function startNativeAudioCapture(window: BrowserWindow): boolean {
   });
 
   captureProcess.stderr?.on("data", (data: Buffer) => {
-    console.error("[NativeAudioCapture]", data.toString());
+    console.error("[NativeAudioCapture]", data.toString().trimEnd());
   });
 
   captureProcess.on("exit", (code) => {
-    console.log(`[NativeAudioCapture] exited with code ${code}`);
+    console.log(
+      `[NativeAudioCapture] exited code=${code} totalBytes=${bytesReceived}`,
+    );
     captureProcess = null;
     if (!window.isDestroyed()) {
       window.webContents.send("native-audio-stopped");

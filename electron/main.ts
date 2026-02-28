@@ -1,4 +1,4 @@
-import { app, BrowserWindow, desktopCapturer, dialog, ipcMain, Menu, nativeImage, screen, session, shell, Tray } from "electron";
+import { app, BrowserWindow, desktopCapturer, dialog, ipcMain, Menu, nativeImage, screen, session, shell, systemPreferences, Tray } from "electron";
 import { autoUpdater, UpdateInfo } from "electron-updater";
 import { appendFileSync, createReadStream, existsSync, readFileSync, statSync, writeFileSync } from "fs";
 import { createServer, Server } from "http";
@@ -845,6 +845,11 @@ if (!gotSingleInstanceLock) {
       desktopCapturer.getSources({ types: ["screen"] }).then((sources) => {
         callback({ video: sources[0], audio: "loopback" });
       });
+    });
+
+    ipcMain.handle("get-screen-capture-access", () => {
+      if (process.platform !== "darwin") return "granted";
+      return systemPreferences.getMediaAccessStatus("screen");
     });
 
     ipcMain.handle("get-desktop-sources", async () => {

@@ -6,11 +6,13 @@ import { useSettings } from "@/settings";
 import { createFlippedStream, type FlippedStream } from "../utils/flipVideoStream";
 
 export type CameraQuality =
-  | "native" | "1080p" | "720p" | "480p" | "360p" | "240p"
+  | "native" | "4k" | "1440p" | "1080p" | "720p" | "480p" | "360p" | "240p"
   | "144p" | "96p" | "64p" | "48p" | "32p" | "24p" | "16p" | "8p" | "4p";
 
 export const QUALITY_CONSTRAINTS: Record<CameraQuality, { width?: number; height?: number; frameRate: number }> = {
   native: { frameRate: 30 },
+  "4k": { width: 3840, height: 2160, frameRate: 30 },
+  "1440p": { width: 2560, height: 1440, frameRate: 30 },
   "1080p": { width: 1920, height: 1080, frameRate: 30 },
   "720p": { width: 1280, height: 720, frameRate: 30 },
   "480p": { width: 854, height: 480, frameRate: 30 },
@@ -124,6 +126,7 @@ function useCameraHook(): CameraInterface {
     try {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       const newTrack = stream.getVideoTracks()[0];
+      if (newTrack) newTrack.contentHint = "motion";
       const settings = newTrack?.getSettings();
       console.log("[Camera] getUserMedia succeeded", {
         streamId: stream.id,

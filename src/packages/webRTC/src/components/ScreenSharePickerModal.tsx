@@ -29,6 +29,12 @@ const ALL_QUALITY_OPTIONS: { value: ScreenShareQuality; label: string; height: n
   { value: "144p", label: "144p (256\u00d7144)", height: 144 },
   { value: "96p", label: "96p (170\u00d796)", height: 96 },
   { value: "64p", label: "64p (114\u00d764)", height: 64 },
+  { value: "48p", label: "48p (85\u00d748)", height: 48 },
+  { value: "32p", label: "32p (57\u00d732)", height: 32 },
+  { value: "24p", label: "24p (43\u00d724)", height: 24 },
+  { value: "16p", label: "16p (28\u00d716)", height: 16 },
+  { value: "8p", label: "8p (14\u00d78)", height: 8 },
+  { value: "4p", label: "4p (7\u00d74)", height: 4 },
 ];
 
 function formatBitrate(bps: number): string {
@@ -54,6 +60,7 @@ export function ScreenSharePickerModal({
   const [tab, setTab] = useState<Tab>("screens");
   const [selected, setSelected] = useState<string | null>(null);
   const [includeAudio, setIncludeAudio] = useState(true);
+  const [screenAccess, setScreenAccess] = useState<string | null>(null);
   const inElectron = isElectron();
 
   const loadSources = useCallback(async () => {
@@ -76,10 +83,12 @@ export function ScreenSharePickerModal({
   useEffect(() => {
     if (open && inElectron) {
       loadSources();
+      window.electronAPI?.getScreenCaptureAccess().then(setScreenAccess);
     }
     if (!open) {
       setSelected(null);
       setSources([]);
+      setScreenAccess(null);
     }
   }, [open, inElectron, loadSources]);
 
@@ -104,6 +113,15 @@ export function ScreenSharePickerModal({
       : ALL_QUALITY_OPTIONS;
     return [...nativeOpt, ...filtered];
   }, [selectedSource]);
+
+  useEffect(() => {
+    const sourceHeight = selectedSource?.height;
+    if (!sourceHeight) return;
+    const currentOpt = ALL_QUALITY_OPTIONS.find((o) => o.value === quality);
+    if (currentOpt && currentOpt.height > sourceHeight) {
+      onQualityChange("native");
+    }
+  }, [selectedSource, quality, onQualityChange]);
 
   const fpsOptions = useMemo(() => {
     const options: { value: ScreenShareFps; label: string }[] = STANDARD_FPS_OPTIONS.map(
@@ -171,6 +189,37 @@ export function ScreenSharePickerModal({
               Windows
             </Button>
           </Flex>
+
+          {screenAccess !== null && screenAccess !== "granted" && (
+            <Flex
+              align="center"
+              gap="3"
+              px="3"
+              py="2"
+              style={{
+                borderRadius: "var(--radius-2)",
+                background: "var(--orange-3)",
+                border: "1px solid var(--orange-6)",
+              }}
+            >
+              <Text size="2" color="orange" style={{ flex: 1 }}>
+                macOS requires Screen Recording permission. Grant access for Gryt in{" "}
+                <strong>System Settings &rarr; Privacy &amp; Security &rarr; Screen Recording</strong>,
+                then restart the app.
+              </Text>
+              <Button
+                variant="soft"
+                color="orange"
+                size="1"
+                style={{ flexShrink: 0 }}
+                onClick={() => window.electronAPI?.openExternal(
+                  "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture",
+                )}
+              >
+                Open Settings
+              </Button>
+            </Flex>
+          )}
 
           <div
             style={{
