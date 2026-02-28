@@ -288,7 +288,7 @@ if [[ "$DEPLOY_BETA" =~ ^[Yy]$ ]]; then
     COMPOSE_ARGS+=(--env-file "$ENV_FILE" --profile web)
     info "Pulling & restarting beta client…"
     docker compose "${COMPOSE_ARGS[@]}" pull client
-    docker compose "${COMPOSE_ARGS[@]}" up -d --force-recreate --remove-orphans client
+    docker compose "${COMPOSE_ARGS[@]}" up -d --force-recreate client
     ok "Beta client deployed"
   else
     warn "Beta compose files not found"
