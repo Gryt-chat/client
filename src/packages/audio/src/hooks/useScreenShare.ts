@@ -157,6 +157,8 @@ function useScreenShareHook(): ScreenShareInterface {
 
       const videoTracks = stream.getVideoTracks();
       if (videoTracks.length > 0) {
+        videoTracks[0].contentHint = "motion";
+
         const videoOnly = new MediaStream(videoTracks);
         setScreenVideoStream(videoOnly);
 

@@ -104,10 +104,11 @@ export function Controls({ onDisconnect }: ControlsProps) {
             const screenSender = senders.find(s => s.track === videoTrack);
             if (screenSender) {
               const params = screenSender.getParameters();
+              params.degradationPreference = "maintain-framerate";
               if (params.encodings && params.encodings.length > 0) {
                 params.encodings[0].maxBitrate = bitrate;
-                screenSender.setParameters(params).catch(() => {});
               }
+              screenSender.setParameters(params).catch(() => {});
             }
           }
         }

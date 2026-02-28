@@ -14,6 +14,8 @@ export type AttachmentMeta = {
   width: number | null;
   height: number | null;
   has_thumbnail: boolean;
+  /** Blob URL for local preview while the message is pending upload. */
+  local_url?: string;
 };
 
 export interface ProfanityMatchRange {

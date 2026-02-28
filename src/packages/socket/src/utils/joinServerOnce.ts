@@ -77,6 +77,7 @@ export async function joinServerOnce(
 
   return await new Promise<JoinServerOnceResult>((resolve) => {
     const socket = io(wsUrl, {
+      transports: ["websocket"],
       reconnection: false,
       timeout: timeoutMs,
     });

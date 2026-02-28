@@ -5,7 +5,8 @@ import { v4 as uuidv4 } from "uuid";
 
 import { getServerAccessToken, getServerRefreshToken } from "@/common";
 
-import type { ChatMessage } from "../components/chatUtils";
+import type { AttachmentMeta, ChatMessage } from "../components/chatUtils";
+import { getImageDimensions } from "../utils/imageUtils";
 import { shouldRefreshToken } from "../utils/tokenManager";
 import { uploadChatFile } from "./uploadChatFile";
 
@@ -184,26 +185,46 @@ export function useChatSend({
 
     const pendingId = `pending-${uuidv4()}`;
     const nonce = uuidv4();
-    const optimistic: ChatMessage = {
-      conversation_id: activeConversationId,
-      message_id: pendingId,
-      sender_server_id: currentUserIdRef.current || "temp",
-      text: body || null,
-      attachments: null,
-      created_at: new Date(),
-      reactions: null,
-      reply_to_message_id: replyToMessageId || null,
-      pending: true,
-      nonce,
-      sender_nickname: nicknameRef.current || undefined,
-    };
-    setChatMessages((prev) => [...prev, optimistic]);
-    setMessageCache((prev) => ({
-      ...prev,
-      [cacheKeyFor(activeConversationId)]: [...(prev[cacheKeyFor(activeConversationId)] || []), optimistic],
-    }));
 
     const doSend = async () => {
+      let localAttachmentIds: string[] | null = null;
+      let localEnriched: AttachmentMeta[] | null = null;
+
+      if (files.length > 0) {
+        const dims = await Promise.all(files.map((f) => getImageDimensions(f)));
+        localAttachmentIds = files.map(() => `local-${uuidv4()}`);
+        localEnriched = files.map((f, i) => ({
+          file_id: localAttachmentIds![i],
+          mime: f.type || null,
+          size: f.size,
+          original_name: f.name,
+          width: dims[i]?.width ?? null,
+          height: dims[i]?.height ?? null,
+          has_thumbnail: false,
+          local_url: f.type.startsWith("image/") ? URL.createObjectURL(f) : undefined,
+        }));
+      }
+
+      const optimistic: ChatMessage = {
+        conversation_id: activeConversationId,
+        message_id: pendingId,
+        sender_server_id: currentUserIdRef.current || "temp",
+        text: body || null,
+        attachments: localAttachmentIds,
+        enriched_attachments: localEnriched,
+        created_at: new Date(),
+        reactions: null,
+        reply_to_message_id: replyToMessageId || null,
+        pending: true,
+        nonce,
+        sender_nickname: nicknameRef.current || undefined,
+      };
+      setChatMessages((prev) => [...prev, optimistic]);
+      setMessageCache((prev) => ({
+        ...prev,
+        [cacheKeyFor(activeConversationId)]: [...(prev[cacheKeyFor(activeConversationId)] || []), optimistic],
+      }));
+
       if (shouldRefreshToken(accessToken!)) {
         const host = currentlyViewingServer?.host || "";
         const refreshToken = getServerRefreshToken(host);
@@ -227,7 +248,13 @@ export function useChatSend({
       let fileIds: string[] | null = null;
       if (files.length > 0) {
         try {
-          fileIds = await Promise.all(files.map((f) => uploadChatFile(f, serverHost)));
+          fileIds = await Promise.all(
+            files.map((f, i) => {
+              const dim = localEnriched?.[i];
+              const dimensions = dim?.width && dim?.height ? { width: dim.width, height: dim.height } : null;
+              return uploadChatFile(f, serverHost, dimensions);
+            }),
+          );
         } catch (err) {
           const msg = err instanceof Error && err.message ? err.message : "Failed to upload file(s)";
           toast.error(msg);

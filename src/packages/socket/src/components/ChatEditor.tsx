@@ -463,6 +463,40 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
     }, []);
 
     useEffect(() => {
+      const onMentionUser = (e: Event) => {
+        const { serverUserId: id, nickname: name } = (e as CustomEvent<{ serverUserId: string; nickname: string }>).detail;
+        const el = editorRef.current;
+        if (!el || !id) return;
+
+        el.focus();
+
+        const mention = document.createElement("span");
+        mention.className = "chat-editor-mention";
+        mention.dataset.mentionId = id;
+        mention.dataset.mentionName = `@${name}`;
+        mention.textContent = `@${name}`;
+        mention.contentEditable = "false";
+        mention.draggable = false;
+
+        const trailing = document.createTextNode(" ");
+        el.appendChild(mention);
+        el.appendChild(trailing);
+
+        const sel = window.getSelection();
+        if (sel) {
+          sel.removeAllRanges();
+          const range = document.createRange();
+          range.setStartAfter(trailing);
+          range.collapse(true);
+          sel.addRange(range);
+        }
+        autoResize(el);
+      };
+      window.addEventListener("mention_user", onMentionUser);
+      return () => window.removeEventListener("mention_user", onMentionUser);
+    }, []);
+
+    useEffect(() => {
       return () => {
         pendingFilesRef.current.forEach((p) => { if (p.previewUrl) URL.revokeObjectURL(p.previewUrl); });
       };

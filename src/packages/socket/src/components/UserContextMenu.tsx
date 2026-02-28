@@ -1,5 +1,7 @@
 import { ContextMenu, Flex, Slider, Text } from "@radix-ui/themes";
 import { ReactNode } from "react";
+import toast from "react-hot-toast";
+import { MdAlternateEmail, MdContentCopy } from "react-icons/md";
 
 import { useSettings } from "@/settings";
 
@@ -53,6 +55,23 @@ export function UserContextMenu({
 }: UserContextMenuProps) {
   const { userVolumes, updateUserVolume, resetUserVolume, openSettings } = useSettings();
 
+  const handleCopyId = () => {
+    if (!serverUserId) return;
+    navigator.clipboard.writeText(serverUserId).then(
+      () => toast.success("Copied user ID"),
+      () => toast.error("Failed to copy"),
+    );
+  };
+
+  const handleMention = () => {
+    if (!serverUserId) return;
+    window.dispatchEvent(
+      new CustomEvent("mention_user", {
+        detail: { serverUserId, nickname },
+      }),
+    );
+  };
+
   if (isSelf) {
     return (
       <ContextMenu.Root>
@@ -68,6 +87,13 @@ export function UserContextMenu({
           <ContextMenu.Item onClick={() => openSettings("profile")}>
             Edit Profile
           </ContextMenu.Item>
+          {serverUserId && (
+            <ContextMenu.Item onClick={handleCopyId}>
+              <Flex align="center" gap="2">
+                <MdContentCopy size={14} /> Copy ID
+              </Flex>
+            </ContextMenu.Item>
+          )}
           {onPopoutVideo && (
             <>
               <ContextMenu.Separator />
@@ -105,6 +131,16 @@ export function UserContextMenu({
             <Text size="1" color="gray" style={{ textTransform: "capitalize" }}>{targetRole}</Text>
           </ContextMenu.Label>
         )}
+        <ContextMenu.Item onClick={handleMention}>
+          <Flex align="center" gap="2">
+            <MdAlternateEmail size={14} /> Mention
+          </Flex>
+        </ContextMenu.Item>
+        <ContextMenu.Item onClick={handleCopyId}>
+          <Flex align="center" gap="2">
+            <MdContentCopy size={14} /> Copy ID
+          </Flex>
+        </ContextMenu.Item>
         <ContextMenu.Separator />
         <Flex
           direction="column"

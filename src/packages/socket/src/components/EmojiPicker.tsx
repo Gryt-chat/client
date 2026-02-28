@@ -132,7 +132,7 @@ export const EmojiPicker = ({ onSelect, onClose, anchorEl, placement = "above", 
 
   useLayoutEffect(() => {
     const anchor = anchorEl ?? containerRef.current?.parentElement;
-    if (!anchor) return;
+    if (!(anchor instanceof HTMLElement)) return;
 
     const compute = () => {
       const rect = anchor.getBoundingClientRect();

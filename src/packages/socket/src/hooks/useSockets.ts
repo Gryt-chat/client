@@ -193,6 +193,7 @@ function useSocketsHook() {
         const serverToken = servers[host].token;
 
         const socket = io(`${getServerWsBase(host)}`, {
+          transports: ["websocket"],
           auth: (cb: (data: Record<string, unknown>) => void) => {
             cb({
               token: serverToken,

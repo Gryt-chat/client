@@ -461,13 +461,20 @@ body {
 
 /* ── Attachment images in messages ─────────────────────────── */
 
-.chat-attachment-image {
+.chat-attachment-image-wrapper {
+  position: relative;
   max-width: min(var(--img-w, 480px), 480px, 100%);
-  width: auto;
+  width: fit-content;
+  border-radius: var(--radius-4);
+  overflow: hidden;
+}
+
+.chat-attachment-image {
+  display: block;
+  width: 100%;
   height: auto;
   border-radius: var(--radius-4);
   cursor: pointer;
-  transition: opacity 0.15s ease;
 }
 
 .chat-attachment-image:hover {
@@ -940,7 +947,7 @@ body {
 /* ── Large-screen scaling for embeds & media ────────────── */
 
 @media (min-width: 1800px) {
-  .chat-attachment-image {
+  .chat-attachment-image-wrapper {
     max-width: min(var(--img-w, 620px), 620px, 100%);
   }
 

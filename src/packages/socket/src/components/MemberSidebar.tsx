@@ -16,6 +16,7 @@ export interface MemberInfo {
   role?: Role;
   status: UserStatus;
   lastSeen?: Date;
+  createdAt?: string | Date;
   isMuted: boolean;
   isDeafened: boolean;
   isServerMuted?: boolean;

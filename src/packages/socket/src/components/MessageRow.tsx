@@ -8,6 +8,7 @@ import type { CustomEmojiEntry } from "../utils/remarkEmoji";
 import { ChatMediaPlayer } from "./ChatMediaPlayer";
 import { MessageHoverToolbar } from "./ChatMessage";
 import type { AttachmentMeta, ChatMessage, Reaction } from "./chatUtils";
+import { ImageAttachment } from "./ImageAttachment";
 import { DateSeparator, MessageTimestamp, NewMessagesDivider, toDate } from "./chatUtils";
 import { EmojiPicker } from "./EmojiPicker";
 import { EmojiText } from "./EmojiText";
@@ -492,18 +493,15 @@ function MessageContent({
               const mime = attachMeta?.mime || "";
 
               if (mime.startsWith("image/")) {
-                const w = attachMeta?.width ?? undefined;
-                const h = attachMeta?.height ?? undefined;
+                const imgSrc = attachMeta?.local_url || url;
                 return (
                   <MessageContextMenu key={fileId} media={{ src: url, fileName: attachMeta?.original_name, isImage: true }} messageActions={messageActions}>
-                    <img
-                      src={url}
+                    <ImageAttachment
+                      src={imgSrc}
                       alt={attachMeta?.original_name || "Attachment"}
-                      className="chat-attachment-image"
-                      loading="lazy"
-                      decoding="async"
-                      style={w && h ? { aspectRatio: `${w} / ${h}`, "--img-w": `${w}px` } as React.CSSProperties : undefined}
-                      onClick={() => onLightboxOpen(url, attachMeta?.original_name || "Attachment")}
+                      width={attachMeta?.width}
+                      height={attachMeta?.height}
+                      onClick={() => onLightboxOpen(imgSrc, attachMeta?.original_name || "Attachment")}
                     />
                   </MessageContextMenu>
                 );

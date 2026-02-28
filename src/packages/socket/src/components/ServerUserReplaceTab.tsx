@@ -1,16 +1,169 @@
-import { AlertDialog, Button, Card, Flex, Select, Text, TextField } from "@radix-ui/themes";
-import { useState } from "react";
+import { AlertDialog, Avatar, Button, Card, Flex, Text, TextField } from "@radix-ui/themes";
+import { useCallback, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
 
+import { getUploadsFileUrl } from "@/common";
+
 import { useSocketEvent } from "../hooks/useSocketEvent";
 import { useSockets } from "../hooks/useSockets";
+import type { MemberInfo } from "./MemberSidebar";
 
 interface ReplaceSuccessPayload {
   targetServerUserId: string;
   oldGrytUserId: string;
   newGrytUserId: string;
   ownerUpdated: boolean;
+}
+
+function formatJoinDate(raw?: string | Date): string {
+  if (!raw) return "Unknown";
+  const d = typeof raw === "string" ? new Date(raw) : raw;
+  if (isNaN(d.getTime())) return "Unknown";
+  return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
+function filterMembers(members: MemberInfo[], query: string): MemberInfo[] {
+  if (!query) return members.slice(0, 12);
+  const q = query.toLowerCase();
+  return members
+    .filter(
+      (m) =>
+        m.nickname.toLowerCase().includes(q) ||
+        m.serverUserId.toLowerCase().includes(q),
+    )
+    .slice(0, 12);
+}
+
+function MemberDropdownItem({
+  member,
+  host,
+  onSelect,
+}: {
+  member: MemberInfo;
+  host: string;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <div
+      onMouseDown={(e) => {
+        e.preventDefault();
+        onSelect(member.serverUserId);
+      }}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        padding: "6px 8px",
+        borderRadius: "var(--radius-2)",
+        cursor: "pointer",
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gray-4)"; }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+    >
+      <Avatar
+        size="1"
+        fallback={member.nickname[0]}
+        src={member.avatarFileId ? getUploadsFileUrl(host, member.avatarFileId) : undefined}
+        style={{ flexShrink: 0 }}
+      />
+      <Flex direction="column" style={{ flex: 1, minWidth: 0 }}>
+        <Text size="2" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {member.nickname}
+        </Text>
+        <Text size="1" color="gray">
+          Joined {formatJoinDate(member.createdAt)}
+        </Text>
+      </Flex>
+    </div>
+  );
+}
+
+function MemberCombobox({
+  value,
+  onChange,
+  members,
+  host,
+  placeholder,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  members: MemberInfo[];
+  host: string;
+  placeholder: string;
+}) {
+  const [focused, setFocused] = useState(false);
+  const blurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const filtered = filterMembers(members, value);
+  const selectedMember = members.find((m) => m.serverUserId === value);
+
+  const displayValue = selectedMember ? selectedMember.nickname : value;
+
+  const handleSelect = useCallback(
+    (id: string) => {
+      onChange(id);
+      setFocused(false);
+    },
+    [onChange],
+  );
+
+  return (
+    <div style={{ position: "relative" }}>
+      <Flex gap="2" align="center">
+        {selectedMember && (
+          <Avatar
+            size="1"
+            fallback={selectedMember.nickname[0]}
+            src={selectedMember.avatarFileId ? getUploadsFileUrl(host, selectedMember.avatarFileId) : undefined}
+            style={{ flexShrink: 0 }}
+          />
+        )}
+        <TextField.Root
+          style={{ flex: 1 }}
+          placeholder={placeholder}
+          value={displayValue}
+          onChange={(e) => onChange(e.target.value)}
+          onFocus={() => {
+            if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
+            setFocused(true);
+            if (selectedMember) onChange("");
+          }}
+          onBlur={() => {
+            blurTimeoutRef.current = setTimeout(() => setFocused(false), 150);
+          }}
+        />
+      </Flex>
+      {focused && filtered.length > 0 && (
+        <div
+          style={{
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            right: 0,
+            marginTop: 4,
+            background: "var(--color-panel-solid)",
+            border: "1px solid var(--gray-6)",
+            borderRadius: "var(--radius-3)",
+            boxShadow: "0 8px 24px rgba(0, 0, 0, 0.25)",
+            maxHeight: 220,
+            overflowY: "auto",
+            zIndex: 50,
+            padding: 4,
+          }}
+        >
+          {filtered.map((m) => (
+            <MemberDropdownItem
+              key={m.serverUserId}
+              member={m}
+              host={host}
+              onSelect={handleSelect}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function ServerUserReplaceTab({
@@ -78,35 +231,34 @@ export function ServerUserReplaceTab({
 
       <Card>
         <Flex direction="column" gap="3">
-          <label>
+          <div>
             <Text size="2" weight="bold" mb="1" as="p">
               Old user (current member)
             </Text>
-            <Select.Root value={targetServerUserId} onValueChange={setTargetServerUserId}>
-              <Select.Trigger placeholder="Select a member…" style={{ width: "100%" }} />
-              <Select.Content>
-                {members.map((m) => (
-                  <Select.Item key={m.serverUserId} value={m.serverUserId}>
-                    {m.nickname} — {m.serverUserId}
-                  </Select.Item>
-                ))}
-              </Select.Content>
-            </Select.Root>
-          </label>
+            <MemberCombobox
+              value={targetServerUserId}
+              onChange={setTargetServerUserId}
+              members={members}
+              host={host}
+              placeholder="Search by name or ID…"
+            />
+          </div>
 
-          <label>
+          <div>
             <Text size="2" weight="bold" mb="1" as="p">
               New Gryt User ID
             </Text>
-            <TextField.Root
-              placeholder="Paste new Keycloak sub / gryt_user_id"
+            <MemberCombobox
               value={newGrytUserId}
-              onChange={(e) => setNewGrytUserId(e.target.value)}
+              onChange={setNewGrytUserId}
+              members={members}
+              host={host}
+              placeholder="Paste ID or search for a member…"
             />
             <Text size="1" color="gray" mt="1" as="p">
-              The Keycloak subject ID from the new account that should take over this server identity.
+              The Keycloak subject ID from the new account, or select an existing member.
             </Text>
-          </label>
+          </div>
 
           <Flex justify="end" mt="2">
             <AlertDialog.Root>
