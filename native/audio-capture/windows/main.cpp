@@ -5,15 +5,26 @@
 // Stop:   write any byte to stdin, or just close stdin.
 //
 // Requires Windows 10 build 20348+.
+//
+// Compiles with MSVC (cl.exe) or MinGW (x86_64-w64-mingw32-g++).
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
 
+#ifndef NTDDI_VERSION
+#define NTDDI_VERSION 0x0A000000
+#endif
+#ifndef WINVER
+#define WINVER 0x0A00
+#endif
+#ifndef _WIN32_WINNT
+#define _WIN32_WINNT 0x0A00
+#endif
+
 #include <windows.h>
 #include <mmdeviceapi.h>
 #include <audioclient.h>
-#include <audioclientactivationparams.h>
 #include <combaseapi.h>
 #include <fcntl.h>
 #include <io.h>
@@ -21,8 +32,61 @@
 #include <stdlib.h>
 #include <tlhelp32.h>
 
+#ifdef _MSC_VER
+#include <audioclientactivationparams.h>
 #pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "mmdevapi.lib")
+#endif
+
+// ── Process loopback API (not in MinGW headers) ────────────────────────
+
+#ifndef AUDIOCLIENT_ACTIVATION_TYPE_PROCESS_LOOPBACK
+typedef enum {
+    AUDIOCLIENT_ACTIVATION_TYPE_DEFAULT = 0,
+    AUDIOCLIENT_ACTIVATION_TYPE_PROCESS_LOOPBACK = 1
+} AUDIOCLIENT_ACTIVATION_TYPE;
+
+typedef enum {
+    PROCESS_LOOPBACK_MODE_INCLUDE_TARGET_PROCESS_TREE = 0,
+    PROCESS_LOOPBACK_MODE_EXCLUDE_TARGET_PROCESS_TREE = 1
+} PROCESS_LOOPBACK_MODE;
+
+typedef struct {
+    DWORD TargetProcessId;
+    PROCESS_LOOPBACK_MODE ProcessLoopbackMode;
+} AUDIOCLIENT_PROCESS_LOOPBACK_PARAMS;
+
+typedef struct {
+    AUDIOCLIENT_ACTIVATION_TYPE ActivationType;
+    union {
+        AUDIOCLIENT_PROCESS_LOOPBACK_PARAMS ProcessLoopbackParams;
+    };
+} AUDIOCLIENT_ACTIVATION_PARAMS;
+#endif
+
+#ifndef VIRTUAL_AUDIO_DEVICE_PROCESS_LOOPBACK
+static const WCHAR VIRTUAL_AUDIO_DEVICE_PROCESS_LOOPBACK[] = L"VAD\\Process_Loopback";
+#endif
+
+// ── Dynamic loader for ActivateAudioInterfaceAsync (MinGW) ─────────────
+
+typedef HRESULT(WINAPI *PFN_ActivateAudioInterfaceAsync)(
+    LPCWSTR, REFIID, PROPVARIANT *,
+    IActivateAudioInterfaceCompletionHandler *,
+    IActivateAudioInterfaceAsyncOperation **);
+
+static PFN_ActivateAudioInterfaceAsync resolveActivateAudioInterfaceAsync() {
+#ifdef _MSC_VER
+    return &ActivateAudioInterfaceAsync;
+#else
+    HMODULE mod = LoadLibraryW(L"mmdevapi.dll");
+    if (!mod) return nullptr;
+    return reinterpret_cast<PFN_ActivateAudioInterfaceAsync>(
+        GetProcAddress(mod, "ActivateAudioInterfaceAsync"));
+#endif
+}
+
+// ── Diagnostics ────────────────────────────────────────────────────────
 
 typedef LONG(WINAPI *RtlGetVersionPtr)(OSVERSIONINFOEXW *);
 
@@ -59,7 +123,7 @@ static void logProcessTree(DWORD rootPid) {
     CloseHandle(snap);
 }
 
-// Minimal IActivateAudioInterfaceCompletionHandler --------------------------
+// ── IActivateAudioInterfaceCompletionHandler ───────────────────────────
 
 static HANDLE g_activateEvent = nullptr;
 static HRESULT g_activateHr = E_FAIL;
@@ -97,20 +161,19 @@ struct ActivateHandler : public IActivateAudioInterfaceCompletionHandler {
     }
 };
 
-// Stdin watcher — signals an event when any input arrives ----------------------
+// ── Stdin watcher ──────────────────────────────────────────────────────
 
 static HANDLE g_stopEvent = nullptr;
 
 static DWORD WINAPI stdinWatcher(LPVOID) {
     char buf[16];
-    // Blocks until stdin receives data or is closed
     DWORD bytesRead = 0;
     ReadFile(GetStdHandle(STD_INPUT_HANDLE), buf, sizeof(buf), &bytesRead, nullptr);
     SetEvent(g_stopEvent);
     return 0;
 }
 
-// Main -----------------------------------------------------------------------
+// ── Main ───────────────────────────────────────────────────────────────
 
 int wmain(int argc, wchar_t *argv[]) {
     if (argc < 2) {
@@ -137,6 +200,12 @@ int wmain(int argc, wchar_t *argv[]) {
         return 1;
     }
 
+    auto pfnActivate = resolveActivateAudioInterfaceAsync();
+    if (!pfnActivate) {
+        fprintf(stderr, "Failed to resolve ActivateAudioInterfaceAsync from mmdevapi.dll\n");
+        return 1;
+    }
+
     g_activateEvent = CreateEventW(nullptr, FALSE, FALSE, nullptr);
     g_stopEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
 
@@ -153,7 +222,7 @@ int wmain(int argc, wchar_t *argv[]) {
 
     auto *handler = new ActivateHandler();
     IActivateAudioInterfaceAsyncOperation *asyncOp = nullptr;
-    hr = ActivateAudioInterfaceAsync(
+    hr = pfnActivate(
         VIRTUAL_AUDIO_DEVICE_PROCESS_LOOPBACK,
         __uuidof(IAudioClient),
         &pv, handler, &asyncOp);
@@ -210,17 +279,15 @@ int wmain(int argc, wchar_t *argv[]) {
     fprintf(stderr, "[diag] capture started, entering loop...\n");
 
     HANDLE waits[] = {bufferEvent, g_stopEvent};
-    bool running = true;
     UINT64 totalFrames = 0;
     UINT64 silentFrames = 0;
     UINT64 packetCount = 0;
     DWORD lastReportTick = GetTickCount();
 
-    while (running) {
+    for (;;) {
         DWORD waitResult = WaitForMultipleObjects(2, waits, FALSE, 2000);
-        if (waitResult == WAIT_OBJECT_0 + 1) {
+        if (waitResult == WAIT_OBJECT_0 + 1)
             break;
-        }
 
         UINT32 packetLength = 0;
         while (SUCCEEDED(captureClient->GetNextPacketSize(&packetLength)) && packetLength > 0) {
