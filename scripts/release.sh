@@ -256,6 +256,10 @@ echo ""
 IFS='.' read -r V_MAJOR V_MINOR V_PATCH <<< "${NEW_VERSION%%-*}"
 cd "$CLIENT_DIR"
 
+info "Installing dependencies…"
+bun install
+ok "Dependencies installed"
+
 PLATFORMS="linux/amd64,linux/arm64"
 info "Building & pushing multi-arch Docker image (${PLATFORMS})…"
 

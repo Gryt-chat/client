@@ -3,6 +3,7 @@ WORKDIR /app
 ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1
 
 COPY package.json bun.lockb* ./
+COPY node_modules ./node_modules
 RUN bun install --frozen-lockfile
 
 COPY . .

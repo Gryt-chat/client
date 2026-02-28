@@ -3,7 +3,6 @@
 .git
 .gitignore
 .github
-node_modules
 dist
 dist-electron
 release
