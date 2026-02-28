@@ -27,8 +27,8 @@ Browse tags at [ghcr.io/gryt-chat/client](https://github.com/Gryt-chat/client/pk
 ## Quick Start
 
 ```bash
-bun install
-bun dev
+yarn install
+yarn dev
 ```
 
 Open **http://localhost:3666**.
@@ -36,8 +36,8 @@ Open **http://localhost:3666**.
 ## Build
 
 ```bash
-bun run build
-bun run preview
+yarn build
+yarn preview
 ```
 
 ## Documentation

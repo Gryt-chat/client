@@ -257,7 +257,7 @@ IFS='.' read -r V_MAJOR V_MINOR V_PATCH <<< "${NEW_VERSION%%-*}"
 cd "$CLIENT_DIR"
 
 info "Syncing dependencies…"
-bun install
+yarn install --frozen-lockfile --ignore-engines
 ok "Lockfile up to date"
 
 PLATFORMS="linux/amd64,linux/arm64"
