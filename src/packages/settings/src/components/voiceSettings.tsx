@@ -3,6 +3,7 @@ import {
   Button,
   Flex,
   Heading,
+  SegmentedControl,
   Separator,
 } from "@radix-ui/themes";
 import { useState } from "react";
@@ -11,12 +12,13 @@ import connectMp3 from "@/audio/src/assets/connect.mp3";
 import disconnectMp3 from "@/audio/src/assets/disconnect.mp3";
 import { useSettings } from "@/settings";
 
-import { SettingsContainer, SliderSetting } from "./settingsComponents";
-import { SmileySettings } from "./SmileySettings";
+import { SettingGroup, SettingsContainer, SliderSetting } from "./settingsComponents";
 import { SoundSettings } from "./SoundSettings";
 
-export function VoiceCallSettings() {
+export function VoiceSettings() {
   const {
+    inputMode,
+    setInputMode,
     connectSoundEnabled,
     setConnectSoundEnabled,
     disconnectSoundEnabled,
@@ -56,8 +58,28 @@ export function VoiceCallSettings() {
   return (
     <SettingsContainer>
       <Heading as="h2" size="4">
-        Voice &amp; Chat
+        Voice
       </Heading>
+
+      <SettingGroup
+        title="Input Mode"
+        description="Voice Activity transmits whenever you speak above the noise gate. Push to Talk requires holding a key."
+      >
+        <SegmentedControl.Root
+          value={inputMode}
+          onValueChange={(v) => setInputMode(v as "voice_activity" | "push_to_talk")}
+        >
+          <SegmentedControl.Item value="voice_activity">
+            Voice Activity
+          </SegmentedControl.Item>
+          <SegmentedControl.Item value="push_to_talk">
+            Push to Talk
+          </SegmentedControl.Item>
+        </SegmentedControl.Root>
+      </SettingGroup>
+
+      <Separator size="4" />
+
       <Flex direction="column" gap="4">
         <SoundSettings
           label="Connect Sound"
@@ -97,10 +119,6 @@ export function VoiceCallSettings() {
         min={1}
         max={30}
       />
-
-      <Separator size="4" />
-
-      <SmileySettings />
 
       {alertDialog.open && (
         <AlertDialog.Root

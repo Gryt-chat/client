@@ -1,10 +1,9 @@
 import { Box, Flex, Heading, Separator, Switch, Text } from "@radix-ui/themes";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { getAccessTokenStorageMode, migrateAccessTokensToMode } from "@/common";
 import { useSettings } from "@/settings";
 
-import { getElectronAPI, isElectron } from "../../../../lib/electron";
 import { LatencyPanel } from "./latencyPanel";
 import { SettingsContainer, ToggleSetting } from "./settingsComponents";
 
@@ -20,11 +19,6 @@ export function AdvancedSettings() {
     setExperimentalScreenShare,
   } = useSettings();
 
-  const inElectron = isElectron();
-  const [closeToTray, setCloseToTray] = useState(true);
-  const [startWithWindowsSupported, setStartWithWindowsSupported] = useState(false);
-  const [startWithWindows, setStartWithWindows] = useState(true);
-  const [startMinimizedOnLogin, setStartMinimizedOnLogin] = useState(false);
   const [persistTokens, setPersistTokens] = useState(true);
 
   useEffect(() => {
@@ -32,79 +26,10 @@ export function AdvancedSettings() {
     setPersistTokens(mode === "local");
   }, []);
 
-  useEffect(() => {
-    if (!inElectron) return;
-    getElectronAPI()?.getCloseToTray().then(setCloseToTray);
-  }, [inElectron]);
-
-  useEffect(() => {
-    if (!inElectron) return;
-    getElectronAPI()?.getStartWithWindowsSupported().then((supported) => {
-      setStartWithWindowsSupported(supported);
-      if (!supported) return;
-      getElectronAPI()?.getStartWithWindows().then(setStartWithWindows);
-    });
-  }, [inElectron]);
-
-  useEffect(() => {
-    if (!inElectron) return;
-    getElectronAPI()?.getStartMinimizedOnLogin().then(setStartMinimizedOnLogin);
-  }, [inElectron]);
-
-  const handleCloseToTrayToggle = useCallback((enabled: boolean) => {
-    setCloseToTray(enabled);
-    getElectronAPI()?.setCloseToTray(enabled);
-  }, []);
-
-  const handleStartWithWindowsToggle = useCallback((enabled: boolean) => {
-    setStartWithWindows(enabled);
-    getElectronAPI()?.setStartWithWindows(enabled);
-  }, []);
-
-  const handleStartMinimizedOnLoginToggle = useCallback((enabled: boolean) => {
-    setStartMinimizedOnLogin(enabled);
-    getElectronAPI()?.setStartMinimizedOnLogin(enabled);
-  }, []);
-
   return (
     <SettingsContainer>
       <Heading size="4">Advanced</Heading>
 
-      {inElectron && (
-        <>
-          {startWithWindowsSupported && (
-            <>
-              <ToggleSetting
-                title="Start with Windows"
-                description="Automatically launch Gryt when you sign in to Windows."
-                checked={startWithWindows}
-                onCheckedChange={handleStartWithWindowsToggle}
-              />
-              {startWithWindows && (
-                <>
-                  <Separator size="4" />
-                  <ToggleSetting
-                    title="Start minimized on login"
-                    description="Only applies when Gryt is launched automatically on sign-in. Manual launches will still show the window."
-                    checked={startMinimizedOnLogin}
-                    onCheckedChange={handleStartMinimizedOnLoginToggle}
-                  />
-                </>
-              )}
-              <Separator size="4" />
-            </>
-          )}
-          <ToggleSetting
-            title="Minimize to Tray on Close"
-            description="When enabled, closing the window minimizes to the system tray instead of quitting the app."
-            checked={closeToTray}
-            onCheckedChange={handleCloseToTrayToggle}
-          />
-          <Separator size="4" />
-        </>
-      )}
-
-      {/* ── eSports Mode ── */}
       <ToggleSetting
         title="eSports Mode"
         description="Lowest possible latency. Disables all audio processing, enables push-to-talk, caps bitrate at 128kbps (studio quality), and optimizes Opus packetization (10ms frames)."
@@ -118,12 +43,10 @@ export function AdvancedSettings() {
 
       <Separator size="4" />
 
-      {/* ── Latency ── */}
       <LatencyPanel />
 
       <Separator size="4" />
 
-      {/* ── Experimental Screen Share ── */}
       <ToggleSetting
         title="Experimental Screen Share"
         description="Unlock high frame rate options (144, 165, 240 FPS) for screen sharing. These require significant bandwidth and may not work on all hardware."
@@ -137,7 +60,6 @@ export function AdvancedSettings() {
 
       <Separator size="4" />
 
-      {/* ── Diagnostics ── */}
       <Text size="3" weight="bold" color="gray">Diagnostics</Text>
 
       <Box>

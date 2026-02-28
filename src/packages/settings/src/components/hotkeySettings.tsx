@@ -1,9 +1,9 @@
-import { Badge, Button, Flex, Heading, SegmentedControl, Text } from "@radix-ui/themes";
+import { Badge, Button, Flex, Heading, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useState } from "react";
 
 import { useSettings } from "@/settings";
 
-import { SettingGroup,SettingsContainer } from "./settingsComponents";
+import { SettingGroup, SettingsContainer } from "./settingsComponents";
 
 function formatKeyCombo(combo: string): string {
   if (!combo) return "Not set";
@@ -111,7 +111,6 @@ function HotkeyCapture({
 export function HotkeySettings() {
   const {
     inputMode,
-    setInputMode,
     pushToTalkKey,
     setPushToTalkKey,
     muteHotkey,
@@ -126,22 +125,12 @@ export function HotkeySettings() {
     <SettingsContainer>
       <Heading size="4">Hotkeys</Heading>
 
-      <SettingGroup
-        title="Input Mode"
-        description="Voice Activity transmits whenever you speak above the noise gate. Push to Talk requires holding a key."
-      >
-        <SegmentedControl.Root
-          value={inputMode}
-          onValueChange={(v) => setInputMode(v as "voice_activity" | "push_to_talk")}
-        >
-          <SegmentedControl.Item value="voice_activity">
-            Voice Activity
-          </SegmentedControl.Item>
-          <SegmentedControl.Item value="push_to_talk">
-            Push to Talk
-          </SegmentedControl.Item>
-        </SegmentedControl.Root>
-      </SettingGroup>
+      <Flex direction="column" gap="2">
+        <Text size="3" weight="bold">Shortcuts</Text>
+        <Text size="1" color="gray">
+          These shortcuts work globally when not typing in a text field. Press Escape to cancel binding.
+        </Text>
+      </Flex>
 
       {inputMode === "push_to_talk" && (
         <HotkeyCapture
@@ -151,13 +140,6 @@ export function HotkeySettings() {
           onChange={setPushToTalkKey}
         />
       )}
-
-      <Flex direction="column" gap="2">
-        <Text size="3" weight="bold">Shortcuts</Text>
-        <Text size="1" color="gray">
-          These shortcuts work globally when not typing in a text field. Press Escape to cancel binding.
-        </Text>
-      </Flex>
 
       <HotkeyCapture
         label="Toggle Mute"

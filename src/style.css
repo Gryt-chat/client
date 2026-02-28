@@ -18,6 +18,10 @@
   --titlebar-inset: 0px;
 }
 
+.rt-BaseTabListTrigger {
+  justify-content: flex-end;
+}
+
 .radix-themes {
   --cursor-button: pointer;
   --cursor-checkbox: pointer;

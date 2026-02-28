@@ -1,18 +1,21 @@
 import { Box, Dialog, Flex, IconButton, Tabs } from "@radix-ui/themes";
-import { MdClose, MdInfoOutline, MdKey, MdKeyboard, MdMic, MdNotifications, MdPalette, MdPerson, MdTune, MdVideocam, MdVolumeUp } from "react-icons/md";
+import { MdChat, MdClose, MdDesktopWindows, MdInfoOutline, MdKey, MdKeyboard, MdMic, MdNotifications, MdPalette, MdPerson, MdTune, MdVideocam, MdVolumeUp } from "react-icons/md";
 
 import { useSettings } from "@/settings";
 
+import { isElectron } from "../../../../lib/electron";
 import { AboutSettings } from "./aboutSettings";
 import { AdvancedSettings } from "./advancedSettings";
 import { AudioSettings } from "./audioSettings";
 import { CameraSettings } from "./cameraSettings";
+import { ChatSettings } from "./chatSettings";
+import { DesktopSettings } from "./desktopSettings";
 import { HotkeySettings } from "./hotkeySettings";
 import { NotificationSettings } from "./notificationSettings";
 import { ProfileSettings } from "./profileSettings";
 import { SecuritySettings } from "./securitySettings";
 import { AppearanceSettings } from "./theme/appearanceSettings";
-import { VoiceCallSettings } from "./voiceCallSettings";
+import { VoiceSettings } from "./voiceSettings";
 
 const TAB_CONFIG = [
   {
@@ -48,10 +51,16 @@ const TAB_CONFIG = [
     conditional: true,
   },
   {
-    value: "voice-calls",
-    label: "Voice & Chat",
+    value: "voice",
+    label: "Voice",
     icon: MdVolumeUp,
-    content: <VoiceCallSettings />,
+    content: <VoiceSettings />,
+  },
+  {
+    value: "chat",
+    label: "Chat",
+    icon: MdChat,
+    content: <ChatSettings />,
   },
   {
     value: "hotkeys",
@@ -64,6 +73,14 @@ const TAB_CONFIG = [
     label: "Notifications",
     icon: MdNotifications,
     content: <NotificationSettings />,
+  },
+  {
+    value: "desktop",
+    label: "Desktop",
+    icon: MdDesktopWindows,
+    content: <DesktopSettings />,
+    conditional: true,
+    electronOnly: true,
   },
   {
     value: "advanced",
@@ -87,6 +104,9 @@ export function Settings() {
     settingsTab,
     setSettingsTab,
   } = useSettings();
+
+  const inElectron = isElectron();
+  const visibleTabs = TAB_CONFIG.filter((tab) => !tab.electronOnly || inElectron);
 
   function handleDialogChange(isOpen: boolean) {
     setShowSettings(isOpen);
@@ -126,7 +146,6 @@ export function Settings() {
               style={{ flex: 1, minHeight: 0 }}
             >
               <Flex gap="4" height="100%">
-                {/* Vertical Tab List */}
                 <Box style={{ minWidth: "200px", flexShrink: 0, overflowY: "auto" }}>
                   <Tabs.List
                     style={{
@@ -136,7 +155,7 @@ export function Settings() {
                       gap: "4px",
                     }}
                   >
-                    {TAB_CONFIG.map(({ value, label, icon: Icon }) => (
+                    {visibleTabs.map(({ value, label, icon: Icon }) => (
                       <Tabs.Trigger key={value} value={value}>
                         <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <Icon size={16} />
@@ -147,9 +166,8 @@ export function Settings() {
                   </Tabs.List>
                 </Box>
 
-                {/* Tab Content */}
                 <Box style={{ flex: 1, overflowY: "auto", overflowX: "hidden", minWidth: 0 }}>
-                  {TAB_CONFIG.map(({ value, content, conditional }) => (
+                  {visibleTabs.map(({ value, content, conditional }) => (
                     <Tabs.Content key={value} value={value}>
                       {conditional
                         ? settingsTab === value && showSettings && content
