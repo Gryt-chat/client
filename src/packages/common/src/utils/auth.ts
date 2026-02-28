@@ -2,6 +2,8 @@
  * Check if user has all required authentication tokens
  * @returns true if user is properly authenticated, false otherwise
  */
+import { clearIdentityCertificate } from "../auth/identity-certificate";
+import { clearIdentityKeys } from "../auth/identity-keys";
 import { getKeycloak } from "../auth/keycloak";
 import { clearAllServerTokens, getServerAccessToken } from "./tokenStorage";
 
@@ -23,6 +25,8 @@ export function signOut(): void {
   console.log("[Auth:SignOut] signOut() called — clearing legacy tokens and server tokens");
   localStorage.removeItem('token');
   clearAllServerTokens();
+  clearIdentityCertificate();
+  clearIdentityKeys().catch(() => {});
 }
 
 /**
@@ -31,6 +35,8 @@ export function signOut(): void {
  */
 export function forceSignOutWithAccount(logout: () => void): void {
   clearAllServerTokens();
+  clearIdentityCertificate();
+  clearIdentityKeys().catch(() => {});
   logout();
 }
 
