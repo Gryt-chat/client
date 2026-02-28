@@ -9,6 +9,7 @@ export function DesktopSettings() {
   const [startWithWindowsSupported, setStartWithWindowsSupported] = useState(false);
   const [startWithWindows, setStartWithWindows] = useState(true);
   const [startMinimizedOnLogin, setStartMinimizedOnLogin] = useState(false);
+  const [hwAccel, setHwAccel] = useState(true);
 
   useEffect(() => {
     getElectronAPI()?.getCloseToTray().then(setCloseToTray);
@@ -26,6 +27,10 @@ export function DesktopSettings() {
     getElectronAPI()?.getStartMinimizedOnLogin().then(setStartMinimizedOnLogin);
   }, []);
 
+  useEffect(() => {
+    getElectronAPI()?.getHardwareAcceleration().then(setHwAccel);
+  }, []);
+
   const handleCloseToTrayToggle = useCallback((enabled: boolean) => {
     setCloseToTray(enabled);
     getElectronAPI()?.setCloseToTray(enabled);
@@ -39,6 +44,11 @@ export function DesktopSettings() {
   const handleStartMinimizedOnLoginToggle = useCallback((enabled: boolean) => {
     setStartMinimizedOnLogin(enabled);
     getElectronAPI()?.setStartMinimizedOnLogin(enabled);
+  }, []);
+
+  const handleHwAccelToggle = useCallback((enabled: boolean) => {
+    setHwAccel(enabled);
+    getElectronAPI()?.setHardwareAcceleration(enabled);
   }, []);
 
   return (
@@ -75,6 +85,15 @@ export function DesktopSettings() {
         description="When enabled, closing the window minimizes to the system tray instead of quitting the app."
         checked={closeToTray}
         onCheckedChange={handleCloseToTrayToggle}
+      />
+
+      <Separator size="4" />
+
+      <ToggleSetting
+        title="Hardware Acceleration"
+        description="Uses your GPU for rendering. Disable if you experience visual glitches or high GPU usage. Changing this will restart the app."
+        checked={hwAccel}
+        onCheckedChange={handleHwAccelToggle}
       />
     </SettingsContainer>
   );

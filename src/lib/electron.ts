@@ -34,6 +34,8 @@ export interface ElectronAPI {
   setStartWithWindows(enabled: boolean): void;
   getStartMinimizedOnLogin(): Promise<boolean>;
   setStartMinimizedOnLogin(enabled: boolean): void;
+  getHardwareAcceleration(): Promise<boolean>;
+  setHardwareAcceleration(enabled: boolean): void;
   setBadgeCount(count: number): void;
   toggleAlwaysOnTop(pinned: boolean): void;
   getDesktopSources(): Promise<DesktopSource[]>;

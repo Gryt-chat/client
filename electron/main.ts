@@ -98,6 +98,10 @@ autoUpdater.autoInstallOnAppQuit = true;
 autoUpdater.allowPrerelease = readConfig().betaChannel === true;
 autoUpdater.logger = console;
 closeToTray = (readConfig().closeToTray ?? true) as boolean;
+const hardwareAcceleration = readBoolConfig("hardwareAcceleration", true);
+if (!hardwareAcceleration) {
+  app.disableHardwareAcceleration();
+}
 let startWithWindows = process.platform === "win32"
   ? readBoolConfig("startWithWindows", true)
   : false;
@@ -625,6 +629,14 @@ if (!gotSingleInstanceLock) {
     ipcMain.on("set-start-minimized-on-login", (_event, enabled: boolean) => {
       startMinimizedOnLogin = !!enabled;
       writeConfig({ startMinimizedOnLogin });
+    });
+
+    ipcMain.handle("get-hardware-acceleration", () => hardwareAcceleration);
+    ipcMain.on("set-hardware-acceleration", (_event, enabled: boolean) => {
+      writeConfig({ hardwareAcceleration: enabled });
+      isQuitting = true;
+      app.relaunch();
+      app.quit();
     });
 
     // ── Per-user file store ───────────────────────────────────────────

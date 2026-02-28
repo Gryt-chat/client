@@ -82,6 +82,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("set-start-minimized-on-login", enabled);
   },
 
+  getHardwareAcceleration(): Promise<boolean> {
+    return ipcRenderer.invoke("get-hardware-acceleration");
+  },
+
+  setHardwareAcceleration(enabled: boolean) {
+    ipcRenderer.send("set-hardware-acceleration", enabled);
+  },
+
   onUpdateStatus(callback: (status: { status: string; version?: string; percent?: number; message?: string }) => void) {
     const handler = (_event: Electron.IpcRendererEvent, data: { status: string; version?: string; percent?: number; message?: string }) => callback(data);
     ipcRenderer.on("update-status", handler);
