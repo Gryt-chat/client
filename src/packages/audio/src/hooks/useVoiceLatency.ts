@@ -176,8 +176,8 @@ export function useVoiceLatency(enabled: boolean) {
                 const prev = prevJitterBufRef.current;
                 if (prev) {
                   const deltaCount = stat.jitterBufferEmittedCount - prev.count;
-                  if (deltaCount > 0) {
-                    const deltaDelay = stat.jitterBufferDelay - prev.delay;
+                  const deltaDelay = stat.jitterBufferDelay - prev.delay;
+                  if (deltaCount > 0 && deltaDelay >= 0) {
                     jitterBufferMs = (deltaDelay / deltaCount) * 1000;
                   }
                 }
@@ -215,7 +215,6 @@ export function useVoiceLatency(enabled: boolean) {
 
       const oneWayNetworkMs = networkRttMs !== null ? networkRttMs / 2 : null;
 
-      // Estimated one-way: my pipeline + half-RTT + their jitter buffer
       let estimatedOneWayMs: number | null = null;
       {
         let sum = 0;
@@ -223,7 +222,7 @@ export function useVoiceLatency(enabled: boolean) {
         if (local.totalMs !== null) { sum += local.totalMs; hasData = true; }
         if (oneWayNetworkMs !== null) { sum += oneWayNetworkMs; hasData = true; }
         if (jitterBufferMs !== null) { sum += jitterBufferMs; hasData = true; }
-        estimatedOneWayMs = hasData ? sum : null;
+        estimatedOneWayMs = hasData ? Math.max(0, sum) : null;
       }
 
       const estimatedRoundTripMs = estimatedOneWayMs !== null ? estimatedOneWayMs * 2 : null;
