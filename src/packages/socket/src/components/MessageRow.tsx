@@ -85,6 +85,7 @@ export const MessageRow = memo(({
   const [isReactionPickerOpen, setIsReactionPickerOpen] = useState(false);
   const [pickerPlacement, setPickerPlacement] = useState<"above" | "beside">("above");
   const rowRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const pickerAnchorRef = useRef<HTMLElement | null>(null);
 
   const canDelete = !!canDeleteAny || (!!currentUserId && m.sender_server_id === currentUserId);
@@ -309,14 +310,18 @@ export const MessageRow = memo(({
 
   return (
     <motion.div
+      ref={wrapperRef}
       layout="position"
-      style={{ width: "100%" }}
-      initial={isNew ? { opacity: 0, y: 4 } : false}
-      animate={{ opacity: 1, y: 0 }}
+      style={{ width: "100%", overflow: isNew ? "hidden" : undefined }}
+      initial={isNew ? { opacity: 0, height: 0 } : false}
+      animate={{ opacity: 1, height: "auto" }}
       transition={{
         layout: { type: "spring", stiffness: 170, damping: 26 },
         opacity: { duration: 0.2, ease: "easeOut" },
-        y: { type: "spring", stiffness: 170, damping: 22 },
+        height: { type: "spring", stiffness: 170, damping: 26 },
+      }}
+      onAnimationComplete={() => {
+        if (wrapperRef.current) wrapperRef.current.style.overflow = "";
       }}
     >
       {content}

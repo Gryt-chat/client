@@ -45,16 +45,25 @@ function UpdateControls() {
 
   const switchingToBeta = pendingSwitch === true;
 
+  const handleDownloadUpdate = useCallback(() => {
+    getElectronAPI()?.downloadUpdate();
+  }, []);
+
+  const handleInstallUpdate = useCallback(() => {
+    getElectronAPI()?.installUpdate();
+  }, []);
+
   const statusText = (() => {
     if (!status) return null;
     switch (status.status) {
       case "checking":
         return "Checking for updates…";
       case "available":
+        return `Update v${status.version} is available`;
       case "downloading":
         return `Downloading v${status.version}… ${status.percent != null ? `${status.percent}%` : ""}`;
       case "downloaded":
-        return `v${status.version} will be installed on next restart`;
+        return `v${status.version} is ready to install`;
       case "not-available":
         return "You're on the latest version";
       case "error":
@@ -80,6 +89,7 @@ function UpdateControls() {
   })();
 
   const isChecking = status?.status === "checking";
+  const isAvailable = status?.status === "available";
   const isDownloading = status?.status === "downloading";
   const isReady = status?.status === "downloaded";
   const isBusy = isChecking || isDownloading;
@@ -131,15 +141,32 @@ function UpdateControls() {
           <Progress value={status.percent} size="2" />
         )}
 
-        <Button
-          variant="soft"
-          onClick={handleCheckForUpdates}
-          disabled={isBusy}
-          style={{ alignSelf: "flex-start" }}
-        >
-          <MdRefresh size={16} />
-          {isChecking ? "Checking…" : "Check for Updates"}
-        </Button>
+        <Flex gap="2" wrap="wrap">
+          {!isAvailable && !isReady && (
+            <Button
+              variant="soft"
+              onClick={handleCheckForUpdates}
+              disabled={isBusy}
+            >
+              <MdRefresh size={16} />
+              {isChecking ? "Checking…" : "Check for Updates"}
+            </Button>
+          )}
+
+          {isAvailable && (
+            <Button variant="solid" color="blue" onClick={handleDownloadUpdate}>
+              <MdDownload size={16} />
+              Download v{status?.version}
+            </Button>
+          )}
+
+          {isReady && (
+            <Button variant="solid" color="green" onClick={handleInstallUpdate}>
+              <MdUpdate size={16} />
+              Install & Restart
+            </Button>
+          )}
+        </Flex>
       </Flex>
 
       <AlertDialog.Root open={pendingSwitch !== null} onOpenChange={(open) => { if (!open) setPendingSwitch(null); }}>

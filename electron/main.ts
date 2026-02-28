@@ -93,7 +93,7 @@ function readBoolConfig(key: string, defaultValue: boolean): boolean {
 
 // ── Auto-updater config ─────────────────────────────────────────────────
 
-autoUpdater.autoDownload = true;
+autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = true;
 autoUpdater.allowPrerelease = readConfig().betaChannel === true;
 autoUpdater.logger = console;
@@ -186,6 +186,7 @@ function runSplashUpdateCheck(): Promise<void> {
 
     const onAvailable = (info: UpdateInfo) => {
       sendToSplash("available", { version: info.version });
+      autoUpdater.downloadUpdate().catch(() => onError());
     };
 
     const onNotAvailable = (info: UpdateInfo) => {
@@ -268,9 +269,16 @@ function friendlyUpdateError(err: Error): string {
   return msg;
 }
 
+let userInitiatedCheck = false;
+
 function initBackgroundUpdater() {
   autoUpdater.on("checking-for-update", () => sendToMain("checking"));
-  autoUpdater.on("update-available", (info) => sendToMain("available", { version: info.version }));
+  autoUpdater.on("update-available", (info) => {
+    sendToMain("available", { version: info.version });
+    if (!userInitiatedCheck) {
+      autoUpdater.downloadUpdate().catch(() => {});
+    }
+  });
   autoUpdater.on("update-not-available", (info) => sendToMain("not-available", { version: info.version }));
   autoUpdater.on("download-progress", (p) =>
     sendToMain("downloading", { percent: Math.round(p.percent), transferred: p.transferred, total: p.total })
@@ -810,12 +818,14 @@ if (!gotSingleInstanceLock) {
     }
 
     ipcMain.on("check-for-updates", () => {
+      userInitiatedCheck = true;
       autoUpdater.checkForUpdates().catch((err) => {
         sendToMain("error", { message: friendlyUpdateError(err) });
       });
     });
 
     ipcMain.on("download-update", () => {
+      userInitiatedCheck = false;
       autoUpdater.downloadUpdate().catch((err) => {
         sendToMain("error", { message: friendlyUpdateError(err) });
       });
