@@ -145,6 +145,23 @@ function useSfuHook(): SFUInterface {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Close SFU WebSocket and peer connection before page unload (Ctrl+R / tab close)
+  // so the SFU receives the close frame and tears down the old session promptly.
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      const ws = sfuWebSocketRef.current;
+      if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+        ws.close(1000, "Page unloading");
+      }
+      const pc = peerConnectionRef.current;
+      if (pc && pc.connectionState !== "closed") {
+        pc.close();
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, []);
+
   const sfuConnectionRefs = useMemo(() => ({
     isDisconnectingRef,
     sfuWebSocketRef,
