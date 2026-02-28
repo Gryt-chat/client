@@ -88,54 +88,22 @@ case "$VERSION_CHOICE" in
   *) err "Invalid choice"; exit 1 ;;
 esac
 
-# ── Beta / prerelease ────────────────────────────────────────────────────
-BETA_RELEASE=false
-RELEASE_TYPE="release"
-
+# ── Channel ───────────────────────────────────────────────────────────────
+CHANNEL="beta"
 if [ "$RERELEASE" = false ]; then
-  if [[ "$CURRENT_VERSION" =~ ^([0-9]+\.[0-9]+\.[0-9]+)-beta(\.[0-9]+)?$ ]]; then
-    CUR_BASE="${BASH_REMATCH[1]}"
-    NEXT_BETA="$(bump_version "$CURRENT_VERSION" patch)-beta"
-    echo ""
-    info "Current version is beta (${BOLD}v${CURRENT_VERSION}${RESET}). Quick options:"
-    echo "   a) Next beta patch     → v${NEXT_BETA}  (default)"
-    echo "   b) Promote to stable   → v${CUR_BASE}"
-    echo "   c) Keep selected       → v${NEW_VERSION}"
-    echo ""
-    read -rp "$(echo -e "${CYAN}?${RESET}  Choice ${YELLOW}[a]${RESET}: ")" BETA_CHOICE
-    BETA_CHOICE="${BETA_CHOICE:-a}"
-    case "$BETA_CHOICE" in
-      a|A) NEW_VERSION="$NEXT_BETA"; BETA_RELEASE=true ;;
-      b|B) NEW_VERSION="$CUR_BASE" ;;
-      c|C) ;;
-      *) err "Invalid choice"; exit 1 ;;
-    esac
-  fi
-
-  # Custom version with beta suffix already set
-  if [[ "$NEW_VERSION" =~ -beta ]]; then
-    BETA_RELEASE=true
-  fi
-
-  # For stable versions, offer to make it a beta
-  if [ "$BETA_RELEASE" = false ] && [[ ! "$NEW_VERSION" =~ -beta ]]; then
-    read -rp "$(echo -e "${CYAN}?${RESET}  Release as beta? ${YELLOW}[Y/n]${RESET}: ")" BETA_ASK
-    BETA_ASK="${BETA_ASK:-Y}"
-    if [[ "$BETA_ASK" =~ ^[Yy]$ ]]; then
-      BETA_RELEASE=true
-      NEW_VERSION="${NEW_VERSION}-beta"
-    fi
-  fi
-
-  if [ "$BETA_RELEASE" = true ]; then
-    RELEASE_TYPE="prerelease"
-  fi
+  echo ""
+  info "Release channel:"
+  echo "   1) Beta    — prerelease, deploys to beta  (default)"
+  echo "   2) Latest  — stable, deploys to beta + production"
+  echo ""
+  read -rp "$(echo -e "${CYAN}?${RESET}  Channel ${YELLOW}[1]${RESET}: ")" CHANNEL_CHOICE
+  CHANNEL_CHOICE="${CHANNEL_CHOICE:-1}"
+  case "$CHANNEL_CHOICE" in
+    1) CHANNEL="beta" ;;
+    2) CHANNEL="latest" ;;
+    *) err "Invalid choice"; exit 1 ;;
+  esac
 fi
-
-# All releases are prerelease until promoted via scripts/promote-beta.sh.
-# This gates stable-channel Electron auto-updates behind the promotion step.
-# Beta-channel users see prereleases immediately.
-RELEASE_TYPE="prerelease"
 
 cd "$CLIENT_DIR"
 if [ "$RERELEASE" = true ]; then
@@ -155,12 +123,12 @@ echo ""
 echo -e "${BOLD}── Summary ──────────────────────────────${RESET}"
 if [ "$RERELEASE" = true ]; then
   echo -e "  Version:   ${YELLOW}v${NEW_VERSION} (re-release)${RESET}"
-elif [ "$BETA_RELEASE" = true ]; then
-  echo -e "  Version:   ${YELLOW}v${NEW_VERSION} (beta)${RESET}"
-else
+elif [ "$CHANNEL" = "latest" ]; then
   echo -e "  Version:   ${GREEN}v${NEW_VERSION}${RESET}"
+else
+  echo -e "  Version:   ${YELLOW}v${NEW_VERSION} (beta)${RESET}"
 fi
-echo -e "  Release:   ${GREEN}${RELEASE_TYPE}${RESET}"
+echo -e "  Channel:   ${GREEN}${CHANNEL}${RESET}"
 echo -e "  Repo:      ${GREEN}${OWNER}/${REPO}${RESET}"
 echo -e "  Platforms: ${GREEN}Linux + macOS + Windows${RESET}"
 echo -e "${BOLD}─────────────────────────────────────────${RESET}"
@@ -224,21 +192,16 @@ if [ "$RERELEASE" = false ]; then
   echo ""
   info "Committing version bump…"
 
-  COMMIT_SUFFIX=""
-  if [ "$BETA_RELEASE" = true ]; then
-    COMMIT_SUFFIX=" (beta)"
-  fi
-
   cd "$CLIENT_DIR"
   git add package.json
-  git commit -m "release: v${NEW_VERSION}${COMMIT_SUFFIX}"
+  git commit -m "release: v${NEW_VERSION} (${CHANNEL})"
   git push
 
   REPO_ROOT="$(cd "$CLIENT_DIR/.." && git rev-parse --show-toplevel 2>/dev/null || echo "")"
   if [ -n "$REPO_ROOT" ] && [ -f "$REPO_ROOT/.gitmodules" ]; then
     cd "$REPO_ROOT"
     git add packages/client
-    git commit -m "release: client v${NEW_VERSION}${COMMIT_SUFFIX}"
+    git commit -m "release: client v${NEW_VERSION} (${CHANNEL})"
     git tag "v${NEW_VERSION}"
     git push
     git push origin "v${NEW_VERSION}"
@@ -264,37 +227,66 @@ ok "Lockfile up to date"
 PLATFORMS="linux/amd64,linux/arm64"
 info "Building & pushing multi-arch Docker image (${PLATFORMS})…"
 
+DOCKER_TAGS=(
+  -t "${DOCKER_IMAGE}:${NEW_VERSION}"
+  -t "${DOCKER_IMAGE}:${V_MAJOR}.${V_MINOR}"
+  -t "${DOCKER_IMAGE}:${V_MAJOR}"
+  -t "${DOCKER_IMAGE}:latest-beta"
+)
+if [ "$CHANNEL" = "latest" ]; then
+  DOCKER_TAGS+=(-t "${DOCKER_IMAGE}:latest")
+fi
+
 docker buildx build \
   --platform "$PLATFORMS" \
   --cache-from type=registry,ref=${DOCKER_IMAGE}:buildcache \
   --cache-to type=registry,ref=${DOCKER_IMAGE}:buildcache,mode=max \
-  -t "${DOCKER_IMAGE}:${NEW_VERSION}" \
-  -t "${DOCKER_IMAGE}:${V_MAJOR}.${V_MINOR}" \
-  -t "${DOCKER_IMAGE}:${V_MAJOR}" \
-  -t "${DOCKER_IMAGE}:latest-beta" \
+  "${DOCKER_TAGS[@]}" \
   --push .
 ok "Pushed ${DOCKER_IMAGE}:${NEW_VERSION} (${PLATFORMS})"
 
-# ── Deploy client to beta ─────────────────────────────────────────
+# ── Deploy client ─────────────────────────────────────────────────
 echo ""
 REPO_ROOT="$(cd "$CLIENT_DIR/../.." && pwd)"
+COMPOSE_DIR="$REPO_ROOT/ops/deploy/compose"
+
 read -rp "$(echo -e "${CYAN}?${RESET}  Deploy client to beta? ${YELLOW}[Y/n]${RESET}: ")" DEPLOY_BETA
 DEPLOY_BETA="${DEPLOY_BETA:-Y}"
 if [[ "$DEPLOY_BETA" =~ ^[Yy]$ ]]; then
-  COMPOSE_DIR="$REPO_ROOT/ops/deploy/compose"
-  COMPOSE_FILE="$COMPOSE_DIR/beta.yml"
-  ENV_FILE="$COMPOSE_DIR/.env.beta"
-  LOCAL_FILE="$COMPOSE_DIR/beta.local.yml"
-  if [ -f "$COMPOSE_FILE" ] && [ -f "$ENV_FILE" ]; then
-    COMPOSE_ARGS=(-f "$COMPOSE_FILE")
-    [[ -f "$LOCAL_FILE" ]] && COMPOSE_ARGS+=(-f "$LOCAL_FILE")
-    COMPOSE_ARGS+=(--env-file "$ENV_FILE" --profile web)
+  BETA_COMPOSE="$COMPOSE_DIR/beta.yml"
+  BETA_ENV="$COMPOSE_DIR/.env.beta"
+  BETA_LOCAL="$COMPOSE_DIR/beta.local.yml"
+  if [ -f "$BETA_COMPOSE" ] && [ -f "$BETA_ENV" ]; then
+    COMPOSE_ARGS=(-f "$BETA_COMPOSE")
+    [[ -f "$BETA_LOCAL" ]] && COMPOSE_ARGS+=(-f "$BETA_LOCAL")
+    COMPOSE_ARGS+=(--env-file "$BETA_ENV" --profile web)
     info "Pulling & restarting beta client…"
     docker compose "${COMPOSE_ARGS[@]}" pull client
-    docker compose "${COMPOSE_ARGS[@]}" up -d --force-recreate client
+    docker compose "${COMPOSE_ARGS[@]}" up -d client
     ok "Beta client deployed"
   else
     warn "Beta compose files not found"
+  fi
+fi
+
+if [ "$CHANNEL" = "latest" ]; then
+  read -rp "$(echo -e "${CYAN}?${RESET}  Deploy client to production? ${YELLOW}[Y/n]${RESET}: ")" DEPLOY_PROD
+  DEPLOY_PROD="${DEPLOY_PROD:-Y}"
+  if [[ "$DEPLOY_PROD" =~ ^[Yy]$ ]]; then
+    PROD_COMPOSE="$COMPOSE_DIR/prod.yml"
+    PROD_ENV="$COMPOSE_DIR/.env.prod"
+    PROD_LOCAL="$COMPOSE_DIR/prod.local.yml"
+    if [ -f "$PROD_COMPOSE" ] && [ -f "$PROD_ENV" ]; then
+      COMPOSE_ARGS=(-f "$PROD_COMPOSE")
+      [[ -f "$PROD_LOCAL" ]] && COMPOSE_ARGS+=(-f "$PROD_LOCAL")
+      COMPOSE_ARGS+=(--env-file "$PROD_ENV" --profile web)
+      info "Pulling & restarting production client…"
+      docker compose "${COMPOSE_ARGS[@]}" pull client
+      docker compose "${COMPOSE_ARGS[@]}" up -d client
+      ok "Production client deployed"
+    else
+      warn "Production compose files not found"
+    fi
   fi
 fi
 
@@ -316,6 +308,11 @@ until [ $ATTEMPT -ge $MAX_ATTEMPTS ]; do
     TARGETS="--linux --mac --win"
   fi
 
+  RELEASE_TYPE="prerelease"
+  if [ "$CHANNEL" = "latest" ]; then
+    RELEASE_TYPE="release"
+  fi
+
   npx electron-builder \
     $TARGETS \
     --publish always \
@@ -333,27 +330,6 @@ fi
 
 echo ""
 ok "Release ${BOLD}v${NEW_VERSION}${RESET} published to ${GREEN}https://github.com/${OWNER}/${REPO}/releases${RESET}"
-
-# ── Ensure latest.yml exists (cross-channel updates) ─────────────────
-# electron-builder names the manifest after the semver prerelease tag
-# (e.g. "beta.yml" for 1.0.115-beta). The client always reads latest.yml
-# so we copy the channel-specific manifests to latest*.yml when needed.
-if [ "$BETA_RELEASE" = true ]; then
-  CHANNEL="${NEW_VERSION##*-}"  # e.g. "beta"
-  info "Uploading latest.yml aliases (from ${CHANNEL}.yml)…"
-  TMPDIR_YML=$(mktemp -d)
-  for SUFFIX in "" "-linux" "-mac"; do
-    SRC="${CHANNEL}${SUFFIX}.yml"
-    DST="latest${SUFFIX}.yml"
-    if gh release download "v${NEW_VERSION}" --repo "${OWNER}/${REPO}" -p "$SRC" -O "${TMPDIR_YML}/${DST}" 2>/dev/null; then
-      gh release upload "v${NEW_VERSION}" --repo "${OWNER}/${REPO}" "${TMPDIR_YML}/${DST}" --clobber
-      ok "${SRC} → ${DST}"
-    else
-      warn "Could not download ${SRC} — ${DST} not uploaded"
-    fi
-  done
-  rm -rf "$TMPDIR_YML"
-fi
 
 # ── Verify update manifests ──────────────────────────────────────────
 info "Verifying auto-update manifests…"
