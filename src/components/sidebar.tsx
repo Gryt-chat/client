@@ -175,7 +175,7 @@ function ServerItem({
     <Reorder.Item
       value={host}
       as="div"
-      style={{ listStyle: "none", cursor: "grab" }}
+      style={{ listStyle: "none", cursor: "grab", userSelect: "none" }}
       whileDrag={{ scale: 1.1, boxShadow: "0 4px 12px rgba(0,0,0,0.3)", zIndex: 10, cursor: "grabbing", borderRadius: "var(--radius-2)" }}
       transition={{ type: "spring", stiffness: 400, damping: 30 }}
     >
@@ -183,7 +183,7 @@ function ServerItem({
         <ContextMenu.Root>
           <ContextMenu.Trigger>
             <HoverCard.Trigger>
-              <Box position="relative">
+              <Box position="relative" onDragStart={(e) => e.preventDefault()}>
                 <Avatar
                   size="2"
                   color="gray"

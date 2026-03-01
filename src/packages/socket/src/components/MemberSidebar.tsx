@@ -81,6 +81,7 @@ const MemberItem = ({
 }) => {
   const isSelf = member.serverUserId === currentServerUserId;
   const { label: statusLabel, color: statusColor } = statusConfig[member.status];
+  const isOffline = member.status === "offline";
 
   return (
     <UserContextMenu
@@ -106,7 +107,6 @@ const MemberItem = ({
           borderRadius: "var(--radius-6)",
           padding: "8px 12px",
           cursor: 'default',
-          opacity: member.status === 'offline' ? 0.5 : 1,
         }}
       >
         <Flex align="center" gap="2" width="100%">
@@ -119,6 +119,7 @@ const MemberItem = ({
               outlineColor: isSpeaking ? "var(--accent-9)" : "transparent",
               transition: "outline-color 0.1s ease",
               backgroundColor: member.color,
+              opacity: isOffline ? 0.4 : 1,
             }}
           />
 
@@ -130,6 +131,7 @@ const MemberItem = ({
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
+                  color: isOffline ? statusColor : undefined,
                 }}
               >
                 {member.nickname}
