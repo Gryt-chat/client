@@ -34,6 +34,13 @@ bump_version() {
   esac
 }
 
+# ── Snapcraft credentials ─────────────────────────────────────────────────
+SNAP_CREDS_FILE="$CLIENT_DIR/snapcraft-creds"
+if [ -z "${SNAPCRAFT_STORE_CREDENTIALS:-}" ] && [ -f "$SNAP_CREDS_FILE" ]; then
+  export SNAPCRAFT_STORE_CREDENTIALS="$(cat "$SNAP_CREDS_FILE")"
+  ok "Loaded Snap Store credentials from snapcraft-creds"
+fi
+
 # ── GH_TOKEN ─────────────────────────────────────────────────────────────
 if [ -z "${GH_TOKEN:-}" ]; then
   if command -v gh &>/dev/null && gh auth status &>/dev/null 2>&1; then
