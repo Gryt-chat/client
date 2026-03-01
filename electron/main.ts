@@ -90,6 +90,8 @@ if (process.defaultApp) {
       resolve(process.argv[1]),
     ]);
   }
+} else if (process.platform === "linux" && process.env.APPIMAGE) {
+  app.setAsDefaultProtocolClient(PROTOCOL, process.env.APPIMAGE);
 } else {
   app.setAsDefaultProtocolClient(PROTOCOL);
 }
