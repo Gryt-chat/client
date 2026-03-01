@@ -1,5 +1,5 @@
 import { Flex } from "@radix-ui/themes";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { useUnreadTracker } from "@/common";
 import { useIsCompact, useIsMobile } from "@/mobile";
@@ -70,7 +70,6 @@ export const ServerView = () => {
   } = useVoiceResize({ voiceWidth, userVoiceWidth, setVoiceWidth, setUserVoiceWidth, setShowVoiceView });
 
   const [focusedChatHidden, setFocusedChatHidden] = useState(false);
-  useEffect(() => { if (!voiceFocused) setFocusedChatHidden(false); }, [voiceFocused]);
   const toggleFocusedChat = useCallback(() => setFocusedChatHidden((v) => !v), []);
 
   const {

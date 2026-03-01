@@ -54,6 +54,8 @@ export function AudioSettings() {
   const { devices: outputDevices, getOutputDevices, applyOutputDevice } = useSpeakers();
   const { nativeAudioActive } = useScreenShare();
 
+  const muteStateBeforeLoopback = useRef<boolean | null>(null);
+
   const handleOutputDeviceChange = useCallback((id: string) => {
     setOutputDeviceID(id);
     applyOutputDevice(id);
@@ -74,12 +76,25 @@ export function AudioSettings() {
       noiseGateValue: microphoneBuffer.noiseGate?.gain.value,
       volumeGainValue: microphoneBuffer.volumeGain?.gain.value,
     });
-    setLoopbackEnabled(enabled);
-    if (enabled && isConnected && !isMuted) {
-      voiceLog.warn("LOOPBACK", "Auto-muting because connected to SFU");
-      setIsMuted(true);
+
+    if (enabled) {
+      muteStateBeforeLoopback.current = isMuted;
+      setLoopbackEnabled(true);
+      if (isConnected && !isMuted) {
+        voiceLog.warn("LOOPBACK", "Auto-muting because connected to SFU");
+        setIsMuted(true);
+      }
+    } else {
+      setLoopbackEnabled(false);
     }
   }, [setLoopbackEnabled, isConnected, isMuted, setIsMuted, audioContext, microphoneBuffer]);
+
+  useEffect(() => {
+    if (loopbackEnabled || muteStateBeforeLoopback.current === null) return;
+    voiceLog.info("LOOPBACK", "Restoring mute state", { was: muteStateBeforeLoopback.current });
+    setIsMuted(muteStateBeforeLoopback.current);
+    muteStateBeforeLoopback.current = null;
+  }, [loopbackEnabled, setIsMuted]);
 
   useEffect(() => {
     if (!loopbackEnabled) return;

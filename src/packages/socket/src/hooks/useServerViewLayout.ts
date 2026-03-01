@@ -5,7 +5,7 @@ const SIDEBAR_HOVER_PX = 8;
 const SIDEBAR_CLOSE_DELAY = 1000;
 const VOICE_MIN_WIDTH = 200;
 const MIN_CHAT_WIDTH = 200;
-const FOCUSED_CHAT_RATIO = 0.25;
+const FOCUSED_CHAT_RATIO = 1 / 3;
 
 interface UseMediaAutoShowParams {
   showVoiceView: boolean;
