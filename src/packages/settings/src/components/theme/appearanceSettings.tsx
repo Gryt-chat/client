@@ -57,7 +57,7 @@ export function AppearanceSettings() {
         {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         <Select.Root value={accentColor} onValueChange={(v) => setAccentColor(v as any)}>
           <Select.Trigger />
-          <Select.Content>
+          <Select.Content position="popper" sideOffset={4} style={{ maxHeight: 300 }}>
             {accentColors.map(c => (
               <Select.Item key={c} value={c}>{c}</Select.Item>
             ))}
@@ -70,7 +70,7 @@ export function AppearanceSettings() {
         {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         <Select.Root value={grayColor} onValueChange={(v) => setGrayColor(v as any)}>
           <Select.Trigger />
-          <Select.Content>
+          <Select.Content position="popper" sideOffset={4}>
             {grayColors.map(c => (
               <Select.Item key={c} value={c}>{c}</Select.Item>
             ))}
@@ -83,7 +83,7 @@ export function AppearanceSettings() {
         {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         <Select.Root value={radius} onValueChange={(v) => setRadius(v as any)}>
           <Select.Trigger />
-          <Select.Content>
+          <Select.Content position="popper" sideOffset={4}>
             {radiusOptions.map(r => (
               <Select.Item key={r.value} value={r.value}>{r.label}</Select.Item>
             ))}

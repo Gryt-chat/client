@@ -256,7 +256,7 @@ export function CameraSettings() {
           onValueChange={(value) => setCameraID(value)}
         >
           <Select.Trigger placeholder="Select a camera" />
-          <Select.Content>
+          <Select.Content position="popper" sideOffset={4}>
             {devices.map((device) => (
               <Select.Item key={device.deviceId || device.label} value={device.deviceId || `device-${device.label}`}>
                 {device.label || `Camera ${device.deviceId.slice(0, 8)}`}
@@ -278,7 +278,7 @@ export function CameraSettings() {
           onValueChange={(value) => setCameraQuality(value)}
         >
           <Select.Trigger />
-          <Select.Content>
+          <Select.Content position="popper" sideOffset={4} style={{ maxHeight: 300 }}>
             {filteredOptions.map((opt) => (
               <Select.Item key={opt.value} value={opt.value}>
                 {opt.label}

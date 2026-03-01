@@ -348,7 +348,7 @@ export function CameraPreviewModal({
               <Text size="2" style={{ minWidth: 60 }}>Camera</Text>
               <Select.Root value={localCameraID} onValueChange={setLocalCameraID}>
                 <Select.Trigger variant="soft" style={{ flex: 1 }} />
-                <Select.Content>
+                <Select.Content position="popper" sideOffset={4}>
                   {devices.length === 0 ? (
                     <Select.Item value="__none__" disabled>No cameras found</Select.Item>
                   ) : (
@@ -366,7 +366,7 @@ export function CameraPreviewModal({
               <Text size="2" style={{ minWidth: 60 }}>Quality</Text>
               <Select.Root value={localQuality} onValueChange={setLocalQuality}>
                 <Select.Trigger variant="soft" style={{ flex: 1 }} />
-                <Select.Content>
+                <Select.Content position="popper" sideOffset={4} style={{ maxHeight: 300 }}>
                   {filteredOptions.map((o) => (
                     <Select.Item key={o.value} value={o.value}>{o.label}</Select.Item>
                   ))}

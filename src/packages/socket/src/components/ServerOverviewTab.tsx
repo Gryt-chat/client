@@ -588,7 +588,7 @@ export function ServerOverviewTab({
               disabled={!isOwner}
             >
               <Select.Trigger style={{ width: "100%" }} />
-              <Select.Content>
+              <Select.Content position="popper" sideOffset={4}>
                 <Select.Item value="off">Off — no filtering</Select.Item>
                 <Select.Item value="flag">Flag — blur profanity (clients can reveal)</Select.Item>
                 <Select.Item value="censor">Censor — replace profanity</Select.Item>
@@ -608,7 +608,7 @@ export function ServerOverviewTab({
                 disabled={!isOwner}
               >
                 <Select.Trigger style={{ width: "100%" }} placeholder="Replacement style" />
-                <Select.Content>
+                <Select.Content position="popper" sideOffset={4}>
                   <Select.Item value="grawlix">Symbols — $#@!%&*</Select.Item>
                   <Select.Item value="asterisks">Asterisks — ****</Select.Item>
                   <Select.Item value="emoji">Swear emoji — 🤬🤬</Select.Item>
@@ -638,7 +638,7 @@ export function ServerOverviewTab({
           disabled={!isOwner}
         >
           <Select.Trigger style={{ width: "100%", maxWidth: 320 }} />
-          <Select.Content>
+          <Select.Content position="popper" sideOffset={4}>
             <Select.Item value="__auto__">Auto (first text channel)</Select.Item>
             {textChannels.map((ch) => (
               <Select.Item key={ch.id} value={ch.id}>

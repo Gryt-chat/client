@@ -203,7 +203,7 @@ export function AudioSettings() {
         </Flex>
         <Select.Root value={micID || ""} onValueChange={setMicID}>
           <Select.Trigger placeholder="Select microphone device" />
-          <Select.Content>
+          <Select.Content position="popper" sideOffset={4}>
             {devices.map((device) => (
               <Select.Item key={device.deviceId || device.label} value={device.deviceId || `device-${device.label}`}>
                 {device.label || `Microphone ${device.deviceId.slice(0, 8)}`}
@@ -224,7 +224,7 @@ export function AudioSettings() {
         </Flex>
         <Select.Root value={outputDeviceID || "default"} onValueChange={handleOutputDeviceChange}>
           <Select.Trigger placeholder="Select output device" />
-          <Select.Content>
+          <Select.Content position="popper" sideOffset={4}>
             <Select.Item value="default">Default</Select.Item>
             {outputDevices.map((device) => (
               <Select.Item key={device.deviceId || device.label} value={device.deviceId || `device-${device.label}`}>

@@ -301,7 +301,7 @@ export function ScreenSharePickerModal({
               <Text size="2">Quality</Text>
               <Select.Root value={quality} onValueChange={(v) => onQualityChange(v as ScreenShareQuality)}>
                 <Select.Trigger variant="soft" />
-                <Select.Content>
+                <Select.Content position="popper" sideOffset={4} style={{ maxHeight: 300 }}>
                   {qualityOptions.map((o) => (
                     <Select.Item key={o.value} value={o.value}>{o.label}</Select.Item>
                   ))}
@@ -313,7 +313,7 @@ export function ScreenSharePickerModal({
               <Text size="2">FPS</Text>
               <Select.Root value={String(fps)} onValueChange={(v) => onFpsChange(Number(v))}>
                 <Select.Trigger variant="soft" />
-                <Select.Content>
+                <Select.Content position="popper" sideOffset={4}>
                   {fpsOptions.map((o) => (
                     <Select.Item key={o.value} value={String(o.value)}>{o.label}</Select.Item>
                   ))}

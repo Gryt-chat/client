@@ -132,7 +132,7 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
                       onValueChange={(v) => { setSheetMaxBitrate(v === "default" ? "" : v); debouncedSave(); }}
                     >
                       <Select.Trigger />
-                      <Select.Content>
+                      <Select.Content position="popper" sideOffset={4}>
                         <Select.Item value="default">Default</Select.Item>
                         <Select.Separator />
                         <Select.Item value="32000">32 kbps</Select.Item>

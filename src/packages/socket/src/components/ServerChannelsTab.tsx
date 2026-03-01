@@ -207,7 +207,7 @@ export function ServerChannelsTab({
                   <Text size="2" weight="medium">Max Bitrate</Text>
                   <Select.Root value={maxBitrate} onValueChange={setMaxBitrate}>
                     <Select.Trigger />
-                    <Select.Content>
+                    <Select.Content position="popper" sideOffset={4}>
                       {BITRATE_PRESETS.map((p) => (
                         <Select.Item key={p.value} value={p.value}>{p.label}</Select.Item>
                       ))}
