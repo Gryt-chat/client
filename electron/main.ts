@@ -755,6 +755,21 @@ if (!gotSingleInstanceLock) {
       startupLog(`uiohook failed (PTT disabled): ${err instanceof Error ? err.message : String(err)}`);
     }
 
+    // ── Native audio capture IPC ──────────────────────────────────────
+    // Registered before createMainWindow to avoid a race: the renderer
+    // probes availability in a useEffect on mount, and if the handler
+    // isn't ready yet the invoke silently fails → nativeAvailable=false.
+    ipcMain.handle("native-audio-capture-available", () => {
+      return isNativeAudioCaptureAvailable();
+    });
+    ipcMain.handle("start-native-audio-capture", () => {
+      if (!mainWindow) return false;
+      return startNativeAudioCapture(mainWindow);
+    });
+    ipcMain.on("stop-native-audio-capture", () => {
+      stopNativeAudioCapture();
+    });
+
     createMainWindow();
     startupLog("Main window created");
     createTray();
@@ -882,19 +897,7 @@ if (!gotSingleInstanceLock) {
     });
 
     // ── Native audio capture ──────────────────────────────────────────
-
-    ipcMain.handle("native-audio-capture-available", () => {
-      return isNativeAudioCaptureAvailable();
-    });
-
-    ipcMain.handle("start-native-audio-capture", () => {
-      if (!mainWindow) return false;
-      return startNativeAudioCapture(mainWindow);
-    });
-
-    ipcMain.on("stop-native-audio-capture", () => {
-      stopNativeAudioCapture();
-    });
+    // (Handlers registered before createMainWindow — see above)
 
     // ── IPC handlers ──────────────────────────────────────────────────
 

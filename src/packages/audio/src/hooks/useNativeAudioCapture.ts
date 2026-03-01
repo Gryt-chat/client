@@ -29,17 +29,34 @@ export function useNativeAudioCapture(): NativeAudioCapture {
   const destinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
   const cleanupIpcRef = useRef<Array<() => void>>([]);
 
-  // Probe availability once on mount
+  // Probe availability on mount, with retry for IPC race conditions
   useEffect(() => {
     if (!isElectron()) return;
     const api = getElectronAPI();
-    api
-      ?.isNativeAudioCaptureAvailable()
-      .then((v) => {
-        console.log(`[NativeAudioCapture] availability probe: ${v}`);
-        setAvailable(v);
-      })
-      .catch(() => {});
+    if (!api) return;
+
+    let cancelled = false;
+
+    async function probe(attempt: number) {
+      try {
+        const v = await api!.isNativeAudioCaptureAvailable();
+        if (!cancelled) {
+          console.log(`[NativeAudioCapture] availability probe: ${v}`);
+          setAvailable(v);
+        }
+      } catch (err) {
+        if (cancelled) return;
+        if (attempt < 3) {
+          console.warn(`[NativeAudioCapture] probe attempt ${attempt} failed, retrying...`, err);
+          setTimeout(() => probe(attempt + 1), 500 * attempt);
+        } else {
+          console.error("[NativeAudioCapture] probe failed after retries", err);
+        }
+      }
+    }
+
+    probe(1);
+    return () => { cancelled = true; };
   }, []);
 
   const stop = useCallback(() => {

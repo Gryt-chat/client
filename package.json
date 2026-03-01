@@ -1,5 +1,5 @@
 {
-  "name": "client",
+  "name": "gryt-chat",
   "private": true,
   "version": "1.0.121",
   "description": "Gryt Chat — real-time voice chat desktop client",
