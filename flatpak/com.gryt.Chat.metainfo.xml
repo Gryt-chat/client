@@ -86,6 +86,12 @@
   </supports>
 
   <releases>
+    <release version="1.0.136" date="2026-03-01">
+      <description>
+        <p>Latest release with bug fixes and improvements.</p>
+      </description>
+    </release>
+
     <release version="1.0.131" date="2026-03-01">
       <description>
         <p>Latest release with bug fixes and improvements.</p>
