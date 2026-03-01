@@ -165,6 +165,20 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("user-store:set", userId, key, value);
   },
 
+  onLanServerDiscovered(callback: (server: { name: string; host: string; port: number; version: string | null }) => void) {
+    const handler = (_event: Electron.IpcRendererEvent, data: { name: string; host: string; port: number; version: string | null }) =>
+      callback(data);
+    ipcRenderer.on("lan-server-discovered", handler);
+    return () => ipcRenderer.removeListener("lan-server-discovered", handler);
+  },
+
+  onLanServerRemoved(callback: (server: { host: string; port: number }) => void) {
+    const handler = (_event: Electron.IpcRendererEvent, data: { host: string; port: number }) =>
+      callback(data);
+    ipcRenderer.on("lan-server-removed", handler);
+    return () => ipcRenderer.removeListener("lan-server-removed", handler);
+  },
+
   onDeepLinkInvite(callback: (data: { host: string; code: string }) => void) {
     if (bufferedInvite) {
       const data = bufferedInvite;

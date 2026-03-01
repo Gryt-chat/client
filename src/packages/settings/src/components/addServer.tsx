@@ -1,5 +1,6 @@
 import {
   Avatar,
+  Badge,
   Box,
   Button,
   Callout,
@@ -7,12 +8,13 @@ import {
   Dialog,
   Flex,
   IconButton,
+  Separator,
   Text,
   TextField,
 } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MdClose, MdInfoOutline, MdWarning, MdWifi } from "react-icons/md";
+import { MdClose, MdInfoOutline, MdRadar, MdWarning, MdWifi } from "react-icons/md";
 
 import {
   getServerHttpBase,
@@ -25,6 +27,7 @@ import { joinServerOnce } from "@/socket";
 
 import { SkeletonBase } from "../../../socket/src/components/skeletons";
 import { useServerManagement } from "../../../socket/src/hooks/useServerManagement";
+import { useLanDiscovery } from "../hooks/useLanDiscovery";
 import { useSettings } from "../hooks/useSettings";
 
 export type FetchInfo = {
@@ -41,6 +44,7 @@ interface AddNewServerProps {
 export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerProps) {
   const { addServer, servers } = useServerManagement();
   const { nickname } = useSettings();
+  const { lanServers, isElectron } = useLanDiscovery();
 
   const [serverHost, setServerHost] = useState("");
   const [serverInfo, setServerInfo] = useState<FetchInfo | null>(null);
@@ -144,8 +148,8 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
     setJoinError("");
   }, [inviteCode]);
 
-  function getServerInfo() {
-    const normalizedHost = normalizeHost(serverHost);
+  function getServerInfo(overrideHost?: string) {
+    const normalizedHost = overrideHost || normalizeHost(serverHost);
     if (!normalizedHost) return;
 
     abortRef.current?.abort();
@@ -212,6 +216,58 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
           </Dialog.Description>
 
           <Flex direction="column" gap="4">
+            {isElectron && lanServers.length > 0 && (
+              <>
+                <Flex direction="column" gap="2">
+                  <Flex align="center" gap="2">
+                    <MdRadar size={16} />
+                    <Text size="2" weight="bold">
+                      Local servers
+                    </Text>
+                    <Badge color="green" size="1" variant="soft">
+                      {lanServers.length}
+                    </Badge>
+                  </Flex>
+                  <Flex direction="column" gap="2">
+                    {lanServers.map((s) => {
+                      const addr = s.port === 443
+                        ? s.host
+                        : `${s.host}:${s.port}`;
+                      const isMember = !!servers[normalizeHost(addr)];
+
+                      return (
+                        <Card key={`${s.host}:${s.port}`} size="1">
+                          <Flex justify="between" align="center">
+                            <Flex direction="column" gap="1">
+                              <Text size="2" weight="bold">{s.name}</Text>
+                              <Flex gap="2" align="center">
+                                <Text size="1" color="gray">{addr}</Text>
+                                {s.version && (
+                                  <Badge size="1" variant="outline" color="gray">v{s.version}</Badge>
+                                )}
+                              </Flex>
+                            </Flex>
+                            <Button
+                              size="1"
+                              variant="soft"
+                              disabled={isMember || isSearching || isJoining}
+                              onClick={() => {
+                                setServerHost(normalizeHost(addr));
+                                queueMicrotask(() => getServerInfo(normalizeHost(addr)));
+                              }}
+                            >
+                              {isMember ? "Joined" : "Connect"}
+                            </Button>
+                          </Flex>
+                        </Card>
+                      );
+                    })}
+                  </Flex>
+                </Flex>
+                <Separator size="4" />
+              </>
+            )}
+
             <Flex gap="2" align="center">
               <TextField.Root
                 type="url"

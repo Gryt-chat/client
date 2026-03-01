@@ -6,6 +6,8 @@ import { dirname, extname, join, resolve } from "path";
 import { uIOhook, UiohookKey } from "uiohook-napi";
 import { fileURLToPath } from "url";
 
+import Bonjour from "bonjour-service";
+
 import { isNativeAudioCaptureAvailable, startNativeAudioCapture, stopNativeAudioCapture } from "./audioCaptureManager";
 import { flushUserStore, initUserStore, loadUser, patchUser, saveUser } from "./userStore";
 
@@ -912,6 +914,35 @@ if (!gotSingleInstanceLock) {
     if (pendingDeepLinkUrl) {
       handleDeepLink(pendingDeepLinkUrl);
       pendingDeepLinkUrl = null;
+    }
+
+    // ── LAN server discovery (mDNS) ────────────────────────────────
+    try {
+      const bonjour = new Bonjour();
+      const lanBrowser = bonjour.find({ type: "gryt" });
+
+      lanBrowser.on("up", (service) => {
+        const host = service.host || service.referer?.address;
+        if (!host) return;
+        mainWindow?.webContents.send("lan-server-discovered", {
+          name: service.name,
+          host,
+          port: service.port,
+          version: service.txt?.version ?? null,
+        });
+      });
+
+      lanBrowser.on("down", (service) => {
+        const host = service.host || service.referer?.address;
+        if (!host) return;
+        mainWindow?.webContents.send("lan-server-removed", { host, port: service.port });
+      });
+
+      app.on("before-quit", () => {
+        try { bonjour.destroy(); } catch { /* best-effort */ }
+      });
+    } catch (err) {
+      startupLog(`mDNS discovery failed to start: ${err}`);
     }
 
     ipcMain.on("check-for-updates", () => {

@@ -15,6 +15,13 @@ export interface DesktopSource {
   height?: number;
 }
 
+export interface LanServer {
+  name: string;
+  host: string;
+  port: number;
+  version: string | null;
+}
+
 export interface ElectronAPI {
   isElectron: true;
   getAppVersion(): Promise<string>;
@@ -52,6 +59,8 @@ export interface ElectronAPI {
   saveUserData(userId: string, data: Record<string, unknown>): void;
   setUserData(userId: string, key: string, value: unknown): void;
   onAuthCallback(callback: (url: string) => void): () => void;
+  onLanServerDiscovered(callback: (server: LanServer) => void): () => void;
+  onLanServerRemoved(callback: (server: { host: string; port: number }) => void): () => void;
   onDeepLinkInvite(callback: (data: { host: string; code: string }) => void): () => void;
 }
 
