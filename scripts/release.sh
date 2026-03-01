@@ -199,13 +199,36 @@ ELECTRON=1 npx vite build
 
 ok "Vite build complete"
 
+# ── Update store manifests ────────────────────────────────────────────────
+if [ "$RERELEASE" = false ]; then
+  echo ""
+  info "Updating store manifests…"
+
+  AUR_DIR="$CLIENT_DIR/aur"
+  if [ -f "$AUR_DIR/PKGBUILD" ]; then
+    sed -i "s/^pkgver=.*/pkgver=${NEW_VERSION}/" "$AUR_DIR/PKGBUILD"
+
+    sed -i "s/\tpkgver = .*/\tpkgver = ${NEW_VERSION}/" "$AUR_DIR/.SRCINFO"
+    sed -i "s|source = .*|source = https://github.com/Gryt-chat/gryt/releases/download/v${NEW_VERSION}/Gryt-Chat-${NEW_VERSION}-linux-amd64.deb|" "$AUR_DIR/.SRCINFO"
+    ok "AUR PKGBUILD + .SRCINFO → v${NEW_VERSION}"
+  fi
+
+  METAINFO="$CLIENT_DIR/flatpak/com.gryt.Chat.metainfo.xml"
+  if [ -f "$METAINFO" ]; then
+    RELEASE_DATE=$(date -u +%Y-%m-%d)
+    NEW_RELEASE="    <release version=\"${NEW_VERSION}\" date=\"${RELEASE_DATE}\">\\n      <description>\\n        <p>Latest release with bug fixes and improvements.<\/p>\\n      <\/description>\\n    <\/release>\\n"
+    sed -i "s|  <releases>|  <releases>\n${NEW_RELEASE}|" "$METAINFO"
+    ok "Flatpak metainfo.xml → v${NEW_VERSION} (${RELEASE_DATE})"
+  fi
+fi
+
 # ── Git commit & tag (before publish so the tag is authoritative) ────────
 if [ "$RERELEASE" = false ]; then
   echo ""
   info "Committing version bump…"
 
   cd "$CLIENT_DIR"
-  git add package.json
+  git add package.json aur/ flatpak/com.gryt.Chat.metainfo.xml
   git commit -m "release: v${NEW_VERSION} (${CHANNEL})"
   git push
 
@@ -368,6 +391,27 @@ elif [ -n "$SNAP_FILE" ]; then
   info "  sudo snap install snapcraft --classic"
   info "  snapcraft login"
   info "  snapcraft upload \"$SNAP_FILE\" --release=stable"
+fi
+
+# ── AUR push ─────────────────────────────────────────────────────────
+AUR_DIR="$CLIENT_DIR/aur"
+if [ -f "$AUR_DIR/PKGBUILD" ] && [ "$RERELEASE" = false ]; then
+  echo ""
+  read -rp "$(echo -e "${CYAN}?${RESET}  Push to AUR? ${YELLOW}[Y/n]${RESET}: ")" AUR_PUSH
+  AUR_PUSH="${AUR_PUSH:-Y}"
+  if [[ "$AUR_PUSH" =~ ^[Yy]$ ]]; then
+    info "Pushing AUR package v${NEW_VERSION}…"
+    cd "$AUR_DIR"
+    if git remote -v | grep -q aur.archlinux.org; then
+      git add PKGBUILD .SRCINFO
+      git commit -m "Update to ${NEW_VERSION}"
+      git push
+      ok "AUR package pushed (v${NEW_VERSION})"
+    else
+      warn "AUR remote not found — skipping push"
+    fi
+    cd "$CLIENT_DIR"
+  fi
 fi
 
 # ── Verify update manifests ──────────────────────────────────────────
