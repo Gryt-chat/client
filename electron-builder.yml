@@ -61,10 +61,8 @@ mac:
   target:
     - dmg
     - zip
-  hardenedRuntime: true
+  identity: null
   category: public.app-category.social-networking
-  entitlements: build/entitlements.mac.plist
-  entitlementsInherit: build/entitlements.mac.plist
   extendInfo:
     NSMicrophoneUsageDescription: "Gryt Chat uses your microphone for voice chat."
     NSCameraUsageDescription: "Gryt Chat uses your camera for video chat."

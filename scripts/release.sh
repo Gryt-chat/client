@@ -366,31 +366,32 @@ fi
 echo ""
 ok "Release ${BOLD}v${NEW_VERSION}${RESET} published to ${GREEN}https://github.com/${OWNER}/${REPO}/releases${RESET}"
 
-# ── Snap Store upload ────────────────────────────────────────────────
-SNAP_FILE=$(find "$CLIENT_DIR/release" -name '*.snap' -print -quit 2>/dev/null)
-if [ -n "$SNAP_FILE" ] && command -v snapcraft &>/dev/null; then
+# ── Snap Store promote ───────────────────────────────────────────────
+# electron-builder already uploads the snap to 'edge' during the build.
+# This step promotes the latest revision to 'stable' when doing a stable release.
+if [ "$CHANNEL" = "latest" ] && command -v snapcraft &>/dev/null; then
   echo ""
-  read -rp "$(echo -e "${CYAN}?${RESET}  Upload to Snap Store? ${YELLOW}[Y/n]${RESET}: ")" SNAP_UPLOAD
-  SNAP_UPLOAD="${SNAP_UPLOAD:-Y}"
-  if [[ "$SNAP_UPLOAD" =~ ^[Yy]$ ]]; then
-    SNAP_CHANNEL="edge"
-    if [ "$CHANNEL" = "latest" ]; then
-      SNAP_CHANNEL="stable"
-    fi
-    info "Uploading ${BOLD}$(basename "$SNAP_FILE")${RESET} to Snap Store (${SNAP_CHANNEL})…"
-    if SNAPCRAFT_STORE_CREDENTIALS="${SNAPCRAFT_STORE_CREDENTIALS:-$(cat "$SNAP_CREDS_FILE" 2>/dev/null)}" \
-       snapcraft upload "$SNAP_FILE" --release="$SNAP_CHANNEL"; then
-      ok "Snap published to ${SNAP_CHANNEL} channel"
+  read -rp "$(echo -e "${CYAN}?${RESET}  Promote snap to stable? ${YELLOW}[Y/n]${RESET}: ")" SNAP_PROMOTE
+  SNAP_PROMOTE="${SNAP_PROMOTE:-Y}"
+  if [[ "$SNAP_PROMOTE" =~ ^[Yy]$ ]]; then
+    info "Fetching latest snap revision from edge…"
+    SNAP_REV=$(SNAPCRAFT_STORE_CREDENTIALS="${SNAPCRAFT_STORE_CREDENTIALS:-$(cat "$SNAP_CREDS_FILE" 2>/dev/null)}" \
+      snapcraft status gryt-chat 2>/dev/null | grep -E 'edge\b' | awk '{print $NF}')
+    if [ -n "$SNAP_REV" ] && [ "$SNAP_REV" != "-" ]; then
+      info "Promoting revision ${BOLD}${SNAP_REV}${RESET} to stable…"
+      if SNAPCRAFT_STORE_CREDENTIALS="${SNAPCRAFT_STORE_CREDENTIALS:-$(cat "$SNAP_CREDS_FILE" 2>/dev/null)}" \
+         snapcraft release gryt-chat "$SNAP_REV" stable; then
+        ok "Snap revision ${SNAP_REV} promoted to stable"
+      else
+        warn "Snap promote failed — you can retry manually:"
+        warn "  snapcraft release gryt-chat $SNAP_REV stable"
+      fi
     else
-      warn "Snap upload failed — you can retry manually:"
-      warn "  SNAPCRAFT_STORE_CREDENTIALS=\$(cat $SNAP_CREDS_FILE) snapcraft upload \"$SNAP_FILE\" --release=${SNAP_CHANNEL}"
+      warn "Could not determine edge revision — promote manually with:"
+      warn "  snapcraft status gryt-chat"
+      warn "  snapcraft release gryt-chat <revision> stable"
     fi
   fi
-elif [ -n "$SNAP_FILE" ]; then
-  warn "Snap built but ${BOLD}snapcraft${RESET} not found — install it to publish to the Snap Store"
-  info "  sudo snap install snapcraft --classic"
-  info "  snapcraft login"
-  info "  snapcraft upload \"$SNAP_FILE\" --release=stable"
 fi
 
 # ── AUR push ─────────────────────────────────────────────────────────
