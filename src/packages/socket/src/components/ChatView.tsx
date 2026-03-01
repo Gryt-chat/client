@@ -298,7 +298,7 @@ export const ChatView = memo(({
 
                   const replyOriginal = m.reply_to_message_id ? messageMap.get(m.reply_to_message_id) : undefined;
                   const replyPreviewText = m.reply_to_message_id ? getReplyPreview(replyOriginal ?? null, 100) : null;
-                  const isMentioned = !!(currentUserNickname && m.text && m.text.toLowerCase().includes(`@${currentUserNickname.toLowerCase()}`));
+                  const isMentioned = !!(currentUserId && m.text && m.text.includes(`mention:${currentUserId}`));
 
                   const isNew = !seenMessageIdsRef.current.has(m.message_id) && i >= chatMessages.length - 10;
                   seenMessageIdsRef.current.add(m.message_id);
