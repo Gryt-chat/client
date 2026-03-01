@@ -14,7 +14,10 @@ dist
 dist-ssr
 dist-electron
 release
-build
+build/*
+!build/native/
+!build/icon.*
+!build/entitlements.mac.plist
 *.local
 
 # Editor directories and files
