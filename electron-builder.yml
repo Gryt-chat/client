@@ -36,11 +36,23 @@ linux:
   target:
     - AppImage
     - deb
+    - snap
   category: Network
   synopsis: "Real-time voice chat"
   description: "Gryt Chat — real-time voice chat desktop client"
   mimeTypes:
     - x-scheme-handler/gryt
+
+snap:
+  confinement: strict
+  grade: stable
+  summary: "Real-time voice chat"
+  plugs:
+    - default
+    - audio-record
+    - camera
+    - screen-inhibit-control
+    - avahi-observe
 
 mac:
   target:

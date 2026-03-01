@@ -335,6 +335,31 @@ fi
 echo ""
 ok "Release ${BOLD}v${NEW_VERSION}${RESET} published to ${GREEN}https://github.com/${OWNER}/${REPO}/releases${RESET}"
 
+# ── Snap Store upload ────────────────────────────────────────────────
+SNAP_FILE=$(find "$CLIENT_DIR/release" -name '*.snap' -print -quit 2>/dev/null)
+if [ -n "$SNAP_FILE" ] && command -v snapcraft &>/dev/null; then
+  echo ""
+  read -rp "$(echo -e "${CYAN}?${RESET}  Upload to Snap Store? ${YELLOW}[Y/n]${RESET}: ")" SNAP_UPLOAD
+  SNAP_UPLOAD="${SNAP_UPLOAD:-Y}"
+  if [[ "$SNAP_UPLOAD" =~ ^[Yy]$ ]]; then
+    SNAP_CHANNEL="edge"
+    if [ "$CHANNEL" = "latest" ]; then
+      SNAP_CHANNEL="stable"
+    fi
+    info "Uploading ${BOLD}$(basename "$SNAP_FILE")${RESET} to Snap Store (${SNAP_CHANNEL})…"
+    if snapcraft upload "$SNAP_FILE" --release="$SNAP_CHANNEL"; then
+      ok "Snap published to ${SNAP_CHANNEL} channel"
+    else
+      warn "Snap upload failed — you can retry manually: snapcraft upload \"$SNAP_FILE\" --release=${SNAP_CHANNEL}"
+    fi
+  fi
+elif [ -n "$SNAP_FILE" ]; then
+  warn "Snap built but ${BOLD}snapcraft${RESET} not found — install it to publish to the Snap Store"
+  info "  sudo snap install snapcraft --classic"
+  info "  snapcraft login"
+  info "  snapcraft upload \"$SNAP_FILE\" --release=stable"
+fi
+
 # ── Verify update manifests ──────────────────────────────────────────
 info "Verifying auto-update manifests…"
 
