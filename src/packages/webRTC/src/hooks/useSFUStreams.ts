@@ -249,9 +249,15 @@ export function useSFUStreams({
     setVideoStreams(prev => {
       const prevKeys = Object.keys(prev).sort().join(",");
       const nextKeys = Object.keys(nextVideo).sort().join(",");
-      if (prevKeys !== nextKeys) return nextVideo;
+      if (prevKeys !== nextKeys) {
+        console.log(`[ScreenShare] videoStreams keys changed: [${prevKeys}] -> [${nextKeys}]`);
+        return nextVideo;
+      }
       const streamsChanged = Object.keys(nextVideo).some(k => prev[k] !== nextVideo[k]);
-      if (streamsChanged) return nextVideo;
+      if (streamsChanged) {
+        console.log(`[ScreenShare] videoStreams objects changed (same keys): [${nextKeys}]`);
+        return nextVideo;
+      }
       return prev;
     });
   }, [streams, setVideoStreams]);

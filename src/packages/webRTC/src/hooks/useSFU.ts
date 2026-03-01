@@ -336,14 +336,16 @@ function useSfuHook(): SFUInterface {
     const pc = peerConnectionRef.current;
     if (!pc || pc.connectionState === "closed") return;
     if (screenVideoSenderRef.current) {
-      voiceLog.info("CAMERA", "Screen video replaceTrack");
+      voiceLog.info("SCREEN", `REPLACE path – track=${track.id} stream=${stream.id} senderTrack=${screenVideoSenderRef.current.track?.id ?? "null"}`);
       screenVideoSenderRef.current.replaceTrack(track)
-        .then(() => voiceLog.ok("CAMERA", "screenReplace", "Screen video replaceTrack succeeded"))
-        .catch((err: unknown) => voiceLog.fail("CAMERA", "screenReplace", "Screen video replaceTrack FAILED", err));
+        .then(() => voiceLog.ok("SCREEN", "replace", `replaceTrack succeeded – track=${track.id}`))
+        .catch((err: unknown) => voiceLog.fail("SCREEN", "replace", `replaceTrack FAILED – track=${track.id}`, err));
       return;
     }
+    voiceLog.info("SCREEN", `ADD path – track=${track.id} stream=${stream.id} pcState=${pc.signalingState}`);
     const sender = pc.addTrack(track, stream);
     screenVideoSenderRef.current = sender;
+    voiceLog.info("SCREEN", `addTrack done, calling sendRenegotiate`);
     sendRenegotiate();
   }, [sendRenegotiate]);
 
@@ -351,8 +353,10 @@ function useSfuHook(): SFUInterface {
     const pc = peerConnectionRef.current;
     const sender = screenVideoSenderRef.current;
     if (!pc || !sender || pc.connectionState === "closed") return;
+    voiceLog.info("SCREEN", `removeScreenVideoTrack – senderTrack=${sender.track?.id ?? "null"} pcState=${pc.signalingState}`);
     try { pc.removeTrack(sender); } catch { /* already removed */ }
     screenVideoSenderRef.current = null;
+    voiceLog.info("SCREEN", `removeTrack done, calling sendRenegotiate`);
     sendRenegotiate();
   }, [sendRenegotiate]);
 
@@ -360,14 +364,16 @@ function useSfuHook(): SFUInterface {
     const pc = peerConnectionRef.current;
     if (!pc || pc.connectionState === "closed") return;
     if (screenAudioSenderRef.current) {
-      voiceLog.info("CAMERA", "Screen audio replaceTrack");
+      voiceLog.info("SCREEN", `Audio REPLACE path – track=${track.id} stream=${stream.id}`);
       screenAudioSenderRef.current.replaceTrack(track)
-        .then(() => voiceLog.ok("CAMERA", "screenAudioReplace", "Screen audio replaceTrack succeeded"))
-        .catch((err: unknown) => voiceLog.fail("CAMERA", "screenAudioReplace", "Screen audio replaceTrack FAILED", err));
+        .then(() => voiceLog.ok("SCREEN", "audioReplace", `replaceTrack succeeded – track=${track.id}`))
+        .catch((err: unknown) => voiceLog.fail("SCREEN", "audioReplace", `replaceTrack FAILED – track=${track.id}`, err));
       return;
     }
+    voiceLog.info("SCREEN", `Audio ADD path – track=${track.id} stream=${stream.id} pcState=${pc.signalingState}`);
     const sender = pc.addTrack(track, stream);
     screenAudioSenderRef.current = sender;
+    voiceLog.info("SCREEN", `audio addTrack done, calling sendRenegotiate`);
     sendRenegotiate();
   }, [sendRenegotiate]);
 
@@ -375,8 +381,10 @@ function useSfuHook(): SFUInterface {
     const pc = peerConnectionRef.current;
     const sender = screenAudioSenderRef.current;
     if (!pc || !sender || pc.connectionState === "closed") return;
+    voiceLog.info("SCREEN", `removeScreenAudioTrack – senderTrack=${sender.track?.id ?? "null"} pcState=${pc.signalingState}`);
     try { pc.removeTrack(sender); } catch { /* already removed */ }
     screenAudioSenderRef.current = null;
+    voiceLog.info("SCREEN", `audio removeTrack done, calling sendRenegotiate`);
     sendRenegotiate();
   }, [sendRenegotiate]);
 

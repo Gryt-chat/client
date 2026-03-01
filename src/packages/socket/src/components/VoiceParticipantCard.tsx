@@ -177,6 +177,12 @@ export function VoiceParticipantCard({
       : (client.screenShareVideoStreamID && videoStreams?.[client.screenShareVideoStreamID])
         ? videoStreams[client.screenShareVideoStreamID]
         : null;
+    if (!isSelf) {
+      const found = !!screenStream;
+      console.log(
+        `[ScreenShare] VoiceParticipantCard: screenStreamID=${client.screenShareVideoStreamID || "empty"} found=${found} videoStreamKeys=[${Object.keys(videoStreams ?? {}).join(", ")}]`,
+      );
+    }
     if (!screenStream) return null;
     const screenTitle = isSelf ? "Your Screen" : `${client.nickname}'s Screen`;
 

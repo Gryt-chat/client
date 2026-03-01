@@ -17,6 +17,7 @@ import { estimateBitrate, getIsBrowserSupported, type ScreenShareQuality,useCame
 import { useSettings } from "@/settings";
 import { useSockets } from "@/socket";
 import { useSFU } from "@/webRTC";
+import { voiceLog } from "../hooks/voiceLogger";
 
 import { isElectron } from "../../../../lib/electron";
 import { voiceLog } from "../hooks/voiceLogger";
@@ -106,6 +107,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
     if (screenShareActive && screenVideoStream) {
       const videoTrack = screenVideoStream.getVideoTracks()[0];
       if (videoTrack) {
+        voiceLog.info("SCREEN", `controls: syncing video track=${videoTrack.id} stream=${screenVideoStream.id} prev=${prevScreenVideoRef.current?.id ?? "null"}`);
         addScreenVideoTrack(videoTrack, screenVideoStream);
         prevScreenVideoRef.current = screenVideoStream;
 
@@ -127,6 +129,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
         }
       }
     } else if (prevScreenVideoRef.current) {
+      voiceLog.info("SCREEN", `controls: removing video track, prevStream=${prevScreenVideoRef.current.id}`);
       removeScreenVideoTrack();
       prevScreenVideoRef.current = null;
     }
@@ -164,11 +167,13 @@ export function Controls({ onDisconnect }: ControlsProps) {
     if (!isConnected || !currentServerConnected) return;
     const socket = sockets[currentServerConnected];
     if (socket) {
-      socket.emit("voice:screen:state", {
+      const payload = {
         enabled: screenShareActive,
         videoStreamId: screenVideoStream?.id || "",
         audioStreamId: screenAudioStream?.id || "",
-      });
+      };
+      voiceLog.info("SCREEN", `controls: emitting voice:screen:state`, payload);
+      socket.emit("voice:screen:state", payload);
     }
   }, [screenShareActive, screenVideoStream, screenAudioStream, isConnected, currentServerConnected, sockets]);
 

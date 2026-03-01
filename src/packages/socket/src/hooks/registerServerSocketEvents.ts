@@ -287,7 +287,22 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
   });
 
   socket.on("server:clients", (data: Clients) => {
-    setClients((old) => ({ ...old, [host]: data }));
+    setClients((old) => {
+      const prev = old[host] ?? {};
+      for (const [cid, client] of Object.entries(data)) {
+        const prevClient = prev[cid];
+        if (
+          client.screenShareEnabled !== prevClient?.screenShareEnabled ||
+          client.screenShareVideoStreamID !== prevClient?.screenShareVideoStreamID
+        ) {
+          console.log(
+            `[ScreenShare] server:clients update cid=${cid} nick=${client.nickname} screenEnabled=${client.screenShareEnabled} videoStreamID=${client.screenShareVideoStreamID ?? ""}` +
+            ` (was enabled=${prevClient?.screenShareEnabled} streamID=${prevClient?.screenShareVideoStreamID ?? ""})`,
+          );
+        }
+      }
+      return { ...old, [host]: data };
+    });
 
     const myEntry = socket.id ? data[socket.id] : undefined;
     myVoiceStateByHostRef.current[host] = {
