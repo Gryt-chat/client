@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 
 import { sliderToOutputGain } from "@/lib/audioVolume";
+import { voiceLog } from "@/webRTC/src/hooks/voiceLogger";
 
 import { MicrophoneBufferType } from "../types/Microphone";
 
@@ -165,13 +166,28 @@ export function usePipelineControls({
     }
 
     if (micStream && audioContext && microphoneBuffer.input) {
+      const tracks = micStream.getAudioTracks();
+      voiceLog.step("LOOPBACK", 1, "Connecting mic source → pipeline input", {
+        contextState: audioContext.state,
+        trackCount: tracks.length,
+        tracks: tracks.map(t => ({ id: t.id, label: t.label, readyState: t.readyState, enabled: t.enabled })),
+        hasInput: !!microphoneBuffer.input,
+      });
       try {
         const sourceNode = audioContext.createMediaStreamSource(micStream);
         sourceNode.connect(microphoneBuffer.input);
         sourceNodeRef.current = sourceNode;
+        voiceLog.ok("LOOPBACK", 1, "Mic source connected to pipeline");
       } catch (error) {
-        console.error("Failed to connect microphone to processing chain:", error);
+        voiceLog.fail("LOOPBACK", 1, "Failed to connect mic source to pipeline", error);
       }
+    } else {
+      voiceLog.warn("LOOPBACK", "Source connection skipped — missing prerequisites", {
+        hasMicStream: !!micStream,
+        hasAudioContext: !!audioContext,
+        contextState: audioContext?.state,
+        hasInput: !!microphoneBuffer.input,
+      });
     }
 
     return () => {
@@ -197,11 +213,12 @@ export function usePipelineControls({
   useEffect(() => {
     if (!microphoneBuffer.muteGain) return;
     if (inputMode === "push_to_talk") {
-      // PTT: default muted, the PTT hook handles keydown/keyup
+      voiceLog.info("LOOPBACK", "Mute gain → 0 (PTT mode, managed by PTT hook)");
       microphoneBuffer.muteGain.gain.setValueAtTime(0, audioContext?.currentTime || 0);
       return;
     }
     const gainValue = isMuted ? 0 : 1;
+    voiceLog.info("LOOPBACK", `Mute gain → ${gainValue} (isMuted=${isMuted}, inputMode=${inputMode})`);
     microphoneBuffer.muteGain.gain.setValueAtTime(gainValue, audioContext?.currentTime || 0);
   }, [isMuted, microphoneBuffer.muteGain, audioContext, inputMode]);
 
@@ -319,9 +336,23 @@ export function usePipelineControls({
 
   // Loopback (monitoring) control - uses FINAL processed audio so users hear what others hear
   useEffect(() => {
+    voiceLog.step("LOOPBACK", 3, "Loopback effect running", {
+      loopbackEnabled,
+      hasFinalAnalyser: !!microphoneBuffer.finalAnalyser,
+      hasAudioContext: !!audioContext,
+      contextState: audioContext?.state,
+      hasMuteGain: !!microphoneBuffer.muteGain,
+      muteGainValue: microphoneBuffer.muteGain?.gain.value,
+      hasNoiseGate: !!microphoneBuffer.noiseGate,
+      noiseGateValue: microphoneBuffer.noiseGate?.gain.value,
+      hasVolumeGain: !!microphoneBuffer.volumeGain,
+      volumeGainValue: microphoneBuffer.volumeGain?.gain.value,
+    });
+
     if (microphoneBuffer.finalAnalyser && audioContext) {
       try {
         if (loopbackGainRef.current) {
+          voiceLog.info("LOOPBACK", "Disconnecting previous loopback gain node");
           loopbackGainRef.current.disconnect();
           loopbackGainRef.current = null;
         }
@@ -331,13 +362,26 @@ export function usePipelineControls({
         loopbackGainRef.current = loopbackGain;
 
         microphoneBuffer.finalAnalyser.connect(loopbackGain);
+        voiceLog.info("LOOPBACK", "Connected finalAnalyser → loopbackGain");
 
         if (loopbackEnabled) {
           loopbackGain.connect(audioContext.destination);
+          voiceLog.ok("LOOPBACK", 3, "Loopback ACTIVE — connected to speakers", {
+            contextState: audioContext.state,
+            destinationChannels: audioContext.destination.maxChannelCount,
+            sampleRate: audioContext.sampleRate,
+          });
+        } else {
+          voiceLog.info("LOOPBACK", "Loopback disabled — NOT connected to speakers");
         }
       } catch (error) {
-        console.error("Loopback control error:", error);
+        voiceLog.fail("LOOPBACK", 3, "Loopback control error", error);
       }
+    } else {
+      voiceLog.warn("LOOPBACK", "Loopback effect skipped — missing finalAnalyser or audioContext", {
+        hasFinalAnalyser: !!microphoneBuffer.finalAnalyser,
+        hasAudioContext: !!audioContext,
+      });
     }
 
     return () => {
@@ -350,7 +394,7 @@ export function usePipelineControls({
         loopbackGainRef.current = null;
       }
     };
-  }, [loopbackEnabled, microphoneBuffer.finalAnalyser, audioContext]);
+  }, [loopbackEnabled, microphoneBuffer.finalAnalyser, audioContext, microphoneBuffer.muteGain, microphoneBuffer.noiseGate, microphoneBuffer.volumeGain]);
 
   // Visualizer data extraction - returns FINAL processed audio
   const getVisualizerData = useCallback((): Uint8Array | null => {

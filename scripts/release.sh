@@ -35,7 +35,8 @@ bump_version() {
 }
 
 # ── Snapcraft credentials ─────────────────────────────────────────────────
-SNAP_CREDS_FILE="$CLIENT_DIR/snapcraft-creds"
+REPO_ROOT_DIR="$(cd "$CLIENT_DIR/../.." && pwd)"
+SNAP_CREDS_FILE="$REPO_ROOT_DIR/snapcraft-creds"
 if [ -z "${SNAPCRAFT_STORE_CREDENTIALS:-}" ] && [ -f "$SNAP_CREDS_FILE" ]; then
   export SNAPCRAFT_STORE_CREDENTIALS="$(cat "$SNAP_CREDS_FILE")"
   ok "Loaded Snap Store credentials from snapcraft-creds"

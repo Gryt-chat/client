@@ -16,6 +16,7 @@ import { useMicrophone, useScreenShare, useSpeakers } from "@/audio";
 import { setNotificationOutputDevice } from "@/lib/notificationSound";
 import { useSettings } from "@/settings";
 import { useSFU } from "@/webRTC";
+import { voiceLog } from "@/webRTC/src/hooks/voiceLogger";
 
 import { SettingsContainer, SliderSetting, ToggleSetting } from "./settingsComponents";
 
@@ -60,11 +61,66 @@ export function AudioSettings() {
   }, [setOutputDeviceID, applyOutputDevice]);
 
   const handleLoopbackChange = useCallback((enabled: boolean) => {
+    voiceLog.divider(enabled ? "LOOPBACK ON" : "LOOPBACK OFF");
+    voiceLog.step("LOOPBACK", 0, "Toggle requested", {
+      enabled,
+      isConnected,
+      isMuted,
+      hasAudioContext: !!audioContext,
+      contextState: audioContext?.state,
+      hasFinalAnalyser: !!microphoneBuffer.finalAnalyser,
+      hasMuteGain: !!microphoneBuffer.muteGain,
+      muteGainValue: microphoneBuffer.muteGain?.gain.value,
+      noiseGateValue: microphoneBuffer.noiseGate?.gain.value,
+      volumeGainValue: microphoneBuffer.volumeGain?.gain.value,
+    });
     setLoopbackEnabled(enabled);
     if (enabled && isConnected && !isMuted) {
+      voiceLog.warn("LOOPBACK", "Auto-muting because connected to SFU");
       setIsMuted(true);
     }
-  }, [setLoopbackEnabled, isConnected, isMuted, setIsMuted]);
+  }, [setLoopbackEnabled, isConnected, isMuted, setIsMuted, audioContext, microphoneBuffer]);
+
+  useEffect(() => {
+    if (!loopbackEnabled) return;
+    const id = setInterval(() => {
+      const buf = microphoneBuffer;
+      const muteVal = buf.muteGain?.gain.value ?? null;
+      const gateVal = buf.noiseGate?.gain.value ?? null;
+      const volVal = buf.volumeGain?.gain.value ?? null;
+
+      let finalRms: number | null = null;
+      if (buf.finalAnalyser) {
+        const len = buf.finalAnalyser.frequencyBinCount;
+        const arr = new Uint8Array(len);
+        buf.finalAnalyser.getByteFrequencyData(arr);
+        let sum = 0;
+        for (let i = 0; i < len; i++) sum += arr[i] * arr[i];
+        finalRms = Math.sqrt(sum / len);
+      }
+
+      let rawRms: number | null = null;
+      if (buf.analyser) {
+        const len = buf.analyser.frequencyBinCount;
+        const arr = new Uint8Array(len);
+        buf.analyser.getByteFrequencyData(arr);
+        let sum = 0;
+        for (let i = 0; i < len; i++) sum += arr[i] * arr[i];
+        rawRms = Math.sqrt(sum / len);
+      }
+
+      voiceLog.info("LOOPBACK", "Periodic diagnostic", {
+        contextState: audioContext?.state,
+        muteGain: muteVal,
+        noiseGate: gateVal,
+        volumeGain: volVal,
+        agcGain: buf.agcGain?.gain.value ?? null,
+        rawRms: rawRms !== null ? Math.round(rawRms * 10) / 10 : null,
+        finalRms: finalRms !== null ? Math.round(finalRms * 10) / 10 : null,
+      });
+    }, 2000);
+    return () => clearInterval(id);
+  }, [loopbackEnabled, microphoneBuffer, audioContext]);
 
   const getRawVisualizerData = useCallback((): Uint8Array | null => {
     if (!microphoneBuffer.analyser) {
