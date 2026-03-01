@@ -350,15 +350,13 @@ function useSfuHook(): SFUInterface {
   }, [sendRenegotiate]);
 
   const removeScreenVideoTrack = useCallback(() => {
-    const pc = peerConnectionRef.current;
     const sender = screenVideoSenderRef.current;
-    if (!pc || !sender || pc.connectionState === "closed") return;
-    voiceLog.info("SCREEN", `removeScreenVideoTrack – senderTrack=${sender.track?.id ?? "null"} pcState=${pc.signalingState}`);
-    try { pc.removeTrack(sender); } catch { /* already removed */ }
-    screenVideoSenderRef.current = null;
-    voiceLog.info("SCREEN", `removeTrack done, calling sendRenegotiate`);
-    sendRenegotiate();
-  }, [sendRenegotiate]);
+    if (!sender) return;
+    voiceLog.info("SCREEN", `removeScreenVideoTrack – pausing via replaceTrack(null), senderTrack=${sender.track?.id ?? "null"}`);
+    sender.replaceTrack(null)
+      .then(() => voiceLog.ok("SCREEN", "pause", "video replaceTrack(null) succeeded"))
+      .catch((err: unknown) => voiceLog.fail("SCREEN", "pause", "video replaceTrack(null) FAILED", err));
+  }, []);
 
   const addScreenAudioTrack = useCallback((track: MediaStreamTrack, stream: MediaStream) => {
     const pc = peerConnectionRef.current;
@@ -378,15 +376,23 @@ function useSfuHook(): SFUInterface {
   }, [sendRenegotiate]);
 
   const removeScreenAudioTrack = useCallback(() => {
-    const pc = peerConnectionRef.current;
     const sender = screenAudioSenderRef.current;
-    if (!pc || !sender || pc.connectionState === "closed") return;
-    voiceLog.info("SCREEN", `removeScreenAudioTrack – senderTrack=${sender.track?.id ?? "null"} pcState=${pc.signalingState}`);
-    try { pc.removeTrack(sender); } catch { /* already removed */ }
-    screenAudioSenderRef.current = null;
-    voiceLog.info("SCREEN", `audio removeTrack done, calling sendRenegotiate`);
-    sendRenegotiate();
-  }, [sendRenegotiate]);
+    if (!sender) return;
+    voiceLog.info("SCREEN", `removeScreenAudioTrack – pausing via replaceTrack(null), senderTrack=${sender.track?.id ?? "null"}`);
+    sender.replaceTrack(null)
+      .then(() => voiceLog.ok("SCREEN", "pause", "audio replaceTrack(null) succeeded"))
+      .catch((err: unknown) => voiceLog.fail("SCREEN", "pause", "audio replaceTrack(null) FAILED", err));
+  }, []);
+
+  // Clear stale sender refs when the peer connection is closed so a fresh
+  // connection gets fresh senders via the ADD path.
+  useEffect(() => {
+    if (!isConnected) {
+      screenVideoSenderRef.current = null;
+      screenAudioSenderRef.current = null;
+      videoSenderRef.current = null;
+    }
+  }, [isConnected]);
 
   // Listen for server-initiated disconnects (device switching)
   useEffect(() => {

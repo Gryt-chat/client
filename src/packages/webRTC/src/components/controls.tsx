@@ -58,6 +58,8 @@ export function Controls({ onDisconnect }: ControlsProps) {
   const prevCameraStreamRef = useRef<MediaStream | null>(null);
   const prevScreenVideoRef = useRef<MediaStream | null>(null);
   const prevScreenAudioRef = useRef<MediaStream | null>(null);
+  const webrtcScreenVideoStreamId = useRef<string | null>(null);
+  const webrtcScreenAudioStreamId = useRef<string | null>(null);
   const [showCameraModal, setShowCameraModal] = useState(false);
   const [showScreenShareModal, setShowScreenShareModal] = useState(false);
 
@@ -108,6 +110,9 @@ export function Controls({ onDisconnect }: ControlsProps) {
       if (videoTrack) {
         voiceLog.info("SCREEN", `controls: syncing video track=${videoTrack.id} stream=${screenVideoStream.id} prev=${prevScreenVideoRef.current?.id ?? "null"}`);
         addScreenVideoTrack(videoTrack, screenVideoStream);
+        if (!webrtcScreenVideoStreamId.current) {
+          webrtcScreenVideoStreamId.current = screenVideoStream.id;
+        }
         prevScreenVideoRef.current = screenVideoStream;
 
         const bitrate = estimateBitrate(screenShareQuality as ScreenShareQuality, screenShareFps);
@@ -142,6 +147,9 @@ export function Controls({ onDisconnect }: ControlsProps) {
       if (audioTrack) {
         voiceLog.info("SCREEN", `controls: syncing audio track=${audioTrack.id} enabled=${audioTrack.enabled} readyState=${audioTrack.readyState} muted=${audioTrack.muted} stream=${screenAudioStream.id}`);
         addScreenAudioTrack(audioTrack, screenAudioStream);
+        if (!webrtcScreenAudioStreamId.current) {
+          webrtcScreenAudioStreamId.current = screenAudioStream.id;
+        }
         prevScreenAudioRef.current = screenAudioStream;
       } else {
         voiceLog.info("SCREEN", `controls: screenAudioStream present (id=${screenAudioStream.id}) but has NO audio tracks`);
@@ -172,8 +180,8 @@ export function Controls({ onDisconnect }: ControlsProps) {
     if (socket) {
       const payload = {
         enabled: screenShareActive,
-        videoStreamId: screenVideoStream?.id || "",
-        audioStreamId: screenAudioStream?.id || "",
+        videoStreamId: (screenShareActive && webrtcScreenVideoStreamId.current) || screenVideoStream?.id || "",
+        audioStreamId: (screenShareActive && webrtcScreenAudioStreamId.current) || screenAudioStream?.id || "",
       };
       voiceLog.info("SCREEN", `controls: emitting voice:screen:state`, payload);
       if (screenShareActive && !payload.audioStreamId) {
@@ -183,11 +191,14 @@ export function Controls({ onDisconnect }: ControlsProps) {
     }
   }, [screenShareActive, screenVideoStream, screenAudioStream, isConnected, currentServerConnected, sockets]);
 
-  // Stop camera and screen share on disconnect
+  // Stop camera and screen share on disconnect; reset the saved WebRTC stream
+  // IDs so the next voice session creates fresh sender transceivers.
   useEffect(() => {
     if (!isConnected) {
       if (cameraEnabled) setCameraEnabled(false);
       if (screenShareActive) stopScreenShare();
+      webrtcScreenVideoStreamId.current = null;
+      webrtcScreenAudioStreamId.current = null;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected]);

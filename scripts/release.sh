@@ -213,13 +213,6 @@ if [ "$RERELEASE" = false ]; then
     ok "AUR PKGBUILD + .SRCINFO → v${NEW_VERSION}"
   fi
 
-  METAINFO="$CLIENT_DIR/flatpak/com.gryt.Chat.metainfo.xml"
-  if [ -f "$METAINFO" ]; then
-    RELEASE_DATE=$(date -u +%Y-%m-%d)
-    NEW_RELEASE="    <release version=\"${NEW_VERSION}\" date=\"${RELEASE_DATE}\">\\n      <description>\\n        <p>Latest release with bug fixes and improvements.<\/p>\\n      <\/description>\\n    <\/release>\\n"
-    sed -i "s|  <releases>|  <releases>\n${NEW_RELEASE}|" "$METAINFO"
-    ok "Flatpak metainfo.xml → v${NEW_VERSION} (${RELEASE_DATE})"
-  fi
 fi
 
 # ── Git commit & tag (before publish so the tag is authoritative) ────────
@@ -228,7 +221,7 @@ if [ "$RERELEASE" = false ]; then
   info "Committing version bump…"
 
   cd "$CLIENT_DIR"
-  git add package.json aur/ flatpak/com.gryt.Chat.metainfo.xml
+  git add package.json aur/
   git commit -m "release: v${NEW_VERSION} (${CHANNEL})"
   git push
 
