@@ -10,13 +10,14 @@ export interface NativeAudioCapture {
   active: boolean;
   /** The MediaStream produced by the native capture (null when inactive). */
   stream: MediaStream | null;
-  start: (audioContext: AudioContext) => Promise<boolean>;
+  start: (audioContext: AudioContext, sourceId?: string) => Promise<boolean>;
   stop: () => void;
 }
 
 /**
- * Manages a native audio capture session that excludes Gryt's own process tree
- * from the captured system audio.  Returns a MediaStream suitable for WebRTC.
+ * Manages a native audio capture session.  When a window sourceId is provided,
+ * captures ONLY that application's audio; otherwise captures all system audio
+ * except Gryt's own process tree.  Returns a MediaStream suitable for WebRTC.
  *
  * On platforms without a native binary this hook is a no-op (available = false).
  */
@@ -78,15 +79,14 @@ export function useNativeAudioCapture(): NativeAudioCapture {
   }, []);
 
   const start = useCallback(
-    async (audioContext: AudioContext): Promise<boolean> => {
+    async (audioContext: AudioContext, sourceId?: string): Promise<boolean> => {
       const api = getElectronAPI();
       if (!api) return false;
 
-      // Register the worklet module (idempotent after first call)
       try {
         await audioContext.audioWorklet.addModule(getWorkletUrl());
       } catch {
-        // Already registered — that's fine
+        // Already registered
       }
 
       const workletNode = new AudioWorkletNode(audioContext, PCM_PLAYER_WORKLET_NAME, {
@@ -98,7 +98,6 @@ export function useNativeAudioCapture(): NativeAudioCapture {
       workletNodeRef.current = workletNode;
       destinationRef.current = destination;
 
-      // Wire IPC → worklet message port
       const unsubData = api.onNativeAudioData((pcmArrayBuffer: ArrayBuffer) => {
         const int16 = new Int16Array(pcmArrayBuffer);
         workletNode.port.postMessage({ type: "pcm", samples: int16 }, [int16.buffer]);
@@ -110,8 +109,7 @@ export function useNativeAudioCapture(): NativeAudioCapture {
 
       cleanupIpcRef.current = [unsubData, unsubStopped];
 
-      // Start the native subprocess
-      const started = await api.startNativeAudioCapture();
+      const started = await api.startNativeAudioCapture(sourceId);
       if (!started) {
         stop();
         return false;

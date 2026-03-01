@@ -41,7 +41,7 @@ export interface ElectronAPI {
   getScreenCaptureAccess(): Promise<"not-determined" | "granted" | "denied" | "restricted">;
   getDesktopSources(): Promise<DesktopSource[]>;
   isNativeAudioCaptureAvailable(): Promise<boolean>;
-  startNativeAudioCapture(): Promise<boolean>;
+  startNativeAudioCapture(sourceId?: string): Promise<boolean>;
   stopNativeAudioCapture(): void;
   onNativeAudioData(callback: (pcm: ArrayBuffer) => void): () => void;
   onNativeAudioStopped(callback: () => void): () => void;

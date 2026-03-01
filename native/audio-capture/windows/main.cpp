@@ -1,7 +1,11 @@
-// Captures all system audio EXCEPT the process tree rooted at a given PID
-// and writes raw PCM (48 kHz, 16-bit, stereo) to stdout.
+// Captures system audio using WASAPI process loopback and writes raw PCM
+// (48 kHz, 16-bit, stereo) to stdout.
 //
-// Usage:  audio-capture.exe <pid>
+// Usage:
+//   audio-capture.exe exclude <pid>    Capture all audio EXCEPT pid's tree
+//   audio-capture.exe include <pid>    Capture ONLY pid's tree audio
+//   audio-capture.exe pid-of <hwnd>    Print the owning PID for a window handle
+//
 // Stop:   write any byte to stdin, or just close stdin.
 //
 // Requires Windows 10 build 20348+.
@@ -176,19 +180,48 @@ static DWORD WINAPI stdinWatcher(LPVOID) {
 // ── Main ───────────────────────────────────────────────────────────────
 
 int wmain(int argc, wchar_t *argv[]) {
-    if (argc < 2) {
-        fprintf(stderr, "Usage: audio-capture.exe <pid>\n");
+    if (argc < 3) {
+        fprintf(stderr, "Usage:\n");
+        fprintf(stderr, "  audio-capture.exe exclude <pid>\n");
+        fprintf(stderr, "  audio-capture.exe include <pid>\n");
+        fprintf(stderr, "  audio-capture.exe pid-of  <hwnd>\n");
         return 1;
     }
 
-    DWORD pid = static_cast<DWORD>(_wtoi(argv[1]));
+    // ── pid-of: resolve HWND → PID and exit ─────────────────────────
+    if (wcscmp(argv[1], L"pid-of") == 0) {
+        HWND hwnd = reinterpret_cast<HWND>(static_cast<uintptr_t>(_wtoi64(argv[2])));
+        DWORD ownerPid = 0;
+        GetWindowThreadProcessId(hwnd, &ownerPid);
+        if (ownerPid == 0) {
+            fprintf(stderr, "Could not resolve HWND %llu to PID\n",
+                    static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(hwnd)));
+            return 1;
+        }
+        fprintf(stdout, "%lu", ownerPid);
+        return 0;
+    }
+
+    // ── Determine loopback mode ─────────────────────────────────────
+    PROCESS_LOOPBACK_MODE loopbackMode;
+    const wchar_t *modeStr = argv[1];
+    if (wcscmp(modeStr, L"exclude") == 0) {
+        loopbackMode = PROCESS_LOOPBACK_MODE_EXCLUDE_TARGET_PROCESS_TREE;
+    } else if (wcscmp(modeStr, L"include") == 0) {
+        loopbackMode = PROCESS_LOOPBACK_MODE_INCLUDE_TARGET_PROCESS_TREE;
+    } else {
+        fprintf(stderr, "Unknown mode '%ls' — use 'exclude' or 'include'\n", modeStr);
+        return 1;
+    }
+
+    DWORD pid = static_cast<DWORD>(_wtoi(argv[2]));
     if (pid == 0) {
         fprintf(stderr, "Invalid PID\n");
         return 1;
     }
 
     fprintf(stderr, "[diag] audio-capture started, own PID %lu\n", GetCurrentProcessId());
-    fprintf(stderr, "[diag] excluding target PID %lu (and its process tree)\n", pid);
+    fprintf(stderr, "[diag] mode=%ls target PID %lu\n", modeStr, pid);
     logWindowsBuild();
     logProcessTree(pid);
 
@@ -211,8 +244,7 @@ int wmain(int argc, wchar_t *argv[]) {
 
     AUDIOCLIENT_ACTIVATION_PARAMS acParams = {};
     acParams.ActivationType = AUDIOCLIENT_ACTIVATION_TYPE_PROCESS_LOOPBACK;
-    acParams.ProcessLoopbackParams.ProcessLoopbackMode =
-        PROCESS_LOOPBACK_MODE_EXCLUDE_TARGET_PROCESS_TREE;
+    acParams.ProcessLoopbackParams.ProcessLoopbackMode = loopbackMode;
     acParams.ProcessLoopbackParams.TargetProcessId = pid;
 
     PROPVARIANT pv = {};

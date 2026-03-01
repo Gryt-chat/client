@@ -185,8 +185,8 @@ function useScreenShareHook(): ScreenShareInterface {
       }
 
       if (useNativeAudio && audioContext) {
-        console.log("[ScreenShare] attempting native audio capture...");
-        const started = await nativeStart(audioContext);
+        console.log(`[ScreenShare] attempting native audio capture (sourceId=${sourceId ?? "none"})...`);
+        const started = await nativeStart(audioContext, sourceId);
         if (started) {
           console.log("[ScreenShare] native audio capture STARTED");
           usingNativeAudioRef.current = true;

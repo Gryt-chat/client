@@ -1,12 +1,16 @@
 /**
- * Manages a native subprocess that captures system audio while excluding
- * Gryt's own process tree.  PCM data is forwarded to the renderer via IPC.
+ * Manages a native subprocess that captures system audio via WASAPI process
+ * loopback and forwards raw PCM to the renderer via IPC.
  *
- * Windows:  WASAPI PROCESS_LOOPBACK_MODE_EXCLUDE_TARGET_PROCESS_TREE
+ * Two capture modes:
+ *   "exclude" — capture ALL system audio except Gryt's process tree
+ *   "include" — capture ONLY a specific application's process tree audio
+ *
+ * Windows:  WASAPI PROCESS_LOOPBACK_MODE_{INCLUDE,EXCLUDE}_TARGET_PROCESS_TREE
  * macOS:    ScreenCaptureKit excludesCurrentProcessAudio
  */
 
-import { ChildProcess, spawn } from "child_process";
+import { ChildProcess, execFileSync, spawn } from "child_process";
 import { app, BrowserWindow } from "electron";
 import { existsSync } from "fs";
 import { join } from "path";
@@ -25,12 +29,36 @@ function getNativeBinaryPath(): string | null {
     return null;
   }
 
-  // In production, extraResources are next to the app executable
   const resourcePath = app.isPackaged
     ? join(process.resourcesPath, "native", binaryName)
     : join(app.getAppPath(), "build", "native", binaryName);
 
   return existsSync(resourcePath) ? resourcePath : null;
+}
+
+/**
+ * Resolve an Electron desktopCapturer window source ID to a process ID.
+ * Source IDs look like "window:<HWND>:0".
+ */
+function resolveWindowPid(sourceId: string): number | null {
+  const binaryPath = getNativeBinaryPath();
+  if (!binaryPath) return null;
+
+  const match = sourceId.match(/^window:(\d+):/);
+  if (!match) return null;
+  const hwnd = match[1];
+
+  try {
+    const stdout = execFileSync(binaryPath, ["pid-of", hwnd], {
+      timeout: 3000,
+      windowsHide: true,
+    });
+    const pid = parseInt(stdout.toString().trim(), 10);
+    return pid > 0 ? pid : null;
+  } catch (err) {
+    console.warn("[NativeAudioCapture] failed to resolve HWND to PID:", err);
+    return null;
+  }
 }
 
 export function isNativeAudioCaptureAvailable(): boolean {
@@ -39,7 +67,10 @@ export function isNativeAudioCaptureAvailable(): boolean {
   return path !== null;
 }
 
-export function startNativeAudioCapture(window: BrowserWindow): boolean {
+export function startNativeAudioCapture(
+  window: BrowserWindow,
+  sourceId?: string,
+): boolean {
   if (captureProcess) {
     stopNativeAudioCapture();
   }
@@ -50,12 +81,29 @@ export function startNativeAudioCapture(window: BrowserWindow): boolean {
     return false;
   }
 
-  const pid = process.pid.toString();
+  let mode: "exclude" | "include";
+  let targetPid: number;
+
+  if (sourceId && sourceId.startsWith("window:")) {
+    const windowPid = resolveWindowPid(sourceId);
+    if (!windowPid) {
+      console.warn(`[NativeAudioCapture] could not resolve PID for ${sourceId}, falling back to exclude mode`);
+      mode = "exclude";
+      targetPid = process.pid;
+    } else {
+      mode = "include";
+      targetPid = windowPid;
+    }
+  } else {
+    mode = "exclude";
+    targetPid = process.pid;
+  }
+
   console.log(
-    `[NativeAudioCapture] spawning: binary=${binaryPath} excludePID=${pid} (main process)`,
+    `[NativeAudioCapture] spawning: binary=${binaryPath} mode=${mode} targetPID=${targetPid} sourceId=${sourceId ?? "none"}`,
   );
 
-  captureProcess = spawn(binaryPath, [pid], {
+  captureProcess = spawn(binaryPath, [mode, targetPid.toString()], {
     stdio: ["pipe", "pipe", "pipe"],
   });
 
@@ -105,14 +153,12 @@ export function stopNativeAudioCapture(): void {
   if (!captureProcess) return;
 
   try {
-    // Send a byte on stdin to signal graceful shutdown
     captureProcess.stdin?.write("\n");
     captureProcess.stdin?.end();
   } catch {
     // Process may have already exited
   }
 
-  // Force kill after a short grace period
   const proc = captureProcess;
   captureProcess = null;
   setTimeout(() => {

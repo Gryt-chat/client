@@ -762,9 +762,9 @@ if (!gotSingleInstanceLock) {
     ipcMain.handle("native-audio-capture-available", () => {
       return isNativeAudioCaptureAvailable();
     });
-    ipcMain.handle("start-native-audio-capture", () => {
+    ipcMain.handle("start-native-audio-capture", (_event, sourceId?: string) => {
       if (!mainWindow) return false;
-      return startNativeAudioCapture(mainWindow);
+      return startNativeAudioCapture(mainWindow, sourceId);
     });
     ipcMain.on("stop-native-audio-capture", () => {
       stopNativeAudioCapture();

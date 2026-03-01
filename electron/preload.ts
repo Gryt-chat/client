@@ -116,8 +116,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return ipcRenderer.invoke("native-audio-capture-available");
   },
 
-  startNativeAudioCapture(): Promise<boolean> {
-    return ipcRenderer.invoke("start-native-audio-capture");
+  startNativeAudioCapture(sourceId?: string): Promise<boolean> {
+    return ipcRenderer.invoke("start-native-audio-capture", sourceId);
   },
 
   stopNativeAudioCapture() {
