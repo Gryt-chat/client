@@ -146,7 +146,7 @@ export const MessageRow = memo(({
       {meta.dayBreak && <DateSeparator date={meta.dayBreak} />}
 
       {meta.isSystem ? (
-        <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange} onReaction={(src) => onReaction(src, m)} onAddReaction={handleOpenReactionPicker} serverHost={serverHost}>
+        <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange} onReaction={(src) => onReaction(src, m)} serverHost={serverHost}>
         <motion.div
           animate={{ marginBottom: m.reactions?.length ? 30 : 0, background: bgColor }}
           transition={{ type: "spring", stiffness: 500, damping: 30 }}
@@ -215,7 +215,7 @@ export const MessageRow = memo(({
           </motion.div>
         </MessageContextMenu>
       ) : meta.isFirstInGroup ? (
-        <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange} onReaction={(src) => onReaction(src, m)} onAddReaction={handleOpenReactionPicker} serverHost={serverHost}>
+        <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange} onReaction={(src) => onReaction(src, m)} serverHost={serverHost}>
           <Flex gap="3" style={{ width: "100%", marginTop: 12 }} align="start">
             <Avatar
               radius="full"
@@ -270,7 +270,7 @@ export const MessageRow = memo(({
           </Flex>
         </MessageContextMenu>
       ) : (
-        <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange} onReaction={(src) => onReaction(src, m)} onAddReaction={handleOpenReactionPicker} serverHost={serverHost}>
+        <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange} onReaction={(src) => onReaction(src, m)} serverHost={serverHost}>
           <Flex style={{ width: "100%", paddingLeft: 63 }}>
             <Flex direction="column" style={{ flex: 1, minWidth: 0 }}>
               <MessageContent

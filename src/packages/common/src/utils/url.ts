@@ -1,7 +1,11 @@
+const PRIVATE_HOST_RE = /^(localhost|127\.\d+\.\d+\.\d+|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$/;
+
 function isSecure(host: string): boolean {
-  const isLocalhost = /^(localhost|127\.\d+\.\d+\.\d+)(:\d+)?$/.test(host);
+  if (!PRIVATE_HOST_RE.test(host)) return true;
   try {
-    if (window.location.protocol === "http:" && isLocalhost) return false;
+    const proto = window.location.protocol;
+    if (proto === "http:" || proto === "file:") return false;
+    if (window.electronAPI) return false;
   } catch { /* location may be unavailable in non-browser context */ }
   return true;
 }

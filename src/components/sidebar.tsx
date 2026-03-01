@@ -24,6 +24,8 @@ import { useServerManagement, useSockets } from "@/socket";
 import { useSFU } from "@/webRTC";
 import { MiniControls } from "@/webRTC/src/components/miniControls";
 
+import { LanServerItem } from "./lanServerItem";
+
 interface SidebarProps {
   setShowAddServer: (show: boolean) => void;
 }
@@ -43,6 +45,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
     switchToServer,
     orderedServerHosts,
     reorderServers,
+    pendingLanServers,
   } = useServerManagement();
   
 
@@ -86,6 +89,9 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
             />
           ))}
         </Reorder.Group>
+        {pendingLanServers.map((s) => (
+          <LanServerItem key={`${s.host}:${s.port}`} server={s} />
+        ))}
         <Tooltip content="Add new server" delayDuration={100} side="right">
           <IconButton
             variant="soft"

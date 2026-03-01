@@ -17,6 +17,12 @@ interface EmojiPickerProps {
   serverHost?: string;
 }
 
+export interface EmojiPickerContentProps {
+  onSelect: (reactionSrc: string) => void;
+  serverHost?: string;
+  autoFocusSearch?: boolean;
+}
+
 const CATEGORY_ICONS: Record<string, string> = {
   "Recently Used": "🕒",
   "Custom": "⭐",
@@ -32,6 +38,10 @@ const CATEGORY_ICONS: Record<string, string> = {
 };
 
 const COLS = 8;
+const PICKER_WIDTH = 340;
+const PICKER_MAX_HEIGHT = 400;
+const VIEWPORT_PAD = 8;
+const GAP = 6;
 
 function EmojiCell({ entry, onSelect }: { entry: EmojiEntry; onSelect: (src: string) => void }) {
   const src = entry.isCustom ? `:${entry.name}:` : entry.emoji!;
@@ -118,17 +128,180 @@ function CategorySection({
   );
 }
 
-export const EmojiPicker = ({ onSelect, onClose, anchorEl, placement = "above", serverHost }: EmojiPickerProps) => {
-  const containerRef = useRef<HTMLDivElement>(null);
+function NavButton({ icon, label, onClick }: { icon: string; label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      title={label}
+      style={{
+        background: "none",
+        border: "none",
+        padding: "3px 5px",
+        fontSize: 16,
+        lineHeight: 1,
+        borderRadius: 6,
+        cursor: "pointer",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        transition: "background 0.12s",
+        flexShrink: 0,
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gray-4)"; }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
+    >
+      {icon}
+    </button>
+  );
+}
+
+export function EmojiPickerContent({ onSelect, serverHost, autoFocusSearch = true }: EmojiPickerContentProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [search, setSearch] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
-  const [fixedPos, setFixedPos] = useState<{ top?: number; bottom?: number; left: number }>({ left: 0 });
 
-  const PICKER_WIDTH = 340;
-  const PICKER_MAX_HEIGHT = 400;
-  const VIEWPORT_PAD = 8;
-  const GAP = 6;
+  useEffect(() => {
+    if (autoFocusSearch) inputRef.current?.focus({ preventScroll: true });
+  }, [autoFocusSearch]);
+
+  const recentEntries = useMemo((): EmojiEntry[] => {
+    const recent = getRecentReactions(16, serverHost);
+    const customEmojis = getCustomEmojis();
+    const byCategory = getStandardEmojisByCategory();
+    const allStandard: EmojiEntry[] = [];
+    for (const entries of byCategory.values()) allStandard.push(...entries);
+
+    return recent
+      .map((src): EmojiEntry | null => {
+        if (src.startsWith(":") && src.endsWith(":")) {
+          const name = src.slice(1, -1);
+          return customEmojis.find((e) => e.name === name) ?? null;
+        }
+        return allStandard.find((e) => e.emoji === src) ?? null;
+      })
+      .filter((e): e is EmojiEntry => e !== null);
+  }, [serverHost]);
+
+  const [customVersion, setCustomVersion] = useState(0);
+  useEffect(() => onCustomEmojisChange(() => setCustomVersion((v) => v + 1)), []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const customEntries = useMemo(() => getCustomEmojis(), [customVersion]);
+  const standardCategories = useMemo(() => getStandardEmojisByCategory(), []);
+
+  const searchResults = useMemo(() => {
+    if (!search.trim()) return null;
+    return searchEmojis(search.trim());
+  }, [search]);
+
+  const categoryNames = useMemo(() => Array.from(standardCategories.keys()), [standardCategories]);
+
+  const scrollToCategory = useCallback((category: string) => {
+    const container = scrollRef.current;
+    if (!container) return;
+    const el = container.querySelector(`[data-category="${CSS.escape(category)}"]`) as HTMLElement | null;
+    if (!el) return;
+    const containerRect = container.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    container.scrollTo({
+      top: container.scrollTop + elRect.top - containerRect.top,
+      behavior: "smooth",
+    });
+  }, []);
+
+  return (
+    <>
+      <div style={{ padding: "8px 8px 4px" }}>
+        <input
+          ref={inputRef}
+          type="text"
+          placeholder="Search emojis..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{
+            width: "100%",
+            padding: "6px 10px",
+            border: "1px solid var(--gray-6)",
+            borderRadius: 8,
+            background: "var(--gray-2)",
+            color: "var(--gray-12)",
+            fontSize: 13,
+            outline: "none",
+            boxSizing: "border-box",
+          }}
+          onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent-8)"; }}
+          onBlur={(e) => { e.currentTarget.style.borderColor = "var(--gray-6)"; }}
+        />
+      </div>
+
+      {!searchResults && (
+        <div
+          style={{
+            display: "flex",
+            gap: 1,
+            padding: "2px 6px 4px",
+            borderBottom: "1px solid var(--gray-5)",
+            overflowX: "auto",
+            flexShrink: 0,
+          }}
+        >
+          {recentEntries.length > 0 && (
+            <NavButton icon={CATEGORY_ICONS["Recently Used"]} label="Recently Used" onClick={() => scrollToCategory("Recently Used")} />
+          )}
+          {customEntries.length > 0 && (
+            <NavButton icon={CATEGORY_ICONS["Custom"]} label="Custom" onClick={() => scrollToCategory("Custom")} />
+          )}
+          {categoryNames.map((cat) => (
+            <NavButton key={cat} icon={CATEGORY_ICONS[cat] ?? "?"} label={cat} onClick={() => scrollToCategory(cat)} />
+          ))}
+        </div>
+      )}
+
+      <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: "0 6px 8px" }}>
+        {searchResults ? (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: `repeat(${COLS}, 36px)`,
+              gap: 2,
+              padding: "4px 2px",
+            }}
+          >
+            {searchResults.map((entry, idx) => (
+              <EmojiCell key={`${entry.isCustom ? "c:" : ""}${entry.name}-${idx}`} entry={entry} onSelect={onSelect} />
+            ))}
+            {searchResults.length === 0 && (
+              <div style={{ gridColumn: `1 / -1`, padding: 16, textAlign: "center", color: "var(--gray-9)", fontSize: 13 }}>
+                No emojis found
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
+            {recentEntries.length > 0 && (
+              <div data-category="Recently Used">
+                <CategorySection label="Recently Used" entries={recentEntries} onSelect={onSelect} />
+              </div>
+            )}
+            {customEntries.length > 0 && (
+              <div data-category="Custom">
+                <CategorySection label="Custom" entries={customEntries} onSelect={onSelect} />
+              </div>
+            )}
+            {categoryNames.map((cat) => (
+              <div key={cat} data-category={cat}>
+                <CategorySection label={cat} entries={standardCategories.get(cat) ?? []} onSelect={onSelect} />
+              </div>
+            ))}
+          </>
+        )}
+      </div>
+    </>
+  );
+}
+
+export const EmojiPicker = ({ onSelect, onClose, anchorEl, placement = "above", serverHost }: EmojiPickerProps) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [fixedPos, setFixedPos] = useState<{ top?: number; bottom?: number; left: number }>({ left: 0 });
 
   useLayoutEffect(() => {
     const anchor = anchorEl ?? containerRef.current?.parentElement;
@@ -193,10 +366,6 @@ export const EmojiPicker = ({ onSelect, onClose, anchorEl, placement = "above", 
   }, [anchorEl, placement]);
 
   useEffect(() => {
-    inputRef.current?.focus({ preventScroll: true });
-  }, []);
-
-  useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
@@ -223,35 +392,6 @@ export const EmojiPicker = ({ onSelect, onClose, anchorEl, placement = "above", 
     };
   }, [onClose]);
 
-  const recentEntries = useMemo((): EmojiEntry[] => {
-    const recent = getRecentReactions(16, serverHost);
-    const customEmojis = getCustomEmojis();
-    const byCategory = getStandardEmojisByCategory();
-    const allStandard: EmojiEntry[] = [];
-    for (const entries of byCategory.values()) allStandard.push(...entries);
-
-    return recent
-      .map((src): EmojiEntry | null => {
-        if (src.startsWith(":") && src.endsWith(":")) {
-          const name = src.slice(1, -1);
-          return customEmojis.find((e) => e.name === name) ?? null;
-        }
-        return allStandard.find((e) => e.emoji === src) ?? null;
-      })
-      .filter((e): e is EmojiEntry => e !== null);
-  }, [serverHost]);
-
-  const [customVersion, setCustomVersion] = useState(0);
-  useEffect(() => onCustomEmojisChange(() => setCustomVersion((v) => v + 1)), []);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const customEntries = useMemo(() => getCustomEmojis(), [customVersion]);
-  const standardCategories = useMemo(() => getStandardEmojisByCategory(), []);
-
-  const searchResults = useMemo(() => {
-    if (!search.trim()) return null;
-    return searchEmojis(search.trim());
-  }, [search]);
-
   const handleSelect = useCallback(
     (src: string) => {
       onSelect(src);
@@ -259,21 +399,6 @@ export const EmojiPicker = ({ onSelect, onClose, anchorEl, placement = "above", 
     },
     [onSelect, onClose],
   );
-
-  const categoryNames = useMemo(() => Array.from(standardCategories.keys()), [standardCategories]);
-
-  const scrollToCategory = useCallback((category: string) => {
-    const container = scrollRef.current;
-    if (!container) return;
-    const el = container.querySelector(`[data-category="${CSS.escape(category)}"]`) as HTMLElement | null;
-    if (!el) return;
-    const containerRect = container.getBoundingClientRect();
-    const elRect = el.getBoundingClientRect();
-    container.scrollTo({
-      top: container.scrollTop + elRect.top - containerRect.top,
-      behavior: "smooth",
-    });
-  }, []);
 
   return (
     <div
@@ -296,121 +421,7 @@ export const EmojiPicker = ({ onSelect, onClose, anchorEl, placement = "above", 
       }}
       onMouseDown={(e) => e.stopPropagation()}
     >
-      {/* Search */}
-      <div style={{ padding: "8px 8px 4px" }}>
-        <input
-          ref={inputRef}
-          type="text"
-          placeholder="Search emojis..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{
-            width: "100%",
-            padding: "6px 10px",
-            border: "1px solid var(--gray-6)",
-            borderRadius: 8,
-            background: "var(--gray-2)",
-            color: "var(--gray-12)",
-            fontSize: 13,
-            outline: "none",
-            boxSizing: "border-box",
-          }}
-          onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent-8)"; }}
-          onBlur={(e) => { e.currentTarget.style.borderColor = "var(--gray-6)"; }}
-        />
-      </div>
-
-      {/* Category nav */}
-      {!searchResults && (
-        <div
-          style={{
-            display: "flex",
-            gap: 1,
-            padding: "2px 6px 4px",
-            borderBottom: "1px solid var(--gray-5)",
-            overflowX: "auto",
-            flexShrink: 0,
-          }}
-        >
-          {recentEntries.length > 0 && (
-            <NavButton icon={CATEGORY_ICONS["Recently Used"]} label="Recently Used" onClick={() => scrollToCategory("Recently Used")} />
-          )}
-          {customEntries.length > 0 && (
-            <NavButton icon={CATEGORY_ICONS["Custom"]} label="Custom" onClick={() => scrollToCategory("Custom")} />
-          )}
-          {categoryNames.map((cat) => (
-            <NavButton key={cat} icon={CATEGORY_ICONS[cat] ?? "?"} label={cat} onClick={() => scrollToCategory(cat)} />
-          ))}
-        </div>
-      )}
-
-      {/* Emoji grid */}
-      <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: "0 6px 8px" }}>
-        {searchResults ? (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: `repeat(${COLS}, 36px)`,
-              gap: 2,
-              padding: "4px 2px",
-            }}
-          >
-            {searchResults.map((entry, idx) => (
-              <EmojiCell key={`${entry.isCustom ? "c:" : ""}${entry.name}-${idx}`} entry={entry} onSelect={handleSelect} />
-            ))}
-            {searchResults.length === 0 && (
-              <div style={{ gridColumn: `1 / -1`, padding: 16, textAlign: "center", color: "var(--gray-9)", fontSize: 13 }}>
-                No emojis found
-              </div>
-            )}
-          </div>
-        ) : (
-          <>
-            {recentEntries.length > 0 && (
-              <div data-category="Recently Used">
-                <CategorySection label="Recently Used" entries={recentEntries} onSelect={handleSelect} />
-              </div>
-            )}
-            {customEntries.length > 0 && (
-              <div data-category="Custom">
-                <CategorySection label="Custom" entries={customEntries} onSelect={handleSelect} />
-              </div>
-            )}
-            {categoryNames.map((cat) => (
-              <div key={cat} data-category={cat}>
-                <CategorySection label={cat} entries={standardCategories.get(cat) ?? []} onSelect={handleSelect} />
-              </div>
-            ))}
-          </>
-        )}
-      </div>
+      <EmojiPickerContent onSelect={handleSelect} serverHost={serverHost} />
     </div>
   );
 };
-
-function NavButton({ icon, label, onClick }: { icon: string; label: string; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      title={label}
-      style={{
-        background: "none",
-        border: "none",
-        padding: "3px 5px",
-        fontSize: 16,
-        lineHeight: 1,
-        borderRadius: 6,
-        cursor: "pointer",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        transition: "background 0.12s",
-        flexShrink: 0,
-      }}
-      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gray-4)"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
-    >
-      {icon}
-    </button>
-  );
-}

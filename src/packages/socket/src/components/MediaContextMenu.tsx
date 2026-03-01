@@ -1,5 +1,5 @@
 import { ContextMenu, Flex } from "@radix-ui/themes";
-import React, { type ReactNode, useMemo } from "react";
+import React, { type ReactNode, useCallback, useMemo } from "react";
 import {
   MdCloudDownload,
   MdContentCopy,
@@ -15,6 +15,7 @@ import {
 import { triggerDownload } from "../utils/downloadFile";
 import { copyImageToClipboard } from "../utils/mediaClipboard";
 import { getRecentReactions } from "../utils/recentReactions";
+import { EmojiPickerContent } from "./EmojiPicker";
 import { EmojiText } from "./EmojiText";
 
 export interface MessageActions {
@@ -39,7 +40,6 @@ interface MessageContextMenuProps {
   messageActions?: MessageActions;
   onOpenChange?: (open: boolean) => void;
   onReaction?: (src: string) => void;
-  onAddReaction?: () => void;
   serverHost?: string;
 }
 
@@ -95,14 +95,21 @@ function MediaItems({ media }: { media: MediaProps }) {
 
 function QuickReactions({
   onReaction,
-  onAddReaction,
   serverHost,
 }: {
   onReaction: (src: string) => void;
-  onAddReaction: () => void;
   serverHost?: string;
 }) {
   const recent = useMemo(() => getRecentReactions(4, serverHost), [serverHost]);
+
+  const handleEmojiSelect = useCallback((src: string) => {
+    onReaction(src);
+    const dismiss = () => document.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }),
+    );
+    dismiss();
+    setTimeout(dismiss, 16);
+  }, [onReaction]);
 
   return (
     <>
@@ -126,23 +133,44 @@ function QuickReactions({
             <EmojiText text={src} emojiSize={22} disableTooltip />
           </ContextMenu.Item>
         ))}
-        <ContextMenu.Item
-          onSelect={() => onAddReaction()}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: 36,
-            height: 36,
-            minWidth: "unset",
-            borderRadius: "var(--radius-2)",
-            padding: 0,
-            flex: "0 0 auto",
-            color: "var(--gray-10)",
-          }}
-        >
-          <MdEmojiEmotions size={20} />
-        </ContextMenu.Item>
+        <ContextMenu.Sub>
+          <ContextMenu.SubTrigger
+            className="emoji-picker-sub-trigger"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 36,
+              height: 36,
+              minWidth: "unset",
+              borderRadius: "var(--radius-2)",
+              padding: 0,
+              flex: "0 0 auto",
+              color: "var(--gray-10)",
+            }}
+          >
+            <MdEmojiEmotions size={20} />
+          </ContextMenu.SubTrigger>
+          <ContextMenu.SubContent
+            sideOffset={2}
+            alignOffset={-6}
+            style={{
+              padding: 0,
+              width: 340,
+              maxHeight: 400,
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+              borderRadius: 12,
+            }}
+          >
+            <EmojiPickerContent
+              onSelect={handleEmojiSelect}
+              serverHost={serverHost}
+              autoFocusSearch={false}
+            />
+          </ContextMenu.SubContent>
+        </ContextMenu.Sub>
       </Flex>
       <ContextMenu.Separator />
     </>
@@ -202,7 +230,6 @@ export function MessageContextMenu({
   messageActions,
   onOpenChange,
   onReaction,
-  onAddReaction,
   serverHost,
 }: MessageContextMenuProps) {
   const hasMessageActions = messageActions && (
@@ -215,8 +242,8 @@ export function MessageContextMenu({
         {children}
       </ContextMenu.Trigger>
       <ContextMenu.Content style={{ minWidth: 180 }}>
-        {onReaction && onAddReaction && (
-          <QuickReactions onReaction={onReaction} onAddReaction={onAddReaction} serverHost={serverHost} />
+        {onReaction && (
+          <QuickReactions onReaction={onReaction} serverHost={serverHost} />
         )}
         {media && <MediaItems media={media} />}
         {media && hasMessageActions && <ContextMenu.Separator />}

@@ -53,7 +53,7 @@ export function useChatActions({
 
   const handleReply = useCallback((message: ChatMessage) => {
     setReplyingTo(message);
-    editorRef.current?.focus();
+    requestAnimationFrame(() => { editorRef.current?.focus(); });
   }, [editorRef]);
 
   const handleReport = useCallback((message: ChatMessage) => {

@@ -98,7 +98,28 @@ export function useNativeAudioCapture(): NativeAudioCapture {
       workletNodeRef.current = workletNode;
       destinationRef.current = destination;
 
+      let pcmChunks = 0;
+      let pcmTotalBytes = 0;
+      let logIntervalId: ReturnType<typeof setInterval> | null = null;
+
+      logIntervalId = setInterval(() => {
+        if (pcmChunks > 0) {
+          console.log(
+            `[NativeAudioCapture] PCM stats: ${pcmChunks} chunks, ${(pcmTotalBytes / 1024).toFixed(0)} KB total`,
+          );
+        } else {
+          console.warn("[NativeAudioCapture] PCM stats: 0 chunks received (no audio data flowing)");
+        }
+      }, 5000);
+
       const unsubData = api.onNativeAudioData((pcmArrayBuffer: ArrayBuffer) => {
+        pcmChunks++;
+        pcmTotalBytes += pcmArrayBuffer.byteLength;
+        if (pcmChunks === 1) {
+          console.log(
+            `[NativeAudioCapture] first PCM chunk in renderer: ${pcmArrayBuffer.byteLength} bytes`,
+          );
+        }
         const int16 = new Int16Array(pcmArrayBuffer);
         workletNode.port.postMessage({ type: "pcm", samples: int16 }, [int16.buffer]);
       });
@@ -107,7 +128,11 @@ export function useNativeAudioCapture(): NativeAudioCapture {
         stop();
       });
 
-      cleanupIpcRef.current = [unsubData, unsubStopped];
+      cleanupIpcRef.current = [
+        unsubData,
+        unsubStopped,
+        () => { if (logIntervalId) clearInterval(logIntervalId); },
+      ];
 
       const started = await api.startNativeAudioCapture(sourceId);
       if (!started) {

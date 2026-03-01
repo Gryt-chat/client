@@ -19,6 +19,9 @@ interface ServerSettings {
   setLastSelectedChannel: (host: string, channelId: string) => void;
   serverOrder: string[];
   setServerOrder: (order: string[]) => void;
+  dismissedLanServers: string[];
+  dismissLanServer: (key: string) => void;
+  undismissLanServer: (key: string) => void;
 }
 
 function useServerSettingsHook(): ServerSettings {
@@ -28,6 +31,7 @@ function useServerSettingsHook(): ServerSettings {
   const [currentlyViewingServer, setCurrentlyViewingServer] = useState<Server | null>(null);
   const [lastSelectedChannels, setLastSelectedChannelsRaw] = useState<Record<string, string>>({});
   const [serverOrder, setServerOrderRaw] = useState<string[]>([]);
+  const [dismissedLanServers, setDismissedLanServersRaw] = useState<string[]>([]);
   const hasAutoFocused = useRef(false);
 
   useEffect(() => {
@@ -46,6 +50,7 @@ function useServerSettingsHook(): ServerSettings {
       setServersRaw(loaded);
       setLastSelectedChannelsRaw(getUserValue<Record<string, string>>("lastSelectedChannels", {}));
       setServerOrderRaw(getUserValue<string[]>("serverOrder", []));
+      setDismissedLanServersRaw(getUserValue<string[]>("dismissedLanServers", []));
     })();
 
     return () => { cancelled = true; };
@@ -93,6 +98,24 @@ function useServerSettingsHook(): ServerSettings {
     }
   }, []);
 
+  const dismissLanServer = useCallback((key: string) => {
+    setDismissedLanServersRaw((prev) => {
+      if (prev.includes(key)) return prev;
+      const next = [...prev, key];
+      if (userIdRef.current) setUserValue("dismissedLanServers", next);
+      return next;
+    });
+  }, []);
+
+  const undismissLanServer = useCallback((key: string) => {
+    setDismissedLanServersRaw((prev) => {
+      if (!prev.includes(key)) return prev;
+      const next = prev.filter((k) => k !== key);
+      if (userIdRef.current) setUserValue("dismissedLanServers", next);
+      return next;
+    });
+  }, []);
+
   useEffect(() => {
     const serverKeys = Object.keys(servers);
     if (serverKeys.length > 0 && !hasAutoFocused.current) {
@@ -122,6 +145,9 @@ function useServerSettingsHook(): ServerSettings {
     setLastSelectedChannel: updateLastSelectedChannel,
     serverOrder,
     setServerOrder: updateServerOrder,
+    dismissedLanServers,
+    dismissLanServer,
+    undismissLanServer,
   };
 }
 
@@ -134,6 +160,9 @@ const init: ServerSettings = {
   setLastSelectedChannel: () => {},
   serverOrder: [],
   setServerOrder: () => {},
+  dismissedLanServers: [],
+  dismissLanServer: () => {},
+  undismissLanServer: () => {},
 };
 
 export const useServerSettings = singletonHook(init, useServerSettingsHook);

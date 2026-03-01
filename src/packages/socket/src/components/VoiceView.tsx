@@ -276,8 +276,22 @@ export const VoiceView = ({
       : client.cameraStreamID;
     const currentStream = streamKey ? videoStreams?.[streamKey] : undefined;
 
-    if (currentStream && currentStream !== focusedStream.stream) {
-      setFocusedStream((prev) => prev ? { ...prev, stream: currentStream } : null);
+    const latestAudioStreamId = isScreenTile
+      ? (client.screenShareAudioStreamID || undefined)
+      : focusedStream.audioStreamId;
+
+    const streamChanged = currentStream && currentStream !== focusedStream.stream;
+    const audioIdChanged = latestAudioStreamId !== focusedStream.audioStreamId;
+
+    if (streamChanged || audioIdChanged) {
+      setFocusedStream((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          ...(streamChanged ? { stream: currentStream! } : {}),
+          ...(audioIdChanged ? { audioStreamId: latestAudioStreamId } : {}),
+        };
+      });
     }
   }, [focusedStream, clientsForHost, currentConnectionId, videoStreams]);
 

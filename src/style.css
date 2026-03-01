@@ -945,6 +945,11 @@ body {
   font-weight: bold;
 }
 
+/* Hide the submenu arrow on the emoji picker trigger in context menus */
+.emoji-picker-sub-trigger > .rt-BaseMenuShortcut {
+  display: none;
+}
+
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }

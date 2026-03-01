@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { singletonHook } from "react-singleton-hook";
 
+import { normalizeHost } from "@/common";
+import { useLanDiscovery } from "@/settings/src/hooks/useLanDiscovery";
 import { useServerSettings } from "@/settings/src/hooks/useServerSettings";
 import { Server, Servers } from "@/settings/src/types/server";
+
+import { type LanServer } from "../../../../lib/electron";
 
 interface ServerManagement {
   // State
@@ -11,6 +15,7 @@ interface ServerManagement {
   showAddServer: boolean;
   showRemoveServer: string | null;
   orderedServerHosts: string[];
+  pendingLanServers: LanServer[];
   
   // Actions
   addServer: (server: Server, focusNewServer?: boolean) => void;
@@ -20,6 +25,7 @@ interface ServerManagement {
   reorderServers: (orderedHosts: string[]) => void;
   setShowAddServer: (show: boolean) => void;
   setShowRemoveServer: (host: string | null) => void;
+  dismissLanServer: (key: string) => void;
   
   // Utilities
   getServer: (host: string) => Server | undefined;
@@ -30,12 +36,26 @@ interface ServerManagement {
   setLastSelectedChannelForServer: (host: string, channelId: string) => void;
 }
 
+function lanServerAddr(s: LanServer): string {
+  return s.port === 443 ? s.host : `${s.host}:${s.port}`;
+}
+
 function useServerManagementHook(): ServerManagement {
-  const { servers, setServers, currentlyViewingServer, setCurrentlyViewingServer, lastSelectedChannels, setLastSelectedChannel, serverOrder, setServerOrder } = useServerSettings();
+  const { servers, setServers, currentlyViewingServer, setCurrentlyViewingServer, lastSelectedChannels, setLastSelectedChannel, serverOrder, setServerOrder, dismissedLanServers, dismissLanServer } = useServerSettings();
+  const { lanServers } = useLanDiscovery();
   
   const [showAddServer, setShowAddServer] = useState(false);
   const [showRemoveServer, setShowRemoveServer] = useState<string | null>(null);
   const [pendingFocusServer, setPendingFocusServer] = useState<string | null>(null);
+
+  const pendingLanServers = useMemo(() => {
+    return lanServers.filter((s) => {
+      const addr = lanServerAddr(s);
+      const normalized = normalizeHost(addr);
+      const key = `${s.host}:${s.port}`;
+      return !servers[normalized] && !dismissedLanServers.includes(key);
+    });
+  }, [lanServers, servers, dismissedLanServers]);
 
   const orderedServerHosts = useMemo(() => {
     const allHosts = Object.keys(servers);
@@ -181,6 +201,7 @@ function useServerManagementHook(): ServerManagement {
     showAddServer,
     showRemoveServer,
     orderedServerHosts,
+    pendingLanServers,
     
     // Actions
     addServer,
@@ -190,6 +211,7 @@ function useServerManagementHook(): ServerManagement {
     reorderServers,
     setShowAddServer,
     setShowRemoveServer,
+    dismissLanServer,
     
     // Utilities
     getServer,
@@ -208,6 +230,7 @@ const init: ServerManagement = {
   showAddServer: false,
   showRemoveServer: null,
   orderedServerHosts: [],
+  pendingLanServers: [],
   
   // Actions
   addServer: () => {},
@@ -217,6 +240,7 @@ const init: ServerManagement = {
   reorderServers: () => {},
   setShowAddServer: () => {},
   setShowRemoveServer: () => {},
+  dismissLanServer: () => {},
   
   // Utilities
   getServer: () => undefined,

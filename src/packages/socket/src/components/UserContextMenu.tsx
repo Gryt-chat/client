@@ -75,7 +75,7 @@ export function UserContextMenu({
   if (isSelf) {
     return (
       <ContextMenu.Root>
-        <ContextMenu.Trigger>{children}</ContextMenu.Trigger>
+        <ContextMenu.Trigger style={{ display: "contents" }}>{children}</ContextMenu.Trigger>
         <ContextMenu.Content
           style={{ minWidth: 180 }}
           onCloseAutoFocus={(e) => e.preventDefault()}
@@ -118,7 +118,7 @@ export function UserContextMenu({
 
   return (
     <ContextMenu.Root>
-      <ContextMenu.Trigger>{children}</ContextMenu.Trigger>
+      <ContextMenu.Trigger style={{ display: "contents" }}>{children}</ContextMenu.Trigger>
       <ContextMenu.Content
         style={{ minWidth: 220 }}
         onCloseAutoFocus={(e) => e.preventDefault()}
