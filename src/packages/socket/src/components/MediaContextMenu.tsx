@@ -135,7 +135,7 @@ function QuickReactions({
           </ContextMenu.Item>
         ))}
         <ContextMenu.Item
-          onSelect={onAddReaction}
+          onSelect={() => onAddReaction()}
           style={{
             display: "inline-flex",
             alignItems: "center",
