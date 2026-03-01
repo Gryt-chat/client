@@ -42,6 +42,9 @@ linux:
   description: "Gryt Chat — real-time voice chat desktop client"
   mimeTypes:
     - x-scheme-handler/gryt
+  desktop:
+    entry:
+      X-AppImage-Payload-License: "AGPL-3.0-or-later"
 
 snap:
   confinement: strict
