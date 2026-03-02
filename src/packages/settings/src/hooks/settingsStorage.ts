@@ -1,5 +1,7 @@
 import { AUDIO_DEFAULTS } from "./useAudioSettings";
 
+export type ScreenShareCodec = "auto" | "h264" | "vp9" | "av1";
+
 export interface Settings {
   micID?: string;
   setMicID: (id: string) => void;
@@ -140,6 +142,12 @@ export interface Settings {
   experimentalScreenShare: boolean;
   setExperimentalScreenShare: (enabled: boolean) => void;
 
+  screenShareGamingMode: boolean;
+  setScreenShareGamingMode: (enabled: boolean) => void;
+
+  screenShareCodec: ScreenShareCodec;
+  setScreenShareCodec: (codec: ScreenShareCodec) => void;
+
   userVolumes: Record<string, number>;
   updateUserVolume: (serverUserId: string, volume: number) => void;
   resetUserVolume: (serverUserId: string) => void;
@@ -275,6 +283,12 @@ export const settingsInit: Settings = {
   setScreenShareFps: noop,
   experimentalScreenShare: false,
   setExperimentalScreenShare: noop,
+
+  screenShareGamingMode: true,
+  setScreenShareGamingMode: noop,
+
+  screenShareCodec: "auto",
+  setScreenShareCodec: noop,
 
   userVolumes: {},
   updateUserVolume: noop,

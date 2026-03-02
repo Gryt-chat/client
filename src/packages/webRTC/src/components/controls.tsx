@@ -50,6 +50,8 @@ export function Controls({ onDisconnect }: ControlsProps) {
     screenShareQuality, setScreenShareQuality,
     screenShareFps, setScreenShareFps,
     experimentalScreenShare,
+    screenShareGamingMode, setScreenShareGamingMode,
+    screenShareCodec, setScreenShareCodec,
     cameraID, setCameraID, cameraQuality, setCameraQuality,
     cameraMirrored, setCameraMirrored,
     cameraFlipped, setCameraFlipped,
@@ -109,13 +111,16 @@ export function Controls({ onDisconnect }: ControlsProps) {
       const videoTrack = screenVideoStream.getVideoTracks()[0];
       if (videoTrack) {
         voiceLog.info("SCREEN", `controls: syncing video track=${videoTrack.id} stream=${screenVideoStream.id} prev=${prevScreenVideoRef.current?.id ?? "null"}`);
-        addScreenVideoTrack(videoTrack, screenVideoStream);
+        addScreenVideoTrack(videoTrack, screenVideoStream, screenShareCodec);
         if (!webrtcScreenVideoStreamId.current) {
           webrtcScreenVideoStreamId.current = screenVideoStream.id;
         }
         prevScreenVideoRef.current = screenVideoStream;
 
-        const bitrate = estimateBitrate(screenShareQuality as ScreenShareQuality, screenShareFps);
+        let bitrate = estimateBitrate(screenShareQuality as ScreenShareQuality, screenShareFps);
+        if (bitrate && screenShareGamingMode) {
+          bitrate = Math.min(Math.round(bitrate * 1.5), 20_000_000);
+        }
         if (bitrate && getPeerConnection) {
           const pc = getPeerConnection();
           if (pc) {
@@ -123,7 +128,9 @@ export function Controls({ onDisconnect }: ControlsProps) {
             const screenSender = senders.find(s => s.track === videoTrack);
             if (screenSender) {
               const params = screenSender.getParameters();
-              params.degradationPreference = "maintain-resolution";
+              params.degradationPreference = screenShareGamingMode
+                ? "maintain-framerate"
+                : "maintain-resolution";
               if (params.encodings && params.encodings.length > 0) {
                 params.encodings[0].maxBitrate = bitrate;
                 params.encodings[0].maxFramerate = screenShareFps;
@@ -138,7 +145,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
       removeScreenVideoTrack();
       prevScreenVideoRef.current = null;
     }
-  }, [screenShareActive, screenVideoStream, isConnected, addScreenVideoTrack, removeScreenVideoTrack, screenShareQuality, screenShareFps, getPeerConnection]);
+  }, [screenShareActive, screenVideoStream, isConnected, addScreenVideoTrack, removeScreenVideoTrack, screenShareQuality, screenShareFps, screenShareGamingMode, screenShareCodec, getPeerConnection]);
 
   // Sync screen share audio track to WebRTC
   useEffect(() => {
@@ -314,6 +321,10 @@ export function Controls({ onDisconnect }: ControlsProps) {
         fps={screenShareFps}
         onFpsChange={setScreenShareFps}
         experimentalScreenShare={experimentalScreenShare}
+        gamingMode={screenShareGamingMode}
+        onGamingModeChange={setScreenShareGamingMode}
+        codec={screenShareCodec}
+        onCodecChange={setScreenShareCodec}
         onStart={({ sourceId, withAudio }) => startScreenShare(withAudio, sourceId)}
       />
     </>

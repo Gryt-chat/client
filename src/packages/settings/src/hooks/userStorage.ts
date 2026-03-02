@@ -239,6 +239,8 @@ export const SETTINGS_KEYS = [
   "screenShareQuality",
   "screenShareFps",
   "experimentalScreenShare",
+  "screenShareGamingMode",
+  "screenShareCodec",
   "userVolumes",
   "pinChannelsSidebar",
   "pinMembersSidebar",

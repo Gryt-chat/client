@@ -75,7 +75,7 @@ export interface ScreenShareInterface {
 }
 
 function useScreenShareHook(): ScreenShareInterface {
-  const { screenShareQuality, screenShareFps } = useSettings();
+  const { screenShareQuality, screenShareFps, screenShareGamingMode } = useSettings();
   const { audioContext } = useSpeakers();
   const {
     available: nativeAvailable,
@@ -149,8 +149,9 @@ function useScreenShareHook(): ScreenShareInterface {
           });
         }
       } else {
-        const videoConstraints: MediaTrackConstraints = {
+        const videoConstraints: MediaTrackConstraints & { cursor?: string } = {
           frameRate: { ideal: fps },
+          cursor: screenShareGamingMode ? "never" : "always",
         };
         if (res.width) {
           videoConstraints.width = { ideal: res.width };
@@ -180,7 +181,7 @@ function useScreenShareHook(): ScreenShareInterface {
 
       const videoTracks = stream.getVideoTracks();
       if (videoTracks.length > 0) {
-        videoTracks[0].contentHint = "detail";
+        videoTracks[0].contentHint = screenShareGamingMode ? "motion" : "detail";
 
         const videoOnly = new MediaStream(videoTracks);
         setScreenVideoStream(videoOnly);
@@ -237,7 +238,7 @@ function useScreenShareHook(): ScreenShareInterface {
         setScreenAudioStream(null);
       }
     }
-  }, [screenShareQuality, screenShareFps, stopScreenShare, nativeAvailable, nativeStart, audioContext]);
+  }, [screenShareQuality, screenShareFps, screenShareGamingMode, stopScreenShare, nativeAvailable, nativeStart, audioContext]);
 
   // Sync native capture stream → screenAudioStream
   useEffect(() => {

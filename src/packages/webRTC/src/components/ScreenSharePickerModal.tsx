@@ -4,6 +4,7 @@ import { MdClose, MdMonitor, MdScreenShare, MdWindow } from "react-icons/md";
 
 import type { ScreenShareFps, ScreenShareQuality } from "@/audio";
 import { estimateBitrate, EXPERIMENTAL_FPS_OPTIONS, STANDARD_FPS_OPTIONS } from "@/audio";
+import type { ScreenShareCodec } from "@/settings";
 
 import { type DesktopSource, isElectron } from "../../../../lib/electron";
 
@@ -15,6 +16,10 @@ interface ScreenSharePickerModalProps {
   fps: number;
   onFpsChange: (fps: number) => void;
   experimentalScreenShare: boolean;
+  gamingMode: boolean;
+  onGamingModeChange: (enabled: boolean) => void;
+  codec: ScreenShareCodec;
+  onCodecChange: (codec: ScreenShareCodec) => void;
   onStart: (opts: { sourceId?: string; withAudio: boolean }) => void;
 }
 
@@ -37,6 +42,28 @@ const ALL_QUALITY_OPTIONS: { value: ScreenShareQuality; label: string; height: n
   { value: "4p", label: "4p (7\u00d74)", height: 4 },
 ];
 
+const CODEC_OPTIONS: { value: ScreenShareCodec; label: string; mime: string }[] = [
+  { value: "auto", label: "Auto (H.264)", mime: "" },
+  { value: "h264", label: "H.264", mime: "video/H264" },
+  { value: "vp9", label: "VP9", mime: "video/VP9" },
+  { value: "av1", label: "AV1", mime: "video/AV1" },
+];
+
+function getAvailableCodecs(): ScreenShareCodec[] {
+  const caps = typeof RTCRtpSender !== "undefined"
+    ? RTCRtpSender.getCapabilities?.("video")
+    : null;
+  if (!caps) return ["auto", "h264", "vp9"];
+  const mimes = new Set(caps.codecs.map(c => c.mimeType));
+  const available: ScreenShareCodec[] = ["auto"];
+  for (const opt of CODEC_OPTIONS) {
+    if (opt.value !== "auto" && mimes.has(opt.mime)) {
+      available.push(opt.value);
+    }
+  }
+  return available;
+}
+
 function formatBitrate(bps: number): string {
   const mbps = bps / 1_000_000;
   return mbps >= 10 ? `${Math.round(mbps)} Mbps` : `${mbps.toFixed(1)} Mbps`;
@@ -53,7 +80,8 @@ type Tab = "screens" | "windows";
 
 export function ScreenSharePickerModal({
   open, onOpenChange, quality, onQualityChange,
-  fps, onFpsChange, experimentalScreenShare, onStart,
+  fps, onFpsChange, experimentalScreenShare,
+  gamingMode, onGamingModeChange, codec, onCodecChange, onStart,
 }: ScreenSharePickerModalProps) {
   const [sources, setSources] = useState<DesktopSource[]>([]);
   const [loading, setLoading] = useState(false);
@@ -62,6 +90,7 @@ export function ScreenSharePickerModal({
   const [includeAudio, setIncludeAudio] = useState(true);
   const [screenAccess, setScreenAccess] = useState<string | null>(null);
   const inElectron = isElectron();
+  const [availableCodecs] = useState(getAvailableCodecs);
 
   const loadSources = useCallback(async () => {
     if (!inElectron) return;
@@ -297,6 +326,11 @@ export function ScreenSharePickerModal({
               Include audio
             </Text>
 
+            <Text as="label" size="2" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+              <Checkbox size="1" checked={gamingMode} onCheckedChange={(v) => onGamingModeChange(v === true)} />
+              Gaming mode
+            </Text>
+
             <Flex align="center" gap="2" ml="auto">
               <Text size="2">Quality</Text>
               <Select.Root value={quality} onValueChange={(v) => onQualityChange(v as ScreenShareQuality)}>
@@ -316,6 +350,18 @@ export function ScreenSharePickerModal({
                 <Select.Content position="popper" sideOffset={4}>
                   {fpsOptions.map((o) => (
                     <Select.Item key={o.value} value={String(o.value)}>{o.label}</Select.Item>
+                  ))}
+                </Select.Content>
+              </Select.Root>
+            </Flex>
+
+            <Flex align="center" gap="2">
+              <Text size="2">Codec</Text>
+              <Select.Root value={codec} onValueChange={(v) => onCodecChange(v as ScreenShareCodec)}>
+                <Select.Trigger variant="soft" />
+                <Select.Content position="popper" sideOffset={4}>
+                  {CODEC_OPTIONS.filter(o => availableCodecs.includes(o.value)).map((o) => (
+                    <Select.Item key={o.value} value={o.value}>{o.label}</Select.Item>
                   ))}
                 </Select.Content>
               </Select.Root>

@@ -8,7 +8,7 @@ import {
   useUserId,
 } from "@/common";
 
-import { settingsInit } from "./settingsStorage";
+import { type ScreenShareCodec, settingsInit } from "./settingsStorage";
 import { loadAudioFromCache, useAudioSettings } from "./useAudioSettings";
 import { getUserValue, loadForUser, setUserValue } from "./userStorage";
 
@@ -40,6 +40,8 @@ function useSettingsHook() {
   const [screenShareQuality, setScreenShareQuality] = useState("native");
   const [screenShareFps, setScreenShareFps] = useState(30);
   const [experimentalScreenShare, setExperimentalScreenShare] = useState(false);
+  const [screenShareGamingMode, setScreenShareGamingModeState] = useState(true);
+  const [screenShareCodec, setScreenShareCodecState] = useState<ScreenShareCodec>("auto");
 
   const [userVolumes, setUserVolumes] = useState<Record<string, number>>({});
   const [showVoiceView, setShowVoiceView] = useState(true);
@@ -79,6 +81,8 @@ function useSettingsHook() {
       setScreenShareQuality(getUserValue("screenShareQuality", "native"));
       setScreenShareFps(getUserValue("screenShareFps", 30));
       setExperimentalScreenShare(getUserValue("experimentalScreenShare", false));
+      setScreenShareGamingModeState(getUserValue("screenShareGamingMode", true));
+      setScreenShareCodecState(getUserValue<ScreenShareCodec>("screenShareCodec", "auto"));
       setUserVolumes(getUserValue("userVolumes", {}));
       setPinChannelsSidebarState(getUserValue("pinChannelsSidebar", true));
       setPinMembersSidebarState(getUserValue("pinMembersSidebar", true));
@@ -210,6 +214,16 @@ function useSettingsHook() {
     setUserValue("experimentalScreenShare", enabled);
   }
 
+  function updateScreenShareGamingMode(enabled: boolean) {
+    setScreenShareGamingModeState(enabled);
+    setUserValue("screenShareGamingMode", enabled);
+  }
+
+  function updateScreenShareCodec(codec: ScreenShareCodec) {
+    setScreenShareCodecState(codec);
+    setUserValue("screenShareCodec", codec);
+  }
+
   function updateUserVolume(serverUserId: string, volume: number) {
     setUserVolumes((prev) => {
       const next = { ...prev, [serverUserId]: volume };
@@ -303,6 +317,10 @@ function useSettingsHook() {
     setScreenShareFps: updateScreenShareFps,
     experimentalScreenShare,
     setExperimentalScreenShare: updateExperimentalScreenShare,
+    screenShareGamingMode,
+    setScreenShareGamingMode: updateScreenShareGamingMode,
+    screenShareCodec,
+    setScreenShareCodec: updateScreenShareCodec,
     userVolumes,
     updateUserVolume,
     resetUserVolume,

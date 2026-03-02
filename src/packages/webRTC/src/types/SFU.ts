@@ -38,7 +38,7 @@ export interface SFUInterface {
   disconnect: (playSound?: boolean, onDisconnect?: () => void) => Promise<void>;
   addVideoTrack: (track: MediaStreamTrack, stream: MediaStream) => void;
   removeVideoTrack: () => void;
-  addScreenVideoTrack: (track: MediaStreamTrack, stream: MediaStream) => void;
+  addScreenVideoTrack: (track: MediaStreamTrack, stream: MediaStream, preferredCodec?: string) => void;
   removeScreenVideoTrack: () => void;
   addScreenAudioTrack: (track: MediaStreamTrack, stream: MediaStream) => void;
   removeScreenAudioTrack: () => void;

@@ -332,7 +332,7 @@ function useSfuHook(): SFUInterface {
     sendRenegotiate();
   }, [sendRenegotiate]);
 
-  const addScreenVideoTrack = useCallback((track: MediaStreamTrack, stream: MediaStream) => {
+  const addScreenVideoTrack = useCallback((track: MediaStreamTrack, stream: MediaStream, preferredCodec?: string) => {
     const pc = peerConnectionRef.current;
     if (!pc || pc.connectionState === "closed") return;
     if (screenVideoSenderRef.current) {
@@ -345,6 +345,29 @@ function useSfuHook(): SFUInterface {
     voiceLog.info("SCREEN", `ADD path – track=${track.id} stream=${stream.id} pcState=${pc.signalingState}`);
     const sender = pc.addTrack(track, stream);
     screenVideoSenderRef.current = sender;
+
+    const transceiver = pc.getTransceivers().find(t => t.sender === sender);
+    if (transceiver?.setCodecPreferences) {
+      const caps = RTCRtpSender.getCapabilities("video");
+      if (caps) {
+        const mimeMap: Record<string, string> = {
+          h264: "video/H264",
+          vp9: "video/VP9",
+          av1: "video/AV1",
+        };
+        const targetMime = preferredCodec && preferredCodec !== "auto"
+          ? mimeMap[preferredCodec]
+          : "video/H264";
+
+        if (targetMime) {
+          const preferred = caps.codecs.filter(c => c.mimeType === targetMime);
+          const rest = caps.codecs.filter(c => c.mimeType !== targetMime);
+          transceiver.setCodecPreferences([...preferred, ...rest]);
+          voiceLog.info("SCREEN", `setCodecPreferences: ${targetMime} preferred (${preferred.length} matched, ${rest.length} other)`);
+        }
+      }
+    }
+
     voiceLog.info("SCREEN", `addTrack done, calling sendRenegotiate`);
     sendRenegotiate();
   }, [sendRenegotiate]);
