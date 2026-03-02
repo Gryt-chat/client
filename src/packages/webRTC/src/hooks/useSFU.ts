@@ -352,10 +352,15 @@ function useSfuHook(): SFUInterface {
   const removeScreenVideoTrack = useCallback(() => {
     const sender = screenVideoSenderRef.current;
     if (!sender) return;
-    voiceLog.info("SCREEN", `removeScreenVideoTrack – pausing via replaceTrack(null), senderTrack=${sender.track?.id ?? "null"}`);
-    sender.replaceTrack(null)
-      .then(() => voiceLog.ok("SCREEN", "pause", "video replaceTrack(null) succeeded"))
-      .catch((err: unknown) => voiceLog.fail("SCREEN", "pause", "video replaceTrack(null) FAILED", err));
+    const pc = peerConnectionRef.current;
+    voiceLog.info("SCREEN", `removeScreenVideoTrack – removing sender, senderTrack=${sender.track?.id ?? "null"}`);
+    try {
+      if (pc && pc.connectionState !== "closed") pc.removeTrack(sender);
+      voiceLog.ok("SCREEN", "pause", "video removeTrack succeeded");
+    } catch (err) {
+      voiceLog.fail("SCREEN", "pause", "video removeTrack FAILED", err);
+    }
+    screenVideoSenderRef.current = null;
   }, []);
 
   const addScreenAudioTrack = useCallback((track: MediaStreamTrack, stream: MediaStream) => {
@@ -378,10 +383,15 @@ function useSfuHook(): SFUInterface {
   const removeScreenAudioTrack = useCallback(() => {
     const sender = screenAudioSenderRef.current;
     if (!sender) return;
-    voiceLog.info("SCREEN", `removeScreenAudioTrack – pausing via replaceTrack(null), senderTrack=${sender.track?.id ?? "null"}`);
-    sender.replaceTrack(null)
-      .then(() => voiceLog.ok("SCREEN", "pause", "audio replaceTrack(null) succeeded"))
-      .catch((err: unknown) => voiceLog.fail("SCREEN", "pause", "audio replaceTrack(null) FAILED", err));
+    const pc = peerConnectionRef.current;
+    voiceLog.info("SCREEN", `removeScreenAudioTrack – removing sender, senderTrack=${sender.track?.id ?? "null"}`);
+    try {
+      if (pc && pc.connectionState !== "closed") pc.removeTrack(sender);
+      voiceLog.ok("SCREEN", "pause", "audio removeTrack succeeded");
+    } catch (err) {
+      voiceLog.fail("SCREEN", "pause", "audio removeTrack FAILED", err);
+    }
+    screenAudioSenderRef.current = null;
   }, []);
 
   // Clear stale sender refs when the peer connection is closed so a fresh
