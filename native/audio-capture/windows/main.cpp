@@ -127,13 +127,20 @@ static void logProcessTree(DWORD rootPid) {
     CloseHandle(snap);
 }
 
+// ── IAgileObject (marker interface required by ActivateAudioInterfaceAsync) ──
+
+#ifndef __IAgileObject_FWD_DEFINED__
+MIDL_INTERFACE("94ea2b94-e9cc-49e0-c0ff-ee64ca8f5b90")
+IAgileObject : public IUnknown {};
+#endif
+
 // ── IActivateAudioInterfaceCompletionHandler ───────────────────────────
 
 static HANDLE g_activateEvent = nullptr;
 static HRESULT g_activateHr = E_FAIL;
 static IAudioClient *g_audioClient = nullptr;
 
-struct ActivateHandler : public IActivateAudioInterfaceCompletionHandler {
+struct ActivateHandler : public IActivateAudioInterfaceCompletionHandler, public IAgileObject {
     LONG refCount = 1;
 
     ULONG STDMETHODCALLTYPE AddRef() override { return InterlockedIncrement(&refCount); }
@@ -143,7 +150,9 @@ struct ActivateHandler : public IActivateAudioInterfaceCompletionHandler {
         return r;
     }
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void **ppv) override {
-        if (riid == __uuidof(IUnknown) || riid == __uuidof(IActivateAudioInterfaceCompletionHandler)) {
+        if (riid == __uuidof(IUnknown) ||
+            riid == __uuidof(IActivateAudioInterfaceCompletionHandler) ||
+            riid == __uuidof(IAgileObject)) {
             *ppv = static_cast<IActivateAudioInterfaceCompletionHandler *>(this);
             AddRef();
             return S_OK;

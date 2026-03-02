@@ -1,6 +1,6 @@
 import { Avatar, Flex, Text, Tooltip } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
-import { memo, useCallback, useRef, useState } from "react";
+import { forwardRef, memo, useCallback, useRef, useState } from "react";
 
 import { getUploadsFileUrl } from "@/common";
 
@@ -55,7 +55,7 @@ interface MessageRowProps {
   isNew?: boolean;
 }
 
-export const MessageRow = memo(({
+export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
   message: m,
   meta,
   replyPreviewText,
@@ -80,7 +80,7 @@ export const MessageRow = memo(({
   scrollToMessage,
   onLightboxOpen,
   isNew,
-}: MessageRowProps) => {
+}, forwardedRef) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isCtxMenuOpen, setIsCtxMenuOpen] = useState(false);
   const [isReactionPickerOpen, setIsReactionPickerOpen] = useState(false);
@@ -309,9 +309,15 @@ export const MessageRow = memo(({
     </>
   );
 
+  const mergedRef = useCallback((node: HTMLDivElement | null) => {
+    (wrapperRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+    if (typeof forwardedRef === "function") forwardedRef(node);
+    else if (forwardedRef) (forwardedRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+  }, [forwardedRef]);
+
   return (
     <motion.div
-      ref={wrapperRef}
+      ref={mergedRef}
       layout="position"
       style={{ width: "100%", overflow: isNew ? "hidden" : undefined }}
       initial={isNew ? { opacity: 0, height: 0 } : false}
@@ -337,7 +343,7 @@ export const MessageRow = memo(({
       )}
     </motion.div>
   );
-});
+}));
 
 MessageRow.displayName = "MessageRow";
 
