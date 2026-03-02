@@ -42,6 +42,7 @@ function useSettingsHook() {
   const [experimentalScreenShare, setExperimentalScreenShare] = useState(false);
   const [screenShareGamingMode, setScreenShareGamingModeState] = useState(true);
   const [screenShareCodec, setScreenShareCodecState] = useState<ScreenShareCodec>("auto");
+  const [screenShareMaxBitrate, setScreenShareMaxBitrateState] = useState(0);
 
   const [userVolumes, setUserVolumes] = useState<Record<string, number>>({});
   const [showVoiceView, setShowVoiceView] = useState(true);
@@ -83,6 +84,7 @@ function useSettingsHook() {
       setExperimentalScreenShare(getUserValue("experimentalScreenShare", false));
       setScreenShareGamingModeState(getUserValue("screenShareGamingMode", true));
       setScreenShareCodecState(getUserValue<ScreenShareCodec>("screenShareCodec", "auto"));
+      setScreenShareMaxBitrateState(getUserValue("screenShareMaxBitrate", 0));
       setUserVolumes(getUserValue("userVolumes", {}));
       setPinChannelsSidebarState(getUserValue("pinChannelsSidebar", true));
       setPinMembersSidebarState(getUserValue("pinMembersSidebar", true));
@@ -224,6 +226,11 @@ function useSettingsHook() {
     setUserValue("screenShareCodec", codec);
   }
 
+  function updateScreenShareMaxBitrate(bps: number) {
+    setScreenShareMaxBitrateState(bps);
+    setUserValue("screenShareMaxBitrate", bps);
+  }
+
   function updateUserVolume(serverUserId: string, volume: number) {
     setUserVolumes((prev) => {
       const next = { ...prev, [serverUserId]: volume };
@@ -321,6 +328,8 @@ function useSettingsHook() {
     setScreenShareGamingMode: updateScreenShareGamingMode,
     screenShareCodec,
     setScreenShareCodec: updateScreenShareCodec,
+    screenShareMaxBitrate,
+    setScreenShareMaxBitrate: updateScreenShareMaxBitrate,
     userVolumes,
     updateUserVolume,
     resetUserVolume,

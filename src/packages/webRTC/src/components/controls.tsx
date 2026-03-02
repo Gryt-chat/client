@@ -52,6 +52,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
     experimentalScreenShare,
     screenShareGamingMode, setScreenShareGamingMode,
     screenShareCodec, setScreenShareCodec,
+    screenShareMaxBitrate, setScreenShareMaxBitrate,
     cameraID, setCameraID, cameraQuality, setCameraQuality,
     cameraMirrored, setCameraMirrored,
     cameraFlipped, setCameraFlipped,
@@ -117,9 +118,14 @@ export function Controls({ onDisconnect }: ControlsProps) {
         }
         prevScreenVideoRef.current = screenVideoStream;
 
-        let bitrate = estimateBitrate(screenShareQuality as ScreenShareQuality, screenShareFps);
-        if (bitrate && screenShareGamingMode) {
-          bitrate = Math.min(Math.round(bitrate * 1.5), 20_000_000);
+        let bitrate: number | null;
+        if (screenShareMaxBitrate > 0) {
+          bitrate = screenShareMaxBitrate;
+        } else {
+          bitrate = estimateBitrate(screenShareQuality as ScreenShareQuality, screenShareFps);
+          if (bitrate && screenShareGamingMode) {
+            bitrate = Math.min(Math.round(bitrate * 1.5), 20_000_000);
+          }
         }
         if (bitrate && getPeerConnection) {
           const pc = getPeerConnection();
@@ -145,7 +151,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
       removeScreenVideoTrack();
       prevScreenVideoRef.current = null;
     }
-  }, [screenShareActive, screenVideoStream, isConnected, addScreenVideoTrack, removeScreenVideoTrack, screenShareQuality, screenShareFps, screenShareGamingMode, screenShareCodec, getPeerConnection]);
+  }, [screenShareActive, screenVideoStream, isConnected, addScreenVideoTrack, removeScreenVideoTrack, screenShareQuality, screenShareFps, screenShareGamingMode, screenShareCodec, screenShareMaxBitrate, getPeerConnection]);
 
   // Sync screen share audio track to WebRTC
   useEffect(() => {
@@ -325,6 +331,8 @@ export function Controls({ onDisconnect }: ControlsProps) {
         onGamingModeChange={setScreenShareGamingMode}
         codec={screenShareCodec}
         onCodecChange={setScreenShareCodec}
+        maxBitrate={screenShareMaxBitrate}
+        onMaxBitrateChange={setScreenShareMaxBitrate}
         onStart={({ sourceId, withAudio }) => startScreenShare(withAudio, sourceId)}
       />
     </>

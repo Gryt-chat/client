@@ -148,6 +148,10 @@ export interface Settings {
   screenShareCodec: ScreenShareCodec;
   setScreenShareCodec: (codec: ScreenShareCodec) => void;
 
+  /** 0 = auto (estimated from quality/fps), otherwise manual value in bps */
+  screenShareMaxBitrate: number;
+  setScreenShareMaxBitrate: (bps: number) => void;
+
   userVolumes: Record<string, number>;
   updateUserVolume: (serverUserId: string, volume: number) => void;
   resetUserVolume: (serverUserId: string) => void;
@@ -289,6 +293,9 @@ export const settingsInit: Settings = {
 
   screenShareCodec: "auto",
   setScreenShareCodec: noop,
+
+  screenShareMaxBitrate: 0,
+  setScreenShareMaxBitrate: noop,
 
   userVolumes: {},
   updateUserVolume: noop,

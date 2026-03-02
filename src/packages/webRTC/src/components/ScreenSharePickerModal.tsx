@@ -1,6 +1,6 @@
 import { Badge, Button, Checkbox, Dialog, Flex, IconButton, Select, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { MdClose, MdMonitor, MdScreenShare, MdWindow } from "react-icons/md";
+import { MdClose, MdExpandLess, MdExpandMore, MdMonitor, MdScreenShare, MdWindow } from "react-icons/md";
 
 import type { ScreenShareFps, ScreenShareQuality } from "@/audio";
 import { estimateBitrate, EXPERIMENTAL_FPS_OPTIONS, STANDARD_FPS_OPTIONS } from "@/audio";
@@ -20,6 +20,8 @@ interface ScreenSharePickerModalProps {
   onGamingModeChange: (enabled: boolean) => void;
   codec: ScreenShareCodec;
   onCodecChange: (codec: ScreenShareCodec) => void;
+  maxBitrate: number;
+  onMaxBitrateChange: (bps: number) => void;
   onStart: (opts: { sourceId?: string; withAudio: boolean }) => void;
 }
 
@@ -47,6 +49,20 @@ const CODEC_OPTIONS: { value: ScreenShareCodec; label: string; mime: string }[] 
   { value: "h264", label: "H.264", mime: "video/H264" },
   { value: "vp9", label: "VP9", mime: "video/VP9" },
   { value: "av1", label: "AV1", mime: "video/AV1" },
+];
+
+const BITRATE_OPTIONS: { value: number; label: string }[] = [
+  { value: 0, label: "Auto" },
+  { value: 1_000_000, label: "1 Mbps" },
+  { value: 2_000_000, label: "2 Mbps" },
+  { value: 4_000_000, label: "4 Mbps" },
+  { value: 6_000_000, label: "6 Mbps" },
+  { value: 8_000_000, label: "8 Mbps" },
+  { value: 10_000_000, label: "10 Mbps" },
+  { value: 15_000_000, label: "15 Mbps" },
+  { value: 20_000_000, label: "20 Mbps" },
+  { value: 30_000_000, label: "30 Mbps" },
+  { value: 50_000_000, label: "50 Mbps" },
 ];
 
 function getAvailableCodecs(): ScreenShareCodec[] {
@@ -81,7 +97,10 @@ type Tab = "screens" | "windows";
 export function ScreenSharePickerModal({
   open, onOpenChange, quality, onQualityChange,
   fps, onFpsChange, experimentalScreenShare,
-  gamingMode, onGamingModeChange, codec, onCodecChange, onStart,
+  gamingMode, onGamingModeChange,
+  codec, onCodecChange,
+  maxBitrate, onMaxBitrateChange,
+  onStart,
 }: ScreenSharePickerModalProps) {
   const [sources, setSources] = useState<DesktopSource[]>([]);
   const [loading, setLoading] = useState(false);
@@ -89,6 +108,7 @@ export function ScreenSharePickerModal({
   const [selected, setSelected] = useState<string | null>(null);
   const [includeAudio, setIncludeAudio] = useState(true);
   const [screenAccess, setScreenAccess] = useState<string | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const inElectron = isElectron();
   const [availableCodecs] = useState(getAvailableCodecs);
 
@@ -320,7 +340,7 @@ export function ScreenSharePickerModal({
             ))}
           </div>
 
-          <Flex align="center" gap="4">
+          <Flex align="center" gap="4" wrap="wrap">
             <Text as="label" size="2" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
               <Checkbox size="1" checked={includeAudio} onCheckedChange={(v) => setIncludeAudio(v === true)} />
               Include audio
@@ -354,21 +374,65 @@ export function ScreenSharePickerModal({
                 </Select.Content>
               </Select.Root>
             </Flex>
-
-            <Flex align="center" gap="2">
-              <Text size="2">Codec</Text>
-              <Select.Root value={codec} onValueChange={(v) => onCodecChange(v as ScreenShareCodec)}>
-                <Select.Trigger variant="soft" />
-                <Select.Content position="popper" sideOffset={4}>
-                  {CODEC_OPTIONS.filter(o => availableCodecs.includes(o.value)).map((o) => (
-                    <Select.Item key={o.value} value={o.value}>{o.label}</Select.Item>
-                  ))}
-                </Select.Content>
-              </Select.Root>
-            </Flex>
           </Flex>
 
-          {estimatedBps !== null ? (
+          <Flex direction="column" gap="3">
+            <Button
+              variant="ghost"
+              color="gray"
+              size="1"
+              onClick={() => setShowAdvanced(v => !v)}
+              style={{ alignSelf: "flex-start", cursor: "pointer" }}
+            >
+              {showAdvanced ? <MdExpandLess size={14} /> : <MdExpandMore size={14} />}
+              Advanced
+            </Button>
+
+            {showAdvanced && (
+              <Flex
+                direction="column"
+                gap="3"
+                px="3"
+                py="3"
+                style={{
+                  borderRadius: "var(--radius-2)",
+                  background: "var(--gray-3)",
+                }}
+              >
+                <Flex align="center" gap="4" wrap="wrap">
+                  <Flex align="center" gap="2">
+                    <Text size="2">Codec</Text>
+                    <Select.Root value={codec} onValueChange={(v) => onCodecChange(v as ScreenShareCodec)}>
+                      <Select.Trigger variant="soft" />
+                      <Select.Content position="popper" sideOffset={4}>
+                        {CODEC_OPTIONS.filter(o => availableCodecs.includes(o.value)).map((o) => (
+                          <Select.Item key={o.value} value={o.value}>{o.label}</Select.Item>
+                        ))}
+                      </Select.Content>
+                    </Select.Root>
+                  </Flex>
+
+                  <Flex align="center" gap="2">
+                    <Text size="2">Max bitrate</Text>
+                    <Select.Root value={String(maxBitrate)} onValueChange={(v) => onMaxBitrateChange(Number(v))}>
+                      <Select.Trigger variant="soft" />
+                      <Select.Content position="popper" sideOffset={4} style={{ maxHeight: 300 }}>
+                        {BITRATE_OPTIONS.map((o) => (
+                          <Select.Item key={o.value} value={String(o.value)}>{o.label}</Select.Item>
+                        ))}
+                      </Select.Content>
+                    </Select.Root>
+                  </Flex>
+                </Flex>
+
+                <Text size="1" color="gray">
+                  Auto codec prefers H.264 for universal hardware encoding. AV1 offers better compression on newer GPUs (RTX 40+, Intel Arc, AMD RX 7000+).
+                </Text>
+              </Flex>
+            )}
+          </Flex>
+
+          {(maxBitrate > 0 || estimatedBps !== null) && (
             <Flex
               align="center"
               gap="2"
@@ -379,17 +443,24 @@ export function ScreenSharePickerModal({
                 background: "var(--gray-3)",
               }}
             >
-              <Text size="2" weight="medium">Estimated bandwidth:</Text>
-              <Badge color={bitrateColor(estimatedBps)} variant="soft" size="1">
-                {formatBitrate(estimatedBps)}
+              <Text size="2" weight="medium">
+                {maxBitrate > 0 ? "Max bitrate:" : "Estimated bandwidth:"}
+              </Text>
+              <Badge
+                color={bitrateColor(maxBitrate > 0 ? maxBitrate : estimatedBps!)}
+                variant="soft"
+                size="1"
+              >
+                {formatBitrate(maxBitrate > 0 ? maxBitrate : estimatedBps!)}
               </Badge>
-              {estimatedBps / 1_000_000 > 30 && (
+              {(maxBitrate > 0 ? maxBitrate : estimatedBps!) / 1_000_000 > 30 && (
                 <Text size="1" color="red">
                   Very high &mdash; ensure your connection can handle this
                 </Text>
               )}
             </Flex>
-          ) : (
+          )}
+          {maxBitrate === 0 && estimatedBps === null && (
             <Flex
               align="center"
               gap="2"
