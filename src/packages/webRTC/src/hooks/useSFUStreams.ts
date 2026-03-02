@@ -39,6 +39,8 @@ export function useSFUStreams({
 }: UseSFUStreamsParams): void {
   const streamsRef = useRef(streams);
   streamsRef.current = streams;
+  const streamSourcesRef = useRef(streamSources);
+  streamSourcesRef.current = streamSources;
   // Track peer connections and emit events when peers join/leave
   useEffect(() => {
     if (!isConnected) {
@@ -215,16 +217,18 @@ export function useSFUStreams({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [streams, audioContext, streamSources, setStreamSources]);
 
-  // Update output volume for all streams when setting changes
+  // Update output volume for all streams when the global setting changes.
+  // Uses a ref for streamSources so this effect only fires on volume/deafen
+  // changes — not when a new peer joins — avoiding a reset of per-user gains.
   useEffect(() => {
     const outputGain = isDeafened ? 0 : sliderToOutputGain(outputVolume);
 
-    Object.values(streamSources).forEach(({ gain }) => {
+    Object.values(streamSourcesRef.current).forEach(({ gain }) => {
       if (gain) {
         gain.gain.setValueAtTime(outputGain, audioContext?.currentTime || 0);
       }
     });
-  }, [outputVolume, isDeafened, streamSources, audioContext]);
+  }, [outputVolume, isDeafened, audioContext]);
 
   // Safety net: periodically remove streams whose tracks have all ended.
   // Handles edge cases where track.onended doesn't fire (ICE failure, etc).
