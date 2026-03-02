@@ -350,6 +350,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
         const files = e.dataTransfer?.files;
         if (!files || files.length === 0) return;
         e.preventDefault();
+        e.stopPropagation();
         addFiles(files);
       },
       [addFiles]
