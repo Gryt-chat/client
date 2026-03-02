@@ -120,6 +120,7 @@ export function FocusedVideoView({
     <Flex direction="column" style={{ flex: 1, minHeight: 0 }}>
       <div
         onClick={onClose}
+        onContextMenu={(e) => e.preventDefault()}
         onMouseMove={showControls}
         onMouseLeave={hideControls}
         style={{

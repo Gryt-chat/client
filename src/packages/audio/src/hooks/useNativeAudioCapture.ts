@@ -108,13 +108,22 @@ export function useNativeAudioCapture(): NativeAudioCapture {
 
       let pcmChunks = 0;
       let pcmTotalBytes = 0;
+      let peakSample = 0;
+      let sumSquares = 0;
+      let totalSamples = 0;
       let logIntervalId: ReturnType<typeof setInterval> | null = null;
 
       logIntervalId = setInterval(() => {
         if (pcmChunks > 0) {
+          const rms = totalSamples > 0 ? Math.sqrt(sumSquares / totalSamples) : 0;
+          const rmsDb = rms > 0 ? 20 * Math.log10(rms / 32768) : -Infinity;
+          const peakDb = peakSample > 0 ? 20 * Math.log10(peakSample / 32768) : -Infinity;
           console.log(
-            `[NativeAudioCapture] PCM stats: ${pcmChunks} chunks, ${(pcmTotalBytes / 1024).toFixed(0)} KB total`,
+            `[NativeAudioCapture] PCM stats: ${pcmChunks} chunks, ${(pcmTotalBytes / 1024).toFixed(0)} KB total | peak ${peakDb.toFixed(1)} dBFS, rms ${rmsDb.toFixed(1)} dBFS`,
           );
+          peakSample = 0;
+          sumSquares = 0;
+          totalSamples = 0;
         } else {
           console.warn("[NativeAudioCapture] PCM stats: 0 chunks received (no audio data flowing)");
         }
@@ -129,6 +138,12 @@ export function useNativeAudioCapture(): NativeAudioCapture {
           );
         }
         const int16 = new Int16Array(pcmArrayBuffer);
+        for (let i = 0; i < int16.length; i++) {
+          const abs = Math.abs(int16[i]);
+          if (abs > peakSample) peakSample = abs;
+          sumSquares += int16[i] * int16[i];
+        }
+        totalSamples += int16.length;
         workletNode.port.postMessage({ type: "pcm", samples: int16 }, [int16.buffer]);
       });
 
