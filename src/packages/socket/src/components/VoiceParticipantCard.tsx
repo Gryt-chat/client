@@ -163,7 +163,7 @@ export function VoiceParticipantCard({
   localScreenStream: MediaStream | null;
   videoStreams?: Record<string, MediaStream>;
   onFocus: (info: FocusedStreamInfo) => void;
-  onPopout: (itemId: string, stream: MediaStream, title: string) => void;
+  onPopout: (itemId: string, stream: MediaStream, title: string, audioStreamId?: string) => void;
   onDisconnectUser?: (targetServerUserId: string) => void;
   currentUserRole?: Role;
   memberInfo?: MemberInfo;
@@ -204,7 +204,7 @@ export function VoiceParticipantCard({
         onServerMute={adminActions?.onServerMuteUser && serverUserId ? (muted) => adminActions.onServerMuteUser!(serverUserId, muted) : undefined}
         onServerDeafen={adminActions?.onServerDeafenUser && serverUserId ? (deafened) => adminActions.onServerDeafenUser!(serverUserId, deafened) : undefined}
         onChangeRole={adminActions?.onChangeRole && serverUserId ? (role) => adminActions.onChangeRole!(serverUserId, role) : undefined}
-        onPopoutVideo={() => onPopout(itemId, screenStream, screenTitle)}
+        onPopoutVideo={() => onPopout(itemId, screenStream, screenTitle, (!isSelf && client.screenShareAudioStreamID) || undefined)}
       >
         <VideoCard
           stream={screenStream}

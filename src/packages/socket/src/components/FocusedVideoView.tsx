@@ -9,7 +9,7 @@ import {
   MdVolumeUp,
 } from "react-icons/md";
 
-import { sliderToGain } from "@/lib/audioVolume";
+import { gainToSlider, sliderToGain } from "@/lib/audioVolume";
 import type { StreamSources } from "@/webRTC/src/types/SFU";
 
 const HIDE_DELAY_MS = 2500;
@@ -48,7 +48,12 @@ export function FocusedVideoView({
 }) {
   const ref = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [volume, setVolume] = useState(100);
+  const [volume, setVolume] = useState(() => {
+    if (audioStreamId && streamSources?.[audioStreamId]) {
+      return gainToSlider(streamSources[audioStreamId].gain.gain.value, 200);
+    }
+    return 100;
+  });
   const [controlsVisible, setControlsVisible] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);

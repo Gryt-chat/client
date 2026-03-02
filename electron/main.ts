@@ -462,7 +462,15 @@ function createMainWindow(): void {
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url === "about:blank") {
-      return { action: "allow" };
+      return {
+        action: "allow",
+        overrideBrowserWindowOptions: {
+          frame: false,
+          backgroundColor: "#111318",
+          minWidth: 320,
+          minHeight: 180,
+        },
+      };
     }
     shell.openExternal(url);
     return { action: "deny" };

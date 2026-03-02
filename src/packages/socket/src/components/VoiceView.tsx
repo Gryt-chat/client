@@ -181,7 +181,7 @@ export const VoiceView = ({
     return items;
   }, [visibleClients, clientsForHost, currentConnectionId, localScreenActive, localScreenStream]);
 
-  const { poppedOutItems, popout: handlePopout, updatePopoutStream } = usePopoutStreams(gridItems);
+  const { poppedOutItems, popout: handlePopout, updatePopoutStream } = usePopoutStreams(gridItems, streamSources);
 
   const [customOrder, setCustomOrder] = useState<string[]>([]);
 
@@ -327,7 +327,7 @@ export const VoiceView = ({
 
   const handleFocusedPopout = useCallback(() => {
     if (!focusedStream) return;
-    handlePopout(focusedStream.itemId, focusedStream.stream, focusedStream.title);
+    handlePopout(focusedStream.itemId, focusedStream.stream, focusedStream.title, focusedStream.audioStreamId);
     setFocusedStream(null);
   }, [focusedStream, handlePopout]);
 

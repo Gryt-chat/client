@@ -18,6 +18,14 @@ export function sliderToGain(sliderPercent: number, max = 100): number {
   return t * t * t * (max / 100);
 }
 
+/** Inverse of sliderToGain – recover the slider position from a gain value. */
+export function gainToSlider(gain: number, max = 100): number {
+  const scale = max / 100;
+  if (scale === 0) return 0;
+  const t = Math.cbrt(gain / scale);
+  return Math.max(0, Math.min(max, Math.round(t * max)));
+}
+
 /**
  * Convenience wrapper for the common Web Audio pattern where
  * 50 on the slider means unity gain (1.0×).
