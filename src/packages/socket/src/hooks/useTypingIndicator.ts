@@ -76,11 +76,12 @@ export function useTypingIndicator(
     socket.on("chat:typing", handleTyping);
     socket.on("chat:stop_typing", handleStopTyping);
 
+    const entries = entriesRef.current;
     return () => {
       socket.off("chat:typing", handleTyping);
       socket.off("chat:stop_typing", handleStopTyping);
-      for (const entry of entriesRef.current.values()) clearTimeout(entry.timeout);
-      entriesRef.current.clear();
+      for (const entry of entries.values()) clearTimeout(entry.timeout);
+      entries.clear();
       setTypingUsers([]);
     };
   }, [socket, clearEntry]);
