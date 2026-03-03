@@ -408,7 +408,6 @@ export const ServerView = () => {
               currentConnectionId={currentConnection?.id}
               currentServerUserId={currentServerUserId}
               currentUserRole={currentUserRole}
-              clientsSpeaking={clientsSpeaking}
               currentServerConnected={currentServerConnected}
               serverHost={host}
               adminActions={currentAdminActions}

@@ -20,7 +20,6 @@ interface MemberSidebarPanelProps {
   currentConnectionId: string | undefined;
   currentServerUserId: string | undefined;
   currentUserRole: Role | undefined;
-  clientsSpeaking: Record<string, boolean>;
   currentServerConnected: string | null;
   serverHost: string;
   adminActions: AdminActions | undefined;
@@ -33,7 +32,7 @@ export const MemberSidebarPanel = ({
   isUnreachableWhileConnected,
   onMouseEnter, onMouseLeave,
   members, currentConnectionId, currentServerUserId,
-  currentUserRole, clientsSpeaking,
+  currentUserRole,
   currentServerConnected, serverHost,
   adminActions, pinned, onTogglePinned,
 }: MemberSidebarPanelProps) => (
@@ -103,7 +102,6 @@ export const MemberSidebarPanel = ({
             currentConnectionId={currentConnectionId}
             currentServerUserId={currentServerUserId}
             currentUserRole={currentUserRole}
-            clientsSpeaking={clientsSpeaking}
             currentServerConnected={currentServerConnected}
             serverHost={serverHost}
             adminActions={adminActions}

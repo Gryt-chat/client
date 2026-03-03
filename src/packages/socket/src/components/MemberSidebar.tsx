@@ -1,6 +1,5 @@
 import { Avatar, Box, Flex, IconButton, Text, Tooltip } from "@radix-ui/themes";
 import { MdPushPin } from "react-icons/md";
-import { MdMicOff, MdVolumeOff, MdVolumeUp } from "react-icons/md";
 
 import { getUploadsFileUrl } from "@/common";
 
@@ -42,7 +41,6 @@ interface MemberSidebarProps {
   currentConnectionId?: string;
   currentServerUserId?: string;
   currentUserRole?: Role;
-  clientsSpeaking: Record<string, boolean>;
   currentServerConnected: string | null;
   serverHost: string;
   adminActions?: AdminActions;
@@ -66,14 +64,12 @@ const statusPriority: Record<UserStatus, number> = {
 
 const MemberItem = ({
   member,
-  isSpeaking,
   currentServerUserId,
   currentUserRole,
   serverHost,
   adminActions,
 }: {
   member: MemberInfo;
-  isSpeaking: boolean;
   currentServerUserId?: string;
   currentUserRole?: Role;
   serverHost: string;
@@ -115,9 +111,6 @@ const MemberItem = ({
             fallback={member.nickname[0]}
             src={member.avatarFileId ? getUploadsFileUrl(serverHost, member.avatarFileId) : undefined}
             style={{
-              outline: "2px solid",
-              outlineColor: isSpeaking ? "var(--accent-9)" : "transparent",
-              transition: "outline-color 0.1s ease",
               backgroundColor: member.color,
               opacity: isOffline ? 0.4 : 1,
             }}
@@ -136,19 +129,6 @@ const MemberItem = ({
               >
                 {member.nickname}
               </Text>
-              {isSpeaking && (
-                <MdVolumeUp
-                  size={12}
-                  color="var(--accent-9)"
-                  style={{ flexShrink: 0 }}
-                />
-              )}
-              {member.isDeafened && (
-                <MdVolumeOff size={10} color="var(--red-9)" style={{ flexShrink: 0 }} />
-              )}
-              {member.isMuted && !member.isDeafened && (
-                <MdMicOff size={10} color="var(--red-9)" style={{ flexShrink: 0 }} />
-              )}
             </Flex>
 
             <Text
@@ -168,7 +148,6 @@ export const MemberSidebar = ({
   members,
   currentServerUserId,
   currentUserRole,
-  clientsSpeaking,
   serverHost,
   adminActions,
   pinned,
@@ -222,7 +201,6 @@ export const MemberSidebar = ({
             <MemberItem
               key={member.serverUserId}
               member={member}
-              isSpeaking={clientsSpeaking[member.serverUserId] || false}
               currentServerUserId={currentServerUserId}
               currentUserRole={currentUserRole}
               serverHost={serverHost}

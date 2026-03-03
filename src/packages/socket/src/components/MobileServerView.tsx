@@ -274,7 +274,6 @@ export const MobileServerView = (props: MobileServerViewProps) => {
             currentConnectionId={props.currentConnectionId}
             currentServerUserId={props.currentUserId}
             currentUserRole={props.currentUserRole}
-            clientsSpeaking={props.clientsSpeaking}
             currentServerConnected={props.currentServerConnected}
             serverHost={props.serverHost}
             adminActions={props.adminActions}
