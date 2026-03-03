@@ -95,7 +95,7 @@ export function startNativeScreenCapture(
     pendingBuf = Buffer.concat([pendingBuf, chunk]);
 
     // Process all complete frames in the buffer
-    while (true) {
+    for (;;) {
       if (expectedFrameSize === 0) {
         if (pendingBuf.length < HEADER_SIZE) break;
 
