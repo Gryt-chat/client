@@ -87,6 +87,8 @@ export interface Settings {
 
   showDebugOverlay: boolean;
   setShowDebugOverlay: (value: boolean) => void;
+  showVideoDebugOverlay: boolean;
+  setShowVideoDebugOverlay: (value: boolean) => void;
 
   eSportsModeEnabled: boolean;
   setESportsModeEnabled: (value: boolean) => void;
@@ -236,6 +238,8 @@ export const settingsInit: Settings = {
   setAfkTimeoutMinutes: noop,
   showDebugOverlay: false,
   setShowDebugOverlay: noop,
+  showVideoDebugOverlay: false,
+  setShowVideoDebugOverlay: noop,
 
   eSportsModeEnabled: AUDIO_DEFAULTS.eSportsModeEnabled,
   setESportsModeEnabled: noop,

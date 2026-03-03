@@ -29,13 +29,14 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { LeaveServer } from "./components/leaveServer";
 import { MainApp } from "./components/mainApp";
 import { MicrophoneDebugOverlay } from "./components/microphoneDebugOverlay";
+import { VideoDebugOverlay } from "./components/videoDebugOverlay";
 import { Welcome } from "./components/welcome";
 
 export function App() {
   const { isSignedIn } = useAccount();
   const { showAddServer, setShowAddServer, addServer, hasServer, switchToServer } =
     useServerManagement();
-  const { nickname, showDebugOverlay } = useSettings();
+  const { nickname, showDebugOverlay, showVideoDebugOverlay } = useSettings();
   const { disconnect } = useSFU();
 
   const handleHotkeyDisconnect = useCallback(() => {
@@ -165,6 +166,7 @@ export function App() {
           />
           <PushToTalkModal />
           <MicrophoneDebugOverlay isVisible={showDebugOverlay} />
+          <VideoDebugOverlay isVisible={showVideoDebugOverlay} />
         </>
       ) : (
         <SignUpModal />

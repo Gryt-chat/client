@@ -13,6 +13,8 @@ export function AdvancedSettings() {
     setESportsModeEnabled,
     showDebugOverlay,
     setShowDebugOverlay,
+    showVideoDebugOverlay,
+    setShowVideoDebugOverlay,
     showPeerLatency,
     setShowPeerLatency,
     experimentalScreenShare,
@@ -85,6 +87,19 @@ export function AdvancedSettings() {
         </Flex>
         <Text size="1" color="gray" mt="1">
           Display a floating debug overlay with real-time microphone information
+        </Text>
+      </Box>
+
+      <Box>
+        <Flex align="center" gap="3">
+          <Text size="2" weight="medium">Show Video Debug Overlay</Text>
+          <Switch
+            checked={showVideoDebugOverlay}
+            onCheckedChange={setShowVideoDebugOverlay}
+          />
+        </Flex>
+        <Text size="1" color="gray" mt="1">
+          Display a floating debug overlay with real-time video codec, resolution, and bitrate information
         </Text>
       </Box>
 

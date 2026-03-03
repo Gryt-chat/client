@@ -1,5 +1,6 @@
 // Hooks
 export * from "./src/hooks/useSFU";
+export * from "./src/hooks/useVideoStats";
 
 // Components
 export * from "./src/components/CameraPreviewModal";

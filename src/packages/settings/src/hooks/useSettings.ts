@@ -25,6 +25,7 @@ function useSettingsHook() {
   const [avatarDataUrl, setAvatarDataUrlState] = useState<string | null>(null);
 
   const [showDebugOverlay, setShowDebugOverlay] = useState(false);
+  const [showVideoDebugOverlay, setShowVideoDebugOverlay] = useState(false);
   const [nickname, setNickname] = useState("Unknown");
   const [showPeerLatency, setShowPeerLatency] = useState(true);
   const [chatMediaVolume, setChatMediaVolume] = useState(50);
@@ -71,6 +72,7 @@ function useSettingsHook() {
       setNickname(getUserValue("nickname", "Unknown"));
       setHasSeenWelcome(getUserValue("hasSeenWelcome", false));
       setShowDebugOverlay(getUserValue("showDebugOverlay", false));
+      setShowVideoDebugOverlay(getUserValue("showVideoDebugOverlay", false));
       setShowPeerLatency(getUserValue("showPeerLatency", true));
       setChatMediaVolume(getUserValue("chatMediaVolume", 50));
       setBlurProfanityState(getUserValue("blurProfanity", true));
@@ -156,6 +158,11 @@ function useSettingsHook() {
   function updateShowDebugOverlay(show: boolean) {
     setShowDebugOverlay(show);
     setUserValue("showDebugOverlay", show);
+  }
+
+  function updateShowVideoDebugOverlay(show: boolean) {
+    setShowVideoDebugOverlay(show);
+    setUserValue("showVideoDebugOverlay", show);
   }
 
   function updateShowPeerLatency(value: boolean) {
@@ -307,6 +314,8 @@ function useSettingsHook() {
     setAfkTimeoutMinutes: updateAfkTimeoutMinutes,
     showDebugOverlay,
     setShowDebugOverlay: updateShowDebugOverlay,
+    showVideoDebugOverlay,
+    setShowVideoDebugOverlay: updateShowVideoDebugOverlay,
     showPeerLatency,
     setShowPeerLatency: updateShowPeerLatency,
     chatMediaVolume,
