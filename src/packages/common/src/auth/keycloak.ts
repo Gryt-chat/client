@@ -200,19 +200,21 @@ async function initKeycloakForElectron(): Promise<KeycloakInitResult> {
       return { keycloak, authenticated: !!keycloak.authenticated };
     } catch (e) {
       console.warn("[Auth:KC] Init with stored tokens failed, falling through to unauthenticated:", e);
+      keycloakInstance = null;
     }
   } else {
     console.log("[Auth:KC] No stored tokens — will init unauthenticated");
   }
 
-  await keycloak.init({
+  const freshKc = getKeycloak();
+  await freshKc.init({
     pkceMethod: 'S256',
     checkLoginIframe: false,
   });
   console.log("[Auth:KC] Unauthenticated init done");
 
-  installKeycloakEventHandlers(keycloak, 'electron-unauthed');
-  return { keycloak, authenticated: false };
+  installKeycloakEventHandlers(freshKc, 'electron-unauthed');
+  return { keycloak: freshKc, authenticated: false };
 }
 
 // ── Standard browser init ────────────────────────────────────────────────

@@ -11,6 +11,7 @@ export type RegisterData = {
 
 export interface Account {
   isSignedIn?: boolean;
+  loginInProgress: boolean;
   registrationAllowed: boolean;
   register: () => Promise<void>;
   login: () => Promise<void>;

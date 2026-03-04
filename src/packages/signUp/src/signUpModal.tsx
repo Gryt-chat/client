@@ -5,7 +5,8 @@ import { Logo, readPendingInvite, useAccount } from "@/common";
 
 export function SignUpModal() {
   const [error, setError] = useState<string | undefined>(undefined);
-  const { login, register, registrationAllowed } = useAccount();
+  const { login, register, registrationAllowed, loginInProgress } =
+    useAccount();
   const pendingInvite = readPendingInvite();
 
   return (
@@ -47,6 +48,7 @@ export function SignUpModal() {
           )}
           <Flex direction="column" gap="3">
             <Button
+              disabled={loginInProgress}
               onClick={async () => {
                 try {
                   setError(undefined);
@@ -60,7 +62,9 @@ export function SignUpModal() {
                 }
               }}
             >
-              Sign in with Gryt
+              {loginInProgress
+                ? "Waiting for sign in\u2026"
+                : "Sign in with Gryt"}
             </Button>
             {registrationAllowed && (
               <Button

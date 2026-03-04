@@ -11,13 +11,13 @@ import {
   doLogout,
   fetchRegistrationAllowed,
   initKeycloak,
-  resetKeycloakInit,
   startLogin,
   startRegister,
 } from "../auth/keycloak";
 
 function useAccountHook(): Account {
   const [isSignedIn, setIsSignedIn] = useState<boolean | undefined>(undefined);
+  const [loginInProgress, setLoginInProgress] = useState(false);
   const [registrationAllowed, setRegistrationAllowed] = useState(false);
 
   // Wire up the Electron deep-link listener
@@ -30,10 +30,6 @@ function useAccountHook(): Account {
     const unsubscribe = api.onAuthCallback(async (url) => {
       try {
         await handleAuthCallback(url);
-        // Re-init keycloak with the fresh tokens
-        resetKeycloakInit();
-        const { authenticated } = await initKeycloak();
-        setIsSignedIn(authenticated);
       } catch (err) {
         console.error("Auth callback failed:", err);
       }
@@ -80,12 +76,15 @@ function useAccountHook(): Account {
 
         if (!signedIn && isElectron()) {
           console.log("[Auth:Hook] Not signed in on Electron — opening login flow");
+          setLoginInProgress(true);
           startLogin().then(() => initKeycloak()).then(({ keycloak: kc, authenticated: auth }) => {
             const result = !!(auth && kc.token);
             console.log("[Auth:Hook] Electron login flow result — signedIn:", result);
             if (!cancelled) setIsSignedIn(result);
           }).catch((e) => {
             console.error("[Auth:Hook] Electron login flow failed:", e);
+          }).finally(() => {
+            if (!cancelled) setLoginInProgress(false);
           });
         }
       } catch (e) {
@@ -106,20 +105,22 @@ function useAccountHook(): Account {
 
   async function login() {
     try {
+      setLoginInProgress(true);
       await startLogin(window.location.href);
-      // For Electron, startLogin resolves after the deep-link callback,
-      // so we can update state here. For browser, the page redirects.
       if (isElectron()) {
         const { keycloak, authenticated } = await initKeycloak();
         setIsSignedIn(!!(authenticated && keycloak.token));
       }
     } catch (err) {
       console.error("Login failed:", err);
+    } finally {
+      setLoginInProgress(false);
     }
   }
 
   async function register() {
     try {
+      setLoginInProgress(true);
       await startRegister(window.location.href);
       if (isElectron()) {
         const { keycloak, authenticated } = await initKeycloak();
@@ -127,6 +128,8 @@ function useAccountHook(): Account {
       }
     } catch (err) {
       console.error("Register failed:", err);
+    } finally {
+      setLoginInProgress(false);
     }
   }
 
@@ -144,6 +147,7 @@ function useAccountHook(): Account {
 
   return {
     isSignedIn,
+    loginInProgress,
     registrationAllowed,
     login,
     register,
@@ -153,6 +157,7 @@ function useAccountHook(): Account {
 
 const init: Account = {
   isSignedIn: undefined,
+  loginInProgress: false,
   registrationAllowed: false,
   login: async () => {},
   register: async () => {},
