@@ -45,7 +45,7 @@ function matchUrlPattern(pattern: string, url: string): boolean {
 
 const appIcon = app.isPackaged
   ? join(process.resourcesPath, "icon.png")
-  : join(__dirname, "../build/icon.png");
+  : join(__dirname, "../build/appIcon.png");
 
 const PROTOCOL = "gryt";
 const AUTO_START_ARG = "--gryt-autostart";
