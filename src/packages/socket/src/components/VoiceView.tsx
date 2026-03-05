@@ -176,10 +176,11 @@ export const VoiceView = ({
         items.push(`screen:${id}`);
       } else if (!isSelf && client.screenShareEnabled && client.screenShareVideoStreamID) {
         items.push(`screen:${id}`);
+        console.log(`[ScreenShare] gridItems: added screen:${id} (streamID=${client.screenShareVideoStreamID}, inVideoStreams=${!!videoStreams?.[client.screenShareVideoStreamID]})`);
       }
     }
     return items;
-  }, [visibleClients, clientsForHost, currentConnectionId, localScreenActive, localScreenStream]);
+  }, [visibleClients, clientsForHost, currentConnectionId, localScreenActive, localScreenStream, videoStreams]);
 
   const { poppedOutItems, popout: handlePopout, updatePopoutStream } = usePopoutStreams(gridItems, streamSources);
 

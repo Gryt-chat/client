@@ -130,7 +130,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
             bitrate = Math.min(Math.round(bitrate * 1.5), 20_000_000);
           }
         }
-        if (bitrate && getPeerConnection) {
+        if (getPeerConnection) {
           const pc = getPeerConnection();
           if (pc) {
             const senders = pc.getSenders();
@@ -139,7 +139,8 @@ export function Controls({ onDisconnect }: ControlsProps) {
               const params = screenSender.getParameters();
               params.degradationPreference = "maintain-framerate";
               if (params.encodings && params.encodings.length > 0) {
-                params.encodings[0].maxBitrate = bitrate;
+                const effectiveBitrate = bitrate ?? 20_000_000;
+                params.encodings[0].maxBitrate = effectiveBitrate;
                 params.encodings[0].maxFramerate = screenShareFps;
                 const isH264 = screenShareCodec === "h264" || (!screenShareCodec || screenShareCodec === "auto");
                 if (!isH264 && screenShareScalabilityMode !== "L1T1") {

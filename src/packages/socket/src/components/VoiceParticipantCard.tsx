@@ -48,7 +48,13 @@ export function VideoCard({
 }) {
   const ref = useRef<HTMLVideoElement>(null);
   useEffect(() => {
-    if (ref.current) ref.current.srcObject = stream;
+    if (!ref.current) return;
+    ref.current.srcObject = stream;
+    const tracks = stream.getVideoTracks();
+    console.log(
+      `[ScreenShare] VideoCard: srcObject set, tracks=${tracks.length} live=${tracks.filter(t => t.readyState === "live").length}`,
+    );
+    ref.current.play().catch(() => { /* autoplay blocked or already playing */ });
   }, [stream]);
 
   return (
@@ -178,6 +184,12 @@ export function VoiceParticipantCard({
       : (client.screenShareVideoStreamID && videoStreams?.[client.screenShareVideoStreamID])
         ? videoStreams[client.screenShareVideoStreamID]
         : null;
+    if (!isSelf) {
+      const vsKeys = videoStreams ? Object.keys(videoStreams) : [];
+      console.log(
+        `[ScreenShare] VoiceParticipantCard screen tile: nick=${client.nickname} streamID=${client.screenShareVideoStreamID} found=${!!screenStream} videoStreamKeys=[${vsKeys.join(",")}]`,
+      );
+    }
     if (!screenStream) return null;
     const screenTitle = isSelf ? "Your Screen" : `${client.nickname}'s Screen`;
 

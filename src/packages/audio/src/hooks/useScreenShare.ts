@@ -126,7 +126,7 @@ function useScreenShareHook(): ScreenShareInterface {
     // Use native DXGI capture for high-FPS screen capture when available.
     // Source IDs for screens look like "screen:<index>:0".
     const screenMatch = sourceId?.match(/^screen:(\d+):/);
-    const useNativeVideo = nativeScreenAvailable && isElectron() && !!screenMatch && fps > 60;
+    const useNativeVideo = nativeScreenAvailable && isElectron() && !!screenMatch && fps >= 60;
 
     console.log(
       `[ScreenShare] startScreenShare withAudio=${withAudio} nativeAudio=${useNativeAudio} nativeVideo=${useNativeVideo} isElectron=${isElectron()} sourceId=${sourceId ?? "none"} fps=${fps} quality=${screenShareQuality}`,
