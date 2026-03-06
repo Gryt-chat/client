@@ -14,6 +14,8 @@ export interface Settings {
   setOutputVolume: (num: number) => void;
   noiseGate: number;
   setNoiseGate: (num: number) => void;
+  noiseGateRelease: number;
+  setNoiseGateRelease: (ms: number) => void;
   setLoopbackEnabled: (value: boolean) => void;
   loopbackEnabled: boolean;
 
@@ -178,6 +180,8 @@ export const settingsInit: Settings = {
   setOutputVolume: noop,
   noiseGate: AUDIO_DEFAULTS.noiseGate,
   setNoiseGate: noop,
+  noiseGateRelease: AUDIO_DEFAULTS.noiseGateRelease,
+  setNoiseGateRelease: noop,
   loopbackEnabled: false,
   setLoopbackEnabled: noop,
   rnnoiseEnabled: AUDIO_DEFAULTS.rnnoiseEnabled,

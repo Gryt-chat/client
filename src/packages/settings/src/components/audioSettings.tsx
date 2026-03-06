@@ -32,6 +32,8 @@ export function AudioSettings() {
     setOutputVolume,
     noiseGate,
     setNoiseGate,
+    noiseGateRelease,
+    setNoiseGateRelease,
     setLoopbackEnabled,
     loopbackEnabled,
     rnnoiseEnabled,
@@ -411,6 +413,22 @@ export function AudioSettings() {
           >
             {micRawVolume < noiseGate ? "GATED" : isMicLive ? "OPEN" : "QUIET"}
           </Text>
+        </Flex>
+
+        <Flex direction="column" gap="1" mt="2">
+          <Text weight="medium" size="2">
+            Release: {noiseGateRelease} ms
+          </Text>
+          <Text size="1" color="gray">
+            How long the gate stays open after your voice drops below the threshold.
+          </Text>
+          <Slider
+            value={[noiseGateRelease]}
+            onValueChange={(value) => setNoiseGateRelease(value[0])}
+            max={1000}
+            min={0}
+            step={10}
+          />
         </Flex>
       </Flex>}
 

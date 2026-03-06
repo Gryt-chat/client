@@ -130,6 +130,7 @@ export interface PipelineControlParams {
   micVolume: number;
   isMuted: boolean;
   noiseGate: number;
+  noiseGateRelease: number;
   loopbackEnabled: boolean;
   inputMode: "voice_activity" | "push_to_talk";
   autoGainEnabled: boolean;
@@ -144,6 +145,7 @@ export function usePipelineControls({
   micVolume,
   isMuted,
   noiseGate,
+  noiseGateRelease,
   loopbackEnabled,
   inputMode,
   autoGainEnabled,
@@ -222,7 +224,9 @@ export function usePipelineControls({
     microphoneBuffer.muteGain.gain.setValueAtTime(gainValue, audioContext?.currentTime || 0);
   }, [isMuted, microphoneBuffer.muteGain, audioContext, inputMode]);
 
-  // Noise gate control -- skipped entirely in push-to-talk mode
+  // Noise gate control -- skipped entirely in push-to-talk mode.
+  // Uses a hold timer so the gate stays open for `noiseGateRelease` ms
+  // after the signal drops below threshold, preventing clipped word tails.
   useEffect(() => {
     if (inputMode === "push_to_talk") return;
     if (!microphoneBuffer.analyser || !microphoneBuffer.noiseGate || !audioContext) {
@@ -230,8 +234,29 @@ export function usePipelineControls({
     }
 
     let animationFrame: number;
+    let holdTimeout: ReturnType<typeof setTimeout> | null = null;
+    let gateOpen = false;
     const bufferLength = microphoneBuffer.analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
+    const releaseMs = noiseGateRelease;
+
+    const applyGain = (value: number) => {
+      const rampTime = 0.01;
+      microphoneBuffer.noiseGate!.gain.cancelScheduledValues(audioContext!.currentTime);
+      microphoneBuffer.noiseGate!.gain.setValueAtTime(
+        microphoneBuffer.noiseGate!.gain.value,
+        audioContext!.currentTime,
+      );
+      microphoneBuffer.noiseGate!.gain.linearRampToValueAtTime(
+        value,
+        audioContext!.currentTime + rampTime,
+      );
+    };
+
+    const closeGate = () => {
+      gateOpen = false;
+      applyGain(0);
+    };
 
     const checkNoiseGate = () => {
       microphoneBuffer.analyser!.getByteFrequencyData(dataArray);
@@ -243,19 +268,17 @@ export function usePipelineControls({
       const rms = Math.sqrt(sum / bufferLength);
       const volume = (rms / 255) * 100;
 
-      const shouldGate = volume < noiseGate;
-      const gateValue = shouldGate ? 0 : 1;
+      const aboveThreshold = volume >= noiseGate;
 
-      const rampTime = 0.01;
-      microphoneBuffer.noiseGate!.gain.cancelScheduledValues(audioContext!.currentTime);
-      microphoneBuffer.noiseGate!.gain.setValueAtTime(
-        microphoneBuffer.noiseGate!.gain.value,
-        audioContext!.currentTime
-      );
-      microphoneBuffer.noiseGate!.gain.linearRampToValueAtTime(
-        gateValue,
-        audioContext!.currentTime + rampTime
-      );
+      if (aboveThreshold) {
+        if (holdTimeout) { clearTimeout(holdTimeout); holdTimeout = null; }
+        if (!gateOpen) {
+          gateOpen = true;
+          applyGain(1);
+        }
+      } else if (gateOpen && !holdTimeout) {
+        holdTimeout = setTimeout(closeGate, releaseMs);
+      }
 
       animationFrame = requestAnimationFrame(checkNoiseGate);
     };
@@ -263,11 +286,10 @@ export function usePipelineControls({
     checkNoiseGate();
 
     return () => {
-      if (animationFrame) {
-        cancelAnimationFrame(animationFrame);
-      }
+      if (animationFrame) cancelAnimationFrame(animationFrame);
+      if (holdTimeout) clearTimeout(holdTimeout);
     };
-  }, [microphoneBuffer.analyser, microphoneBuffer.noiseGate, audioContext, noiseGate, inputMode]);
+  }, [microphoneBuffer.analyser, microphoneBuffer.noiseGate, audioContext, noiseGate, noiseGateRelease, inputMode]);
 
   // AGC feedback loop — measures input RMS and adjusts gain to hit targetDb
   useEffect(() => {

@@ -8,6 +8,7 @@ export interface AudioSettingsData {
   micVolume: number;
   outputVolume: number;
   noiseGate: number;
+  noiseGateRelease: number;
   rnnoiseEnabled: boolean;
   autoGainEnabled: boolean;
   autoGainTargetDb: number;
@@ -37,6 +38,7 @@ export const AUDIO_DEFAULTS: AudioSettingsData = {
   micVolume: 50,
   outputVolume: 50,
   noiseGate: 1,
+  noiseGateRelease: 200,
   rnnoiseEnabled: true,
   autoGainEnabled: true,
   autoGainTargetDb: -20,
@@ -68,6 +70,7 @@ export function loadAudioFromCache(): AudioSettingsData {
     micVolume: getUserValue("micVolume", AUDIO_DEFAULTS.micVolume),
     outputVolume: getUserValue("outputVolume", AUDIO_DEFAULTS.outputVolume),
     noiseGate: getUserValue("noiseGate", AUDIO_DEFAULTS.noiseGate),
+    noiseGateRelease: getUserValue("noiseGateRelease", AUDIO_DEFAULTS.noiseGateRelease),
     rnnoiseEnabled: getUserValue("rnnoiseEnabled", AUDIO_DEFAULTS.rnnoiseEnabled),
     autoGainEnabled: getUserValue("autoGainEnabled", AUDIO_DEFAULTS.autoGainEnabled),
     autoGainTargetDb: getUserValue("autoGainTargetDb", AUDIO_DEFAULTS.autoGainTargetDb),
@@ -111,6 +114,7 @@ export function useAudioSettings() {
   const [micVolume, setMicVolume] = useState(AUDIO_DEFAULTS.micVolume);
   const [outputVolume, setOutputVolume] = useState(AUDIO_DEFAULTS.outputVolume);
   const [noiseGate, setNoiseGate] = useState(AUDIO_DEFAULTS.noiseGate);
+  const [noiseGateRelease, setNoiseGateRelease] = useState(AUDIO_DEFAULTS.noiseGateRelease);
 
   const [eSportsModeEnabled, setESportsModeEnabled] = useState(AUDIO_DEFAULTS.eSportsModeEnabled);
   const [inputMode, setInputMode] = useState<"voice_activity" | "push_to_talk">(AUDIO_DEFAULTS.inputMode);
@@ -138,6 +142,7 @@ export function useAudioSettings() {
     setMicVolume(d.micVolume);
     setOutputVolume(d.outputVolume);
     setNoiseGate(d.noiseGate);
+    setNoiseGateRelease(d.noiseGateRelease);
     setRnnoiseEnabled(d.rnnoiseEnabled);
     setAutoGainEnabled(d.autoGainEnabled);
     setAutoGainTargetDb(d.autoGainTargetDb);
@@ -189,6 +194,11 @@ export function useAudioSettings() {
   function updateNoiseGate(newGate: number) {
     setNoiseGate(newGate);
     setUserValue("noiseGate", newGate);
+  }
+
+  function updateNoiseGateRelease(ms: number) {
+    setNoiseGateRelease(ms);
+    setUserValue("noiseGateRelease", ms);
   }
 
   function updateRnnoiseEnabled(value: boolean) {
@@ -364,6 +374,8 @@ export function useAudioSettings() {
     setOutputVolume: updateOutputVolume,
     noiseGate,
     setNoiseGate: updateNoiseGate,
+    noiseGateRelease,
+    setNoiseGateRelease: updateNoiseGateRelease,
     loopbackEnabled,
     setLoopbackEnabled,
     rnnoiseEnabled,
