@@ -6,7 +6,11 @@ import { signOut } from "@/common";
 import { clearUserCache } from "@/settings/src/hooks/userStorage";
 
 import { getElectronAPI, isElectron } from "../../../../lib/electron";
-import { handleAuthCallback } from "../auth/electron-auth";
+import {
+  cancelPendingLogin,
+  handleAuthCallback,
+  LOGIN_CANCELLED,
+} from "../auth/electron-auth";
 import {
   doLogout,
   fetchRegistrationAllowed,
@@ -103,34 +107,39 @@ function useAccountHook(): Account {
     };
   }, []);
 
+  function cancelLogin() {
+    cancelPendingLogin();
+    setLoginInProgress(false);
+  }
+
   async function login() {
+    setLoginInProgress(true);
     try {
-      setLoginInProgress(true);
       await startLogin(window.location.href);
       if (isElectron()) {
         const { keycloak, authenticated } = await initKeycloak();
         setIsSignedIn(!!(authenticated && keycloak.token));
       }
     } catch (err) {
+      if (err instanceof Error && err.message === LOGIN_CANCELLED) return;
       console.error("Login failed:", err);
-    } finally {
-      setLoginInProgress(false);
     }
+    setLoginInProgress(false);
   }
 
   async function register() {
+    setLoginInProgress(true);
     try {
-      setLoginInProgress(true);
       await startRegister(window.location.href);
       if (isElectron()) {
         const { keycloak, authenticated } = await initKeycloak();
         setIsSignedIn(!!(authenticated && keycloak.token));
       }
     } catch (err) {
+      if (err instanceof Error && err.message === LOGIN_CANCELLED) return;
       console.error("Register failed:", err);
-    } finally {
-      setLoginInProgress(false);
     }
+    setLoginInProgress(false);
   }
 
   async function logout() {
@@ -152,6 +161,7 @@ function useAccountHook(): Account {
     login,
     register,
     logout,
+    cancelLogin,
   };
 }
 
@@ -162,6 +172,7 @@ const init: Account = {
   login: async () => {},
   register: async () => {},
   logout: async () => {},
+  cancelLogin: () => {},
 };
 
 export const useAccount = singletonHook(init, useAccountHook);

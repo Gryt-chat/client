@@ -16,4 +16,5 @@ export interface Account {
   register: () => Promise<void>;
   login: () => Promise<void>;
   logout: () => Promise<void>;
+  cancelLogin: () => void;
 }

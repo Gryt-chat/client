@@ -175,6 +175,19 @@ let pendingLogin: {
   reject: (err: Error) => void;
 } | null = null;
 
+export const LOGIN_CANCELLED = "Login cancelled";
+
+/**
+ * Cancels any in-flight Electron login/register flow.
+ * The pending promise is rejected so callers can clean up.
+ */
+export function cancelPendingLogin(): void {
+  if (!pendingLogin) return;
+  const { reject } = pendingLogin;
+  pendingLogin = null;
+  reject(new Error(LOGIN_CANCELLED));
+}
+
 /**
  * Handles the deep-link callback URL from the OS.
  * Called by the auth-callback IPC listener.

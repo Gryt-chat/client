@@ -1,13 +1,46 @@
 import { Button, Flex, Text } from "@radix-ui/themes";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Logo, readPendingInvite, useAccount } from "@/common";
 
+const RETRY_DELAY_S = 15;
+
 export function SignUpModal() {
   const [error, setError] = useState<string | undefined>(undefined);
-  const { login, register, registrationAllowed, loginInProgress } =
+  const { login, register, registrationAllowed, loginInProgress, cancelLogin } =
     useAccount();
   const pendingInvite = readPendingInvite();
+
+  const [countdown, setCountdown] = useState(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (loginInProgress) {
+      setCountdown(RETRY_DELAY_S);
+      intervalRef.current = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            if (intervalRef.current) clearInterval(intervalRef.current);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1_000);
+    } else {
+      setCountdown(0);
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    }
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [loginInProgress]);
+
+  const canRetry = loginInProgress && countdown === 0;
+
+  function handleRetry() {
+    cancelLogin();
+    setError(undefined);
+  }
 
   return (
     <Flex
@@ -48,8 +81,9 @@ export function SignUpModal() {
           )}
           <Flex direction="column" gap="3">
             <Button
-              disabled={loginInProgress}
+              disabled={loginInProgress && !canRetry}
               onClick={async () => {
+                if (canRetry) { handleRetry(); return; }
                 try {
                   setError(undefined);
                   await login();
@@ -62,15 +96,18 @@ export function SignUpModal() {
                 }
               }}
             >
-              {loginInProgress
-                ? "Waiting for sign in\u2026"
-                : "Sign in with Gryt"}
+              {canRetry
+                ? "Try again"
+                : loginInProgress
+                  ? `Waiting for sign in\u2026 (${countdown}s)`
+                  : "Sign in with Gryt"}
             </Button>
             {registrationAllowed && (
               <Button
                 variant="outline"
-                disabled={loginInProgress}
+                disabled={loginInProgress && !canRetry}
                 onClick={async () => {
+                  if (canRetry) { handleRetry(); return; }
                   try {
                     setError(undefined);
                     await register();
@@ -83,8 +120,13 @@ export function SignUpModal() {
                   }
                 }}
               >
-                Create a new account
+                {canRetry ? "Try again" : "Create a new account"}
               </Button>
+            )}
+            {canRetry && (
+              <Text size="1" color="gray">
+                Didn't work? Check your browser or email inbox, then try again.
+              </Text>
             )}
             {error && (
               <Text color="red" size="1" weight="medium">
