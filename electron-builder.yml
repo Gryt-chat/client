@@ -2,7 +2,7 @@ appId: com.gryt.chat
 productName: Gryt Chat
 executableName: gryt-chat
 copyright: "Copyright © 2024-2026 Gryt Chat. All rights reserved."
-artifactName: "${productName}-${version}-${os}-${arch}.${ext}"
+artifactName: "Gryt-Chat-${version}-${os}-${arch}.${ext}"
 
 directories:
   buildResources: build
@@ -78,7 +78,7 @@ win:
   requestedExecutionLevel: asInvoker
 
 portable:
-  artifactName: "${productName}-${version}-${os}-${arch}-portable.${ext}"
+  artifactName: "Gryt-Chat-${version}-${os}-${arch}-portable.${ext}"
 
 nsis:
   oneClick: true
