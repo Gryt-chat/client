@@ -45,7 +45,7 @@ function matchUrlPattern(pattern: string, url: string): boolean {
 
 const appIcon = app.isPackaged
   ? join(process.resourcesPath, "icon.png")
-  : join(__dirname, "../build/appIcon.png");
+  : join(__dirname, "../build/icon.png");
 
 const PROTOCOL = "gryt";
 const AUTO_START_ARG = "--gryt-autostart";
@@ -655,8 +655,9 @@ function buildTrayContextMenu(): Menu {
 }
 
 function createTray(): void {
-  const icon = nativeImage.createFromPath(appIcon);
-  tray = new Tray(icon.resize({ width: 24, height: 24 }));
+  const icon = nativeImage.createFromPath(appIcon).resize({ width: 18, height: 18 });
+  if (process.platform === "darwin") icon.setTemplateImage(true);
+  tray = new Tray(icon);
   tray.setToolTip("Gryt");
 
   tray.on("click", () => {

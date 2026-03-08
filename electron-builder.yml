@@ -12,7 +12,7 @@ files:
   - dist-electron/**/*
   - electron/splash.html
 extraResources:
-  - from: build/appIcon.png
+  - from: build/icon.png
     to: icon.png
   - from: build/native/
     to: native/
@@ -58,7 +58,7 @@ snap:
     - avahi-observe
 
 mac:
-  icon: build/appIcon.png
+  icon: build/icon.png
   target:
     - dmg
     - zip
