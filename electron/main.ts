@@ -1003,6 +1003,7 @@ if (!gotSingleInstanceLock) {
     });
 
     ipcMain.on("install-update", () => {
+      isQuitting = true;
       autoUpdater.quitAndInstall(false, true);
     });
 
