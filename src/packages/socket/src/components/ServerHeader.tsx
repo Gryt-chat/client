@@ -8,6 +8,7 @@ export const ServerHeader = ({
   onOpenReports,
   role,
   pendingReportCount,
+  updateAvailable,
   pinned,
   onTogglePinned,
 }: {
@@ -17,6 +18,7 @@ export const ServerHeader = ({
   onOpenReports?: () => void;
   role?: "owner" | "admin" | "mod" | "member";
   pendingReportCount?: number;
+  updateAvailable?: boolean;
   pinned?: boolean;
   onTogglePinned?: () => void;
 }) => {
@@ -53,7 +55,16 @@ export const ServerHeader = ({
             </DropdownMenu.Trigger>
             <DropdownMenu.Content>
               {canManage && onOpenSettings && (
-                <DropdownMenu.Item onClick={onOpenSettings}>Server settings</DropdownMenu.Item>
+                <DropdownMenu.Item onClick={onOpenSettings}>
+                  <Flex align="center" gap="2">
+                    Server settings
+                    {updateAvailable && (
+                      <Badge color="orange" variant="soft" size="1" radius="full">
+                        !
+                      </Badge>
+                    )}
+                  </Flex>
+                </DropdownMenu.Item>
               )}
               {canManage && onOpenReports && (
                 <DropdownMenu.Item onClick={onOpenReports}>

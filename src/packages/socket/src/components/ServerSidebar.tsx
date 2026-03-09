@@ -28,6 +28,7 @@ interface ServerSidebarProps {
   onOpenSettings: () => void;
   onOpenReports: () => void;
   pendingReportCount: number;
+  updateAvailable: boolean;
   onLeave: () => void;
   channels: Channel[];
   sidebarItems: SidebarItem[];
@@ -59,7 +60,7 @@ export const ServerSidebar = ({
   isUnreachableWhileConnected,
   onMouseEnter, onMouseLeave,
   serverName, serverRole, pinned, onTogglePinned,
-  onOpenSettings, onOpenReports, pendingReportCount, onLeave,
+  onOpenSettings, onOpenReports, pendingReportCount, updateAvailable, onLeave,
   channels, sidebarItems, serverHost, clients, members,
   currentChannelId, currentServerConnected, showVoiceView,
   isConnecting, currentConnectionId, selectedChannelId,
@@ -110,6 +111,7 @@ export const ServerSidebar = ({
               onOpenSettings={onOpenSettings}
               onOpenReports={onOpenReports}
               pendingReportCount={pendingReportCount}
+              updateAvailable={updateAvailable}
               onLeave={onLeave}
             />
             <Box style={{ flex: 1, width: "100%", minHeight: 0, display: "flex", flexDirection: "column", overflowY: "auto" }}>

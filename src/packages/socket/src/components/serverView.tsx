@@ -1,5 +1,5 @@
 import { Flex } from "@radix-ui/themes";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useUnreadTracker } from "@/common";
 import { useIsCompact, useIsMobile } from "@/mobile";
@@ -7,6 +7,7 @@ import { useSettings } from "@/settings";
 import { SidebarItem } from "@/settings/src/types/server";
 import { useSFU } from "@/webRTC";
 
+import { getUpdateAvailable } from "../hooks/useVersionStatus";
 import { useAdminActions } from "../hooks/useAdminActions";
 import { useChannelSettings, useHandleChannelClick } from "../hooks/useChannelSettings";
 import { useChat } from "../hooks/useChat";
@@ -142,6 +143,20 @@ export const ServerView = () => {
     currentConnection, accessToken, currentlyViewingServer, memberLists, serverRole: currentRole,
   });
 
+  const viewingHost = currentlyViewingServer?.host;
+  const [updateAvailable, setUpdateAvailable] = useState(() =>
+    viewingHost ? getUpdateAvailable(viewingHost) : false,
+  );
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ host: string; updateAvailable: boolean }>).detail;
+      if (detail.host === viewingHost) setUpdateAvailable(detail.updateAvailable);
+    };
+    window.addEventListener("server_update_status", handler);
+    setUpdateAvailable(viewingHost ? getUpdateAvailable(viewingHost) : false);
+    return () => window.removeEventListener("server_update_status", handler);
+  }, [viewingHost]);
+
   const handleChannelClick = useHandleChannelClick({
     currentlyViewingServer, isConnected, currentServerConnected,
     currentChannelId, selectedChannelId, isConnecting,
@@ -213,6 +228,7 @@ export const ServerView = () => {
             onOpenSettings={onOpenSettings}
             onOpenReports={() => setReportsOpen(true)}
             pendingReportCount={pendingReportCount}
+            updateAvailable={updateAvailable}
             onLeave={() => setShowRemoveServer(host)}
             channels={hostChannels}
             sidebarItems={effectiveSidebarItems}
@@ -290,6 +306,7 @@ export const ServerView = () => {
               onOpenSettings={onOpenSettings}
               onOpenReports={() => setReportsOpen(true)}
               pendingReportCount={pendingReportCount}
+              updateAvailable={updateAvailable}
               onLeave={() => setShowRemoveServer(host)}
               channels={hostChannels}
               sidebarItems={effectiveSidebarItems}

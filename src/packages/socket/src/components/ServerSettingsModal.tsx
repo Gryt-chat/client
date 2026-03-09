@@ -1,10 +1,11 @@
-import { Box, Dialog, Flex, IconButton, Tabs, Text } from "@radix-ui/themes";
+import { Badge, Box, Dialog, Flex, IconButton, Spinner, Tabs, Text } from "@radix-ui/themes";
 import { useEffect, useMemo, useState } from "react";
 import { MdClose, MdEmojiEmotions, MdFactCheck, MdGroup, MdLink, MdSettings, MdSwapHoriz, MdWebhook } from "react-icons/md";
 
 import { getServerAccessToken } from "@/common";
 
 import { useSockets } from "../hooks/useSockets";
+import { useVersionStatus } from "../hooks/useVersionStatus";
 import { ServerAuditTab } from "./ServerAuditTab";
 import { ServerEmojisTab } from "./ServerEmojisTab";
 import { ServerInvitesTab } from "./ServerInvitesTab";
@@ -85,6 +86,13 @@ export function ServerSettingsModal() {
   }, []);
 
   const isOwner = role === "owner";
+
+  const { status: versionStatus, loading: versionLoading } = useVersionStatus(
+    socket,
+    host,
+    accessToken,
+    isOpen && canManage,
+  );
 
   const TAB_CONFIG = [
     {
@@ -190,15 +198,37 @@ export function ServerSettingsModal() {
                         </Tabs.Trigger>
                       ))}
                     </Tabs.List>
-                    {serverInfo?.version && (
-                      <Text
-                        size="1"
-                        color="gray"
-                        style={{ fontFamily: "var(--code-font-family)", padding: "12px 16px", opacity: 0.5 }}
-                      >
-                        Server v{serverInfo.version}
-                      </Text>
-                    )}
+                    <Flex
+                      direction="column"
+                      gap="1"
+                      style={{ padding: "12px 16px", fontFamily: "var(--code-font-family)" }}
+                    >
+                      {serverInfo?.version && (
+                        <Flex align="center" gap="2">
+                          <Text size="1" color="gray" style={{ opacity: 0.5 }}>
+                            Server v{serverInfo.version}
+                          </Text>
+                          {versionLoading && <Spinner size="1" />}
+                          {versionStatus?.server.updateAvailable && (
+                            <Badge size="1" color="orange" variant="soft">
+                              v{versionStatus.server.latest}
+                            </Badge>
+                          )}
+                        </Flex>
+                      )}
+                      {versionStatus?.sfu && (
+                        <Flex align="center" gap="2">
+                          <Text size="1" color="gray" style={{ opacity: 0.5 }}>
+                            SFU {versionStatus.sfu.current ? `v${versionStatus.sfu.current}` : "—"}
+                          </Text>
+                          {versionStatus.sfu.updateAvailable && (
+                            <Badge size="1" color="orange" variant="soft">
+                              v{versionStatus.sfu.latest}
+                            </Badge>
+                          )}
+                        </Flex>
+                      )}
+                    </Flex>
                   </Box>
 
                   <Box style={{ flex: 1, overflow: "auto", minWidth: 0 }}>

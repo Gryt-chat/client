@@ -29,6 +29,7 @@ interface MobileServerViewProps {
   onOpenSettings: () => void;
   onOpenReports: () => void;
   pendingReportCount: number;
+  updateAvailable: boolean;
   onLeave: () => void;
 
   // ChannelList
@@ -233,6 +234,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
               onOpenSettings={props.onOpenSettings}
               onOpenReports={props.onOpenReports}
               pendingReportCount={props.pendingReportCount}
+              updateAvailable={props.updateAvailable}
               onLeave={props.onLeave}
             />
           </Box>
