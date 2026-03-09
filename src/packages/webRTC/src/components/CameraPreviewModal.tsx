@@ -79,7 +79,7 @@ export function CameraPreviewModal({
   }, [open, cameraID, quality, fps, mirrored, flipped]);
 
   const startPreview = useCallback(async (deviceId: string, q: string, fpsVal: number) => {
-    const qc = QUALITY_CONSTRAINTS[q] ?? QUALITY_CONSTRAINTS.native;
+    const qc = QUALITY_CONSTRAINTS[q as CameraQuality] ?? QUALITY_CONSTRAINTS.native;
     const videoConstraints: MediaTrackConstraints = {
       ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
       frameRate: { ideal: fpsVal || 30 },
@@ -228,7 +228,7 @@ export function CameraPreviewModal({
 
   useEffect(() => {
     if (!maxCameraHeight) return;
-    const c = QUALITY_CONSTRAINTS[localQuality];
+    const c = QUALITY_CONSTRAINTS[localQuality as CameraQuality];
     if (c?.height && c.height > maxCameraHeight) {
       setLocalQuality("native");
     }

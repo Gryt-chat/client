@@ -14,7 +14,7 @@ import { CleanupRefs,performSfuCleanup, performUnmountCleanup } from "./sfuClean
 import { sfuConnect } from "./sfuConnectFlow";
 import { SFUConnectionStateInternal } from "./sfuTypes";
 import { useSFUStreams } from "./useSFUStreams";
-import { voiceLog } from "./voiceLogger";
+import { type Phase, voiceLog } from "./voiceLogger";
 
 function useSfuHook(): SFUInterface {
   // Core WebRTC references
@@ -277,6 +277,37 @@ function useSfuHook(): SFUInterface {
     } catch { /* ws may have closed between check and send */ }
   }, []);
 
+  const applyVideoCodecPreferences = useCallback((pc: RTCPeerConnection, sender: RTCRtpSender, preferredCodec: string | undefined, label: Phase): boolean => {
+    const transceiver = pc.getTransceivers().find(t => t.sender === sender);
+    if (!transceiver?.setCodecPreferences) return false;
+    const caps = RTCRtpSender.getCapabilities("video");
+    if (!caps) return false;
+
+    const mimeMap: Record<string, string> = {
+      h264: "video/h264",
+      vp9: "video/vp9",
+      av1: "video/av1",
+    };
+    const targetMimeLower = preferredCodec && preferredCodec !== "auto"
+      ? mimeMap[preferredCodec]
+      : "video/h264";
+
+    if (!targetMimeLower) return false;
+
+    const preferred = caps.codecs.filter(c => c.mimeType.toLowerCase() === targetMimeLower);
+    const rest = caps.codecs.filter(c => c.mimeType.toLowerCase() !== targetMimeLower);
+
+    if (preferred.length === 0) {
+      const availableMimes = [...new Set(caps.codecs.map(c => c.mimeType))];
+      voiceLog.warn(label, `Codec "${preferredCodec}" (${targetMimeLower}) NOT found in browser capabilities. Available: [${availableMimes.join(", ")}]. Falling back to browser default order.`);
+      return false;
+    }
+
+    transceiver.setCodecPreferences([...preferred, ...rest]);
+    voiceLog.info(label, `setCodecPreferences: ${preferredCodec ?? "auto"} preferred (${preferred.length} matched, ${rest.length} other)`);
+    return true;
+  }, []);
+
   const addVideoTrack = useCallback((track: MediaStreamTrack, stream: MediaStream, preferredCodec?: string) => {
     const pc = peerConnectionRef.current;
     if (!pc || pc.connectionState === "closed") {
@@ -342,37 +373,6 @@ function useSfuHook(): SFUInterface {
     videoSenderRef.current = null;
     sendRenegotiate();
   }, [sendRenegotiate]);
-
-  const applyVideoCodecPreferences = useCallback((pc: RTCPeerConnection, sender: RTCRtpSender, preferredCodec: string | undefined, label: string): boolean => {
-    const transceiver = pc.getTransceivers().find(t => t.sender === sender);
-    if (!transceiver?.setCodecPreferences) return false;
-    const caps = RTCRtpSender.getCapabilities("video");
-    if (!caps) return false;
-
-    const mimeMap: Record<string, string> = {
-      h264: "video/h264",
-      vp9: "video/vp9",
-      av1: "video/av1",
-    };
-    const targetMimeLower = preferredCodec && preferredCodec !== "auto"
-      ? mimeMap[preferredCodec]
-      : "video/h264";
-
-    if (!targetMimeLower) return false;
-
-    const preferred = caps.codecs.filter(c => c.mimeType.toLowerCase() === targetMimeLower);
-    const rest = caps.codecs.filter(c => c.mimeType.toLowerCase() !== targetMimeLower);
-
-    if (preferred.length === 0) {
-      const availableMimes = [...new Set(caps.codecs.map(c => c.mimeType))];
-      voiceLog.warn(label, `Codec "${preferredCodec}" (${targetMimeLower}) NOT found in browser capabilities. Available: [${availableMimes.join(", ")}]. Falling back to browser default order.`);
-      return false;
-    }
-
-    transceiver.setCodecPreferences([...preferred, ...rest]);
-    voiceLog.info(label, `setCodecPreferences: ${preferredCodec ?? "auto"} preferred (${preferred.length} matched, ${rest.length} other)`);
-    return true;
-  }, []);
 
   const addScreenVideoTrack = useCallback((track: MediaStreamTrack, stream: MediaStream, preferredCodec?: string) => {
     const pc = peerConnectionRef.current;
