@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { MdExpandLess, MdExpandMore } from "react-icons/md";
 
 import { Logo, readPendingInvite, resetKeycloakInit, useAccount } from "@/common";
+
 import { getCustomAuthIssuer, getGrytConfig, setCustomAuthIssuer } from "../../../config";
 
 const RETRY_DELAY_S = 15;

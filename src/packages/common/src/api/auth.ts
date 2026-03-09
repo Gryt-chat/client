@@ -1,7 +1,8 @@
 import axios, { AxiosInstance, AxiosResponse } from "axios";
 
-import { getGrytConfig } from "../../../../config";
 import { LoginData, RegisterData } from "@/common";
+
+import { getGrytConfig } from "../../../../config";
 
 interface RefreshData {
   refreshToken: string;

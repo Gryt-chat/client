@@ -1,8 +1,8 @@
 import { Badge, Box, Button, Flex, Heading, Switch, Text } from "@radix-ui/themes";
 import { MdFolder } from "react-icons/md";
 
-import { useAddons } from "@/addons";
 import type { AddonManifest } from "@/addons";
+import { useAddons } from "@/addons";
 
 import { isElectron } from "../../../../lib/electron";
 import { SettingsContainer } from "./settingsComponents";

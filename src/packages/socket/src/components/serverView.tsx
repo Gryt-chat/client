@@ -7,7 +7,6 @@ import { useSettings } from "@/settings";
 import { SidebarItem } from "@/settings/src/types/server";
 import { useSFU } from "@/webRTC";
 
-import { getUpdateAvailable } from "../hooks/useVersionStatus";
 import { useAdminActions } from "../hooks/useAdminActions";
 import { useChannelSettings, useHandleChannelClick } from "../hooks/useChannelSettings";
 import { useChat } from "../hooks/useChat";
@@ -19,6 +18,7 @@ import { useServerState } from "../hooks/useServerState";
 import { SIDEBAR_HOVER_PX, SIDEBAR_WIDTH_PX, useMediaAutoShow, useSidebarHover, useVoiceResize } from "../hooks/useServerViewLayout";
 import { useSidebarEditor } from "../hooks/useSidebarEditor";
 import { useSockets } from "../hooks/useSockets";
+import { getUpdateAvailable } from "../hooks/useVersionStatus";
 import { ChatView } from "./ChatView";
 import { ConnectionBanner } from "./ConnectionBanner";
 import { MemberSidebarPanel } from "./MemberSidebarPanel";
