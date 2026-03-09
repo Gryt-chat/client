@@ -62,6 +62,7 @@ export function MiniControls({
     screenShareMaxBitrate, setScreenShareMaxBitrate,
     screenShareScalabilityMode, setScreenShareScalabilityMode,
     cameraID, setCameraID, cameraQuality, setCameraQuality,
+    cameraFps, setCameraFps,
     cameraMirrored, setCameraMirrored,
     cameraFlipped, setCameraFlipped,
   } = useSettings();
@@ -198,6 +199,8 @@ export function MiniControls({
         onCameraIDChange={setCameraID}
         quality={cameraQuality}
         onQualityChange={setCameraQuality}
+        fps={cameraFps}
+        onFpsChange={setCameraFps}
         mirrored={cameraMirrored}
         onMirroredChange={setCameraMirrored}
         flipped={cameraFlipped}

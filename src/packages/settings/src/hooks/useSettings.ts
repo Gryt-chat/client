@@ -8,7 +8,7 @@ import {
   useUserId,
 } from "@/common";
 
-import { type ScalabilityMode, type ScreenShareCodec, settingsInit } from "./settingsStorage";
+import { type ScalabilityMode, type ScreenShareCodec, settingsInit, type VideoCodec } from "./settingsStorage";
 import { loadAudioFromCache, useAudioSettings } from "./useAudioSettings";
 import { getUserValue, loadForUser, setUserValue } from "./userStorage";
 
@@ -37,6 +37,8 @@ function useSettingsHook() {
   const [cameraQuality, setCameraQuality] = useState("native");
   const [cameraMirrored, setCameraMirrored] = useState(true);
   const [cameraFlipped, setCameraFlipped] = useState(false);
+  const [cameraFps, setCameraFpsState] = useState(30);
+  const [cameraCodec, setCameraCodecState] = useState<VideoCodec>("auto");
 
   const [screenShareQuality, setScreenShareQuality] = useState("native");
   const [screenShareFps, setScreenShareFps] = useState(30);
@@ -82,6 +84,8 @@ function useSettingsHook() {
       setCameraQuality(getUserValue("cameraQuality", "native"));
       setCameraMirrored(getUserValue("cameraMirrored", true));
       setCameraFlipped(getUserValue("cameraFlipped", false));
+      setCameraFpsState(getUserValue("cameraFps", 30));
+      setCameraCodecState(getUserValue<VideoCodec>("cameraCodec", "auto"));
       setScreenShareQuality(getUserValue("screenShareQuality", "native"));
       setScreenShareFps(getUserValue("screenShareFps", 30));
       setExperimentalScreenShare(getUserValue("experimentalScreenShare", false));
@@ -210,6 +214,16 @@ function useSettingsHook() {
     setUserValue("cameraFlipped", flipped);
   }
 
+  function updateCameraFps(fps: number) {
+    setCameraFpsState(fps);
+    setUserValue("cameraFps", fps);
+  }
+
+  function updateCameraCodec(codec: VideoCodec) {
+    setCameraCodecState(codec);
+    setUserValue("cameraCodec", codec);
+  }
+
   function updateScreenShareQuality(quality: string) {
     setScreenShareQuality(quality);
     setUserValue("screenShareQuality", quality);
@@ -334,6 +348,10 @@ function useSettingsHook() {
     setCameraMirrored: updateCameraMirrored,
     cameraFlipped,
     setCameraFlipped: updateCameraFlipped,
+    cameraFps,
+    setCameraFps: updateCameraFps,
+    cameraCodec,
+    setCameraCodec: updateCameraCodec,
     screenShareQuality,
     setScreenShareQuality: updateScreenShareQuality,
     screenShareFps,

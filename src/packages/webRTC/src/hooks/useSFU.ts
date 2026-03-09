@@ -43,6 +43,8 @@ function useSfuHook(): SFUInterface {
   const videoSenderRef = useRef<RTCRtpSender | null>(null);
   const screenVideoSenderRef = useRef<RTCRtpSender | null>(null);
   const screenAudioSenderRef = useRef<RTCRtpSender | null>(null);
+  const lastCameraCodecRef = useRef<string | undefined>(undefined);
+  const lastScreenCodecRef = useRef<string | undefined>(undefined);
 
   // Dependencies
   const {
@@ -275,7 +277,7 @@ function useSfuHook(): SFUInterface {
     } catch { /* ws may have closed between check and send */ }
   }, []);
 
-  const addVideoTrack = useCallback((track: MediaStreamTrack, stream: MediaStream) => {
+  const addVideoTrack = useCallback((track: MediaStreamTrack, stream: MediaStream, preferredCodec?: string) => {
     const pc = peerConnectionRef.current;
     if (!pc || pc.connectionState === "closed") {
       voiceLog.warn("CAMERA", `addVideoTrack skipped — pc ${pc ? pc.connectionState : "null"}`);
@@ -305,6 +307,13 @@ function useSfuHook(): SFUInterface {
             senderTrackId: videoSenderRef.current?.track?.id,
           });
         });
+
+      if (preferredCodec !== lastCameraCodecRef.current) {
+        voiceLog.info("CAMERA", `Codec changed (${lastCameraCodecRef.current} → ${preferredCodec}), re-applying preferences`);
+        applyVideoCodecPreferences(pc, videoSenderRef.current, preferredCodec, "CAMERA");
+        lastCameraCodecRef.current = preferredCodec;
+        sendRenegotiate();
+      }
       return;
     }
     voiceLog.step("CAMERA", "add", "addTrack + renegotiate (first camera track)", {
@@ -314,8 +323,10 @@ function useSfuHook(): SFUInterface {
     });
     const sender = pc.addTrack(track, stream);
     videoSenderRef.current = sender;
+    applyVideoCodecPreferences(pc, sender, preferredCodec, "CAMERA");
+    lastCameraCodecRef.current = preferredCodec;
     sendRenegotiate();
-  }, [sendRenegotiate]);
+  }, [sendRenegotiate, applyVideoCodecPreferences]);
 
   const removeVideoTrack = useCallback(() => {
     const pc = peerConnectionRef.current;
@@ -332,6 +343,37 @@ function useSfuHook(): SFUInterface {
     sendRenegotiate();
   }, [sendRenegotiate]);
 
+  const applyVideoCodecPreferences = useCallback((pc: RTCPeerConnection, sender: RTCRtpSender, preferredCodec: string | undefined, label: string): boolean => {
+    const transceiver = pc.getTransceivers().find(t => t.sender === sender);
+    if (!transceiver?.setCodecPreferences) return false;
+    const caps = RTCRtpSender.getCapabilities("video");
+    if (!caps) return false;
+
+    const mimeMap: Record<string, string> = {
+      h264: "video/h264",
+      vp9: "video/vp9",
+      av1: "video/av1",
+    };
+    const targetMimeLower = preferredCodec && preferredCodec !== "auto"
+      ? mimeMap[preferredCodec]
+      : "video/h264";
+
+    if (!targetMimeLower) return false;
+
+    const preferred = caps.codecs.filter(c => c.mimeType.toLowerCase() === targetMimeLower);
+    const rest = caps.codecs.filter(c => c.mimeType.toLowerCase() !== targetMimeLower);
+
+    if (preferred.length === 0) {
+      const availableMimes = [...new Set(caps.codecs.map(c => c.mimeType))];
+      voiceLog.warn(label, `Codec "${preferredCodec}" (${targetMimeLower}) NOT found in browser capabilities. Available: [${availableMimes.join(", ")}]. Falling back to browser default order.`);
+      return false;
+    }
+
+    transceiver.setCodecPreferences([...preferred, ...rest]);
+    voiceLog.info(label, `setCodecPreferences: ${preferredCodec ?? "auto"} preferred (${preferred.length} matched, ${rest.length} other)`);
+    return true;
+  }, []);
+
   const addScreenVideoTrack = useCallback((track: MediaStreamTrack, stream: MediaStream, preferredCodec?: string) => {
     const pc = peerConnectionRef.current;
     if (!pc || pc.connectionState === "closed") return;
@@ -340,43 +382,24 @@ function useSfuHook(): SFUInterface {
       screenVideoSenderRef.current.replaceTrack(track)
         .then(() => voiceLog.ok("SCREEN", "replace", `replaceTrack succeeded – track=${track.id}`))
         .catch((err: unknown) => voiceLog.fail("SCREEN", "replace", `replaceTrack FAILED – track=${track.id}`, err));
+
+      if (preferredCodec !== lastScreenCodecRef.current) {
+        voiceLog.info("SCREEN", `Codec changed (${lastScreenCodecRef.current} → ${preferredCodec}), re-applying preferences`);
+        applyVideoCodecPreferences(pc, screenVideoSenderRef.current, preferredCodec, "SCREEN");
+        lastScreenCodecRef.current = preferredCodec;
+        sendRenegotiate();
+      }
       return;
     }
     voiceLog.info("SCREEN", `ADD path – track=${track.id} stream=${stream.id} pcState=${pc.signalingState}`);
     const sender = pc.addTrack(track, stream);
     screenVideoSenderRef.current = sender;
-
-    const transceiver = pc.getTransceivers().find(t => t.sender === sender);
-    if (transceiver?.setCodecPreferences) {
-      const caps = RTCRtpSender.getCapabilities("video");
-      if (caps) {
-        const mimeMap: Record<string, string> = {
-          h264: "video/h264",
-          vp9: "video/vp9",
-          av1: "video/av1",
-        };
-        const targetMimeLower = preferredCodec && preferredCodec !== "auto"
-          ? mimeMap[preferredCodec]
-          : "video/h264";
-
-        if (targetMimeLower) {
-          const preferred = caps.codecs.filter(c => c.mimeType.toLowerCase() === targetMimeLower);
-          const rest = caps.codecs.filter(c => c.mimeType.toLowerCase() !== targetMimeLower);
-
-          if (preferred.length === 0) {
-            const availableMimes = [...new Set(caps.codecs.map(c => c.mimeType))];
-            voiceLog.warn("SCREEN", `Codec "${preferredCodec}" (${targetMimeLower}) NOT found in browser capabilities. Available: [${availableMimes.join(", ")}]. Falling back to browser default order.`);
-          } else {
-            transceiver.setCodecPreferences([...preferred, ...rest]);
-            voiceLog.info("SCREEN", `setCodecPreferences: ${preferredCodec} preferred (${preferred.length} matched, ${rest.length} other)`);
-          }
-        }
-      }
-    }
+    applyVideoCodecPreferences(pc, sender, preferredCodec, "SCREEN");
+    lastScreenCodecRef.current = preferredCodec;
 
     voiceLog.info("SCREEN", `addTrack done, calling sendRenegotiate`);
     sendRenegotiate();
-  }, [sendRenegotiate]);
+  }, [sendRenegotiate, applyVideoCodecPreferences]);
 
   const removeScreenVideoTrack = useCallback(() => {
     const sender = screenVideoSenderRef.current;
@@ -420,6 +443,8 @@ function useSfuHook(): SFUInterface {
       screenVideoSenderRef.current = null;
       screenAudioSenderRef.current = null;
       videoSenderRef.current = null;
+      lastCameraCodecRef.current = undefined;
+      lastScreenCodecRef.current = undefined;
     }
   }, [isConnected]);
 
@@ -668,6 +693,8 @@ function useSfuHook(): SFUInterface {
     connectionState: connectionState.state,
     isConnecting,
     getPeerConnection: () => peerConnectionRef.current,
+    getScreenSenderTrackId: () => screenVideoSenderRef.current?.track?.id ?? null,
+    getCameraSenderTrackId: () => videoSenderRef.current?.track?.id ?? null,
     activeSfuUrl: activeSfuUrlRef.current,
   };
 }

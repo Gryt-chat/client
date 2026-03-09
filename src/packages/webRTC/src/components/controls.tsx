@@ -55,8 +55,10 @@ export function Controls({ onDisconnect }: ControlsProps) {
     screenShareMaxBitrate, setScreenShareMaxBitrate,
     screenShareScalabilityMode, setScreenShareScalabilityMode,
     cameraID, setCameraID, cameraQuality, setCameraQuality,
+    cameraFps, setCameraFps,
     cameraMirrored, setCameraMirrored,
     cameraFlipped, setCameraFlipped,
+    cameraCodec,
   } = useSettings();
 
   const prevCameraStreamRef = useRef<MediaStream | null>(null);
@@ -81,7 +83,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
           prevStreamId: prevCameraStreamRef.current?.id,
           settings: videoTrack.getSettings(),
         });
-        addVideoTrack(videoTrack, cameraStream);
+        addVideoTrack(videoTrack, cameraStream, cameraCodec);
         prevCameraStreamRef.current = cameraStream;
 
         if (getPeerConnection) {
@@ -106,7 +108,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
       removeVideoTrack();
       prevCameraStreamRef.current = null;
     }
-  }, [cameraEnabled, cameraStream, isConnected, addVideoTrack, removeVideoTrack, getPeerConnection]);
+  }, [cameraEnabled, cameraStream, isConnected, addVideoTrack, removeVideoTrack, getPeerConnection, cameraCodec]);
 
   // Sync screen share video track to WebRTC
   useEffect(() => {
@@ -366,6 +368,8 @@ export function Controls({ onDisconnect }: ControlsProps) {
         onCameraIDChange={setCameraID}
         quality={cameraQuality}
         onQualityChange={setCameraQuality}
+        fps={cameraFps}
+        onFpsChange={setCameraFps}
         mirrored={cameraMirrored}
         onMirroredChange={setCameraMirrored}
         flipped={cameraFlipped}

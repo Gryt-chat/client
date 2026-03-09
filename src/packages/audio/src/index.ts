@@ -1,5 +1,5 @@
-export type { CameraQuality } from "./hooks/useCamera";
-export { useCamera } from "./hooks/useCamera";
+export type { CameraFps, CameraQuality } from "./hooks/useCamera";
+export { CAMERA_FPS_OPTIONS, QUALITY_CONSTRAINTS, useCamera } from "./hooks/useCamera";
 export { useDeviceEnumeration } from "./hooks/useDeviceEnumeration";
 export { useGlobalHotkeys } from "./hooks/useGlobalHotkeys";
 export { useHandles } from "./hooks/useHandles";

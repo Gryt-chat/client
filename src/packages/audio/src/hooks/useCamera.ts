@@ -9,24 +9,27 @@ export type CameraQuality =
   | "native" | "4k" | "1440p" | "1080p" | "720p" | "480p" | "360p" | "240p"
   | "144p" | "96p" | "64p" | "48p" | "32p" | "24p" | "16p" | "8p" | "4p";
 
-export const QUALITY_CONSTRAINTS: Record<CameraQuality, { width?: number; height?: number; frameRate: number }> = {
-  native: { frameRate: 30 },
-  "4k": { width: 3840, height: 2160, frameRate: 30 },
-  "1440p": { width: 2560, height: 1440, frameRate: 30 },
-  "1080p": { width: 1920, height: 1080, frameRate: 30 },
-  "720p": { width: 1280, height: 720, frameRate: 30 },
-  "480p": { width: 854, height: 480, frameRate: 30 },
-  "360p": { width: 640, height: 360, frameRate: 30 },
-  "240p": { width: 426, height: 240, frameRate: 24 },
-  "144p": { width: 256, height: 144, frameRate: 15 },
-  "96p": { width: 170, height: 96, frameRate: 10 },
-  "64p": { width: 114, height: 64, frameRate: 10 },
-  "48p": { width: 85, height: 48, frameRate: 10 },
-  "32p": { width: 57, height: 32, frameRate: 5 },
-  "24p": { width: 43, height: 24, frameRate: 5 },
-  "16p": { width: 28, height: 16, frameRate: 5 },
-  "8p": { width: 14, height: 8, frameRate: 2 },
-  "4p": { width: 7, height: 4, frameRate: 1 },
+export type CameraFps = 5 | 10 | 15 | 24 | 30 | 60;
+export const CAMERA_FPS_OPTIONS: CameraFps[] = [5, 10, 15, 24, 30, 60];
+
+export const QUALITY_CONSTRAINTS: Record<CameraQuality, { width?: number; height?: number }> = {
+  native: {},
+  "4k": { width: 3840, height: 2160 },
+  "1440p": { width: 2560, height: 1440 },
+  "1080p": { width: 1920, height: 1080 },
+  "720p": { width: 1280, height: 720 },
+  "480p": { width: 854, height: 480 },
+  "360p": { width: 640, height: 360 },
+  "240p": { width: 426, height: 240 },
+  "144p": { width: 256, height: 144 },
+  "96p": { width: 170, height: 96 },
+  "64p": { width: 114, height: 64 },
+  "48p": { width: 85, height: 48 },
+  "32p": { width: 57, height: 32 },
+  "24p": { width: 43, height: 24 },
+  "16p": { width: 28, height: 16 },
+  "8p": { width: 14, height: 8 },
+  "4p": { width: 7, height: 4 },
 };
 
 export interface CameraInterface {
@@ -57,7 +60,7 @@ function friendlyCameraError(err: unknown): string {
 }
 
 function useCameraHook(): CameraInterface {
-  const { cameraID, setCameraID, cameraQuality, cameraFlipped } = useSettings();
+  const { cameraID, setCameraID, cameraQuality, cameraFlipped, cameraFps } = useSettings();
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [cameraEnabled, setCameraEnabledState] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -102,9 +105,10 @@ function useCameraHook(): CameraInterface {
 
   const startCamera = useCallback(async () => {
     const quality = QUALITY_CONSTRAINTS[cameraQuality as CameraQuality] ?? QUALITY_CONSTRAINTS.native;
+    const fps = cameraFps || 30;
     const videoConstraints: MediaTrackConstraints = {
       ...(cameraID ? { deviceId: { exact: cameraID } } : {}),
-      frameRate: { ideal: quality.frameRate, max: quality.frameRate },
+      frameRate: { ideal: fps, max: fps },
     };
     if (quality.width) {
       videoConstraints.width = { ideal: quality.width, max: quality.width };
@@ -158,7 +162,7 @@ function useCameraHook(): CameraInterface {
       setCameraError(friendlyCameraError(error));
       setCameraEnabledState(false);
     }
-  }, [cameraID, cameraQuality, cameraFlipped, setCameraID, applyFlip]);
+  }, [cameraID, cameraQuality, cameraFlipped, cameraFps, setCameraID, applyFlip]);
 
   const stopCamera = useCallback(() => {
     if (flippedRef.current) {
@@ -188,19 +192,20 @@ function useCameraHook(): CameraInterface {
     startCamera();
   }, [startCamera]);
 
-  // Restart when device or quality changes while camera is on
+  // Restart when device, quality, or fps changes while camera is on
   useEffect(() => {
-    console.log("[Camera] Quality/device change effect", {
+    console.log("[Camera] Quality/device/fps change effect", {
       cameraEnabled,
       cameraID,
       cameraQuality,
+      cameraFps,
       willRestart: cameraEnabled && !!cameraID,
     });
     if (cameraEnabled && cameraID) {
       startCamera();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cameraID, cameraQuality]);
+  }, [cameraID, cameraQuality, cameraFps]);
 
   // Rebuild flip pipeline when cameraFlipped changes while camera is on
   useEffect(() => {

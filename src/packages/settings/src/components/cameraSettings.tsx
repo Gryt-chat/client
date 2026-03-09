@@ -2,7 +2,7 @@ import { Badge, Button, Flex, Heading, Select, Separator, Text } from "@radix-ui
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MdRefresh } from "react-icons/md";
 
-import { type CameraQuality, QUALITY_CONSTRAINTS, useCamera } from "@/audio";
+import { CAMERA_FPS_OPTIONS, type CameraQuality, QUALITY_CONSTRAINTS, useCamera } from "@/audio";
 import { useSettings } from "@/settings";
 
 import { SettingsContainer, ToggleSetting } from "./settingsComponents";
@@ -33,6 +33,8 @@ export function CameraSettings() {
     setCameraID,
     cameraQuality,
     setCameraQuality,
+    cameraFps,
+    setCameraFps,
     cameraMirrored,
     setCameraMirrored,
     cameraFlipped,
@@ -59,9 +61,10 @@ export function CameraSettings() {
   const startPreview = useCallback(async () => {
     if (cameraEnabled) return;
     const quality = QUALITY_CONSTRAINTS[cameraQuality as CameraQuality] ?? QUALITY_CONSTRAINTS.native;
+    const fps = cameraFps || 30;
     const videoConstraints: MediaTrackConstraints = {
       ...(cameraID ? { deviceId: { exact: cameraID } } : {}),
-      frameRate: { ideal: quality.frameRate },
+      frameRate: { ideal: fps },
     };
     if (quality.width) {
       videoConstraints.width = { ideal: quality.width };
@@ -91,7 +94,7 @@ export function CameraSettings() {
           setPreviewError("Failed to start camera preview. Please try again.");
       }
     }
-  }, [cameraEnabled, cameraID, cameraQuality]);
+  }, [cameraEnabled, cameraID, cameraQuality, cameraFps]);
 
   const stopPreview = useCallback(() => {
     if (previewStreamRef.current) {
@@ -112,13 +115,13 @@ export function CameraSettings() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Restart preview when device or quality changes (only when previewing locally)
+  // Restart preview when device, quality, or fps changes (only when previewing locally)
   useEffect(() => {
     if (!cameraEnabled && previewStreamRef.current) {
       startPreview();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cameraID, cameraQuality]);
+  }, [cameraID, cameraQuality, cameraFps]);
 
   // If global camera turns on while previewing, stop the local preview
   useEffect(() => {
@@ -282,6 +285,23 @@ export function CameraSettings() {
             {filteredOptions.map((opt) => (
               <Select.Item key={opt.value} value={opt.value}>
                 {opt.label}
+              </Select.Item>
+            ))}
+          </Select.Content>
+        </Select.Root>
+      </Flex>
+
+      <Flex direction="column" gap="2">
+        <Text weight="medium" size="2">Frame Rate</Text>
+        <Select.Root
+          value={String(cameraFps)}
+          onValueChange={(v) => setCameraFps(Number(v))}
+        >
+          <Select.Trigger />
+          <Select.Content position="popper" sideOffset={4}>
+            {CAMERA_FPS_OPTIONS.map((fps) => (
+              <Select.Item key={fps} value={String(fps)}>
+                {fps} FPS
               </Select.Item>
             ))}
           </Select.Content>

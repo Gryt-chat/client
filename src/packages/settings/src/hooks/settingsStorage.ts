@@ -1,6 +1,8 @@
 import { AUDIO_DEFAULTS } from "./useAudioSettings";
 
-export type ScreenShareCodec = "auto" | "h264" | "vp9" | "av1";
+export type VideoCodec = "auto" | "h264" | "vp9" | "av1";
+/** @deprecated Use VideoCodec instead */
+export type ScreenShareCodec = VideoCodec;
 export type ScalabilityMode = "L1T1" | "L1T2" | "L1T3";
 
 export interface Settings {
@@ -139,6 +141,10 @@ export interface Settings {
   setCameraMirrored: (mirrored: boolean) => void;
   cameraFlipped: boolean;
   setCameraFlipped: (flipped: boolean) => void;
+  cameraFps: number;
+  setCameraFps: (fps: number) => void;
+  cameraCodec: VideoCodec;
+  setCameraCodec: (codec: VideoCodec) => void;
 
   screenShareQuality: string;
   setScreenShareQuality: (quality: string) => void;
@@ -292,6 +298,10 @@ export const settingsInit: Settings = {
   setCameraMirrored: noop,
   cameraFlipped: false,
   setCameraFlipped: noop,
+  cameraFps: 30,
+  setCameraFps: noop,
+  cameraCodec: "auto",
+  setCameraCodec: noop,
 
   screenShareQuality: "native",
   setScreenShareQuality: noop,

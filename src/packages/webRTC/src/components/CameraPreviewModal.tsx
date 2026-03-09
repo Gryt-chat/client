@@ -2,7 +2,7 @@ import { Badge, Button, Checkbox, Dialog, Flex, IconButton, Select, Text } from 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MdClose, MdRefresh, MdVideocam } from "react-icons/md";
 
-import type { CameraQuality } from "@/audio";
+import { CAMERA_FPS_OPTIONS, type CameraQuality, QUALITY_CONSTRAINTS } from "@/audio";
 
 interface CameraPreviewModalProps {
   open: boolean;
@@ -11,6 +11,8 @@ interface CameraPreviewModalProps {
   onCameraIDChange: (id: string) => void;
   quality: string;
   onQualityChange: (q: string) => void;
+  fps: number;
+  onFpsChange: (fps: number) => void;
   mirrored: boolean;
   onMirroredChange: (m: boolean) => void;
   flipped: boolean;
@@ -38,25 +40,6 @@ const QUALITY_OPTIONS: { value: CameraQuality; label: string }[] = [
   { value: "4p", label: "4p" },
 ];
 
-const QUALITY_CONSTRAINTS: Record<string, { width?: number; height?: number; frameRate: number }> = {
-  native: { frameRate: 30 },
-  "4k": { width: 3840, height: 2160, frameRate: 30 },
-  "1440p": { width: 2560, height: 1440, frameRate: 30 },
-  "1080p": { width: 1920, height: 1080, frameRate: 30 },
-  "720p": { width: 1280, height: 720, frameRate: 30 },
-  "480p": { width: 854, height: 480, frameRate: 30 },
-  "360p": { width: 640, height: 360, frameRate: 30 },
-  "240p": { width: 426, height: 240, frameRate: 24 },
-  "144p": { width: 256, height: 144, frameRate: 15 },
-  "96p": { width: 170, height: 96, frameRate: 10 },
-  "64p": { width: 114, height: 64, frameRate: 10 },
-  "48p": { width: 85, height: 48, frameRate: 10 },
-  "32p": { width: 57, height: 32, frameRate: 5 },
-  "24p": { width: 43, height: 24, frameRate: 5 },
-  "16p": { width: 28, height: 16, frameRate: 5 },
-  "8p": { width: 14, height: 8, frameRate: 2 },
-  "4p": { width: 7, height: 4, frameRate: 1 },
-};
 
 export function CameraPreviewModal({
   open,
@@ -65,6 +48,8 @@ export function CameraPreviewModal({
   onCameraIDChange,
   quality,
   onQualityChange,
+  fps,
+  onFpsChange,
   mirrored,
   onMirroredChange,
   flipped,
@@ -77,6 +62,7 @@ export function CameraPreviewModal({
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [localCameraID, setLocalCameraID] = useState(cameraID);
   const [localQuality, setLocalQuality] = useState(quality);
+  const [localFps, setLocalFps] = useState(fps);
   const [localMirrored, setLocalMirrored] = useState(mirrored);
   const [localFlipped, setLocalFlipped] = useState(flipped);
   const [retryCount, setRetryCount] = useState(0);
@@ -86,16 +72,17 @@ export function CameraPreviewModal({
     if (open) {
       setLocalCameraID(cameraID);
       setLocalQuality(quality);
+      setLocalFps(fps);
       setLocalMirrored(mirrored);
       setLocalFlipped(flipped);
     }
-  }, [open, cameraID, quality, mirrored, flipped]);
+  }, [open, cameraID, quality, fps, mirrored, flipped]);
 
-  const startPreview = useCallback(async (deviceId: string, q: string) => {
+  const startPreview = useCallback(async (deviceId: string, q: string, fpsVal: number) => {
     const qc = QUALITY_CONSTRAINTS[q] ?? QUALITY_CONSTRAINTS.native;
     const videoConstraints: MediaTrackConstraints = {
       ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
-      frameRate: { ideal: qc.frameRate },
+      frameRate: { ideal: fpsVal || 30 },
     };
     if (qc.width) {
       videoConstraints.width = { ideal: qc.width };
@@ -158,7 +145,7 @@ export function CameraPreviewModal({
       await loadDevices();
 
       try {
-        const stream = await startPreview(localCameraID, localQuality);
+        const stream = await startPreview(localCameraID, localQuality, localFps);
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop());
           return;
@@ -189,7 +176,7 @@ export function CameraPreviewModal({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, localCameraID, localQuality, retryCount]);
+  }, [open, localCameraID, localQuality, localFps, retryCount]);
 
   const [actualRes, setActualRes] = useState<{ w: number; h: number } | null>(null);
 
@@ -262,6 +249,7 @@ export function CameraPreviewModal({
     }
     onCameraIDChange(localCameraID);
     onQualityChange(localQuality);
+    onFpsChange(localFps);
     onMirroredChange(localMirrored);
     onFlippedChange(localFlipped);
     onStart();
@@ -369,6 +357,18 @@ export function CameraPreviewModal({
                 <Select.Content position="popper" sideOffset={4} style={{ maxHeight: 300 }}>
                   {filteredOptions.map((o) => (
                     <Select.Item key={o.value} value={o.value}>{o.label}</Select.Item>
+                  ))}
+                </Select.Content>
+              </Select.Root>
+            </Flex>
+
+            <Flex align="center" gap="3">
+              <Text size="2" style={{ minWidth: 60 }}>FPS</Text>
+              <Select.Root value={String(localFps)} onValueChange={(v) => setLocalFps(Number(v))}>
+                <Select.Trigger variant="soft" style={{ flex: 1 }} />
+                <Select.Content position="popper" sideOffset={4}>
+                  {CAMERA_FPS_OPTIONS.map((f) => (
+                    <Select.Item key={f} value={String(f)}>{f} FPS</Select.Item>
                   ))}
                 </Select.Content>
               </Select.Root>

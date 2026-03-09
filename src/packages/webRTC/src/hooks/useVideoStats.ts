@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 
-import { useCamera, useScreenShare } from "@/audio";
-
 import { useSFU } from "./useSFU";
 
 export interface OutboundVideoStats {
@@ -60,9 +58,7 @@ interface BytesDelta {
 }
 
 export function useVideoStats(enabled: boolean) {
-  const { getPeerConnection, isConnected } = useSFU();
-  const { cameraStream } = useCamera();
-  const { screenVideoStream } = useScreenShare();
+  const { getPeerConnection, isConnected, getScreenSenderTrackId, getCameraSenderTrackId } = useSFU();
 
   const [stats, setStats] = useState<VideoStatsBreakdown>(EMPTY);
   const outboundBytesRef = useRef<Map<string, BytesDelta>>(new Map());
@@ -77,9 +73,6 @@ export function useVideoStats(enabled: boolean) {
     }
 
     let cancelled = false;
-
-    const cameraTrackId = cameraStream?.getVideoTracks()[0]?.id ?? null;
-    const screenTrackId = screenVideoStream?.getVideoTracks()[0]?.id ?? null;
 
     const poll = async () => {
       if (cancelled) return;
@@ -133,13 +126,16 @@ export function useVideoStats(enabled: boolean) {
         const inbound: InboundVideoStats[] = [];
         const now = performance.now();
 
+        const screenTrackId = getScreenSenderTrackId?.() ?? null;
+        const cameraTrackId = getCameraSenderTrackId?.() ?? null;
+
         report.forEach((stat) => {
           if (stat.type === "outbound-rtp" && stat.kind === "video") {
             const trackIdentifier: string | undefined = stat.trackIdentifier;
             let label: "camera" | "screen" = "camera";
             if (trackIdentifier) {
-              if (trackIdentifier === screenTrackId) label = "screen";
-              else if (trackIdentifier === cameraTrackId) label = "camera";
+              if (screenTrackId && trackIdentifier === screenTrackId) label = "screen";
+              else if (cameraTrackId && trackIdentifier === cameraTrackId) label = "camera";
               else if (screenTrackId && !cameraTrackId) label = "screen";
             }
 
@@ -223,7 +219,7 @@ export function useVideoStats(enabled: boolean) {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [enabled, getPeerConnection, isConnected, cameraStream, screenVideoStream]);
+  }, [enabled, getPeerConnection, isConnected, getScreenSenderTrackId, getCameraSenderTrackId]);
 
   return stats;
 }
