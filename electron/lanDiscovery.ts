@@ -1,5 +1,5 @@
-import { createSocket, type Socket as DgramSocket } from "dgram";
 import { type ChildProcess, spawn } from "child_process";
+import { createSocket, type Socket as DgramSocket } from "dgram";
 import type { BrowserWindow } from "electron";
 
 interface LanServer {
