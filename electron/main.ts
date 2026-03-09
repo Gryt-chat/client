@@ -1,4 +1,3 @@
-import Bonjour from "bonjour-service";
 import { app, BrowserWindow, desktopCapturer, dialog, ipcMain, Menu, nativeImage, screen, session, shell, systemPreferences, Tray } from "electron";
 import { autoUpdater, UpdateInfo } from "electron-updater";
 import { appendFileSync, createReadStream, existsSync, readFileSync, statSync, writeFileSync } from "fs";
@@ -10,6 +9,7 @@ import { fileURLToPath } from "url";
 import { getAddons, getAddonsDir, initAddonManager, onAddonsChanged, resolveAddonFilePath, watchAddons } from "./addonManager";
 import { isNativeAudioCaptureAvailable, startNativeAudioCapture, stopNativeAudioCapture } from "./audioCaptureManager";
 import { deleteGlobalValue, flushGlobalStore, initGlobalStore, loadGlobalStore, saveGlobalStore, setGlobalValue } from "./globalStore";
+import { startLanDiscovery } from "./lanDiscovery";
 import { isNativeScreenCaptureAvailable, startNativeScreenCapture, stopNativeScreenCapture } from "./screenCaptureManager";
 import { flushUserStore, initUserStore, loadUser, patchUser, saveUser } from "./userStore";
 
@@ -999,33 +999,8 @@ if (!gotSingleInstanceLock) {
     }
 
     // ── LAN server discovery (mDNS) ────────────────────────────────
-    try {
-      const bonjour = new Bonjour();
-      const lanBrowser = bonjour.find({ type: "gryt" });
-
-      lanBrowser.on("up", (service) => {
-        const host = service.host || service.referer?.address;
-        if (!host) return;
-        mainWindow?.webContents.send("lan-server-discovered", {
-          name: service.name,
-          host,
-          port: service.port,
-          version: service.txt?.version ?? null,
-        });
-      });
-
-      lanBrowser.on("down", (service) => {
-        const host = service.host || service.referer?.address;
-        if (!host) return;
-        mainWindow?.webContents.send("lan-server-removed", { host, port: service.port });
-      });
-
-      app.on("before-quit", () => {
-        try { bonjour.destroy(); } catch { /* best-effort */ }
-      });
-    } catch (err) {
-      startupLog(`mDNS discovery failed to start: ${err}`);
-    }
+    const stopLanDiscovery = startLanDiscovery(mainWindow, startupLog);
+    app.on("before-quit", stopLanDiscovery);
 
     ipcMain.on("check-for-updates", () => {
       userInitiatedCheck = true;
