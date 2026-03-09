@@ -355,6 +355,7 @@ export const VoiceView = ({
 
   return (
     <motion.div
+      data-gryt="voice-view"
       transition={isDragging ? { duration: 0 } : { type: "spring", stiffness: 300, damping: 30 }}
       animate={{
         width: showVoiceView ? voiceWidth : 0,

@@ -7,6 +7,7 @@ import { dirname, extname, join, resolve } from "path";
 import { uIOhook, UiohookKey } from "uiohook-napi";
 import { fileURLToPath } from "url";
 
+import { getAddons, getAddonsDir, initAddonManager, onAddonsChanged, resolveAddonFilePath, watchAddons } from "./addonManager";
 import { isNativeAudioCaptureAvailable, startNativeAudioCapture, stopNativeAudioCapture } from "./audioCaptureManager";
 import { deleteGlobalValue, flushGlobalStore, initGlobalStore, loadGlobalStore, saveGlobalStore, setGlobalValue } from "./globalStore";
 import { isNativeScreenCaptureAvailable, startNativeScreenCapture, stopNativeScreenCapture } from "./screenCaptureManager";
@@ -57,6 +58,7 @@ let isQuitting = false;
 let closeToTray = true;
 let isUserSignedIn = false;
 let pttDown = false;
+let uiohookRunning = false;
 let startHiddenOnLaunch = false;
 let localServer: Server | null = null;
 let localServerUrl: string | null = null;
@@ -126,6 +128,7 @@ function handleDeepLink(url: string): void {
 const configPath = join(app.getPath("userData"), "gryt-config.json");
 initUserStore(app.getPath("userData"));
 initGlobalStore(app.getPath("userData"));
+initAddonManager(app.getPath("userData"));
 
 function readConfig(): Record<string, unknown> {
   try { return JSON.parse(readFileSync(configPath, "utf8")); }
@@ -381,6 +384,21 @@ function startLocalServer(): Promise<string> {
     return new Promise((resolveUrl, reject) => {
       const server = createServer((req, res) => {
         const pathname = decodeURIComponent(new URL(req.url ?? "/", "http://localhost").pathname);
+
+        if (pathname.startsWith("/addons/")) {
+          const addonFile = resolveAddonFilePath(pathname);
+          if (!addonFile) {
+            res.writeHead(404);
+            res.end();
+            return;
+          }
+          const ext = extname(addonFile).toLowerCase();
+          const contentType = MIME_TYPES[ext] ?? "application/octet-stream";
+          res.writeHead(200, { "Content-Type": contentType });
+          createReadStream(addonFile).pipe(res);
+          return;
+        }
+
         const safePath = resolve(distDir, pathname.replace(/^\/+/, ""));
 
         if (!safePath.startsWith(distDir)) {
@@ -594,7 +612,17 @@ function registerPttShortcut(pttKey: string): void {
   pttNeedsMeta = parts.includes("Meta");
 }
 
-function initUiohook(): void {
+function ensureUiohook(): boolean {
+  if (uiohookRunning) return true;
+
+  if (process.platform === "darwin") {
+    const trusted = systemPreferences.isTrustedAccessibilityClient({ prompt: false });
+    if (!trusted) {
+      startupLog("macOS Accessibility not granted — skipping uiohook");
+      return false;
+    }
+  }
+
   uIOhook.on("keydown", (e) => {
     if (pttKeycode == null) return;
     if (e.keycode !== pttKeycode) return;
@@ -618,6 +646,8 @@ function initUiohook(): void {
   });
 
   uIOhook.start();
+  uiohookRunning = true;
+  return true;
 }
 
 // ── System tray ─────────────────────────────────────────────────────────
@@ -766,6 +796,14 @@ if (!gotSingleInstanceLock) {
       saveGlobalStore(data);
     });
 
+    // ── Addons ─────────────────────────────────────────────────────
+    ipcMain.handle("addons:list", () => getAddons());
+    ipcMain.handle("addons:open-folder", () => shell.openPath(getAddonsDir()));
+    onAddonsChanged((addons) => {
+      mainWindow?.webContents.send("addons-changed", addons);
+    });
+    watchAddons();
+
     // Apply at startup (default enabled on Windows).
     applyStartWithWindowsSetting(startWithWindows);
 
@@ -784,8 +822,8 @@ if (!gotSingleInstanceLock) {
     }
 
     try {
-      initUiohook();
-      startupLog("uiohook initialized");
+      ensureUiohook();
+      startupLog(uiohookRunning ? "uiohook initialized" : "uiohook deferred (no accessibility or not needed yet)");
     } catch (err) {
       startupLog(`uiohook failed (PTT disabled): ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -1010,6 +1048,16 @@ if (!gotSingleInstanceLock) {
 
     ipcMain.on("ptt-set-key", (_event, pttKey: string) => {
       registerPttShortcut(pttKey);
+      if (pttKey && !uiohookRunning) {
+        if (process.platform === "darwin") {
+          systemPreferences.isTrustedAccessibilityClient({ prompt: true });
+        }
+        try {
+          ensureUiohook();
+        } catch (err) {
+          console.warn(`uiohook start failed: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
     });
 
     ipcMain.on("set-badge-count", (_event, count: number) => {
@@ -1072,7 +1120,10 @@ if (!gotSingleInstanceLock) {
     console.log("[Main] will-quit: flushing stores and cleaning up");
     flushUserStore();
     flushGlobalStore();
-    uIOhook.stop();
+    if (uiohookRunning) {
+      uIOhook.stop();
+      uiohookRunning = false;
+    }
     localServer?.close();
     localServer = null;
   });

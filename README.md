@@ -21,6 +21,8 @@ The entrypoint injects runtime configuration via environment variables:
 | `GRYT_OIDC_ISSUER` | `https://auth.gryt.chat/realms/gryt` | OIDC issuer URL |
 | `GRYT_OIDC_REALM` | `gryt` | Keycloak realm |
 | `GRYT_OIDC_CLIENT_ID` | `gryt-web` | OIDC client ID |
+| `GRYT_AUTH_API` | `https://auth.gryt.chat` | Auth API base URL |
+| `GRYT_AUTH_CALLBACK_URL` | `https://gryt.chat/auth/callback` | OAuth callback URL (used by Electron login) |
 
 Browse tags at [ghcr.io/gryt-chat/client](https://github.com/Gryt-chat/client/pkgs/container/client).
 

@@ -235,6 +235,7 @@ export const ChatView = memo(({
   return (
     <>
       <Box
+        data-gryt="chat-view"
         overflow="hidden"
         flexGrow="1"
         minWidth="0"

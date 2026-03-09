@@ -59,6 +59,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
   const displayAvatarUrl = activeProfile?.avatarUrl || avatarDataUrl;
   return (
     <Flex
+      data-gryt="sidebar"
       direction="column"
       height="100%"
       gap="4"

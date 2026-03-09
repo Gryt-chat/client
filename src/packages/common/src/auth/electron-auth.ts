@@ -1,7 +1,6 @@
 import { getGrytConfig } from "../../../../config";
 import { getElectronAPI } from "../../../../lib/electron";
 
-const REDIRECT_URI = "https://gryt.chat/auth/callback";
 const STORAGE_KEY = "gryt_electron_tokens";
 
 export interface ElectronTokens {
@@ -106,7 +105,7 @@ async function exchangeCodeForTokens(
     grant_type: "authorization_code",
     client_id: cfg.GRYT_OIDC_CLIENT_ID,
     code,
-    redirect_uri: REDIRECT_URI,
+    redirect_uri: cfg.GRYT_AUTH_CALLBACK_URL,
     code_verifier: codeVerifier,
   });
 
@@ -236,7 +235,7 @@ export async function electronLogin(): Promise<ElectronTokens> {
     `${cfg.GRYT_OIDC_ISSUER}/protocol/openid-connect/auth`,
   );
   authUrl.searchParams.set("client_id", cfg.GRYT_OIDC_CLIENT_ID);
-  authUrl.searchParams.set("redirect_uri", REDIRECT_URI);
+  authUrl.searchParams.set("redirect_uri", cfg.GRYT_AUTH_CALLBACK_URL);
   authUrl.searchParams.set("response_type", "code");
   authUrl.searchParams.set("scope", "openid profile email offline_access");
   authUrl.searchParams.set("state", state);
@@ -261,7 +260,7 @@ export async function electronPasskeySetup(): Promise<ElectronTokens> {
     `${cfg.GRYT_OIDC_ISSUER}/protocol/openid-connect/auth`,
   );
   authUrl.searchParams.set("client_id", cfg.GRYT_OIDC_CLIENT_ID);
-  authUrl.searchParams.set("redirect_uri", REDIRECT_URI);
+  authUrl.searchParams.set("redirect_uri", cfg.GRYT_AUTH_CALLBACK_URL);
   authUrl.searchParams.set("response_type", "code");
   authUrl.searchParams.set("scope", "openid profile email offline_access");
   authUrl.searchParams.set("state", state);
@@ -287,7 +286,7 @@ export async function electronRegister(): Promise<ElectronTokens> {
     `${cfg.GRYT_OIDC_ISSUER}/protocol/openid-connect/registrations`,
   );
   authUrl.searchParams.set("client_id", cfg.GRYT_OIDC_CLIENT_ID);
-  authUrl.searchParams.set("redirect_uri", REDIRECT_URI);
+  authUrl.searchParams.set("redirect_uri", cfg.GRYT_AUTH_CALLBACK_URL);
   authUrl.searchParams.set("response_type", "code");
   authUrl.searchParams.set("scope", "openid profile email offline_access");
   authUrl.searchParams.set("state", state);

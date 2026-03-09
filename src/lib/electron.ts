@@ -1,3 +1,17 @@
+export interface AddonManifest {
+  id: string;
+  name: string;
+  version: string;
+  type: "plugin" | "theme";
+  description?: string;
+  author?: string;
+  banner?: string;
+  /** Theme-only: CSS files to inject */
+  styles?: string[];
+  /** Plugin-only: JS entry point */
+  main?: string;
+}
+
 export interface UpdateStatus {
   status: "checking" | "available" | "not-available" | "downloading" | "downloaded" | "error";
   version?: string;
@@ -77,6 +91,9 @@ export interface ElectronAPI {
   deleteGlobalData(key: string): void;
   saveGlobalStore(data: Record<string, unknown>): void;
   onAuthCallback(callback: (url: string) => void): () => void;
+  listAddons(): Promise<AddonManifest[]>;
+  openAddonsFolder(): Promise<string>;
+  onAddonsChanged(callback: (addons: AddonManifest[]) => void): () => void;
   onLanServerDiscovered(callback: (server: LanServer) => void): () => void;
   onLanServerRemoved(callback: (server: { host: string; port: number }) => void): () => void;
   onDeepLinkInvite(callback: (data: { host: string; code: string }) => void): () => void;

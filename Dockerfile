@@ -30,6 +30,10 @@ http {
     location / {
       try_files $uri $uri/ /index.html;
     }
+    location /addons/ {
+      alias /addons/;
+      autoindex off;
+    }
     location /health {
       return 200 "healthy";
       add_header Content-Type text/plain;
@@ -44,11 +48,15 @@ RUN printf '%s\n' \
   ': "${GRYT_OIDC_ISSUER:=https://auth.gryt.chat/realms/gryt}"' \
   ': "${GRYT_OIDC_REALM:=gryt}"' \
   ': "${GRYT_OIDC_CLIENT_ID:=gryt-web}"' \
+  ': "${GRYT_AUTH_API:=https://auth.gryt.chat}"' \
+  ': "${GRYT_AUTH_CALLBACK_URL:=https://gryt.chat/auth/callback}"' \
   'cat > /usr/share/nginx/html/config.js <<EOF' \
   'window.__GRYT_CONFIG__ = {' \
   '  GRYT_OIDC_ISSUER: "${GRYT_OIDC_ISSUER}",' \
   '  GRYT_OIDC_REALM: "${GRYT_OIDC_REALM}",' \
   '  GRYT_OIDC_CLIENT_ID: "${GRYT_OIDC_CLIENT_ID}",' \
+  '  GRYT_AUTH_API: "${GRYT_AUTH_API}",' \
+  '  GRYT_AUTH_CALLBACK_URL: "${GRYT_AUTH_CALLBACK_URL}",' \
   '};' \
   'EOF' \
   > /docker-entrypoint.d/99-gryt-config.sh \

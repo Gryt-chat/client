@@ -200,7 +200,7 @@ export const ServerView = () => {
       {isDraggingResize && (
         <div style={{ position: "fixed", inset: 0, cursor: "grabbing", zIndex: 9999 }} />
       )}
-      <Flex width="100%" height="100%" gap="4" direction="column">
+      <Flex data-gryt="server-view" width="100%" height="100%" gap="4" direction="column">
         {isServerUnreachable && (
           <ConnectionBanner connectionStatus={currentConnectionStatus} onReconnect={() => reconnectServer(host)} />
         )}

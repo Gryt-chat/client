@@ -1,9 +1,13 @@
-import { Button, Flex, Text } from "@radix-ui/themes";
+import { Button, Flex, Text, TextField } from "@radix-ui/themes";
 import { useEffect, useRef, useState } from "react";
+import { MdExpandLess, MdExpandMore } from "react-icons/md";
 
-import { Logo, readPendingInvite, useAccount } from "@/common";
+import { Logo, readPendingInvite, resetKeycloakInit, useAccount } from "@/common";
+import { getCustomAuthIssuer, getGrytConfig, setCustomAuthIssuer } from "../../../config";
 
 const RETRY_DELAY_S = 15;
+
+const DEFAULT_ISSUER = "https://auth.gryt.chat/realms/gryt";
 
 export function SignUpModal() {
   const [error, setError] = useState<string | undefined>(undefined);
@@ -13,6 +17,17 @@ export function SignUpModal() {
 
   const [countdown, setCountdown] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const [showAdvanced, setShowAdvanced] = useState(
+    () => !!getCustomAuthIssuer(),
+  );
+  const [authInput, setAuthInput] = useState(
+    () => getCustomAuthIssuer() || "",
+  );
+  const [saved, setSaved] = useState(false);
+
+  const isCustom = authInput.length > 0 && authInput !== DEFAULT_ISSUER;
+  const currentIssuer = getGrytConfig().GRYT_OIDC_ISSUER;
 
   useEffect(() => {
     if (loginInProgress) {
@@ -40,6 +55,20 @@ export function SignUpModal() {
   function handleRetry() {
     cancelLogin();
     setError(undefined);
+  }
+
+  function saveAuthServer() {
+    const trimmed = authInput.trim().replace(/\/+$/, "");
+    if (!trimmed || trimmed === DEFAULT_ISSUER) {
+      setCustomAuthIssuer(null);
+      setAuthInput("");
+    } else {
+      setCustomAuthIssuer(trimmed);
+      setAuthInput(trimmed);
+    }
+    resetKeycloakInit();
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
   }
 
   return (
@@ -100,7 +129,9 @@ export function SignUpModal() {
                 ? "Try again"
                 : loginInProgress
                   ? `Waiting for sign in\u2026 (${countdown}s)`
-                  : "Sign in with Gryt"}
+                  : isCustom
+                    ? "Sign in with custom auth"
+                    : "Sign in with Gryt"}
             </Button>
             {registrationAllowed && (
               <Button
@@ -132,6 +163,44 @@ export function SignUpModal() {
               <Text color="red" size="1" weight="medium">
                 {error}
               </Text>
+            )}
+          </Flex>
+          <Flex direction="column" gap="3">
+            <Text
+              size="1"
+              color="gray"
+              style={{ cursor: "pointer", userSelect: "none", display: "flex", alignItems: "center", gap: 4 }}
+              onClick={() => setShowAdvanced((v) => !v)}
+            >
+              {showAdvanced ? <MdExpandLess size={16} /> : <MdExpandMore size={16} />}
+              Advanced
+            </Text>
+            {showAdvanced && (
+              <Flex direction="column" gap="2">
+                <Text size="1" color="gray">
+                  Auth server (OIDC issuer URL)
+                </Text>
+                <TextField.Root
+                  size="2"
+                  placeholder={DEFAULT_ISSUER}
+                  value={authInput}
+                  onChange={(e) => {
+                    setAuthInput(e.target.value);
+                    setSaved(false);
+                  }}
+                  onBlur={saveAuthServer}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") saveAuthServer();
+                  }}
+                />
+                <Text size="1" color="gray">
+                  {saved
+                    ? "Saved"
+                    : isCustom
+                      ? `Using: ${currentIssuer}`
+                      : "Leave empty to use the default Gryt auth server."}
+                </Text>
+              </Flex>
             )}
           </Flex>
         </Flex>

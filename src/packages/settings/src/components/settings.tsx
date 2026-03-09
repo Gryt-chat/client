@@ -1,10 +1,11 @@
 import { Box, Dialog, Flex, IconButton, Tabs } from "@radix-ui/themes";
-import { MdChat, MdClose, MdDesktopWindows, MdFavorite, MdInfoOutline, MdKey, MdKeyboard, MdMic, MdNotifications, MdPalette, MdPerson, MdTune, MdVideocam, MdVolumeUp } from "react-icons/md";
+import { MdChat, MdClose, MdDesktopWindows, MdExtension, MdFavorite, MdInfoOutline, MdKey, MdKeyboard, MdMic, MdNotifications, MdPalette, MdPerson, MdTune, MdVideocam, MdVolumeUp } from "react-icons/md";
 
 import { useSettings } from "@/settings";
 
 import { isElectron } from "../../../../lib/electron";
 import { AboutSettings } from "./aboutSettings";
+import { AddonsSettings } from "./addonsSettings";
 import { AdvancedSettings } from "./advancedSettings";
 import { AudioSettings } from "./audioSettings";
 import { CameraSettings } from "./cameraSettings";
@@ -36,6 +37,12 @@ const TAB_CONFIG = [
     label: "Appearance",
     icon: MdPalette,
     content: <AppearanceSettings />,
+  },
+  {
+    value: "addons",
+    label: "Addons",
+    icon: MdExtension,
+    content: <AddonsSettings />,
   },
   {
     value: "audio",
@@ -127,7 +134,7 @@ export function Settings() {
 
   return (
     <Dialog.Root open={showSettings} onOpenChange={handleDialogChange}>
-      <Dialog.Content maxWidth="900px" style={{ height: "700px", minWidth: "600px" }}>
+      <Dialog.Content data-gryt="settings" maxWidth="900px" style={{ height: "700px", minWidth: "600px" }}>
         <Dialog.Close
           style={{
             position: "absolute",

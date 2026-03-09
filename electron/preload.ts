@@ -216,6 +216,21 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("global-store:save", data);
   },
 
+  // ── Addons ────────────────────────────────────────────────────
+  listAddons(): Promise<Array<{ id: string; name: string; version: string; type: "plugin" | "theme"; description?: string; author?: string; banner?: string; styles?: string[]; main?: string }>> {
+    return ipcRenderer.invoke("addons:list");
+  },
+
+  openAddonsFolder(): Promise<string> {
+    return ipcRenderer.invoke("addons:open-folder");
+  },
+
+  onAddonsChanged(callback: (addons: Array<{ id: string; name: string; version: string; type: "plugin" | "theme"; description?: string; author?: string; banner?: string; styles?: string[]; main?: string }>) => void) {
+    const handler = (_event: Electron.IpcRendererEvent, addons: Array<{ id: string; name: string; version: string; type: "plugin" | "theme"; description?: string; author?: string; banner?: string; styles?: string[]; main?: string }>) => callback(addons);
+    ipcRenderer.on("addons-changed", handler);
+    return () => ipcRenderer.removeListener("addons-changed", handler);
+  },
+
   onLanServerDiscovered(callback: (server: { name: string; host: string; port: number; version: string | null }) => void) {
     const handler = (_event: Electron.IpcRendererEvent, data: { name: string; host: string; port: number; version: string | null }) =>
       callback(data);

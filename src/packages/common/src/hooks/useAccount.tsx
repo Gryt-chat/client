@@ -83,20 +83,6 @@ function useAccountHook(): Account {
         console.log("[Auth:Hook] Init result — authenticated:", authenticated,
           "hasToken:", !!keycloak.token, "→ signedIn:", signedIn);
         setIsSignedIn(signedIn);
-
-        if (!signedIn && isElectron()) {
-          console.log("[Auth:Hook] Not signed in on Electron — opening login flow");
-          setLoginInProgress(true);
-          startLogin().then(() => initKeycloak()).then(({ keycloak: kc, authenticated: auth }) => {
-            const result = !!(auth && kc.token);
-            console.log("[Auth:Hook] Electron login flow result — signedIn:", result);
-            if (!cancelled) setIsSignedIn(result);
-          }).catch((e) => {
-            console.error("[Auth:Hook] Electron login flow failed:", e);
-          }).finally(() => {
-            if (!cancelled) setLoginInProgress(false);
-          });
-        }
       } catch (e) {
         console.error("[Auth:Hook] Keycloak init failed:", e);
         if (!settled) {

@@ -32,6 +32,7 @@ export function Titlebar() {
 
   return (
     <div
+      data-gryt="titlebar"
       style={{
         height: TITLEBAR_HEIGHT,
         appRegion: "drag",

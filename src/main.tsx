@@ -6,6 +6,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { Toaster } from "react-hot-toast";
 
+import { initPluginApi, updatePluginApiTheme, useAddonLoader } from "@/addons";
 import { useTheme, useZoomShortcuts } from "@/common";
 
 import { App } from "./App.tsx";
@@ -25,6 +26,8 @@ function ThemedApp() {
   } = useTheme();
 
   useZoomShortcuts();
+  useAddonLoader();
+  updatePluginApiTheme({ appearance: resolvedAppearance, accentColor });
 
   return (
     <Theme
@@ -62,6 +65,8 @@ function ThemedApp() {
     </Theme>
   );
 }
+
+initPluginApi(__APP_VERSION__);
 
 initGlobalStorage().then(() => {
   ReactDOM.createRoot(document.getElementById("root")!).render(
