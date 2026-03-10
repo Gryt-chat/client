@@ -27,7 +27,9 @@
     "electron:build": "npm run build:native && cross-env ELECTRON=1 vite build && electron-builder --publish never",
     "electron:publish": "npm run build:native && cross-env ELECTRON=1 vite build && electron-builder --publish always",
     "release": "bash scripts/release.sh",
-    "electron:preview": "npm run build:native && cross-env ELECTRON=1 vite build && electron ."
+    "build:embedded-server": "node scripts/build-embedded-server.mjs",
+    "electron:preview": "npm run build:native && cross-env ELECTRON=1 vite build && electron .",
+    "electron:preview:full": "npm run build:native && npm run build:embedded-server && cross-env ELECTRON=1 vite build && electron ."
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
