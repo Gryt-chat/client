@@ -129,6 +129,9 @@ export function useVideoStats(enabled: boolean) {
         const screenTrackId = getScreenSenderTrackId?.() ?? null;
         const cameraTrackId = getCameraSenderTrackId?.() ?? null;
 
+        const seenOutKeys = new Set<string>();
+        const seenInKeys = new Set<string>();
+
         report.forEach((stat) => {
           if (stat.type === "outbound-rtp" && stat.kind === "video") {
             const trackIdentifier: string | undefined = stat.trackIdentifier;
@@ -141,6 +144,7 @@ export function useVideoStats(enabled: boolean) {
 
             let bitrateKbps: number | null = null;
             const key = `out-${stat.ssrc}`;
+            seenOutKeys.add(key);
             if (typeof stat.bytesSent === "number") {
               const prev = outboundBytesRef.current.get(key);
               if (prev) {
@@ -169,6 +173,7 @@ export function useVideoStats(enabled: boolean) {
           if (stat.type === "inbound-rtp" && stat.kind === "video") {
             let bitrateKbps: number | null = null;
             const key = `in-${stat.ssrc}`;
+            seenInKeys.add(key);
             if (typeof stat.bytesReceived === "number") {
               const prev = inboundBytesRef.current.get(key);
               if (prev) {
@@ -200,10 +205,24 @@ export function useVideoStats(enabled: boolean) {
           }
         });
 
+        // Prune stale bytes-delta tracking for SSRCs no longer in the report
+        for (const k of outboundBytesRef.current.keys()) {
+          if (!seenOutKeys.has(k)) outboundBytesRef.current.delete(k);
+        }
+        for (const k of inboundBytesRef.current.keys()) {
+          if (!seenInKeys.has(k)) inboundBytesRef.current.delete(k);
+        }
+
+        // Keep an entry only if it still has data flowing. Stale RTP stat
+        // entries linger after a track stops (0 fps, 0 bitrate) and would
+        // pile up when the remote user restarts their stream.
+        const isActive = (s: { bitrateKbps: number | null; framesPerSecond: number | null }) =>
+          s.bitrateKbps == null || s.bitrateKbps > 0 || (s.framesPerSecond != null && s.framesPerSecond > 0);
+
         if (!cancelled) {
           setStats({
-            outbound,
-            inbound,
+            outbound: outbound.filter(isActive),
+            inbound: inbound.filter(isActive),
             connection: { rttMs, availableOutKbps, candidateType, transportProtocol },
           });
         }

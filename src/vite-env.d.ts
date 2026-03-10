@@ -43,6 +43,73 @@ declare global {
     readonly format: string | null;
     close(): void;
   }
+
+  /** WebRTC Encoded Transforms (Insertable Streams) */
+  class RTCRtpScriptTransform {
+    constructor(worker: Worker, options?: Record<string, unknown>, transfer?: Transferable[]);
+  }
+
+  interface RTCRtpSender {
+    transform: RTCRtpScriptTransform | null;
+  }
+
+  interface RTCEncodedVideoFrame {
+    readonly type: "key" | "delta" | "empty";
+    readonly timestamp: number;
+    data: ArrayBuffer;
+    readonly metadata: RTCEncodedVideoFrameMetadata;
+    getMetadata(): RTCEncodedVideoFrameMetadata;
+  }
+
+  interface RTCEncodedVideoFrameMetadata {
+    synchronizationSource?: number;
+    contributingSources?: number[];
+    payloadType?: number;
+    frameId?: number;
+    dependencies?: number[];
+    width?: number;
+    height?: number;
+    temporalIndex?: number;
+    spatialIndex?: number;
+  }
+
+  /** WebCodecs: encoded video chunk for feeding to VideoDecoder */
+  class EncodedVideoChunk {
+    constructor(init: {
+      type: "key" | "delta";
+      timestamp: number;
+      duration?: number;
+      data: BufferSource;
+    });
+    readonly type: "key" | "delta";
+    readonly timestamp: number;
+    readonly byteLength: number;
+  }
+
+  /** WebCodecs: hardware-accelerated video decoder */
+  class VideoDecoder {
+    constructor(init: {
+      output: (frame: VideoFrame) => void;
+      error: (error: DOMException) => void;
+    });
+    configure(config: {
+      codec: string;
+      codedWidth?: number;
+      codedHeight?: number;
+      description?: BufferSource;
+      optimizeForLatency?: boolean;
+    }): void;
+    decode(chunk: EncodedVideoChunk): void;
+    flush(): Promise<void>;
+    close(): void;
+    readonly state: "unconfigured" | "configured" | "closed";
+    readonly decodeQueueSize: number;
+    static isConfigSupported(config: {
+      codec: string;
+      codedWidth?: number;
+      codedHeight?: number;
+    }): Promise<{ supported: boolean }>;
+  }
 }
 
 export {};

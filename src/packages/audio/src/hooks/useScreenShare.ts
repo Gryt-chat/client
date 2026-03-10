@@ -5,7 +5,7 @@ import { useSettings } from "@/settings";
 
 import { isElectron } from "../../../../lib/electron";
 import { useNativeAudioCapture } from "./useNativeAudioCapture";
-import { useNativeScreenCapture } from "./useNativeScreenCapture";
+import { type EncodedFrameCallback, useNativeScreenCapture } from "./useNativeScreenCapture";
 import { useSpeakers } from "./useSpeakers";
 
 export type ScreenShareQuality =
@@ -73,12 +73,16 @@ export interface ScreenShareInterface {
   nativeAudioActive: boolean;
   /** True when native DXGI screen capture is available for high-FPS capture. */
   nativeScreenCaptureAvailable: boolean;
+  /** Codec used by the native HW encoder, or null if raw/inactive */
+  nativeEncodedCodec: "h264" | "hevc" | null;
+  /** Subscribe to pre-encoded NAL frames from native capture */
+  subscribeEncodedFrames: (cb: EncodedFrameCallback) => () => void;
   startScreenShare: (withAudio: boolean, sourceId?: string) => Promise<void>;
   stopScreenShare: () => void;
 }
 
 function useScreenShareHook(): ScreenShareInterface {
-  const { screenShareQuality, screenShareFps, screenShareGamingMode } = useSettings();
+  const { screenShareQuality, screenShareFps, screenShareGamingMode, screenShareCodec } = useSettings();
   const { audioContext } = useSpeakers();
   const {
     available: nativeAvailable,
@@ -90,6 +94,8 @@ function useScreenShareHook(): ScreenShareInterface {
   const {
     available: nativeScreenAvailable,
     videoStream: nativeVideoStream,
+    encodedCodec: nativeEncodedCodec,
+    subscribeEncodedFrames,
     start: nativeScreenStart,
     stop: nativeScreenStop,
   } = useNativeScreenCapture();
@@ -123,8 +129,9 @@ function useScreenShareHook(): ScreenShareInterface {
     const fps = screenShareFps || 30;
     const useNativeAudio = withAudio && nativeAvailable;
 
-    // Use native DXGI capture for high-FPS screen capture when available.
-    // Source IDs for screens look like "screen:<index>:0".
+    // Native DXGI capture with a local WebSocket server bypasses Electron IPC,
+    // so resolution/throughput is no longer a bottleneck. The binary also now
+    // properly downscales (instead of cropping) when maxWidth/maxHeight are set.
     const screenMatch = sourceId?.match(/^screen:(\d+):/);
     const useNativeVideo = nativeScreenAvailable && isElectron() && !!screenMatch && fps >= 60;
 
@@ -135,7 +142,15 @@ function useScreenShareHook(): ScreenShareInterface {
     if (useNativeVideo && screenMatch) {
       try {
         const monitorIndex = parseInt(screenMatch[1], 10);
-        const started = await nativeScreenStart(monitorIndex, fps, res.width, res.height);
+        const targetBitrate = estimateBitrate(screenShareQuality as ScreenShareQuality, fps) ?? undefined;
+        // When insertable streams are available AND the WebRTC codec is H.264,
+        // force H.264 encoding so the pre-encoded NALs can be injected directly
+        // into the WebRTC pipeline. Otherwise, use auto (prefers HEVC for better
+        // compression, with a decode→re-encode path).
+        const webrtcIsH264 = !screenShareCodec || screenShareCodec === "auto" || screenShareCodec === "h264";
+        const insertableStreamsOk = typeof RTCRtpScriptTransform !== "undefined" && webrtcIsH264;
+        const nativeCodec = insertableStreamsOk ? "h264" : undefined;
+        const started = await nativeScreenStart(monitorIndex, fps, res.width, res.height, targetBitrate, nativeCodec);
         if (!started) {
           console.warn("[ScreenShare] native screen capture failed, falling back to getDisplayMedia");
         } else {
@@ -302,7 +317,7 @@ function useScreenShareHook(): ScreenShareInterface {
         setScreenAudioStream(null);
       }
     }
-  }, [screenShareQuality, screenShareFps, screenShareGamingMode, stopScreenShare, nativeAvailable, nativeStart, nativeScreenAvailable, nativeScreenStart, audioContext]);
+  }, [screenShareQuality, screenShareFps, screenShareGamingMode, screenShareCodec, stopScreenShare, nativeAvailable, nativeStart, nativeScreenAvailable, nativeScreenStart, audioContext]);
 
   // Sync native video capture stream → screenVideoStream
   useEffect(() => {
@@ -338,17 +353,22 @@ function useScreenShareHook(): ScreenShareInterface {
     screenShareActive,
     nativeAudioActive: usingNativeAudioRef.current && nativeActive,
     nativeScreenCaptureAvailable: nativeScreenAvailable,
+    nativeEncodedCodec,
+    subscribeEncodedFrames,
     startScreenShare,
     stopScreenShare,
   };
 }
 
+const noopUnsub = () => () => {};
 const screenShareInit: ScreenShareInterface = {
   screenVideoStream: null,
   screenAudioStream: null,
   screenShareActive: false,
   nativeAudioActive: false,
   nativeScreenCaptureAvailable: false,
+  nativeEncodedCodec: null,
+  subscribeEncodedFrames: noopUnsub,
   startScreenShare: async () => {},
   stopScreenShare: () => {},
 };

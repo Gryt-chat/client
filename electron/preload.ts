@@ -150,8 +150,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return ipcRenderer.invoke("native-screen-capture:available");
   },
 
-  startNativeScreenCapture(monitorIndex: number, fps: number, maxWidth?: number, maxHeight?: number): Promise<boolean> {
-    return ipcRenderer.invoke("native-screen-capture:start", monitorIndex, fps, maxWidth, maxHeight);
+  startNativeScreenCapture(monitorIndex: number, fps: number, maxWidth?: number, maxHeight?: number, bitrate?: number, codec?: string): Promise<{ success: boolean; wsPort?: number }> {
+    return ipcRenderer.invoke("native-screen-capture:start", monitorIndex, fps, maxWidth, maxHeight, bitrate, codec);
   },
 
   stopNativeScreenCapture() {

@@ -694,6 +694,7 @@ function useSfuHook(): SFUInterface {
     isConnecting,
     getPeerConnection: () => peerConnectionRef.current,
     getScreenSenderTrackId: () => screenVideoSenderRef.current?.track?.id ?? null,
+    getScreenVideoSender: () => screenVideoSenderRef.current,
     getCameraSenderTrackId: () => videoSenderRef.current?.track?.id ?? null,
     activeSfuUrl: activeSfuUrlRef.current,
   };
@@ -718,6 +719,7 @@ const init: SFUInterface = {
   connectionState: SFUConnectionState.DISCONNECTED,
   isConnecting: false,
   activeSfuUrl: null,
+  getScreenVideoSender: () => null,
 };
 
 const SFUHook = singletonHook(init, useSfuHook);

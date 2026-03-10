@@ -20,6 +20,7 @@ import { useSFU } from "@/webRTC";
 
 import { isElectron } from "../../../../lib/electron";
 import { voiceLog } from "../hooks/voiceLogger";
+import { attachEncodedTransform, type EncodedTransformHandle, isEncodedTransformSupported } from "../utils/encodedTransform";
 import { CameraPreviewModal } from "./CameraPreviewModal";
 import { ScreenSharePickerModal } from "./ScreenSharePickerModal";
 
@@ -40,9 +41,10 @@ export function Controls({ onDisconnect }: ControlsProps) {
     isConnected,
     currentServerConnected,
     getPeerConnection,
+    getScreenVideoSender,
   } = useSFU();
   const { cameraStream, cameraEnabled, setCameraEnabled } = useCamera();
-  const { screenVideoStream, screenAudioStream, screenShareActive, nativeAudioActive, nativeScreenCaptureAvailable, startScreenShare, stopScreenShare } = useScreenShare();
+  const { screenVideoStream, screenAudioStream, screenShareActive, nativeAudioActive, nativeScreenCaptureAvailable, nativeEncodedCodec, subscribeEncodedFrames, startScreenShare, stopScreenShare } = useScreenShare();
   const { sockets } = useSockets();
   const {
     setIsMuted, isMuted, isDeafened, setIsDeafened,
@@ -164,6 +166,43 @@ export function Controls({ onDisconnect }: ControlsProps) {
       prevScreenVideoRef.current = null;
     }
   }, [screenShareActive, screenVideoStream, isConnected, addScreenVideoTrack, removeScreenVideoTrack, screenShareQuality, screenShareFps, screenShareGamingMode, screenShareCodec, screenShareMaxBitrate, screenShareScalabilityMode, getPeerConnection]);
+
+  // Attach Encoded Transform when native H.264 encoding is active.
+  // Injects pre-encoded H.264 NALs directly into the WebRTC pipeline,
+  // bypassing the browser's internal decode→re-encode cycle.
+  const encodedTransformRef = useRef<EncodedTransformHandle | null>(null);
+
+  useEffect(() => {
+    if (encodedTransformRef.current) {
+      encodedTransformRef.current.detach();
+      encodedTransformRef.current = null;
+    }
+
+    if (!screenShareActive || nativeEncodedCodec !== "h264") return;
+    if (!isEncodedTransformSupported()) return;
+
+    const sender = getScreenVideoSender?.();
+    if (!sender) return;
+
+    const handle = attachEncodedTransform(sender);
+    if (!handle) return;
+
+    encodedTransformRef.current = handle;
+    voiceLog.info("SCREEN", "Encoded Transform attached — bypassing WebRTC re-encode");
+
+    const unsub = subscribeEncodedFrames((data, keyframe, timestamp) => {
+      handle.feedFrame(data, keyframe, timestamp);
+    });
+
+    return () => {
+      unsub();
+      if (encodedTransformRef.current === handle) {
+        handle.detach();
+        encodedTransformRef.current = null;
+        voiceLog.info("SCREEN", "Encoded Transform detached");
+      }
+    };
+  }, [screenShareActive, nativeEncodedCodec, getScreenVideoSender, subscribeEncodedFrames]);
 
   // Sync screen share audio track to WebRTC
   useEffect(() => {

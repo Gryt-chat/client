@@ -71,6 +71,7 @@ export function ServerInvitesTab({
   const [infiniteUses, setInfiniteUses] = useState(false);
   const [expiresInHours, setExpiresInHours] = useState<string>("");
   const [note, setNote] = useState<string>("");
+  const [customCode, setCustomCode] = useState<string>("");
   const [, setTick] = useState(0);
 
   useEffect(() => {
@@ -133,6 +134,8 @@ export function ServerInvitesTab({
     const ehRaw = expiresInHours.trim();
     const eh = ehRaw.length ? (parseFloat(ehRaw) || 0) : undefined;
 
+    const cc = customCode.trim().toLowerCase();
+
     setCreating(true);
     try {
       socket.emit("server:invites:create", {
@@ -140,6 +143,7 @@ export function ServerInvitesTab({
         ...(infiniteUses ? { infinite: true } : { maxUses: mu }),
         expiresInHours: typeof eh === "number" && eh > 0 ? eh : undefined,
         note: note.trim().length ? note.trim() : null,
+        customCode: cc.length ? cc : null,
       });
     } finally {
       setCreating(false);
@@ -196,6 +200,16 @@ export function ServerInvitesTab({
                 value={expiresInHours}
                 onChange={(e) => setExpiresInHours(e.target.value)}
                 placeholder="e.g. 24"
+              />
+            </Flex>
+            <Flex direction="column" gap="1" style={{ minWidth: 180 }}>
+              <Text size="2" weight="medium">
+                Custom code
+              </Text>
+              <TextField.Root
+                value={customCode}
+                onChange={(e) => setCustomCode(e.target.value.replace(/[^a-zA-Z0-9_-]/g, ""))}
+                placeholder="Leave blank for random"
               />
             </Flex>
             <Flex direction="column" gap="1" style={{ flex: 1, minWidth: 220 }}>

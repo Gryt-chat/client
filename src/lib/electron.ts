@@ -76,7 +76,7 @@ export interface ElectronAPI {
   onNativeAudioStopped(callback: () => void): () => void;
   onNativeAudioDiagnostic(callback: (msg: string) => void): () => void;
   isNativeScreenCaptureAvailable(): Promise<boolean>;
-  startNativeScreenCapture(monitorIndex: number, fps: number, maxWidth?: number, maxHeight?: number): Promise<boolean>;
+  startNativeScreenCapture(monitorIndex: number, fps: number, maxWidth?: number, maxHeight?: number, bitrate?: number, codec?: string): Promise<{ success: boolean; wsPort?: number }>;
   stopNativeScreenCapture(): void;
   onNativeScreenFrame(callback: (frame: NativeScreenFrame) => void): () => void;
   onNativeScreenCaptureStopped(callback: () => void): () => void;

@@ -846,9 +846,9 @@ if (!gotSingleInstanceLock) {
     ipcMain.handle("native-screen-capture:available", () => {
       return isNativeScreenCaptureAvailable();
     });
-    ipcMain.handle("native-screen-capture:start", (_event, monitorIndex: number, fps: number, maxWidth?: number, maxHeight?: number) => {
-      if (!mainWindow) return false;
-      return startNativeScreenCapture(mainWindow, monitorIndex, fps, maxWidth, maxHeight);
+    ipcMain.handle("native-screen-capture:start", async (_event, monitorIndex: number, fps: number, maxWidth?: number, maxHeight?: number, bitrate?: number, codec?: string) => {
+      if (!mainWindow) return { success: false };
+      return startNativeScreenCapture(mainWindow, monitorIndex, fps, maxWidth, maxHeight, bitrate, codec);
     });
     ipcMain.on("native-screen-capture:stop", () => {
       stopNativeScreenCapture();

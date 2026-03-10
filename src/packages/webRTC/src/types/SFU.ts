@@ -50,5 +50,6 @@ export interface SFUInterface {
   getPeerConnection?: () => RTCPeerConnection | null;
   getScreenSenderTrackId?: () => string | null;
   getCameraSenderTrackId?: () => string | null;
+  getScreenVideoSender?: () => RTCRtpSender | null;
   activeSfuUrl?: string | null;
 }
