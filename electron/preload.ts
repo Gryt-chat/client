@@ -258,4 +258,84 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.on("deep-link-invite", handler);
     return () => ipcRenderer.removeListener("deep-link-invite", handler);
   },
+
+  // ── Embedded server ─────────────────────────────────────────────
+  isEmbeddedServerAvailable(): Promise<boolean> {
+    return ipcRenderer.invoke("embedded-server:available");
+  },
+
+  getEmbeddedServerInfo(): Promise<{
+    available: boolean;
+    hasExisting: boolean;
+    config: { serverName: string; serverPort: number; sfuPort: number; lanDiscoverable: boolean; externalHost: string } | null;
+    lanIp: string;
+  }> {
+    return ipcRenderer.invoke("embedded-server:info");
+  },
+
+  createEmbeddedServer(serverName: string, lanDiscoverable: boolean): Promise<{
+    status: string;
+    config: { serverName: string; serverPort: number; sfuPort: number; lanDiscoverable: boolean; externalHost: string } | null;
+    error: string | null;
+    serverUrl: string | null;
+  }> {
+    return ipcRenderer.invoke("embedded-server:create", serverName, lanDiscoverable);
+  },
+
+  startEmbeddedServer(): Promise<{
+    status: string;
+    config: { serverName: string; serverPort: number; sfuPort: number; lanDiscoverable: boolean; externalHost: string } | null;
+    error: string | null;
+    serverUrl: string | null;
+  }> {
+    return ipcRenderer.invoke("embedded-server:start");
+  },
+
+  stopEmbeddedServer(): Promise<{
+    status: string;
+    config: { serverName: string; serverPort: number; sfuPort: number; lanDiscoverable: boolean; externalHost: string } | null;
+    error: string | null;
+    serverUrl: string | null;
+  }> {
+    return ipcRenderer.invoke("embedded-server:stop");
+  },
+
+  getEmbeddedServerStatus(): Promise<{
+    status: string;
+    config: { serverName: string; serverPort: number; sfuPort: number; lanDiscoverable: boolean; externalHost: string } | null;
+    error: string | null;
+    serverUrl: string | null;
+  }> {
+    return ipcRenderer.invoke("embedded-server:status");
+  },
+
+  onEmbeddedServerStatusChanged(callback: (state: {
+    status: string;
+    config: { serverName: string; serverPort: number; sfuPort: number; lanDiscoverable: boolean; externalHost: string } | null;
+    error: string | null;
+    serverUrl: string | null;
+  }) => void) {
+    const handler = (_event: Electron.IpcRendererEvent, data: {
+      status: string;
+      config: { serverName: string; serverPort: number; sfuPort: number; lanDiscoverable: boolean; externalHost: string } | null;
+      error: string | null;
+      serverUrl: string | null;
+    }) => callback(data);
+    ipcRenderer.on("embedded-server:status-changed", handler);
+    return () => ipcRenderer.removeListener("embedded-server:status-changed", handler);
+  },
+
+  onEmbeddedServerLog(callback: (log: { source: string; data: string }) => void) {
+    const handler = (_event: Electron.IpcRendererEvent, data: { source: string; data: string }) => callback(data);
+    ipcRenderer.on("embedded-server:log", handler);
+    return () => ipcRenderer.removeListener("embedded-server:log", handler);
+  },
+
+  getEmbeddedServerAutoStart(): Promise<boolean> {
+    return ipcRenderer.invoke("embedded-server:get-auto-start");
+  },
+
+  setEmbeddedServerAutoStart(enabled: boolean) {
+    ipcRenderer.send("embedded-server:set-auto-start", enabled);
+  },
 });

@@ -43,6 +43,28 @@ export interface NativeScreenFrame {
   data: ArrayBuffer;
 }
 
+export interface EmbeddedServerConfig {
+  serverName: string;
+  serverPort: number;
+  sfuPort: number;
+  lanDiscoverable: boolean;
+  externalHost: string;
+}
+
+export interface EmbeddedServerState {
+  status: string;
+  config: EmbeddedServerConfig | null;
+  error: string | null;
+  serverUrl: string | null;
+}
+
+export interface EmbeddedServerInfo {
+  available: boolean;
+  hasExisting: boolean;
+  config: EmbeddedServerConfig | null;
+  lanIp: string;
+}
+
 export interface ElectronAPI {
   isElectron: true;
   getAppVersion(): Promise<string>;
@@ -97,6 +119,16 @@ export interface ElectronAPI {
   onLanServerDiscovered(callback: (server: LanServer) => void): () => void;
   onLanServerRemoved(callback: (server: { host: string; port: number }) => void): () => void;
   onDeepLinkInvite(callback: (data: { host: string; code: string }) => void): () => void;
+  isEmbeddedServerAvailable(): Promise<boolean>;
+  getEmbeddedServerInfo(): Promise<EmbeddedServerInfo>;
+  createEmbeddedServer(serverName: string, lanDiscoverable: boolean): Promise<EmbeddedServerState>;
+  startEmbeddedServer(): Promise<EmbeddedServerState>;
+  stopEmbeddedServer(): Promise<EmbeddedServerState>;
+  getEmbeddedServerStatus(): Promise<EmbeddedServerState>;
+  onEmbeddedServerStatusChanged(callback: (state: EmbeddedServerState) => void): () => void;
+  onEmbeddedServerLog(callback: (log: { source: string; data: string }) => void): () => void;
+  getEmbeddedServerAutoStart(): Promise<boolean>;
+  setEmbeddedServerAutoStart(enabled: boolean): void;
 }
 
 declare global {

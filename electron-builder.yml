@@ -18,6 +18,14 @@ extraResources:
     to: native/
     filter:
       - "**/*"
+  - from: build/embedded-server/server/
+    to: embedded-server/server/
+    filter:
+      - "**/*"
+  - from: build/embedded-server/sfu/${os}-${arch}/
+    to: embedded-server/sfu/
+    filter:
+      - "**/*"
 
 publish:
   provider: github
@@ -56,6 +64,7 @@ snap:
     - camera
     - screen-inhibit-control
     - avahi-observe
+    - network-bind
 
 mac:
   icon: build/icon.png

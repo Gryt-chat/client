@@ -10,6 +10,7 @@ import { getAddons, getAddonsDir, initAddonManager, onAddonsChanged, resolveAddo
 import { isNativeAudioCaptureAvailable, startNativeAudioCapture, stopNativeAudioCapture } from "./audioCaptureManager";
 import { deleteGlobalValue, flushGlobalStore, initGlobalStore, loadGlobalStore, saveGlobalStore, setGlobalValue } from "./globalStore";
 import { startLanDiscovery } from "./lanDiscovery";
+import { autoStartIfNeeded, cleanupOnQuit, createAndStartServer, getAutoStart, getEmbeddedServerInfo, getState as getEmbeddedServerState, isEmbeddedServerAvailable, setAutoStart, startExistingServer, stopEmbeddedServer } from "./embeddedServerManager";
 import { isNativeScreenCaptureAvailable, startNativeScreenCapture, stopNativeScreenCapture } from "./screenCaptureManager";
 import { flushUserStore, initUserStore, loadUser, patchUser, saveUser } from "./userStore";
 
@@ -854,6 +855,34 @@ if (!gotSingleInstanceLock) {
       stopNativeScreenCapture();
     });
 
+    // ── Embedded server ─────────────────────────────────────────────────
+    ipcMain.handle("embedded-server:available", () => isEmbeddedServerAvailable());
+
+    ipcMain.handle("embedded-server:info", () => getEmbeddedServerInfo());
+
+    ipcMain.handle("embedded-server:create", async (_event, serverName: string, lanDiscoverable: boolean) => {
+      if (!mainWindow) return getEmbeddedServerState();
+      return createAndStartServer(mainWindow, serverName, lanDiscoverable);
+    });
+
+    ipcMain.handle("embedded-server:start", async () => {
+      if (!mainWindow) return getEmbeddedServerState();
+      return startExistingServer(mainWindow);
+    });
+
+    ipcMain.handle("embedded-server:stop", () => {
+      stopEmbeddedServer();
+      return getEmbeddedServerState();
+    });
+
+    ipcMain.handle("embedded-server:status", () => getEmbeddedServerState());
+
+    ipcMain.handle("embedded-server:get-auto-start", () => getAutoStart());
+
+    ipcMain.on("embedded-server:set-auto-start", (_event, enabled: boolean) => {
+      setAutoStart(enabled);
+    });
+
     createMainWindow();
     startupLog("Main window created");
     createTray();
@@ -876,6 +905,13 @@ if (!gotSingleInstanceLock) {
       closeSplashAndShowMain();
       startupLog("Main window shown");
       initBackgroundUpdater();
+    }
+
+    // ── Embedded server auto-start ────────────────────────────────
+    if (mainWindow) {
+      autoStartIfNeeded(mainWindow).catch((err) => {
+        startupLog(`Embedded server auto-start failed: ${err}`);
+      });
     }
 
     // Background updates auto-download and install on quit
@@ -1101,5 +1137,6 @@ if (!gotSingleInstanceLock) {
     }
     localServer?.close();
     localServer = null;
+    cleanupOnQuit();
   });
 }

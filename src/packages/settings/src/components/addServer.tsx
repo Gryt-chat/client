@@ -28,8 +28,10 @@ import { joinServerOnce } from "@/socket";
 
 import { SkeletonBase } from "../../../socket/src/components/skeletons";
 import { useServerManagement } from "../../../socket/src/hooks/useServerManagement";
+import { useEmbeddedServer } from "../hooks/useEmbeddedServer";
 import { useLanDiscovery } from "../hooks/useLanDiscovery";
 import { useSettings } from "../hooks/useSettings";
+import { CreateServerPanel } from "./createServer";
 
 export type FetchInfo = {
   name: string;
@@ -47,6 +49,7 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
   const { addServer, servers } = useServerManagement();
   const { nickname } = useSettings();
   const { lanServers, isElectron } = useLanDiscovery();
+  const { isAvailable: embeddedServerAvailable } = useEmbeddedServer();
 
   const [serverHost, setServerHost] = useState("");
   const [serverInfo, setServerInfo] = useState<FetchInfo | null>(null);
@@ -242,6 +245,20 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
           </Dialog.Description>
 
           <Flex direction="column" gap="4">
+            {embeddedServerAvailable && (
+              <>
+                <CreateServerPanel
+                  onServerReady={(serverUrl, serverName) => {
+                    const host = serverUrl.replace(/^https?:\/\//, "");
+                    setServerHost(host);
+                    addServer({ name: serverName, host: normalizeHost(host) }, true);
+                    closeDialog();
+                  }}
+                />
+                <Separator size="4" />
+              </>
+            )}
+
             {isElectron && lanServers.length > 0 && (
               <>
                 <Flex direction="column" gap="2">
