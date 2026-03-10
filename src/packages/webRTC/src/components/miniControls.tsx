@@ -52,7 +52,7 @@ export function MiniControls({
   } = useSFU();
 
   const { cameraEnabled, setCameraEnabled } = useCamera();
-  const { screenShareActive, startScreenShare, stopScreenShare } = useScreenShare();
+  const { screenShareActive, nativeScreenCaptureAvailable, startScreenShare, stopScreenShare } = useScreenShare();
   const {
     screenShareQuality, setScreenShareQuality,
     screenShareFps, setScreenShareFps,
@@ -224,6 +224,7 @@ export function MiniControls({
         onMaxBitrateChange={setScreenShareMaxBitrate}
         scalabilityMode={screenShareScalabilityMode}
         onScalabilityModeChange={setScreenShareScalabilityMode}
+        nativeScreenCaptureAvailable={nativeScreenCaptureAvailable}
         onStart={({ sourceId, withAudio }) => startScreenShare(withAudio, sourceId)}
       />
     </>

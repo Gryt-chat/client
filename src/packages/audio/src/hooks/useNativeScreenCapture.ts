@@ -200,6 +200,34 @@ export function useNativeScreenCapture(): NativeScreenCapture {
         let encodedMode = false;
         let decoderReady = false;
 
+        const wsReady = new Promise<boolean>((resolve) => {
+          const timeout = setTimeout(() => {
+            console.error("[NativeScreenCapture] WebSocket open timeout (3s)");
+            resolve(false);
+          }, 3000);
+
+          ws.onopen = () => {
+            clearTimeout(timeout);
+            console.log("[NativeScreenCapture] WebSocket connected");
+            resolve(true);
+          };
+
+          ws.onerror = (err) => {
+            clearTimeout(timeout);
+            console.error("[NativeScreenCapture] WebSocket error:", err);
+            resolve(false);
+          };
+        });
+
+        const opened = await wsReady;
+        if (!opened) {
+          console.error("[NativeScreenCapture] WebSocket failed to connect, falling back");
+          wsRef.current = null;
+          try { ws.close(); } catch { /* ignore */ }
+          stop();
+          return false;
+        }
+
         ws.onmessage = (event: MessageEvent) => {
           const buf = event.data as ArrayBuffer;
           if (buf.byteLength < 1) return;
@@ -207,7 +235,6 @@ export function useNativeScreenCapture(): NativeScreenCapture {
           const type = view.getUint8(0);
 
           if (type === TYPE_CONFIG) {
-            // Config message: [type=2][u32 w][u32 h][u8 codec][u8 profile][u8 level]
             if (buf.byteLength < 12) return;
             const cfgW = view.getUint32(1, true);
             const cfgH = view.getUint32(5, true);
@@ -244,7 +271,6 @@ export function useNativeScreenCapture(): NativeScreenCapture {
           }
 
           if (type === TYPE_ENCODED && encodedMode && decoderReady) {
-            // Encoded frame: [type=1][keyframe][u32 w][u32 h][i64 ts_us][NAL data]
             if (buf.byteLength < 18) return;
             const keyframe = view.getUint8(1) !== 0;
             const tsLow = view.getUint32(10, true);
@@ -273,7 +299,6 @@ export function useNativeScreenCapture(): NativeScreenCapture {
           }
 
           if (type === TYPE_RAW_I420) {
-            // Raw frame: [type=0][u32 w][u32 h][i64 ts_us][I420 data]
             if (buf.byteLength < 17) return;
             const width = view.getUint32(1, true);
             const height = view.getUint32(5, true);
@@ -285,8 +310,6 @@ export function useNativeScreenCapture(): NativeScreenCapture {
             return;
           }
 
-          // Legacy format (no type byte) — first 4 bytes are width (> 2)
-          // This handles old binaries that don't send a type byte.
           if (buf.byteLength >= 16) {
             const width = view.getUint32(0, true);
             const height = view.getUint32(4, true);

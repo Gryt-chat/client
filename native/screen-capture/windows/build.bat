@@ -53,7 +53,7 @@ if %ERRORLEVEL% neq 0 (
 
 :build
 echo Building screen-capture.exe (MSVC)...
-cl.exe /EHsc /O2 /I"%SCRIPT_DIR%" /Fe:"%OUT_DIR%\screen-capture.exe" "%SCRIPT_DIR%main.cpp" /link d3d11.lib dxgi.lib ws2_32.lib bcrypt.lib mf.lib mfplat.lib mfuuid.lib ole32.lib propsys.lib
+cl.exe /EHsc /O2 /I"%SCRIPT_DIR%" /Fe:"%OUT_DIR%\screen-capture.exe" "%SCRIPT_DIR%main.cpp" /link d3d11.lib dxgi.lib ws2_32.lib bcrypt.lib mf.lib mfplat.lib mfuuid.lib ole32.lib oleaut32.lib propsys.lib
 
 if %ERRORLEVEL% neq 0 (
     echo Build FAILED

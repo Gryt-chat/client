@@ -19,6 +19,7 @@
 #include <mfidl.h>
 #include <mftransform.h>
 #include <mferror.h>
+#include <strmif.h>
 #include <codecapi.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -199,62 +200,80 @@ private:
             return false;
         }
 
-        HRESULT hr = activates[0]->ActivateObject(__uuidof(IMFTransform), (void**)&mft);
+        fprintf(stderr, "[encoder] found %u %s encoder(s)\n", count, nm);
+
+        for (UINT32 idx = 0; idx < count; idx++) {
+            if (mft) { mft->Release(); mft = nullptr; }
+
+            HRESULT hr = activates[idx]->ActivateObject(__uuidof(IMFTransform), (void**)&mft);
+            if (FAILED(hr) || !mft) continue;
+
+            IMFAttributes* attrs = nullptr;
+            if (SUCCEEDED(mft->GetAttributes(&attrs))) {
+                attrs->SetUINT32(MF_SA_D3D11_AWARE, TRUE);
+
+                UINT32 isAsync = FALSE;
+                if (SUCCEEDED(attrs->GetUINT32(MF_TRANSFORM_ASYNC, &isAsync)) && isAsync) {
+                    fprintf(stderr, "[encoder] MFT[%u] is async, unlocking\n", idx);
+                    attrs->SetUINT32(MF_TRANSFORM_ASYNC_UNLOCK, TRUE);
+                }
+
+                attrs->Release();
+            }
+
+            hr = mft->ProcessMessage(MFT_MESSAGE_SET_D3D_MANAGER, (ULONG_PTR)dxgiManager);
+            if (FAILED(hr)) {
+                fprintf(stderr, "[encoder] MFT[%u] SET_D3D_MANAGER failed (0x%08lx)\n", idx, hr);
+            }
+
+            IMFMediaType* outType = nullptr;
+            MFCreateMediaType(&outType);
+            outType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video);
+            outType->SetGUID(MF_MT_SUBTYPE, subtype);
+            MFSetAttributeSize(outType, MF_MT_FRAME_SIZE, outW, outH);
+            MFSetAttributeRatio(outType, MF_MT_FRAME_RATE, fps, 1);
+            outType->SetUINT32(MF_MT_AVG_BITRATE, bitrateBps);
+            outType->SetUINT32(MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive);
+
+            if (ct == CODEC_HEVC) {
+                outType->SetUINT32(MF_MT_MPEG2_PROFILE, 1);
+            } else {
+                outType->SetUINT32(MF_MT_MPEG2_PROFILE, eAVEncH264VProfile_High);
+            }
+
+            hr = mft->SetOutputType(0, outType, 0);
+            outType->Release();
+            if (FAILED(hr)) {
+                fprintf(stderr, "[encoder] MFT[%u] %s SetOutputType failed: 0x%08lx\n", idx, nm, hr);
+                mft->Release(); mft = nullptr;
+                continue;
+            }
+
+            IMFMediaType* inType = nullptr;
+            MFCreateMediaType(&inType);
+            inType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video);
+            inType->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_NV12);
+            MFSetAttributeSize(inType, MF_MT_FRAME_SIZE, outW, outH);
+            MFSetAttributeRatio(inType, MF_MT_FRAME_RATE, fps, 1);
+            inType->SetUINT32(MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive);
+
+            hr = mft->SetInputType(0, inType, 0);
+            inType->Release();
+            if (FAILED(hr)) {
+                fprintf(stderr, "[encoder] MFT[%u] %s SetInputType failed: 0x%08lx\n", idx, nm, hr);
+                mft->Release(); mft = nullptr;
+                continue;
+            }
+
+            fprintf(stderr, "[encoder] MFT[%u] %s accepted\n", idx, nm);
+            break;
+        }
+
         for (UINT32 i = 0; i < count; i++) activates[i]->Release();
         CoTaskMemFree(activates);
 
-        if (FAILED(hr) || !mft) return false;
-
-        // D3D11 awareness
-        IMFAttributes* attrs = nullptr;
-        if (SUCCEEDED(mft->GetAttributes(&attrs))) {
-            attrs->SetUINT32(MF_SA_D3D11_AWARE, TRUE);
-            attrs->Release();
-        }
-
-        hr = mft->ProcessMessage(MFT_MESSAGE_SET_D3D_MANAGER, (ULONG_PTR)dxgiManager);
-        if (FAILED(hr)) {
-            fprintf(stderr, "[encoder] SET_D3D_MANAGER failed for %s (0x%08lx)\n", nm, hr);
-        }
-
-        // ── Output type ─────────────────────────────────────────────
-        IMFMediaType* outType = nullptr;
-        MFCreateMediaType(&outType);
-        outType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video);
-        outType->SetGUID(MF_MT_SUBTYPE, subtype);
-        MFSetAttributeSize(outType, MF_MT_FRAME_SIZE, outW, outH);
-        MFSetAttributeRatio(outType, MF_MT_FRAME_RATE, fps, 1);
-        outType->SetUINT32(MF_MT_AVG_BITRATE, bitrateBps);
-        outType->SetUINT32(MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive);
-
-        if (ct == CODEC_HEVC) {
-            outType->SetUINT32(MF_MT_MPEG2_PROFILE, 1); // Main profile
-        } else {
-            outType->SetUINT32(MF_MT_MPEG2_PROFILE, eAVEncH264VProfile_High);
-        }
-
-        hr = mft->SetOutputType(0, outType, 0);
-        outType->Release();
-        if (FAILED(hr)) {
-            fprintf(stderr, "[encoder] %s SetOutputType failed: 0x%08lx\n", nm, hr);
-            mft->Release(); mft = nullptr;
-            return false;
-        }
-
-        // ── Input type: NV12 ────────────────────────────────────────
-        IMFMediaType* inType = nullptr;
-        MFCreateMediaType(&inType);
-        inType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video);
-        inType->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_NV12);
-        MFSetAttributeSize(inType, MF_MT_FRAME_SIZE, outW, outH);
-        MFSetAttributeRatio(inType, MF_MT_FRAME_RATE, fps, 1);
-        inType->SetUINT32(MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive);
-
-        hr = mft->SetInputType(0, inType, 0);
-        inType->Release();
-        if (FAILED(hr)) {
-            fprintf(stderr, "[encoder] %s SetInputType failed: 0x%08lx\n", nm, hr);
-            mft->Release(); mft = nullptr;
+        if (!mft) {
+            fprintf(stderr, "[encoder] %s: all encoders failed\n", nm);
             return false;
         }
 

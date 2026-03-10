@@ -22,7 +22,7 @@
     "typecheck": "tsc -b",
     "lint": "tsc -b && eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "build:native": "node -e \"require('child_process').execSync(process.platform==='win32'?'native\\\\audio-capture\\\\windows\\\\build.bat':'bash native/audio-capture/build.sh',{stdio:'inherit'})\"",
+    "build:native": "node -e \"const{execSync:r}=require('child_process');if(process.platform==='win32'){r('native\\\\build.bat',{stdio:'inherit'})}else{r('bash native/audio-capture/build.sh',{stdio:'inherit'})}\"",
     "electron:dev": "cross-env ELECTRON=1 vite --host",
     "electron:build": "npm run build:native && cross-env ELECTRON=1 vite build && electron-builder --publish never",
     "electron:publish": "npm run build:native && cross-env ELECTRON=1 vite build && electron-builder --publish always",

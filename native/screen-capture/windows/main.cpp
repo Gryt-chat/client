@@ -39,6 +39,7 @@
 #include <ws2tcpip.h>
 #include <windows.h>
 #include <d3d11.h>
+#include <d3d10.h>
 #include <dxgi1_2.h>
 #include <fcntl.h>
 #include <io.h>
@@ -134,11 +135,18 @@ int wmain(int argc, wchar_t* argv[]) {
 
     HRESULT hr = D3D11CreateDevice(
         nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr,
-        0, nullptr, 0, D3D11_SDK_VERSION,
+        D3D11_CREATE_DEVICE_VIDEO_SUPPORT,
+        nullptr, 0, D3D11_SDK_VERSION,
         &device, &featureLevel, &context);
     if (FAILED(hr)) {
         fprintf(stderr, "[screen-capture] D3D11CreateDevice failed: 0x%08lx\n", hr);
         return 1;
+    }
+
+    ID3D10Multithread* mt = nullptr;
+    if (SUCCEEDED(device->QueryInterface(__uuidof(ID3D10Multithread), (void**)&mt))) {
+        mt->SetMultithreadProtected(TRUE);
+        mt->Release();
     }
 
     // ── DXGI output ──────────────────────────────────────────────────
@@ -148,6 +156,12 @@ int wmain(int argc, wchar_t* argv[]) {
 
     IDXGIAdapter* adapter = nullptr;
     dxgiDevice->GetAdapter(&adapter);
+
+    DXGI_ADAPTER_DESC adapterDesc;
+    if (SUCCEEDED(adapter->GetDesc(&adapterDesc))) {
+        fprintf(stderr, "[screen-capture] adapter: %ls (VRAM: %llu MB)\n",
+                adapterDesc.Description, adapterDesc.DedicatedVideoMemory / (1024 * 1024));
+    }
 
     IDXGIOutput* output = nullptr;
     hr = adapter->EnumOutputs(monitorIndex, &output);
@@ -216,6 +230,20 @@ int wmain(int argc, wchar_t* argv[]) {
         useHWEncode = encoder.init(device, context, captureW, captureH, outW, outH, targetFps, bitrate, codecPref);
         if (!useHWEncode) {
             fprintf(stderr, "[screen-capture] HW encoder unavailable, using raw I420 fallback\n");
+        }
+    }
+
+    // ── Cap resolution for raw fallback (keep WS frames manageable) ───
+
+    if (!useHWEncode && wsMode) {
+        const uint32_t RAW_MAX_W = 1920, RAW_MAX_H = 1080;
+        if (outW > RAW_MAX_W || outH > RAW_MAX_H) {
+            float scaleW = (float)RAW_MAX_W / outW;
+            float scaleH = (float)RAW_MAX_H / outH;
+            float scale  = scaleW < scaleH ? scaleW : scaleH;
+            outW = ((uint32_t)(outW * scale)) & ~1u;
+            outH = ((uint32_t)(outH * scale)) & ~1u;
+            fprintf(stderr, "[screen-capture] raw mode: clamped output to %ux%u\n", outW, outH);
         }
     }
 
@@ -326,6 +354,8 @@ int wmain(int argc, wchar_t* argv[]) {
 
     uint64_t framesWritten = 0;
     uint64_t framesFailed  = 0;
+    uint32_t consecutiveWsFails = 0;
+    const uint32_t MAX_WS_FAILS = 30;
     DWORD lastStatsTick = GetTickCount();
 
     fprintf(stderr, "[screen-capture] capture loop starting (encode=%s interval=%lums)\n",
@@ -376,10 +406,16 @@ int wmain(int argc, wchar_t* argv[]) {
                 memcpy(wsPayload.data() + hdrSize, encoded, encodedSize);
 
                 if (!wsSendBinary(clientSock, wsPayload.data(), totalSize)) {
-                    fprintf(stderr, "[screen-capture] WS send failed\n");
-                    break;
+                    consecutiveWsFails++;
+                    framesFailed++;
+                    if (consecutiveWsFails >= MAX_WS_FAILS) {
+                        fprintf(stderr, "[screen-capture] WS send failed %u consecutive times, stopping\n", consecutiveWsFails);
+                        break;
+                    }
+                } else {
+                    consecutiveWsFails = 0;
+                    framesWritten++;
                 }
-                framesWritten++;
             } else {
                 framesFailed++;
             }
@@ -433,9 +469,15 @@ int wmain(int argc, wchar_t* argv[]) {
 
             if (wsMode) {
                 if (!wsSendBinary(clientSock, payload, sendSize)) {
-                    fprintf(stderr, "[screen-capture] WS send failed\n");
-                    break;
+                    consecutiveWsFails++;
+                    framesFailed++;
+                    if (consecutiveWsFails >= MAX_WS_FAILS) {
+                        fprintf(stderr, "[screen-capture] WS send failed %u consecutive times, stopping\n", consecutiveWsFails);
+                        break;
+                    }
+                    continue;
                 }
+                consecutiveWsFails = 0;
             } else {
                 if (fwrite(payload, 1, sendSize, stdout) != sendSize) break;
                 fflush(stdout);

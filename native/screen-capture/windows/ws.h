@@ -162,8 +162,5 @@ static SOCKET wsListen(uint16_t* outPort) {
     getsockname(s, (struct sockaddr*)&addr, &addrLen);
     *outPort = ntohs(addr.sin_port);
 
-    int bufSize = 32 * 1024 * 1024;
-    setsockopt(s, SOL_SOCKET, SO_SNDBUF, (const char*)&bufSize, sizeof(bufSize));
-
     return s;
 }
