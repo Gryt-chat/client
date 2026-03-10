@@ -131,7 +131,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
         } else {
           bitrate = estimateBitrate(screenShareQuality as ScreenShareQuality, screenShareFps);
           if (bitrate && screenShareGamingMode) {
-            bitrate = Math.min(Math.round(bitrate * 1.5), 20_000_000);
+            bitrate = Math.min(Math.round(bitrate * 1.5), 50_000_000);
           }
         }
         if (getPeerConnection) {
@@ -143,7 +143,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
               const params = screenSender.getParameters();
               params.degradationPreference = "maintain-framerate";
               if (params.encodings && params.encodings.length > 0) {
-                const effectiveBitrate = bitrate ?? 20_000_000;
+                const effectiveBitrate = bitrate ?? 50_000_000;
                 params.encodings[0].maxBitrate = effectiveBitrate;
                 params.encodings[0].maxFramerate = screenShareFps;
                 const isH264 = screenShareCodec === "h264" || (!screenShareCodec || screenShareCodec === "auto");

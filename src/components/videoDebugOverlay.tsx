@@ -49,6 +49,9 @@ function OutboundSection({ s }: { s: OutboundVideoStats }) {
         <div>FPS: {fmt(s.framesPerSecond, 0)}</div>
         <div>Bitrate: {s.bitrateKbps != null ? `${fmt(s.bitrateKbps)} kbps` : "—"}</div>
         <div>Packets sent: {fmtInt(s.packetsSent)}</div>
+        <div>Frames: {fmtInt(s.framesEncoded)} enc / {fmtInt(s.keyFramesEncoded)} key</div>
+        <div>Encode time: {s.totalEncodeTimeMs != null ? `${fmt(s.totalEncodeTimeMs)} ms` : "—"}</div>
+        <div>PLI: {fmtInt(s.pliCount)} / NACK: {fmtInt(s.nackCount)}</div>
         <div
           style={{
             color:

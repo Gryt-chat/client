@@ -177,6 +177,11 @@ export function LatencyPanel() {
             value={latency.jitterMs}
             color={latency.jitterMs !== null && latency.jitterMs > 20 ? "var(--orange-11)" : undefined}
           />
+          <LatencyRow
+            label="Jitter buffer"
+            value={latency.jitterBufferMs}
+            color={latency.jitterBufferMs !== null && latency.jitterBufferMs > 80 ? "var(--orange-11)" : undefined}
+          />
         </Flex>
       )}
 

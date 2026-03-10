@@ -13,6 +13,11 @@ export interface OutboundVideoStats {
   qualityLimitationReason: string | null;
   scalabilityMode: string | null;
   encoderImplementation: string | null;
+  totalEncodeTimeMs: number | null;
+  framesEncoded: number | null;
+  keyFramesEncoded: number | null;
+  pliCount: number | null;
+  nackCount: number | null;
 }
 
 export interface InboundVideoStats {
@@ -167,6 +172,11 @@ export function useVideoStats(enabled: boolean) {
               qualityLimitationReason: stat.qualityLimitationReason ?? null,
               scalabilityMode: stat.scalabilityMode ?? null,
               encoderImplementation: stat.encoderImplementation ?? null,
+              totalEncodeTimeMs: typeof stat.totalEncodeTime === "number" ? stat.totalEncodeTime * 1000 : null,
+              framesEncoded: stat.framesEncoded ?? null,
+              keyFramesEncoded: stat.keyFramesEncoded ?? null,
+              pliCount: stat.pliCount ?? null,
+              nackCount: stat.nackCount ?? null,
             });
           }
 

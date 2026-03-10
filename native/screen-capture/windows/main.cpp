@@ -325,6 +325,12 @@ int wmain(int argc, wchar_t* argv[]) {
             closesocket(clientSock); WSACleanup(); free(msgBuf); return 1;
         }
         fprintf(stderr, "[screen-capture] WebSocket client connected\n");
+        fflush(stderr);
+
+        // Brief pause after handshake to let the client process the 101
+        // response before we start pushing binary frames. Without this,
+        // some WebSocket implementations see pipelined data as corrupt.
+        Sleep(50);
 
         // For encoded mode, send a config message so the renderer sets up VideoDecoder
         if (useHWEncode) {

@@ -2,7 +2,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { getElectronAPI, isElectron } from "../../../../lib/electron";
 
-export type EncodedFrameCallback = (data: ArrayBuffer, keyframe: boolean, timestamp: number) => void;
+export type EncodedFrameCallback = (
+  data: ArrayBuffer,
+  keyframe: boolean,
+  timestamp: number
+) => void;
 
 export interface NativeScreenCapture {
   available: boolean;
@@ -12,7 +16,14 @@ export interface NativeScreenCapture {
   encodedCodec: "h264" | "hevc" | null;
   /** Subscribe to pre-encoded NAL frames. Returns unsubscribe function. */
   subscribeEncodedFrames: (cb: EncodedFrameCallback) => () => void;
-  start: (monitorIndex: number, fps: number, maxWidth?: number, maxHeight?: number, bitrate?: number, codec?: string) => Promise<boolean>;
+  start: (
+    monitorIndex: number,
+    fps: number,
+    maxWidth?: number,
+    maxHeight?: number,
+    bitrate?: number,
+    codec?: string
+  ) => Promise<boolean>;
   stop: () => void;
 }
 
@@ -26,14 +37,17 @@ function isVideoDecoderSupported(): boolean {
 
 // Frame protocol type bytes (must match native binary)
 const TYPE_RAW_I420 = 0;
-const TYPE_ENCODED  = 1;
-const TYPE_CONFIG   = 2;
+const TYPE_ENCODED = 1;
+const TYPE_CONFIG = 2;
 
 // Codec types (must match CodecType enum in encoder.h)
-const CODEC_H264 = 0;
 const CODEC_HEVC = 1;
 
-function buildCodecString(codecType: number, profile: number, level: number): string {
+function buildCodecString(
+  codecType: number,
+  profile: number,
+  level: number
+): string {
   if (codecType === CODEC_HEVC) {
     // hev1.<profile>.<compat>.<tier><level>
     // profile 1 = Main, compat flags 6 = general_profile_compatibility_flag[1..2]
@@ -41,17 +55,23 @@ function buildCodecString(codecType: number, profile: number, level: number): st
     return `hev1.1.6.L${level}.B0`;
   }
   // H.264: avc3.PPCCLL (Annex B format, SPS/PPS inline)
-  return `avc3.${profile.toString(16).padStart(2, "0")}00${level.toString(16).padStart(2, "0")}`;
+  return `avc3.${profile.toString(16).padStart(2, "0")}00${level
+    .toString(16)
+    .padStart(2, "0")}`;
 }
 
 export function useNativeScreenCapture(): NativeScreenCapture {
   const [available, setAvailable] = useState(false);
   const [active, setActive] = useState(false);
   const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
-  const [encodedCodec, setEncodedCodec] = useState<"h264" | "hevc" | null>(null);
+  const [encodedCodec, setEncodedCodec] = useState<"h264" | "hevc" | null>(
+    null
+  );
 
   const generatorRef = useRef<MediaStreamTrackGenerator | null>(null);
-  const writerRef = useRef<WritableStreamDefaultWriter<VideoFrame> | null>(null);
+  const writerRef = useRef<WritableStreamDefaultWriter<VideoFrame> | null>(
+    null
+  );
   const cleanupRef = useRef<Array<() => void>>([]);
   const activeRef = useRef(false);
   const wsRef = useRef<WebSocket | null>(null);
@@ -60,13 +80,17 @@ export function useNativeScreenCapture(): NativeScreenCapture {
 
   const subscribeEncodedFrames = useCallback((cb: EncodedFrameCallback) => {
     encodedFrameListenersRef.current.add(cb);
-    return () => { encodedFrameListenersRef.current.delete(cb); };
+    return () => {
+      encodedFrameListenersRef.current.delete(cb);
+    };
   }, []);
 
   useEffect(() => {
     if (!isElectron()) return;
     if (!isMediaStreamTrackGeneratorSupported()) {
-      console.warn("[NativeScreenCapture] MediaStreamTrackGenerator not supported");
+      console.warn(
+        "[NativeScreenCapture] MediaStreamTrackGenerator not supported"
+      );
       return;
     }
 
@@ -93,14 +117,20 @@ export function useNativeScreenCapture(): NativeScreenCapture {
     }
 
     probe(1);
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const stop = useCallback(() => {
     activeRef.current = false;
 
     if (decoderRef.current) {
-      try { decoderRef.current.close(); } catch { /* already closed */ }
+      try {
+        decoderRef.current.close();
+      } catch {
+        /* already closed */
+      }
       decoderRef.current = null;
     }
 
@@ -131,7 +161,14 @@ export function useNativeScreenCapture(): NativeScreenCapture {
   }, []);
 
   const start = useCallback(
-    async (monitorIndex: number, fps: number, maxWidth?: number, maxHeight?: number, bitrate?: number, codec?: string): Promise<boolean> => {
+    async (
+      monitorIndex: number,
+      fps: number,
+      maxWidth?: number,
+      maxHeight?: number,
+      bitrate?: number,
+      codec?: string
+    ): Promise<boolean> => {
       const api = getElectronAPI();
       if (!api || !isMediaStreamTrackGeneratorSupported()) return false;
 
@@ -141,27 +178,63 @@ export function useNativeScreenCapture(): NativeScreenCapture {
       writerRef.current = writer;
 
       let framesReceived = 0;
+      let framesDropped = 0;
       let lastLogTime = Date.now();
+      let firstFrameLogged = false;
+      let writePending = false;
 
       const logFps = () => {
         framesReceived++;
         const now = Date.now();
         if (now - lastLogTime >= 5000) {
           const elapsed = (now - lastLogTime) / 1000;
-          console.log(`[NativeScreenCapture] renderer: ${(framesReceived / elapsed).toFixed(1)} fps`);
+          console.log(
+            `[NativeScreenCapture] renderer: ${(
+              framesReceived / elapsed
+            ).toFixed(1)} fps, ` + `${framesDropped} dropped (backpressure)`
+          );
           framesReceived = 0;
+          framesDropped = 0;
           lastLogTime = now;
         }
       };
 
       const writeFrame = (frame: VideoFrame) => {
-        if (!activeRef.current) { frame.close(); return; }
-        writer.write(frame).catch(() => {});
+        if (!activeRef.current) {
+          frame.close();
+          return;
+        }
+        if (!firstFrameLogged) {
+          firstFrameLogged = true;
+          console.log(
+            `[NativeScreenCapture] first VideoFrame: ${frame.codedWidth}x${frame.codedHeight} ` +
+              `display=${frame.displayWidth}x${frame.displayHeight}`
+          );
+        }
+        if (writePending) {
+          frame.close();
+          framesDropped++;
+          return;
+        }
+        writePending = true;
+        writer.write(frame).then(
+          () => {
+            writePending = false;
+          },
+          () => {
+            writePending = false;
+          }
+        );
         frame.close();
         logFps();
       };
 
-      const processRawFrame = (data: ArrayBuffer, width: number, height: number, timestampUs: number) => {
+      const processRawFrame = (
+        data: ArrayBuffer,
+        width: number,
+        height: number,
+        timestampUs: number
+      ) => {
         if (!activeRef.current) return;
         try {
           const videoFrame = new VideoFrame(new Uint8Array(data), {
@@ -173,7 +246,10 @@ export function useNativeScreenCapture(): NativeScreenCapture {
           writeFrame(videoFrame);
         } catch (err) {
           if (framesReceived === 0) {
-            console.error("[NativeScreenCapture] VideoFrame creation failed:", err);
+            console.error(
+              "[NativeScreenCapture] VideoFrame creation failed:",
+              err
+            );
           }
         }
       };
@@ -184,7 +260,14 @@ export function useNativeScreenCapture(): NativeScreenCapture {
       });
       cleanupRef.current = [unsubStopped];
 
-      const result = await api.startNativeScreenCapture(monitorIndex, fps, maxWidth, maxHeight, bitrate, codec);
+      const result = await api.startNativeScreenCapture(
+        monitorIndex,
+        fps,
+        maxWidth,
+        maxHeight,
+        bitrate,
+        codec
+      );
       if (!result.success) {
         console.error("[NativeScreenCapture] failed to start native capture");
         stop();
@@ -192,41 +275,73 @@ export function useNativeScreenCapture(): NativeScreenCapture {
       }
 
       if (result.wsPort) {
-        console.log(`[NativeScreenCapture] connecting via WebSocket on port ${result.wsPort}`);
-        const ws = new WebSocket(`ws://127.0.0.1:${result.wsPort}`);
-        ws.binaryType = "arraybuffer";
+        const MAX_WS_ATTEMPTS = 3;
+        const WS_BASE_DELAY_MS = 200;
+        let ws: WebSocket | null = null;
+
+        for (let attempt = 1; attempt <= MAX_WS_ATTEMPTS; attempt++) {
+          console.log(
+            `[NativeScreenCapture] WS connect attempt ${attempt}/${MAX_WS_ATTEMPTS} on port ${result.wsPort}`
+          );
+          const candidate = new WebSocket(`ws://127.0.0.1:${result.wsPort}`);
+          candidate.binaryType = "arraybuffer";
+
+          const opened = await new Promise<boolean>((resolve) => {
+            const timeout = setTimeout(() => {
+              console.error(
+                `[NativeScreenCapture] WS open timeout (attempt ${attempt})`
+              );
+              resolve(false);
+            }, 3000);
+
+            candidate.onopen = () => {
+              clearTimeout(timeout);
+              console.log(
+                `[NativeScreenCapture] WS connected (attempt ${attempt})`
+              );
+              resolve(true);
+            };
+
+            candidate.onerror = (err) => {
+              clearTimeout(timeout);
+              console.error(
+                `[NativeScreenCapture] WS error (attempt ${attempt}):`,
+                err
+              );
+              resolve(false);
+            };
+          });
+
+          if (opened) {
+            ws = candidate;
+            break;
+          }
+
+          try {
+            candidate.close();
+          } catch {
+            /* ignore */
+          }
+
+          if (attempt < MAX_WS_ATTEMPTS) {
+            const delay = WS_BASE_DELAY_MS * Math.pow(2, attempt - 1);
+            console.log(`[NativeScreenCapture] retrying in ${delay}ms…`);
+            await new Promise<void>((r) => setTimeout(r, delay));
+          }
+        }
+
+        if (!ws) {
+          console.error(
+            "[NativeScreenCapture] all WS connection attempts failed"
+          );
+          stop();
+          return false;
+        }
+
         wsRef.current = ws;
 
         let encodedMode = false;
         let decoderReady = false;
-
-        const wsReady = new Promise<boolean>((resolve) => {
-          const timeout = setTimeout(() => {
-            console.error("[NativeScreenCapture] WebSocket open timeout (3s)");
-            resolve(false);
-          }, 3000);
-
-          ws.onopen = () => {
-            clearTimeout(timeout);
-            console.log("[NativeScreenCapture] WebSocket connected");
-            resolve(true);
-          };
-
-          ws.onerror = (err) => {
-            clearTimeout(timeout);
-            console.error("[NativeScreenCapture] WebSocket error:", err);
-            resolve(false);
-          };
-        });
-
-        const opened = await wsReady;
-        if (!opened) {
-          console.error("[NativeScreenCapture] WebSocket failed to connect, falling back");
-          wsRef.current = null;
-          try { ws.close(); } catch { /* ignore */ }
-          stop();
-          return false;
-        }
 
         ws.onmessage = (event: MessageEvent) => {
           const buf = event.data as ArrayBuffer;
@@ -244,13 +359,19 @@ export function useNativeScreenCapture(): NativeScreenCapture {
 
             const codecStr = buildCodecString(codecType, profile, level);
             const codecName = codecType === CODEC_HEVC ? "HEVC" : "H.264";
-            console.log(`[NativeScreenCapture] ${codecName} config: ${cfgW}x${cfgH} codec=${codecStr}`);
+            console.log(
+              `[NativeScreenCapture] ${codecName} config from native: ${cfgW}x${cfgH} codec=${codecStr} ` +
+                `(requested max=${maxWidth ?? "native"}x${
+                  maxHeight ?? "native"
+                })`
+            );
 
             if (isVideoDecoderSupported()) {
               try {
                 const decoder = new VideoDecoder({
                   output: (frame: VideoFrame) => writeFrame(frame),
-                  error: (e: DOMException) => console.error("[NativeScreenCapture] decoder error:", e),
+                  error: (e: DOMException) =>
+                    console.error("[NativeScreenCapture] decoder error:", e),
                 });
                 decoder.configure({
                   codec: codecStr,
@@ -262,9 +383,14 @@ export function useNativeScreenCapture(): NativeScreenCapture {
                 encodedMode = true;
                 decoderReady = true;
                 setEncodedCodec(codecType === CODEC_HEVC ? "hevc" : "h264");
-                console.log(`[NativeScreenCapture] VideoDecoder configured for ${codecName} HW-encoded stream`);
+                console.log(
+                  `[NativeScreenCapture] VideoDecoder configured for ${codecName} HW-encoded stream`
+                );
               } catch (err) {
-                console.warn("[NativeScreenCapture] VideoDecoder setup failed, expecting raw frames:", err);
+                console.warn(
+                  "[NativeScreenCapture] VideoDecoder setup failed, expecting raw frames:",
+                  err
+                );
               }
             }
             return;
@@ -282,13 +408,20 @@ export function useNativeScreenCapture(): NativeScreenCapture {
               cb(nalData, keyframe, timestampUs);
             }
 
+            const decoder = decoderRef.current!;
+            const queueDepth = decoder.decodeQueueSize ?? 0;
+            if (!keyframe && queueDepth > 3) {
+              framesDropped++;
+              return;
+            }
+
             try {
               const chunk = new EncodedVideoChunk({
                 type: keyframe ? "key" : "delta",
                 timestamp: timestampUs,
                 data: nalData,
               });
-              decoderRef.current!.decode(chunk);
+              decoder.decode(chunk);
             } catch (err) {
               if (framesReceived === 0) {
                 console.error("[NativeScreenCapture] decode failed:", err);
@@ -335,7 +468,12 @@ export function useNativeScreenCapture(): NativeScreenCapture {
         // Legacy IPC fallback for older binaries without --ws support
         console.log("[NativeScreenCapture] using legacy IPC frame relay");
         const unsubFrame = api.onNativeScreenFrame((frame) => {
-          processRawFrame(frame.data, frame.width, frame.height, frame.timestampUs);
+          processRawFrame(
+            frame.data,
+            frame.width,
+            frame.height,
+            frame.timestampUs
+          );
         });
         cleanupRef.current.push(unsubFrame);
       }
@@ -346,15 +484,29 @@ export function useNativeScreenCapture(): NativeScreenCapture {
       setVideoStream(stream);
       setActive(true);
 
-      console.log(`[NativeScreenCapture] started: monitor=${monitorIndex} fps=${fps} res=${maxWidth ?? "native"}x=${maxHeight ?? "native"} ws=${!!result.wsPort}`);
+      console.log(
+        `[NativeScreenCapture] started: monitor=${monitorIndex} fps=${fps} res=${
+          maxWidth ?? "native"
+        }x=${maxHeight ?? "native"} ws=${!!result.wsPort}`
+      );
       return true;
     },
-    [stop],
+    [stop]
   );
 
   useEffect(() => {
-    return () => { stop(); };
+    return () => {
+      stop();
+    };
   }, [stop]);
 
-  return { available, active, videoStream, encodedCodec, subscribeEncodedFrames, start, stop };
+  return {
+    available,
+    active,
+    videoStream,
+    encodedCodec,
+    subscribeEncodedFrames,
+    start,
+    stop,
+  };
 }

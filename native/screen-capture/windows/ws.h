@@ -94,20 +94,36 @@ static bool wsSendBinary(SOCKET sock, const uint8_t* data, size_t len) {
 
 static const char WS_MAGIC[] = "258EAFA5-E914-47DA-95CA-5AB9E3F04890";
 
+static const char* strcasestrLocal(const char* haystack, const char* needle) {
+    size_t nLen = strlen(needle);
+    for (; *haystack; haystack++) {
+        if (_strnicmp(haystack, needle, nLen) == 0) return haystack;
+    }
+    return nullptr;
+}
+
 static bool wsHandshake(SOCKET client) {
     char reqBuf[4096];
     int total = 0;
     while (total < (int)sizeof(reqBuf) - 1) {
         int n = recv(client, reqBuf + total, (int)(sizeof(reqBuf) - 1 - total), 0);
-        if (n <= 0) return false;
+        if (n <= 0) {
+            fprintf(stderr, "[ws] handshake recv failed: n=%d WSA=%d\n", n, WSAGetLastError());
+            return false;
+        }
         total += n;
         reqBuf[total] = '\0';
         if (strstr(reqBuf, "\r\n\r\n")) break;
     }
 
-    const char* keyHeader = strstr(reqBuf, "Sec-WebSocket-Key:");
-    if (!keyHeader) keyHeader = strstr(reqBuf, "sec-websocket-key:");
-    if (!keyHeader) return false;
+    fprintf(stderr, "[ws] handshake request (%d bytes):\n%s\n", total, reqBuf);
+    fflush(stderr);
+
+    const char* keyHeader = strcasestrLocal(reqBuf, "Sec-WebSocket-Key:");
+    if (!keyHeader) {
+        fprintf(stderr, "[ws] no Sec-WebSocket-Key header found\n");
+        return false;
+    }
     keyHeader += 18;
     while (*keyHeader == ' ') keyHeader++;
     char key[64];
@@ -117,6 +133,8 @@ static bool wsHandshake(SOCKET client) {
         ki++;
     }
     key[ki] = '\0';
+
+    fprintf(stderr, "[ws] extracted key: \"%s\"\n", key);
 
     char concat[128];
     int concatLen = snprintf(concat, sizeof(concat), "%s%s", key, WS_MAGIC);
@@ -132,7 +150,18 @@ static bool wsHandshake(SOCKET client) {
         "Connection: Upgrade\r\n"
         "Sec-WebSocket-Accept: %s\r\n\r\n", accept);
 
-    return send(client, response, respLen, 0) != SOCKET_ERROR;
+    fprintf(stderr, "[ws] handshake response (%d bytes):\n%s", respLen, response);
+    fflush(stderr);
+
+    int sent = send(client, response, respLen, 0);
+    if (sent == SOCKET_ERROR) {
+        fprintf(stderr, "[ws] handshake send failed: WSA=%d\n", WSAGetLastError());
+        fflush(stderr);
+        return false;
+    }
+    fprintf(stderr, "[ws] handshake send OK (%d bytes sent)\n", sent);
+    fflush(stderr);
+    return true;
 }
 
 // ── Create TCP listener on loopback with an ephemeral port ────────────

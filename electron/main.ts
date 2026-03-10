@@ -1,18 +1,77 @@
-import { app, BrowserWindow, desktopCapturer, dialog, ipcMain, Menu, nativeImage, screen, session, shell, systemPreferences, Tray } from "electron";
+import {
+  app,
+  BrowserWindow,
+  desktopCapturer,
+  dialog,
+  ipcMain,
+  Menu,
+  nativeImage,
+  screen,
+  session,
+  shell,
+  systemPreferences,
+  Tray,
+} from "electron";
 import { autoUpdater, UpdateInfo } from "electron-updater";
-import { appendFileSync, createReadStream, existsSync, readFileSync, statSync, writeFileSync } from "fs";
+import {
+  appendFileSync,
+  createReadStream,
+  existsSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from "fs";
 import { createServer, Server } from "http";
 import { dirname, extname, join, resolve } from "path";
 import { uIOhook, UiohookKey } from "uiohook-napi";
 import { fileURLToPath } from "url";
 
-import { getAddons, getAddonsDir, initAddonManager, onAddonsChanged, resolveAddonFilePath, watchAddons } from "./addonManager";
-import { isNativeAudioCaptureAvailable, startNativeAudioCapture, stopNativeAudioCapture } from "./audioCaptureManager";
-import { deleteGlobalValue, flushGlobalStore, initGlobalStore, loadGlobalStore, saveGlobalStore, setGlobalValue } from "./globalStore";
+import {
+  getAddons,
+  getAddonsDir,
+  initAddonManager,
+  onAddonsChanged,
+  resolveAddonFilePath,
+  watchAddons,
+} from "./addonManager";
+import {
+  isNativeAudioCaptureAvailable,
+  startNativeAudioCapture,
+  stopNativeAudioCapture,
+} from "./audioCaptureManager";
+import {
+  autoStartIfNeeded,
+  cleanupOnQuit,
+  createAndStartServer,
+  getAutoStart,
+  getEmbeddedServerInfo,
+  getState as getEmbeddedServerState,
+  isEmbeddedServerAvailable,
+  setAutoStart,
+  startExistingServer,
+  stopEmbeddedServer,
+} from "./embeddedServerManager";
+import {
+  deleteGlobalValue,
+  flushGlobalStore,
+  initGlobalStore,
+  loadGlobalStore,
+  saveGlobalStore,
+  setGlobalValue,
+} from "./globalStore";
 import { startLanDiscovery } from "./lanDiscovery";
-import { autoStartIfNeeded, cleanupOnQuit, createAndStartServer, getAutoStart, getEmbeddedServerInfo, getState as getEmbeddedServerState, isEmbeddedServerAvailable, setAutoStart, startExistingServer, stopEmbeddedServer } from "./embeddedServerManager";
-import { isNativeScreenCaptureAvailable, startNativeScreenCapture, stopNativeScreenCapture } from "./screenCaptureManager";
-import { flushUserStore, initUserStore, loadUser, patchUser, saveUser } from "./userStore";
+import {
+  isNativeScreenCaptureAvailable,
+  startNativeScreenCapture,
+  stopNativeScreenCapture,
+} from "./screenCaptureManager";
+import {
+  flushUserStore,
+  initUserStore,
+  loadUser,
+  patchUser,
+  saveUser,
+} from "./userStore";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -35,7 +94,9 @@ function startupLog(msg: string): void {
   }
 }
 
-startupLog(`App starting (v${app.getVersion()}, ${process.platform} ${process.arch})`);
+startupLog(
+  `App starting (v${app.getVersion()}, ${process.platform} ${process.arch})`
+);
 
 /** Test a URL against an Electron URL-filter pattern (e.g. "https://*.foo.com/*"). */
 function matchUrlPattern(pattern: string, url: string): boolean {
@@ -70,19 +131,20 @@ process.on("uncaughtException", (err) => {
   startupLog(`FATAL uncaughtException: ${err.stack ?? err.message}`);
   dialog.showErrorBox(
     "Gryt — Unexpected Error",
-    `${err.message}\n\nThe app will now quit. Check gryt-startup.log in the app data folder for details.`,
+    `${err.message}\n\nThe app will now quit. Check gryt-startup.log in the app data folder for details.`
   );
   app.exit(1);
 });
 
 process.on("unhandledRejection", (reason) => {
-  const msg = reason instanceof Error ? (reason.stack ?? reason.message) : String(reason);
+  const msg =
+    reason instanceof Error ? reason.stack ?? reason.message : String(reason);
   startupLog(`unhandledRejection: ${msg}`);
   if (!mainWindow) {
     const short = reason instanceof Error ? reason.message : String(reason);
     dialog.showErrorBox(
       "Gryt — Startup Error",
-      `${short}\n\nThe app will now quit. Check gryt-startup.log in the app data folder for details.`,
+      `${short}\n\nThe app will now quit. Check gryt-startup.log in the app data folder for details.`
     );
     app.exit(1);
   }
@@ -132,8 +194,11 @@ initGlobalStore(app.getPath("userData"));
 initAddonManager(app.getPath("userData"));
 
 function readConfig(): Record<string, unknown> {
-  try { return JSON.parse(readFileSync(configPath, "utf8")); }
-  catch { return {}; }
+  try {
+    return JSON.parse(readFileSync(configPath, "utf8"));
+  } catch {
+    return {};
+  }
 }
 
 function writeConfig(patch: Record<string, unknown>) {
@@ -157,9 +222,10 @@ const hardwareAcceleration = readBoolConfig("hardwareAcceleration", true);
 if (!hardwareAcceleration) {
   app.disableHardwareAcceleration();
 }
-let startWithWindows = process.platform === "win32"
-  ? readBoolConfig("startWithWindows", true)
-  : false;
+let startWithWindows =
+  process.platform === "win32"
+    ? readBoolConfig("startWithWindows", true)
+    : false;
 let startMinimizedOnLogin = readBoolConfig("startMinimizedOnLogin", false);
 
 function applyStartWithWindowsSetting(enabled: boolean) {
@@ -250,7 +316,11 @@ function runSplashUpdateCheck(): Promise<void> {
       setTimeout(done, 800);
     };
 
-    const onProgress = (progress: { percent: number; transferred: number; total: number }) => {
+    const onProgress = (progress: {
+      percent: number;
+      transferred: number;
+      total: number;
+    }) => {
       sendToSplash("downloading", {
         version: pendingUpdateVersion,
         percent: Math.round(progress.percent),
@@ -313,10 +383,18 @@ function friendlyUpdateError(err: Error): string {
   if (msg.includes("status 404") || msg.includes("HttpError: 404")) {
     return "The update file was not found. A new release may not have all artifacts uploaded yet — try again in a few minutes.";
   }
-  if (msg.includes("latest.yml") || msg.includes("latest-linux.yml") || msg.includes("latest-mac.yml")) {
+  if (
+    msg.includes("latest.yml") ||
+    msg.includes("latest-linux.yml") ||
+    msg.includes("latest-mac.yml")
+  ) {
     return "No update available for this channel yet. The release may still be building — try again in a few minutes.";
   }
-  if (msg.includes("net::ERR_") || msg.includes("ENOTFOUND") || msg.includes("ETIMEDOUT")) {
+  if (
+    msg.includes("net::ERR_") ||
+    msg.includes("ENOTFOUND") ||
+    msg.includes("ETIMEDOUT")
+  ) {
     return "Could not reach the update server. Check your internet connection and try again.";
   }
   if (msg.includes("HttpError: 403") || msg.includes("HttpError: 401")) {
@@ -340,12 +418,23 @@ function initBackgroundUpdater() {
       autoUpdater.downloadUpdate().catch(() => {});
     }
   });
-  autoUpdater.on("update-not-available", (info) => sendToMain("not-available", { version: info.version }));
-  autoUpdater.on("download-progress", (p) =>
-    sendToMain("downloading", { version: pendingUpdateVersion, percent: Math.round(p.percent), transferred: p.transferred, total: p.total })
+  autoUpdater.on("update-not-available", (info) =>
+    sendToMain("not-available", { version: info.version })
   );
-  autoUpdater.on("update-downloaded", (info) => sendToMain("downloaded", { version: info.version }));
-  autoUpdater.on("error", (err) => sendToMain("error", { message: friendlyUpdateError(err) }));
+  autoUpdater.on("download-progress", (p) =>
+    sendToMain("downloading", {
+      version: pendingUpdateVersion,
+      percent: Math.round(p.percent),
+      transferred: p.transferred,
+      total: p.total,
+    })
+  );
+  autoUpdater.on("update-downloaded", (info) =>
+    sendToMain("downloaded", { version: info.version })
+  );
+  autoUpdater.on("error", (err) =>
+    sendToMain("error", { message: friendlyUpdateError(err) })
+  );
 }
 
 // ── Local static server (production only) ────────────────────────────────
@@ -384,7 +473,9 @@ function startLocalServer(): Promise<string> {
   function tryListen(port: number): Promise<string> {
     return new Promise((resolveUrl, reject) => {
       const server = createServer((req, res) => {
-        const pathname = decodeURIComponent(new URL(req.url ?? "/", "http://localhost").pathname);
+        const pathname = decodeURIComponent(
+          new URL(req.url ?? "/", "http://localhost").pathname
+        );
 
         if (pathname.startsWith("/addons/")) {
           const addonFile = resolveAddonFilePath(pathname);
@@ -408,7 +499,10 @@ function startLocalServer(): Promise<string> {
           return;
         }
 
-        const filePath = existsSync(safePath) && statSync(safePath).isFile() ? safePath : indexPath;
+        const filePath =
+          existsSync(safePath) && statSync(safePath).isFile()
+            ? safePath
+            : indexPath;
         const ext = extname(filePath).toLowerCase();
         const contentType = MIME_TYPES[ext] ?? "application/octet-stream";
 
@@ -466,7 +560,9 @@ function createMainWindow(): void {
     title: "Gryt",
   });
 
-  mainWindow.loadURL(localServerUrl ?? process.env.VITE_DEV_SERVER_URL ?? "about:blank");
+  mainWindow.loadURL(
+    localServerUrl ?? process.env.VITE_DEV_SERVER_URL ?? "about:blank"
+  );
 
   if (!startHiddenOnLaunch) {
     // Safety: if splash flow hasn't shown us within 20s, show anyway
@@ -519,21 +615,26 @@ function createMainWindow(): void {
   });
 
   mainWindow.webContents.on("render-process-gone", (_event, details) => {
-    startupLog(`Render process gone: ${details.reason} (exit code ${details.exitCode})`);
+    startupLog(
+      `Render process gone: ${details.reason} (exit code ${details.exitCode})`
+    );
     if (details.reason !== "clean-exit") {
-      dialog.showMessageBox({
-        type: "error",
-        title: "Gryt — Renderer Crashed",
-        message: "The app encountered an error and needs to restart.",
-        detail: "If this keeps happening, try disabling hardware acceleration in Settings.",
-        buttons: ["Restart", "Quit"],
-      }).then(({ response }) => {
-        if (response === 0) {
-          app.relaunch();
-        }
-        isQuitting = true;
-        app.quit();
-      });
+      dialog
+        .showMessageBox({
+          type: "error",
+          title: "Gryt — Renderer Crashed",
+          message: "The app encountered an error and needs to restart.",
+          detail:
+            "If this keeps happening, try disabling hardware acceleration in Settings.",
+          buttons: ["Restart", "Quit"],
+        })
+        .then(({ response }) => {
+          if (response === 0) {
+            app.relaunch();
+          }
+          isQuitting = true;
+          app.quit();
+        });
     }
   });
 }
@@ -541,44 +642,95 @@ function createMainWindow(): void {
 // ── PTT helpers (uiohook – passive, does NOT consume key events) ────────
 
 const DOM_CODE_TO_UIOHOOK: Record<string, number> = {
-  KeyA: UiohookKey.A, KeyB: UiohookKey.B, KeyC: UiohookKey.C,
-  KeyD: UiohookKey.D, KeyE: UiohookKey.E, KeyF: UiohookKey.F,
-  KeyG: UiohookKey.G, KeyH: UiohookKey.H, KeyI: UiohookKey.I,
-  KeyJ: UiohookKey.J, KeyK: UiohookKey.K, KeyL: UiohookKey.L,
-  KeyM: UiohookKey.M, KeyN: UiohookKey.N, KeyO: UiohookKey.O,
-  KeyP: UiohookKey.P, KeyQ: UiohookKey.Q, KeyR: UiohookKey.R,
-  KeyS: UiohookKey.S, KeyT: UiohookKey.T, KeyU: UiohookKey.U,
-  KeyV: UiohookKey.V, KeyW: UiohookKey.W, KeyX: UiohookKey.X,
-  KeyY: UiohookKey.Y, KeyZ: UiohookKey.Z,
-  Digit0: UiohookKey["0"], Digit1: UiohookKey["1"], Digit2: UiohookKey["2"],
-  Digit3: UiohookKey["3"], Digit4: UiohookKey["4"], Digit5: UiohookKey["5"],
-  Digit6: UiohookKey["6"], Digit7: UiohookKey["7"], Digit8: UiohookKey["8"],
+  KeyA: UiohookKey.A,
+  KeyB: UiohookKey.B,
+  KeyC: UiohookKey.C,
+  KeyD: UiohookKey.D,
+  KeyE: UiohookKey.E,
+  KeyF: UiohookKey.F,
+  KeyG: UiohookKey.G,
+  KeyH: UiohookKey.H,
+  KeyI: UiohookKey.I,
+  KeyJ: UiohookKey.J,
+  KeyK: UiohookKey.K,
+  KeyL: UiohookKey.L,
+  KeyM: UiohookKey.M,
+  KeyN: UiohookKey.N,
+  KeyO: UiohookKey.O,
+  KeyP: UiohookKey.P,
+  KeyQ: UiohookKey.Q,
+  KeyR: UiohookKey.R,
+  KeyS: UiohookKey.S,
+  KeyT: UiohookKey.T,
+  KeyU: UiohookKey.U,
+  KeyV: UiohookKey.V,
+  KeyW: UiohookKey.W,
+  KeyX: UiohookKey.X,
+  KeyY: UiohookKey.Y,
+  KeyZ: UiohookKey.Z,
+  Digit0: UiohookKey["0"],
+  Digit1: UiohookKey["1"],
+  Digit2: UiohookKey["2"],
+  Digit3: UiohookKey["3"],
+  Digit4: UiohookKey["4"],
+  Digit5: UiohookKey["5"],
+  Digit6: UiohookKey["6"],
+  Digit7: UiohookKey["7"],
+  Digit8: UiohookKey["8"],
   Digit9: UiohookKey["9"],
-  Space: UiohookKey.Space, Backspace: UiohookKey.Backspace,
-  Tab: UiohookKey.Tab, Enter: UiohookKey.Enter,
-  CapsLock: UiohookKey.CapsLock, Escape: UiohookKey.Escape,
-  Insert: UiohookKey.Insert, Delete: UiohookKey.Delete,
-  Home: UiohookKey.Home, End: UiohookKey.End,
-  PageUp: UiohookKey.PageUp, PageDown: UiohookKey.PageDown,
-  ArrowUp: UiohookKey.ArrowUp, ArrowDown: UiohookKey.ArrowDown,
-  ArrowLeft: UiohookKey.ArrowLeft, ArrowRight: UiohookKey.ArrowRight,
-  F1: UiohookKey.F1, F2: UiohookKey.F2, F3: UiohookKey.F3,
-  F4: UiohookKey.F4, F5: UiohookKey.F5, F6: UiohookKey.F6,
-  F7: UiohookKey.F7, F8: UiohookKey.F8, F9: UiohookKey.F9,
-  F10: UiohookKey.F10, F11: UiohookKey.F11, F12: UiohookKey.F12,
-  Numpad0: UiohookKey.Numpad0, Numpad1: UiohookKey.Numpad1,
-  Numpad2: UiohookKey.Numpad2, Numpad3: UiohookKey.Numpad3,
-  Numpad4: UiohookKey.Numpad4, Numpad5: UiohookKey.Numpad5,
-  Numpad6: UiohookKey.Numpad6, Numpad7: UiohookKey.Numpad7,
-  Numpad8: UiohookKey.Numpad8, Numpad9: UiohookKey.Numpad9,
-  NumpadMultiply: UiohookKey.NumpadMultiply, NumpadAdd: UiohookKey.NumpadAdd,
-  NumpadSubtract: UiohookKey.NumpadSubtract, NumpadDecimal: UiohookKey.NumpadDecimal,
+  Space: UiohookKey.Space,
+  Backspace: UiohookKey.Backspace,
+  Tab: UiohookKey.Tab,
+  Enter: UiohookKey.Enter,
+  CapsLock: UiohookKey.CapsLock,
+  Escape: UiohookKey.Escape,
+  Insert: UiohookKey.Insert,
+  Delete: UiohookKey.Delete,
+  Home: UiohookKey.Home,
+  End: UiohookKey.End,
+  PageUp: UiohookKey.PageUp,
+  PageDown: UiohookKey.PageDown,
+  ArrowUp: UiohookKey.ArrowUp,
+  ArrowDown: UiohookKey.ArrowDown,
+  ArrowLeft: UiohookKey.ArrowLeft,
+  ArrowRight: UiohookKey.ArrowRight,
+  F1: UiohookKey.F1,
+  F2: UiohookKey.F2,
+  F3: UiohookKey.F3,
+  F4: UiohookKey.F4,
+  F5: UiohookKey.F5,
+  F6: UiohookKey.F6,
+  F7: UiohookKey.F7,
+  F8: UiohookKey.F8,
+  F9: UiohookKey.F9,
+  F10: UiohookKey.F10,
+  F11: UiohookKey.F11,
+  F12: UiohookKey.F12,
+  Numpad0: UiohookKey.Numpad0,
+  Numpad1: UiohookKey.Numpad1,
+  Numpad2: UiohookKey.Numpad2,
+  Numpad3: UiohookKey.Numpad3,
+  Numpad4: UiohookKey.Numpad4,
+  Numpad5: UiohookKey.Numpad5,
+  Numpad6: UiohookKey.Numpad6,
+  Numpad7: UiohookKey.Numpad7,
+  Numpad8: UiohookKey.Numpad8,
+  Numpad9: UiohookKey.Numpad9,
+  NumpadMultiply: UiohookKey.NumpadMultiply,
+  NumpadAdd: UiohookKey.NumpadAdd,
+  NumpadSubtract: UiohookKey.NumpadSubtract,
+  NumpadDecimal: UiohookKey.NumpadDecimal,
   NumpadDivide: UiohookKey.NumpadDivide,
-  Semicolon: UiohookKey.Semicolon, Equal: UiohookKey.Equal,
-  Comma: UiohookKey.Comma, Minus: UiohookKey.Minus,
-  Period: UiohookKey.Period, Slash: UiohookKey.Slash,
-  Backquote: UiohookKey.Backquote, BracketLeft: UiohookKey.BracketLeft,
-  Backslash: UiohookKey.Backslash, BracketRight: UiohookKey.BracketRight,
+  Semicolon: UiohookKey.Semicolon,
+  Equal: UiohookKey.Equal,
+  Comma: UiohookKey.Comma,
+  Minus: UiohookKey.Minus,
+  Period: UiohookKey.Period,
+  Slash: UiohookKey.Slash,
+  Backquote: UiohookKey.Backquote,
+  BracketLeft: UiohookKey.BracketLeft,
+  Backslash: UiohookKey.Backslash,
+  BracketRight: UiohookKey.BracketRight,
   Quote: UiohookKey.Quote,
 };
 
@@ -617,7 +769,9 @@ function ensureUiohook(): boolean {
   if (uiohookRunning) return true;
 
   if (process.platform === "darwin") {
-    const trusted = systemPreferences.isTrustedAccessibilityClient({ prompt: false });
+    const trusted = systemPreferences.isTrustedAccessibilityClient({
+      prompt: false,
+    });
     if (!trusted) {
       startupLog("macOS Accessibility not granted — skipping uiohook");
       return false;
@@ -686,7 +840,9 @@ function buildTrayContextMenu(): Menu {
 }
 
 function createTray(): void {
-  const icon = nativeImage.createFromPath(appIcon).resize({ width: 18, height: 18 });
+  const icon = nativeImage
+    .createFromPath(appIcon)
+    .resize({ width: 18, height: 18 });
   if (process.platform === "darwin") icon.setTemplateImage(true);
   tray = new Tray(icon);
   tray.setToolTip("Gryt");
@@ -728,394 +884,498 @@ if (!gotSingleInstanceLock) {
     handleDeepLink(url);
   });
 
-  app.whenReady().then(async () => {
-    ipcMain.handle("get-app-version", () => app.getVersion());
-    ipcMain.handle("get-beta-channel", () => readConfig().betaChannel === true);
-    ipcMain.on("set-beta-channel", (_event, enabled: boolean) => {
-      writeConfig({ betaChannel: enabled });
-      autoUpdater.allowPrerelease = enabled;
-    });
+  app
+    .whenReady()
+    .then(async () => {
+      ipcMain.handle("get-app-version", () => app.getVersion());
+      ipcMain.handle(
+        "get-beta-channel",
+        () => readConfig().betaChannel === true
+      );
+      ipcMain.on("set-beta-channel", (_event, enabled: boolean) => {
+        writeConfig({ betaChannel: enabled });
+        autoUpdater.allowPrerelease = enabled;
+      });
 
-    ipcMain.on("switch-update-channel", (_event, enabled: boolean) => {
-      writeConfig({ betaChannel: enabled });
-      autoUpdater.allowPrerelease = enabled;
-      isQuitting = true;
-      app.relaunch();
-      app.quit();
-    });
+      ipcMain.on("switch-update-channel", (_event, enabled: boolean) => {
+        writeConfig({ betaChannel: enabled });
+        autoUpdater.allowPrerelease = enabled;
+        isQuitting = true;
+        app.relaunch();
+        app.quit();
+      });
 
-    ipcMain.handle("get-close-to-tray", () => closeToTray);
-    ipcMain.on("set-close-to-tray", (_event, enabled: boolean) => {
-      closeToTray = enabled;
-      writeConfig({ closeToTray: enabled });
-    });
+      ipcMain.handle("get-close-to-tray", () => closeToTray);
+      ipcMain.on("set-close-to-tray", (_event, enabled: boolean) => {
+        closeToTray = enabled;
+        writeConfig({ closeToTray: enabled });
+      });
 
-    ipcMain.on("set-signed-in", (_event, signedIn: boolean) => {
-      isUserSignedIn = signedIn;
-    });
+      ipcMain.on("set-signed-in", (_event, signedIn: boolean) => {
+        isUserSignedIn = signedIn;
+      });
 
-    ipcMain.handle("get-start-with-windows-supported", () => process.platform === "win32");
-    ipcMain.handle("get-start-with-windows", () => startWithWindows);
-    ipcMain.on("set-start-with-windows", (_event, enabled: boolean) => {
-      startWithWindows = !!enabled;
-      writeConfig({ startWithWindows });
+      ipcMain.handle(
+        "get-start-with-windows-supported",
+        () => process.platform === "win32"
+      );
+      ipcMain.handle("get-start-with-windows", () => startWithWindows);
+      ipcMain.on("set-start-with-windows", (_event, enabled: boolean) => {
+        startWithWindows = !!enabled;
+        writeConfig({ startWithWindows });
+        applyStartWithWindowsSetting(startWithWindows);
+      });
+
+      ipcMain.handle(
+        "get-start-minimized-on-login",
+        () => startMinimizedOnLogin
+      );
+      ipcMain.on("set-start-minimized-on-login", (_event, enabled: boolean) => {
+        startMinimizedOnLogin = !!enabled;
+        writeConfig({ startMinimizedOnLogin });
+      });
+
+      ipcMain.handle("get-hardware-acceleration", () => hardwareAcceleration);
+      ipcMain.on("set-hardware-acceleration", (_event, enabled: boolean) => {
+        writeConfig({ hardwareAcceleration: enabled });
+        isQuitting = true;
+        app.relaunch();
+        app.quit();
+      });
+
+      // ── Per-user file store ───────────────────────────────────────────
+      ipcMain.handle("user-store:load", (_event, userId: string) =>
+        loadUser(userId)
+      );
+      ipcMain.on(
+        "user-store:set",
+        (_event, userId: string, key: string, value: unknown) => {
+          patchUser(userId, key, value);
+        }
+      );
+      ipcMain.on(
+        "user-store:save",
+        (_event, userId: string, data: Record<string, unknown>) => {
+          saveUser(userId, data);
+        }
+      );
+
+      // ── Global file store (backs localStorage) ───────────────────────
+      ipcMain.handle("global-store:load", () => loadGlobalStore());
+      ipcMain.on("global-store:set", (_event, key: string, value: unknown) => {
+        setGlobalValue(key, value);
+      });
+      ipcMain.on("global-store:delete", (_event, key: string) => {
+        deleteGlobalValue(key);
+      });
+      ipcMain.on(
+        "global-store:save",
+        (_event, data: Record<string, unknown>) => {
+          saveGlobalStore(data);
+        }
+      );
+
+      // ── Addons ─────────────────────────────────────────────────────
+      ipcMain.handle("addons:list", () => getAddons());
+      ipcMain.handle("addons:open-folder", () =>
+        shell.openPath(getAddonsDir())
+      );
+      onAddonsChanged((addons) => {
+        mainWindow?.webContents.send("addons-changed", addons);
+      });
+      watchAddons();
+
+      // Apply at startup (default enabled on Windows).
       applyStartWithWindowsSetting(startWithWindows);
-    });
 
-    ipcMain.handle("get-start-minimized-on-login", () => startMinimizedOnLogin);
-    ipcMain.on("set-start-minimized-on-login", (_event, enabled: boolean) => {
-      startMinimizedOnLogin = !!enabled;
-      writeConfig({ startMinimizedOnLogin });
-    });
+      const launchedFromAutoStart =
+        process.argv.includes(AUTO_START_ARG) ||
+        (() => {
+          try {
+            return app.getLoginItemSettings().wasOpenedAtLogin === true;
+          } catch {
+            return false;
+          }
+        })();
+      startHiddenOnLaunch = launchedFromAutoStart && startMinimizedOnLogin;
 
-    ipcMain.handle("get-hardware-acceleration", () => hardwareAcceleration);
-    ipcMain.on("set-hardware-acceleration", (_event, enabled: boolean) => {
-      writeConfig({ hardwareAcceleration: enabled });
-      isQuitting = true;
-      app.relaunch();
-      app.quit();
-    });
+      if (!process.env.VITE_DEV_SERVER_URL) {
+        localServerUrl = await startLocalServer();
+        startupLog(`Local server started: ${localServerUrl}`);
+      }
 
-    // ── Per-user file store ───────────────────────────────────────────
-    ipcMain.handle("user-store:load", (_event, userId: string) => loadUser(userId));
-    ipcMain.on("user-store:set", (_event, userId: string, key: string, value: unknown) => {
-      patchUser(userId, key, value);
-    });
-    ipcMain.on("user-store:save", (_event, userId: string, data: Record<string, unknown>) => {
-      saveUser(userId, data);
-    });
-
-    // ── Global file store (backs localStorage) ───────────────────────
-    ipcMain.handle("global-store:load", () => loadGlobalStore());
-    ipcMain.on("global-store:set", (_event, key: string, value: unknown) => {
-      setGlobalValue(key, value);
-    });
-    ipcMain.on("global-store:delete", (_event, key: string) => {
-      deleteGlobalValue(key);
-    });
-    ipcMain.on("global-store:save", (_event, data: Record<string, unknown>) => {
-      saveGlobalStore(data);
-    });
-
-    // ── Addons ─────────────────────────────────────────────────────
-    ipcMain.handle("addons:list", () => getAddons());
-    ipcMain.handle("addons:open-folder", () => shell.openPath(getAddonsDir()));
-    onAddonsChanged((addons) => {
-      mainWindow?.webContents.send("addons-changed", addons);
-    });
-    watchAddons();
-
-    // Apply at startup (default enabled on Windows).
-    applyStartWithWindowsSetting(startWithWindows);
-
-    const launchedFromAutoStart = process.argv.includes(AUTO_START_ARG) || (() => {
       try {
-        return app.getLoginItemSettings().wasOpenedAtLogin === true;
-      } catch {
-        return false;
+        ensureUiohook();
+        startupLog(
+          uiohookRunning
+            ? "uiohook initialized"
+            : "uiohook deferred (no accessibility or not needed yet)"
+        );
+      } catch (err) {
+        startupLog(
+          `uiohook failed (PTT disabled): ${
+            err instanceof Error ? err.message : String(err)
+          }`
+        );
       }
-    })();
-    startHiddenOnLaunch = launchedFromAutoStart && startMinimizedOnLogin;
 
-    if (!process.env.VITE_DEV_SERVER_URL) {
-      localServerUrl = await startLocalServer();
-      startupLog(`Local server started: ${localServerUrl}`);
-    }
-
-    try {
-      ensureUiohook();
-      startupLog(uiohookRunning ? "uiohook initialized" : "uiohook deferred (no accessibility or not needed yet)");
-    } catch (err) {
-      startupLog(`uiohook failed (PTT disabled): ${err instanceof Error ? err.message : String(err)}`);
-    }
-
-    // ── Native audio capture IPC ──────────────────────────────────────
-    // Registered before createMainWindow to avoid a race: the renderer
-    // probes availability in a useEffect on mount, and if the handler
-    // isn't ready yet the invoke silently fails → nativeAvailable=false.
-    ipcMain.handle("native-audio-capture-available", () => {
-      return isNativeAudioCaptureAvailable();
-    });
-    ipcMain.handle("start-native-audio-capture", (_event, sourceId?: string) => {
-      if (!mainWindow) return false;
-      return startNativeAudioCapture(mainWindow, sourceId);
-    });
-    ipcMain.on("stop-native-audio-capture", () => {
-      stopNativeAudioCapture();
-    });
-
-    ipcMain.handle("native-screen-capture:available", () => {
-      return isNativeScreenCaptureAvailable();
-    });
-    ipcMain.handle("native-screen-capture:start", async (_event, monitorIndex: number, fps: number, maxWidth?: number, maxHeight?: number, bitrate?: number, codec?: string) => {
-      if (!mainWindow) return { success: false };
-      return startNativeScreenCapture(mainWindow, monitorIndex, fps, maxWidth, maxHeight, bitrate, codec);
-    });
-    ipcMain.on("native-screen-capture:stop", () => {
-      stopNativeScreenCapture();
-    });
-
-    // ── Embedded server ─────────────────────────────────────────────────
-    ipcMain.handle("embedded-server:available", () => isEmbeddedServerAvailable());
-
-    ipcMain.handle("embedded-server:info", () => getEmbeddedServerInfo());
-
-    ipcMain.handle("embedded-server:create", async (_event, serverName: string, lanDiscoverable: boolean) => {
-      if (!mainWindow) return getEmbeddedServerState();
-      return createAndStartServer(mainWindow, serverName, lanDiscoverable);
-    });
-
-    ipcMain.handle("embedded-server:start", async () => {
-      if (!mainWindow) return getEmbeddedServerState();
-      return startExistingServer(mainWindow);
-    });
-
-    ipcMain.handle("embedded-server:stop", () => {
-      stopEmbeddedServer();
-      return getEmbeddedServerState();
-    });
-
-    ipcMain.handle("embedded-server:status", () => getEmbeddedServerState());
-
-    ipcMain.handle("embedded-server:get-auto-start", () => getAutoStart());
-
-    ipcMain.on("embedded-server:set-auto-start", (_event, enabled: boolean) => {
-      setAutoStart(enabled);
-    });
-
-    createMainWindow();
-    startupLog("Main window created");
-    createTray();
-    startupLog("Tray created");
-
-    if (process.env.VITE_DEV_SERVER_URL) {
-      startupLog("Dev mode — skipping splash/update check");
-      mainWindow?.show();
-    } else if (startHiddenOnLaunch) {
-      startupLog("Starting hidden (auto-start)");
-      initBackgroundUpdater();
-      autoUpdater.checkForUpdates().catch(() => {});
-    } else {
-      try {
-        createSplashWindow();
-        await runSplashUpdateCheck();
-      } catch (_) {
-        // Ensure main window shows even if splash/updater fails
-      }
-      closeSplashAndShowMain();
-      startupLog("Main window shown");
-      initBackgroundUpdater();
-    }
-
-    // ── Embedded server auto-start ────────────────────────────────
-    if (mainWindow) {
-      autoStartIfNeeded(mainWindow).catch((err) => {
-        startupLog(`Embedded server auto-start failed: ${err}`);
+      // ── Native audio capture IPC ──────────────────────────────────────
+      // Registered before createMainWindow to avoid a race: the renderer
+      // probes availability in a useEffect on mount, and if the handler
+      // isn't ready yet the invoke silently fails → nativeAvailable=false.
+      ipcMain.handle("native-audio-capture-available", () => {
+        return isNativeAudioCaptureAvailable();
       });
-    }
-
-    // Background updates auto-download and install on quit
-    // (autoDownload + autoInstallOnAppQuit are both true).
-
-    // ── Embed origin fix ────────────────────────────────────────────
-    // Third-party embed players (YouTube, Vimeo, Spotify, etc.) reject
-    // iframes whose parent is file://.  Spoof valid HTTP Referer/Origin
-    // so the embed players accept playback in packaged Electron.
-    const embedOriginMap: [string[], string][] = [
-      [["https://*.youtube.com/*", "https://*.youtube-nocookie.com/*",
-        "https://*.googlevideo.com/*", "https://*.ytimg.com/*"],
-        "https://www.youtube-nocookie.com"],
-      [["https://*.vimeo.com/*", "https://*.vimeocdn.com/*"],
-        "https://player.vimeo.com"],
-      [["https://clips.twitch.tv/*"],
-        "https://clips.twitch.tv"],
-      [["https://*.twitch.tv/*", "https://*.twitchcdn.net/*", "https://*.jtvnw.net/*"],
-        "https://player.twitch.tv"],
-      [["https://*.spotify.com/*", "https://*.spotifycdn.com/*"],
-        "https://open.spotify.com"],
-      [["https://*.tiktok.com/*", "https://*.tiktokcdn.com/*"],
-        "https://www.tiktok.com"],
-      [["https://*.instagram.com/*", "https://*.cdninstagram.com/*"],
-        "https://www.instagram.com"],
-      [["https://*.soundcloud.com/*", "https://*.sndcdn.com/*"],
-        "https://w.soundcloud.com"],
-    ];
-    const allEmbedPatterns = embedOriginMap.flatMap(([patterns]) => patterns);
-    session.defaultSession.webRequest.onBeforeSendHeaders(
-      { urls: allEmbedPatterns },
-      (details, callback) => {
-        const existingOrigin = details.requestHeaders["Origin"];
-        if (existingOrigin && existingOrigin.startsWith("https://")) {
-          callback({ requestHeaders: details.requestHeaders });
-          return;
+      ipcMain.handle(
+        "start-native-audio-capture",
+        (_event, sourceId?: string) => {
+          if (!mainWindow) return false;
+          return startNativeAudioCapture(mainWindow, sourceId);
         }
-        for (const [patterns, origin] of embedOriginMap) {
-          if (patterns.some((p) => matchUrlPattern(p, details.url))) {
-            details.requestHeaders["Referer"] = origin + "/";
-            details.requestHeaders["Origin"] = origin;
-            break;
-          }
-        }
-        callback({ requestHeaders: details.requestHeaders });
-      },
-    );
-
-    // Strip Content-Security-Policy from embed provider responses so
-    // frame-ancestors doesn't block embedding inside Electron.
-    session.defaultSession.webRequest.onHeadersReceived(
-      { urls: allEmbedPatterns },
-      (details, callback) => {
-        const headers = { ...details.responseHeaders };
-        for (const key of Object.keys(headers)) {
-          if (key.toLowerCase() === "content-security-policy") {
-            delete headers[key];
-          }
-        }
-        callback({ responseHeaders: headers });
-      },
-    );
-
-    // ── Screen capture ────────────────────────────────────────────────
-    // Allow getDisplayMedia by providing a default handler.
-    // Our renderer uses a custom picker via get-desktop-sources instead.
-    session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
-      desktopCapturer.getSources({ types: ["screen"] }).then((sources) => {
-        callback({ video: sources[0], audio: "loopback" });
+      );
+      ipcMain.on("stop-native-audio-capture", () => {
+        stopNativeAudioCapture();
       });
-    });
 
-    ipcMain.handle("get-screen-capture-access", () => {
-      if (process.platform !== "darwin") return "granted";
-      return systemPreferences.getMediaAccessStatus("screen");
-    });
-
-    ipcMain.handle("get-desktop-sources", async () => {
-      const sources = await desktopCapturer.getSources({
-        types: ["screen", "window"],
-        thumbnailSize: { width: 320, height: 180 },
+      ipcMain.handle("native-screen-capture:available", () => {
+        return isNativeScreenCaptureAvailable();
       });
-      const displays = screen.getAllDisplays();
-      return sources.map((s) => {
-        const isScreen = s.id.startsWith("screen:");
-        let width: number | undefined;
-        let height: number | undefined;
-        if (isScreen) {
-          const displayIndex = parseInt(s.id.split(":")[1], 10);
-          const display = displays[displayIndex];
-          if (display) {
-            width = display.size.width * display.scaleFactor;
-            height = display.size.height * display.scaleFactor;
-          }
+      ipcMain.handle(
+        "native-screen-capture:start",
+        async (
+          _event,
+          monitorIndex: number,
+          fps: number,
+          maxWidth?: number,
+          maxHeight?: number,
+          bitrate?: number,
+          codec?: string
+        ) => {
+          if (!mainWindow) return { success: false };
+          return startNativeScreenCapture(
+            mainWindow,
+            monitorIndex,
+            fps,
+            maxWidth,
+            maxHeight,
+            bitrate,
+            codec
+          );
         }
-        return {
-          id: s.id,
-          name: s.name,
-          thumbnail: s.thumbnail.toDataURL(),
-          appIcon: s.appIcon ? s.appIcon.toDataURL() : "",
-          sourceType: isScreen ? "screen" as const : "window" as const,
-          width,
-          height,
-        };
+      );
+      ipcMain.on("native-screen-capture:stop", () => {
+        stopNativeScreenCapture();
       });
-    });
 
-    // ── Native audio capture ──────────────────────────────────────────
-    // (Handlers registered before createMainWindow — see above)
+      // ── Embedded server ─────────────────────────────────────────────────
+      ipcMain.handle("embedded-server:available", () =>
+        isEmbeddedServerAvailable()
+      );
 
-    // ── IPC handlers ──────────────────────────────────────────────────
+      ipcMain.handle("embedded-server:info", () => getEmbeddedServerInfo());
 
-    ipcMain.on("auth:open-external", (_event, url: string) => {
-      shell.openExternal(url);
-    });
-
-    // Send any deep link URL that arrived before the renderer was ready
-    if (pendingDeepLinkUrl) {
-      handleDeepLink(pendingDeepLinkUrl);
-      pendingDeepLinkUrl = null;
-    }
-
-    // ── LAN server discovery (mDNS) ────────────────────────────────
-    const stopLanDiscovery = startLanDiscovery(mainWindow, startupLog);
-    app.on("before-quit", stopLanDiscovery);
-
-    ipcMain.on("check-for-updates", () => {
-      userInitiatedCheck = true;
-      autoUpdater.checkForUpdates().catch((err) => {
-        sendToMain("error", { message: friendlyUpdateError(err) });
-      });
-    });
-
-    ipcMain.on("download-update", () => {
-      userInitiatedCheck = false;
-      autoUpdater.downloadUpdate().catch((err) => {
-        sendToMain("error", { message: friendlyUpdateError(err) });
-      });
-    });
-
-    ipcMain.on("install-update", () => {
-      isQuitting = true;
-      autoUpdater.quitAndInstall(false, true);
-    });
-
-    ipcMain.on("ptt-set-key", (_event, pttKey: string) => {
-      registerPttShortcut(pttKey);
-      if (pttKey && !uiohookRunning) {
-        if (process.platform === "darwin") {
-          systemPreferences.isTrustedAccessibilityClient({ prompt: true });
+      ipcMain.handle(
+        "embedded-server:create",
+        async (_event, serverName: string, lanDiscoverable: boolean) => {
+          if (!mainWindow) return getEmbeddedServerState();
+          return createAndStartServer(mainWindow, serverName, lanDiscoverable);
         }
-        try {
-          ensureUiohook();
-        } catch (err) {
-          console.warn(`uiohook start failed: ${err instanceof Error ? err.message : String(err)}`);
+      );
+
+      ipcMain.handle("embedded-server:start", async () => {
+        if (!mainWindow) return getEmbeddedServerState();
+        return startExistingServer(mainWindow);
+      });
+
+      ipcMain.handle("embedded-server:stop", () => {
+        stopEmbeddedServer();
+        return getEmbeddedServerState();
+      });
+
+      ipcMain.handle("embedded-server:status", () => getEmbeddedServerState());
+
+      ipcMain.handle("embedded-server:get-auto-start", () => getAutoStart());
+
+      ipcMain.on(
+        "embedded-server:set-auto-start",
+        (_event, enabled: boolean) => {
+          setAutoStart(enabled);
         }
-      }
-    });
+      );
 
-    ipcMain.on("set-badge-count", (_event, count: number) => {
-      app.setBadgeCount(count);
-      if (mainWindow) {
-        mainWindow.flashFrame(count > 0);
-      }
-    });
+      createMainWindow();
+      startupLog("Main window created");
+      createTray();
+      startupLog("Tray created");
 
-    ipcMain.on("toggle-always-on-top", (event, pinned: boolean, windowTitle?: string) => {
-      let win: BrowserWindow | null = null;
-      if (windowTitle) {
-        win = BrowserWindow.getAllWindows().find(
-          w => w.getTitle() === windowTitle
-        ) ?? null;
-      }
-      if (!win) {
-        win = BrowserWindow.fromWebContents(event.sender);
-      }
-      if (win) {
-        win.setAlwaysOnTop(pinned, "floating");
-      }
-    });
-
-    app.on("activate", () => {
-      if (mainWindow) {
-        if (!mainWindow.isVisible()) mainWindow.show();
-        mainWindow.focus();
-      } else {
-        createMainWindow();
+      if (process.env.VITE_DEV_SERVER_URL) {
+        startupLog("Dev mode — skipping splash/update check");
         mainWindow?.show();
+      } else if (startHiddenOnLaunch) {
+        startupLog("Starting hidden (auto-start)");
+        initBackgroundUpdater();
+        autoUpdater.checkForUpdates().catch(() => {});
+      } else {
+        try {
+          createSplashWindow();
+          await runSplashUpdateCheck();
+        } catch (_) {
+          // Ensure main window shows even if splash/updater fails
+        }
+        closeSplashAndShowMain();
+        startupLog("Main window shown");
+        initBackgroundUpdater();
       }
+
+      // ── Embedded server auto-start ────────────────────────────────
+      if (mainWindow) {
+        autoStartIfNeeded(mainWindow).catch((err) => {
+          startupLog(`Embedded server auto-start failed: ${err}`);
+        });
+      }
+
+      // Background updates auto-download and install on quit
+      // (autoDownload + autoInstallOnAppQuit are both true).
+
+      // ── Embed origin fix ────────────────────────────────────────────
+      // Third-party embed players (YouTube, Vimeo, Spotify, etc.) reject
+      // iframes whose parent is file://.  Spoof valid HTTP Referer/Origin
+      // so the embed players accept playback in packaged Electron.
+      const embedOriginMap: [string[], string][] = [
+        [
+          [
+            "https://*.youtube.com/*",
+            "https://*.youtube-nocookie.com/*",
+            "https://*.googlevideo.com/*",
+            "https://*.ytimg.com/*",
+          ],
+          "https://www.youtube-nocookie.com",
+        ],
+        [
+          ["https://*.vimeo.com/*", "https://*.vimeocdn.com/*"],
+          "https://player.vimeo.com",
+        ],
+        [["https://clips.twitch.tv/*"], "https://clips.twitch.tv"],
+        [
+          [
+            "https://*.twitch.tv/*",
+            "https://*.twitchcdn.net/*",
+            "https://*.jtvnw.net/*",
+          ],
+          "https://player.twitch.tv",
+        ],
+        [
+          ["https://*.spotify.com/*", "https://*.spotifycdn.com/*"],
+          "https://open.spotify.com",
+        ],
+        [
+          ["https://*.tiktok.com/*", "https://*.tiktokcdn.com/*"],
+          "https://www.tiktok.com",
+        ],
+        [
+          ["https://*.instagram.com/*", "https://*.cdninstagram.com/*"],
+          "https://www.instagram.com",
+        ],
+        [
+          ["https://*.soundcloud.com/*", "https://*.sndcdn.com/*"],
+          "https://w.soundcloud.com",
+        ],
+      ];
+      const allEmbedPatterns = embedOriginMap.flatMap(([patterns]) => patterns);
+      session.defaultSession.webRequest.onBeforeSendHeaders(
+        { urls: allEmbedPatterns },
+        (details, callback) => {
+          const existingOrigin = details.requestHeaders["Origin"];
+          if (existingOrigin && existingOrigin.startsWith("https://")) {
+            callback({ requestHeaders: details.requestHeaders });
+            return;
+          }
+          for (const [patterns, origin] of embedOriginMap) {
+            if (patterns.some((p) => matchUrlPattern(p, details.url))) {
+              details.requestHeaders["Referer"] = origin + "/";
+              details.requestHeaders["Origin"] = origin;
+              break;
+            }
+          }
+          callback({ requestHeaders: details.requestHeaders });
+        }
+      );
+
+      // Strip Content-Security-Policy from embed provider responses so
+      // frame-ancestors doesn't block embedding inside Electron.
+      session.defaultSession.webRequest.onHeadersReceived(
+        { urls: allEmbedPatterns },
+        (details, callback) => {
+          const headers = { ...details.responseHeaders };
+          for (const key of Object.keys(headers)) {
+            if (key.toLowerCase() === "content-security-policy") {
+              delete headers[key];
+            }
+          }
+          callback({ responseHeaders: headers });
+        }
+      );
+
+      // ── Screen capture ────────────────────────────────────────────────
+      // Allow getDisplayMedia by providing a default handler.
+      // Our renderer uses a custom picker via get-desktop-sources instead.
+      session.defaultSession.setDisplayMediaRequestHandler(
+        (_request, callback) => {
+          desktopCapturer.getSources({ types: ["screen"] }).then((sources) => {
+            callback({ video: sources[0], audio: "loopback" });
+          });
+        }
+      );
+
+      ipcMain.handle("get-screen-capture-access", () => {
+        if (process.platform !== "darwin") return "granted";
+        return systemPreferences.getMediaAccessStatus("screen");
+      });
+
+      ipcMain.handle("get-desktop-sources", async () => {
+        const sources = await desktopCapturer.getSources({
+          types: ["screen", "window"],
+          thumbnailSize: { width: 320, height: 180 },
+        });
+        const displays = screen.getAllDisplays();
+        return sources.map((s) => {
+          const isScreen = s.id.startsWith("screen:");
+          let width: number | undefined;
+          let height: number | undefined;
+          if (isScreen) {
+            const displayIndex = parseInt(s.id.split(":")[1], 10);
+            const display = displays[displayIndex];
+            if (display) {
+              width = display.size.width * display.scaleFactor;
+              height = display.size.height * display.scaleFactor;
+            }
+          }
+          return {
+            id: s.id,
+            name: s.name,
+            thumbnail: s.thumbnail.toDataURL(),
+            appIcon: s.appIcon ? s.appIcon.toDataURL() : "",
+            sourceType: isScreen ? ("screen" as const) : ("window" as const),
+            width,
+            height,
+          };
+        });
+      });
+
+      // ── Native audio capture ──────────────────────────────────────────
+      // (Handlers registered before createMainWindow — see above)
+
+      // ── IPC handlers ──────────────────────────────────────────────────
+
+      ipcMain.on("auth:open-external", (_event, url: string) => {
+        shell.openExternal(url);
+      });
+
+      // Send any deep link URL that arrived before the renderer was ready
+      if (pendingDeepLinkUrl) {
+        handleDeepLink(pendingDeepLinkUrl);
+        pendingDeepLinkUrl = null;
+      }
+
+      // ── LAN server discovery (mDNS) ────────────────────────────────
+      const stopLanDiscovery = startLanDiscovery(mainWindow, startupLog);
+      app.on("before-quit", stopLanDiscovery);
+
+      ipcMain.on("check-for-updates", () => {
+        userInitiatedCheck = true;
+        autoUpdater.checkForUpdates().catch((err) => {
+          sendToMain("error", { message: friendlyUpdateError(err) });
+        });
+      });
+
+      ipcMain.on("download-update", () => {
+        userInitiatedCheck = false;
+        autoUpdater.downloadUpdate().catch((err) => {
+          sendToMain("error", { message: friendlyUpdateError(err) });
+        });
+      });
+
+      ipcMain.on("install-update", () => {
+        isQuitting = true;
+        autoUpdater.quitAndInstall(false, true);
+      });
+
+      ipcMain.on("ptt-set-key", (_event, pttKey: string) => {
+        registerPttShortcut(pttKey);
+        if (pttKey && !uiohookRunning) {
+          if (process.platform === "darwin") {
+            systemPreferences.isTrustedAccessibilityClient({ prompt: true });
+          }
+          try {
+            ensureUiohook();
+          } catch (err) {
+            console.warn(
+              `uiohook start failed: ${
+                err instanceof Error ? err.message : String(err)
+              }`
+            );
+          }
+        }
+      });
+
+      ipcMain.on("set-badge-count", (_event, count: number) => {
+        app.setBadgeCount(count);
+        if (mainWindow) {
+          mainWindow.flashFrame(count > 0);
+        }
+      });
+
+      ipcMain.on(
+        "toggle-always-on-top",
+        (event, pinned: boolean, windowTitle?: string) => {
+          let win: BrowserWindow | null = null;
+          if (windowTitle) {
+            win =
+              BrowserWindow.getAllWindows().find(
+                (w) => w.getTitle() === windowTitle
+              ) ?? null;
+          }
+          if (!win) {
+            win = BrowserWindow.fromWebContents(event.sender);
+          }
+          if (win) {
+            win.setAlwaysOnTop(pinned, "floating");
+          }
+        }
+      );
+
+      app.on("activate", () => {
+        if (mainWindow) {
+          if (!mainWindow.isVisible()) mainWindow.show();
+          mainWindow.focus();
+        } else {
+          createMainWindow();
+          mainWindow?.show();
+        }
+      });
+    })
+    .catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      startupLog(
+        `FATAL startup error: ${
+          err instanceof Error ? err.stack ?? err.message : msg
+        }`
+      );
+      dialog.showErrorBox(
+        "Gryt — Failed to Start",
+        `${msg}\n\nCheck gryt-startup.log in the app data folder for details.`
+      );
+      app.exit(1);
     });
-  }).catch((err: unknown) => {
-    const msg = err instanceof Error ? err.message : String(err);
-    startupLog(`FATAL startup error: ${err instanceof Error ? (err.stack ?? err.message) : msg}`);
-    dialog.showErrorBox(
-      "Gryt — Failed to Start",
-      `${msg}\n\nCheck gryt-startup.log in the app data folder for details.`,
-    );
-    app.exit(1);
-  });
 
   app.on("child-process-gone", (_event, details) => {
-    startupLog(`Child process gone: type=${details.type} reason=${details.reason}`);
+    startupLog(
+      `Child process gone: type=${details.type} reason=${details.reason}`
+    );
     if (details.type === "GPU" && details.reason !== "clean-exit") {
-      startupLog("GPU process crashed — consider disabling hardware acceleration");
+      startupLog(
+        "GPU process crashed — consider disabling hardware acceleration"
+      );
     }
   });
 

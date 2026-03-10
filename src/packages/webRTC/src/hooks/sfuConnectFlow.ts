@@ -246,9 +246,12 @@ export function setupPeerConnection(
     const mid = event.transceiver?.mid;
     voiceLog.ok("WEBRTC", "TRACK", `Remote track received: kind=${event.track.kind} streamId=${remoteStream.id} trackId=${event.track.id} mid=${mid ?? "null"}`);
 
-    const receiver = event.receiver as RTCRtpReceiver & { playoutDelayHint?: number };
-    if (event.track.kind === "audio" && "playoutDelayHint" in receiver) {
+    const receiver = event.receiver as RTCRtpReceiver & { playoutDelayHint?: number; jitterBufferTarget?: number };
+    if ("playoutDelayHint" in receiver) {
       receiver.playoutDelayHint = 0;
+    }
+    if ("jitterBufferTarget" in receiver) {
+      receiver.jitterBufferTarget = 0;
     }
 
     // Delayed codec report for incoming video tracks

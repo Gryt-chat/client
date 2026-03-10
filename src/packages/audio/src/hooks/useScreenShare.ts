@@ -57,7 +57,7 @@ const BASE_BITRATES_30FPS: Record<ScreenShareQuality, number | null> = {
   "4p": 1_000,
 };
 
-const MAX_BITRATE = 20_000_000;
+const MAX_BITRATE = 50_000_000;
 
 export function estimateBitrate(quality: ScreenShareQuality, fps: number): number | null {
   const base = BASE_BITRATES_30FPS[quality];
@@ -249,9 +249,16 @@ function useScreenShareHook(): ScreenShareInterface {
         );
 
         try {
-          await vt.applyConstraints({ frameRate: { ideal: fps, max: fps } });
+          const constraintsToApply: MediaTrackConstraints = {
+            frameRate: { ideal: fps, max: fps },
+          };
+          if (res.width && res.height) {
+            constraintsToApply.width = { ideal: res.width, max: res.width };
+            constraintsToApply.height = { ideal: res.height, max: res.height };
+          }
+          await vt.applyConstraints(constraintsToApply);
         } catch (e) {
-          console.warn("[ScreenShare] applyConstraints(frameRate) failed:", e);
+          console.warn("[ScreenShare] applyConstraints failed:", e);
         }
 
         const settingsAfter = vt.getSettings();
