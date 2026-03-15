@@ -13,7 +13,12 @@ import {
 import { Reorder } from "motion/react";
 import { MdAdd, MdFeedback, MdMic, MdSettings } from "react-icons/md";
 
-import { getServerHttpBase, useAccount, useUnreadTracker } from "@/common";
+import {
+  getServerHttpBase,
+  normalizeHost,
+  useAccount,
+  useUnreadTracker,
+} from "@/common";
 import { useSettings } from "@/settings";
 import {
   Server,
@@ -43,6 +48,12 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
     reorderServers,
     pendingLanServers,
   } = useServerManagement();
+
+  const visiblePendingLanServers = pendingLanServers.filter((s) => {
+    const addr = s.port === 443 ? s.host : `${s.host}:${s.port}`;
+    const normalized = normalizeHost(addr);
+    return !servers[normalized];
+  });
 
   const { currentServerConnected, isConnected } = useSFU();
   const { serverConnectionStatus, serverProfiles, serverDetailsList } =
@@ -93,7 +104,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
             />
           ))}
         </Reorder.Group>
-        {pendingLanServers.map((s) => (
+        {visiblePendingLanServers.map((s) => (
           <LanServerItem key={`${s.host}:${s.port}`} server={s} />
         ))}
         <Tooltip content="Add new server" delayDuration={100} side="right">

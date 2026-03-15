@@ -23,12 +23,13 @@ export interface DesktopSource {
   height?: number;
 }
 
-export interface LanServer {
-  name: string;
+export type LanServer = {
   host: string;
   port: number;
-  version: string | null;
-}
+  name: string;
+  version?: string;
+  serverId?: string;
+};
 
 export interface NativeScreenFrame {
   width: number;

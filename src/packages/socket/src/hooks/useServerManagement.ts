@@ -9,15 +9,13 @@ import { Server, Servers } from "@/settings/src/types/server";
 import { type LanServer } from "../../../../lib/electron";
 
 interface ServerManagement {
-  // State
   servers: Servers;
   currentlyViewingServer: Server | null;
   showAddServer: boolean;
   showRemoveServer: string | null;
   orderedServerHosts: string[];
   pendingLanServers: LanServer[];
-  
-  // Actions
+
   addServer: (server: Server, focusNewServer?: boolean) => void;
   removeServer: (host: string) => void;
   switchToServer: (host: string) => void;
@@ -26,8 +24,7 @@ interface ServerManagement {
   setShowAddServer: (show: boolean) => void;
   setShowRemoveServer: (host: string | null) => void;
   dismissLanServer: (key: string) => void;
-  
-  // Utilities
+
   getServer: (host: string) => Server | undefined;
   getAllServers: () => Server[];
   hasServer: (host: string) => boolean;
@@ -41,39 +38,82 @@ function lanServerAddr(s: LanServer): string {
 }
 
 function useServerManagementHook(): ServerManagement {
-  const { servers, setServers, currentlyViewingServer, setCurrentlyViewingServer, lastSelectedChannels, setLastSelectedChannel, serverOrder, setServerOrder, dismissedLanServers, dismissLanServer } = useServerSettings();
+  const {
+    servers,
+    setServers,
+    currentlyViewingServer,
+    setCurrentlyViewingServer,
+    lastSelectedChannels,
+    setLastSelectedChannel,
+    serverOrder,
+    setServerOrder,
+    dismissedLanServers,
+    dismissLanServer,
+  } = useServerSettings();
+
   const { lanServers } = useLanDiscovery();
-  
+
   const [showAddServer, setShowAddServer] = useState(false);
   const [showRemoveServer, setShowRemoveServer] = useState<string | null>(null);
-  const [pendingFocusServer, setPendingFocusServer] = useState<string | null>(null);
+  const [pendingFocusServer, setPendingFocusServer] = useState<string | null>(
+    null
+  );
+
+  const findServerById = useCallback(
+    (serverId?: string): [string, Server] | null => {
+      if (!serverId) return null;
+
+      const entry = Object.entries(servers).find(
+        ([, server]) => !!server.serverId && server.serverId === serverId
+      );
+
+      return entry ?? null;
+    },
+    [servers]
+  );
 
   const pendingLanServers = useMemo(() => {
     return lanServers.filter((s) => {
       const addr = lanServerAddr(s);
       const normalized = normalizeHost(addr);
       const key = `${s.host}:${s.port}`;
-      return !servers[normalized] && !dismissedLanServers.includes(key);
+
+      if (servers[normalized]) return false;
+      if (dismissedLanServers.includes(key)) return false;
+
+      if (s.serverId) {
+        const existingById = Object.values(servers).some(
+          (server) => !!server.serverId && server.serverId === s.serverId
+        );
+        if (existingById) return false;
+      }
+
+      return true;
     });
   }, [lanServers, servers, dismissedLanServers]);
 
   const orderedServerHosts = useMemo(() => {
     const allHosts = Object.keys(servers);
     const ordered: string[] = [];
+
     for (const host of serverOrder) {
       if (allHosts.includes(host)) ordered.push(host);
     }
+
     for (const host of allHosts) {
       if (!ordered.includes(host)) ordered.push(host);
     }
+
     return ordered;
   }, [servers, serverOrder]);
 
-  const reorderServers = useCallback((orderedHosts: string[]) => {
-    setServerOrder(orderedHosts);
-  }, [setServerOrder]);
+  const reorderServers = useCallback(
+    (orderedHosts: string[]) => {
+      setServerOrder(orderedHosts);
+    },
+    [setServerOrder]
+  );
 
-  // Handle pending server focus after servers state is updated
   useEffect(() => {
     if (pendingFocusServer && servers[pendingFocusServer]) {
       setCurrentlyViewingServer(pendingFocusServer);
@@ -81,129 +121,190 @@ function useServerManagementHook(): ServerManagement {
     }
   }, [servers, pendingFocusServer, setCurrentlyViewingServer]);
 
-  // Add a new server and optionally focus it
-  const addServer = useCallback((server: Server, focusNewServer: boolean = true) => {
-    const existingServer = servers[server.host];
-    if (existingServer) {
-      const nextServer: Server = {
-        ...existingServer,
-        ...server,
-        token: typeof server.token === "string" && server.token.length > 0 ? server.token : existingServer.token,
+  const addServer = useCallback(
+    (incomingServer: Server, focusNewServer: boolean = true) => {
+      const normalizedHost = normalizeHost(incomingServer.host);
+      const normalizedIncoming: Server = {
+        ...incomingServer,
+        host: normalizedHost,
       };
 
-      const unchanged =
-        nextServer.name === existingServer.name &&
-        nextServer.host === existingServer.host &&
-        nextServer.token === existingServer.token;
+      const existingByHost = servers[normalizedHost];
+      if (existingByHost) {
+        const nextServer: Server = {
+          ...existingByHost,
+          ...normalizedIncoming,
+          token:
+            typeof normalizedIncoming.token === "string" &&
+            normalizedIncoming.token.length > 0
+              ? normalizedIncoming.token
+              : existingByHost.token,
+          serverId:
+            normalizedIncoming.serverId &&
+            normalizedIncoming.serverId.length > 0
+              ? normalizedIncoming.serverId
+              : existingByHost.serverId,
+        };
 
-      if (unchanged) {
-        if (focusNewServer) setCurrentlyViewingServer(existingServer.host);
+        const unchanged =
+          nextServer.name === existingByHost.name &&
+          nextServer.host === existingByHost.host &&
+          nextServer.token === existingByHost.token &&
+          nextServer.serverId === existingByHost.serverId;
+
+        if (unchanged) {
+          if (focusNewServer) setCurrentlyViewingServer(existingByHost.host);
+          setShowAddServer(false);
+          return;
+        }
+
+        const newServers = { ...servers, [normalizedHost]: nextServer };
+        setServers(newServers);
+
+        if (focusNewServer) setCurrentlyViewingServer(nextServer.host);
+        setShowAddServer(false);
         return;
       }
 
-      const newServers = { ...servers, [server.host]: nextServer };
-      setServers(newServers);
-      if (focusNewServer) setCurrentlyViewingServer(nextServer.host);
-      setShowAddServer(false);
-      return;
-    }
+      const existingById = findServerById(normalizedIncoming.serverId);
+      if (existingById) {
+        const [existingHost, existingServer] = existingById;
 
-    const newServers = { ...servers, [server.host]: server };
-    setServers(newServers);
+        const mergedServer: Server = {
+          ...existingServer,
+          name: normalizedIncoming.name || existingServer.name,
+          token:
+            typeof normalizedIncoming.token === "string" &&
+            normalizedIncoming.token.length > 0
+              ? normalizedIncoming.token
+              : existingServer.token,
+          serverId:
+            normalizedIncoming.serverId &&
+            normalizedIncoming.serverId.length > 0
+              ? normalizedIncoming.serverId
+              : existingServer.serverId,
+          host: existingHost,
+        };
 
-    if (focusNewServer) {
-      setPendingFocusServer(server.host);
-    }
+        const newServers = {
+          ...servers,
+          [existingHost]: mergedServer,
+        };
 
-    setShowAddServer(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [servers, setServers, setCurrentlyViewingServer, currentlyViewingServer, setPendingFocusServer]);
+        setServers(newServers);
 
-  // Remove a server
-  const removeServer = useCallback((host: string) => {
-    const newServers = { ...servers };
-    delete newServers[host];
-    setServers(newServers);
-    
-    // If we're currently viewing the removed server, switch to the first available server
-    if (currentlyViewingServer?.host === host) {
-      const remainingServers = Object.values(newServers) as Server[];
-      if (remainingServers.length > 0) {
-        setCurrentlyViewingServer(remainingServers[0].host);
-      } else {
-        setCurrentlyViewingServer(null);
+        if (focusNewServer) setCurrentlyViewingServer(existingHost);
+        setShowAddServer(false);
+        return;
       }
-    }
-    
-    // Close the remove server modal
-    setShowRemoveServer(null);
-  }, [servers, setServers, currentlyViewingServer, setCurrentlyViewingServer]);
 
-  // Switch to a specific server
-  const switchToServer = useCallback((host: string) => {
-    if (!servers[host]) {
-      console.error("Cannot switch to server - server not found:", host);
-      return;
-    }
-    
-    setCurrentlyViewingServer(host);
-    
-    // Don't clear the remove server modal when switching - let the user decide
-    // The modal should only be cleared when explicitly closed or confirmed
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setCurrentlyViewingServer, servers, currentlyViewingServer]);
+      const newServers = { ...servers, [normalizedHost]: normalizedIncoming };
+      setServers(newServers);
 
-  // Get server by host
-  const getServer = useCallback((host: string): Server | undefined => {
-    return servers[host];
-  }, [servers]);
+      if (focusNewServer) {
+        setPendingFocusServer(normalizedHost);
+      }
 
-  // Get all servers
+      setShowAddServer(false);
+    },
+    [servers, setServers, setCurrentlyViewingServer, findServerById]
+  );
+
+  const removeServer = useCallback(
+    (host: string) => {
+      const normalizedHost = normalizeHost(host);
+      const newServers = { ...servers };
+      delete newServers[normalizedHost];
+      setServers(newServers);
+
+      if (currentlyViewingServer?.host === normalizedHost) {
+        const remainingServers = Object.values(newServers) as Server[];
+        if (remainingServers.length > 0) {
+          setCurrentlyViewingServer(remainingServers[0].host);
+        } else {
+          setCurrentlyViewingServer(null);
+        }
+      }
+
+      setShowRemoveServer(null);
+    },
+    [servers, setServers, currentlyViewingServer, setCurrentlyViewingServer]
+  );
+
+  const switchToServer = useCallback(
+    (host: string) => {
+      const normalizedHost = normalizeHost(host);
+      if (!servers[normalizedHost]) {
+        console.error(
+          "Cannot switch to server - server not found:",
+          normalizedHost
+        );
+        return;
+      }
+
+      setCurrentlyViewingServer(normalizedHost);
+    },
+    [setCurrentlyViewingServer, servers]
+  );
+
+  const getServer = useCallback(
+    (host: string): Server | undefined => {
+      return servers[normalizeHost(host)];
+    },
+    [servers]
+  );
+
   const getAllServers = useCallback((): Server[] => {
     return Object.values(servers);
   }, [servers]);
 
-  // Check if a server exists
-  const hasServer = useCallback((host: string): boolean => {
-    return host in servers;
-  }, [servers]);
+  const hasServer = useCallback(
+    (host: string): boolean => {
+      return normalizeHost(host) in servers;
+    },
+    [servers]
+  );
 
-  // Get server count
   const getServerCount = useCallback((): number => {
     return Object.keys(servers).length;
   }, [servers]);
 
-  // Get last selected channel for a server
-  const getLastSelectedChannel = useCallback((host: string): string | null => {
-    return lastSelectedChannels[host] || null;
-  }, [lastSelectedChannels]);
+  const getLastSelectedChannel = useCallback(
+    (host: string): string | null => {
+      return lastSelectedChannels[normalizeHost(host)] || null;
+    },
+    [lastSelectedChannels]
+  );
 
-  // Set last selected channel for a server
-  const setLastSelectedChannelForServer = useCallback((host: string, channelId: string) => {
-    setLastSelectedChannel(host, channelId);
-  }, [setLastSelectedChannel]);
+  const setLastSelectedChannelForServer = useCallback(
+    (host: string, channelId: string) => {
+      setLastSelectedChannel(normalizeHost(host), channelId);
+    },
+    [setLastSelectedChannel]
+  );
 
-  // Reconnect to a specific server
-  const reconnectServer = useCallback((host: string) => {
-    if (!servers[host]) {
-      console.error("Cannot reconnect to server - server not found:", host);
-      return;
-    }
-    
-    // The socket will automatically attempt to reconnect when we call connect()
-    // This is handled by the useSockets hook
-  }, [servers]);
+  const reconnectServer = useCallback(
+    (host: string) => {
+      const normalizedHost = normalizeHost(host);
+      if (!servers[normalizedHost]) {
+        console.error(
+          "Cannot reconnect to server - server not found:",
+          normalizedHost
+        );
+        return;
+      }
+    },
+    [servers]
+  );
 
   return {
-    // State
     servers,
     currentlyViewingServer,
     showAddServer,
     showRemoveServer,
     orderedServerHosts,
     pendingLanServers,
-    
-    // Actions
+
     addServer,
     removeServer,
     switchToServer,
@@ -212,8 +313,7 @@ function useServerManagementHook(): ServerManagement {
     setShowAddServer,
     setShowRemoveServer,
     dismissLanServer,
-    
-    // Utilities
+
     getServer,
     getAllServers,
     hasServer,
@@ -224,15 +324,13 @@ function useServerManagementHook(): ServerManagement {
 }
 
 const init: ServerManagement = {
-  // State
   servers: {},
   currentlyViewingServer: null,
   showAddServer: false,
   showRemoveServer: null,
   orderedServerHosts: [],
   pendingLanServers: [],
-  
-  // Actions
+
   addServer: () => {},
   removeServer: () => {},
   switchToServer: () => {},
@@ -241,8 +339,7 @@ const init: ServerManagement = {
   setShowAddServer: () => {},
   setShowRemoveServer: () => {},
   dismissLanServer: () => {},
-  
-  // Utilities
+
   getServer: () => undefined,
   getAllServers: () => [],
   hasServer: () => false,

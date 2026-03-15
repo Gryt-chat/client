@@ -14,7 +14,13 @@ import {
 } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MdClose, MdInfoOutline, MdRadar, MdWarning, MdWifi } from "react-icons/md";
+import {
+  MdClose,
+  MdInfoOutline,
+  MdRadar,
+  MdWarning,
+  MdWifi,
+} from "react-icons/md";
 
 import {
   getServerAccessToken,
@@ -34,6 +40,7 @@ import { useSettings } from "../hooks/useSettings";
 import { CreateServerPanel } from "./createServer";
 
 export type FetchInfo = {
+  serverId?: string;
   name: string;
   description?: string;
   members: string;
@@ -45,8 +52,11 @@ interface AddNewServerProps {
   setShowAddServer: (show: boolean) => void;
 }
 
-export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerProps) {
-  const { addServer, servers } = useServerManagement();
+export function AddNewServer({
+  showAddServer,
+  setShowAddServer,
+}: AddNewServerProps) {
+  const { addServer, servers, switchToServer } = useServerManagement();
   const { nickname } = useSettings();
   const { lanServers, isElectron } = useLanDiscovery();
   const { isAvailable: embeddedServerAvailable } = useEmbeddedServer();
@@ -55,17 +65,41 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
   const [serverInfo, setServerInfo] = useState<FetchInfo | null>(null);
   const [hasError, setHasError] = useState("");
   const [isSearching, setIsSearching] = useState(false);
-  const abortRef = useRef<AbortController | null>(null);
   const [isJoining, setIsJoining] = useState(false);
   const [inviteRequired, setInviteRequired] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
   const [joinError, setJoinError] = useState("");
   const [serverPrivate, setServerPrivate] = useState(false);
 
-  const alreadyMember = useMemo(
-    () => serverHost.length > 0 && !!servers[normalizeHost(serverHost)],
-    [serverHost, servers],
+  const abortRef = useRef<AbortController | null>(null);
+
+  const normalizedServerHost = useMemo(
+    () => normalizeHost(serverHost),
+    [serverHost]
   );
+
+  function findExistingServerById(serverId?: string) {
+    if (!serverId) return null;
+
+    return (
+      Object.entries(servers).find(
+        ([, server]) => !!server.serverId && server.serverId === serverId
+      ) ?? null
+    );
+  }
+
+  const alreadyMemberByHost = useMemo(
+    () => normalizedServerHost.length > 0 && !!servers[normalizedServerHost],
+    [normalizedServerHost, servers]
+  );
+
+  const existingServerById = useMemo(
+    () => findExistingServerById(serverInfo?.serverId),
+    [serverInfo?.serverId, servers]
+  );
+
+  const alreadyMemberByServerId = !!existingServerById;
+  const alreadyMember = alreadyMemberByHost || alreadyMemberByServerId;
 
   const isLanDiscovered = useMemo(() => {
     if (!serverHost) return false;
@@ -77,30 +111,47 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
   }, [serverHost, lanServers]);
 
   function closeDialog() {
-    if (!isSearching && !isJoining) {
-      setServerInfo(null);
-      setHasError("");
-      setIsSearching(false);
-      abortRef.current?.abort();
-      abortRef.current = null;
-      setIsJoining(false);
-      setInviteRequired(false);
-      setInviteCode("");
-      setJoinError("");
-      setServerPrivate(false);
-      setShowAddServer(false);
-    }
+    if (isSearching || isJoining) return;
+
+    setServerInfo(null);
+    setHasError("");
+    setIsSearching(false);
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setIsJoining(false);
+    setInviteRequired(false);
+    setInviteCode("");
+    setJoinError("");
+    setServerPrivate(false);
+    setShowAddServer(false);
   }
 
   async function joinServer() {
     if (!serverInfo && !serverPrivate) return;
-    if (servers[serverHost]) return;
 
     const normalizedHost = normalizeHost(serverHost);
     if (!normalizedHost) return;
 
+    const existingByHost = servers[normalizedHost];
+    if (existingByHost) {
+      setJoinError("You are already a member of this server.");
+      switchToServer(existingByHost.host);
+      return;
+    }
+
+    if (serverInfo?.serverId) {
+      const existingById = findExistingServerById(serverInfo.serverId);
+      if (existingById) {
+        const [existingHost] = existingById;
+        setJoinError("You are already connected to this server.");
+        switchToServer(existingHost);
+        return;
+      }
+    }
+
     const lanBypass = !!(isLanDiscovered && serverInfo?.lanOpen);
-    const code = (inviteRequired && !lanBypass) ? normalizeCode(inviteCode) : "";
+    const code = inviteRequired && !lanBypass ? normalizeCode(inviteCode) : "";
+
     if (inviteRequired && !lanBypass && code.length === 0) {
       setJoinError("Invite code required to join this server.");
       return;
@@ -116,22 +167,39 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
     });
 
     if (!result.ok) {
-      console.warn(`[AddServer] Join failed for ${normalizedHost}:`, result.error);
       if (result.error.error === "invite_required") {
         setInviteRequired(true);
-        setJoinError(result.error.message || "This server is invite-only. Paste an invite code to join.");
+        setJoinError(
+          result.error.message ||
+            "This server is invite-only. Paste an invite code to join."
+        );
       } else if (result.error.error === "invalid_invite") {
         setInviteRequired(true);
         setJoinError(result.error.message || "Invalid invite code.");
-      } else if (result.error.error === "invite_rate_limited" || result.error.error === "rate_limited") {
-        setJoinError(result.error.message || "Too many attempts. Please wait and try again.");
+      } else if (
+        result.error.error === "invite_rate_limited" ||
+        result.error.error === "rate_limited"
+      ) {
+        setJoinError(
+          result.error.message ||
+            "Too many attempts. Please wait and try again."
+        );
       } else if (result.error.error === "connect_error") {
-        setJoinError(result.error.message || "Could not connect to the server. Check the address and your network.");
+        setJoinError(
+          result.error.message ||
+            "Could not connect to the server. Check the address and your network."
+        );
       } else if (result.error.error === "timeout") {
-        setJoinError(result.error.message || "Connection timed out. The server may be down or unreachable.");
+        setJoinError(
+          result.error.message ||
+            "Connection timed out. The server may be down or unreachable."
+        );
       } else {
-        setJoinError(result.error.message || `Failed to join server: ${result.error.error}`);
+        setJoinError(
+          result.error.message || `Failed to join server: ${result.error.error}`
+        );
       }
+
       setIsJoining(false);
       return;
     }
@@ -145,10 +213,12 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
       {
         name: serverInfo?.name || normalizedHost,
         host: normalizedHost,
+        serverId: serverInfo?.serverId,
       },
-      true,
+      true
     );
 
+    setIsJoining(false);
     closeDialog();
     setServerHost("");
   }
@@ -185,7 +255,7 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
     const base = getServerHttpBase(normalizedHost);
     const headers: Record<string, string> = {};
     const storedToken = getServerAccessToken(normalizedHost);
-    if (storedToken) headers["Authorization"] = `Bearer ${storedToken}`;
+    if (storedToken) headers.Authorization = `Bearer ${storedToken}`;
 
     fetch(`${base}/info`, { signal: controller.signal, headers })
       .then((res) => {
@@ -199,8 +269,16 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
       })
       .then((info) => {
         if (!info) return;
+
         setServerInfo(info);
         setServerHost(normalizedHost);
+
+        if (info.serverId) {
+          const existingById = findExistingServerById(info.serverId);
+          if (existingById) {
+            setJoinError("You are already connected to this server.");
+          }
+        }
       })
       .catch((err: unknown) => {
         if (err instanceof DOMException && err.name === "AbortError") return;
@@ -234,14 +312,15 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
             <MdClose size={16} />
           </IconButton>
         </Dialog.Close>
+
         <Flex direction="column" gap="2">
           <Dialog.Title as="h1" weight="bold" size="6">
             New server
           </Dialog.Title>
 
           <Dialog.Description size="2" mb="4">
-            To add a new server, enter the server's address below to fetch its
-            information.
+            To add a new server, enter the server&apos;s address below to fetch
+            its information.
           </Dialog.Description>
 
           <Flex direction="column" gap="4">
@@ -249,9 +328,23 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
               <>
                 <CreateServerPanel
                   onServerReady={(serverUrl, serverName) => {
-                    const host = serverUrl.replace(/^https?:\/\//, "");
-                    setServerHost(host);
-                    addServer({ name: serverName, host: normalizeHost(host) }, true);
+                    const host = normalizeHost(
+                      serverUrl.replace(/^https?:\/\//, "")
+                    );
+
+                    if (servers[host]) {
+                      switchToServer(host);
+                      closeDialog();
+                      return;
+                    }
+
+                    addServer(
+                      {
+                        name: serverName,
+                        host,
+                      },
+                      true
+                    );
                     closeDialog();
                   }}
                 />
@@ -271,32 +364,49 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
                       {lanServers.length}
                     </Badge>
                   </Flex>
+
                   <Flex direction="column" gap="2">
                     {lanServers.map((s) => {
-                      const addr = s.port === 443
-                        ? s.host
-                        : `${s.host}:${s.port}`;
-                      const isMember = !!servers[normalizeHost(addr)];
+                      const addr =
+                        s.port === 443 ? s.host : `${s.host}:${s.port}`;
+                      const normalizedAddr = normalizeHost(addr);
+
+                      const existingByHost = !!servers[normalizedAddr];
+                      const existingById = !!findExistingServerById(s.serverId);
+                      const isMember = existingByHost || existingById;
 
                       return (
                         <Card key={`${s.host}:${s.port}`} size="1">
                           <Flex justify="between" align="center">
                             <Flex direction="column" gap="1">
-                              <Text size="2" weight="bold">{s.name}</Text>
+                              <Text size="2" weight="bold">
+                                {s.name}
+                              </Text>
                               <Flex gap="2" align="center">
-                                <Text size="1" color="gray">{addr}</Text>
+                                <Text size="1" color="gray">
+                                  {addr}
+                                </Text>
                                 {s.version && (
-                                  <Badge size="1" variant="outline" color="gray">v{s.version}</Badge>
+                                  <Badge
+                                    size="1"
+                                    variant="outline"
+                                    color="gray"
+                                  >
+                                    v{s.version}
+                                  </Badge>
                                 )}
                               </Flex>
                             </Flex>
+
                             <Button
                               size="1"
                               variant="soft"
                               disabled={isMember || isSearching || isJoining}
                               onClick={() => {
-                                setServerHost(normalizeHost(addr));
-                                queueMicrotask(() => getServerInfo(normalizeHost(addr)));
+                                setServerHost(normalizedAddr);
+                                queueMicrotask(() =>
+                                  getServerInfo(normalizedAddr)
+                                );
                               }}
                             >
                               {isMember ? "Joined" : "Connect"}
@@ -319,9 +429,7 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
                 radius="full"
                 placeholder="gryt.chat"
                 value={serverHost}
-                onChange={(e) =>
-                  setServerHost(normalizeHost(e.target.value))
-                }
+                onChange={(e) => setServerHost(normalizeHost(e.target.value))}
                 style={{ width: "100%" }}
               >
                 <TextField.Slot>wss://</TextField.Slot>
@@ -372,7 +480,8 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
                     </Callout.Icon>
                     <Callout.Text>
                       Could not connect to the server. Please check the address
-                      and try again. <br />(
+                      and try again.
+                      <br />(
                       {hasError === "xhr poll error"
                         ? "Server is not responding"
                         : hasError}
@@ -401,7 +510,9 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
                       <MdInfoOutline size={16} />
                     </Callout.Icon>
                     <Callout.Text>
-                      This server has public info disabled. If you are an existing member or have an invite code, you can still join.
+                      This server has public info disabled. If you are an
+                      existing member or have an invite code, you can still
+                      join.
                     </Callout.Text>
                   </Callout.Root>
 
@@ -438,7 +549,9 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
                             radius="full"
                             placeholder="Paste invite code"
                             value={inviteCode}
-                            onChange={(e) => setInviteCode(normalizeCode(e.target.value))}
+                            onChange={(e) =>
+                              setInviteCode(normalizeCode(e.target.value))
+                            }
                           />
                         </Flex>
                       </motion.div>
@@ -447,7 +560,7 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
 
                   <Button
                     disabled={
-                      !!servers[serverHost] ||
+                      alreadyMember ||
                       isJoining ||
                       (inviteRequired && normalizeCode(inviteCode).length === 0)
                     }
@@ -455,11 +568,16 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
                       void joinServer();
                     }}
                   >
-                    {servers[serverHost] ? (
+                    {alreadyMember ? (
                       "You are already a member"
                     ) : isJoining ? (
                       <>
-                        <SkeletonBase width="16px" height="16px" borderRadius="50%" /> Joining…
+                        <SkeletonBase
+                          width="16px"
+                          height="16px"
+                          borderRadius="50%"
+                        />{" "}
+                        Joining…
                       </>
                     ) : inviteRequired ? (
                       <>Join with code</>
@@ -498,7 +616,11 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
                             {serverInfo.name}
                           </Text>
                           {serverInfo.description ? (
-                            <Text size="2" color="gray" style={{ textAlign: "center" }}>
+                            <Text
+                              size="2"
+                              color="gray"
+                              style={{ textAlign: "center" }}
+                            >
                               {serverInfo.description}
                             </Text>
                           ) : null}
@@ -528,45 +650,56 @@ export function AddNewServer({ showAddServer, setShowAddServer }: AddNewServerPr
                   </AnimatePresence>
 
                   <AnimatePresence>
-                    {inviteRequired && !(isLanDiscovered && serverInfo.lanOpen) && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                      >
-                        <Flex direction="column" gap="2">
-                          <Text size="2" color="gray" weight="bold">
-                            Invite code
-                          </Text>
-                          <TextField.Root
-                            disabled={isJoining}
-                            radius="full"
-                            placeholder="Paste invite code"
-                            value={inviteCode}
-                            onChange={(e) => setInviteCode(normalizeCode(e.target.value))}
-                          />
-                        </Flex>
-                      </motion.div>
-                    )}
+                    {inviteRequired &&
+                      !(isLanDiscovered && serverInfo.lanOpen) && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                        >
+                          <Flex direction="column" gap="2">
+                            <Text size="2" color="gray" weight="bold">
+                              Invite code
+                            </Text>
+                            <TextField.Root
+                              disabled={isJoining}
+                              radius="full"
+                              placeholder="Paste invite code"
+                              value={inviteCode}
+                              onChange={(e) =>
+                                setInviteCode(normalizeCode(e.target.value))
+                              }
+                            />
+                          </Flex>
+                        </motion.div>
+                      )}
                   </AnimatePresence>
 
                   <Button
                     disabled={
-                      !!servers[serverHost] ||
+                      alreadyMember ||
                       isJoining ||
-                      (inviteRequired && !(isLanDiscovered && serverInfo.lanOpen) && normalizeCode(inviteCode).length === 0)
+                      (inviteRequired &&
+                        !(isLanDiscovered && serverInfo.lanOpen) &&
+                        normalizeCode(inviteCode).length === 0)
                     }
                     onClick={() => {
                       void joinServer();
                     }}
                   >
-                    {servers[serverHost] ? (
+                    {alreadyMember ? (
                       "You are already a member"
                     ) : isJoining ? (
                       <>
-                        <SkeletonBase width="16px" height="16px" borderRadius="50%" /> Joining…
+                        <SkeletonBase
+                          width="16px"
+                          height="16px"
+                          borderRadius="50%"
+                        />{" "}
+                        Joining…
                       </>
-                    ) : inviteRequired && !(isLanDiscovered && serverInfo.lanOpen) ? (
+                    ) : inviteRequired &&
+                      !(isLanDiscovered && serverInfo.lanOpen) ? (
                       <>Join with code</>
                     ) : (
                       <>Join {serverInfo.name}</>

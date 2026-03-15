@@ -56,8 +56,8 @@ export type serverDetailsList = {
 export type Server = {
   host: string;
   name: string;
-  // Optional invite code used to join invite-only servers.
   token?: string;
+  serverId?: string;
 };
 
 export type Servers = {
