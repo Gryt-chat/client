@@ -4,12 +4,17 @@ import { getElectronAPI, isElectron } from "../../../lib/electron";
 import { useAddons } from "./useAddons";
 
 const ADDON_ATTR = "data-gryt-addon";
+const CLEANUP_WAIT_MS = 150;
 
 function cleanupAddon(addonId: string): void {
   window.dispatchEvent(new CustomEvent(`gryt:addon-cleanup:${addonId}`));
   document
     .querySelectorAll(`[${ADDON_ATTR}="${addonId}"]`)
     .forEach((el) => el.remove());
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function resolveAddonUrl(addonId: string, file: string): Promise<string> {
@@ -44,9 +49,14 @@ async function injectPluginScript(
 ): Promise<void> {
   const src = await resolveAddonUrl(addonId, main);
   const script = document.createElement("script");
+  script.type = "module";
   script.src = src;
   script.setAttribute(ADDON_ATTR, addonId);
   document.head.appendChild(script);
+}
+
+function requestReload(): void {
+  window.location.reload();
 }
 
 /**
@@ -67,7 +77,22 @@ export function useAddonLoader(): void {
       // Remove addons that were disabled
       for (const id of prevEnabled) {
         if (!enabledIds.has(id)) {
+          const addon =
+            addons.find((a) => a.id === id) ??
+            prevAddonsRef.current.find((a) => a.id === id);
+
           cleanupAddon(id);
+
+          if (
+            addon?.type === "plugin" &&
+            addon.requiresReloadOnDisable === true
+          ) {
+            await delay(CLEANUP_WAIT_MS);
+            if (!cancelled) {
+              requestReload();
+              return;
+            }
+          }
         }
       }
 

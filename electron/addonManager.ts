@@ -8,7 +8,7 @@ import {
 } from "fs";
 import { join, relative, resolve, sep } from "path";
 
-export interface AddonManifest {
+interface AddonManifest {
   id: string;
   name: string;
   version: string;
@@ -20,6 +20,8 @@ export interface AddonManifest {
   styles?: string[];
   /** Plugin-only: JS entry point */
   main?: string;
+  /** Plugin-only: if true, disabling the addon reloads the client */
+  requiresReloadOnDisable?: boolean;
 }
 
 let addonsDir: string | null = null;
@@ -56,8 +58,9 @@ function isValidManifest(data: unknown): data is AddonManifest {
   if (obj.type !== "plugin" && obj.type !== "theme") return false;
 
   if (obj.banner != null && typeof obj.banner !== "string") return false;
-  if (obj.description != null && typeof obj.description !== "string")
+  if (obj.description != null && typeof obj.description !== "string") {
     return false;
+  }
   if (obj.author != null && typeof obj.author !== "string") return false;
 
   if (obj.type === "theme") {
@@ -71,6 +74,12 @@ function isValidManifest(data: unknown): data is AddonManifest {
 
   if (obj.type === "plugin") {
     if (typeof obj.main !== "string" || !obj.main.trim()) return false;
+    if (
+      obj.requiresReloadOnDisable != null &&
+      typeof obj.requiresReloadOnDisable !== "boolean"
+    ) {
+      return false;
+    }
   }
 
   return true;

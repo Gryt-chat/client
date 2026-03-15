@@ -10,4 +10,6 @@ export interface AddonManifest {
   styles?: string[];
   /** Plugin-only: JS entry point */
   main?: string;
+  /** Plugin-only: if true, disabling the addon reloads the client */
+  requiresReloadOnDisable?: boolean;
 }

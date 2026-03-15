@@ -106,7 +106,7 @@ function AddonCard({
       <Flex direction="column" gap="2" p="3">
         <Flex justify="between" align="start">
           <Flex direction="column" gap="1" style={{ minWidth: 0, flex: 1 }}>
-            <Flex align="center" gap="2">
+            <Flex align="center" gap="2" wrap="wrap">
               <Badge
                 size="1"
                 color={isTheme ? "purple" : "blue"}
@@ -117,6 +117,11 @@ function AddonCard({
               <Text size="1" color="gray">
                 v{addon.version}
               </Text>
+              {!isTheme && addon.requiresReloadOnDisable && (
+                <Badge size="1" color="orange" variant="soft">
+                  Reload on disable
+                </Badge>
+              )}
             </Flex>
             <Text weight="bold" size="3" truncate>
               {addon.name}
