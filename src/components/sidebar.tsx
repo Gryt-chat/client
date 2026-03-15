@@ -13,7 +13,7 @@ import {
 import { Reorder } from "motion/react";
 import { MdAdd, MdFeedback, MdMic, MdSettings } from "react-icons/md";
 
-import { useAccount, useUnreadTracker } from "@/common";
+import { getServerHttpBase, useAccount, useUnreadTracker } from "@/common";
 import { useSettings } from "@/settings";
 import {
   Server,
@@ -32,12 +32,8 @@ interface SidebarProps {
 
 export function Sidebar({ setShowAddServer }: SidebarProps) {
   const { logout } = useAccount();
-  const {
-    nickname,
-    avatarDataUrl,
-    setShowSettings,
-  } = useSettings();
-  
+  const { nickname, avatarDataUrl, setShowSettings } = useSettings();
+
   const {
     servers,
     currentlyViewingServer,
@@ -47,10 +43,10 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
     reorderServers,
     pendingLanServers,
   } = useServerManagement();
-  
 
   const { currentServerConnected, isConnected } = useSFU();
-  const { serverConnectionStatus, serverProfiles, serverDetailsList } = useSockets();
+  const { serverConnectionStatus, serverProfiles, serverDetailsList } =
+    useSockets();
   const { serverHasUnread } = useUnreadTracker();
 
   const currentHost = currentlyViewingServer?.host;
@@ -72,7 +68,14 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
           values={orderedServerHosts}
           onReorder={reorderServers}
           as="div"
-          style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)", listStyle: "none", padding: 0, margin: 0 }}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "var(--space-4)",
+            listStyle: "none",
+            padding: 0,
+            margin: 0,
+          }}
         >
           {orderedServerHosts.map((host) => (
             <ServerItem
@@ -110,7 +113,10 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
         <DropdownMenu.Root>
           <DropdownMenu.Trigger>
             <IconButton>
-              <Avatar fallback={displayNickname[0]} src={displayAvatarUrl || undefined} />
+              <Avatar
+                fallback={displayNickname[0]}
+                src={displayAvatarUrl || undefined}
+              />
             </IconButton>
           </DropdownMenu.Trigger>
           <DropdownMenu.Content>
@@ -122,7 +128,9 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
             </DropdownMenu.Item>
             <DropdownMenu.Separator />
             <DropdownMenu.Item
-              onClick={() => window.open("https://feedback.gryt.chat", "_blank")}
+              onClick={() =>
+                window.open("https://feedback.gryt.chat", "_blank")
+              }
             >
               <Flex align="center" gap="1">
                 <MdFeedback size={14} />
@@ -136,7 +144,6 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
           </DropdownMenu.Content>
         </DropdownMenu.Root>
       </Flex>
-
     </Flex>
   );
 }
@@ -177,7 +184,13 @@ function ServerItem({
       value={host}
       as="div"
       style={{ listStyle: "none", cursor: "grab", userSelect: "none" }}
-      whileDrag={{ scale: 1.1, boxShadow: "0 4px 12px rgba(0,0,0,0.3)", zIndex: 10, cursor: "grabbing", borderRadius: "var(--radius-2)" }}
+      whileDrag={{
+        scale: 1.1,
+        boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+        zIndex: 10,
+        cursor: "grabbing",
+        borderRadius: "var(--radius-2)",
+      }}
       transition={{ type: "spring", stiffness: 400, damping: 30 }}
     >
       <HoverCard.Root openDelay={500} closeDelay={0}>
@@ -191,11 +204,29 @@ function ServerItem({
                   asChild
                   fallback={servers[host].name[0]}
                   style={{
-                    opacity: currentlyViewingServer?.host === host ? 1 : (isUnavailable ? 0.3 : (isReconnecting ? undefined : 0.5)),
-                    filter: (isUnavailable || isReconnecting) ? "grayscale(100%)" : "none",
-                    animation: isReconnecting ? "pulse-reconnect 1.5s ease-in-out infinite" : "none",
+                    opacity:
+                      currentlyViewingServer?.host === host
+                        ? 1
+                        : isUnavailable
+                        ? 0.3
+                        : isReconnecting
+                        ? undefined
+                        : 0.5,
+                    filter:
+                      isUnavailable || isReconnecting
+                        ? "grayscale(100%)"
+                        : "none",
+                    animation: isReconnecting
+                      ? "pulse-reconnect 1.5s ease-in-out infinite"
+                      : "none",
                   }}
-                  src={`https://${host}/icon${serverDetailsList[host]?.server_info?.icon_url ? `?v=${encodeURIComponent(serverDetailsList[host].server_info!.icon_url!)}` : ""}`}
+                  src={`${getServerHttpBase(host)}/icon${
+                    serverDetailsList[host]?.server_info?.icon_url
+                      ? `?v=${encodeURIComponent(
+                          serverDetailsList[host].server_info!.icon_url!
+                        )}`
+                      : ""
+                  }`}
                 >
                   <Button
                     style={{
