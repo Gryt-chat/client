@@ -45,13 +45,12 @@ if (skipServer) {
   console.log("[1/2] Bundling server...");
 
   const bundleSrc = join(SERVER_DIR, "dist", "bundle.js");
-  if (!existsSync(bundleSrc)) {
-    console.log("  Server bundle not found. Building...");
-    execSync("npm run build && npm run bundle", {
-      cwd: SERVER_DIR,
-      stdio: "inherit",
-    });
-  }
+
+  console.log("Building fresh server bundle...");
+  execSync("npm run build && npm run bundle", {
+    cwd: SERVER_DIR,
+    stdio: "inherit",
+  });
 
   const serverOut = join(OUTDIR, "server");
   mkdirSync(serverOut, { recursive: true });
