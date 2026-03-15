@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+/* eslint-env node */
 /**
  * Cross-platform script to build the embedded server resources for dev preview.
  * Only builds the SFU binary for the current platform (not all targets).
@@ -6,9 +6,9 @@
  * Usage: node scripts/build-embedded-server.mjs [--skip-sfu] [--skip-server]
  */
 
-import { cpSync, existsSync, mkdirSync, writeFileSync } from "fs";
-import { dirname, join } from "path";
 import { execSync } from "child_process";
+import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -25,10 +25,12 @@ const platform = process.platform;
 const arch = process.arch;
 
 // electron-builder naming: win/mac/linux, x64/arm64
-const ebOs = platform === "win32" ? "win" : platform === "darwin" ? "mac" : "linux";
+const ebOs =
+  platform === "win32" ? "win" : platform === "darwin" ? "mac" : "linux";
 const ebArch = arch === "arm64" ? "arm64" : "x64";
 // Go naming: windows/darwin/linux, amd64/arm64
-const goOs = platform === "win32" ? "windows" : platform === "darwin" ? "darwin" : "linux";
+const goOs =
+  platform === "win32" ? "windows" : platform === "darwin" ? "darwin" : "linux";
 const goArch = arch === "arm64" ? "arm64" : "amd64";
 const sfuExt = platform === "win32" ? ".exe" : "";
 
@@ -56,19 +58,51 @@ if (skipServer) {
 
   cpSync(bundleSrc, join(serverOut, "bundle.js"));
 
-  // Copy better-sqlite3 native addon (skip .bin symlinks that break cpSync)
-  const sqliteSrc = join(SERVER_DIR, "node_modules", "better-sqlite3");
-  if (existsSync(sqliteSrc)) {
-    cpSync(sqliteSrc, join(serverOut, "node_modules", "better-sqlite3"), {
-      recursive: true,
-      filter: (src) => !src.includes(join(".bin")),
-    });
-  }
+  // Build a minimal runtime package.json, similar to the self-hosted server package.
+  const serverPkg = JSON.parse(
+    readFileSync(join(SERVER_DIR, "package.json"), "utf8")
+  );
+
+  delete serverPkg.devDependencies;
+  serverPkg.name = "gryt-embedded-server";
+  serverPkg.private = true;
+  serverPkg.main = "bundle.js";
 
   writeFileSync(
     join(serverOut, "package.json"),
-    '{ "name": "gryt-embedded-server", "private": true, "main": "bundle.js" }\n',
+    JSON.stringify(serverPkg, null, 2) + "\n"
   );
+
+  const lockfileSrc = join(SERVER_DIR, "package-lock.json");
+  if (existsSync(lockfileSrc)) {
+    cpSync(lockfileSrc, join(serverOut, "package-lock.json"));
+  }
+
+  console.log("  Installing production dependencies for embedded server...");
+  const electronVersion = "40.6.0";
+
+  execSync("npm install --omit=dev", {
+    cwd: serverOut,
+    stdio: "inherit",
+    env: {
+      ...process.env,
+      npm_config_runtime: "electron",
+      npm_config_target: electronVersion,
+      npm_config_disturl: "https://electronjs.org/headers",
+    },
+  });
+
+  execSync("npm rebuild better-sqlite3", {
+    cwd: serverOut,
+    stdio: "inherit",
+    env: {
+      ...process.env,
+      npm_config_runtime: "electron",
+      npm_config_target: electronVersion,
+      npm_config_disturl: "https://electronjs.org/headers",
+      npm_config_build_from_source: "true",
+    },
+  });
 
   console.log(`  Server bundle ready: ${serverOut}`);
 }
@@ -86,7 +120,12 @@ if (skipSfu) {
     const sfuOutPath = join(sfuOutDir, `gryt_sfu${sfuExt}`);
     mkdirSync(sfuOutDir, { recursive: true });
 
-    const env = { ...process.env, GOOS: goOs, GOARCH: goArch, CGO_ENABLED: "0" };
+    const env = {
+      ...process.env,
+      GOOS: goOs,
+      GOARCH: goArch,
+      CGO_ENABLED: "0",
+    };
     execSync(`go build -C "${SFU_DIR}" -o "${sfuOutPath}" ./cmd/sfu/`, {
       env,
       stdio: "inherit",
@@ -95,7 +134,9 @@ if (skipSfu) {
     if (platform !== "win32") {
       try {
         execSync(`chmod +x "${sfuOutPath}"`);
-      } catch { /* best effort */ }
+      } catch {
+        /* best effort */
+      }
     }
 
     console.log(`  SFU binary ready: ${sfuOutPath}`);

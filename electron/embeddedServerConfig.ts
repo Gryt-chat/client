@@ -42,7 +42,9 @@ function findFreePort(preferred: number): Promise<number> {
       srv.listen(0, "127.0.0.1", () => {
         const addr = srv.address();
         const port = typeof addr === "object" && addr ? addr.port : 0;
-        srv.close(() => (port ? resolve(port) : reject(new Error("No free port"))));
+        srv.close(() =>
+          port ? resolve(port) : reject(new Error("No free port"))
+        );
       });
     });
   });
@@ -62,7 +64,7 @@ export function getLanIp(): string {
 
 export async function generateConfig(
   serverName: string,
-  lanDiscoverable: boolean,
+  lanDiscoverable: boolean
 ): Promise<EmbeddedServerConfig> {
   const baseDir = getEmbeddedServerDir();
   const dataDir = join(baseDir, "data");
@@ -74,27 +76,29 @@ export async function generateConfig(
   const sfuPort = await findFreePort(5005);
   const jwtSecret = randomBytes(32).toString("hex");
   const lanIp = getLanIp();
-  const externalHost = `http://${lanIp}:${serverPort}`;
+  const externalHost = `http://127.0.0.1:${serverPort}`;
 
-  const envContent = [
-    `# Gryt Embedded Server Configuration (auto-generated)`,
-    `SERVER_NAME=${serverName}`,
-    `PORT=${serverPort}`,
-    `DATA_DIR=${dataDir}`,
-    `STORAGE_BACKEND=filesystem`,
-    `S3_BUCKET=uploads`,
-    `JWT_SECRET=${jwtSecret}`,
-    `SFU_PORT=${sfuPort}`,
-    `SFU_WS_HOST=ws://127.0.0.1:${sfuPort}`,
-    `SFU_PUBLIC_HOST=${lanIp}:${sfuPort}`,
-    `STUN_SERVERS=stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302`,
-    `CORS_ORIGIN=*`,
-    `EXTERNAL_HOST=${externalHost}`,
-    `IDENTITY_MODE=builtin`,
-    lanDiscoverable ? `MDNS_ENABLED=true` : `# MDNS_ENABLED=false`,
-    `SFU_UDP_PORT_MIN=10000`,
-    `SFU_UDP_PORT_MAX=10019`,
-  ].join("\n") + "\n";
+  const envContent =
+    [
+      `# Gryt Embedded Server Configuration (auto-generated)`,
+      `SERVER_NAME=${serverName}`,
+      `HOST=0.0.0.0`,
+      `PORT=${serverPort}`,
+      `DATA_DIR=${dataDir}`,
+      `STORAGE_BACKEND=filesystem`,
+      `S3_BUCKET=uploads`,
+      `JWT_SECRET=${jwtSecret}`,
+      `SFU_PORT=${sfuPort}`,
+      `SFU_WS_HOST=ws://127.0.0.1:${sfuPort}`,
+      `SFU_PUBLIC_HOST=${lanIp}:${sfuPort}`,
+      `STUN_SERVERS=stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302`,
+      `CORS_ORIGIN=*`,
+      `EXTERNAL_HOST=${externalHost}`,
+      `IDENTITY_MODE=builtin`,
+      lanDiscoverable ? `MDNS_ENABLED=true` : `# MDNS_ENABLED=false`,
+      `SFU_UDP_PORT_MIN=10000`,
+      `SFU_UDP_PORT_MAX=10019`,
+    ].join("\n") + "\n";
 
   writeFileSync(configPath, envContent, "utf-8");
 
