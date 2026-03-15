@@ -5,9 +5,12 @@ type Callback = () => void;
 // Buffer invite deep links that arrive before React mounts a listener
 // (happens when the app is cold-launched via gryt://invite?...).
 let bufferedInvite: { host: string; code: string } | null = null;
-ipcRenderer.on("deep-link-invite", (_event, data: { host: string; code: string }) => {
-  bufferedInvite = data;
-});
+ipcRenderer.on(
+  "deep-link-invite",
+  (_event, data: { host: string; code: string }) => {
+    bufferedInvite = data;
+  }
+);
 
 contextBridge.exposeInMainWorld("electronAPI", {
   isElectron: true,
@@ -94,8 +97,23 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("set-hardware-acceleration", enabled);
   },
 
-  onUpdateStatus(callback: (status: { status: string; version?: string; percent?: number; message?: string }) => void) {
-    const handler = (_event: Electron.IpcRendererEvent, data: { status: string; version?: string; percent?: number; message?: string }) => callback(data);
+  onUpdateStatus(
+    callback: (status: {
+      status: string;
+      version?: string;
+      percent?: number;
+      message?: string;
+    }) => void
+  ) {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: {
+        status: string;
+        version?: string;
+        percent?: number;
+        message?: string;
+      }
+    ) => callback(data);
     ipcRenderer.on("update-status", handler);
     return () => ipcRenderer.removeListener("update-status", handler);
   },
@@ -112,7 +130,17 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return ipcRenderer.invoke("get-screen-capture-access");
   },
 
-  getDesktopSources(): Promise<Array<{ id: string; name: string; thumbnail: string; appIcon: string; sourceType: "screen" | "window"; width?: number; height?: number }>> {
+  getDesktopSources(): Promise<
+    Array<{
+      id: string;
+      name: string;
+      thumbnail: string;
+      appIcon: string;
+      sourceType: "screen" | "window";
+      width?: number;
+      height?: number;
+    }>
+  > {
     return ipcRenderer.invoke("get-desktop-sources");
   },
 
@@ -129,7 +157,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
 
   onNativeAudioData(callback: (pcm: ArrayBuffer) => void) {
-    const handler = (_event: Electron.IpcRendererEvent, data: ArrayBuffer) => callback(data);
+    const handler = (_event: Electron.IpcRendererEvent, data: ArrayBuffer) =>
+      callback(data);
     ipcRenderer.on("native-audio-data", handler);
     return () => ipcRenderer.removeListener("native-audio-data", handler);
   },
@@ -141,7 +170,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
 
   onNativeAudioDiagnostic(callback: (msg: string) => void) {
-    const handler = (_event: Electron.IpcRendererEvent, msg: string) => callback(msg);
+    const handler = (_event: Electron.IpcRendererEvent, msg: string) =>
+      callback(msg);
     ipcRenderer.on("native-audio-diagnostic", handler);
     return () => ipcRenderer.removeListener("native-audio-diagnostic", handler);
   },
@@ -150,28 +180,61 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return ipcRenderer.invoke("native-screen-capture:available");
   },
 
-  startNativeScreenCapture(monitorIndex: number, fps: number, maxWidth?: number, maxHeight?: number, bitrate?: number, codec?: string): Promise<{ success: boolean; wsPort?: number }> {
-    return ipcRenderer.invoke("native-screen-capture:start", monitorIndex, fps, maxWidth, maxHeight, bitrate, codec);
+  startNativeScreenCapture(
+    monitorIndex: number,
+    fps: number,
+    maxWidth?: number,
+    maxHeight?: number,
+    bitrate?: number,
+    codec?: string
+  ): Promise<{ success: boolean; wsPort?: number }> {
+    return ipcRenderer.invoke(
+      "native-screen-capture:start",
+      monitorIndex,
+      fps,
+      maxWidth,
+      maxHeight,
+      bitrate,
+      codec
+    );
   },
 
   stopNativeScreenCapture() {
     ipcRenderer.send("native-screen-capture:stop");
   },
 
-  onNativeScreenFrame(callback: (frame: { width: number; height: number; timestampUs: number; data: ArrayBuffer }) => void) {
-    const handler = (_event: Electron.IpcRendererEvent, frame: { width: number; height: number; timestampUs: number; data: ArrayBuffer }) => callback(frame);
+  onNativeScreenFrame(
+    callback: (frame: {
+      width: number;
+      height: number;
+      timestampUs: number;
+      data: ArrayBuffer;
+    }) => void
+  ) {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      frame: {
+        width: number;
+        height: number;
+        timestampUs: number;
+        data: ArrayBuffer;
+      }
+    ) => callback(frame);
     ipcRenderer.on("native-screen-capture:frame", handler);
-    return () => ipcRenderer.removeListener("native-screen-capture:frame", handler);
+    return () =>
+      ipcRenderer.removeListener("native-screen-capture:frame", handler);
   },
 
   onNativeScreenCaptureStopped(callback: () => void) {
     const handler = () => callback();
     ipcRenderer.on("native-screen-capture:stopped", handler);
-    return () => ipcRenderer.removeListener("native-screen-capture:stopped", handler);
+    return () =>
+      ipcRenderer.removeListener("native-screen-capture:stopped", handler);
   },
 
   onWindowFocusChange(callback: (focused: boolean) => void) {
-    const handler = (_event: Electron.IpcRendererEvent, focused: boolean) => callback(focused);
+    const handler = (_event: Electron.IpcRendererEvent, focused: boolean) =>
+      callback(focused);
     ipcRenderer.on("window-focus-change", handler);
     return () => ipcRenderer.removeListener("window-focus-change", handler);
   },
@@ -217,7 +280,19 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
 
   // ── Addons ────────────────────────────────────────────────────
-  listAddons(): Promise<Array<{ id: string; name: string; version: string; type: "plugin" | "theme"; description?: string; author?: string; banner?: string; styles?: string[]; main?: string }>> {
+  listAddons(): Promise<
+    Array<{
+      id: string;
+      name: string;
+      version: string;
+      type: "plugin" | "theme";
+      description?: string;
+      author?: string;
+      banner?: string;
+      styles?: string[];
+      main?: string;
+    }>
+  > {
     return ipcRenderer.invoke("addons:list");
   },
 
@@ -225,22 +300,66 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return ipcRenderer.invoke("addons:open-folder");
   },
 
-  onAddonsChanged(callback: (addons: Array<{ id: string; name: string; version: string; type: "plugin" | "theme"; description?: string; author?: string; banner?: string; styles?: string[]; main?: string }>) => void) {
-    const handler = (_event: Electron.IpcRendererEvent, addons: Array<{ id: string; name: string; version: string; type: "plugin" | "theme"; description?: string; author?: string; banner?: string; styles?: string[]; main?: string }>) => callback(addons);
+  resolveAddonAsset(addonId: string, relativePath: string): Promise<string> {
+    return ipcRenderer.invoke("addons:resolve-asset", addonId, relativePath);
+  },
+
+  onAddonsChanged(
+    callback: (
+      addons: Array<{
+        id: string;
+        name: string;
+        version: string;
+        type: "plugin" | "theme";
+        description?: string;
+        author?: string;
+        banner?: string;
+        styles?: string[];
+        main?: string;
+      }>
+    ) => void
+  ) {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      addons: Array<{
+        id: string;
+        name: string;
+        version: string;
+        type: "plugin" | "theme";
+        description?: string;
+        author?: string;
+        banner?: string;
+        styles?: string[];
+        main?: string;
+      }>
+    ) => callback(addons);
     ipcRenderer.on("addons-changed", handler);
     return () => ipcRenderer.removeListener("addons-changed", handler);
   },
 
-  onLanServerDiscovered(callback: (server: { name: string; host: string; port: number; version: string | null }) => void) {
-    const handler = (_event: Electron.IpcRendererEvent, data: { name: string; host: string; port: number; version: string | null }) =>
-      callback(data);
+  onLanServerDiscovered(
+    callback: (server: {
+      name: string;
+      host: string;
+      port: number;
+      version: string | null;
+    }) => void
+  ) {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { name: string; host: string; port: number; version: string | null }
+    ) => callback(data);
     ipcRenderer.on("lan-server-discovered", handler);
     return () => ipcRenderer.removeListener("lan-server-discovered", handler);
   },
 
-  onLanServerRemoved(callback: (server: { host: string; port: number }) => void) {
-    const handler = (_event: Electron.IpcRendererEvent, data: { host: string; port: number }) =>
-      callback(data);
+  onLanServerRemoved(
+    callback: (server: { host: string; port: number }) => void
+  ) {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { host: string; port: number }
+    ) => callback(data);
     ipcRenderer.on("lan-server-removed", handler);
     return () => ipcRenderer.removeListener("lan-server-removed", handler);
   },
@@ -251,7 +370,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
       bufferedInvite = null;
       queueMicrotask(() => callback(data));
     }
-    const handler = (_event: Electron.IpcRendererEvent, data: { host: string; code: string }) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { host: string; code: string }
+    ) => {
       bufferedInvite = null;
       callback(data);
     };
@@ -267,24 +389,49 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getEmbeddedServerInfo(): Promise<{
     available: boolean;
     hasExisting: boolean;
-    config: { serverName: string; serverPort: number; sfuPort: number; lanDiscoverable: boolean; externalHost: string } | null;
+    config: {
+      serverName: string;
+      serverPort: number;
+      sfuPort: number;
+      lanDiscoverable: boolean;
+      externalHost: string;
+    } | null;
     lanIp: string;
   }> {
     return ipcRenderer.invoke("embedded-server:info");
   },
 
-  createEmbeddedServer(serverName: string, lanDiscoverable: boolean): Promise<{
+  createEmbeddedServer(
+    serverName: string,
+    lanDiscoverable: boolean
+  ): Promise<{
     status: string;
-    config: { serverName: string; serverPort: number; sfuPort: number; lanDiscoverable: boolean; externalHost: string } | null;
+    config: {
+      serverName: string;
+      serverPort: number;
+      sfuPort: number;
+      lanDiscoverable: boolean;
+      externalHost: string;
+    } | null;
     error: string | null;
     serverUrl: string | null;
   }> {
-    return ipcRenderer.invoke("embedded-server:create", serverName, lanDiscoverable);
+    return ipcRenderer.invoke(
+      "embedded-server:create",
+      serverName,
+      lanDiscoverable
+    );
   },
 
   startEmbeddedServer(): Promise<{
     status: string;
-    config: { serverName: string; serverPort: number; sfuPort: number; lanDiscoverable: boolean; externalHost: string } | null;
+    config: {
+      serverName: string;
+      serverPort: number;
+      sfuPort: number;
+      lanDiscoverable: boolean;
+      externalHost: string;
+    } | null;
     error: string | null;
     serverUrl: string | null;
   }> {
@@ -293,7 +440,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   stopEmbeddedServer(): Promise<{
     status: string;
-    config: { serverName: string; serverPort: number; sfuPort: number; lanDiscoverable: boolean; externalHost: string } | null;
+    config: {
+      serverName: string;
+      serverPort: number;
+      sfuPort: number;
+      lanDiscoverable: boolean;
+      externalHost: string;
+    } | null;
     error: string | null;
     serverUrl: string | null;
   }> {
@@ -302,31 +455,60 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   getEmbeddedServerStatus(): Promise<{
     status: string;
-    config: { serverName: string; serverPort: number; sfuPort: number; lanDiscoverable: boolean; externalHost: string } | null;
+    config: {
+      serverName: string;
+      serverPort: number;
+      sfuPort: number;
+      lanDiscoverable: boolean;
+      externalHost: string;
+    } | null;
     error: string | null;
     serverUrl: string | null;
   }> {
     return ipcRenderer.invoke("embedded-server:status");
   },
 
-  onEmbeddedServerStatusChanged(callback: (state: {
-    status: string;
-    config: { serverName: string; serverPort: number; sfuPort: number; lanDiscoverable: boolean; externalHost: string } | null;
-    error: string | null;
-    serverUrl: string | null;
-  }) => void) {
-    const handler = (_event: Electron.IpcRendererEvent, data: {
+  onEmbeddedServerStatusChanged(
+    callback: (state: {
       status: string;
-      config: { serverName: string; serverPort: number; sfuPort: number; lanDiscoverable: boolean; externalHost: string } | null;
+      config: {
+        serverName: string;
+        serverPort: number;
+        sfuPort: number;
+        lanDiscoverable: boolean;
+        externalHost: string;
+      } | null;
       error: string | null;
       serverUrl: string | null;
-    }) => callback(data);
+    }) => void
+  ) {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: {
+        status: string;
+        config: {
+          serverName: string;
+          serverPort: number;
+          sfuPort: number;
+          lanDiscoverable: boolean;
+          externalHost: string;
+        } | null;
+        error: string | null;
+        serverUrl: string | null;
+      }
+    ) => callback(data);
     ipcRenderer.on("embedded-server:status-changed", handler);
-    return () => ipcRenderer.removeListener("embedded-server:status-changed", handler);
+    return () =>
+      ipcRenderer.removeListener("embedded-server:status-changed", handler);
   },
 
-  onEmbeddedServerLog(callback: (log: { source: string; data: string }) => void) {
-    const handler = (_event: Electron.IpcRendererEvent, data: { source: string; data: string }) => callback(data);
+  onEmbeddedServerLog(
+    callback: (log: { source: string; data: string }) => void
+  ) {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      data: { source: string; data: string }
+    ) => callback(data);
     ipcRenderer.on("embedded-server:log", handler);
     return () => ipcRenderer.removeListener("embedded-server:log", handler);
   },

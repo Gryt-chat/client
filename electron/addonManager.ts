@@ -1,5 +1,12 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, watch } from "fs";
-import { join, resolve } from "path";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  watch,
+} from "fs";
+import { join, relative, resolve, sep } from "path";
 
 export interface AddonManifest {
   id: string;
@@ -33,15 +40,39 @@ export function initAddonManager(userDataPath: string): void {
   cachedAddons = scanAddons();
 }
 
+function isSafePathInside(parentDir: string, candidatePath: string): boolean {
+  const rel = relative(parentDir, candidatePath);
+  return rel !== "" && !rel.startsWith("..") && !rel.includes(`..${sep}`);
+}
+
 function isValidManifest(data: unknown): data is AddonManifest {
   if (typeof data !== "object" || data === null) return false;
+
   const obj = data as Record<string, unknown>;
-  if (typeof obj.id !== "string" || !obj.id) return false;
-  if (typeof obj.name !== "string" || !obj.name) return false;
-  if (typeof obj.version !== "string") return false;
+
+  if (typeof obj.id !== "string" || !obj.id.trim()) return false;
+  if (typeof obj.name !== "string" || !obj.name.trim()) return false;
+  if (typeof obj.version !== "string" || !obj.version.trim()) return false;
   if (obj.type !== "plugin" && obj.type !== "theme") return false;
-  if (obj.type === "theme" && !Array.isArray(obj.styles)) return false;
-  if (obj.type === "plugin" && typeof obj.main !== "string") return false;
+
+  if (obj.banner != null && typeof obj.banner !== "string") return false;
+  if (obj.description != null && typeof obj.description !== "string")
+    return false;
+  if (obj.author != null && typeof obj.author !== "string") return false;
+
+  if (obj.type === "theme") {
+    if (
+      !Array.isArray(obj.styles) ||
+      obj.styles.some((s) => typeof s !== "string" || !s.trim())
+    ) {
+      return false;
+    }
+  }
+
+  if (obj.type === "plugin") {
+    if (typeof obj.main !== "string" || !obj.main.trim()) return false;
+  }
+
   return true;
 }
 
@@ -58,6 +89,7 @@ export function scanAddons(): AddonManifest[] {
 
   for (const entry of entries) {
     const entryPath = join(dir, entry);
+
     try {
       if (!statSync(entryPath).isDirectory()) continue;
     } catch {
@@ -69,11 +101,24 @@ export function scanAddons(): AddonManifest[] {
 
     try {
       const raw = JSON.parse(readFileSync(manifestPath, "utf8")) as unknown;
+
       if (!isValidManifest(raw)) {
         console.warn(`[AddonManager] Invalid manifest in ${entry}, skipping`);
         continue;
       }
-      results.push(raw);
+
+      const manifest = raw as AddonManifest;
+
+      if (manifest.id !== entry) {
+        console.warn(
+          `[AddonManager] Manifest id "${manifest.id}" does not match folder "${entry}". Using folder name as addon id.`
+        );
+      }
+
+      results.push({
+        ...manifest,
+        id: entry,
+      });
     } catch (err) {
       console.warn(`[AddonManager] Failed to parse ${manifestPath}:`, err);
     }
@@ -87,7 +132,9 @@ export function getAddons(): AddonManifest[] {
   return cachedAddons;
 }
 
-export function onAddonsChanged(callback: (addons: AddonManifest[]) => void): void {
+export function onAddonsChanged(
+  callback: (addons: AddonManifest[]) => void
+): void {
   changeCallback = callback;
 }
 
@@ -114,18 +161,28 @@ export function watchAddons(): void {
  */
 export function resolveAddonFilePath(pathname: string): string | null {
   const dir = getAddonsDir();
-  const relative = pathname.replace(/^\/addons\//, "");
-  if (!relative) return null;
 
-  const safePath = resolve(dir, relative);
-  if (!safePath.startsWith(dir)) return null;
+  if (!pathname.startsWith("/addons/")) {
+    return null;
+  }
+
+  const relativePath = pathname.slice("/addons/".length);
+  if (!relativePath) return null;
+  if (relativePath.includes("\0")) return null;
+
+  const resolvedPath = resolve(dir, relativePath);
+
+  if (!isSafePathInside(dir, resolvedPath)) {
+    return null;
+  }
 
   try {
-    if (existsSync(safePath) && statSync(safePath).isFile()) {
-      return safePath;
+    if (existsSync(resolvedPath) && statSync(resolvedPath).isFile()) {
+      return resolvedPath;
     }
   } catch {
     // fall through
   }
+
   return null;
 }

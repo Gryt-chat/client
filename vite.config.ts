@@ -27,11 +27,17 @@ export default defineConfig({
             },
             {
               entry: "electron/preload.ts",
-              onstart({ reload }) { reload(); },
+              onstart({ reload }) {
+                reload();
+              },
               vite: {
                 build: {
                   outDir: "dist-electron",
-                  lib: { entry: "electron/preload.ts", formats: ["cjs"], fileName: () => "[name].cjs" },
+                  lib: {
+                    entry: "electron/preload.ts",
+                    formats: ["cjs"],
+                    fileName: () => "[name].cjs",
+                  },
                   rollupOptions: { external: ["electron"] },
                 },
               },
@@ -41,7 +47,11 @@ export default defineConfig({
               vite: {
                 build: {
                   outDir: "dist-electron",
-                  lib: { entry: "electron/splash-preload.ts", formats: ["cjs"], fileName: () => "[name].cjs" },
+                  lib: {
+                    entry: "electron/splash-preload.ts",
+                    formats: ["cjs"],
+                    fileName: () => "[name].cjs",
+                  },
                   rollupOptions: { external: ["electron"] },
                 },
               },
@@ -56,6 +66,6 @@ export default defineConfig({
   },
   server: {
     port: 3666,
-    allowedHosts: ["app.gryt.chat"]
-  }
+    allowedHosts: ["app.gryt.chat"],
+  },
 });

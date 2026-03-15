@@ -58,10 +58,13 @@
     "remark-gfm": "^4.0.1",
     "socket.io-client": "^4.8.3",
     "uiohook-napi": "^1.5.4",
+    "unified": "^11.0.5",
+    "unist-util-visit": "^5.1.0",
     "use-sound": "^4.0.4",
     "uuid": "^10.0.0"
   },
   "devDependencies": {
+    "@types/mdast": "^4.0.4",
     "@types/node": "^20.19.33",
     "@types/react": "^18.3.28",
     "@types/react-dom": "^18.3.7",

@@ -977,12 +977,56 @@ if (!gotSingleInstanceLock) {
 
       // ── Addons ─────────────────────────────────────────────────────
       ipcMain.handle("addons:list", () => getAddons());
+
       ipcMain.handle("addons:open-folder", () =>
         shell.openPath(getAddonsDir())
       );
+
+      ipcMain.handle(
+        "addons:resolve-asset",
+        (_event, addonId: string, relativePath: string) => {
+          if (
+            !addonId ||
+            !relativePath ||
+            addonId.includes("..") ||
+            relativePath.includes("..") ||
+            relativePath.startsWith("/") ||
+            relativePath.startsWith("\\")
+          ) {
+            throw new Error("Invalid addon asset path");
+          }
+
+          const normalizedRelativePath = relativePath.replace(/\\/g, "/");
+          const normalizedPath = `/addons/${addonId}/${normalizedRelativePath}`;
+          const resolvedPath = resolveAddonFilePath(normalizedPath);
+
+          if (
+            !resolvedPath ||
+            !existsSync(resolvedPath) ||
+            !statSync(resolvedPath).isFile()
+          ) {
+            throw new Error(
+              `Addon asset not found: ${addonId}/${relativePath}`
+            );
+          }
+
+          if (process.env.VITE_DEV_SERVER_URL) {
+            const devBase = process.env.VITE_DEV_SERVER_URL.replace(/\/$/, "");
+            return `${devBase}${normalizedPath}`;
+          }
+
+          if (!localServerUrl) {
+            throw new Error("Local addon asset server is not running");
+          }
+
+          return `${localServerUrl}${normalizedPath}`;
+        }
+      );
+
       onAddonsChanged((addons) => {
         mainWindow?.webContents.send("addons-changed", addons);
       });
+
       watchAddons();
 
       // Apply at startup (default enabled on Windows).

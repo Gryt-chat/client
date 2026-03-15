@@ -1,11 +1,72 @@
-import { Badge, Box, Button, Flex, Heading, Switch, Text } from "@radix-ui/themes";
+import {
+  Badge,
+  Box,
+  Button,
+  Flex,
+  Heading,
+  Switch,
+  Text,
+} from "@radix-ui/themes";
+import { useEffect, useState } from "react";
 import { MdFolder } from "react-icons/md";
 
 import type { AddonManifest } from "@/addons";
 import { useAddons } from "@/addons";
 
-import { isElectron } from "../../../../lib/electron";
+import { getElectronAPI, isElectron } from "../../../../lib/electron";
 import { SettingsContainer } from "./settingsComponents";
+
+function useAddonAssetUrl(
+  addonId: string,
+  relativePath?: string
+): string | null {
+  const [url, setUrl] = useState<string | null>(
+    relativePath ? `/addons/${addonId}/${relativePath}` : null
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!relativePath) {
+      setUrl(null);
+      return;
+    }
+
+    if (!isElectron()) {
+      setUrl(`/addons/${addonId}/${relativePath}`);
+      return;
+    }
+
+    const api = getElectronAPI();
+    if (!api) {
+      setUrl(null);
+      return;
+    }
+
+    api
+      .resolveAddonAsset(addonId, relativePath)
+      .then((resolved) => {
+        if (!cancelled) {
+          setUrl(resolved);
+        }
+      })
+      .catch((err) => {
+        console.error(
+          `[AddonsSettings] Failed to resolve asset ${addonId}/${relativePath}:`,
+          err
+        );
+        if (!cancelled) {
+          setUrl(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [addonId, relativePath]);
+
+  return url;
+}
 
 function AddonCard({
   addon,
@@ -17,9 +78,7 @@ function AddonCard({
   onToggle: () => void;
 }) {
   const isTheme = addon.type === "theme";
-  const bannerUrl = addon.banner
-    ? `/addons/${addon.id}/${addon.banner}`
-    : null;
+  const bannerUrl = useAddonAssetUrl(addon.id, addon.banner);
 
   return (
     <Box
@@ -30,22 +89,20 @@ function AddonCard({
         background: "var(--color-panel-solid)",
       }}
     >
-      {/* Banner */}
       <Box
         style={{
           height: 120,
           background: bannerUrl
             ? undefined
             : isTheme
-              ? "linear-gradient(135deg, var(--purple-9), var(--plum-9))"
-              : "linear-gradient(135deg, var(--blue-9), var(--cyan-9))",
+            ? "linear-gradient(135deg, var(--purple-9), var(--plum-9))"
+            : "linear-gradient(135deg, var(--blue-9), var(--cyan-9))",
           backgroundImage: bannerUrl ? `url(${bannerUrl})` : undefined,
           backgroundSize: "cover",
           backgroundPosition: "center",
         }}
       />
 
-      {/* Info */}
       <Flex direction="column" gap="2" p="3">
         <Flex justify="between" align="start">
           <Flex direction="column" gap="1" style={{ minWidth: 0, flex: 1 }}>

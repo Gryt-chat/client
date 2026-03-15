@@ -13,7 +13,13 @@ export interface AddonManifest {
 }
 
 export interface UpdateStatus {
-  status: "checking" | "available" | "not-available" | "downloading" | "downloaded" | "error";
+  status:
+    | "checking"
+    | "available"
+    | "not-available"
+    | "downloading"
+    | "downloaded"
+    | "error";
   version?: string;
   percent?: number;
   message?: string;
@@ -89,7 +95,9 @@ export interface ElectronAPI {
   setHardwareAcceleration(enabled: boolean): void;
   setBadgeCount(count: number): void;
   toggleAlwaysOnTop(pinned: boolean, windowTitle?: string): void;
-  getScreenCaptureAccess(): Promise<"not-determined" | "granted" | "denied" | "restricted">;
+  getScreenCaptureAccess(): Promise<
+    "not-determined" | "granted" | "denied" | "restricted"
+  >;
   getDesktopSources(): Promise<DesktopSource[]>;
   isNativeAudioCaptureAvailable(): Promise<boolean>;
   startNativeAudioCapture(sourceId?: string): Promise<boolean>;
@@ -98,7 +106,14 @@ export interface ElectronAPI {
   onNativeAudioStopped(callback: () => void): () => void;
   onNativeAudioDiagnostic(callback: (msg: string) => void): () => void;
   isNativeScreenCaptureAvailable(): Promise<boolean>;
-  startNativeScreenCapture(monitorIndex: number, fps: number, maxWidth?: number, maxHeight?: number, bitrate?: number, codec?: string): Promise<{ success: boolean; wsPort?: number }>;
+  startNativeScreenCapture(
+    monitorIndex: number,
+    fps: number,
+    maxWidth?: number,
+    maxHeight?: number,
+    bitrate?: number,
+    codec?: string
+  ): Promise<{ success: boolean; wsPort?: number }>;
   stopNativeScreenCapture(): void;
   onNativeScreenFrame(callback: (frame: NativeScreenFrame) => void): () => void;
   onNativeScreenCaptureStopped(callback: () => void): () => void;
@@ -115,18 +130,30 @@ export interface ElectronAPI {
   onAuthCallback(callback: (url: string) => void): () => void;
   listAddons(): Promise<AddonManifest[]>;
   openAddonsFolder(): Promise<string>;
+  resolveAddonAsset(addonId: string, relativePath: string): Promise<string>;
   onAddonsChanged(callback: (addons: AddonManifest[]) => void): () => void;
   onLanServerDiscovered(callback: (server: LanServer) => void): () => void;
-  onLanServerRemoved(callback: (server: { host: string; port: number }) => void): () => void;
-  onDeepLinkInvite(callback: (data: { host: string; code: string }) => void): () => void;
+  onLanServerRemoved(
+    callback: (server: { host: string; port: number }) => void
+  ): () => void;
+  onDeepLinkInvite(
+    callback: (data: { host: string; code: string }) => void
+  ): () => void;
   isEmbeddedServerAvailable(): Promise<boolean>;
   getEmbeddedServerInfo(): Promise<EmbeddedServerInfo>;
-  createEmbeddedServer(serverName: string, lanDiscoverable: boolean): Promise<EmbeddedServerState>;
+  createEmbeddedServer(
+    serverName: string,
+    lanDiscoverable: boolean
+  ): Promise<EmbeddedServerState>;
   startEmbeddedServer(): Promise<EmbeddedServerState>;
   stopEmbeddedServer(): Promise<EmbeddedServerState>;
   getEmbeddedServerStatus(): Promise<EmbeddedServerState>;
-  onEmbeddedServerStatusChanged(callback: (state: EmbeddedServerState) => void): () => void;
-  onEmbeddedServerLog(callback: (log: { source: string; data: string }) => void): () => void;
+  onEmbeddedServerStatusChanged(
+    callback: (state: EmbeddedServerState) => void
+  ): () => void;
+  onEmbeddedServerLog(
+    callback: (log: { source: string; data: string }) => void
+  ): () => void;
   getEmbeddedServerAutoStart(): Promise<boolean>;
   setEmbeddedServerAutoStart(enabled: boolean): void;
 }

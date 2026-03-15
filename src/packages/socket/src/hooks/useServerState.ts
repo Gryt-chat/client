@@ -1,4 +1,6 @@
+import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Socket } from "socket.io-client";
 
 import { isSpeaking, useMicrophone, useSpeakers } from "@/audio";
 import { getServerAccessToken, markChannelRead } from "@/common";
@@ -26,7 +28,38 @@ function extractChannelIdFromRoomId(roomId: string, serverId: string): string {
   return roomId;
 }
 
-export function useServerState() {
+type ConnectionStatus =
+  | "connected"
+  | "disconnected"
+  | "connecting"
+  | "reconnecting";
+
+type ServerFailure = {
+  error: string;
+  message?: string;
+};
+
+type UseServerStateResult = {
+  clientsSpeaking: Record<string, boolean>;
+  voiceWidth: string;
+  setVoiceWidth: Dispatch<SetStateAction<string>>;
+  userVoiceWidth: number;
+  setUserVoiceWidth: Dispatch<SetStateAction<number>>;
+  selectedChannelId: string | null;
+  setSelectedChannelId: Dispatch<SetStateAction<string | null>>;
+  handleVoiceDisconnect: () => void;
+  setPendingChannelId: Dispatch<SetStateAction<string | null>>;
+  currentChannelId: string;
+  currentConnection: Socket | null;
+  accessToken: string | null;
+  activeConversationId: string;
+  serverFailure: ServerFailure | undefined;
+  hasTimedOut: boolean;
+  currentConnectionStatus: ConnectionStatus;
+  reconnectServer: (host: string) => void;
+};
+
+export function useServerState(): UseServerStateResult {
   const {
     micID,
     isAFK,
@@ -64,38 +97,42 @@ export function useServerState() {
     isConnecting,
   } = useSFU();
 
-  // ── AFK tracking refs (persist across effect re-runs) ─────────────────
   const lastActivityTimeRef = useRef(Date.now());
   const isAFKRef = useRef(false);
+
   useEffect(() => {
     isAFKRef.current = isAFK;
   }, [isAFK]);
 
-  // ── State ──────────────────────────────────────────────────────────────
   const [clientsSpeaking, setClientsSpeaking] = useState<
     Record<string, boolean>
   >({});
-  const serverLoadingTimerRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  const [serverLoadingTimedOut, setServerLoadingTimedOut] = useState<Record<string, boolean>>({});
+  const serverLoadingTimerRef = useRef<
+    Record<string, ReturnType<typeof setTimeout>>
+  >({});
+  const [serverLoadingTimedOut, setServerLoadingTimedOut] = useState<
+    Record<string, boolean>
+  >({});
   const [voiceWidth, setVoiceWidth] = useState("0px");
   const [userVoiceWidth, setUserVoiceWidth] = useState(400);
   const [pendingChannelId, setPendingChannelId] = useState<string | null>(null);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(
-    null,
+    null
   );
 
-  // ── Derived / memoised values ──────────────────────────────────────────
   const shouldAccessMic = useMemo(
     () => isConnecting || isConnected,
-    [isConnecting, isConnected],
+    [isConnecting, isConnected]
   );
 
   const { microphoneBuffer, isPttActive } = useMicrophone(shouldAccessMic);
 
-  const currentConnection = useMemo(
+  const currentConnection = useMemo<Socket | null>(
     () =>
-      currentlyViewingServer ? sockets[currentlyViewingServer.host] : null,
-    [currentlyViewingServer, sockets],
+      currentlyViewingServer
+        ? (sockets[currentlyViewingServer.host] as Socket | undefined) ?? null
+        : null,
+    [currentlyViewingServer, sockets]
   );
 
   const accessToken = useMemo(
@@ -104,19 +141,16 @@ export function useServerState() {
         ? getServerAccessToken(currentlyViewingServer.host)
         : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [currentlyViewingServer, tokenRevision],
+    [currentlyViewingServer, tokenRevision]
   );
 
   const currentChannelId = extractChannelIdFromRoomId(
     currentChannelConnected,
-    currentServerConnected,
+    currentServerConnected
   );
 
   const activeConversationId = selectedChannelId || currentChannelId || "";
 
-  // ── Effects ────────────────────────────────────────────────────────────
-
-  // Request member list when the server socket connects
   useEffect(() => {
     const host = currentlyViewingServer?.host;
     if (!host) return;
@@ -124,14 +158,12 @@ export function useServerState() {
     requestMemberList(host);
   }, [currentlyViewingServer?.host, serverConnectionStatus, requestMemberList]);
 
-  // Keep selectedChannelId in sync with SFU connection
   useEffect(() => {
     if (currentChannelId) {
       setSelectedChannelId((prev) => prev ?? currentChannelId);
     }
   }, [currentChannelId]);
 
-  // Server-details loading timeout (10 s)
   useEffect(() => {
     if (!currentlyViewingServer) return;
 
@@ -162,22 +194,26 @@ export function useServerState() {
         setServerLoadingTimedOut((prev) => ({ ...prev, [host]: true }));
       }, 10_000);
     }
-  }, [currentlyViewingServer, serverDetailsList, failedServerDetails, serverLoadingTimedOut]);
+  }, [
+    currentlyViewingServer,
+    serverDetailsList,
+    failedServerDetails,
+    serverLoadingTimedOut,
+  ]);
 
-  // Clear any pending timers on unmount
   useEffect(() => {
     return () => {
-      Object.values(serverLoadingTimerRef.current).forEach((t) => clearTimeout(t));
+      Object.values(serverLoadingTimerRef.current).forEach((t) =>
+        clearTimeout(t)
+      );
       serverLoadingTimerRef.current = {};
     };
   }, []);
 
-  // Clear selected channel when switching servers
   useEffect(() => {
     setSelectedChannelId(null);
   }, [currentlyViewingServer?.host]);
 
-  // Restore last-selected or first text channel
   useEffect(() => {
     if (!currentlyViewingServer) return;
     if (selectedChannelId) return;
@@ -203,14 +239,12 @@ export function useServerState() {
     getLastSelectedChannel,
   ]);
 
-  // Mark the selected channel as read
   useEffect(() => {
     if (currentlyViewingServer && selectedChannelId) {
       markChannelRead(currentlyViewingServer.host, selectedChannelId);
     }
   }, [currentlyViewingServer, selectedChannelId]);
 
-  // Fallback when selected channel is deleted
   useEffect(() => {
     if (!currentlyViewingServer || !selectedChannelId) return;
     const channels =
@@ -220,26 +254,29 @@ export function useServerState() {
     setSelectedChannelId(fallback?.id ?? null);
   }, [currentlyViewingServer, serverDetailsList, selectedChannelId]);
 
-  // Voice panel width
   useEffect(() => {
     setVoiceWidth(
       currentServerConnected === currentlyViewingServer?.host
         ? `${userVoiceWidth}px`
-        : "0px",
+        : "0px"
     );
   }, [currentServerConnected, currentlyViewingServer, userVoiceWidth]);
 
-  // Stable refs so the voice-connect effect only re-fires when micID or
-  // pendingChannelId change — not when `connect` is recreated by internal
-  // state transitions (DISCONNECTED → CONNECTING → CONNECTED).
   const connectRef = useRef(connect);
-  useEffect(() => { connectRef.current = connect; }, [connect]);
-  const currentlyViewingServerRef = useRef(currentlyViewingServer);
-  useEffect(() => { currentlyViewingServerRef.current = currentlyViewingServer; }, [currentlyViewingServer]);
-  const serverDetailsListRef = useRef(serverDetailsList);
-  useEffect(() => { serverDetailsListRef.current = serverDetailsList; }, [serverDetailsList]);
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
-  // Connect to pending voice channel once mic is available
+  const currentlyViewingServerRef = useRef(currentlyViewingServer);
+  useEffect(() => {
+    currentlyViewingServerRef.current = currentlyViewingServer;
+  }, [currentlyViewingServer]);
+
+  const serverDetailsListRef = useRef(serverDetailsList);
+  useEffect(() => {
+    serverDetailsListRef.current = serverDetailsList;
+  }, [serverDetailsList]);
+
   useEffect(() => {
     if (micID && pendingChannelId) {
       const server = currentlyViewingServerRef.current;
@@ -247,7 +284,13 @@ export function useServerState() {
       const pendingChannel = server
         ? details[server.host]?.channels?.find((c) => c.id === pendingChannelId)
         : undefined;
-      connectRef.current(pendingChannelId, pendingChannel?.eSportsMode, pendingChannel?.maxBitrate)
+
+      connectRef
+        .current(
+          pendingChannelId,
+          pendingChannel?.eSportsMode,
+          pendingChannel?.maxBitrate
+        )
         .then(() => setPendingChannelId(null))
         .catch((error) => {
           console.error("Failed to connect to pending channel:", error);
@@ -256,7 +299,6 @@ export function useServerState() {
     }
   }, [micID, pendingChannelId]);
 
-  // Speaking detection polling (50ms in eSports mode, 100ms normally)
   const clientsSpeakingRef = useRef(clientsSpeaking);
   clientsSpeakingRef.current = clientsSpeaking;
 
@@ -267,8 +309,9 @@ export function useServerState() {
         !currentServerConnected ||
         !currentlyViewingServer ||
         !currentConnection
-      )
+      ) {
         return;
+      }
 
       const prev = clientsSpeakingRef.current;
       const next: Record<string, boolean> = {};
@@ -282,7 +325,7 @@ export function useServerState() {
           if (inputMode === "push_to_talk") {
             speaking = isPttActive.current;
           } else if (microphoneBuffer.finalAnalyser) {
-            speaking = isSpeaking(microphoneBuffer.finalAnalyser!, 0.5);
+            speaking = isSpeaking(microphoneBuffer.finalAnalyser, 0.5);
           }
           if (speaking) {
             lastActivityTimeRef.current = Date.now();
@@ -314,9 +357,12 @@ export function useServerState() {
     setIsAFK,
   ]);
 
-  // AFK detection — combines audio, focus, visibility, and user interaction
   useEffect(() => {
-    if (!currentServerConnected || !currentlyViewingServer || !currentConnection) {
+    if (
+      !currentServerConnected ||
+      !currentlyViewingServer ||
+      !currentConnection
+    ) {
       return;
     }
 
@@ -327,23 +373,22 @@ export function useServerState() {
       if (isAFKRef.current) setIsAFK(false);
     };
 
-    // User interaction listeners
     document.addEventListener("mousemove", markActivity);
     document.addEventListener("mousedown", markActivity);
     document.addEventListener("keydown", markActivity);
     document.addEventListener("scroll", markActivity, true);
     document.addEventListener("touchstart", markActivity);
 
-    // Window focus / visibility
     const onVisibilityChange = () => {
       if (!document.hidden) markActivity();
     };
     document.addEventListener("visibilitychange", onVisibilityChange);
     window.addEventListener("focus", markActivity);
 
-    // Electron window focus
     const cleanupElectronFocus = window.electronAPI?.onWindowFocusChange(
-      (focused) => { if (focused) markActivity(); },
+      (focused) => {
+        if (focused) markActivity();
+      }
     );
 
     const checkAFK = () => {
@@ -376,7 +421,6 @@ export function useServerState() {
     afkTimeoutMinutes,
   ]);
 
-  // Per-user volume: override individual stream gain nodes
   useEffect(() => {
     if (!currentlyViewingServer || !audioContext) return;
     const hostClients = clients[currentlyViewingServer.host] || {};
@@ -384,15 +428,25 @@ export function useServerState() {
 
     Object.values(hostClients).forEach((client) => {
       if (!client.streamID || !streamSources[client.streamID]) return;
-      const userVol = (client.serverUserId ? (userVolumes[client.serverUserId] ?? 100) : 100) / 100;
+      const userVol = client.serverUserId
+        ? (userVolumes[client.serverUserId] ?? 100) / 100
+        : 1;
       const finalGain = isDeafened ? 0 : baseGain * userVol;
       streamSources[client.streamID].gain.gain.setValueAtTime(
-        finalGain, audioContext.currentTime || 0
+        finalGain,
+        audioContext.currentTime || 0
       );
     });
-  }, [userVolumes, outputVolume, isDeafened, clients, currentlyViewingServer, streamSources, audioContext]);
+  }, [
+    userVolumes,
+    outputVolume,
+    isDeafened,
+    clients,
+    currentlyViewingServer,
+    streamSources,
+    audioContext,
+  ]);
 
-  // Voice disconnect: fall back to first text channel
   const handleVoiceDisconnect = useCallback(() => {
     if (currentlyViewingServer) {
       const channels =
@@ -402,7 +456,6 @@ export function useServerState() {
     }
   }, [currentlyViewingServer, serverDetailsList]);
 
-  // Server-initiated voice disconnect listener
   useEffect(() => {
     const handler = (event: CustomEvent) => {
       if (
@@ -412,27 +465,33 @@ export function useServerState() {
         handleVoiceDisconnect();
       }
     };
+
     window.addEventListener(
       "voice_disconnect_text_switch",
-      handler as EventListener,
+      handler as EventListener
     );
+
     return () =>
       window.removeEventListener(
         "voice_disconnect_text_switch",
-        handler as EventListener,
+        handler as EventListener
       );
   }, [currentlyViewingServer, handleVoiceDisconnect]);
 
-  // ── Computed loading-state helpers for the caller ──────────────────────
-  const serverFailure = currentlyViewingServer
-    ? failedServerDetails[currentlyViewingServer.host]
+  const serverFailure: ServerFailure | undefined = currentlyViewingServer
+    ? (failedServerDetails[currentlyViewingServer.host] as
+        | ServerFailure
+        | undefined)
     : undefined;
+
   const hasTimedOut = currentlyViewingServer
     ? !!serverLoadingTimedOut[currentlyViewingServer.host]
     : false;
-  const currentConnectionStatus = currentlyViewingServer
-    ? (serverConnectionStatus[currentlyViewingServer.host] || 'disconnected')
-    : 'disconnected';
+
+  const currentConnectionStatus: ConnectionStatus = currentlyViewingServer
+    ? ((serverConnectionStatus[currentlyViewingServer.host] ??
+        "disconnected") as ConnectionStatus)
+    : "disconnected";
 
   return {
     clientsSpeaking,
