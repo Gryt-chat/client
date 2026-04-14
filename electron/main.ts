@@ -554,7 +554,7 @@ function createMainWindow(): void {
       preload: join(__dirname, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
-      backgroundThrottling: false,
+      backgroundThrottling: true,
     },
     autoHideMenuBar: true,
     title: "Gryt",
