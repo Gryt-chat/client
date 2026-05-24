@@ -13,7 +13,7 @@ import {
   TextField,
 } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   MdClose,
   MdInfoOutline,
@@ -78,15 +78,18 @@ export function AddNewServer({
     [serverHost]
   );
 
-  function findExistingServerById(serverId?: string) {
-    if (!serverId) return null;
+  const findExistingServerById = useCallback(
+    (serverId?: string) => {
+      if (!serverId) return null;
 
-    return (
-      Object.entries(servers).find(
-        ([, server]) => !!server.serverId && server.serverId === serverId
-      ) ?? null
-    );
-  }
+      return (
+        Object.entries(servers).find(
+          ([, server]) => !!server.serverId && server.serverId === serverId
+        ) ?? null
+      );
+    },
+    [servers]
+  );
 
   const alreadyMemberByHost = useMemo(
     () => normalizedServerHost.length > 0 && !!servers[normalizedServerHost],
@@ -95,7 +98,7 @@ export function AddNewServer({
 
   const existingServerById = useMemo(
     () => findExistingServerById(serverInfo?.serverId),
-    [serverInfo?.serverId, servers]
+    [findExistingServerById, serverInfo?.serverId]
   );
 
   const alreadyMemberByServerId = !!existingServerById;

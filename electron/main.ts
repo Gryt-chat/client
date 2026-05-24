@@ -535,7 +535,7 @@ function startLocalServer(): Promise<string> {
 
 // ── Main window ─────────────────────────────────────────────────────────
 
-function createMainWindow(): void {
+function createMainWindow(): BrowserWindow {
   mainWindow = new BrowserWindow({
     width: 1600,
     height: 900,
@@ -637,6 +637,8 @@ function createMainWindow(): void {
         });
     }
   });
+
+  return mainWindow;
 }
 
 // ── PTT helpers (uiohook – passive, does NOT consume key events) ────────
@@ -769,9 +771,7 @@ function ensureUiohook(): boolean {
   if (uiohookRunning) return true;
 
   if (process.platform === "darwin") {
-    const trusted = systemPreferences.isTrustedAccessibilityClient({
-      prompt: false,
-    });
+    const trusted = systemPreferences.isTrustedAccessibilityClient(false);
     if (!trusted) {
       startupLog("macOS Accessibility not granted — skipping uiohook");
       return false;
@@ -1322,8 +1322,10 @@ if (!gotSingleInstanceLock) {
       }
 
       // ── LAN server discovery (mDNS) ────────────────────────────────
-      const stopLanDiscovery = startLanDiscovery(mainWindow, startupLog);
-      app.on("before-quit", stopLanDiscovery);
+      if (mainWindow) {
+        const stopLanDiscovery = startLanDiscovery(mainWindow, startupLog);
+        app.on("before-quit", stopLanDiscovery);
+      }
 
       ipcMain.on("check-for-updates", () => {
         userInitiatedCheck = true;
@@ -1348,7 +1350,7 @@ if (!gotSingleInstanceLock) {
         registerPttShortcut(pttKey);
         if (pttKey && !uiohookRunning) {
           if (process.platform === "darwin") {
-            systemPreferences.isTrustedAccessibilityClient({ prompt: true });
+            systemPreferences.isTrustedAccessibilityClient(true);
           }
           try {
             ensureUiohook();
@@ -1393,8 +1395,8 @@ if (!gotSingleInstanceLock) {
           if (!mainWindow.isVisible()) mainWindow.show();
           mainWindow.focus();
         } else {
-          createMainWindow();
-          mainWindow?.show();
+          const createdWindow = createMainWindow();
+          createdWindow.show();
         }
       });
     })
