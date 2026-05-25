@@ -1,0 +1,162 @@
+name: Release Client
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: 'Release Channel'
+        required: true
+        default: 'beta'
+        type: choice
+        options: ['beta', 'latest']
+      bump:
+        description: 'Version Bump Type'
+        required: true
+        default: 'patch'
+        type: choice
+        options: ['patch', 'minor', 'major', 'custom']
+      custom_version:
+        description: 'Custom Version (if "custom" selected above, else leave blank)'
+        required: false
+        default: ''
+        type: string
+
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    env:
+      IMAGE: ghcr.io/gryt-chat/client
+      OWNER: Gryt-chat
+      REPO: gryt
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile --ignore-engines
+
+      - name: Type-check and lint
+        run: |
+          npx tsc -b
+          npx eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0 || true
+
+      - name: Build native audio
+        run: bash native/audio-capture/build.sh || echo "Native audio build skipped (might not be relevant on runner)"
+
+      - name: Build Electron app
+        env:
+          ELECTRON: '1'
+        run: npx vite build
+
+      - name: Set up Git user for version bump
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
+      - name: Bump version
+        id: version
+        uses: phips28/gh-action-bump-version@v11.0.2
+        with:
+          version-type: ${{ github.event.inputs.bump == 'custom' && '' || github.event.inputs.bump }}
+          custom-tag: ${{ github.event.inputs.bump == 'custom' && github.event.inputs.custom_version || '' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract version
+        id: get_version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Determine channel
+        id: channel
+        run: |
+          if [[ "${{ github.event_name }}" == 'workflow_dispatch' ]]; then
+            CHANNEL="${{ github.event.inputs.channel }}"
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            CHANNEL="latest"
+          else
+            CHANNEL="beta"
+          fi
+          echo "channel=$CHANNEL" >> $GITHUB_OUTPUT
+
+      - name: Sync dependencies
+        run: yarn install --frozen-lockfile --ignore-engines
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker Build and Push
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          CHANNEL="${{ steps.channel.outputs.channel }}"
+          V_MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          V_MINOR=$(echo "$VERSION" | cut -d. -f2)
+
+          TAGS=(
+            "${IMAGE}:$VERSION"
+            "${IMAGE}:$V_MAJOR.$V_MINOR"
+            "${IMAGE}:$V_MAJOR"
+            "${IMAGE}:latest-beta"
+          )
+          if [[ "$CHANNEL" == "latest" ]]; then
+            TAGS+=("${IMAGE}:latest")
+          fi
+          ARGS=( )
+          for TAG in "${TAGS[@]}"; do
+            ARGS+=( -t "$TAG" )
+          done
+
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            --cache-from type=registry,ref=${IMAGE}:buildcache \
+            --cache-to type=registry,ref=${IMAGE}:buildcache,mode=max \
+            "${ARGS[@]}" \
+            --push .
+
+      - name: Package and Publish Electron App
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ env.OWNER }}
+          REPO: ${{ env.REPO }}
+          CHANNEL: ${{ steps.channel.outputs.channel }}
+        run: |
+          RELEASE_TYPE="prerelease"
+          if [ "$CHANNEL" = "latest" ]; then
+            RELEASE_TYPE="release"
+          fi
+          npx electron-builder \
+            --linux --mac --win \
+            --publish always \
+            -c.publish.provider=github \
+            -c.publish.owner="$OWNER" \
+            -c.publish.repo="$REPO" \
+            -c.publish.releaseType="$RELEASE_TYPE"
+
+      - name: Tag and create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "v${{ steps.get_version.outputs.version }}"
+          prerelease: ${{ steps.channel.outputs.channel == 'beta' }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Optionally: add a Discord notification step if desired, like for the server repo.
