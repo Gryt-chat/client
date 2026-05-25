@@ -231,7 +231,7 @@ jobs:
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
 
-      - name: Build native audio Windows
+      - name: Build native Windows binaries
         if: runner.os == 'Windows'
         shell: cmd
         run: |
@@ -292,6 +292,13 @@ jobs:
             "${ARGS[@]}" \
             --push .
 
+      - name: Install Snapcraft
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo snap install snapcraft --classic
+
       - name: Package and publish Electron app
         shell: bash
         env:
@@ -304,7 +311,7 @@ jobs:
           set -euo pipefail
 
           if [[ "$RUNNER_OS" == "Linux" ]]; then
-            TARGETS="--linux"
+            TARGETS="--linux AppImage deb snap"
           elif [[ "$RUNNER_OS" == "macOS" ]]; then
             TARGETS="--mac"
           elif [[ "$RUNNER_OS" == "Windows" ]]; then
