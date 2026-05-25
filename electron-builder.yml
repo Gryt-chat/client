@@ -30,7 +30,7 @@ extraResources:
 publish:
   provider: github
   owner: Gryt-chat
-  repo: gryt
+  repo: client
   releaseType: release
 
 afterSign: scripts/notarize.cjs
