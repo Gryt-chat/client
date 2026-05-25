@@ -51,7 +51,7 @@ jobs:
           npx eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0 || true
 
       - name: Build native audio
-        run: bash native/audio-capture/build.sh || echo "Native audio build skipped (might not be relevant on runner)"
+        run: bash native/audio-capture/build.sh || echo "Native audio build skipped"
 
       - name: Build Electron app
         env:
@@ -103,7 +103,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Docker Build and Push
+      - name: Build and Push Docker Image
         run: |
           VERSION="${{ steps.get_version.outputs.version }}"
           CHANNEL="${{ steps.channel.outputs.channel }}"
@@ -131,7 +131,7 @@ jobs:
             "${ARGS[@]}" \
             --push .
 
-      - name: Package and Publish Electron App
+      - name: Package and Publish Electron App (multiplatform)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ env.OWNER }}
@@ -159,4 +159,46 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Optionally: add a Discord notification step if desired, like for the server repo.
+      - name: Notify Discord
+        env:
+          WEBHOOK_URL: ${{ secrets.DISCORD_RELEASE_WEBHOOK_URL }}
+          VERSION: ${{ steps.get_version.outputs.version }}
+          CHANNEL: ${{ steps.channel.outputs.channel }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -z "$WEBHOOK_URL" ]; then
+            echo "DISCORD_RELEASE_WEBHOOK_URL secret not set — skipping"
+            exit 0
+          fi
+
+          REPO_NAME="client"
+          TAG="v$VERSION"
+          RELEASE_URL="https://github.com/Gryt-chat/gryt/releases/tag/$TAG"
+          PRERELEASE="false"
+          if [ "$CHANNEL" == "beta" ]; then
+            PRERELEASE="true"
+          fi
+
+          COMPONENT="Client"
+          if [ "$PRERELEASE" = "true" ]; then
+            DISP_CHANNEL="Beta"
+            COLOR=16750848
+          else
+            DISP_CHANNEL="Stable"
+            COLOR=5763719
+          fi
+
+          RELEASE_BODY="$(gh release view $TAG --repo Gryt-chat/gryt --json body -q '.body')"
+          BODY=$(printf '%s' "$RELEASE_BODY" | head -c 1800)
+
+          PAYLOAD=$(jq -n \
+            --arg title "Gryt $COMPONENT $TAG" \
+            --arg url "$RELEASE_URL" \
+            --arg desc "$BODY" \
+            --arg channel "$DISP_CHANNEL" \
+            --arg component "$COMPONENT" \
+            --arg tag "$TAG" \
+            --argjson color "$COLOR" \
+            '{embeds: [{title: $title, url: $url, description: $desc, color: $color, fields: [ { name: "Component", value: $component, inline: true }, { name: "Channel", value: $channel, inline: true }, { name: "Version", value: $tag, inline: true } ], footer: { text: "Gryt Releases" }, timestamp: (now | todate) }]}')
+
+          curl -sfS -H "Content-Type: application/json" -d "$PAYLOAD" "$WEBHOOK_URL"
