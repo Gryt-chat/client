@@ -74,6 +74,8 @@ jobs:
         id: channel
         shell: bash
         run: |
+          set -euo pipefail
+
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             CHANNEL="${{ github.event.inputs.channel }}"
           elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
@@ -107,37 +109,15 @@ jobs:
               exit 1
             fi
 
-            NEW_VERSION="$CUSTOM_VERSION"
+            npm version "$CUSTOM_VERSION" --no-git-tag-version
           else
-            node - <<EOF
-          const fs = require("fs");
-
-          const bump = "$BUMP";
-          const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
-          const [major, minor, patch] = pkg.version.split("-")[0].split(".").map(Number);
-
-          if (![major, minor, patch].every(Number.isInteger)) {
-            throw new Error("Invalid current package.json version: " + pkg.version);
-          }
-
-          if (bump === "major") {
-            pkg.version = `${major + 1}.0.0`;
-          } else if (bump === "minor") {
-            pkg.version = `${major}.${minor + 1}.0`;
-          } else if (bump === "patch") {
-            pkg.version = `${major}.${minor}.${patch + 1}`;
-          } else {
-            throw new Error("Invalid bump type: " + bump);
-          }
-
-          fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
-          EOF
-            NEW_VERSION="$(node -p "require('./package.json').version")"
+            npm version "$BUMP" --no-git-tag-version
           fi
+
+          NEW_VERSION="$(node -p "require('./package.json').version")"
 
           if [[ "$NEW_VERSION" == "$CURRENT_VERSION" ]]; then
             echo "Version did not change: $CURRENT_VERSION"
-            echo "Use a new custom version or push an existing tag manually for a re-release."
             exit 1
           fi
 
@@ -151,7 +131,7 @@ jobs:
             exit 1
           fi
 
-          git add package.json
+          git add package.json package-lock.json yarn.lock 2>/dev/null || git add package.json
           git commit -m "release: v$NEW_VERSION (${{ steps.channel.outputs.channel }})"
           git tag "v$NEW_VERSION"
           git push origin HEAD
@@ -255,8 +235,6 @@ jobs:
           npx tsc -b
           npx eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0 || true
 
-      # ---------- MULTIPLATFORM NATIVE AUDIO BUILD ----------
-
       - name: Build native audio Linux
         if: runner.os == 'Linux'
         shell: bash
@@ -275,6 +253,7 @@ jobs:
 
       - name: Build native audio Windows
         if: runner.os == 'Windows'
+        shell: cmd
         run: |
           native\build.bat
 
@@ -284,8 +263,6 @@ jobs:
           ELECTRON: "1"
         run: |
           npx vite build
-
-      # Docker image is only built once, from Linux.
 
       - name: Set up Docker Buildx
         if: runner.os == 'Linux'
