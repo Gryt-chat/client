@@ -26,10 +26,13 @@ on:
       - 'v*.*.*'
 
 jobs:
-  build-and-release:
-    runs-on: ubuntu-latest
+  # Build and publish Electron app for all OS
+  build-electron:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     env:
-      IMAGE: ghcr.io/gryt-chat/client
       OWNER: Gryt-chat
       REPO: gryt
     steps:
@@ -58,13 +61,16 @@ jobs:
           ELECTRON: '1'
         run: npx vite build
 
-      - name: Set up Git user for version bump
+      - name: Set up Git user for version bump (only on Linux)
+        if: matrix.os == 'ubuntu-latest'
         run: |
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
 
+      # Version bump only on Linux, then let other runners use the version (avoids duplicate bumps/tags)
       - name: Bump version
         id: version
+        if: matrix.os == 'ubuntu-latest'
         uses: phips28/gh-action-bump-version@v11.0.2
         with:
           version-type: ${{ github.event.inputs.bump == 'custom' && '' || github.event.inputs.bump }}
@@ -90,13 +96,13 @@ jobs:
           fi
           echo "channel=$CHANNEL" >> $GITHUB_OUTPUT
 
-      - name: Sync dependencies
-        run: yarn install --frozen-lockfile --ignore-engines
-
+      # Docker only on Linux
       - name: Set up Docker Buildx
+        if: matrix.os == 'ubuntu-latest'
         uses: docker/setup-buildx-action@v3
 
       - name: Login to GHCR
+        if: matrix.os == 'ubuntu-latest'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -104,6 +110,9 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and Push Docker Image
+        if: matrix.os == 'ubuntu-latest'
+        env:
+          IMAGE: ghcr.io/gryt-chat/client
         run: |
           VERSION="${{ steps.get_version.outputs.version }}"
           CHANNEL="${{ steps.channel.outputs.channel }}"
@@ -131,6 +140,18 @@ jobs:
             "${ARGS[@]}" \
             --push .
 
+      # Only do the release tagging/creation on Linux, once
+      - name: Tag and create GitHub Release
+        if: matrix.os == 'ubuntu-latest'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "v${{ steps.get_version.outputs.version }}"
+          prerelease: ${{ steps.channel.outputs.channel == 'beta' }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Package & publish Electron (all platforms)
       - name: Package and Publish Electron App (multiplatform)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -143,23 +164,16 @@ jobs:
             RELEASE_TYPE="release"
           fi
           npx electron-builder \
-            --linux --mac --win \
+            --${{ matrix.os == 'ubuntu-latest' && 'linux' || (matrix.os == 'macos-latest' && 'mac' || 'win') }} \
             --publish always \
             -c.publish.provider=github \
             -c.publish.owner="$OWNER" \
             -c.publish.repo="$REPO" \
             -c.publish.releaseType="$RELEASE_TYPE"
 
-      - name: Tag and create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: "v${{ steps.get_version.outputs.version }}"
-          prerelease: ${{ steps.channel.outputs.channel == 'beta' }}
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+      # Only notify Discord on Linux (single notification per release)
       - name: Notify Discord
+        if: matrix.os == 'ubuntu-latest'
         env:
           WEBHOOK_URL: ${{ secrets.DISCORD_RELEASE_WEBHOOK_URL }}
           VERSION: ${{ steps.get_version.outputs.version }}
