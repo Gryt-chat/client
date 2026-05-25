@@ -4,113 +4,289 @@ on:
   workflow_dispatch:
     inputs:
       channel:
-        description: 'Release Channel'
+        description: "Release Channel"
         required: true
-        default: 'beta'
+        default: "beta"
         type: choice
-        options: ['beta', 'latest']
+        options:
+          - beta
+          - latest
       bump:
-        description: 'Version Bump Type'
+        description: "Version Bump Type"
         required: true
-        default: 'patch'
+        default: "patch"
         type: choice
-        options: ['patch', 'minor', 'major', 'custom']
+        options:
+          - patch
+          - minor
+          - major
+          - custom
       custom_version:
-        description: 'Custom Version (if "custom" selected above, else leave blank)'
+        description: 'Custom Version, if "custom" is selected'
         required: false
-        default: ''
+        default: ""
         type: string
 
   push:
     tags:
-      - 'v*.*.*'
+      - "v*.*.*"
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  RELEASE_OWNER: Gryt-chat
+  RELEASE_REPO: gryt
+  DOCKER_IMAGE: ghcr.io/gryt-chat/client
 
 jobs:
-  build-electron:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    env:
-      OWNER: Gryt-chat
-      REPO: gryt
+  prepare-release:
+    name: Prepare release
+    runs-on: ubuntu-latest
+
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      channel: ${{ steps.channel.outputs.channel }}
+      checkout_ref: ${{ steps.ref.outputs.checkout_ref }}
+      release_type: ${{ steps.release_type.outputs.release_type }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'yarn'
+          node-version: "20"
 
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile --ignore-engines
-
-      - name: Type-check and lint
-        run: |
-          npx tsc -b
-          npx eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0 || true
-
-      # ---------- MULTIPLATFORM NATIVE AUDIO BUILD ----------
-      - name: Build native audio (Linux)
-        if: runner.os == 'Linux'
-        run: bash native/audio-capture/build.sh
-
-      - name: Build native audio (macOS)
-        if: runner.os == 'macOS'
-        run: bash native/audio-capture/build.sh
-
-      - name: Set up MSVC Build Tools (cl.exe) environment (Windows)
-        if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1
-
-      - name: Build native audio (Windows)
-        if: runner.os == 'Windows'
-        run: native\build.bat
-
-      - name: Build Electron app
-        env:
-          ELECTRON: '1'
-        run: npx vite build
-
-      # Only Linux performs version bump, docker, release, and Discord notify
-      - name: Set up Git user for version bump (only on Linux)
-        if: runner.os == 'Linux'
+      - name: Set up Git user
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
         run: |
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
 
-      - name: Bump version
-        id: version
-        if: runner.os == 'Linux'
-        uses: phips28/gh-action-bump-version@v11.0.2
-        with:
-          version-type: ${{ github.event.inputs.bump == 'custom' && '' || github.event.inputs.bump }}
-          custom-tag: ${{ github.event.inputs.bump == 'custom' && github.event.inputs.custom_version || '' }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract version
-        id: get_version
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
       - name: Determine channel
         id: channel
+        shell: bash
         run: |
-          if [[ "${{ github.event_name }}" == 'workflow_dispatch' ]]; then
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             CHANNEL="${{ github.event.inputs.channel }}"
           elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
             CHANNEL="latest"
           else
             CHANNEL="beta"
           fi
-          echo "channel=$CHANNEL" >> $GITHUB_OUTPUT
 
-      # Docker logic only on Linux
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+
+      - name: Bump version
+        if: github.event_name == 'workflow_dispatch'
+        id: bump
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          CURRENT_VERSION="$(node -p "require('./package.json').version")"
+          BUMP="${{ github.event.inputs.bump }}"
+          CUSTOM_VERSION="${{ github.event.inputs.custom_version }}"
+
+          if [[ "$BUMP" == "custom" ]]; then
+            if [[ -z "$CUSTOM_VERSION" ]]; then
+              echo "custom_version is required when bump=custom"
+              exit 1
+            fi
+
+            if ! [[ "$CUSTOM_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$ ]]; then
+              echo "Invalid custom version: $CUSTOM_VERSION"
+              echo "Expected semver like 1.2.3 or 1.2.3-beta.1"
+              exit 1
+            fi
+
+            NEW_VERSION="$CUSTOM_VERSION"
+          else
+            node - <<EOF
+          const fs = require("fs");
+
+          const bump = "$BUMP";
+          const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+          const [major, minor, patch] = pkg.version.split("-")[0].split(".").map(Number);
+
+          if (![major, minor, patch].every(Number.isInteger)) {
+            throw new Error("Invalid current package.json version: " + pkg.version);
+          }
+
+          if (bump === "major") {
+            pkg.version = `${major + 1}.0.0`;
+          } else if (bump === "minor") {
+            pkg.version = `${major}.${minor + 1}.0`;
+          } else if (bump === "patch") {
+            pkg.version = `${major}.${minor}.${patch + 1}`;
+          } else {
+            throw new Error("Invalid bump type: " + bump);
+          }
+
+          fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
+          EOF
+            NEW_VERSION="$(node -p "require('./package.json').version")"
+          fi
+
+          if [[ "$NEW_VERSION" == "$CURRENT_VERSION" ]]; then
+            echo "Version did not change: $CURRENT_VERSION"
+            echo "Use a new custom version or push an existing tag manually for a re-release."
+            exit 1
+          fi
+
+          if git rev-parse "v$NEW_VERSION" >/dev/null 2>&1; then
+            echo "Tag v$NEW_VERSION already exists locally."
+            exit 1
+          fi
+
+          if git ls-remote --exit-code --tags origin "refs/tags/v$NEW_VERSION" >/dev/null 2>&1; then
+            echo "Tag v$NEW_VERSION already exists on origin."
+            exit 1
+          fi
+
+          git add package.json
+          git commit -m "release: v$NEW_VERSION (${{ steps.channel.outputs.channel }})"
+          git tag "v$NEW_VERSION"
+          git push origin HEAD
+          git push origin "v$NEW_VERSION"
+
+          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Extract version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="${{ steps.bump.outputs.new_version }}"
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="$(node -p "require('./package.json').version")"
+          fi
+
+          if [[ -z "$VERSION" ]]; then
+            echo "Could not determine release version"
+            exit 1
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Determine checkout ref
+        id: ref
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "checkout_ref=v${{ steps.version.outputs.version }}" >> "$GITHUB_OUTPUT"
+
+      - name: Determine release type
+        id: release_type
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ steps.channel.outputs.channel }}" == "latest" ]]; then
+            echo "release_type=release" >> "$GITHUB_OUTPUT"
+          else
+            echo "release_type=prerelease" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          repository: ${{ env.RELEASE_OWNER }}/${{ env.RELEASE_REPO }}
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Gryt Client v${{ steps.version.outputs.version }}
+          prerelease: ${{ steps.channel.outputs.channel == 'beta' }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+
+  build-electron:
+    name: Build Electron app (${{ matrix.os }})
+    needs: prepare-release
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+
+    runs-on: ${{ matrix.os }}
+
+    env:
+      OWNER: Gryt-chat
+      REPO: gryt
+      VERSION: ${{ needs.prepare-release.outputs.version }}
+      CHANNEL: ${{ needs.prepare-release.outputs.channel }}
+      RELEASE_TYPE: ${{ needs.prepare-release.outputs.release_type }}
+
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare-release.outputs.checkout_ref }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "yarn"
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          yarn install --frozen-lockfile --ignore-engines
+
+      - name: Type-check and lint
+        shell: bash
+        run: |
+          npx tsc -b
+          npx eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0 || true
+
+      # ---------- MULTIPLATFORM NATIVE AUDIO BUILD ----------
+
+      - name: Build native audio Linux
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          bash native/audio-capture/build.sh
+
+      - name: Build native audio macOS
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          bash native/audio-capture/build.sh
+
+      - name: Set up MSVC Build Tools Windows
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Build native audio Windows
+        if: runner.os == 'Windows'
+        run: |
+          native\build.bat
+
+      - name: Build Electron app
+        shell: bash
+        env:
+          ELECTRON: "1"
+        run: |
+          npx vite build
+
+      # Docker image is only built once, from Linux.
+
       - name: Set up Docker Buildx
         if: runner.os == 'Linux'
         uses: docker/setup-buildx-action@v3
@@ -123,28 +299,33 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and Push Docker Image
+      - name: Build and push Docker image
         if: runner.os == 'Linux'
-        env:
-          IMAGE: ghcr.io/gryt-chat/client
+        shell: bash
         run: |
-          VERSION="${{ steps.get_version.outputs.version }}"
-          CHANNEL="${{ steps.channel.outputs.channel }}"
-          V_MAJOR=$(echo "$VERSION" | cut -d. -f1)
-          V_MINOR=$(echo "$VERSION" | cut -d. -f2)
+          set -euo pipefail
+
+          VERSION="${{ env.VERSION }}"
+          CHANNEL="${{ env.CHANNEL }}"
+          IMAGE="${{ env.DOCKER_IMAGE }}"
+
+          V_MAJOR="$(echo "$VERSION" | cut -d. -f1)"
+          V_MINOR="$(echo "$VERSION" | cut -d. -f2)"
 
           TAGS=(
-            "${IMAGE}:$VERSION"
-            "${IMAGE}:$V_MAJOR.$V_MINOR"
-            "${IMAGE}:$V_MAJOR"
+            "${IMAGE}:${VERSION}"
+            "${IMAGE}:${V_MAJOR}.${V_MINOR}"
+            "${IMAGE}:${V_MAJOR}"
             "${IMAGE}:latest-beta"
           )
+
           if [[ "$CHANNEL" == "latest" ]]; then
             TAGS+=("${IMAGE}:latest")
           fi
-          ARGS=( )
+
+          ARGS=()
           for TAG in "${TAGS[@]}"; do
-            ARGS+=( -t "$TAG" )
+            ARGS+=(-t "$TAG")
           done
 
           docker buildx build \
@@ -154,38 +335,26 @@ jobs:
             "${ARGS[@]}" \
             --push .
 
-      # Tag and Release only done on Linux
-      - name: Tag and create GitHub Release
-        if: runner.os == 'Linux'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: "v${{ steps.get_version.outputs.version }}"
-          prerelease: ${{ steps.channel.outputs.channel == 'beta' }}
-          generate_release_notes: true
+      - name: Package and publish Electron app
+        shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # This runs on each OS and publishes its own native binary to the GitHub Release
-      - name: Package and Publish Electron App
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           OWNER: ${{ env.OWNER }}
           REPO: ${{ env.REPO }}
-          CHANNEL: ${{ steps.channel.outputs.channel }}
+          CHANNEL: ${{ env.CHANNEL }}
+          RELEASE_TYPE: ${{ env.RELEASE_TYPE }}
         run: |
-          set -e
-          RELEASE_TYPE="prerelease"
-          if [ "$CHANNEL" = "latest" ]; then
-            RELEASE_TYPE="release"
-          fi
+          set -euo pipefail
 
-          # Figure out platform targets
           if [[ "$RUNNER_OS" == "Linux" ]]; then
             TARGETS="--linux"
           elif [[ "$RUNNER_OS" == "macOS" ]]; then
             TARGETS="--mac"
           elif [[ "$RUNNER_OS" == "Windows" ]]; then
             TARGETS="--win"
+          else
+            echo "Unsupported runner OS: $RUNNER_OS"
+            exit 1
           fi
 
           npx electron-builder \
@@ -196,30 +365,26 @@ jobs:
             -c.publish.repo="$REPO" \
             -c.publish.releaseType="$RELEASE_TYPE"
 
-      # Only notify Discord from Linux (so only one notification is sent)
       - name: Notify Discord
         if: runner.os == 'Linux'
+        shell: bash
         env:
           WEBHOOK_URL: ${{ secrets.DISCORD_RELEASE_WEBHOOK_URL }}
-          VERSION: ${{ steps.get_version.outputs.version }}
-          CHANNEL: ${{ steps.channel.outputs.channel }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ env.VERSION }}
+          CHANNEL: ${{ env.CHANNEL }}
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
-          if [ -z "$WEBHOOK_URL" ]; then
-            echo "DISCORD_RELEASE_WEBHOOK_URL secret not set — skipping"
+          set -euo pipefail
+
+          if [[ -z "${WEBHOOK_URL:-}" ]]; then
+            echo "DISCORD_RELEASE_WEBHOOK_URL secret not set, skipping"
             exit 0
           fi
 
-          REPO_NAME="client"
           TAG="v$VERSION"
-          RELEASE_URL="https://github.com/Gryt-chat/gryt/releases/tag/$TAG"
-          PRERELEASE="false"
-          if [ "$CHANNEL" == "beta" ]; then
-            PRERELEASE="true"
-          fi
+          RELEASE_URL="https://github.com/${{ env.RELEASE_OWNER }}/${{ env.RELEASE_REPO }}/releases/tag/$TAG"
 
-          COMPONENT="Client"
-          if [ "$PRERELEASE" = "true" ]; then
+          if [[ "$CHANNEL" == "beta" ]]; then
             DISP_CHANNEL="Beta"
             COLOR=16750848
           else
@@ -227,17 +392,35 @@ jobs:
             COLOR=5763719
           fi
 
-          RELEASE_BODY="$(gh release view $TAG --repo Gryt-chat/gryt --json body -q '.body')"
-          BODY=$(printf '%s' "$RELEASE_BODY" | head -c 1800)
+          RELEASE_BODY="$(gh release view "$TAG" --repo "${{ env.RELEASE_OWNER }}/${{ env.RELEASE_REPO }}" --json body -q '.body' || true)"
+          BODY="$(printf '%s' "$RELEASE_BODY" | head -c 1800)"
 
-          PAYLOAD=$(jq -n \
-            --arg title "Gryt $COMPONENT $TAG" \
+          PAYLOAD="$(jq -n \
+            --arg title "Gryt Client $TAG" \
             --arg url "$RELEASE_URL" \
             --arg desc "$BODY" \
             --arg channel "$DISP_CHANNEL" \
-            --arg component "$COMPONENT" \
+            --arg component "Client" \
             --arg tag "$TAG" \
             --argjson color "$COLOR" \
-            '{embeds: [{title: $title, url: $url, description: $desc, color: $color, fields: [ { name: "Component", value: $component, inline: true }, { name: "Channel", value: $channel, inline: true }, { name: "Version", value: $tag, inline: true } ], footer: { text: "Gryt Releases" }, timestamp: (now | todate) }]}')
+            '{
+              embeds: [{
+                title: $title,
+                url: $url,
+                description: $desc,
+                color: $color,
+                fields: [
+                  { name: "Component", value: $component, inline: true },
+                  { name: "Channel", value: $channel, inline: true },
+                  { name: "Version", value: $tag, inline: true }
+                ],
+                footer: { text: "Gryt Releases" },
+                timestamp: (now | todate)
+              }]
+            }'
+          )"
 
-          curl -sfS -H "Content-Type: application/json" -d "$PAYLOAD" "$WEBHOOK_URL"
+          curl -sfS \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$WEBHOOK_URL"
