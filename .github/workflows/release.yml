@@ -53,7 +53,7 @@ jobs:
           npx tsc -b
           npx eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0 || true
 
-      # --- native audio build per-OS ---
+      # ---------- MULTIPLATFORM NATIVE AUDIO BUILD ----------
       - name: Build native audio (Linux)
         if: runner.os == 'Linux'
         run: bash native/audio-capture/build.sh
@@ -75,13 +75,13 @@ jobs:
           ELECTRON: '1'
         run: npx vite build
 
+      # Only Linux performs version bump, docker, release, and Discord notify
       - name: Set up Git user for version bump (only on Linux)
         if: runner.os == 'Linux'
         run: |
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
 
-      # Version bump only on Linux
       - name: Bump version
         id: version
         if: runner.os == 'Linux'
@@ -110,7 +110,7 @@ jobs:
           fi
           echo "channel=$CHANNEL" >> $GITHUB_OUTPUT
 
-      # Docker image steps only on Linux
+      # Docker logic only on Linux
       - name: Set up Docker Buildx
         if: runner.os == 'Linux'
         uses: docker/setup-buildx-action@v3
@@ -154,7 +154,7 @@ jobs:
             "${ARGS[@]}" \
             --push .
 
-      # Only do the tag and release on Linux
+      # Tag and Release only done on Linux
       - name: Tag and create GitHub Release
         if: runner.os == 'Linux'
         uses: softprops/action-gh-release@v2
@@ -165,7 +165,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Each job builds for its OS and publishes binaries to GitHub Releases
+      # This runs on each OS and publishes its own native binary to the GitHub Release
       - name: Package and Publish Electron App
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -196,7 +196,7 @@ jobs:
             -c.publish.repo="$REPO" \
             -c.publish.releaseType="$RELEASE_TYPE"
 
-      # Only notify Discord from Linux
+      # Only notify Discord from Linux (so only one notification is sent)
       - name: Notify Discord
         if: runner.os == 'Linux'
         env:
