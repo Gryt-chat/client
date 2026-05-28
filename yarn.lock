@@ -4750,7 +4750,7 @@ plist@3.1.0, plist@^3.0.4, plist@^3.0.5, plist@^3.1.0:
 
 png-to-ico@^3.0.1:
   version "3.0.1"
-  resolved "https://registry.npmjs.org/png-to-ico/-/png-to-ico-3.0.1.tgz"
+  resolved "https://registry.yarnpkg.com/png-to-ico/-/png-to-ico-3.0.1.tgz#6ad50bec9ffa40aa74265deadc5128fa4097dfbe"
   integrity sha512-S8BOAoaGd9gT5uaemQ62arIY3Jzco7Uc7LwUTqRyqJDTsKqOAiyfyN4dSdT0D+Zf8XvgztgpRbM5wnQd7EgYwg==
   dependencies:
     "@types/node" "^22.10.3"
@@ -5247,7 +5247,7 @@ serialize-error@^7.0.1:
 
 sharp@^0.34.5:
   version "0.34.5"
-  resolved "https://registry.npmjs.org/sharp/-/sharp-0.34.5.tgz"
+  resolved "https://registry.yarnpkg.com/sharp/-/sharp-0.34.5.tgz#b6f148e4b8c61f1797bde11a9d1cfebbae2c57b0"
   integrity sha512-Ou9I5Ft9WNcCbXrU9cMgPBcCK8LiwLqcbywW3t4oDV37n1pzpuNLsYiAV8eODnjbtQlSDwZ2cUEeQz4E54Hltg==
   dependencies:
     "@img/colour" "^1.0.0"

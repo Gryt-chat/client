@@ -7,10 +7,12 @@ artifactName: "Gryt-Chat-${version}-${os}-${arch}.${ext}"
 directories:
   buildResources: build
   output: release
+
 files:
   - dist/**/*
   - dist-electron/**/*
   - electron/splash.html
+
 extraResources:
   - from: build/icon.png
     to: icon.png
@@ -97,3 +99,6 @@ nsis:
   displayLanguageSelector: false
   uninstallDisplayName: "Gryt Chat"
   shortcutName: "Gryt Chat"
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  installerHeaderIcon: build/icon.ico
