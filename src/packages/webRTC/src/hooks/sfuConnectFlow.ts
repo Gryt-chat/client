@@ -7,7 +7,7 @@ import { handleRateLimitError } from "@/socket/src/utils/rateLimitHandler";
 import { SFUConnectionState, Streams } from "../types/SFU";
 import { getCachedSfuUrl, selectBestSfuUrl } from "./selectBestSfuUrl";
 import { connectToSfuWebSocket } from "./sfuConnection";
-import { RoomAccessData,SFUConnectionStateInternal } from "./sfuTypes";
+import { RoomAccessData, SFUConnectionStateInternal } from "./sfuTypes";
 import { voiceLog } from "./voiceLogger";
 
 type IceCandidateStat = {
@@ -64,18 +64,24 @@ async function dumpIceSelectedPair(pc: RTCPeerConnection, label: string) {
     });
 
     const selectedPair =
-      (transportSelectedPairId ? pairStats.find((p) => p.id === transportSelectedPairId) : null) ||
+      (transportSelectedPairId
+        ? pairStats.find((p) => p.id === transportSelectedPairId)
+        : null) ||
       pairStats.find((p) => ("selected" in p ? p.selected === true : false)) ||
       pairStats.find((p) => p.nominated === true && p.state === "succeeded") ||
       pairStats.find((p) => p.state === "succeeded") ||
       null;
 
     if (!selectedPair) {
-      voiceLog.warn("WEBRTC", `ICE debug (${label}): no candidate-pair selected yet`, {
-        connectionState: pc.connectionState,
-        iceConnectionState: pc.iceConnectionState,
-        signalingState: pc.signalingState,
-      });
+      voiceLog.warn(
+        "WEBRTC",
+        `ICE debug (${label}): no candidate-pair selected yet`,
+        {
+          connectionState: pc.connectionState,
+          iceConnectionState: pc.iceConnectionState,
+          signalingState: pc.signalingState,
+        },
+      );
       return;
     }
 
@@ -88,11 +94,21 @@ async function dumpIceSelectedPair(pc: RTCPeerConnection, label: string) {
         state: selectedPair.state,
         nominated: selectedPair.nominated,
         selected: selectedPair.selected,
-        currentRoundTripTimeMs: typeof selectedPair.currentRoundTripTime === "number" ? Math.round(selectedPair.currentRoundTripTime * 1000) : null,
-        availableOutgoingBitrateKbps: typeof selectedPair.availableOutgoingBitrate === "number" ? Math.round(selectedPair.availableOutgoingBitrate / 1000) : null,
+        currentRoundTripTimeMs:
+          typeof selectedPair.currentRoundTripTime === "number"
+            ? Math.round(selectedPair.currentRoundTripTime * 1000)
+            : null,
+        availableOutgoingBitrateKbps:
+          typeof selectedPair.availableOutgoingBitrate === "number"
+            ? Math.round(selectedPair.availableOutgoingBitrate / 1000)
+            : null,
       },
-      local: local ? { ...local, address: `${local.address}:${local.port}` } : null,
-      remote: remote ? { ...remote, address: `${remote.address}:${remote.port}` } : null,
+      local: local
+        ? { ...local, address: `${local.address}:${local.port}` }
+        : null,
+      remote: remote
+        ? { ...remote, address: `${remote.address}:${remote.port}` }
+        : null,
     });
 
     const nonFrozen = pairStats.filter((p) => p.state && p.state !== "frozen");
@@ -103,19 +119,30 @@ async function dumpIceSelectedPair(pc: RTCPeerConnection, label: string) {
           state: p.state,
           nominated: p.nominated,
           selected: p.selected,
-          remote: r ? `${r.address}:${r.port} (${r.candidateType}/${r.protocol})` : p.remoteCandidateId,
+          remote: r
+            ? `${r.address}:${r.port} (${r.candidateType}/${r.protocol})`
+            : p.remoteCandidateId,
         };
       });
-      voiceLog.info("WEBRTC", `ICE debug (${label}): candidate-pair sample`, sample);
+      voiceLog.info(
+        "WEBRTC",
+        `ICE debug (${label}): candidate-pair sample`,
+        sample,
+      );
     }
   } catch (error) {
     voiceLog.warn("WEBRTC", `ICE debug (${label}) failed`, error);
   }
 }
 
-export function requestRoomAccess(roomId: string, socket: Socket): Promise<RoomAccessData> {
+export function requestRoomAccess(
+  roomId: string,
+  socket: Socket,
+): Promise<RoomAccessData> {
   return new Promise((resolve, reject) => {
-    voiceLog.step("CONNECT", 4, "Requesting room access from server", { roomId });
+    voiceLog.step("CONNECT", 4, "Requesting room access from server", {
+      roomId,
+    });
 
     const timeout = setTimeout(() => {
       voiceLog.fail("CONNECT", 4, "Room access request timed out (15s)");
@@ -137,17 +164,32 @@ export function requestRoomAccess(roomId: string, socket: Socket): Promise<RoomA
       resolve(roomData);
     };
 
-    const onRoomError = (error: string | { error: string; message?: string; retryAfterMs?: number; currentScore?: number; maxScore?: number }) => {
+    const onRoomError = (
+      error:
+        | string
+        | {
+            error: string;
+            message?: string;
+            retryAfterMs?: number;
+            currentScore?: number;
+            maxScore?: number;
+          },
+    ) => {
       cleanup();
 
-      if (typeof error === 'object' && error.error === 'rate_limited' && error.message) {
+      if (
+        typeof error === "object" &&
+        error.error === "rate_limited" &&
+        error.message
+      ) {
         voiceLog.fail("CONNECT", 4, "Room access rate-limited", error);
         handleRateLimitError(error, "Voice connection");
         reject(new Error(error.message));
         return;
       }
 
-      const errorMessage = typeof error === 'string' ? error : error.error || 'Unknown error';
+      const errorMessage =
+        typeof error === "string" ? error : error.error || "Unknown error";
       voiceLog.fail("CONNECT", 4, `Room access denied: ${errorMessage}`);
       reject(new Error(`Room access denied: ${errorMessage}`));
     };
@@ -172,14 +214,21 @@ export function setupPeerConnection(
   deps: SetupPeerConnectionDeps,
   eSportsModeEnabled: boolean = false,
 ): RTCPeerConnection {
-  const { sfuWebSocketRef, connectionTimeoutRef, isDisconnectingRef, setStreams, setConnectionState, performCleanup } = deps;
+  const {
+    sfuWebSocketRef,
+    connectionTimeoutRef,
+    isDisconnectingRef,
+    setStreams,
+    setConnectionState,
+    performCleanup,
+  } = deps;
 
   const config: RTCConfiguration = {
     iceServers: [{ urls: stunServers }],
     iceCandidatePoolSize: 10,
-    iceTransportPolicy: 'all',
-    bundlePolicy: eSportsModeEnabled ? 'max-bundle' : 'balanced',
-    rtcpMuxPolicy: 'require',
+    iceTransportPolicy: "all",
+    bundlePolicy: eSportsModeEnabled ? "max-bundle" : "balanced",
+    rtcpMuxPolicy: "require",
     certificates: undefined,
   };
 
@@ -195,18 +244,31 @@ export function setupPeerConnection(
 
   pc.onicecandidate = (event) => {
     if (event.candidate) {
-      voiceLog.info("WEBRTC", `Local ICE candidate: type=${event.candidate.type} proto=${event.candidate.protocol} ${event.candidate.address}:${event.candidate.port}`);
+      voiceLog.info(
+        "WEBRTC",
+        `Local ICE candidate: type=${event.candidate.type} proto=${event.candidate.protocol} ${event.candidate.address}:${event.candidate.port}`,
+      );
       if (sfuWebSocketRef.current?.readyState === WebSocket.OPEN) {
         try {
-          sfuWebSocketRef.current.send(JSON.stringify({
-            event: "candidate",
-            data: JSON.stringify(event.candidate),
-          }));
+          sfuWebSocketRef.current.send(
+            JSON.stringify({
+              event: "candidate",
+              data: JSON.stringify(event.candidate),
+            }),
+          );
         } catch (error) {
-          voiceLog.fail("WEBRTC", "ICE", "Error sending local ICE candidate", error);
+          voiceLog.fail(
+            "WEBRTC",
+            "ICE",
+            "Error sending local ICE candidate",
+            error,
+          );
         }
       } else {
-        voiceLog.warn("WEBRTC", `WebSocket not open (state=${sfuWebSocketRef.current?.readyState}), local ICE candidate dropped`);
+        voiceLog.warn(
+          "WEBRTC",
+          `WebSocket not open (state=${sfuWebSocketRef.current?.readyState}), local ICE candidate dropped`,
+        );
       }
     } else {
       voiceLog.ok("WEBRTC", "ICE", "ICE gathering complete (null candidate)");
@@ -215,10 +277,10 @@ export function setupPeerConnection(
 
   pc.oniceconnectionstatechange = () => {
     const state = pc.iceConnectionState;
-    if (state === 'connected' || state === 'completed') {
+    if (state === "connected" || state === "completed") {
       voiceLog.ok("WEBRTC", "ICE", `ICE connection state → ${state}`);
       dumpIceOnce(`ice-${state}`);
-    } else if (state === 'failed' || state === 'disconnected') {
+    } else if (state === "failed" || state === "disconnected") {
       voiceLog.fail("WEBRTC", "ICE", `ICE connection state → ${state}`);
       dumpIceOnce(`ice-${state}`);
     } else {
@@ -233,7 +295,10 @@ export function setupPeerConnection(
   };
 
   pc.onnegotiationneeded = () => {
-    voiceLog.info("WEBRTC", "Negotiation needed (handled explicitly by track add/remove)");
+    voiceLog.info(
+      "WEBRTC",
+      "Negotiation needed (handled explicitly by track add/remove)",
+    );
   };
 
   // Transceiver mid → first stream ID seen. Mids are stable across
@@ -244,9 +309,16 @@ export function setupPeerConnection(
   pc.ontrack = (event) => {
     const remoteStream = event.streams[0] ?? new MediaStream([event.track]);
     const mid = event.transceiver?.mid;
-    voiceLog.ok("WEBRTC", "TRACK", `Remote track received: kind=${event.track.kind} streamId=${remoteStream.id} trackId=${event.track.id} mid=${mid ?? "null"}`);
+    voiceLog.ok(
+      "WEBRTC",
+      "TRACK",
+      `Remote track received: kind=${event.track.kind} streamId=${remoteStream.id} trackId=${event.track.id} mid=${mid ?? "null"}`,
+    );
 
-    const receiver = event.receiver as RTCRtpReceiver & { playoutDelayHint?: number; jitterBufferTarget?: number };
+    const receiver = event.receiver as RTCRtpReceiver & {
+      playoutDelayHint?: number;
+      jitterBufferTarget?: number;
+    };
     if ("playoutDelayHint" in receiver) {
       receiver.playoutDelayHint = 0;
     }
@@ -257,25 +329,35 @@ export function setupPeerConnection(
     // Delayed codec report for incoming video tracks
     if (event.track.kind === "video") {
       setTimeout(() => {
-        event.receiver.getStats().then(stats => {
-          stats.forEach(report => {
-            if (report.type === "inbound-rtp" && report.kind === "video") {
-              const codecId = report.codecId;
-              if (codecId) {
-                stats.forEach(inner => {
-                  if (inner.id === codecId && inner.type === "codec") {
-                    voiceLog.ok("WEBRTC", "RECV-CODEC", `Incoming video codec mid=${mid}: ${inner.mimeType} pt=${inner.payloadType} ${inner.sdpFmtpLine || ""}`, {
-                      bytesReceived: report.bytesReceived,
-                      framesDecoded: report.framesDecoded,
-                      width: report.frameWidth,
-                      height: report.frameHeight,
-                    });
-                  }
-                });
+        event.receiver
+          .getStats()
+          .then((stats) => {
+            stats.forEach((report) => {
+              if (report.type === "inbound-rtp" && report.kind === "video") {
+                const codecId = report.codecId;
+                if (codecId) {
+                  stats.forEach((inner) => {
+                    if (inner.id === codecId && inner.type === "codec") {
+                      voiceLog.ok(
+                        "WEBRTC",
+                        "RECV-CODEC",
+                        `Incoming video codec mid=${mid}: ${inner.mimeType} pt=${inner.payloadType} ${inner.sdpFmtpLine || ""}`,
+                        {
+                          bytesReceived: report.bytesReceived,
+                          framesDecoded: report.framesDecoded,
+                          width: report.frameWidth,
+                          height: report.frameHeight,
+                        },
+                      );
+                    }
+                  });
+                }
               }
-            }
+            });
+          })
+          .catch(() => {
+            /* stats unavailable */
           });
-        }).catch(() => { /* stats unavailable */ });
       }, 3000);
     }
 
@@ -286,11 +368,14 @@ export function setupPeerConnection(
         midToOriginalStream.set(mid, remoteStream.id);
       } else if (original !== remoteStream.id) {
         aliasStreamId = original;
-        voiceLog.info("WEBRTC", `Stream ID changed for mid=${mid}: ${original} → ${remoteStream.id} (preserving alias)`);
+        voiceLog.info(
+          "WEBRTC",
+          `Stream ID changed for mid=${mid}: ${original} → ${remoteStream.id} (preserving alias)`,
+        );
       }
     }
 
-    setStreams(prev => {
+    setStreams((prev) => {
       const next = {
         ...prev,
         [remoteStream.id]: { stream: remoteStream, isLocal: false },
@@ -302,8 +387,11 @@ export function setupPeerConnection(
     });
 
     event.track.onended = () => {
-      voiceLog.info("WEBRTC", `Remote track ended: streamId=${remoteStream.id} trackId=${event.track.id}`);
-      setStreams(prev => {
+      voiceLog.info(
+        "WEBRTC",
+        `Remote track ended: streamId=${remoteStream.id} trackId=${event.track.id}`,
+      );
+      setStreams((prev) => {
         const next = { ...prev };
         delete next[remoteStream.id];
         if (aliasStreamId) delete next[aliasStreamId];
@@ -314,11 +402,20 @@ export function setupPeerConnection(
 
   pc.onconnectionstatechange = () => {
     const state = pc.connectionState;
-    const detail = { connectionState: state, iceState: pc.iceConnectionState, signalingState: pc.signalingState };
+    const detail = {
+      connectionState: state,
+      iceState: pc.iceConnectionState,
+      signalingState: pc.signalingState,
+    };
 
     switch (state) {
-      case 'connected':
-        voiceLog.ok("CONNECT", 9, "WebRTC CONNECTED — voice chat is live!", detail);
+      case "connected":
+        voiceLog.ok(
+          "CONNECT",
+          9,
+          "WebRTC CONNECTED — voice chat is live!",
+          detail,
+        );
         voiceLog.divider("VOICE CONNECTED");
         wasConnected = true;
         iceDebugDumped = false;
@@ -331,26 +428,43 @@ export function setupPeerConnection(
           clearTimeout(connectionTimeoutRef.current);
           connectionTimeoutRef.current = null;
         }
-        setConnectionState(prev => {
+        setConnectionState((prev) => {
           if (prev.state === SFUConnectionState.CONNECTING) {
             return { ...prev, state: SFUConnectionState.CONNECTED };
           }
           return prev;
         });
         break;
-      case 'disconnected':
-        voiceLog.warn("WEBRTC", `Connection state → disconnected — attempting ICE recovery`, detail);
+      case "disconnected":
+        voiceLog.warn(
+          "WEBRTC",
+          `Connection state → disconnected — attempting ICE recovery`,
+          detail,
+        );
         dumpIceOnce("pc-disconnected");
-        try { pc.restartIce(); } catch { /* ignored */ }
+        try {
+          pc.restartIce();
+        } catch {
+          /* ignored */
+        }
         disconnectedTimeoutId = setTimeout(() => {
           disconnectedTimeoutId = null;
-          if (pc.connectionState !== 'connected' && pc.connectionState !== 'closed' && !isDisconnectingRef.current) {
-            voiceLog.fail("WEBRTC", "PC", "ICE recovery timed out after 5s — forcing reconnect", {
-              connectionState: pc.connectionState,
-              iceState: pc.iceConnectionState,
-            });
+          if (
+            pc.connectionState !== "connected" &&
+            pc.connectionState !== "closed" &&
+            !isDisconnectingRef.current
+          ) {
+            voiceLog.fail(
+              "WEBRTC",
+              "PC",
+              "ICE recovery timed out after 5s — forcing reconnect",
+              {
+                connectionState: pc.connectionState,
+                iceState: pc.iceConnectionState,
+              },
+            );
             dumpIceOnce("ice-recovery-timeout");
-            setConnectionState(prev => ({
+            setConnectionState((prev) => ({
               ...prev,
               state: SFUConnectionState.FAILED,
               error: "Connection lost",
@@ -359,11 +473,11 @@ export function setupPeerConnection(
           }
         }, 5_000);
         break;
-      case 'connecting':
+      case "connecting":
         voiceLog.info("WEBRTC", `Connection state → ${state}`, detail);
         break;
-      case 'failed':
-      case 'closed':
+      case "failed":
+      case "closed":
         if (disconnectedTimeoutId) {
           clearTimeout(disconnectedTimeoutId);
           disconnectedTimeoutId = null;
@@ -371,10 +485,12 @@ export function setupPeerConnection(
         voiceLog.fail("WEBRTC", "PC", `Connection state → ${state}`, detail);
         dumpIceOnce(`pc-${state}`);
         if (!isDisconnectingRef.current) {
-          setConnectionState(prev => ({
+          setConnectionState((prev) => ({
             ...prev,
             state: SFUConnectionState.FAILED,
-            error: wasConnected ? "Connection lost" : "WebRTC connection failed",
+            error: wasConnected
+              ? "Connection lost"
+              : "WebRTC connection failed",
           }));
           performCleanup?.(false).catch(() => undefined);
         }
@@ -414,7 +530,10 @@ export interface ConnectParams {
     sfuWebSocketRef: MutableRefObject<WebSocket | null>;
     registeredTracksRef: MutableRefObject<RTCRtpSender[]>;
     connectionTimeoutRef: MutableRefObject<NodeJS.Timeout | null>;
-    microphoneBufferRef: MutableRefObject<{ processedStream?: MediaStream; mediaStream?: MediaStream }>;
+    microphoneBufferRef: MutableRefObject<{
+      processedStream?: MediaStream;
+      mediaStream?: MediaStream;
+    }>;
     activeSfuUrlRef: MutableRefObject<string | null>;
   };
   connectionState: SFUConnectionStateInternal;
@@ -437,17 +556,34 @@ export interface ConnectParams {
 
 export async function sfuConnect(params: ConnectParams): Promise<void> {
   const {
-    channelID, refs, connectionState, isConnected,
-    currentlyViewingServer, stunHosts, sockets,
-    sfuConnectionRefs, connectSoundFile, connectSoundVolume, connectSoundEnabled,
-    setConnectionState, setStreams, performCleanup,
-    channelMaxBitrateBps, eSportsModeEnabled,
-    connectSeq, connectSeqRef,
+    channelID,
+    refs,
+    connectionState,
+    isConnected,
+    currentlyViewingServer,
+    stunHosts,
+    sockets,
+    sfuConnectionRefs,
+    connectSoundFile,
+    connectSoundVolume,
+    connectSoundEnabled,
+    setConnectionState,
+    setStreams,
+    performCleanup,
+    channelMaxBitrateBps,
+    eSportsModeEnabled,
+    connectSeq,
+    connectSeqRef,
   } = params;
   const {
-    isConnectingRef, isDisconnectingRef, peerConnectionRef,
-    sfuWebSocketRef, registeredTracksRef, connectionTimeoutRef,
-    microphoneBufferRef, activeSfuUrlRef,
+    isConnectingRef,
+    isDisconnectingRef,
+    peerConnectionRef,
+    sfuWebSocketRef,
+    registeredTracksRef,
+    connectionTimeoutRef,
+    microphoneBufferRef,
+    activeSfuUrlRef,
   } = refs;
 
   const isStale = () => connectSeqRef.current !== connectSeq;
@@ -478,7 +614,10 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
 
     // If another connection is in progress, tear it down first
     if (isConnectingRef.current) {
-      voiceLog.info("CONNECT", "Superseding in-progress connection — cleaning up");
+      voiceLog.info(
+        "CONNECT",
+        "Superseding in-progress connection — cleaning up",
+      );
       await performCleanup(true);
     }
 
@@ -486,25 +625,37 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
       voiceLog.info("CONNECT", "Waiting for previous disconnect to finish…");
       for (let i = 0; i < 5; i++) {
         if (!isDisconnectingRef.current) break;
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
     }
 
-    if (isStale()) { voiceLog.info("CONNECT", "Superseded before start — aborting"); return; }
+    if (isStale()) {
+      voiceLog.info("CONNECT", "Superseded before start — aborting");
+      return;
+    }
     isConnectingRef.current = true;
 
     // ---- Step 1: Room-switching cleanup ----
-    if (isConnected && (connectionState.roomId !== channelID || connectionState.serverId !== currentlyViewingServer.host)) {
-      voiceLog.step("CONNECT", 1, "Room switch detected — cleaning up previous connection", {
-        oldRoom: connectionState.roomId,
-        oldServer: connectionState.serverId,
-      });
+    if (
+      isConnected &&
+      (connectionState.roomId !== channelID ||
+        connectionState.serverId !== currentlyViewingServer.host)
+    ) {
+      voiceLog.step(
+        "CONNECT",
+        1,
+        "Room switch detected — cleaning up previous connection",
+        {
+          oldRoom: connectionState.roomId,
+          oldServer: connectionState.serverId,
+        },
+      );
 
       if (connectionState.serverId && sockets[connectionState.serverId]) {
         try {
           const oldSocket = sockets[connectionState.serverId];
           oldSocket.emit("voice:channel:joined", false);
-          await new Promise(resolve => setTimeout(resolve, 10));
+          await new Promise((resolve) => setTimeout(resolve, 10));
           oldSocket.emit("voice:stream:set", "");
           oldSocket.emit("voice:room:leave");
           voiceLog.ok("CONNECT", 1, "Notified old server of disconnect");
@@ -521,7 +672,10 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
           oldWs.onmessage = null;
           oldWs.onclose = null;
           oldWs.onerror = null;
-          if (oldWs.readyState === WebSocket.OPEN || oldWs.readyState === WebSocket.CONNECTING) {
+          if (
+            oldWs.readyState === WebSocket.OPEN ||
+            oldWs.readyState === WebSocket.CONNECTING
+          ) {
             oldWs.close(1000, "Switching rooms");
           }
           voiceLog.ok("CONNECT", 1, "Old SFU WebSocket closed");
@@ -541,18 +695,26 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
           oldPc.ontrack = null;
           oldPc.onconnectionstatechange = null;
           oldPc.ondatachannel = null;
-          if (oldPc.connectionState !== 'closed') {
+          if (oldPc.connectionState !== "closed") {
             oldPc.close();
           }
           voiceLog.ok("CONNECT", 1, "Old peer connection closed");
         } catch (error) {
-          voiceLog.fail("CONNECT", 1, "Error cleaning up old peer connection", error);
+          voiceLog.fail(
+            "CONNECT",
+            1,
+            "Error cleaning up old peer connection",
+            error,
+          );
         }
       }
 
       registeredTracksRef.current = [];
-      await new Promise(resolve => setTimeout(resolve, 50));
-      if (isStale()) { voiceLog.info("CONNECT", "Superseded during cleanup — aborting"); return; }
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      if (isStale()) {
+        voiceLog.info("CONNECT", "Superseded during cleanup — aborting");
+        return;
+      }
     }
 
     // ---- Step 2: Set CONNECTING state ----
@@ -570,28 +732,52 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
       hasMediaStream: !!microphoneBufferRef.current.mediaStream,
     });
 
-    let streamToUse = microphoneBufferRef.current.processedStream || microphoneBufferRef.current.mediaStream;
+    let streamToUse =
+      microphoneBufferRef.current.processedStream ||
+      microphoneBufferRef.current.mediaStream;
 
     if (streamToUse) {
       const audioTracks = streamToUse.getAudioTracks();
-      const hasLiveTracks = audioTracks.length > 0 && audioTracks.some(track => track.readyState === 'live');
-      voiceLog.info("CONNECT", `Initial stream check: ${audioTracks.length} tracks, live=${hasLiveTracks}`);
+      const hasLiveTracks =
+        audioTracks.length > 0 &&
+        audioTracks.some((track) => track.readyState === "live");
+      voiceLog.info(
+        "CONNECT",
+        `Initial stream check: ${audioTracks.length} tracks, live=${hasLiveTracks}`,
+      );
       if (!hasLiveTracks) streamToUse = undefined;
     }
 
     if (!streamToUse) {
       voiceLog.info("CONNECT", "No live stream yet — polling up to 6s…");
       for (let attempt = 0; attempt < 30; attempt++) {
-        await new Promise(resolve => setTimeout(resolve, 200));
-        if (isStale()) { voiceLog.info("CONNECT", "Superseded during mic poll — aborting"); return; }
-        streamToUse = microphoneBufferRef.current.processedStream || microphoneBufferRef.current.mediaStream;
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        if (isStale()) {
+          voiceLog.info("CONNECT", "Superseded during mic poll — aborting");
+          return;
+        }
+        streamToUse =
+          microphoneBufferRef.current.processedStream ||
+          microphoneBufferRef.current.mediaStream;
         if (streamToUse) {
           const audioTracks = streamToUse.getAudioTracks();
-          if (audioTracks.length > 0 && audioTracks.some(track => track.readyState === 'live')) {
-            voiceLog.ok("CONNECT", 3, `Microphone ready after ${(attempt + 1) * 200}ms`, {
-              trackCount: audioTracks.length,
-              trackStates: audioTracks.map(t => ({ id: t.id, readyState: t.readyState, label: t.label })),
-            });
+          if (
+            audioTracks.length > 0 &&
+            audioTracks.some((track) => track.readyState === "live")
+          ) {
+            voiceLog.ok(
+              "CONNECT",
+              3,
+              `Microphone ready after ${(attempt + 1) * 200}ms`,
+              {
+                trackCount: audioTracks.length,
+                trackStates: audioTracks.map((t) => ({
+                  id: t.id,
+                  readyState: t.readyState,
+                  label: t.label,
+                })),
+              },
+            );
             break;
           } else {
             streamToUse = undefined;
@@ -599,54 +785,103 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
         }
       }
       if (!streamToUse) {
-        voiceLog.fail("CONNECT", 3, "Microphone not available after 6s polling");
-        throw new Error("Microphone not available - please check microphone settings");
+        voiceLog.fail(
+          "CONNECT",
+          3,
+          "Microphone not available after 6s polling",
+        );
+        throw new Error(
+          "Microphone not available - please check microphone settings",
+        );
       }
     } else {
       const tracks = streamToUse.getAudioTracks();
       voiceLog.ok("CONNECT", 3, "Microphone stream available immediately", {
         trackCount: tracks.length,
-        trackStates: tracks.map(t => ({ id: t.id, readyState: t.readyState, label: t.label })),
+        trackStates: tracks.map((t) => ({
+          id: t.id,
+          readyState: t.readyState,
+          label: t.label,
+        })),
       });
     }
 
     const audioTracks = streamToUse.getAudioTracks();
-    if (audioTracks.length === 0 || !audioTracks.some(track => track.readyState === 'live')) {
+    if (
+      audioTracks.length === 0 ||
+      !audioTracks.some((track) => track.readyState === "live")
+    ) {
       voiceLog.info("CONNECT", "Tracks not live yet — waiting up to 1.5s…");
       for (let attempt = 0; attempt < 10; attempt++) {
-        await new Promise(resolve => setTimeout(resolve, 150));
-        if (isStale()) { voiceLog.info("CONNECT", "Superseded during track wait — aborting"); return; }
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        if (isStale()) {
+          voiceLog.info("CONNECT", "Superseded during track wait — aborting");
+          return;
+        }
         const currentTracks = streamToUse.getAudioTracks();
-        if (currentTracks.length > 0 && currentTracks.some(track => track.readyState === 'live')) break;
+        if (
+          currentTracks.length > 0 &&
+          currentTracks.some((track) => track.readyState === "live")
+        )
+          break;
       }
       const finalTracks = streamToUse.getAudioTracks();
-      if (finalTracks.length === 0 || !finalTracks.some(track => track.readyState === 'live')) {
+      if (
+        finalTracks.length === 0 ||
+        !finalTracks.some((track) => track.readyState === "live")
+      ) {
         voiceLog.fail("CONNECT", 3, "Microphone tracks never became live", {
-          trackStates: finalTracks.map(t => ({ id: t.id, readyState: t.readyState })),
+          trackStates: finalTracks.map((t) => ({
+            id: t.id,
+            readyState: t.readyState,
+          })),
         });
-        throw new Error("Microphone not ready - please wait a moment and try again");
+        throw new Error(
+          "Microphone not ready - please wait a moment and try again",
+        );
       }
     }
 
-    if (isStale()) { voiceLog.info("CONNECT", "Superseded before room access — aborting"); return; }
+    if (isStale()) {
+      voiceLog.info("CONNECT", "Superseded before room access — aborting");
+      return;
+    }
 
     const socket = sockets[currentlyViewingServer.host];
     if (!socket) {
-      voiceLog.fail("CONNECT", 4, "Socket connection not available for server", { server: currentlyViewingServer.host });
+      voiceLog.fail(
+        "CONNECT",
+        4,
+        "Socket connection not available for server",
+        { server: currentlyViewingServer.host },
+      );
       throw new Error("Socket connection not available");
     }
 
     // ---- Step 4: Request room access (inside requestRoomAccess) ----
     const roomData = await requestRoomAccess(channelID, socket);
-    if (isStale()) { voiceLog.info("CONNECT", "Superseded after room access — aborting"); return; }
+    if (isStale()) {
+      voiceLog.info("CONNECT", "Superseded after room access — aborting");
+      return;
+    }
 
     // ---- Step 5: Setup WebRTC peer connection ----
-    voiceLog.step("CONNECT", 5, "Creating RTCPeerConnection", { stunServers: stunHosts, eSportsModeEnabled });
-    const peerConnection = setupPeerConnection(stunHosts, {
-      sfuWebSocketRef, connectionTimeoutRef, isDisconnectingRef,
-      setStreams, setConnectionState,
-      performCleanup,
-    }, eSportsModeEnabled);
+    voiceLog.step("CONNECT", 5, "Creating RTCPeerConnection", {
+      stunServers: stunHosts,
+      eSportsModeEnabled,
+    });
+    const peerConnection = setupPeerConnection(
+      stunHosts,
+      {
+        sfuWebSocketRef,
+        connectionTimeoutRef,
+        isDisconnectingRef,
+        setStreams,
+        setConnectionState,
+        performCleanup,
+      },
+      eSportsModeEnabled,
+    );
     peerConnectionRef.current = peerConnection;
     voiceLog.ok("CONNECT", 5, "RTCPeerConnection created", {
       signalingState: peerConnection.signalingState,
@@ -655,13 +890,22 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
 
     connectionTimeoutRef.current = setTimeout(() => {
       const pc = peerConnectionRef.current;
-      if (pc && !isDisconnectingRef.current && pc.connectionState !== 'connected') {
-        voiceLog.fail("CONNECT", "TIMEOUT", "Full connection timed out after 20s", {
-          pcState: pc.connectionState,
-          iceState: pc.iceConnectionState,
-        });
+      if (
+        pc &&
+        !isDisconnectingRef.current &&
+        pc.connectionState !== "connected"
+      ) {
+        voiceLog.fail(
+          "CONNECT",
+          "TIMEOUT",
+          "Full connection timed out after 20s",
+          {
+            pcState: pc.connectionState,
+            iceState: pc.iceConnectionState,
+          },
+        );
         dumpIceSelectedPair(pc, "timeout").catch(() => undefined);
-        setConnectionState(prev => ({
+        setConnectionState((prev) => ({
           ...prev,
           state: SFUConnectionState.FAILED,
           error: "Connection timed out",
@@ -671,7 +915,10 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
     }, 20000);
 
     if (isStale()) {
-      voiceLog.info("CONNECT", "Superseded after peer connection setup — aborting");
+      voiceLog.info(
+        "CONNECT",
+        "Superseded after peer connection setup — aborting",
+      );
       peerConnection.close();
       peerConnectionRef.current = null;
       return;
@@ -688,8 +935,11 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
 
     voiceLog.ok("CONNECT", 6, "Local audio tracks added to peer connection", {
       trackCount: tracks.length,
-      tracks: localStream.getTracks().map(t => ({
-        kind: t.kind, id: t.id, readyState: t.readyState, label: t.label,
+      tracks: localStream.getTracks().map((t) => ({
+        kind: t.kind,
+        id: t.id,
+        readyState: t.readyState,
+        label: t.label,
       })),
     });
 
@@ -697,32 +947,51 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
     const ESPORTS_MAX_BITRATE_BPS = 128_000;
     const effectiveBitrate = eSportsModeEnabled
       ? ESPORTS_MAX_BITRATE_BPS
-      : (typeof channelMaxBitrateBps === "number" && channelMaxBitrateBps > 0 ? channelMaxBitrateBps : OPUS_MAX_BITRATE_BPS);
+      : typeof channelMaxBitrateBps === "number" && channelMaxBitrateBps > 0
+        ? channelMaxBitrateBps
+        : OPUS_MAX_BITRATE_BPS;
 
-    voiceLog.info("CONNECT", eSportsModeEnabled
-      ? `eSports mode — capping bitrate at ${ESPORTS_MAX_BITRATE_BPS / 1000}kbps (Opus studio quality)`
-      : `Applying max bitrate: ${effectiveBitrate / 1000}kbps${channelMaxBitrateBps ? " (channel)" : " (Opus ceiling)"}`);
+    voiceLog.info(
+      "CONNECT",
+      eSportsModeEnabled
+        ? `eSports mode — capping bitrate at ${ESPORTS_MAX_BITRATE_BPS / 1000}kbps (Opus studio quality)`
+        : `Applying max bitrate: ${effectiveBitrate / 1000}kbps${channelMaxBitrateBps ? " (channel)" : " (Opus ceiling)"}`,
+    );
     tracks.forEach((sender) => {
       try {
         if (sender.track?.kind !== "audio") return;
         const params = sender.getParameters();
-        const enc = params.encodings && params.encodings.length > 0 ? params.encodings : [{} as RTCRtpEncodingParameters];
+        const enc =
+          params.encodings && params.encodings.length > 0
+            ? params.encodings
+            : [{} as RTCRtpEncodingParameters];
         enc[0] = { ...enc[0], maxBitrate: effectiveBitrate };
-        sender.setParameters({ ...params, encodings: enc }).catch(() => undefined);
+        sender
+          .setParameters({ ...params, encodings: enc })
+          .catch(() => undefined);
       } catch {
         // ignore
       }
     });
 
-    setStreams(prev => {
-      const nonLocalEntries = Object.entries(prev).filter(([, s]) => !s.isLocal);
+    setStreams((prev) => {
+      const nonLocalEntries = Object.entries(prev).filter(
+        ([, s]) => !s.isLocal,
+      );
       const nonLocal = Object.fromEntries(nonLocalEntries);
-      return { ...nonLocal, [localStream.id]: { stream: localStream, isLocal: true } };
+      return {
+        ...nonLocal,
+        [localStream.id]: { stream: localStream, isLocal: true },
+      };
     });
 
     // ---- Step 7: Connect to SFU WebSocket ----
-    const sfuCandidates = roomData.sfu_urls?.length ? roomData.sfu_urls : [roomData.sfu_url];
-    const sfuUrl = getCachedSfuUrl(currentlyViewingServer.host) ?? await selectBestSfuUrl(sfuCandidates, currentlyViewingServer.host);
+    const sfuCandidates = roomData.sfu_urls?.length
+      ? roomData.sfu_urls
+      : [roomData.sfu_url];
+    const sfuUrl =
+      getCachedSfuUrl(currentlyViewingServer.host) ??
+      (await selectBestSfuUrl(sfuCandidates, currentlyViewingServer.host));
     if (isStale()) {
       voiceLog.info("CONNECT", "Superseded before SFU WebSocket — aborting");
       peerConnection.close();
@@ -730,10 +999,45 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
       return;
     }
     activeSfuUrlRef.current = sfuUrl;
-    voiceLog.step("CONNECT", 7, "Connecting WebSocket to SFU", { sfu_url: sfuUrl, eSportsModeEnabled });
+    voiceLog.step("CONNECT", 7, "Connecting WebSocket to SFU", {
+      sfu_url: sfuUrl,
+      eSportsModeEnabled,
+    });
     let sfuWebSocket: WebSocket;
     try {
-      sfuWebSocket = await connectToSfuWebSocket(sfuUrl, roomData.join_token, sfuConnectionRefs, eSportsModeEnabled);
+      sfuWebSocket = await connectToSfuWebSocket(
+        sfuUrl,
+        roomData.join_token,
+        sfuConnectionRefs,
+        eSportsModeEnabled,
+        {
+          onAbnormalClose: (info) => {
+            if (isStale() || isDisconnectingRef.current) return;
+
+            voiceLog.warn(
+              "SFU-WS",
+              `Abnormal SFU WebSocket close (${info.code}) — marking voice connection failed for auto-reconnect`,
+              info,
+            );
+
+            setConnectionState((prev) => {
+              if (prev.state === SFUConnectionState.DISCONNECTED) return prev;
+
+              return {
+                ...prev,
+                state: SFUConnectionState.FAILED,
+                error: `SFU signaling connection lost (${info.code})`,
+              };
+            });
+
+            // Do not notify the signaling server as a user-initiated leave here.
+            // This is a transport failure; useSFU.ts already has recovery logic for FAILED.
+            performCleanup(true).catch((error) => {
+              console.error("Error during SFU abnormal-close cleanup:", error);
+            });
+          },
+        },
+      );
       sfuWebSocketRef.current = sfuWebSocket;
       voiceLog.ok("CONNECT", 7, "SFU WebSocket connected & room joined");
     } catch (error) {
@@ -751,11 +1055,16 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
     }
 
     // ---- Step 8: Notify signaling server ----
-    voiceLog.step("CONNECT", 8, "Notifying signaling server (stream:set + channel:joined)", {
-      streamId: localStream.id,
-    });
+    voiceLog.step(
+      "CONNECT",
+      8,
+      "Notifying signaling server (stream:set + channel:joined)",
+      {
+        streamId: localStream.id,
+      },
+    );
     socket.emit("voice:stream:set", localStream.id);
-    await new Promise(resolve => setTimeout(resolve, 10));
+    await new Promise((resolve) => setTimeout(resolve, 10));
     socket.emit("voice:channel:joined", true);
     voiceLog.ok("CONNECT", 8, "Signaling server notified");
 
@@ -771,15 +1080,19 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
       error: null,
     });
 
-    voiceLog.step("CONNECT", 9, "Waiting for WebRTC ICE + DTLS to complete (state → CONNECTED)…", {
-      currentPcState: peerConnection.connectionState,
-      currentIceState: peerConnection.iceConnectionState,
-    });
+    voiceLog.step(
+      "CONNECT",
+      9,
+      "Waiting for WebRTC ICE + DTLS to complete (state → CONNECTED)…",
+      {
+        currentPcState: peerConnection.connectionState,
+        currentIceState: peerConnection.iceConnectionState,
+      },
+    );
 
     if (connectSoundEnabled) {
       playNotificationSound(connectSoundFile, connectSoundVolume);
     }
-
   } catch (error) {
     if (isStale()) {
       voiceLog.info("CONNECT", "Superseded connection threw — ignoring error");
@@ -787,11 +1100,12 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
     }
     voiceLog.fail("CONNECT", "X", "CONNECTION FAILED", error);
 
-    const errorMessage = error instanceof Error ? error.message : "Connection failed";
+    const errorMessage =
+      error instanceof Error ? error.message : "Connection failed";
 
     performCleanup(false).catch(console.error);
 
-    setConnectionState(prev => ({
+    setConnectionState((prev) => ({
       ...prev,
       state: SFUConnectionState.FAILED,
       error: errorMessage,
