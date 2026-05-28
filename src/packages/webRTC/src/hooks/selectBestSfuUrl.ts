@@ -1,4 +1,4 @@
-import { isElectron } from "@/lib/electron";
+import { isElectron } from "../../../../lib/electron";
 import { voiceLog } from "./voiceLogger";
 
 function isHttpsPage(): boolean {
