@@ -7,7 +7,14 @@
  */
 
 import { execSync } from "child_process";
-import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 
@@ -28,14 +35,36 @@ const arch = process.arch;
 const ebOs =
   platform === "win32" ? "win" : platform === "darwin" ? "mac" : "linux";
 const ebArch = arch === "arm64" ? "arm64" : "x64";
+
 // Go naming: windows/darwin/linux, amd64/arm64
 const goOs =
   platform === "win32" ? "windows" : platform === "darwin" ? "darwin" : "linux";
 const goArch = arch === "arm64" ? "arm64" : "amd64";
 const sfuExt = platform === "win32" ? ".exe" : "";
 
+// Keep this in sync with the Electron version used by the client package.
+// If this gets out of sync, native modules can rebuild against the wrong ABI.
+const electronVersion = "40.6.0";
+
+function run(command, options = {}) {
+  execSync(command, {
+    stdio: "inherit",
+    ...options,
+  });
+}
+
+function assertExists(path, message) {
+  if (!existsSync(path)) {
+    throw new Error(message || `Missing expected path: ${path}`);
+  }
+}
+
 console.log("=== Building Embedded Server Resources ===");
 console.log(`  Platform: ${ebOs}-${ebArch} (${goOs}/${goArch})`);
+console.log(`  Client: ${CLIENT_DIR}`);
+console.log(`  Server: ${SERVER_DIR}`);
+console.log(`  SFU: ${SFU_DIR}`);
+console.log(`  Output: ${OUTDIR}`);
 console.log();
 
 // ── 1. Server bundle ────────────────────────────────────────────────
@@ -45,14 +74,17 @@ if (skipServer) {
   console.log("[1/2] Bundling server...");
 
   const bundleSrc = join(SERVER_DIR, "dist", "bundle.js");
+  const serverOut = join(OUTDIR, "server");
 
-  console.log("Building fresh server bundle...");
-  execSync("npm run build && npm run bundle", {
+  console.log("  Building fresh server bundle...");
+  run("npm run build && npm run bundle", {
     cwd: SERVER_DIR,
-    stdio: "inherit",
   });
 
-  const serverOut = join(OUTDIR, "server");
+  assertExists(bundleSrc, `Server bundle was not created: ${bundleSrc}`);
+
+  console.log("  Cleaning embedded server output...");
+  rmSync(serverOut, { recursive: true, force: true });
   mkdirSync(serverOut, { recursive: true });
 
   cpSync(bundleSrc, join(serverOut, "bundle.js"));
@@ -75,14 +107,13 @@ if (skipServer) {
   const lockfileSrc = join(SERVER_DIR, "package-lock.json");
   if (existsSync(lockfileSrc)) {
     cpSync(lockfileSrc, join(serverOut, "package-lock.json"));
+  } else {
+    console.warn(`  Warning: no package-lock.json found at ${lockfileSrc}`);
   }
 
   console.log("  Installing production dependencies for embedded server...");
-  const electronVersion = "40.6.0";
-
-  execSync("npm install --omit=dev", {
+  run("npm install --omit=dev --ignore-scripts=false", {
     cwd: serverOut,
-    stdio: "inherit",
     env: {
       ...process.env,
       npm_config_runtime: "electron",
@@ -91,9 +122,9 @@ if (skipServer) {
     },
   });
 
-  execSync("npm rebuild better-sqlite3", {
+  console.log("  Rebuilding better-sqlite3 for Electron...");
+  run("npm rebuild better-sqlite3 --build-from-source", {
     cwd: serverOut,
-    stdio: "inherit",
     env: {
       ...process.env,
       npm_config_runtime: "electron",
@@ -103,6 +134,31 @@ if (skipServer) {
     },
   });
 
+  const nodeModulesPath = join(serverOut, "node_modules");
+  const betterSqlitePath = join(nodeModulesPath, "better-sqlite3");
+  const betterSqliteBindingDir = join(
+    betterSqlitePath,
+    "build",
+    "Release"
+  );
+
+  assertExists(
+    nodeModulesPath,
+    `Embedded server node_modules was not created: ${nodeModulesPath}`
+  );
+
+  assertExists(
+    betterSqlitePath,
+    `Embedded server dependency missing after npm install: ${betterSqlitePath}`
+  );
+
+  assertExists(
+    betterSqliteBindingDir,
+    `better-sqlite3 native build output is missing: ${betterSqliteBindingDir}`
+  );
+
+  console.log("  Embedded server dependencies installed.");
+  console.log(`  better-sqlite3: ${betterSqlitePath}`);
   console.log(`  Server bundle ready: ${serverOut}`);
 }
 
@@ -125,19 +181,20 @@ if (skipSfu) {
       GOARCH: goArch,
       CGO_ENABLED: "0",
     };
-    execSync(`go build -C "${SFU_DIR}" -o "${sfuOutPath}" ./cmd/sfu/`, {
+
+    run(`go build -C "${SFU_DIR}" -o "${sfuOutPath}" ./cmd/sfu/`, {
       env,
-      stdio: "inherit",
     });
 
     if (platform !== "win32") {
       try {
-        execSync(`chmod +x "${sfuOutPath}"`);
+        run(`chmod +x "${sfuOutPath}"`);
       } catch {
         /* best effort */
       }
     }
 
+    assertExists(sfuOutPath, `SFU binary was not created: ${sfuOutPath}`);
     console.log(`  SFU binary ready: ${sfuOutPath}`);
   }
 }
