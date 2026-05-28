@@ -1,7 +1,12 @@
 import { Avatar, Flex, Text, Tooltip } from "@radix-ui/themes";
 import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
-import { MdMicOff, MdScreenShare, MdVideocam, MdVolumeOff } from "react-icons/md";
+import {
+  MdMicOff,
+  MdScreenShare,
+  MdVideocam,
+  MdVolumeOff,
+} from "react-icons/md";
 
 import { getUploadsFileUrl } from "@/common";
 
@@ -38,7 +43,7 @@ export function VideoCard({
   objectFit = "cover",
   onClick,
 }: {
-  stream: MediaStream;
+  stream: MediaStream | null;
   nickname: string;
   mirrored?: boolean;
   isSpeaking?: boolean;
@@ -47,19 +52,43 @@ export function VideoCard({
   onClick?: () => void;
 }) {
   const ref = useRef<HTMLVideoElement>(null);
+
   useEffect(() => {
-    if (!ref.current) return;
-    ref.current.srcObject = stream;
-    const tracks = stream.getVideoTracks();
-    console.log(
-      `[ScreenShare] VideoCard: srcObject set, tracks=${tracks.length} live=${tracks.filter(t => t.readyState === "live").length}`,
-    );
-    ref.current.play().catch(() => { /* autoplay blocked or already playing */ });
+    const video = ref.current;
+    if (!video) return;
+
+    if (!stream) {
+      if (video.srcObject) video.srcObject = null;
+      return;
+    }
+
+    if (video.srcObject !== stream) {
+      video.srcObject = stream;
+
+      const tracks = stream.getVideoTracks();
+      console.log(
+        `[ScreenShare] VideoCard: srcObject set, tracks=${tracks.length} live=${tracks.filter((t) => t.readyState === "live").length}`,
+      );
+    }
+
+    video.autoplay = true;
+    video.playsInline = true;
+    video.muted = true;
+
+    void video.play().catch((error) => {
+      console.warn("[ScreenShare] VideoCard: play() failed", error);
+    });
+
+    return () => {
+      if (video.srcObject === stream) {
+        video.srcObject = null;
+      }
+    };
   }, [stream]);
 
   return (
     <div
-      onClick={onClick}
+      onClick={stream ? onClick : undefined}
       style={{
         position: "relative",
         width: "100%",
@@ -67,24 +96,44 @@ export function VideoCard({
         borderRadius: "var(--radius-3)",
         overflow: "hidden",
         background: "#000",
-        outline: isSpeaking ? "2.5px solid var(--accent-9)" : "2.5px solid transparent",
+        outline: isSpeaking
+          ? "2.5px solid var(--accent-9)"
+          : "2.5px solid transparent",
         transition: "outline-color 0.1s ease",
-        cursor: onClick ? "pointer" : undefined,
+        cursor: stream && onClick ? "pointer" : undefined,
       }}
     >
-      <video
-        ref={ref}
-        autoPlay
-        playsInline
-        muted
-        style={{
-          width: "100%",
-          height: "100%",
-          objectFit,
-          transform: mirrored ? "scaleX(-1)" : undefined,
-          pointerEvents: "none",
-        }}
-      />
+      {stream ? (
+        <video
+          ref={ref}
+          autoPlay
+          playsInline
+          muted
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit,
+            transform: mirrored ? "scaleX(-1)" : undefined,
+            pointerEvents: "none",
+          }}
+        />
+      ) : (
+        <Flex
+          align="center"
+          justify="center"
+          style={{
+            width: "100%",
+            height: "100%",
+            color: "var(--gray-10)",
+            background: "var(--gray-3)",
+          }}
+        >
+          <Text size="1" color="gray">
+            Waiting for video…
+          </Text>
+        </Flex>
+      )}
+
       <Flex
         align="center"
         gap="1"
@@ -114,18 +163,35 @@ function latencyColor(ms: number | null): string {
   return "var(--red-9)";
 }
 
-function LatencyBadge({ stats, isSelf }: { stats: LatencyDisplayStats | undefined; isSelf: boolean }) {
+function LatencyBadge({
+  stats,
+  isSelf,
+}: {
+  stats: LatencyDisplayStats | undefined;
+  isSelf: boolean;
+}) {
   const oneWay = stats?.estimatedOneWayMs;
   if (oneWay == null) return null;
+
   const tooltipParts = [
     `RTT: ${stats?.networkRttMs?.toFixed(0) ?? "—"}ms`,
     `Jitter: ${stats?.jitterMs?.toFixed(1) ?? "—"}ms`,
     stats?.codec ?? "—",
   ];
-  if (isSelf && stats?.remoteAddress) tooltipParts.push(`ICE: ${stats.remoteAddress}`);
+
+  if (isSelf && stats?.remoteAddress)
+    tooltipParts.push(`ICE: ${stats.remoteAddress}`);
+
   return (
     <Tooltip content={tooltipParts.join(" · ")}>
-      <Text size="1" style={{ color: latencyColor(oneWay), fontVariantNumeric: "tabular-nums", cursor: "default" }}>
+      <Text
+        size="1"
+        style={{
+          color: latencyColor(oneWay),
+          fontVariantNumeric: "tabular-nums",
+          cursor: "default",
+        }}
+      >
         {Math.round(oneWay)}ms
       </Text>
     </Tooltip>
@@ -169,7 +235,12 @@ export function VoiceParticipantCard({
   localScreenStream: MediaStream | null;
   videoStreams?: Record<string, MediaStream>;
   onFocus: (info: FocusedStreamInfo) => void;
-  onPopout: (itemId: string, stream: MediaStream, title: string, audioStreamId?: string) => void;
+  onPopout: (
+    itemId: string,
+    stream: MediaStream,
+    title: string,
+    audioStreamId?: string,
+  ) => void;
   onDisconnectUser?: (targetServerUserId: string) => void;
   currentUserRole?: Role;
   memberInfo?: MemberInfo;
@@ -181,16 +252,23 @@ export function VoiceParticipantCard({
   if (isScreenTile) {
     const screenStream = isSelf
       ? localScreenStream
-      : (client.screenShareVideoStreamID && videoStreams?.[client.screenShareVideoStreamID])
+      : client.screenShareVideoStreamID &&
+          videoStreams?.[client.screenShareVideoStreamID]
         ? videoStreams[client.screenShareVideoStreamID]
         : null;
+
     if (!isSelf) {
       const vsKeys = videoStreams ? Object.keys(videoStreams) : [];
       console.log(
         `[ScreenShare] VoiceParticipantCard screen tile: nick=${client.nickname} streamID=${client.screenShareVideoStreamID} found=${!!screenStream} videoStreamKeys=[${vsKeys.join(",")}]`,
       );
     }
-    if (!screenStream) return null;
+
+    const hasPendingRemoteScreen =
+      !isSelf && client.screenShareEnabled && !!client.screenShareVideoStreamID;
+
+    if (!screenStream && !hasPendingRemoteScreen) return null;
+
     const screenTitle = isSelf ? "Your Screen" : `${client.nickname}'s Screen`;
 
     return (
@@ -200,115 +278,248 @@ export function VoiceParticipantCard({
         isSelf={isSelf}
         canDisconnect={!!onDisconnectUser}
         isInVoice={true}
-        onDisconnectFromVoice={onDisconnectUser && serverUserId ? () => onDisconnectUser(serverUserId) : undefined}
+        onDisconnectFromVoice={
+          onDisconnectUser && serverUserId
+            ? () => onDisconnectUser(serverUserId)
+            : undefined
+        }
         role={currentUserRole}
         targetRole={memberInfo?.role}
         isServerMuted={memberInfo?.isServerMuted}
         isServerDeafened={memberInfo?.isServerDeafened}
-        onKick={adminActions?.onKickUser && serverUserId ? () => adminActions.onKickUser!(serverUserId) : undefined}
-        onBan={adminActions?.onBanUser && serverUserId ? () => adminActions.onBanUser!(serverUserId) : undefined}
-        onServerMute={adminActions?.onServerMuteUser && serverUserId ? (muted) => adminActions.onServerMuteUser!(serverUserId, muted) : undefined}
-        onServerDeafen={adminActions?.onServerDeafenUser && serverUserId ? (deafened) => adminActions.onServerDeafenUser!(serverUserId, deafened) : undefined}
-        onChangeRole={adminActions?.onChangeRole && serverUserId ? (role) => adminActions.onChangeRole!(serverUserId, role) : undefined}
-        onPopoutVideo={() => onPopout(itemId, screenStream, screenTitle, (!isSelf && client.screenShareAudioStreamID) || undefined)}
+        onKick={
+          adminActions?.onKickUser && serverUserId
+            ? () => adminActions.onKickUser!(serverUserId)
+            : undefined
+        }
+        onBan={
+          adminActions?.onBanUser && serverUserId
+            ? () => adminActions.onBanUser!(serverUserId)
+            : undefined
+        }
+        onServerMute={
+          adminActions?.onServerMuteUser && serverUserId
+            ? (muted) => adminActions.onServerMuteUser!(serverUserId, muted)
+            : undefined
+        }
+        onServerDeafen={
+          adminActions?.onServerDeafenUser && serverUserId
+            ? (deafened) =>
+                adminActions.onServerDeafenUser!(serverUserId, deafened)
+            : undefined
+        }
+        onChangeRole={
+          adminActions?.onChangeRole && serverUserId
+            ? (role) => adminActions.onChangeRole!(serverUserId, role)
+            : undefined
+        }
+        onPopoutVideo={
+          screenStream
+            ? () =>
+                onPopout(
+                  itemId,
+                  screenStream,
+                  screenTitle,
+                  (!isSelf && client.screenShareAudioStreamID) || undefined,
+                )
+            : undefined
+        }
       >
         <VideoCard
+          key={`${itemId}:${client.screenShareVideoStreamID || "local"}:${screenStream?.id || "pending"}`}
           stream={screenStream}
           nickname={screenTitle}
           objectFit="contain"
           statusIcons={<MdScreenShare size={10} color="var(--blue-9)" />}
-          onClick={() => onFocus({
-            itemId,
-            stream: screenStream,
-            title: screenTitle,
-            audioStreamId: (!isSelf && client.screenShareAudioStreamID) || undefined,
-            objectFit: "contain",
-          })}
+          onClick={
+            screenStream
+              ? () =>
+                  onFocus({
+                    itemId,
+                    stream: screenStream,
+                    title: screenTitle,
+                    audioStreamId:
+                      (!isSelf && client.screenShareAudioStreamID) || undefined,
+                    objectFit: "contain",
+                  })
+              : undefined
+          }
         />
       </UserContextMenu>
     );
   }
 
-  const hasCameraStream =
+  const hasCameraStream = Boolean(
     (isSelf && localCameraStream) ||
-    (!isSelf && client.cameraEnabled && client.cameraStreamID && videoStreams?.[client.cameraStreamID]);
+    (!isSelf &&
+      client.cameraEnabled &&
+      client.cameraStreamID &&
+      videoStreams?.[client.cameraStreamID]),
+  );
 
   const statusBadges = (
     <>
-      {(client.isMuted || client.isDeafened) && (
-        client.isDeafened
-          ? <MdVolumeOff size={12} color="var(--red-9)" />
-          : <MdMicOff size={12} color="var(--red-9)" />
+      {(client.isMuted || client.isDeafened) &&
+        (client.isDeafened ? (
+          <MdVolumeOff size={12} color="var(--red-9)" />
+        ) : (
+          <MdMicOff size={12} color="var(--red-9)" />
+        ))}
+
+      {client.isAFK && (
+        <Text size="1" weight="bold" style={{ color: "#fff" }}>
+          AFK
+        </Text>
       )}
-      {client.isAFK && <Text size="1" weight="bold" style={{ color: "#fff" }}>AFK</Text>}
-      {client.screenShareEnabled && <MdScreenShare size={10} color="var(--blue-9)" />}
+
+      {client.screenShareEnabled && (
+        <MdScreenShare size={10} color="var(--blue-9)" />
+      )}
     </>
   );
 
-  const cameraView = () => {
-    const camStream = isSelf ? localCameraStream! : videoStreams![client.cameraStreamID!];
-    return (
-      <Flex direction="column" gap="1" align="center" style={{ width: "100%" }}>
-        <VideoCard
-          stream={camStream}
-          nickname={client.nickname}
-          mirrored={isSelf ? cameraMirrored : false}
-          isSpeaking={isSpeaking}
-          statusIcons={statusBadges}
-          onClick={() => onFocus({
-            itemId,
-            stream: camStream,
-            title: isSelf ? "Your Camera" : `${client.nickname}'s Camera`,
-            objectFit: "cover",
-            mirrored: isSelf ? cameraMirrored : false,
-          })}
-        />
-        {!compact && showPeerLatency && <LatencyBadge stats={latencyStats} isSelf={isSelf} />}
-      </Flex>
-    );
-  };
-
   const avatarView = () => (
-    <Flex align="center" justify="center" direction={compact ? "row" : "column"} gap="1" px={compact ? "2" : "4"} py={compact ? "1" : "3"}>
+    <Flex
+      align="center"
+      justify="center"
+      direction={compact ? "row" : "column"}
+      gap="1"
+      px={compact ? "2" : "4"}
+      py={compact ? "1" : "3"}
+    >
       <Flex align="center" justify="center" position="relative">
         <Avatar
           size={compact ? "2" : "3"}
           fallback={client.nickname[0]}
-          src={avatarFileId ? getUploadsFileUrl(serverHost, avatarFileId) : undefined}
+          src={
+            avatarFileId
+              ? getUploadsFileUrl(serverHost, avatarFileId)
+              : undefined
+          }
           style={{
             outline: "2.5px solid",
             outlineColor: isSpeaking ? "var(--accent-9)" : "transparent",
             transition: "outline-color 0.1s ease",
           }}
         />
+
         {client.cameraEnabled && (
-          <Flex position="absolute" top="-4px" right="-4px" style={{ background: "var(--green-9)", borderRadius: "50%", padding: "2px" }}>
+          <Flex
+            position="absolute"
+            top="-4px"
+            right="-4px"
+            style={{
+              background: "var(--green-9)",
+              borderRadius: "50%",
+              padding: "2px",
+            }}
+          >
             <MdVideocam size={10} color="white" />
           </Flex>
         )}
+
         {client.screenShareEnabled && (
-          <Flex position="absolute" top="-4px" left="-4px" style={{ background: "var(--blue-9)", borderRadius: "50%", padding: "2px" }}>
+          <Flex
+            position="absolute"
+            top="-4px"
+            left="-4px"
+            style={{
+              background: "var(--blue-9)",
+              borderRadius: "50%",
+              padding: "2px",
+            }}
+          >
             <MdScreenShare size={10} color="white" />
           </Flex>
         )}
+
         {isUserConnecting && (
-          <Flex position="absolute" align="center" justify="center" style={{ top: 0, left: 0, right: 0, bottom: 0, background: "var(--color-panel-translucent)", borderRadius: "50%" }}>
+          <Flex
+            position="absolute"
+            align="center"
+            justify="center"
+            style={{
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: "var(--color-panel-translucent)",
+              borderRadius: "50%",
+            }}
+          >
             <SkeletonBase width="24px" height="24px" borderRadius="50%" />
           </Flex>
         )}
+
         {(client.isMuted || client.isDeafened || client.isAFK) && (
-          <Flex position="absolute" bottom="-4px" right="-4px" gap="1" style={{ background: "var(--gray-3)", borderRadius: "var(--radius-4)", padding: "2px 4px", border: "1px solid var(--gray-6)" }}>
-            {client.isDeafened ? <MdVolumeOff size={12} color="var(--red-9)" /> : client.isMuted ? <MdMicOff size={12} color="var(--red-9)" /> : null}
-            {client.isAFK && <Text size="1" weight="bold" color="orange">AFK</Text>}
+          <Flex
+            position="absolute"
+            bottom="-4px"
+            right="-4px"
+            gap="1"
+            style={{
+              background: "var(--gray-3)",
+              borderRadius: "var(--radius-4)",
+              padding: "2px 4px",
+              border: "1px solid var(--gray-6)",
+            }}
+          >
+            {client.isDeafened ? (
+              <MdVolumeOff size={12} color="var(--red-9)" />
+            ) : client.isMuted ? (
+              <MdMicOff size={12} color="var(--red-9)" />
+            ) : null}
+            {client.isAFK && (
+              <Text size="1" weight="bold" color="orange">
+                AFK
+              </Text>
+            )}
           </Flex>
         )}
       </Flex>
+
       <Flex direction="column" align="center" gap="1">
         <Text size={compact ? "1" : undefined}>{client.nickname}</Text>
-        {!compact && showPeerLatency && <LatencyBadge stats={latencyStats} isSelf={isSelf} />}
+        {!compact && showPeerLatency && (
+          <LatencyBadge stats={latencyStats} isSelf={isSelf} />
+        )}
       </Flex>
     </Flex>
   );
+
+  const cameraView = () => {
+    const camStream = isSelf
+      ? localCameraStream
+      : videoStreams?.[client.cameraStreamID!];
+
+    if (!camStream) return avatarView();
+
+    return (
+      <Flex direction="column" gap="1" align="center" style={{ width: "100%" }}>
+        <VideoCard
+          key={`${itemId}:${client.cameraStreamID || "local"}:${camStream.id}`}
+          stream={camStream}
+          nickname={client.nickname}
+          mirrored={isSelf ? cameraMirrored : false}
+          isSpeaking={isSpeaking}
+          statusIcons={statusBadges}
+          onClick={() =>
+            onFocus({
+              itemId,
+              stream: camStream,
+              title: isSelf ? "Your Camera" : `${client.nickname}'s Camera`,
+              objectFit: "cover",
+              mirrored: isSelf ? cameraMirrored : false,
+            })
+          }
+        />
+
+        {!compact && showPeerLatency && (
+          <LatencyBadge stats={latencyStats} isSelf={isSelf} />
+        )}
+      </Flex>
+    );
+  };
 
   return (
     <UserContextMenu
@@ -317,22 +528,58 @@ export function VoiceParticipantCard({
       isSelf={isSelf}
       canDisconnect={!!onDisconnectUser}
       isInVoice={true}
-      onDisconnectFromVoice={onDisconnectUser && serverUserId ? () => onDisconnectUser(serverUserId) : undefined}
+      onDisconnectFromVoice={
+        onDisconnectUser && serverUserId
+          ? () => onDisconnectUser(serverUserId)
+          : undefined
+      }
       role={currentUserRole}
       targetRole={memberInfo?.role}
       isServerMuted={memberInfo?.isServerMuted}
       isServerDeafened={memberInfo?.isServerDeafened}
-      onKick={adminActions?.onKickUser && serverUserId ? () => adminActions.onKickUser!(serverUserId) : undefined}
-      onBan={adminActions?.onBanUser && serverUserId ? () => adminActions.onBanUser!(serverUserId) : undefined}
-      onServerMute={adminActions?.onServerMuteUser && serverUserId ? (muted) => adminActions.onServerMuteUser!(serverUserId, muted) : undefined}
-      onServerDeafen={adminActions?.onServerDeafenUser && serverUserId ? (deafened) => adminActions.onServerDeafenUser!(serverUserId, deafened) : undefined}
-      onChangeRole={adminActions?.onChangeRole && serverUserId ? (role) => adminActions.onChangeRole!(serverUserId, role) : undefined}
+      onKick={
+        adminActions?.onKickUser && serverUserId
+          ? () => adminActions.onKickUser!(serverUserId)
+          : undefined
+      }
+      onBan={
+        adminActions?.onBanUser && serverUserId
+          ? () => adminActions.onBanUser!(serverUserId)
+          : undefined
+      }
+      onServerMute={
+        adminActions?.onServerMuteUser && serverUserId
+          ? (muted) => adminActions.onServerMuteUser!(serverUserId, muted)
+          : undefined
+      }
+      onServerDeafen={
+        adminActions?.onServerDeafenUser && serverUserId
+          ? (deafened) =>
+              adminActions.onServerDeafenUser!(serverUserId, deafened)
+          : undefined
+      }
+      onChangeRole={
+        adminActions?.onChangeRole && serverUserId
+          ? (role) => adminActions.onChangeRole!(serverUserId, role)
+          : undefined
+      }
       onPopoutVideo={(() => {
         const cam = isSelf
           ? localCameraStream
-          : (client.cameraEnabled && client.cameraStreamID && videoStreams?.[client.cameraStreamID]) || null;
+          : (client.cameraEnabled &&
+              client.cameraStreamID &&
+              videoStreams?.[client.cameraStreamID]) ||
+            null;
+
         if (!cam) return undefined;
-        return () => { onPopout(itemId, cam, isSelf ? "Your Camera" : `${client.nickname}'s Camera`); };
+
+        return () => {
+          onPopout(
+            itemId,
+            cam,
+            isSelf ? "Your Camera" : `${client.nickname}'s Camera`,
+          );
+        };
       })()}
     >
       {hasCameraStream ? cameraView() : avatarView()}
