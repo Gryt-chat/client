@@ -24,6 +24,10 @@ extraResources:
     to: embedded-server/server/
     filter:
       - "**/*"
+  - from: build/embedded-server/server/node_modules/
+    to: embedded-server/server/node_modules/
+    filter:
+      - "**/*"
   - from: build/embedded-server/sfu/${os}-${arch}/
     to: embedded-server/sfu/
     filter:
