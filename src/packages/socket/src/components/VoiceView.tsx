@@ -28,6 +28,7 @@ import { MdChat } from "react-icons/md";
 
 import {
   useCamera as useLocalCamera,
+  useMicrophone,
   useScreenShare as useLocalScreenShare,
   useVoiceLatency,
 } from "@/audio";
@@ -86,6 +87,78 @@ function computeOptimalColumns(
   }
 
   return bestCols;
+}
+
+/**
+ * Local speaking detector based on the final processed audio analyser.
+ *
+ * This must read microphoneBuffer.finalAnalyser, not the raw analyser,
+ * so the ring reflects what is actually sent after RNNoise, AGC,
+ * compressor, noise gate, mute, and final processing.
+ */
+function useFinalProcessedSpeaking(
+  finalAnalyser: AnalyserNode | undefined,
+  enabled: boolean,
+): boolean {
+  const [speaking, setSpeaking] = useState(false);
+
+  useEffect(() => {
+    if (!enabled || !finalAnalyser) {
+      setSpeaking(false);
+      return;
+    }
+
+    const data = new Uint8Array(finalAnalyser.frequencyBinCount);
+
+    let lastSpeaking = false;
+    let silenceSince = 0;
+
+    const SPEAKING_THRESHOLD = 8;
+    const RELEASE_MS = 180;
+
+    const tick = () => {
+      finalAnalyser.getByteFrequencyData(data);
+
+      let sum = 0;
+      for (let i = 0; i < data.length; i++) {
+        sum += data[i] * data[i];
+      }
+
+      const rms = Math.sqrt(sum / data.length);
+      const now = performance.now();
+      const aboveThreshold = rms >= SPEAKING_THRESHOLD;
+
+      if (aboveThreshold) {
+        silenceSince = 0;
+
+        if (!lastSpeaking) {
+          lastSpeaking = true;
+          setSpeaking(true);
+        }
+
+        return;
+      }
+
+      if (!lastSpeaking) return;
+
+      if (!silenceSince) silenceSince = now;
+
+      if (now - silenceSince >= RELEASE_MS) {
+        lastSpeaking = false;
+        setSpeaking(false);
+      }
+    };
+
+    tick();
+
+    const intervalId = window.setInterval(tick, 50);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [finalAnalyser, enabled]);
+
+  return speaking;
 }
 
 function SortableParticipant({
@@ -176,11 +249,20 @@ export const VoiceView = ({
 }) => {
   const { showPeerLatency, cameraMirrored } = useSettings();
   const { latency: selfLatency } = useVoiceLatency(showPeerLatency);
+
   const {
     screenShareActive: localScreenActive,
     screenVideoStream: localScreenStream,
   } = useLocalScreenShare();
+
   const { cameraStream: localCameraStream } = useLocalCamera();
+
+  const { microphoneBuffer } = useMicrophone(false);
+
+  const localProcessedSpeaking = useFinalProcessedSpeaking(
+    microphoneBuffer.finalAnalyser,
+    currentServerConnected === serverHost && !!currentConnectionId,
+  );
 
   const gridRef = useRef<HTMLDivElement>(null);
   const [gridHeight, setGridHeight] = useState(0);
@@ -234,8 +316,9 @@ export const VoiceView = ({
       const client = clientsForHost[id];
       if (!client) continue;
 
-      if (client.cameraStreamID)
+      if (client.cameraStreamID) {
         claimedVideoStreamIds.add(client.cameraStreamID);
+      }
 
       if (client.screenShareVideoStreamID) {
         claimedVideoStreamIds.add(client.screenShareVideoStreamID);
@@ -310,7 +393,9 @@ export const VoiceView = ({
         items.push(`screen:${id}`);
 
         console.log(
-          `[ScreenShare] gridItems: added screen:${id} (streamID=${client.screenShareVideoStreamID}, inVideoStreams=${!!videoStreams?.[client.screenShareVideoStreamID]})`,
+          `[ScreenShare] gridItems: added screen:${id} (streamID=${
+            client.screenShareVideoStreamID
+          }, inVideoStreams=${!!videoStreams?.[client.screenShareVideoStreamID]})`,
         );
       }
     }
@@ -772,7 +857,11 @@ export const VoiceView = ({
                                   : undefined
                               }
                               cameraMirrored={cameraMirrored}
-                              isSpeaking={clientsSpeaking[clientId]}
+                              isSpeaking={
+                                isSelf
+                                  ? localProcessedSpeaking
+                                  : !!clientsSpeaking[clientId]
+                              }
                               showPeerLatency={showPeerLatency}
                               latencyStats={getLatencyStats(clientId, isSelf)}
                               localCameraStream={localCameraStream}
