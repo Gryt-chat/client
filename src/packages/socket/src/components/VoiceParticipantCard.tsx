@@ -42,6 +42,7 @@ export function VideoCard({
   statusIcons,
   objectFit = "cover",
   onClick,
+  pendingLabel = "Connecting video…",
 }: {
   stream: MediaStream | null;
   nickname: string;
@@ -50,8 +51,9 @@ export function VideoCard({
   statusIcons?: ReactNode;
   objectFit?: "cover" | "contain";
   onClick?: () => void;
+  pendingLabel?: string;
 }) {
-  const ref = useRef<HTMLVideoElement>(null);
+  const ref = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
     const video = ref.current;
@@ -67,7 +69,9 @@ export function VideoCard({
 
       const tracks = stream.getVideoTracks();
       console.log(
-        `[ScreenShare] VideoCard: srcObject set, tracks=${tracks.length} live=${tracks.filter((t) => t.readyState === "live").length}`,
+        `[VideoCard] srcObject set, stream=${stream.id}, tracks=${tracks.length}, live=${
+          tracks.filter((t) => t.readyState === "live").length
+        }`,
       );
     }
 
@@ -76,14 +80,8 @@ export function VideoCard({
     video.muted = true;
 
     void video.play().catch((error) => {
-      console.warn("[ScreenShare] VideoCard: play() failed", error);
+      console.warn("[VideoCard] play() failed", error);
     });
-
-    return () => {
-      if (video.srcObject === stream) {
-        video.srcObject = null;
-      }
-    };
   }, [stream]);
 
   return (
@@ -129,7 +127,7 @@ export function VideoCard({
           }}
         >
           <Text size="1" color="gray">
-            Waiting for video…
+            {pendingLabel}
           </Text>
         </Flex>
       )}
@@ -179,8 +177,9 @@ function LatencyBadge({
     stats?.codec ?? "—",
   ];
 
-  if (isSelf && stats?.remoteAddress)
+  if (isSelf && stats?.remoteAddress) {
     tooltipParts.push(`ICE: ${stats.remoteAddress}`);
+  }
 
   return (
     <Tooltip content={tooltipParts.join(" · ")}>
@@ -213,6 +212,7 @@ export function VoiceParticipantCard({
   localCameraStream,
   localScreenStream,
   videoStreams,
+  fallbackCameraStreamID,
   onFocus,
   onPopout,
   onDisconnectUser,
@@ -234,6 +234,7 @@ export function VoiceParticipantCard({
   localCameraStream: MediaStream | null;
   localScreenStream: MediaStream | null;
   videoStreams?: Record<string, MediaStream>;
+  fallbackCameraStreamID?: string | null;
   onFocus: (info: FocusedStreamInfo) => void;
   onPopout: (
     itemId: string,
@@ -260,7 +261,9 @@ export function VoiceParticipantCard({
     if (!isSelf) {
       const vsKeys = videoStreams ? Object.keys(videoStreams) : [];
       console.log(
-        `[ScreenShare] VoiceParticipantCard screen tile: nick=${client.nickname} streamID=${client.screenShareVideoStreamID} found=${!!screenStream} videoStreamKeys=[${vsKeys.join(",")}]`,
+        `[ScreenShare] VoiceParticipantCard screen tile: nick=${client.nickname} streamID=${
+          client.screenShareVideoStreamID
+        } found=${!!screenStream} videoStreamKeys=[${vsKeys.join(",")}]`,
       );
     }
 
@@ -326,10 +329,13 @@ export function VoiceParticipantCard({
         }
       >
         <VideoCard
-          key={`${itemId}:${client.screenShareVideoStreamID || "local"}:${screenStream?.id || "pending"}`}
+          key={`${itemId}:${client.screenShareVideoStreamID || "local"}:${
+            screenStream?.id || "pending"
+          }`}
           stream={screenStream}
           nickname={screenTitle}
           objectFit="contain"
+          pendingLabel="Connecting screen…"
           statusIcons={<MdScreenShare size={10} color="var(--blue-9)" />}
           onClick={
             screenStream
@@ -349,13 +355,32 @@ export function VoiceParticipantCard({
     );
   }
 
-  const hasCameraStream = Boolean(
-    (isSelf && localCameraStream) ||
-    (!isSelf &&
-      client.cameraEnabled &&
-      client.cameraStreamID &&
-      videoStreams?.[client.cameraStreamID]),
-  );
+  const cameraStreamID = !isSelf
+    ? client.cameraStreamID || fallbackCameraStreamID || undefined
+    : undefined;
+
+  const cameraStream = isSelf
+    ? localCameraStream
+    : cameraStreamID && videoStreams?.[cameraStreamID]
+      ? videoStreams[cameraStreamID]
+      : null;
+
+  const shouldShowCameraTile = isSelf
+    ? Boolean(localCameraStream)
+    : Boolean(
+        client.cameraEnabled || client.cameraStreamID || fallbackCameraStreamID,
+      );
+
+  if (!isSelf && shouldShowCameraTile && !cameraStream) {
+    const vsKeys = videoStreams ? Object.keys(videoStreams) : [];
+    console.warn("[VoiceParticipantCard] Camera pending", {
+      nickname: client.nickname,
+      cameraEnabled: client.cameraEnabled,
+      cameraStreamID: client.cameraStreamID,
+      fallbackCameraStreamID,
+      videoStreamKeys: vsKeys,
+    });
+  }
 
   const statusBadges = (
     <>
@@ -370,6 +395,10 @@ export function VoiceParticipantCard({
         <Text size="1" weight="bold" style={{ color: "#fff" }}>
           AFK
         </Text>
+      )}
+
+      {(client.cameraEnabled || fallbackCameraStreamID) && (
+        <MdVideocam size={10} color="var(--green-9)" />
       )}
 
       {client.screenShareEnabled && (
@@ -403,7 +432,7 @@ export function VoiceParticipantCard({
           }}
         />
 
-        {client.cameraEnabled && (
+        {(client.cameraEnabled || fallbackCameraStreamID) && (
           <Flex
             position="absolute"
             top="-4px"
@@ -469,6 +498,7 @@ export function VoiceParticipantCard({
             ) : client.isMuted ? (
               <MdMicOff size={12} color="var(--red-9)" />
             ) : null}
+
             {client.isAFK && (
               <Text size="1" weight="bold" color="orange">
                 AFK
@@ -488,29 +518,31 @@ export function VoiceParticipantCard({
   );
 
   const cameraView = () => {
-    const camStream = isSelf
-      ? localCameraStream
-      : videoStreams?.[client.cameraStreamID!];
-
-    if (!camStream) return avatarView();
+    if (!shouldShowCameraTile) return avatarView();
 
     return (
       <Flex direction="column" gap="1" align="center" style={{ width: "100%" }}>
         <VideoCard
-          key={`${itemId}:${client.cameraStreamID || "local"}:${camStream.id}`}
-          stream={camStream}
+          key={`${itemId}:${cameraStreamID || "local"}:${cameraStream?.id || "pending"}`}
+          stream={cameraStream}
           nickname={client.nickname}
           mirrored={isSelf ? cameraMirrored : false}
           isSpeaking={isSpeaking}
           statusIcons={statusBadges}
-          onClick={() =>
-            onFocus({
-              itemId,
-              stream: camStream,
-              title: isSelf ? "Your Camera" : `${client.nickname}'s Camera`,
-              objectFit: "cover",
-              mirrored: isSelf ? cameraMirrored : false,
-            })
+          pendingLabel="Connecting video…"
+          onClick={
+            cameraStream
+              ? () =>
+                  onFocus({
+                    itemId,
+                    stream: cameraStream,
+                    title: isSelf
+                      ? "Your Camera"
+                      : `${client.nickname}'s Camera`,
+                    objectFit: "cover",
+                    mirrored: isSelf ? cameraMirrored : false,
+                  })
+              : undefined
           }
         />
 
@@ -563,26 +595,18 @@ export function VoiceParticipantCard({
           ? (role) => adminActions.onChangeRole!(serverUserId, role)
           : undefined
       }
-      onPopoutVideo={(() => {
-        const cam = isSelf
-          ? localCameraStream
-          : (client.cameraEnabled &&
-              client.cameraStreamID &&
-              videoStreams?.[client.cameraStreamID]) ||
-            null;
-
-        if (!cam) return undefined;
-
-        return () => {
-          onPopout(
-            itemId,
-            cam,
-            isSelf ? "Your Camera" : `${client.nickname}'s Camera`,
-          );
-        };
-      })()}
+      onPopoutVideo={
+        cameraStream
+          ? () =>
+              onPopout(
+                itemId,
+                cameraStream,
+                isSelf ? "Your Camera" : `${client.nickname}'s Camera`,
+              )
+          : undefined
+      }
     >
-      {hasCameraStream ? cameraView() : avatarView()}
+      {cameraView()}
     </UserContextMenu>
   );
 }

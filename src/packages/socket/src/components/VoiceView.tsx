@@ -1,13 +1,36 @@
-import { closestCenter, DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
-import { arrayMove, rectSortingStrategy, SortableContext, useSortable } from "@dnd-kit/sortable";
+import {
+  closestCenter,
+  DndContext,
+  type DragEndEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  rectSortingStrategy,
+  SortableContext,
+  useSortable,
+} from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Flex, IconButton, Tooltip } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
 import type { CSSProperties, ReactNode } from "react";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { MdChat } from "react-icons/md";
 
-import { useCamera as useLocalCamera, useScreenShare as useLocalScreenShare, useVoiceLatency } from "@/audio";
+import {
+  useCamera as useLocalCamera,
+  useScreenShare as useLocalScreenShare,
+  useVoiceLatency,
+} from "@/audio";
 import { useSettings } from "@/settings";
 import { Controls } from "@/webRTC";
 import type { StreamSources } from "@/webRTC/src/types/SFU";
@@ -65,8 +88,21 @@ function computeOptimalColumns(
   return bestCols;
 }
 
-function SortableParticipant({ id, children }: { id: string; children: ReactNode }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+function SortableParticipant({
+  id,
+  children,
+}: {
+  id: string;
+  children: ReactNode;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
 
   const style: CSSProperties = {
     transform: CSS.Translate.toString(transform),
@@ -83,6 +119,12 @@ function SortableParticipant({ id, children }: { id: string; children: ReactNode
       {children}
     </div>
   );
+}
+
+function hasLiveVideoTrack(stream: MediaStream | undefined | null): boolean {
+  if (!stream) return false;
+
+  return stream.getVideoTracks().some((track) => track.readyState === "live");
 }
 
 export const VoiceView = ({
@@ -134,38 +176,124 @@ export const VoiceView = ({
 }) => {
   const { showPeerLatency, cameraMirrored } = useSettings();
   const { latency: selfLatency } = useVoiceLatency(showPeerLatency);
-  const { screenShareActive: localScreenActive, screenVideoStream: localScreenStream } = useLocalScreenShare();
+  const {
+    screenShareActive: localScreenActive,
+    screenVideoStream: localScreenStream,
+  } = useLocalScreenShare();
   const { cameraStream: localCameraStream } = useLocalCamera();
+
   const gridRef = useRef<HTMLDivElement>(null);
   const [gridHeight, setGridHeight] = useState(0);
   const [gridWidth, setGridWidth] = useState(0);
-  const [focusedStream, setFocusedStream] = useState<FocusedStreamInfo | null>(null);
+  const [focusedStream, setFocusedStream] = useState<FocusedStreamInfo | null>(
+    null,
+  );
 
   const dndSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
 
   const memberByServerUserId = new Map(
-    (members || []).map((m) => [m.serverUserId, m])
+    (members || []).map((m) => [m.serverUserId, m]),
   );
+
   const avatarByServerUserId = new Map<string, string | null | undefined>(
-    (members || []).map((m) => [m.serverUserId, m.avatarFileId])
+    (members || []).map((m) => [m.serverUserId, m.avatarFileId]),
   );
 
   const visibleClients = useMemo(() => {
     if (currentServerConnected !== serverHost) return [];
+
     return Object.keys(clientsForHost).filter((id) => {
       const client = clientsForHost[id];
       const isUserConnecting = id === currentConnectionId && isConnecting;
       const isInThisChannel = currentChannelId
         ? client.voiceChannelId === currentChannelId
         : client.hasJoinedChannel;
+
       return isInThisChannel || isUserConnecting;
     });
-  }, [clientsForHost, currentServerConnected, serverHost, currentConnectionId, isConnecting, currentChannelId]);
+  }, [
+    clientsForHost,
+    currentServerConnected,
+    serverHost,
+    currentConnectionId,
+    isConnecting,
+    currentChannelId,
+  ]);
+
+  const fallbackCameraStreamIdByClientId = useMemo(() => {
+    const result: Record<string, string> = {};
+
+    if (!videoStreams || currentServerConnected !== serverHost) return result;
+
+    const allVideoStreamIds = Object.keys(videoStreams).sort();
+    const claimedVideoStreamIds = new Set<string>();
+
+    for (const id of visibleClients) {
+      const client = clientsForHost[id];
+      if (!client) continue;
+
+      if (client.cameraStreamID)
+        claimedVideoStreamIds.add(client.cameraStreamID);
+
+      if (client.screenShareVideoStreamID) {
+        claimedVideoStreamIds.add(client.screenShareVideoStreamID);
+      }
+    }
+
+    const unclaimedLiveVideoStreamIds = allVideoStreamIds.filter((streamId) => {
+      if (claimedVideoStreamIds.has(streamId)) return false;
+
+      const stream = videoStreams[streamId];
+      return hasLiveVideoTrack(stream);
+    });
+
+    const remoteCameraClientsMissingStream = visibleClients
+      .filter((id) => id !== currentConnectionId)
+      .filter((id) => {
+        const client = clientsForHost[id];
+        if (!client) return false;
+
+        const advertisedStreamWorks =
+          client.cameraStreamID &&
+          hasLiveVideoTrack(videoStreams[client.cameraStreamID]);
+
+        return Boolean(client.cameraEnabled && !advertisedStreamWorks);
+      })
+      .sort();
+
+    for (
+      let i = 0;
+      i < remoteCameraClientsMissingStream.length &&
+      i < unclaimedLiveVideoStreamIds.length;
+      i++
+    ) {
+      result[remoteCameraClientsMissingStream[i]] =
+        unclaimedLiveVideoStreamIds[i];
+    }
+
+    if (Object.keys(result).length > 0) {
+      console.warn("[VoiceView] Assigned fallback camera streams", {
+        fallbackCameraStreamIdByClientId: result,
+        videoStreamKeys: allVideoStreamIds,
+        claimedVideoStreamIds: [...claimedVideoStreamIds],
+      });
+    }
+
+    return result;
+  }, [
+    videoStreams,
+    visibleClients,
+    clientsForHost,
+    currentConnectionId,
+    currentServerConnected,
+    serverHost,
+  ]);
 
   const gridItems = useMemo(() => {
     const items: string[] = [];
+
     for (const id of visibleClients) {
       const client = clientsForHost[id];
       const isSelf = id === currentConnectionId;
@@ -174,15 +302,34 @@ export const VoiceView = ({
 
       if (isSelf && localScreenActive && localScreenStream) {
         items.push(`screen:${id}`);
-      } else if (!isSelf && client.screenShareEnabled && client.screenShareVideoStreamID) {
+      } else if (
+        !isSelf &&
+        client.screenShareEnabled &&
+        client.screenShareVideoStreamID
+      ) {
         items.push(`screen:${id}`);
-        console.log(`[ScreenShare] gridItems: added screen:${id} (streamID=${client.screenShareVideoStreamID}, inVideoStreams=${!!videoStreams?.[client.screenShareVideoStreamID]})`);
+
+        console.log(
+          `[ScreenShare] gridItems: added screen:${id} (streamID=${client.screenShareVideoStreamID}, inVideoStreams=${!!videoStreams?.[client.screenShareVideoStreamID]})`,
+        );
       }
     }
-    return items;
-  }, [visibleClients, clientsForHost, currentConnectionId, localScreenActive, localScreenStream, videoStreams]);
 
-  const { poppedOutItems, popout: handlePopout, updatePopoutStream } = usePopoutStreams(gridItems, streamSources);
+    return items;
+  }, [
+    visibleClients,
+    clientsForHost,
+    currentConnectionId,
+    localScreenActive,
+    localScreenStream,
+    videoStreams,
+  ]);
+
+  const {
+    poppedOutItems,
+    popout: handlePopout,
+    updatePopoutStream,
+  } = usePopoutStreams(gridItems, streamSources);
 
   const [customOrder, setCustomOrder] = useState<string[]>([]);
 
@@ -190,31 +337,41 @@ export const VoiceView = ({
     const visibleSet = new Set(gridItems);
     const ordered = customOrder.filter((id) => visibleSet.has(id));
     const orderedSet = new Set(ordered);
+
     for (const id of gridItems) {
       if (!orderedSet.has(id)) ordered.push(id);
     }
+
     return ordered;
   }, [gridItems, customOrder]);
 
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
-    if (over && active.id !== over.id) {
-      const oldIndex = orderedItems.indexOf(String(active.id));
-      const newIndex = orderedItems.indexOf(String(over.id));
-      if (oldIndex !== -1 && newIndex !== -1) {
-        setCustomOrder(arrayMove(orderedItems, oldIndex, newIndex));
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+
+      if (over && active.id !== over.id) {
+        const oldIndex = orderedItems.indexOf(String(active.id));
+        const newIndex = orderedItems.indexOf(String(over.id));
+
+        if (oldIndex !== -1 && newIndex !== -1) {
+          setCustomOrder(arrayMove(orderedItems, oldIndex, newIndex));
+        }
       }
-    }
-  }, [orderedItems]);
+    },
+    [orderedItems],
+  );
 
   useEffect(() => {
     const el = gridRef.current;
     if (!el) return;
+
     const ro = new ResizeObserver(([entry]) => {
       setGridHeight(entry.contentRect.height);
       setGridWidth(entry.contentRect.width);
     });
+
     ro.observe(el);
+
     return () => ro.disconnect();
   }, []);
 
@@ -236,57 +393,81 @@ export const VoiceView = ({
 
   const displayItems = useMemo(() => {
     let items = orderedItems;
+
     if (focusedStream) {
       items = items.filter((id) => id !== focusedStream.itemId);
     }
+
     if (poppedOutItems.size > 0) {
       items = items.filter((id) => !poppedOutItems.has(id));
     }
+
     return items;
   }, [orderedItems, focusedStream, poppedOutItems]);
 
   const columns = useMemo(
-    () => computeOptimalColumns(gridWidth, gridHeight - CONTROLS_HEIGHT, displayItems.length),
+    () =>
+      computeOptimalColumns(
+        gridWidth,
+        gridHeight - CONTROLS_HEIGHT,
+        displayItems.length,
+      ),
     [gridWidth, gridHeight, displayItems.length],
   );
 
   useEffect(() => {
     if (!focusedStream) return;
+
     const tracks = focusedStream.stream.getTracks();
+
     const onEnded = () => {
-      if (focusedStream.stream.getTracks().every((t) => t.readyState === "ended")) {
+      if (
+        focusedStream.stream.getTracks().every((t) => t.readyState === "ended")
+      ) {
         setFocusedStream(null);
       }
     };
+
     for (const t of tracks) t.addEventListener("ended", onEnded);
-    return () => { for (const t of tracks) t.removeEventListener("ended", onEnded); };
+
+    return () => {
+      for (const t of tracks) t.removeEventListener("ended", onEnded);
+    };
   }, [focusedStream]);
 
   useEffect(() => {
     if (!focusedStream) return;
 
     const isScreenTile = focusedStream.itemId.startsWith("screen:");
-    const clientId = isScreenTile ? focusedStream.itemId.slice(7) : focusedStream.itemId;
+    const clientId = isScreenTile
+      ? focusedStream.itemId.slice(7)
+      : focusedStream.itemId;
+
     if (clientId === currentConnectionId) return;
 
     const client = clientsForHost[clientId];
     if (!client) return;
 
+    const fallbackCameraStreamID = fallbackCameraStreamIdByClientId[clientId];
+
     const streamKey = isScreenTile
       ? client.screenShareVideoStreamID
-      : client.cameraStreamID;
+      : client.cameraStreamID || fallbackCameraStreamID;
+
     const currentStream = streamKey ? videoStreams?.[streamKey] : undefined;
 
     const latestAudioStreamId = isScreenTile
-      ? (client.screenShareAudioStreamID || undefined)
+      ? client.screenShareAudioStreamID || undefined
       : focusedStream.audioStreamId;
 
-    const streamChanged = currentStream && currentStream !== focusedStream.stream;
+    const streamChanged =
+      currentStream && currentStream !== focusedStream.stream;
     const audioIdChanged = latestAudioStreamId !== focusedStream.audioStreamId;
 
     if (streamChanged || audioIdChanged) {
       setFocusedStream((prev) => {
         if (!prev) return null;
+
         return {
           ...prev,
           ...(streamChanged ? { stream: currentStream! } : {}),
@@ -294,26 +475,55 @@ export const VoiceView = ({
         };
       });
     }
-  }, [focusedStream, clientsForHost, currentConnectionId, videoStreams]);
+  }, [
+    focusedStream,
+    clientsForHost,
+    currentConnectionId,
+    videoStreams,
+    fallbackCameraStreamIdByClientId,
+  ]);
 
   useEffect(() => {
     if (poppedOutItems.size === 0) return;
+
     for (const itemId of poppedOutItems) {
       const isScreenTile = itemId.startsWith("screen:");
       const clientId = isScreenTile ? itemId.slice(7) : itemId;
       const isSelf = clientId === currentConnectionId;
       const client = clientsForHost[clientId];
+
       if (!client) continue;
 
+      const fallbackCameraStreamID = fallbackCameraStreamIdByClientId[clientId];
+
       const currentStream = isScreenTile
-        ? (isSelf ? localScreenStream : (client.screenShareVideoStreamID ? videoStreams?.[client.screenShareVideoStreamID] : null))
-        : (isSelf ? localCameraStream : (client.cameraStreamID ? videoStreams?.[client.cameraStreamID] : null));
+        ? isSelf
+          ? localScreenStream
+          : client.screenShareVideoStreamID
+            ? videoStreams?.[client.screenShareVideoStreamID]
+            : null
+        : isSelf
+          ? localCameraStream
+          : client.cameraStreamID && videoStreams?.[client.cameraStreamID]
+            ? videoStreams[client.cameraStreamID]
+            : fallbackCameraStreamID && videoStreams?.[fallbackCameraStreamID]
+              ? videoStreams[fallbackCameraStreamID]
+              : null;
 
       if (currentStream) {
         updatePopoutStream(itemId, currentStream);
       }
     }
-  }, [poppedOutItems, videoStreams, clientsForHost, currentConnectionId, localCameraStream, localScreenStream, updatePopoutStream]);
+  }, [
+    poppedOutItems,
+    videoStreams,
+    clientsForHost,
+    currentConnectionId,
+    localCameraStream,
+    localScreenStream,
+    fallbackCameraStreamIdByClientId,
+    updatePopoutStream,
+  ]);
 
   const handleFocus = useCallback((info: FocusedStreamInfo) => {
     setFocusedStream((prev) => {
@@ -328,12 +538,20 @@ export const VoiceView = ({
 
   const handleFocusedPopout = useCallback(() => {
     if (!focusedStream) return;
-    handlePopout(focusedStream.itemId, focusedStream.stream, focusedStream.title, focusedStream.audioStreamId);
+
+    handlePopout(
+      focusedStream.itemId,
+      focusedStream.stream,
+      focusedStream.title,
+      focusedStream.audioStreamId,
+    );
+
     setFocusedStream(null);
   }, [focusedStream, handlePopout]);
 
   const getLatencyStats = (clientId: string, isSelf: boolean) => {
     if (!showPeerLatency) return undefined;
+
     if (isSelf) {
       return {
         estimatedOneWayMs: selfLatency.estimatedOneWayMs,
@@ -343,8 +561,10 @@ export const VoiceView = ({
         remoteAddress: selfLatency.remoteAddress,
       };
     }
+
     const stats = peerLatency?.[clientId];
     if (!stats) return undefined;
+
     return {
       estimatedOneWayMs: stats.estimatedOneWayMs,
       networkRttMs: stats.networkRttMs,
@@ -356,7 +576,11 @@ export const VoiceView = ({
   return (
     <motion.div
       data-gryt="voice-view"
-      transition={isDragging ? { duration: 0 } : { type: "spring", stiffness: 300, damping: 30 }}
+      transition={
+        isDragging
+          ? { duration: 0 }
+          : { type: "spring", stiffness: 300, damping: 30 }
+      }
       animate={{
         width: showVoiceView ? voiceWidth : 0,
         paddingRight: !showVoiceView || voiceWidth === "0px" ? 0 : 8,
@@ -365,11 +589,16 @@ export const VoiceView = ({
         overflow: "hidden",
         ...(isFocused && showVoiceView
           ? { flexGrow: 1, minWidth: 0 }
-          : { maxWidth: maxWidth && maxWidth > 0 ? `${maxWidth}px` : undefined }),
+          : {
+              maxWidth: maxWidth && maxWidth > 0 ? `${maxWidth}px` : undefined,
+            }),
       }}
     >
       <Flex
-        style={{ background: "var(--gray-3)", borderRadius: "var(--radius-5)" }}
+        style={{
+          background: "var(--gray-3)",
+          borderRadius: "var(--radius-5)",
+        }}
         height="100%"
         width="100%"
         direction="column"
@@ -377,121 +606,197 @@ export const VoiceView = ({
       >
         <div
           ref={gridRef}
-          style={{ flexGrow: 1, position: "relative", overflow: "hidden", display: "flex", flexDirection: "column" }}
+          style={{
+            flexGrow: 1,
+            position: "relative",
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+          }}
         >
-          {isFocused && (() => {
-            const isScreenTile = focusedStream.itemId.startsWith("screen:");
-            const focusClientId = isScreenTile ? focusedStream.itemId.slice(7) : focusedStream.itemId;
-            const focusClient = clientsForHost[focusClientId];
-            const focusIsSelf = focusClientId === currentConnectionId;
-            const focusServerUserId = focusClient?.serverUserId;
-            const focusMember = focusServerUserId ? memberByServerUserId.get(focusServerUserId) : undefined;
+          {isFocused &&
+            (() => {
+              const isScreenTile = focusedStream.itemId.startsWith("screen:");
+              const focusClientId = isScreenTile
+                ? focusedStream.itemId.slice(7)
+                : focusedStream.itemId;
+              const focusClient = clientsForHost[focusClientId];
+              const focusIsSelf = focusClientId === currentConnectionId;
+              const focusServerUserId = focusClient?.serverUserId;
+              const focusMember = focusServerUserId
+                ? memberByServerUserId.get(focusServerUserId)
+                : undefined;
 
-            const focusedView = (
-              <FocusedVideoView
-                stream={focusedStream.stream}
-                title={focusedStream.title}
-                audioStreamId={focusedStream.audioStreamId}
-                streamSources={streamSources}
-                objectFit={focusedStream.objectFit}
-                mirrored={focusedStream.mirrored}
-                onClose={handleCloseFocus}
-                onPopout={handleFocusedPopout}
-              />
-            );
+              const focusedView = (
+                <FocusedVideoView
+                  stream={focusedStream.stream}
+                  title={focusedStream.title}
+                  audioStreamId={focusedStream.audioStreamId}
+                  streamSources={streamSources}
+                  objectFit={focusedStream.objectFit}
+                  mirrored={focusedStream.mirrored}
+                  onClose={handleCloseFocus}
+                  onPopout={handleFocusedPopout}
+                />
+              );
 
-            if (!focusClient) return focusedView;
+              if (!focusClient) return focusedView;
 
-            return (
-              <UserContextMenu
-                serverUserId={focusServerUserId}
-                nickname={focusClient.nickname}
-                isSelf={focusIsSelf}
-                canDisconnect={!!onDisconnectUser}
-                isInVoice={true}
-                onDisconnectFromVoice={onDisconnectUser && focusServerUserId ? () => onDisconnectUser(focusServerUserId) : undefined}
-                role={currentUserRole}
-                targetRole={focusMember?.role}
-                isServerMuted={focusMember?.isServerMuted}
-                isServerDeafened={focusMember?.isServerDeafened}
-                onKick={adminActions?.onKickUser && focusServerUserId ? () => adminActions.onKickUser!(focusServerUserId) : undefined}
-                onBan={adminActions?.onBanUser && focusServerUserId ? () => adminActions.onBanUser!(focusServerUserId) : undefined}
-                onServerMute={adminActions?.onServerMuteUser && focusServerUserId ? (muted) => adminActions.onServerMuteUser!(focusServerUserId, muted) : undefined}
-                onServerDeafen={adminActions?.onServerDeafenUser && focusServerUserId ? (deafened) => adminActions.onServerDeafenUser!(focusServerUserId, deafened) : undefined}
-                onChangeRole={adminActions?.onChangeRole && focusServerUserId ? (role) => adminActions.onChangeRole!(focusServerUserId, role) : undefined}
-                onPopoutVideo={handleFocusedPopout}
-              >
-                {focusedView}
-              </UserContextMenu>
-            );
-          })()}
+              return (
+                <UserContextMenu
+                  serverUserId={focusServerUserId}
+                  nickname={focusClient.nickname}
+                  isSelf={focusIsSelf}
+                  canDisconnect={!!onDisconnectUser}
+                  isInVoice={true}
+                  onDisconnectFromVoice={
+                    onDisconnectUser && focusServerUserId
+                      ? () => onDisconnectUser(focusServerUserId)
+                      : undefined
+                  }
+                  role={currentUserRole}
+                  targetRole={focusMember?.role}
+                  isServerMuted={focusMember?.isServerMuted}
+                  isServerDeafened={focusMember?.isServerDeafened}
+                  onKick={
+                    adminActions?.onKickUser && focusServerUserId
+                      ? () => adminActions.onKickUser!(focusServerUserId)
+                      : undefined
+                  }
+                  onBan={
+                    adminActions?.onBanUser && focusServerUserId
+                      ? () => adminActions.onBanUser!(focusServerUserId)
+                      : undefined
+                  }
+                  onServerMute={
+                    adminActions?.onServerMuteUser && focusServerUserId
+                      ? (muted) =>
+                          adminActions.onServerMuteUser!(
+                            focusServerUserId,
+                            muted,
+                          )
+                      : undefined
+                  }
+                  onServerDeafen={
+                    adminActions?.onServerDeafenUser && focusServerUserId
+                      ? (deafened) =>
+                          adminActions.onServerDeafenUser!(
+                            focusServerUserId,
+                            deafened,
+                          )
+                      : undefined
+                  }
+                  onChangeRole={
+                    adminActions?.onChangeRole && focusServerUserId
+                      ? (role) =>
+                          adminActions.onChangeRole!(focusServerUserId, role)
+                      : undefined
+                  }
+                  onPopoutVideo={handleFocusedPopout}
+                >
+                  {focusedView}
+                </UserContextMenu>
+              );
+            })()}
 
-          <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={orderedItems} strategy={rectSortingStrategy}>
+          <DndContext
+            sensors={dndSensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={orderedItems}
+              strategy={rectSortingStrategy}
+            >
               <div
-                style={isFocused ? {
-                  display: "flex",
-                  gap: "var(--space-2)",
-                  overflowX: "auto",
-                  overflowY: "hidden",
-                  padding: "var(--space-2) 3px 3px",
-                  flexShrink: 0,
-                } : {
-                  display: "grid",
-                  gridTemplateColumns: `repeat(${columns}, 1fr)`,
-                  gap: "var(--space-2)",
-                  justifyItems: "center",
-                  alignContent: "center",
-                  overflowY: "auto",
-                  padding: "3px 3px 60px",
-                  height: "100%",
-                }}
+                style={
+                  isFocused
+                    ? {
+                        display: "flex",
+                        gap: "var(--space-2)",
+                        overflowX: "auto",
+                        overflowY: "hidden",
+                        padding: "var(--space-2) 3px 3px",
+                        flexShrink: 0,
+                      }
+                    : {
+                        display: "grid",
+                        gridTemplateColumns: `repeat(${columns}, 1fr)`,
+                        gap: "var(--space-2)",
+                        justifyItems: "center",
+                        alignContent: "center",
+                        overflowY: "auto",
+                        padding: "3px 3px 60px",
+                        height: "100%",
+                      }
+                }
               >
                 <AnimatePresence>
-                  {currentServerConnected === serverHost && displayItems.map((itemId) => {
-                    const isScreenTile = itemId.startsWith("screen:");
-                    const clientId = isScreenTile ? itemId.slice(7) : itemId;
-                    const client = clientsForHost[clientId];
-                    if (!client) return null;
-                    const isSelf = clientId === currentConnectionId;
-                    const serverUserId = client?.serverUserId;
+                  {currentServerConnected === serverHost &&
+                    displayItems.map((itemId) => {
+                      const isScreenTile = itemId.startsWith("screen:");
+                      const clientId = isScreenTile ? itemId.slice(7) : itemId;
+                      const client = clientsForHost[clientId];
 
-                    return (
-                      <motion.div
-                        key={itemId}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        style={isFocused ? { flexShrink: 0, width: 140 } : { width: "100%" }}
-                      >
-                        <SortableParticipant id={itemId}>
-                          <VoiceParticipantCard
-                            itemId={itemId}
-                            compact={isFocused}
-                            client={client}
-                            isSelf={isSelf}
-                            isUserConnecting={clientId === currentConnectionId && isConnecting}
-                            serverHost={serverHost}
-                            avatarFileId={serverUserId ? avatarByServerUserId.get(serverUserId) : undefined}
-                            cameraMirrored={cameraMirrored}
-                            isSpeaking={clientsSpeaking[clientId]}
-                            showPeerLatency={showPeerLatency}
-                            latencyStats={getLatencyStats(clientId, isSelf)}
-                            localCameraStream={localCameraStream}
-                            localScreenStream={localScreenStream}
-                            videoStreams={videoStreams}
-                            onFocus={handleFocus}
-                            onPopout={handlePopout}
-                            onDisconnectUser={onDisconnectUser}
-                            currentUserRole={currentUserRole}
-                            memberInfo={serverUserId ? memberByServerUserId.get(serverUserId) : undefined}
-                            adminActions={adminActions}
-                          />
-                        </SortableParticipant>
-                      </motion.div>
-                    );
-                  })}
+                      if (!client) return null;
+
+                      const isSelf = clientId === currentConnectionId;
+                      const serverUserId = client?.serverUserId;
+
+                      return (
+                        <motion.div
+                          key={itemId}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                          style={
+                            isFocused
+                              ? { flexShrink: 0, width: 140 }
+                              : { width: "100%" }
+                          }
+                        >
+                          <SortableParticipant id={itemId}>
+                            <VoiceParticipantCard
+                              itemId={itemId}
+                              compact={isFocused}
+                              client={client}
+                              isSelf={isSelf}
+                              isUserConnecting={
+                                clientId === currentConnectionId && isConnecting
+                              }
+                              serverHost={serverHost}
+                              avatarFileId={
+                                serverUserId
+                                  ? avatarByServerUserId.get(serverUserId)
+                                  : undefined
+                              }
+                              cameraMirrored={cameraMirrored}
+                              isSpeaking={clientsSpeaking[clientId]}
+                              showPeerLatency={showPeerLatency}
+                              latencyStats={getLatencyStats(clientId, isSelf)}
+                              localCameraStream={localCameraStream}
+                              localScreenStream={localScreenStream}
+                              videoStreams={videoStreams}
+                              fallbackCameraStreamID={
+                                fallbackCameraStreamIdByClientId[clientId] ||
+                                null
+                              }
+                              onFocus={handleFocus}
+                              onPopout={handlePopout}
+                              onDisconnectUser={onDisconnectUser}
+                              currentUserRole={currentUserRole}
+                              memberInfo={
+                                serverUserId
+                                  ? memberByServerUserId.get(serverUserId)
+                                  : undefined
+                              }
+                              adminActions={adminActions}
+                            />
+                          </SortableParticipant>
+                        </motion.div>
+                      );
+                    })}
                 </AnimatePresence>
               </div>
             </SortableContext>
@@ -503,7 +808,9 @@ export const VoiceView = ({
                 <motion.div
                   style={{
                     position: "absolute",
-                    bottom: 0, left: 0, right: 0,
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
                     display: "flex",
                     justifyContent: "center",
                     padding: "12px",
@@ -523,11 +830,21 @@ export const VoiceView = ({
         </div>
 
         {isFocused && currentServerConnected && (
-          <Flex justify="center" align="center" py="2" flexShrink="0" style={{ position: "relative" }}>
+          <Flex
+            justify="center"
+            align="center"
+            py="2"
+            flexShrink="0"
+            style={{ position: "relative" }}
+          >
             <Controls onDisconnect={onDisconnect} />
+
             {onToggleChat && (
               <Flex style={{ position: "absolute", right: 0 }}>
-                <Tooltip content={chatHidden ? "Show chat" : "Hide chat"} delayDuration={300}>
+                <Tooltip
+                  content={chatHidden ? "Show chat" : "Hide chat"}
+                  delayDuration={300}
+                >
                   <IconButton
                     variant="soft"
                     color="gray"
