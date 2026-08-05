@@ -12,6 +12,7 @@ import {
   Spinner,
   Text,
   TextField,
+  Tooltip,
 } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -434,43 +435,55 @@ export function AddNewServer({
                       const isMember = existingByHost || existingById;
 
                       return (
-                        <Card key={`${s.host}:${s.port}`} size="1">
-                          <Flex justify="between" align="center">
-                            <Flex direction="column" gap="1">
-                              <Text size="2" weight="bold">
+                        <Tooltip
+                          key={`${s.host}:${s.port}`}
+                          content={
+                            <Flex direction="column">
+                              <Text size="1">{addr}</Text>
+                              {s.version && (
+                                <Text size="1" color="gray">
+                                  v{s.version}
+                                </Text>
+                              )}
+                            </Flex>
+                          }
+                        >
+                          <Card size="1">
+                            <Flex align="center" gap="3">
+                              {/*
+                                Streamed from the server's own /icon endpoint.
+                                Most servers have never uploaded one and return
+                                404, so the fallback initial is the common case
+                                rather than the exception.
+                              */}
+                              <Avatar
+                                size="2"
+                                radius="medium"
+                                src={`${getServerHttpBase(normalizedAddr)}/icon`}
+                                fallback={s.name.trim().charAt(0).toUpperCase() || "?"}
+                              />
+
+                              <Text size="2" weight="medium" truncate>
                                 {s.name}
                               </Text>
-                              <Flex gap="2" align="center">
-                                <Text size="1" color="gray">
-                                  {addr}
-                                </Text>
-                                {s.version && (
-                                  <Badge
-                                    size="1"
-                                    variant="outline"
-                                    color="gray"
-                                  >
-                                    v{s.version}
-                                  </Badge>
-                                )}
-                              </Flex>
-                            </Flex>
 
-                            <Button
-                              size="1"
-                              variant="soft"
-                              disabled={isMember || isSearching || isJoining}
-                              onClick={() => {
-                                setServerHost(normalizedAddr);
-                                queueMicrotask(() =>
-                                  getServerInfo(normalizedAddr)
-                                );
-                              }}
-                            >
-                              {isMember ? "Joined" : "Connect"}
-                            </Button>
-                          </Flex>
-                        </Card>
+                              <Button
+                                size="1"
+                                variant="soft"
+                                ml="auto"
+                                disabled={isMember || isSearching || isJoining}
+                                onClick={() => {
+                                  setServerHost(normalizedAddr);
+                                  queueMicrotask(() =>
+                                    getServerInfo(normalizedAddr)
+                                  );
+                                }}
+                              >
+                                {isMember ? "Joined" : "Connect"}
+                              </Button>
+                            </Flex>
+                          </Card>
+                        </Tooltip>
                       );
                     })}
                   </Flex>
