@@ -185,6 +185,10 @@ function SortableParticipant({
     cursor: isDragging ? "grabbing" : "grab",
     borderRadius: "var(--radius-5)",
     boxShadow: isDragging ? "0 8px 24px rgba(0,0,0,0.35)" : undefined,
+    // Fill whatever the parent allots. Without this the card underneath sizes
+    // against an auto-width box instead of its grid cell.
+    width: "100%",
+    height: "100%",
   };
 
   return (
@@ -500,6 +504,14 @@ export const VoiceView = ({
     [gridWidth, gridHeight, displayItems.length],
   );
 
+  // computeOptimalColumns only hands back a column count, but it chose that
+  // count by working out how tall each row would be if the rows split the
+  // available height. The grid has to be told to actually do that.
+  const rows = useMemo(
+    () => Math.max(1, Math.ceil(displayItems.length / Math.max(1, columns))),
+    [displayItems.length, columns],
+  );
+
   useEffect(() => {
     if (!focusedStream) return;
 
@@ -806,7 +818,12 @@ export const VoiceView = ({
                       }
                     : {
                         display: "grid",
-                        gridTemplateColumns: `repeat(${columns}, 1fr)`,
+                        // minmax(0, ...) on both axes: a bare 1fr keeps an
+                        // implicit auto minimum, so a tile taller than its share
+                        // of the height forces the row open and the whole grid
+                        // grows past the window.
+                        gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+                        gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
                         gap: "var(--space-2)",
                         justifyItems: "center",
                         alignContent: "center",
@@ -838,7 +855,20 @@ export const VoiceView = ({
                           style={
                             isFocused
                               ? { flexShrink: 0, width: 140 }
-                              : { width: "100%" }
+                              : {
+                                  // Height-driven so the tile is bounded by its
+                                  // row, not just its column. The card inside
+                                  // is width: 100% of this box and keeps the
+                                  // same ratio, so it scales down rather than
+                                  // being clipped.
+                                  height: "100%",
+                                  width: "auto",
+                                  aspectRatio: "16 / 9",
+                                  maxWidth: "100%",
+                                  maxHeight: "100%",
+                                  minWidth: 0,
+                                  minHeight: 0,
+                                }
                           }
                         >
                           <SortableParticipant id={itemId}>
