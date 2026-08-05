@@ -35,8 +35,12 @@ export interface AudioSettingsData {
 export const AUDIO_DEFAULTS: AudioSettingsData = {
   micID: undefined,
   outputDeviceID: "",
-  // 100 % is unity gain under the linear mapping in lib/audioVolume.
-  micVolume: 100,
+  // Half amplitude, about -6 dB, under the linear mapping in lib/audioVolume.
+  // Deliberately below unity: a first-time user with a hot mic joining a call
+  // is unpleasant for everyone else, and quiet is easier to notice and correct
+  // than loud. Auto gain is on by default and pulls quiet speech back up.
+  // Only new installs see this — an existing micVolume always wins.
+  micVolume: 50,
   outputVolume: 100,
   noiseGate: 1,
   noiseGateRelease: 200,
