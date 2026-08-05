@@ -21,6 +21,9 @@ import { voiceLog } from "@/webRTC/src/hooks/voiceLogger";
 
 import { SettingsContainer, SliderSetting, ToggleSetting } from "./settingsComponents";
 
+/** Visualizer refresh rate. 30 fps is plenty for a level meter. */
+const VISUALIZER_INTERVAL_MS = 33;
+
 export function AudioSettings() {
   const {
     micID,
@@ -181,7 +184,7 @@ export function AudioSettings() {
       const gateLevel = getGateLevel();
 
       if (gateLevel !== null) {
-        setMicRawVolume(gateLevel);
+        setMicRawVolume(Math.round(gateLevel));
         setIsMicLive(gateLevel > noiseGate);
       } else if (microphoneBuffer.analyser) {
         const bufferLength = microphoneBuffer.analyser.frequencyBinCount;
@@ -195,7 +198,7 @@ export function AudioSettings() {
         const rms = Math.sqrt(sum / bufferLength);
         const rawVolume = (rms / 255) * 100;
 
-        setMicRawVolume(rawVolume);
+        setMicRawVolume(Math.round(rawVolume));
         setIsMicLive(rawVolume > noiseGate);
       }
 
@@ -211,12 +214,14 @@ export function AudioSettings() {
         const rms = Math.sqrt(sum / bufferLength);
         const finalVolume = (rms / 255) * 100;
 
-        setMicLiveVolume(finalVolume);
+        setMicLiveVolume(Math.round(finalVolume));
 
         const vizData = getRawVisualizerData();
         setVisualizerData(vizData);
       }
-    }, 16);
+      // 30 fps. At 60 the panel re-rendered every 16 ms, which stutters badly on
+      // weaker GPUs, and a level meter gains nothing from the extra frames.
+    }, VISUALIZER_INTERVAL_MS);
 
     return () => {
       clearInterval(interval);
@@ -246,7 +251,6 @@ export function AudioSettings() {
               backgroundColor: isAboveThreshold ? 'var(--green-9)' : 'var(--gray-9)',
               marginRight: '1px',
               borderRadius: '1px',
-              transition: 'height 0.1s ease-out, background-color 0.1s ease-out',
             }}
           />
         );
@@ -394,7 +398,7 @@ export function AudioSettings() {
                 borderRadius: '2px',
                 zIndex: 3,
                 pointerEvents: 'none',
-                transition: 'left 0.1s ease-out, background-color 0.1s ease-out',
+                transition: 'background-color 0.1s ease-out',
               }}
             />
           )}
@@ -412,7 +416,7 @@ export function AudioSettings() {
                 borderRadius: '4px',
                 zIndex: 1,
                 pointerEvents: 'none',
-                transition: 'width 0.1s ease-out, background-color 0.1s ease-out',
+                transition: 'background-color 0.1s ease-out',
               }}
             />
           )}
