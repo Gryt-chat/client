@@ -39,8 +39,13 @@ function startDnsSdBrowse(
     browseBuf = lines.pop() ?? "";
 
     for (const line of lines) {
+      // The leading group absorbs dns-sd's timestamp column. Current macOS
+      // prints "20:54:26.356  Add   3  15 local. _gryt._tcp. ws1", and this
+      // pattern was anchored straight at Add/Rmv, so every line missed and LAN
+      // discovery silently found nothing. Optional, since older dns-sd builds
+      // omit the timestamp.
       const match = line.match(
-        /^\s*(Add|Rmv)\s+\d+\s+\d+\s+(\S+)\s+(\S+)\s+(.+?)\s*$/
+        /^\s*(?:[\d:.]+\s+)?(Add|Rmv)\s+\d+\s+\d+\s+(\S+)\s+(\S+)\s+(.+?)\s*$/
       );
       if (!match) continue;
 
@@ -78,7 +83,7 @@ function startDnsSdBrowse(
             resolvedByServerId.delete(server.serverId);
           }
 
-          win.webContents.send("lan-server-removed", {
+          emitRemoved(win, {
             host: server.host,
             port: server.port,
             serverId: server.serverId,
@@ -165,7 +170,7 @@ function lookupService(
                 resolvedByServerId.delete(existing.serverId);
               }
 
-              win.webContents.send("lan-server-removed", {
+              emitRemoved(win, {
                 host: existing.host,
                 port: existing.port,
                 serverId: existing.serverId,
@@ -189,7 +194,7 @@ function lookupService(
             resolvedByServerId.set(serverId, key);
           }
 
-          win.webContents.send("lan-server-discovered", server);
+          emitDiscovered(win, server);
 
           log(
             `mDNS: discovered "${instanceName}" at ${host}:${port}${
@@ -548,7 +553,7 @@ function handleMdnsResponse(
             discoveredByServerId.delete(existing.serverId);
           }
 
-          win.webContents.send("lan-server-removed", {
+          emitRemoved(win, {
             host: existing.host,
             port: existing.port,
             serverId: existing.serverId,
@@ -572,7 +577,7 @@ function handleMdnsResponse(
         discoveredByServerId.set(serverId, key);
       }
 
-      win.webContents.send("lan-server-discovered", server);
+      emitDiscovered(win, server);
 
       log(
         `mDNS: discovered "${instanceName}" at ${ip}:${srv.port}${
@@ -587,15 +592,74 @@ function handleMdnsResponse(
 // entry
 //
 
+/**
+ * Everything currently discovered, keyed by host:port.
+ *
+ * Discovery is event-driven: dns-sd only emits an Add the first time it sees a
+ * service, so a renderer that subscribes later — or reloads — would otherwise
+ * never learn about servers already found. This mirror lets it ask.
+ */
+const announced = new Map<string, LanServer>();
+
+function emitDiscovered(win: BrowserWindow, server: LanServer): void {
+  announced.set(`${server.host}:${server.port}`, server);
+  win.webContents.send("lan-server-discovered", server);
+}
+
+function emitRemoved(
+  win: BrowserWindow,
+  server: { host: string; port: number; serverId?: string | null },
+): void {
+  announced.delete(`${server.host}:${server.port}`);
+  win.webContents.send("lan-server-removed", server);
+}
+
+/** Snapshot for a renderer that just mounted. */
+export function getDiscoveredLanServers(): LanServer[] {
+  return Array.from(announced.values());
+}
+
+/**
+ * Set by startLanDiscovery so the browse can be torn down and started again.
+ *
+ * dns-sd only announces a service the first time it sees it, so opening the
+ * add-server modal has nothing to react to if discovery has been running since
+ * launch. Restarting the browse makes it re-announce everything currently on
+ * the network, which is what "search now" has to mean here.
+ */
+let restart: (() => void) | null = null;
+
+export function rescanLanServers(): void {
+  restart?.();
+}
+
 export function startLanDiscovery(
   win: BrowserWindow,
   log: (msg: string) => void
 ): CleanupFn {
-  if (process.platform === "darwin") {
-    log("mDNS: using native dns-sd (macOS)");
-    return startDnsSdBrowse(win, log);
-  }
+  const begin = (): CleanupFn => {
+    if (process.platform === "darwin") {
+      log("mDNS: using native dns-sd (macOS)");
+      return startDnsSdBrowse(win, log);
+    }
 
-  log("mDNS: using raw dgram mDNS (Windows/Linux)");
-  return startDgramBrowse(win, log);
+    log("mDNS: using raw dgram mDNS (Windows/Linux)");
+    return startDgramBrowse(win, log);
+  };
+
+  let stop = begin();
+
+  restart = () => {
+    log("mDNS: rescanning");
+    stop();
+    // Cleared so a server that has gone away since the last scan is not
+    // reported as still present.
+    announced.clear();
+    stop = begin();
+  };
+
+  return () => {
+    restart = null;
+    stop();
+  };
 }

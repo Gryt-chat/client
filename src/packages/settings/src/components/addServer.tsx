@@ -9,6 +9,7 @@ import {
   Flex,
   IconButton,
   Separator,
+  Spinner,
   Text,
   TextField,
 } from "@radix-ui/themes";
@@ -52,19 +53,45 @@ interface AddNewServerProps {
   setShowAddServer: (show: boolean) => void;
 }
 
+/**
+ * How long the modal looks before admitting it has found nothing.
+ *
+ * Discovery never stops — this only decides when to stop saying "searching".
+ * Servers that appear later still show up, replacing the empty state.
+ */
+const LAN_EMPTY_AFTER_MS = 4000;
+
+/**
+ * Give up on /info after this long.
+ *
+ * Without a deadline the fetch runs until the OS gives up on the TCP connect,
+ * which is over a minute on macOS. isSearching stays true that whole time,
+ * every Connect button is disabled and nothing explains why. A server that
+ * advertises an address it does not listen on — binding loopback while
+ * announcing its hostname, which the dev servers do — hits this every time.
+ */
+const INFO_TIMEOUT_MS = 8000;
+
 export function AddNewServer({
   showAddServer,
   setShowAddServer,
 }: AddNewServerProps) {
   const { addServer, servers, switchToServer } = useServerManagement();
   const { nickname } = useSettings();
-  const { lanServers, isElectron } = useLanDiscovery();
+  const { lanServers, isElectron, rescan } = useLanDiscovery();
   const { isAvailable: embeddedServerAvailable } = useEmbeddedServer();
 
   const [serverHost, setServerHost] = useState("");
   const [serverInfo, setServerInfo] = useState<FetchInfo | null>(null);
   const [hasError, setHasError] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  // Drives the switch from "searching" to "found nothing". Reset each time the
+  // modal opens, so reopening looks again rather than showing a stale verdict.
+  const [lanSearchExpired, setLanSearchExpired] = useState(false);
+  // Set when Connect is pressed on a discovered server. Joining needs
+  // serverInfo, which arrives asynchronously, so the join is deferred until the
+  // fetch lands rather than fired blindly.
+  const autoJoinRef = useRef(false);
   const [isJoining, setIsJoining] = useState(false);
   const [inviteRequired, setInviteRequired] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
@@ -239,6 +266,48 @@ export function AddNewServer({
     setJoinError("");
   }, [inviteCode]);
 
+  // Completes the Connect action once the fetch has landed. If the server turns
+  // out to need an invite, joinServer surfaces that and the card is already on
+  // screen for the code to be entered — so the fallback is the old behaviour
+  // rather than a dead end.
+  useEffect(() => {
+    if (!autoJoinRef.current) return;
+    if (isSearching) return;
+
+    if (hasError) {
+      autoJoinRef.current = false;
+      return;
+    }
+
+    if (!serverInfo && !serverPrivate) return;
+
+    autoJoinRef.current = false;
+    void joinServer();
+    // joinServer is recreated each render and depends on this same state;
+    // keying off the fetch result is what makes this fire exactly once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverInfo, serverPrivate, hasError, isSearching]);
+
+  // Restart the "searching" window each time the modal opens. Discovery itself
+  // runs continuously in the background; this only controls how long the modal
+  // claims to be looking before it admits it has found nothing.
+  useEffect(() => {
+    if (!showAddServer) return;
+
+    // Opening the modal starts a fresh scan rather than showing whatever was
+    // found at launch. Discovery announces each server once, so without this
+    // the list is only ever as current as the moment the app started.
+    rescan();
+
+    setLanSearchExpired(false);
+    const timer = window.setTimeout(
+      () => setLanSearchExpired(true),
+      LAN_EMPTY_AFTER_MS,
+    );
+
+    return () => window.clearTimeout(timer);
+  }, [showAddServer, rescan]);
+
   function getServerInfo(overrideHost?: string) {
     const normalizedHost = overrideHost || normalizeHost(serverHost);
     if (!normalizedHost) return;
@@ -246,6 +315,14 @@ export function AddNewServer({
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
+
+    // Distinguishes "we gave up" from "a newer request replaced this one",
+    // which abort alone cannot tell apart.
+    let timedOut = false;
+    const timeout = window.setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, INFO_TIMEOUT_MS);
 
     setIsSearching(true);
     setHasError("");
@@ -284,12 +361,20 @@ export function AddNewServer({
         }
       })
       .catch((err: unknown) => {
-        if (err instanceof DOMException && err.name === "AbortError") return;
+        if (err instanceof DOMException && err.name === "AbortError") {
+          // Superseded by a newer lookup — the newer one owns the UI now.
+          if (!timedOut) return;
+          setHasError(
+            "No response from this server. It may be advertising an address it is not reachable on.",
+          );
+          return;
+        }
         const message =
           err instanceof Error ? err.message : "Server is not responding";
         setHasError(message);
       })
       .finally(() => {
+        window.clearTimeout(timeout);
         setIsSearching(false);
       });
   }
@@ -355,7 +440,7 @@ export function AddNewServer({
               </>
             )}
 
-            {isElectron && lanServers.length > 0 && (
+            {isElectron && (
               <>
                 <Flex direction="column" gap="2">
                   <Flex align="center" gap="2">
@@ -363,10 +448,33 @@ export function AddNewServer({
                     <Text size="2" weight="bold">
                       Local servers
                     </Text>
-                    <Badge color="green" size="1" variant="soft">
-                      {lanServers.length}
-                    </Badge>
+                    {lanServers.length > 0 && (
+                      <Badge color="green" size="1" variant="soft">
+                        {lanServers.length}
+                      </Badge>
+                    )}
                   </Flex>
+
+                  {lanServers.length === 0 && !lanSearchExpired && (
+                    <Flex align="center" gap="2" py="1">
+                      <Spinner size="1" />
+                      <Text size="2" color="gray">
+                        Searching for servers on your network&hellip;
+                      </Text>
+                    </Flex>
+                  )}
+
+                  {lanServers.length === 0 && lanSearchExpired && (
+                    <Flex direction="column" gap="1" py="1">
+                      <Text size="2" color="gray">
+                        No servers found on your network.
+                      </Text>
+                      <Text size="1" color="gray">
+                        Still looking &mdash; one will appear here as soon as it
+                        starts. You can also enter an address below.
+                      </Text>
+                    </Flex>
+                  )}
 
                   <Flex direction="column" gap="2">
                     {lanServers.map((s) => {
@@ -378,34 +486,57 @@ export function AddNewServer({
                       const existingById = !!findExistingServerById(s.serverId);
                       const isMember = existingByHost || existingById;
 
+                      // The row being acted on says so. Every other Connect is
+                      // disabled while one is in flight, and without this the
+                      // whole list just looks broken.
+                      const connectingThis =
+                        normalizeHost(serverHost) === normalizedAddr &&
+                        (isSearching || isJoining);
+
                       return (
                         <Card key={`${s.host}:${s.port}`} size="1">
-                          <Flex justify="between" align="center">
-                            <Flex direction="column" gap="1">
-                              <Text size="2" weight="bold">
+                          <Flex align="center" gap="3">
+                            {/*
+                              Streamed from the server's own /icon endpoint.
+                              Most servers have never uploaded one and return
+                              404, so the fallback initial is the common case
+                              rather than the exception.
+                            */}
+                            <Avatar
+                              size="2"
+                              radius="medium"
+                              src={`${getServerHttpBase(normalizedAddr)}/icon`}
+                              fallback={s.name.trim().charAt(0).toUpperCase() || "?"}
+                            />
+
+                            <Flex direction="column" style={{ minWidth: 0 }}>
+                              <Text size="2" weight="medium" truncate>
                                 {s.name}
                               </Text>
-                              <Flex gap="2" align="center">
-                                <Text size="1" color="gray">
-                                  {addr}
-                                </Text>
-                                {s.version && (
-                                  <Badge
-                                    size="1"
-                                    variant="outline"
-                                    color="gray"
-                                  >
-                                    v{s.version}
-                                  </Badge>
-                                )}
-                              </Flex>
+                              {/*
+                                Address only. The version is deliberately not
+                                shown: surfacing it makes it trivial to scan a
+                                network for hosts on a build with a known
+                                vulnerability. It is still in the mDNS TXT
+                                record and in /info, so this is not a fix for
+                                that — see GRYT-42.
+                              */}
+                              <Text size="1" color="gray" truncate>
+                                {addr}
+                              </Text>
                             </Flex>
 
                             <Button
                               size="1"
                               variant="soft"
+                              ml="auto"
                               disabled={isMember || isSearching || isJoining}
+                              loading={connectingThis}
                               onClick={() => {
+                                // Connect should connect. Previously this only
+                                // filled the field and showed the info card,
+                                // leaving a second click to actually join.
+                                autoJoinRef.current = true;
                                 setServerHost(normalizedAddr);
                                 queueMicrotask(() =>
                                   getServerInfo(normalizedAddr)
