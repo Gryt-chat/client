@@ -67,7 +67,7 @@ export function AddNewServer({
 }: AddNewServerProps) {
   const { addServer, servers, switchToServer } = useServerManagement();
   const { nickname } = useSettings();
-  const { lanServers, isElectron } = useLanDiscovery();
+  const { lanServers, isElectron, rescan } = useLanDiscovery();
   const { isAvailable: embeddedServerAvailable } = useEmbeddedServer();
 
   const [serverHost, setServerHost] = useState("");
@@ -257,6 +257,11 @@ export function AddNewServer({
   useEffect(() => {
     if (!showAddServer) return;
 
+    // Opening the modal starts a fresh scan rather than showing whatever was
+    // found at launch. Discovery announces each server once, so without this
+    // the list is only ever as current as the moment the app started.
+    rescan();
+
     setLanSearchExpired(false);
     const timer = window.setTimeout(
       () => setLanSearchExpired(true),
@@ -264,7 +269,7 @@ export function AddNewServer({
     );
 
     return () => window.clearTimeout(timer);
-  }, [showAddServer]);
+  }, [showAddServer, rescan]);
 
   function getServerInfo(overrideHost?: string) {
     const normalizedHost = overrideHost || normalizeHost(serverHost);

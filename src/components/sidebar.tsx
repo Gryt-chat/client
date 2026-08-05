@@ -15,7 +15,6 @@ import { MdAdd, MdFeedback, MdMic, MdSettings } from "react-icons/md";
 
 import {
   getServerHttpBase,
-  normalizeHost,
   useAccount,
   useUnreadTracker,
 } from "@/common";
@@ -29,7 +28,6 @@ import { useServerManagement, useSockets } from "@/socket";
 import { useSFU } from "@/webRTC";
 import { MiniControls } from "@/webRTC/src/components/miniControls";
 
-import { LanServerItem } from "./lanServerItem";
 
 interface SidebarProps {
   setShowAddServer: (show: boolean) => void;
@@ -46,14 +44,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
     switchToServer,
     orderedServerHosts,
     reorderServers,
-    pendingLanServers,
   } = useServerManagement();
-
-  const visiblePendingLanServers = pendingLanServers.filter((s) => {
-    const addr = s.port === 443 ? s.host : `${s.host}:${s.port}`;
-    const normalized = normalizeHost(addr);
-    return !servers[normalized];
-  });
 
   const { currentServerConnected, isConnected } = useSFU();
   const { serverConnectionStatus, serverProfiles, serverDetailsList } =
@@ -104,9 +95,6 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
             />
           ))}
         </Reorder.Group>
-        {visiblePendingLanServers.map((s) => (
-          <LanServerItem key={`${s.host}:${s.port}`} server={s} />
-        ))}
         <Tooltip content="Add new server" delayDuration={100} side="right">
           <IconButton
             variant="soft"

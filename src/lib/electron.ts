@@ -121,6 +121,10 @@ export interface ElectronAPI {
   openAddonsFolder(): Promise<string>;
   resolveAddonAsset(addonId: string, relativePath: string): Promise<string>;
   onAddonsChanged(callback: (addons: AddonManifest[]) => void): () => void;
+  /** Servers already discovered, for a renderer that mounted after the fact. */
+  getLanServers(): Promise<LanServer[]>;
+  /** Restart the browse so everything on the network re-announces itself. */
+  rescanLanServers(): void;
   onLanServerDiscovered(callback: (server: LanServer) => void): () => void;
   onLanServerRemoved(
     callback: (server: { host: string; port: number }) => void
