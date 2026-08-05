@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MdRefresh, MdWarning } from "react-icons/md";
 
 import { useMicrophone, useScreenShare, useSpeakers } from "@/audio";
+import { MAX_VOLUME_PERCENT } from "@/lib/audioVolume";
 import { setNotificationOutputDevice } from "@/lib/notificationSound";
 import { useSettings } from "@/settings";
 import { useSFU } from "@/webRTC";
@@ -315,9 +316,10 @@ export function AudioSettings() {
 
       <SliderSetting
         title={`Microphone Volume: ${micVolume}%`}
-        description="Your microphone input level (50% = normal volume, 100% = 2x boost)"
+        description="Your microphone input level (100% = unchanged, 200% = 2x boost)"
         value={micVolume}
         onChange={setMicVolume}
+        max={MAX_VOLUME_PERCENT}
       />
 
       {audioContext && (
@@ -505,9 +507,10 @@ export function AudioSettings() {
 
       <SliderSetting
         title={`Output Volume: ${outputVolume}%`}
-        description="Controls volume of all incoming audio (50% = normal, 100% = 2x boost)"
+        description="Controls volume of all incoming audio (100% = unchanged, 200% = 2x boost)"
         value={outputVolume}
         onChange={setOutputVolume}
+        max={MAX_VOLUME_PERCENT}
       />
 
       <Separator size="4" />

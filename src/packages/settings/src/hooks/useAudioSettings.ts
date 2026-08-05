@@ -35,8 +35,9 @@ export interface AudioSettingsData {
 export const AUDIO_DEFAULTS: AudioSettingsData = {
   micID: undefined,
   outputDeviceID: "",
-  micVolume: 50,
-  outputVolume: 50,
+  // 100 % is unity gain under the linear mapping in lib/audioVolume.
+  micVolume: 100,
+  outputVolume: 100,
   noiseGate: 1,
   noiseGateRelease: 200,
   rnnoiseEnabled: true,
