@@ -12,7 +12,6 @@ import {
   Spinner,
   Text,
   TextField,
-  Tooltip,
 } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -435,55 +434,54 @@ export function AddNewServer({
                       const isMember = existingByHost || existingById;
 
                       return (
-                        <Tooltip
-                          key={`${s.host}:${s.port}`}
-                          content={
-                            <Flex direction="column">
-                              <Text size="1">{addr}</Text>
-                              {s.version && (
-                                <Text size="1" color="gray">
-                                  v{s.version}
-                                </Text>
-                              )}
-                            </Flex>
-                          }
-                        >
-                          <Card size="1">
-                            <Flex align="center" gap="3">
-                              {/*
-                                Streamed from the server's own /icon endpoint.
-                                Most servers have never uploaded one and return
-                                404, so the fallback initial is the common case
-                                rather than the exception.
-                              */}
-                              <Avatar
-                                size="2"
-                                radius="medium"
-                                src={`${getServerHttpBase(normalizedAddr)}/icon`}
-                                fallback={s.name.trim().charAt(0).toUpperCase() || "?"}
-                              />
+                        <Card key={`${s.host}:${s.port}`} size="1">
+                          <Flex align="center" gap="3">
+                            {/*
+                              Streamed from the server's own /icon endpoint.
+                              Most servers have never uploaded one and return
+                              404, so the fallback initial is the common case
+                              rather than the exception.
+                            */}
+                            <Avatar
+                              size="2"
+                              radius="medium"
+                              src={`${getServerHttpBase(normalizedAddr)}/icon`}
+                              fallback={s.name.trim().charAt(0).toUpperCase() || "?"}
+                            />
 
+                            <Flex direction="column" style={{ minWidth: 0 }}>
                               <Text size="2" weight="medium" truncate>
                                 {s.name}
                               </Text>
-
-                              <Button
-                                size="1"
-                                variant="soft"
-                                ml="auto"
-                                disabled={isMember || isSearching || isJoining}
-                                onClick={() => {
-                                  setServerHost(normalizedAddr);
-                                  queueMicrotask(() =>
-                                    getServerInfo(normalizedAddr)
-                                  );
-                                }}
-                              >
-                                {isMember ? "Joined" : "Connect"}
-                              </Button>
+                              {/*
+                                Address only. The version is deliberately not
+                                shown: surfacing it makes it trivial to scan a
+                                network for hosts on a build with a known
+                                vulnerability. It is still in the mDNS TXT
+                                record and in /info, so this is not a fix for
+                                that — see GRYT-42.
+                              */}
+                              <Text size="1" color="gray" truncate>
+                                {addr}
+                              </Text>
                             </Flex>
-                          </Card>
-                        </Tooltip>
+
+                            <Button
+                              size="1"
+                              variant="soft"
+                              ml="auto"
+                              disabled={isMember || isSearching || isJoining}
+                              onClick={() => {
+                                setServerHost(normalizedAddr);
+                                queueMicrotask(() =>
+                                  getServerInfo(normalizedAddr)
+                                );
+                              }}
+                            >
+                              {isMember ? "Joined" : "Connect"}
+                            </Button>
+                          </Flex>
+                        </Card>
                       );
                     })}
                   </Flex>
