@@ -59,7 +59,11 @@ import {
   saveGlobalStore,
   setGlobalValue,
 } from "./globalStore";
-import { startLanDiscovery } from "./lanDiscovery";
+import {
+  getDiscoveredLanServers,
+  rescanLanServers,
+  startLanDiscovery,
+} from "./lanDiscovery";
 import {
   isNativeScreenCaptureAvailable,
   startNativeScreenCapture,
@@ -1325,6 +1329,13 @@ if (!gotSingleInstanceLock) {
       if (mainWindow) {
         const stopLanDiscovery = startLanDiscovery(mainWindow, startupLog);
         app.on("before-quit", stopLanDiscovery);
+
+        // Discovery announces a server once, when it first appears. A renderer
+        // that mounts or reloads afterwards has nothing to react to, so it asks
+        // for the current list instead of waiting for an event that will not
+        // come.
+        ipcMain.handle("lan:get-servers", () => getDiscoveredLanServers());
+        ipcMain.on("lan:rescan", () => rescanLanServers());
       }
 
       ipcMain.on("check-for-updates", () => {

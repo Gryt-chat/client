@@ -337,6 +337,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return () => ipcRenderer.removeListener("addons-changed", handler);
   },
 
+  getLanServers(): Promise<unknown[]> {
+    return ipcRenderer.invoke("lan:get-servers");
+  },
+  rescanLanServers(): void {
+    ipcRenderer.send("lan:rescan");
+  },
   onLanServerDiscovered(
     callback: (server: {
       name: string;
