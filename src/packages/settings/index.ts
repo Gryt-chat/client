@@ -4,6 +4,7 @@ export type { ScalabilityMode, ScreenShareCodec } from "./src/hooks/settingsStor
 // Hooks
 export * from "./src/hooks/useServerSettings";
 export * from "./src/hooks/useSettings";
+export * from "./src/hooks/useSettingsShortcut";
 
 // Components
 export * from "./src/components/addServer";
