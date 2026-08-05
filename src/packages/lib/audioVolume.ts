@@ -26,14 +26,21 @@ export function gainToSlider(gain: number, max = 100): number {
   return Math.max(0, Math.min(max, Math.round(t * max)));
 }
 
+/** Highest boost the volume sliders allow: 200 % → 2× amplitude. */
+export const MAX_VOLUME_PERCENT = 200;
+
 /**
- * Convenience wrapper for the common Web Audio pattern where
- * 50 on the slider means unity gain (1.0×).
+ * Slider percentage → gain for the microphone and output volume sliders.
  *
- * Equivalent to `sliderToGain(value, 100) * 2` — the extra `* 2` comes
- * from the legacy `/50` convention (100/50 = 2).
+ * Deliberately linear: the percentage means what it says, so 100 % is unity
+ * and 200 % is twice the amplitude. This replaced a cubic curve (`t³ × 2`)
+ * where 100 % was a 2× boost and unity landed at roughly 79 %, which made the
+ * numbers meaningless — 50 % was 0.25×, not "half".
+ *
+ * A cubic can't produce both 100 % → 1× and 200 % → 2× (normalised at 100 it
+ * gives 8× at 200), so the perceptual curve was traded for predictability.
  */
 export function sliderToOutputGain(sliderPercent: number): number {
-  const t = Math.max(0, Math.min(1, sliderPercent / 100));
-  return t * t * t * 2;
+  const clamped = Math.max(0, Math.min(MAX_VOLUME_PERCENT, sliderPercent));
+  return clamped / 100;
 }
