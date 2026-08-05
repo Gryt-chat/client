@@ -77,6 +77,10 @@ export function AddNewServer({
   // Drives the switch from "searching" to "found nothing". Reset each time the
   // modal opens, so reopening looks again rather than showing a stale verdict.
   const [lanSearchExpired, setLanSearchExpired] = useState(false);
+  // Set when Connect is pressed on a discovered server. Joining needs
+  // serverInfo, which arrives asynchronously, so the join is deferred until the
+  // fetch lands rather than fired blindly.
+  const autoJoinRef = useRef(false);
   const [isJoining, setIsJoining] = useState(false);
   const [inviteRequired, setInviteRequired] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
@@ -250,6 +254,28 @@ export function AddNewServer({
   useEffect(() => {
     setJoinError("");
   }, [inviteCode]);
+
+  // Completes the Connect action once the fetch has landed. If the server turns
+  // out to need an invite, joinServer surfaces that and the card is already on
+  // screen for the code to be entered — so the fallback is the old behaviour
+  // rather than a dead end.
+  useEffect(() => {
+    if (!autoJoinRef.current) return;
+    if (isSearching) return;
+
+    if (hasError) {
+      autoJoinRef.current = false;
+      return;
+    }
+
+    if (!serverInfo && !serverPrivate) return;
+
+    autoJoinRef.current = false;
+    void joinServer();
+    // joinServer is recreated each render and depends on this same state;
+    // keying off the fetch result is what makes this fire exactly once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverInfo, serverPrivate, hasError, isSearching]);
 
   // Restart the "searching" window each time the modal opens. Discovery itself
   // runs continuously in the background; this only controls how long the modal
@@ -472,6 +498,10 @@ export function AddNewServer({
                               ml="auto"
                               disabled={isMember || isSearching || isJoining}
                               onClick={() => {
+                                // Connect should connect. Previously this only
+                                // filled the field and showed the info card,
+                                // leaving a second click to actually join.
+                                autoJoinRef.current = true;
                                 setServerHost(normalizedAddr);
                                 queueMicrotask(() =>
                                   getServerInfo(normalizedAddr)
