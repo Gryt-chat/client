@@ -1,5 +1,9 @@
+// Hosts that can't realistically have a certificate: loopback, the RFC1918
+// ranges, and the .local mDNS names that LAN discovery hands us. Anything here
+// is dialled over plain http/ws. The trailing dot is optional because some
+// resolvers return the fully qualified "dev-412.local." form.
 const PRIVATE_HOST_RE =
-  /^(localhost|::1|127\.\d+\.\d+\.\d+|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$/i;
+  /^(localhost|::1|127\.\d+\.\d+\.\d+|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|[a-z0-9-]+(\.[a-z0-9-]+)*\.local\.?)(:\d+)?$/i;
 
 function isElectronRenderer(): boolean {
   try {
