@@ -61,6 +61,17 @@ interface AddNewServerProps {
  */
 const LAN_EMPTY_AFTER_MS = 4000;
 
+/**
+ * Give up on /info after this long.
+ *
+ * Without a deadline the fetch runs until the OS gives up on the TCP connect,
+ * which is over a minute on macOS. isSearching stays true that whole time,
+ * every Connect button is disabled and nothing explains why. A server that
+ * advertises an address it does not listen on — binding loopback while
+ * announcing its hostname, which the dev servers do — hits this every time.
+ */
+const INFO_TIMEOUT_MS = 8000;
+
 export function AddNewServer({
   showAddServer,
   setShowAddServer,
@@ -305,6 +316,14 @@ export function AddNewServer({
     const controller = new AbortController();
     abortRef.current = controller;
 
+    // Distinguishes "we gave up" from "a newer request replaced this one",
+    // which abort alone cannot tell apart.
+    let timedOut = false;
+    const timeout = window.setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, INFO_TIMEOUT_MS);
+
     setIsSearching(true);
     setHasError("");
     setServerInfo(null);
@@ -342,12 +361,20 @@ export function AddNewServer({
         }
       })
       .catch((err: unknown) => {
-        if (err instanceof DOMException && err.name === "AbortError") return;
+        if (err instanceof DOMException && err.name === "AbortError") {
+          // Superseded by a newer lookup — the newer one owns the UI now.
+          if (!timedOut) return;
+          setHasError(
+            "No response from this server. It may be advertising an address it is not reachable on.",
+          );
+          return;
+        }
         const message =
           err instanceof Error ? err.message : "Server is not responding";
         setHasError(message);
       })
       .finally(() => {
+        window.clearTimeout(timeout);
         setIsSearching(false);
       });
   }
@@ -459,6 +486,13 @@ export function AddNewServer({
                       const existingById = !!findExistingServerById(s.serverId);
                       const isMember = existingByHost || existingById;
 
+                      // The row being acted on says so. Every other Connect is
+                      // disabled while one is in flight, and without this the
+                      // whole list just looks broken.
+                      const connectingThis =
+                        normalizeHost(serverHost) === normalizedAddr &&
+                        (isSearching || isJoining);
+
                       return (
                         <Card key={`${s.host}:${s.port}`} size="1">
                           <Flex align="center" gap="3">
@@ -497,6 +531,7 @@ export function AddNewServer({
                               variant="soft"
                               ml="auto"
                               disabled={isMember || isSearching || isJoining}
+                              loading={connectingThis}
                               onClick={() => {
                                 // Connect should connect. Previously this only
                                 // filled the field and showed the info card,
