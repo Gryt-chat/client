@@ -5,6 +5,10 @@ import { getIsBrowserSupported } from "@/audio";
 import { useSettings } from "@/settings";
 import { voiceLog } from "@/webRTC/src/hooks/voiceLogger";
 
+import {
+  createNoiseGateNode,
+  ensureNoiseGateWorklet,
+} from "../processors/noiseGateProcessor";
 import { RNNoiseProcessor } from "../processors/rnnoiseProcessor";
 import { MicrophoneBufferType, MicrophoneInterface } from "../types/Microphone";
 import {
@@ -52,6 +56,9 @@ function useCreateMicrophoneHook() {
 
   const rnnoiseProcessorRef = useRef<RNNoiseProcessor | null>(null);
   const [rnnoiseNode, setRnnoiseNode] = useState<AudioWorkletNode | null>(null);
+  const [noiseGateNode, setNoiseGateNode] = useState<AudioWorkletNode | null>(
+    null,
+  );
 
   const releaseMicTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const micStreamRef = useRef<MediaStream | undefined>(undefined);
@@ -134,6 +141,38 @@ function useCreateMicrophoneHook() {
     };
   }, [rnnoiseEnabled, audioContext]);
 
+  // Register the noise gate worklet. The gate has to run on the audio thread,
+  // otherwise it stops applying whenever the window is hidden (GRYT-18).
+  useEffect(() => {
+    if (!audioContext) {
+      setNoiseGateNode(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    ensureNoiseGateWorklet(audioContext)
+      .then(() => {
+        if (cancelled) return;
+        setNoiseGateNode(createNoiseGateNode(audioContext));
+        voiceLog.ok("MIC", 1, "Noise gate AudioWorklet ready");
+      })
+      .catch((error) => {
+        // Falls back to the main-thread gate, which can't gate while hidden.
+        voiceLog.fail(
+          "MIC",
+          1,
+          "Failed to register noise gate worklet — falling back to main thread",
+          error,
+        );
+      });
+
+    return () => {
+      cancelled = true;
+      setNoiseGateNode(null);
+    };
+  }, [audioContext]);
+
   const microphoneBuffer = useMemo<MicrophoneBufferType>(() => {
     if (!audioContext) {
       voiceLog.info("MIC", "No AudioContext yet — pipeline deferred");
@@ -150,6 +189,7 @@ function useCreateMicrophoneHook() {
       audioContext,
       micStream,
       rnnoiseNode,
+      noiseGateNode,
       eSportsModeEnabled,
       autoGainEnabled,
       compressorEnabled,
@@ -165,6 +205,7 @@ function useCreateMicrophoneHook() {
     audioContext,
     micStream,
     rnnoiseNode,
+    noiseGateNode,
     eSportsModeEnabled,
     autoGainEnabled,
     compressorEnabled,
@@ -180,6 +221,7 @@ function useCreateMicrophoneHook() {
     noiseGateRelease,
     loopbackEnabled,
     inputMode,
+    eSportsModeEnabled,
     autoGainEnabled,
     autoGainTargetDb,
     compressorAmount,
