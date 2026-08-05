@@ -77,6 +77,10 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
   server: {
+    // Not a preference — Keycloak registers redirect URIs per port, and only
+    // http://localhost:3666/* is whitelisted. On any other port sign-in fails
+    // with an invalid redirect_uri, which reads like broken auth rather than a
+    // wrong port. Changing this means updating the Keycloak client first.
     port: 3666,
     allowedHosts: ["app.gryt.chat"],
   },
