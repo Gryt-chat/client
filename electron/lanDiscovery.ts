@@ -39,8 +39,13 @@ function startDnsSdBrowse(
     browseBuf = lines.pop() ?? "";
 
     for (const line of lines) {
+      // The leading group absorbs dns-sd's timestamp column. Current macOS
+      // prints "20:54:26.356  Add   3  15 local. _gryt._tcp. ws1", and this
+      // pattern was anchored straight at Add/Rmv, so every line missed and LAN
+      // discovery silently found nothing. Optional, since older dns-sd builds
+      // omit the timestamp.
       const match = line.match(
-        /^\s*(Add|Rmv)\s+\d+\s+\d+\s+(\S+)\s+(\S+)\s+(.+?)\s*$/
+        /^\s*(?:[\d:.]+\s+)?(Add|Rmv)\s+\d+\s+\d+\s+(\S+)\s+(\S+)\s+(.+?)\s*$/
       );
       if (!match) continue;
 

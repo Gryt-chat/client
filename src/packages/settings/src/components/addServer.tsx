@@ -9,6 +9,7 @@ import {
   Flex,
   IconButton,
   Separator,
+  Spinner,
   Text,
   TextField,
 } from "@radix-ui/themes";
@@ -52,6 +53,14 @@ interface AddNewServerProps {
   setShowAddServer: (show: boolean) => void;
 }
 
+/**
+ * How long the modal looks before admitting it has found nothing.
+ *
+ * Discovery never stops — this only decides when to stop saying "searching".
+ * Servers that appear later still show up, replacing the empty state.
+ */
+const LAN_EMPTY_AFTER_MS = 4000;
+
 export function AddNewServer({
   showAddServer,
   setShowAddServer,
@@ -65,6 +74,9 @@ export function AddNewServer({
   const [serverInfo, setServerInfo] = useState<FetchInfo | null>(null);
   const [hasError, setHasError] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  // Drives the switch from "searching" to "found nothing". Reset each time the
+  // modal opens, so reopening looks again rather than showing a stale verdict.
+  const [lanSearchExpired, setLanSearchExpired] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [inviteRequired, setInviteRequired] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
@@ -239,6 +251,21 @@ export function AddNewServer({
     setJoinError("");
   }, [inviteCode]);
 
+  // Restart the "searching" window each time the modal opens. Discovery itself
+  // runs continuously in the background; this only controls how long the modal
+  // claims to be looking before it admits it has found nothing.
+  useEffect(() => {
+    if (!showAddServer) return;
+
+    setLanSearchExpired(false);
+    const timer = window.setTimeout(
+      () => setLanSearchExpired(true),
+      LAN_EMPTY_AFTER_MS,
+    );
+
+    return () => window.clearTimeout(timer);
+  }, [showAddServer]);
+
   function getServerInfo(overrideHost?: string) {
     const normalizedHost = overrideHost || normalizeHost(serverHost);
     if (!normalizedHost) return;
@@ -355,7 +382,7 @@ export function AddNewServer({
               </>
             )}
 
-            {isElectron && lanServers.length > 0 && (
+            {isElectron && (
               <>
                 <Flex direction="column" gap="2">
                   <Flex align="center" gap="2">
@@ -363,10 +390,33 @@ export function AddNewServer({
                     <Text size="2" weight="bold">
                       Local servers
                     </Text>
-                    <Badge color="green" size="1" variant="soft">
-                      {lanServers.length}
-                    </Badge>
+                    {lanServers.length > 0 && (
+                      <Badge color="green" size="1" variant="soft">
+                        {lanServers.length}
+                      </Badge>
+                    )}
                   </Flex>
+
+                  {lanServers.length === 0 && !lanSearchExpired && (
+                    <Flex align="center" gap="2" py="1">
+                      <Spinner size="1" />
+                      <Text size="2" color="gray">
+                        Searching for servers on your network&hellip;
+                      </Text>
+                    </Flex>
+                  )}
+
+                  {lanServers.length === 0 && lanSearchExpired && (
+                    <Flex direction="column" gap="1" py="1">
+                      <Text size="2" color="gray">
+                        No servers found on your network.
+                      </Text>
+                      <Text size="1" color="gray">
+                        Still looking &mdash; one will appear here as soon as it
+                        starts. You can also enter an address below.
+                      </Text>
+                    </Flex>
+                  )}
 
                   <Flex direction="column" gap="2">
                     {lanServers.map((s) => {
