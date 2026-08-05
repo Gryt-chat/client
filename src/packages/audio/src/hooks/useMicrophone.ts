@@ -323,6 +323,27 @@ function useCreateMicrophoneHook() {
     }
   }, [micID, currentDeviceId]);
 
+  // Re-enumerate when devices come and go, so plugging in headphones shows
+  // them without reopening the app. useCamera does the same for video.
+  useEffect(() => {
+    if (!isBrowserSupported) return;
+    if (!navigator.mediaDevices?.addEventListener) return;
+
+    const handleDeviceChange = () => {
+      voiceLog.info("MIC", "Input devices changed — re-enumerating");
+      getDevices();
+    };
+
+    navigator.mediaDevices.addEventListener("devicechange", handleDeviceChange);
+
+    return () => {
+      navigator.mediaDevices.removeEventListener(
+        "devicechange",
+        handleDeviceChange,
+      );
+    };
+  }, [isBrowserSupported, getDevices]);
+
   useEffect(() => {
     if (handles.length > 0 && !currentDeviceId) {
       getDevices();
@@ -428,16 +449,37 @@ function useCreateMicrophoneHook() {
       }
 
       const existing = micStreamRef.current;
-      const hasLiveTrack =
-        !!existing &&
-        existing.getAudioTracks().some((track) => track.readyState === "live");
+      const liveTrack = existing
+        ?.getAudioTracks()
+        .find((track) => track.readyState === "live");
 
-      if (hasLiveTrack) {
+      if (liveTrack) {
+        // A live track isn't enough — it has to be the device the user picked,
+        // otherwise selecting a new microphone silently keeps the old one.
+        const activeDeviceId = liveTrack.getSettings().deviceId;
+
+        // "default" is a moving target: it resolves to whatever the OS
+        // currently considers default, so it can't be compared by id. Only
+        // re-acquire when both ids are known and actually differ.
+        const deviceMatches =
+          !currentDeviceId ||
+          currentDeviceId === "default" ||
+          !activeDeviceId ||
+          activeDeviceId === currentDeviceId;
+
+        if (deviceMatches) {
+          voiceLog.info(
+            "MIC",
+            `Active handles: ${handles.length} — keeping existing live microphone`,
+          );
+          return;
+        }
+
         voiceLog.info(
           "MIC",
-          `Active handles: ${handles.length} — keeping existing live microphone`,
+          `Selected device changed (${activeDeviceId} → ${currentDeviceId}) — re-acquiring`,
         );
-        return;
+        stopMicStream("Switching to the newly selected input device");
       }
 
       voiceLog.info(
