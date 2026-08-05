@@ -33,10 +33,14 @@ extraResources:
     filter:
       - "**/*"
 
+# Releases are published to the gryt superproject, not to this repository —
+# release-client.yml lives there and builds the client from a pinned submodule
+# commit. This value is baked into app-update.yml, so pointing it at `client`
+# leaves the shipped app polling a repository with no releases.
 publish:
   provider: github
   owner: Gryt-chat
-  repo: client
+  repo: gryt
   releaseType: release
 
 afterSign: scripts/notarize.cjs
