@@ -13,7 +13,14 @@ import {
   useAccount,
   writePendingInvite,
 } from "@/common";
-import { AddNewServer, Nickname, PushToTalkModal, Settings, useSettings } from "@/settings";
+import {
+  AddNewServer,
+  Nickname,
+  PushToTalkModal,
+  Settings,
+  useSettings,
+  useSettingsShortcut,
+} from "@/settings";
 import { SignUpModal } from "@/signUp";
 import {
   DeviceSwitchModal,
@@ -37,6 +44,8 @@ export function App() {
   const { showAddServer, setShowAddServer, addServer, hasServer, switchToServer } =
     useServerManagement();
   const { nickname, showDebugOverlay, showVideoDebugOverlay } = useSettings();
+
+  useSettingsShortcut();
   const { disconnect } = useSFU();
 
   const handleHotkeyDisconnect = useCallback(() => {
