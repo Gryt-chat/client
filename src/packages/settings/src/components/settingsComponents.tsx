@@ -1,6 +1,8 @@
 import { Flex, Slider, Switch, Text } from "@radix-ui/themes";
 import React from "react";
 
+import { settingAnchorId,SETTINGS_INDEX } from "../hooks/settingsSearch";
+
 // Reusable wrapper components following DRY principles
 interface SettingGroupProps {
   title: string;
@@ -9,8 +11,23 @@ interface SettingGroupProps {
 }
 
 export function SettingGroup({ title, description, children }: SettingGroupProps) {
+  // Anchor for search results to scroll to. Derived from the title by the same
+  // function the index uses, so the two cannot drift apart — and it ignores any
+  // ": value" suffix, so it stays put as the value changes.
+  const anchor = settingAnchorId(title);
+
+  if (import.meta.env.DEV) {
+    // A setting the index doesn't know about is invisible to search. Warn
+    // rather than fail: a missing entry shouldn't stop the panel rendering.
+    if (!SETTINGS_INDEX.some((entry) => entry.id === anchor)) {
+      console.warn(
+        `[settings] "${title}" (${anchor}) is not in SETTINGS_INDEX — it won't be findable by search.`,
+      );
+    }
+  }
+
   return (
-    <Flex direction="column" gap="2">
+    <Flex direction="column" gap="2" id={anchor} data-setting={anchor}>
       <Text weight="medium" size="2">{title}</Text>
       <Text size="1" color="gray">{description}</Text>
       {children}

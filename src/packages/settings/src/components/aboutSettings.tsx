@@ -231,8 +231,6 @@ function DesktopAppCard() {
 }
 
 export function AboutSettings() {
-  const inElectron = isElectron();
-
   return (
     <SettingsContainer>
       <Heading size="4">About</Heading>
@@ -273,6 +271,25 @@ export function AboutSettings() {
         </Button>
       </Flex>
 
+    </SettingsContainer>
+  );
+}
+
+/**
+ * Updates as a destination of its own, first in the sidebar.
+ *
+ * It used to sit at the bottom of About, which is where you look last. Checking
+ * for an update is something people come to settings to do deliberately, so it
+ * gets its own entry rather than being reference material's footer.
+ *
+ * In the browser there is no updater, so this offers the desktop app instead —
+ * the same swap About was already making.
+ */
+export function UpdatesSettings() {
+  const inElectron = isElectron();
+
+  return (
+    <SettingsContainer>
       {inElectron ? <UpdateControls /> : <DesktopAppCard />}
     </SettingsContainer>
   );

@@ -1,10 +1,13 @@
-import { Box, Dialog, Flex, IconButton, Tabs } from "@radix-ui/themes";
-import { MdChat, MdClose, MdDesktopWindows, MdExtension, MdFavorite, MdInfoOutline, MdKey, MdKeyboard, MdMic, MdNotifications, MdPalette, MdPerson, MdTune, MdVideocam, MdVolumeUp } from "react-icons/md";
+import { Box, Dialog, Flex, IconButton, Separator, Text, TextField } from "@radix-ui/themes";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { MdClose, MdExtension, MdFavorite, MdPerson, MdSearch, MdSettingsSuggest, MdSystemUpdateAlt, MdTune, MdVideocam } from "react-icons/md";
 
 import { useSettings } from "@/settings";
 
 import { isElectron } from "../../../../lib/electron";
-import { AboutSettings } from "./aboutSettings";
+import type { SettingsIndexEntry } from "../hooks/settingsSearch";
+import { searchSettings } from "../hooks/settingsSearch";
+import { AboutSettings, UpdatesSettings } from "./aboutSettings";
 import { AddonsSettings } from "./addonsSettings";
 import { AdvancedSettings } from "./advancedSettings";
 import { AudioSettings } from "./audioSettings";
@@ -19,96 +22,123 @@ import { SupportSettings } from "./supportSettings";
 import { AppearanceSettings } from "./theme/appearanceSettings";
 import { VoiceSettings } from "./voiceSettings";
 
-const TAB_CONFIG = [
+/**
+ * Divider between the former tabs now sharing a destination.
+ *
+ * Deliberately no heading: every panel already renders its own, so adding one
+ * here produced "Profile / Profile". The panel owns its title — this only
+ * supplies the separation that used to come from being on different tabs.
+ */
+function PanelDivider() {
+  return <Separator size="4" my="5" />;
+}
+
+/**
+ * Five destinations named for what you are trying to do rather than which
+ * subsystem owns the setting. Replaces fourteen flat tabs, two of which held a
+ * single control each and three of which covered the same mental model.
+ *
+ * `mountWhenActive` panels touch hardware — microphone analysers, camera
+ * preview — so they mount only while their destination is open, preserving the
+ * old `conditional` behaviour.
+ */
+const DESTINATIONS = [
   {
-    value: "profile",
-    label: "Profile",
+    value: "updates",
+    label: "Updates & about",
+    icon: MdSystemUpdateAlt,
+    content: (
+      <>
+        <UpdatesSettings />
+        <PanelDivider />
+        <AboutSettings />
+      </>
+    ),
+  },
+  {
+    value: "you",
+    label: "You",
     icon: MdPerson,
-    content: <ProfileSettings />,
+    content: (
+      <>
+        <ProfileSettings />
+        <PanelDivider />
+        <SecuritySettings />
+      </>
+    ),
   },
   {
-    value: "security",
-    label: "Security",
-    icon: MdKey,
-    content: <SecuritySettings />,
+    value: "sound-video",
+    label: "Sound & video",
+    icon: MdVideocam,
+    mountWhenActive: true,
+    content: (
+      <>
+        <AudioSettings />
+        <PanelDivider />
+        <VoiceSettings />
+        <PanelDivider />
+        <CameraSettings />
+      </>
+    ),
   },
   {
-    value: "appearance",
-    label: "Appearance",
-    icon: MdPalette,
-    content: <AppearanceSettings />,
+    value: "looks",
+    label: "How Gryt looks",
+    icon: MdSettingsSuggest,
+    content: (
+      <>
+        <AppearanceSettings />
+        <PanelDivider />
+        <ChatSettings />
+      </>
+    ),
   },
   {
-    value: "addons",
-    label: "Addons",
+    value: "behaviour",
+    label: "How Gryt behaves",
+    icon: MdTune,
+    content: (
+      <>
+        <HotkeySettings />
+        <PanelDivider />
+        <NotificationSettings />
+        {isElectron() && (
+          <>
+            <PanelDivider />
+            <DesktopSettings />
+          </>
+        )}
+        <PanelDivider />
+        <AdvancedSettings />
+      </>
+    ),
+  },
+  {
+    value: "extensions",
+    label: "Extensions",
     icon: MdExtension,
     content: <AddonsSettings />,
-  },
-  {
-    value: "audio",
-    label: "Audio",
-    icon: MdMic,
-    content: <AudioSettings />,
-    conditional: true,
-  },
-  {
-    value: "camera",
-    label: "Camera",
-    icon: MdVideocam,
-    content: <CameraSettings />,
-    conditional: true,
-  },
-  {
-    value: "voice",
-    label: "Voice",
-    icon: MdVolumeUp,
-    content: <VoiceSettings />,
-  },
-  {
-    value: "chat",
-    label: "Chat",
-    icon: MdChat,
-    content: <ChatSettings />,
-  },
-  {
-    value: "hotkeys",
-    label: "Hotkeys",
-    icon: MdKeyboard,
-    content: <HotkeySettings />,
-  },
-  {
-    value: "notifications",
-    label: "Notifications",
-    icon: MdNotifications,
-    content: <NotificationSettings />,
-  },
-  {
-    value: "desktop",
-    label: "Desktop",
-    icon: MdDesktopWindows,
-    content: <DesktopSettings />,
-    conditional: true,
-    electronOnly: true,
-  },
-  {
-    value: "advanced",
-    label: "Advanced",
-    icon: MdTune,
-    content: <AdvancedSettings />,
   },
   {
     value: "support",
     label: "Support Gryt",
     icon: MdFavorite,
+    // Pinned to the bottom, below a spacer. It is not a setting, and burying a
+    // donation link inside "Extensions & about" made it findable only by
+    // accident.
+    pinBottom: true,
     content: <SupportSettings />,
   },
-  {
-    value: "about",
-    label: "About",
-    icon: MdInfoOutline,
-    content: <AboutSettings />,
-  },
 ];
+
+const MAIN_DESTINATIONS = DESTINATIONS.filter((d) => !d.pinBottom);
+const PINNED_DESTINATIONS = DESTINATIONS.filter((d) => d.pinBottom);
+
+const DEFAULT_DESTINATION = "you";
+
+/** How long a jumped-to setting stays highlighted. */
+const HIGHLIGHT_MS = 1600;
 
 export function Settings() {
   const {
@@ -119,33 +149,135 @@ export function Settings() {
     setSettingsTab,
   } = useSettings();
 
-  const inElectron = isElectron();
-  const visibleTabs = TAB_CONFIG.filter((tab) => !tab.electronOnly || inElectron);
+  const [query, setQuery] = useState("");
+  const [highlighted, setHighlighted] = useState<string | null>(null);
+  const [picked, setPicked] = useState<string | null>(null);
+  // Bumped on every jump. The scroll effect keys off this rather than the
+  // destination alone, so clicking a second result inside the destination you
+  // are already on still scrolls and highlights.
+  const [jump, setJump] = useState(0);
+  const pendingScroll = useRef<string | null>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  const results = useMemo(() => searchSettings(query), [query]);
+  const searching = query.trim().length > 0;
+
+  // Every persisted value is an old tab name and none survive the rename, so
+  // anything unrecognised falls back instead of rendering an empty panel.
+  const active = DESTINATIONS.some((d) => d.value === settingsTab)
+    ? settingsTab
+    : DEFAULT_DESTINATION;
+
+  const changeDestination = useCallback(
+    (value: string) => {
+      setLoopbackEnabled(false);
+      setSettingsTab(value);
+    },
+    [setLoopbackEnabled, setSettingsTab],
+  );
 
   function handleDialogChange(isOpen: boolean) {
     setShowSettings(isOpen);
     setLoopbackEnabled(false);
+    if (!isOpen) setQuery("");
   }
 
-  function handleTabChange(value: string) {
-    setLoopbackEnabled(false);
-    setSettingsTab(value);
-  }
+  const jumpTo = useCallback(
+    (entry: SettingsIndexEntry) => {
+      // Panels have no anchor of their own — landing on the panel is the result.
+      pendingScroll.current = entry.panel ? null : entry.id;
+      setPicked(entry.id);
+      setJump((n) => n + 1);
+      changeDestination(entry.destination);
+      // The query deliberately survives. Results stay put so you can click
+      // through several candidates to find the one you meant, rather than
+      // retyping the search after every guess.
+    },
+    [changeDestination],
+  );
+
+  // Runs after the destination has rendered, since neither the scroll target
+  // nor the new content exists in the DOM until then.
+  useEffect(() => {
+    const id = pendingScroll.current;
+    pendingScroll.current = null;
+
+    // Switching destination normally starts you at the top. Without this the
+    // new panel inherits the previous one's scroll position and opens partway
+    // down, which reads as a rendering glitch.
+    if (!id) {
+      contentRef.current?.scrollTo({ top: 0 });
+      return;
+    }
+
+    // Re-highlighting the same setting needs the class removed first, or the
+    // animation does not restart.
+    setHighlighted(null);
+
+    const frame = requestAnimationFrame(() => {
+      const el = contentRef.current?.querySelector<HTMLElement>(
+        `[data-setting="${id}"]`,
+      );
+      if (!el) return;
+      el.scrollIntoView({ block: "center", behavior: "smooth" });
+      setHighlighted(id);
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [active, jump]);
+
+  useEffect(() => {
+    if (!highlighted) return;
+    const timer = window.setTimeout(() => setHighlighted(null), HIGHLIGHT_MS);
+    return () => window.clearTimeout(timer);
+  }, [highlighted]);
+
+  useEffect(() => {
+    if (!highlighted || !contentRef.current) return;
+    const el = contentRef.current.querySelector<HTMLElement>(
+      `[data-setting="${highlighted}"]`,
+    );
+    if (!el) return;
+    el.classList.add("gryt-setting-hit");
+    return () => el.classList.remove("gryt-setting-hit");
+  }, [highlighted]);
 
   return (
     <Dialog.Root open={showSettings} onOpenChange={handleDialogChange}>
-      <Dialog.Content data-gryt="settings" maxWidth="900px" style={{ height: "700px", minWidth: "600px" }}>
-        <Dialog.Close
-          style={{
-            position: "absolute",
-            top: "8px",
-            right: "8px",
-          }}
-        >
+      <Dialog.Content
+        data-gryt="settings"
+        maxWidth="900px"
+        style={{ height: "700px", minWidth: "600px" }}
+      >
+        <Dialog.Close style={{ position: "absolute", top: "8px", right: "8px" }}>
           <IconButton variant="soft" color="gray">
             <MdClose size={16} />
           </IconButton>
         </Dialog.Close>
+
+        <style>{`
+          [data-setting].gryt-setting-hit {
+            animation: gryt-setting-hit ${HIGHLIGHT_MS}ms ease-out;
+            border-radius: var(--radius-3);
+          }
+          @keyframes gryt-setting-hit {
+            0%, 55% {
+              background-color: var(--accent-a4);
+              box-shadow: 0 0 0 8px var(--accent-a4);
+            }
+            100% {
+              background-color: transparent;
+              box-shadow: 0 0 0 8px transparent;
+            }
+          }
+          @media (prefers-reduced-motion: reduce) {
+            [data-setting].gryt-setting-hit {
+              animation: none;
+              outline: 2px solid var(--accent-9);
+              outline-offset: 5px;
+            }
+          }
+        `}</style>
 
         <Flex direction="column" gap="4" height="100%">
           <Dialog.Title as="h1" weight="bold" size="6">
@@ -153,47 +285,197 @@ export function Settings() {
           </Dialog.Title>
 
           {showSettings && (
-            <Tabs.Root
-              value={settingsTab}
-              onValueChange={handleTabChange}
-              orientation="vertical"
-              style={{ flex: 1, minHeight: 0 }}
-            >
-              <Flex gap="4" height="100%">
-                <Box style={{ minWidth: "200px", flexShrink: 0, overflowY: "auto" }}>
-                  <Tabs.List
-                    style={{
-                      flexDirection: "column",
-                      alignItems: "stretch",
-                      height: "fit-content",
-                      gap: "4px",
-                    }}
-                  >
-                    {visibleTabs.map(({ value, label, icon: Icon }) => (
-                      <Tabs.Trigger key={value} value={value}>
-                        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Flex gap="4" height="100%" style={{ flex: 1, minHeight: 0 }}>
+              <Box
+                style={{
+                  width: "220px",
+                  flexShrink: 0,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "8px",
+                  minHeight: 0,
+                }}
+              >
+                <TextField.Root
+                  placeholder="Search settings"
+                  value={query}
+                  onChange={(e) => setQuery(e.currentTarget.value)}
+                  onKeyDown={(e) => {
+                    // Clear the query first; only close the dialog once the
+                    // search is already empty.
+                    if (e.key === "Escape" && query) {
+                      e.stopPropagation();
+                      setQuery("");
+                    }
+                    if (e.key === "Enter" && results.length > 0) {
+                      jumpTo(results[0]);
+                    }
+                  }}
+                >
+                  <TextField.Slot>
+                    <MdSearch size={15} />
+                  </TextField.Slot>
+                  {query && (
+                    <TextField.Slot>
+                      <IconButton
+                        size="1"
+                        variant="ghost"
+                        color="gray"
+                        aria-label="Clear search"
+                        onClick={() => {
+                          setQuery("");
+                          setPicked(null);
+                        }}
+                      >
+                        <MdClose size={14} />
+                      </IconButton>
+                    </TextField.Slot>
+                  )}
+                </TextField.Root>
+
+                <Box style={{ overflowY: "auto", minHeight: 0, flex: 1 }}>
+                  {searching ? (
+                    <SearchResults results={results} onPick={jumpTo} picked={picked} />
+                  ) : (
+                    <Flex direction="column" gap="1" height="100%">
+                      {MAIN_DESTINATIONS.map(({ value, label, icon: Icon }) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => changeDestination(value)}
+                          className="gryt-settings-nav"
+                          data-active={value === active}
+                        >
                           <Icon size={16} />
                           {label}
-                        </span>
-                      </Tabs.Trigger>
-                    ))}
-                  </Tabs.List>
-                </Box>
+                        </button>
+                      ))}
 
-                <Box style={{ flex: 1, overflowY: "auto", overflowX: "hidden", minWidth: 0 }}>
-                  {visibleTabs.map(({ value, content, conditional }) => (
-                    <Tabs.Content key={value} value={value}>
-                      {conditional
-                        ? settingsTab === value && showSettings && content
-                        : content}
-                    </Tabs.Content>
-                  ))}
+                      <Box style={{ flex: 1, minHeight: "12px" }} />
+
+                      {PINNED_DESTINATIONS.map(({ value, label, icon: Icon }) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => changeDestination(value)}
+                          className="gryt-settings-nav gryt-settings-nav-cta"
+                          data-active={value === active}
+                        >
+                          <Icon size={16} />
+                          {label}
+                        </button>
+                      ))}
+                    </Flex>
+                  )}
                 </Box>
-              </Flex>
-            </Tabs.Root>
+              </Box>
+
+              <Box
+                ref={contentRef}
+                style={{
+                  flex: 1,
+                  overflowY: "auto",
+                  overflowX: "hidden",
+                  minWidth: 0,
+                }}
+              >
+                {DESTINATIONS.map(({ value, content, mountWhenActive }) => (
+                  <div key={value} hidden={value !== active}>
+                    {mountWhenActive ? value === active && content : content}
+                  </div>
+                ))}
+              </Box>
+            </Flex>
           )}
         </Flex>
+
+        <style>{`
+          .gryt-settings-nav {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            text-align: left;
+            font: inherit;
+            font-size: var(--font-size-2);
+            padding: 8px 10px;
+            border-radius: var(--radius-3);
+            border: 0;
+            cursor: pointer;
+            background: transparent;
+            color: var(--gray-12);
+          }
+          .gryt-settings-nav:hover { background: var(--gray-a3); }
+          .gryt-settings-nav[data-active="true"] {
+            background: var(--accent-a3);
+            color: var(--accent-11);
+          }
+          /* Just the heart carries the colour. A filled button competes with
+             the active-item highlight and shouts in a settings sidebar; a red
+             heart against grey labels catches the eye on its own. */
+          .gryt-settings-nav-cta svg { color: var(--red-9); }
+          .gryt-settings-nav-cta:hover svg { color: var(--red-10); }
+          .gryt-settings-result {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1px;
+            width: 100%;
+            text-align: left;
+            font: inherit;
+            padding: 7px 10px;
+            border-radius: var(--radius-3);
+            border: 0;
+            cursor: pointer;
+            background: transparent;
+          }
+          .gryt-settings-result:hover { background: var(--gray-a3); }
+          .gryt-settings-result[data-picked="true"] {
+            background: var(--accent-a3);
+            color: var(--accent-11);
+          }
+        `}</style>
       </Dialog.Content>
     </Dialog.Root>
+  );
+}
+
+function SearchResults({
+  results,
+  onPick,
+  picked,
+}: {
+  results: SettingsIndexEntry[];
+  onPick: (entry: SettingsIndexEntry) => void;
+  picked: string | null;
+}) {
+  if (results.length === 0) {
+    return (
+      <Text
+        size="1"
+        color="gray"
+        style={{ padding: "8px 10px", display: "block" }}
+      >
+        Nothing matches. Try the name of the control, or a word from its
+        description.
+      </Text>
+    );
+  }
+
+  return (
+    <Flex direction="column" gap="1">
+      {results.map((entry) => (
+        <button
+          key={entry.id}
+          type="button"
+          onClick={() => onPick(entry)}
+          className="gryt-settings-result"
+          data-picked={entry.id === picked}
+        >
+          <Text size="2">{entry.title}</Text>
+          <Text size="1" color="gray">{entry.section}</Text>
+        </button>
+      ))}
+    </Flex>
   );
 }
