@@ -51,13 +51,22 @@ class NoiseGateProcessor extends AudioWorkletProcessor {
     this._open = true;      // logical gate state
     this._holdUntil = 0;    // currentTime to hold open until
     this._reported = null;  // last state posted to the main thread
+    this._blocks = 0;       // blocks since the last level message
   }
 
+  // UI/debug only. Nothing in the audio path may depend on these being read.
   _report(open) {
     if (this._reported === open) return;
     this._reported = open;
-    // UI/debug only. Nothing in the audio path may depend on this being read.
-    this.port.postMessage({ type: 'gate', open: open });
+    this.port.postMessage({ type: 'gate', open: open, level: this._level });
+  }
+
+  // The UI needs the same level the gate decides on, otherwise the meter and
+  // the gate disagree and the threshold looks wrong. ~21 ms at 48 kHz.
+  _reportLevel() {
+    if (++this._blocks < 8) return;
+    this._blocks = 0;
+    this.port.postMessage({ type: 'level', open: this._open, level: this._level });
   }
 
   process(inputs, outputs, parameters) {
@@ -80,7 +89,9 @@ class NoiseGateProcessor extends AudioWorkletProcessor {
     // muteGain does the gating instead. Stay fully open and cheap.
     const bypass = threshold <= 0;
 
-    if (detectCh && detectCh.length && !bypass) {
+    // Track the level even when bypassed, so the UI meter still works in
+    // push-to-talk mode where the gate itself is disabled.
+    if (detectCh && detectCh.length) {
       let sum = 0;
       for (let i = 0; i < detectCh.length; i++) {
         sum += detectCh[i] * detectCh[i];
@@ -93,18 +104,21 @@ class NoiseGateProcessor extends AudioWorkletProcessor {
       const instant = ((clamped - MIN_DB) / DB_RANGE) * 100;
 
       this._level = smoothing * this._level + (1 - smoothing) * instant;
+    }
 
+    if (bypass) {
+      this._open = true;
+    } else if (detectCh && detectCh.length) {
       if (this._level >= threshold) {
         this._open = true;
         this._holdUntil = currentTime + releaseMs / 1000;
       } else if (this._open && currentTime >= this._holdUntil) {
         this._open = false;
       }
-    } else if (bypass) {
-      this._open = true;
     }
 
     this._report(this._open);
+    this._reportLevel();
 
     const target = this._open ? 1 : 0;
     // Per-sample ramp so open/close doesn't click.

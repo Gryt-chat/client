@@ -59,6 +59,9 @@ function useCreateMicrophoneHook() {
   const [noiseGateNode, setNoiseGateNode] = useState<AudioWorkletNode | null>(
     null,
   );
+  const [isGateOpen, setIsGateOpen] = useState(false);
+  const gateOpenRef = useRef(false);
+  const gateLevelRef = useRef(0);
 
   const releaseMicTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const micStreamRef = useRef<MediaStream | undefined>(undefined);
@@ -154,7 +157,28 @@ function useCreateMicrophoneHook() {
     ensureNoiseGateWorklet(audioContext)
       .then(() => {
         if (cancelled) return;
-        setNoiseGateNode(createNoiseGateNode(audioContext));
+
+        const node = createNoiseGateNode(audioContext);
+
+        // The gate is the only thing that actually knows whether audio is
+        // leaving this client, so the UI reads its state rather than
+        // re-deriving "speaking" from an analyser with its own threshold.
+        node.port.onmessage = (event) => {
+          const data = event.data;
+          if (!data) return;
+
+          if (typeof data.level === "number") {
+            gateLevelRef.current = data.level;
+          }
+          if (typeof data.open === "boolean") {
+            gateOpenRef.current = data.open;
+            // Only a state update on transitions — level arrives ~47x/sec and
+            // must not re-render anything.
+            setIsGateOpen((prev) => (prev === data.open ? prev : data.open));
+          }
+        };
+
+        setNoiseGateNode(node);
         voiceLog.ok("MIC", 1, "Noise gate AudioWorklet ready");
       })
       .catch((error) => {
@@ -170,8 +194,26 @@ function useCreateMicrophoneHook() {
     return () => {
       cancelled = true;
       setNoiseGateNode(null);
+      setIsGateOpen(false);
+      gateOpenRef.current = false;
+      gateLevelRef.current = 0;
     };
   }, [audioContext]);
+
+  /**
+   * Level the gate is actually deciding on, 0-100. Returns null when the
+   * worklet is unavailable so callers can fall back to their own measurement.
+   */
+  const getGateLevel = useCallback(
+    () => (noiseGateNode ? gateLevelRef.current : null),
+    [noiseGateNode],
+  );
+
+  /**
+   * Whether audio is leaving this client right now: the gate is open and the
+   * user is not muted. Null when the worklet is unavailable.
+   */
+  const isTransmitting = noiseGateNode ? isGateOpen && !effectiveMuted : null;
 
   const microphoneBuffer = useMemo<MicrophoneBufferType>(() => {
     if (!audioContext) {
@@ -504,6 +546,8 @@ function useCreateMicrophoneHook() {
     isLoaded,
     getDevices,
     getVisualizerData,
+    getGateLevel,
+    isTransmitting,
     isPttActive,
   };
 }
@@ -522,6 +566,7 @@ const init: MicrophoneInterface = {
     muteGain: undefined,
     volumeGain: undefined,
     noiseGate: undefined,
+    noiseGateWorklet: undefined,
     rnnoiseNode: undefined,
   },
   audioContext: undefined,
@@ -530,6 +575,10 @@ const init: MicrophoneInterface = {
   isLoaded: false,
   getDevices: async () => {},
   getVisualizerData: () => null,
+  // Null until the gate worklet exists, so callers fall back to their own
+  // measurement rather than treating "not transmitting" as fact.
+  getGateLevel: () => null,
+  isTransmitting: null,
   isPttActive: { current: false },
 };
 

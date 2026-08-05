@@ -28,5 +28,9 @@ export interface MicrophoneInterface {
   isLoaded: boolean;
   getDevices: () => Promise<void>;
   getVisualizerData: () => Uint8Array | null;
+  /** Level the noise gate is deciding on, 0-100. Null if the gate worklet is unavailable. */
+  getGateLevel: () => number | null;
+  /** True while audio is actually leaving this client. Null if the gate worklet is unavailable. */
+  isTransmitting: boolean | null;
   isPttActive: MutableRefObject<boolean>;
 }
