@@ -10,7 +10,8 @@ export type MicrophoneBufferType = {
   processedStream?: MediaStream; // Processed stream (after noise suppression, mute, etc.)
   muteGain?: GainNode; // Dedicated gain node for muting
   volumeGain?: GainNode; // Dedicated gain node for volume control
-  noiseGate?: GainNode; // Dedicated gain node for noise gate functionality
+  noiseGate?: GainNode; // Fallback gain node, used only when the gate worklet is unavailable
+  noiseGateWorklet?: AudioWorkletNode; // Noise gate running on the audio thread
   rnnoiseNode?: AudioWorkletNode; // RNNoise noise reduction (AudioWorklet)
   agcAnalyser?: AnalyserNode; // AGC input level measurement
   agcGain?: GainNode; // AGC dynamic gain adjustment
@@ -27,5 +28,9 @@ export interface MicrophoneInterface {
   isLoaded: boolean;
   getDevices: () => Promise<void>;
   getVisualizerData: () => Uint8Array | null;
+  /** Level the noise gate is deciding on, 0-100. Null if the gate worklet is unavailable. */
+  getGateLevel: () => number | null;
+  /** True while audio is actually leaving this client. Null if the gate worklet is unavailable. */
+  isTransmitting: boolean | null;
   isPttActive: MutableRefObject<boolean>;
 }

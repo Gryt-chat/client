@@ -9,6 +9,12 @@ export interface CreateMicrophoneBufferParams {
   audioContext: AudioContext;
   micStream: MediaStream | undefined;
   rnnoiseNode: AudioWorkletNode | null;
+  /**
+   * Gate running on the audio thread. When null (worklet registration failed)
+   * the pipeline falls back to the GainNode driven from the main thread, which
+   * cannot gate while the window is hidden — see the noise gate effect below.
+   */
+  noiseGateNode: AudioWorkletNode | null;
   eSportsModeEnabled: boolean;
   autoGainEnabled: boolean;
   compressorEnabled: boolean;
@@ -18,6 +24,7 @@ export function createMicrophoneBuffer({
   audioContext,
   micStream,
   rnnoiseNode,
+  noiseGateNode,
   eSportsModeEnabled,
   autoGainEnabled,
   compressorEnabled,
@@ -92,8 +99,19 @@ export function createMicrophoneBuffer({
     processingChain = compressor;
   }
 
-  processingChain.connect(noiseGate);
-  noiseGate.connect(muteGain);
+  if (noiseGateNode) {
+    // Input 0 carries the signal being gated. Input 1 is a tap taken before
+    // RNNoise/AGC/compressor, because that is where the threshold was always
+    // measured — gating post-chain audio against a post-chain level would
+    // change what the user's threshold percentage means.
+    processingChain.connect(noiseGateNode, 0, 0);
+    volumeGain.connect(noiseGateNode, 0, 1);
+    noiseGateNode.connect(muteGain);
+  } else {
+    processingChain.connect(noiseGate);
+    noiseGate.connect(muteGain);
+  }
+
   muteGain.connect(finalAnalyser);
   finalAnalyser.connect(outputDestination);
 
@@ -108,6 +126,7 @@ export function createMicrophoneBuffer({
     muteGain,
     volumeGain,
     noiseGate,
+    noiseGateWorklet: noiseGateNode ?? undefined,
     rnnoiseNode: rnnoiseNode ?? undefined,
     agcAnalyser,
     agcGain,
@@ -125,6 +144,7 @@ export interface PipelineControlParams {
   noiseGateRelease: number;
   loopbackEnabled: boolean;
   inputMode: "voice_activity" | "push_to_talk";
+  eSportsModeEnabled: boolean;
   autoGainEnabled: boolean;
   autoGainTargetDb: number;
   compressorAmount: number;
@@ -140,6 +160,7 @@ export function usePipelineControls({
   noiseGateRelease,
   loopbackEnabled,
   inputMode,
+  eSportsModeEnabled,
   autoGainEnabled,
   autoGainTargetDb,
   compressorAmount,
@@ -254,16 +275,53 @@ export function usePipelineControls({
   }, [isMuted, microphoneBuffer.muteGain, audioContext, inputMode]);
 
   /**
-   * Noise gate control.
+   * Noise gate control — audio thread.
    *
-   * requestAnimationFrame is throttled or paused when the Electron/browser
-   * window is hidden. If the gate is closed at that moment, the outgoing
-   * processed stream can stay silent even though the OS mic track is live.
+   * The gate itself lives in an AudioWorklet, so it keeps running when the
+   * window is hidden. All this does is push the current settings into it.
    *
-   * In voice-activity mode, force the gate open while hidden. When visible
-   * again, normal gate detection resumes.
+   * Threshold 0 disables gating, which is what push-to-talk wants: there the
+   * gating is done by muteGain instead.
    */
   useEffect(() => {
+    const gate = microphoneBuffer.noiseGateWorklet;
+    if (!gate || !audioContext) return;
+
+    const gating = inputMode !== "push_to_talk";
+
+    gate.parameters.get("threshold")?.setValueAtTime(
+      gating ? noiseGate : 0,
+      audioContext.currentTime,
+    );
+    gate.parameters.get("release")?.setValueAtTime(
+      noiseGateRelease,
+      audioContext.currentTime,
+    );
+    gate.parameters
+      .get("smoothing")
+      ?.setValueAtTime(eSportsModeEnabled ? 0.3 : 0.8, audioContext.currentTime);
+  }, [
+    microphoneBuffer.noiseGateWorklet,
+    audioContext,
+    noiseGate,
+    noiseGateRelease,
+    inputMode,
+    eSportsModeEnabled,
+  ]);
+
+  /**
+   * Noise gate control — main thread fallback.
+   *
+   * Only runs when the worklet could not be registered. requestAnimationFrame
+   * is throttled or paused when the window is hidden, so if the gate were
+   * closed at that moment the outgoing stream could stay silent even though
+   * the mic track is live. This forces the gate open while hidden, which means
+   * recipients hear ungated audio — the behaviour GRYT-18 fixed by moving the
+   * gate onto the audio thread. Kept only so a worklet failure degrades to
+   * "gate stops working" rather than "microphone stops working".
+   */
+  useEffect(() => {
+    if (microphoneBuffer.noiseGateWorklet) return;
     if (inputMode === "push_to_talk") return;
 
     if (
@@ -396,6 +454,7 @@ export function usePipelineControls({
   }, [
     microphoneBuffer.analyser,
     microphoneBuffer.noiseGate,
+    microphoneBuffer.noiseGateWorklet,
     audioContext,
     noiseGate,
     noiseGateRelease,

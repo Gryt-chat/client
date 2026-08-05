@@ -125,7 +125,8 @@ export function useServerState(): UseServerStateResult {
     [isConnecting, isConnected]
   );
 
-  const { microphoneBuffer, isPttActive } = useMicrophone(shouldAccessMic);
+  const { microphoneBuffer, isPttActive, isTransmitting } =
+    useMicrophone(shouldAccessMic);
 
   const currentConnection = useMemo<Socket | null>(
     () =>
@@ -324,6 +325,10 @@ export function useServerState(): UseServerStateResult {
         if (clientID === currentConnection.id) {
           if (inputMode === "push_to_talk") {
             speaking = isPttActive.current;
+          } else if (isTransmitting !== null) {
+            // Ask the gate directly. Deriving this from an analyser with its
+            // own threshold made the indicator disagree with the noise gate.
+            speaking = isTransmitting;
           } else if (microphoneBuffer.finalAnalyser) {
             speaking = isSpeaking(microphoneBuffer.finalAnalyser, 0.5);
           }
@@ -346,6 +351,7 @@ export function useServerState(): UseServerStateResult {
     return () => clearInterval(interval);
   }, [
     microphoneBuffer.finalAnalyser,
+    isTransmitting,
     streamSources,
     clients,
     currentlyViewingServer,

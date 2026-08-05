@@ -52,7 +52,8 @@ export function AudioSettings() {
   } = useSettings();
 
   const { isConnected } = useSFU();
-  const { devices, microphoneBuffer, getDevices, audioContext } = useMicrophone(true);
+  const { devices, microphoneBuffer, getDevices, audioContext, getGateLevel } =
+    useMicrophone(true);
   const { devices: outputDevices, getOutputDevices, applyOutputDevice } = useSpeakers();
   const { nativeAudioActive } = useScreenShare();
 
@@ -103,7 +104,8 @@ export function AudioSettings() {
     const id = setInterval(() => {
       const buf = microphoneBuffer;
       const muteVal = buf.muteGain?.gain.value ?? null;
-      const gateVal = buf.noiseGate?.gain.value ?? null;
+      // buf.noiseGate is only the fallback node; the real gate is the worklet.
+      const gateVal = getGateLevel();
       const volVal = buf.volumeGain?.gain.value ?? null;
 
       let finalRms: number | null = null;
@@ -137,7 +139,7 @@ export function AudioSettings() {
       });
     }, 2000);
     return () => clearInterval(id);
-  }, [loopbackEnabled, microphoneBuffer, audioContext]);
+  }, [loopbackEnabled, microphoneBuffer, audioContext, getGateLevel]);
 
   const getRawVisualizerData = useCallback((): Uint8Array | null => {
     if (!microphoneBuffer.analyser) {
@@ -173,7 +175,14 @@ export function AudioSettings() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      if (microphoneBuffer.analyser) {
+      // Prefer the level the gate itself decided on. Measuring separately here
+      // made the meter and the gate disagree, so the threshold looked wrong.
+      const gateLevel = getGateLevel();
+
+      if (gateLevel !== null) {
+        setMicRawVolume(gateLevel);
+        setIsMicLive(gateLevel > noiseGate);
+      } else if (microphoneBuffer.analyser) {
         const bufferLength = microphoneBuffer.analyser.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
         microphoneBuffer.analyser.getByteFrequencyData(dataArray);
@@ -186,8 +195,7 @@ export function AudioSettings() {
         const rawVolume = (rms / 255) * 100;
 
         setMicRawVolume(rawVolume);
-        const speaking = rawVolume > noiseGate;
-        setIsMicLive(speaking);
+        setIsMicLive(rawVolume > noiseGate);
       }
 
       if (microphoneBuffer.finalAnalyser) {
@@ -213,7 +221,13 @@ export function AudioSettings() {
       clearInterval(interval);
       setVisualizerData(null);
     };
-  }, [microphoneBuffer.analyser, microphoneBuffer.finalAnalyser, noiseGate, getRawVisualizerData]);
+  }, [
+    microphoneBuffer.analyser,
+    microphoneBuffer.finalAnalyser,
+    noiseGate,
+    getRawVisualizerData,
+    getGateLevel,
+  ]);
 
   const AudioVisualizer = useMemo(() => {
     return () => {
