@@ -36,7 +36,17 @@ export default defineConfig({
                   lib: {
                     entry: "electron/preload.ts",
                     formats: ["cjs"],
-                    fileName: () => "[name].cjs",
+                    // vite-plugin-electron defaults formats to ["es"] because
+                    // package.json is "type": "module", and mergeConfig
+                    // concatenates arrays rather than replacing them — so this
+                    // really builds ["es", "cjs"]. Both used to land on the
+                    // same [name].cjs and raced; whichever wrote last won.
+                    // Electron parses a .cjs preload as CommonJS, so when the
+                    // ESM one won it was a SyntaxError, the preload died
+                    // before contextBridge ran, and the renderer silently
+                    // looked like a browser. Give each format its own name.
+                    fileName: (format) =>
+                      format === "cjs" ? "[name].cjs" : "[name].mjs",
                   },
                   rollupOptions: { external: ["electron"] },
                 },
@@ -50,7 +60,9 @@ export default defineConfig({
                   lib: {
                     entry: "electron/splash-preload.ts",
                     formats: ["cjs"],
-                    fileName: () => "[name].cjs",
+                    // Same race as preload above — keep the formats apart.
+                    fileName: (format) =>
+                      format === "cjs" ? "[name].cjs" : "[name].mjs",
                   },
                   rollupOptions: { external: ["electron"] },
                 },
