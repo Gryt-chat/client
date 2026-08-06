@@ -27,6 +27,10 @@ const OUTDIR = join(CLIENT_DIR, "build", "embedded-server");
 const args = process.argv.slice(2);
 const skipSfu = args.includes("--skip-sfu");
 const skipServer = args.includes("--skip-server");
+// Used by electron:dev, which wants the embedded server present but must not
+// fail or stall the dev loop over it. Skips the build when the output is
+// already there, and never blocks a dev session that cannot produce it.
+const ifMissing = args.includes("--if-missing");
 
 const platform = process.platform;
 const arch = process.arch;
@@ -57,6 +61,35 @@ function assertExists(path, message) {
   if (!existsSync(path)) {
     throw new Error(message || `Missing expected path: ${path}`);
   }
+}
+
+if (ifMissing) {
+  // Same two paths embeddedServerManager.ts probes in dev. If both are there,
+  // the app can host a server and there is nothing to do.
+  const haveServer = existsSync(join(OUTDIR, "server", "bundle.js"));
+  const haveSfu = existsSync(
+    join(OUTDIR, "sfu", `${ebOs}-${ebArch}`, `gryt_sfu${sfuExt}`)
+  );
+
+  if (haveServer && haveSfu) {
+    console.log("Embedded server already built — skipping.");
+    console.log("  Rebuild after changing packages/server or packages/sfu:");
+    console.log("    yarn build:embedded-server");
+    process.exit(0);
+  }
+
+  // Building needs Go and a working native toolchain. Plenty of people work on
+  // the UI without either, and hosting is optional, so a failure here must not
+  // take the dev server down with it — the app already copes with the embedded
+  // server being unavailable.
+  process.on("uncaughtException", (err) => {
+    console.warn();
+    console.warn("Could not build the embedded server — continuing without it.");
+    console.warn("Hosting a server from this dev client will be unavailable.");
+    console.warn(`Reason: ${err?.message ?? err}`);
+    console.warn("Build it later with: yarn build:embedded-server");
+    process.exit(0);
+  });
 }
 
 console.log("=== Building Embedded Server Resources ===");
