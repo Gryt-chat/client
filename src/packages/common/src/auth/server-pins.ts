@@ -58,6 +58,18 @@ export type ServerProofDecision =
   | { action: "trusted"; keyId: string; movedFrom?: string }
   /** Never seen this key. Pin it — the trust-on-first-use moment. */
   | { action: "pin"; keyId: string; jwk: JsonWebKey }
+  /**
+   * A different key, but the server proved the change was deliberate with a
+   * statement signed by the key we had pinned (GRYT-54).
+   */
+  | {
+      action: "rotated";
+      keyId: string;
+      jwk: JsonWebKey;
+      previousKeyId: string;
+      /** Keys stepped through, in order. More than one means we were behind. */
+      hops: string[];
+    }
   /** Server offered no proof and we have never had one from this address. */
   | { action: "unauthenticated" }
   /** Refuse the connection. */
@@ -129,6 +141,46 @@ export function savePin(keyId: string, jwk: JsonWebKey, host: string): void {
 
   const index = readHostIndex();
   index[host] = keyId;
+  writeJson(HOST_INDEX_KEY, index);
+}
+
+/**
+ * Succeed one pinned key with another after a proven rotation (GRYT-54).
+ *
+ * Every address that expected the old key is moved to the new one, not just the
+ * address we happen to be connected to. The same server legitimately answers at
+ * several, and leaving the others pointing at a retired key would quietly
+ * downgrade them to first-join on next contact — losing exactly the
+ * substitution check this exists to provide.
+ *
+ * `firstSeenAt` carries over: it is when this *server* was first trusted, which
+ * a key change does not reset.
+ */
+export function replacePin(
+  oldKeyId: string,
+  newKeyId: string,
+  jwk: JsonWebKey,
+  host: string,
+): void {
+  const pins = listPins();
+  const previous = pins[oldKeyId];
+  const now = Date.now();
+
+  delete pins[oldKeyId];
+  pins[newKeyId] = {
+    keyId: newKeyId,
+    jwk,
+    firstSeenAt: previous?.firstSeenAt ?? now,
+    lastSeenAt: now,
+    lastHost: host,
+  };
+  writeJson(PINS_KEY, pins);
+
+  const index = readHostIndex();
+  for (const [h, id] of Object.entries(index)) {
+    if (id === oldKeyId) index[h] = newKeyId;
+  }
+  index[host] = newKeyId;
   writeJson(HOST_INDEX_KEY, index);
 }
 
@@ -313,6 +365,108 @@ async function parseProof(proof: string): Promise<ParsedProof | ServerProofFailu
   };
 }
 
+// ── Key rotation ────────────────────────────────────────────────────
+
+/** Refuse to walk further than this, so a malformed chain cannot loop. */
+const MAX_VOUCH_HOPS = 16;
+
+interface ParsedVouch {
+  prev: string;
+  next: string;
+  jwk: JsonWebKey;
+  signingInput: string;
+  signature: Uint8Array;
+}
+
+async function parseVouch(vouch: string): Promise<ParsedVouch | null> {
+  const parts = vouch.split(".");
+  if (parts.length !== 3) return null;
+
+  let header: { alg?: string; jwk?: JsonWebKey };
+  let payload: { prev?: string; next?: string; jwk?: JsonWebKey; exp?: number };
+  try {
+    header = JSON.parse(new TextDecoder().decode(base64UrlToBytes(parts[0])));
+    payload = JSON.parse(new TextDecoder().decode(base64UrlToBytes(parts[1])));
+  } catch {
+    return null;
+  }
+
+  if (header.alg !== "ES256") return null;
+  if (typeof payload.prev !== "string" || typeof payload.next !== "string") return null;
+  if (!payload.jwk) return null;
+  if (typeof payload.exp === "number" && payload.exp * 1000 < Date.now()) return null;
+
+  // The successor key travels in the payload so we can check it hashes to the
+  // key id being claimed. Without that a valid statement could name one key and
+  // carry another.
+  let nextThumbprint: string;
+  try {
+    nextThumbprint = await jwkThumbprint(payload.jwk);
+  } catch {
+    return null;
+  }
+  if (nextThumbprint !== payload.next) return null;
+
+  return {
+    prev: payload.prev,
+    next: payload.next,
+    jwk: payload.jwk,
+    signingInput: `${parts[0]}.${parts[1]}`,
+    signature: base64UrlToBytes(parts[2]),
+  };
+}
+
+/**
+ * Walk succession statements from the key we pinned to the key now answering.
+ *
+ * Every hop is verified against the key the *previous* hop established, starting
+ * from our own pin — never against a key the chain supplied for itself. That is
+ * the whole security of this: an attacker can offer any statements they like,
+ * but cannot produce one signed by a key they do not hold.
+ */
+async function followVouchChain(
+  vouches: string[],
+  fromKeyId: string,
+  toKeyId: string,
+): Promise<{ hops: string[] } | null> {
+  if (vouches.length === 0 || fromKeyId === toKeyId) return null;
+
+  const parsed = (await Promise.all(vouches.map(parseVouch))).filter(
+    (v): v is ParsedVouch => v !== null,
+  );
+
+  const pin = getPin(fromKeyId);
+  if (!pin) return null;
+
+  let currentKeyId = fromKeyId;
+  let currentJwk = pin.jwk;
+  const hops: string[] = [];
+  const seen = new Set<string>([fromKeyId]);
+
+  for (let i = 0; i < MAX_VOUCH_HOPS; i++) {
+    const step = parsed.find((v) => v.prev === currentKeyId);
+    if (!step) return null;
+
+    // A chain that revisits a key is malformed, and following it would loop.
+    if (seen.has(step.next)) return null;
+
+    const valid = await verifySignature(currentJwk, step.signingInput, step.signature);
+    if (!valid) return null;
+
+    // A key the user blocked cannot be laundered back in through a succession.
+    if (isBlocked(step.next)) return null;
+
+    seen.add(step.next);
+    hops.push(step.next);
+    currentKeyId = step.next;
+    currentJwk = step.jwk;
+
+    if (currentKeyId === toKeyId) return { hops };
+  }
+
+  return null;
+}
+
 // ── The decision ────────────────────────────────────────────────────
 
 /** 32 bytes, the same size the server uses for its own challenge nonce. */
@@ -330,6 +484,8 @@ export async function evaluateServerProof(args: {
   host: string;
   proof: string | undefined;
   sentNonce: string;
+  /** Succession statements the server offered, if it has ever rotated. */
+  vouches?: string[];
 }): Promise<ServerProofDecision> {
   const { host, proof, sentNonce } = args;
   const expectedKeyId = getExpectedKeyIdForHost(host);
@@ -373,6 +529,21 @@ export async function evaluateServerProof(args: {
   }
 
   if (expectedKeyId && expectedKeyId !== parsed.keyId) {
+    // The server may have rotated its key on purpose. It can prove that by
+    // producing a statement signed by the key we pinned which names its
+    // replacement (GRYT-54). Anything that doesn't chain back to our pin is
+    // still a refusal.
+    const succession = await followVouchChain(args.vouches ?? [], expectedKeyId, parsed.keyId);
+    if (succession) {
+      return {
+        action: "rotated",
+        keyId: parsed.keyId,
+        jwk: parsed.jwk,
+        previousKeyId: expectedKeyId,
+        hops: succession.hops,
+      };
+    }
+
     return {
       action: "block",
       failure: {
@@ -428,6 +599,9 @@ export function applyServerProofDecision(
   switch (decision.action) {
     case "pin":
       savePin(decision.keyId, decision.jwk, host);
+      break;
+    case "rotated":
+      replacePin(decision.previousKeyId, decision.keyId, decision.jwk, host);
       break;
     case "trusted": {
       const pin = getPin(decision.keyId);

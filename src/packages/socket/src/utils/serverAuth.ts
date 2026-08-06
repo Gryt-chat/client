@@ -78,12 +78,12 @@ export function guardSocket(
   const verified = new Promise<ServerProofDecision>((resolve, reject) => {
     let done = false;
 
-    const settle = async (proof: string | undefined) => {
+    const settle = async (proof: string | undefined, vouches?: string[]) => {
       if (done) return;
       done = true;
 
       const nonce = pendingNonce;
-      const decision = await evaluateServerProof({ host, proof, sentNonce: nonce });
+      const decision = await evaluateServerProof({ host, proof, sentNonce: nonce, vouches });
       applyServerProofDecision(host, decision);
       logDecision(host, decision);
 
@@ -110,8 +110,8 @@ export function guardSocket(
       setTimeout(() => { void settle(undefined); }, IDENTITY_TIMEOUT_MS);
     });
 
-    socket.on("server:identity", (res: { proof?: string; error?: string }) => {
-      void settle(res?.proof);
+    socket.on("server:identity", (res: { proof?: string; vouches?: string[]; error?: string }) => {
+      void settle(res?.proof, Array.isArray(res?.vouches) ? res.vouches : undefined);
     });
   });
 
@@ -130,6 +130,13 @@ function logDecision(host: string, decision: ServerProofDecision): void {
       if (decision.movedFrom) {
         console.log(`[ServerAuth] ${host} is the server previously seen at ${decision.movedFrom}`);
       }
+      break;
+    case "rotated":
+      console.log(
+        `[ServerAuth] ${host} rotated its identity key ` +
+          `(${decision.previousKeyId} -> ${decision.keyId}` +
+          `${decision.hops.length > 1 ? `, ${decision.hops.length} rotations behind` : ""})`,
+      );
       break;
     case "unauthenticated":
       console.warn(`[ServerAuth] ${host} offered no identity proof — not pinning.`);
