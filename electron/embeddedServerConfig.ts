@@ -52,6 +52,89 @@ function findFreePort(preferred: number): Promise<number> {
   });
 }
 
+/**
+ * Can we actually bind this port, on the interface the server will use?
+ *
+ * Deliberately not 127.0.0.1: the embedded server runs with HOST=0.0.0.0, and a
+ * loopback probe says nothing about whether the wildcard bind will succeed.
+ */
+function canBind(port: number, host: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const srv = createServer();
+    srv.once("error", () => resolve(false));
+    srv.listen(port, host, () => {
+      srv.close(() => resolve(true));
+    });
+  });
+}
+
+async function findFreePortFrom(
+  preferred: number,
+  host: string,
+): Promise<number> {
+  if (await canBind(preferred, host)) return preferred;
+
+  return new Promise((resolve, reject) => {
+    const srv = createServer();
+    srv.once("error", () => reject(new Error("No free port")));
+    srv.listen(0, host, () => {
+      const addr = srv.address();
+      const port = typeof addr === "object" && addr ? addr.port : 0;
+      srv.close(() =>
+        port ? resolve(port) : reject(new Error("No free port")),
+      );
+    });
+  });
+}
+
+/**
+ * Re-check the ports recorded in config.env and move off any that are taken.
+ *
+ * Ports were previously chosen once, when the server was created, and reused
+ * forever. Anything else claiming one in the meantime broke the server on every
+ * subsequent start with no way to recover from the UI. On macOS that is not
+ * hypothetical: AirPlay Receiver binds 5000, which is the preferred default.
+ *
+ * SFU_WS_HOST and SFU_PUBLIC_HOST embed the SFU port, so they move with it.
+ */
+export async function ensurePortsAvailable(): Promise<string[]> {
+  const configPath = getConfigPath();
+  if (!existsSync(configPath)) return [];
+
+  let raw = readFileSync(configPath, "utf-8");
+  const env = parseEnv(raw);
+  const host = env.HOST || "0.0.0.0";
+  const notes: string[] = [];
+
+  const serverPort = parseInt(env.PORT || "5000", 10);
+  const sfuPort = parseInt(env.SFU_PORT || "5005", 10);
+
+  const nextServerPort = await findFreePortFrom(serverPort, host);
+  if (nextServerPort !== serverPort) {
+    raw = raw.replace(/^PORT=.*$/m, `PORT=${nextServerPort}`);
+    notes.push(`server port ${serverPort} was in use, moved to ${nextServerPort}`);
+  }
+
+  const nextSfuPort = await findFreePortFrom(sfuPort, host);
+  if (nextSfuPort !== sfuPort) {
+    raw = raw
+      .replace(/^SFU_PORT=.*$/m, `SFU_PORT=${nextSfuPort}`)
+      .replace(/^SFU_WS_HOST=.*$/m, `SFU_WS_HOST=ws://127.0.0.1:${nextSfuPort}`)
+      .replace(
+        /^SFU_PUBLIC_HOST=.*$/m,
+        `SFU_PUBLIC_HOST=${extractHostFromHostPort(env.SFU_PUBLIC_HOST || getLanIp())}:${nextSfuPort}`,
+      );
+    notes.push(`SFU port ${sfuPort} was in use, moved to ${nextSfuPort}`);
+  }
+
+  if (notes.length > 0) {
+    writeFileSync(configPath, raw, "utf-8");
+    for (const n of notes) console.log(`[EmbeddedServerConfig] ${n}`);
+  }
+
+  return notes;
+}
+
 function parseIpv4(ip: string): number[] | null {
   const parts = ip.split(".").map(Number);
 
