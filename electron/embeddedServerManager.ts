@@ -5,6 +5,7 @@ import { join } from "path";
 
 import {
   type EmbeddedServerConfig,
+  ensurePortsAvailable,
   generateConfig,
   getEmbeddedServerDir,
   getLanIp,
@@ -31,6 +32,42 @@ let targetWindow: BrowserWindow | null = null;
 
 function log(msg: string): void {
   console.log("[EmbeddedServer]", msg);
+}
+
+// Both child processes explain themselves perfectly well on the way out — the
+// SFU prints "listen tcp :5005: bind: address already in use" — but that went
+// to the main process console while the user was shown "exited unexpectedly
+// (code 1)" and nothing else. Keep the tail so the error can say why.
+const OUTPUT_TAIL = 12;
+const recentOutput: Record<"sfu" | "server", string[]> = { sfu: [], server: [] };
+
+function rememberOutput(source: "sfu" | "server", msg: string): void {
+  const lines = recentOutput[source];
+  for (const line of msg.split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed) lines.push(trimmed);
+  }
+  if (lines.length > OUTPUT_TAIL) lines.splice(0, lines.length - OUTPUT_TAIL);
+}
+
+/** The most useful line from a dead process, for the error the user sees. */
+function explainExit(source: "sfu" | "server", code: number | null): string {
+  const label = source === "sfu" ? "SFU" : "Server";
+  const lines = recentOutput[source];
+
+  // Prefer a line that names the actual failure over the last line, which is
+  // often a shutdown notice rather than the cause.
+  const telling = [...lines]
+    .reverse()
+    .find((l) => /error|failed|fatal|panic|denied|refused|address already|EADDR|ENOENT/i.test(l));
+
+  const detail = telling ?? lines[lines.length - 1];
+  const base = `${label} process exited unexpectedly (code ${code})`;
+  if (!detail) return base;
+
+  // Strip the Go logger's date/time/file prefix so the message reads cleanly.
+  const cleaned = detail.replace(/^\d{4}\/\d{2}\/\d{2}\s[\d:]+\s+\S+?:\d+:\s*/, "").trim();
+  return `${base}: ${cleaned}`;
 }
 
 function emitStatus(): void {
@@ -116,27 +153,23 @@ function spawnSfu(config: EmbeddedServerConfig): ChildProcess | null {
     cwd: getEmbeddedServerDir(),
   });
 
-  proc.stdout?.on("data", (data: Buffer) => {
+  const onSfuOutput = (data: Buffer) => {
     const msg = data.toString().trim();
     if (msg) {
+      rememberOutput("sfu", msg);
       log(`[SFU] ${msg}`);
       emitLog("sfu", msg);
     }
-  });
+  };
 
-  proc.stderr?.on("data", (data: Buffer) => {
-    const msg = data.toString().trim();
-    if (msg) {
-      log(`[SFU] ${msg}`);
-      emitLog("sfu", msg);
-    }
-  });
+  proc.stdout?.on("data", onSfuOutput);
+  proc.stderr?.on("data", onSfuOutput);
 
   proc.on("exit", (code) => {
     log(`SFU exited with code ${code}`);
     sfuProcess = null;
     if (currentStatus === "running" || currentStatus === "starting") {
-      setStatus("error", `SFU process exited unexpectedly (code ${code})`);
+      setStatus("error", explainExit("sfu", code));
       stopEmbeddedServer();
     }
   });
@@ -164,6 +197,7 @@ function spawnServer(config: EmbeddedServerConfig): ChildProcess | null {
   proc.stdout?.on("data", (data: Buffer) => {
     const msg = data.toString().trim();
     if (msg) {
+      rememberOutput("server", msg);
       log(`[Server] ${msg}`);
       emitLog("server", msg);
       if (msg.includes("listening on") || msg.includes("Server running") || msg.includes(`:${config.serverPort}`)) {
@@ -177,6 +211,7 @@ function spawnServer(config: EmbeddedServerConfig): ChildProcess | null {
   proc.stderr?.on("data", (data: Buffer) => {
     const msg = data.toString().trim();
     if (msg) {
+      rememberOutput("server", msg);
       log(`[Server] ${msg}`);
       emitLog("server", msg);
     }
@@ -186,7 +221,7 @@ function spawnServer(config: EmbeddedServerConfig): ChildProcess | null {
     log(`Server exited with code ${code}`);
     serverProcess = null;
     if (currentStatus === "running" || currentStatus === "starting") {
-      setStatus("error", `Server process exited unexpectedly (code ${code})`);
+      setStatus("error", explainExit("server", code));
       stopEmbeddedServer();
     }
   });
@@ -226,6 +261,16 @@ export async function startExistingServer(
 
   if (currentStatus === "running" || currentStatus === "starting") {
     return getState();
+  }
+
+  // Ports were picked when the server was created and never re-checked. Move
+  // off any that have since been taken, before loading the config — otherwise
+  // the process just fails to bind and exits, every time, unrecoverably.
+  try {
+    const moved = await ensurePortsAvailable();
+    for (const note of moved) log(note);
+  } catch (err) {
+    log(`Port re-check failed: ${err instanceof Error ? err.message : err}`);
   }
 
   const config = loadExistingConfig();
