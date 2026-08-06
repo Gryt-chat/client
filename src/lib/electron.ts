@@ -140,6 +140,7 @@ export interface ElectronAPI {
   ): Promise<EmbeddedServerState>;
   startEmbeddedServer(): Promise<EmbeddedServerState>;
   stopEmbeddedServer(): Promise<EmbeddedServerState>;
+  dismissEmbeddedServerError(): Promise<EmbeddedServerState>;
   getEmbeddedServerStatus(): Promise<EmbeddedServerState>;
   onEmbeddedServerStatusChanged(
     callback: (state: EmbeddedServerState) => void

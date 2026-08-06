@@ -459,6 +459,21 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return ipcRenderer.invoke("embedded-server:stop");
   },
 
+  dismissEmbeddedServerError(): Promise<{
+    status: string;
+    config: {
+      serverName: string;
+      serverPort: number;
+      sfuPort: number;
+      lanDiscoverable: boolean;
+      externalHost: string;
+    } | null;
+    error: string | null;
+    serverUrl: string | null;
+  }> {
+    return ipcRenderer.invoke("embedded-server:dismiss-error");
+  },
+
   getEmbeddedServerStatus(): Promise<{
     status: string;
     config: {

@@ -75,6 +75,18 @@ export function useEmbeddedServer() {
     }
   }, [api]);
 
+  // Clearing a failure the user has read. Deliberately not stopServer: that
+  // preserves the error status on purpose, so dismissing through it did nothing.
+  const dismissError = useCallback(async () => {
+    if (!api) return;
+    try {
+      const result = await api.dismissEmbeddedServerError();
+      setState(result);
+    } catch (err) {
+      console.error("[EmbeddedServer] dismiss failed:", err);
+    }
+  }, [api]);
+
   const setAutoStart = useCallback((enabled: boolean) => {
     if (!api) return;
     api.setEmbeddedServerAutoStart(enabled);
@@ -93,5 +105,6 @@ export function useEmbeddedServer() {
     createServer,
     startServer,
     stopServer,
+    dismissError,
   };
 }
