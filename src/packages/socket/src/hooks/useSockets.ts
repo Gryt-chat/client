@@ -18,6 +18,7 @@ import {
 
 import { MemberInfo } from "../components/MemberSidebar";
 import { Clients } from "../types/clients";
+import { guardSocket, serverProofErrorMessage } from "../utils/serverAuth";
 import { syncAvatarToHost } from "../utils/syncAvatarToHost";
 import { useSocketEvents } from "./useSocketEvents";
 
@@ -64,7 +65,9 @@ function useSocketsHook() {
   const [clients, setClients] = useState<{ [host: string]: Clients }>({});
   const [memberLists, setMemberLists] = useState<{ [host: string]: MemberInfo[] }>({});
   const [serverProfiles, setServerProfiles] = useState<Record<string, { nickname: string; avatarFileId: string | null; avatarUrl: string | null }>>({});
-  const [serverConnectionStatus, setServerConnectionStatus] = useState<Record<string, 'connected' | 'disconnected' | 'connecting' | 'reconnecting'>>({});
+  const [serverConnectionStatus, setServerConnectionStatus] = useState<Record<string, 'connected' | 'disconnected' | 'connecting' | 'reconnecting' | 'refused'>>({});
+  // Why a server was refused, so the UI can say it rather than guessing.
+  const [refusalReason, setRefusalReason] = useState<Record<string, string>>({});
   const wasEverConnectedRef = useRef<Record<string, boolean>>({});
   const serverDetailsListRef = useRef(serverDetailsList);
 
@@ -195,23 +198,37 @@ function useSocketsHook() {
         const socket = io(`${getServerWsBase(host)}`, {
           transports: ["websocket"],
           auth: (cb: (data: Record<string, unknown>) => void) => {
-            cb({
-              token: serverToken,
-              accessToken: getServerAccessToken(host) || undefined,
-            });
+            // The access token is deliberately NOT here. Handshake auth reaches
+            // the server before we have checked who it is, so a server
+            // impersonating this one would collect a working bearer token and
+            // could replay it as this user. It goes out below, once the server
+            // has proved its identity (GRYT-51).
+            cb({ token: serverToken });
           },
         });
-        
+
         newSockets[host] = socket;
         changed = true;
-        
+
         setServerConnectionStatus(prev => ({ ...prev, [host]: 'connecting' }));
         const serverName = servers[host]?.name || host;
         const toastId = `conn-${host}`;
-        
+
+        // Holds everything below until the server proves itself.
+        guardSocket(socket, host, (decision) => {
+          // A distinct status, not 'disconnected'. This is not a network
+          // problem, and telling someone the server "may be offline" when we
+          // refused it on purpose sends them off debugging the wrong thing.
+          setServerConnectionStatus(prev => ({ ...prev, [host]: 'refused' }));
+          setRefusalReason(prev => ({ ...prev, [host]: serverProofErrorMessage(decision) }));
+          toast.error(serverProofErrorMessage(decision), { id: toastId, duration: 12000 });
+        });
+
         socket.on("connect", () => {
           wasEverConnectedRef.current[host] = true;
           setServerConnectionStatus(prev => ({ ...prev, [host]: 'connected' }));
+          const accessToken = getServerAccessToken(host);
+          if (accessToken) socket.emit("session:restore", { accessToken });
           socket.emit("server:info");
         });
         
@@ -463,7 +480,7 @@ function useSocketsHook() {
     }
   };
 
-  return { sockets, serverDetailsList, clients, memberLists, serverProfiles, setServerProfiles, getChannelDetails, requestMemberList, failedServerDetails, serverConnectionStatus, reconnectServer, leaveServer, tokenRevision };
+  return { sockets, serverDetailsList, clients, memberLists, serverProfiles, setServerProfiles, getChannelDetails, requestMemberList, failedServerDetails, serverConnectionStatus, refusalReason, reconnectServer, leaveServer, tokenRevision };
 }
 
 export const useSockets = singletonHook(
@@ -478,6 +495,7 @@ export const useSockets = singletonHook(
     requestMemberList: () => {},
     failedServerDetails: {},
     serverConnectionStatus: {},
+    refusalReason: {},
     reconnectServer: () => {},
     leaveServer: () => {},
     tokenRevision: 0,

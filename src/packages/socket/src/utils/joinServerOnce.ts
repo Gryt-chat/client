@@ -3,6 +3,7 @@ import { io } from "socket.io-client";
 import { getCertificateSub, getServerWsBase, getValidCertificate, signAssertion } from "@/common";
 
 import { challengeHostMatches } from "./challengeHost";
+import { guardSocket, serverProofErrorMessage } from "./serverAuth";
 
 export type JoinServerOnceRequest = {
   host: string;
@@ -100,6 +101,14 @@ export async function joinServerOnce(
       }
       resolve(res);
     };
+
+    // Authenticate the server before anything is sent to it (GRYT-51).
+    guardSocket(socket, req.host, (decision) => {
+      finish({
+        ok: false,
+        error: { error: "identity_error", message: serverProofErrorMessage(decision) },
+      });
+    });
 
     const timer = setTimeout(() => {
       console.warn(`[JoinServer] Timed out after ${timeoutMs}ms for ${req.host}`);

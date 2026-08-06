@@ -6,7 +6,8 @@ import { ServerDetailsSkeleton } from "./skeletons";
 interface ServerLoadingStatesProps {
   serverFailure?: { error: string; message?: string };
   hasTimedOut: boolean;
-  connectionStatus?: 'connected' | 'disconnected' | 'connecting' | 'reconnecting';
+  refusalReason?: string;
+  connectionStatus?: 'connected' | 'disconnected' | 'connecting' | 'reconnecting' | 'refused';
   onReconnect?: () => void;
 }
 
@@ -35,6 +36,7 @@ export const ServerLoadingStates = ({
   serverFailure,
   hasTimedOut,
   connectionStatus,
+  refusalReason,
   onReconnect,
 }: ServerLoadingStatesProps) => {
   if (serverFailure) {
@@ -88,6 +90,33 @@ export const ServerLoadingStates = ({
               </Text>
               <Text size="2" color="gray" style={{ lineHeight: 1.5 }}>
                 Lost connection to the server. Attempting to reconnect automatically.
+              </Text>
+            </Flex>
+          </Flex>
+        </Box>
+      </Flex>
+    );
+  }
+
+  // Refused on identity grounds, not a network fault. Saying "the server may be
+  // offline" here would send someone off checking their wifi over what is
+  // meant to be a security warning — and there is deliberately no Reconnect
+  // button, because retrying is not the answer.
+  if (connectionStatus === 'refused') {
+    return (
+      <Flex width="100%" height="100%" align="center" justify="center" p="4">
+        <Box style={cardStyle}>
+          <Flex direction="column" align="center" gap="4">
+            <div style={iconWrapStyle("var(--red-a3)")}>
+              <MdWifiOff size={26} color="var(--red-9)" />
+            </div>
+            <Flex direction="column" gap="2" align="center">
+              <Text size="4" weight="bold">
+                Server identity not recognised
+              </Text>
+              <Text size="2" color="gray" style={{ lineHeight: 1.5 }}>
+                {refusalReason ??
+                  "This server could not prove it is the one you joined before."}
               </Text>
             </Flex>
           </Flex>
