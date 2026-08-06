@@ -32,7 +32,9 @@ type ConnectionStatus =
   | "connected"
   | "disconnected"
   | "connecting"
-  | "reconnecting";
+  | "reconnecting"
+  // Refused on identity grounds (GRYT-51), not a network failure.
+  | "refused";
 
 type ServerFailure = {
   error: string;
@@ -56,6 +58,7 @@ type UseServerStateResult = {
   serverFailure: ServerFailure | undefined;
   hasTimedOut: boolean;
   currentConnectionStatus: ConnectionStatus;
+  currentRefusalReason?: string;
   reconnectServer: (host: string) => void;
 };
 
@@ -83,6 +86,7 @@ export function useServerState(): UseServerStateResult {
     clients,
     failedServerDetails,
     serverConnectionStatus,
+    refusalReason,
     reconnectServer,
     requestMemberList,
     tokenRevision,
@@ -516,6 +520,7 @@ export function useServerState(): UseServerStateResult {
     serverFailure,
     hasTimedOut,
     currentConnectionStatus,
+    currentRefusalReason: currentlyViewingServer ? refusalReason?.[currentlyViewingServer.host] : undefined,
     reconnectServer,
   };
 }
