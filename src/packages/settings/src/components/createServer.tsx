@@ -40,6 +40,7 @@ export function CreateServerPanel({ onServerReady }: CreateServerPanelProps) {
     createServer,
     startServer,
     stopServer,
+    dismissError,
   } = useEmbeddedServer();
 
   const [serverName, setServerName] = useState("My Server");
@@ -265,7 +266,7 @@ export function CreateServerPanel({ onServerReady }: CreateServerPanelProps) {
                 size="1"
                 variant="ghost"
                 color="gray"
-                onClick={() => { void handleStop(); }}
+                onClick={() => { void dismissError(); }}
               >
                 <MdClose size={14} />
                 Dismiss

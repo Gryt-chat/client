@@ -43,6 +43,7 @@ import {
   autoStartIfNeeded,
   cleanupOnQuit,
   createAndStartServer,
+  dismissEmbeddedServerError,
   getAutoStart,
   getEmbeddedServerInfo,
   getState as getEmbeddedServerState,
@@ -1139,6 +1140,10 @@ if (!gotSingleInstanceLock) {
         stopEmbeddedServer();
         return getEmbeddedServerState();
       });
+
+      ipcMain.handle("embedded-server:dismiss-error", () =>
+        dismissEmbeddedServerError()
+      );
 
       ipcMain.handle("embedded-server:status", () => getEmbeddedServerState());
 

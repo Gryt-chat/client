@@ -351,6 +351,22 @@ export function stopEmbeddedServer(): void {
   }
 }
 
+/**
+ * Clear a failure the user has read, without touching the processes.
+ *
+ * Dismissing used to call stopEmbeddedServer(), which cannot work: that guards
+ * `if (currentStatus !== "error")` so a dying process does not overwrite the
+ * reason it died with a bare "stopped". Correct for that job, but it meant the
+ * button pressed to clear an error was the one call that refused to clear it.
+ */
+export function dismissEmbeddedServerError(): EmbeddedServerState {
+  if (currentStatus === "error") {
+    setStatus("stopped");
+  }
+
+  return getState();
+}
+
 export function getEmbeddedServerInfo(): {
   available: boolean;
   hasExisting: boolean;
