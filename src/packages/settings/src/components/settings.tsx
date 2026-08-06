@@ -18,6 +18,7 @@ import { HotkeySettings } from "./hotkeySettings";
 import { NotificationSettings } from "./notificationSettings";
 import { ProfileSettings } from "./profileSettings";
 import { SecuritySettings } from "./securitySettings";
+import { ServerIdentitySettings } from "./serverIdentitySettings";
 import { SupportSettings } from "./supportSettings";
 import { AppearanceSettings } from "./theme/appearanceSettings";
 import { VoiceSettings } from "./voiceSettings";
@@ -64,6 +65,8 @@ const DESTINATIONS = [
         <ProfileSettings />
         <PanelDivider />
         <SecuritySettings />
+        <PanelDivider />
+        <ServerIdentitySettings />
       </>
     ),
   },

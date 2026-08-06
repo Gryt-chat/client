@@ -104,6 +104,15 @@ export function getExpectedKeyIdForHost(host: string): string | null {
   return readHostIndex()[host] ?? null;
 }
 
+/**
+ * Every address we currently expect a key at. Read-only; the settings screen
+ * uses it to tell an orphaned pin from one still in use at another address,
+ * which matters because the same key legitimately answers at several.
+ */
+export function listHostExpectations(): Record<string, string> {
+  return readHostIndex();
+}
+
 export function savePin(keyId: string, jwk: JsonWebKey, host: string): void {
   const pins = listPins();
   const now = Date.now();
