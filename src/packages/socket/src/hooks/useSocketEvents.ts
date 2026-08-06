@@ -21,6 +21,7 @@ import {
 
 import { MemberInfo } from "../components/MemberSidebar";
 import { Clients } from "../types/clients";
+import { challengeHostMatches } from "../utils/challengeHost";
 import { registerServerSocketEvents } from "./registerServerSocketEvents";
 
 type Sockets = { [host: string]: Socket };
@@ -187,6 +188,17 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
       // ---- Challenge-response identity authentication ----
 
       socket.on("server:challenge", async (challenge: { nonce: string; serverHost: string }) => {
+        // The assertion is bound to this host. Signing whatever the other end
+        // names would let a server we did not dial collect an assertion valid
+        // somewhere else.
+        if (!challengeHostMatches(host, challenge.serverHost)) {
+          console.error(
+            `[Auth:Socket] Refusing to sign for ${host}: challenge claims to be ` +
+              `"${challenge.serverHost}"`
+          );
+          return;
+        }
+
         try {
           const certificate = await getValidCertificate();
           const sub = getCertificateSub() || "";
