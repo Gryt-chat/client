@@ -2,6 +2,8 @@ import { io } from "socket.io-client";
 
 import { getCertificateSub, getServerWsBase, getValidCertificate, signAssertion } from "@/common";
 
+import { challengeHostMatches } from "./challengeHost";
+
 export type JoinServerOnceRequest = {
   host: string;
   nickname?: string;
@@ -116,6 +118,27 @@ export async function joinServerOnce(
     });
 
     socket.on("server:challenge", async (challenge: { nonce: string; serverHost: string }) => {
+      // The assertion is bound to this host. Signing whatever the other end
+      // names would let a server we did not dial collect an assertion valid
+      // somewhere else.
+      if (!challengeHostMatches(req.host, challenge.serverHost)) {
+        console.error(
+          `[JoinServer] Refusing to sign for ${req.host}: challenge claims to be ` +
+            `"${challenge.serverHost}"`
+        );
+        clearTimeout(timer);
+        finish({
+          ok: false,
+          error: {
+            error: "identity_error",
+            message:
+              `This server identified itself as "${challenge.serverHost}" but you ` +
+              `connected to "${req.host}". Not signing in.`,
+          },
+        });
+        return;
+      }
+
       console.log(`[JoinServer] Received challenge from ${req.host}, signing assertion…`);
       try {
         const certificate = await getValidCertificate();
