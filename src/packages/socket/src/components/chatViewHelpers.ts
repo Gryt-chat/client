@@ -25,7 +25,6 @@ export function buildMessageMetadata(
   chatMessages: ChatMessage[],
   newMessageMarkerId: string | null,
   currentUserId: string | undefined,
-  currentUserNickname: string | undefined,
   getSenderName: (msg: ChatMessage) => string,
   getSenderAvatarUrl: (msg: ChatMessage) => string | undefined,
 ): MessageMeta[] {
@@ -47,7 +46,14 @@ export function buildMessageMetadata(
     const showNewMessageDivider = !!(newMessageMarkerId && prev && prev.message_id === newMessageMarkerId);
 
     const isSelf = !isSystem && !isWebhook && !!currentUserId && m.sender_server_id === currentUserId;
-    const senderName = isSystem ? "System" : (isSelf ? (currentUserNickname || "You") : getSenderName(m));
+
+    // Your own messages resolve their author exactly like everyone else's.
+    // They used to render from local settings instead, which meant the name
+    // above your messages could disagree with the one the member sidebar and
+    // every other participant saw — you read "Sivert" while the server, and so
+    // everybody else, had "Unknown". Hiding that made it look like a display
+    // quirk rather than the profile desync it was (GRYT-58).
+    const senderName = isSystem ? "System" : getSenderName(m);
     const avatarUrl = isSystem ? undefined : getSenderAvatarUrl(m);
     const isFirstEdited = isFirstInGroup && !!m.edited_at;
 

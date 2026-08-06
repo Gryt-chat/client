@@ -208,8 +208,8 @@ export const ChatView = memo(({
 
   // ── Message metadata ──────────────────────────────────────────
   const messageMetadata = useMemo(
-    () => buildMessageMetadata(chatMessages, newMessageMarkerId, currentUserId, currentUserNickname, getSenderName, getSenderAvatarUrl),
-    [chatMessages, newMessageMarkerId, currentUserId, currentUserNickname, getSenderName, getSenderAvatarUrl],
+    () => buildMessageMetadata(chatMessages, newMessageMarkerId, currentUserId, getSenderName, getSenderAvatarUrl),
+    [chatMessages, newMessageMarkerId, currentUserId, getSenderName, getSenderAvatarUrl],
   );
 
   const messageMap = useMemo(() => buildMessageMap(chatMessages), [chatMessages]);
