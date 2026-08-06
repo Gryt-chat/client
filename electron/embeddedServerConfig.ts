@@ -214,7 +214,12 @@ export async function generateConfig(
       `CORS_ORIGIN=*`,
       `EXTERNAL_HOST=${externalHost}`,
       `IDENTITY_MODE=builtin`,
-      lanDiscoverable ? `MDNS_ENABLED=true` : `# MDNS_ENABLED=false`,
+      // Seeds the server's `discoverable` column on its first run. Replaces
+      // MDNS_ENABLED, which nothing on the server ever read — so unticking the
+      // box at creation did nothing. This file is written once, at creation,
+      // and the server only applies the seed while the config row does not
+      // exist, so changing the setting in server settings later still wins.
+      `SERVER_DISCOVERABLE=${lanDiscoverable ? "true" : "false"}`,
       `SFU_UDP_PORT_MIN=10000`,
       `SFU_UDP_PORT_MAX=10019`,
     ].join("\n") + "\n";
@@ -249,7 +254,7 @@ export function loadExistingConfig(): EmbeddedServerConfig | null {
     dataDir: env.DATA_DIR || join(getEmbeddedServerDir(), "data"),
     configPath,
     jwtSecret: env.JWT_SECRET || "",
-    lanDiscoverable: env.MDNS_ENABLED === "true",
+    lanDiscoverable: (env.SERVER_DISCOVERABLE || "").toLowerCase() !== "false",
     externalHost: env.EXTERNAL_HOST || `http://127.0.0.1:${env.PORT || "5000"}`,
   };
 }
