@@ -303,8 +303,12 @@ export async function generateConfig(
       // and the server only applies the seed while the config row does not
       // exist, so changing the setting in server settings later still wins.
       `SERVER_DISCOVERABLE=${lanDiscoverable ? "true" : "false"}`,
-      `SFU_UDP_PORT_MIN=10000`,
-      `SFU_UDP_PORT_MAX=10019`,
+      // How many people fit in voice. This used to be written as
+      // SFU_UDP_PORT_MIN/MAX=10000/10019, which looked like a media-plane
+      // setting but was never read by the SFU — the server derived the seat
+      // limit from it as (max-min+1), so those two lines were the cap, at 20,
+      // wearing a costume. Same number, said plainly.
+      `VOICE_MAX_USERS=20`,
     ].join("\n") + "\n";
 
   writeFileSync(configPath, envContent, "utf-8");
