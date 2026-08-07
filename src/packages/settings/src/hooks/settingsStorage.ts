@@ -152,6 +152,12 @@ export interface Settings {
   setCameraMirrored: (mirrored: boolean) => void;
   voiceTileLayout: VoiceTileLayout;
   setVoiceTileLayout: (layout: VoiceTileLayout) => void;
+  devFakeParticipants: number;
+  setDevFakeParticipants: (count: number) => void;
+  devFakeMuted: number;
+  setDevFakeMuted: (count: number) => void;
+  devFakeScreenShare: boolean;
+  setDevFakeScreenShare: (enabled: boolean) => void;
   cameraFlipped: boolean;
   setCameraFlipped: (flipped: boolean) => void;
   cameraFps: number;
@@ -311,6 +317,12 @@ export const settingsInit: Settings = {
   setCameraMirrored: noop,
   voiceTileLayout: "meet",
   setVoiceTileLayout: noop,
+  devFakeParticipants: 0,
+  setDevFakeParticipants: noop,
+  devFakeMuted: 0,
+  setDevFakeMuted: noop,
+  devFakeScreenShare: false,
+  setDevFakeScreenShare: noop,
   cameraFlipped: false,
   setCameraFlipped: noop,
   cameraFps: 30,

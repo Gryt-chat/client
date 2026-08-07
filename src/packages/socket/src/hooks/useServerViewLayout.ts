@@ -187,12 +187,12 @@ function useVoiceLayout({ setShowVoiceView }: UseVoiceLayoutParams) {
     : 0;
 
   const toggleMaximized = useCallback(() => {
-    setIsMaximized((v) => {
-      // Maximizing while minimized would grow something invisible.
-      if (!v) setShowVoiceView(true);
-      return !v;
-    });
-  }, [setShowVoiceView]);
+    // Maximizing while minimized would grow something invisible. Reading the
+    // current value here rather than inside the updater keeps the updater
+    // pure — it used to call setShowVoiceView from inside one.
+    if (!isMaximized) setShowVoiceView(true);
+    setIsMaximized(!isMaximized);
+  }, [isMaximized, setShowVoiceView]);
 
   return {
     voiceFocused, setVoiceFocused,

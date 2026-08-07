@@ -8,6 +8,7 @@ import { SidebarItem } from "@/settings/src/types/server";
 import { useSFU } from "@/webRTC";
 
 import {
+  fakeParticipantOptionsFromSettings,
   readFakeParticipantOptions,
   withFakeParticipants,
 } from "../dev/fakeParticipants";
@@ -34,8 +35,9 @@ import { ServerSidebar } from "./ServerSidebar";
 import { SidebarEditDialog } from "./SidebarEditDialog";
 import { VoiceView } from "./VoiceView";
 
-// Parsed once at module load — the query string cannot change under us.
-const fakeParticipantOptions = readFakeParticipantOptions(
+// Parsed once at module load. The query string overrides the Developer panel
+// while it is present, which keeps the browser workflow working.
+const fakeParticipantOptionsFromUrl = readFakeParticipantOptions(
   window.location.search,
 );
 
@@ -49,6 +51,7 @@ export const ServerView = () => {
     pinChannelsSidebar, setPinChannelsSidebar,
     pinMembersSidebar, setPinMembersSidebar,
     setIsMuted, setIsDeafened,
+    devFakeParticipants, devFakeMuted, devFakeScreenShare,
   } = useSettings();
   const { currentlyViewingServer, setShowRemoveServer, setLastSelectedChannelForServer } = useServerManagement();
   const { connect, currentServerConnected, isConnected, isConnecting, videoStreams, streamSources } = useSFU();
@@ -211,7 +214,15 @@ export const ServerView = () => {
   const currentUserRole = serverDetails?.server_info?.role;
   const canManage = currentUserRole === "owner" || currentUserRole === "admin";
   const hostChannels = serverDetails.channels || [];
-  // Dev only, and only when ?fake=N is in the URL. See fakeParticipants.ts.
+  // Dev only. See fakeParticipants.ts.
+  const fakeParticipantOptions =
+    fakeParticipantOptionsFromUrl ??
+    fakeParticipantOptionsFromSettings(
+      devFakeParticipants,
+      devFakeMuted,
+      devFakeScreenShare,
+    );
+
   const { clients: hostClients, videoStreams: voiceVideoStreams } =
     withFakeParticipants(
       clients[host] || {},
@@ -380,7 +391,7 @@ export const ServerView = () => {
                 onToggleChat={toggleFocusedChat}
               />
               <div style={{
-                display: (voiceFocused && focusedChatHidden) || (!voiceFocused && isMaximized && showVoiceView) ? "none" : "flex",
+                display: (voiceFocused && focusedChatHidden) || (!voiceFocused && isMaximized && showVoiceView && voiceWidth !== "0px") ? "none" : "flex",
                 flex: voiceFocused ? `0 0 ${focusedChatWidth}px` : 1,
                 minWidth: 0,
                 ...(isVoiceOnThisServer && isServerUnreachable && { opacity: 0.5, pointerEvents: "none" as const }),

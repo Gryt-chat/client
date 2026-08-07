@@ -9,7 +9,9 @@
  * does not do is exercise the socket path that would normally populate that
  * record, so it proves the layout and nothing about the plumbing.
  *
- * Dev only, off unless asked for by query string:
+ * Dev only. Normally driven from Settings → Developer, which is where it is
+ * reachable in the desktop app. The query string still works and overrides the
+ * settings while it is present, which is handy in a browser:
  *
  *   ?fake=7              seven fake participants alongside you
  *   ?fake=4&fakeshare=1  ...one of whom is sharing a screen
@@ -44,7 +46,10 @@ export interface FakeParticipantOptions {
   share: boolean;
 }
 
-/** Parsed once — the options come from the URL and do not change under us. */
+/** The most participants the name list can cover. */
+export const MAX_FAKE_PARTICIPANTS = NAMES.length;
+
+/** Parsed once — the query string cannot change under us. */
 export function readFakeParticipantOptions(
   search: string,
 ): FakeParticipantOptions | null {
@@ -60,6 +65,20 @@ export function readFakeParticipantOptions(
     muted: Math.min(Number(params.get("fakemuted")) || 0, count),
     share: params.get("fakeshare") === "1",
   };
+}
+
+/** The same options built from the Developer settings panel. */
+export function fakeParticipantOptionsFromSettings(
+  count: number,
+  muted: number,
+  share: boolean,
+): FakeParticipantOptions | null {
+  if (!import.meta.env.DEV) return null;
+  if (!Number.isInteger(count) || count < 1) return null;
+
+  const capped = Math.min(count, NAMES.length);
+
+  return { count: capped, muted: Math.min(muted, capped), share };
 }
 
 let screenStream: MediaStream | null = null;
