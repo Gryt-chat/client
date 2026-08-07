@@ -25,7 +25,12 @@ import {
   useState,
 } from "react";
 import toast from "react-hot-toast";
-import { MdChat, MdMicOff } from "react-icons/md";
+import {
+  MdChat,
+  MdCloseFullscreen,
+  MdMicOff,
+  MdOpenInFull,
+} from "react-icons/md";
 
 import {
   useCamera as useLocalCamera,
@@ -343,6 +348,8 @@ export const VoiceView = ({
   onFocusChange,
   chatHidden,
   onToggleChat,
+  isMaximized,
+  onToggleMaximize,
 }: {
   showVoiceView: boolean;
   voiceWidth: string;
@@ -366,6 +373,8 @@ export const VoiceView = ({
   onFocusChange?: (focused: boolean) => void;
   chatHidden?: boolean;
   onToggleChat?: () => void;
+  isMaximized?: boolean;
+  onToggleMaximize?: () => void;
 }) => {
   const { showPeerLatency, cameraMirrored, setShowSettings, setSettingsTab } =
     useSettings();
@@ -1419,6 +1428,39 @@ export const VoiceView = ({
                   <div style={{ pointerEvents: "auto" }}>
                     <Controls onDisconnect={onDisconnect} />
                   </div>
+
+                  {onToggleMaximize && (
+                    <Flex
+                      style={{
+                        position: "absolute",
+                        right: 12,
+                        bottom: 12,
+                        pointerEvents: "auto",
+                      }}
+                    >
+                      <Tooltip
+                        content={isMaximized ? "Restore" : "Maximize"}
+                        delayDuration={300}
+                      >
+                        <IconButton
+                          variant="soft"
+                          color="gray"
+                          aria-label={
+                            isMaximized
+                              ? "Restore voice view"
+                              : "Maximize voice view"
+                          }
+                          onClick={onToggleMaximize}
+                        >
+                          {isMaximized ? (
+                            <MdCloseFullscreen size={16} />
+                          ) : (
+                            <MdOpenInFull size={16} />
+                          )}
+                        </IconButton>
+                      </Tooltip>
+                    </Flex>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>

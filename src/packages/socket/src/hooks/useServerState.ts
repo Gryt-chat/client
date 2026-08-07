@@ -9,6 +9,7 @@ import { useSettings } from "@/settings";
 import { useSFU } from "@/webRTC";
 
 import { useServerManagement } from "./useServerManagement";
+import { VOICE_SIDEBAR_WIDTH } from "./useServerViewLayout";
 import { useSockets } from "./useSockets";
 
 function extractChannelIdFromRoomId(roomId: string, serverId: string): string {
@@ -45,8 +46,6 @@ type UseServerStateResult = {
   clientsSpeaking: Record<string, boolean>;
   voiceWidth: string;
   setVoiceWidth: Dispatch<SetStateAction<string>>;
-  userVoiceWidth: number;
-  setUserVoiceWidth: Dispatch<SetStateAction<number>>;
   selectedChannelId: string | null;
   setSelectedChannelId: Dispatch<SetStateAction<string | null>>;
   handleVoiceDisconnect: () => void;
@@ -118,11 +117,6 @@ export function useServerState(): UseServerStateResult {
     Record<string, boolean>
   >({});
   const [voiceWidth, setVoiceWidth] = useState("0px");
-  // 400 left roughly 340px of usable tile width, narrower than the ~395 the
-  // Meet layout was measured at, and narrow enough that the aspect cap pushed
-  // four people into a single stacked column instead of a 2x2. 480 lands the
-  // usable width at ~424 and gets the reference grids back.
-  const [userVoiceWidth, setUserVoiceWidth] = useState(480);
   const [pendingChannelId, setPendingChannelId] = useState<string | null>(null);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(
     null
@@ -264,12 +258,14 @@ export function useServerState(): UseServerStateResult {
   }, [currentlyViewingServer, serverDetailsList, selectedChannelId]);
 
   useEffect(() => {
+    // Only ever the fixed sidebar width or closed — the panel is no longer
+    // resizable, and maximizing is applied where the layout is composed.
     setVoiceWidth(
       currentServerConnected === currentlyViewingServer?.host
-        ? `${userVoiceWidth}px`
+        ? `${VOICE_SIDEBAR_WIDTH}px`
         : "0px"
     );
-  }, [currentServerConnected, currentlyViewingServer, userVoiceWidth]);
+  }, [currentServerConnected, currentlyViewingServer]);
 
   const connectRef = useRef(connect);
   useEffect(() => {
@@ -511,8 +507,6 @@ export function useServerState(): UseServerStateResult {
     clientsSpeaking,
     voiceWidth,
     setVoiceWidth,
-    userVoiceWidth,
-    setUserVoiceWidth,
     selectedChannelId,
     setSelectedChannelId,
     handleVoiceDisconnect,

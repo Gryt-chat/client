@@ -19,7 +19,7 @@ import { usePeerLatency } from "../hooks/usePeerLatency";
 import { useServerManagement } from "../hooks/useServerManagement";
 import { useServerReports } from "../hooks/useServerReports";
 import { useServerState } from "../hooks/useServerState";
-import { SIDEBAR_HOVER_PX, SIDEBAR_WIDTH_PX, useMediaAutoShow, useSidebarHover, useVoiceResize } from "../hooks/useServerViewLayout";
+import { SIDEBAR_HOVER_PX, SIDEBAR_WIDTH_PX, useMediaAutoShow, useSidebarHover, useVoiceLayout } from "../hooks/useServerViewLayout";
 import { useSidebarEditor } from "../hooks/useSidebarEditor";
 import { useSockets } from "../hooks/useSockets";
 import { getUpdateAvailable } from "../hooks/useVersionStatus";
@@ -55,7 +55,7 @@ export const ServerView = () => {
   const { serverDetailsList, clients, memberLists, serverProfiles } = useSockets();
 
   const {
-    clientsSpeaking, voiceWidth, setVoiceWidth, userVoiceWidth, setUserVoiceWidth,
+    clientsSpeaking, voiceWidth,
     selectedChannelId, setSelectedChannelId,
     handleVoiceDisconnect, setPendingChannelId, currentChannelId,
     currentConnection, accessToken, activeConversationId, serverFailure, hasTimedOut,
@@ -73,11 +73,10 @@ export const ServerView = () => {
   const peerLatency = usePeerLatency(currentConnection);
 
   const {
-    voiceFocused, setVoiceFocused, isDraggingResize,
-    voiceContainerRef, voiceMaxWidth,
+    voiceFocused, setVoiceFocused, isMaximized, toggleMaximized,
+    voiceContainerRef, voiceMaxWidth, shownVoiceWidth,
     focusedChatWidth, focusedVoiceMaxWidth,
-    handleResizeMouseDown,
-  } = useVoiceResize({ voiceWidth, userVoiceWidth, setVoiceWidth, setUserVoiceWidth, setShowVoiceView });
+  } = useVoiceLayout({ setShowVoiceView });
 
   const [focusedChatHidden, setFocusedChatHidden] = useState(false);
   const toggleFocusedChat = useCallback(() => setFocusedChatHidden((v) => !v), []);
@@ -86,7 +85,7 @@ export const ServerView = () => {
     leftSidebarOpen, rightSidebarOpen,
     leftSidebarContentRef, rightSidebarContentRef,
     openLeftSidebar, closeLeftSidebar, openRightSidebar, closeRightSidebar,
-  } = useSidebarHover({ pinChannelsSidebar, pinMembersSidebar, isDraggingResize, isCompact });
+  } = useSidebarHover({ pinChannelsSidebar, pinMembersSidebar, isDraggingResize: false, isCompact });
 
   const serverClients = currentlyViewingServer ? clients[currentlyViewingServer.host] : undefined;
   const { mediaAutoShownRef } = useMediaAutoShow({
@@ -229,9 +228,6 @@ export const ServerView = () => {
 
   return (
     <>
-      {isDraggingResize && (
-        <div style={{ position: "fixed", inset: 0, cursor: "grabbing", zIndex: 9999 }} />
-      )}
       <Flex data-gryt="server-view" width="100%" height="100%" gap="4" direction="column">
         {isServerUnreachable && (
           <ConnectionBanner connectionStatus={currentConnectionStatus} onReconnect={() => reconnectServer(host)} />
@@ -356,7 +352,7 @@ export const ServerView = () => {
                   ? (focusedChatHidden
                     ? "100%"
                     : (focusedVoiceMaxWidth > 0 ? `${focusedVoiceMaxWidth}px` : voiceWidth))
-                  : voiceWidth}
+                  : (voiceWidth === "0px" ? "0px" : (isMaximized ? "100%" : `${shownVoiceWidth}px`))}
                 maxWidth={voiceMaxWidth}
                 serverHost={host}
                 currentServerConnected={currentServerConnected}
@@ -369,34 +365,18 @@ export const ServerView = () => {
                 onDisconnect={handleVoiceDisconnect}
                 peerLatency={peerLatency}
                 onDisconnectUser={canManage ? requestDisconnectUser : undefined}
-                isDragging={isDraggingResize}
                 currentUserRole={currentUserRole}
                 adminActions={currentAdminActions}
                 videoStreams={voiceVideoStreams}
                 streamSources={streamSources}
                 onFocusChange={setVoiceFocused}
+                isMaximized={isMaximized}
+                onToggleMaximize={toggleMaximized}
                 chatHidden={focusedChatHidden}
                 onToggleChat={toggleFocusedChat}
               />
-              {!isCompact && !voiceFocused && (isDraggingResize || (showVoiceView && voiceWidth !== "0px")) && (
-                <div
-                  onMouseDown={handleResizeMouseDown}
-                  style={{
-                    width: "8px", marginRight: "8px",
-                    cursor: isDraggingResize ? "grabbing" : "grab",
-                    flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
-                    userSelect: "none",
-                  }}
-                >
-                  <div style={{
-                    width: "3px", height: "40px", borderRadius: "2px",
-                    background: isDraggingResize ? "var(--accent-9)" : "var(--gray-6)",
-                    transition: "background 0.15s",
-                  }} />
-                </div>
-              )}
               <div style={{
-                display: (voiceFocused && focusedChatHidden) ? "none" : "flex",
+                display: (voiceFocused && focusedChatHidden) || (!voiceFocused && isMaximized && showVoiceView) ? "none" : "flex",
                 flex: voiceFocused ? `0 0 ${focusedChatWidth}px` : 1,
                 minWidth: 0,
                 ...(isVoiceOnThisServer && isServerUnreachable && { opacity: 0.5, pointerEvents: "none" as const }),
