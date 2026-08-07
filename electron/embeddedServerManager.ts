@@ -1,6 +1,7 @@
 import { ChildProcess, fork, spawn } from "child_process";
 import { app, BrowserWindow } from "electron";
 import { existsSync, readFileSync } from "fs";
+import { createServer } from "net";
 import { join } from "path";
 
 import {
@@ -25,6 +26,7 @@ export interface EmbeddedServerState {
 
 let serverProcess: ChildProcess | null = null;
 let sfuProcess: ChildProcess | null = null;
+let workerProcess: ChildProcess | null = null;
 let currentConfig: EmbeddedServerConfig | null = null;
 let currentStatus: ServerStatus = "stopped";
 let currentError: string | null = null;
@@ -39,9 +41,13 @@ function log(msg: string): void {
 // to the main process console while the user was shown "exited unexpectedly
 // (code 1)" and nothing else. Keep the tail so the error can say why.
 const OUTPUT_TAIL = 12;
-const recentOutput: Record<"sfu" | "server", string[]> = { sfu: [], server: [] };
+const recentOutput: Record<"sfu" | "server" | "worker", string[]> = {
+  sfu: [],
+  server: [],
+  worker: [],
+};
 
-function rememberOutput(source: "sfu" | "server", msg: string): void {
+function rememberOutput(source: "sfu" | "server" | "worker", msg: string): void {
   const lines = recentOutput[source];
   for (const line of msg.split("\n")) {
     const trimmed = line.trim();
@@ -51,8 +57,12 @@ function rememberOutput(source: "sfu" | "server", msg: string): void {
 }
 
 /** The most useful line from a dead process, for the error the user sees. */
-function explainExit(source: "sfu" | "server", code: number | null): string {
-  const label = source === "sfu" ? "SFU" : "Server";
+function explainExit(
+  source: "sfu" | "server" | "worker",
+  code: number | null,
+): string {
+  const label =
+    source === "sfu" ? "SFU" : source === "worker" ? "Image worker" : "Server";
   const lines = recentOutput[source];
 
   // Prefer a line that names the actual failure over the last line, which is
@@ -92,6 +102,15 @@ function getServerBundlePath(): string | null {
   const bundleName = "bundle.js";
   const packaged = join(process.resourcesPath, "embedded-server", "server", bundleName);
   const dev = join(app.getAppPath(), "build", "embedded-server", "server", bundleName);
+  if (existsSync(packaged)) return packaged;
+  if (existsSync(dev)) return dev;
+  return null;
+}
+
+function getWorkerEntryPath(): string | null {
+  const entry = join("worker", "dist", "index.js");
+  const packaged = join(process.resourcesPath, "embedded-server", entry);
+  const dev = join(app.getAppPath(), "build", "embedded-server", entry);
   if (existsSync(packaged)) return packaged;
   if (existsSync(dev)) return dev;
   return null;
@@ -229,6 +248,91 @@ function spawnServer(config: EmbeddedServerConfig): ChildProcess | null {
   return proc;
 }
 
+/** A port nothing is listening on, for the worker's health endpoint. */
+function findFreePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const srv = createServer();
+    srv.once("error", reject);
+    srv.listen(0, "127.0.0.1", () => {
+      const addr = srv.address();
+      const port = typeof addr === "object" && addr ? addr.port : 0;
+      srv.close(() => (port ? resolve(port) : reject(new Error("No free port"))));
+    });
+  });
+}
+
+/**
+ * The image worker, as its own process.
+ *
+ * A server hosted from the desktop app queues image jobs like any other. Without
+ * this, nothing ever reads them: no thumbnails, no dominant colours, and —
+ * because the upload route skips the size limit for images on the assumption
+ * something will shrink them later — uploads that stay at full size on the
+ * host's own disk forever.
+ *
+ * Separate rather than folded into the server on purpose. It hands
+ * stranger-uploaded bytes to libvips, and the reason the worker exists at all is
+ * that a corrupt image should not be able to take down the process holding the
+ * signing keys and every socket. Bundling it must not quietly undo that.
+ *
+ * Its failure is not the server's failure. If this dies the server keeps
+ * running, images simply stop being processed — which is exactly the state
+ * every desktop-hosted server was in before it existed.
+ */
+async function spawnWorker(
+  config: EmbeddedServerConfig,
+): Promise<ChildProcess | null> {
+  const entry = getWorkerEntryPath();
+  if (!entry) {
+    log("Image worker not bundled — image jobs will not be processed");
+    return null;
+  }
+
+  const envVars = parseEnvFile(config.configPath);
+
+  // The health endpoint is not used here; it just must not collide with
+  // anything, including a second Gryt hosting a server on the same machine.
+  let healthPort: number;
+  try {
+    healthPort = await findFreePort();
+  } catch {
+    log("Could not find a free port for the image worker — not starting it");
+    return null;
+  }
+
+  const proc = fork(entry, [], {
+    env: {
+      ...process.env,
+      ...envVars,
+      NODE_ENV: "production",
+      HEALTH_PORT: String(healthPort),
+    },
+    stdio: ["ignore", "pipe", "pipe", "ipc"],
+    cwd: getEmbeddedServerDir(),
+    silent: true,
+  });
+
+  const onOutput = (data: Buffer) => {
+    const msg = data.toString().trim();
+    if (msg) {
+      rememberOutput("worker", msg);
+      log(`[Worker] ${msg}`);
+      emitLog("worker", msg);
+    }
+  };
+
+  proc.stdout?.on("data", onOutput);
+  proc.stderr?.on("data", onOutput);
+
+  proc.on("exit", (code) => {
+    log(`Image worker exited with code ${code}`);
+    workerProcess = null;
+    // Deliberately does not touch status or stop anything else.
+  });
+
+  return proc;
+}
+
 export async function createAndStartServer(
   window: BrowserWindow,
   serverName: string,
@@ -310,6 +414,18 @@ function startProcesses(): EmbeddedServerState {
     }
     log(`Server started (pid=${serverProcess.pid}, port=${currentConfig.serverPort})`);
 
+    // After the server, because it polls a database the server creates. Its
+    // absence is not fatal — see spawnWorker — so nothing here waits on it or
+    // fails the start over it.
+    void spawnWorker(currentConfig)
+      .then((proc) => {
+        workerProcess = proc;
+        if (proc) log(`Image worker started (pid=${proc.pid})`);
+      })
+      .catch((err) => {
+        log(`Image worker failed to start: ${err instanceof Error ? err.message : err}`);
+      });
+
     // If no "listening" log within 10 seconds, assume it's running anyway
     setTimeout(() => {
       if (currentStatus === "starting") {
@@ -339,6 +455,9 @@ function killProcess(proc: ChildProcess | null): void {
 
 export function stopEmbeddedServer(): void {
   log("Stopping embedded server...");
+
+  killProcess(workerProcess);
+  workerProcess = null;
 
   killProcess(serverProcess);
   serverProcess = null;
