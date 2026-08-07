@@ -59,9 +59,16 @@ const CONTROLS_HEIGHT = 80;
 // A screen share is pinned full-width above the participants rather than
 // taking a cell in the grid. Confirmed from reference screenshots — share + 2
 // gives a full-width share over two stacked tiles, share + 4 gives share over a
-// 2x2 — but the *split* between the two regions was never measured, so 60/40 is
-// a choice, not a measurement.
-const SCREEN_SHARE_HEIGHT_FRACTION = 0.6;
+// 2x2.
+//
+// The region is sized to the share's own shape rather than to a flat fraction
+// of the panel. A fixed fraction looked reasonable until it was rendered: in a
+// sidebar-width panel a 60%-tall box is far taller than a 16:9 share, so
+// object-fit contain letterboxed it into a band with black above and below,
+// and the height it wasted came straight out of the participants' tiles. The
+// cap is what stops a wide panel from handing the share the whole view.
+const SCREEN_SHARE_ASPECT = 16 / 9;
+const SCREEN_SHARE_MAX_HEIGHT_FRACTION = 0.6;
 
 // Two participants and no share is hero + picture-in-picture: one tile fills
 // the panel, the second overlaps its bottom-right corner. Genuinely
@@ -615,11 +622,31 @@ export const VoiceView = ({
   const isHeroPip =
     !isFocused && screenItems.length === 0 && peopleItems.length === 2;
 
+  // How tall the pinned share region ends up: its own shape at the width it
+  // gets, capped so a wide panel does not hand it everything. Shares sit side
+  // by side, so each is a fraction of the width and the row gets shorter.
+  const availableHeight = Math.max(0, gridHeight - CONTROLS_HEIGHT);
+  const shareWidth =
+    screenItems.length > 0
+      ? (gridWidth -
+          2 * GRID_PADDING -
+          (screenItems.length - 1) * GRID_GAP) /
+        screenItems.length
+      : 0;
+  const shareHeight =
+    screenItems.length > 0
+      ? Math.min(
+          shareWidth / SCREEN_SHARE_ASPECT,
+          availableHeight * SCREEN_SHARE_MAX_HEIGHT_FRACTION,
+        )
+      : 0;
+
   // What is left for the participant grid once the controls and any pinned
   // share have taken their share of the panel.
-  const gridAreaHeight =
-    (gridHeight - CONTROLS_HEIGHT) *
-    (screenItems.length > 0 ? 1 - SCREEN_SHARE_HEIGHT_FRACTION : 1);
+  const gridAreaHeight = Math.max(
+    0,
+    availableHeight - (shareHeight > 0 ? shareHeight + GRID_GAP : 0),
+  );
 
   const columns = useMemo(
     () => computeOptimalColumns(gridWidth, gridAreaHeight, peopleItems.length),
@@ -1070,7 +1097,7 @@ export const VoiceView = ({
                         style={{
                           display: "flex",
                           gap: `${GRID_GAP}px`,
-                          height: `${SCREEN_SHARE_HEIGHT_FRACTION * 100}%`,
+                          height: shareHeight,
                           flexShrink: 0,
                         }}
                       >
