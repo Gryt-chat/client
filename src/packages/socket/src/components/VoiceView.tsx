@@ -932,7 +932,10 @@ export const VoiceView = ({
                         flexWrap: "wrap",
                         alignContent: "flex-start",
                         gap: `${GRID_GAP}px`,
-                        padding: `${GRID_PADDING}px`,
+                        // Extra room at the bottom: the controls float over
+                        // this area, and a tile running full height puts the
+                        // participant's name behind the mute button.
+                        padding: `${GRID_PADDING}px ${GRID_PADDING}px ${CONTROLS_HEIGHT}px`,
                         height: "100%",
                         overflow: "hidden",
                       }

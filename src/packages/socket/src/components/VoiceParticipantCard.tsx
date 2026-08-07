@@ -1,6 +1,6 @@
 import { Avatar, Flex, Text, Tooltip } from "@radix-ui/themes";
 import type { ReactNode } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   MdMicOff,
   MdScreenShare,
@@ -163,6 +163,71 @@ export function VideoCard({
       </Flex>
     </div>
   );
+}
+
+/**
+ * A stable hue per person, derived from their id.
+ *
+ * The server does send a per-user `color`, but the client overwrites every one
+ * of them with a flat gray in the members:list handler, so there is nothing
+ * usable to read. Deriving it here means the same person is the same colour on
+ * every client without the server having to agree, and it cannot drift out of
+ * sync with whatever the sidebar decides to do.
+ */
+const TILE_HUES = [280, 24, 170, 330, 210, 140, 350, 45, 260, 195];
+
+function hueFromId(id: string): number {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = (hash * 31 + id.charCodeAt(i)) | 0;
+  }
+  // A curated set rather than the full wheel. Free hue lands in the yellow-green
+  // band often enough to matter, and those come out muddy at the lightness a
+  // tile needs. Meet's own tiles are clearly drawn from a fixed palette too.
+  return TILE_HUES[Math.abs(hash) % TILE_HUES.length];
+}
+
+/**
+ * Meet's tiles are a lighter centre falling off to a deeper edge. Two stops of
+ * the same hue rather than a flat fill — flat reads as a coloured rectangle,
+ * the falloff reads as a tile with someone in it.
+ */
+function tileGradient(id: string): string {
+  const h = hueFromId(id);
+  return `radial-gradient(circle at 50% 42%, hsl(${h} 48% 42%), hsl(${h} 55% 20%) 75%)`;
+}
+
+/**
+ * Avatar diameter for a tile of this height.
+ *
+ * Measured off Meet, and it is stepped rather than proportional: a 468-wide
+ * spanning tile and a 228-wide grid tile both showed 72px at the same 297px
+ * height, which rules out scaling by width, and 24% / 16% / 36% of height for
+ * the three observed sizes rules out a single ratio.
+ */
+function avatarSizeForHeight(height: number): number {
+  if (height >= 450) return 96;
+  if (height >= 170) return 72;
+  return 48;
+}
+
+/** Tile height, so the avatar can pick its bucket. */
+function useTileHeight(ref: React.RefObject<HTMLElement | null>): number {
+  const [height, setHeight] = useState(0);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const observer = new ResizeObserver(([entry]) => {
+      setHeight(entry.contentRect.height);
+    });
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [ref]);
+
+  return height;
 }
 
 function latencyColor(ms: number | null): string {
@@ -418,14 +483,41 @@ export function VoiceParticipantCard({
     </>
   );
 
+  const tileRef = useRef<HTMLDivElement>(null);
+  const avatarPx = avatarSizeForHeight(useTileHeight(tileRef));
+
   const avatarView = () => (
-    <Flex
-      align="center"
-      justify="center"
-      direction={compact ? "row" : "column"}
-      gap="1"
-      px={compact ? "2" : "4"}
-      py={compact ? "1" : "3"}
+    <div
+      ref={tileRef}
+      style={
+        compact
+          ? {
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 4,
+              padding: "4px 8px",
+            }
+          : {
+              // The tile itself, rather than an avatar floating on the panel
+              // background. This branch renders whenever someone has no video,
+              // which is most of the time, and it previously had no tile chrome
+              // at all — that is why the panel looked empty.
+              position: "relative",
+              width: "100%",
+              height: "100%",
+              borderRadius: 16,
+              overflow: "hidden",
+              background: tileGradient(client.serverUserId || client.nickname),
+              outline: isSpeaking
+                ? "2.5px solid var(--accent-9)"
+                : "2.5px solid transparent",
+              transition: "outline-color 0.1s ease",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }
+      }
     >
       <Flex align="center" justify="center" position="relative">
         <Avatar
@@ -440,6 +532,9 @@ export function VoiceParticipantCard({
             outline: "2.5px solid",
             outlineColor: isSpeaking ? "var(--accent-9)" : "transparent",
             transition: "outline-color 0.1s ease",
+            // Stepped by tile height rather than Radix's size scale, so the
+            // avatar tracks the tile the way Meet's does.
+            ...(compact ? {} : { width: avatarPx, height: avatarPx }),
           }}
         />
 
@@ -519,13 +614,35 @@ export function VoiceParticipantCard({
         )}
       </Flex>
 
-      <Flex direction="column" align="center" gap="1">
-        <Text size={compact ? "1" : undefined}>{client.nickname}</Text>
-        {!compact && showPeerLatency && (
-          <LatencyBadge stats={latencyStats} isSelf={isSelf} />
-        )}
-      </Flex>
-    </Flex>
+      {compact ? (
+        <Text size="1">{client.nickname}</Text>
+      ) : (
+        <Flex
+          align="center"
+          gap="2"
+          style={{
+            // Bottom-left, 12 in and 9 up, measured off Meet. No scrim — the
+            // tile's own colour carries the contrast.
+            position: "absolute",
+            bottom: 9,
+            left: 12,
+            right: 12,
+            minWidth: 0,
+          }}
+        >
+          <Text
+            weight="medium"
+            style={{ color: "#fff", fontSize: 16, lineHeight: 1.2 }}
+            truncate
+          >
+            {client.nickname}
+          </Text>
+          {showPeerLatency && (
+            <LatencyBadge stats={latencyStats} isSelf={isSelf} />
+          )}
+        </Flex>
+      )}
+    </div>
   );
 
   const cameraView = () => {
