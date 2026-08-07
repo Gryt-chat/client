@@ -48,16 +48,25 @@ import { VoiceParticipantCard } from "./VoiceParticipantCard";
 
 type Role = "owner" | "admin" | "mod" | "member";
 
-const GRID_GAP = 8;
+// Measured off Google Meet at a phone-width viewport: 16px around the grid,
+// 12px between tiles. Four tiles landed at exactly (16,73) (256,73) (16,381)
+// (256,381), which pins both numbers rather than approximating them.
+const GRID_GAP = 12;
+const GRID_PADDING = 16;
 const MIN_TILE_WIDTH = 140;
 const CONTROLS_HEIGHT = 80;
-const TILE_ASPECT = 4 / 3;
 
 /**
- * Tries every possible column count and picks the one that maximises
- * tile area while keeping tiles at least MIN_TILE_WIDTH wide.
- * Scores each candidate against a target aspect ratio so the layout
- * looks balanced regardless of container shape (same idea as Zoom/Meet).
+ * Column count that gives the largest tiles, assuming tiles fill their cell.
+ *
+ * This used to score candidates against a target aspect ratio, which is why
+ * tiles never filled the panel. Meet does cap tile aspect at 4:3 and then
+ * centres the grid — at five participants that left a fifth of the panel empty
+ * — and we deliberately do not: tiles here stretch to fill whatever space they
+ * are given, so the panel is always used.
+ *
+ * MIN_TILE_WIDTH still stops the search: past that point tiles are too small to
+ * recognise anyone in, and packing more columns in is worse than not.
  */
 function computeOptimalColumns(
   width: number,
@@ -75,11 +84,9 @@ function computeOptimalColumns(
     const tileH = (height - (rows - 1) * GRID_GAP) / rows;
 
     if (tileW < MIN_TILE_WIDTH) break;
+    if (tileH <= 0) continue;
 
-    const widthConstrained = tileW / tileH <= TILE_ASPECT;
-    const w = widthConstrained ? tileW : tileH * TILE_ASPECT;
-    const h = widthConstrained ? tileW / TILE_ASPECT : tileH;
-    const area = w * h;
+    const area = tileW * tileH;
 
     if (area > bestArea) {
       bestArea = area;
@@ -88,6 +95,30 @@ function computeOptimalColumns(
   }
 
   return bestCols;
+}
+
+/**
+ * How many tiles sit in each row, given a column count.
+ *
+ * Rows come out as even as possible and any remainder lands in the *later*
+ * rows, so a short row is always at the top. Measured off Meet: three
+ * participants render as one tile above two, five as two above three, and seven
+ * as 2 / 2 / 3.
+ *
+ * Seven is the case that matters — with only two rows "remainder first" and
+ * "remainder last" are indistinguishable, which is why three and five alone
+ * were misleading.
+ */
+function distributeRows(count: number, columns: number): number[] {
+  if (count <= 0 || columns <= 0) return [];
+
+  const rows = Math.ceil(count / columns);
+  const base = Math.floor(count / rows);
+  const withExtra = count % rows;
+
+  return Array.from({ length: rows }, (_, i) =>
+    i >= rows - withExtra ? base + 1 : base,
+  );
 }
 
 /**
@@ -566,6 +597,27 @@ export const VoiceView = ({
     [displayItems.length, columns],
   );
 
+  /**
+   * The tiles for each row, so a row holding fewer than `columns` tiles can
+   * stretch them across its full width rather than leaving a gap. Three
+   * participants become one wide tile above two, which is what Meet does and
+   * what a plain `repeat(columns, 1fr)` grid cannot express.
+   */
+  const tileLayout = useMemo(() => {
+    const perRow = distributeRows(displayItems.length, columns);
+    const map = new Map<string, { inRow: number; rowCount: number }>();
+    let cursor = 0;
+
+    perRow.forEach((n) => {
+      for (let i = 0; i < n; i++) {
+        map.set(displayItems[cursor + i], { inRow: n, rowCount: perRow.length });
+      }
+      cursor += n;
+    });
+
+    return map;
+  }, [displayItems, columns]);
+
   useEffect(() => {
     if (!focusedStream) return;
 
@@ -871,19 +923,18 @@ export const VoiceView = ({
                         flexShrink: 0,
                       }
                     : {
-                        display: "grid",
-                        // minmax(0, ...) on both axes: a bare 1fr keeps an
-                        // implicit auto minimum, so a tile taller than its share
-                        // of the height forces the row open and the whole grid
-                        // grows past the window.
-                        gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
-                        gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
-                        gap: "var(--space-2)",
-                        justifyItems: "center",
-                        alignContent: "center",
-                        overflowY: "auto",
-                        padding: "3px 3px 60px",
+                        // Rows are laid out explicitly rather than as one grid,
+                        // because a row holding fewer tiles than `columns` has
+                        // to stretch them across its full width. Three
+                        // participants are one wide tile above two, which
+                        // repeat(columns, 1fr) cannot express.
+                        display: "flex",
+                        flexWrap: "wrap",
+                        alignContent: "flex-start",
+                        gap: `${GRID_GAP}px`,
+                        padding: `${GRID_PADDING}px`,
                         height: "100%",
+                        overflow: "hidden",
                       }
                 }
               >
@@ -909,20 +960,29 @@ export const VoiceView = ({
                           style={
                             isFocused
                               ? { flexShrink: 0, width: 140 }
-                              : {
-                                  // Height-driven so the tile is bounded by its
-                                  // row, not just its column. The card inside
-                                  // is width: 100% of this box and keeps the
-                                  // same ratio, so it scales down rather than
-                                  // being clipped.
-                                  height: "100%",
-                                  width: "auto",
-                                  aspectRatio: "16 / 9",
-                                  maxWidth: "100%",
-                                  maxHeight: "100%",
-                                  minWidth: 0,
-                                  minHeight: 0,
-                                }
+                              : (() => {
+                                  // Sized from the row this tile belongs to, so
+                                  // a row holding fewer tiles than `columns`
+                                  // stretches them across its full width — three
+                                  // participants are one wide tile above two.
+                                  // Widths summing to 100% are what make
+                                  // flex-wrap break the rows in the right
+                                  // places, so no row wrappers are needed and
+                                  // the drag-and-drop context stays flat.
+                                  //
+                                  // No aspectRatio: tiles fill their cell. The
+                                  // old 16/9 is why the panel never filled.
+                                  const l = tileLayout.get(itemId) ?? {
+                                    inRow: 1,
+                                    rowCount: 1,
+                                  };
+                                  return {
+                                    width: `calc((100% - ${(l.inRow - 1) * GRID_GAP}px) / ${l.inRow})`,
+                                    height: `calc((100% - ${(l.rowCount - 1) * GRID_GAP}px) / ${l.rowCount})`,
+                                    minWidth: 0,
+                                    minHeight: 0,
+                                  };
+                                })()
                           }
                         >
                           <SortableParticipant id={itemId}>

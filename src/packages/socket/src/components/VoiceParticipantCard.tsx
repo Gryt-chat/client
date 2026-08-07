@@ -90,8 +90,11 @@ export function VideoCard({
       style={{
         position: "relative",
         width: "100%",
-        aspectRatio: "16 / 9",
-        borderRadius: "var(--radius-3)",
+        // Fills the box the grid gives it. The old `aspectRatio: 16/9` is why
+        // tiles never filled the panel — they were letterboxed inside their
+        // cell regardless of how much room there was.
+        height: "100%",
+        borderRadius: 16,
         overflow: "hidden",
         background: "#000",
         outline: isSpeaking
@@ -138,14 +141,22 @@ export function VideoCard({
         px="2"
         style={{
           position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          background: "linear-gradient(transparent, rgba(0,0,0,0.7))",
-          padding: "12px 8px 4px",
+          // 12px in, 9px up — measured off Meet. The dark scrim that used to
+          // sit behind this is gone: the tile's own colour carries the
+          // contrast, and the gradient was the most obviously un-Meet-like
+          // thing about the old tile.
+          bottom: 9,
+          left: 12,
+          right: 12,
+          padding: 0,
         }}
       >
-        <Text size="1" weight="medium" style={{ color: "#fff" }} truncate>
+        <Text
+          size="3"
+          weight="medium"
+          style={{ color: "#fff", fontSize: 16, lineHeight: 1.2 }}
+          truncate
+        >
           {nickname}
         </Text>
         {statusIcons}
