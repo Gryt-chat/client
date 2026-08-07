@@ -102,6 +102,12 @@ function startupLog(msg: string): void {
 startupLog(
   `App starting (v${app.getVersion()}, ${process.platform} ${process.arch})`
 );
+// The launch arguments, because they decide which startup path runs and there
+// is otherwise no way to tell after the fact. --gryt-update in particular is
+// the whole contract between "Update now" and the splash doing the install: if
+// it does not survive the relaunch, the update silently does not happen, and
+// this line is the difference between knowing that and guessing.
+startupLog(`Launch args: ${process.argv.slice(1).join(" ") || "(none)"}`);
 
 /** Test a URL against an Electron URL-filter pattern (e.g. "https://*.foo.com/*"). */
 function matchUrlPattern(pattern: string, url: string): boolean {
