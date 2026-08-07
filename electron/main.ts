@@ -233,14 +233,18 @@ function readBoolConfig(key: string, defaultValue: boolean): boolean {
 // ── Auto-updater config ─────────────────────────────────────────────────
 
 autoUpdater.autoDownload = false;
-// Nothing installs an update out of a running app. electron-updater's
-// install-on-quit runs the installer while the app is still tearing down —
+// Windows only. NSIS runs the installer while the app is still tearing down —
 // renderer, GPU helpers, and the two children this app spawns itself (the SFU
-// binary and the embedded server) — and on Windows NSIS waits on all of it.
-// That is the whole reason updating from inside the app crawled while updating
-// at launch did not. The splash does it instead, on a process with none of that
-// running. See restartForUpdate.
-autoUpdater.autoInstallOnAppQuit = false;
+// binary and the embedded server) — and waits on all of it. That is the whole
+// reason updating from inside the app crawled there while updating at launch
+// did not. The splash does it instead, on a process with none of that running.
+// See restartForUpdate.
+//
+// Left on everywhere else, because the problem is NSIS and turning it off costs
+// a working fallback. A downloaded update on macOS applied on quit and did not
+// apply any other way, which is not something to remove on a hunch: the mac
+// install is a zip swap with none of the tear-down NSIS does.
+autoUpdater.autoInstallOnAppQuit = process.platform !== "win32";
 autoUpdater.allowPrerelease = readConfig().betaChannel === true;
 // Leaving the beta channel is a downgrade — stable is an older version than the
 // beta you are running — and electron-updater refuses those by default, taking
