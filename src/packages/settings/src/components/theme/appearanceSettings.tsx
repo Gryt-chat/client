@@ -5,6 +5,27 @@ import { accentColors, grayColors, useTheme } from "@/common";
 
 import { SettingsContainer } from "../settingsComponents";
 
+/**
+ * A colour control that names a colour without showing it makes you apply it
+ * and look, then come back. Every option here is a Radix scale, so step 9 —
+ * the solid step each scale is recognised by — is always available as a var.
+ */
+function ColorSwatch({ scale }: { scale: string }) {
+  return (
+    <span
+      aria-hidden
+      style={{
+        width: 12,
+        height: 12,
+        borderRadius: "50%",
+        flexShrink: 0,
+        background: `var(--${scale}-9)`,
+        boxShadow: "inset 0 0 0 1px var(--gray-a5)",
+      }}
+    />
+  );
+}
+
 export function AppearanceSettings() {
   const {
     appearancePreference,
@@ -59,7 +80,12 @@ export function AppearanceSettings() {
           <Select.Trigger />
           <Select.Content position="popper" sideOffset={4} style={{ maxHeight: 300 }}>
             {accentColors.map(c => (
-              <Select.Item key={c} value={c}>{c}</Select.Item>
+              <Select.Item key={c} value={c}>
+                <Flex align="center" gap="2">
+                  <ColorSwatch scale={c} />
+                  {c}
+                </Flex>
+              </Select.Item>
             ))}
           </Select.Content>
         </Select.Root>
@@ -72,7 +98,12 @@ export function AppearanceSettings() {
           <Select.Trigger />
           <Select.Content position="popper" sideOffset={4}>
             {grayColors.map(c => (
-              <Select.Item key={c} value={c}>{c}</Select.Item>
+              <Select.Item key={c} value={c}>
+                <Flex align="center" gap="2">
+                  <ColorSwatch scale={c} />
+                  {c}
+                </Flex>
+              </Select.Item>
             ))}
           </Select.Content>
         </Select.Root>

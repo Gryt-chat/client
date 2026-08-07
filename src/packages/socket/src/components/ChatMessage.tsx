@@ -110,7 +110,7 @@ export const MessageSkeleton = () => {
 const ChannelIcon = ({ type, size }: { type: "text" | "voice"; size: number }) =>
   type === "voice" ? <MdVolumeUp size={size} /> : <MdChat size={size} />;
 
-export const WelcomeMessage = ({ channelName, channelType = "text" }: { channelName?: string; channelType?: "text" | "voice" }) => (
+export const WelcomeMessage = ({ channelName, channelType = "text", onStart }: { channelName?: string; channelType?: "text" | "voice"; onStart?: () => void }) => (
   <Flex direction="column" style={{ padding: "48px 24px", alignItems: "center", textAlign: "center" }}>
     <Box
       style={{
@@ -144,7 +144,14 @@ export const WelcomeMessage = ({ channelName, channelType = "text" }: { channelN
       channel. Start a conversation by typing a message below.
     </Text>
 
+    {/*
+      This looks like a button — border, fill, accent text, icon — so it has to
+      behave like one. It used to be an inert Flex: clicking did nothing and did
+      not focus the composer, so anything typed straight afterwards went nowhere
+      at all, with no focus to receive it.
+    */}
     <Flex
+      asChild
       align="center"
       gap="3"
       style={{
@@ -152,13 +159,17 @@ export const WelcomeMessage = ({ channelName, channelType = "text" }: { channelN
         background: "var(--accent-2)",
         padding: "12px 20px",
         borderRadius: "var(--radius-4)",
-        border: "1px solid var(--accent-6)"
+        border: "1px solid var(--accent-6)",
+        cursor: onStart ? "pointer" : "default",
+        font: "inherit",
       }}
     >
-      <Text size="3">💬</Text>
-      <Text size="3" color="blue" weight="medium">
-        Type a message to get started
-      </Text>
+      <button type="button" onClick={onStart}>
+        <Text size="3">💬</Text>
+        <Text size="3" color="blue" weight="medium">
+          Type a message to get started
+        </Text>
+      </button>
     </Flex>
   </Flex>
 );

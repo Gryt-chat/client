@@ -90,6 +90,9 @@ interface ProfileEditorProps {
   onPickAvatar: () => void;
   onRemoveAvatar: () => void;
   serverLabel?: string;
+  /** Set only on a per-server tab. Distinct from serverLabel, which the All
+   *  Servers tab also uses for its own heading. */
+  scopedToServer?: string;
 }
 
 function ProfileEditor({
@@ -102,6 +105,7 @@ function ProfileEditor({
   onPickAvatar,
   onRemoveAvatar,
   serverLabel,
+  scopedToServer,
 }: ProfileEditorProps) {
   const [draft, setDraft] = useState(nickname);
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
@@ -208,8 +212,19 @@ function ProfileEditor({
           <Text weight="medium" size="2">
             Nickname
           </Text>
+          {/*
+            On a server tab this is a statement of fact — the value comes from
+            that server's member list, so it is literally what everyone there
+            sees. On the All Servers tab it is not: that is the local default
+            applied to servers you join next, and it only reaches the servers
+            you are already on when you press Sync. Saying "will see you" in
+            both places is what let a local name of "Sivert" sit next to a
+            server holding "Unknown" without anything looking wrong.
+          */}
           <Text size="1" color="gray">
-            This is how other users will see you.
+            {scopedToServer
+              ? `This is how other people on ${scopedToServer} see you.`
+              : "Used on servers you join from now on. Use Sync to apply it to servers you are already on."}
           </Text>
           <TextField.Root
             placeholder="Enter a nickname"
@@ -586,6 +601,7 @@ export function ProfileSettings() {
               onPickAvatar={() => triggerFilePick(host)}
               onRemoveAvatar={() => handleRemoveAvatar([host])}
               serverLabel={serverName}
+              scopedToServer={serverName}
             />
           );
         })()

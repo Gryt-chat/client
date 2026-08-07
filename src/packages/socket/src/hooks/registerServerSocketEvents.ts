@@ -28,6 +28,16 @@ import { syncAvatarToHost } from "../utils/syncAvatarToHost";
 const TOKEN_HEAL_COOLDOWN_MS = 10_000;
 const tokenHealLastAttempt = new Map<string, number>();
 
+/**
+ * Our own serverUserId per host, learned from `clients:update`.
+ *
+ * The member list identifies people by serverUserId and carries the nickname
+ * the server actually holds, but nothing in the list says which entry is you.
+ * This is how the two are joined up so the per-server profile can show the
+ * server's value instead of quietly falling back to the local one.
+ */
+const myServerUserIdByHost = new Map<string, string>();
+
 function canAttemptTokenHeal(host: string): boolean {
   const last = tokenHealLastAttempt.get(host) ?? 0;
   if (Date.now() - last < TOKEN_HEAL_COOLDOWN_MS) return false;
@@ -312,6 +322,9 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     if (myEntry) {
       setIsServerMuted(!!myEntry.isServerMuted);
       setIsServerDeafened(!!myEntry.isServerDeafened);
+      if (myEntry.serverUserId) {
+        myServerUserIdByHost.set(host, myEntry.serverUserId);
+      }
     }
   });
 
@@ -321,6 +334,45 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       color: "var(--gray-6)"
     }));
     setMemberLists((old) => ({ ...old, [host]: membersWithGrayColor }));
+
+    // Record what this server actually holds for us.
+    //
+    // serverProfiles was only ever written in response to a change —
+    // profile:updated fires after profile:update or avatar:updated — so on a
+    // plain join it stayed empty and the per-server tab in Settings fell back
+    // to the locally stored nickname. It therefore showed the local value under
+    // the caption "This is how other users will see you" while the member list
+    // beside it showed something else entirely, which is how the GRYT-58
+    // desync went unnoticed for so long.
+    //
+    // The member list is the same data other people see, so it is the right
+    // source. Nothing new is fetched.
+    const myServerUserId = myServerUserIdByHost.get(host);
+    if (!myServerUserId) return;
+
+    const me = data.find((member) => member.serverUserId === myServerUserId);
+    if (!me) return;
+
+    setServerProfiles((prev) => {
+      const existing = prev[host];
+      if (
+        existing?.nickname === me.nickname &&
+        existing?.avatarFileId === (me.avatarFileId ?? null)
+      ) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        [host]: {
+          nickname: me.nickname,
+          avatarFileId: me.avatarFileId ?? null,
+          avatarUrl: me.avatarFileId
+            ? getUploadsFileUrl(host, me.avatarFileId)
+            : null,
+        },
+      };
+    });
   });
 
   socket.on("error", (msg: unknown) => {

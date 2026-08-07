@@ -28,6 +28,28 @@ interface ControlsProps {
   onDisconnect?: () => void;
 }
 
+/**
+ * A tooltip that is absent rather than empty when it has nothing to say.
+ *
+ * Radix renders the tooltip chrome even when `content` is undefined, so
+ * `content={cond ? "..." : undefined}` produced a blank bubble on every hover
+ * in the normal state — and left it anchored to the previously hovered control.
+ */
+function MaybeTooltip({
+  content,
+  children,
+}: {
+  content: string | null;
+  children: React.ReactElement;
+}) {
+  if (!content) return children;
+  return (
+    <Tooltip content={content} delayDuration={300}>
+      {children}
+    </Tooltip>
+  );
+}
+
 export function Controls({ onDisconnect }: ControlsProps) {
   const [isBrowserSupported] = useState(getIsBrowserSupported());
   const {
@@ -356,8 +378,20 @@ export function Controls({ onDisconnect }: ControlsProps) {
     <>
       {isBrowserSupported && (
         <Flex align="center" justify="center" gap="4">
-          <Tooltip content={isServerMuted ? "Server muted by admin" : undefined} delayDuration={300}>
+          {/*
+            Every control here is icon-only, so the tooltip text is also the
+            accessible name — without aria-label a screen reader announced five
+            bare "button"s and could not tell muting from leaving the call.
+
+            The tooltip is rendered conditionally rather than being handed
+            `content={cond ? "..." : undefined}`. Radix still renders the
+            tooltip chrome when content is undefined, so the normal state showed
+            an empty bubble on hover and kept it anchored to whichever control
+            you hovered previously.
+          */}
+          <MaybeTooltip content={isServerMuted ? "Server muted by admin" : null}>
             <IconButton
+              aria-label={(isMuted || isServerMuted) ? "Unmute microphone" : "Mute microphone"}
               color={(isMuted || isServerMuted) ? "red" : "gray"}
               variant="soft"
               onClick={handleMute}
@@ -365,10 +399,11 @@ export function Controls({ onDisconnect }: ControlsProps) {
             >
               {(isMuted || isServerMuted) ? <MdMicOff size={16} /> : <MdMic size={16} />}
             </IconButton>
-          </Tooltip>
+          </MaybeTooltip>
 
-          <Tooltip content={isServerDeafened ? "Server deafened by admin" : undefined} delayDuration={300}>
+          <MaybeTooltip content={isServerDeafened ? "Server deafened by admin" : null}>
             <IconButton
+              aria-label={(isDeafened || isServerDeafened) ? "Undeafen" : "Deafen"}
               color={(isDeafened || isServerDeafened) ? "red" : "gray"}
               variant="soft"
               onClick={handleDeafen}
@@ -376,9 +411,10 @@ export function Controls({ onDisconnect }: ControlsProps) {
             >
               {(isDeafened || isServerDeafened) ? <MdVolumeOff size={16} /> : <MdVolumeUp size={16} />}
             </IconButton>
-          </Tooltip>
+          </MaybeTooltip>
 
           <IconButton
+            aria-label={cameraEnabled ? "Turn camera off" : "Turn camera on"}
             color={cameraEnabled ? "green" : "gray"}
             variant="soft"
             onClick={handleCameraClick}
@@ -387,6 +423,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
           </IconButton>
 
           <IconButton
+            aria-label={screenShareActive ? "Stop sharing your screen" : "Share your screen"}
             color={screenShareActive ? "red" : "gray"}
             variant="soft"
             onClick={handleScreenShareClick}
@@ -394,7 +431,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
             {screenShareActive ? <MdStopScreenShare size={16} /> : <MdScreenShare size={16} />}
           </IconButton>
 
-          <IconButton variant="soft" color="red" onClick={handleDisconnect}>
+          <IconButton aria-label="Leave voice channel" variant="soft" color="red" onClick={handleDisconnect}>
             <MdCallEnd size={16} />
           </IconButton>
         </Flex>

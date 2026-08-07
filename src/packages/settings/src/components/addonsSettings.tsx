@@ -4,6 +4,7 @@ import {
   Button,
   Flex,
   Heading,
+  Link,
   Switch,
   Text,
 } from "@radix-ui/themes";
@@ -189,13 +190,26 @@ export function AddonsSettings() {
           style={{ color: "var(--gray-9)" }}
         >
           <Text size="2" color="gray">
-            No addons found
+            No addons yet
           </Text>
-          <Text size="1" color="gray" align="center">
+          {/*
+            Every other empty state in the app offers somewhere to go. This one
+            described a file format and stopped, which reads as an error to
+            anyone who has not written an addon before.
+          */}
+          <Text size="1" color="gray" align="center" style={{ maxWidth: 380 }}>
             {inElectron
-              ? "Place addon folders in your addons directory. Each folder needs an addon.json manifest."
-              : "Mount an addons directory with addon folders, each containing an addon.json manifest."}
+              ? "Addons are folders in your addons directory, each with an addon.json manifest."
+              : "Addons load from a mounted addons directory. The desktop app can open that folder for you."}
           </Text>
+          <Link
+            href="https://docs.gryt.chat/docs"
+            target="_blank"
+            rel="noreferrer"
+            size="1"
+          >
+            Read the addon docs
+          </Link>
         </Flex>
       ) : (
         <Box

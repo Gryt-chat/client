@@ -119,7 +119,12 @@ const DESTINATIONS = [
   },
   {
     value: "extensions",
-    label: "Extensions",
+    // "Addons" everywhere else — the panel heading, the "Open Addons Folder"
+    // button, the useAddons hook, and the addon.json each one ships. The nav
+    // was the only place calling them extensions, so it is the one that moves.
+    // The tab's `value` stays "extensions" because it is persisted in settings
+    // and deep-linked to; renaming it would strand anyone mid-session.
+    label: "Addons",
     icon: MdExtension,
     content: <AddonsSettings />,
   },
