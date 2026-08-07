@@ -24,8 +24,8 @@ import {
   useRef,
   useState,
 } from "react";
-import { MdChat, MdMicOff } from "react-icons/md";
 import toast from "react-hot-toast";
+import { MdChat, MdMicOff } from "react-icons/md";
 
 import {
   useCamera as useLocalCamera,
@@ -55,6 +55,27 @@ const GRID_GAP = 12;
 const GRID_PADDING = 16;
 const MIN_TILE_WIDTH = 140;
 const CONTROLS_HEIGHT = 80;
+
+// A screen share is pinned full-width above the participants rather than
+// taking a cell in the grid. Confirmed from reference screenshots — share + 2
+// gives a full-width share over two stacked tiles, share + 4 gives share over a
+// 2x2 — but the *split* between the two regions was never measured, so 60/40 is
+// a choice, not a measurement.
+const SCREEN_SHARE_HEIGHT_FRACTION = 0.6;
+
+// Two participants and no share is hero + picture-in-picture: one tile fills
+// the panel, the second overlaps its bottom-right corner. Genuinely
+// special-cased — the grid rules on their own would just stack them.
+//
+// The inset and radius are measured; the PiP's own size is not, so it is a
+// fraction of the panel clamped to something recognisable at either extreme.
+const PIP_INSET = 16;
+const PIP_RADIUS = 12;
+const PIP_WIDTH_FRACTION = 0.32;
+// Same floor as a grid tile: below this a tile is too small to recognise
+// anyone in, and in a sidebar-width panel the fraction lands under it.
+const PIP_MIN_WIDTH = MIN_TILE_WIDTH;
+const PIP_MAX_WIDTH = 220;
 
 /**
  * Column count that gives the largest tiles, assuming tiles fill their cell.
@@ -579,22 +600,30 @@ export const VoiceView = ({
     return items;
   }, [orderedItems, focusedStream, poppedOutItems]);
 
-  const columns = useMemo(
-    () =>
-      computeOptimalColumns(
-        gridWidth,
-        gridHeight - CONTROLS_HEIGHT,
-        displayItems.length,
-      ),
-    [gridWidth, gridHeight, displayItems.length],
+  // A screen share is pinned full-width above the participants, so it is not
+  // one of the tiles the grid has to place.
+  const screenItems = useMemo(
+    () => displayItems.filter((id) => id.startsWith("screen:")),
+    [displayItems],
   );
 
-  // computeOptimalColumns only hands back a column count, but it chose that
-  // count by working out how tall each row would be if the rows split the
-  // available height. The grid has to be told to actually do that.
-  const rows = useMemo(
-    () => Math.max(1, Math.ceil(displayItems.length / Math.max(1, columns))),
-    [displayItems.length, columns],
+  const peopleItems = useMemo(
+    () => displayItems.filter((id) => !id.startsWith("screen:")),
+    [displayItems],
+  );
+
+  const isHeroPip =
+    !isFocused && screenItems.length === 0 && peopleItems.length === 2;
+
+  // What is left for the participant grid once the controls and any pinned
+  // share have taken their share of the panel.
+  const gridAreaHeight =
+    (gridHeight - CONTROLS_HEIGHT) *
+    (screenItems.length > 0 ? 1 - SCREEN_SHARE_HEIGHT_FRACTION : 1);
+
+  const columns = useMemo(
+    () => computeOptimalColumns(gridWidth, gridAreaHeight, peopleItems.length),
+    [gridWidth, gridAreaHeight, peopleItems.length],
   );
 
   /**
@@ -604,19 +633,19 @@ export const VoiceView = ({
    * what a plain `repeat(columns, 1fr)` grid cannot express.
    */
   const tileLayout = useMemo(() => {
-    const perRow = distributeRows(displayItems.length, columns);
+    const perRow = distributeRows(peopleItems.length, columns);
     const map = new Map<string, { inRow: number; rowCount: number }>();
     let cursor = 0;
 
     perRow.forEach((n) => {
       for (let i = 0; i < n; i++) {
-        map.set(displayItems[cursor + i], { inRow: n, rowCount: perRow.length });
+        map.set(peopleItems[cursor + i], { inRow: n, rowCount: perRow.length });
       }
       cursor += n;
     });
 
     return map;
-  }, [displayItems, columns]);
+  }, [peopleItems, columns]);
 
   useEffect(() => {
     if (!focusedStream) return;
@@ -776,6 +805,97 @@ export const VoiceView = ({
     };
   };
 
+  /**
+   * A tile's box in the wrapping grid.
+   *
+   * Sized from the row this tile belongs to, so a row holding fewer tiles than
+   * `columns` stretches them across its full width — three participants are one
+   * wide tile above two. Widths summing to 100% are what make flex-wrap break
+   * the rows in the right places, so no row wrappers are needed and the
+   * drag-and-drop context stays flat.
+   *
+   * No aspectRatio: tiles fill their cell. The old 16/9 is why the panel never
+   * filled.
+   */
+  const gridCellStyle = (itemId: string): CSSProperties => {
+    const l = tileLayout.get(itemId) ?? { inRow: 1, rowCount: 1 };
+
+    return {
+      width: `calc((100% - ${(l.inRow - 1) * GRID_GAP}px) / ${l.inRow})`,
+      height: `calc((100% - ${(l.rowCount - 1) * GRID_GAP}px) / ${l.rowCount})`,
+      minWidth: 0,
+      minHeight: 0,
+    };
+  };
+
+  /**
+   * One tile, positioned by whatever box the region it lives in hands it.
+   *
+   * The regions differ — a pinned share, the hero, the PiP, a grid cell — but
+   * the card and its drag wrapper are identical in all of them, so only the
+   * outer box varies.
+   */
+  const renderTile = (
+    itemId: string,
+    style: CSSProperties,
+    tileRadius?: number,
+  ) => {
+    const isScreenTile = itemId.startsWith("screen:");
+    const clientId = isScreenTile ? itemId.slice(7) : itemId;
+    const client = clientsForHost[clientId];
+
+    if (!client) return null;
+
+    const isSelf = clientId === currentConnectionId;
+    const serverUserId = client?.serverUserId;
+
+    return (
+      <motion.div
+        key={itemId}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        style={style}
+      >
+        <SortableParticipant id={itemId}>
+          <VoiceParticipantCard
+            itemId={itemId}
+            compact={isFocused}
+            client={client}
+            isSelf={isSelf}
+            isUserConnecting={clientId === currentConnectionId && isConnecting}
+            serverHost={serverHost}
+            avatarFileId={
+              serverUserId ? avatarByServerUserId.get(serverUserId) : undefined
+            }
+            cameraMirrored={cameraMirrored}
+            isSpeaking={
+              isSelf ? localProcessedSpeaking : !!clientsSpeaking[clientId]
+            }
+            showPeerLatency={showPeerLatency}
+            latencyStats={getLatencyStats(clientId, isSelf)}
+            localCameraStream={localCameraStream}
+            localScreenStream={localScreenStream}
+            videoStreams={videoStreams}
+            fallbackCameraStreamID={
+              fallbackCameraStreamIdByClientId[clientId] || null
+            }
+            onFocus={handleFocus}
+            onPopout={handlePopout}
+            onDisconnectUser={onDisconnectUser}
+            currentUserRole={currentUserRole}
+            memberInfo={
+              serverUserId ? memberByServerUserId.get(serverUserId) : undefined
+            }
+            adminActions={adminActions}
+            tileRadius={tileRadius}
+          />
+        </SortableParticipant>
+      </motion.div>
+    );
+  };
+
   return (
     <motion.div
       data-gryt="voice-view"
@@ -923,14 +1043,10 @@ export const VoiceView = ({
                         flexShrink: 0,
                       }
                     : {
-                        // Rows are laid out explicitly rather than as one grid,
-                        // because a row holding fewer tiles than `columns` has
-                        // to stretch them across its full width. Three
-                        // participants are one wide tile above two, which
-                        // repeat(columns, 1fr) cannot express.
+                        // Two stacked regions: any pinned screen share on top,
+                        // the participants below.
                         display: "flex",
-                        flexWrap: "wrap",
-                        alignContent: "flex-start",
+                        flexDirection: "column",
                         gap: `${GRID_GAP}px`,
                         // Extra room at the bottom: the controls float over
                         // this area, and a tile running full height puts the
@@ -941,99 +1057,91 @@ export const VoiceView = ({
                       }
                 }
               >
-                <AnimatePresence>
-                  {currentServerConnected === serverHost &&
-                    displayItems.map((itemId) => {
-                      const isScreenTile = itemId.startsWith("screen:");
-                      const clientId = isScreenTile ? itemId.slice(7) : itemId;
-                      const client = clientsForHost[clientId];
+                {currentServerConnected !== serverHost ? null : isFocused ? (
+                  <AnimatePresence>
+                    {displayItems.map((itemId) =>
+                      renderTile(itemId, { flexShrink: 0, width: 140 }),
+                    )}
+                  </AnimatePresence>
+                ) : (
+                  <>
+                    {screenItems.length > 0 && (
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: `${GRID_GAP}px`,
+                          height: `${SCREEN_SHARE_HEIGHT_FRACTION * 100}%`,
+                          flexShrink: 0,
+                        }}
+                      >
+                        <AnimatePresence>
+                          {screenItems.map((itemId) =>
+                            renderTile(itemId, {
+                              flex: 1,
+                              minWidth: 0,
+                              height: "100%",
+                            }),
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    )}
 
-                      if (!client) return null;
+                    {isHeroPip ? (
+                      <div
+                        style={{
+                          position: "relative",
+                          flex: 1,
+                          minHeight: 0,
+                        }}
+                      >
+                        <AnimatePresence>
+                          {renderTile(peopleItems[0], {
+                            position: "absolute",
+                            inset: 0,
+                          })}
 
-                      const isSelf = clientId === currentConnectionId;
-                      const serverUserId = client?.serverUserId;
-
-                      return (
-                        <motion.div
-                          key={itemId}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ duration: 0.2 }}
-                          style={
-                            isFocused
-                              ? { flexShrink: 0, width: 140 }
-                              : (() => {
-                                  // Sized from the row this tile belongs to, so
-                                  // a row holding fewer tiles than `columns`
-                                  // stretches them across its full width — three
-                                  // participants are one wide tile above two.
-                                  // Widths summing to 100% are what make
-                                  // flex-wrap break the rows in the right
-                                  // places, so no row wrappers are needed and
-                                  // the drag-and-drop context stays flat.
-                                  //
-                                  // No aspectRatio: tiles fill their cell. The
-                                  // old 16/9 is why the panel never filled.
-                                  const l = tileLayout.get(itemId) ?? {
-                                    inRow: 1,
-                                    rowCount: 1,
-                                  };
-                                  return {
-                                    width: `calc((100% - ${(l.inRow - 1) * GRID_GAP}px) / ${l.inRow})`,
-                                    height: `calc((100% - ${(l.rowCount - 1) * GRID_GAP}px) / ${l.rowCount})`,
-                                    minWidth: 0,
-                                    minHeight: 0,
-                                  };
-                                })()
-                          }
-                        >
-                          <SortableParticipant id={itemId}>
-                            <VoiceParticipantCard
-                              itemId={itemId}
-                              compact={isFocused}
-                              client={client}
-                              isSelf={isSelf}
-                              isUserConnecting={
-                                clientId === currentConnectionId && isConnecting
-                              }
-                              serverHost={serverHost}
-                              avatarFileId={
-                                serverUserId
-                                  ? avatarByServerUserId.get(serverUserId)
-                                  : undefined
-                              }
-                              cameraMirrored={cameraMirrored}
-                              isSpeaking={
-                                isSelf
-                                  ? localProcessedSpeaking
-                                  : !!clientsSpeaking[clientId]
-                              }
-                              showPeerLatency={showPeerLatency}
-                              latencyStats={getLatencyStats(clientId, isSelf)}
-                              localCameraStream={localCameraStream}
-                              localScreenStream={localScreenStream}
-                              videoStreams={videoStreams}
-                              fallbackCameraStreamID={
-                                fallbackCameraStreamIdByClientId[clientId] ||
-                                null
-                              }
-                              onFocus={handleFocus}
-                              onPopout={handlePopout}
-                              onDisconnectUser={onDisconnectUser}
-                              currentUserRole={currentUserRole}
-                              memberInfo={
-                                serverUserId
-                                  ? memberByServerUserId.get(serverUserId)
-                                  : undefined
-                              }
-                              adminActions={adminActions}
-                            />
-                          </SortableParticipant>
-                        </motion.div>
-                      );
-                    })}
-                </AnimatePresence>
+                          {renderTile(
+                            peopleItems[1],
+                            {
+                              position: "absolute",
+                              right: PIP_INSET,
+                              bottom: PIP_INSET,
+                              width: `${PIP_WIDTH_FRACTION * 100}%`,
+                              minWidth: PIP_MIN_WIDTH,
+                              maxWidth: PIP_MAX_WIDTH,
+                              aspectRatio: "16 / 9",
+                              zIndex: 2,
+                            },
+                            PIP_RADIUS,
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          // Rows are laid out by wrapping rather than as one
+                          // grid, because a row holding fewer tiles than
+                          // `columns` has to stretch them across its full
+                          // width. Three participants are one wide tile above
+                          // two, which repeat(columns, 1fr) cannot express.
+                          display: "flex",
+                          flexWrap: "wrap",
+                          alignContent: "flex-start",
+                          gap: `${GRID_GAP}px`,
+                          flex: 1,
+                          minHeight: 0,
+                          overflow: "hidden",
+                        }}
+                      >
+                        <AnimatePresence>
+                          {peopleItems.map((itemId) =>
+                            renderTile(itemId, gridCellStyle(itemId)),
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             </SortableContext>
           </DndContext>

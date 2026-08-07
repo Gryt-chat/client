@@ -40,6 +40,8 @@ export function VideoCard({
   mirrored,
   isSpeaking,
   statusIcons,
+  mutedBadge,
+  radius = TILE_RADIUS,
   objectFit = "cover",
   onClick,
   pendingLabel = "Connecting video…",
@@ -49,6 +51,8 @@ export function VideoCard({
   mirrored?: boolean;
   isSpeaking?: boolean;
   statusIcons?: ReactNode;
+  mutedBadge?: ReactNode;
+  radius?: number;
   objectFit?: "cover" | "contain";
   onClick?: () => void;
   pendingLabel?: string;
@@ -94,7 +98,7 @@ export function VideoCard({
         // tiles never filled the panel — they were letterboxed inside their
         // cell regardless of how much room there was.
         height: "100%",
-        borderRadius: 16,
+        borderRadius: radius,
         overflow: "hidden",
         background: "#000",
         outline: isSpeaking
@@ -134,6 +138,8 @@ export function VideoCard({
           </Text>
         </Flex>
       )}
+
+      {mutedBadge}
 
       <Flex
         align="center"
@@ -176,6 +182,9 @@ export function VideoCard({
  */
 const TILE_HUES = [280, 24, 170, 330, 210, 140, 350, 45, 260, 195];
 
+/** Measured off Meet. Overridable so the two-participant PiP can sit at 12. */
+export const TILE_RADIUS = 16;
+
 function hueFromId(id: string): number {
   let hash = 0;
   for (let i = 0; i < id.length; i++) {
@@ -198,6 +207,54 @@ function tileGradient(id: string): string {
 }
 
 /**
+ * The muted badge, top-right of the tile.
+ *
+ * Meet tints this to the tile's own hue rather than using a neutral chip, so it
+ * reads as part of the tile instead of an overlay. On a video tile there is no
+ * hue to borrow — the tile is the camera image — so it falls back to a dark
+ * translucent circle, which is what Meet does there too.
+ *
+ * The diameter is not measured. It steps at the same tile height as the avatar
+ * buckets so the two stay in proportion.
+ */
+function MutedBadge({
+  hueId,
+  deafened,
+  tileHeight,
+}: {
+  hueId?: string;
+  deafened: boolean;
+  tileHeight: number;
+}) {
+  const size = tileHeight >= 170 ? 28 : 20;
+
+  return (
+    <Flex
+      align="center"
+      justify="center"
+      style={{
+        position: "absolute",
+        top: 12,
+        right: 12,
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        background: hueId
+          ? `hsl(${hueFromId(hueId)} 45% 26%)`
+          : "rgba(0, 0, 0, 0.6)",
+        pointerEvents: "none",
+      }}
+    >
+      {deafened ? (
+        <MdVolumeOff size={Math.round(size * 0.55)} color="#fff" />
+      ) : (
+        <MdMicOff size={Math.round(size * 0.55)} color="#fff" />
+      )}
+    </Flex>
+  );
+}
+
+/**
  * Avatar diameter for a tile of this height.
  *
  * Measured off Meet, and it is stepped rather than proportional: a 468-wide
@@ -208,8 +265,17 @@ function tileGradient(id: string): string {
 function avatarSizeForHeight(height: number): number {
   if (height >= 450) return 96;
   if (height >= 170) return 72;
-  return 48;
+  if (height >= SMALL_TILE_HEIGHT) return 48;
+  return 32;
 }
+
+/**
+ * Below this height a tile cannot carry a centred avatar and a 16px name row
+ * without the two overlapping. The two-participant picture-in-picture is the
+ * case that hits it — at 16:9 in a sidebar-width panel it comes out around
+ * 80px tall — so the avatar, the name and its inset all step down together.
+ */
+const SMALL_TILE_HEIGHT = 110;
 
 /** Tile height, so the avatar can pick its bucket. */
 function useTileHeight(ref: React.RefObject<HTMLElement | null>): number {
@@ -295,6 +361,7 @@ export function VoiceParticipantCard({
   currentUserRole,
   memberInfo,
   adminActions,
+  tileRadius = TILE_RADIUS,
 }: {
   itemId: string;
   compact?: boolean;
@@ -322,9 +389,17 @@ export function VoiceParticipantCard({
   currentUserRole?: Role;
   memberInfo?: MemberInfo;
   adminActions?: AdminActions;
+  /** Overridden to 12 for the two-participant picture-in-picture tile. */
+  tileRadius?: number;
 }) {
   const isScreenTile = itemId.startsWith("screen:");
   const serverUserId: string | undefined = client?.serverUserId;
+
+  // Above the screen-tile branch below, which returns early. A hook after an
+  // early return only survives because a given card keeps the same itemId for
+  // its whole life, which is not something to rely on.
+  const tileRef = useRef<HTMLDivElement>(null);
+  const tileHeight = useTileHeight(tileRef);
 
   if (isScreenTile) {
     const screenStream = isSelf
@@ -410,6 +485,7 @@ export function VoiceParticipantCard({
           }`}
           stream={screenStream}
           nickname={screenTitle}
+          radius={tileRadius}
           objectFit="contain"
           pendingLabel="Connecting screen…"
           statusIcons={<MdScreenShare size={10} color="var(--blue-9)" />}
@@ -460,13 +536,8 @@ export function VoiceParticipantCard({
 
   const statusBadges = (
     <>
-      {(client.isMuted || client.isDeafened) &&
-        (client.isDeafened ? (
-          <MdVolumeOff size={12} color="var(--red-9)" />
-        ) : (
-          <MdMicOff size={12} color="var(--red-9)" />
-        ))}
-
+      {/* Mute and deafen are the top-right badge now, not an icon in the name
+          row. Everything else still belongs beside the name. */}
       {client.isAFK && (
         <Text size="1" weight="bold" style={{ color: "#fff" }}>
           AFK
@@ -480,11 +551,23 @@ export function VoiceParticipantCard({
       {client.screenShareEnabled && (
         <MdScreenShare size={10} color="var(--blue-9)" />
       )}
+
+      {/* Beside the name, the way the avatar tile does it. It used to sit
+          under the tile as a sibling, which meant the tile could not be given
+          a definite height. */}
+      {!compact && showPeerLatency && (
+        <LatencyBadge stats={latencyStats} isSelf={isSelf} />
+      )}
     </>
   );
 
-  const tileRef = useRef<HTMLDivElement>(null);
-  const avatarPx = avatarSizeForHeight(useTileHeight(tileRef));
+  const avatarPx = avatarSizeForHeight(tileHeight);
+
+  const showMutedBadge =
+    !compact && (client.isMuted || client.isDeafened) && !isUserConnecting;
+
+  const isSmallTile =
+    !compact && tileHeight > 0 && tileHeight < SMALL_TILE_HEIGHT;
 
   const avatarView = () => (
     <div
@@ -506,7 +589,7 @@ export function VoiceParticipantCard({
               position: "relative",
               width: "100%",
               height: "100%",
-              borderRadius: 16,
+              borderRadius: tileRadius,
               overflow: "hidden",
               background: tileGradient(client.serverUserId || client.nickname),
               outline: isSpeaking
@@ -586,7 +669,11 @@ export function VoiceParticipantCard({
           </Flex>
         )}
 
-        {(client.isMuted || client.isDeafened || client.isAFK) && (
+        {/* Mute state moved to the tile's top-right badge, so this chip is
+            only still carrying it in the compact strip, which has no tile to
+            hang a badge on. */}
+        {((compact && (client.isMuted || client.isDeafened)) ||
+          client.isAFK) && (
           <Flex
             position="absolute"
             bottom="-4px"
@@ -599,9 +686,9 @@ export function VoiceParticipantCard({
               border: "1px solid var(--gray-6)",
             }}
           >
-            {client.isDeafened ? (
+            {compact && client.isDeafened ? (
               <MdVolumeOff size={12} color="var(--red-9)" />
-            ) : client.isMuted ? (
+            ) : compact && client.isMuted ? (
               <MdMicOff size={12} color="var(--red-9)" />
             ) : null}
 
@@ -614,6 +701,14 @@ export function VoiceParticipantCard({
         )}
       </Flex>
 
+      {showMutedBadge && (
+        <MutedBadge
+          hueId={client.serverUserId || client.nickname}
+          deafened={!!client.isDeafened}
+          tileHeight={tileHeight}
+        />
+      )}
+
       {compact ? (
         <Text size="1">{client.nickname}</Text>
       ) : (
@@ -624,20 +719,26 @@ export function VoiceParticipantCard({
             // Bottom-left, 12 in and 9 up, measured off Meet. No scrim — the
             // tile's own colour carries the contrast.
             position: "absolute",
-            bottom: 9,
-            left: 12,
-            right: 12,
+            bottom: isSmallTile ? 6 : 9,
+            left: isSmallTile ? 8 : 12,
+            right: isSmallTile ? 8 : 12,
             minWidth: 0,
           }}
         >
           <Text
             weight="medium"
-            style={{ color: "#fff", fontSize: 16, lineHeight: 1.2 }}
+            style={{
+              color: "#fff",
+              fontSize: isSmallTile ? 12 : 16,
+              lineHeight: 1.2,
+            }}
             truncate
           >
             {client.nickname}
           </Text>
-          {showPeerLatency && (
+          {/* The latency figure is the first thing to go when there is no room
+              for it — the name has to survive, the number does not. */}
+          {showPeerLatency && !isSmallTile && (
             <LatencyBadge stats={latencyStats} isSelf={isSelf} />
           )}
         </Flex>
@@ -649,7 +750,13 @@ export function VoiceParticipantCard({
     if (!shouldShowCameraTile) return avatarView();
 
     return (
-      <Flex direction="column" gap="1" align="center" style={{ width: "100%" }}>
+      <div
+        ref={tileRef}
+        // Height as well as width: the card fills the cell the grid gives it,
+        // and without a definite height here VideoCard's own `height: 100%`
+        // resolves against an auto-height parent and collapses.
+        style={{ width: "100%", height: "100%" }}
+      >
         <VideoCard
           key={`${itemId}:${cameraStreamID || "local"}:${cameraStream?.id || "pending"}`}
           stream={cameraStream}
@@ -657,6 +764,12 @@ export function VoiceParticipantCard({
           mirrored={isSelf ? cameraMirrored : false}
           isSpeaking={isSpeaking}
           statusIcons={statusBadges}
+          radius={tileRadius}
+          mutedBadge={
+            showMutedBadge ? (
+              <MutedBadge deafened={!!client.isDeafened} tileHeight={tileHeight} />
+            ) : undefined
+          }
           pendingLabel="Connecting video…"
           onClick={
             cameraStream
@@ -673,11 +786,7 @@ export function VoiceParticipantCard({
               : undefined
           }
         />
-
-        {!compact && showPeerLatency && (
-          <LatencyBadge stats={latencyStats} isSelf={isSelf} />
-        )}
-      </Flex>
+      </div>
     );
   };
 
