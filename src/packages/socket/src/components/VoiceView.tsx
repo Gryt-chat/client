@@ -13,7 +13,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Flex, IconButton, Tooltip } from "@radix-ui/themes";
+import { Button, Flex, IconButton, Text, Tooltip } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
 import type { CSSProperties, ReactNode } from "react";
 import {
@@ -24,7 +24,8 @@ import {
   useRef,
   useState,
 } from "react";
-import { MdChat } from "react-icons/md";
+import { MdChat, MdMicOff } from "react-icons/md";
+import toast from "react-hot-toast";
 
 import {
   useCamera as useLocalCamera,
@@ -251,7 +252,8 @@ export const VoiceView = ({
   chatHidden?: boolean;
   onToggleChat?: () => void;
 }) => {
-  const { showPeerLatency, cameraMirrored } = useSettings();
+  const { showPeerLatency, cameraMirrored, setShowSettings, setSettingsTab } =
+    useSettings();
   const { latency: selfLatency } = useVoiceLatency(showPeerLatency);
 
   const {
@@ -261,12 +263,64 @@ export const VoiceView = ({
 
   const { cameraStream: localCameraStream } = useLocalCamera();
 
-  const { microphoneBuffer } = useMicrophone(false);
+  const { microphoneBuffer, micUnavailable } = useMicrophone(false);
+
+  const isInThisVoiceChannel =
+    currentServerConnected === serverHost && !!currentConnectionId;
 
   const localProcessedSpeaking = useFinalProcessedSpeaking(
     microphoneBuffer.finalAnalyser,
-    currentServerConnected === serverHost && !!currentConnectionId,
+    isInThisVoiceChannel,
   );
+
+  // Joining without a microphone is allowed on purpose — listening is useful on
+  // its own — but it used to look completely normal, so you could sit in a
+  // channel believing you were audible. Say it once, and point at the fix.
+  const warnedAboutMicRef = useRef(false);
+
+  useEffect(() => {
+    if (!isInThisVoiceChannel || !micUnavailable) {
+      warnedAboutMicRef.current = false;
+      return;
+    }
+
+    if (warnedAboutMicRef.current) return;
+    warnedAboutMicRef.current = true;
+
+    const reasons: Record<typeof micUnavailable, string> = {
+      denied: "Microphone access is blocked",
+      "no-device": "No microphone found",
+      failed: "Your microphone could not be started",
+    };
+
+    toast(
+      (t) => (
+        <Flex align="center" gap="3">
+          <Text size="2">
+            {reasons[micUnavailable]} — you can hear others, but they cannot
+            hear you.
+          </Text>
+          <Button
+            size="1"
+            variant="soft"
+            onClick={() => {
+              toast.dismiss(t.id);
+              setSettingsTab("sound-video");
+              setShowSettings(true);
+            }}
+          >
+            Open settings
+          </Button>
+        </Flex>
+      ),
+      {
+        // Fixed id so a reconnect or a re-render cannot stack duplicates.
+        id: "mic-unavailable",
+        duration: 12000,
+        icon: <MdMicOff size={18} />,
+      },
+    );
+  }, [isInThisVoiceChannel, micUnavailable, setSettingsTab, setShowSettings]);
 
   const gridRef = useRef<HTMLDivElement>(null);
   const [gridHeight, setGridHeight] = useState(0);
