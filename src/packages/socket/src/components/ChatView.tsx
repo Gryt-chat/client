@@ -296,7 +296,11 @@ export const ChatView = memo(({
             </Flex>
           ) : chatMessages.length === 0 ? (
             <Flex flexGrow="1" direction="column" justify="end" style={{ paddingBottom: "16px" }}>
-              <WelcomeMessage channelName={channelName} channelType={channelType} />
+              <WelcomeMessage
+                channelName={channelName}
+                channelType={channelType}
+                onStart={() => editorRef.current?.focus()}
+              />
             </Flex>
           ) : showMessages ? (
             <div
