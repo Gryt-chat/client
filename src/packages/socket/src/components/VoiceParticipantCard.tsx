@@ -179,6 +179,9 @@ export function VideoCard({
  * usable to read. Deriving it here means the same person is the same colour on
  * every client without the server having to agree, and it cannot drift out of
  * sync with whatever the sidebar decides to do.
+ *
+ * `avatarColor` on the member is the better source where it exists — see
+ * hueFromAvatarColor.
  */
 const TILE_HUES = [280, 24, 170, 330, 210, 140, 350, 45, 260, 195];
 
@@ -197,12 +200,69 @@ function hueFromId(id: string): number {
 }
 
 /**
+ * The palette entry nearest the avatar's own colour.
+ *
+ * Snapped rather than used directly, for the same reason hueFromId picks from a
+ * list: the tile is drawn at a fixed lightness and saturation, and an arbitrary
+ * hue put through those lands in the olive band often enough to look broken.
+ * Snapping keeps the person's colour recognisable while every tile stays a
+ * colour the panel was designed around.
+ *
+ * Returns null rather than a hue for anything the snap would misrepresent — a
+ * malformed value, or a grey avatar, whose hue is whatever rounding noise it
+ * happens to carry. The caller falls back to the id hash, which is what every
+ * tile looked like before this existed.
+ */
+function hueFromAvatarColor(hex: string | null | undefined): number | null {
+  if (!hex) return null;
+
+  const match = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!match) return null;
+
+  const int = parseInt(match[1], 16);
+  const r = ((int >> 16) & 255) / 255;
+  const g = ((int >> 8) & 255) / 255;
+  const b = (int & 255) / 255;
+
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const delta = max - min;
+
+  // Near-grey. Below this the hue is noise, and snapping it would hand someone
+  // a saturated tile that has nothing to do with their avatar.
+  if (delta < 0.08) return null;
+
+  let hue: number;
+  if (max === r) hue = ((g - b) / delta) % 6;
+  else if (max === g) hue = (b - r) / delta + 2;
+  else hue = (r - g) / delta + 4;
+
+  hue = (hue * 60 + 360) % 360;
+
+  let nearest = TILE_HUES[0];
+  let best = Infinity;
+  for (const candidate of TILE_HUES) {
+    // Around the wheel, so 350 and 24 are 34 apart rather than 326.
+    const diff = Math.abs(((candidate - hue + 540) % 360) - 180);
+    if (diff < best) {
+      best = diff;
+      nearest = candidate;
+    }
+  }
+  return nearest;
+}
+
+function tileHue(id: string, avatarColor?: string | null): number {
+  return hueFromAvatarColor(avatarColor) ?? hueFromId(id);
+}
+
+/**
  * Meet's tiles are a lighter centre falling off to a deeper edge. Two stops of
  * the same hue rather than a flat fill — flat reads as a coloured rectangle,
  * the falloff reads as a tile with someone in it.
  */
-function tileGradient(id: string): string {
-  const h = hueFromId(id);
+function tileGradient(id: string, avatarColor?: string | null): string {
+  const h = tileHue(id, avatarColor);
   return `radial-gradient(circle at 50% 42%, hsl(${h} 48% 42%), hsl(${h} 55% 20%) 75%)`;
 }
 
@@ -219,10 +279,12 @@ function tileGradient(id: string): string {
  */
 function MutedBadge({
   hueId,
+  hueAvatarColor,
   deafened,
   tileHeight,
 }: {
   hueId?: string;
+  hueAvatarColor?: string | null;
   deafened: boolean;
   tileHeight: number;
 }) {
@@ -240,7 +302,7 @@ function MutedBadge({
         height: size,
         borderRadius: "50%",
         background: hueId
-          ? `hsl(${hueFromId(hueId)} 45% 26%)`
+          ? `hsl(${tileHue(hueId, hueAvatarColor)} 45% 26%)`
           : "rgba(0, 0, 0, 0.6)",
         pointerEvents: "none",
       }}
@@ -591,7 +653,10 @@ export function VoiceParticipantCard({
               height: "100%",
               borderRadius: tileRadius,
               overflow: "hidden",
-              background: tileGradient(client.serverUserId || client.nickname),
+              background: tileGradient(
+                client.serverUserId || client.nickname,
+                memberInfo?.avatarColor,
+              ),
               outline: isSpeaking
                 ? "2.5px solid var(--accent-9)"
                 : "2.5px solid transparent",
@@ -704,6 +769,7 @@ export function VoiceParticipantCard({
       {showMutedBadge && (
         <MutedBadge
           hueId={client.serverUserId || client.nickname}
+          hueAvatarColor={memberInfo?.avatarColor}
           deafened={!!client.isDeafened}
           tileHeight={tileHeight}
         />
