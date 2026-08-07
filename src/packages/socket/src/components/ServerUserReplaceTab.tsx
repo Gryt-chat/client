@@ -64,7 +64,7 @@ function MemberDropdownItem({
       <Avatar
         size="1"
         fallback={member.nickname[0]}
-        src={member.avatarFileId ? getUploadsFileUrl(host, member.avatarFileId) : undefined}
+        src={member.avatarFileId ? getUploadsFileUrl(host, member.avatarFileId, { thumb: true }) : undefined}
         style={{ flexShrink: 0 }}
       />
       <Flex direction="column" style={{ flex: 1, minWidth: 0 }}>
@@ -115,7 +115,7 @@ function MemberCombobox({
           <Avatar
             size="1"
             fallback={selectedMember.nickname[0]}
-            src={selectedMember.avatarFileId ? getUploadsFileUrl(host, selectedMember.avatarFileId) : undefined}
+            src={selectedMember.avatarFileId ? getUploadsFileUrl(host, selectedMember.avatarFileId, { thumb: true }) : undefined}
             style={{ flexShrink: 0 }}
           />
         )}

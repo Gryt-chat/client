@@ -269,7 +269,7 @@ export const ChannelList = ({
                           nickname={clients[id].nickname}
                           avatarSrc={
                             clients[id].serverUserId && avatarByServerUserId.get(clients[id].serverUserId)
-                              ? getUploadsFileUrl(serverHost, avatarByServerUserId.get(clients[id].serverUserId) as string)
+                              ? getUploadsFileUrl(serverHost, avatarByServerUserId.get(clients[id].serverUserId) as string, { thumb: true })
                               : undefined
                           }
                           serverUserId={clients[id].serverUserId}
