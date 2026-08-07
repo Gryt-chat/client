@@ -994,6 +994,7 @@ export const VoiceView = ({
                   : undefined
               }
               adminActions={adminActions}
+              streamSources={streamSources}
               tileRadius={radius}
             />
           </SortableParticipant>

@@ -8,7 +8,9 @@ import {
   MdVolumeOff,
 } from "react-icons/md";
 
+import { getVolumeDb, useMicrophone, volumeToLevel } from "@/audio";
 import { getUploadsFileUrl } from "@/common";
+import type { StreamSources } from "@/webRTC";
 
 import type { Client } from "../types/clients";
 import type { AdminActions, MemberInfo } from "./MemberSidebar";
@@ -102,8 +104,12 @@ export function VideoCard({
         overflow: "hidden",
         background: "#000",
         outline: isSpeaking
-          ? "2.5px solid var(--accent-9)"
-          : "2.5px solid transparent",
+          ? `${SPEAKING_RING}px solid var(--accent-9)`
+          : `${SPEAKING_RING}px solid transparent`,
+        // Inward, because the tile fills its cell exactly. An outline is drawn
+        // outside the border box, so at offset 0 the ring lands in the gap
+        // between tiles or gets clipped by the panel edge.
+        outlineOffset: -SPEAKING_RING,
         transition: "outline-color 0.1s ease",
         cursor: stream && onClick ? "pointer" : undefined,
       }}
@@ -187,6 +193,88 @@ const TILE_HUES = [280, 24, 170, 330, 210, 140, 350, 45, 260, 195];
 
 /** Measured off Meet. Overridable so the two-participant PiP can sit at 12. */
 export const TILE_RADIUS = 16;
+
+/**
+ * The speaking ring's thickness, in px.
+ *
+ * On a video tile it is drawn with a negative outline-offset. A tile fills its
+ * grid cell exactly, so an outline at the default offset is painted outside the
+ * cell — into the 12px gap between tiles, or clipped away entirely at the
+ * panel's edge. Pulling it inward by its own width keeps it on the tile and
+ * lets it follow the corner radius.
+ */
+const SPEAKING_RING = 2.5;
+
+/** How much bigger than the avatar the halo gets at full volume. */
+const HALO_MAX_SCALE = 1.32;
+
+/**
+ * The disc behind the avatar that grows with how loudly someone is talking.
+ *
+ * Meet's speaking treatment is this plus a ring on the avatar, and nothing on
+ * the tile — so that is what this does. The size follows dBFS rather than raw
+ * amplitude; see volumeToLevel for why.
+ *
+ * Animated by writing to the element from requestAnimationFrame instead of
+ * through state. The level changes every frame, and putting that in React
+ * would re-render the whole panel sixty times a second to move one circle.
+ *
+ * Attack is faster than release, so a syllable is visible immediately and the
+ * ring settles rather than flickering between words.
+ */
+function SpeakingHalo({
+  analyser,
+  hue,
+  size,
+}: {
+  analyser: AnalyserNode | undefined;
+  hue: number;
+  size: number;
+}) {
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!analyser || !el) return;
+
+    let frame = 0;
+    let smoothed = 0;
+
+    const tick = () => {
+      const level = volumeToLevel(getVolumeDb(analyser));
+      smoothed += (level - smoothed) * (level > smoothed ? 0.45 : 0.1);
+
+      el.style.transform = `scale(${1 + smoothed * (HALO_MAX_SCALE - 1)})`;
+      el.style.opacity = String(0.18 + smoothed * 0.42);
+
+      frame = requestAnimationFrame(tick);
+    };
+
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [analyser]);
+
+  if (!analyser) return null;
+
+  return (
+    <div
+      ref={ref}
+      aria-hidden
+      style={{
+        position: "absolute",
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        background: `hsl(${hue} 60% 62%)`,
+        opacity: 0.18,
+        transform: "scale(1)",
+        pointerEvents: "none",
+        // Behind the avatar, which is opaque, so only the growing edge shows.
+        zIndex: 0,
+      }}
+    />
+  );
+}
 
 function hueFromId(id: string): number {
   let hash = 0;
@@ -423,6 +511,7 @@ export function VoiceParticipantCard({
   currentUserRole,
   memberInfo,
   adminActions,
+  streamSources,
   tileRadius = TILE_RADIUS,
 }: {
   itemId: string;
@@ -450,6 +539,7 @@ export function VoiceParticipantCard({
   onDisconnectUser?: (targetServerUserId: string) => void;
   currentUserRole?: Role;
   memberInfo?: MemberInfo;
+  streamSources?: StreamSources;
   adminActions?: AdminActions;
   /** Overridden to 12 for the two-participant picture-in-picture tile. */
   tileRadius?: number;
@@ -462,6 +552,12 @@ export function VoiceParticipantCard({
   // its whole life, which is not something to rely on.
   const tileRef = useRef<HTMLDivElement>(null);
   const tileHeight = useTileHeight(tileRef);
+
+  // Same reason: above the early return. The two analysers the speaking check
+  // reads — the post-gate microphone for yourself, the decoded remote stream
+  // for everyone else. Passing false takes no microphone handle; useMicrophone
+  // is a singleton, so this only reads what the voice connection already set up.
+  const { microphoneBuffer } = useMicrophone(false);
 
   if (isScreenTile) {
     const screenStream = isSelf
@@ -625,6 +721,17 @@ export function VoiceParticipantCard({
 
   const avatarPx = avatarSizeForHeight(tileHeight);
 
+  const hue = tileHue(
+    client.serverUserId || client.nickname,
+    memberInfo?.avatarColor,
+  );
+
+  const speakingAnalyser = isSelf
+    ? microphoneBuffer.finalAnalyser
+    : client.streamID
+      ? streamSources?.[client.streamID]?.analyser
+      : undefined;
+
   const showMutedBadge =
     !compact && (client.isMuted || client.isDeafened) && !isUserConnecting;
 
@@ -657,10 +764,10 @@ export function VoiceParticipantCard({
                 client.serverUserId || client.nickname,
                 memberInfo?.avatarColor,
               ),
-              outline: isSpeaking
-                ? "2.5px solid var(--accent-9)"
-                : "2.5px solid transparent",
-              transition: "outline-color 0.1s ease",
+              // No stroke on the tile. Meet puts the whole speaking treatment
+              // on the avatar — a ring plus the halo behind it — and leaves the
+              // tile alone, so the card edge stays quiet however many people
+              // are talking.
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -668,6 +775,10 @@ export function VoiceParticipantCard({
       }
     >
       <Flex align="center" justify="center" position="relative">
+        {!compact && (
+          <SpeakingHalo analyser={speakingAnalyser} hue={hue} size={avatarPx} />
+        )}
+
         <Avatar
           size={compact ? "2" : "3"}
           fallback={client.nickname[0]}
@@ -677,9 +788,16 @@ export function VoiceParticipantCard({
               : undefined
           }
           style={{
-            outline: "2.5px solid",
-            outlineColor: isSpeaking ? "var(--accent-9)" : "transparent",
+            // Taken from the tile's own hue rather than the accent, so the
+            // ring reads as this person's colour — which since GRYT-65 is
+            // their avatar's.
+            outline: `${SPEAKING_RING}px solid`,
+            outlineColor: isSpeaking ? `hsl(${hue} 65% 68%)` : "transparent",
+            outlineOffset: 2,
             transition: "outline-color 0.1s ease",
+            // Above the halo, which grows out from behind it.
+            position: "relative",
+            zIndex: 1,
             // Stepped by tile height rather than Radix's size scale, so the
             // avatar tracks the tile the way Meet's does.
             ...(compact ? {} : { width: avatarPx, height: avatarPx }),
