@@ -10,10 +10,16 @@
  * phone proportions the column count is the one that maximises tile area; at
  * desktop proportions that is demonstrably not it — nine people come out as
  * 4+5 when 3x3 would give larger tiles. Maximising the shared row height
- * reproduces desktop exactly and gets the phone wrong. So there are two
- * regimes here, split on container aspect, because that is what the
- * measurements support. It is fitted, not derived.
+ * reproduces desktop exactly and gets the phone wrong. So the "meet" rule
+ * splits on container aspect, because that is what the measurements support.
+ * It is fitted, not derived.
+ *
+ * Rather than pick a winner, both are offered: "meet" copies the measurements,
+ * "large" always takes the arrangement with the biggest tiles. At sidebar
+ * proportions the two agree at every count, so the choice only shows up in the
+ * maximised and fullscreen views.
  */
+import type { VoiceTileLayout } from "@/settings";
 
 /** Both measured at phone and desktop width and identical, so absolute. */
 export const GRID_GAP = 12;
@@ -122,11 +128,13 @@ function rowCellWidth(width: number, count: number): number {
 }
 
 /**
- * Sidebar proportions: pick the column count giving the largest capped tile,
- * then clamp each row independently.
+ * Pick the column count giving the largest total tile area, then clamp each
+ * row independently.
  *
  * Matches the phone measurements exactly — four people in a 395x785 container
  * come out as four stacked 333x187 tiles, centred, which is what Meet does.
+ * Used for every container under the "large" rule, and for sidebar
+ * proportions under "meet".
  */
 function narrowLayout(
   width: number,
@@ -222,10 +230,15 @@ export function computeGridLayout(
   width: number,
   height: number,
   count: number,
+  rule: VoiceTileLayout = "meet",
 ): GridLayout {
   if (count <= 0 || width <= 0 || height <= 0) {
     return { rows: [], tileHeight: 0 };
   }
+
+  // "large" is the area rule everywhere. It is also what "meet" uses at
+  // sidebar proportions, which is why the two only diverge once maximised.
+  if (rule === "large") return narrowLayout(width, height, count);
 
   return width / height >= WIDE_LAYOUT_MIN_ASPECT
     ? wideLayout(width, height, count)
@@ -243,13 +256,14 @@ export function gridCapacity(
   width: number,
   height: number,
   count: number,
+  rule: VoiceTileLayout = "meet",
 ): number {
   if (width <= 0 || height <= 0) return count;
 
   let capacity = 1;
 
   for (let k = 1; k <= Math.min(count, 49); k++) {
-    const { tileHeight } = computeGridLayout(width, height, k);
+    const { tileHeight } = computeGridLayout(width, height, k, rule);
     if (tileHeight >= MIN_READABLE_TILE_HEIGHT) capacity = k;
   }
 

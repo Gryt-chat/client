@@ -8,6 +8,7 @@ import {
   useUserId,
 } from "@/common";
 
+import type { VoiceTileLayout } from "./settingsStorage";
 import { type ScalabilityMode, type ScreenShareCodec, settingsInit, type VideoCodec } from "./settingsStorage";
 import { loadAudioFromCache, useAudioSettings } from "./useAudioSettings";
 import { getUserValue, loadForUser, setUserValue } from "./userStorage";
@@ -36,6 +37,8 @@ function useSettingsHook() {
   const [cameraID, setCameraID] = useState("");
   const [cameraQuality, setCameraQuality] = useState("native");
   const [cameraMirrored, setCameraMirrored] = useState(true);
+  const [voiceTileLayout, setVoiceTileLayout] =
+    useState<VoiceTileLayout>("meet");
   const [cameraFlipped, setCameraFlipped] = useState(false);
   const [cameraFps, setCameraFpsState] = useState(30);
   const [cameraCodec, setCameraCodecState] = useState<VideoCodec>("auto");
@@ -83,6 +86,9 @@ function useSettingsHook() {
       setCameraID(getUserValue("cameraID", ""));
       setCameraQuality(getUserValue("cameraQuality", "native"));
       setCameraMirrored(getUserValue("cameraMirrored", true));
+      setVoiceTileLayout(
+        getUserValue<VoiceTileLayout>("voiceTileLayout", "meet"),
+      );
       setCameraFlipped(getUserValue("cameraFlipped", false));
       setCameraFpsState(getUserValue("cameraFps", 30));
       setCameraCodecState(getUserValue<VideoCodec>("cameraCodec", "auto"));
@@ -207,6 +213,11 @@ function useSettingsHook() {
   function updateCameraMirrored(mirrored: boolean) {
     setCameraMirrored(mirrored);
     setUserValue("cameraMirrored", mirrored);
+  }
+
+  function updateVoiceTileLayout(layout: VoiceTileLayout) {
+    setVoiceTileLayout(layout);
+    setUserValue("voiceTileLayout", layout);
   }
 
   function updateCameraFlipped(flipped: boolean) {
@@ -346,6 +357,8 @@ function useSettingsHook() {
     setCameraQuality: updateCameraQuality,
     cameraMirrored,
     setCameraMirrored: updateCameraMirrored,
+    voiceTileLayout,
+    setVoiceTileLayout: updateVoiceTileLayout,
     cameraFlipped,
     setCameraFlipped: updateCameraFlipped,
     cameraFps,

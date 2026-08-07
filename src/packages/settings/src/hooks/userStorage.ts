@@ -277,6 +277,7 @@ export const SETTINGS_KEYS = [
   "cameraID",
   "cameraQuality",
   "cameraMirrored",
+  "voiceTileLayout",
   "cameraFlipped",
   "screenShareQuality",
   "screenShareFps",

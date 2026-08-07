@@ -241,8 +241,13 @@ export const VoiceView = ({
   isMaximized?: boolean;
   onToggleMaximize?: () => void;
 }) => {
-  const { showPeerLatency, cameraMirrored, setShowSettings, setSettingsTab } =
-    useSettings();
+  const {
+    showPeerLatency,
+    cameraMirrored,
+    voiceTileLayout,
+    setShowSettings,
+    setSettingsTab,
+  } = useSettings();
   const { latency: selfLatency } = useVoiceLatency(showPeerLatency);
 
   const {
@@ -700,9 +705,13 @@ export const VoiceView = ({
       ];
     }
 
-    return computeGridLayout(usableWidth, gridAreaHeight, laidOutItems.length)
-      .rows;
-  }, [laidOutItems, shareLayout, usableWidth, gridAreaHeight]);
+    return computeGridLayout(
+      usableWidth,
+      gridAreaHeight,
+      laidOutItems.length,
+      voiceTileLayout,
+    ).rows;
+  }, [laidOutItems, shareLayout, usableWidth, gridAreaHeight, voiceTileLayout]);
 
   /** The items belonging to each row, in order. */
   const rowItems = useMemo(() => {
@@ -1254,6 +1263,7 @@ export const VoiceView = ({
                               usableWidth,
                               gridAreaHeight,
                               1,
+                              voiceTileLayout,
                             ).rows[0];
                             return renderTile(
                               peopleItems[0],
