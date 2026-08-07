@@ -61,7 +61,7 @@ function UpdateControls() {
       case "downloaded":
         return `v${status.version} is ready to install`;
       case "not-available":
-        return "You're on the latest version";
+        return "Gryt is up to date";
       case "error":
         return `Update error: ${status.message}`;
       default:
@@ -107,13 +107,11 @@ function UpdateControls() {
 
         <Flex align="center" justify="between">
           <Flex direction="column" gap="1">
-            <Text size="2" weight="medium">
-              {betaChannel ? "Beta channel" : "Stable channel"}
-            </Text>
+            <Text size="2" weight="medium">Beta releases</Text>
             <Text size="1" color="gray">
               {betaChannel
-                ? "You are receiving early beta releases. Toggle to switch back to stable."
-                : "Toggle to switch to the beta channel for early releases."}
+                ? "You get new versions early. They break more often."
+                : "Get new versions early, before they have been tested as much."}
             </Text>
           </Flex>
           <Switch checked={betaChannel} onCheckedChange={(enabled) => setPendingSwitch(enabled)} />
@@ -157,7 +155,7 @@ function UpdateControls() {
           {(isAvailable || isReady) && (
             <Button variant="solid" color="green" onClick={handleUpdateNow}>
               <MdUpdate size={16} />
-              Update to v{status?.version}
+              Restart and update to v{status?.version}
             </Button>
           )}
         </Flex>
@@ -166,12 +164,12 @@ function UpdateControls() {
       <AlertDialog.Root open={pendingSwitch !== null} onOpenChange={(open) => { if (!open) setPendingSwitch(null); }}>
         <AlertDialog.Content maxWidth="480px">
           <AlertDialog.Title>
-            Switch to {switchingToBeta ? "beta" : "stable"} channel?
+            {switchingToBeta ? "Turn on beta releases?" : "Turn off beta releases?"}
           </AlertDialog.Title>
           <AlertDialog.Description size="2">
             {switchingToBeta
-              ? "The app will restart and download the latest beta release. Beta builds may contain bugs or incomplete features."
-              : "The app will restart and download the latest stable release. You will no longer receive beta updates."}
+              ? "Gryt will close and reopen to install the latest beta. Beta builds can have bugs and unfinished features."
+              : "Gryt will close and reopen to install the latest stable version. That is older than the beta you are on now, so anything added since will be gone until it reaches stable."}
           </AlertDialog.Description>
           <Flex gap="3" mt="4" justify="end">
             <AlertDialog.Cancel>
@@ -183,7 +181,7 @@ function UpdateControls() {
                 color={switchingToBeta ? "orange" : "blue"}
                 onClick={confirmChannelSwitch}
               >
-                Switch & Restart
+                {switchingToBeta ? "Turn on beta" : "Turn off beta"}
               </Button>
             </AlertDialog.Action>
           </Flex>

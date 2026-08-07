@@ -242,6 +242,13 @@ autoUpdater.autoDownload = false;
 // running. See restartForUpdate.
 autoUpdater.autoInstallOnAppQuit = false;
 autoUpdater.allowPrerelease = readConfig().betaChannel === true;
+// Leaving the beta channel is a downgrade — stable is an older version than the
+// beta you are running — and electron-updater refuses those by default, taking
+// allowDowngrade into account only when the channel differs. Without this,
+// turning beta off wrote the setting, restarted, found "no update available"
+// and left the user on the beta build permanently, while the confirmation
+// dialog had promised it would install the latest stable release.
+autoUpdater.allowDowngrade = true;
 autoUpdater.logger = console;
 closeToTray = (readConfig().closeToTray ?? true) as boolean;
 const hardwareAcceleration = readBoolConfig("hardwareAcceleration", true);
@@ -483,6 +490,27 @@ function initBackgroundUpdater() {
   autoUpdater.on("error", (err) =>
     sendToMain("error", { message: friendlyUpdateError(err) })
   );
+}
+
+/**
+ * Quit and come straight back, with the splash told to do an update.
+ *
+ * The installer's job is the same wherever it runs, but from here it would have
+ * a loaded app to tear down around itself — renderer, GPU helpers, the SFU
+ * binary, the embedded server — and on Windows it waits for all of it. The
+ * relaunched process has none of that.
+ *
+ * AUTO_START_ARG is dropped deliberately: this relaunch is something the user
+ * just asked for and is watching, so it must not come back hidden and skip the
+ * splash that does the work.
+ */
+function relaunchForUpdate(): void {
+  isQuitting = true;
+  const args = process.argv
+    .slice(1)
+    .filter((a) => a !== AUTO_START_ARG && a !== UPDATE_ARG);
+  app.relaunch({ args: [...args, UPDATE_ARG] });
+  app.quit();
 }
 
 // ── Local static server (production only) ────────────────────────────────
@@ -948,9 +976,13 @@ if (!gotSingleInstanceLock) {
       ipcMain.on("switch-update-channel", (_event, enabled: boolean) => {
         writeConfig({ betaChannel: enabled });
         autoUpdater.allowPrerelease = enabled;
-        isQuitting = true;
-        app.relaunch();
-        app.quit();
+        // Changing channel is an update request too — moving to beta means
+        // fetching a newer build, moving off it means the one you are on is no
+        // longer the right one. It used to relaunch bare, which reuses the
+        // current argv: for anyone started with --gryt-autostart that meant the
+        // relaunch skipped the splash and the channel switch quietly did
+        // nothing until the next manual launch.
+        relaunchForUpdate();
       });
 
       ipcMain.handle("get-close-to-tray", () => closeToTray);
@@ -1393,20 +1425,7 @@ if (!gotSingleInstanceLock) {
         });
       });
 
-      // Downloading and installing both belong to the splash now. This quits
-      // and comes straight back with UPDATE_ARG, and the fresh process — which
-      // has no window, no embedded server, no SFU and no voice — does the work.
-      // Relaunching rather than installing here is the entire fix: the
-      // installer's job is the same either way, but it no longer has a loaded
-      // app to tear down around itself.
-      ipcMain.on("restart-for-update", () => {
-        isQuitting = true;
-        const args = process.argv
-          .slice(1)
-          .filter((a) => a !== AUTO_START_ARG && a !== UPDATE_ARG);
-        app.relaunch({ args: [...args, UPDATE_ARG] });
-        app.quit();
-      });
+      ipcMain.on("restart-for-update", () => relaunchForUpdate());
 
       ipcMain.on("ptt-set-key", (_event, pttKey: string) => {
         registerPttShortcut(pttKey);
