@@ -28,6 +28,8 @@ import toast from "react-hot-toast";
 import {
   MdChat,
   MdCloseFullscreen,
+  MdFullscreen,
+  MdFullscreenExit,
   MdMicOff,
   MdOpenInFull,
 } from "react-icons/md";
@@ -308,6 +310,37 @@ export const VoiceView = ({
       },
     );
   }, [isInThisVoiceChannel, micUnavailable, setSettingsTab, setShowSettings]);
+
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * Fullscreen is the maximised layout with a different container, so there is
+   * no separate layout code — the panel goes fullscreen and the grid's
+   * ResizeObserver picks up the new size on its own.
+   *
+   * State is read back from the document rather than tracked independently,
+   * because the browser can leave fullscreen without us: Escape, the window
+   * chrome, or another element taking it.
+   */
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const sync = () =>
+      setIsFullscreen(document.fullscreenElement === panelRef.current);
+
+    document.addEventListener("fullscreenchange", sync);
+    return () => document.removeEventListener("fullscreenchange", sync);
+  }, []);
+
+  const toggleFullscreen = useCallback(() => {
+    if (document.fullscreenElement) {
+      void document.exitFullscreen();
+      return;
+    }
+    void panelRef.current?.requestFullscreen?.().catch((error) => {
+      console.warn("[VoiceView] fullscreen refused", error);
+    });
+  }, []);
 
   const gridRef = useRef<HTMLDivElement>(null);
   const [gridHeight, setGridHeight] = useState(0);
@@ -963,22 +996,29 @@ export const VoiceView = ({
   return (
     <motion.div
       data-gryt="voice-view"
+      ref={panelRef}
       transition={
         isDragging
           ? { duration: 0 }
           : { type: "spring", stiffness: 300, damping: 30 }
       }
       animate={{
-        width: showVoiceView ? voiceWidth : 0,
-        paddingRight: !showVoiceView || voiceWidth === "0px" ? 0 : 8,
+        // Fullscreen sizes the element itself, so an animated pixel width
+        // would fight the browser for it.
+        width: isFullscreen ? "100%" : showVoiceView ? voiceWidth : 0,
+        paddingRight:
+          isFullscreen || !showVoiceView || voiceWidth === "0px" ? 0 : 8,
       }}
       style={{
         overflow: "hidden",
-        ...(isFocused && showVoiceView
-          ? { flexGrow: 1, minWidth: 0 }
-          : {
-              maxWidth: maxWidth && maxWidth > 0 ? `${maxWidth}px` : undefined,
-            }),
+        ...(isFullscreen
+          ? { height: "100%", maxWidth: "none" }
+          : isFocused && showVoiceView
+            ? { flexGrow: 1, minWidth: 0 }
+            : {
+                maxWidth:
+                  maxWidth && maxWidth > 0 ? `${maxWidth}px` : undefined,
+              }),
       }}
     >
       <Flex
@@ -1313,6 +1353,7 @@ export const VoiceView = ({
 
                   {onToggleMaximize && (
                     <Flex
+                      gap="2"
                       style={{
                         position: "absolute",
                         right: 12,
@@ -1320,6 +1361,28 @@ export const VoiceView = ({
                         pointerEvents: "auto",
                       }}
                     >
+                      <Tooltip
+                        content={isFullscreen ? "Leave fullscreen" : "Fullscreen"}
+                        delayDuration={300}
+                      >
+                        <IconButton
+                          variant="soft"
+                          color="gray"
+                          aria-label={
+                            isFullscreen
+                              ? "Leave fullscreen"
+                              : "Fullscreen voice view"
+                          }
+                          onClick={toggleFullscreen}
+                        >
+                          {isFullscreen ? (
+                            <MdFullscreenExit size={18} />
+                          ) : (
+                            <MdFullscreen size={18} />
+                          )}
+                        </IconButton>
+                      </Tooltip>
+
                       <Tooltip
                         content={isMaximized ? "Restore" : "Maximize"}
                         delayDuration={300}
