@@ -36,7 +36,7 @@ export function TypingIndicator({ typingUsers, serverHost }: TypingIndicatorProp
                 size="1"
                 radius="full"
                 fallback={first.nickname[0]}
-                src={first.avatarFileId && serverHost ? getUploadsFileUrl(serverHost, first.avatarFileId) : undefined}
+                src={first.avatarFileId && serverHost ? getUploadsFileUrl(serverHost, first.avatarFileId, { thumb: true }) : undefined}
                 style={{ width: 16, height: 16, flexShrink: 0 }}
               />
             )}

@@ -249,7 +249,7 @@ function WebhookCard({
   }, [webhookUrl]);
 
   const avatarUrl = webhook.avatar_file_id && host
-    ? getUploadsFileUrl(host, webhook.avatar_file_id)
+    ? getUploadsFileUrl(host, webhook.avatar_file_id, { thumb: true })
     : undefined;
 
   return (

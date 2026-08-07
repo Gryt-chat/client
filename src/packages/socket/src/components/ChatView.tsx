@@ -197,7 +197,7 @@ export const ChatView = memo(({
     return Object.values(memberList).map((m) => ({
       nickname: m.nickname,
       serverUserId: m.serverUserId,
-      avatarUrl: m.avatarFileId && serverHost ? getUploadsFileUrl(serverHost, m.avatarFileId) : null,
+      avatarUrl: m.avatarFileId && serverHost ? getUploadsFileUrl(serverHost, m.avatarFileId, { thumb: true }) : null,
     }));
   }, [memberList, serverHost]);
 

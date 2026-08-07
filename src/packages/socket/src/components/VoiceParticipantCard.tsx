@@ -617,7 +617,11 @@ export function VoiceParticipantCard({
           fallback={client.nickname[0]}
           src={
             avatarFileId
-              ? getUploadsFileUrl(serverHost, avatarFileId)
+              ? // No thumbnail here on purpose. The tile draws avatars up to
+                // ~96 CSS px, 192 on a 2x screen, which is past what the 128px
+                // thumbnail can carry — and it is the one place an animated
+                // avatar should still animate, which the thumbnail does not.
+                getUploadsFileUrl(serverHost, avatarFileId)
               : undefined
           }
           style={{
