@@ -85,13 +85,54 @@ const PIP_MIN_WIDTH = MIN_TILE_WIDTH;
 const PIP_MAX_WIDTH = 220;
 
 /**
- * Column count that gives the largest tiles, assuming tiles fill their cell.
+ * How square a tile is allowed to get before it stops stretching.
  *
- * This used to score candidates against a target aspect ratio, which is why
- * tiles never filled the panel. Meet does cap tile aspect at 4:3 and then
- * centres the grid — at five participants that left a fifth of the panel empty
- * — and we deliberately do not: tiles here stretch to fill whatever space they
- * are given, so the panel is always used.
+ * Measured off Meet on 2026-08-07, from six screenshots at phone width. Two of
+ * them pin these numbers exactly:
+ *
+ * - Four people and no share: four tiles at 1.791, and each one 713 wide inside
+ *   an 847-wide container. Meet capped the tile at 16:9 and gave the leftover
+ *   back as centring rather than stretching it.
+ * - A share plus four people: 0.741 and 0.719, sitting on the portrait cap.
+ *
+ * Cases where neither cap binds came out at 1.395 and 1.534, so the range is
+ * real and not two separate fixed shapes.
+ *
+ * This replaces an earlier note that Meet caps at 4:3. It does not — the
+ * landscape cap is 16:9. The earlier no-cap rule is what made a tall narrow
+ * panel stack everyone into one column of letterboxes.
+ */
+const MIN_TILE_ASPECT = 3 / 4;
+const MAX_TILE_ASPECT = 16 / 9;
+
+/**
+ * The tile inside a cell of this size: the cell's own shape, clamped into the
+ * allowed range, then fitted. Whatever is left over becomes centring.
+ */
+function fitTile(
+  cellWidth: number,
+  cellHeight: number,
+): { width: number; height: number } {
+  if (cellWidth <= 0 || cellHeight <= 0) return { width: 0, height: 0 };
+
+  const aspect = Math.min(
+    MAX_TILE_ASPECT,
+    Math.max(MIN_TILE_ASPECT, cellWidth / cellHeight),
+  );
+
+  const height = Math.min(cellHeight, cellWidth / aspect);
+
+  return { width: height * aspect, height };
+}
+
+/**
+ * Column count that gives the largest tiles.
+ *
+ * Scores the *capped* tile, not the cell. That distinction is the whole
+ * behaviour: a 340px sidebar splitting seven people into one column gives cells
+ * of 308x90, which cap down to a 160x90 sliver, while two columns give 148x166
+ * uncapped. Scoring cells picks the column; scoring tiles picks the grid, which
+ * is what Meet does and what the screenshots show.
  *
  * MIN_TILE_WIDTH still stops the search: past that point tiles are too small to
  * recognise anyone in, and packing more columns in is worse than not.
@@ -108,11 +149,13 @@ function computeOptimalColumns(
 
   for (let cols = 1; cols <= count; cols++) {
     const rows = Math.ceil(count / cols);
-    const tileW = (width - (cols - 1) * GRID_GAP) / cols;
-    const tileH = (height - (rows - 1) * GRID_GAP) / rows;
+    const cellW = (width - (cols - 1) * GRID_GAP) / cols;
+    const cellH = (height - (rows - 1) * GRID_GAP) / rows;
 
-    if (tileW < MIN_TILE_WIDTH) break;
-    if (tileH <= 0) continue;
+    if (cellW < MIN_TILE_WIDTH) break;
+    if (cellH <= 0) continue;
+
+    const { width: tileW, height: tileH } = fitTile(cellW, cellH);
 
     const area = tileW * tileH;
 
@@ -625,13 +668,14 @@ export const VoiceView = ({
   // How tall the pinned share region ends up: its own shape at the width it
   // gets, capped so a wide panel does not hand it everything. Shares sit side
   // by side, so each is a fraction of the width and the row gets shorter.
-  const availableHeight = Math.max(0, gridHeight - CONTROLS_HEIGHT);
+  const availableHeight = Math.max(
+    0,
+    gridHeight - CONTROLS_HEIGHT - GRID_PADDING,
+  );
+  const usableWidth = Math.max(0, gridWidth - 2 * GRID_PADDING);
   const shareWidth =
     screenItems.length > 0
-      ? (gridWidth -
-          2 * GRID_PADDING -
-          (screenItems.length - 1) * GRID_GAP) /
-        screenItems.length
+      ? (usableWidth - (screenItems.length - 1) * GRID_GAP) / screenItems.length
       : 0;
   const shareHeight =
     screenItems.length > 0
@@ -649,8 +693,9 @@ export const VoiceView = ({
   );
 
   const columns = useMemo(
-    () => computeOptimalColumns(gridWidth, gridAreaHeight, peopleItems.length),
-    [gridWidth, gridAreaHeight, peopleItems.length],
+    () =>
+      computeOptimalColumns(usableWidth, gridAreaHeight, peopleItems.length),
+    [usableWidth, gridAreaHeight, peopleItems.length],
   );
 
   /**
@@ -833,16 +878,16 @@ export const VoiceView = ({
   };
 
   /**
-   * A tile's box in the wrapping grid.
+   * A tile's cell in the wrapping grid.
    *
    * Sized from the row this tile belongs to, so a row holding fewer tiles than
-   * `columns` stretches them across its full width — three participants are one
-   * wide tile above two. Widths summing to 100% are what make flex-wrap break
-   * the rows in the right places, so no row wrappers are needed and the
-   * drag-and-drop context stays flat.
+   * `columns` gets a wider cell each — three participants are one wide cell
+   * above two. Widths summing to 100% are what make flex-wrap break the rows in
+   * the right places, so no row wrappers are needed and the drag-and-drop
+   * context stays flat.
    *
-   * No aspectRatio: tiles fill their cell. The old 16/9 is why the panel never
-   * filled.
+   * The cell is not the tile. The tile is the capped box centred inside it —
+   * see `gridTileSize`.
    */
   const gridCellStyle = (itemId: string): CSSProperties => {
     const l = tileLayout.get(itemId) ?? { inRow: 1, rowCount: 1 };
@@ -852,7 +897,28 @@ export const VoiceView = ({
       height: `calc((100% - ${(l.rowCount - 1) * GRID_GAP}px) / ${l.rowCount})`,
       minWidth: 0,
       minHeight: 0,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
     };
+  };
+
+  /**
+   * The tile itself: the cell's shape clamped into the allowed aspect range.
+   *
+   * Computed in pixels from the same measured `usableWidth` the column search
+   * used, rather than in percentages, because the clamp is not expressible as
+   * one. Any leftover in the cell shows up as centring, which is what Meet does
+   * — four people at phone width are four 16:9 tiles with a margin either side,
+   * not four full-width letterboxes.
+   */
+  const gridTileSize = (itemId: string): { width: number; height: number } => {
+    const l = tileLayout.get(itemId) ?? { inRow: 1, rowCount: 1 };
+
+    return fitTile(
+      (usableWidth - (l.inRow - 1) * GRID_GAP) / l.inRow,
+      (gridAreaHeight - (l.rowCount - 1) * GRID_GAP) / l.rowCount,
+    );
   };
 
   /**
@@ -866,6 +932,8 @@ export const VoiceView = ({
     itemId: string,
     style: CSSProperties,
     tileRadius?: number,
+    /** Capped tile inside the cell. Omitted where the box is the tile. */
+    tileSize?: { width: number; height: number },
   ) => {
     const isScreenTile = itemId.startsWith("screen:");
     const clientId = isScreenTile ? itemId.slice(7) : itemId;
@@ -885,40 +953,54 @@ export const VoiceView = ({
         transition={{ duration: 0.2 }}
         style={style}
       >
-        <SortableParticipant id={itemId}>
-          <VoiceParticipantCard
-            itemId={itemId}
-            compact={isFocused}
-            client={client}
-            isSelf={isSelf}
-            isUserConnecting={clientId === currentConnectionId && isConnecting}
-            serverHost={serverHost}
-            avatarFileId={
-              serverUserId ? avatarByServerUserId.get(serverUserId) : undefined
-            }
-            cameraMirrored={cameraMirrored}
-            isSpeaking={
-              isSelf ? localProcessedSpeaking : !!clientsSpeaking[clientId]
-            }
-            showPeerLatency={showPeerLatency}
-            latencyStats={getLatencyStats(clientId, isSelf)}
-            localCameraStream={localCameraStream}
-            localScreenStream={localScreenStream}
-            videoStreams={videoStreams}
-            fallbackCameraStreamID={
-              fallbackCameraStreamIdByClientId[clientId] || null
-            }
-            onFocus={handleFocus}
-            onPopout={handlePopout}
-            onDisconnectUser={onDisconnectUser}
-            currentUserRole={currentUserRole}
-            memberInfo={
-              serverUserId ? memberByServerUserId.get(serverUserId) : undefined
-            }
-            adminActions={adminActions}
-            tileRadius={tileRadius}
-          />
-        </SortableParticipant>
+        <div
+          style={
+            tileSize
+              ? { width: tileSize.width, height: tileSize.height }
+              : { width: "100%", height: "100%" }
+          }
+        >
+          <SortableParticipant id={itemId}>
+            <VoiceParticipantCard
+              itemId={itemId}
+              compact={isFocused}
+              client={client}
+              isSelf={isSelf}
+              isUserConnecting={
+                clientId === currentConnectionId && isConnecting
+              }
+              serverHost={serverHost}
+              avatarFileId={
+                serverUserId
+                  ? avatarByServerUserId.get(serverUserId)
+                  : undefined
+              }
+              cameraMirrored={cameraMirrored}
+              isSpeaking={
+                isSelf ? localProcessedSpeaking : !!clientsSpeaking[clientId]
+              }
+              showPeerLatency={showPeerLatency}
+              latencyStats={getLatencyStats(clientId, isSelf)}
+              localCameraStream={localCameraStream}
+              localScreenStream={localScreenStream}
+              videoStreams={videoStreams}
+              fallbackCameraStreamID={
+                fallbackCameraStreamIdByClientId[clientId] || null
+              }
+              onFocus={handleFocus}
+              onPopout={handlePopout}
+              onDisconnectUser={onDisconnectUser}
+              currentUserRole={currentUserRole}
+              memberInfo={
+                serverUserId
+                  ? memberByServerUserId.get(serverUserId)
+                  : undefined
+              }
+              adminActions={adminActions}
+              tileRadius={tileRadius}
+            />
+          </SortableParticipant>
+        </div>
       </motion.div>
     );
   };
@@ -1119,13 +1201,23 @@ export const VoiceView = ({
                           position: "relative",
                           flex: 1,
                           minHeight: 0,
+                          // The hero is capped and centred like any other tile
+                          // — Meet's measured 847x1136 is the 3:4 cap, not the
+                          // full area. The PiP then anchors to this box's
+                          // corner rather than the hero's, which is why it
+                          // straddles the hero's bottom edge in the reference.
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
                         }}
                       >
                         <AnimatePresence>
-                          {renderTile(peopleItems[0], {
-                            position: "absolute",
-                            inset: 0,
-                          })}
+                          {renderTile(
+                            peopleItems[0],
+                            {},
+                            undefined,
+                            fitTile(usableWidth, gridAreaHeight),
+                          )}
 
                           {renderTile(
                             peopleItems[1],
@@ -1162,7 +1254,12 @@ export const VoiceView = ({
                       >
                         <AnimatePresence>
                           {peopleItems.map((itemId) =>
-                            renderTile(itemId, gridCellStyle(itemId)),
+                            renderTile(
+                              itemId,
+                              gridCellStyle(itemId),
+                              undefined,
+                              gridTileSize(itemId),
+                            ),
                           )}
                         </AnimatePresence>
                       </div>

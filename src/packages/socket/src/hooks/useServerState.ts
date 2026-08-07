@@ -118,7 +118,11 @@ export function useServerState(): UseServerStateResult {
     Record<string, boolean>
   >({});
   const [voiceWidth, setVoiceWidth] = useState("0px");
-  const [userVoiceWidth, setUserVoiceWidth] = useState(400);
+  // 400 left roughly 340px of usable tile width, narrower than the ~395 the
+  // Meet layout was measured at, and narrow enough that the aspect cap pushed
+  // four people into a single stacked column instead of a 2x2. 480 lands the
+  // usable width at ~424 and gets the reference grids back.
+  const [userVoiceWidth, setUserVoiceWidth] = useState(480);
   const [pendingChannelId, setPendingChannelId] = useState<string | null>(null);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(
     null
