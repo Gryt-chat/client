@@ -1,6 +1,6 @@
 import { Box, Dialog, Flex, IconButton, Separator, Text, TextField } from "@radix-ui/themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MdClose, MdExtension, MdFavorite, MdPerson, MdSearch, MdSettingsSuggest, MdSystemUpdateAlt, MdTune, MdVideocam } from "react-icons/md";
+import { MdClose, MdExtension, MdFavorite, MdPerson, MdScience, MdSearch, MdSettingsSuggest, MdSystemUpdateAlt, MdTune, MdVideocam } from "react-icons/md";
 
 import { useSettings } from "@/settings";
 
@@ -14,6 +14,7 @@ import { AudioSettings } from "./audioSettings";
 import { CameraSettings } from "./cameraSettings";
 import { ChatSettings } from "./chatSettings";
 import { DesktopSettings } from "./desktopSettings";
+import { DeveloperSettings } from "./developerSettings";
 import { HotkeySettings } from "./hotkeySettings";
 import { NotificationSettings } from "./notificationSettings";
 import { ProfileSettings } from "./profileSettings";
@@ -117,6 +118,18 @@ const DESTINATIONS = [
       </>
     ),
   },
+  // Dev builds only. `import.meta.env.DEV` folds to false in a release, so
+  // both the tab and the panel drop out of the bundle.
+  ...(import.meta.env.DEV
+    ? [
+        {
+          value: "developer",
+          label: "Developer",
+          icon: MdScience,
+          content: <DeveloperSettings />,
+        },
+      ]
+    : []),
   {
     value: "extensions",
     // "Addons" everywhere else — the panel heading, the "Open Addons Folder"

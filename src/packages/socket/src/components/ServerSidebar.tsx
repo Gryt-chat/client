@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { RefObject } from "react";
 
 import type { Channel, SidebarItem } from "@/settings/src/types/server";
+import type { StreamSources } from "@/webRTC";
 
 import type { Client } from "../types/clients";
 import { ChannelList } from "./ChannelList";
@@ -43,6 +44,7 @@ interface ServerSidebarProps {
   selectedChannelId: string | null;
   onChannelClick: (channel: Channel) => void;
   clientsSpeaking: Record<string, boolean>;
+  streamSources?: StreamSources;
   canManage: boolean;
   onEditItem: (item: SidebarItem) => void;
   onDeleteItem: (item: SidebarItem) => void;
@@ -64,7 +66,7 @@ export const ServerSidebar = ({
   channels, sidebarItems, serverHost, clients, members,
   currentChannelId, currentServerConnected, showVoiceView,
   isConnecting, currentConnectionId, selectedChannelId,
-  onChannelClick, clientsSpeaking,
+  onChannelClick, clientsSpeaking, streamSources,
   canManage, onEditItem, onDeleteItem, onMoveItem, onReorder, onAddItem,
   onDisconnectUser, currentUserRole, adminActions, unreadChannelIds,
 }: ServerSidebarProps) => (
@@ -131,6 +133,7 @@ export const ServerSidebar = ({
                 selectedChannelId={selectedChannelId}
                 onChannelClick={onChannelClick}
                 clientsSpeaking={clientsSpeaking}
+                streamSources={streamSources}
                 canManage={canManage}
                 onEditItem={onEditItem}
                 onDeleteItem={onDeleteItem}

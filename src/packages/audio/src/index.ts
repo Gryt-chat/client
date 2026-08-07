@@ -11,4 +11,9 @@ export { useSpeakers } from "./hooks/useSpeakers";
 export type { LatencyBreakdown } from "./hooks/useVoiceLatency";
 export { useVoiceLatency } from "./hooks/useVoiceLatency";
 export { getIsBrowserSupported } from "./utils/mediaDevices";
-export { getCurrentVolume, isSpeaking } from "./utils/speaking";
+export {
+  getCurrentVolume,
+  getVolumeDb,
+  isSpeaking,
+  volumeToLevel,
+} from "./utils/speaking";

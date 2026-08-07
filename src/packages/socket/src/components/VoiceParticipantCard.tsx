@@ -1,6 +1,6 @@
 import { Avatar, Flex, Text, Tooltip } from "@radix-ui/themes";
 import type { ReactNode } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   MdMicOff,
   MdScreenShare,
@@ -8,11 +8,20 @@ import {
   MdVolumeOff,
 } from "react-icons/md";
 
+import { useMicrophone } from "@/audio";
 import { getUploadsFileUrl } from "@/common";
+import type { StreamSources } from "@/webRTC";
 
 import type { Client } from "../types/clients";
 import type { AdminActions, MemberInfo } from "./MemberSidebar";
 import { SkeletonBase } from "./skeletons";
+import { SpeakingHalo } from "./SpeakingHalo";
+import {
+  SPEAKING_RING,
+  speakingRingStyle,
+  tileGradient,
+  tileHue,
+} from "./speakingIndicator";
 import { UserContextMenu } from "./UserContextMenu";
 
 type Role = "owner" | "admin" | "mod" | "member";
@@ -40,6 +49,8 @@ export function VideoCard({
   mirrored,
   isSpeaking,
   statusIcons,
+  mutedBadge,
+  radius = TILE_RADIUS,
   objectFit = "cover",
   onClick,
   pendingLabel = "Connecting video…",
@@ -49,6 +60,8 @@ export function VideoCard({
   mirrored?: boolean;
   isSpeaking?: boolean;
   statusIcons?: ReactNode;
+  mutedBadge?: ReactNode;
+  radius?: number;
   objectFit?: "cover" | "contain";
   onClick?: () => void;
   pendingLabel?: string;
@@ -90,13 +103,20 @@ export function VideoCard({
       style={{
         position: "relative",
         width: "100%",
-        aspectRatio: "16 / 9",
-        borderRadius: "var(--radius-3)",
+        // Fills the box the grid gives it. The old `aspectRatio: 16/9` is why
+        // tiles never filled the panel — they were letterboxed inside their
+        // cell regardless of how much room there was.
+        height: "100%",
+        borderRadius: radius,
         overflow: "hidden",
         background: "#000",
         outline: isSpeaking
-          ? "2.5px solid var(--accent-9)"
-          : "2.5px solid transparent",
+          ? `${SPEAKING_RING}px solid var(--accent-9)`
+          : `${SPEAKING_RING}px solid transparent`,
+        // Inward, because the tile fills its cell exactly. An outline is drawn
+        // outside the border box, so at offset 0 the ring lands in the gap
+        // between tiles or gets clipped by the panel edge.
+        outlineOffset: -SPEAKING_RING,
         transition: "outline-color 0.1s ease",
         cursor: stream && onClick ? "pointer" : undefined,
       }}
@@ -132,26 +152,131 @@ export function VideoCard({
         </Flex>
       )}
 
+      {mutedBadge}
+
       <Flex
         align="center"
         gap="1"
         px="2"
         style={{
           position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          background: "linear-gradient(transparent, rgba(0,0,0,0.7))",
-          padding: "12px 8px 4px",
+          // 12px in, 9px up — measured off Meet. The dark scrim that used to
+          // sit behind this is gone: the tile's own colour carries the
+          // contrast, and the gradient was the most obviously un-Meet-like
+          // thing about the old tile.
+          bottom: 9,
+          left: 12,
+          right: 12,
+          padding: 0,
         }}
       >
-        <Text size="1" weight="medium" style={{ color: "#fff" }} truncate>
+        <Text
+          size="3"
+          weight="medium"
+          style={{ color: "#fff", fontSize: 16, lineHeight: 1.2 }}
+          truncate
+        >
           {nickname}
         </Text>
         {statusIcons}
       </Flex>
     </div>
   );
+}
+
+/** Measured off Meet. Overridable so the two-participant PiP can sit at 12. */
+export const TILE_RADIUS = 16;
+
+/**
+ * The muted badge, top-right of the tile.
+ *
+ * Meet tints this to the tile's own hue rather than using a neutral chip, so it
+ * reads as part of the tile instead of an overlay. On a video tile there is no
+ * hue to borrow — the tile is the camera image — so it falls back to a dark
+ * translucent circle, which is what Meet does there too.
+ *
+ * The diameter is not measured. It steps at the same tile height as the avatar
+ * buckets so the two stay in proportion.
+ */
+function MutedBadge({
+  hueId,
+  hueAvatarColor,
+  deafened,
+  tileHeight,
+}: {
+  hueId?: string;
+  hueAvatarColor?: string | null;
+  deafened: boolean;
+  tileHeight: number;
+}) {
+  const size = tileHeight >= 170 ? 28 : 20;
+
+  return (
+    <Flex
+      align="center"
+      justify="center"
+      style={{
+        position: "absolute",
+        top: 12,
+        right: 12,
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        background: hueId
+          ? `hsl(${tileHue(hueId, hueAvatarColor)} 45% 26%)`
+          : "rgba(0, 0, 0, 0.6)",
+        pointerEvents: "none",
+      }}
+    >
+      {deafened ? (
+        <MdVolumeOff size={Math.round(size * 0.55)} color="#fff" />
+      ) : (
+        <MdMicOff size={Math.round(size * 0.55)} color="#fff" />
+      )}
+    </Flex>
+  );
+}
+
+/**
+ * Avatar diameter for a tile of this height.
+ *
+ * Measured off Meet, and it is stepped rather than proportional: a 468-wide
+ * spanning tile and a 228-wide grid tile both showed 72px at the same 297px
+ * height, which rules out scaling by width, and 24% / 16% / 36% of height for
+ * the three observed sizes rules out a single ratio.
+ */
+function avatarSizeForHeight(height: number): number {
+  if (height >= 450) return 96;
+  if (height >= 170) return 72;
+  if (height >= SMALL_TILE_HEIGHT) return 48;
+  return 32;
+}
+
+/**
+ * Below this height a tile cannot carry a centred avatar and a 16px name row
+ * without the two overlapping. The two-participant picture-in-picture is the
+ * case that hits it — at 16:9 in a sidebar-width panel it comes out around
+ * 80px tall — so the avatar, the name and its inset all step down together.
+ */
+const SMALL_TILE_HEIGHT = 110;
+
+/** Tile height, so the avatar can pick its bucket. */
+function useTileHeight(ref: React.RefObject<HTMLElement | null>): number {
+  const [height, setHeight] = useState(0);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const observer = new ResizeObserver(([entry]) => {
+      setHeight(entry.contentRect.height);
+    });
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [ref]);
+
+  return height;
 }
 
 function latencyColor(ms: number | null): string {
@@ -219,6 +344,8 @@ export function VoiceParticipantCard({
   currentUserRole,
   memberInfo,
   adminActions,
+  streamSources,
+  tileRadius = TILE_RADIUS,
 }: {
   itemId: string;
   compact?: boolean;
@@ -245,10 +372,25 @@ export function VoiceParticipantCard({
   onDisconnectUser?: (targetServerUserId: string) => void;
   currentUserRole?: Role;
   memberInfo?: MemberInfo;
+  streamSources?: StreamSources;
   adminActions?: AdminActions;
+  /** Overridden to 12 for the two-participant picture-in-picture tile. */
+  tileRadius?: number;
 }) {
   const isScreenTile = itemId.startsWith("screen:");
   const serverUserId: string | undefined = client?.serverUserId;
+
+  // Above the screen-tile branch below, which returns early. A hook after an
+  // early return only survives because a given card keeps the same itemId for
+  // its whole life, which is not something to rely on.
+  const tileRef = useRef<HTMLDivElement>(null);
+  const tileHeight = useTileHeight(tileRef);
+
+  // Same reason: above the early return. The two analysers the speaking check
+  // reads — the post-gate microphone for yourself, the decoded remote stream
+  // for everyone else. Passing false takes no microphone handle; useMicrophone
+  // is a singleton, so this only reads what the voice connection already set up.
+  const { microphoneBuffer } = useMicrophone(false);
 
   if (isScreenTile) {
     const screenStream = isSelf
@@ -334,6 +476,7 @@ export function VoiceParticipantCard({
           }`}
           stream={screenStream}
           nickname={screenTitle}
+          radius={tileRadius}
           objectFit="contain"
           pendingLabel="Connecting screen…"
           statusIcons={<MdScreenShare size={10} color="var(--blue-9)" />}
@@ -384,13 +527,8 @@ export function VoiceParticipantCard({
 
   const statusBadges = (
     <>
-      {(client.isMuted || client.isDeafened) &&
-        (client.isDeafened ? (
-          <MdVolumeOff size={12} color="var(--red-9)" />
-        ) : (
-          <MdMicOff size={12} color="var(--red-9)" />
-        ))}
-
+      {/* Mute and deafen are the top-right badge now, not an icon in the name
+          row. Everything else still belongs beside the name. */}
       {client.isAFK && (
         <Text size="1" weight="bold" style={{ color: "#fff" }}>
           AFK
@@ -404,19 +542,76 @@ export function VoiceParticipantCard({
       {client.screenShareEnabled && (
         <MdScreenShare size={10} color="var(--blue-9)" />
       )}
+
+      {/* Beside the name, the way the avatar tile does it. It used to sit
+          under the tile as a sibling, which meant the tile could not be given
+          a definite height. */}
+      {!compact && showPeerLatency && (
+        <LatencyBadge stats={latencyStats} isSelf={isSelf} />
+      )}
     </>
   );
 
+  const avatarPx = avatarSizeForHeight(tileHeight);
+
+  const hue = tileHue(
+    client.serverUserId || client.nickname,
+    memberInfo?.avatarColor,
+  );
+
+  const speakingAnalyser = isSelf
+    ? microphoneBuffer.finalAnalyser
+    : client.streamID
+      ? streamSources?.[client.streamID]?.analyser
+      : undefined;
+
+  const showMutedBadge =
+    !compact && (client.isMuted || client.isDeafened) && !isUserConnecting;
+
+  const isSmallTile =
+    !compact && tileHeight > 0 && tileHeight < SMALL_TILE_HEIGHT;
+
   const avatarView = () => (
-    <Flex
-      align="center"
-      justify="center"
-      direction={compact ? "row" : "column"}
-      gap="1"
-      px={compact ? "2" : "4"}
-      py={compact ? "1" : "3"}
+    <div
+      ref={tileRef}
+      style={
+        compact
+          ? {
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 4,
+              padding: "4px 8px",
+            }
+          : {
+              // The tile itself, rather than an avatar floating on the panel
+              // background. This branch renders whenever someone has no video,
+              // which is most of the time, and it previously had no tile chrome
+              // at all — that is why the panel looked empty.
+              position: "relative",
+              width: "100%",
+              height: "100%",
+              borderRadius: tileRadius,
+              overflow: "hidden",
+              background: tileGradient(
+                client.serverUserId || client.nickname,
+                memberInfo?.avatarColor,
+              ),
+              // No stroke on the tile. Meet puts the whole speaking treatment
+              // on the avatar — a ring plus the halo behind it — and leaves the
+              // tile alone, so the card edge stays quiet however many people
+              // are talking.
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }
+      }
     >
       <Flex align="center" justify="center" position="relative">
+        {!compact && (
+          <SpeakingHalo analyser={speakingAnalyser} hue={hue} size={avatarPx} />
+        )}
+
         <Avatar
           size={compact ? "2" : "3"}
           fallback={client.nickname[0]}
@@ -426,9 +621,10 @@ export function VoiceParticipantCard({
               : undefined
           }
           style={{
-            outline: "2.5px solid",
-            outlineColor: isSpeaking ? "var(--accent-9)" : "transparent",
-            transition: "outline-color 0.1s ease",
+            ...speakingRingStyle(hue, isSpeaking),
+            // Stepped by tile height rather than Radix's size scale, so the
+            // avatar tracks the tile the way Meet's does.
+            ...(compact ? {} : { width: avatarPx, height: avatarPx }),
           }}
         />
 
@@ -480,7 +676,11 @@ export function VoiceParticipantCard({
           </Flex>
         )}
 
-        {(client.isMuted || client.isDeafened || client.isAFK) && (
+        {/* Mute state moved to the tile's top-right badge, so this chip is
+            only still carrying it in the compact strip, which has no tile to
+            hang a badge on. */}
+        {((compact && (client.isMuted || client.isDeafened)) ||
+          client.isAFK) && (
           <Flex
             position="absolute"
             bottom="-4px"
@@ -493,9 +693,9 @@ export function VoiceParticipantCard({
               border: "1px solid var(--gray-6)",
             }}
           >
-            {client.isDeafened ? (
+            {compact && client.isDeafened ? (
               <MdVolumeOff size={12} color="var(--red-9)" />
-            ) : client.isMuted ? (
+            ) : compact && client.isMuted ? (
               <MdMicOff size={12} color="var(--red-9)" />
             ) : null}
 
@@ -508,20 +708,63 @@ export function VoiceParticipantCard({
         )}
       </Flex>
 
-      <Flex direction="column" align="center" gap="1">
-        <Text size={compact ? "1" : undefined}>{client.nickname}</Text>
-        {!compact && showPeerLatency && (
-          <LatencyBadge stats={latencyStats} isSelf={isSelf} />
-        )}
-      </Flex>
-    </Flex>
+      {showMutedBadge && (
+        <MutedBadge
+          hueId={client.serverUserId || client.nickname}
+          hueAvatarColor={memberInfo?.avatarColor}
+          deafened={!!client.isDeafened}
+          tileHeight={tileHeight}
+        />
+      )}
+
+      {compact ? (
+        <Text size="1">{client.nickname}</Text>
+      ) : (
+        <Flex
+          align="center"
+          gap="2"
+          style={{
+            // Bottom-left, 12 in and 9 up, measured off Meet. No scrim — the
+            // tile's own colour carries the contrast.
+            position: "absolute",
+            bottom: isSmallTile ? 6 : 9,
+            left: isSmallTile ? 8 : 12,
+            right: isSmallTile ? 8 : 12,
+            minWidth: 0,
+          }}
+        >
+          <Text
+            weight="medium"
+            style={{
+              color: "#fff",
+              fontSize: isSmallTile ? 12 : 16,
+              lineHeight: 1.2,
+            }}
+            truncate
+          >
+            {client.nickname}
+          </Text>
+          {/* The latency figure is the first thing to go when there is no room
+              for it — the name has to survive, the number does not. */}
+          {showPeerLatency && !isSmallTile && (
+            <LatencyBadge stats={latencyStats} isSelf={isSelf} />
+          )}
+        </Flex>
+      )}
+    </div>
   );
 
   const cameraView = () => {
     if (!shouldShowCameraTile) return avatarView();
 
     return (
-      <Flex direction="column" gap="1" align="center" style={{ width: "100%" }}>
+      <div
+        ref={tileRef}
+        // Height as well as width: the card fills the cell the grid gives it,
+        // and without a definite height here VideoCard's own `height: 100%`
+        // resolves against an auto-height parent and collapses.
+        style={{ width: "100%", height: "100%" }}
+      >
         <VideoCard
           key={`${itemId}:${cameraStreamID || "local"}:${cameraStream?.id || "pending"}`}
           stream={cameraStream}
@@ -529,6 +772,12 @@ export function VoiceParticipantCard({
           mirrored={isSelf ? cameraMirrored : false}
           isSpeaking={isSpeaking}
           statusIcons={statusBadges}
+          radius={tileRadius}
+          mutedBadge={
+            showMutedBadge ? (
+              <MutedBadge deafened={!!client.isDeafened} tileHeight={tileHeight} />
+            ) : undefined
+          }
           pendingLabel="Connecting video…"
           onClick={
             cameraStream
@@ -545,11 +794,7 @@ export function VoiceParticipantCard({
               : undefined
           }
         />
-
-        {!compact && showPeerLatency && (
-          <LatencyBadge stats={latencyStats} isSelf={isSelf} />
-        )}
-      </Flex>
+      </div>
     );
   };
 

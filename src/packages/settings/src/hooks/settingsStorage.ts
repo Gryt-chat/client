@@ -1,5 +1,16 @@
 import { AUDIO_DEFAULTS } from "./useAudioSettings";
 
+/**
+ * How the voice grid chooses its rows and columns.
+ *
+ * "meet" reproduces Google Meet, measured: more columns, tiles allowed to go
+ * portrait. "large" instead picks whatever arrangement gives the biggest
+ * tiles, which at nine people is a 3x3 of wide tiles where Meet gives 4+5.
+ * Both are correct-looking; which one you want is a matter of taste, so it is
+ * a setting rather than a decision baked into the layout.
+ */
+export type VoiceTileLayout = "meet" | "large";
+
 export type VideoCodec = "auto" | "h264" | "vp9" | "av1";
 /** @deprecated Use VideoCodec instead */
 export type ScreenShareCodec = VideoCodec;
@@ -139,6 +150,14 @@ export interface Settings {
   setCameraQuality: (quality: string) => void;
   cameraMirrored: boolean;
   setCameraMirrored: (mirrored: boolean) => void;
+  voiceTileLayout: VoiceTileLayout;
+  setVoiceTileLayout: (layout: VoiceTileLayout) => void;
+  devFakeParticipants: number;
+  setDevFakeParticipants: (count: number) => void;
+  devFakeMuted: number;
+  setDevFakeMuted: (count: number) => void;
+  devFakeScreenShare: boolean;
+  setDevFakeScreenShare: (enabled: boolean) => void;
   cameraFlipped: boolean;
   setCameraFlipped: (flipped: boolean) => void;
   cameraFps: number;
@@ -296,6 +315,14 @@ export const settingsInit: Settings = {
   setCameraQuality: noop,
   cameraMirrored: true,
   setCameraMirrored: noop,
+  voiceTileLayout: "meet",
+  setVoiceTileLayout: noop,
+  devFakeParticipants: 0,
+  setDevFakeParticipants: noop,
+  devFakeMuted: 0,
+  setDevFakeMuted: noop,
+  devFakeScreenShare: false,
+  setDevFakeScreenShare: noop,
   cameraFlipped: false,
   setCameraFlipped: noop,
   cameraFps: 30,

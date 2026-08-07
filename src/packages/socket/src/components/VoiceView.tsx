@@ -24,8 +24,15 @@ import {
   useRef,
   useState,
 } from "react";
-import { MdChat, MdMicOff } from "react-icons/md";
 import toast from "react-hot-toast";
+import {
+  MdChat,
+  MdCloseFullscreen,
+  MdFullscreen,
+  MdFullscreenExit,
+  MdMicOff,
+  MdOpenInFull,
+} from "react-icons/md";
 
 import {
   useCamera as useLocalCamera,
@@ -39,6 +46,19 @@ import type { StreamSources } from "@/webRTC/src/types/SFU";
 
 import type { PeerLatencyStats } from "../hooks/usePeerLatency";
 import { usePopoutStreams } from "../hooks/usePopoutStreams";
+import {
+  computeGridLayout,
+  computeShareLayout,
+  GRID_GAP,
+  GRID_PADDING,
+  gridCapacity,
+  PIP_HEIGHT,
+  PIP_INSET,
+  PIP_RADIUS,
+  PIP_WIDTH,
+  SHARE_STRIP_MAX_SLOTS,
+  tileRadius,
+} from "../lib/voiceLayout";
 import type { Client } from "../types/clients";
 import { FocusedVideoView } from "./FocusedVideoView";
 import type { AdminActions, MemberInfo } from "./MemberSidebar";
@@ -48,47 +68,12 @@ import { VoiceParticipantCard } from "./VoiceParticipantCard";
 
 type Role = "owner" | "admin" | "mod" | "member";
 
-const GRID_GAP = 8;
-const MIN_TILE_WIDTH = 140;
+// The panel's own chrome: the controls float over the bottom of the grid, and
+// a tile running full height would put a name behind the mute button.
 const CONTROLS_HEIGHT = 80;
-const TILE_ASPECT = 4 / 3;
 
-/**
- * Tries every possible column count and picks the one that maximises
- * tile area while keeping tiles at least MIN_TILE_WIDTH wide.
- * Scores each candidate against a target aspect ratio so the layout
- * looks balanced regardless of container shape (same idea as Zoom/Meet).
- */
-function computeOptimalColumns(
-  width: number,
-  height: number,
-  count: number,
-): number {
-  if (count <= 0 || width <= 0 || height <= 0) return 1;
-
-  let bestCols = 1;
-  let bestArea = 0;
-
-  for (let cols = 1; cols <= count; cols++) {
-    const rows = Math.ceil(count / cols);
-    const tileW = (width - (cols - 1) * GRID_GAP) / cols;
-    const tileH = (height - (rows - 1) * GRID_GAP) / rows;
-
-    if (tileW < MIN_TILE_WIDTH) break;
-
-    const widthConstrained = tileW / tileH <= TILE_ASPECT;
-    const w = widthConstrained ? tileW : tileH * TILE_ASPECT;
-    const h = widthConstrained ? tileW / TILE_ASPECT : tileH;
-    const area = w * h;
-
-    if (area > bestArea) {
-      bestArea = area;
-      bestCols = cols;
-    }
-  }
-
-  return bestCols;
-}
+/** Not a client id — the "+N" tile standing in for everyone past the cap. */
+const OVERFLOW_ITEM_ID = "overflow:more";
 
 /**
  * Local speaking detector based on the final processed audio analyser.
@@ -228,6 +213,8 @@ export const VoiceView = ({
   onFocusChange,
   chatHidden,
   onToggleChat,
+  isMaximized,
+  onToggleMaximize,
 }: {
   showVoiceView: boolean;
   voiceWidth: string;
@@ -251,9 +238,16 @@ export const VoiceView = ({
   onFocusChange?: (focused: boolean) => void;
   chatHidden?: boolean;
   onToggleChat?: () => void;
+  isMaximized?: boolean;
+  onToggleMaximize?: () => void;
 }) => {
-  const { showPeerLatency, cameraMirrored, setShowSettings, setSettingsTab } =
-    useSettings();
+  const {
+    showPeerLatency,
+    cameraMirrored,
+    voiceTileLayout,
+    setShowSettings,
+    setSettingsTab,
+  } = useSettings();
   const { latency: selfLatency } = useVoiceLatency(showPeerLatency);
 
   const {
@@ -321,6 +315,37 @@ export const VoiceView = ({
       },
     );
   }, [isInThisVoiceChannel, micUnavailable, setSettingsTab, setShowSettings]);
+
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * Fullscreen is the maximised layout with a different container, so there is
+   * no separate layout code — the panel goes fullscreen and the grid's
+   * ResizeObserver picks up the new size on its own.
+   *
+   * State is read back from the document rather than tracked independently,
+   * because the browser can leave fullscreen without us: Escape, the window
+   * chrome, or another element taking it.
+   */
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const sync = () =>
+      setIsFullscreen(document.fullscreenElement === panelRef.current);
+
+    document.addEventListener("fullscreenchange", sync);
+    return () => document.removeEventListener("fullscreenchange", sync);
+  }, []);
+
+  const toggleFullscreen = useCallback(() => {
+    if (document.fullscreenElement) {
+      void document.exitFullscreen();
+      return;
+    }
+    void panelRef.current?.requestFullscreen?.().catch((error) => {
+      console.warn("[VoiceView] fullscreen refused", error);
+    });
+  }, []);
 
   const gridRef = useRef<HTMLDivElement>(null);
   const [gridHeight, setGridHeight] = useState(0);
@@ -548,23 +573,156 @@ export const VoiceView = ({
     return items;
   }, [orderedItems, focusedStream, poppedOutItems]);
 
-  const columns = useMemo(
-    () =>
-      computeOptimalColumns(
-        gridWidth,
-        gridHeight - CONTROLS_HEIGHT,
-        displayItems.length,
-      ),
-    [gridWidth, gridHeight, displayItems.length],
+  // A screen share is pinned full-width above the participants, so it is not
+  // one of the tiles the grid has to place.
+  const screenItems = useMemo(
+    () => displayItems.filter((id) => id.startsWith("screen:")),
+    [displayItems],
   );
 
-  // computeOptimalColumns only hands back a column count, but it chose that
-  // count by working out how tall each row would be if the rows split the
-  // available height. The grid has to be told to actually do that.
-  const rows = useMemo(
-    () => Math.max(1, Math.ceil(displayItems.length / Math.max(1, columns))),
-    [displayItems.length, columns],
+  const peopleItems = useMemo(
+    () => displayItems.filter((id) => !id.startsWith("screen:")),
+    [displayItems],
   );
+
+  const isHeroPip =
+    !isFocused && screenItems.length === 0 && peopleItems.length === 2;
+
+  const availableHeight = Math.max(
+    0,
+    gridHeight - CONTROLS_HEIGHT - GRID_PADDING,
+  );
+  const usableWidth = Math.max(0, gridWidth - 2 * GRID_PADDING);
+
+  // A share is fitted to its own shape, so the layout needs the stream's real
+  // dimensions rather than an assumed 16:9. Meet's share measured 1.731
+  // against an intrinsic 1920x1108 — it follows the window being shared.
+  const shareAspect = useMemo(() => {
+    for (const itemId of screenItems) {
+      const clientId = itemId.slice(7);
+      const isSelf = clientId === currentConnectionId;
+      const stream = isSelf
+        ? localScreenStream
+        : videoStreams?.[
+            clientsForHost[clientId]?.screenShareVideoStreamID ?? ""
+          ];
+      const settings = stream?.getVideoTracks()[0]?.getSettings();
+      if (settings?.width && settings?.height)
+        return settings.width / settings.height;
+    }
+    return 16 / 9;
+  }, [
+    screenItems,
+    currentConnectionId,
+    localScreenStream,
+    videoStreams,
+    clientsForHost,
+  ]);
+
+  const shareLayout =
+    screenItems.length > 0 && usableWidth > 0 && availableHeight > 0
+      ? computeShareLayout(usableWidth, availableHeight, shareAspect)
+      : null;
+
+  const gridAreaHeight = shareLayout
+    ? shareLayout.participants.height
+    : availableHeight;
+
+  /**
+   * Who keeps a tile when there is not room for everyone.
+   *
+   * Anyone with a camera or a screen share outranks a plain avatar tile: an
+   * avatar is the same information the member list already gives you, video is
+   * not. Sorting is stable, so within a rank the existing order — including a
+   * manual drag — is preserved. Dragging across ranks does not stick, which is
+   * the cost of ranking at all.
+   */
+  const prioritisedPeople = useMemo(() => {
+    const rank = (itemId: string) => {
+      const client = clientsForHost[itemId];
+      if (!client) return 2;
+      return client.cameraEnabled || client.screenShareEnabled ? 0 : 1;
+    };
+
+    return [...peopleItems].sort((a, b) => rank(a) - rank(b));
+  }, [peopleItems, clientsForHost]);
+
+  /**
+   * How many tiles fit before they stop being readable. A pinned share caps
+   * the strip at six slots instead, which is what Meet showed.
+   */
+  const capacity = useMemo(() => {
+    if (shareLayout?.orientation === "strip-above")
+      return SHARE_STRIP_MAX_SLOTS;
+    return gridCapacity(usableWidth, gridAreaHeight, prioritisedPeople.length);
+  }, [
+    shareLayout?.orientation,
+    usableWidth,
+    gridAreaHeight,
+    prioritisedPeople.length,
+  ]);
+
+  // When everyone does not fit, the last slot becomes the "+N" tile rather
+  // than a person, so the count sits inside the layout instead of over it.
+  const overflows = prioritisedPeople.length > capacity;
+
+  const visiblePeople = useMemo(
+    () =>
+      overflows
+        ? prioritisedPeople.slice(0, Math.max(1, capacity - 1))
+        : prioritisedPeople,
+    [overflows, prioritisedPeople, capacity],
+  );
+
+  const hiddenCount = prioritisedPeople.length - visiblePeople.length;
+
+  /** What is actually laid out: the visible people, plus the "+N" tile. */
+  const laidOutItems = useMemo(
+    () =>
+      hiddenCount > 0 ? [...visiblePeople, OVERFLOW_ITEM_ID] : visiblePeople,
+    [visiblePeople, hiddenCount],
+  );
+
+  /**
+   * The rows, each with its own tile size.
+   *
+   * With a share pinned at stage proportions the participants are a single
+   * strip whose height is set by the share split, so the grid search does not
+   * apply — the tiles just divide the width.
+   */
+  const gridRows = useMemo(() => {
+    if (!laidOutItems.length) return [];
+
+    if (shareLayout?.orientation === "strip-above") {
+      const n = laidOutItems.length;
+      const height = shareLayout.participants.height;
+      return [
+        {
+          count: n,
+          width: (shareLayout.participants.width - (n - 1) * GRID_GAP) / n,
+          height,
+        },
+      ];
+    }
+
+    return computeGridLayout(
+      usableWidth,
+      gridAreaHeight,
+      laidOutItems.length,
+      voiceTileLayout,
+    ).rows;
+  }, [laidOutItems, shareLayout, usableWidth, gridAreaHeight, voiceTileLayout]);
+
+  /** The items belonging to each row, in order. */
+  const rowItems = useMemo(() => {
+    const out: string[][] = [];
+    let cursor = 0;
+    for (const row of gridRows) {
+      out.push(laidOutItems.slice(cursor, cursor + row.count));
+      cursor += row.count;
+    }
+    return out;
+  }, [gridRows, laidOutItems]);
 
   useEffect(() => {
     if (!focusedStream) return;
@@ -724,25 +882,153 @@ export const VoiceView = ({
     };
   };
 
+  /**
+   * The "+N" tile. Takes a real slot in its row rather than floating over the
+   * layout, so the geometry is unchanged. Not sortable — there is no
+   * participant behind it to reorder.
+   */
+  const renderOverflowTile = (size: { width: number; height: number }) => (
+    <motion.div
+      key={OVERFLOW_ITEM_ID}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      style={{ width: size.width, height: size.height, flexShrink: 0 }}
+    >
+      <Flex
+        align="center"
+        justify="center"
+        direction="column"
+        gap="1"
+        style={{
+          width: "100%",
+          height: "100%",
+          borderRadius: tileRadius(size.height),
+          background: "var(--gray-4)",
+        }}
+      >
+        <Text size="5" weight="medium" style={{ color: "var(--gray-12)" }}>
+          +{hiddenCount}
+        </Text>
+        <Text size="1" style={{ color: "var(--gray-11)" }}>
+          {hiddenCount === 1 ? "other" : "others"}
+        </Text>
+      </Flex>
+    </motion.div>
+  );
+
+  /**
+   * One tile, positioned by whatever box the region it lives in hands it.
+   *
+   * The regions differ — a pinned share, the hero, the PiP, a grid cell — but
+   * the card and its drag wrapper are identical in all of them, so only the
+   * outer box varies.
+   */
+  const renderTile = (
+    itemId: string,
+    style: CSSProperties,
+    radius?: number,
+    /** Explicit inner box, where the outer style is a container not the tile. */
+    tileSize?: { width: number; height: number },
+  ) => {
+    const isScreenTile = itemId.startsWith("screen:");
+    const clientId = isScreenTile ? itemId.slice(7) : itemId;
+    const client = clientsForHost[clientId];
+
+    if (!client) return null;
+
+    const isSelf = clientId === currentConnectionId;
+    const serverUserId = client?.serverUserId;
+
+    return (
+      <motion.div
+        key={itemId}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        style={style}
+      >
+        <div
+          style={
+            tileSize
+              ? { width: tileSize.width, height: tileSize.height }
+              : { width: "100%", height: "100%" }
+          }
+        >
+          <SortableParticipant id={itemId}>
+            <VoiceParticipantCard
+              itemId={itemId}
+              compact={isFocused}
+              client={client}
+              isSelf={isSelf}
+              isUserConnecting={
+                clientId === currentConnectionId && isConnecting
+              }
+              serverHost={serverHost}
+              avatarFileId={
+                serverUserId
+                  ? avatarByServerUserId.get(serverUserId)
+                  : undefined
+              }
+              cameraMirrored={cameraMirrored}
+              isSpeaking={
+                isSelf ? localProcessedSpeaking : !!clientsSpeaking[clientId]
+              }
+              showPeerLatency={showPeerLatency}
+              latencyStats={getLatencyStats(clientId, isSelf)}
+              localCameraStream={localCameraStream}
+              localScreenStream={localScreenStream}
+              videoStreams={videoStreams}
+              fallbackCameraStreamID={
+                fallbackCameraStreamIdByClientId[clientId] || null
+              }
+              onFocus={handleFocus}
+              onPopout={handlePopout}
+              onDisconnectUser={onDisconnectUser}
+              currentUserRole={currentUserRole}
+              memberInfo={
+                serverUserId
+                  ? memberByServerUserId.get(serverUserId)
+                  : undefined
+              }
+              adminActions={adminActions}
+              streamSources={streamSources}
+              tileRadius={radius}
+            />
+          </SortableParticipant>
+        </div>
+      </motion.div>
+    );
+  };
+
   return (
     <motion.div
       data-gryt="voice-view"
+      ref={panelRef}
       transition={
         isDragging
           ? { duration: 0 }
           : { type: "spring", stiffness: 300, damping: 30 }
       }
       animate={{
-        width: showVoiceView ? voiceWidth : 0,
-        paddingRight: !showVoiceView || voiceWidth === "0px" ? 0 : 8,
+        // Fullscreen sizes the element itself, so an animated pixel width
+        // would fight the browser for it.
+        width: isFullscreen ? "100%" : showVoiceView ? voiceWidth : 0,
+        paddingRight:
+          isFullscreen || !showVoiceView || voiceWidth === "0px" ? 0 : 8,
       }}
       style={{
         overflow: "hidden",
-        ...(isFocused && showVoiceView
-          ? { flexGrow: 1, minWidth: 0 }
-          : {
-              maxWidth: maxWidth && maxWidth > 0 ? `${maxWidth}px` : undefined,
-            }),
+        ...(isFullscreen
+          ? { height: "100%", maxWidth: "none" }
+          : isFocused && showVoiceView
+            ? { flexGrow: 1, minWidth: 0 }
+            : {
+                maxWidth:
+                  maxWidth && maxWidth > 0 ? `${maxWidth}px` : undefined,
+              }),
       }}
     >
       <Flex
@@ -871,106 +1157,185 @@ export const VoiceView = ({
                         flexShrink: 0,
                       }
                     : {
-                        display: "grid",
-                        // minmax(0, ...) on both axes: a bare 1fr keeps an
-                        // implicit auto minimum, so a tile taller than its share
-                        // of the height forces the row open and the whole grid
-                        // grows past the window.
-                        gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
-                        gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
-                        gap: "var(--space-2)",
-                        justifyItems: "center",
-                        alignContent: "center",
-                        overflowY: "auto",
-                        padding: "3px 3px 60px",
+                        // Two stacked regions: any pinned screen share on top,
+                        // the participants below.
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: `${GRID_GAP}px`,
+                        // Extra room at the bottom: the controls float over
+                        // this area, and a tile running full height puts the
+                        // participant's name behind the mute button.
+                        padding: `${GRID_PADDING}px ${GRID_PADDING}px ${CONTROLS_HEIGHT}px`,
                         height: "100%",
+                        overflow: "hidden",
                       }
                 }
               >
-                <AnimatePresence>
-                  {currentServerConnected === serverHost &&
-                    displayItems.map((itemId) => {
-                      const isScreenTile = itemId.startsWith("screen:");
-                      const clientId = isScreenTile ? itemId.slice(7) : itemId;
-                      const client = clientsForHost[clientId];
+                {currentServerConnected !== serverHost ? null : isFocused ? (
+                  <AnimatePresence>
+                    {displayItems.map((itemId) =>
+                      renderTile(itemId, { flexShrink: 0, width: 140 }),
+                    )}
+                  </AnimatePresence>
+                ) : (
+                  <>
+                    {/* A share sits above the grid at sidebar proportions and
+                        below the participant strip at stage proportions — the
+                        order flips, which is why the strip renders first. */}
+                    {shareLayout?.orientation === "strip-above" && (
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: `${GRID_GAP}px`,
+                          justifyContent: "center",
+                          height: shareLayout.participants.height,
+                          flexShrink: 0,
+                        }}
+                      >
+                        <AnimatePresence>
+                          {rowItems[0]?.map((itemId) =>
+                            itemId === OVERFLOW_ITEM_ID
+                              ? renderOverflowTile(gridRows[0])
+                              : renderTile(
+                                  itemId,
+                                  {
+                                    width: gridRows[0].width,
+                                    height: gridRows[0].height,
+                                    flexShrink: 0,
+                                  },
+                                  tileRadius(gridRows[0].height),
+                                ),
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    )}
 
-                      if (!client) return null;
+                    {shareLayout && (
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: `${GRID_GAP}px`,
+                          justifyContent: "center",
+                          alignItems: "center",
+                          flexShrink: 0,
+                          order:
+                            shareLayout.orientation === "strip-above" ? 1 : 0,
+                          height:
+                            shareLayout.orientation === "strip-above"
+                              ? undefined
+                              : shareLayout.share.height,
+                          flexGrow:
+                            shareLayout.orientation === "strip-above" ? 1 : 0,
+                          minHeight: 0,
+                        }}
+                      >
+                        <AnimatePresence>
+                          {screenItems.map((itemId) =>
+                            renderTile(itemId, {
+                              width: shareLayout.share.width,
+                              height: shareLayout.share.height,
+                              flexShrink: 0,
+                            }),
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    )}
 
-                      const isSelf = clientId === currentConnectionId;
-                      const serverUserId = client?.serverUserId;
+                    {isHeroPip ? (
+                      <div
+                        style={{
+                          position: "relative",
+                          flex: 1,
+                          minHeight: 0,
+                          // The hero is a capped, centred tile like any other —
+                          // Meet's 847x1136 is the 3:4 cap, not the full area.
+                          // The PiP anchors to this box's corner rather than the
+                          // hero's, which is why it straddles the hero's bottom
+                          // edge when the hero is capped and sits inside it when
+                          // the hero fills.
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <AnimatePresence>
+                          {(() => {
+                            const hero = computeGridLayout(
+                              usableWidth,
+                              gridAreaHeight,
+                              1,
+                              voiceTileLayout,
+                            ).rows[0];
+                            return renderTile(
+                              peopleItems[0],
+                              {},
+                              tileRadius(hero?.height ?? 0),
+                              hero,
+                            );
+                          })()}
 
-                      return (
-                        <motion.div
-                          key={itemId}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ duration: 0.2 }}
-                          style={
-                            isFocused
-                              ? { flexShrink: 0, width: 140 }
-                              : {
-                                  // Height-driven so the tile is bounded by its
-                                  // row, not just its column. The card inside
-                                  // is width: 100% of this box and keeps the
-                                  // same ratio, so it scales down rather than
-                                  // being clipped.
-                                  height: "100%",
-                                  width: "auto",
-                                  aspectRatio: "16 / 9",
-                                  maxWidth: "100%",
-                                  maxHeight: "100%",
-                                  minWidth: 0,
-                                  minHeight: 0,
-                                }
-                          }
-                        >
-                          <SortableParticipant id={itemId}>
-                            <VoiceParticipantCard
-                              itemId={itemId}
-                              compact={isFocused}
-                              client={client}
-                              isSelf={isSelf}
-                              isUserConnecting={
-                                clientId === currentConnectionId && isConnecting
-                              }
-                              serverHost={serverHost}
-                              avatarFileId={
-                                serverUserId
-                                  ? avatarByServerUserId.get(serverUserId)
-                                  : undefined
-                              }
-                              cameraMirrored={cameraMirrored}
-                              isSpeaking={
-                                isSelf
-                                  ? localProcessedSpeaking
-                                  : !!clientsSpeaking[clientId]
-                              }
-                              showPeerLatency={showPeerLatency}
-                              latencyStats={getLatencyStats(clientId, isSelf)}
-                              localCameraStream={localCameraStream}
-                              localScreenStream={localScreenStream}
-                              videoStreams={videoStreams}
-                              fallbackCameraStreamID={
-                                fallbackCameraStreamIdByClientId[clientId] ||
-                                null
-                              }
-                              onFocus={handleFocus}
-                              onPopout={handlePopout}
-                              onDisconnectUser={onDisconnectUser}
-                              currentUserRole={currentUserRole}
-                              memberInfo={
-                                serverUserId
-                                  ? memberByServerUserId.get(serverUserId)
-                                  : undefined
-                              }
-                              adminActions={adminActions}
-                            />
-                          </SortableParticipant>
-                        </motion.div>
-                      );
-                    })}
-                </AnimatePresence>
+                          {renderTile(
+                            peopleItems[1],
+                            {
+                              position: "absolute",
+                              right: PIP_INSET,
+                              bottom: PIP_INSET,
+                              width: PIP_WIDTH,
+                              height: PIP_HEIGHT,
+                              zIndex: 2,
+                            },
+                            PIP_RADIUS,
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    ) : shareLayout?.orientation === "strip-above" ? null : (
+                      <div
+                        style={{
+                          // Explicit rows. Each row has its own tile size, so
+                          // the old widths-sum-to-100% flex-wrap trick no
+                          // longer expresses the layout — nine people are a
+                          // 293-wide row above a 232-wide one.
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: `${GRID_GAP}px`,
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flex: 1,
+                          minHeight: 0,
+                          overflow: "hidden",
+                        }}
+                      >
+                        <AnimatePresence>
+                          {gridRows.map((row, rowIndex) => (
+                            <div
+                              key={`row-${rowIndex}`}
+                              style={{
+                                display: "flex",
+                                gap: `${GRID_GAP}px`,
+                                justifyContent: "center",
+                                height: row.height,
+                              }}
+                            >
+                              {rowItems[rowIndex]?.map((itemId) =>
+                                itemId === OVERFLOW_ITEM_ID
+                                  ? renderOverflowTile(row)
+                                  : renderTile(
+                                      itemId,
+                                      {
+                                        width: row.width,
+                                        height: row.height,
+                                        flexShrink: 0,
+                                      },
+                                      tileRadius(row.height),
+                                    ),
+                              )}
+                            </div>
+                          ))}
+                        </AnimatePresence>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             </SortableContext>
           </DndContext>
@@ -996,6 +1361,62 @@ export const VoiceView = ({
                   <div style={{ pointerEvents: "auto" }}>
                     <Controls onDisconnect={onDisconnect} />
                   </div>
+
+                  {onToggleMaximize && (
+                    <Flex
+                      gap="2"
+                      style={{
+                        position: "absolute",
+                        right: 12,
+                        bottom: 12,
+                        pointerEvents: "auto",
+                      }}
+                    >
+                      <Tooltip
+                        content={isFullscreen ? "Leave fullscreen" : "Fullscreen"}
+                        delayDuration={300}
+                      >
+                        <IconButton
+                          variant="soft"
+                          color="gray"
+                          aria-label={
+                            isFullscreen
+                              ? "Leave fullscreen"
+                              : "Fullscreen voice view"
+                          }
+                          onClick={toggleFullscreen}
+                        >
+                          {isFullscreen ? (
+                            <MdFullscreenExit size={18} />
+                          ) : (
+                            <MdFullscreen size={18} />
+                          )}
+                        </IconButton>
+                      </Tooltip>
+
+                      <Tooltip
+                        content={isMaximized ? "Restore" : "Maximize"}
+                        delayDuration={300}
+                      >
+                        <IconButton
+                          variant="soft"
+                          color="gray"
+                          aria-label={
+                            isMaximized
+                              ? "Restore voice view"
+                              : "Maximize voice view"
+                          }
+                          onClick={onToggleMaximize}
+                        >
+                          {isMaximized ? (
+                            <MdCloseFullscreen size={16} />
+                          ) : (
+                            <MdOpenInFull size={16} />
+                          )}
+                        </IconButton>
+                      </Tooltip>
+                    </Flex>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>

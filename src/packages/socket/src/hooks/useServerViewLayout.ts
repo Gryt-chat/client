@@ -3,7 +3,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 const SIDEBAR_WIDTH_PX = 240;
 const SIDEBAR_HOVER_PX = 8;
 const SIDEBAR_CLOSE_DELAY = 1000;
-const VOICE_MIN_WIDTH = 200;
+// GRYT-40's "Shown" state: one fixed sidebar width, no drag handle. A freely
+// resizable panel meant the grid had to work at every width and was tuned for
+// none of them. 600 is what the Meet layout was checked against, and the point
+// where a third column starts winning on tile area at nine or more people —
+// below about 540 a tall narrow panel always prefers two.
+const VOICE_SIDEBAR_WIDTH = 600;
 const MIN_CHAT_WIDTH = 200;
 const FOCUSED_CHAT_RATIO = 1 / 3;
 
@@ -132,23 +137,24 @@ function useSidebarHover({ pinChannelsSidebar, pinMembersSidebar, isDraggingResi
   };
 }
 
-interface UseVoiceResizeParams {
-  voiceWidth: string;
-  userVoiceWidth: number;
-  setVoiceWidth: (v: string) => void;
-  setUserVoiceWidth: (v: number) => void;
+interface UseVoiceLayoutParams {
   setShowVoiceView: (v: boolean) => void;
 }
 
-function useVoiceResize({
-  voiceWidth, userVoiceWidth,
-  setVoiceWidth, setUserVoiceWidth, setShowVoiceView,
-}: UseVoiceResizeParams) {
+/**
+ * The voice view's layout state.
+ *
+ * Three of GRYT-40's four states: minimized is `showVoiceView === false`,
+ * shown is the fixed sidebar width, maximized fills the row and hides the
+ * chat. Fullscreen is not here yet.
+ *
+ * Neither state is persisted, so maximizing lasts as long as the view does.
+ * Whether it should be remembered per channel, per server or globally is one
+ * of GRYT-40's open questions and is deliberately not guessed at here.
+ */
+function useVoiceLayout({ setShowVoiceView }: UseVoiceLayoutParams) {
   const [voiceFocused, setVoiceFocused] = useState(false);
-  const [isDraggingResize, setIsDraggingResize] = useState(false);
-  const dragStartX = useRef(0);
-  const dragStartWidth = useRef(0);
-  const dragMinimizedRef = useRef(false);
+  const [isMaximized, setIsMaximized] = useState(false);
 
   const voiceContainerRef = useRef<HTMLDivElement>(null);
   const [voiceContainerWidth, setVoiceContainerWidth] = useState(0);
@@ -167,6 +173,12 @@ function useVoiceResize({
     ? Math.max(0, voiceContainerWidth - MIN_CHAT_WIDTH)
     : 0;
 
+  // The sidebar width, unless the window is too narrow to leave the chat a
+  // usable column — then the chat's minimum wins and the panel gives way.
+  const shownVoiceWidth = voiceMaxWidth > 0
+    ? Math.min(VOICE_SIDEBAR_WIDTH, voiceMaxWidth)
+    : VOICE_SIDEBAR_WIDTH;
+
   const focusedChatWidth = voiceContainerWidth > 0
     ? Math.max(MIN_CHAT_WIDTH, Math.round(voiceContainerWidth * FOCUSED_CHAT_RATIO))
     : MIN_CHAT_WIDTH;
@@ -174,62 +186,19 @@ function useVoiceResize({
     ? Math.max(0, voiceContainerWidth - focusedChatWidth)
     : 0;
 
-  const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsDraggingResize(true);
-    dragMinimizedRef.current = false;
-    dragStartX.current = e.clientX;
-    dragStartWidth.current = parseInt(voiceWidth) || userVoiceWidth;
-  }, [voiceWidth, userVoiceWidth]);
-
-  useEffect(() => {
-    if (!isDraggingResize) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const rawWidth = dragStartWidth.current + (e.clientX - dragStartX.current);
-
-      if (rawWidth < VOICE_MIN_WIDTH) {
-        if (!dragMinimizedRef.current) {
-          dragMinimizedRef.current = true;
-          setVoiceWidth("0px");
-        }
-      } else {
-        const maxW = voiceMaxWidth > 0 ? voiceMaxWidth : Infinity;
-        dragMinimizedRef.current = false;
-        setVoiceWidth(`${Math.min(rawWidth, maxW)}px`);
-      }
-    };
-
-    const handleMouseUp = (e: MouseEvent) => {
-      setIsDraggingResize(false);
-      const rawWidth = dragStartWidth.current + (e.clientX - dragStartX.current);
-
-      if (rawWidth < VOICE_MIN_WIDTH) {
-        setShowVoiceView(false);
-        setVoiceWidth(`${userVoiceWidth}px`);
-      } else {
-        const maxW = voiceMaxWidth > 0 ? voiceMaxWidth : Infinity;
-        const clamped = Math.min(Math.max(VOICE_MIN_WIDTH, rawWidth), maxW);
-        setVoiceWidth(`${clamped}px`);
-        setUserVoiceWidth(clamped);
-      }
-      dragMinimizedRef.current = false;
-    };
-
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
-    return () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-    };
-  }, [isDraggingResize, userVoiceWidth, voiceMaxWidth, setShowVoiceView, setVoiceWidth, setUserVoiceWidth]);
+  const toggleMaximized = useCallback(() => {
+    // Maximizing while minimized would grow something invisible. Reading the
+    // current value here rather than inside the updater keeps the updater
+    // pure — it used to call setShowVoiceView from inside one.
+    if (!isMaximized) setShowVoiceView(true);
+    setIsMaximized(!isMaximized);
+  }, [isMaximized, setShowVoiceView]);
 
   return {
     voiceFocused, setVoiceFocused,
-    isDraggingResize,
-    voiceContainerRef, voiceMaxWidth,
+    isMaximized, toggleMaximized,
+    voiceContainerRef, voiceMaxWidth, shownVoiceWidth,
     focusedChatWidth, focusedVoiceMaxWidth,
-    handleResizeMouseDown,
   };
 }
 
@@ -238,6 +207,6 @@ export {
   SIDEBAR_WIDTH_PX,
   useMediaAutoShow,
   useSidebarHover,
-  useVoiceResize,
-  VOICE_MIN_WIDTH,
+  useVoiceLayout,
+  VOICE_SIDEBAR_WIDTH,
 };

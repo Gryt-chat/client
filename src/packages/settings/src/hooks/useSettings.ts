@@ -8,6 +8,7 @@ import {
   useUserId,
 } from "@/common";
 
+import type { VoiceTileLayout } from "./settingsStorage";
 import { type ScalabilityMode, type ScreenShareCodec, settingsInit, type VideoCodec } from "./settingsStorage";
 import { loadAudioFromCache, useAudioSettings } from "./useAudioSettings";
 import { getUserValue, loadForUser, setUserValue } from "./userStorage";
@@ -36,6 +37,11 @@ function useSettingsHook() {
   const [cameraID, setCameraID] = useState("");
   const [cameraQuality, setCameraQuality] = useState("native");
   const [cameraMirrored, setCameraMirrored] = useState(true);
+  const [voiceTileLayout, setVoiceTileLayout] =
+    useState<VoiceTileLayout>("meet");
+  const [devFakeParticipants, setDevFakeParticipants] = useState(0);
+  const [devFakeMuted, setDevFakeMuted] = useState(0);
+  const [devFakeScreenShare, setDevFakeScreenShare] = useState(false);
   const [cameraFlipped, setCameraFlipped] = useState(false);
   const [cameraFps, setCameraFpsState] = useState(30);
   const [cameraCodec, setCameraCodecState] = useState<VideoCodec>("auto");
@@ -83,6 +89,12 @@ function useSettingsHook() {
       setCameraID(getUserValue("cameraID", ""));
       setCameraQuality(getUserValue("cameraQuality", "native"));
       setCameraMirrored(getUserValue("cameraMirrored", true));
+      setVoiceTileLayout(
+        getUserValue<VoiceTileLayout>("voiceTileLayout", "meet"),
+      );
+      setDevFakeParticipants(getUserValue("devFakeParticipants", 0));
+      setDevFakeMuted(getUserValue("devFakeMuted", 0));
+      setDevFakeScreenShare(getUserValue("devFakeScreenShare", false));
       setCameraFlipped(getUserValue("cameraFlipped", false));
       setCameraFpsState(getUserValue("cameraFps", 30));
       setCameraCodecState(getUserValue<VideoCodec>("cameraCodec", "auto"));
@@ -207,6 +219,26 @@ function useSettingsHook() {
   function updateCameraMirrored(mirrored: boolean) {
     setCameraMirrored(mirrored);
     setUserValue("cameraMirrored", mirrored);
+  }
+
+  function updateDevFakeParticipants(count: number) {
+    setDevFakeParticipants(count);
+    setUserValue("devFakeParticipants", count);
+  }
+
+  function updateDevFakeMuted(count: number) {
+    setDevFakeMuted(count);
+    setUserValue("devFakeMuted", count);
+  }
+
+  function updateDevFakeScreenShare(enabled: boolean) {
+    setDevFakeScreenShare(enabled);
+    setUserValue("devFakeScreenShare", enabled);
+  }
+
+  function updateVoiceTileLayout(layout: VoiceTileLayout) {
+    setVoiceTileLayout(layout);
+    setUserValue("voiceTileLayout", layout);
   }
 
   function updateCameraFlipped(flipped: boolean) {
@@ -346,6 +378,14 @@ function useSettingsHook() {
     setCameraQuality: updateCameraQuality,
     cameraMirrored,
     setCameraMirrored: updateCameraMirrored,
+    voiceTileLayout,
+    setVoiceTileLayout: updateVoiceTileLayout,
+    devFakeParticipants,
+    setDevFakeParticipants: updateDevFakeParticipants,
+    devFakeMuted,
+    setDevFakeMuted: updateDevFakeMuted,
+    devFakeScreenShare,
+    setDevFakeScreenShare: updateDevFakeScreenShare,
     cameraFlipped,
     setCameraFlipped: updateCameraFlipped,
     cameraFps,

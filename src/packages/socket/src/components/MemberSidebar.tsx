@@ -12,6 +12,8 @@ export interface MemberInfo {
   serverUserId: string;
   nickname: string;
   avatarFileId?: string | null;
+  /** Dominant colour of the avatar as #rrggbb. Null until it has been computed. */
+  avatarColor?: string | null;
   role?: Role;
   status: UserStatus;
   lastSeen?: Date;
