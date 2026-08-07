@@ -44,7 +44,7 @@ import { FocusedVideoView } from "./FocusedVideoView";
 import type { AdminActions, MemberInfo } from "./MemberSidebar";
 import { UserContextMenu } from "./UserContextMenu";
 import type { FocusedStreamInfo } from "./VoiceParticipantCard";
-import { VoiceParticipantCard } from "./VoiceParticipantCard";
+import { TILE_RADIUS, VoiceParticipantCard } from "./VoiceParticipantCard";
 
 type Role = "owner" | "admin" | "mod" | "member";
 
@@ -104,6 +104,19 @@ const PIP_MAX_WIDTH = 220;
  */
 const MIN_TILE_ASPECT = 3 / 4;
 const MAX_TILE_ASPECT = 16 / 9;
+
+// Below this the grid stops adding tiles and collects the rest behind a count.
+// It is the same height at which VoiceParticipantCard has to shrink the avatar
+// and drop the latency figure to fit — past there a tile is a coloured smear
+// with a name on it, and ten of those are worse than nine and a number.
+//
+// Deriving the cap from a height rather than fixing a participant count means
+// it moves with the panel: about ten in the sidebar, six once a share is
+// pinned and takes half the height, far more when the panel is maximised.
+const MIN_READABLE_TILE_HEIGHT = 110;
+
+/** Not a client id — the "+N" tile that stands in for everyone past the cap. */
+const OVERFLOW_ITEM_ID = "overflow:more";
 
 /**
  * The tile inside a cell of this size: the cell's own shape, clamped into the
@@ -692,10 +705,78 @@ export const VoiceView = ({
     availableHeight - (shareHeight > 0 ? shareHeight + GRID_GAP : 0),
   );
 
+  /**
+   * Who keeps a tile when there is not room for everyone.
+   *
+   * Anyone with a camera or a screen share outranks a plain avatar tile: an
+   * avatar is the same information the member list already gives you, video is
+   * not. Sorting is stable, so within a rank the existing order — including a
+   * manual drag — is preserved. Dragging across ranks does not stick, which is
+   * the cost of ranking at all.
+   */
+  const prioritisedPeople = useMemo(() => {
+    const rank = (itemId: string) => {
+      const client = clientsForHost[itemId];
+      if (!client) return 2;
+      return client.cameraEnabled || client.screenShareEnabled ? 0 : 1;
+    };
+
+    return [...peopleItems].sort((a, b) => rank(a) - rank(b));
+  }, [peopleItems, clientsForHost]);
+
+  /**
+   * How many tiles fit before they stop being readable.
+   *
+   * Walks the counts rather than solving for one, because the column count
+   * changes underneath as the count grows and the tile size is not monotonic
+   * across those jumps. Thirty is well past any real voice channel and keeps
+   * this from scanning a silly range.
+   */
+  const gridCapacity = useMemo(() => {
+    if (usableWidth <= 0 || gridAreaHeight <= 0)
+      return prioritisedPeople.length;
+
+    let capacity = 1;
+
+    for (let k = 1; k <= Math.min(prioritisedPeople.length, 30); k++) {
+      const cols = computeOptimalColumns(usableWidth, gridAreaHeight, k);
+      const rows = Math.ceil(k / cols);
+      const { height } = fitTile(
+        (usableWidth - (cols - 1) * GRID_GAP) / cols,
+        (gridAreaHeight - (rows - 1) * GRID_GAP) / rows,
+      );
+
+      if (height >= MIN_READABLE_TILE_HEIGHT) capacity = k;
+    }
+
+    return capacity;
+  }, [usableWidth, gridAreaHeight, prioritisedPeople.length]);
+
+  // When everyone does not fit, the last cell becomes the "+N" tile rather than
+  // a person, so the count is inside the grid instead of floating over it.
+  const overflowsGrid = prioritisedPeople.length > gridCapacity;
+
+  const visiblePeople = useMemo(
+    () =>
+      overflowsGrid
+        ? prioritisedPeople.slice(0, Math.max(1, gridCapacity - 1))
+        : prioritisedPeople,
+    [overflowsGrid, prioritisedPeople, gridCapacity],
+  );
+
+  const hiddenCount = prioritisedPeople.length - visiblePeople.length;
+
+  /** What the grid actually lays out: the visible people, plus the "+N" tile. */
+  const gridItemsToLay = useMemo(
+    () =>
+      hiddenCount > 0 ? [...visiblePeople, OVERFLOW_ITEM_ID] : visiblePeople,
+    [visiblePeople, hiddenCount],
+  );
+
   const columns = useMemo(
     () =>
-      computeOptimalColumns(usableWidth, gridAreaHeight, peopleItems.length),
-    [usableWidth, gridAreaHeight, peopleItems.length],
+      computeOptimalColumns(usableWidth, gridAreaHeight, gridItemsToLay.length),
+    [usableWidth, gridAreaHeight, gridItemsToLay.length],
   );
 
   /**
@@ -705,19 +786,22 @@ export const VoiceView = ({
    * what a plain `repeat(columns, 1fr)` grid cannot express.
    */
   const tileLayout = useMemo(() => {
-    const perRow = distributeRows(peopleItems.length, columns);
+    const perRow = distributeRows(gridItemsToLay.length, columns);
     const map = new Map<string, { inRow: number; rowCount: number }>();
     let cursor = 0;
 
     perRow.forEach((n) => {
       for (let i = 0; i < n; i++) {
-        map.set(peopleItems[cursor + i], { inRow: n, rowCount: perRow.length });
+        map.set(gridItemsToLay[cursor + i], {
+          inRow: n,
+          rowCount: perRow.length,
+        });
       }
       cursor += n;
     });
 
     return map;
-  }, [peopleItems, columns]);
+  }, [gridItemsToLay, columns]);
 
   useEffect(() => {
     if (!focusedStream) return;
@@ -918,6 +1002,48 @@ export const VoiceView = ({
     return fitTile(
       (usableWidth - (l.inRow - 1) * GRID_GAP) / l.inRow,
       (gridAreaHeight - (l.rowCount - 1) * GRID_GAP) / l.rowCount,
+    );
+  };
+
+  /**
+   * The "+N" tile. Takes a real cell so the grid geometry is unchanged — it is
+   * the last tile rather than something layered over the last row.
+   *
+   * Not sortable and not in the DndContext: there is no participant behind it
+   * to reorder.
+   */
+  const renderOverflowTile = () => {
+    const size = gridTileSize(OVERFLOW_ITEM_ID);
+
+    return (
+      <motion.div
+        key={OVERFLOW_ITEM_ID}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        style={gridCellStyle(OVERFLOW_ITEM_ID)}
+      >
+        <Flex
+          align="center"
+          justify="center"
+          direction="column"
+          gap="1"
+          style={{
+            width: size.width,
+            height: size.height,
+            borderRadius: TILE_RADIUS,
+            background: "var(--gray-4)",
+          }}
+        >
+          <Text size="5" weight="medium" style={{ color: "var(--gray-12)" }}>
+            +{hiddenCount}
+          </Text>
+          <Text size="1" style={{ color: "var(--gray-11)" }}>
+            {hiddenCount === 1 ? "other" : "others"}
+          </Text>
+        </Flex>
+      </motion.div>
     );
   };
 
@@ -1253,13 +1379,15 @@ export const VoiceView = ({
                         }}
                       >
                         <AnimatePresence>
-                          {peopleItems.map((itemId) =>
-                            renderTile(
-                              itemId,
-                              gridCellStyle(itemId),
-                              undefined,
-                              gridTileSize(itemId),
-                            ),
+                          {gridItemsToLay.map((itemId) =>
+                            itemId === OVERFLOW_ITEM_ID
+                              ? renderOverflowTile()
+                              : renderTile(
+                                  itemId,
+                                  gridCellStyle(itemId),
+                                  undefined,
+                                  gridTileSize(itemId),
+                                ),
                           )}
                         </AnimatePresence>
                       </div>
