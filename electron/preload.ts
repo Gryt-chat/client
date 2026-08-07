@@ -37,12 +37,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("check-for-updates");
   },
 
-  downloadUpdate() {
-    ipcRenderer.send("download-update");
-  },
-
-  installUpdate() {
-    ipcRenderer.send("install-update");
+  restartForUpdate() {
+    ipcRenderer.send("restart-for-update");
   },
 
   getBetaChannel(): Promise<boolean> {

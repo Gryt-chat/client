@@ -1,4 +1,4 @@
-import { AlertDialog, Badge, Button, Card, Flex, Heading, Link, Progress, Separator, Switch, Text } from "@radix-ui/themes";
+import { AlertDialog, Badge, Button, Card, Flex, Heading, Link, Separator, Switch, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useState } from "react";
 import { FaGithub } from "react-icons/fa";
 import {
@@ -11,6 +11,8 @@ import {
   MdRefresh,
   MdUpdate,
 } from "react-icons/md";
+
+import { Wordmark } from "@/common";
 
 import { getElectronAPI, isElectron, UpdateStatus } from "../../../../lib/electron";
 import { SettingsContainer } from "./settingsComponents";
@@ -45,12 +47,8 @@ function UpdateControls() {
 
   const switchingToBeta = pendingSwitch === true;
 
-  const handleDownloadUpdate = useCallback(() => {
-    getElectronAPI()?.downloadUpdate();
-  }, []);
-
-  const handleInstallUpdate = useCallback(() => {
-    getElectronAPI()?.installUpdate();
+  const handleUpdateNow = useCallback(() => {
+    getElectronAPI()?.restartForUpdate();
   }, []);
 
   const statusText = (() => {
@@ -65,7 +63,7 @@ function UpdateControls() {
       case "downloaded":
         return `v${status.version} is ready to install`;
       case "not-available":
-        return "You're on the latest version";
+        return "Gryt is up to date";
       case "error":
         return `Update error: ${status.message}`;
       default:
@@ -90,9 +88,11 @@ function UpdateControls() {
 
   const isChecking = status?.status === "checking";
   const isAvailable = status?.status === "available";
-  const isDownloading = status?.status === "downloading";
+  // "downloaded" can still arrive from a check that ran before this build's
+  // change landed, or from the splash on a previous launch. Treat it the same
+  // as "available": either way the answer is to restart.
   const isReady = status?.status === "downloaded";
-  const isBusy = isChecking || isDownloading;
+  const isBusy = isChecking;
 
   return (
     <>
@@ -109,13 +109,11 @@ function UpdateControls() {
 
         <Flex align="center" justify="between">
           <Flex direction="column" gap="1">
-            <Text size="2" weight="medium">
-              {betaChannel ? "Beta channel" : "Stable channel"}
-            </Text>
+            <Text size="2" weight="medium">Beta releases</Text>
             <Text size="1" color="gray">
               {betaChannel
-                ? "You are receiving early beta releases. Toggle to switch back to stable."
-                : "Toggle to switch to the beta channel for early releases."}
+                ? "You get new versions early. They break more often."
+                : "Get new versions early, before they have been tested as much."}
             </Text>
           </Flex>
           <Switch checked={betaChannel} onCheckedChange={(enabled) => setPendingSwitch(enabled)} />
@@ -137,10 +135,6 @@ function UpdateControls() {
           </Flex>
         )}
 
-        {isDownloading && status?.percent != null && (
-          <Progress value={status.percent} size="2" />
-        )}
-
         <Flex gap="2" wrap="wrap">
           {!isAvailable && !isReady && (
             <Button
@@ -153,17 +147,13 @@ function UpdateControls() {
             </Button>
           )}
 
-          {isAvailable && (
-            <Button variant="solid" color="blue" onClick={handleDownloadUpdate}>
-              <MdDownload size={16} />
-              Download v{status?.version}
-            </Button>
-          )}
-
-          {isReady && (
-            <Button variant="solid" color="green" onClick={handleInstallUpdate}>
+          {/* One step. Downloading and installing both happen on the next
+              launch, where the installer has an empty app to work around
+              instead of a loaded one. */}
+          {(isAvailable || isReady) && (
+            <Button variant="solid" color="green" onClick={handleUpdateNow}>
               <MdUpdate size={16} />
-              Install & Restart
+              Restart and update to v{status?.version}
             </Button>
           )}
         </Flex>
@@ -172,12 +162,12 @@ function UpdateControls() {
       <AlertDialog.Root open={pendingSwitch !== null} onOpenChange={(open) => { if (!open) setPendingSwitch(null); }}>
         <AlertDialog.Content maxWidth="480px">
           <AlertDialog.Title>
-            Switch to {switchingToBeta ? "beta" : "stable"} channel?
+            {switchingToBeta ? "Turn on beta releases?" : "Turn off beta releases?"}
           </AlertDialog.Title>
           <AlertDialog.Description size="2">
             {switchingToBeta
-              ? "The app will restart and download the latest beta release. Beta builds may contain bugs or incomplete features."
-              : "The app will restart and download the latest stable release. You will no longer receive beta updates."}
+              ? "Gryt will close and reopen to install the latest beta. Beta builds can have bugs and unfinished features."
+              : "Gryt will close and reopen to install the latest stable version. That is older than the beta you are on now, so anything added since will be gone until it reaches stable."}
           </AlertDialog.Description>
           <Flex gap="3" mt="4" justify="end">
             <AlertDialog.Cancel>
@@ -189,7 +179,7 @@ function UpdateControls() {
                 color={switchingToBeta ? "orange" : "blue"}
                 onClick={confirmChannelSwitch}
               >
-                Switch & Restart
+                {switchingToBeta ? "Turn on beta" : "Turn off beta"}
               </Button>
             </AlertDialog.Action>
           </Flex>
@@ -236,7 +226,7 @@ export function AboutSettings() {
       <Heading size="4">About</Heading>
 
       <Flex direction="column" gap="1">
-        <Text size="5" weight="bold">Gryt</Text>
+        <Wordmark size="5" />
         <Text size="2" color="gray" style={{ fontFamily: "var(--code-font-family)" }}>
           v{__APP_VERSION__}
         </Text>
