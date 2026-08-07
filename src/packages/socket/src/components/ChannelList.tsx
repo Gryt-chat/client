@@ -3,8 +3,10 @@ import { AnimatePresence, LayoutGroup, motion, Reorder } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MdChat, MdKeyboard, MdRadio, MdSportsEsports, MdVolumeUp } from "react-icons/md";
 
+import { useMicrophone } from "@/audio";
 import { getUploadsFileUrl } from "@/common";
 import { Channel, SidebarItem } from "@/settings/src/types/server";
+import type { StreamSources } from "@/webRTC";
 
 import type { Client } from "../types/clients";
 import { ConnectedUser } from "./connectedUser";
@@ -27,6 +29,7 @@ export const ChannelList = ({
   selectedChannelId,
   onChannelClick,
   clientsSpeaking,
+  streamSources,
   canManage,
   onEditItem,
   onDeleteItem,
@@ -51,6 +54,7 @@ export const ChannelList = ({
   selectedChannelId: string | null;
   onChannelClick: (channel: Channel) => void;
   clientsSpeaking: Record<string, boolean>;
+  streamSources?: StreamSources;
   canManage?: boolean;
   onEditItem?: (item: SidebarItem) => void;
   onDeleteItem?: (item: SidebarItem) => void;
@@ -62,6 +66,10 @@ export const ChannelList = ({
   adminActions?: AdminActions;
   unreadChannelIds?: Set<string>;
 }) => {
+  // The same analyser source the voice tile uses, so the row's ring and the
+  // tile's agree. false takes no handle; useMicrophone is a singleton.
+  const { microphoneBuffer } = useMicrophone(false);
+
   const memberByServerUserId = new Map(
     (members || []).map((m) => [m.serverUserId, m])
   );
@@ -243,6 +251,18 @@ export const ChannelList = ({
                       clients[id].voiceChannelId === channelId && (
                         <ConnectedUser
                           isSpeaking={clientsSpeaking[id] || false}
+                          avatarColor={
+                            clients[id].serverUserId
+                              ? memberByServerUserId.get(clients[id].serverUserId)?.avatarColor
+                              : undefined
+                          }
+                          speakingAnalyser={
+                            id === currentConnectionId
+                              ? microphoneBuffer.finalAnalyser
+                              : clients[id].streamID
+                                ? streamSources?.[clients[id].streamID]?.analyser
+                                : undefined
+                          }
                           isMuted={clients[id].isMuted}
                           isDeafened={clients[id].isDeafened}
                           isAFK={clients[id].isAFK}

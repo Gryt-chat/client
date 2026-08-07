@@ -267,6 +267,7 @@ export const ServerView = () => {
             selectedChannelId={selectedChannelId}
             onChannelClick={handleChannelClick}
             clientsSpeaking={clientsSpeaking}
+            streamSources={streamSources}
             canManage={canManage}
             onEditItem={handleEditItem}
             onDeleteItem={requestDeleteSidebarItem}

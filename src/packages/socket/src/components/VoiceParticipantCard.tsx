@@ -8,13 +8,20 @@ import {
   MdVolumeOff,
 } from "react-icons/md";
 
-import { getVolumeDb, useMicrophone, volumeToLevel } from "@/audio";
+import { useMicrophone } from "@/audio";
 import { getUploadsFileUrl } from "@/common";
 import type { StreamSources } from "@/webRTC";
 
 import type { Client } from "../types/clients";
 import type { AdminActions, MemberInfo } from "./MemberSidebar";
 import { SkeletonBase } from "./skeletons";
+import { SpeakingHalo } from "./SpeakingHalo";
+import {
+  SPEAKING_RING,
+  speakingRingStyle,
+  tileGradient,
+  tileHue,
+} from "./speakingIndicator";
 import { UserContextMenu } from "./UserContextMenu";
 
 type Role = "owner" | "admin" | "mod" | "member";
@@ -177,182 +184,8 @@ export function VideoCard({
   );
 }
 
-/**
- * A stable hue per person, derived from their id.
- *
- * The server does send a per-user `color`, but the client overwrites every one
- * of them with a flat gray in the members:list handler, so there is nothing
- * usable to read. Deriving it here means the same person is the same colour on
- * every client without the server having to agree, and it cannot drift out of
- * sync with whatever the sidebar decides to do.
- *
- * `avatarColor` on the member is the better source where it exists — see
- * hueFromAvatarColor.
- */
-const TILE_HUES = [280, 24, 170, 330, 210, 140, 350, 45, 260, 195];
-
 /** Measured off Meet. Overridable so the two-participant PiP can sit at 12. */
 export const TILE_RADIUS = 16;
-
-/**
- * The speaking ring's thickness, in px.
- *
- * On a video tile it is drawn with a negative outline-offset. A tile fills its
- * grid cell exactly, so an outline at the default offset is painted outside the
- * cell — into the 12px gap between tiles, or clipped away entirely at the
- * panel's edge. Pulling it inward by its own width keeps it on the tile and
- * lets it follow the corner radius.
- */
-const SPEAKING_RING = 2.5;
-
-/** How much bigger than the avatar the halo gets at full volume. */
-const HALO_MAX_SCALE = 1.32;
-
-/**
- * The disc behind the avatar that grows with how loudly someone is talking.
- *
- * Meet's speaking treatment is this plus a ring on the avatar, and nothing on
- * the tile — so that is what this does. The size follows dBFS rather than raw
- * amplitude; see volumeToLevel for why.
- *
- * Animated by writing to the element from requestAnimationFrame instead of
- * through state. The level changes every frame, and putting that in React
- * would re-render the whole panel sixty times a second to move one circle.
- *
- * Attack is faster than release, so a syllable is visible immediately and the
- * ring settles rather than flickering between words.
- */
-function SpeakingHalo({
-  analyser,
-  hue,
-  size,
-}: {
-  analyser: AnalyserNode | undefined;
-  hue: number;
-  size: number;
-}) {
-  const ref = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!analyser || !el) return;
-
-    let frame = 0;
-    let smoothed = 0;
-
-    const tick = () => {
-      const level = volumeToLevel(getVolumeDb(analyser));
-      smoothed += (level - smoothed) * (level > smoothed ? 0.45 : 0.1);
-
-      el.style.transform = `scale(${1 + smoothed * (HALO_MAX_SCALE - 1)})`;
-      el.style.opacity = String(0.18 + smoothed * 0.42);
-
-      frame = requestAnimationFrame(tick);
-    };
-
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [analyser]);
-
-  if (!analyser) return null;
-
-  return (
-    <div
-      ref={ref}
-      aria-hidden
-      style={{
-        position: "absolute",
-        width: size,
-        height: size,
-        borderRadius: "50%",
-        background: `hsl(${hue} 60% 62%)`,
-        opacity: 0.18,
-        transform: "scale(1)",
-        pointerEvents: "none",
-        // Behind the avatar, which is opaque, so only the growing edge shows.
-        zIndex: 0,
-      }}
-    />
-  );
-}
-
-function hueFromId(id: string): number {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = (hash * 31 + id.charCodeAt(i)) | 0;
-  }
-  // A curated set rather than the full wheel. Free hue lands in the yellow-green
-  // band often enough to matter, and those come out muddy at the lightness a
-  // tile needs. Meet's own tiles are clearly drawn from a fixed palette too.
-  return TILE_HUES[Math.abs(hash) % TILE_HUES.length];
-}
-
-/**
- * The palette entry nearest the avatar's own colour.
- *
- * Snapped rather than used directly, for the same reason hueFromId picks from a
- * list: the tile is drawn at a fixed lightness and saturation, and an arbitrary
- * hue put through those lands in the olive band often enough to look broken.
- * Snapping keeps the person's colour recognisable while every tile stays a
- * colour the panel was designed around.
- *
- * Returns null rather than a hue for anything the snap would misrepresent — a
- * malformed value, or a grey avatar, whose hue is whatever rounding noise it
- * happens to carry. The caller falls back to the id hash, which is what every
- * tile looked like before this existed.
- */
-function hueFromAvatarColor(hex: string | null | undefined): number | null {
-  if (!hex) return null;
-
-  const match = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
-  if (!match) return null;
-
-  const int = parseInt(match[1], 16);
-  const r = ((int >> 16) & 255) / 255;
-  const g = ((int >> 8) & 255) / 255;
-  const b = (int & 255) / 255;
-
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const delta = max - min;
-
-  // Near-grey. Below this the hue is noise, and snapping it would hand someone
-  // a saturated tile that has nothing to do with their avatar.
-  if (delta < 0.08) return null;
-
-  let hue: number;
-  if (max === r) hue = ((g - b) / delta) % 6;
-  else if (max === g) hue = (b - r) / delta + 2;
-  else hue = (r - g) / delta + 4;
-
-  hue = (hue * 60 + 360) % 360;
-
-  let nearest = TILE_HUES[0];
-  let best = Infinity;
-  for (const candidate of TILE_HUES) {
-    // Around the wheel, so 350 and 24 are 34 apart rather than 326.
-    const diff = Math.abs(((candidate - hue + 540) % 360) - 180);
-    if (diff < best) {
-      best = diff;
-      nearest = candidate;
-    }
-  }
-  return nearest;
-}
-
-function tileHue(id: string, avatarColor?: string | null): number {
-  return hueFromAvatarColor(avatarColor) ?? hueFromId(id);
-}
-
-/**
- * Meet's tiles are a lighter centre falling off to a deeper edge. Two stops of
- * the same hue rather than a flat fill — flat reads as a coloured rectangle,
- * the falloff reads as a tile with someone in it.
- */
-function tileGradient(id: string, avatarColor?: string | null): string {
-  const h = tileHue(id, avatarColor);
-  return `radial-gradient(circle at 50% 42%, hsl(${h} 48% 42%), hsl(${h} 55% 20%) 75%)`;
-}
 
 /**
  * The muted badge, top-right of the tile.
@@ -788,16 +621,7 @@ export function VoiceParticipantCard({
               : undefined
           }
           style={{
-            // Taken from the tile's own hue rather than the accent, so the
-            // ring reads as this person's colour — which since GRYT-65 is
-            // their avatar's.
-            outline: `${SPEAKING_RING}px solid`,
-            outlineColor: isSpeaking ? `hsl(${hue} 65% 68%)` : "transparent",
-            outlineOffset: 2,
-            transition: "outline-color 0.1s ease",
-            // Above the halo, which grows out from behind it.
-            position: "relative",
-            zIndex: 1,
+            ...speakingRingStyle(hue, isSpeaking),
             // Stepped by tile height rather than Radix's size scale, so the
             // avatar tracks the tile the way Meet's does.
             ...(compact ? {} : { width: avatarPx, height: avatarPx }),

@@ -3,12 +3,25 @@ import { motion } from "motion/react";
 import { MdMicOff, MdScreenShare, MdVideocam, MdVolumeOff } from "react-icons/md";
 
 import { SkeletonBase } from "./skeletons";
+import { SpeakingHalo } from "./SpeakingHalo";
+import {
+  speakingRingStyle,
+  tileHue,
+} from "./speakingIndicator";
 import { UserContextMenu } from "./UserContextMenu";
 
 type Role = "owner" | "admin" | "mod" | "member";
 
+/** Radix Avatar size="1". The halo has to be told the box it grows from. */
+const SIDEBAR_AVATAR_PX = 24;
+
+/** Thinner than the tile's 2.5px — the row is a fraction of the height. */
+const SIDEBAR_RING = 2;
+
 export function ConnectedUser({
   isSpeaking,
+  avatarColor,
+  speakingAnalyser,
   isMuted,
   isDeafened,
   isAFK,
@@ -32,6 +45,10 @@ export function ConnectedUser({
   onChangeRole,
 }: {
   isSpeaking: boolean;
+  /** Dominant colour of the avatar, so the ring matches the voice tile's. */
+  avatarColor?: string | null;
+  /** The same analyser the tile's halo reads. */
+  speakingAnalyser?: AnalyserNode;
   isMuted: boolean;
   isDeafened: boolean;
   isAFK: boolean;
@@ -55,6 +72,8 @@ export function ConnectedUser({
   onServerDeafen?: (deafened: boolean) => void;
   onChangeRole?: (role: Role) => void;
 }) {
+  const hue = tileHue(serverUserId || nickname, avatarColor);
+
   return (
     <UserContextMenu
       serverUserId={serverUserId}
@@ -92,18 +111,32 @@ export function ConnectedUser({
         }}
       >
         <Flex gap="2" align="center" style={{ flex: 1, minWidth: 0 }}>
-          <Avatar
-            radius="full"
-            size="1"
-            fallback={nickname[0]}
-            src={avatarSrc}
-            style={{
-              flexShrink: 0,
-              outline: "2px solid",
-              outlineColor: isSpeaking ? "var(--accent-9)" : "transparent",
-              transition: "outline-color 0.1s ease",
-            }}
-          />
+          <Flex
+            align="center"
+            justify="center"
+            position="relative"
+            style={{ flexShrink: 0 }}
+          >
+            <SpeakingHalo
+              analyser={speakingAnalyser}
+              hue={hue}
+              size={SIDEBAR_AVATAR_PX}
+            />
+            <Avatar
+              radius="full"
+              size="1"
+              fallback={nickname[0]}
+              src={avatarSrc}
+              style={{
+                flexShrink: 0,
+                // Same ring the voice tile draws, at the width this row has
+                // room for. Sharing speakingRingStyle is the point: the two
+                // used to disagree about colour and thickness while reading
+                // the same clientsSpeaking record.
+                ...speakingRingStyle(hue, isSpeaking, SIDEBAR_RING),
+              }}
+            />
+          </Flex>
           <Text size="2" truncate style={{ whiteSpace: "nowrap" }}>{nickname}</Text>
         </Flex>
 
