@@ -3,7 +3,7 @@
  * Cross-platform script to build the embedded server resources for dev preview.
  * Only builds the SFU binary for the current platform (not all targets).
  *
- * Usage: node scripts/build-embedded-server.mjs [--skip-sfu] [--skip-server]
+ * Usage: node scripts/build-embedded-server.mjs [--skip-sfu] [--skip-server] [--skip-worker]
  */
 
 import { execSync } from "child_process";
@@ -22,11 +22,13 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const CLIENT_DIR = join(__dirname, "..");
 const SERVER_DIR = join(CLIENT_DIR, "..", "server");
 const SFU_DIR = join(CLIENT_DIR, "..", "sfu");
+const WORKER_DIR = join(CLIENT_DIR, "..", "image-worker");
 const OUTDIR = join(CLIENT_DIR, "build", "embedded-server");
 
 const args = process.argv.slice(2);
 const skipSfu = args.includes("--skip-sfu");
 const skipServer = args.includes("--skip-server");
+const skipWorker = args.includes("--skip-worker");
 // Used by electron:dev, which wants the embedded server present but must not
 // fail or stall the dev loop over it. Skips the build when the output is
 // already there, and never blocks a dev session that cannot produce it.
@@ -70,10 +72,13 @@ if (ifMissing) {
   const haveSfu = existsSync(
     join(OUTDIR, "sfu", `${ebOs}-${ebArch}`, `gryt_sfu${sfuExt}`)
   );
+  const haveWorker = existsSync(join(OUTDIR, "worker", "dist", "index.js"));
 
-  if (haveServer && haveSfu) {
+  if (haveServer && haveSfu && haveWorker) {
     console.log("Embedded server already built — skipping.");
-    console.log("  Rebuild after changing packages/server or packages/sfu:");
+    console.log(
+      "  Rebuild after changing packages/server, packages/sfu or packages/image-worker:"
+    );
     console.log("    yarn build:embedded-server");
     process.exit(0);
   }
@@ -97,14 +102,15 @@ console.log(`  Platform: ${ebOs}-${ebArch} (${goOs}/${goArch})`);
 console.log(`  Client: ${CLIENT_DIR}`);
 console.log(`  Server: ${SERVER_DIR}`);
 console.log(`  SFU: ${SFU_DIR}`);
+console.log(`  Worker: ${WORKER_DIR}`);
 console.log(`  Output: ${OUTDIR}`);
 console.log();
 
 // ── 1. Server bundle ────────────────────────────────────────────────
 if (skipServer) {
-  console.log("[1/2] Skipping server bundle (--skip-server)");
+  console.log("[1/3] Skipping server bundle (--skip-server)");
 } else {
-  console.log("[1/2] Bundling server...");
+  console.log("[1/3] Bundling server...");
 
   const bundleSrc = join(SERVER_DIR, "dist", "bundle.js");
   const serverOut = join(OUTDIR, "server");
@@ -197,9 +203,9 @@ if (skipServer) {
 
 // ── 2. SFU binary (current platform only) ───────────────────────────
 if (skipSfu) {
-  console.log("[2/2] Skipping SFU build (--skip-sfu)");
+  console.log("[2/3] Skipping SFU build (--skip-sfu)");
 } else {
-  console.log("[2/2] Compiling SFU...");
+  console.log("[2/3] Compiling SFU...");
 
   if (!existsSync(SFU_DIR)) {
     console.log(`  Warning: SFU directory not found at ${SFU_DIR}, skipping`);
@@ -229,6 +235,97 @@ if (skipSfu) {
 
     assertExists(sfuOutPath, `SFU binary was not created: ${sfuOutPath}`);
     console.log(`  SFU binary ready: ${sfuOutPath}`);
+  }
+}
+
+// ── 3. Image worker ─────────────────────────────────────────────────
+// Bundled so a server hosted from the desktop app processes its image jobs.
+// Without it the server queues work nothing ever reads: no thumbnails, no
+// dominant colours, and — because the upload route skips the size limit for
+// images on the assumption something will shrink them later — uploads sitting
+// at full size on the host's disk forever.
+//
+// A separate process on purpose, as in a deployment. It hands stranger-uploaded
+// bytes to libvips, and the point of the worker existing at all is that a
+// corrupt image cannot take down the process holding the signing keys and every
+// socket. Bundling it must not quietly undo that.
+if (skipWorker) {
+  console.log("[3/3] Skipping image worker (--skip-worker)");
+} else {
+  console.log("[3/3] Bundling image worker...");
+
+  if (!existsSync(WORKER_DIR)) {
+    console.log(`  Warning: image worker not found at ${WORKER_DIR}, skipping`);
+  } else {
+    const workerOut = join(OUTDIR, "worker");
+
+    console.log("  Building worker...");
+    run("npm run build", { cwd: WORKER_DIR });
+
+    const workerDistSrc = join(WORKER_DIR, "dist");
+    assertExists(workerDistSrc, `Worker build output missing: ${workerDistSrc}`);
+
+    console.log("  Cleaning worker output...");
+    rmSync(workerOut, { recursive: true, force: true });
+    mkdirSync(workerOut, { recursive: true });
+
+    cpSync(workerDistSrc, join(workerOut, "dist"), { recursive: true });
+
+    const workerPkg = JSON.parse(
+      readFileSync(join(WORKER_DIR, "package.json"), "utf8")
+    );
+
+    delete workerPkg.devDependencies;
+    workerPkg.name = "gryt-embedded-image-worker";
+    workerPkg.private = true;
+    workerPkg.main = "dist/index.js";
+
+    writeFileSync(
+      join(workerOut, "package.json"),
+      JSON.stringify(workerPkg, null, 2) + "\n"
+    );
+
+    console.log("  Installing worker dependencies...");
+    run("npm install --omit=dev --ignore-scripts=false", {
+      cwd: workerOut,
+      env: {
+        ...process.env,
+        npm_config_runtime: "electron",
+        npm_config_target: electronVersion,
+        npm_config_disturl: "https://electronjs.org/headers",
+      },
+    });
+
+    // Same treatment the server bundle needs, and for the same reason:
+    // better-sqlite3 is a node-gyp addon compiled against a specific ABI.
+    // sharp is deliberately absent from this — it is N-API, so its prebuilt
+    // binary loads under Electron unchanged.
+    console.log("  Rebuilding better-sqlite3 for Electron...");
+    run("npm rebuild better-sqlite3 --build-from-source", {
+      cwd: workerOut,
+      env: {
+        ...process.env,
+        npm_config_runtime: "electron",
+        npm_config_target: electronVersion,
+        npm_config_disturl: "https://electronjs.org/headers",
+        npm_config_build_from_source: "true",
+      },
+    });
+
+    assertExists(
+      join(workerOut, "dist", "index.js"),
+      `Worker entry point missing: ${join(workerOut, "dist", "index.js")}`
+    );
+    assertExists(
+      join(workerOut, "node_modules", "sharp"),
+      `Worker dependency missing after npm install: sharp`
+    );
+    assertExists(
+      join(workerOut, "node_modules", "better-sqlite3", "build", "Release"),
+      `better-sqlite3 native build output is missing in the worker bundle`
+    );
+
+    console.log(`  Image worker ready: ${workerOut}`);
   }
 }
 
