@@ -44,171 +44,34 @@ import type { StreamSources } from "@/webRTC/src/types/SFU";
 
 import type { PeerLatencyStats } from "../hooks/usePeerLatency";
 import { usePopoutStreams } from "../hooks/usePopoutStreams";
+import {
+  computeGridLayout,
+  computeShareLayout,
+  GRID_GAP,
+  GRID_PADDING,
+  gridCapacity,
+  PIP_HEIGHT,
+  PIP_INSET,
+  PIP_RADIUS,
+  PIP_WIDTH,
+  SHARE_STRIP_MAX_SLOTS,
+  tileRadius,
+} from "../lib/voiceLayout";
 import type { Client } from "../types/clients";
 import { FocusedVideoView } from "./FocusedVideoView";
 import type { AdminActions, MemberInfo } from "./MemberSidebar";
 import { UserContextMenu } from "./UserContextMenu";
 import type { FocusedStreamInfo } from "./VoiceParticipantCard";
-import { TILE_RADIUS, VoiceParticipantCard } from "./VoiceParticipantCard";
+import { VoiceParticipantCard } from "./VoiceParticipantCard";
 
 type Role = "owner" | "admin" | "mod" | "member";
 
-// Measured off Google Meet at a phone-width viewport: 16px around the grid,
-// 12px between tiles. Four tiles landed at exactly (16,73) (256,73) (16,381)
-// (256,381), which pins both numbers rather than approximating them.
-const GRID_GAP = 12;
-const GRID_PADDING = 16;
-const MIN_TILE_WIDTH = 140;
+// The panel's own chrome: the controls float over the bottom of the grid, and
+// a tile running full height would put a name behind the mute button.
 const CONTROLS_HEIGHT = 80;
 
-// A screen share is pinned full-width above the participants rather than
-// taking a cell in the grid. Confirmed from reference screenshots — share + 2
-// gives a full-width share over two stacked tiles, share + 4 gives share over a
-// 2x2.
-//
-// The region is sized to the share's own shape rather than to a flat fraction
-// of the panel. A fixed fraction looked reasonable until it was rendered: in a
-// sidebar-width panel a 60%-tall box is far taller than a 16:9 share, so
-// object-fit contain letterboxed it into a band with black above and below,
-// and the height it wasted came straight out of the participants' tiles. The
-// cap is what stops a wide panel from handing the share the whole view.
-const SCREEN_SHARE_ASPECT = 16 / 9;
-const SCREEN_SHARE_MAX_HEIGHT_FRACTION = 0.6;
-
-// Two participants and no share is hero + picture-in-picture: one tile fills
-// the panel, the second overlaps its bottom-right corner. Genuinely
-// special-cased — the grid rules on their own would just stack them.
-//
-// The inset and radius are measured; the PiP's own size is not, so it is a
-// fraction of the panel clamped to something recognisable at either extreme.
-const PIP_INSET = 16;
-const PIP_RADIUS = 12;
-const PIP_WIDTH_FRACTION = 0.32;
-// Same floor as a grid tile: below this a tile is too small to recognise
-// anyone in, and in a sidebar-width panel the fraction lands under it.
-const PIP_MIN_WIDTH = MIN_TILE_WIDTH;
-const PIP_MAX_WIDTH = 220;
-
-/**
- * How square a tile is allowed to get before it stops stretching.
- *
- * Measured off Meet on 2026-08-07, from six screenshots at phone width. Two of
- * them pin these numbers exactly:
- *
- * - Four people and no share: four tiles at 1.791, and each one 713 wide inside
- *   an 847-wide container. Meet capped the tile at 16:9 and gave the leftover
- *   back as centring rather than stretching it.
- * - A share plus four people: 0.741 and 0.719, sitting on the portrait cap.
- *
- * Cases where neither cap binds came out at 1.395 and 1.534, so the range is
- * real and not two separate fixed shapes.
- *
- * This replaces an earlier note that Meet caps at 4:3. It does not — the
- * landscape cap is 16:9. The earlier no-cap rule is what made a tall narrow
- * panel stack everyone into one column of letterboxes.
- */
-const MIN_TILE_ASPECT = 3 / 4;
-const MAX_TILE_ASPECT = 16 / 9;
-
-// Below this the grid stops adding tiles and collects the rest behind a count.
-// It is the same height at which VoiceParticipantCard has to shrink the avatar
-// and drop the latency figure to fit — past there a tile is a coloured smear
-// with a name on it, and ten of those are worse than nine and a number.
-//
-// Deriving the cap from a height rather than fixing a participant count means
-// it moves with the panel: about ten in the sidebar, six once a share is
-// pinned and takes half the height, far more when the panel is maximised.
-const MIN_READABLE_TILE_HEIGHT = 110;
-
-/** Not a client id — the "+N" tile that stands in for everyone past the cap. */
+/** Not a client id — the "+N" tile standing in for everyone past the cap. */
 const OVERFLOW_ITEM_ID = "overflow:more";
-
-/**
- * The tile inside a cell of this size: the cell's own shape, clamped into the
- * allowed range, then fitted. Whatever is left over becomes centring.
- */
-function fitTile(
-  cellWidth: number,
-  cellHeight: number,
-): { width: number; height: number } {
-  if (cellWidth <= 0 || cellHeight <= 0) return { width: 0, height: 0 };
-
-  const aspect = Math.min(
-    MAX_TILE_ASPECT,
-    Math.max(MIN_TILE_ASPECT, cellWidth / cellHeight),
-  );
-
-  const height = Math.min(cellHeight, cellWidth / aspect);
-
-  return { width: height * aspect, height };
-}
-
-/**
- * Column count that gives the largest tiles.
- *
- * Scores the *capped* tile, not the cell. That distinction is the whole
- * behaviour: a 340px sidebar splitting seven people into one column gives cells
- * of 308x90, which cap down to a 160x90 sliver, while two columns give 148x166
- * uncapped. Scoring cells picks the column; scoring tiles picks the grid, which
- * is what Meet does and what the screenshots show.
- *
- * MIN_TILE_WIDTH still stops the search: past that point tiles are too small to
- * recognise anyone in, and packing more columns in is worse than not.
- */
-function computeOptimalColumns(
-  width: number,
-  height: number,
-  count: number,
-): number {
-  if (count <= 0 || width <= 0 || height <= 0) return 1;
-
-  let bestCols = 1;
-  let bestArea = 0;
-
-  for (let cols = 1; cols <= count; cols++) {
-    const rows = Math.ceil(count / cols);
-    const cellW = (width - (cols - 1) * GRID_GAP) / cols;
-    const cellH = (height - (rows - 1) * GRID_GAP) / rows;
-
-    if (cellW < MIN_TILE_WIDTH) break;
-    if (cellH <= 0) continue;
-
-    const { width: tileW, height: tileH } = fitTile(cellW, cellH);
-
-    const area = tileW * tileH;
-
-    if (area > bestArea) {
-      bestArea = area;
-      bestCols = cols;
-    }
-  }
-
-  return bestCols;
-}
-
-/**
- * How many tiles sit in each row, given a column count.
- *
- * Rows come out as even as possible and any remainder lands in the *later*
- * rows, so a short row is always at the top. Measured off Meet: three
- * participants render as one tile above two, five as two above three, and seven
- * as 2 / 2 / 3.
- *
- * Seven is the case that matters — with only two rows "remainder first" and
- * "remainder last" are indistinguishable, which is why three and five alone
- * were misleading.
- */
-function distributeRows(count: number, columns: number): number[] {
-  if (count <= 0 || columns <= 0) return [];
-
-  const rows = Math.ceil(count / columns);
-  const base = Math.floor(count / rows);
-  const withExtra = count % rows;
-
-  return Array.from({ length: rows }, (_, i) =>
-    i >= rows - withExtra ? base + 1 : base,
-  );
-}
 
 /**
  * Local speaking detector based on the final processed audio analyser.
@@ -687,32 +550,45 @@ export const VoiceView = ({
   const isHeroPip =
     !isFocused && screenItems.length === 0 && peopleItems.length === 2;
 
-  // How tall the pinned share region ends up: its own shape at the width it
-  // gets, capped so a wide panel does not hand it everything. Shares sit side
-  // by side, so each is a fraction of the width and the row gets shorter.
   const availableHeight = Math.max(
     0,
     gridHeight - CONTROLS_HEIGHT - GRID_PADDING,
   );
   const usableWidth = Math.max(0, gridWidth - 2 * GRID_PADDING);
-  const shareWidth =
-    screenItems.length > 0
-      ? (usableWidth - (screenItems.length - 1) * GRID_GAP) / screenItems.length
-      : 0;
-  const shareHeight =
-    screenItems.length > 0
-      ? Math.min(
-          shareWidth / SCREEN_SHARE_ASPECT,
-          availableHeight * SCREEN_SHARE_MAX_HEIGHT_FRACTION,
-        )
-      : 0;
 
-  // What is left for the participant grid once the controls and any pinned
-  // share have taken their share of the panel.
-  const gridAreaHeight = Math.max(
-    0,
-    availableHeight - (shareHeight > 0 ? shareHeight + GRID_GAP : 0),
-  );
+  // A share is fitted to its own shape, so the layout needs the stream's real
+  // dimensions rather than an assumed 16:9. Meet's share measured 1.731
+  // against an intrinsic 1920x1108 — it follows the window being shared.
+  const shareAspect = useMemo(() => {
+    for (const itemId of screenItems) {
+      const clientId = itemId.slice(7);
+      const isSelf = clientId === currentConnectionId;
+      const stream = isSelf
+        ? localScreenStream
+        : videoStreams?.[
+            clientsForHost[clientId]?.screenShareVideoStreamID ?? ""
+          ];
+      const settings = stream?.getVideoTracks()[0]?.getSettings();
+      if (settings?.width && settings?.height)
+        return settings.width / settings.height;
+    }
+    return 16 / 9;
+  }, [
+    screenItems,
+    currentConnectionId,
+    localScreenStream,
+    videoStreams,
+    clientsForHost,
+  ]);
+
+  const shareLayout =
+    screenItems.length > 0 && usableWidth > 0 && availableHeight > 0
+      ? computeShareLayout(usableWidth, availableHeight, shareAspect)
+      : null;
+
+  const gridAreaHeight = shareLayout
+    ? shareLayout.participants.height
+    : availableHeight;
 
   /**
    * Who keeps a tile when there is not room for everyone.
@@ -734,83 +610,77 @@ export const VoiceView = ({
   }, [peopleItems, clientsForHost]);
 
   /**
-   * How many tiles fit before they stop being readable.
-   *
-   * Walks the counts rather than solving for one, because the column count
-   * changes underneath as the count grows and the tile size is not monotonic
-   * across those jumps. Thirty is well past any real voice channel and keeps
-   * this from scanning a silly range.
+   * How many tiles fit before they stop being readable. A pinned share caps
+   * the strip at six slots instead, which is what Meet showed.
    */
-  const gridCapacity = useMemo(() => {
-    if (usableWidth <= 0 || gridAreaHeight <= 0)
-      return prioritisedPeople.length;
+  const capacity = useMemo(() => {
+    if (shareLayout?.orientation === "strip-above")
+      return SHARE_STRIP_MAX_SLOTS;
+    return gridCapacity(usableWidth, gridAreaHeight, prioritisedPeople.length);
+  }, [
+    shareLayout?.orientation,
+    usableWidth,
+    gridAreaHeight,
+    prioritisedPeople.length,
+  ]);
 
-    let capacity = 1;
-
-    for (let k = 1; k <= Math.min(prioritisedPeople.length, 30); k++) {
-      const cols = computeOptimalColumns(usableWidth, gridAreaHeight, k);
-      const rows = Math.ceil(k / cols);
-      const { height } = fitTile(
-        (usableWidth - (cols - 1) * GRID_GAP) / cols,
-        (gridAreaHeight - (rows - 1) * GRID_GAP) / rows,
-      );
-
-      if (height >= MIN_READABLE_TILE_HEIGHT) capacity = k;
-    }
-
-    return capacity;
-  }, [usableWidth, gridAreaHeight, prioritisedPeople.length]);
-
-  // When everyone does not fit, the last cell becomes the "+N" tile rather than
-  // a person, so the count is inside the grid instead of floating over it.
-  const overflowsGrid = prioritisedPeople.length > gridCapacity;
+  // When everyone does not fit, the last slot becomes the "+N" tile rather
+  // than a person, so the count sits inside the layout instead of over it.
+  const overflows = prioritisedPeople.length > capacity;
 
   const visiblePeople = useMemo(
     () =>
-      overflowsGrid
-        ? prioritisedPeople.slice(0, Math.max(1, gridCapacity - 1))
+      overflows
+        ? prioritisedPeople.slice(0, Math.max(1, capacity - 1))
         : prioritisedPeople,
-    [overflowsGrid, prioritisedPeople, gridCapacity],
+    [overflows, prioritisedPeople, capacity],
   );
 
   const hiddenCount = prioritisedPeople.length - visiblePeople.length;
 
-  /** What the grid actually lays out: the visible people, plus the "+N" tile. */
-  const gridItemsToLay = useMemo(
+  /** What is actually laid out: the visible people, plus the "+N" tile. */
+  const laidOutItems = useMemo(
     () =>
       hiddenCount > 0 ? [...visiblePeople, OVERFLOW_ITEM_ID] : visiblePeople,
     [visiblePeople, hiddenCount],
   );
 
-  const columns = useMemo(
-    () =>
-      computeOptimalColumns(usableWidth, gridAreaHeight, gridItemsToLay.length),
-    [usableWidth, gridAreaHeight, gridItemsToLay.length],
-  );
-
   /**
-   * The tiles for each row, so a row holding fewer than `columns` tiles can
-   * stretch them across its full width rather than leaving a gap. Three
-   * participants become one wide tile above two, which is what Meet does and
-   * what a plain `repeat(columns, 1fr)` grid cannot express.
+   * The rows, each with its own tile size.
+   *
+   * With a share pinned at stage proportions the participants are a single
+   * strip whose height is set by the share split, so the grid search does not
+   * apply — the tiles just divide the width.
    */
-  const tileLayout = useMemo(() => {
-    const perRow = distributeRows(gridItemsToLay.length, columns);
-    const map = new Map<string, { inRow: number; rowCount: number }>();
+  const gridRows = useMemo(() => {
+    if (!laidOutItems.length) return [];
+
+    if (shareLayout?.orientation === "strip-above") {
+      const n = laidOutItems.length;
+      const height = shareLayout.participants.height;
+      return [
+        {
+          count: n,
+          width: (shareLayout.participants.width - (n - 1) * GRID_GAP) / n,
+          height,
+        },
+      ];
+    }
+
+    return computeGridLayout(usableWidth, gridAreaHeight, laidOutItems.length)
+      .rows;
+  }, [laidOutItems, shareLayout, usableWidth, gridAreaHeight]);
+
+  /** The items belonging to each row, in order. */
+  const rowItems = useMemo(() => {
+    const out: string[][] = [];
     let cursor = 0;
-
-    perRow.forEach((n) => {
-      for (let i = 0; i < n; i++) {
-        map.set(gridItemsToLay[cursor + i], {
-          inRow: n,
-          rowCount: perRow.length,
-        });
-      }
-      cursor += n;
-    });
-
-    return map;
-  }, [gridItemsToLay, columns]);
+    for (const row of gridRows) {
+      out.push(laidOutItems.slice(cursor, cursor + row.count));
+      cursor += row.count;
+    }
+    return out;
+  }, [gridRows, laidOutItems]);
 
   useEffect(() => {
     if (!focusedStream) return;
@@ -971,90 +841,40 @@ export const VoiceView = ({
   };
 
   /**
-   * A tile's cell in the wrapping grid.
-   *
-   * Sized from the row this tile belongs to, so a row holding fewer tiles than
-   * `columns` gets a wider cell each — three participants are one wide cell
-   * above two. Widths summing to 100% are what make flex-wrap break the rows in
-   * the right places, so no row wrappers are needed and the drag-and-drop
-   * context stays flat.
-   *
-   * The cell is not the tile. The tile is the capped box centred inside it —
-   * see `gridTileSize`.
+   * The "+N" tile. Takes a real slot in its row rather than floating over the
+   * layout, so the geometry is unchanged. Not sortable — there is no
+   * participant behind it to reorder.
    */
-  const gridCellStyle = (itemId: string): CSSProperties => {
-    const l = tileLayout.get(itemId) ?? { inRow: 1, rowCount: 1 };
-
-    return {
-      width: `calc((100% - ${(l.inRow - 1) * GRID_GAP}px) / ${l.inRow})`,
-      height: `calc((100% - ${(l.rowCount - 1) * GRID_GAP}px) / ${l.rowCount})`,
-      minWidth: 0,
-      minHeight: 0,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-    };
-  };
-
-  /**
-   * The tile itself: the cell's shape clamped into the allowed aspect range.
-   *
-   * Computed in pixels from the same measured `usableWidth` the column search
-   * used, rather than in percentages, because the clamp is not expressible as
-   * one. Any leftover in the cell shows up as centring, which is what Meet does
-   * — four people at phone width are four 16:9 tiles with a margin either side,
-   * not four full-width letterboxes.
-   */
-  const gridTileSize = (itemId: string): { width: number; height: number } => {
-    const l = tileLayout.get(itemId) ?? { inRow: 1, rowCount: 1 };
-
-    return fitTile(
-      (usableWidth - (l.inRow - 1) * GRID_GAP) / l.inRow,
-      (gridAreaHeight - (l.rowCount - 1) * GRID_GAP) / l.rowCount,
-    );
-  };
-
-  /**
-   * The "+N" tile. Takes a real cell so the grid geometry is unchanged — it is
-   * the last tile rather than something layered over the last row.
-   *
-   * Not sortable and not in the DndContext: there is no participant behind it
-   * to reorder.
-   */
-  const renderOverflowTile = () => {
-    const size = gridTileSize(OVERFLOW_ITEM_ID);
-
-    return (
-      <motion.div
-        key={OVERFLOW_ITEM_ID}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.2 }}
-        style={gridCellStyle(OVERFLOW_ITEM_ID)}
+  const renderOverflowTile = (size: { width: number; height: number }) => (
+    <motion.div
+      key={OVERFLOW_ITEM_ID}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      style={{ width: size.width, height: size.height, flexShrink: 0 }}
+    >
+      <Flex
+        align="center"
+        justify="center"
+        direction="column"
+        gap="1"
+        style={{
+          width: "100%",
+          height: "100%",
+          borderRadius: tileRadius(size.height),
+          background: "var(--gray-4)",
+        }}
       >
-        <Flex
-          align="center"
-          justify="center"
-          direction="column"
-          gap="1"
-          style={{
-            width: size.width,
-            height: size.height,
-            borderRadius: TILE_RADIUS,
-            background: "var(--gray-4)",
-          }}
-        >
-          <Text size="5" weight="medium" style={{ color: "var(--gray-12)" }}>
-            +{hiddenCount}
-          </Text>
-          <Text size="1" style={{ color: "var(--gray-11)" }}>
-            {hiddenCount === 1 ? "other" : "others"}
-          </Text>
-        </Flex>
-      </motion.div>
-    );
-  };
+        <Text size="5" weight="medium" style={{ color: "var(--gray-12)" }}>
+          +{hiddenCount}
+        </Text>
+        <Text size="1" style={{ color: "var(--gray-11)" }}>
+          {hiddenCount === 1 ? "other" : "others"}
+        </Text>
+      </Flex>
+    </motion.div>
+  );
 
   /**
    * One tile, positioned by whatever box the region it lives in hands it.
@@ -1066,8 +886,8 @@ export const VoiceView = ({
   const renderTile = (
     itemId: string,
     style: CSSProperties,
-    tileRadius?: number,
-    /** Capped tile inside the cell. Omitted where the box is the tile. */
+    radius?: number,
+    /** Explicit inner box, where the outer style is a container not the tile. */
     tileSize?: { width: number; height: number },
   ) => {
     const isScreenTile = itemId.startsWith("screen:");
@@ -1132,7 +952,7 @@ export const VoiceView = ({
                   : undefined
               }
               adminActions={adminActions}
-              tileRadius={tileRadius}
+              tileRadius={radius}
             />
           </SortableParticipant>
         </div>
@@ -1309,21 +1129,62 @@ export const VoiceView = ({
                   </AnimatePresence>
                 ) : (
                   <>
-                    {screenItems.length > 0 && (
+                    {/* A share sits above the grid at sidebar proportions and
+                        below the participant strip at stage proportions — the
+                        order flips, which is why the strip renders first. */}
+                    {shareLayout?.orientation === "strip-above" && (
                       <div
                         style={{
                           display: "flex",
                           gap: `${GRID_GAP}px`,
-                          height: shareHeight,
+                          justifyContent: "center",
+                          height: shareLayout.participants.height,
                           flexShrink: 0,
+                        }}
+                      >
+                        <AnimatePresence>
+                          {rowItems[0]?.map((itemId) =>
+                            itemId === OVERFLOW_ITEM_ID
+                              ? renderOverflowTile(gridRows[0])
+                              : renderTile(
+                                  itemId,
+                                  {
+                                    width: gridRows[0].width,
+                                    height: gridRows[0].height,
+                                    flexShrink: 0,
+                                  },
+                                  tileRadius(gridRows[0].height),
+                                ),
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    )}
+
+                    {shareLayout && (
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: `${GRID_GAP}px`,
+                          justifyContent: "center",
+                          alignItems: "center",
+                          flexShrink: 0,
+                          order:
+                            shareLayout.orientation === "strip-above" ? 1 : 0,
+                          height:
+                            shareLayout.orientation === "strip-above"
+                              ? undefined
+                              : shareLayout.share.height,
+                          flexGrow:
+                            shareLayout.orientation === "strip-above" ? 1 : 0,
+                          minHeight: 0,
                         }}
                       >
                         <AnimatePresence>
                           {screenItems.map((itemId) =>
                             renderTile(itemId, {
-                              flex: 1,
-                              minWidth: 0,
-                              height: "100%",
+                              width: shareLayout.share.width,
+                              height: shareLayout.share.height,
+                              flexShrink: 0,
                             }),
                           )}
                         </AnimatePresence>
@@ -1336,23 +1197,31 @@ export const VoiceView = ({
                           position: "relative",
                           flex: 1,
                           minHeight: 0,
-                          // The hero is capped and centred like any other tile
-                          // — Meet's measured 847x1136 is the 3:4 cap, not the
-                          // full area. The PiP then anchors to this box's
-                          // corner rather than the hero's, which is why it
-                          // straddles the hero's bottom edge in the reference.
+                          // The hero is a capped, centred tile like any other —
+                          // Meet's 847x1136 is the 3:4 cap, not the full area.
+                          // The PiP anchors to this box's corner rather than the
+                          // hero's, which is why it straddles the hero's bottom
+                          // edge when the hero is capped and sits inside it when
+                          // the hero fills.
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
                         }}
                       >
                         <AnimatePresence>
-                          {renderTile(
-                            peopleItems[0],
-                            {},
-                            undefined,
-                            fitTile(usableWidth, gridAreaHeight),
-                          )}
+                          {(() => {
+                            const hero = computeGridLayout(
+                              usableWidth,
+                              gridAreaHeight,
+                              1,
+                            ).rows[0];
+                            return renderTile(
+                              peopleItems[0],
+                              {},
+                              tileRadius(hero?.height ?? 0),
+                              hero,
+                            );
+                          })()}
 
                           {renderTile(
                             peopleItems[1],
@@ -1360,44 +1229,57 @@ export const VoiceView = ({
                               position: "absolute",
                               right: PIP_INSET,
                               bottom: PIP_INSET,
-                              width: `${PIP_WIDTH_FRACTION * 100}%`,
-                              minWidth: PIP_MIN_WIDTH,
-                              maxWidth: PIP_MAX_WIDTH,
-                              aspectRatio: "16 / 9",
+                              width: PIP_WIDTH,
+                              height: PIP_HEIGHT,
                               zIndex: 2,
                             },
                             PIP_RADIUS,
                           )}
                         </AnimatePresence>
                       </div>
-                    ) : (
+                    ) : shareLayout?.orientation === "strip-above" ? null : (
                       <div
                         style={{
-                          // Rows are laid out by wrapping rather than as one
-                          // grid, because a row holding fewer tiles than
-                          // `columns` has to stretch them across its full
-                          // width. Three participants are one wide tile above
-                          // two, which repeat(columns, 1fr) cannot express.
+                          // Explicit rows. Each row has its own tile size, so
+                          // the old widths-sum-to-100% flex-wrap trick no
+                          // longer expresses the layout — nine people are a
+                          // 293-wide row above a 232-wide one.
                           display: "flex",
-                          flexWrap: "wrap",
-                          alignContent: "flex-start",
+                          flexDirection: "column",
                           gap: `${GRID_GAP}px`,
+                          alignItems: "center",
+                          justifyContent: "center",
                           flex: 1,
                           minHeight: 0,
                           overflow: "hidden",
                         }}
                       >
                         <AnimatePresence>
-                          {gridItemsToLay.map((itemId) =>
-                            itemId === OVERFLOW_ITEM_ID
-                              ? renderOverflowTile()
-                              : renderTile(
-                                  itemId,
-                                  gridCellStyle(itemId),
-                                  undefined,
-                                  gridTileSize(itemId),
-                                ),
-                          )}
+                          {gridRows.map((row, rowIndex) => (
+                            <div
+                              key={`row-${rowIndex}`}
+                              style={{
+                                display: "flex",
+                                gap: `${GRID_GAP}px`,
+                                justifyContent: "center",
+                                height: row.height,
+                              }}
+                            >
+                              {rowItems[rowIndex]?.map((itemId) =>
+                                itemId === OVERFLOW_ITEM_ID
+                                  ? renderOverflowTile(row)
+                                  : renderTile(
+                                      itemId,
+                                      {
+                                        width: row.width,
+                                        height: row.height,
+                                        flexShrink: 0,
+                                      },
+                                      tileRadius(row.height),
+                                    ),
+                              )}
+                            </div>
+                          ))}
                         </AnimatePresence>
                       </div>
                     )}

@@ -353,7 +353,11 @@ export const ServerView = () => {
                     ? "100%"
                     : (focusedVoiceMaxWidth > 0 ? `${focusedVoiceMaxWidth}px` : voiceWidth))
                   : (voiceWidth === "0px" ? "0px" : (isMaximized ? "100%" : `${shownVoiceWidth}px`))}
-                maxWidth={voiceMaxWidth}
+                maxWidth={
+                  // Maximized hides the chat, so the width reserved for a
+                  // minimum chat column would otherwise cap the panel.
+                  isMaximized && !voiceFocused ? undefined : voiceMaxWidth
+                }
                 serverHost={host}
                 currentServerConnected={currentServerConnected}
                 currentChannelId={currentChannelId}
