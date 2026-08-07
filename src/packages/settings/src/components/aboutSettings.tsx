@@ -1,4 +1,4 @@
-import { AlertDialog, Badge, Button, Card, Flex, Heading, Link, Progress, Separator, Switch, Text } from "@radix-ui/themes";
+import { AlertDialog, Badge, Button, Card, Flex, Heading, Link, Separator, Switch, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useState } from "react";
 import { FaGithub } from "react-icons/fa";
 import {
@@ -11,6 +11,8 @@ import {
   MdRefresh,
   MdUpdate,
 } from "react-icons/md";
+
+import { Wordmark } from "@/common";
 
 import { getElectronAPI, isElectron, UpdateStatus } from "../../../../lib/electron";
 import { SettingsContainer } from "./settingsComponents";
@@ -133,10 +135,6 @@ function UpdateControls() {
           </Flex>
         )}
 
-        {isDownloading && status?.percent != null && (
-          <Progress value={status.percent} size="2" />
-        )}
-
         <Flex gap="2" wrap="wrap">
           {!isAvailable && !isReady && (
             <Button
@@ -228,7 +226,7 @@ export function AboutSettings() {
       <Heading size="4">About</Heading>
 
       <Flex direction="column" gap="1">
-        <Text size="5" weight="bold">Gryt</Text>
+        <Wordmark size="5" />
         <Text size="2" color="gray" style={{ fontFamily: "var(--code-font-family)" }}>
           v{__APP_VERSION__}
         </Text>

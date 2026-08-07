@@ -359,7 +359,9 @@ function runSplashUpdateCheck(): Promise<void> {
       pendingUpdateVersion = info.version;
       sendToSplash("available", { version: info.version });
       holdOpen();
-      autoUpdater.downloadUpdate().catch(() => onError());
+      autoUpdater.downloadUpdate().catch((err) =>
+        onError(err instanceof Error ? err : undefined),
+      );
     };
 
     const onNotAvailable = (info: UpdateInfo) => {
@@ -402,8 +404,10 @@ function runSplashUpdateCheck(): Promise<void> {
       }, 1500);
     };
 
-    const onError = () => {
-      sendToSplash("error");
+    const onError = (err?: Error) => {
+      sendToSplash("error", {
+        message: err ? friendlyUpdateError(err) : undefined,
+      });
       holdOpen();
       setTimeout(done, 1200);
     };
@@ -424,8 +428,8 @@ function runSplashUpdateCheck(): Promise<void> {
     autoUpdater.on("update-downloaded", onDownloaded);
     autoUpdater.on("error", onError);
 
-    autoUpdater.checkForUpdates().catch(() => {
-      onError();
+    autoUpdater.checkForUpdates().catch((err) => {
+      onError(err instanceof Error ? err : undefined);
     });
   });
 }
