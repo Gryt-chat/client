@@ -234,7 +234,16 @@ export const ChatView = memo(({
 
   return (
     <>
+      {/*
+        The three panels carried no landmark roles, so the only roles in the
+        whole document were status, textbox and tooltip — a screen-reader user
+        had no way to move between channels, conversation and members. Radix's
+        Box and Flex only render as div or span, so the roles go on the existing
+        containers rather than restructuring into main/nav/aside.
+      */}
       <Box
+        role="main"
+        aria-label="Conversation"
         data-gryt="chat-view"
         overflow="hidden"
         flexGrow="1"

@@ -93,7 +93,17 @@ function formatDateSeparator(d: Date): string {
 
 export const MessageTimestamp = ({ date }: { date: Date }) => (
   <Tooltip content={formatFullDate(date)} delayDuration={200}>
-    <Text style={{ fontSize: 10, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gray-9)" }}>
+    {/*
+      gray-11 is Radix's low-contrast *text* step. gray-9 and gray-10 are solid
+      steps meant for backgrounds and borders, and against the message surface
+      they measure 3.09 and 3.74 — under the 4.5 AA needs for text this size.
+      gray-11 comes out at 7.58 and still reads as clearly secondary next to the
+      body copy's 13.64.
+
+      12px rather than 10px because 10 was the smallest text in the app by some
+      margin, and a timestamp nobody can read is not doing its job.
+    */}
+    <Text style={{ fontSize: 12, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gray-11)" }}>
       {formatMessageTime(date)}
     </Text>
   </Tooltip>

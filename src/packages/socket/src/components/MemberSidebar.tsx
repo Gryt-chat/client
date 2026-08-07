@@ -161,6 +161,8 @@ export const MemberSidebar = ({
 
   return (
     <Box
+      role="complementary"
+      aria-label="Members"
       width="240px"
       style={{
         background: "var(--gray-3)",
