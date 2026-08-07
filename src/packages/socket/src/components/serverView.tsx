@@ -7,6 +7,10 @@ import { useSettings } from "@/settings";
 import { SidebarItem } from "@/settings/src/types/server";
 import { useSFU } from "@/webRTC";
 
+import {
+  readFakeParticipantOptions,
+  withFakeParticipants,
+} from "../dev/fakeParticipants";
 import { useAdminActions } from "../hooks/useAdminActions";
 import { useChannelSettings, useHandleChannelClick } from "../hooks/useChannelSettings";
 import { useChat } from "../hooks/useChat";
@@ -29,6 +33,11 @@ import { ServerLoadingStates } from "./ServerLoadingStates";
 import { ServerSidebar } from "./ServerSidebar";
 import { SidebarEditDialog } from "./SidebarEditDialog";
 import { VoiceView } from "./VoiceView";
+
+// Parsed once at module load — the query string cannot change under us.
+const fakeParticipantOptions = readFakeParticipantOptions(
+  window.location.search,
+);
 
 export const ServerView = () => {
   const isMobile = useIsMobile();
@@ -203,7 +212,14 @@ export const ServerView = () => {
   const currentUserRole = serverDetails?.server_info?.role;
   const canManage = currentUserRole === "owner" || currentUserRole === "admin";
   const hostChannels = serverDetails.channels || [];
-  const hostClients = clients[host] || {};
+  // Dev only, and only when ?fake=N is in the URL. See fakeParticipants.ts.
+  const { clients: hostClients, videoStreams: voiceVideoStreams } =
+    withFakeParticipants(
+      clients[host] || {},
+      videoStreams,
+      currentChannelId,
+      fakeParticipantOptions,
+    );
   const hostMembers = memberLists[host] || [];
   const serverName = serverDetails.server_info?.name || currentlyViewingServer.name;
 
@@ -280,7 +296,7 @@ export const ServerView = () => {
             clientsForHost={hostClients}
             onVoiceDisconnect={handleVoiceDisconnect}
             peerLatency={peerLatency}
-            videoStreams={videoStreams}
+            videoStreams={voiceVideoStreams}
             streamSources={streamSources}
           />
         ) : (
@@ -356,7 +372,7 @@ export const ServerView = () => {
                 isDragging={isDraggingResize}
                 currentUserRole={currentUserRole}
                 adminActions={currentAdminActions}
-                videoStreams={videoStreams}
+                videoStreams={voiceVideoStreams}
                 streamSources={streamSources}
                 onFocusChange={setVoiceFocused}
                 chatHidden={focusedChatHidden}
