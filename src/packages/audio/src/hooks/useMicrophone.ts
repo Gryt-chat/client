@@ -385,10 +385,19 @@ function useCreateMicrophoneHook() {
     async function initializeDevice(deviceId: string | undefined) {
       if (!deviceId) {
         voiceLog.info("MIC", "No device ID — skipping initialization");
-        // Denied permission also lands here: enumerateDevices returns entries
-        // with empty deviceIds until the user allows access, so there is
-        // nothing to select. Either way there is no microphone to speak into.
-        setMicUnavailable("no-device");
+        // Deliberately does not report "no microphone". This runs during normal
+        // startup, before enumeration has produced a device to select, and on a
+        // machine with a perfectly good microphone:
+        //
+        //   Active handles: 2 — initializing device
+        //   No device ID — skipping initialization     <- here
+        //   Step 2: Requesting getUserMedia
+        //   Step 2: getUserMedia succeeded
+        //
+        // Treating it as a failure raised "No microphone found" for the ~340ms
+        // before enumeration caught up, so joining voice in that window warned
+        // about a microphone that was about to work. getDevices and the
+        // acquisition failure below are the signals that actually know.
         return;
       }
 
