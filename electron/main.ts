@@ -227,12 +227,6 @@ const hardwareAcceleration = readBoolConfig("hardwareAcceleration", true);
 if (!hardwareAcceleration) {
   app.disableHardwareAcceleration();
 }
-if (process.env.GRYT_REMOTE_DEBUG_PORT) {
-  app.commandLine.appendSwitch(
-    "remote-debugging-port",
-    process.env.GRYT_REMOTE_DEBUG_PORT,
-  );
-}
 let startWithWindows =
   process.platform === "win32"
     ? readBoolConfig("startWithWindows", true)
