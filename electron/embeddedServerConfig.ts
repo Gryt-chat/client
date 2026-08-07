@@ -246,7 +246,22 @@ function migrateExistingConfigIfNeeded(configPath: string): void {
   const currentHost = extractHostFromHostPort(currentSfuPublicHost);
   const betterLanIp = getLanIp();
 
-  if (!isCgnatOrTailscaleIp(currentHost)) return;
+  // Two reasons to rewrite a stored address:
+  //
+  //   1. It is CGNAT/Tailscale, which the LAN cannot route to. This is what the
+  //      migration was originally written for.
+  //   2. It is a private LAN address that this machine no longer holds. DHCP
+  //      hands out a different lease and the config keeps pointing at the old
+  //      one forever — the server reports the right IP in its own UI while
+  //      handing clients a dead SFU address, and joining voice fails with
+  //      "SFU WebSocket connection failed".
+  //
+  // Anything else is left alone: a deliberately configured hostname or public
+  // address is not ours to second-guess.
+  const isStaleLanIp =
+    isPrivateLanIp(currentHost) && !getIpv4Candidates().includes(currentHost);
+
+  if (!isCgnatOrTailscaleIp(currentHost) && !isStaleLanIp) return;
   if (!isPrivateLanIp(betterLanIp)) return;
   if (currentHost === betterLanIp) return;
 
