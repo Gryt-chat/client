@@ -67,8 +67,8 @@ export interface ElectronAPI {
   onPttUp(callback: () => void): () => void;
   setPttKey(pttKey: string): void;
   checkForUpdates(): void;
-  downloadUpdate(): void;
-  installUpdate(): void;
+  /** Quit and come back, letting the splash download and install. */
+  restartForUpdate(): void;
   getBetaChannel(): Promise<boolean>;
   setBetaChannel(enabled: boolean): void;
   switchUpdateChannel(enabled: boolean): void;

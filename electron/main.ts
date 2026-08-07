@@ -117,6 +117,14 @@ const appIcon = app.isPackaged
 
 const PROTOCOL = "gryt";
 const AUTO_START_ARG = "--gryt-autostart";
+/**
+ * Set on the relaunch that "Update now" triggers.
+ *
+ * The splash update check is normally skipped for a hidden auto-start, and that
+ * is the one launch which must not skip it — someone who starts Gryt minimised
+ * with Windows would otherwise never get the update they just asked for.
+ */
+const UPDATE_ARG = "--gryt-update";
 let pendingDeepLinkUrl: string | null = null;
 let splashWindow: BrowserWindow | null = null;
 let mainWindow: BrowserWindow | null = null;
@@ -219,7 +227,14 @@ function readBoolConfig(key: string, defaultValue: boolean): boolean {
 // ── Auto-updater config ─────────────────────────────────────────────────
 
 autoUpdater.autoDownload = false;
-autoUpdater.autoInstallOnAppQuit = true;
+// Nothing installs an update out of a running app. electron-updater's
+// install-on-quit runs the installer while the app is still tearing down —
+// renderer, GPU helpers, and the two children this app spawns itself (the SFU
+// binary and the embedded server) — and on Windows NSIS waits on all of it.
+// That is the whole reason updating from inside the app crawled while updating
+// at launch did not. The splash does it instead, on a process with none of that
+// running. See restartForUpdate.
+autoUpdater.autoInstallOnAppQuit = false;
 autoUpdater.allowPrerelease = readConfig().betaChannel === true;
 autoUpdater.logger = console;
 closeToTray = (readConfig().closeToTray ?? true) as boolean;
@@ -302,17 +317,35 @@ function runSplashUpdateCheck(): Promise<void> {
     const done = () => {
       if (settled) return;
       settled = true;
+      // Detach here rather than at each exit. Every path used to have to
+      // remember, and the timeout path did not — so a check that took longer
+      // than the safety timeout left these listeners attached while
+      // initBackgroundUpdater added a second set a moment later, and every
+      // subsequent update event was handled twice.
+      cleanup();
       resolve();
     };
 
-    // Safety timeout — never block the user longer than 15 s
-    const timeout = setTimeout(done, 15_000);
+    // Safety timeout on the *check* only. Once a download starts it is
+    // cancelled: this path is the only thing that installs an update now, the
+    // user is watching a progress bar, and abandoning a 100MB download after
+    // 15 seconds would drop them into the app with the update half-fetched and
+    // these listeners still attached alongside the ones initBackgroundUpdater
+    // adds a moment later.
+    let timeout: NodeJS.Timeout | null = setTimeout(done, 15_000);
+    const holdOpen = () => {
+      if (timeout) {
+        clearTimeout(timeout);
+        timeout = null;
+      }
+    };
 
     const onChecking = () => sendToSplash("checking");
 
     const onAvailable = (info: UpdateInfo) => {
       pendingUpdateVersion = info.version;
       sendToSplash("available", { version: info.version });
+      holdOpen();
       autoUpdater.downloadUpdate().catch(() => onError());
     };
 
@@ -326,6 +359,7 @@ function runSplashUpdateCheck(): Promise<void> {
       transferred: number;
       total: number;
     }) => {
+      holdOpen();
       sendToSplash("downloading", {
         version: pendingUpdateVersion,
         percent: Math.round(progress.percent),
@@ -338,16 +372,17 @@ function runSplashUpdateCheck(): Promise<void> {
       sendToSplash("downloaded", { version: info.version });
       setTimeout(() => {
         cleanup();
-        clearTimeout(timeout);
+        holdOpen();
         // Let the event loop drain before quitting — improves reliability
         // across platforms (NSIS on Windows, AppImage on Linux).
         setImmediate(() => {
           try {
             autoUpdater.quitAndInstall(false, true);
           } catch {
-            // If quitAndInstall fails, show the main window so the user
-            // isn't stuck with a blank screen. The update will apply on
-            // next restart via autoInstallOnAppQuit.
+            // If quitAndInstall fails, show the main window rather than
+            // leaving a blank screen. The update is downloaded and will be
+            // offered again on the next launch — it will not install itself on
+            // the way out any more, which is the point.
             done();
           }
         });
@@ -356,6 +391,7 @@ function runSplashUpdateCheck(): Promise<void> {
 
     const onError = () => {
       sendToSplash("error");
+      holdOpen();
       setTimeout(done, 1200);
     };
 
@@ -411,7 +447,6 @@ function friendlyUpdateError(err: Error): string {
   return msg;
 }
 
-let userInitiatedCheck = false;
 let pendingUpdateVersion: string | undefined;
 
 function initBackgroundUpdater() {
@@ -419,9 +454,11 @@ function initBackgroundUpdater() {
   autoUpdater.on("update-available", (info) => {
     pendingUpdateVersion = info.version;
     sendToMain("available", { version: info.version });
-    if (!userInitiatedCheck) {
-      autoUpdater.downloadUpdate().catch(() => {});
-    }
+    // Deliberately no download. A running app cannot install one any more, so
+    // fetching it here only spends the user's bandwidth on a file the splash
+    // will ask for again. It also used to mean anyone who simply closed Gryt
+    // after a background check got the heavy install on the way out, without
+    // ever clicking anything.
   });
   autoUpdater.on("update-not-available", (info) =>
     sendToMain("not-available", { version: info.version })
@@ -1164,7 +1201,7 @@ if (!gotSingleInstanceLock) {
       if (process.env.VITE_DEV_SERVER_URL) {
         startupLog("Dev mode — skipping splash/update check");
         mainWindow?.show();
-      } else if (startHiddenOnLaunch) {
+      } else if (startHiddenOnLaunch && !process.argv.includes(UPDATE_ARG)) {
         startupLog("Starting hidden (auto-start)");
         initBackgroundUpdater();
         autoUpdater.checkForUpdates().catch(() => {});
@@ -1187,8 +1224,9 @@ if (!gotSingleInstanceLock) {
         });
       }
 
-      // Background updates auto-download and install on quit
-      // (autoDownload + autoInstallOnAppQuit are both true).
+      // Background checks only report that an update exists. Downloading and
+      // installing happen on the next launch, from the splash — see
+      // restart-for-update.
 
       // ── Embed origin fix ────────────────────────────────────────────
       // Third-party embed players (YouTube, Vimeo, Spotify, etc.) reject
@@ -1344,22 +1382,24 @@ if (!gotSingleInstanceLock) {
       }
 
       ipcMain.on("check-for-updates", () => {
-        userInitiatedCheck = true;
         autoUpdater.checkForUpdates().catch((err) => {
           sendToMain("error", { message: friendlyUpdateError(err) });
         });
       });
 
-      ipcMain.on("download-update", () => {
-        userInitiatedCheck = false;
-        autoUpdater.downloadUpdate().catch((err) => {
-          sendToMain("error", { message: friendlyUpdateError(err) });
-        });
-      });
-
-      ipcMain.on("install-update", () => {
+      // Downloading and installing both belong to the splash now. This quits
+      // and comes straight back with UPDATE_ARG, and the fresh process — which
+      // has no window, no embedded server, no SFU and no voice — does the work.
+      // Relaunching rather than installing here is the entire fix: the
+      // installer's job is the same either way, but it no longer has a loaded
+      // app to tear down around itself.
+      ipcMain.on("restart-for-update", () => {
         isQuitting = true;
-        autoUpdater.quitAndInstall(false, true);
+        const args = process.argv
+          .slice(1)
+          .filter((a) => a !== AUTO_START_ARG && a !== UPDATE_ARG);
+        app.relaunch({ args: [...args, UPDATE_ARG] });
+        app.quit();
       });
 
       ipcMain.on("ptt-set-key", (_event, pttKey: string) => {

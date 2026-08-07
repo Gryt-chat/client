@@ -45,12 +45,8 @@ function UpdateControls() {
 
   const switchingToBeta = pendingSwitch === true;
 
-  const handleDownloadUpdate = useCallback(() => {
-    getElectronAPI()?.downloadUpdate();
-  }, []);
-
-  const handleInstallUpdate = useCallback(() => {
-    getElectronAPI()?.installUpdate();
+  const handleUpdateNow = useCallback(() => {
+    getElectronAPI()?.restartForUpdate();
   }, []);
 
   const statusText = (() => {
@@ -90,9 +86,11 @@ function UpdateControls() {
 
   const isChecking = status?.status === "checking";
   const isAvailable = status?.status === "available";
-  const isDownloading = status?.status === "downloading";
+  // "downloaded" can still arrive from a check that ran before this build's
+  // change landed, or from the splash on a previous launch. Treat it the same
+  // as "available": either way the answer is to restart.
   const isReady = status?.status === "downloaded";
-  const isBusy = isChecking || isDownloading;
+  const isBusy = isChecking;
 
   return (
     <>
@@ -153,17 +151,13 @@ function UpdateControls() {
             </Button>
           )}
 
-          {isAvailable && (
-            <Button variant="solid" color="blue" onClick={handleDownloadUpdate}>
-              <MdDownload size={16} />
-              Download v{status?.version}
-            </Button>
-          )}
-
-          {isReady && (
-            <Button variant="solid" color="green" onClick={handleInstallUpdate}>
+          {/* One step. Downloading and installing both happen on the next
+              launch, where the installer has an empty app to work around
+              instead of a loaded one. */}
+          {(isAvailable || isReady) && (
+            <Button variant="solid" color="green" onClick={handleUpdateNow}>
               <MdUpdate size={16} />
-              Install & Restart
+              Update to v{status?.version}
             </Button>
           )}
         </Flex>
