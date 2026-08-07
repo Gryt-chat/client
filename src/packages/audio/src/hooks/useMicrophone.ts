@@ -10,7 +10,11 @@ import {
   ensureNoiseGateWorklet,
 } from "../processors/noiseGateProcessor";
 import { RNNoiseProcessor } from "../processors/rnnoiseProcessor";
-import { MicrophoneBufferType, MicrophoneInterface } from "../types/Microphone";
+import {
+  MicrophoneBufferType,
+  MicrophoneInterface,
+  MicrophoneUnavailableReason,
+} from "../types/Microphone";
 import {
   createMicrophoneBuffer,
   usePipelineControls,
@@ -20,6 +24,21 @@ import { useHandles } from "./useHandles";
 import { usePushToTalk } from "./usePushToTalk";
 
 const MIC_RELEASE_GRACE_MS = 30_000;
+
+/**
+ * getUserMedia rejects with a DOMException whose `name` says what went wrong.
+ * Only the two cases worth giving different advice for are singled out;
+ * everything else is "failed", because guessing further would put words in the
+ * browser's mouth.
+ */
+function classifyMicFailure(error: unknown): MicrophoneUnavailableReason {
+  const name = (error as { name?: string } | null)?.name;
+  if (name === "NotAllowedError" || name === "SecurityError") return "denied";
+  if (name === "NotFoundError" || name === "OverconstrainedError") {
+    return "no-device";
+  }
+  return "failed";
+}
 
 function useCreateMicrophoneHook() {
   const { handles, addHandle, removeHandle, isLoaded } = useHandles();
@@ -60,6 +79,8 @@ function useCreateMicrophoneHook() {
     null,
   );
   const [isGateOpen, setIsGateOpen] = useState(false);
+  const [micUnavailable, setMicUnavailable] =
+    useState<MicrophoneUnavailableReason | null>(null);
   const gateOpenRef = useRef(false);
   const gateLevelRef = useRef(0);
 
@@ -296,6 +317,10 @@ function useCreateMicrophoneHook() {
 
       setDevices(audioDevices);
 
+      // Permission can be granted with nothing plugged in, so an empty list is
+      // its own failure rather than a variant of "denied".
+      setMicUnavailable(audioDevices.length > 0 ? null : "no-device");
+
       if (audioDevices.length > 0) {
         let selectedDeviceId = micID;
 
@@ -314,6 +339,12 @@ function useCreateMicrophoneHook() {
       }
     } catch (error) {
       console.error("Error enumerating devices:", error);
+      // This is the earliest and most reliable place to learn there is no
+      // usable microphone. The acquisition path below never even runs in that
+      // case — with no device to select, nothing registers a microphone handle
+      // — which is why a client with permission denied used to join voice
+      // looking perfectly healthy.
+      setMicUnavailable(classifyMicFailure(error));
     }
   }, [isBrowserSupported, currentDeviceId, micID]);
 
@@ -354,6 +385,10 @@ function useCreateMicrophoneHook() {
     async function initializeDevice(deviceId: string | undefined) {
       if (!deviceId) {
         voiceLog.info("MIC", "No device ID — skipping initialization");
+        // Denied permission also lands here: enumerateDevices returns entries
+        // with empty deviceIds until the user allows access, so there is
+        // nothing to select. Either way there is no microphone to speak into.
+        setMicUnavailable("no-device");
         return;
       }
 
@@ -390,6 +425,7 @@ function useCreateMicrophoneHook() {
 
         micStreamRef.current = stream;
         setMicStream(stream);
+        setMicUnavailable(null);
 
         if (deviceId !== micID) {
           localStorage.setItem("micID", deviceId);
@@ -429,6 +465,7 @@ function useCreateMicrophoneHook() {
 
           micStreamRef.current = fallbackStream;
           setMicStream(fallbackStream);
+          setMicUnavailable(null);
         } catch (fallbackError) {
           voiceLog.fail(
             "MIC",
@@ -436,6 +473,9 @@ function useCreateMicrophoneHook() {
             "Fallback getUserMedia also failed — no microphone!",
             fallbackError,
           );
+          // This used to end here, so a client with no working microphone
+          // joined voice looking entirely healthy while nobody could hear it.
+          setMicUnavailable(classifyMicFailure(fallbackError));
         }
       }
     }
@@ -591,6 +631,7 @@ function useCreateMicrophoneHook() {
     getGateLevel,
     isTransmitting,
     isPttActive,
+    micUnavailable,
   };
 }
 
@@ -622,6 +663,7 @@ const init: MicrophoneInterface = {
   getGateLevel: () => null,
   isTransmitting: null,
   isPttActive: { current: false },
+  micUnavailable: null,
 };
 
 const singletonMicrophone = singletonHook(init, useCreateMicrophoneHook);

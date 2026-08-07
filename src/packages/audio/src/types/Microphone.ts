@@ -18,9 +18,25 @@ export type MicrophoneBufferType = {
   compressor?: DynamicsCompressorNode; // Separate compressor for peak taming
 };
 
+/**
+ * Why the microphone could not be acquired. The three cases want different
+ * advice, so they are kept apart rather than collapsed into a boolean:
+ * "denied" is fixed in the OS or browser, "no-device" means nothing is plugged
+ * in, and "failed" is everything else — a device that exists, was permitted,
+ * and still would not open.
+ */
+export type MicrophoneUnavailableReason = "denied" | "no-device" | "failed";
+
 export interface MicrophoneInterface {
   addHandle: (id: string) => void;
   removeHandle: (id: string) => void;
+  /**
+   * Set while there is no usable microphone, null once one is live. Joining a
+   * voice channel deliberately still works in this state — listening without a
+   * microphone is useful — so this is what lets the UI say so out loud instead
+   * of looking healthy while nobody can hear you.
+   */
+  micUnavailable: MicrophoneUnavailableReason | null;
   microphoneBuffer: MicrophoneBufferType;
   isBrowserSupported: boolean | undefined;
   devices: InputDeviceInfo[];
