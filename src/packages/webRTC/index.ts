@@ -1,3 +1,6 @@
+// Types
+export * from "./src/types/SFU";
+
 // Hooks
 export * from "./src/hooks/useSFU";
 export * from "./src/hooks/useVideoStats";

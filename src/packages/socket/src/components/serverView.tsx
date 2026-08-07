@@ -267,7 +267,6 @@ export const ServerView = () => {
             selectedChannelId={selectedChannelId}
             onChannelClick={handleChannelClick}
             clientsSpeaking={clientsSpeaking}
-            streamSources={streamSources}
             canManage={canManage}
             onEditItem={handleEditItem}
             onDeleteItem={requestDeleteSidebarItem}
@@ -356,6 +355,7 @@ export const ServerView = () => {
               currentUserRole={currentUserRole}
               adminActions={currentAdminActions}
               unreadChannelIds={unreadChannelIds}
+              streamSources={streamSources}
             />
             <Flex flexGrow="1" ref={voiceContainerRef} style={{ position: "relative", minWidth: 0 }}>
               <VoiceView
