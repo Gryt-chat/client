@@ -253,6 +253,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
               selectedChannelId={props.selectedChannelId}
               onChannelClick={handleChannelClick}
               clientsSpeaking={props.clientsSpeaking}
+              streamSources={props.streamSources}
               canManage={props.canManage}
               onEditItem={props.onEditItem}
               onDeleteItem={props.onDeleteItem}
