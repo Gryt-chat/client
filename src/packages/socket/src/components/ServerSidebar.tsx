@@ -69,6 +69,8 @@ export const ServerSidebar = ({
   onDisconnectUser, currentUserRole, adminActions, unreadChannelIds,
 }: ServerSidebarProps) => (
   <div
+    role="navigation"
+    aria-label="Channels"
     onMouseLeave={onMouseLeave}
     onMouseEnter={onMouseEnter}
     style={{ flexShrink: 0, display: "flex" }}
