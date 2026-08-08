@@ -150,36 +150,15 @@ if (skipServer) {
     console.warn(`  Warning: no package-lock.json found at ${lockfileSrc}`);
   }
 
+  // No Electron ABI settings. The server moved from better-sqlite3 to
+  // node:sqlite, which is part of the runtime, so there is no node-gyp addon
+  // left to rebuild. sharp stays, but it is N-API and resolves its binary
+  // through per-platform optional dependencies that npm picks by os/cpu — the
+  // Electron settings never applied to it.
   console.log("  Installing production dependencies for embedded server...");
-  run("npm install --omit=dev --ignore-scripts=false", {
-    cwd: serverOut,
-    env: {
-      ...process.env,
-      npm_config_runtime: "electron",
-      npm_config_target: electronVersion,
-      npm_config_disturl: "https://electronjs.org/headers",
-    },
-  });
-
-  console.log("  Rebuilding better-sqlite3 for Electron...");
-  run("npm rebuild better-sqlite3 --build-from-source", {
-    cwd: serverOut,
-    env: {
-      ...process.env,
-      npm_config_runtime: "electron",
-      npm_config_target: electronVersion,
-      npm_config_disturl: "https://electronjs.org/headers",
-      npm_config_build_from_source: "true",
-    },
-  });
+  run("npm install --omit=dev --ignore-scripts=false", { cwd: serverOut });
 
   const nodeModulesPath = join(serverOut, "node_modules");
-  const betterSqlitePath = join(nodeModulesPath, "better-sqlite3");
-  const betterSqliteBindingDir = join(
-    betterSqlitePath,
-    "build",
-    "Release"
-  );
 
   assertExists(
     nodeModulesPath,
@@ -187,17 +166,11 @@ if (skipServer) {
   );
 
   assertExists(
-    betterSqlitePath,
-    `Embedded server dependency missing after npm install: ${betterSqlitePath}`
-  );
-
-  assertExists(
-    betterSqliteBindingDir,
-    `better-sqlite3 native build output is missing: ${betterSqliteBindingDir}`
+    join(nodeModulesPath, "sharp"),
+    `Embedded server dependency missing after npm install: sharp`
   );
 
   console.log("  Embedded server dependencies installed.");
-  console.log(`  better-sqlite3: ${betterSqlitePath}`);
   console.log(`  Server bundle ready: ${serverOut}`);
 }
 
