@@ -25,6 +25,7 @@
  * fakeSpeech.ts: a real audio track per participant, ramped like someone
  * talking, read by the analyser the halo and the ring already use.
  */
+import type { MemberInfo } from "../components/MemberSidebar";
 import type { Client } from "../types/clients";
 
 const FAKE_PREFIX = "fake-";
@@ -194,4 +195,51 @@ export function withFakeParticipants(
   }
 
   return { clients: withFakes, videoStreams: streams };
+}
+
+/**
+ * The same people in the member list.
+ *
+ * They were only ever put in the voice record, which meant a nine-person call
+ * next to a members panel saying two — visible in the first screenshot anyone
+ * took of it, and wrong in a way that makes the whole picture look broken
+ * rather than making the point it was meant to.
+ *
+ * Marked in_voice rather than online, because they are: the member list groups
+ * by status, and putting them under the wrong heading would be the same class
+ * of mistake as leaving them out.
+ */
+export function withFakeMembers(
+  members: MemberInfo[],
+  channelId: string | undefined,
+  options: FakeParticipantOptions | null,
+): MemberInfo[] {
+  if (!import.meta.env.DEV || !options) return members;
+
+  const fakes: MemberInfo[] = [];
+  for (let i = 0; i < options.count; i++) {
+    const id = fakeParticipantId(i);
+    const isDeafened = options.deafened && i === options.count - 1;
+
+    fakes.push({
+      serverUserId: id,
+      nickname: NAMES[i],
+      avatarFileId: null,
+      // Nothing has computed a colour for these, which is exactly the case a
+      // real member without an uploaded avatar is in — the tint comes from the
+      // generated avatar instead. See tileHue.
+      avatarColor: null,
+      role: "member",
+      status: "in_voice",
+      isMuted: i < options.muted || isDeafened,
+      isDeafened,
+      color: "var(--gray-6)",
+      isConnectedToVoice: true,
+      hasJoinedChannel: true,
+      voiceChannelId: channelId,
+      streamID: fakeAudioStreamId(id),
+    });
+  }
+
+  return [...members, ...fakes];
 }

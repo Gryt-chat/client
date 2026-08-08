@@ -10,6 +10,7 @@ import { useSFU } from "@/webRTC";
 import {
   fakeParticipantOptionsFromSettings,
   readFakeParticipantOptions,
+  withFakeMembers,
   withFakeParticipants,
 } from "../dev/fakeParticipants";
 import { useFakeSpeech } from "../dev/fakeSpeech";
@@ -247,7 +248,11 @@ export const ServerView = () => {
   const voiceClientsSpeaking = fakeParticipantOptions
     ? { ...clientsSpeaking, ...fakeSpeech.speaking }
     : clientsSpeaking;
-  const hostMembers = memberLists[host] || [];
+  const hostMembers = withFakeMembers(
+    memberLists[host] || [],
+    currentChannelId,
+    fakeParticipantOptions,
+  );
   const serverName = serverDetails.server_info?.name || currentlyViewingServer.name;
 
   const onOpenSettings = () => {
