@@ -48,10 +48,6 @@ const goOs =
 const goArch = arch === "arm64" ? "arm64" : "amd64";
 const sfuExt = platform === "win32" ? ".exe" : "";
 
-// Keep this in sync with the Electron version used by the client package.
-// If this gets out of sync, native modules can rebuild against the wrong ABI.
-const electronVersion = "40.6.0";
-
 function run(command, options = {}) {
   execSync(command, {
     stdio: "inherit",
