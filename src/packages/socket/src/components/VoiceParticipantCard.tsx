@@ -554,10 +554,9 @@ export function VoiceParticipantCard({
 
   const avatarPx = avatarSizeForHeight(tileHeight);
 
-  const hue = tileHue(
-    client.serverUserId || client.nickname,
-    memberInfo?.avatarColor,
-  );
+  // The nickname, because that is what the avatar is drawn from — a tile tinted
+  // from anything else is a colour that matches nothing on it.
+  const hue = tileHue(client.nickname, memberInfo?.avatarColor);
 
   const speakingAnalyser = isSelf
     ? microphoneBuffer.finalAnalyser
@@ -623,7 +622,7 @@ export function VoiceParticipantCard({
                 // avatar should still animate, which the thumbnail does not.
                 getUploadsFileUrl(serverHost, avatarFileId)
               : undefined,
-            client?.serverUserId,
+            client.nickname,
           )}
           style={{
             ...speakingRingStyle(hue, isSpeaking),
@@ -715,7 +714,7 @@ export function VoiceParticipantCard({
 
       {showMutedBadge && (
         <MutedBadge
-          hueId={client.serverUserId || client.nickname}
+          hueId={client.nickname}
           hueAvatarColor={memberInfo?.avatarColor}
           deafened={!!client.isDeafened}
           tileHeight={tileHeight}

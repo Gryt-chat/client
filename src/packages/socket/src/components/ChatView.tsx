@@ -194,8 +194,8 @@ export const ChatView = memo(({
     // server icons are: a generated face is wrong for something that is not a
     // person, and their sender id is "webhook:<id>" rather than a member's.
     if (msg.sender_server_id?.startsWith("webhook:")) return uploaded;
-    return resolveAvatarSrc(uploaded, msg.sender_server_id);
-  }, [memberList, serverHost]);
+    return resolveAvatarSrc(uploaded, getSenderName(msg));
+  }, [memberList, serverHost, getSenderName]);
 
   const mentionMembers = useMemo(() => {
     if (!memberList) return [];
@@ -204,7 +204,7 @@ export const ChatView = memo(({
       serverUserId: m.serverUserId,
       avatarUrl: resolveAvatarSrc(
         m.avatarFileId && serverHost ? getUploadsFileUrl(serverHost, m.avatarFileId, { thumb: true }) : undefined,
-        m.serverUserId,
+        m.nickname,
       ) ?? null,
     }));
   }, [memberList, serverHost]);
