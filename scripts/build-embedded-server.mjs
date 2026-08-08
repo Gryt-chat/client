@@ -293,32 +293,14 @@ if (skipWorker) {
       JSON.stringify(workerPkg, null, 2) + "\n"
     );
 
+    // No Electron ABI settings here, unlike the server bundle below the fold.
+    // The worker has no node-gyp addon left to rebuild: it moved from
+    // better-sqlite3 to node:sqlite, which is part of the runtime, and sharp is
+    // N-API so its prebuilt binary loads under Electron unchanged. sharp also
+    // resolves its binary through per-platform optional dependencies, which npm
+    // picks by os/cpu — npm_config_runtime never applied to it.
     console.log("  Installing worker dependencies...");
-    run("npm install --omit=dev --ignore-scripts=false", {
-      cwd: workerOut,
-      env: {
-        ...process.env,
-        npm_config_runtime: "electron",
-        npm_config_target: electronVersion,
-        npm_config_disturl: "https://electronjs.org/headers",
-      },
-    });
-
-    // Same treatment the server bundle needs, and for the same reason:
-    // better-sqlite3 is a node-gyp addon compiled against a specific ABI.
-    // sharp is deliberately absent from this — it is N-API, so its prebuilt
-    // binary loads under Electron unchanged.
-    console.log("  Rebuilding better-sqlite3 for Electron...");
-    run("npm rebuild better-sqlite3 --build-from-source", {
-      cwd: workerOut,
-      env: {
-        ...process.env,
-        npm_config_runtime: "electron",
-        npm_config_target: electronVersion,
-        npm_config_disturl: "https://electronjs.org/headers",
-        npm_config_build_from_source: "true",
-      },
-    });
+    run("npm install --omit=dev --ignore-scripts=false", { cwd: workerOut });
 
     assertExists(
       join(workerOut, "dist", "index.js"),
@@ -327,10 +309,6 @@ if (skipWorker) {
     assertExists(
       join(workerOut, "node_modules", "sharp"),
       `Worker dependency missing after npm install: sharp`
-    );
-    assertExists(
-      join(workerOut, "node_modules", "better-sqlite3", "build", "Release"),
-      `better-sqlite3 native build output is missing in the worker bundle`
     );
 
     console.log(`  Image worker ready: ${workerOut}`);
