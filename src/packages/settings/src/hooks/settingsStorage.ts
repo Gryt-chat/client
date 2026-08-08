@@ -154,6 +154,8 @@ export interface Settings {
   setVoiceTileLayout: (layout: VoiceTileLayout) => void;
   devFakeParticipants: number;
   setDevFakeParticipants: (count: number) => void;
+  devFakeMembers: number;
+  setDevFakeMembers: (count: number) => void;
   devFakeMuted: number;
   setDevFakeMuted: (count: number) => void;
   devFakeScreenShare: boolean;
@@ -323,6 +325,8 @@ export const settingsInit: Settings = {
   setVoiceTileLayout: noop,
   devFakeParticipants: 0,
   setDevFakeParticipants: noop,
+  devFakeMembers: 0,
+  setDevFakeMembers: noop,
   devFakeMuted: 0,
   setDevFakeMuted: noop,
   devFakeScreenShare: false,

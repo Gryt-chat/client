@@ -9,8 +9,12 @@ import {
   ToggleSetting,
 } from "./settingsComponents";
 
-/** Names are assigned in order, so this bounds the participant slider. */
+/**
+ * Names are assigned in order and the two groups do not share any, so these
+ * bound the sliders. They mirror the constants in fakeParticipants.ts.
+ */
 const MAX_FAKE_PARTICIPANTS = 12;
+const MAX_FAKE_MEMBERS = 12;
 
 /**
  * Developer tools. Rendered only under `import.meta.env.DEV`, which Vite
@@ -21,6 +25,8 @@ export function DeveloperSettings() {
   const {
     devFakeParticipants,
     setDevFakeParticipants,
+    devFakeMembers,
+    setDevFakeMembers,
     devFakeMuted,
     setDevFakeMuted,
     devFakeScreenShare,
@@ -48,10 +54,10 @@ export function DeveloperSettings() {
 
       <SettingGroup
         title="Fake participants"
-        description="Invents people in whatever voice channel you are in, so the grid can be seen at counts a single account cannot reach — the server allows one voice connection per user, so a second tab gets kicked. They render through the real voice view with real providers, so this proves layout and nothing about the socket path."
+        description="Invents people in the voice channel you are in and in the member list around it, so both can be seen at counts a single account cannot reach — the server allows one voice connection per user, so a second tab gets kicked. They render through the real voice view and the real member list, so this proves layout and nothing about the socket path."
       >
         <SliderSetting
-          title="Extra participants"
+          title="In the voice channel with you"
           description={
             devFakeParticipants === 0
               ? "Off — only real people in the channel."
@@ -65,8 +71,22 @@ export function DeveloperSettings() {
         />
 
         <SliderSetting
+          title="In the server, not in voice"
+          description={
+            devFakeMembers === 0
+              ? "Off — the member list shows only the people in the call."
+              : `${devFakeMembers} more in the member list, spread across online, AFK and offline.`
+          }
+          value={devFakeMembers}
+          onChange={setDevFakeMembers}
+          min={0}
+          max={MAX_FAKE_MEMBERS}
+          step={1}
+        />
+
+        <SliderSetting
           title="How many are muted"
-          description="Checks the muted badge at whatever tile size the grid lands on."
+          description="Of the people in voice. Muted and deafened ones stay silent — nothing talks that should not be able to."
           value={Math.min(devFakeMuted, devFakeParticipants)}
           onChange={setDevFakeMuted}
           min={0}
@@ -101,7 +121,9 @@ export function DeveloperSettings() {
       <Text size="1" color="gray">
         The query string still works and overrides these while it is present:
         <br />
-        <code>?fake=6&amp;fakemuted=2&amp;fakeshare=1&amp;fakedeaf=1&amp;fakespeak=0</code>
+        <code>
+          ?fake=6&amp;fakemembers=8&amp;fakemuted=2&amp;fakeshare=1&amp;fakedeaf=1&amp;fakespeak=0
+        </code>
       </Text>
     </SettingsContainer>
   );

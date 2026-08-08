@@ -54,7 +54,7 @@ export const ServerView = () => {
     pinMembersSidebar, setPinMembersSidebar,
     setIsMuted, setIsDeafened,
     devFakeParticipants, devFakeMuted, devFakeScreenShare,
-    devFakeDeafened, devFakeSpeaking,
+    devFakeDeafened, devFakeSpeaking, devFakeMembers,
   } = useSettings();
   const { currentlyViewingServer, setShowRemoveServer, setLastSelectedChannelForServer } = useServerManagement();
   const { connect, currentServerConnected, isConnected, isConnecting, videoStreams, streamSources } = useSFU();
@@ -200,12 +200,13 @@ export const ServerView = () => {
       fakeParticipantOptionsFromUrl ??
       fakeParticipantOptionsFromSettings(
         devFakeParticipants,
+        devFakeMembers,
         devFakeMuted,
         devFakeScreenShare,
         devFakeDeafened,
         devFakeSpeaking,
       ),
-    [devFakeParticipants, devFakeMuted, devFakeScreenShare, devFakeDeafened, devFakeSpeaking],
+    [devFakeParticipants, devFakeMembers, devFakeMuted, devFakeScreenShare, devFakeDeafened, devFakeSpeaking],
   );
   const fakeSpeech = useFakeSpeech(fakeParticipantOptions);
 

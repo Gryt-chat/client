@@ -26,10 +26,15 @@
  * talking, read by the analyser the halo and the ring already use.
  */
 import type { MemberInfo } from "../components/MemberSidebar";
-import type { Client } from "../types/clients";
+import type { Client, UserStatus } from "../types/clients";
 
 const FAKE_PREFIX = "fake-";
 
+/**
+ * Enough names for a call and a member list without either borrowing from the
+ * other. The people in voice take the front of this list and the rest of the
+ * server takes the back, so a name never appears twice on screen.
+ */
 const NAMES = [
   "Ada",
   "Bjørn",
@@ -43,20 +48,44 @@ const NAMES = [
   "Jinhee",
   "Kwame",
   "Liv",
+  "Mattis",
+  "Nadia",
+  "Oleg",
+  "Pilar",
+  "Quang",
+  "Rikke",
+  "Salma",
+  "Tobias",
+  "Ulla",
+  "Viggo",
+  "Wanjiru",
+  "Yusuf",
 ];
 
 export interface FakeParticipantOptions {
+  /** People in the voice channel with you. */
   count: number;
+  /**
+   * People in the server who are not in voice — the rest of the member list.
+   * A real server is mostly this: a handful in a call and everyone else
+   * around, in various states of not being at their desk.
+   */
+  members: number;
   muted: number;
   share: boolean;
   /** The last participant is deafened, which also mutes them. */
   deafened: boolean;
-  /** Everyone who is not muted talks on and off. See fakeSpeech.ts. */
+  /** Everyone who is not muted or deafened talks on and off. See fakeSpeech.ts. */
   speak: boolean;
 }
 
-/** The most participants the name list can cover. */
-export const MAX_FAKE_PARTICIPANTS = NAMES.length;
+/**
+ * The most of each the name list can cover, given they do not share names.
+ * The split is deliberate rather than even: a call is small, a member list is
+ * not.
+ */
+export const MAX_FAKE_PARTICIPANTS = 12;
+export const MAX_FAKE_MEMBERS = NAMES.length - MAX_FAKE_PARTICIPANTS;
 
 /** The id a fake participant is known by, everywhere. */
 export function fakeParticipantId(index: number): string {
@@ -68,6 +97,34 @@ export function fakeAudioStreamId(id: string): string {
   return `${id}-audio`;
 }
 
+/**
+ * A member who is in the server but not in the call, by index.
+ *
+ * Named from the back of the list so they never collide with the people in
+ * voice, and given ids in their own range so nothing can confuse the two.
+ */
+function fakeMemberId(index: number): string {
+  return `${FAKE_PREFIX}member-${index}`;
+}
+
+function fakeMemberName(index: number): string {
+  return NAMES[NAMES.length - 1 - index];
+}
+
+/**
+ * How a member who is not in voice is doing.
+ *
+ * Fixed by index rather than random, so the list does not reshuffle on every
+ * render — and weighted, because a server where a third of everyone is offline
+ * looks like a server, and one where everybody is online looks like a fixture.
+ */
+function fakeMemberStatus(index: number): UserStatus {
+  const slot = index % 5;
+  if (slot === 3) return "afk";
+  if (slot === 4 || slot === 1) return "offline";
+  return "online";
+}
+
 /** Parsed once — the query string cannot change under us. */
 export function readFakeParticipantOptions(
   search: string,
@@ -75,12 +132,17 @@ export function readFakeParticipantOptions(
   if (!import.meta.env.DEV) return null;
 
   const params = new URLSearchParams(search);
-  const count = Number(params.get("fake"));
+  const count = Number(params.get("fake")) || 0;
+  const members = Number(params.get("fakemembers")) || 0;
 
-  if (!Number.isInteger(count) || count < 1 || count > NAMES.length) return null;
+  // Either alone is a reasonable thing to ask for: a call with nobody else in
+  // the server, or a full server with an empty call.
+  if (!Number.isInteger(count) || count < 0 || count > MAX_FAKE_PARTICIPANTS) return null;
+  if (count < 1 && members < 1) return null;
 
   return {
     count,
+    members: Math.max(0, Math.min(members, MAX_FAKE_MEMBERS)),
     muted: Math.min(Number(params.get("fakemuted")) || 0, count),
     share: params.get("fakeshare") === "1",
     deafened: params.get("fakedeaf") === "1",
@@ -93,18 +155,23 @@ export function readFakeParticipantOptions(
 /** The same options built from the Developer settings panel. */
 export function fakeParticipantOptionsFromSettings(
   count: number,
+  members: number,
   muted: number,
   share: boolean,
   deafened: boolean,
   speak: boolean,
 ): FakeParticipantOptions | null {
   if (!import.meta.env.DEV) return null;
-  if (!Number.isInteger(count) || count < 1) return null;
+  // Members alone are worth having: a full server with an empty call is a
+  // normal thing to want to look at.
+  if (!Number.isInteger(count) || count < 0) return null;
+  if (count < 1 && members < 1) return null;
 
-  const capped = Math.min(count, NAMES.length);
+  const capped = Math.min(count, MAX_FAKE_PARTICIPANTS);
 
   return {
     count: capped,
+    members: Math.max(0, Math.min(members, MAX_FAKE_MEMBERS)),
     muted: Math.min(muted, capped),
     share,
     deafened,
@@ -198,16 +265,16 @@ export function withFakeParticipants(
 }
 
 /**
- * The same people in the member list.
+ * The member list: the people in the call, plus the rest of the server.
  *
- * They were only ever put in the voice record, which meant a nine-person call
- * next to a members panel saying two — visible in the first screenshot anyone
- * took of it, and wrong in a way that makes the whole picture look broken
- * rather than making the point it was meant to.
+ * The call half was added because a nine-person call sat next to a members
+ * panel saying two. The other half is here because that fix produced the
+ * opposite lie — a server where every single member happened to be in voice,
+ * which is not what a server looks like either.
  *
- * Marked in_voice rather than online, because they are: the member list groups
- * by status, and putting them under the wrong heading would be the same class
- * of mistake as leaving them out.
+ * People in voice are marked in_voice, because they are; the rest are spread
+ * across online, AFK and offline by index. The panel groups by status, so
+ * getting this wrong puts people under the wrong heading.
  */
 export function withFakeMembers(
   members: MemberInfo[],
@@ -217,6 +284,7 @@ export function withFakeMembers(
   if (!import.meta.env.DEV || !options) return members;
 
   const fakes: MemberInfo[] = [];
+
   for (let i = 0; i < options.count; i++) {
     const id = fakeParticipantId(i);
     const isDeafened = options.deafened && i === options.count - 1;
@@ -237,6 +305,29 @@ export function withFakeMembers(
       isConnectedToVoice: true,
       hasJoinedChannel: true,
       voiceChannelId: channelId,
+      streamID: fakeAudioStreamId(id),
+    });
+  }
+
+  for (let i = 0; i < options.members; i++) {
+    const id = fakeMemberId(i);
+
+    fakes.push({
+      serverUserId: id,
+      nickname: fakeMemberName(i),
+      avatarFileId: null,
+      avatarColor: null,
+      role: "member",
+      status: fakeMemberStatus(i),
+      // Mute state is a voice thing. Someone who is not in the call is neither,
+      // and showing them as muted in the member list would be inventing a state
+      // the real client never produces.
+      isMuted: false,
+      isDeafened: false,
+      color: "var(--gray-6)",
+      isConnectedToVoice: false,
+      hasJoinedChannel: false,
+      voiceChannelId: undefined,
       streamID: fakeAudioStreamId(id),
     });
   }

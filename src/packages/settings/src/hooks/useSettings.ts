@@ -40,6 +40,7 @@ function useSettingsHook() {
   const [voiceTileLayout, setVoiceTileLayout] =
     useState<VoiceTileLayout>("meet");
   const [devFakeParticipants, setDevFakeParticipants] = useState(0);
+  const [devFakeMembers, setDevFakeMembers] = useState(0);
   const [devFakeMuted, setDevFakeMuted] = useState(0);
   const [devFakeScreenShare, setDevFakeScreenShare] = useState(false);
   const [devFakeDeafened, setDevFakeDeafened] = useState(false);
@@ -95,6 +96,7 @@ function useSettingsHook() {
         getUserValue<VoiceTileLayout>("voiceTileLayout", "meet"),
       );
       setDevFakeParticipants(getUserValue("devFakeParticipants", 0));
+      setDevFakeMembers(getUserValue("devFakeMembers", 0));
       setDevFakeMuted(getUserValue("devFakeMuted", 0));
       setDevFakeScreenShare(getUserValue("devFakeScreenShare", false));
       setDevFakeDeafened(getUserValue("devFakeDeafened", false));
@@ -228,6 +230,11 @@ function useSettingsHook() {
   function updateDevFakeParticipants(count: number) {
     setDevFakeParticipants(count);
     setUserValue("devFakeParticipants", count);
+  }
+
+  function updateDevFakeMembers(count: number) {
+    setDevFakeMembers(count);
+    setUserValue("devFakeMembers", count);
   }
 
   function updateDevFakeMuted(count: number) {
@@ -396,6 +403,8 @@ function useSettingsHook() {
     setVoiceTileLayout: updateVoiceTileLayout,
     devFakeParticipants,
     setDevFakeParticipants: updateDevFakeParticipants,
+    devFakeMembers,
+    setDevFakeMembers: updateDevFakeMembers,
     devFakeMuted,
     setDevFakeMuted: updateDevFakeMuted,
     devFakeScreenShare,
