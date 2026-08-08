@@ -3,7 +3,7 @@ import { useCallback,useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { MdCameraAlt, MdCheck, MdContentCopy, MdRefresh } from "react-icons/md";
 
-import { compressStaticAvatarToLimit, getAvatarHash, getServerAccessToken, getServerHttpBase, getStoredAvatar, getUploadsFileUrl, useUserId } from "@/common";
+import { compressStaticAvatarToLimit, getAvatarHash, getOwnServerUserId, getServerAccessToken, getServerHttpBase, getStoredAvatar, getUploadsFileUrl, ownAvatarSeed, resolveAvatarSrc, useUserId } from "@/common";
 import { useSettings } from "@/settings";
 import { useServerManagement, useSockets } from "@/socket";
 
@@ -83,6 +83,10 @@ async function removeAvatarFromHost(host: string): Promise<void> {
 interface ProfileEditorProps {
   nickname: string;
   avatarUrl: string | null;
+  /** Shown when there is no uploaded avatar. Kept separate from avatarUrl so
+   *  "Remove avatar" still keys off whether one was actually uploaded — a
+   *  generated face is not something there is anything to remove. */
+  generatedAvatarUrl?: string;
   initial: string;
   uploading: boolean;
   removing: boolean;
@@ -98,6 +102,7 @@ interface ProfileEditorProps {
 function ProfileEditor({
   nickname,
   avatarUrl,
+  generatedAvatarUrl,
   initial,
   uploading,
   removing,
@@ -151,7 +156,7 @@ function ProfileEditor({
             <Avatar
               size="7"
               radius="full"
-              src={avatarUrl || undefined}
+              src={avatarUrl || generatedAvatarUrl}
               fallback={initial}
             />
             <Flex
@@ -249,7 +254,7 @@ export function ProfileSettings() {
   const userId = useUserId();
   const { nickname, setNickname, avatarDataUrl, setAvatarDataUrl, setAvatarFile } =
     useSettings();
-  const { servers } = useServerManagement();
+  const { servers, currentlyViewingServer } = useServerManagement();
   const { sockets, serverDetailsList, serverProfiles, setServerProfiles } = useSockets();
   const [uploading, setUploading] = useState(false);
   const [removing, setRemoving] = useState(false);
@@ -515,7 +520,34 @@ export function ProfileSettings() {
           toast.success(`Profile synced to ${hosts.length} server${hosts.length > 1 ? "s" : ""}`);
         }
       } else {
-        toast.success(`Nickname synced to ${hosts.length} server${hosts.length > 1 ? "s" : ""}`);
+        // No avatar here means every server should end up with none. Syncing
+        // only the nickname left servers holding an avatar this profile no
+        // longer has, and "sync" then quietly meant "sync some of it" — the
+        // one thing the button cannot mean.
+        const results = await Promise.allSettled(hosts.map(h => removeAvatarFromHost(h)));
+
+        let removeFailed = 0;
+        results.forEach((r, idx) => {
+          const host = hosts[idx];
+          if (r.status !== "fulfilled") {
+            removeFailed++;
+            return;
+          }
+          localStorage.removeItem(`avatarFileId:${host}`);
+          localStorage.removeItem(`avatarHash:${host}`);
+          setServerProfiles(prev => ({
+            ...prev,
+            [host]: { ...prev[host], avatarFileId: null, avatarUrl: null },
+          }));
+          sockets[host]?.emit("avatar:updated");
+          sockets[host]?.emit("members:fetch");
+        });
+
+        if (removeFailed > 0) {
+          toast.error(`Synced, but the avatar could not be cleared on ${removeFailed}/${hosts.length} server${hosts.length > 1 ? "s" : ""}`);
+        } else {
+          toast.success(`Profile synced to ${hosts.length} server${hosts.length > 1 ? "s" : ""}`);
+        }
       }
     } catch {
       toast.error("Sync failed");
@@ -559,6 +591,10 @@ export function ProfileSettings() {
           <ProfileEditor
             nickname={nickname}
             avatarUrl={allServerAvatarUrl}
+            // Borrowed from a server you are on rather than the Gryt account,
+            // so this is the face you actually have somewhere instead of a
+            // third one that appears nowhere else. See ownAvatarSeed.
+            generatedAvatarUrl={resolveAvatarSrc(undefined, ownAvatarSeed([currentlyViewingServer?.host, ...serverHosts], userId))}
             initial={initial}
             uploading={uploading}
             removing={removing}
@@ -594,6 +630,7 @@ export function ProfileSettings() {
             <ProfileEditor
               nickname={serverNickname}
               avatarUrl={serverAvatarUrl}
+              generatedAvatarUrl={resolveAvatarSrc(undefined, getOwnServerUserId(host))}
               initial={serverInitial}
               uploading={uploading}
               removing={removing}

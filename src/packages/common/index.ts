@@ -3,6 +3,7 @@ export * from "./src/auth/identity-certificate";
 export * from "./src/auth/identity-keys";
 export * from "./src/auth/keycloak";
 export * from "./src/auth/server-pins";
+export * from "./src/components/GeneratedServerIcon";
 export * from "./src/components/logo";
 export * from "./src/components/wordmark";
 export * from "./src/hooks/useAccount";
@@ -23,3 +24,4 @@ export * from "./src/utils/url";
 
 // Legacy API (deprecated by Keycloak but still present)
 export * from "./src/api/auth";
+export * from "./src/utils/generatedAvatar";

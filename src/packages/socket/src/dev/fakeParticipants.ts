@@ -16,11 +16,16 @@
  *   ?fake=7              seven fake participants alongside you
  *   ?fake=4&fakeshare=1  ...one of whom is sharing a screen
  *   ?fake=4&fakemuted=2  ...of whom the first two are muted
+ *   ?fake=4&fakedeaf=1   ...and the last is deafened
+ *   ?fake=4&fakespeak=0  ...none of whom talk
  *
  * The screen share is a real MediaStream off a canvas, not a placeholder, so
  * the tile takes the same code path a real share does — <video> element,
- * object-fit contain, the lot.
+ * object-fit contain, the lot. Speech is the same idea and lives in
+ * fakeSpeech.ts: a real audio track per participant, ramped like someone
+ * talking, read by the analyser the halo and the ring already use.
  */
+import type { MemberInfo } from "../components/MemberSidebar";
 import type { Client } from "../types/clients";
 
 const FAKE_PREFIX = "fake-";
@@ -44,10 +49,24 @@ export interface FakeParticipantOptions {
   count: number;
   muted: number;
   share: boolean;
+  /** The last participant is deafened, which also mutes them. */
+  deafened: boolean;
+  /** Everyone who is not muted talks on and off. See fakeSpeech.ts. */
+  speak: boolean;
 }
 
 /** The most participants the name list can cover. */
 export const MAX_FAKE_PARTICIPANTS = NAMES.length;
+
+/** The id a fake participant is known by, everywhere. */
+export function fakeParticipantId(index: number): string {
+  return `${FAKE_PREFIX}${index}`;
+}
+
+/** Their audio stream, which is what a stream source is keyed by. */
+export function fakeAudioStreamId(id: string): string {
+  return `${id}-audio`;
+}
 
 /** Parsed once — the query string cannot change under us. */
 export function readFakeParticipantOptions(
@@ -64,6 +83,10 @@ export function readFakeParticipantOptions(
     count,
     muted: Math.min(Number(params.get("fakemuted")) || 0, count),
     share: params.get("fakeshare") === "1",
+    deafened: params.get("fakedeaf") === "1",
+    // On unless asked otherwise. A grid where nobody talks is the state the
+    // query string was already able to produce.
+    speak: params.get("fakespeak") !== "0",
   };
 }
 
@@ -72,13 +95,21 @@ export function fakeParticipantOptionsFromSettings(
   count: number,
   muted: number,
   share: boolean,
+  deafened: boolean,
+  speak: boolean,
 ): FakeParticipantOptions | null {
   if (!import.meta.env.DEV) return null;
   if (!Number.isInteger(count) || count < 1) return null;
 
   const capped = Math.min(count, NAMES.length);
 
-  return { count: capped, muted: Math.min(muted, capped), share };
+  return {
+    count: capped,
+    muted: Math.min(muted, capped),
+    share,
+    deafened,
+    speak,
+  };
 }
 
 let screenStream: MediaStream | null = null;
@@ -137,16 +168,19 @@ export function withFakeParticipants(
   let streams = videoStreams;
 
   for (let i = 0; i < options.count; i++) {
-    const id = `${FAKE_PREFIX}${i}`;
+    const id = fakeParticipantId(i);
     const sharing = options.share && i === 0;
+    // Deafened people are muted too — the client mutes when you deafen — so the
+    // tile should carry both, and the badge shows the deafened one.
+    const isDeafened = options.deafened && i === options.count - 1;
 
     withFakes[id] = {
       serverUserId: id,
       nickname: NAMES[i],
-      isMuted: i < options.muted,
-      isDeafened: false,
+      isMuted: i < options.muted || isDeafened,
+      isDeafened,
       color: "var(--gray-6)",
-      streamID: `${id}-audio`,
+      streamID: fakeAudioStreamId(id),
       hasJoinedChannel: true,
       voiceChannelId: channelId,
       isConnectedToVoice: true,
@@ -161,4 +195,51 @@ export function withFakeParticipants(
   }
 
   return { clients: withFakes, videoStreams: streams };
+}
+
+/**
+ * The same people in the member list.
+ *
+ * They were only ever put in the voice record, which meant a nine-person call
+ * next to a members panel saying two — visible in the first screenshot anyone
+ * took of it, and wrong in a way that makes the whole picture look broken
+ * rather than making the point it was meant to.
+ *
+ * Marked in_voice rather than online, because they are: the member list groups
+ * by status, and putting them under the wrong heading would be the same class
+ * of mistake as leaving them out.
+ */
+export function withFakeMembers(
+  members: MemberInfo[],
+  channelId: string | undefined,
+  options: FakeParticipantOptions | null,
+): MemberInfo[] {
+  if (!import.meta.env.DEV || !options) return members;
+
+  const fakes: MemberInfo[] = [];
+  for (let i = 0; i < options.count; i++) {
+    const id = fakeParticipantId(i);
+    const isDeafened = options.deafened && i === options.count - 1;
+
+    fakes.push({
+      serverUserId: id,
+      nickname: NAMES[i],
+      avatarFileId: null,
+      // Nothing has computed a colour for these, which is exactly the case a
+      // real member without an uploaded avatar is in — the tint comes from the
+      // generated avatar instead. See tileHue.
+      avatarColor: null,
+      role: "member",
+      status: "in_voice",
+      isMuted: i < options.muted || isDeafened,
+      isDeafened,
+      color: "var(--gray-6)",
+      isConnectedToVoice: true,
+      hasJoinedChannel: true,
+      voiceChannelId: channelId,
+      streamID: fakeAudioStreamId(id),
+    });
+  }
+
+  return [...members, ...fakes];
 }

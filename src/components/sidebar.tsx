@@ -14,9 +14,13 @@ import { Reorder } from "motion/react";
 import { MdAdd, MdFeedback, MdMic, MdSettings } from "react-icons/md";
 
 import {
+  GeneratedServerIcon,
   getServerHttpBase,
+  ownAvatarSeed,
+  resolveAvatarSrc,
   useAccount,
   useUnreadTracker,
+  useUserId,
 } from "@/common";
 import { useSettings } from "@/settings";
 import {
@@ -35,6 +39,7 @@ interface SidebarProps {
 
 export function Sidebar({ setShowAddServer }: SidebarProps) {
   const { logout } = useAccount();
+  const userId = useUserId();
   const { nickname, avatarDataUrl, setShowSettings } = useSettings();
 
   const {
@@ -54,7 +59,12 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
   const currentHost = currentlyViewingServer?.host;
   const activeProfile = currentHost ? serverProfiles[currentHost] : undefined;
   const displayNickname = activeProfile?.nickname || nickname;
-  const displayAvatarUrl = activeProfile?.avatarUrl || avatarDataUrl;
+  // Seeded on the id the server you are looking at knows you by, so your own
+  // face here is the one everyone else sees in that server's member list.
+  const displayAvatarUrl = resolveAvatarSrc(
+    activeProfile?.avatarUrl || avatarDataUrl,
+    ownAvatarSeed([currentHost, ...orderedServerHosts], userId),
+  );
   return (
     <Flex
       data-gryt="sidebar"
@@ -201,7 +211,7 @@ function ServerItem({
                   size="2"
                   color="gray"
                   asChild
-                  fallback={servers[host].name[0]}
+                  fallback={<GeneratedServerIcon host={host} />}
                   style={{
                     opacity:
                       currentlyViewingServer?.host === host

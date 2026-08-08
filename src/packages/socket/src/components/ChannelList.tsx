@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MdChat, MdKeyboard, MdRadio, MdSportsEsports, MdVolumeUp } from "react-icons/md";
 
 import { useMicrophone } from "@/audio";
-import { getUploadsFileUrl } from "@/common";
+import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 import { Channel, SidebarItem } from "@/settings/src/types/server";
 import type { StreamSources } from "@/webRTC";
 
@@ -267,11 +267,12 @@ export const ChannelList = ({
                           isDeafened={clients[id].isDeafened}
                           isAFK={clients[id].isAFK}
                           nickname={clients[id].nickname}
-                          avatarSrc={
+                          avatarSrc={resolveAvatarSrc(
                             clients[id].serverUserId && avatarByServerUserId.get(clients[id].serverUserId)
                               ? getUploadsFileUrl(serverHost, avatarByServerUserId.get(clients[id].serverUserId) as string, { thumb: true })
-                              : undefined
-                          }
+                              : undefined,
+                            clients[id].serverUserId,
+                          )}
                           serverUserId={clients[id].serverUserId}
                           isSelf={id === currentConnectionId}
                           isConnectedToVoice={clients[id].isConnectedToVoice ?? true}

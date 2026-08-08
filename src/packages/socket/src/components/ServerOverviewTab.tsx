@@ -13,7 +13,7 @@ import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { MdCameraAlt, MdDelete } from "react-icons/md";
 
-import { getServerAccessToken, getServerHttpBase } from "@/common";
+import { GeneratedServerIcon, getServerAccessToken, getServerHttpBase } from "@/common";
 import { useSettings } from "@/settings";
 import type { Channel } from "@/settings/src/types/server";
 
@@ -464,7 +464,7 @@ export function ServerOverviewTab({
                 size="7"
                 radius="full"
                 src={iconUrl ? `${getServerHttpBase(host)}/icon?v=${iconCacheBuster}` : undefined}
-                fallback={displayName?.[0]?.toUpperCase() || "S"}
+                fallback={host ? <GeneratedServerIcon host={host} /> : (displayName?.[0]?.toUpperCase() || "S")}
               />
               {isOwner && (
                 <Flex

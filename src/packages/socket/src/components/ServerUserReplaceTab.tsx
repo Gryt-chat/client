@@ -3,7 +3,7 @@ import { useCallback, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
 
-import { getUploadsFileUrl } from "@/common";
+import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 
 import { useSocketEvent } from "../hooks/useSocketEvent";
 import { useSockets } from "../hooks/useSockets";
@@ -64,7 +64,7 @@ function MemberDropdownItem({
       <Avatar
         size="1"
         fallback={member.nickname[0]}
-        src={member.avatarFileId ? getUploadsFileUrl(host, member.avatarFileId, { thumb: true }) : undefined}
+        src={resolveAvatarSrc(member.avatarFileId ? getUploadsFileUrl(host, member.avatarFileId, { thumb: true }) : undefined, member.serverUserId)}
         style={{ flexShrink: 0 }}
       />
       <Flex direction="column" style={{ flex: 1, minWidth: 0 }}>
@@ -115,7 +115,7 @@ function MemberCombobox({
           <Avatar
             size="1"
             fallback={selectedMember.nickname[0]}
-            src={selectedMember.avatarFileId ? getUploadsFileUrl(host, selectedMember.avatarFileId, { thumb: true }) : undefined}
+            src={resolveAvatarSrc(selectedMember.avatarFileId ? getUploadsFileUrl(host, selectedMember.avatarFileId, { thumb: true }) : undefined, selectedMember.serverUserId)}
             style={{ flexShrink: 0 }}
           />
         )}

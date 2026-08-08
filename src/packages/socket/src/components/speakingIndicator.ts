@@ -8,6 +8,10 @@
  * geometry lives here now, and both call it.
  */
 
+import { generatedAvatarColor, TILE_HUES } from "@/common";
+
+export { TILE_HUES };
+
 /**
  * A stable hue per person, derived from their id.
  *
@@ -20,16 +24,11 @@
  * `avatarColor` on the member is the better source where it exists — see
  * hueFromAvatarColor.
  */
-export const TILE_HUES = [280, 24, 170, 330, 210, 140, 350, 45, 260, 195];
-
 export function hueFromId(id: string): number {
   let hash = 0;
   for (let i = 0; i < id.length; i++) {
     hash = (hash * 31 + id.charCodeAt(i)) | 0;
   }
-  // A curated set rather than the full wheel. Free hue lands in the yellow-green
-  // band often enough to matter, and those come out muddy at the lightness a
-  // tile needs. Meet's own tiles are clearly drawn from a fixed palette too.
   return TILE_HUES[Math.abs(hash) % TILE_HUES.length];
 }
 
@@ -86,8 +85,23 @@ export function hueFromAvatarColor(hex: string | null | undefined): number | nul
   return nearest;
 }
 
+/**
+ * A person's hue: their avatar's colour where there is one, and the generated
+ * avatar's own background where there is not.
+ *
+ * The generated case matters more than it looks. The tint exists to make a
+ * tile recognisably that person's, and a generated avatar is what most people
+ * have — falling straight through to the id hash put a violet face on a green
+ * tile and made the tinting look arbitrary, which is the one thing it must not
+ * look like. hueFromId stays as the last resort, for a caller that has no seed
+ * to generate from.
+ */
 export function tileHue(id: string, avatarColor?: string | null): number {
-  return hueFromAvatarColor(avatarColor) ?? hueFromId(id);
+  return (
+    hueFromAvatarColor(avatarColor) ??
+    hueFromAvatarColor(generatedAvatarColor(id)) ??
+    hueFromId(id)
+  );
 }
 
 /**

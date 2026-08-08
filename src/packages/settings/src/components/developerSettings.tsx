@@ -25,6 +25,10 @@ export function DeveloperSettings() {
     setDevFakeMuted,
     devFakeScreenShare,
     setDevFakeScreenShare,
+    devFakeDeafened,
+    setDevFakeDeafened,
+    devFakeSpeaking,
+    setDevFakeSpeaking,
   } = useSettings();
 
   return (
@@ -71,6 +75,20 @@ export function DeveloperSettings() {
         />
 
         <ToggleSetting
+          title="One is deafened"
+          description="Deafens the last one, and mutes them with it, since that is what deafening does here. The deafened badge is a different icon from the muted one."
+          checked={devFakeDeafened}
+          onCheckedChange={setDevFakeDeafened}
+        />
+
+        <ToggleSetting
+          title="They talk"
+          description="Everyone not muted takes turns talking, in bursts of a few seconds with longer gaps. Each one gets a real silent audio track, so the halo and the speaking ring are driven by a level the same way a real participant's are."
+          checked={devFakeSpeaking}
+          onCheckedChange={setDevFakeSpeaking}
+        />
+
+        <ToggleSetting
           title="Fake screen share"
           description="Gives the first fake participant a share, backed by an animated canvas rather than a placeholder, so the tile takes the same path a real share does."
           checked={devFakeScreenShare}
@@ -83,7 +101,7 @@ export function DeveloperSettings() {
       <Text size="1" color="gray">
         The query string still works and overrides these while it is present:
         <br />
-        <code>?fake=6&amp;fakemuted=2&amp;fakeshare=1</code>
+        <code>?fake=6&amp;fakemuted=2&amp;fakeshare=1&amp;fakedeaf=1&amp;fakespeak=0</code>
       </Text>
     </SettingsContainer>
   );
