@@ -228,6 +228,24 @@ export function ServerSettingsModal() {
                           )}
                         </Flex>
                       )}
+                      {/* Absent, not dashed, when there is no worker to ask.
+                          A server without one is a normal deployment, and a
+                          permanent "—" would read as something being broken. */}
+                      {versionStatus?.worker && (
+                        <Flex align="center" gap="2">
+                          <Text size="1" color="gray" style={{ opacity: 0.5 }}>
+                            Image worker{" "}
+                            {versionStatus.worker.current
+                              ? `v${versionStatus.worker.current}`
+                              : "—"}
+                          </Text>
+                          {versionStatus.worker.updateAvailable && (
+                            <Badge size="1" color="orange" variant="soft">
+                              v{versionStatus.worker.latest}
+                            </Badge>
+                          )}
+                        </Flex>
+                      )}
                     </Flex>
                   </Box>
 

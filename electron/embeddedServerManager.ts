@@ -107,6 +107,30 @@ function getServerBundlePath(): string | null {
   return null;
 }
 
+/**
+ * What the build put in the bundle, written by build-embedded-server.mjs.
+ *
+ * Without this the embedded server falls back to the hardcoded "1.0.0" in its
+ * own config, and every desktop-hosted server reports that next to a real
+ * latest-release number — so it looks permanently, wrongly out of date.
+ */
+function readBundledVersions(): { server?: string; sfu?: string; worker?: string } {
+  const packaged = join(process.resourcesPath, "embedded-server", "versions.json");
+  const dev = join(app.getAppPath(), "build", "embedded-server", "versions.json");
+  const path = existsSync(packaged) ? packaged : existsSync(dev) ? dev : null;
+  if (!path) return {};
+
+  try {
+    return JSON.parse(readFileSync(path, "utf8")) as {
+      server?: string;
+      sfu?: string;
+      worker?: string;
+    };
+  } catch {
+    return {};
+  }
+}
+
 function getWorkerEntryPath(): string | null {
   const entry = join("worker", "dist", "index.js");
   const packaged = join(process.resourcesPath, "embedded-server", entry);
@@ -196,17 +220,29 @@ function spawnSfu(config: EmbeddedServerConfig): ChildProcess | null {
   return proc;
 }
 
-function spawnServer(config: EmbeddedServerConfig): ChildProcess | null {
+function spawnServer(
+  config: EmbeddedServerConfig,
+  workerHealthPort: number | null,
+): ChildProcess | null {
   const bundlePath = getServerBundlePath();
   if (!bundlePath) return null;
 
   const envVars = parseEnvFile(config.configPath);
+  const versions = readBundledVersions();
 
   const proc = fork(bundlePath, [], {
     env: {
       ...process.env,
       ...envVars,
       NODE_ENV: "production",
+      ...(versions.server ? { SERVER_VERSION: versions.server } : {}),
+      // The worker is a separate process, so the server has to ask it what it
+      // is. It cannot ask if it does not know where — and the port is picked
+      // here, which is why it is chosen before the server is forked rather than
+      // inside spawnWorker where it used to be.
+      ...(workerHealthPort
+        ? { IMAGE_WORKER_URL: `http://127.0.0.1:${workerHealthPort}` }
+        : {}),
     },
     stdio: ["ignore", "pipe", "pipe", "ipc"],
     cwd: getEmbeddedServerDir(),
@@ -279,26 +315,21 @@ function findFreePort(): Promise<number> {
  * running, images simply stop being processed — which is exactly the state
  * every desktop-hosted server was in before it existed.
  */
-async function spawnWorker(
+function spawnWorker(
   config: EmbeddedServerConfig,
-): Promise<ChildProcess | null> {
+  healthPort: number | null,
+): ChildProcess | null {
   const entry = getWorkerEntryPath();
   if (!entry) {
     log("Image worker not bundled — image jobs will not be processed");
     return null;
   }
-
-  const envVars = parseEnvFile(config.configPath);
-
-  // The health endpoint is not used here; it just must not collide with
-  // anything, including a second Gryt hosting a server on the same machine.
-  let healthPort: number;
-  try {
-    healthPort = await findFreePort();
-  } catch {
-    log("Could not find a free port for the image worker — not starting it");
+  if (!healthPort) {
+    log("No free port for the image worker's health endpoint — not starting it");
     return null;
   }
+
+  const envVars = parseEnvFile(config.configPath);
 
   const proc = fork(entry, [], {
     env: {
@@ -402,10 +433,21 @@ function startProcesses(): EmbeddedServerState {
   log(`SFU started (pid=${sfuProcess.pid}, port=${currentConfig.sfuPort})`);
 
   // Small delay to let SFU bind its port before the server connects
-  setTimeout(() => {
+  setTimeout(async () => {
     if (!currentConfig || currentStatus !== "starting") return;
 
-    serverProcess = spawnServer(currentConfig);
+    // The worker's health port is picked before the server is forked rather
+    // than when the worker starts, because the server has to be told where to
+    // find it and only exists once. Failing to find one costs the version
+    // readout, not the worker — see spawnWorker.
+    let workerHealthPort: number | null = null;
+    try {
+      workerHealthPort = await findFreePort();
+    } catch {
+      log("Could not find a free port for the image worker");
+    }
+
+    serverProcess = spawnServer(currentConfig, workerHealthPort);
     if (!serverProcess) {
       setStatus("error", "Failed to start server (bundle not found)");
       killProcess(sfuProcess);
@@ -417,14 +459,12 @@ function startProcesses(): EmbeddedServerState {
     // After the server, because it polls a database the server creates. Its
     // absence is not fatal — see spawnWorker — so nothing here waits on it or
     // fails the start over it.
-    void spawnWorker(currentConfig)
-      .then((proc) => {
-        workerProcess = proc;
-        if (proc) log(`Image worker started (pid=${proc.pid})`);
-      })
-      .catch((err) => {
-        log(`Image worker failed to start: ${err instanceof Error ? err.message : err}`);
-      });
+    try {
+      workerProcess = spawnWorker(currentConfig, workerHealthPort);
+      if (workerProcess) log(`Image worker started (pid=${workerProcess.pid})`);
+    } catch (err) {
+      log(`Image worker failed to start: ${err instanceof Error ? err.message : err}`);
+    }
 
     // If no "listening" log within 10 seconds, assume it's running anyway
     setTimeout(() => {

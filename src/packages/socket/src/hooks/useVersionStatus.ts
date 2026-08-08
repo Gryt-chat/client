@@ -10,9 +10,13 @@ interface ComponentVersionInfo {
   channel: "stable" | "beta";
 }
 
+type ReportedComponent = ComponentVersionInfo & { current: string | null };
+
 export interface VersionStatus {
   server: ComponentVersionInfo;
-  sfu: (ComponentVersionInfo & { current: string | null }) | null;
+  sfu: ReportedComponent | null;
+  /** Null when the server has no image worker to ask, or it did not answer. */
+  worker: ReportedComponent | null;
 }
 
 const updateFlags = new Map<string, boolean>();
@@ -52,7 +56,9 @@ export function useVersionStatus(
       setStatus(payload);
       setLoading(false);
       const hasUpdate =
-        payload.server.updateAvailable || (payload.sfu?.updateAvailable ?? false);
+        payload.server.updateAvailable ||
+        (payload.sfu?.updateAvailable ?? false) ||
+        (payload.worker?.updateAvailable ?? false);
       setUpdateFlag(host, hasUpdate);
     };
     socket.on("server:version:status", handler);

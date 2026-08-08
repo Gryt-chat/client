@@ -25,6 +25,34 @@ const SFU_DIR = join(CLIENT_DIR, "..", "sfu");
 const WORKER_DIR = join(CLIENT_DIR, "..", "image-worker");
 const OUTDIR = join(CLIENT_DIR, "build", "embedded-server");
 
+/**
+ * What a submodule checkout is, as a version.
+ *
+ * The tag, not package.json. Every one of these repos releases by tagging and
+ * leaves package.json alone — server's says 1.0.76 while it is released as
+ * 1.3.0-beta.2, and the worker's says 1.0.6 while it is released as 1.2.0. The
+ * SFU has no package.json at all. Reading those files would put three
+ * confidently wrong numbers in front of someone deciding whether to update.
+ *
+ * A checkout that is not exactly on a tag reports the tag it descends from
+ * plus the distance, which is what `git describe` gives and is honest about
+ * being between releases.
+ */
+function describeVersion(dir) {
+  try {
+    const described = execSync("git describe --tags --always --dirty", {
+      cwd: dir,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    })
+      .trim()
+      .replace(/^v/, "");
+    return described || "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
 const args = process.argv.slice(2);
 const skipSfu = args.includes("--skip-sfu");
 const skipServer = args.includes("--skip-server");
@@ -190,9 +218,14 @@ if (skipSfu) {
       CGO_ENABLED: "0",
     };
 
-    run(`go build -C "${SFU_DIR}" -o "${sfuOutPath}" ./cmd/sfu/`, {
-      env,
-    });
+    // Stamp the binary. Without this, cmd/sfu/main.go keeps its `var Version =
+    // "dev"` default and every embedded SFU reports itself as "vdev" in server
+    // settings — which is not a version anyone can compare against a release.
+    const sfuVersion = describeVersion(SFU_DIR);
+    run(
+      `go build -C "${SFU_DIR}" -ldflags "-X main.Version=${sfuVersion}" -o "${sfuOutPath}" ./cmd/sfu/`,
+      { env },
+    );
 
     if (platform !== "win32") {
       try {
@@ -256,6 +289,10 @@ if (skipWorker) {
     workerPkg.name = "gryt-embedded-image-worker";
     workerPkg.private = true;
     workerPkg.main = "dist/index.js";
+    // The worker reads this as its fallback version, and the checked-in value
+    // is decorative — the worker releases by tag and never bumps the file. The
+    // copy that ships should say what was actually built.
+    workerPkg.version = describeVersion(WORKER_DIR);
 
     writeFileSync(
       join(workerOut, "package.json"),
@@ -283,6 +320,31 @@ if (skipWorker) {
     console.log(`  Image worker ready: ${workerOut}`);
   }
 }
+
+/**
+ * What actually went into this bundle.
+ *
+ * The embedded server had no way to know its own version, so it fell back to
+ * the hardcoded "1.0.0" in its config and every desktop-hosted server reported
+ * that — next to a real latest-release number, which made it look permanently
+ * out of date. The manager reads this file and tells each process what it is.
+ *
+ * Written from the sources actually built rather than from the client's own
+ * version, because these three move independently of it and of each other.
+ */
+writeFileSync(
+  join(OUTDIR, "versions.json"),
+  JSON.stringify(
+    {
+      server: describeVersion(SERVER_DIR),
+      sfu: existsSync(SFU_DIR) ? describeVersion(SFU_DIR) : "unknown",
+      worker: existsSync(WORKER_DIR) ? describeVersion(WORKER_DIR) : "unknown",
+      builtAt: new Date().toISOString(),
+    },
+    null,
+    2,
+  ) + "\n",
+);
 
 console.log();
 console.log("=== Embedded server resources ready ===");
