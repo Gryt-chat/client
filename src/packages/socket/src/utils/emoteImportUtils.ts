@@ -1,18 +1,31 @@
-export const BTTV_USER_URL_RE = /betterttv\.com\/users\/([a-f0-9]{20,30})/;
-export const BTTV_EMOTE_URL_RE = /betterttv\.com\/emotes\/([a-f0-9]{20,30})/;
-export const BTTV_CDN = "https://cdn.betterttv.net/emote";
+/**
+ * The bits of importing emotes that do not care where they came from.
+ *
+ * BetterTTV and emoji.gg differ in exactly four places — how a link is
+ * recognised, how a listing is fetched, where the preview image lives, and
+ * which proxy the file is downloaded through. Everything after that (picking,
+ * renaming, validating, uploading, progress) is the same work, so it is
+ * written once here and in useEmoteImport, and the two sources are described
+ * in emoteImportSources.ts.
+ */
 export const EMOJI_NAME_RE = /^[A-Za-z0-9_]{2,32}$/;
 
 export type EmoteImportStatus = "idle" | "downloading" | "uploading" | "processing" | "error";
 
-export interface BttvEmote {
+export interface ImportEmote {
+  /** Unique within a batch. The source's own id or slug. */
   id: string;
+  /** What the source calls it, before Gryt's naming rules are applied. */
   code: string;
   imageType: string;
   animated: boolean;
+  /** Shown in the row. Fetched straight from the source's CDN. */
+  previewUrl: string;
+  /** Downloaded through the server, which is what enforces the size limit. */
+  fileUrl: string;
 }
 
-export interface BttvEmoteWithMeta extends BttvEmote {
+export interface ImportEmoteWithMeta extends ImportEmote {
   selected: boolean;
   name: string;
   nameError: string | null;
