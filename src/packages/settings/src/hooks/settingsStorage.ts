@@ -158,6 +158,10 @@ export interface Settings {
   setDevFakeMuted: (count: number) => void;
   devFakeScreenShare: boolean;
   setDevFakeScreenShare: (enabled: boolean) => void;
+  devFakeDeafened: boolean;
+  setDevFakeDeafened: (enabled: boolean) => void;
+  devFakeSpeaking: boolean;
+  setDevFakeSpeaking: (enabled: boolean) => void;
   cameraFlipped: boolean;
   setCameraFlipped: (flipped: boolean) => void;
   cameraFps: number;
@@ -323,6 +327,10 @@ export const settingsInit: Settings = {
   setDevFakeMuted: noop,
   devFakeScreenShare: false,
   setDevFakeScreenShare: noop,
+  devFakeDeafened: false,
+  setDevFakeDeafened: noop,
+  devFakeSpeaking: true,
+  setDevFakeSpeaking: noop,
   cameraFlipped: false,
   setCameraFlipped: noop,
   cameraFps: 30,

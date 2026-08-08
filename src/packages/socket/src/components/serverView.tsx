@@ -12,6 +12,7 @@ import {
   readFakeParticipantOptions,
   withFakeParticipants,
 } from "../dev/fakeParticipants";
+import { useFakeSpeech } from "../dev/fakeSpeech";
 import { useAdminActions } from "../hooks/useAdminActions";
 import { useChannelSettings, useHandleChannelClick } from "../hooks/useChannelSettings";
 import { useChat } from "../hooks/useChat";
@@ -52,6 +53,7 @@ export const ServerView = () => {
     pinMembersSidebar, setPinMembersSidebar,
     setIsMuted, setIsDeafened,
     devFakeParticipants, devFakeMuted, devFakeScreenShare,
+    devFakeDeafened, devFakeSpeaking,
   } = useSettings();
   const { currentlyViewingServer, setShowRemoveServer, setLastSelectedChannelForServer } = useServerManagement();
   const { connect, currentServerConnected, isConnected, isConnecting, videoStreams, streamSources } = useSFU();
@@ -190,6 +192,22 @@ export const ServerView = () => {
     };
   }, [currentRole, requestDisconnectUser, requestKickUser, requestBanUser, handleServerMuteUser, handleServerDeafenUser, handleChangeRole]);
 
+  // Dev only, and above the early returns because the speech rig is a hook.
+  // See fakeParticipants.ts.
+  const fakeParticipantOptions = useMemo(
+    () =>
+      fakeParticipantOptionsFromUrl ??
+      fakeParticipantOptionsFromSettings(
+        devFakeParticipants,
+        devFakeMuted,
+        devFakeScreenShare,
+        devFakeDeafened,
+        devFakeSpeaking,
+      ),
+    [devFakeParticipants, devFakeMuted, devFakeScreenShare, devFakeDeafened, devFakeSpeaking],
+  );
+  const fakeSpeech = useFakeSpeech(fakeParticipantOptions);
+
   if (!currentlyViewingServer) return null;
 
   const serverDetails = serverDetailsList[currentlyViewingServer.host];
@@ -214,14 +232,6 @@ export const ServerView = () => {
   const currentUserRole = serverDetails?.server_info?.role;
   const canManage = currentUserRole === "owner" || currentUserRole === "admin";
   const hostChannels = serverDetails.channels || [];
-  // Dev only. See fakeParticipants.ts.
-  const fakeParticipantOptions =
-    fakeParticipantOptionsFromUrl ??
-    fakeParticipantOptionsFromSettings(
-      devFakeParticipants,
-      devFakeMuted,
-      devFakeScreenShare,
-    );
 
   const { clients: hostClients, videoStreams: voiceVideoStreams } =
     withFakeParticipants(
@@ -230,6 +240,13 @@ export const ServerView = () => {
       currentChannelId,
       fakeParticipantOptions,
     );
+  // Empty unless the fakes are on, so the real values pass through untouched.
+  const voiceStreamSources = fakeParticipantOptions
+    ? { ...streamSources, ...fakeSpeech.sources }
+    : streamSources;
+  const voiceClientsSpeaking = fakeParticipantOptions
+    ? { ...clientsSpeaking, ...fakeSpeech.speaking }
+    : clientsSpeaking;
   const hostMembers = memberLists[host] || [];
   const serverName = serverDetails.server_info?.name || currentlyViewingServer.name;
 
@@ -266,7 +283,7 @@ export const ServerView = () => {
             currentConnectionId={currentConnection?.id}
             selectedChannelId={selectedChannelId}
             onChannelClick={handleChannelClick}
-            clientsSpeaking={clientsSpeaking}
+            clientsSpeaking={voiceClientsSpeaking}
             canManage={canManage}
             onEditItem={handleEditItem}
             onDeleteItem={requestDeleteSidebarItem}
@@ -304,7 +321,7 @@ export const ServerView = () => {
             onVoiceDisconnect={handleVoiceDisconnect}
             peerLatency={peerLatency}
             videoStreams={voiceVideoStreams}
-            streamSources={streamSources}
+            streamSources={voiceStreamSources}
           />
         ) : (
           <Flex
@@ -344,7 +361,7 @@ export const ServerView = () => {
               currentConnectionId={currentConnection?.id}
               selectedChannelId={selectedChannelId}
               onChannelClick={handleChannelClick}
-              clientsSpeaking={clientsSpeaking}
+              clientsSpeaking={voiceClientsSpeaking}
               canManage={canManage}
               onEditItem={handleEditItem}
               onDeleteItem={requestDeleteSidebarItem}
@@ -355,7 +372,7 @@ export const ServerView = () => {
               currentUserRole={currentUserRole}
               adminActions={currentAdminActions}
               unreadChannelIds={unreadChannelIds}
-              streamSources={streamSources}
+              streamSources={voiceStreamSources}
             />
             <Flex flexGrow="1" ref={voiceContainerRef} style={{ position: "relative", minWidth: 0 }}>
               <VoiceView
@@ -375,7 +392,7 @@ export const ServerView = () => {
                 currentChannelId={currentChannelId}
                 clientsForHost={hostClients}
                 members={hostMembers}
-                clientsSpeaking={clientsSpeaking}
+                clientsSpeaking={voiceClientsSpeaking}
                 isConnecting={isConnecting}
                 currentConnectionId={currentConnection?.id}
                 onDisconnect={handleVoiceDisconnect}
@@ -384,7 +401,7 @@ export const ServerView = () => {
                 currentUserRole={currentUserRole}
                 adminActions={currentAdminActions}
                 videoStreams={voiceVideoStreams}
-                streamSources={streamSources}
+                streamSources={voiceStreamSources}
                 onFocusChange={setVoiceFocused}
                 isMaximized={isMaximized}
                 onToggleMaximize={toggleMaximized}

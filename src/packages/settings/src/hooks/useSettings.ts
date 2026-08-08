@@ -42,6 +42,8 @@ function useSettingsHook() {
   const [devFakeParticipants, setDevFakeParticipants] = useState(0);
   const [devFakeMuted, setDevFakeMuted] = useState(0);
   const [devFakeScreenShare, setDevFakeScreenShare] = useState(false);
+  const [devFakeDeafened, setDevFakeDeafened] = useState(false);
+  const [devFakeSpeaking, setDevFakeSpeaking] = useState(true);
   const [cameraFlipped, setCameraFlipped] = useState(false);
   const [cameraFps, setCameraFpsState] = useState(30);
   const [cameraCodec, setCameraCodecState] = useState<VideoCodec>("auto");
@@ -95,6 +97,8 @@ function useSettingsHook() {
       setDevFakeParticipants(getUserValue("devFakeParticipants", 0));
       setDevFakeMuted(getUserValue("devFakeMuted", 0));
       setDevFakeScreenShare(getUserValue("devFakeScreenShare", false));
+      setDevFakeDeafened(getUserValue("devFakeDeafened", false));
+      setDevFakeSpeaking(getUserValue("devFakeSpeaking", true));
       setCameraFlipped(getUserValue("cameraFlipped", false));
       setCameraFpsState(getUserValue("cameraFps", 30));
       setCameraCodecState(getUserValue<VideoCodec>("cameraCodec", "auto"));
@@ -234,6 +238,16 @@ function useSettingsHook() {
   function updateDevFakeScreenShare(enabled: boolean) {
     setDevFakeScreenShare(enabled);
     setUserValue("devFakeScreenShare", enabled);
+  }
+
+  function updateDevFakeDeafened(enabled: boolean) {
+    setDevFakeDeafened(enabled);
+    setUserValue("devFakeDeafened", enabled);
+  }
+
+  function updateDevFakeSpeaking(enabled: boolean) {
+    setDevFakeSpeaking(enabled);
+    setUserValue("devFakeSpeaking", enabled);
   }
 
   function updateVoiceTileLayout(layout: VoiceTileLayout) {
@@ -386,6 +400,10 @@ function useSettingsHook() {
     setDevFakeMuted: updateDevFakeMuted,
     devFakeScreenShare,
     setDevFakeScreenShare: updateDevFakeScreenShare,
+    devFakeDeafened,
+    setDevFakeDeafened: updateDevFakeDeafened,
+    devFakeSpeaking,
+    setDevFakeSpeaking: updateDevFakeSpeaking,
     cameraFlipped,
     setCameraFlipped: updateCameraFlipped,
     cameraFps,
