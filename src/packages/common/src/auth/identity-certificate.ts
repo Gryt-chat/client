@@ -39,6 +39,40 @@ function parseJwtSub(jwt: string): string | null {
   }
 }
 
+function parseJwtJwk(jwt: string): JsonWebKey | null {
+  try {
+    const parts = jwt.split(".");
+    if (parts.length !== 3) return null;
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return payload.jwk && typeof payload.jwk === "object" ? (payload.jwk as JsonWebKey) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Does this certificate still describe the key we would sign with?
+ *
+ * The certificate binds a public key to an identity, and the server verifies
+ * the assertion against the key inside the certificate. So a certificate that
+ * names a different key is worthless — worse than none, because it looks valid
+ * and fails at the far end.
+ *
+ * The two can drift apart because they live in different places. The keypair is
+ * in IndexedDB and is silently regenerated when it is missing; the certificate
+ * is in localStorage, which Electron restores across profiles. Clear one and not
+ * the other — a profile reset, a cache wipe — and the client signs with a new
+ * key while presenting the old certificate.
+ *
+ * Comparing x and y is enough: they are the P-256 public point, so a matching
+ * pair means the same key. crv and kty are implied by the algorithm we use.
+ */
+function certificateMatchesKey(certificate: string, currentJwk: JsonWebKey): boolean {
+  const certJwk = parseJwtJwk(certificate);
+  if (!certJwk) return false;
+  return certJwk.x === currentJwk.x && certJwk.y === currentJwk.y;
+}
+
 function getStoredCert(): StoredCert | null {
   try {
     const raw = localStorage.getItem(CERT_STORAGE_KEY);
@@ -113,7 +147,21 @@ async function fetchCertificateFromService(): Promise<string> {
 export async function getValidCertificate(): Promise<string> {
   const stored = getStoredCert();
   if (stored && stored.expiresAt > Date.now() + RENEW_BUFFER_MS) {
-    return stored.certificate;
+    // Unexpired is not the same as usable. A certificate that names a key we no
+    // longer hold produces an assertion the server rejects with "signature
+    // verification failed", and because the certificate is still in date it is
+    // never renewed — the client stays wedged until it expires on its own.
+    //
+    // Checking here means the mismatch repairs itself on the next join, with
+    // nothing for the user to do.
+    const currentJwk = await getPublicKeyJwk();
+    if (certificateMatchesKey(stored.certificate, currentJwk)) {
+      return stored.certificate;
+    }
+    console.warn(
+      "[Identity] Cached certificate does not match the current keypair — renewing."
+    );
+    clearIdentityCertificate();
   }
 
   if (fetchPromise) return fetchPromise;
