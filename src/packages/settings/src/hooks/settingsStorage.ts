@@ -156,6 +156,8 @@ export interface Settings {
   setDevFakeParticipants: (count: number) => void;
   devFakeMembers: number;
   setDevFakeMembers: (count: number) => void;
+  devFakeChatSeconds: number;
+  setDevFakeChatSeconds: (seconds: number) => void;
   devFakeMuted: number;
   setDevFakeMuted: (count: number) => void;
   devFakeScreenShare: boolean;
@@ -327,6 +329,8 @@ export const settingsInit: Settings = {
   setDevFakeParticipants: noop,
   devFakeMembers: 0,
   setDevFakeMembers: noop,
+  devFakeChatSeconds: 6,
+  setDevFakeChatSeconds: noop,
   devFakeMuted: 0,
   setDevFakeMuted: noop,
   devFakeScreenShare: false,

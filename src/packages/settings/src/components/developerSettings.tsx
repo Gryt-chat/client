@@ -1,6 +1,11 @@
-import { Badge, Flex, Heading, Separator, Text } from "@radix-ui/themes";
+import { Badge, Button, Flex, Heading, Separator, Text } from "@radix-ui/themes";
+import { MdPlayArrow, MdStop } from "react-icons/md";
 
 import { useSettings } from "@/settings";
+import {
+  setFakeChatRunning,
+  useFakeChatRunning,
+} from "@/socket/src/dev/fakeChatController";
 
 import {
   SettingGroup,
@@ -27,6 +32,8 @@ export function DeveloperSettings() {
     setDevFakeParticipants,
     devFakeMembers,
     setDevFakeMembers,
+    devFakeChatSeconds,
+    setDevFakeChatSeconds,
     devFakeMuted,
     setDevFakeMuted,
     devFakeScreenShare,
@@ -36,6 +43,7 @@ export function DeveloperSettings() {
     devFakeSpeaking,
     setDevFakeSpeaking,
   } = useSettings();
+  const chatRunning = useFakeChatRunning();
 
   return (
     <SettingsContainer>
@@ -114,6 +122,40 @@ export function DeveloperSettings() {
           checked={devFakeScreenShare}
           onCheckedChange={setDevFakeScreenShare}
         />
+      </SettingGroup>
+
+      <Separator size="4" />
+
+      <SettingGroup
+        title="Fake chat"
+        description="Posts messages from the invented people into the channel you are looking at — mentions, custom emoji, links with previews, code blocks, replies and a wall of text, so each one can be seen rendered. Delivered through the same handler a real message arrives on, so unread badges and the message sound behave normally. Nothing is sent to the server: nobody else sees any of it and none of it is saved."
+      >
+        <SliderSetting
+          title="A message every"
+          description={`${devFakeChatSeconds} second${devFakeChatSeconds === 1 ? "" : "s"}, while it is running.`}
+          value={devFakeChatSeconds}
+          onChange={setDevFakeChatSeconds}
+          min={1}
+          max={30}
+          step={1}
+        />
+
+        <Flex direction="column" gap="2">
+          <Button
+            size="2"
+            color={chatRunning ? "red" : undefined}
+            variant={chatRunning ? "soft" : "solid"}
+            onClick={() => setFakeChatRunning(!chatRunning)}
+          >
+            {chatRunning ? <MdStop size={16} /> : <MdPlayArrow size={16} />}
+            {chatRunning ? "Stop" : "Start"}
+          </Button>
+          <Text size="1" color="gray">
+            {chatRunning
+              ? "Running. It keeps going until you stop it or quit — nothing turns it off on its own."
+              : "The message sound only plays when the window is not focused, which is what a real message does too. Click away from Gryt to hear it."}
+          </Text>
+        </Flex>
       </SettingGroup>
 
       <Separator size="4" />
