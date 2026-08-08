@@ -15,6 +15,7 @@ import { MdAdd, MdFeedback, MdMic, MdSettings } from "react-icons/md";
 
 import {
   GeneratedServerIcon,
+  generatedServerIconUrl,
   getServerHttpBase,
   ownAvatarSeed,
   resolveAvatarSrc,
@@ -32,6 +33,30 @@ import { useServerManagement, useSockets } from "@/socket";
 import { useSFU } from "@/webRTC";
 import { MiniControls } from "@/webRTC/src/components/miniControls";
 
+
+/**
+ * Where to point a server's icon.
+ *
+ * Three cases, and the middle one is the reason this is a function. Once the
+ * server has told us it has no icon, asking for one anyway means the browser
+ * can answer from cache — and clearing an icon then leaves the old one on
+ * screen until that entry expires, which reads as the server still serving it.
+ * Knowing there is none, we draw the generated one and make no request at all.
+ *
+ * Before details arrive we do not know either way, so we ask and let the
+ * Avatar's fallback handle a 404.
+ */
+function serverIconSrc(
+  host: string,
+  serverDetailsList: ServerDetailsListType,
+): string {
+  const info = serverDetailsList[host]?.server_info;
+  if (info?.icon_url) {
+    return `${getServerHttpBase(host)}/icon?v=${encodeURIComponent(info.icon_url)}`;
+  }
+  if (info) return generatedServerIconUrl(host);
+  return `${getServerHttpBase(host)}/icon`;
+}
 
 interface SidebarProps {
   setShowAddServer: (show: boolean) => void;
@@ -229,13 +254,7 @@ function ServerItem({
                       ? "pulse-reconnect 1.5s ease-in-out infinite"
                       : "none",
                   }}
-                  src={`${getServerHttpBase(host)}/icon${
-                    serverDetailsList[host]?.server_info?.icon_url
-                      ? `?v=${encodeURIComponent(
-                          serverDetailsList[host].server_info!.icon_url!
-                        )}`
-                      : ""
-                  }`}
+                  src={serverIconSrc(host, serverDetailsList)}
                 >
                   <Button
                     style={{
