@@ -281,6 +281,8 @@ export const SETTINGS_KEYS = [
   "devFakeParticipants",
   "devFakeMuted",
   "devFakeScreenShare",
+  "devFakeDeafened",
+  "devFakeSpeaking",
   "cameraFlipped",
   "screenShareQuality",
   "screenShareFps",
