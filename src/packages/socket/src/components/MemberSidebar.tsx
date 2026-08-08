@@ -1,7 +1,7 @@
 import { Avatar, Box, Flex, IconButton, Text, Tooltip } from "@radix-ui/themes";
 import { MdPushPin } from "react-icons/md";
 
-import { getUploadsFileUrl } from "@/common";
+import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 
 import { UserStatus } from "../types/clients";
 import { UserContextMenu } from "./UserContextMenu";
@@ -111,7 +111,7 @@ const MemberItem = ({
           <Avatar
             size="2"
             fallback={member.nickname[0]}
-            src={member.avatarFileId ? getUploadsFileUrl(serverHost, member.avatarFileId, { thumb: true }) : undefined}
+            src={resolveAvatarSrc(member.avatarFileId ? getUploadsFileUrl(serverHost, member.avatarFileId, { thumb: true }) : undefined, member.serverUserId)}
             style={{
               backgroundColor: member.color,
               opacity: isOffline ? 0.4 : 1,

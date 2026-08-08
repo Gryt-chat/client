@@ -9,7 +9,7 @@ import {
 } from "react-icons/md";
 
 import { useMicrophone } from "@/audio";
-import { getUploadsFileUrl } from "@/common";
+import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 import type { StreamSources } from "@/webRTC";
 
 import type { Client } from "../types/clients";
@@ -615,15 +615,16 @@ export function VoiceParticipantCard({
         <Avatar
           size={compact ? "2" : "3"}
           fallback={client.nickname[0]}
-          src={
+          src={resolveAvatarSrc(
             avatarFileId
               ? // No thumbnail here on purpose. The tile draws avatars up to
                 // ~96 CSS px, 192 on a 2x screen, which is past what the 128px
                 // thumbnail can carry — and it is the one place an animated
                 // avatar should still animate, which the thumbnail does not.
                 getUploadsFileUrl(serverHost, avatarFileId)
-              : undefined
-          }
+              : undefined,
+            client?.serverUserId,
+          )}
           style={{
             ...speakingRingStyle(hue, isSpeaking),
             // Stepped by tile height rather than Radix's size scale, so the

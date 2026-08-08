@@ -1,7 +1,7 @@
 import { Avatar, Flex, Text } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
 
-import { getUploadsFileUrl } from "@/common";
+import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 
 import type { TypingUser } from "../hooks/useTypingIndicator";
 
@@ -36,7 +36,7 @@ export function TypingIndicator({ typingUsers, serverHost }: TypingIndicatorProp
                 size="1"
                 radius="full"
                 fallback={first.nickname[0]}
-                src={first.avatarFileId && serverHost ? getUploadsFileUrl(serverHost, first.avatarFileId, { thumb: true }) : undefined}
+                src={resolveAvatarSrc(first.avatarFileId && serverHost ? getUploadsFileUrl(serverHost, first.avatarFileId, { thumb: true }) : undefined, first.serverUserId)}
                 style={{ width: 16, height: 16, flexShrink: 0 }}
               />
             )}

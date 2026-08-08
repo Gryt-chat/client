@@ -23,3 +23,4 @@ export * from "./src/utils/url";
 
 // Legacy API (deprecated by Keycloak but still present)
 export * from "./src/api/auth";
+export * from "./src/utils/generatedAvatar";
