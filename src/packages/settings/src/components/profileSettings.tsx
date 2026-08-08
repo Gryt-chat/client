@@ -515,7 +515,34 @@ export function ProfileSettings() {
           toast.success(`Profile synced to ${hosts.length} server${hosts.length > 1 ? "s" : ""}`);
         }
       } else {
-        toast.success(`Nickname synced to ${hosts.length} server${hosts.length > 1 ? "s" : ""}`);
+        // No avatar here means every server should end up with none. Syncing
+        // only the nickname left servers holding an avatar this profile no
+        // longer has, and "sync" then quietly meant "sync some of it" — the
+        // one thing the button cannot mean.
+        const results = await Promise.allSettled(hosts.map(h => removeAvatarFromHost(h)));
+
+        let removeFailed = 0;
+        results.forEach((r, idx) => {
+          const host = hosts[idx];
+          if (r.status !== "fulfilled") {
+            removeFailed++;
+            return;
+          }
+          localStorage.removeItem(`avatarFileId:${host}`);
+          localStorage.removeItem(`avatarHash:${host}`);
+          setServerProfiles(prev => ({
+            ...prev,
+            [host]: { ...prev[host], avatarFileId: null, avatarUrl: null },
+          }));
+          sockets[host]?.emit("avatar:updated");
+          sockets[host]?.emit("members:fetch");
+        });
+
+        if (removeFailed > 0) {
+          toast.error(`Synced, but the avatar could not be cleared on ${removeFailed}/${hosts.length} server${hosts.length > 1 ? "s" : ""}`);
+        } else {
+          toast.success(`Profile synced to ${hosts.length} server${hosts.length > 1 ? "s" : ""}`);
+        }
       }
     } catch {
       toast.error("Sync failed");
