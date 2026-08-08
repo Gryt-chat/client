@@ -1,6 +1,6 @@
 import { io } from "socket.io-client";
 
-import { getCertificateSub, getServerWsBase, getValidCertificate, signAssertion } from "@/common";
+import { clearIdentityCertificate, getCertificateSub, getServerWsBase, getValidCertificate, signAssertion } from "@/common";
 
 import { challengeHostMatches } from "./challengeHost";
 import { guardSocket, serverProofErrorMessage } from "./serverAuth";
@@ -69,7 +69,58 @@ function describeConnectError(err: unknown, host: string): JoinServerOnceError {
   return { error: "connect_error", message: "Could not connect to the server." };
 }
 
+/**
+ * Join, and if the server rejects our identity, renew the certificate and try
+ * once more.
+ *
+ * getValidCertificate() already refuses to hand back a certificate that names a
+ * key we no longer hold, which covers the case we have actually seen. This is
+ * for the rest: a certificate the identity service has rotated away from, or
+ * one signed by a key the server no longer trusts. Neither is visible from
+ * here, and both are fixed by asking for a new one.
+ *
+ * Exactly one retry, and only for this error. Anything else — a ban, a bad
+ * invite, an unreachable host — is not helped by a new certificate, and a
+ * second attempt would just be a slower failure.
+ */
 export async function joinServerOnce(
+  req: JoinServerOnceRequest,
+  opts?: { timeoutMs?: number }
+): Promise<JoinServerOnceResult> {
+  const first = await attemptJoin(req, opts);
+
+  if (first.ok || first.error?.error !== "identity_verification_failed") {
+    return first;
+  }
+
+  console.warn(
+    `[JoinServer] ${req.host} rejected our identity — renewing the certificate and retrying once.`
+  );
+  clearIdentityCertificate();
+
+  const second = await attemptJoin(req, opts);
+
+  if (!second.ok && second.error?.error === "identity_verification_failed") {
+    // A fresh certificate did not help, so this is not something the client can
+    // repair. Say what was tried and what to do, rather than repeating advice
+    // that has already failed twice.
+    return {
+      ok: false,
+      error: {
+        error: "identity_verification_failed",
+        message:
+          `${req.host} would not accept your identity, and renewing it did not help. ` +
+          `This usually means the server trusts a different identity service. ` +
+          `Sign out and back in, and if it keeps happening the server's administrator ` +
+          `needs to check that it points at the same Gryt identity service you do.`,
+      },
+    };
+  }
+
+  return second;
+}
+
+async function attemptJoin(
   req: JoinServerOnceRequest,
   opts?: { timeoutMs?: number }
 ): Promise<JoinServerOnceResult> {
