@@ -160,7 +160,8 @@ export function migrateAccessTokensToMode(mode: AccessTokenStorageMode): void {
  * your avatar has to be seeded the same way everyone else's is, so you are not
  * looking at two different faces for yourself on one screen.
  */
-export function getOwnServerUserId(host: string): string | undefined {
+export function getOwnServerUserId(host: string | null | undefined): string | undefined {
+  if (!host) return undefined;
   const token = getServerAccessToken(host);
   if (!token) return undefined;
 
@@ -169,4 +170,32 @@ export function getOwnServerUserId(host: string): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+/**
+ * The seed to draw your own generated avatar from.
+ *
+ * Your face has to be the one other people see, which means the id the server
+ * knows you by — but the global surfaces (the All Servers profile tab, the
+ * sidebar before you open anything) have no server in scope, and seeding those
+ * on the Gryt account drew you a second face right next to the first one.
+ *
+ * So they borrow: the server you are looking at, then any server you are on,
+ * and only then the account. In practice that means one face everywhere, and
+ * it stops being a guess as soon as you are in a server.
+ *
+ * Nickname would match everywhere by construction and was rejected for it.
+ * Nicknames are not unique, so two people called the same thing would share a
+ * face in the member list the avatars exist to disambiguate — and a rename
+ * would change the face people recognise you by.
+ */
+export function ownAvatarSeed(
+  hosts: Array<string | null | undefined>,
+  grytUserId?: string | null,
+): string | undefined {
+  for (const host of hosts) {
+    const id = getOwnServerUserId(host);
+    if (id) return id;
+  }
+  return grytUserId ?? undefined;
 }

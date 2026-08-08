@@ -3,7 +3,7 @@ import { useCallback,useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { MdCameraAlt, MdCheck, MdContentCopy, MdRefresh } from "react-icons/md";
 
-import { compressStaticAvatarToLimit, getAvatarHash, getOwnServerUserId, getServerAccessToken, getServerHttpBase, getStoredAvatar, getUploadsFileUrl, resolveAvatarSrc, useUserId } from "@/common";
+import { compressStaticAvatarToLimit, getAvatarHash, getOwnServerUserId, getServerAccessToken, getServerHttpBase, getStoredAvatar, getUploadsFileUrl, ownAvatarSeed, resolveAvatarSrc, useUserId } from "@/common";
 import { useSettings } from "@/settings";
 import { useServerManagement, useSockets } from "@/socket";
 
@@ -254,7 +254,7 @@ export function ProfileSettings() {
   const userId = useUserId();
   const { nickname, setNickname, avatarDataUrl, setAvatarDataUrl, setAvatarFile } =
     useSettings();
-  const { servers } = useServerManagement();
+  const { servers, currentlyViewingServer } = useServerManagement();
   const { sockets, serverDetailsList, serverProfiles, setServerProfiles } = useSockets();
   const [uploading, setUploading] = useState(false);
   const [removing, setRemoving] = useState(false);
@@ -564,11 +564,10 @@ export function ProfileSettings() {
           <ProfileEditor
             nickname={nickname}
             avatarUrl={allServerAvatarUrl}
-            // No server in scope on this tab, so it falls back to the Gryt
-            // account. It draws a different face from any single server's,
-            // which is unavoidable — each server seeds its own — but it is
-            // the face this tab is about: the one you have not set.
-            generatedAvatarUrl={resolveAvatarSrc(undefined, userId ?? undefined)}
+            // Borrowed from a server you are on rather than the Gryt account,
+            // so this is the face you actually have somewhere instead of a
+            // third one that appears nowhere else. See ownAvatarSeed.
+            generatedAvatarUrl={resolveAvatarSrc(undefined, ownAvatarSeed([currentlyViewingServer?.host, ...serverHosts], userId))}
             initial={initial}
             uploading={uploading}
             removing={removing}

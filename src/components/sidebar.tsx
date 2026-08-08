@@ -15,8 +15,8 @@ import { MdAdd, MdFeedback, MdMic, MdSettings } from "react-icons/md";
 
 import {
   GeneratedServerIcon,
-  getOwnServerUserId,
   getServerHttpBase,
+  ownAvatarSeed,
   resolveAvatarSrc,
   useAccount,
   useUnreadTracker,
@@ -60,13 +60,10 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
   const activeProfile = currentHost ? serverProfiles[currentHost] : undefined;
   const displayNickname = activeProfile?.nickname || nickname;
   // Seeded on the id the server you are looking at knows you by, so your own
-  // face here is the one everyone else sees in that server's member list. With
-  // no server open there is no such id, and it falls back to the Gryt account —
-  // which draws a different face, but a face rather than a letter, and only in
-  // a state where there is nothing to be inconsistent with.
+  // face here is the one everyone else sees in that server's member list.
   const displayAvatarUrl = resolveAvatarSrc(
     activeProfile?.avatarUrl || avatarDataUrl,
-    (currentHost ? getOwnServerUserId(currentHost) : undefined) ?? userId ?? undefined,
+    ownAvatarSeed([currentHost, ...orderedServerHosts], userId),
   );
   return (
     <Flex
