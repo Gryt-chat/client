@@ -114,6 +114,27 @@ export async function downloadAsFileWithProgress({
   return new File([blob], `${name}.${ext}`, { type: mime });
 }
 
+/**
+ * Which of two emotes claiming one name should win.
+ *
+ * Animated, every time. Sites hosting emoji often carry a still and an animated
+ * version of the same thing under names that sanitise to the same shortcode —
+ * an emoji.gg pack will list `pepe_pizza.gif` beside `pepe_pizza.png` — and
+ * taking whichever came last meant importing a frozen frame of an emoji that
+ * moves. The still is the lossy one: you can always look at a GIF's first
+ * frame, but you cannot animate a PNG.
+ */
+export function preferredOfDuplicates<T extends { animated: boolean }>(
+  current: T | undefined,
+  candidate: T,
+): T {
+  if (!current) return candidate;
+  if (current.animated && !candidate.animated) return current;
+  if (!current.animated && candidate.animated) return candidate;
+  // Same kind: first wins, which for a listing is the order the source gave.
+  return current;
+}
+
 export function validateName(
   name: string,
   existingNames: Set<string>,
@@ -125,7 +146,7 @@ export function validateName(
     return { error: "2-32 letters (case-sensitive), numbers, or underscores.", warning: null };
   for (let i = 0; i < batchNames.length; i++) {
     if (i !== selfIndex && batchNames[i] === name)
-      return { error: null, warning: "Duplicate in selection — last one wins." };
+      return { error: null, warning: "Duplicate name — the animated one is imported." };
   }
   if (existingNames.has(name))
     return { error: null, warning: "Already exists — will replace." };
