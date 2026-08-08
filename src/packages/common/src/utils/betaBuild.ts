@@ -1,7 +1,3 @@
-import { useEffect, useState } from "react";
-
-import { getElectronAPI, isElectron } from "../../../../lib/electron";
-
 /**
  * The amber a beta build wears.
  *
@@ -10,6 +6,7 @@ import { getElectronAPI, isElectron } from "../../../../lib/electron";
  * Kept in step by hand with the same value in electron/splash.html, which
  * cannot import from here.
  */
+
 export const BETA_ACCENT = "#f2a33c";
 
 /**
@@ -17,28 +14,18 @@ export const BETA_ACCENT = "#f2a33c";
  *
  * The version decides, not the channel preference. Someone can be subscribed to
  * beta while still running the stable build they last installed, and the mark
- * should describe what is actually open. Non-Electron builds have no version to
- * ask for and are never marked.
+ * should describe what is actually open.
+ *
+ * __APP_VERSION__ is a compile-time define fed from packages/client's
+ * package.json (vite.config.ts), so it is the version of this exact bundle and
+ * it exists in every build. That matters: this used to ask Electron for the
+ * version and mark nothing when there was no Electron, which left the hosted
+ * client at beta.gryt.chat wearing no mark at all while its own About panel
+ * printed a -beta version. It is a beta, so it should say so.
  */
+export const IS_BETA_BUILD = /-beta/i.test(__APP_VERSION__);
+
 export function useIsBetaBuild(): boolean {
-  const [isBeta, setIsBeta] = useState(false);
-
-  useEffect(() => {
-    if (!isElectron()) return;
-    let cancelled = false;
-    getElectronAPI()
-      ?.getAppVersion()
-      .then((v) => {
-        if (!cancelled) setIsBeta(/-beta/i.test(v));
-      })
-      .catch(() => {
-        /* No version, no mark. */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return isBeta;
+  return IS_BETA_BUILD;
 }
 
