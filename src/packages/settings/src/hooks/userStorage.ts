@@ -279,6 +279,7 @@ export const SETTINGS_KEYS = [
   "cameraMirrored",
   "voiceTileLayout",
   "devFakeParticipants",
+  "devFakeMembers",
   "devFakeMuted",
   "devFakeScreenShare",
   "devFakeDeafened",
