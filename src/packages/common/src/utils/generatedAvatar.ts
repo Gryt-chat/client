@@ -1,5 +1,6 @@
 /**
- * A generated avatar for anyone who has not set one.
+ * A generated avatar for anyone who has not set one, and an icon for any server
+ * that has not either.
  *
  * Replaces the letter tile. A first initial is a poor identifier — half a member
  * list is an S — where a generated face is distinguishable at a glance and stays
@@ -10,12 +11,27 @@
  * every render, and would leave any deployment without internet access showing
  * nothing. Same SVG, no network.
  *
- * Notionists is CC0, so nothing here has to be credited and nobody running their
- * own Gryt inherits an attribution obligation they did not choose.
+ * Moods and Planets are both CC0, so nothing here has to be credited and nobody
+ * running their own Gryt inherits an attribution obligation they did not choose.
+ * Several of DiceBear's nicer styles are CC BY, which would have meant carrying
+ * a credit line into every deployment.
+ *
+ * These come from @dicebear/styles rather than @dicebear/collection. Collection
+ * stopped at 9.4.3 and pins core to ^9 — which is why an earlier attempt at
+ * "just take the latest core" ended up with a working library and zero styles.
+ * The style definitions moved to their own package for core 10, and that is
+ * where the styles that are not in collection at all, these two included, live.
  */
 
-import { notionists, shapes } from "@dicebear/collection";
-import { createAvatar } from "@dicebear/core";
+import { Avatar, Style } from "@dicebear/core";
+import moodsDefinition from "@dicebear/styles/moods.json";
+import planetsDefinition from "@dicebear/styles/planets.json";
+
+// Constructed once. A Style parses and validates its definition, and the docs
+// are explicit that it is meant to be reused across avatars rather than rebuilt
+// per render.
+const moods = new Style(moodsDefinition);
+const planets = new Style(planetsDefinition);
 
 /**
  * The hues a voice tile is drawn in.
@@ -49,20 +65,23 @@ function pastel(hue: number): string {
 }
 
 /**
- * Backgrounds are not optional.
+ * The colours an avatar can come out in — one pastel per tile hue.
  *
- * Notionists renders transparent, which on a dark UI is a head floating in the
- * page. It also matters beyond looks: voice tiles are tinted from the avatar's
- * dominant colour, and a transparent image gives that nothing to sample.
- *
- * One pastel per tile hue, derived rather than hand-picked, so an avatar's
- * background and the tile drawn from it are the same colour by construction
- * instead of by two lists agreeing. The first attempt was a hand-written
- * palette of pleasant pastels, and four of its eight entries sat in the same
- * orange band once snapped — a grid where six of nine tiles were the same
- * colour, which is the opposite of what tinting them is for.
+ * Derived from the hues rather than hand-picked so a face and the tile drawn
+ * from it are the same colour by construction, instead of by two lists
+ * agreeing. A hand-written palette was tried first, and four of its eight
+ * entries snapped into the same orange band, which put six identical tiles in
+ * a nine-person grid — the opposite of what tinting them is for.
  */
-const BACKGROUND_COLOURS = TILE_HUES.map(pastel);
+const AVATAR_COLOURS = TILE_HUES.map(pastel);
+
+/**
+ * Moods draws a filled face that fills the frame, so the colour a person reads
+ * as "their" colour is the face, not the background behind it. Painting the
+ * background as well would put a ring of a second colour around every avatar,
+ * and tinting the tile from it would match the tile to a colour nobody can see.
+ */
+const TRANSPARENT = "00000000";
 
 const cache = new Map<string, string>();
 const colourCache = new Map<string, string>();
@@ -78,34 +97,30 @@ export function generatedAvatarUrl(seed: string): string {
   const cached = cache.get(seed);
   if (cached) return cached;
 
-  const result = createAvatar(notionists, {
+  const { svg, options } = new Avatar(moods, {
     seed,
-    backgroundColor: BACKGROUND_COLOURS,
-    // Notionists draws head-and-shoulders with room around it. Avatars here are
-    // circular and small, so without this the face sits too far in to read.
-    scale: 130,
-    radius: 50,
-  });
+    faceColor: AVATAR_COLOURS,
+    backgroundColor: [TRANSPARENT],
+  }).toJSON();
 
-  const { svg, extra } = result.toJson();
   const url = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
   cache.set(seed, url);
 
-  const background = extra.primaryBackgroundColor;
-  if (typeof background === "string") colourCache.set(seed, background);
+  const face = options.faceColor?.[0];
+  if (typeof face === "string") colourCache.set(seed, face);
 
   return url;
 }
 
 /**
- * The background colour DiceBear picked for `seed`, as `#rrggbb`.
+ * The colour DiceBear drew `seed`'s face in, as `#rrggbb`.
  *
  * Voice tiles are tinted from the avatar's dominant colour, which the server
  * computes when someone uploads one. A generated avatar never goes near the
  * server, so without this the tile falls back to hashing the user id and lands
  * on a colour with no relationship to the face on it — a violet avatar on a
- * green tile. DiceBear reports its own choice, so this is the real colour
- * rather than one sampled back out of the SVG.
+ * green tile. DiceBear reports the colour it picked, so this is the real one
+ * rather than something sampled back out of the SVG.
  */
 export function generatedAvatarColor(seed: string): string | undefined {
   if (!colourCache.has(seed)) generatedAvatarUrl(seed);
@@ -136,10 +151,8 @@ export function resolveAvatarSrc(
  * The same idea for a server that has not set an icon, in a style that is not
  * a face.
  *
- * Shapes rather than Notionists: a server is not a person, and drawing one as
- * a person is the thing that made a generated fallback look wrong here. It is
- * also CC0, so it carries the same "nobody inherits an attribution
- * obligation" property the user avatars were chosen for.
+ * Planets rather than Moods: a server is not a person, and drawing one as a
+ * person is the thing that made a generated fallback look wrong here.
  *
  * Seeded on the host, port included, because that is what identifies a server
  * to a client before it has told you anything about itself — and two servers
@@ -152,10 +165,10 @@ export function generatedServerIconUrl(host: string): string {
   const cached = cache.get(key);
   if (cached) return cached;
 
-  const svg = createAvatar(shapes, {
-    seed: host,
-    radius: 50,
-  }).toString();
+  // No background palette here. Planets brings its own night sky, and forcing
+  // the tile pastels onto it would light the sky the same colour as somebody's
+  // avatar for no reason.
+  const svg = new Avatar(planets, { seed: host }).toString();
 
   const url = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
   cache.set(key, url);
