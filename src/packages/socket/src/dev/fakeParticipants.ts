@@ -36,30 +36,30 @@ const FAKE_PREFIX = "fake-";
  * server takes the back, so a name never appears twice on screen.
  */
 const NAMES = [
-  "Ada",
+  "Astrid",
   "Bjørn",
-  "Chidi",
   "Dagny",
-  "Emeka",
-  "Freja",
-  "Goro",
-  "Hanne",
-  "Iker",
-  "Jinhee",
-  "Kwame",
+  "Eirik",
+  "Frøya",
+  "Guro",
+  "Håkon",
+  "Ingrid",
+  "Jostein",
+  "Kari",
   "Liv",
-  "Mattis",
-  "Nadia",
-  "Oleg",
-  "Pilar",
-  "Quang",
-  "Rikke",
-  "Salma",
-  "Tobias",
-  "Ulla",
-  "Viggo",
-  "Wanjiru",
-  "Yusuf",
+  "Magnus",
+  "Nils",
+  "Odd",
+  "Ragnhild",
+  "Sigrid",
+  "Torbjørn",
+  "Solveig",
+  "Vidar",
+  "Øystein",
+  "Marit",
+  "Sindre",
+  "Tuva",
+  "Leif",
 ];
 
 export interface FakeParticipantOptions {
@@ -333,4 +333,27 @@ export function withFakeMembers(
   }
 
   return [...members, ...fakes];
+}
+
+/**
+ * The invented people, as chat senders.
+ *
+ * Everyone the fixture made up, in voice or not — a server where only the
+ * people currently in a call ever say anything is not a server. The ids match
+ * the member list exactly, so a message resolves to a real member and gets
+ * that member's avatar and name rather than falling back to "Unknown".
+ */
+export function fakeChatSendersFrom(
+  options: FakeParticipantOptions | null,
+): Array<{ serverUserId: string; nickname: string }> {
+  if (!import.meta.env.DEV || !options) return [];
+
+  const senders: Array<{ serverUserId: string; nickname: string }> = [];
+  for (let i = 0; i < options.count; i++) {
+    senders.push({ serverUserId: fakeParticipantId(i), nickname: NAMES[i] });
+  }
+  for (let i = 0; i < options.members; i++) {
+    senders.push({ serverUserId: fakeMemberId(i), nickname: fakeMemberName(i) });
+  }
+  return senders;
 }

@@ -280,6 +280,7 @@ export const SETTINGS_KEYS = [
   "voiceTileLayout",
   "devFakeParticipants",
   "devFakeMembers",
+  "devFakeChatSeconds",
   "devFakeMuted",
   "devFakeScreenShare",
   "devFakeDeafened",

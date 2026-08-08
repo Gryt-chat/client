@@ -7,7 +7,10 @@ import { useSettings } from "@/settings";
 import { SidebarItem } from "@/settings/src/types/server";
 import { useSFU } from "@/webRTC";
 
+import { useFakeChat } from "../dev/fakeChat";
+import { useFakeChatRunning } from "../dev/fakeChatController";
 import {
+  fakeChatSendersFrom,
   fakeParticipantOptionsFromSettings,
   readFakeParticipantOptions,
   withFakeMembers,
@@ -26,6 +29,7 @@ import { SIDEBAR_HOVER_PX, SIDEBAR_WIDTH_PX, useMediaAutoShow, useSidebarHover, 
 import { useSidebarEditor } from "../hooks/useSidebarEditor";
 import { useSockets } from "../hooks/useSockets";
 import { getUpdateAvailable } from "../hooks/useVersionStatus";
+import { getCustomEmojis } from "../utils/emojiData";
 import { ChatView } from "./ChatView";
 import { ConnectionBanner } from "./ConnectionBanner";
 import { MemberSidebarPanel } from "./MemberSidebarPanel";
@@ -54,7 +58,7 @@ export const ServerView = () => {
     pinMembersSidebar, setPinMembersSidebar,
     setIsMuted, setIsDeafened,
     devFakeParticipants, devFakeMuted, devFakeScreenShare,
-    devFakeDeafened, devFakeSpeaking, devFakeMembers,
+    devFakeDeafened, devFakeSpeaking, devFakeMembers, devFakeChatSeconds,
   } = useSettings();
   const { currentlyViewingServer, setShowRemoveServer, setLastSelectedChannelForServer } = useServerManagement();
   const { connect, currentServerConnected, isConnected, isConnecting, videoStreams, streamSources } = useSFU();
@@ -209,6 +213,24 @@ export const ServerView = () => {
     [devFakeParticipants, devFakeMembers, devFakeMuted, devFakeScreenShare, devFakeDeafened, devFakeSpeaking],
   );
   const fakeSpeech = useFakeSpeech(fakeParticipantOptions);
+
+  // Dev only. The senders are the same invented people the voice fixture uses,
+  // so a message and a tile belong to one person rather than two sets of
+  // strangers. See fakeChat.ts.
+  const fakeChatRunning = useFakeChatRunning();
+  const fakeChatSenders = useMemo(
+    () => fakeChatSendersFrom(fakeParticipantOptions),
+    [fakeParticipantOptions],
+  );
+  useFakeChat({
+    running: fakeChatRunning,
+    connection: currentConnection,
+    conversationId: activeConversationId,
+    senders: fakeChatSenders,
+    selfNickname: nickname,
+    emojiName: getCustomEmojis()[0]?.name ?? null,
+    everySeconds: devFakeChatSeconds,
+  });
 
   if (!currentlyViewingServer) return null;
 
