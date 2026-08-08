@@ -7,6 +7,7 @@ import { sourceForUrl } from "../utils/emoteImportSources";
 import {
   downloadAsFileWithProgress,
   type ImportEmoteWithMeta,
+  preferredOfDuplicates,
   sanitizeName,
   validateName,
 } from "../utils/emoteImportUtils";
@@ -103,7 +104,21 @@ export function useEmoteImport({
         lastError: null,
       }));
 
-      setEmotes(revalidateAll(withMeta));
+      // Where a source offers the same shortcode twice — a pack listing both a
+      // GIF and a still of one emoji is the common case — only the animated one
+      // starts selected. Both rows stay visible, so it is clear the other
+      // exists and can be picked instead, but the count matches what pressing
+      // Import will actually do.
+      const winners = new Map<string, ImportEmoteWithMeta>();
+      for (const e of withMeta) {
+        winners.set(e.name, preferredOfDuplicates(winners.get(e.name), e));
+      }
+      const deduped = withMeta.map((e) => ({
+        ...e,
+        selected: winners.get(e.name) === e,
+      }));
+
+      setEmotes(revalidateAll(deduped));
       setUsername(listing.title);
       toast.success(`Found ${listing.emotes.length} emote(s)`);
       if (listing.note) toast(listing.note);
@@ -159,14 +174,18 @@ export function useEmoteImport({
       return;
     }
 
+    // One import per shortcode, and the animated one wins — see
+    // preferredOfDuplicates. A pack that carries a still and a GIF of the same
+    // emoji used to import whichever happened to come last.
     const byName = new Map<string, ImportEmoteWithMeta>();
     for (const e of toImportRaw) {
-      if (byName.has(e.name)) byName.delete(e.name);
-      byName.set(e.name, e);
+      byName.set(e.name, preferredOfDuplicates(byName.get(e.name), e));
     }
     const toImport = Array.from(byName.values());
     if (toImport.length !== toImportRaw.length) {
-      toast(`Duplicate emoji IDs detected — importing ${toImport.length}/${toImportRaw.length} (last wins).`);
+      toast(
+        `${toImportRaw.length - toImport.length} duplicate name(s) — importing ${toImport.length}, animated where there was a choice.`,
+      );
     }
 
     setImporting(true);
