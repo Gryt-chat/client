@@ -271,7 +271,7 @@ export const ChannelList = ({
                             clients[id].serverUserId && avatarByServerUserId.get(clients[id].serverUserId)
                               ? getUploadsFileUrl(serverHost, avatarByServerUserId.get(clients[id].serverUserId) as string, { thumb: true })
                               : undefined,
-                            clients[id].serverUserId,
+                            clients[id].nickname,
                           )}
                           serverUserId={clients[id].serverUserId}
                           isSelf={id === currentConnectionId}

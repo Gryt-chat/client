@@ -17,11 +17,9 @@ import {
   GeneratedServerIcon,
   generatedServerIconUrl,
   getServerHttpBase,
-  ownAvatarSeed,
   resolveAvatarSrc,
   useAccount,
   useUnreadTracker,
-  useUserId,
 } from "@/common";
 import { useSettings } from "@/settings";
 import {
@@ -64,7 +62,6 @@ interface SidebarProps {
 
 export function Sidebar({ setShowAddServer }: SidebarProps) {
   const { logout } = useAccount();
-  const userId = useUserId();
   const { nickname, avatarDataUrl, setShowSettings } = useSettings();
 
   const {
@@ -84,11 +81,12 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
   const currentHost = currentlyViewingServer?.host;
   const activeProfile = currentHost ? serverProfiles[currentHost] : undefined;
   const displayNickname = activeProfile?.nickname || nickname;
-  // Seeded on the id the server you are looking at knows you by, so your own
-  // face here is the one everyone else sees in that server's member list.
+  // The same nickname shown under it, so your face here is the one everyone
+  // else sees — and it changes when you rename, which is the whole point of
+  // seeding from the nickname.
   const displayAvatarUrl = resolveAvatarSrc(
     activeProfile?.avatarUrl || avatarDataUrl,
-    ownAvatarSeed([currentHost, ...orderedServerHosts], userId),
+    displayNickname,
   );
   return (
     <Flex

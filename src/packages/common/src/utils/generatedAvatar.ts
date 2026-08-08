@@ -87,6 +87,26 @@ const cache = new Map<string, string>();
 const colourCache = new Map<string, string>();
 
 /**
+ * The seed a person's avatar is drawn from: their nickname, normalised.
+ *
+ * Case and surrounding whitespace are dropped so "Sivert" and " sivert " are
+ * one person. Everything else is kept — two nicknames that differ at all are
+ * two faces.
+ *
+ * The nickname rather than the per-server id, which is what this used first.
+ * The id gave a stable face across a rename, but it is issued per server, so
+ * the same person arrived in every server looking like somebody else — nothing
+ * about them had changed and yet they were unrecognisable. Nicknames travel.
+ *
+ * Two costs, deliberately accepted: two people using one nickname share a face,
+ * and renaming yourself changes yours.
+ */
+export function avatarSeed(nickname: string | null | undefined): string | undefined {
+  const trimmed = nickname?.trim().toLowerCase();
+  return trimmed ? trimmed : undefined;
+}
+
+/**
  * A data URI for `seed`'s avatar.
  *
  * Cached because these render in lists that re-render often, and generating the
@@ -140,9 +160,10 @@ export function generatedAvatarColor(seed: string): string | undefined {
  */
 export function resolveAvatarSrc(
   uploadedUrl: string | null | undefined,
-  seed: string | null | undefined,
+  nickname: string | null | undefined,
 ): string | undefined {
   if (uploadedUrl) return uploadedUrl;
+  const seed = avatarSeed(nickname);
   if (!seed) return undefined;
   return generatedAvatarUrl(seed);
 }

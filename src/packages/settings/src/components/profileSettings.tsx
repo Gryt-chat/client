@@ -3,7 +3,7 @@ import { useCallback,useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { MdCameraAlt, MdCheck, MdContentCopy, MdRefresh } from "react-icons/md";
 
-import { compressStaticAvatarToLimit, getAvatarHash, getOwnServerUserId, getServerAccessToken, getServerHttpBase, getStoredAvatar, getUploadsFileUrl, ownAvatarSeed, resolveAvatarSrc, useUserId } from "@/common";
+import { compressStaticAvatarToLimit, getAvatarHash, getServerAccessToken, getServerHttpBase, getStoredAvatar, getUploadsFileUrl, resolveAvatarSrc, useUserId } from "@/common";
 import { useSettings } from "@/settings";
 import { useServerManagement, useSockets } from "@/socket";
 
@@ -115,6 +115,11 @@ function ProfileEditor({
   const [draft, setDraft] = useState(nickname);
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
 
+  // Drawn from what is in the box, not from what is saved. The nickname is the
+  // seed, so typing a new one is the only way to see what you are about to look
+  // like — and finding that out after saving is a worse way to choose a name.
+  const previewSrc = avatarUrl || resolveAvatarSrc(undefined, draft) || generatedAvatarUrl;
+
   useEffect(() => {
     setDraft(nickname);
   }, [nickname]);
@@ -156,7 +161,7 @@ function ProfileEditor({
             <Avatar
               size="7"
               radius="full"
-              src={avatarUrl || generatedAvatarUrl}
+              src={previewSrc}
               fallback={initial}
             />
             <Flex
@@ -254,7 +259,7 @@ export function ProfileSettings() {
   const userId = useUserId();
   const { nickname, setNickname, avatarDataUrl, setAvatarDataUrl, setAvatarFile } =
     useSettings();
-  const { servers, currentlyViewingServer } = useServerManagement();
+  const { servers } = useServerManagement();
   const { sockets, serverDetailsList, serverProfiles, setServerProfiles } = useSockets();
   const [uploading, setUploading] = useState(false);
   const [removing, setRemoving] = useState(false);
@@ -591,10 +596,7 @@ export function ProfileSettings() {
           <ProfileEditor
             nickname={nickname}
             avatarUrl={allServerAvatarUrl}
-            // Borrowed from a server you are on rather than the Gryt account,
-            // so this is the face you actually have somewhere instead of a
-            // third one that appears nowhere else. See ownAvatarSeed.
-            generatedAvatarUrl={resolveAvatarSrc(undefined, ownAvatarSeed([currentlyViewingServer?.host, ...serverHosts], userId))}
+            generatedAvatarUrl={resolveAvatarSrc(undefined, nickname)}
             initial={initial}
             uploading={uploading}
             removing={removing}
@@ -630,7 +632,7 @@ export function ProfileSettings() {
             <ProfileEditor
               nickname={serverNickname}
               avatarUrl={serverAvatarUrl}
-              generatedAvatarUrl={resolveAvatarSrc(undefined, getOwnServerUserId(host))}
+              generatedAvatarUrl={resolveAvatarSrc(undefined, serverNickname)}
               initial={serverInitial}
               uploading={uploading}
               removing={removing}

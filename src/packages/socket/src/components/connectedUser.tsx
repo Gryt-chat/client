@@ -72,7 +72,7 @@ export function ConnectedUser({
   onServerDeafen?: (deafened: boolean) => void;
   onChangeRole?: (role: Role) => void;
 }) {
-  const hue = tileHue(serverUserId || nickname, avatarColor);
+  const hue = tileHue(nickname, avatarColor);
 
   return (
     <UserContextMenu

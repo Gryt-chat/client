@@ -111,7 +111,7 @@ const MemberItem = ({
           <Avatar
             size="2"
             fallback={member.nickname[0]}
-            src={resolveAvatarSrc(member.avatarFileId ? getUploadsFileUrl(serverHost, member.avatarFileId, { thumb: true }) : undefined, member.serverUserId)}
+            src={resolveAvatarSrc(member.avatarFileId ? getUploadsFileUrl(serverHost, member.avatarFileId, { thumb: true }) : undefined, member.nickname)}
             style={{
               backgroundColor: member.color,
               opacity: isOffline ? 0.4 : 1,
