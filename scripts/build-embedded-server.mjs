@@ -255,7 +255,15 @@ if (skipWorker) {
   console.log("[3/3] Bundling image worker...");
 
   if (!existsSync(WORKER_DIR)) {
-    console.log(`  Warning: image worker not found at ${WORKER_DIR}, skipping`);
+    // Loud, because the alternative is a release that quietly ships a client
+    // whose hosted servers queue image jobs nothing will ever read — with no
+    // error anywhere to say so. --if-missing is the dev path and downgrades
+    // this to a warning through its uncaughtException handler.
+    throw new Error(
+      `Image worker not found at ${WORKER_DIR}. ` +
+        `The submodule is probably not checked out — a release must not ship ` +
+        `a client without it. Run: git submodule update --init packages/image-worker`
+    );
   } else {
     const workerOut = join(OUTDIR, "worker");
 
