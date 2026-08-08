@@ -14,11 +14,13 @@ import { Reorder } from "motion/react";
 import { MdAdd, MdFeedback, MdMic, MdSettings } from "react-icons/md";
 
 import {
+  GeneratedServerIcon,
   getOwnServerUserId,
   getServerHttpBase,
   resolveAvatarSrc,
   useAccount,
   useUnreadTracker,
+  useUserId,
 } from "@/common";
 import { useSettings } from "@/settings";
 import {
@@ -37,6 +39,7 @@ interface SidebarProps {
 
 export function Sidebar({ setShowAddServer }: SidebarProps) {
   const { logout } = useAccount();
+  const userId = useUserId();
   const { nickname, avatarDataUrl, setShowSettings } = useSettings();
 
   const {
@@ -58,10 +61,12 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
   const displayNickname = activeProfile?.nickname || nickname;
   // Seeded on the id the server you are looking at knows you by, so your own
   // face here is the one everyone else sees in that server's member list. With
-  // no server open there is no such id, and the letter stands.
+  // no server open there is no such id, and it falls back to the Gryt account —
+  // which draws a different face, but a face rather than a letter, and only in
+  // a state where there is nothing to be inconsistent with.
   const displayAvatarUrl = resolveAvatarSrc(
     activeProfile?.avatarUrl || avatarDataUrl,
-    currentHost ? getOwnServerUserId(currentHost) : undefined,
+    (currentHost ? getOwnServerUserId(currentHost) : undefined) ?? userId ?? undefined,
   );
   return (
     <Flex
@@ -209,7 +214,7 @@ function ServerItem({
                   size="2"
                   color="gray"
                   asChild
-                  fallback={servers[host].name[0]}
+                  fallback={<GeneratedServerIcon host={host} />}
                   style={{
                     opacity:
                       currentlyViewingServer?.host === host

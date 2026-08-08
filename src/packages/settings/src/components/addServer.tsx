@@ -24,6 +24,7 @@ import {
 } from "react-icons/md";
 
 import {
+  GeneratedServerIcon,
   getServerAccessToken,
   getServerHttpBase,
   normalizeCode,
@@ -506,7 +507,7 @@ export function AddNewServer({
                               size="2"
                               radius="medium"
                               src={`${getServerHttpBase(normalizedAddr)}/icon`}
-                              fallback={s.name.trim().charAt(0).toUpperCase() || "?"}
+                              fallback={<GeneratedServerIcon host={normalizedAddr} />}
                             />
 
                             <Flex direction="column" style={{ minWidth: 0 }}>
@@ -743,7 +744,7 @@ export function AddNewServer({
                           size="8"
                           src={`${getServerHttpBase(serverHost)}/icon`}
                           radius="full"
-                          fallback={serverInfo.name[0]}
+                          fallback={<GeneratedServerIcon host={serverHost} />}
                         />
                         <Flex gap="1" direction="column" align="center">
                           <Text size="4" weight="bold">

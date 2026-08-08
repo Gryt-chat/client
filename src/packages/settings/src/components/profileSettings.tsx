@@ -564,6 +564,11 @@ export function ProfileSettings() {
           <ProfileEditor
             nickname={nickname}
             avatarUrl={allServerAvatarUrl}
+            // No server in scope on this tab, so it falls back to the Gryt
+            // account. It draws a different face from any single server's,
+            // which is unavoidable — each server seeds its own — but it is
+            // the face this tab is about: the one you have not set.
+            generatedAvatarUrl={resolveAvatarSrc(undefined, userId ?? undefined)}
             initial={initial}
             uploading={uploading}
             removing={removing}

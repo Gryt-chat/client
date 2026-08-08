@@ -2,7 +2,7 @@ import { Avatar, Button, Callout, Dialog, Flex, IconButton, Spinner, Text } from
 import { useEffect, useRef, useState } from "react";
 import { MdClose, MdGroup, MdMail, MdWarning } from "react-icons/md";
 
-import { getServerHttpBase, type PendingInvite } from "@/common";
+import { GeneratedServerIcon, getServerHttpBase, type PendingInvite } from "@/common";
 
 type ServerPreview = {
   name: string;
@@ -116,7 +116,7 @@ export function InviteAcceptModal({
                   size="7"
                   radius="full"
                   src={`${getServerHttpBase(invite.host)}/icon`}
-                  fallback={displayName[0]?.toUpperCase() || "S"}
+                  fallback={<GeneratedServerIcon host={invite.host} />}
                 />
               )}
 
