@@ -7,21 +7,21 @@ import {
 } from "@radix-ui/themes";
 import { type ChangeEvent } from "react";
 
-import { BTTV_CDN, type BttvEmoteWithMeta } from "../utils/bttvImportUtils";
+import { type ImportEmoteWithMeta } from "../utils/emoteImportUtils";
 
-interface BttvEmoteRowProps {
-  emote: BttvEmoteWithMeta;
+interface EmoteRowProps {
+  emote: ImportEmoteWithMeta;
   importing: boolean;
   onToggleSelect: (id: string) => void;
   onUpdateName: (id: string, name: string) => void;
 }
 
-export function BttvEmoteRow({
+export function EmoteRow({
   emote: e,
   importing,
   onToggleSelect,
   onUpdateName,
-}: BttvEmoteRowProps) {
+}: EmoteRowProps) {
   return (
     <Flex
       align="center"
@@ -52,7 +52,7 @@ export function BttvEmoteRow({
       >
         <img
           className="emoji-upload-preview-img"
-          src={`${BTTV_CDN}/${e.id}/2x`}
+          src={e.previewUrl}
           alt={e.code}
         />
         {(e.status === "downloading" || e.status === "uploading" || e.status === "processing") && (

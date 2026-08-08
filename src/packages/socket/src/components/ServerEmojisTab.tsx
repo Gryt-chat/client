@@ -19,8 +19,8 @@ import {
 } from "../utils/emojiData";
 import type { EmojiItem } from "../utils/emojiFileUtils";
 import { DEFAULT_MAX_EMOJI_BYTES, IMAGE_MIME_ACCEPT } from "../utils/emojiFileUtils";
-import { BttvImport } from "./BttvImport";
 import { EmojiList } from "./EmojiList";
+import { EmoteImport } from "./EmoteImport";
 
 type EmojiJobStatus = "queued" | "processing" | "done" | "error" | "superseded";
 
@@ -328,7 +328,7 @@ export function ServerEmojisTab({
         </Flex>
       )}
 
-      <BttvImport
+      <EmoteImport
         host={host}
         accessToken={effectiveAccessToken}
         socket={socket ?? null}

@@ -8,11 +8,11 @@ import {
 import { type ChangeEvent } from "react";
 import { MdClose, MdDownload, MdSearch } from "react-icons/md";
 
-import { useBttvImport } from "../hooks/useBttvImport";
+import { useEmoteImport } from "../hooks/useEmoteImport";
 import { type TokenRefreshSocketLike } from "../utils/tokenManager";
-import { BttvEmoteRow } from "./BttvEmoteRow";
+import { EmoteRow } from "./EmoteRow";
 
-export function BttvImport({
+export function EmoteImport({
   host,
   accessToken,
   socket,
@@ -41,7 +41,7 @@ export function BttvImport({
     updateName,
     handleImport,
     handleClear,
-  } = useBttvImport({ host, accessToken, socket, existingNames });
+  } = useEmoteImport({ host, accessToken, socket, existingNames });
 
   return (
     <Flex
@@ -54,13 +54,16 @@ export function BttvImport({
       }}
     >
       <Text size="2" weight="medium">
-        Import from BetterTTV
+        Import from a link
+      </Text>
+      <Text size="1" color="gray" style={{ marginTop: -6 }}>
+        A BetterTTV user or emote, or an emoji.gg user, pack or emoji.
       </Text>
 
       <Flex gap="2" align="center">
         <TextField.Root
           size="1"
-          placeholder="https://betterttv.com/users/... or https://betterttv.com/emotes/..."
+          placeholder="https://emoji.gg/pack/... or https://betterttv.com/users/..."
           value={url}
           onChange={(e: ChangeEvent<HTMLInputElement>) => setUrl(e.target.value)}
           onKeyDown={(e: React.KeyboardEvent) => {
@@ -136,7 +139,7 @@ export function BttvImport({
             style={{ maxHeight: 400, overflowY: "auto" }}
           >
             {filteredEmotes.map((e) => (
-              <BttvEmoteRow
+              <EmoteRow
                 key={e.id}
                 emote={e}
                 importing={importing}
