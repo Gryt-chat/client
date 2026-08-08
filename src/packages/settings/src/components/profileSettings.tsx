@@ -3,7 +3,7 @@ import { useCallback,useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { MdCameraAlt, MdCheck, MdContentCopy, MdRefresh } from "react-icons/md";
 
-import { compressStaticAvatarToLimit, getAvatarHash, getServerAccessToken, getServerHttpBase, getStoredAvatar, getUploadsFileUrl, useUserId } from "@/common";
+import { compressStaticAvatarToLimit, getAvatarHash, getOwnServerUserId, getServerAccessToken, getServerHttpBase, getStoredAvatar, getUploadsFileUrl, resolveAvatarSrc, useUserId } from "@/common";
 import { useSettings } from "@/settings";
 import { useServerManagement, useSockets } from "@/socket";
 
@@ -83,6 +83,10 @@ async function removeAvatarFromHost(host: string): Promise<void> {
 interface ProfileEditorProps {
   nickname: string;
   avatarUrl: string | null;
+  /** Shown when there is no uploaded avatar. Kept separate from avatarUrl so
+   *  "Remove avatar" still keys off whether one was actually uploaded — a
+   *  generated face is not something there is anything to remove. */
+  generatedAvatarUrl?: string;
   initial: string;
   uploading: boolean;
   removing: boolean;
@@ -98,6 +102,7 @@ interface ProfileEditorProps {
 function ProfileEditor({
   nickname,
   avatarUrl,
+  generatedAvatarUrl,
   initial,
   uploading,
   removing,
@@ -151,7 +156,7 @@ function ProfileEditor({
             <Avatar
               size="7"
               radius="full"
-              src={avatarUrl || undefined}
+              src={avatarUrl || generatedAvatarUrl}
               fallback={initial}
             />
             <Flex
@@ -594,6 +599,7 @@ export function ProfileSettings() {
             <ProfileEditor
               nickname={serverNickname}
               avatarUrl={serverAvatarUrl}
+              generatedAvatarUrl={resolveAvatarSrc(undefined, getOwnServerUserId(host))}
               initial={serverInitial}
               uploading={uploading}
               removing={removing}

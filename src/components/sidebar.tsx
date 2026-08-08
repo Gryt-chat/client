@@ -14,7 +14,9 @@ import { Reorder } from "motion/react";
 import { MdAdd, MdFeedback, MdMic, MdSettings } from "react-icons/md";
 
 import {
+  getOwnServerUserId,
   getServerHttpBase,
+  resolveAvatarSrc,
   useAccount,
   useUnreadTracker,
 } from "@/common";
@@ -54,7 +56,13 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
   const currentHost = currentlyViewingServer?.host;
   const activeProfile = currentHost ? serverProfiles[currentHost] : undefined;
   const displayNickname = activeProfile?.nickname || nickname;
-  const displayAvatarUrl = activeProfile?.avatarUrl || avatarDataUrl;
+  // Seeded on the id the server you are looking at knows you by, so your own
+  // face here is the one everyone else sees in that server's member list. With
+  // no server open there is no such id, and the letter stands.
+  const displayAvatarUrl = resolveAvatarSrc(
+    activeProfile?.avatarUrl || avatarDataUrl,
+    currentHost ? getOwnServerUserId(currentHost) : undefined,
+  );
   return (
     <Flex
       data-gryt="sidebar"

@@ -4,7 +4,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MdChat, MdCloudUpload, MdVolumeUp } from "react-icons/md";
 import { Socket } from "socket.io-client";
 
-import { getUploadsFileUrl } from "@/common";
+import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 import { useSettings } from "@/settings";
 
 import { useChatActions } from "../hooks/useChatActions";
@@ -188,8 +188,13 @@ export const ChatView = memo(({
 
   const getSenderAvatarUrl = useCallback((msg: ChatMessage): string | undefined => {
     const fileId = memberList?.[msg.sender_server_id]?.avatarFileId || msg.sender_avatar_file_id;
-    if (fileId && serverHost) return getUploadsFileUrl(serverHost, fileId);
-    return undefined;
+    const uploaded = fileId && serverHost ? getUploadsFileUrl(serverHost, fileId) : undefined;
+    // Seeded on the same id the member list uses, so the face beside a message
+    // is the face in the sidebar. Webhooks are excluded for the same reason
+    // server icons are: a generated face is wrong for something that is not a
+    // person, and their sender id is "webhook:<id>" rather than a member's.
+    if (msg.sender_server_id?.startsWith("webhook:")) return uploaded;
+    return resolveAvatarSrc(uploaded, msg.sender_server_id);
   }, [memberList, serverHost]);
 
   const mentionMembers = useMemo(() => {
@@ -197,7 +202,10 @@ export const ChatView = memo(({
     return Object.values(memberList).map((m) => ({
       nickname: m.nickname,
       serverUserId: m.serverUserId,
-      avatarUrl: m.avatarFileId && serverHost ? getUploadsFileUrl(serverHost, m.avatarFileId, { thumb: true }) : null,
+      avatarUrl: resolveAvatarSrc(
+        m.avatarFileId && serverHost ? getUploadsFileUrl(serverHost, m.avatarFileId, { thumb: true }) : undefined,
+        m.serverUserId,
+      ) ?? null,
     }));
   }, [memberList, serverHost]);
 

@@ -1,3 +1,5 @@
+import { jwtDecode } from "jwt-decode";
+
 export type AccessTokenStorageMode = "local" | "session";
 
 const MODE_KEY = "accessTokenStorageMode";
@@ -148,3 +150,23 @@ export function migrateAccessTokensToMode(mode: AccessTokenStorageMode): void {
   }
 }
 
+
+/**
+ * Your own per-server user id, read out of the access token for that host.
+ *
+ * The member list is the usual source of a serverUserId, but that only ever
+ * tells you about other people — nothing in it says which entry is you. The
+ * token is the one place the client holds its own, and it is needed wherever
+ * your avatar has to be seeded the same way everyone else's is, so you are not
+ * looking at two different faces for yourself on one screen.
+ */
+export function getOwnServerUserId(host: string): string | undefined {
+  const token = getServerAccessToken(host);
+  if (!token) return undefined;
+
+  try {
+    return jwtDecode<{ serverUserId?: string }>(token).serverUserId;
+  } catch {
+    return undefined;
+  }
+}
