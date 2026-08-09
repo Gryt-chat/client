@@ -18,8 +18,8 @@ export function ChatSettings() {
       </Heading>
 
       <ToggleSetting
-        title="Blur Profanity"
-        description="Show a blur over profane words if the server has profanity filtering enabled in flag mode. Click a blurred word to reveal it."
+        title="Blur profanity"
+        description="Blurs profane words when the server has profanity filtering set to flag. Click a blurred word to reveal it."
         checked={blurProfanity}
         onCheckedChange={setBlurProfanity}
       />

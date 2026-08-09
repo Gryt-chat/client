@@ -309,15 +309,15 @@ export function CameraSettings() {
       </Flex>
 
       <ToggleSetting
-        title="Flip Camera"
-        description="Horizontally flip the video sent to everyone (mirrors the actual stream)"
+        title="Flip camera"
+        description="Flips the video everyone else sees. This changes the stream itself, not just your preview."
         checked={cameraFlipped}
         onCheckedChange={setCameraFlipped}
       />
 
       <ToggleSetting
-        title="Mirror Preview"
-        description="Mirror your local camera preview (does not affect what others see)"
+        title="Mirror preview"
+        description="Mirrors your own preview. Nobody else sees any difference."
         checked={cameraMirrored}
         onCheckedChange={setCameraMirrored}
       />

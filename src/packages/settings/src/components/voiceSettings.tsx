@@ -5,13 +5,11 @@ import {
   Heading,
   SegmentedControl,
   Separator,
-  Text,
 } from "@radix-ui/themes";
 import { useState } from "react";
 
 import connectMp3 from "@/audio/src/assets/connect.mp3";
 import disconnectMp3 from "@/audio/src/assets/disconnect.mp3";
-import type { VoiceTileLayout } from "@/settings";
 import { useSettings } from "@/settings";
 
 import { SettingGroup, SettingsContainer, SliderSetting } from "./settingsComponents";
@@ -35,8 +33,6 @@ export function VoiceSettings() {
     setCustomDisconnectSoundFile,
     afkTimeoutMinutes,
     setAfkTimeoutMinutes,
-    voiceTileLayout,
-    setVoiceTileLayout,
   } = useSettings();
 
   const [alertDialog, setAlertDialog] = useState<{
@@ -66,45 +62,20 @@ export function VoiceSettings() {
       </Heading>
 
       <SettingGroup
-        title="Input Mode"
-        description="Voice Activity transmits whenever you speak above the noise gate. Push to Talk requires holding a key."
+        title="Input mode"
+        description="Voice activity transmits whenever you speak above the noise gate. Push to talk only transmits while you hold a key."
       >
         <SegmentedControl.Root
           value={inputMode}
           onValueChange={(v) => setInputMode(v as "voice_activity" | "push_to_talk")}
         >
           <SegmentedControl.Item value="voice_activity">
-            Voice Activity
+            Voice activity
           </SegmentedControl.Item>
           <SegmentedControl.Item value="push_to_talk">
-            Push to Talk
+            Push to talk
           </SegmentedControl.Item>
         </SegmentedControl.Root>
-      </SettingGroup>
-
-      <Separator size="4" />
-
-      <SettingGroup
-        title="Tile layout"
-        description="How the voice grid arranges people once it is maximised or fullscreen. Both were measured against Google Meet; which you prefer is a matter of taste. The sidebar looks the same either way."
-      >
-        <SegmentedControl.Root
-          value={voiceTileLayout}
-          onValueChange={(v) => setVoiceTileLayout(v as VoiceTileLayout)}
-        >
-          <SegmentedControl.Item value="meet">
-            Match Google Meet
-          </SegmentedControl.Item>
-          <SegmentedControl.Item value="large">
-            Biggest tiles
-          </SegmentedControl.Item>
-        </SegmentedControl.Root>
-
-        <Text size="1" color="gray" mt="2">
-          {voiceTileLayout === "meet"
-            ? "More columns, and tiles are allowed to go tall and narrow. Nine people become a row of four above a row of five."
-            : "Whichever arrangement makes the tiles largest. Nine people become a 3x3 of wider, shorter tiles."}
-        </Text>
       </SettingGroup>
 
       <Separator size="4" />
@@ -142,7 +113,7 @@ export function VoiceSettings() {
 
       <SliderSetting
         title={`AFK Timeout: ${afkTimeoutMinutes} minutes`}
-        description="You'll be marked as AFK after this many minutes of silence. Only applies when connected to voice channels."
+        description="You are marked AFK after this many minutes of silence, and only while you are connected to voice."
         value={afkTimeoutMinutes}
         onChange={setAfkTimeoutMinutes}
         min={1}

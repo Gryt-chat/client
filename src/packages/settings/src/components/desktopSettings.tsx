@@ -61,7 +61,7 @@ export function DesktopSettings() {
         <>
           <ToggleSetting
             title="Start with Windows"
-            description="Automatically launch Gryt when you sign in to Windows."
+            description="Launches Gryt when you sign in to Windows."
             checked={startWithWindows}
             onCheckedChange={handleStartWithWindowsToggle}
           />
@@ -81,8 +81,8 @@ export function DesktopSettings() {
       )}
 
       <ToggleSetting
-        title="Minimize to Tray on Close"
-        description="When enabled, closing the window minimizes to the system tray instead of quitting the app."
+        title="Minimize to tray on close"
+        description="Closing the window hides Gryt in the system tray instead of quitting it."
         checked={closeToTray}
         onCheckedChange={handleCloseToTrayToggle}
       />
@@ -90,8 +90,8 @@ export function DesktopSettings() {
       <Separator size="4" />
 
       <ToggleSetting
-        title="Hardware Acceleration"
-        description="Uses your GPU for rendering. Disable if you experience visual glitches or high GPU usage. Changing this will restart the app."
+        title="Hardware acceleration"
+        description="Uses your GPU for rendering. Turn it off if you see visual glitches or high GPU usage. Changing this restarts Gryt."
         checked={hwAccel}
         onCheckedChange={handleHwAccelToggle}
       />
