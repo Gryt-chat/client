@@ -27,6 +27,24 @@ extraResources:
     to: trayTemplate@2x.png
   - from: build/trayTemplate@3x.png
     to: trayTemplate@3x.png
+  # The Windows and Linux tray, which shows the voice state. Colour assets
+  # rather than templates, because neither platform has a template mechanism.
+  - from: build/tray-idle.png
+    to: tray-idle.png
+  - from: build/tray-idle@2x.png
+    to: tray-idle@2x.png
+  - from: build/tray-live.png
+    to: tray-live.png
+  - from: build/tray-live@2x.png
+    to: tray-live@2x.png
+  - from: build/tray-muted.png
+    to: tray-muted.png
+  - from: build/tray-muted@2x.png
+    to: tray-muted@2x.png
+  - from: build/tray-deafened.png
+    to: tray-deafened.png
+  - from: build/tray-deafened@2x.png
+    to: tray-deafened@2x.png
   - from: build/native/
     to: native/
     filter:

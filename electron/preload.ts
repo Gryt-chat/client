@@ -65,6 +65,26 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("set-signed-in", signedIn);
   },
 
+  setVoiceState(state: {
+    inVoice: boolean;
+    muted: boolean;
+    deafened: boolean;
+    serverName: string | null;
+  }) {
+    ipcRenderer.send("set-voice-state", state);
+  },
+
+  onTrayVoiceCommand(
+    callback: (command: "toggle-mute" | "toggle-deafen") => void,
+  ) {
+    const handler = (
+      _event: unknown,
+      command: "toggle-mute" | "toggle-deafen",
+    ) => callback(command);
+    ipcRenderer.on("tray-voice-command", handler);
+    return () => ipcRenderer.removeListener("tray-voice-command", handler);
+  },
+
   getStartWithWindowsSupported(): Promise<boolean> {
     return ipcRenderer.invoke("get-start-with-windows-supported");
   },

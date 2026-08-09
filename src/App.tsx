@@ -36,6 +36,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { LeaveServer } from "./components/leaveServer";
 import { MainApp } from "./components/mainApp";
 import { MicrophoneDebugOverlay } from "./components/microphoneDebugOverlay";
+import { TrayVoiceState } from "./components/trayVoiceState";
 import { VideoDebugOverlay } from "./components/videoDebugOverlay";
 import { Welcome } from "./components/welcome";
 
@@ -174,6 +175,7 @@ export function App() {
             onGoToServer={handleGoToServer}
           />
           <PushToTalkModal />
+          <TrayVoiceState />
           <MicrophoneDebugOverlay isVisible={showDebugOverlay} />
           <VideoDebugOverlay isVisible={showVideoDebugOverlay} />
         </>

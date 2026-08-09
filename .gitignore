@@ -22,6 +22,7 @@ build/*
 # extraResource is skipped silently rather than failing the build — so leaving
 # them ignored shipped a release with no menu bar icon at all.
 !build/trayTemplate*.png
+!build/tray-*.png
 *.local
 
 # Editor directories and files
