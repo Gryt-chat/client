@@ -209,6 +209,20 @@
             setText("Installing update", "Version " + data.version, "Restarting…");
             break;
 
+          // Reached when quitAndInstall did not actually quit. On macOS that is
+          // a no-op whenever Squirrel has not finished its own download yet, and
+          // it neither quits nor throws — so the previous state's "Restarting…"
+          // was a claim the app could not keep, and it carried on running the
+          // old version with the user believing otherwise.
+          case "deferred":
+            setBar(100);
+            setText(
+              "Update ready",
+              "Version " + data.version,
+              "It will finish installing when you quit Gryt."
+            );
+            break;
+
           case "not-available":
             setBar(100);
             setText("Gryt is up to date", "Version " + data.version);
