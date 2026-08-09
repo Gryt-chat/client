@@ -23,6 +23,16 @@ export interface DesktopSource {
   height?: number;
 }
 
+export type TrayVoiceState = {
+  inVoice: boolean;
+  muted: boolean;
+  deafened: boolean;
+  /** For the tray menu's header and the tooltip. */
+  serverName: string | null;
+};
+
+export type TrayVoiceCommand = "toggle-mute" | "toggle-deafen";
+
 export type LanServer = {
   host: string;
   port: number;
@@ -75,6 +85,17 @@ export interface ElectronAPI {
   getCloseToTray(): Promise<boolean>;
   setCloseToTray(enabled: boolean): void;
   setSignedIn(signedIn: boolean): void;
+  /**
+   * Tell the tray what voice is doing.
+   *
+   * The main process has no other route to any of this — mute and deafen are
+   * renderer settings and the SFU connection is a renderer concern.
+   */
+  setVoiceState(state: TrayVoiceState): void;
+  /** Mute and deafen, driven from the tray menu. Returns an unsubscribe. */
+  onTrayVoiceCommand(
+    callback: (command: TrayVoiceCommand) => void,
+  ): () => void;
   getStartWithWindowsSupported(): Promise<boolean>;
   getStartWithWindows(): Promise<boolean>;
   setStartWithWindows(enabled: boolean): void;

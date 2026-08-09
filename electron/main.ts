@@ -129,6 +129,22 @@ const trayIcon = app.isPackaged
   ? join(process.resourcesPath, "trayTemplate.png")
   : join(__dirname, "../build/trayTemplate.png");
 
+/**
+ * The Windows and Linux tray, which unlike macOS shows the voice state.
+ *
+ * Colour assets rather than templates, because neither platform has a template
+ * mechanism. Each is a filled disc with its glyph in the logo's ink — see
+ * scripts/generate-tray-icon.mjs for why the disc is doing the work and why
+ * the muted state is not a slash across the mark.
+ *
+ * macOS keeps the plain template: a template image is alpha only and cannot
+ * carry these colours.
+ */
+const stateIcon = (name: string) =>
+  app.isPackaged
+    ? join(process.resourcesPath, `${name}.png`)
+    : join(__dirname, `../build/${name}.png`);
+
 const PROTOCOL = "gryt";
 const AUTO_START_ARG = "--gryt-autostart";
 /**
@@ -145,6 +161,26 @@ let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuitting = false;
 let closeToTray = true;
+
+/**
+ * What the renderer last told us about voice.
+ *
+ * The main process has no other way to know any of this — mute and deafen live
+ * in the renderer's settings hook, and the SFU connection is a renderer
+ * concern. Everything the tray says about voice comes from `set-voice-state`.
+ */
+type VoiceState = {
+  inVoice: boolean;
+  muted: boolean;
+  deafened: boolean;
+  serverName: string | null;
+};
+let voiceState: VoiceState = {
+  inVoice: false,
+  muted: false,
+  deafened: false,
+  serverName: null,
+};
 let isUserSignedIn = false;
 let pttDown = false;
 let uiohookRunning = false;
@@ -964,6 +1000,35 @@ function buildTrayContextMenu(): Menu {
       label: mainWindow?.isVisible() ? "Hide Gryt" : "Show Gryt",
       click: toggleMainWindow,
     },
+    // Voice, but only while there is a call to act on. Mute and deafen with no
+    // connection would be toggling something invisible.
+    ...(voiceState.inVoice
+      ? [
+          { type: "separator" } as const,
+          {
+            label: voiceState.serverName
+              ? `Voice — ${voiceState.serverName}`
+              : "Voice",
+            enabled: false,
+          } as const,
+          {
+            label: "Mute",
+            type: "checkbox" as const,
+            checked: voiceState.muted,
+            // Deafened implies muted, and un-muting without un-deafening would
+            // leave you talking to people you cannot hear.
+            enabled: !voiceState.deafened,
+            click: () => sendVoiceCommand("toggle-mute"),
+          },
+          {
+            label: "Deafen",
+            type: "checkbox" as const,
+            checked: voiceState.deafened,
+            click: () => sendVoiceCommand("toggle-deafen"),
+          },
+          { type: "separator" } as const,
+        ]
+      : []),
     // Only while an update is sitting downloaded and unapplied. Quitting is
     // what actually installs it, so the menu offers exactly that rather than
     // making the user guess why the version never changed.
@@ -1031,14 +1096,12 @@ function toggleMainWindow(): void {
  * there would take the left-click away, so it is popped up on demand instead.
  */
 function createTray(): void {
-  // Not resized. The file is already 16px with a 32px @2x beside it, and
-  // resizing a template image blurs the cut-outs that make it legible.
-  const icon = nativeImage.createFromPath(
-    process.platform === "darwin" ? trayIcon : appIcon,
-  );
-  if (process.platform !== "darwin") icon.resize({ width: 18, height: 18 });
-  tray = new Tray(icon);
-  tray.setToolTip("Gryt");
+  // Not resized. Every one of these files is already 16px with a 32px @2x
+  // beside it, and resizing blurs the detail that makes them legible at all.
+  // The app icon used to be resized to 18px here, which is what made the
+  // Windows tray a smudge.
+  tray = new Tray(nativeImage.createFromPath(currentTrayIconPath()));
+  tray.setToolTip(trayTooltip());
 
   if (process.platform === "darwin") {
     refreshTrayMenu();
@@ -1048,6 +1111,47 @@ function createTray(): void {
       tray?.popUpContextMenu(buildTrayContextMenu());
     });
   }
+}
+
+/**
+ * macOS gets the template; everywhere else gets the state.
+ *
+ * Deafened wins over muted when both are true, which they usually are —
+ * deafening mutes you as well, and the speaker-slash is the more complete
+ * statement of what is happening.
+ */
+function currentTrayIconPath(): string {
+  if (process.platform === "darwin") return trayIcon;
+  if (!voiceState.inVoice) return stateIcon("tray-idle");
+  if (voiceState.deafened) return stateIcon("tray-deafened");
+  if (voiceState.muted) return stateIcon("tray-muted");
+  return stateIcon("tray-live");
+}
+
+function trayTooltip(): string {
+  if (!voiceState.inVoice) return "Gryt";
+  const where = voiceState.serverName ? ` — ${voiceState.serverName}` : "";
+  if (voiceState.deafened) return `Gryt — deafened${where}`;
+  if (voiceState.muted) return `Gryt — muted${where}`;
+  return `Gryt — in voice${where}`;
+}
+
+/**
+ * Point the tray at whatever the state now says.
+ *
+ * The icon is set on every platform because the menu is not the only thing
+ * that changes, but on macOS `currentTrayIconPath` returns the same template
+ * every time, so it is a no-op there rather than a special case here.
+ */
+function refreshTray(): void {
+  if (!tray) return;
+  tray.setImage(nativeImage.createFromPath(currentTrayIconPath()));
+  tray.setToolTip(trayTooltip());
+  refreshTrayMenu();
+}
+
+function sendVoiceCommand(command: "toggle-mute" | "toggle-deafen"): void {
+  mainWindow?.webContents.send("tray-voice-command", command);
 }
 
 /**
@@ -1115,6 +1219,20 @@ if (!gotSingleInstanceLock) {
 
       ipcMain.on("set-signed-in", (_event, signedIn: boolean) => {
         isUserSignedIn = signedIn;
+      });
+
+      // The renderer publishes this whenever voice changes. Redrawing the tray
+      // on an unchanged state would repaint the icon on every settings write,
+      // so the comparison is worth the four lines.
+      ipcMain.on("set-voice-state", (_event, next: VoiceState) => {
+        const changed =
+          next.inVoice !== voiceState.inVoice ||
+          next.muted !== voiceState.muted ||
+          next.deafened !== voiceState.deafened ||
+          next.serverName !== voiceState.serverName;
+        if (!changed) return;
+        voiceState = next;
+        refreshTray();
       });
 
       ipcMain.handle(
