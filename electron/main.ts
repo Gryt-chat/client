@@ -287,6 +287,93 @@ const QUIT_GRACE_MS = 4000;
 /** Set when an update is downloaded but could not be applied without a quit. */
 let updateDeferredVersion: string | null = null;
 
+/**
+ * How long a queued install is assumed to still be in progress.
+ *
+ * ShipIt waits for this app to exit and then copies the whole bundle — 565 MB
+ * and about 14,500 files, which measured at roughly 45 seconds. The window only
+ * has to outlast that copy; it is not a promise that the install worked. If the
+ * install fails, this expires and updating resumes on its own.
+ */
+const PENDING_INSTALL_WINDOW_MS = 10 * 60 * 1000;
+
+type PendingInstall = { version: string; queuedAt: number };
+
+/**
+ * The install we handed to Squirrel and have not seen the result of yet.
+ *
+ * This is on disk rather than in memory because the collision it prevents is
+ * between two *processes*: the one that queued ShipIt and the one running after
+ * it quit.
+ */
+function readPendingInstall(): PendingInstall | null {
+  const raw = readConfig().pendingInstall;
+  if (!raw || typeof raw !== "object") return null;
+  const { version, queuedAt } = raw as Partial<PendingInstall>;
+  if (typeof version !== "string" || typeof queuedAt !== "number") return null;
+  return { version, queuedAt };
+}
+
+/**
+ * Whether an install is still in flight, and so whether starting an update
+ * would break it.
+ *
+ * Starting a second update cycle is not merely wasteful — it destroys the first
+ * one. electron-updater kicks Squirrel as soon as a download finishes, Squirrel
+ * unpacks into a fresh cache directory and removes the previous one, and the
+ * ShipIt already queued against that previous directory then fails part-way
+ * through its copy with "no such file". The file it names is arbitrary, which
+ * is what made this look like a corrupt build rather than a race.
+ *
+ * That is how updating v1.4.0-beta.7 over beta.6 failed repeatedly: each retry
+ * deleted the staging directory of the attempt before it. Quitting and waiting
+ * installed it first time.
+ */
+function installIsPending(): boolean {
+  const pending = readPendingInstall();
+  if (!pending) return false;
+  // We are the version it was fetching, so it landed.
+  if (pending.version === app.getVersion()) {
+    clearPendingInstall();
+    return false;
+  }
+  if (Date.now() - pending.queuedAt > PENDING_INSTALL_WINDOW_MS) {
+    startupLog(`Update: pending install of ${pending.version} expired`);
+    clearPendingInstall();
+    return false;
+  }
+  return true;
+}
+
+function markInstallPending(version: string): void {
+  writeConfig({ pendingInstall: { version, queuedAt: Date.now() } });
+  startupLog(`Update: queued install of ${version}`);
+}
+
+function clearPendingInstall(): void {
+  writeConfig({ pendingInstall: null });
+}
+
+/**
+ * electron-updater's own account of what it did.
+ *
+ * Diagnosing the beta.6 to beta.7 failure meant reading Squirrel's log, because
+ * ours did not exist: without a logger electron-updater throws all of it away,
+ * and the app's side of an update was invisible after the fact.
+ */
+autoUpdater.logger = {
+  info: (m: unknown) => startupLog(`Update: ${String(m)}`),
+  warn: (m: unknown) => startupLog(`Update WARN: ${String(m)}`),
+  error: (m: unknown) => startupLog(`Update ERROR: ${String(m)}`),
+  debug: (m: unknown) => startupLog(`Update debug: ${String(m)}`),
+};
+
+// Running at all is the only confirmation an install worked, so the marker is
+// reconciled against the running version once, here. It has to sit below
+// configPath rather than beside the startup log at the top of the file —
+// readConfig would hit the temporal dead zone and throw before the app opened.
+installIsPending();
+
 autoUpdater.autoDownload = false;
 // Windows only. NSIS runs the installer while the app is still tearing down —
 // renderer, GPU helpers, and the two children this app spawns itself (the SFU
@@ -405,6 +492,18 @@ function closeSplashAndShowMain(): void {
 // Returns a promise that resolves once we should show the main window.
 
 function runSplashUpdateCheck(): Promise<void> {
+  // An install we already queued may still be copying. Checking now would
+  // download again, and the fresh Squirrel staging directory would delete the
+  // one that install is reading from — see installIsPending. Doing nothing is
+  // what lets it finish.
+  if (installIsPending()) {
+    const pending = readPendingInstall();
+    startupLog(
+      `Update: skipping check, install of ${pending?.version} still pending`
+    );
+    return Promise.resolve();
+  }
+
   return new Promise((resolve) => {
     let settled = false;
     const done = () => {
@@ -472,6 +571,10 @@ function runSplashUpdateCheck(): Promise<void> {
         // across platforms (NSIS on Windows, AppImage on Linux).
         setImmediate(() => {
           try {
+            // Recorded before the call, not after: quitAndInstall may take the
+            // process down immediately, and a marker written after it would
+            // never be written at all.
+            markInstallPending(info.version);
             autoUpdater.quitAndInstall(false, true);
 
             // quitAndInstall is not guaranteed to quit, and does not say so.
@@ -1482,7 +1585,9 @@ if (!gotSingleInstanceLock) {
       } else if (startHiddenOnLaunch && !process.argv.includes(UPDATE_ARG)) {
         startupLog("Starting hidden (auto-start)");
         initBackgroundUpdater();
-        autoUpdater.checkForUpdates().catch(() => {});
+        if (!installIsPending()) {
+          autoUpdater.checkForUpdates().catch(() => {});
+        }
       } else {
         try {
           createSplashWindow();
@@ -1660,12 +1765,26 @@ if (!gotSingleInstanceLock) {
       }
 
       ipcMain.on("check-for-updates", () => {
+        // Report the install we already have rather than looking for another
+        // one. The check itself is harmless, but it ends with the settings
+        // panel offering "Restart and update", and taking that offer starts the
+        // second update cycle that destroys the first.
+        if (installIsPending()) {
+          sendToMain("pending", { version: readPendingInstall()?.version });
+          return;
+        }
         autoUpdater.checkForUpdates().catch((err) => {
           sendToMain("error", { message: friendlyUpdateError(err) });
         });
       });
 
-      ipcMain.on("restart-for-update", () => relaunchForUpdate());
+      ipcMain.on("restart-for-update", () => {
+        if (installIsPending()) {
+          sendToMain("pending", { version: readPendingInstall()?.version });
+          return;
+        }
+        relaunchForUpdate();
+      });
 
       ipcMain.on("ptt-set-key", (_event, pttKey: string) => {
         registerPttShortcut(pttKey);

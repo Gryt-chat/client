@@ -64,6 +64,8 @@ function UpdateControls() {
         return `v${status.version} is ready to install`;
       case "not-available":
         return "Gryt is up to date";
+      case "pending":
+        return `v${status.version} will finish installing when you quit Gryt`;
       case "error":
         return `Update error: ${status.message}`;
       default:
@@ -78,6 +80,7 @@ function UpdateControls() {
       case "downloading":
         return "blue" as const;
       case "downloaded":
+      case "pending":
         return "green" as const;
       case "error":
         return "red" as const;
@@ -92,6 +95,11 @@ function UpdateControls() {
   // change landed, or from the splash on a previous launch. Treat it the same
   // as "available": either way the answer is to restart.
   const isReady = status?.status === "downloaded";
+  // Neither button helps while an install is already running. Restarting would
+  // start a second update cycle and destroy the first, and checking again can
+  // only report the same thing. Quitting is the whole remaining action, and the
+  // status line says so.
+  const isPending = status?.status === "pending";
   const isBusy = isChecking;
 
   return (
@@ -136,7 +144,7 @@ function UpdateControls() {
         )}
 
         <Flex gap="2" wrap="wrap">
-          {!isAvailable && !isReady && (
+          {!isAvailable && !isReady && !isPending && (
             <Button
               variant="soft"
               onClick={handleCheckForUpdates}
@@ -150,7 +158,7 @@ function UpdateControls() {
           {/* One step. Downloading and installing both happen on the next
               launch, where the installer has an empty app to work around
               instead of a loaded one. */}
-          {(isAvailable || isReady) && (
+          {(isAvailable || isReady) && !isPending && (
             <Button variant="solid" color="green" onClick={handleUpdateNow}>
               <MdUpdate size={16} />
               Restart and update to v{status?.version}
