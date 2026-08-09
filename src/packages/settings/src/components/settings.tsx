@@ -17,7 +17,9 @@ import { DesktopSettings } from "./desktopSettings";
 import { DeveloperSettings } from "./developerSettings";
 import { HotkeySettings } from "./hotkeySettings";
 import { NotificationSettings } from "./notificationSettings";
+import { PresenceSettings } from "./presenceSettings";
 import { ProfileSettings } from "./profileSettings";
+import { ScreenShareSettings } from "./screenShareSettings";
 import { SecuritySettings } from "./securitySettings";
 import { ServerIdentitySettings } from "./serverIdentitySettings";
 import { SupportSettings } from "./supportSettings";
@@ -46,18 +48,6 @@ function PanelDivider() {
  */
 const DESTINATIONS = [
   {
-    value: "updates",
-    label: "Updates & about",
-    icon: PiArrowFatLineDownFill,
-    content: (
-      <>
-        <UpdatesSettings />
-        <PanelDivider />
-        <AboutSettings />
-      </>
-    ),
-  },
-  {
     value: "you",
     label: "You",
     icon: PiUserFill,
@@ -83,6 +73,8 @@ const DESTINATIONS = [
         <VoiceSettings />
         <PanelDivider />
         <CameraSettings />
+        <PanelDivider />
+        <ScreenShareSettings />
       </>
     ),
   },
@@ -105,6 +97,8 @@ const DESTINATIONS = [
     content: (
       <>
         <HotkeySettings />
+        <PanelDivider />
+        <PresenceSettings />
         <PanelDivider />
         <NotificationSettings />
         {isElectron() && (
@@ -140,6 +134,18 @@ const DESTINATIONS = [
     label: "Addons",
     icon: PiPuzzlePieceFill,
     content: <AddonsSettings />,
+  },
+  {
+    value: "updates",
+    label: "Updates & about",
+    icon: PiArrowFatLineDownFill,
+    content: (
+      <>
+        <UpdatesSettings />
+        <PanelDivider />
+        <AboutSettings />
+      </>
+    ),
   },
   {
     value: "support",
