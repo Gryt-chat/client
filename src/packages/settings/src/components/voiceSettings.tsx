@@ -12,11 +12,13 @@ import connectMp3 from "@/audio/src/assets/connect.mp3";
 import disconnectMp3 from "@/audio/src/assets/disconnect.mp3";
 import { useSettings } from "@/settings";
 
-import { SettingGroup, SettingsContainer, SliderSetting } from "./settingsComponents";
+import { SettingGroup, SettingsContainer, ToggleSetting } from "./settingsComponents";
 import { SoundSettings } from "./SoundSettings";
 
 export function VoiceSettings() {
   const {
+    eSportsModeEnabled,
+    setESportsModeEnabled,
     inputMode,
     setInputMode,
     connectSoundEnabled,
@@ -31,8 +33,6 @@ export function VoiceSettings() {
     setCustomConnectSoundFile,
     customDisconnectSoundFile,
     setCustomDisconnectSoundFile,
-    afkTimeoutMinutes,
-    setAfkTimeoutMinutes,
   } = useSettings();
 
   const [alertDialog, setAlertDialog] = useState<{
@@ -80,6 +80,19 @@ export function VoiceSettings() {
 
       <Separator size="4" />
 
+      <ToggleSetting
+        title="eSports mode"
+        description="Lowest possible latency. Disables all audio processing, enables push-to-talk, caps bitrate at 128kbps (studio quality), and optimizes Opus packetization (10ms frames)."
+        checked={eSportsModeEnabled}
+        onCheckedChange={setESportsModeEnabled}
+        statusText={eSportsModeEnabled
+          ? "Active — RNNoise off, noise gate bypassed, PTT enabled, 128kbps cap, ptime=10ms"
+          : undefined
+        }
+      />
+
+      <Separator size="4" />
+
       <Flex direction="column" gap="4">
         <SoundSettings
           label="Connect Sound"
@@ -109,16 +122,6 @@ export function VoiceSettings() {
         />
       </Flex>
 
-      <Separator size="4" />
-
-      <SliderSetting
-        title={`AFK Timeout: ${afkTimeoutMinutes} minutes`}
-        description="You are marked AFK after this many minutes of silence, and only while you are connected to voice."
-        value={afkTimeoutMinutes}
-        onChange={setAfkTimeoutMinutes}
-        min={1}
-        max={30}
-      />
 
       {alertDialog.open && (
         <AlertDialog.Root

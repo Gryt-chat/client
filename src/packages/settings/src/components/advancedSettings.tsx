@@ -5,20 +5,16 @@ import { getAccessTokenStorageMode, migrateAccessTokensToMode } from "@/common";
 import { useSettings } from "@/settings";
 
 import { LatencyPanel } from "./latencyPanel";
-import { SettingsContainer, ToggleSetting } from "./settingsComponents";
+import { SettingsContainer } from "./settingsComponents";
 
 export function AdvancedSettings() {
   const {
-    eSportsModeEnabled,
-    setESportsModeEnabled,
     showDebugOverlay,
     setShowDebugOverlay,
     showVideoDebugOverlay,
     setShowVideoDebugOverlay,
     showPeerLatency,
     setShowPeerLatency,
-    experimentalScreenShare,
-    setExperimentalScreenShare,
   } = useSettings();
 
   const [persistTokens, setPersistTokens] = useState(true);
@@ -32,33 +28,7 @@ export function AdvancedSettings() {
     <SettingsContainer>
       <Heading size="4">Advanced</Heading>
 
-      <ToggleSetting
-        title="eSports Mode"
-        description="Lowest possible latency. Disables all audio processing, enables push-to-talk, caps bitrate at 128kbps (studio quality), and optimizes Opus packetization (10ms frames)."
-        checked={eSportsModeEnabled}
-        onCheckedChange={setESportsModeEnabled}
-        statusText={eSportsModeEnabled
-          ? "Active — RNNoise off, noise gate bypassed, PTT enabled, 128kbps cap, ptime=10ms"
-          : undefined
-        }
-      />
-
-      <Separator size="4" />
-
       <LatencyPanel />
-
-      <Separator size="4" />
-
-      <ToggleSetting
-        title="Experimental screen share"
-        description="Unlock high frame rate options (144, 165, 240 FPS) for screen sharing. These require significant bandwidth and may not work on all hardware."
-        checked={experimentalScreenShare}
-        onCheckedChange={setExperimentalScreenShare}
-        statusText={experimentalScreenShare
-          ? "High FPS options (144, 165, 240) are available in the screen share picker"
-          : undefined
-        }
-      />
 
       <Separator size="4" />
 

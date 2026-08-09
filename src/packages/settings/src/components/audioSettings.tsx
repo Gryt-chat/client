@@ -382,7 +382,7 @@ export function AudioSettings() {
       <Text size="3" weight="bold" color="gray">Input</Text>
 
       <SliderSetting
-        title={`Microphone Volume: ${micVolume}%`}
+        title={`Microphone volume: ${micVolume}%`}
         description="Your microphone input level (100% = unchanged, 200% = 2x boost)"
         value={micVolume}
         onChange={setMicVolume}
@@ -537,7 +537,7 @@ export function AudioSettings() {
 
       {autoGainEnabled && (
         <SliderSetting
-          title={`Target Level: ${autoGainTargetDb} dB`}
+          title={`Target level: ${autoGainTargetDb} dB`}
           description="The volume your voice is brought to. Lower is quieter, higher is louder."
           value={autoGainTargetDb}
           onChange={setAutoGainTargetDb}
@@ -560,7 +560,7 @@ export function AudioSettings() {
 
       {compressorEnabled && (
         <SliderSetting
-          title={`Compression Amount: ${compressorAmount}%`}
+          title={`Compression amount: ${compressorAmount}%`}
           description="How aggressively to compress. Low = subtle leveling, high = heavy squash."
           value={compressorAmount}
           onChange={setCompressorAmount}
@@ -573,7 +573,7 @@ export function AudioSettings() {
       <Text size="3" weight="bold" color="gray">Output</Text>
 
       <SliderSetting
-        title={`Output Volume: ${outputVolume}%`}
+        title={`Output volume: ${outputVolume}%`}
         description="Volume of all incoming audio (100% = unchanged, 200% = 2x boost)"
         value={outputVolume}
         onChange={setOutputVolume}
