@@ -50,7 +50,7 @@ export function NotificationSettings() {
       <Heading size="4">Notifications</Heading>
 
       <ToggleSetting
-        title="Unread Message Badge"
+        title="Unread message badge"
         description="Show an unread message count on the taskbar icon when the app is not focused."
         checked={notificationBadgeEnabled}
         onCheckedChange={setNotificationBadgeEnabled}

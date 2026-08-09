@@ -62,18 +62,18 @@ export function VoiceSettings() {
       </Heading>
 
       <SettingGroup
-        title="Input Mode"
-        description="Voice Activity transmits whenever you speak above the noise gate. Push to Talk requires holding a key."
+        title="Input mode"
+        description="Voice activity transmits whenever you speak above the noise gate. Push to talk only transmits while you hold a key."
       >
         <SegmentedControl.Root
           value={inputMode}
           onValueChange={(v) => setInputMode(v as "voice_activity" | "push_to_talk")}
         >
           <SegmentedControl.Item value="voice_activity">
-            Voice Activity
+            Voice activity
           </SegmentedControl.Item>
           <SegmentedControl.Item value="push_to_talk">
-            Push to Talk
+            Push to talk
           </SegmentedControl.Item>
         </SegmentedControl.Root>
       </SettingGroup>
@@ -113,7 +113,7 @@ export function VoiceSettings() {
 
       <SliderSetting
         title={`AFK Timeout: ${afkTimeoutMinutes} minutes`}
-        description="You'll be marked as AFK after this many minutes of silence. Only applies when connected to voice channels."
+        description="You are marked AFK after this many minutes of silence, and only while you are connected to voice."
         value={afkTimeoutMinutes}
         onChange={setAfkTimeoutMinutes}
         min={1}

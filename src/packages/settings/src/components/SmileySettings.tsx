@@ -104,7 +104,7 @@ export function SmileySettings() {
   return (
     <Flex direction="column" gap="3">
       <ToggleSetting
-        title="Smiley Conversion"
+        title="Smiley conversion"
         description="Automatically convert text smileys like :) and :D into emoji"
         checked={smileyConversion}
         onCheckedChange={setSmileyConversion}

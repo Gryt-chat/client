@@ -502,8 +502,8 @@ export function AudioSettings() {
       </Flex>}
 
       <ToggleSetting
-        title="Test Microphone (Playback)"
-        description="Hear yourself through speakers/headphones. Useful for verifying your audio processing settings."
+        title="Test microphone"
+        description="Hear yourself through your speakers or headphones, to check what the processing is doing."
         checked={loopbackEnabled}
         onCheckedChange={handleLoopbackChange}
       />
@@ -514,8 +514,8 @@ export function AudioSettings() {
       <Text size="3" weight="bold" color="gray">Voice Processing</Text>
 
       <ToggleSetting
-        title="Noise Reduction (RNNoise)"
-        description="AI-powered noise reduction. Processes audio off the main thread via AudioWorklet for low-latency noise suppression (~20 ms)."
+        title="Noise reduction"
+        description="Removes background noise before your voice is sent. Runs in an AudioWorklet off the main thread, and adds about 20 ms."
         checked={rnnoiseEnabled}
         onCheckedChange={setRnnoiseEnabled}
         statusText={rnnoiseEnabled
@@ -525,8 +525,8 @@ export function AudioSettings() {
       />
 
       <ToggleSetting
-        title="Auto Gain"
-        description="Normalizes your microphone to a target volume level. Quiet speech gets boosted, loud speech gets reduced."
+        title="Auto gain"
+        description="Brings your microphone to a target volume. Quiet speech is boosted, loud speech is reduced."
         checked={autoGainEnabled}
         onCheckedChange={setAutoGainEnabled}
         statusText={autoGainEnabled
@@ -538,7 +538,7 @@ export function AudioSettings() {
       {autoGainEnabled && (
         <SliderSetting
           title={`Target Level: ${autoGainTargetDb} dB`}
-          description="The volume level your voice will be normalized to. Lower values = quieter output, higher = louder."
+          description="The volume your voice is brought to. Lower is quieter, higher is louder."
           value={autoGainTargetDb}
           onChange={setAutoGainTargetDb}
           min={-30}
@@ -549,7 +549,7 @@ export function AudioSettings() {
 
       <ToggleSetting
         title="Compressor"
-        description="Reduces dynamic range so your volume stays more consistent. Tames peaks and evens out your voice after auto gain."
+        description="Narrows the gap between your quietest and loudest, so your level stays steadier. Runs after auto gain."
         checked={compressorEnabled}
         onCheckedChange={setCompressorEnabled}
         statusText={compressorEnabled
@@ -574,7 +574,7 @@ export function AudioSettings() {
 
       <SliderSetting
         title={`Output Volume: ${outputVolume}%`}
-        description="Controls volume of all incoming audio (100% = unchanged, 200% = 2x boost)"
+        description="Volume of all incoming audio (100% = unchanged, 200% = 2x boost)"
         value={outputVolume}
         onChange={setOutputVolume}
         max={MAX_VOLUME_PERCENT}

@@ -50,7 +50,7 @@ export function AdvancedSettings() {
       <Separator size="4" />
 
       <ToggleSetting
-        title="Experimental Screen Share"
+        title="Experimental screen share"
         description="Unlock high frame rate options (144, 165, 240 FPS) for screen sharing. These require significant bandwidth and may not work on all hardware."
         checked={experimentalScreenShare}
         onCheckedChange={setExperimentalScreenShare}
