@@ -240,6 +240,17 @@ function readBoolConfig(key: string, defaultValue: boolean): boolean {
 
 // ── Auto-updater config ─────────────────────────────────────────────────
 
+/**
+ * How long to give quitAndInstall before deciding it is not going to quit.
+ *
+ * A real quit tears the process down well inside this. It is only generous
+ * enough that a slow machine mid-teardown is not mislabelled as deferred.
+ */
+const QUIT_GRACE_MS = 4000;
+
+/** Set when an update is downloaded but could not be applied without a quit. */
+let updateDeferredVersion: string | null = null;
+
 autoUpdater.autoDownload = false;
 // Windows only. NSIS runs the installer while the app is still tearing down —
 // renderer, GPU helpers, and the two children this app spawns itself (the SFU
@@ -426,11 +437,30 @@ function runSplashUpdateCheck(): Promise<void> {
         setImmediate(() => {
           try {
             autoUpdater.quitAndInstall(false, true);
+
+            // quitAndInstall is not guaranteed to quit, and does not say so.
+            //
+            // On macOS it is a no-op whenever Squirrel has not finished its own
+            // download yet: electron-updater registers an "update-downloaded"
+            // listener, skips its checkForUpdates because autoInstallOnAppQuit
+            // is true for us, and returns. No quit, no throw. The splash had
+            // already promised "Restarting…", so the app walked into the main
+            // window still running the old version while Squirrel finished in
+            // the background — and the update only landed when the user
+            // happened to quit. That is what shipped in v1.4.0-beta.5, and it
+            // told the same lie about 1.3.1 before that.
+            //
+            // If we are still alive a moment later, the quit is not coming.
+            // Say what is actually true instead of what we hoped for.
+            setTimeout(() => {
+              sendToSplash("deferred", { version: info.version });
+              updateDeferredVersion = info.version;
+              setTimeout(done, 2500);
+            }, QUIT_GRACE_MS);
           } catch {
-            // If quitAndInstall fails, show the main window rather than
-            // leaving a blank screen. The update is downloaded and will be
-            // offered again on the next launch — it will not install itself on
-            // the way out any more, which is the point.
+            // If quitAndInstall throws outright, show the main window rather
+            // than leaving a blank screen. The update stays downloaded and
+            // applies on quit.
             done();
           }
         });
@@ -934,6 +964,21 @@ function buildTrayContextMenu(): Menu {
       label: mainWindow?.isVisible() ? "Hide Gryt" : "Show Gryt",
       click: toggleMainWindow,
     },
+    // Only while an update is sitting downloaded and unapplied. Quitting is
+    // what actually installs it, so the menu offers exactly that rather than
+    // making the user guess why the version never changed.
+    ...(updateDeferredVersion
+      ? [
+          {
+            label: `Quit and install ${updateDeferredVersion}`,
+            click: () => {
+              isQuitting = true;
+              app.quit();
+            },
+          } as const,
+          { type: "separator" } as const,
+        ]
+      : []),
     {
       label: "Check for Updates",
       click: () => {
