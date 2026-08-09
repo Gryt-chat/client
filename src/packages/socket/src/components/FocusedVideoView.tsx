@@ -1,6 +1,6 @@
 import { Flex, Slider, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { PiArrowSquareOutFill, PiCornersInFill, PiCornersOutFill, PiSpeakerHighFill, PiSpeakerSlashFill } from "react-icons/pi";
+import { PiArrowLineLeftFill, PiArrowSquareOutFill, PiCornersInFill, PiCornersOutFill, PiSpeakerHighFill, PiSpeakerSlashFill } from "react-icons/pi";
 
 import { gainToSlider, sliderToGain } from "@/lib/audioVolume";
 import type { StreamSources } from "@/webRTC/src/types/SFU";
@@ -256,7 +256,7 @@ export function FocusedVideoView({
             onClick={onClose}
             aria-label="Minimize"
           >
-            <PiCornersInFill size={16} />
+            <PiArrowLineLeftFill size={16} />
           </button>
         </Flex>
       </div>

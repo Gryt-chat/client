@@ -25,7 +25,7 @@ import {
   useState,
 } from "react";
 import toast from "react-hot-toast";
-import { PiChatCircleFill, PiCornersInFill, PiCornersOutFill, PiMicrophoneSlashFill } from "react-icons/pi";
+import { PiArrowLineLeftFill, PiArrowLineRightFill, PiChatCircleFill, PiCornersInFill, PiCornersOutFill, PiMicrophoneSlashFill } from "react-icons/pi";
 
 import {
   useCamera as useLocalCamera,
@@ -1402,9 +1402,9 @@ export const VoiceView = ({
                           onClick={onToggleMaximize}
                         >
                           {isMaximized ? (
-                            <PiCornersInFill size={16} />
+                            <PiArrowLineLeftFill size={16} />
                           ) : (
-                            <PiCornersOutFill size={16} />
+                            <PiArrowLineRightFill size={16} />
                           )}
                         </IconButton>
                       </Tooltip>
