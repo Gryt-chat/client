@@ -209,11 +209,24 @@
             setText("Installing update", "Version " + data.version, "Restarting…");
             break;
 
-          // Reached when quitAndInstall did not actually quit. On macOS that is
-          // a no-op whenever Squirrel has not finished its own download yet, and
-          // it neither quits nor throws — so the previous state's "Restarting…"
-          // was a claim the app could not keep, and it carried on running the
-          // old version with the user believing otherwise.
+          // quitAndInstall did not quit immediately, which on macOS means
+          // Squirrel is still fetching the update through electron-updater's
+          // local proxy. The quit comes when that finishes — electron-updater
+          // has already registered the listener that performs it — so the
+          // honest thing is to keep waiting here rather than open the app on
+          // the old version and ask the user to quit it themselves.
+          case "installing":
+            setBar(100);
+            setText(
+              "Installing update",
+              "Version " + data.version,
+              "Almost there — Gryt will restart on its own."
+            );
+            break;
+
+          // The backstop, and it should be rare: the install never completed
+          // and we are not holding someone on a splash screen indefinitely for
+          // it. The update is downloaded and applies on quit either way.
           case "deferred":
             setBar(100);
             setText(
