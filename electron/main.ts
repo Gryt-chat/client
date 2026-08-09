@@ -629,6 +629,14 @@ function runSplashUpdateCheck(): Promise<void> {
     };
 
     const onError = (err?: Error) => {
+      // A release that is still uploading is not a failure to launch through.
+      // Flashing a red error on the way into the app, for something nobody can
+      // act on and which fixes itself, is worse than saying nothing.
+      if (err && isReleaseNotReadyYet(err)) {
+        sendToSplash("not-available", { version: app.getVersion() });
+        setTimeout(done, 600);
+        return;
+      }
       sendToSplash("error", {
         message: err ? friendlyUpdateError(err) : undefined,
       });
@@ -652,13 +660,146 @@ function runSplashUpdateCheck(): Promise<void> {
     autoUpdater.on("update-downloaded", onDownloaded);
     autoUpdater.on("error", onError);
 
-    autoUpdater.checkForUpdates().catch((err) => {
-      onError(err instanceof Error ? err : undefined);
+    pinFeedToNewestCompleteRelease().finally(() => {
+      autoUpdater.checkForUpdates().catch((err) => {
+        onError(err instanceof Error ? err : undefined);
+      });
     });
   });
 }
 
 // ── Background update listeners (after main window is open) ─────────────
+
+/**
+ * Whether an update error means "there is nothing to install yet" rather than
+ * "something is broken".
+ *
+ * A GitHub release becomes visible before its assets finish uploading, and the
+ * release workflow publishes the channel yml alongside several hundred MB of
+ * installers. A check landing inside that window gets a 404 for the file, or
+ * finds no yml for the channel at all. Nothing is wrong, nothing is actionable,
+ * and it fixes itself within a few minutes.
+ *
+ * Reported as "up to date", because that is what it means from where the user
+ * is standing: there is no update they can install right now. A red error for a
+ * condition nobody caused and nobody can act on just makes the app look broken
+ * — which is exactly what it did while v1.4.0-beta.10 was uploading.
+ *
+ * Deliberately narrow. A network failure, a 403, or a checksum mismatch are all
+ * real and still surface as errors.
+ */
+function isReleaseNotReadyYet(err: Error): boolean {
+  const msg = err.message;
+  return (
+    msg.includes("status 404") ||
+    msg.includes("HttpError: 404") ||
+    msg.includes("latest.yml") ||
+    msg.includes("latest-linux.yml") ||
+    msg.includes("latest-mac.yml")
+  );
+}
+
+const UPDATE_OWNER = "Gryt-chat";
+const UPDATE_REPO = "gryt";
+
+type GhAsset = { name: string; size: number; browser_download_url: string };
+type GhRelease = {
+  tag_name: string;
+  draft: boolean;
+  prerelease: boolean;
+  assets: GhAsset[];
+};
+
+/** The channel file electron-updater will ask for on this platform. */
+function channelYmlName(): string {
+  if (process.platform === "darwin") return "latest-mac.yml";
+  if (process.platform === "win32") return "latest.yml";
+  return "latest-linux.yml";
+}
+
+async function fetchWithTimeout(url: string, ms = 8000): Promise<Response | null> {
+  try {
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(ms),
+      headers: { "User-Agent": `Gryt/${app.getVersion()}` },
+    });
+    return res.ok ? res : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Whether this release can actually be installed from.
+ *
+ * Presence of the channel yml is not enough: it names the artifact, and the
+ * whole failure this guards against is a release where the yml has uploaded and
+ * the several-hundred-MB installer beside it has not. So the yml is read and
+ * the file it points at is checked for in the same release.
+ */
+async function releaseIsInstallable(release: GhRelease): Promise<boolean> {
+  const yml = release.assets.find(
+    (a) => a.name === channelYmlName() && a.size > 0
+  );
+  if (!yml) return false;
+
+  const res = await fetchWithTimeout(yml.browser_download_url);
+  if (!res) return false;
+
+  const named = (await res.text()).match(/^path:\s*(.+)$/m);
+  if (!named) return false;
+
+  const file = named[1].trim().replace(/^["']|["']$/g, "");
+  return release.assets.some((a) => a.name === file && a.size > 0);
+}
+
+/**
+ * Point the updater at the newest release that is actually complete.
+ *
+ * The GitHub provider always takes the newest release and gives up if its
+ * assets are missing, so one bad or half-uploaded release blocks updates for
+ * everyone until somebody fixes it. Walking back to the previous good release
+ * means a failed publish costs people a version, not their ability to update.
+ *
+ * Best effort by design. If GitHub cannot be reached, or nothing looks
+ * complete, the configured provider is left alone and behaviour is exactly what
+ * it was.
+ *
+ * No version comparison here on purpose — electron-updater already refuses
+ * anything that is not newer than what is running, so pinning to an older
+ * release simply reports up to date.
+ */
+async function pinFeedToNewestCompleteRelease(): Promise<void> {
+  const res = await fetchWithTimeout(
+    `https://api.github.com/repos/${UPDATE_OWNER}/${UPDATE_REPO}/releases?per_page=20`
+  );
+  if (!res) return;
+
+  let releases: GhRelease[];
+  try {
+    releases = (await res.json()) as GhRelease[];
+  } catch {
+    return;
+  }
+  if (!Array.isArray(releases)) return;
+
+  const wantPrerelease = isOnBetaChannel();
+  const candidates = releases.filter(
+    (r) => !r.draft && (wantPrerelease || !r.prerelease)
+  );
+
+  for (const release of candidates) {
+    if (await releaseIsInstallable(release)) {
+      autoUpdater.setFeedURL({
+        provider: "generic",
+        url: `https://github.com/${UPDATE_OWNER}/${UPDATE_REPO}/releases/download/${release.tag_name}`,
+      });
+      startupLog(`Update: feed pinned to ${release.tag_name}`);
+      return;
+    }
+    startupLog(`Update: skipping ${release.tag_name}, assets incomplete`);
+  }
+}
 
 function friendlyUpdateError(err: Error): string {
   const msg = err.message;
@@ -715,9 +856,13 @@ function initBackgroundUpdater() {
   autoUpdater.on("update-downloaded", (info) =>
     sendToMain("downloaded", { version: info.version })
   );
-  autoUpdater.on("error", (err) =>
-    sendToMain("error", { message: friendlyUpdateError(err) })
-  );
+  autoUpdater.on("error", (err) => {
+    if (isReleaseNotReadyYet(err)) {
+      sendToMain("not-available", { version: app.getVersion() });
+      return;
+    }
+    sendToMain("error", { message: friendlyUpdateError(err) });
+  });
 }
 
 /**
@@ -1608,7 +1753,9 @@ if (!gotSingleInstanceLock) {
         startupLog("Starting hidden (auto-start)");
         initBackgroundUpdater();
         if (!installIsPending()) {
-          autoUpdater.checkForUpdates().catch(() => {});
+          pinFeedToNewestCompleteRelease().finally(() => {
+            autoUpdater.checkForUpdates().catch(() => {});
+          });
         }
       } else {
         try {
@@ -1795,8 +1942,14 @@ if (!gotSingleInstanceLock) {
           sendToMain("pending", { version: readPendingInstall()?.version });
           return;
         }
-        autoUpdater.checkForUpdates().catch((err) => {
-          sendToMain("error", { message: friendlyUpdateError(err) });
+        pinFeedToNewestCompleteRelease().finally(() => {
+          autoUpdater.checkForUpdates().catch((err) => {
+            if (isReleaseNotReadyYet(err)) {
+              sendToMain("not-available", { version: app.getVersion() });
+              return;
+            }
+            sendToMain("error", { message: friendlyUpdateError(err) });
+          });
         });
       });
 
