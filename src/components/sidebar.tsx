@@ -11,7 +11,7 @@ import {
   Tooltip,
 } from "@radix-ui/themes";
 import { Reorder } from "motion/react";
-import { MdAdd, MdFeedback, MdMic, MdSettings } from "react-icons/md";
+import { PiChatCircleDotsFill, PiGearFill, PiMicrophoneFill, PiPlus } from "react-icons/pi";
 
 import {
   GeneratedServerIcon,
@@ -134,7 +134,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
             color="gray"
             onClick={() => setShowAddServer(true)}
           >
-            <MdAdd size={16} />
+            <PiPlus size={16} />
           </IconButton>
         </Tooltip>
       </Flex>
@@ -154,7 +154,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
           <DropdownMenu.Content>
             <DropdownMenu.Item onClick={() => setShowSettings(true)}>
               <Flex align="center" gap="1">
-                <MdSettings size={14} />
+                <PiGearFill size={14} />
                 Settings
               </Flex>
             </DropdownMenu.Item>
@@ -165,7 +165,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
               }
             >
               <Flex align="center" gap="1">
-                <MdFeedback size={14} />
+                <PiChatCircleDotsFill size={14} />
                 Give feedback
               </Flex>
             </DropdownMenu.Item>
@@ -284,7 +284,7 @@ function ServerItem({
                       zIndex: 1,
                     }}
                   >
-                    <MdMic size={8} color="var(--accent-contrast)" />
+                    <PiMicrophoneFill size={8} color="var(--accent-contrast)" />
                   </Box>
                 )}
                 {serverHasUnread(host) && (

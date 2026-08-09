@@ -1,16 +1,6 @@
 import { ContextMenu, Flex } from "@radix-ui/themes";
 import React, { type ReactNode, useCallback, useMemo } from "react";
-import {
-  MdCloudDownload,
-  MdContentCopy,
-  MdDelete,
-  MdEdit,
-  MdEmojiEmotions,
-  MdFlag,
-  MdImage,
-  MdOpenInNew,
-  MdReply,
-} from "react-icons/md";
+import { PiArrowBendUpLeftFill, PiArrowSquareOutFill, PiCloudArrowDownFill, PiCopyFill, PiFlagFill, PiImageFill, PiPencilSimpleFill, PiSmileyFill, PiTrashFill } from "react-icons/pi";
 
 import { triggerDownload } from "../utils/downloadFile";
 import { copyImageToClipboard } from "../utils/mediaClipboard";
@@ -65,27 +55,27 @@ function MediaItems({ media }: { media: MediaProps }) {
       {media.isImage && (
         <ContextMenu.Item onClick={() => copyImageToClipboard(media.src)}>
           <Flex align="center" gap="1">
-            <MdImage size={14} />
+            <PiImageFill size={14} />
             Copy Image
           </Flex>
         </ContextMenu.Item>
       )}
       <ContextMenu.Item onClick={() => void triggerDownload(media.src, media.fileName)}>
         <Flex align="center" gap="1">
-          <MdCloudDownload size={14} />
+          <PiCloudArrowDownFill size={14} />
           Save As
         </Flex>
       </ContextMenu.Item>
       <ContextMenu.Item onClick={() => copyToClipboard(media.src)}>
         <Flex align="center" gap="1">
-          <MdContentCopy size={14} />
+          <PiCopyFill size={14} />
           Copy Link
         </Flex>
       </ContextMenu.Item>
       <ContextMenu.Separator />
       <ContextMenu.Item onClick={() => window.open(media.src, "_blank", "noopener,noreferrer")}>
         <Flex align="center" gap="1">
-          <MdOpenInNew size={14} />
+          <PiArrowSquareOutFill size={14} />
           Open in Browser
         </Flex>
       </ContextMenu.Item>
@@ -149,7 +139,7 @@ function QuickReactions({
               color: "var(--gray-10)",
             }}
           >
-            <MdEmojiEmotions size={20} />
+            <PiSmileyFill size={20} />
           </ContextMenu.SubTrigger>
           <ContextMenu.SubContent
             sideOffset={2}
@@ -183,7 +173,7 @@ function MessageActionItems({ actions }: { actions: MessageActions }) {
       {actions.messageText && (
         <ContextMenu.Item onClick={() => copyToClipboard(actions.messageText!)}>
           <Flex align="center" gap="1">
-            <MdContentCopy size={14} />
+            <PiCopyFill size={14} />
             Copy Message
           </Flex>
         </ContextMenu.Item>
@@ -191,7 +181,7 @@ function MessageActionItems({ actions }: { actions: MessageActions }) {
       {actions.onReply && (
         <ContextMenu.Item onClick={actions.onReply}>
           <Flex align="center" gap="1">
-            <MdReply size={14} />
+            <PiArrowBendUpLeftFill size={14} />
             Reply
           </Flex>
         </ContextMenu.Item>
@@ -199,7 +189,7 @@ function MessageActionItems({ actions }: { actions: MessageActions }) {
       {actions.canEdit && actions.onEdit && (
         <ContextMenu.Item onClick={actions.onEdit}>
           <Flex align="center" gap="1">
-            <MdEdit size={14} />
+            <PiPencilSimpleFill size={14} />
             Edit Message
           </Flex>
         </ContextMenu.Item>
@@ -207,7 +197,7 @@ function MessageActionItems({ actions }: { actions: MessageActions }) {
       {actions.onReport && (
         <ContextMenu.Item onClick={actions.onReport} color="red">
           <Flex align="center" gap="1">
-            <MdFlag size={14} />
+            <PiFlagFill size={14} />
             Report
           </Flex>
         </ContextMenu.Item>
@@ -215,7 +205,7 @@ function MessageActionItems({ actions }: { actions: MessageActions }) {
       {actions.canDelete && actions.onDelete && (
         <ContextMenu.Item onClick={actions.onDelete} color="red">
           <Flex align="center" gap="1">
-            <MdDelete size={14} />
+            <PiTrashFill size={14} />
             Delete Message
           </Flex>
         </ContextMenu.Item>

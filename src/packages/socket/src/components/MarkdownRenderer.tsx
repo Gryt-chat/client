@@ -1,6 +1,6 @@
 import { Tooltip } from "@radix-ui/themes";
 import { cloneElement, isValidElement, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MdCheck, MdContentCopy } from "react-icons/md";
+import { PiCheck, PiCopyFill } from "react-icons/pi";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
@@ -220,7 +220,7 @@ function CodeBlockPre({ children }: { children: React.ReactNode }) {
           transition: "background 0.15s, color 0.15s",
         }}
       >
-        {copied ? <MdCheck size={14} /> : <MdContentCopy size={14} />}
+        {copied ? <PiCheck size={14} /> : <PiCopyFill size={14} />}
       </button>
       {children}
     </pre>

@@ -1,6 +1,6 @@
 import { Avatar, Button, Callout, Dialog, Flex, IconButton, Spinner, Text } from "@radix-ui/themes";
 import { useEffect, useRef, useState } from "react";
-import { MdClose, MdGroup, MdMail, MdWarning } from "react-icons/md";
+import { PiEnvelopeFill, PiUsersFill, PiWarningFill, PiX } from "react-icons/pi";
 
 import { GeneratedServerIcon, getServerHttpBase, type PendingInvite } from "@/common";
 
@@ -87,7 +87,7 @@ export function InviteAcceptModal({
         <Flex direction="column" gap="4">
           <Flex align="center" justify="between">
             <Flex align="center" gap="2">
-              <MdMail size={16} />
+              <PiEnvelopeFill size={16} />
               <Dialog.Title>Server Invite</Dialog.Title>
             </Flex>
             <Dialog.Close>
@@ -100,7 +100,7 @@ export function InviteAcceptModal({
                   onDismiss();
                 }}
               >
-                <MdClose size={16} />
+                <PiX size={16} />
               </IconButton>
             </Dialog.Close>
           </Flex>
@@ -137,7 +137,7 @@ export function InviteAcceptModal({
 
               {preview?.members && (
                 <Flex align="center" gap="1">
-                  <MdGroup size={14} style={{ color: "var(--gray-9)" }} />
+                  <PiUsersFill size={14} style={{ color: "var(--gray-9)" }} />
                   <Text size="2" color="gray">
                     {preview.members} members
                   </Text>
@@ -159,7 +159,7 @@ export function InviteAcceptModal({
           {!alreadyMember && joinError ? (
             <Callout.Root color="red" role="alert">
               <Callout.Icon>
-                <MdWarning size={16} />
+                <PiWarningFill size={16} />
               </Callout.Icon>
               <Callout.Text>{joinError}</Callout.Text>
             </Callout.Root>

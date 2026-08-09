@@ -1,6 +1,6 @@
 import { Badge, Button, Flex, Heading, Select, Separator, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MdRefresh } from "react-icons/md";
+import { PiArrowsClockwiseFill } from "react-icons/pi";
 
 import { CAMERA_FPS_OPTIONS, type CameraQuality, QUALITY_CONSTRAINTS, useCamera } from "@/audio";
 import { useSettings } from "@/settings";
@@ -241,7 +241,7 @@ export function CameraSettings() {
               </Text>
               {activeError && (
                 <Button variant="soft" size="1" onClick={startPreview}>
-                  <MdRefresh size={14} />
+                  <PiArrowsClockwiseFill size={14} />
                   Retry
                 </Button>
               )}

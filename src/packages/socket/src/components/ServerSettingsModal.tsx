@@ -1,6 +1,6 @@
 import { Badge, Box, Dialog, Flex, IconButton, Spinner, Tabs, Text } from "@radix-ui/themes";
 import { useEffect, useMemo, useState } from "react";
-import { MdClose, MdEmojiEmotions, MdFactCheck, MdGroup, MdLink, MdSettings, MdSwapHoriz, MdWebhook } from "react-icons/md";
+import { PiArrowsLeftRightFill, PiGearFill, PiLinkFill, PiListChecksFill, PiSmileyFill, PiUsersFill, PiWebhooksLogoFill, PiX } from "react-icons/pi";
 
 import { getServerAccessToken } from "@/common";
 
@@ -98,7 +98,7 @@ export function ServerSettingsModal() {
     {
       value: "overview",
       label: "Overview",
-      icon: MdSettings,
+      icon: PiGearFill,
       content: (
         <ServerOverviewTab
           host={host}
@@ -112,31 +112,31 @@ export function ServerSettingsModal() {
     {
       value: "invites",
       label: "Invites",
-      icon: MdLink,
+      icon: PiLinkFill,
       content: <ServerInvitesTab host={host} socket={socket} accessToken={accessToken} />,
     },
     {
       value: "roles",
       label: "Roles",
-      icon: MdGroup,
+      icon: PiUsersFill,
       content: <ServerRolesTab host={host} socket={socket} accessToken={accessToken} />,
     },
     {
       value: "emojis",
       label: "Emojis",
-      icon: MdEmojiEmotions,
+      icon: PiSmileyFill,
       content: <ServerEmojisTab host={host} socket={socket} accessToken={accessToken} />,
     },
     {
       value: "audit",
       label: "Audit Log",
-      icon: MdFactCheck,
+      icon: PiListChecksFill,
       content: <ServerAuditTab host={host} socket={socket} accessToken={accessToken} />,
     },
     {
       value: "webhooks",
       label: "Webhooks",
-      icon: MdWebhook,
+      icon: PiWebhooksLogoFill,
       content: <ServerWebhooksTab host={host} channels={host ? serverDetailsList[host]?.channels ?? [] : []} />,
     },
     ...(isOwner
@@ -144,7 +144,7 @@ export function ServerSettingsModal() {
           {
             value: "replace-user" as const,
             label: "Replace User",
-            icon: MdSwapHoriz,
+            icon: PiArrowsLeftRightFill,
             content: <ServerUserReplaceTab host={host} socket={socket} accessToken={accessToken} />,
           },
         ]
@@ -162,7 +162,7 @@ export function ServerSettingsModal() {
           }}
         >
           <IconButton variant="soft" color="gray">
-            <MdClose size={16} />
+            <PiX size={16} />
           </IconButton>
         </Dialog.Close>
 

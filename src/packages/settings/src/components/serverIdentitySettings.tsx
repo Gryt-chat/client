@@ -12,7 +12,7 @@ import {
 } from "@radix-ui/themes";
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { MdDelete, MdDns, MdGppGood, MdWarning } from "react-icons/md";
+import { PiHardDrivesFill, PiShieldCheckFill, PiTrashFill, PiWarningFill } from "react-icons/pi";
 
 import type { BlockedServer, ServerPin } from "@/common";
 import { forgetPin, listBlocked, listHostExpectations, listPins, unblockServer } from "@/common";
@@ -72,7 +72,7 @@ function BlockedRow({
       style={{ borderRadius: "var(--radius-2)", background: "var(--red-a2)" }}
     >
       <Flex align="center" gap="2">
-        <MdWarning size={18} style={{ color: "var(--red-11)", flexShrink: 0 }} />
+        <PiWarningFill size={18} style={{ color: "var(--red-11)", flexShrink: 0 }} />
         <Text size="2" weight="medium" style={{ flex: 1, minWidth: 0 }} truncate>
           {entry.host}
         </Text>
@@ -184,7 +184,7 @@ function KnownRow({ pin, onForget }: { pin: ServerPin; onForget: (keyId: string)
           flexShrink: 0,
         }}
       >
-        <MdGppGood size={18} style={{ color: "var(--accent-11)" }} />
+        <PiShieldCheckFill size={18} style={{ color: "var(--accent-11)" }} />
       </Flex>
 
       <Flex direction="column" gap="1" style={{ flex: 1, minWidth: 0 }}>
@@ -200,7 +200,7 @@ function KnownRow({ pin, onForget }: { pin: ServerPin; onForget: (keyId: string)
       <AlertDialog.Root open={confirm} onOpenChange={setConfirm}>
         <Tooltip content="Forget this server">
           <IconButton size="1" variant="ghost" color="red" onClick={() => setConfirm(true)}>
-            <MdDelete size={16} />
+            <PiTrashFill size={16} />
           </IconButton>
         </Tooltip>
         <AlertDialog.Content maxWidth="440px">
@@ -330,7 +330,7 @@ export function ServerIdentitySettings() {
             py="6"
             style={{ borderRadius: "var(--radius-2)", border: "1px dashed var(--gray-a6)" }}
           >
-            <MdDns size={32} style={{ color: "var(--gray-a8)" }} />
+            <PiHardDrivesFill size={32} style={{ color: "var(--gray-a8)" }} />
             <Text size="2" color="gray">
               No server identities remembered yet
             </Text>

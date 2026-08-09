@@ -1,7 +1,7 @@
 import { Button, Card, Flex, Switch, Text, TextField } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { MdAdd, MdContentCopy } from "react-icons/md";
+import { PiCopyFill, PiPlus } from "react-icons/pi";
 import type { Socket } from "socket.io-client";
 
 import { useSocketEvent } from "../hooks/useSocketEvent";
@@ -224,7 +224,7 @@ export function ServerInvitesTab({
               Refresh
             </Button>
             <Button onClick={create} disabled={creating}>
-              <MdAdd size={16} />
+              <PiPlus size={16} />
               Create invite
             </Button>
           </Flex>
@@ -266,7 +266,7 @@ export function ServerInvitesTab({
                     </Flex>
                     <Flex gap="2">
                       <Button variant="soft" onClick={() => copy(i.code)}>
-                        <MdContentCopy size={16} />
+                        <PiCopyFill size={16} />
                         Copy
                       </Button>
                       <Button

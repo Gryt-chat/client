@@ -1,7 +1,7 @@
 import { AlertDialog, Badge, Box, Button, Dialog, Flex, IconButton, ScrollArea, Spinner, Text, Tooltip } from "@radix-ui/themes";
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { MdBlock, MdCheck, MdDelete, MdWarning } from "react-icons/md";
+import { PiCheck, PiProhibitFill, PiTrashFill, PiWarningFill } from "react-icons/pi";
 import type { Socket } from "socket.io-client";
 
 import { getServerAccessToken, getUploadsFileUrl } from "@/common";
@@ -153,7 +153,7 @@ export function ReportsPanel({
         >
           <Dialog.Title>
             <Flex align="center" gap="2">
-              <MdWarning size={16} />
+              <PiWarningFill size={16} />
               Reported Messages
               {reports.length > 0 && (
                 <Badge color="red" variant="solid" size="1">
@@ -172,7 +172,7 @@ export function ReportsPanel({
             </Flex>
           ) : reports.length === 0 ? (
             <Flex direction="column" align="center" justify="center" py="8" gap="2">
-              <MdCheck size={32} style={{ color: "var(--green-9)" }} />
+              <PiCheck size={32} style={{ color: "var(--green-9)" }} />
               <Text size="3" color="gray">
                 No pending reports
               </Text>
@@ -395,7 +395,7 @@ function ReportCard({
                 onClick={onApprove}
                 style={{ cursor: "pointer" }}
               >
-                <MdCheck size={18} />
+                <PiCheck size={18} />
               </IconButton>
             </Tooltip>
 
@@ -408,7 +408,7 @@ function ReportCard({
                 onClick={onDelete}
                 style={{ cursor: "pointer" }}
               >
-                <MdDelete size={18} />
+                <PiTrashFill size={18} />
               </IconButton>
             </Tooltip>
 
@@ -421,7 +421,7 @@ function ReportCard({
                 onClick={onDeleteAllAndBan}
                 style={{ cursor: "pointer" }}
               >
-                <MdBlock size={18} />
+                <PiProhibitFill size={18} />
               </IconButton>
             </Tooltip>
           </Flex>

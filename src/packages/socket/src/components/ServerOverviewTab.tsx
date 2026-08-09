@@ -11,7 +11,7 @@ import {
 } from "@radix-ui/themes";
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { MdCameraAlt, MdDelete } from "react-icons/md";
+import { PiCameraFill, PiTrashFill } from "react-icons/pi";
 
 import { GeneratedServerIcon, getServerAccessToken, getServerHttpBase } from "@/common";
 import { useSettings } from "@/settings";
@@ -482,7 +482,7 @@ export function ServerOverviewTab({
                     boxShadow: "0 1px 4px var(--gray-a5)",
                   }}
                 >
-                  <MdCameraAlt size={14} />
+                  <PiCameraFill size={14} />
                 </Flex>
               )}
             </div>
@@ -507,7 +507,7 @@ export function ServerOverviewTab({
               onClick={() => setShowClearIconConfirm(true)}
               style={{ alignSelf: "center" }}
             >
-              <MdDelete size={16} />
+              <PiTrashFill size={16} />
               Clear icon
             </Button>
             <AlertDialog.Root

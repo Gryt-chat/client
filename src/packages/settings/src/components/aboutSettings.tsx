@@ -1,16 +1,7 @@
 import { AlertDialog, Badge, Button, Card, Flex, Heading, Link, Separator, Switch, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useState } from "react";
 import { FaGithub } from "react-icons/fa";
-import {
-  MdCancel,
-  MdCheckCircle,
-  MdDesktopWindows,
-  MdDownload,
-  MdFeedback,
-  MdOpenInNew,
-  MdRefresh,
-  MdUpdate,
-} from "react-icons/md";
+import { PiArrowsClockwiseFill, PiArrowSquareOutFill, PiChatCircleDotsFill, PiCheckCircleFill, PiClockClockwiseFill, PiDesktopFill, PiDownloadSimpleFill, PiXCircleFill } from "react-icons/pi";
 
 import { Wordmark } from "@/common";
 
@@ -130,9 +121,9 @@ function UpdateControls() {
         {statusText && (
           <Flex direction="column" gap="1">
             <Flex align="center" gap="2">
-              {isReady && <MdUpdate size={16} color="var(--green-9)" />}
-              {status?.status === "not-available" && <MdCheckCircle size={16} color="var(--green-9)" />}
-              {status?.status === "error" && <MdCancel size={16} color="var(--red-9)" />}
+              {isReady && <PiClockClockwiseFill size={16} color="var(--green-9)" />}
+              {status?.status === "not-available" && <PiCheckCircleFill size={16} color="var(--green-9)" />}
+              {status?.status === "error" && <PiXCircleFill size={16} color="var(--red-9)" />}
               <Text size="2" color={statusColor}>{statusText}</Text>
             </Flex>
             {status?.status === "error" && (
@@ -150,7 +141,7 @@ function UpdateControls() {
               onClick={handleCheckForUpdates}
               disabled={isBusy}
             >
-              <MdRefresh size={16} />
+              <PiArrowsClockwiseFill size={16} />
               {isChecking ? "Checking…" : "Check for Updates"}
             </Button>
           )}
@@ -160,7 +151,7 @@ function UpdateControls() {
               instead of a loaded one. */}
           {(isAvailable || isReady) && !isPending && (
             <Button variant="solid" color="green" onClick={handleUpdateNow}>
-              <MdUpdate size={16} />
+              <PiClockClockwiseFill size={16} />
               Restart and update to v{status?.version}
             </Button>
           )}
@@ -205,7 +196,7 @@ function DesktopAppCard() {
       <Card size="2">
         <Flex direction="column" gap="3">
           <Flex align="center" gap="2">
-            <MdDesktopWindows size={18} />
+            <PiDesktopFill size={18} />
             <Text size="3" weight="medium">Get the desktop app</Text>
           </Flex>
           <Text size="2" color="gray">
@@ -217,9 +208,9 @@ function DesktopAppCard() {
           </Text>
           <Button variant="solid" size="2" asChild>
             <a href={RELEASES_URL} target="_blank" rel="noopener noreferrer">
-              <MdDownload size={16} />
+              <PiDownloadSimpleFill size={16} />
               Download Gryt Desktop
-              <MdOpenInNew size={14} />
+              <PiArrowSquareOutFill size={14} />
             </a>
           </Button>
         </Flex>
@@ -263,7 +254,7 @@ export function AboutSettings() {
         </Button>
         <Button variant="soft" color="gray" asChild>
           <a href={FEEDBACK_URL} target="_blank" rel="noopener noreferrer">
-            <MdFeedback size={16} />
+            <PiChatCircleDotsFill size={16} />
             Give feedback
           </a>
         </Button>

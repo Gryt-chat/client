@@ -1,5 +1,5 @@
 import { Box, Flex, Skeleton, Text } from "@radix-ui/themes";
-import { MdChat, MdVolumeUp } from "react-icons/md";
+import { PiChatCircleFill, PiSpeakerHighFill } from "react-icons/pi";
 
 import { EmojiText } from "./EmojiText";
 
@@ -108,7 +108,7 @@ export const MessageSkeleton = () => {
 };
 
 const ChannelIcon = ({ type, size }: { type: "text" | "voice"; size: number }) =>
-  type === "voice" ? <MdVolumeUp size={size} /> : <MdChat size={size} />;
+  type === "voice" ? <PiSpeakerHighFill size={size} /> : <PiChatCircleFill size={size} />;
 
 export const WelcomeMessage = ({ channelName, channelType = "text", onStart }: { channelName?: string; channelType?: "text" | "voice"; onStart?: () => void }) => (
   <Flex direction="column" style={{ padding: "48px 24px", alignItems: "center", textAlign: "center" }}>

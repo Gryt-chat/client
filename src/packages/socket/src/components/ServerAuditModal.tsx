@@ -1,7 +1,7 @@
 import { Button, Card,Dialog, Flex, IconButton, Text } from "@radix-ui/themes";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { MdClose } from "react-icons/md";
+import { PiX } from "react-icons/pi";
 
 import { getServerAccessToken } from "@/common";
 
@@ -75,7 +75,7 @@ export function ServerAuditModal() {
             <Dialog.Title>Audit log</Dialog.Title>
             <Dialog.Close>
               <IconButton variant="ghost" color="gray" onClick={close}>
-                <MdClose size={16} />
+                <PiX size={16} />
               </IconButton>
             </Dialog.Close>
           </Flex>

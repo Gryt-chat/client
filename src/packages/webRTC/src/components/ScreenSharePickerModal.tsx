@@ -1,6 +1,6 @@
 import { Badge, Button, Checkbox, Dialog, Flex, IconButton, Select, Text, Tooltip } from "@radix-ui/themes";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { MdClose, MdExpandLess, MdExpandMore, MdMonitor, MdScreenShare, MdWindow } from "react-icons/md";
+import { PiCaretDownFill, PiCaretUpFill, PiMonitorFill, PiScreencastFill, PiSquaresFourFill, PiX } from "react-icons/pi";
 
 import type { ScreenShareFps, ScreenShareQuality } from "@/audio";
 import { estimateBitrate, EXPERIMENTAL_FPS_OPTIONS, STANDARD_FPS_OPTIONS } from "@/audio";
@@ -235,12 +235,12 @@ export function ScreenSharePickerModal({
         <Flex direction="column" gap="4">
           <Flex align="center" justify="between">
             <Flex align="center" gap="2">
-              <MdScreenShare size={16} />
+              <PiScreencastFill size={16} />
               <Dialog.Title>Share your screen</Dialog.Title>
             </Flex>
             <Dialog.Close>
               <IconButton variant="ghost" color="gray" onClick={() => onOpenChange(false)}>
-                <MdClose size={16} />
+                <PiX size={16} />
               </IconButton>
             </Dialog.Close>
           </Flex>
@@ -252,7 +252,7 @@ export function ScreenSharePickerModal({
               size="1"
               onClick={() => setTab("screens")}
             >
-              <MdMonitor size={14} />
+              <PiMonitorFill size={14} />
               Screens
             </Button>
             <Button
@@ -261,7 +261,7 @@ export function ScreenSharePickerModal({
               size="1"
               onClick={() => setTab("windows")}
             >
-              <MdWindow size={14} />
+              <PiSquaresFourFill size={14} />
               Windows
             </Button>
           </Flex>
@@ -341,7 +341,7 @@ export function ScreenSharePickerModal({
                     />
                   ) : (
                     <Flex align="center" justify="center" style={{ width: "100%", height: "100%" }}>
-                      {src.sourceType === "screen" ? <MdMonitor size={24} /> : <MdWindow size={24} />}
+                      {src.sourceType === "screen" ? <PiMonitorFill size={24} /> : <PiSquaresFourFill size={24} />}
                     </Flex>
                   )}
                   {selected === src.id && (
@@ -419,7 +419,7 @@ export function ScreenSharePickerModal({
               onClick={() => setShowAdvanced(v => !v)}
               style={{ alignSelf: "flex-start", cursor: "pointer" }}
             >
-              {showAdvanced ? <MdExpandLess size={14} /> : <MdExpandMore size={14} />}
+              {showAdvanced ? <PiCaretUpFill size={14} /> : <PiCaretDownFill size={14} />}
               Advanced
             </Button>
 

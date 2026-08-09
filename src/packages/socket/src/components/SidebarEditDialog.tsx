@@ -1,6 +1,6 @@
 import { Dialog, Flex, IconButton, Select, Switch, Text, TextField } from "@radix-ui/themes";
 import { useCallback, useRef } from "react";
-import { MdClose } from "react-icons/md";
+import { PiX } from "react-icons/pi";
 
 import type { SidebarItem } from "@/settings/src/types/server";
 
@@ -78,7 +78,7 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
                 : "Spacer settings"}
             </Dialog.Title>
             <Dialog.Close>
-              <IconButton variant="soft" color="gray"><MdClose size={16} /></IconButton>
+              <IconButton variant="soft" color="gray"><PiX size={16} /></IconButton>
             </Dialog.Close>
           </Flex>
 

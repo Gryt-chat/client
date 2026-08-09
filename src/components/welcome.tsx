@@ -1,6 +1,6 @@
 import { Button, Callout, Dialog, Flex, IconButton, Text } from "@radix-ui/themes";
 import Fireworks from "react-canvas-confetti/dist/presets/explosion";
-import { MdClose, MdDns, MdDownload, MdWarning } from "react-icons/md";
+import { PiDownloadSimpleFill, PiHardDrivesFill, PiWarningFill, PiX } from "react-icons/pi";
 
 import { useSettings } from "@/settings";
 
@@ -25,7 +25,7 @@ export function Welcome() {
             }}
           >
             <IconButton variant="soft" color="gray">
-              <MdClose size={16} />
+              <PiX size={16} />
             </IconButton>
           </Dialog.Close>
           <Flex direction="column" gap="2">
@@ -43,7 +43,7 @@ export function Welcome() {
 
                 <Callout.Root color="orange" size="1" mb="2">
                   <Callout.Icon>
-                    <MdWarning size={16} />
+                    <PiWarningFill size={16} />
                   </Callout.Icon>
                   <Callout.Text>
                     Some features are limited in the browser: global push-to-talk
@@ -64,7 +64,7 @@ export function Welcome() {
                       target="_blank"
                       rel="noreferrer"
                     >
-                      <MdDownload size={14} />
+                      <PiDownloadSimpleFill size={14} />
                       Download Desktop App
                     </a>
                   </Button>
@@ -74,7 +74,7 @@ export function Welcome() {
                       target="_blank"
                       rel="noreferrer"
                     >
-                      <MdDns size={14} />
+                      <PiHardDrivesFill size={14} />
                       Self-Host a Server
                     </a>
                   </Button>

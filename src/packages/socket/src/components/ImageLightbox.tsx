@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { MdCheck, MdCloudDownload, MdImage } from "react-icons/md";
+import { PiCheck, PiCloudArrowDownFill, PiImageFill } from "react-icons/pi";
 
 import { triggerDownload } from "../utils/downloadFile";
 import { copyImageToClipboard } from "../utils/mediaClipboard";
@@ -146,7 +146,7 @@ export const ImageLightbox = ({
           aria-label={copied ? "Copied" : "Copy image"}
           className="lightbox-toolbar-btn"
         >
-          {copied ? <MdCheck size={18} /> : <MdImage size={18} />}
+          {copied ? <PiCheck size={18} /> : <PiImageFill size={18} />}
         </button>
         <button
           onClick={(e) => {
@@ -157,7 +157,7 @@ export const ImageLightbox = ({
           aria-label="Save image"
           className="lightbox-toolbar-btn"
         >
-          <MdCloudDownload size={18} />
+          <PiCloudArrowDownFill size={18} />
         </button>
       </div>
       <div className="lightbox-hint">
