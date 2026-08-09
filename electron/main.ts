@@ -253,7 +253,28 @@ autoUpdater.autoDownload = false;
 // apply any other way, which is not something to remove on a hunch: the mac
 // install is a zip swap with none of the tear-down NSIS does.
 autoUpdater.autoInstallOnAppQuit = process.platform !== "win32";
-autoUpdater.allowPrerelease = readConfig().betaChannel === true;
+/**
+ * Whether this install is on the beta channel.
+ *
+ * Defaults to whether the build you are running is itself a prerelease, not to
+ * false. That distinction is the whole fix: `betaChannel !== true` cannot tell
+ * "the user turned beta off" apart from "this config has no betaChannel key",
+ * and a fresh, reset or newly-written config is the second one. Reading it as
+ * the first put a beta build on the stable channel, where the newest thing on
+ * offer is an older version than the one running — and with allowDowngrade on
+ * below, that is an available update.
+ *
+ * It is not theoretical. A packaged 1.4.0-beta.3 with a fresh user-data-dir
+ * downloaded 1.3.1 and restarted into it, twice, unprompted.
+ *
+ * Someone who actually turns beta off writes `false` and still gets the
+ * downgrade the switch promises.
+ */
+function isOnBetaChannel(): boolean {
+  return readBoolConfig("betaChannel", app.getVersion().includes("-"));
+}
+
+autoUpdater.allowPrerelease = isOnBetaChannel();
 // Leaving the beta channel is a downgrade — stable is an older version than the
 // beta you are running — and electron-updater refuses those by default, taking
 // allowDowngrade into account only when the channel differs. Without this,
@@ -1021,10 +1042,9 @@ if (!gotSingleInstanceLock) {
     .whenReady()
     .then(async () => {
       ipcMain.handle("get-app-version", () => app.getVersion());
-      ipcMain.handle(
-        "get-beta-channel",
-        () => readConfig().betaChannel === true
-      );
+      // Same default as the updater uses, or the switch in settings would read
+      // "off" on a beta build whose config has never been written.
+      ipcMain.handle("get-beta-channel", () => isOnBetaChannel());
       ipcMain.on("set-beta-channel", (_event, enabled: boolean) => {
         writeConfig({ betaChannel: enabled });
         autoUpdater.allowPrerelease = enabled;
