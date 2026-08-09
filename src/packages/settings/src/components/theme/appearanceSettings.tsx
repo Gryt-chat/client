@@ -1,9 +1,11 @@
-import { Flex, Heading, RadioGroup, Select, Slider, Text } from "@radix-ui/themes";
+import { Flex, Heading, RadioGroup, SegmentedControl, Select, Slider, Text } from "@radix-ui/themes";
 import { useMemo } from "react";
 
 import { accentColors, grayColors, useTheme } from "@/common";
+import type { VoiceTileLayout } from "@/settings";
+import { useSettings } from "@/settings";
 
-import { SettingsContainer } from "../settingsComponents";
+import { SettingGroup, SettingsContainer } from "../settingsComponents";
 
 /**
  * A colour control that names a colour without showing it makes you apply it
@@ -58,6 +60,8 @@ export function AppearanceSettings() {
     { value: "large", label: "Large" },
     { value: "full", label: "Full" },
   ], []);
+
+  const { voiceTileLayout, setVoiceTileLayout } = useSettings();
 
   return (
     <SettingsContainer>
@@ -183,6 +187,28 @@ export function AppearanceSettings() {
         </Flex>
       </Flex>
 
+      <SettingGroup
+        title="Tile layout"
+        description="How the voice grid arranges people once it is maximised or fullscreen. Both were measured against Google Meet; which you prefer is a matter of taste. The sidebar looks the same either way."
+      >
+        <SegmentedControl.Root
+          value={voiceTileLayout}
+          onValueChange={(v) => setVoiceTileLayout(v as VoiceTileLayout)}
+        >
+          <SegmentedControl.Item value="meet">
+            Match Google Meet
+          </SegmentedControl.Item>
+          <SegmentedControl.Item value="large">
+            Biggest tiles
+          </SegmentedControl.Item>
+        </SegmentedControl.Root>
+
+        <Text size="1" color="gray" mt="2">
+          {voiceTileLayout === "meet"
+            ? "More columns, and tiles are allowed to go tall and narrow. Nine people become a row of four above a row of five."
+            : "Whichever arrangement makes the tiles largest. Nine people become a 3x3 of wider, shorter tiles."}
+        </Text>
+      </SettingGroup>
     </SettingsContainer>
   );
 }

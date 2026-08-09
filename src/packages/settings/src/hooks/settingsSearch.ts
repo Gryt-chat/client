@@ -55,6 +55,7 @@ export const SETTINGS_INDEX: SettingsIndexEntry[] = [
   { id: "flip-camera", title: "Flip Camera", description: "Horizontally flip the video sent to everyone (mirrors the actual stream)", destination: "sound-video", section: "Camera" },
   { id: "mirror-preview", title: "Mirror Preview", description: "Mirror your local camera preview (does not affect what others see)", destination: "sound-video", section: "Camera" },
   { id: "appearance", title: "Appearance", description: "Theme, accent colour, radius and UI scale.", destination: "looks", section: "Theme", panel: true },
+  { id: "tile-layout", title: "Tile layout", description: "How the voice grid arranges people once it is maximised or fullscreen. Match Google Meet allows tall narrow tiles and more columns; Biggest tiles picks whichever arrangement makes them largest.", destination: "looks", section: "Appearance" },
   { id: "blur-profanity", title: "Blur Profanity", description: "Show a blur over profane words if the server has profanity filtering enabled in flag mode. Click a blurred word to reveal it.", destination: "looks", section: "Chat" },
   { id: "hotkeys", title: "Hotkeys", description: "Keyboard shortcuts, including your push-to-talk key.", destination: "behaviour", section: "Hotkeys", panel: true },
   { id: "unread-message-badge", title: "Unread Message Badge", description: "Show an unread message count on the taskbar icon when the app is not focused.", destination: "behaviour", section: "Notifications" },
