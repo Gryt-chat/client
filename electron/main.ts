@@ -284,6 +284,18 @@ function readBoolConfig(key: string, defaultValue: boolean): boolean {
  */
 const QUIT_GRACE_MS = 4000;
 
+/**
+ * How long to wait for the install to finish before giving up on it.
+ *
+ * Squirrel copies the whole bundle out of electron-updater's local proxy and
+ * unpacks it — 565 MB and about 14,500 files, measured at roughly 45 seconds,
+ * and slower on a spinning disk or a busy machine. This is the backstop for
+ * that, not the expected wait, so it is generous on purpose: reaching it means
+ * something is wrong, and the cost of being too eager is dropping someone into
+ * the old version while the install they asked for was still running.
+ */
+const INSTALL_WAIT_MS = 5 * 60 * 1000;
+
 /** Set when an update is downloaded but could not be applied without a quit. */
 let updateDeferredVersion: string | null = null;
 
@@ -577,25 +589,35 @@ function runSplashUpdateCheck(): Promise<void> {
             markInstallPending(info.version);
             autoUpdater.quitAndInstall(false, true);
 
-            // quitAndInstall is not guaranteed to quit, and does not say so.
+            // quitAndInstall does not always quit straight away, and says
+            // nothing when it doesn't.
             //
-            // On macOS it is a no-op whenever Squirrel has not finished its own
-            // download yet: electron-updater registers an "update-downloaded"
-            // listener, skips its checkForUpdates because autoInstallOnAppQuit
-            // is true for us, and returns. No quit, no throw. The splash had
-            // already promised "Restarting…", so the app walked into the main
-            // window still running the old version while Squirrel finished in
-            // the background — and the update only landed when the user
-            // happened to quit. That is what shipped in v1.4.0-beta.5, and it
-            // told the same lie about 1.3.1 before that.
+            // On macOS it returns immediately whenever Squirrel has not
+            // finished its own fetch: electron-updater registers an
+            // "update-downloaded" listener, skips its checkForUpdates because
+            // autoInstallOnAppQuit is true for us, and returns. No quit, no
+            // throw.
             //
-            // If we are still alive a moment later, the quit is not coming.
-            // Say what is actually true instead of what we hoped for.
+            // The quit still comes — that registered listener performs it once
+            // Squirrel is done. Squirrel is pulling ~190 MB from
+            // electron-updater's local proxy and unpacking it, which takes far
+            // longer than the couple of seconds a real quit needs. So this
+            // waits for it with the splash up, rather than opening the app on
+            // the old version and asking the user to quit it themselves. The
+            // user asked for an update; finishing it is our job, not theirs.
+            setTimeout(() => {
+              sendToSplash("installing", { version: info.version });
+            }, QUIT_GRACE_MS);
+
+            // Backstop, and it should be rare. Something has gone wrong if the
+            // quit has not arrived by now, and holding someone on a splash
+            // screen forever is worse than letting them in and saying so. The
+            // update is downloaded either way and applies on quit.
             setTimeout(() => {
               sendToSplash("deferred", { version: info.version });
               updateDeferredVersion = info.version;
               setTimeout(done, 2500);
-            }, QUIT_GRACE_MS);
+            }, INSTALL_WAIT_MS);
           } catch {
             // If quitAndInstall throws outright, show the main window rather
             // than leaving a blank screen. The update stays downloaded and
