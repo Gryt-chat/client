@@ -49,6 +49,12 @@ extraResources:
     to: native/
     filter:
       - "**/*"
+  # The versions of the three things actually bundled. It sits at the root of
+  # build/embedded-server rather than inside one of the directories below, so
+  # none of their entries carried it and it never shipped — which left the
+  # embedded server falling back to the hardcoded 1.0.0 in its own config.
+  - from: build/embedded-server/versions.json
+    to: embedded-server/versions.json
   - from: build/embedded-server/server/
     to: embedded-server/server/
     filter:
