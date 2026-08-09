@@ -589,33 +589,36 @@ function runSplashUpdateCheck(): Promise<void> {
             markInstallPending(info.version);
             autoUpdater.quitAndInstall(false, true);
 
-            // quitAndInstall does not always quit straight away, and says
-            // nothing when it doesn't.
+            // quitAndInstall often returns without quitting, and the quit it
+            // is waiting for is never going to arrive on its own.
             //
-            // On macOS it returns immediately whenever Squirrel has not
-            // finished its own fetch: electron-updater registers an
-            // "update-downloaded" listener, skips its checkForUpdates because
-            // autoInstallOnAppQuit is true for us, and returns. No quit, no
-            // throw.
+            // Squirrel.Mac installs on quit, by design. ShipIt is spawned as
+            // an idle process the moment an update is staged and it sits there
+            // until this app exits, then swaps the bundle. Meanwhile
+            // electron-updater is waiting for Squirrel to report that it
+            // finished before it quits us. Both sides are waiting for the
+            // other, so nothing happens until a human quits the app by hand.
             //
-            // The quit still comes — that registered listener performs it once
-            // Squirrel is done. Squirrel is pulling ~190 MB from
-            // electron-updater's local proxy and unpacking it, which takes far
-            // longer than the couple of seconds a real quit needs. So this
-            // waits for it with the splash up, rather than opening the app on
-            // the old version and asking the user to quit it themselves. The
-            // user asked for an update; finishing it is our job, not theirs.
+            // That is the whole bug, and it is why waiting longer did not fix
+            // it: v1.4.0-beta.10 sat through a five minute wait and the quit
+            // still never came, with ShipIt idle the entire time.
+            //
+            // So we quit ourselves. autoInstallOnAppQuit is true, ShipIt is
+            // already queued against the staged bundle, and quitting is
+            // precisely the event both of them are blocked on.
             setTimeout(() => {
+              if (settled) return;
               sendToSplash("installing", { version: info.version });
+              updateDeferredVersion = info.version;
+              isQuitting = true;
+              app.quit();
             }, QUIT_GRACE_MS);
 
-            // Backstop, and it should be rare. Something has gone wrong if the
-            // quit has not arrived by now, and holding someone on a splash
-            // screen forever is worse than letting them in and saying so. The
-            // update is downloaded either way and applies on quit.
+            // Backstop. If even our own quit does not take, let the user in
+            // rather than holding them on a splash screen. The update stays
+            // staged and installs whenever the app next exits.
             setTimeout(() => {
               sendToSplash("deferred", { version: info.version });
-              updateDeferredVersion = info.version;
               setTimeout(done, 2500);
             }, INSTALL_WAIT_MS);
           } catch {
