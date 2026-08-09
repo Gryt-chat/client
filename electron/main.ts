@@ -23,6 +23,7 @@ import {
 } from "fs";
 import { createServer, Server } from "http";
 import { dirname, extname, join, resolve } from "path";
+import semver from "semver";
 import { uIOhook, UiohookKey } from "uiohook-napi";
 import { fileURLToPath } from "url";
 
@@ -786,12 +787,26 @@ async function pinFeedToNewestCompleteRelease(): Promise<void> {
   }
   if (!Array.isArray(releases)) return;
 
+  const current = app.getVersion();
   const wantPrerelease = isOnBetaChannel();
-  const candidates = releases.filter(
-    (r) => !r.draft && (wantPrerelease || !r.prerelease)
-  );
 
-  for (const release of candidates) {
+  // Sorted here rather than trusted from the response. GitHub's releases
+  // endpoint is not newest-first: it returned beta.9, 8, 7, 6, 5 and only then
+  // beta.12. Taking the first installable entry therefore pinned the feed to
+  // beta.9 while beta.12 was running.
+  //
+  // And filtered to strictly newer than what is running, because pinning the
+  // feed to an older release does not merely do nothing — electron-updater
+  // installs it. That produced a loop: beta.12 pinned to beta.9 and installed
+  // it, beta.9 found beta.12 through the normal provider and installed that,
+  // and round it went. Shipped in v1.4.0-beta.11 and beta.12.
+  const candidates = releases
+    .filter((r) => !r.draft && (wantPrerelease || !r.prerelease))
+    .map((r) => ({ release: r, version: (r.tag_name || "").replace(/^v/, "") }))
+    .filter(({ version }) => semver.valid(version) && semver.gt(version, current))
+    .sort((a, b) => semver.rcompare(a.version, b.version));
+
+  for (const { release, version } of candidates) {
     if (await releaseIsInstallable(release)) {
       autoUpdater.setFeedURL({
         provider: "generic",
@@ -800,7 +815,7 @@ async function pinFeedToNewestCompleteRelease(): Promise<void> {
       startupLog(`Update: feed pinned to ${release.tag_name}`);
       return;
     }
-    startupLog(`Update: skipping ${release.tag_name}, assets incomplete`);
+    startupLog(`Update: skipping ${version}, assets incomplete`);
   }
 }
 
