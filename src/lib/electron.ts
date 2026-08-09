@@ -7,6 +7,10 @@ export interface UpdateStatus {
     | "not-available"
     | "downloading"
     | "downloaded"
+    // An install has already been handed to the installer and is still going.
+    // Checking again would start a second update cycle, which destroys the
+    // first — so this is reported instead of a new check.
+    | "pending"
     | "error";
   version?: string;
   percent?: number;
