@@ -629,6 +629,14 @@ function runSplashUpdateCheck(): Promise<void> {
     };
 
     const onError = (err?: Error) => {
+      // A release that is still uploading is not a failure to launch through.
+      // Flashing a red error on the way into the app, for something nobody can
+      // act on and which fixes itself, is worse than saying nothing.
+      if (err && isReleaseNotReadyYet(err)) {
+        sendToSplash("not-available", { version: app.getVersion() });
+        setTimeout(done, 600);
+        return;
+      }
       sendToSplash("error", {
         message: err ? friendlyUpdateError(err) : undefined,
       });
@@ -659,6 +667,35 @@ function runSplashUpdateCheck(): Promise<void> {
 }
 
 // ── Background update listeners (after main window is open) ─────────────
+
+/**
+ * Whether an update error means "there is nothing to install yet" rather than
+ * "something is broken".
+ *
+ * A GitHub release becomes visible before its assets finish uploading, and the
+ * release workflow publishes the channel yml alongside several hundred MB of
+ * installers. A check landing inside that window gets a 404 for the file, or
+ * finds no yml for the channel at all. Nothing is wrong, nothing is actionable,
+ * and it fixes itself within a few minutes.
+ *
+ * Reported as "up to date", because that is what it means from where the user
+ * is standing: there is no update they can install right now. A red error for a
+ * condition nobody caused and nobody can act on just makes the app look broken
+ * — which is exactly what it did while v1.4.0-beta.10 was uploading.
+ *
+ * Deliberately narrow. A network failure, a 403, or a checksum mismatch are all
+ * real and still surface as errors.
+ */
+function isReleaseNotReadyYet(err: Error): boolean {
+  const msg = err.message;
+  return (
+    msg.includes("status 404") ||
+    msg.includes("HttpError: 404") ||
+    msg.includes("latest.yml") ||
+    msg.includes("latest-linux.yml") ||
+    msg.includes("latest-mac.yml")
+  );
+}
 
 function friendlyUpdateError(err: Error): string {
   const msg = err.message;
@@ -715,9 +752,13 @@ function initBackgroundUpdater() {
   autoUpdater.on("update-downloaded", (info) =>
     sendToMain("downloaded", { version: info.version })
   );
-  autoUpdater.on("error", (err) =>
-    sendToMain("error", { message: friendlyUpdateError(err) })
-  );
+  autoUpdater.on("error", (err) => {
+    if (isReleaseNotReadyYet(err)) {
+      sendToMain("not-available", { version: app.getVersion() });
+      return;
+    }
+    sendToMain("error", { message: friendlyUpdateError(err) });
+  });
 }
 
 /**
@@ -1796,6 +1837,10 @@ if (!gotSingleInstanceLock) {
           return;
         }
         autoUpdater.checkForUpdates().catch((err) => {
+          if (isReleaseNotReadyYet(err)) {
+            sendToMain("not-available", { version: app.getVersion() });
+            return;
+          }
           sendToMain("error", { message: friendlyUpdateError(err) });
         });
       });
