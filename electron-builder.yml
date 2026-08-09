@@ -1,6 +1,5 @@
 appId: com.gryt.chat
 productName: Gryt Chat
-executableName: gryt-chat
 copyright: "Copyright © 2024-2026 Gryt Chat. All rights reserved."
 artifactName: "Gryt-Chat-${version}-${os}-${arch}.${ext}"
 
@@ -16,6 +15,12 @@ files:
 extraResources:
   - from: build/icon.png
     to: icon.png
+  # The menu bar icon. A separate asset from icon.png because a macOS template
+  # image is alpha only and the opaque app icon renders as a black tile.
+  - from: build/trayTemplate.png
+    to: trayTemplate.png
+  - from: build/trayTemplate@2x.png
+    to: trayTemplate@2x.png
   - from: build/native/
     to: native/
     filter:
@@ -63,6 +68,11 @@ protocols:
       - gryt
 
 linux:
+  # Only Linux. On macOS this also renames the .app bundle, which produced
+  # gryt-chat.app while CFBundleName and CFBundleDisplayName both correctly said
+  # "Gryt Chat" — and the Dock falls back to the folder name, so it showed
+  # gryt-chat. Linux genuinely wants a lowercase binary for the .desktop entry.
+  executableName: gryt-chat
   target:
     - AppImage
     - deb

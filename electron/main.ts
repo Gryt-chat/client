@@ -121,6 +121,14 @@ const appIcon = app.isPackaged
   ? join(process.resourcesPath, "icon.png")
   : join(__dirname, "../build/icon.png");
 
+// A separate asset from the app icon, and it has to be. macOS template images
+// are alpha only, so handing it the opaque app icon painted the whole tile
+// black — which is exactly what the menu bar was showing. Built by
+// scripts/generate-tray-icon.mjs. The @2x file next to it is picked up by name.
+const trayIcon = app.isPackaged
+  ? join(process.resourcesPath, "trayTemplate.png")
+  : join(__dirname, "../build/trayTemplate.png");
+
 const PROTOCOL = "gryt";
 const AUTO_START_ARG = "--gryt-autostart";
 /**
@@ -923,26 +931,49 @@ function buildTrayContextMenu(): Menu {
   ]);
 }
 
+/**
+ * Show the window if it is hidden, hide it if it is already in front.
+ *
+ * The old handler only ever showed and focused, so once the window was up the
+ * tray icon did nothing — clicking it again is the obvious way to put it away.
+ * Hiding only when the window is actually focused matters: clicking the tray
+ * while another app is in front should bring Gryt forward, not dismiss it.
+ */
+function toggleMainWindow(): void {
+  if (!mainWindow) {
+    createMainWindow();
+    return;
+  }
+  if (mainWindow.isVisible() && mainWindow.isFocused()) {
+    mainWindow.hide();
+  } else {
+    mainWindow.show();
+    mainWindow.focus();
+  }
+}
+
 function createTray(): void {
-  const icon = nativeImage
-    .createFromPath(appIcon)
-    .resize({ width: 18, height: 18 });
-  if (process.platform === "darwin") icon.setTemplateImage(true);
+  // Not resized here. The file is already 16px with a 32px @2x beside it, and
+  // resizing a template image blurs the cut-outs that make it legible.
+  const icon = nativeImage.createFromPath(
+    process.platform === "darwin" ? trayIcon : appIcon,
+  );
+  if (process.platform !== "darwin") icon.resize({ width: 18, height: 18 });
   tray = new Tray(icon);
   tray.setToolTip("Gryt");
 
-  tray.on("click", () => {
-    if (mainWindow?.isVisible()) {
-      mainWindow.focus();
-    } else {
-      mainWindow?.show();
-      mainWindow?.focus();
-    }
-  });
+  tray.on("click", toggleMainWindow);
 
+  // popUpContextMenu(menu) rather than setContextMenu(menu).
+  //
+  // setContextMenu attaches the menu to the tray permanently, and on macOS a
+  // tray with an attached menu opens it on left-click and stops emitting
+  // "click" entirely. Since the old code called setContextMenu from the
+  // right-click handler, the first right-click silently disabled left-click for
+  // the rest of the session. Passing the menu to popUpContextMenu shows it once
+  // and leaves nothing attached.
   tray.on("right-click", () => {
-    tray?.setContextMenu(buildTrayContextMenu());
-    tray?.popUpContextMenu();
+    tray?.popUpContextMenu(buildTrayContextMenu());
   });
 }
 
