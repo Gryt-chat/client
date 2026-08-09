@@ -47,26 +47,47 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" vi
 </svg>`;
 
 /**
- * Trimmed to the ink, then scaled to a fixed height.
+ * Rasterised at high density first, then trimmed and scaled down.
+ *
+ * density, not the SVG's own 512px box. sharp rasterises an SVG at its declared
+ * size unless told otherwise, so scaling a 512px raster down to 16 threw away
+ * most of the curve information before the resample ever ran. 288 dpi puts the
+ * intermediate at 2048px — 128x the 16px output, so the downscale has plenty to
+ * average from, and well under sharp's pixel limit, which a higher density
+ * trips outright.
  *
  * Height, not a square. The menu bar gives an icon a fixed height and takes
- * whatever width it needs, so padding this head — which is half again as wide as
- * it is tall — out to a square just letterboxes it and renders it smaller than
- * everything beside it.
+ * whatever width it needs, so padding out to a square would just letterbox the
+ * shape and render it smaller than everything beside it.
  */
 async function render(height, file) {
-  const png = await sharp(Buffer.from(svg))
+  const png = await sharp(Buffer.from(svg), { density: 288 })
     .trim()
-    .resize({ height, fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
-    .png()
+    .resize({
+      height,
+      fit: "contain",
+      kernel: "lanczos3",
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    })
+    .png({ compressionLevel: 9 })
     .toBuffer();
   const { width } = await sharp(png).metadata();
   writeFileSync(join(buildDir, file), png);
   console.log(`  build/${file}  ${width}x${height}`);
 }
 
-// Electron resolves the @2x variant itself when the file is named *Template.png,
-// and treats *Template as a template image without an explicit setTemplateImage.
+/**
+ * 1x, 2x and 3x.
+ *
+ * Electron picks the representation matching the display when the files sit
+ * beside each other with these names, and a *Template.png is treated as a
+ * template image without an explicit setTemplateImage call.
+ *
+ * @3x is not used by any Mac menu bar today — macOS tops out at 2x — but it
+ * costs a few hundred bytes, and it means a display that does want it has
+ * something better to reach for than an upscaled 32px.
+ */
 await render(16, "trayTemplate.png");
 await render(32, "trayTemplate@2x.png");
+await render(48, "trayTemplate@3x.png");
 console.log("Done.");

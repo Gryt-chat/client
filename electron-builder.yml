@@ -21,6 +21,8 @@ extraResources:
     to: trayTemplate.png
   - from: build/trayTemplate@2x.png
     to: trayTemplate@2x.png
+  - from: build/trayTemplate@3x.png
+    to: trayTemplate@3x.png
   - from: build/native/
     to: native/
     filter:
