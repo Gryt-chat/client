@@ -1,6 +1,6 @@
 import { Badge, Button, Checkbox, Dialog, Flex, IconButton, Select, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MdClose, MdRefresh, MdVideocam } from "react-icons/md";
+import { PiArrowsClockwise, PiVideoCamera, PiX } from "react-icons/pi";
 
 import { CAMERA_FPS_OPTIONS, type CameraQuality, QUALITY_CONSTRAINTS } from "@/audio";
 
@@ -262,12 +262,12 @@ export function CameraPreviewModal({
         <Flex direction="column" gap="4">
           <Flex align="center" justify="between">
             <Flex align="center" gap="2">
-              <MdVideocam size={16} />
+              <PiVideoCamera size={16} />
               <Dialog.Title>Camera Preview</Dialog.Title>
             </Flex>
             <Dialog.Close>
               <IconButton variant="ghost" color="gray" onClick={handleClose}>
-                <MdClose size={16} />
+                <PiX size={16} />
               </IconButton>
             </Dialog.Close>
           </Flex>
@@ -323,7 +323,7 @@ export function CameraPreviewModal({
                 </Text>
                 {previewError && (
                   <Button variant="soft" size="1" onClick={() => setRetryCount((c) => c + 1)}>
-                    <MdRefresh size={14} />
+                    <PiArrowsClockwise size={14} />
                     Retry
                   </Button>
                 )}

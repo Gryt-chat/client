@@ -8,7 +8,7 @@ import {
 } from "@radix-ui/themes";
 import { type ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { MdClose, MdFileUpload } from "react-icons/md";
+import { PiUploadSimple, PiX } from "react-icons/pi";
 
 import { getServerAccessToken } from "@/common";
 
@@ -261,7 +261,7 @@ export function ServerEmojisTab({
                   onClick={() => handleUploadSingle(p.id)}
                   style={{ cursor: "pointer", flexShrink: 0 }}
                 >
-                  <MdFileUpload size={14} />
+                  <PiUploadSimple size={14} />
                 </IconButton>
                 <IconButton
                   variant="ghost"
@@ -272,7 +272,7 @@ export function ServerEmojisTab({
                   onClick={() => removePending(p.id)}
                   style={{ cursor: "pointer", flexShrink: 0 }}
                 >
-                  <MdClose size={14} />
+                  <PiX size={14} />
                 </IconButton>
               </Flex>
             ))}

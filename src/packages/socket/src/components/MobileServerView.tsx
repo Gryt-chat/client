@@ -1,7 +1,7 @@
 import { Box, Flex, IconButton, Text } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useState } from "react";
-import { MdGroup, MdMenu, MdPhoneInTalk } from "react-icons/md";
+import { PiList, PiPhoneCall, PiUsers } from "react-icons/pi";
 
 import type { Channel, SidebarItem } from "@/settings/src/types/server";
 import type { StreamSources } from "@/webRTC/src/types/SFU";
@@ -124,7 +124,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
           onClick={() => setChannelsOpen(true)}
           aria-label="Open channels"
         >
-          <MdMenu size={22} />
+          <PiList size={22} />
         </IconButton>
 
         <Text
@@ -147,7 +147,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
           onClick={() => setMembersOpen(true)}
           aria-label="Open members"
         >
-          <MdGroup size={22} />
+          <PiUsers size={22} />
         </IconButton>
       </Flex>
 
@@ -218,7 +218,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
                 boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
               }}
             >
-              <MdPhoneInTalk size={26} />
+              <PiPhoneCall size={26} />
             </IconButton>
           </motion.div>
         )}

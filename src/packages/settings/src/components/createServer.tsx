@@ -11,15 +11,7 @@ import {
 } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
-import {
-  MdCheck,
-  MdClose,
-  MdDns,
-  MdInfoOutline,
-  MdPlayArrow,
-  MdStop,
-  MdWarning,
-} from "react-icons/md";
+import { PiCheck, PiHardDrives, PiInfo, PiPlay, PiStop, PiWarning, PiX } from "react-icons/pi";
 
 import { useEmbeddedServer } from "../hooks/useEmbeddedServer";
 
@@ -73,7 +65,7 @@ export function CreateServerPanel({ onServerReady }: CreateServerPanelProps) {
   return (
     <Flex direction="column" gap="3">
       <Flex align="center" gap="2">
-        <MdDns size={16} />
+        <PiHardDrives size={16} />
         <Text size="2" weight="bold">
           Host a server
         </Text>
@@ -118,7 +110,7 @@ export function CreateServerPanel({ onServerReady }: CreateServerPanelProps) {
                   onClick={() => { void handleStart(); }}
                   disabled={loading}
                 >
-                  {loading ? <Spinner size="1" /> : <MdPlayArrow size={16} />}
+                  {loading ? <Spinner size="1" /> : <PiPlay size={16} />}
                   Start server
                 </Button>
               </Flex>
@@ -169,7 +161,7 @@ export function CreateServerPanel({ onServerReady }: CreateServerPanelProps) {
                       onClick={handleConnect}
                       style={{ flex: 1 }}
                     >
-                      <MdCheck size={16} />
+                      <PiCheck size={16} />
                       Connect
                     </Button>
                   )}
@@ -181,7 +173,7 @@ export function CreateServerPanel({ onServerReady }: CreateServerPanelProps) {
                     disabled={loading}
                     style={{ flex: isRunning ? undefined : 1 }}
                   >
-                    {loading ? <Spinner size="1" /> : <MdStop size={16} />}
+                    {loading ? <Spinner size="1" /> : <PiStop size={16} />}
                     Stop
                   </Button>
                 </Flex>
@@ -224,7 +216,7 @@ export function CreateServerPanel({ onServerReady }: CreateServerPanelProps) {
                 {lanDiscoverable && (
                   <Callout.Root color="blue" size="1">
                     <Callout.Icon>
-                      <MdInfoOutline size={14} />
+                      <PiInfo size={14} />
                     </Callout.Icon>
                     <Callout.Text>
                       Other Gryt users on your network will see this server automatically.
@@ -237,7 +229,7 @@ export function CreateServerPanel({ onServerReady }: CreateServerPanelProps) {
                   onClick={() => { void handleCreate(); }}
                   disabled={loading || !serverName.trim()}
                 >
-                  {loading ? <Spinner size="1" /> : <MdDns size={16} />}
+                  {loading ? <Spinner size="1" /> : <PiHardDrives size={16} />}
                   Create server
                 </Button>
               </Flex>
@@ -255,7 +247,7 @@ export function CreateServerPanel({ onServerReady }: CreateServerPanelProps) {
           >
             <Callout.Root color="red" role="alert">
               <Callout.Icon>
-                <MdWarning size={16} />
+                <PiWarning size={16} />
               </Callout.Icon>
               <Callout.Text>
                 {state.error}
@@ -268,7 +260,7 @@ export function CreateServerPanel({ onServerReady }: CreateServerPanelProps) {
                 color="gray"
                 onClick={() => { void dismissError(); }}
               >
-                <MdClose size={14} />
+                <PiX size={14} />
                 Dismiss
               </Button>
             </Flex>

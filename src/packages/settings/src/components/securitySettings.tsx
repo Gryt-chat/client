@@ -12,7 +12,7 @@ import {
 } from "@radix-ui/themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { MdAdd, MdCheck, MdClose, MdDelete, MdEdit, MdKey } from "react-icons/md";
+import { PiCheck, PiKey, PiPencilSimple, PiPlus, PiTrash, PiX } from "react-icons/pi";
 
 import type { KeycloakCredential } from "@/common";
 import {
@@ -90,7 +90,7 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
           flexShrink: 0,
         }}
       >
-        <MdKey size={18} style={{ color: "var(--accent-11)" }} />
+        <PiKey size={18} style={{ color: "var(--accent-11)" }} />
       </Flex>
 
       <Flex direction="column" gap="1" style={{ flex: 1, minWidth: 0 }}>
@@ -112,7 +112,7 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
               style={{ flex: 1 }}
             />
             <IconButton size="1" variant="soft" onClick={handleSave} disabled={saving}>
-              <MdCheck size={14} />
+              <PiCheck size={14} />
             </IconButton>
             <IconButton
               size="1"
@@ -123,7 +123,7 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
                 setDraft(credential.userLabel);
               }}
             >
-              <MdClose size={14} />
+              <PiX size={14} />
             </IconButton>
           </Flex>
         ) : (
@@ -138,7 +138,7 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
                 color="gray"
                 onClick={() => setEditing(true)}
               >
-                <MdEdit size={12} />
+                <PiPencilSimple size={12} />
               </IconButton>
             </Tooltip>
           </Flex>
@@ -157,7 +157,7 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
             disabled={deleting}
             onClick={() => setConfirmDelete(true)}
           >
-            <MdDelete size={16} />
+            <PiTrash size={16} />
           </IconButton>
         </Tooltip>
         <AlertDialog.Content maxWidth="420px">
@@ -312,7 +312,7 @@ export function SecuritySettings() {
               border: "1px dashed var(--gray-a6)",
             }}
           >
-            <MdKey size={32} style={{ color: "var(--gray-a8)" }} />
+            <PiKey size={32} style={{ color: "var(--gray-a8)" }} />
             <Text size="2" color="gray">
               No passkeys registered yet
             </Text>
@@ -337,7 +337,7 @@ export function SecuritySettings() {
           disabled={adding}
           style={{ alignSelf: "flex-start" }}
         >
-          <MdAdd size={16} />
+          <PiPlus size={16} />
           {adding ? "Redirecting..." : "Add passkey"}
         </Button>
       </Flex>

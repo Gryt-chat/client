@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { MdClose } from "react-icons/md";
+import { PiX } from "react-icons/pi";
 
 import { getServerAccessToken, getServerHttpBase, useTheme } from "@/common";
 
@@ -22,7 +22,7 @@ export const DismissButton = ({ onDismiss }: { onDismiss: () => void }) => (
     onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDismiss(); }}
     title="Remove embed"
   >
-    <MdClose size={14} />
+    <PiX size={14} />
   </button>
 );
 

@@ -1,7 +1,7 @@
 import { Box, Button, ContextMenu, Flex, Text, Tooltip } from "@radix-ui/themes";
 import { AnimatePresence, LayoutGroup, motion, Reorder } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MdChat, MdKeyboard, MdRadio, MdSportsEsports, MdVolumeUp } from "react-icons/md";
+import { PiChatCircle, PiGameController, PiGauge, PiKeyboard, PiSpeakerHigh } from "react-icons/pi";
 
 import { useMicrophone } from "@/audio";
 import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
@@ -177,7 +177,7 @@ export const ChannelList = ({
           }}
         >
           <Flex align="center" style={{ flexShrink: 0 }}>
-            {channel?.type === "voice" ? <MdVolumeUp size={16} /> : <MdChat size={16} />}
+            {channel?.type === "voice" ? <PiSpeakerHigh size={16} /> : <PiChatCircle size={16} />}
           </Flex>
           <Text truncate style={{ flex: 1, minWidth: 0, textAlign: "left", display: "block" }}>
             <EmojiText text={channel?.name || "(missing channel)"} />
@@ -187,14 +187,14 @@ export const ChannelList = ({
               {channel!.eSportsMode && (
                 <Tooltip content="eSports mode">
                   <Flex align="center" style={{ color: "var(--gray-9)" }}>
-                    <MdSportsEsports size={14} />
+                    <PiGameController size={14} />
                   </Flex>
                 </Tooltip>
               )}
               {channel!.requirePushToTalk && (
                 <Tooltip content="Push to Talk required">
                   <Flex align="center" style={{ color: "var(--gray-9)" }}>
-                    <MdKeyboard size={14} />
+                    <PiKeyboard size={14} />
                   </Flex>
                 </Tooltip>
               )}
@@ -208,7 +208,7 @@ export const ChannelList = ({
               {channel!.maxBitrate && (
                 <Tooltip content={`Max bitrate: ${Math.round(channel!.maxBitrate! / 1000)} kbps`}>
                   <Flex align="center" style={{ color: "var(--gray-9)" }}>
-                    <MdRadio size={14} />
+                    <PiGauge size={14} />
                   </Flex>
                 </Tooltip>
               )}

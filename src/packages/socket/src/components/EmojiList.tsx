@@ -8,7 +8,7 @@ import {
 } from "@radix-ui/themes";
 import { type ChangeEvent, useState } from "react";
 import toast from "react-hot-toast";
-import { MdCheck, MdClose, MdDelete, MdEdit } from "react-icons/md";
+import { PiCheck, PiPencilSimple, PiTrash, PiX } from "react-icons/pi";
 
 import { getServerHttpBase } from "@/common";
 
@@ -168,7 +168,7 @@ export function EmojiList({
           <AlertDialog.Root>
             <AlertDialog.Trigger>
               <Button variant="soft" color="red" size="1" disabled={deletingAll}>
-                <MdDelete size={14} />
+                <PiTrash size={14} />
                 {deletingAll ? "Deleting..." : "Delete all"}
               </Button>
             </AlertDialog.Trigger>
@@ -251,7 +251,7 @@ export function EmojiList({
                       onClick={handleRename}
                       style={{ cursor: "pointer", flexShrink: 0 }}
                     >
-                      <MdCheck size={14} />
+                      <PiCheck size={14} />
                     </IconButton>
                     <IconButton
                       variant="ghost"
@@ -261,7 +261,7 @@ export function EmojiList({
                       onClick={cancelEditing}
                       style={{ cursor: "pointer", flexShrink: 0 }}
                     >
-                      <MdClose size={14} />
+                      <PiX size={14} />
                     </IconButton>
                   </Flex>
                   {editingError && (
@@ -284,7 +284,7 @@ export function EmojiList({
                     title={`Rename :${e.name}:`}
                     style={{ cursor: "pointer" }}
                   >
-                    <MdEdit size={14} />
+                    <PiPencilSimple size={14} />
                   </IconButton>
                   <IconButton
                     variant="ghost"
@@ -295,7 +295,7 @@ export function EmojiList({
                     title={`Delete :${e.name}:`}
                     style={{ cursor: "pointer" }}
                   >
-                    <MdDelete size={14} />
+                    <PiTrash size={14} />
                   </IconButton>
                 </>
               )}

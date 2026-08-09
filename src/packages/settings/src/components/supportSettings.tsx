@@ -1,6 +1,6 @@
 import { Button, Card, Flex, Heading, Text } from "@radix-ui/themes";
 import { FaGithub } from "react-icons/fa";
-import { MdOpenInNew } from "react-icons/md";
+import { PiArrowSquareOut } from "react-icons/pi";
 import { SiKofi } from "react-icons/si";
 
 import { SettingsContainer } from "./settingsComponents";
@@ -31,7 +31,7 @@ export function SupportSettings() {
             <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
               <FaGithub size={16} />
               Star on GitHub
-              <MdOpenInNew size={14} />
+              <PiArrowSquareOut size={14} />
             </a>
           </Button>
         </Flex>
@@ -51,7 +51,7 @@ export function SupportSettings() {
             <a href={KOFI_URL} target="_blank" rel="noopener noreferrer">
               <SiKofi size={16} />
               Donate on Ko-fi
-              <MdOpenInNew size={14} />
+              <PiArrowSquareOut size={14} />
             </a>
           </Button>
         </Flex>

@@ -1,7 +1,7 @@
 import { AlertDialog, Button, Card,Dialog, Flex, IconButton, Text, TextField } from "@radix-ui/themes";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { MdAdd, MdClose, MdDelete } from "react-icons/md";
+import { PiPlus, PiTrash, PiX } from "react-icons/pi";
 
 import { getServerAccessToken } from "@/common";
 
@@ -130,7 +130,7 @@ export function ServerChannelsModal() {
             <Dialog.Title>Channels</Dialog.Title>
             <Dialog.Close>
               <IconButton variant="ghost" color="gray" onClick={close} disabled={submitting}>
-                <MdClose size={16} />
+                <PiX size={16} />
               </IconButton>
             </Dialog.Close>
           </Flex>
@@ -162,7 +162,7 @@ export function ServerChannelsModal() {
                   Reset
                 </Button>
                 <Button onClick={upsert} disabled={submitting}>
-                  <MdAdd size={16} />
+                  <PiPlus size={16} />
                   {editingId ? "Save" : "Add"}
                 </Button>
               </Flex>
@@ -192,7 +192,7 @@ export function ServerChannelsModal() {
                           Edit
                         </Button>
                         <Button variant="soft" color="red" onClick={() => setPendingDeleteId(ch.id)} disabled={submitting}>
-                          <MdDelete size={16} />
+                          <PiTrash size={16} />
                           Delete
                         </Button>
                       </Flex>

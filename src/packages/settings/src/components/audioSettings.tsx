@@ -10,7 +10,7 @@ import {
   Tooltip,
 } from "@radix-ui/themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MdRefresh, MdWarning } from "react-icons/md";
+import { PiArrowsClockwise, PiWarning } from "react-icons/pi";
 
 import { useMicrophone, useScreenShare, useSpeakers } from "@/audio";
 import { MAX_VOLUME_PERCENT } from "@/lib/audioVolume";
@@ -322,7 +322,7 @@ export function AudioSettings() {
       {!audioContext && (
         <Callout.Root color="orange">
           <Callout.Icon>
-            <MdWarning size={16} />
+            <PiWarning size={16} />
           </Callout.Icon>
           <Callout.Text>
             Microphone is initializing. Audio levels and noise gate will be visible once ready.
@@ -338,7 +338,7 @@ export function AudioSettings() {
           <Text weight="medium" size="2">Microphone</Text>
           <Tooltip content="Refresh device list">
             <IconButton variant="soft" size="1" onClick={getDevices}>
-              <MdRefresh size={12} />
+              <PiArrowsClockwise size={12} />
             </IconButton>
           </Tooltip>
         </Flex>
@@ -359,7 +359,7 @@ export function AudioSettings() {
           <Text weight="medium" size="2">Speaker</Text>
           <Tooltip content="Refresh device list">
             <IconButton variant="soft" size="1" onClick={getOutputDevices}>
-              <MdRefresh size={12} />
+              <PiArrowsClockwise size={12} />
             </IconButton>
           </Tooltip>
         </Flex>

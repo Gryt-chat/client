@@ -1,5 +1,5 @@
 import { Box, Button, Flex, Spinner, Text } from "@radix-ui/themes";
-import { MdError, MdRefresh, MdSchedule, MdWifiOff } from "react-icons/md";
+import { PiArrowsClockwise, PiClock, PiWarningCircle, PiWifiSlash } from "react-icons/pi";
 
 import { ServerDetailsSkeleton } from "./skeletons";
 
@@ -45,7 +45,7 @@ export const ServerLoadingStates = ({
         <Box style={cardStyle}>
           <Flex direction="column" align="center" gap="4">
             <div style={iconWrapStyle("var(--red-a3)")}>
-              <MdError size={28} color="var(--red-9)" />
+              <PiWarningCircle size={28} color="var(--red-9)" />
             </div>
             <Flex direction="column" gap="2" align="center">
               <Text size="4" weight="bold">
@@ -64,7 +64,7 @@ export const ServerLoadingStates = ({
               size="2"
               style={{ marginTop: 4 }}
             >
-              <MdRefresh size={16} />
+              <PiArrowsClockwise size={16} />
               Retry
             </Button>
           </Flex>
@@ -108,7 +108,7 @@ export const ServerLoadingStates = ({
         <Box style={cardStyle}>
           <Flex direction="column" align="center" gap="4">
             <div style={iconWrapStyle("var(--red-a3)")}>
-              <MdWifiOff size={26} color="var(--red-9)" />
+              <PiWifiSlash size={26} color="var(--red-9)" />
             </div>
             <Flex direction="column" gap="2" align="center">
               <Text size="4" weight="bold">
@@ -131,7 +131,7 @@ export const ServerLoadingStates = ({
         <Box style={cardStyle}>
           <Flex direction="column" align="center" gap="4">
             <div style={iconWrapStyle("var(--red-a3)")}>
-              <MdWifiOff size={26} color="var(--red-9)" />
+              <PiWifiSlash size={26} color="var(--red-9)" />
             </div>
             <Flex direction="column" gap="2" align="center">
               <Text size="4" weight="bold">
@@ -147,7 +147,7 @@ export const ServerLoadingStates = ({
               size="2"
               style={{ marginTop: 4 }}
             >
-              <MdRefresh size={16} />
+              <PiArrowsClockwise size={16} />
               Reconnect
             </Button>
           </Flex>
@@ -171,7 +171,7 @@ export const ServerLoadingStates = ({
       <Box style={cardStyle}>
         <Flex direction="column" align="center" gap="4">
           <div style={iconWrapStyle("var(--orange-a3)")}>
-            <MdSchedule size={26} color="var(--orange-9)" />
+            <PiClock size={26} color="var(--orange-9)" />
           </div>
           <Flex direction="column" gap="2" align="center">
             <Text size="4" weight="bold">
@@ -187,7 +187,7 @@ export const ServerLoadingStates = ({
             size="2"
             style={{ marginTop: 4 }}
           >
-            <MdRefresh size={16} />
+            <PiArrowsClockwise size={16} />
             Retry
           </Button>
         </Flex>

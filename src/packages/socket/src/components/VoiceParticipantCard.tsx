@@ -1,12 +1,7 @@
 import { Avatar, Flex, Text, Tooltip } from "@radix-ui/themes";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
-import {
-  MdMicOff,
-  MdScreenShare,
-  MdVideocam,
-  MdVolumeOff,
-} from "react-icons/md";
+import { PiMicrophoneSlash, PiScreencast, PiSpeakerSlash, PiVideoCamera } from "react-icons/pi";
 
 import { useMicrophone } from "@/audio";
 import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
@@ -229,9 +224,9 @@ function MutedBadge({
       }}
     >
       {deafened ? (
-        <MdVolumeOff size={Math.round(size * 0.55)} color="#fff" />
+        <PiSpeakerSlash size={Math.round(size * 0.55)} color="#fff" />
       ) : (
-        <MdMicOff size={Math.round(size * 0.55)} color="#fff" />
+        <PiMicrophoneSlash size={Math.round(size * 0.55)} color="#fff" />
       )}
     </Flex>
   );
@@ -479,7 +474,7 @@ export function VoiceParticipantCard({
           radius={tileRadius}
           objectFit="contain"
           pendingLabel="Connecting screen…"
-          statusIcons={<MdScreenShare size={10} color="var(--blue-9)" />}
+          statusIcons={<PiScreencast size={10} color="var(--blue-9)" />}
           onClick={
             screenStream
               ? () =>
@@ -536,11 +531,11 @@ export function VoiceParticipantCard({
       )}
 
       {(client.cameraEnabled || fallbackCameraStreamID) && (
-        <MdVideocam size={10} color="var(--green-9)" />
+        <PiVideoCamera size={10} color="var(--green-9)" />
       )}
 
       {client.screenShareEnabled && (
-        <MdScreenShare size={10} color="var(--blue-9)" />
+        <PiScreencast size={10} color="var(--blue-9)" />
       )}
 
       {/* Beside the name, the way the avatar tile does it. It used to sit
@@ -643,7 +638,7 @@ export function VoiceParticipantCard({
               padding: "2px",
             }}
           >
-            <MdVideocam size={10} color="white" />
+            <PiVideoCamera size={10} color="white" />
           </Flex>
         )}
 
@@ -658,7 +653,7 @@ export function VoiceParticipantCard({
               padding: "2px",
             }}
           >
-            <MdScreenShare size={10} color="white" />
+            <PiScreencast size={10} color="white" />
           </Flex>
         )}
 
@@ -698,9 +693,9 @@ export function VoiceParticipantCard({
             }}
           >
             {compact && client.isDeafened ? (
-              <MdVolumeOff size={12} color="var(--red-9)" />
+              <PiSpeakerSlash size={12} color="var(--red-9)" />
             ) : compact && client.isMuted ? (
-              <MdMicOff size={12} color="var(--red-9)" />
+              <PiMicrophoneSlash size={12} color="var(--red-9)" />
             ) : null}
 
             {client.isAFK && (

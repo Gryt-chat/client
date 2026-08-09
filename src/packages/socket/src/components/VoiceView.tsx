@@ -25,14 +25,7 @@ import {
   useState,
 } from "react";
 import toast from "react-hot-toast";
-import {
-  MdChat,
-  MdCloseFullscreen,
-  MdFullscreen,
-  MdFullscreenExit,
-  MdMicOff,
-  MdOpenInFull,
-} from "react-icons/md";
+import { PiChatCircle, PiCornersIn, PiCornersOut, PiMicrophoneSlash } from "react-icons/pi";
 
 import {
   useCamera as useLocalCamera,
@@ -311,7 +304,7 @@ export const VoiceView = ({
         // Fixed id so a reconnect or a re-render cannot stack duplicates.
         id: "mic-unavailable",
         duration: 12000,
-        icon: <MdMicOff size={18} />,
+        icon: <PiMicrophoneSlash size={18} />,
       },
     );
   }, [isInThisVoiceChannel, micUnavailable, setSettingsTab, setShowSettings]);
@@ -1387,9 +1380,9 @@ export const VoiceView = ({
                           onClick={toggleFullscreen}
                         >
                           {isFullscreen ? (
-                            <MdFullscreenExit size={18} />
+                            <PiCornersIn size={18} />
                           ) : (
-                            <MdFullscreen size={18} />
+                            <PiCornersOut size={18} />
                           )}
                         </IconButton>
                       </Tooltip>
@@ -1409,9 +1402,9 @@ export const VoiceView = ({
                           onClick={onToggleMaximize}
                         >
                           {isMaximized ? (
-                            <MdCloseFullscreen size={16} />
+                            <PiCornersIn size={16} />
                           ) : (
-                            <MdOpenInFull size={16} />
+                            <PiCornersOut size={16} />
                           )}
                         </IconButton>
                       </Tooltip>
@@ -1445,7 +1438,7 @@ export const VoiceView = ({
                     onClick={onToggleChat}
                     style={{ opacity: chatHidden ? 0.5 : 1 }}
                   >
-                    <MdChat size={16} />
+                    <PiChatCircle size={16} />
                   </IconButton>
                 </Tooltip>
               </Flex>

@@ -1,5 +1,5 @@
 import { Avatar, Box, Flex, IconButton, Text, Tooltip } from "@radix-ui/themes";
-import { MdPushPin } from "react-icons/md";
+import { PiPushPin } from "react-icons/pi";
 
 import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 
@@ -193,7 +193,7 @@ export const MemberSidebar = ({
                   onClick={onTogglePinned}
                   aria-label={pinned ? "Unpin sidebar" : "Pin sidebar"}
                 >
-                  <MdPushPin size={14} />
+                  <PiPushPin size={14} />
                 </IconButton>
               </Tooltip>
             )}

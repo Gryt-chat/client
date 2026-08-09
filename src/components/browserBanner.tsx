@@ -1,6 +1,6 @@
 import { Flex, IconButton, Link, Text } from "@radix-ui/themes";
 import { useState } from "react";
-import { MdClose, MdDownload } from "react-icons/md";
+import { PiDownloadSimple, PiX } from "react-icons/pi";
 
 import { isElectron } from "../lib/electron";
 
@@ -26,7 +26,7 @@ export function BrowserBanner() {
         borderBottom: "1px solid var(--accent-a5)",
       }}
     >
-      <MdDownload size={14} style={{ flexShrink: 0, color: "var(--accent-11)" }} />
+      <PiDownloadSimple size={14} style={{ flexShrink: 0, color: "var(--accent-11)" }} />
       <Text size="1" style={{ color: "var(--accent-11)" }}>
         You&apos;re using Gryt in your browser. Some features are limited.{" "}
         <Link
@@ -51,7 +51,7 @@ export function BrowserBanner() {
         }}
         aria-label="Dismiss banner"
       >
-        <MdClose size={14} />
+        <PiX size={14} />
       </IconButton>
     </Flex>
   );

@@ -1,7 +1,7 @@
 import { Avatar, Button, Card, Flex, IconButton, Select, Text, TextField, Tooltip } from "@radix-ui/themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { MdAdd, MdContentCopy, MdDelete } from "react-icons/md";
+import { PiCopy, PiPlus, PiTrash } from "react-icons/pi";
 
 import { getServerAccessToken, getServerHttpBase, getUploadsFileUrl } from "@/common";
 
@@ -101,7 +101,7 @@ export function ServerWebhooksTab({
       <Flex justify="between" align="center">
         <Text size="3" weight="bold">Webhooks</Text>
         <Button onClick={createWebhook} disabled={textChannels.length === 0}>
-          <MdAdd size={16} />
+          <PiPlus size={16} />
           Create webhook
         </Button>
       </Flex>
@@ -315,12 +315,12 @@ function WebhookCard({
             <Flex gap="1" style={{ paddingBottom: 1 }}>
               <Tooltip content="Copy webhook URL">
                 <IconButton variant="soft" onClick={copyUrl}>
-                  <MdContentCopy size={16} />
+                  <PiCopy size={16} />
                 </IconButton>
               </Tooltip>
               <Tooltip content="Delete webhook">
                 <IconButton variant="soft" color="red" onClick={() => onDelete(webhook.webhook_id)}>
-                  <MdDelete size={16} />
+                  <PiTrash size={16} />
                 </IconButton>
               </Tooltip>
             </Flex>

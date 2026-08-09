@@ -1,5 +1,5 @@
 import { Badge, Button, Card, DropdownMenu, Flex, IconButton, Text, Tooltip } from "@radix-ui/themes";
-import { MdPushPin } from "react-icons/md";
+import { PiPushPin } from "react-icons/pi";
 
 export const ServerHeader = ({
   serverName,
@@ -42,7 +42,7 @@ export const ServerHeader = ({
                 onClick={onTogglePinned}
                 aria-label={pinned ? "Unpin sidebar" : "Pin sidebar"}
               >
-                <MdPushPin size={14} />
+                <PiPushPin size={14} />
               </IconButton>
             </Tooltip>
           )}

@@ -1,22 +1,22 @@
 import { Flex, Text } from "@radix-ui/themes";
 import { useCallback } from "react";
-import { MdAudioFile, MdCode, MdDescription, MdDownload, MdFolderZip, MdImage, MdInsertDriveFile, MdVideoFile } from "react-icons/md";
-const FaFilePdf = MdDescription;
+import { PiCode, PiDownloadSimple, PiFile, PiFileAudio, PiFileText, PiFileVideo, PiFileZip, PiImage } from "react-icons/pi";
+const FaFilePdf = PiFileText;
 
 import { getUploadsFileUrl } from "@/common";
 
 import { triggerDownload } from "../utils/downloadFile";
 
 function getFileIcon(mime: string | null) {
-  if (!mime) return <MdInsertDriveFile size={24} />;
-  if (mime.startsWith("image/")) return <MdImage size={24} />;
-  if (mime.startsWith("audio/")) return <MdAudioFile size={24} />;
-  if (mime.startsWith("video/")) return <MdVideoFile size={24} />;
+  if (!mime) return <PiFile size={24} />;
+  if (mime.startsWith("image/")) return <PiImage size={24} />;
+  if (mime.startsWith("audio/")) return <PiFileAudio size={24} />;
+  if (mime.startsWith("video/")) return <PiFileVideo size={24} />;
   if (mime === "application/pdf") return <FaFilePdf size={24} />;
-  if (mime.includes("zip") || mime.includes("tar") || mime.includes("rar") || mime.includes("gzip") || mime.includes("compress")) return <MdFolderZip size={24} />;
-  if (mime.includes("javascript") || mime.includes("json") || mime.includes("xml") || mime.includes("html") || mime.includes("css") || mime.includes("typescript")) return <MdCode size={24} />;
-  if (mime.startsWith("text/")) return <MdDescription size={24} />;
-  return <MdInsertDriveFile size={24} />;
+  if (mime.includes("zip") || mime.includes("tar") || mime.includes("rar") || mime.includes("gzip") || mime.includes("compress")) return <PiFileZip size={24} />;
+  if (mime.includes("javascript") || mime.includes("json") || mime.includes("xml") || mime.includes("html") || mime.includes("css") || mime.includes("typescript")) return <PiCode size={24} />;
+  if (mime.startsWith("text/")) return <PiFileText size={24} />;
+  return <PiFile size={24} />;
 }
 
 function formatFileSize(bytes: number | null): string {
@@ -81,7 +81,7 @@ export const FileCard = ({
         className="chat-file-card-download"
         title="Download"
       >
-        <MdDownload size={14} />
+        <PiDownloadSimple size={14} />
       </button>
     </Flex>
   );

@@ -6,7 +6,7 @@ import {
   TextField,
 } from "@radix-ui/themes";
 import { type ChangeEvent } from "react";
-import { MdClose, MdDownload, MdSearch } from "react-icons/md";
+import { PiDownloadSimple, PiMagnifyingGlass, PiX } from "react-icons/pi";
 
 import { useEmoteImport } from "../hooks/useEmoteImport";
 import { type TokenRefreshSocketLike } from "../utils/tokenManager";
@@ -128,7 +128,7 @@ export function EmoteImport({
               }
             >
               <TextField.Slot>
-                <MdSearch size={14} />
+                <PiMagnifyingGlass size={14} />
               </TextField.Slot>
             </TextField.Root>
           )}
@@ -157,14 +157,14 @@ export function EmoteImport({
               disabled={importing}
               onClick={handleClear}
             >
-              <MdClose size={14} /> Clear
+              <PiX size={14} /> Clear
             </Button>
             <Button
               size="1"
               disabled={importing || validSelectedCount === 0}
               onClick={handleImport}
             >
-              <MdDownload size={14} />
+              <PiDownloadSimple size={14} />
               {importing
                 ? "Importing..."
                 : `Import ${validSelectedCount} emoji${validSelectedCount !== 1 ? "s" : ""}`}

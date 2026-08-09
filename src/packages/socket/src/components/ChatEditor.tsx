@@ -7,8 +7,8 @@ import {
   useState,
 } from "react";
 import toast from "react-hot-toast";
-import { MdAttachFile, MdAudioFile, MdCode, MdDescription, MdFolderZip, MdImage, MdInsertDriveFile, MdInsertEmoticon, MdSend, MdVideoFile } from "react-icons/md";
-const FaFilePdf = MdDescription;
+import { PiCode, PiFile, PiFileAudio, PiFileText, PiFileVideo, PiFileZip, PiImage, PiPaperclip, PiPaperPlaneTilt, PiSmiley } from "react-icons/pi";
+const FaFilePdf = PiFileText;
 
 import { type EmojiEntry, getCustomEmojis, recordRecentEmoji } from "../utils/emojiData";
 import { EmojiAutocomplete } from "./EmojiAutocomplete";
@@ -45,14 +45,14 @@ interface ChatEditorProps {
 }
 
 function getFileIcon(mime: string) {
-  if (mime.startsWith("image/")) return <MdImage size={14} />;
-  if (mime.startsWith("audio/")) return <MdAudioFile size={14} />;
-  if (mime.startsWith("video/")) return <MdVideoFile size={14} />;
+  if (mime.startsWith("image/")) return <PiImage size={14} />;
+  if (mime.startsWith("audio/")) return <PiFileAudio size={14} />;
+  if (mime.startsWith("video/")) return <PiFileVideo size={14} />;
   if (mime === "application/pdf") return <FaFilePdf size={14} />;
-  if (mime.includes("zip") || mime.includes("tar") || mime.includes("rar") || mime.includes("gzip") || mime.includes("compress")) return <MdFolderZip size={14} />;
-  if (mime.includes("javascript") || mime.includes("json") || mime.includes("xml") || mime.includes("html") || mime.includes("css") || mime.includes("typescript")) return <MdCode size={14} />;
-  if (mime.startsWith("text/")) return <MdDescription size={14} />;
-  return <MdInsertDriveFile size={14} />;
+  if (mime.includes("zip") || mime.includes("tar") || mime.includes("rar") || mime.includes("gzip") || mime.includes("compress")) return <PiFileZip size={14} />;
+  if (mime.includes("javascript") || mime.includes("json") || mime.includes("xml") || mime.includes("html") || mime.includes("css") || mime.includes("typescript")) return <PiCode size={14} />;
+  if (mime.startsWith("text/")) return <PiFileText size={14} />;
+  return <PiFile size={14} />;
 }
 
 function formatFileSize(bytes: number): string {
@@ -567,7 +567,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
             disabled={disabled}
             onClick={() => fileInputRef.current?.click()}
           >
-            <MdAttachFile size={20} />
+            <PiPaperclip size={20} />
           </button>
           <input
             ref={fileInputRef}
@@ -587,7 +587,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
               disabled={disabled}
               onClick={() => setEmojiPickerOpen((v) => !v)}
             >
-              <MdInsertEmoticon size={20} />
+              <PiSmiley size={20} />
             </button>
             {emojiPickerOpen && (
               <EmojiPicker
@@ -617,7 +617,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
             disabled={disabled}
             onClick={handleSend}
           >
-            <MdSend size={20} />
+            <PiPaperPlaneTilt size={20} />
           </button>
         </div>
       </div>

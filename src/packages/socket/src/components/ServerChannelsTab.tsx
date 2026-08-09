@@ -1,7 +1,7 @@
 import { AlertDialog, Button, Card, Flex, Select, Switch, Text, TextField } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { MdAdd, MdDelete } from "react-icons/md";
+import { PiPlus, PiTrash } from "react-icons/pi";
 import type { Socket } from "socket.io-client";
 
 import { useSocketEvent } from "../hooks/useSocketEvent";
@@ -222,7 +222,7 @@ export function ServerChannelsTab({
               Reset
             </Button>
             <Button onClick={upsert} disabled={submitting}>
-              <MdAdd size={16} />
+              <PiPlus size={16} />
               {editingId ? "Save" : "Add"}
             </Button>
           </Flex>
@@ -268,7 +268,7 @@ export function ServerChannelsTab({
                       Edit
                     </Button>
                     <Button variant="soft" color="red" onClick={() => setPendingDeleteId(ch.id)} disabled={submitting}>
-                      <MdDelete size={16} />
+                      <PiTrash size={16} />
                       Delete
                     </Button>
                   </Flex>
