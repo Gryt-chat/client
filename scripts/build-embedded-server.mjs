@@ -140,7 +140,7 @@ if (skipServer) {
   const serverOut = join(OUTDIR, "server");
 
   console.log("  Building fresh server bundle...");
-  run("npm run build && npm run bundle", {
+  run("yarn build && yarn bundle", {
     cwd: SERVER_DIR,
   });
 
@@ -152,35 +152,50 @@ if (skipServer) {
 
   cpSync(bundleSrc, join(serverOut, "bundle.js"));
 
-  // Build a minimal runtime package.json, similar to the self-hosted server package.
-  const serverPkg = JSON.parse(
-    readFileSync(join(SERVER_DIR, "package.json"), "utf8")
+  // Install from the server's real manifest and its real lockfile, so the tree
+  // that ships is the tree yarn.lock pins.
+  //
+  // This used to copy a package-lock.json that has never existed — the server is
+  // a yarn project — log a warning, and run `npm install` anyway. Every release
+  // therefore resolved its dependencies fresh from the registry: two builds of
+  // the same commit could ship different transitive versions, and nothing
+  // recorded which ones went out. The warning was printed into a passing build,
+  // which is why it survived.
+  //
+  // The trimmed runtime package.json is written *after* the install, because
+  // --frozen-lockfile compares the manifest against the lockfile and a trimmed
+  // manifest does not match.
+  const lockfileSrc = join(SERVER_DIR, "yarn.lock");
+  assertExists(
+    lockfileSrc,
+    `Cannot pin embedded server dependencies: no yarn.lock at ${lockfileSrc}`
   );
-
-  delete serverPkg.devDependencies;
-  serverPkg.name = "gryt-embedded-server";
-  serverPkg.private = true;
-  serverPkg.main = "bundle.js";
-
-  writeFileSync(
-    join(serverOut, "package.json"),
-    JSON.stringify(serverPkg, null, 2) + "\n"
-  );
-
-  const lockfileSrc = join(SERVER_DIR, "package-lock.json");
-  if (existsSync(lockfileSrc)) {
-    cpSync(lockfileSrc, join(serverOut, "package-lock.json"));
-  } else {
-    console.warn(`  Warning: no package-lock.json found at ${lockfileSrc}`);
-  }
+  cpSync(lockfileSrc, join(serverOut, "yarn.lock"));
+  cpSync(join(SERVER_DIR, "package.json"), join(serverOut, "package.json"));
 
   // No Electron ABI settings. The server moved from better-sqlite3 to
   // node:sqlite, which is part of the runtime, so there is no node-gyp addon
   // left to rebuild. sharp stays, but it is N-API and resolves its binary
   // through per-platform optional dependencies that npm picks by os/cpu — the
   // Electron settings never applied to it.
+  // --frozen-lockfile is the whole point: it fails rather than re-resolving if
+  // the manifest and the lockfile have drifted apart.
   console.log("  Installing production dependencies for embedded server...");
-  run("npm install --omit=dev --ignore-scripts=false", { cwd: serverOut });
+  run("yarn install --production --frozen-lockfile", { cwd: serverOut });
+
+  // Now the runtime manifest, over the one the install needed.
+  const serverPkg = JSON.parse(
+    readFileSync(join(SERVER_DIR, "package.json"), "utf8")
+  );
+  delete serverPkg.devDependencies;
+  delete serverPkg.scripts;
+  serverPkg.name = "gryt-embedded-server";
+  serverPkg.private = true;
+  serverPkg.main = "bundle.js";
+  writeFileSync(
+    join(serverOut, "package.json"),
+    JSON.stringify(serverPkg, null, 2) + "\n"
+  );
 
   const nodeModulesPath = join(serverOut, "node_modules");
 
@@ -191,7 +206,7 @@ if (skipServer) {
 
   assertExists(
     join(nodeModulesPath, "sharp"),
-    `Embedded server dependency missing after npm install: sharp`
+    `Embedded server dependency missing after yarn install: sharp`
   );
 
   console.log("  Embedded server dependencies installed.");
@@ -285,7 +300,29 @@ if (skipWorker) {
       readFileSync(join(WORKER_DIR, "package.json"), "utf8")
     );
 
+    // No Electron ABI settings here, unlike the server bundle below the fold.
+    // The worker has no node-gyp addon left to rebuild: it moved from
+    // better-sqlite3 to node:sqlite, which is part of the runtime, and sharp is
+    // N-API so its prebuilt binary loads under Electron unchanged. sharp also
+    // resolves its binary through per-platform optional dependencies, which npm
+    // picks by os/cpu — npm_config_runtime never applied to it.
+    // Same pinning as the server above: install from the worker's own manifest
+    // and lockfile, then write the trimmed runtime one over the top. This one
+    // never even tried to copy a lockfile, so it has been resolving fresh from
+    // the registry on every release since it was written.
+    const workerLockfile = join(WORKER_DIR, "yarn.lock");
+    assertExists(
+      workerLockfile,
+      `Cannot pin image worker dependencies: no yarn.lock at ${workerLockfile}`
+    );
+    cpSync(workerLockfile, join(workerOut, "yarn.lock"));
+    cpSync(join(WORKER_DIR, "package.json"), join(workerOut, "package.json"));
+
+    console.log("  Installing worker dependencies...");
+    run("yarn install --production --frozen-lockfile", { cwd: workerOut });
+
     delete workerPkg.devDependencies;
+    delete workerPkg.scripts;
     workerPkg.name = "gryt-embedded-image-worker";
     workerPkg.private = true;
     workerPkg.main = "dist/index.js";
@@ -299,22 +336,13 @@ if (skipWorker) {
       JSON.stringify(workerPkg, null, 2) + "\n"
     );
 
-    // No Electron ABI settings here, unlike the server bundle below the fold.
-    // The worker has no node-gyp addon left to rebuild: it moved from
-    // better-sqlite3 to node:sqlite, which is part of the runtime, and sharp is
-    // N-API so its prebuilt binary loads under Electron unchanged. sharp also
-    // resolves its binary through per-platform optional dependencies, which npm
-    // picks by os/cpu — npm_config_runtime never applied to it.
-    console.log("  Installing worker dependencies...");
-    run("npm install --omit=dev --ignore-scripts=false", { cwd: workerOut });
-
     assertExists(
       join(workerOut, "dist", "index.js"),
       `Worker entry point missing: ${join(workerOut, "dist", "index.js")}`
     );
     assertExists(
       join(workerOut, "node_modules", "sharp"),
-      `Worker dependency missing after npm install: sharp`
+      `Worker dependency missing after yarn install: sharp`
     );
 
     console.log(`  Image worker ready: ${workerOut}`);
