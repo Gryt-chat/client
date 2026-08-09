@@ -121,6 +121,14 @@ const appIcon = app.isPackaged
   ? join(process.resourcesPath, "icon.png")
   : join(__dirname, "../build/icon.png");
 
+// A separate asset from the app icon, and it has to be. macOS template images
+// are alpha only, so handing it the opaque app icon painted the whole tile
+// black — which is exactly what the menu bar was showing. Built by
+// scripts/generate-tray-icon.mjs. The @2x file next to it is picked up by name.
+const trayIcon = app.isPackaged
+  ? join(process.resourcesPath, "trayTemplate.png")
+  : join(__dirname, "../build/trayTemplate.png");
+
 const PROTOCOL = "gryt";
 const AUTO_START_ARG = "--gryt-autostart";
 /**
@@ -245,7 +253,28 @@ autoUpdater.autoDownload = false;
 // apply any other way, which is not something to remove on a hunch: the mac
 // install is a zip swap with none of the tear-down NSIS does.
 autoUpdater.autoInstallOnAppQuit = process.platform !== "win32";
-autoUpdater.allowPrerelease = readConfig().betaChannel === true;
+/**
+ * Whether this install is on the beta channel.
+ *
+ * Defaults to whether the build you are running is itself a prerelease, not to
+ * false. That distinction is the whole fix: `betaChannel !== true` cannot tell
+ * "the user turned beta off" apart from "this config has no betaChannel key",
+ * and a fresh, reset or newly-written config is the second one. Reading it as
+ * the first put a beta build on the stable channel, where the newest thing on
+ * offer is an older version than the one running — and with allowDowngrade on
+ * below, that is an available update.
+ *
+ * It is not theoretical. A packaged 1.4.0-beta.3 with a fresh user-data-dir
+ * downloaded 1.3.1 and restarted into it, twice, unprompted.
+ *
+ * Someone who actually turns beta off writes `false` and still gets the
+ * downgrade the switch promises.
+ */
+function isOnBetaChannel(): boolean {
+  return readBoolConfig("betaChannel", app.getVersion().includes("-"));
+}
+
+autoUpdater.allowPrerelease = isOnBetaChannel();
 // Leaving the beta channel is a downgrade — stable is an older version than the
 // beta you are running — and electron-updater refuses those by default, taking
 // allowDowngrade into account only when the channel differs. Without this,
@@ -690,6 +719,11 @@ function createMainWindow(): BrowserWindow {
     mainWindow = null;
   });
 
+  // Keeps the attached macOS menu's first item honest — without this it still
+  // reads "Show Gryt" while the window is up.
+  mainWindow.on("show", refreshTrayMenu);
+  mainWindow.on("hide", refreshTrayMenu);
+
   mainWindow.on("focus", () => {
     mainWindow?.webContents.send("window-focus-change", true);
   });
@@ -894,15 +928,11 @@ function ensureUiohook(): boolean {
 function buildTrayContextMenu(): Menu {
   return Menu.buildFromTemplate([
     {
-      label: "Show/Hide",
-      click: () => {
-        if (mainWindow?.isVisible()) {
-          mainWindow.hide();
-        } else {
-          mainWindow?.show();
-          mainWindow?.focus();
-        }
-      },
+      // Says which way it goes rather than "Show/Hide". On macOS this menu is
+      // attached to the tray and is the primary way in, so an ambiguous label
+      // is the first thing a user reads.
+      label: mainWindow?.isVisible() ? "Hide Gryt" : "Show Gryt",
+      click: toggleMainWindow,
     },
     {
       label: "Check for Updates",
@@ -923,27 +953,67 @@ function buildTrayContextMenu(): Menu {
   ]);
 }
 
+/**
+ * Show the window if it is hidden, hide it if it is already in front.
+ *
+ * Hiding only when the window is actually focused matters: activating the tray
+ * while another app is in front should bring Gryt forward, not dismiss it.
+ */
+function toggleMainWindow(): void {
+  if (!mainWindow) {
+    createMainWindow();
+    return;
+  }
+  if (mainWindow.isVisible() && mainWindow.isFocused()) {
+    mainWindow.hide();
+  } else {
+    mainWindow.show();
+    mainWindow.focus();
+  }
+}
+
+/**
+ * The tray, wired the way each platform expects rather than one behaviour
+ * everywhere.
+ *
+ * macOS treats this as a menu bar extra, and Apple's guidance is that one
+ * reveals a menu when clicked — there is no left/right split, and a Mac user
+ * does not expect a menu bar icon to hide a window. So the menu is attached and
+ * either button opens it, with Show/Hide as its first item.
+ *
+ * Windows and Linux treat it as a notification area icon, where left-click is
+ * the primary action and right-click opens the context menu. Attaching the menu
+ * there would take the left-click away, so it is popped up on demand instead.
+ */
 function createTray(): void {
-  const icon = nativeImage
-    .createFromPath(appIcon)
-    .resize({ width: 18, height: 18 });
-  if (process.platform === "darwin") icon.setTemplateImage(true);
+  // Not resized. The file is already 16px with a 32px @2x beside it, and
+  // resizing a template image blurs the cut-outs that make it legible.
+  const icon = nativeImage.createFromPath(
+    process.platform === "darwin" ? trayIcon : appIcon,
+  );
+  if (process.platform !== "darwin") icon.resize({ width: 18, height: 18 });
   tray = new Tray(icon);
   tray.setToolTip("Gryt");
 
-  tray.on("click", () => {
-    if (mainWindow?.isVisible()) {
-      mainWindow.focus();
-    } else {
-      mainWindow?.show();
-      mainWindow?.focus();
-    }
-  });
+  if (process.platform === "darwin") {
+    refreshTrayMenu();
+  } else {
+    tray.on("click", toggleMainWindow);
+    tray.on("right-click", () => {
+      tray?.popUpContextMenu(buildTrayContextMenu());
+    });
+  }
+}
 
-  tray.on("right-click", () => {
-    tray?.setContextMenu(buildTrayContextMenu());
-    tray?.popUpContextMenu();
-  });
+/**
+ * Rebuilds the attached menu so its first item still says the right thing.
+ *
+ * Only macOS keeps a menu attached; everywhere else it is built fresh each time
+ * it is popped up, so there is nothing to refresh.
+ */
+function refreshTrayMenu(): void {
+  if (process.platform !== "darwin") return;
+  tray?.setContextMenu(buildTrayContextMenu());
 }
 
 // ── App lifecycle ───────────────────────────────────────────────────────
@@ -972,10 +1042,9 @@ if (!gotSingleInstanceLock) {
     .whenReady()
     .then(async () => {
       ipcMain.handle("get-app-version", () => app.getVersion());
-      ipcMain.handle(
-        "get-beta-channel",
-        () => readConfig().betaChannel === true
-      );
+      // Same default as the updater uses, or the switch in settings would read
+      // "off" on a beta build whose config has never been written.
+      ipcMain.handle("get-beta-channel", () => isOnBetaChannel());
       ipcMain.on("set-beta-channel", (_event, enabled: boolean) => {
         writeConfig({ betaChannel: enabled });
         autoUpdater.allowPrerelease = enabled;
