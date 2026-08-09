@@ -698,6 +698,11 @@ function createMainWindow(): BrowserWindow {
     mainWindow = null;
   });
 
+  // Keeps the attached macOS menu's first item honest — without this it still
+  // reads "Show Gryt" while the window is up.
+  mainWindow.on("show", refreshTrayMenu);
+  mainWindow.on("hide", refreshTrayMenu);
+
   mainWindow.on("focus", () => {
     mainWindow?.webContents.send("window-focus-change", true);
   });
@@ -902,15 +907,11 @@ function ensureUiohook(): boolean {
 function buildTrayContextMenu(): Menu {
   return Menu.buildFromTemplate([
     {
-      label: "Show/Hide",
-      click: () => {
-        if (mainWindow?.isVisible()) {
-          mainWindow.hide();
-        } else {
-          mainWindow?.show();
-          mainWindow?.focus();
-        }
-      },
+      // Says which way it goes rather than "Show/Hide". On macOS this menu is
+      // attached to the tray and is the primary way in, so an ambiguous label
+      // is the first thing a user reads.
+      label: mainWindow?.isVisible() ? "Hide Gryt" : "Show Gryt",
+      click: toggleMainWindow,
     },
     {
       label: "Check for Updates",
@@ -934,9 +935,7 @@ function buildTrayContextMenu(): Menu {
 /**
  * Show the window if it is hidden, hide it if it is already in front.
  *
- * The old handler only ever showed and focused, so once the window was up the
- * tray icon did nothing — clicking it again is the obvious way to put it away.
- * Hiding only when the window is actually focused matters: clicking the tray
+ * Hiding only when the window is actually focused matters: activating the tray
  * while another app is in front should bring Gryt forward, not dismiss it.
  */
 function toggleMainWindow(): void {
@@ -952,8 +951,21 @@ function toggleMainWindow(): void {
   }
 }
 
+/**
+ * The tray, wired the way each platform expects rather than one behaviour
+ * everywhere.
+ *
+ * macOS treats this as a menu bar extra, and Apple's guidance is that one
+ * reveals a menu when clicked — there is no left/right split, and a Mac user
+ * does not expect a menu bar icon to hide a window. So the menu is attached and
+ * either button opens it, with Show/Hide as its first item.
+ *
+ * Windows and Linux treat it as a notification area icon, where left-click is
+ * the primary action and right-click opens the context menu. Attaching the menu
+ * there would take the left-click away, so it is popped up on demand instead.
+ */
 function createTray(): void {
-  // Not resized here. The file is already 16px with a 32px @2x beside it, and
+  // Not resized. The file is already 16px with a 32px @2x beside it, and
   // resizing a template image blurs the cut-outs that make it legible.
   const icon = nativeImage.createFromPath(
     process.platform === "darwin" ? trayIcon : appIcon,
@@ -962,19 +974,25 @@ function createTray(): void {
   tray = new Tray(icon);
   tray.setToolTip("Gryt");
 
-  tray.on("click", toggleMainWindow);
+  if (process.platform === "darwin") {
+    refreshTrayMenu();
+  } else {
+    tray.on("click", toggleMainWindow);
+    tray.on("right-click", () => {
+      tray?.popUpContextMenu(buildTrayContextMenu());
+    });
+  }
+}
 
-  // popUpContextMenu(menu) rather than setContextMenu(menu).
-  //
-  // setContextMenu attaches the menu to the tray permanently, and on macOS a
-  // tray with an attached menu opens it on left-click and stops emitting
-  // "click" entirely. Since the old code called setContextMenu from the
-  // right-click handler, the first right-click silently disabled left-click for
-  // the rest of the session. Passing the menu to popUpContextMenu shows it once
-  // and leaves nothing attached.
-  tray.on("right-click", () => {
-    tray?.popUpContextMenu(buildTrayContextMenu());
-  });
+/**
+ * Rebuilds the attached menu so its first item still says the right thing.
+ *
+ * Only macOS keeps a menu attached; everywhere else it is built fresh each time
+ * it is popped up, so there is nothing to refresh.
+ */
+function refreshTrayMenu(): void {
+  if (process.platform !== "darwin") return;
+  tray?.setContextMenu(buildTrayContextMenu());
 }
 
 // ── App lifecycle ───────────────────────────────────────────────────────
