@@ -1,4 +1,8 @@
 appId: com.gryt.chat
+# Fails the build if anything in extraResources is missing. electron-builder
+# skips a missing extraResource silently, which shipped v1.4.0-beta.5 with no
+# menu bar icon.
+beforeBuild: ./scripts/check-extra-resources.mjs
 productName: Gryt Chat
 copyright: "Copyright © 2024-2026 Gryt Chat. All rights reserved."
 artifactName: "Gryt-Chat-${version}-${os}-${arch}.${ext}"

@@ -2,7 +2,7 @@
   "name": "gryt-chat",
   "private": true,
   "version": "1.4.0-beta.5",
-  "description": "Gryt Chat — real-time voice chat desktop client",
+  "description": "Gryt Chat \u2014 real-time voice chat desktop client",
   "author": {
     "name": "Gryt Chat",
     "email": "sivert@gryt.chat",
@@ -30,7 +30,7 @@
     "build:embedded-server": "node scripts/build-embedded-server.mjs",
     "electron:preview": "npm run build:native && cross-env ELECTRON=1 vite build && electron .",
     "electron:preview:full": "npm run build:native && npm run build:embedded-server && cross-env ELECTRON=1 vite build && electron .",
-    "icons:generate": "node scripts/generate-icons.mjs",
+    "icons:generate": "node scripts/generate-icons.mjs && node scripts/generate-tray-icon.mjs",
     "generate:tray": "node scripts/generate-tray-icon.mjs"
   },
   "dependencies": {
