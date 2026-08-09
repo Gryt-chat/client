@@ -15,7 +15,7 @@ import {
 } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { PiBroadcast, PiInfo, PiWarning, PiWifiHigh, PiX } from "react-icons/pi";
+import { PiBroadcastFill, PiInfoFill, PiWarningFill, PiWifiHighFill, PiX } from "react-icons/pi";
 
 import {
   GeneratedServerIcon,
@@ -439,7 +439,7 @@ export function AddNewServer({
               <>
                 <Flex direction="column" gap="2">
                   <Flex align="center" gap="2">
-                    <PiBroadcast size={16} />
+                    <PiBroadcastFill size={16} />
                     <Text size="2" weight="bold">
                       Local servers
                     </Text>
@@ -571,7 +571,7 @@ export function AddNewServer({
                 {isSearching ? (
                   <SkeletonBase width="16px" height="16px" borderRadius="50%" />
                 ) : (
-                  <PiWifiHigh size={16} />
+                  <PiWifiHighFill size={16} />
                 )}
                 {isSearching ? "Connecting" : "Connect"}
               </Button>
@@ -586,7 +586,7 @@ export function AddNewServer({
                 >
                   <Callout.Root color="blue">
                     <Callout.Icon>
-                      <PiInfo size={16} />
+                      <PiInfoFill size={16} />
                     </Callout.Icon>
                     <Callout.Text>
                       You are already a member of this server.
@@ -605,7 +605,7 @@ export function AddNewServer({
                 >
                   <Callout.Root color="red" role="alert">
                     <Callout.Icon>
-                      <PiWarning size={16} />
+                      <PiWarningFill size={16} />
                     </Callout.Icon>
                     <Callout.Text>
                       Could not connect to the server. Please check the address
@@ -636,7 +636,7 @@ export function AddNewServer({
                 >
                   <Callout.Root color="amber">
                     <Callout.Icon>
-                      <PiInfo size={16} />
+                      <PiInfoFill size={16} />
                     </Callout.Icon>
                     <Callout.Text>
                       This server has public info disabled. If you are an
@@ -654,7 +654,7 @@ export function AddNewServer({
                       >
                         <Callout.Root color="red" role="alert">
                           <Callout.Icon>
-                            <PiWarning size={16} />
+                            <PiWarningFill size={16} />
                           </Callout.Icon>
                           <Callout.Text>{joinError}</Callout.Text>
                         </Callout.Root>
@@ -770,7 +770,7 @@ export function AddNewServer({
                       >
                         <Callout.Root color="red" role="alert">
                           <Callout.Icon>
-                            <PiWarning size={16} />
+                            <PiWarningFill size={16} />
                           </Callout.Icon>
                           <Callout.Text>{joinError}</Callout.Text>
                         </Callout.Root>

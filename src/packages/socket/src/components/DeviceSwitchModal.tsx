@@ -1,6 +1,6 @@
 import { Button, Dialog, Flex, IconButton,Text } from "@radix-ui/themes";
 import { useEffect,useState } from "react";
-import { PiWarning, PiX } from "react-icons/pi";
+import { PiWarningFill, PiX } from "react-icons/pi";
 
 interface DeviceSwitchData {
   message: string;
@@ -37,7 +37,7 @@ export function DeviceSwitchModal() {
       <Dialog.Content style={{ maxWidth: 450 }}>
         <Flex direction="column" gap="4" align="center" p="4">
           <Flex align="center" gap="3" mb="2">
-            <PiWarning 
+            <PiWarningFill 
               size={24} 
               color="orange" 
             />

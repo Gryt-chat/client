@@ -1,6 +1,6 @@
 import { Flex, Slider, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { PiArrowSquareOut, PiCornersIn, PiCornersOut, PiSpeakerHigh, PiSpeakerSlash } from "react-icons/pi";
+import { PiArrowSquareOutFill, PiCornersInFill, PiCornersOutFill, PiSpeakerHighFill, PiSpeakerSlashFill } from "react-icons/pi";
 
 import { gainToSlider, sliderToGain } from "@/lib/audioVolume";
 import type { StreamSources } from "@/webRTC/src/types/SFU";
@@ -216,7 +216,7 @@ export function FocusedVideoView({
                 onClick={toggleMute}
                 aria-label={volume > 0 ? "Mute stream" : "Unmute stream"}
               >
-                {volume > 0 ? <PiSpeakerHigh size={16} /> : <PiSpeakerSlash size={16} />}
+                {volume > 0 ? <PiSpeakerHighFill size={16} /> : <PiSpeakerSlashFill size={16} />}
               </button>
               <Slider
                 size="1"
@@ -237,7 +237,7 @@ export function FocusedVideoView({
               onClick={onPopout}
               aria-label="Pop out video"
             >
-              <PiArrowSquareOut size={16} />
+              <PiArrowSquareOutFill size={16} />
             </button>
           )}
 
@@ -247,7 +247,7 @@ export function FocusedVideoView({
             onClick={toggleFullscreen}
             aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
           >
-            {isFullscreen ? <PiCornersIn size={16} /> : <PiCornersOut size={16} />}
+            {isFullscreen ? <PiCornersInFill size={16} /> : <PiCornersOutFill size={16} />}
           </button>
 
           <button
@@ -256,7 +256,7 @@ export function FocusedVideoView({
             onClick={onClose}
             aria-label="Minimize"
           >
-            <PiCornersIn size={16} />
+            <PiCornersInFill size={16} />
           </button>
         </Flex>
       </div>

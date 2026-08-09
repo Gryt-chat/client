@@ -1,6 +1,6 @@
 import { Avatar, Flex, Text, Tooltip } from "@radix-ui/themes";
 import { motion } from "motion/react";
-import { PiMicrophoneSlash, PiScreencast, PiSpeakerSlash, PiVideoCamera } from "react-icons/pi";
+import { PiMicrophoneSlashFill, PiScreencastFill, PiSpeakerSlashFill, PiVideoCameraFill } from "react-icons/pi";
 
 import { SkeletonBase } from "./skeletons";
 import { SpeakingHalo } from "./SpeakingHalo";
@@ -147,21 +147,21 @@ export function ConnectedUser({
           {screenShareEnabled && (
             <Tooltip content="Streaming">
               <Flex align="center">
-                <PiScreencast size={14} color="var(--accent-9)" />
+                <PiScreencastFill size={14} color="var(--accent-9)" />
               </Flex>
             </Tooltip>
           )}
           {cameraEnabled && (
             <Tooltip content="Camera on">
               <Flex align="center">
-                <PiVideoCamera size={14} color="var(--accent-9)" />
+                <PiVideoCameraFill size={14} color="var(--accent-9)" />
               </Flex>
             </Tooltip>
           )}
           {isDeafened ? (
-            <PiSpeakerSlash size={14} color="var(--red-8)" />
+            <PiSpeakerSlashFill size={14} color="var(--red-8)" />
           ) : isMuted ? (
-            <PiMicrophoneSlash size={14} color="var(--red-8)" />
+            <PiMicrophoneSlashFill size={14} color="var(--red-8)" />
           ) : null}
           {isAFK && (
             <Text size="1" weight="bold" color="orange">

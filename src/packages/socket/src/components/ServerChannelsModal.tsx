@@ -1,7 +1,7 @@
 import { AlertDialog, Button, Card,Dialog, Flex, IconButton, Text, TextField } from "@radix-ui/themes";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { PiPlus, PiTrash, PiX } from "react-icons/pi";
+import { PiPlus, PiTrashFill, PiX } from "react-icons/pi";
 
 import { getServerAccessToken } from "@/common";
 
@@ -192,7 +192,7 @@ export function ServerChannelsModal() {
                           Edit
                         </Button>
                         <Button variant="soft" color="red" onClick={() => setPendingDeleteId(ch.id)} disabled={submitting}>
-                          <PiTrash size={16} />
+                          <PiTrashFill size={16} />
                           Delete
                         </Button>
                       </Flex>

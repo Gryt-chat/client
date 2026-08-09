@@ -1,6 +1,6 @@
 import { Flex, IconButton, Link, Text } from "@radix-ui/themes";
 import { useState } from "react";
-import { PiDownloadSimple, PiX } from "react-icons/pi";
+import { PiDownloadSimpleFill, PiX } from "react-icons/pi";
 
 import { isElectron } from "../lib/electron";
 
@@ -26,7 +26,7 @@ export function BrowserBanner() {
         borderBottom: "1px solid var(--accent-a5)",
       }}
     >
-      <PiDownloadSimple size={14} style={{ flexShrink: 0, color: "var(--accent-11)" }} />
+      <PiDownloadSimpleFill size={14} style={{ flexShrink: 0, color: "var(--accent-11)" }} />
       <Text size="1" style={{ color: "var(--accent-11)" }}>
         You&apos;re using Gryt in your browser. Some features are limited.{" "}
         <Link

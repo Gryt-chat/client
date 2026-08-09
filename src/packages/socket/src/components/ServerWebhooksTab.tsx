@@ -1,7 +1,7 @@
 import { Avatar, Button, Card, Flex, IconButton, Select, Text, TextField, Tooltip } from "@radix-ui/themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { PiCopy, PiPlus, PiTrash } from "react-icons/pi";
+import { PiCopyFill, PiPlus, PiTrashFill } from "react-icons/pi";
 
 import { getServerAccessToken, getServerHttpBase, getUploadsFileUrl } from "@/common";
 
@@ -315,12 +315,12 @@ function WebhookCard({
             <Flex gap="1" style={{ paddingBottom: 1 }}>
               <Tooltip content="Copy webhook URL">
                 <IconButton variant="soft" onClick={copyUrl}>
-                  <PiCopy size={16} />
+                  <PiCopyFill size={16} />
                 </IconButton>
               </Tooltip>
               <Tooltip content="Delete webhook">
                 <IconButton variant="soft" color="red" onClick={() => onDelete(webhook.webhook_id)}>
-                  <PiTrash size={16} />
+                  <PiTrashFill size={16} />
                 </IconButton>
               </Tooltip>
             </Flex>

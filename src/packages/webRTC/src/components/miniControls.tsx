@@ -2,7 +2,7 @@ import { IconButton } from "@radix-ui/themes";
 import { AnimatePresence, motion, Variants } from "motion/react";
 import { useCallback, useState } from "react";
 import toast from "react-hot-toast";
-import { PiMicrophone, PiMicrophoneSlash, PiMonitorArrowUp, PiPhoneDisconnect, PiScreencast, PiSpeakerHigh, PiSpeakerSlash, PiVideoCamera, PiVideoCameraSlash } from "react-icons/pi";
+import { PiMicrophoneFill, PiMicrophoneSlashFill, PiMonitorArrowUpFill, PiPhoneDisconnectFill, PiScreencastFill, PiSpeakerHighFill, PiSpeakerSlashFill, PiVideoCameraFill, PiVideoCameraSlashFill } from "react-icons/pi";
 
 import { type ScreenShareQuality,useCamera, useScreenShare } from "@/audio";
 import { useSettings } from "@/settings";
@@ -122,7 +122,7 @@ export function MiniControls({
                   setIsMuted(!isMuted);
                 }}
               >
-                {(isMuted || isServerMuted) ? <PiMicrophoneSlash size={iconSize} /> : <PiMicrophone size={iconSize} />}
+                {(isMuted || isServerMuted) ? <PiMicrophoneSlashFill size={iconSize} /> : <PiMicrophoneFill size={iconSize} />}
               </IconButton>
             </motion.div>
 
@@ -142,9 +142,9 @@ export function MiniControls({
                 }}
               >
                 {(isDeafened || isServerDeafened) ? (
-                  <PiSpeakerSlash size={iconSize} />
+                  <PiSpeakerSlashFill size={iconSize} />
                 ) : (
-                  <PiSpeakerHigh size={iconSize} />
+                  <PiSpeakerHighFill size={iconSize} />
                 )}
               </IconButton>
             </motion.div>
@@ -157,7 +157,7 @@ export function MiniControls({
                 radius="full"
                 onClick={handleCameraClick}
               >
-                {cameraEnabled ? <PiVideoCamera size={iconSize} /> : <PiVideoCameraSlash size={iconSize} />}
+                {cameraEnabled ? <PiVideoCameraFill size={iconSize} /> : <PiVideoCameraSlashFill size={iconSize} />}
               </IconButton>
             </motion.div>
 
@@ -169,7 +169,7 @@ export function MiniControls({
                 radius="full"
                 onClick={handleScreenShareClick}
               >
-                {screenShareActive ? <PiMonitorArrowUp size={iconSize} /> : <PiScreencast size={iconSize} />}
+                {screenShareActive ? <PiMonitorArrowUpFill size={iconSize} /> : <PiScreencastFill size={iconSize} />}
               </IconButton>
             </motion.div>
 
@@ -185,7 +185,7 @@ export function MiniControls({
                   void disconnect();
                 }}
               >
-                <PiPhoneDisconnect size={iconSize} />
+                <PiPhoneDisconnectFill size={iconSize} />
               </IconButton>
             </motion.div>
           </motion.div>

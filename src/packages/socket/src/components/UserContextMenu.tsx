@@ -1,7 +1,7 @@
 import { ContextMenu, Flex, Slider, Text } from "@radix-ui/themes";
 import { ReactNode } from "react";
 import toast from "react-hot-toast";
-import { PiAt, PiCopy } from "react-icons/pi";
+import { PiAtFill, PiCopyFill } from "react-icons/pi";
 
 import { useSettings } from "@/settings";
 
@@ -90,7 +90,7 @@ export function UserContextMenu({
           {serverUserId && (
             <ContextMenu.Item onClick={handleCopyId}>
               <Flex align="center" gap="2">
-                <PiCopy size={14} /> Copy ID
+                <PiCopyFill size={14} /> Copy ID
               </Flex>
             </ContextMenu.Item>
           )}
@@ -133,12 +133,12 @@ export function UserContextMenu({
         )}
         <ContextMenu.Item onClick={handleMention}>
           <Flex align="center" gap="2">
-            <PiAt size={14} /> Mention
+            <PiAtFill size={14} /> Mention
           </Flex>
         </ContextMenu.Item>
         <ContextMenu.Item onClick={handleCopyId}>
           <Flex align="center" gap="2">
-            <PiCopy size={14} /> Copy ID
+            <PiCopyFill size={14} /> Copy ID
           </Flex>
         </ContextMenu.Item>
         <ContextMenu.Separator />

@@ -1,7 +1,7 @@
 import { AlertDialog, Box, Button, Flex, Text } from "@radix-ui/themes";
 import { AnimatePresence } from "motion/react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { PiChatCircle, PiCloudArrowUp, PiSpeakerHigh } from "react-icons/pi";
+import { PiChatCircleFill, PiCloudArrowUpFill, PiSpeakerHighFill } from "react-icons/pi";
 import { Socket } from "socket.io-client";
 
 import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
@@ -269,7 +269,7 @@ export const ChatView = memo(({
         {isDragOver && (
           <div className="chat-view-drop-overlay">
             <div className="chat-view-drop-overlay-content">
-              <PiCloudArrowUp size={48} />
+              <PiCloudArrowUpFill size={48} />
               <span>Drop files here</span>
             </div>
           </div>
@@ -277,7 +277,7 @@ export const ChatView = memo(({
         <Flex height="100%" width="100%" direction="column" p="3">
           {channelName && (
             <Flex align="center" gap="2" style={{ marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid var(--gray-6)" }}>
-              {channelType === "voice" ? <PiSpeakerHigh size={18} style={{ color: "var(--gray-11)", flexShrink: 0 }} /> : <PiChatCircle size={18} style={{ color: "var(--gray-11)", flexShrink: 0 }} />}
+              {channelType === "voice" ? <PiSpeakerHighFill size={18} style={{ color: "var(--gray-11)", flexShrink: 0 }} /> : <PiChatCircleFill size={18} style={{ color: "var(--gray-11)", flexShrink: 0 }} />}
               <Text size="4" weight="bold" style={{ color: "var(--gray-12)" }}>
                 <EmojiText text={channelName} />
               </Text>

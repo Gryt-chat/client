@@ -8,7 +8,7 @@ import {
   Tooltip,
 } from "@radix-ui/themes";
 import { useEffect, useRef, useState } from "react";
-import { PiArrowsClockwise, PiPlay, PiStop } from "react-icons/pi";
+import { PiArrowsClockwiseFill, PiPlayFill, PiStopFill } from "react-icons/pi";
 import useSound from "use-sound";
 
 interface SoundSettingsProps {
@@ -223,7 +223,7 @@ export function SoundSettings({
                     onClick={resetVolume}
                     disabled={volume === defaultVolume}
                   >
-                    <PiArrowsClockwise size={12} />
+                    <PiArrowsClockwiseFill size={12} />
                   </IconButton>
                 </Tooltip>
               </Flex>
@@ -259,7 +259,7 @@ export function SoundSettings({
                   onClick={resetSound}
                   disabled={!customSoundFile}
                 >
-                  <PiArrowsClockwise size={12} />
+                  <PiArrowsClockwiseFill size={12} />
                 </IconButton>
               </Tooltip>
             </Flex>
@@ -286,11 +286,11 @@ export function SoundSettings({
                     onClick={stopSoundTest}
                     color="red"
                   >
-                    <PiStop size={16} />
+                    <PiStopFill size={16} />
                   </Button>
                 ) : (
                   <Button variant="ghost" size="2" onClick={testSound}>
-                    <PiPlay size={16} />
+                    <PiPlayFill size={16} />
                   </Button>
                 )}
               </Tooltip>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect,useState } from "react";
-import { PiCaretLeft, PiCaretRight } from "react-icons/pi";
+import { PiCaretLeftFill, PiCaretRightFill } from "react-icons/pi";
 
 import { isElectron } from "../lib/electron";
 
@@ -58,10 +58,10 @@ export function Titlebar() {
         } as React.CSSProperties}
       >
         <NavButton onClick={goBack} disabled={!canGoBack} label="Go back">
-          <PiCaretLeft size={18} />
+          <PiCaretLeftFill size={18} />
         </NavButton>
         <NavButton onClick={goForward} disabled={!canGoForward} label="Go forward">
-          <PiCaretRight size={18} />
+          <PiCaretRightFill size={18} />
         </NavButton>
       </div>
 

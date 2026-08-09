@@ -8,7 +8,7 @@ import {
 } from "@radix-ui/themes";
 import { type ChangeEvent, useState } from "react";
 import toast from "react-hot-toast";
-import { PiCheck, PiPencilSimple, PiTrash, PiX } from "react-icons/pi";
+import { PiCheck, PiPencilSimpleFill, PiTrashFill, PiX } from "react-icons/pi";
 
 import { getServerHttpBase } from "@/common";
 
@@ -168,7 +168,7 @@ export function EmojiList({
           <AlertDialog.Root>
             <AlertDialog.Trigger>
               <Button variant="soft" color="red" size="1" disabled={deletingAll}>
-                <PiTrash size={14} />
+                <PiTrashFill size={14} />
                 {deletingAll ? "Deleting..." : "Delete all"}
               </Button>
             </AlertDialog.Trigger>
@@ -284,7 +284,7 @@ export function EmojiList({
                     title={`Rename :${e.name}:`}
                     style={{ cursor: "pointer" }}
                   >
-                    <PiPencilSimple size={14} />
+                    <PiPencilSimpleFill size={14} />
                   </IconButton>
                   <IconButton
                     variant="ghost"
@@ -295,7 +295,7 @@ export function EmojiList({
                     title={`Delete :${e.name}:`}
                     style={{ cursor: "pointer" }}
                   >
-                    <PiTrash size={14} />
+                    <PiTrashFill size={14} />
                   </IconButton>
                 </>
               )}

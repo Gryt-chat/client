@@ -12,7 +12,7 @@ import {
 } from "@radix-ui/themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { PiCheck, PiKey, PiPencilSimple, PiPlus, PiTrash, PiX } from "react-icons/pi";
+import { PiCheck, PiKeyFill, PiPencilSimpleFill, PiPlus, PiTrashFill, PiX } from "react-icons/pi";
 
 import type { KeycloakCredential } from "@/common";
 import {
@@ -90,7 +90,7 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
           flexShrink: 0,
         }}
       >
-        <PiKey size={18} style={{ color: "var(--accent-11)" }} />
+        <PiKeyFill size={18} style={{ color: "var(--accent-11)" }} />
       </Flex>
 
       <Flex direction="column" gap="1" style={{ flex: 1, minWidth: 0 }}>
@@ -138,7 +138,7 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
                 color="gray"
                 onClick={() => setEditing(true)}
               >
-                <PiPencilSimple size={12} />
+                <PiPencilSimpleFill size={12} />
               </IconButton>
             </Tooltip>
           </Flex>
@@ -157,7 +157,7 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
             disabled={deleting}
             onClick={() => setConfirmDelete(true)}
           >
-            <PiTrash size={16} />
+            <PiTrashFill size={16} />
           </IconButton>
         </Tooltip>
         <AlertDialog.Content maxWidth="420px">
@@ -312,7 +312,7 @@ export function SecuritySettings() {
               border: "1px dashed var(--gray-a6)",
             }}
           >
-            <PiKey size={32} style={{ color: "var(--gray-a8)" }} />
+            <PiKeyFill size={32} style={{ color: "var(--gray-a8)" }} />
             <Text size="2" color="gray">
               No passkeys registered yet
             </Text>

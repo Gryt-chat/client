@@ -1,6 +1,6 @@
 import { Button, Flex, Text, TextField } from "@radix-ui/themes";
 import { useEffect, useRef, useState } from "react";
-import { PiCaretDown, PiCaretUp } from "react-icons/pi";
+import { PiCaretDownFill, PiCaretUpFill } from "react-icons/pi";
 
 import { Logo, readPendingInvite, resetKeycloakInit, useAccount } from "@/common";
 
@@ -173,7 +173,7 @@ export function SignUpModal() {
               style={{ cursor: "pointer", userSelect: "none", display: "flex", alignItems: "center", gap: 4 }}
               onClick={() => setShowAdvanced((v) => !v)}
             >
-              {showAdvanced ? <PiCaretUp size={16} /> : <PiCaretDown size={16} />}
+              {showAdvanced ? <PiCaretUpFill size={16} /> : <PiCaretDownFill size={16} />}
               Advanced
             </Text>
             {showAdvanced && (

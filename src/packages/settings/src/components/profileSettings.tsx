@@ -1,7 +1,7 @@
 import { AlertDialog, Avatar, Button, Flex, Heading, IconButton, SegmentedControl, Text, TextField, Tooltip } from "@radix-ui/themes";
 import { useCallback,useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { PiArrowsClockwise, PiCamera, PiCheck, PiCopy } from "react-icons/pi";
+import { PiArrowsClockwiseFill, PiCameraFill, PiCheck, PiCopyFill } from "react-icons/pi";
 
 import { compressStaticAvatarToLimit, getAvatarHash, getServerAccessToken, getServerHttpBase, getStoredAvatar, getUploadsFileUrl, resolveAvatarSrc, useUserId } from "@/common";
 import { useSettings } from "@/settings";
@@ -179,7 +179,7 @@ function ProfileEditor({
                 boxShadow: "0 1px 4px var(--gray-a5)",
               }}
             >
-              <PiCamera size={14} />
+              <PiCameraFill size={14} />
             </Flex>
           </div>
         </button>
@@ -613,7 +613,7 @@ export function ProfileSettings() {
                 disabled={syncing || uploading || removing}
                 onClick={handleSyncToAll}
               >
-                <PiArrowsClockwise size={16} style={syncing ? { animation: "spin 1s linear infinite" } : undefined} />
+                <PiArrowsClockwiseFill size={16} style={syncing ? { animation: "spin 1s linear infinite" } : undefined} />
                 {syncing ? "Syncing..." : "Sync to all servers"}
               </Button>
             </Flex>
@@ -664,7 +664,7 @@ export function ProfileSettings() {
                 }, () => toast.error("Failed to copy"));
               }}
             >
-              {copied ? <PiCheck size={12} /> : <PiCopy size={12} />}
+              {copied ? <PiCheck size={12} /> : <PiCopyFill size={12} />}
             </IconButton>
           </Tooltip>
         </Flex>

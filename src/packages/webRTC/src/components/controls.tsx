@@ -1,7 +1,7 @@
 import { Flex, IconButton, Tooltip } from "@radix-ui/themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { PiMicrophone, PiMicrophoneSlash, PiMonitorArrowUp, PiPhoneDisconnect, PiScreencast, PiSpeakerHigh, PiSpeakerSlash, PiVideoCamera, PiVideoCameraSlash } from "react-icons/pi";
+import { PiMicrophoneFill, PiMicrophoneSlashFill, PiMonitorArrowUpFill, PiPhoneDisconnectFill, PiScreencastFill, PiSpeakerHighFill, PiSpeakerSlashFill, PiVideoCameraFill, PiVideoCameraSlashFill } from "react-icons/pi";
 
 import { estimateBitrate, getIsBrowserSupported, type ScreenShareQuality,useCamera, useScreenShare } from "@/audio";
 import { useSettings } from "@/settings";
@@ -387,7 +387,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
               onClick={handleMute}
               style={isServerMuted ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
             >
-              {(isMuted || isServerMuted) ? <PiMicrophoneSlash size={16} /> : <PiMicrophone size={16} />}
+              {(isMuted || isServerMuted) ? <PiMicrophoneSlashFill size={16} /> : <PiMicrophoneFill size={16} />}
             </IconButton>
           </MaybeTooltip>
 
@@ -399,7 +399,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
               onClick={handleDeafen}
               style={isServerDeafened ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
             >
-              {(isDeafened || isServerDeafened) ? <PiSpeakerSlash size={16} /> : <PiSpeakerHigh size={16} />}
+              {(isDeafened || isServerDeafened) ? <PiSpeakerSlashFill size={16} /> : <PiSpeakerHighFill size={16} />}
             </IconButton>
           </MaybeTooltip>
 
@@ -409,7 +409,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
             variant="soft"
             onClick={handleCameraClick}
           >
-            {cameraEnabled ? <PiVideoCamera size={16} /> : <PiVideoCameraSlash size={16} />}
+            {cameraEnabled ? <PiVideoCameraFill size={16} /> : <PiVideoCameraSlashFill size={16} />}
           </IconButton>
 
           <IconButton
@@ -418,11 +418,11 @@ export function Controls({ onDisconnect }: ControlsProps) {
             variant="soft"
             onClick={handleScreenShareClick}
           >
-            {screenShareActive ? <PiMonitorArrowUp size={16} /> : <PiScreencast size={16} />}
+            {screenShareActive ? <PiMonitorArrowUpFill size={16} /> : <PiScreencastFill size={16} />}
           </IconButton>
 
           <IconButton aria-label="Leave voice channel" variant="soft" color="red" onClick={handleDisconnect}>
-            <PiPhoneDisconnect size={16} />
+            <PiPhoneDisconnectFill size={16} />
           </IconButton>
         </Flex>
       )}

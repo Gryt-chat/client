@@ -1,6 +1,6 @@
 import { Box, Dialog, Flex, IconButton, Separator, Text, TextField } from "@radix-ui/themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { PiArrowFatLineDown, PiFadersHorizontal, PiFlask, PiGearSix, PiHeart, PiMagnifyingGlass, PiPuzzlePiece, PiUser, PiVideoCamera, PiX } from "react-icons/pi";
+import { PiArrowFatLineDownFill, PiFadersHorizontalFill, PiFlaskFill, PiGearSixFill, PiHeartFill, PiMagnifyingGlassFill, PiPuzzlePieceFill, PiUserFill, PiVideoCameraFill, PiX } from "react-icons/pi";
 
 import { useSettings } from "@/settings";
 
@@ -48,7 +48,7 @@ const DESTINATIONS = [
   {
     value: "updates",
     label: "Updates & about",
-    icon: PiArrowFatLineDown,
+    icon: PiArrowFatLineDownFill,
     content: (
       <>
         <UpdatesSettings />
@@ -60,7 +60,7 @@ const DESTINATIONS = [
   {
     value: "you",
     label: "You",
-    icon: PiUser,
+    icon: PiUserFill,
     content: (
       <>
         <ProfileSettings />
@@ -74,7 +74,7 @@ const DESTINATIONS = [
   {
     value: "sound-video",
     label: "Sound & video",
-    icon: PiVideoCamera,
+    icon: PiVideoCameraFill,
     mountWhenActive: true,
     content: (
       <>
@@ -89,7 +89,7 @@ const DESTINATIONS = [
   {
     value: "looks",
     label: "How Gryt looks",
-    icon: PiGearSix,
+    icon: PiGearSixFill,
     content: (
       <>
         <AppearanceSettings />
@@ -101,7 +101,7 @@ const DESTINATIONS = [
   {
     value: "behaviour",
     label: "How Gryt behaves",
-    icon: PiFadersHorizontal,
+    icon: PiFadersHorizontalFill,
     content: (
       <>
         <HotkeySettings />
@@ -125,7 +125,7 @@ const DESTINATIONS = [
         {
           value: "developer",
           label: "Developer",
-          icon: PiFlask,
+          icon: PiFlaskFill,
           content: <DeveloperSettings />,
         },
       ]
@@ -138,13 +138,13 @@ const DESTINATIONS = [
     // The tab's `value` stays "extensions" because it is persisted in settings
     // and deep-linked to; renaming it would strand anyone mid-session.
     label: "Addons",
-    icon: PiPuzzlePiece,
+    icon: PiPuzzlePieceFill,
     content: <AddonsSettings />,
   },
   {
     value: "support",
     label: "Support Gryt",
-    icon: PiHeart,
+    icon: PiHeartFill,
     // Pinned to the bottom, below a spacer. It is not a setting, and burying a
     // donation link inside "Extensions & about" made it findable only by
     // accident.
@@ -334,7 +334,7 @@ export function Settings() {
                   }}
                 >
                   <TextField.Slot>
-                    <PiMagnifyingGlass size={15} />
+                    <PiMagnifyingGlassFill size={15} />
                   </TextField.Slot>
                   {query && (
                     <TextField.Slot>

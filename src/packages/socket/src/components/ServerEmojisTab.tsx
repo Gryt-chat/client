@@ -8,7 +8,7 @@ import {
 } from "@radix-ui/themes";
 import { type ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { PiUploadSimple, PiX } from "react-icons/pi";
+import { PiUploadSimpleFill, PiX } from "react-icons/pi";
 
 import { getServerAccessToken } from "@/common";
 
@@ -261,7 +261,7 @@ export function ServerEmojisTab({
                   onClick={() => handleUploadSingle(p.id)}
                   style={{ cursor: "pointer", flexShrink: 0 }}
                 >
-                  <PiUploadSimple size={14} />
+                  <PiUploadSimpleFill size={14} />
                 </IconButton>
                 <IconButton
                   variant="ghost"

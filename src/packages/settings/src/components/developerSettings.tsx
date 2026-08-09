@@ -1,5 +1,5 @@
 import { Badge, Button, Flex, Heading, Separator, Text } from "@radix-ui/themes";
-import { PiPlay, PiStop } from "react-icons/pi";
+import { PiPlayFill, PiStopFill } from "react-icons/pi";
 
 import { useSettings } from "@/settings";
 import {
@@ -147,7 +147,7 @@ export function DeveloperSettings() {
             variant={chatRunning ? "soft" : "solid"}
             onClick={() => setFakeChatRunning(!chatRunning)}
           >
-            {chatRunning ? <PiStop size={16} /> : <PiPlay size={16} />}
+            {chatRunning ? <PiStopFill size={16} /> : <PiPlayFill size={16} />}
             {chatRunning ? "Stop" : "Start"}
           </Button>
           <Text size="1" color="gray">

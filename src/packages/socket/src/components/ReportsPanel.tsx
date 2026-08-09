@@ -1,7 +1,7 @@
 import { AlertDialog, Badge, Box, Button, Dialog, Flex, IconButton, ScrollArea, Spinner, Text, Tooltip } from "@radix-ui/themes";
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { PiCheck, PiProhibit, PiTrash, PiWarning } from "react-icons/pi";
+import { PiCheck, PiProhibitFill, PiTrashFill, PiWarningFill } from "react-icons/pi";
 import type { Socket } from "socket.io-client";
 
 import { getServerAccessToken, getUploadsFileUrl } from "@/common";
@@ -153,7 +153,7 @@ export function ReportsPanel({
         >
           <Dialog.Title>
             <Flex align="center" gap="2">
-              <PiWarning size={16} />
+              <PiWarningFill size={16} />
               Reported Messages
               {reports.length > 0 && (
                 <Badge color="red" variant="solid" size="1">
@@ -408,7 +408,7 @@ function ReportCard({
                 onClick={onDelete}
                 style={{ cursor: "pointer" }}
               >
-                <PiTrash size={18} />
+                <PiTrashFill size={18} />
               </IconButton>
             </Tooltip>
 
@@ -421,7 +421,7 @@ function ReportCard({
                 onClick={onDeleteAllAndBan}
                 style={{ cursor: "pointer" }}
               >
-                <PiProhibit size={18} />
+                <PiProhibitFill size={18} />
               </IconButton>
             </Tooltip>
           </Flex>

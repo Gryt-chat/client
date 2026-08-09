@@ -9,7 +9,7 @@ import {
   Text,
 } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
-import { PiFolder } from "react-icons/pi";
+import { PiFolderFill } from "react-icons/pi";
 
 import type { AddonManifest } from "@/addons";
 import { useAddons } from "@/addons";
@@ -175,7 +175,7 @@ export function AddonsSettings() {
             size="2"
             onClick={openAddonsFolder}
           >
-            <PiFolder size={16} />
+            <PiFolderFill size={16} />
             Open Addons Folder
           </Button>
         )}

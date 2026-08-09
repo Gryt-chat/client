@@ -1,5 +1,5 @@
 import { Button, Flex, Spinner, Text } from "@radix-ui/themes";
-import { PiArrowsClockwise, PiWifiSlash } from "react-icons/pi";
+import { PiArrowsClockwiseFill, PiWifiSlashFill } from "react-icons/pi";
 
 interface ConnectionBannerProps {
   connectionStatus: string;
@@ -20,13 +20,13 @@ export const ConnectionBanner = ({ connectionStatus, onReconnect }: ConnectionBa
     >
       {isReconnecting
         ? <Spinner size="1" />
-        : <PiWifiSlash size={14} color="var(--red-9)" style={{ flexShrink: 0 }} />}
+        : <PiWifiSlashFill size={14} color="var(--red-9)" style={{ flexShrink: 0 }} />}
       <Text size="2" weight="medium" style={{ flex: 1 }}>
         {isReconnecting ? "Reconnecting to server..." : "Server is unreachable"}
       </Text>
       {connectionStatus === "disconnected" && (
         <Button size="1" variant="soft" style={{ flexShrink: 0 }} onClick={onReconnect}>
-          <PiArrowsClockwise size={12} /> Reconnect
+          <PiArrowsClockwiseFill size={12} /> Reconnect
         </Button>
       )}
     </Flex>

@@ -1,6 +1,6 @@
 import { Badge, Box, Dialog, Flex, IconButton, Spinner, Tabs, Text } from "@radix-ui/themes";
 import { useEffect, useMemo, useState } from "react";
-import { PiArrowsLeftRight, PiGear, PiLink, PiListChecks, PiSmiley, PiUsers, PiWebhooksLogo, PiX } from "react-icons/pi";
+import { PiArrowsLeftRightFill, PiGearFill, PiLinkFill, PiListChecksFill, PiSmileyFill, PiUsersFill, PiWebhooksLogoFill, PiX } from "react-icons/pi";
 
 import { getServerAccessToken } from "@/common";
 
@@ -98,7 +98,7 @@ export function ServerSettingsModal() {
     {
       value: "overview",
       label: "Overview",
-      icon: PiGear,
+      icon: PiGearFill,
       content: (
         <ServerOverviewTab
           host={host}
@@ -112,31 +112,31 @@ export function ServerSettingsModal() {
     {
       value: "invites",
       label: "Invites",
-      icon: PiLink,
+      icon: PiLinkFill,
       content: <ServerInvitesTab host={host} socket={socket} accessToken={accessToken} />,
     },
     {
       value: "roles",
       label: "Roles",
-      icon: PiUsers,
+      icon: PiUsersFill,
       content: <ServerRolesTab host={host} socket={socket} accessToken={accessToken} />,
     },
     {
       value: "emojis",
       label: "Emojis",
-      icon: PiSmiley,
+      icon: PiSmileyFill,
       content: <ServerEmojisTab host={host} socket={socket} accessToken={accessToken} />,
     },
     {
       value: "audit",
       label: "Audit Log",
-      icon: PiListChecks,
+      icon: PiListChecksFill,
       content: <ServerAuditTab host={host} socket={socket} accessToken={accessToken} />,
     },
     {
       value: "webhooks",
       label: "Webhooks",
-      icon: PiWebhooksLogo,
+      icon: PiWebhooksLogoFill,
       content: <ServerWebhooksTab host={host} channels={host ? serverDetailsList[host]?.channels ?? [] : []} />,
     },
     ...(isOwner
@@ -144,7 +144,7 @@ export function ServerSettingsModal() {
           {
             value: "replace-user" as const,
             label: "Replace User",
-            icon: PiArrowsLeftRight,
+            icon: PiArrowsLeftRightFill,
             content: <ServerUserReplaceTab host={host} socket={socket} accessToken={accessToken} />,
           },
         ]
