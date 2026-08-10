@@ -185,12 +185,19 @@ export const ServerView = () => {
   });
 
   const currentAdminActions = useMemo(() => {
-    const canManage = currentRole === "owner" || currentRole === "admin";
-    if (!canManage) return undefined;
+    // Mods get the reversible actions; ban stays with admin and owner, and the
+    // menu applies the same two floors per item. Passing onBanUser as undefined
+    // rather than relying on the menu alone means a mod has no handler for it
+    // at all, not just no button.
+    const canModerate =
+      currentRole === "owner" || currentRole === "admin" || currentRole === "mod";
+    if (!canModerate) return undefined;
+
+    const canBan = currentRole === "owner" || currentRole === "admin";
     return {
       onDisconnectUser: requestDisconnectUser,
       onKickUser: requestKickUser,
-      onBanUser: requestBanUser,
+      onBanUser: canBan ? requestBanUser : undefined,
       onServerMuteUser: handleServerMuteUser,
       onServerDeafenUser: handleServerDeafenUser,
       onChangeRole: currentRole === "owner" ? handleChangeRole : undefined,

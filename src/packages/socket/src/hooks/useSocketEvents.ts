@@ -171,6 +171,23 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
         }));
       });
 
+      // The server has always emitted these and nothing has ever listened, so
+      // every moderation action was fire-and-forget: no confirmation, no error,
+      // nothing to tell a moderator whether the thing they just did happened.
+      //
+      // The member list is what actually shows the result, so these stay quiet
+      // and short rather than narrating what is already visible.
+      type ModerationResult = { muted?: boolean; deafened?: boolean };
+      const moderationResult = (event: string, message: (p: ModerationResult) => string) => {
+        socket.on(event, (payload: ModerationResult) => toast.success(message(payload ?? {})));
+      };
+
+      moderationResult("server:kick:success", () => "Kicked.");
+      moderationResult("server:ban:success", () => "Banned.");
+      moderationResult("server:unban:success", () => "Unbanned.");
+      moderationResult("server:mute:success", (p) => (p.muted ? "Server muted." : "Server mute removed."));
+      moderationResult("server:deafen:success", (p) => (p.deafened ? "Server deafened." : "Server deafen removed."));
+
       socket.on("server:muted", (data: { muted: boolean }) => {
         setIsServerMuted(data.muted);
         toast(data.muted ? "You have been server muted by an admin." : "Your server mute has been removed.", {
@@ -249,6 +266,24 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
       socket.on("token:error", (errorInfo: { error: string; message?: string }) => {
         console.error(`Token error for server ${host}:`, errorInfo);
         removeServerAccessToken(host);
+
+        // Errors the refresh token cannot fix. Retrying with it was an
+        // infinite loop: the server says the token is dead, we send the same
+        // dead token back, forever. It went unnoticed because only a leave on
+        // another device or an identity replace could revoke a token — until a
+        // kick started doing it, which is how a kick is made to stick.
+        const TERMINAL = [
+          "refresh_token_invalid",
+          "refresh_token_expired",
+          "membership_required",
+          "banned",
+        ];
+
+        if (TERMINAL.includes(errorInfo.error)) {
+          removeServerRefreshToken(host);
+          toast.error(errorInfo.message || `Signed out of ${host}.`);
+          return;
+        }
 
         const refreshToken = getServerRefreshToken(host);
         if (refreshToken) {

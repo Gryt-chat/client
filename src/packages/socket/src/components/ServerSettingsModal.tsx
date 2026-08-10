@@ -1,12 +1,13 @@
 import { Badge, Box, Dialog, Flex, IconButton, Spinner, Tabs, Text } from "@radix-ui/themes";
 import { useEffect, useMemo, useState } from "react";
-import { PiArrowsLeftRightFill, PiGearFill, PiLinkFill, PiListChecksFill, PiSmileyFill, PiUsersFill, PiWebhooksLogoFill, PiX } from "react-icons/pi";
+import { PiArrowsLeftRightFill, PiGearFill, PiLinkFill, PiListChecksFill, PiProhibitFill, PiSmileyFill, PiUsersFill, PiWebhooksLogoFill, PiX } from "react-icons/pi";
 
 import { getServerAccessToken } from "@/common";
 
 import { useSockets } from "../hooks/useSockets";
 import { useVersionStatus } from "../hooks/useVersionStatus";
 import { ServerAuditTab } from "./ServerAuditTab";
+import { ServerBansTab } from "./ServerBansTab";
 import { ServerEmojisTab } from "./ServerEmojisTab";
 import { ServerInvitesTab } from "./ServerInvitesTab";
 import { type ServerOverviewInitialSettings,ServerOverviewTab } from "./ServerOverviewTab";
@@ -126,6 +127,19 @@ export function ServerSettingsModal() {
       label: "Emojis",
       icon: PiSmileyFill,
       content: <ServerEmojisTab host={host} socket={socket} accessToken={accessToken} />,
+    },
+    {
+      value: "bans",
+      label: "Bans",
+      icon: PiProhibitFill,
+      content: (
+        <ServerBansTab
+          host={host}
+          socket={socket}
+          accessToken={accessToken}
+          onUnban={(grytUserId) => socket?.emit("server:unban", { accessToken, grytUserId })}
+        />
+      ),
     },
     {
       value: "audit",

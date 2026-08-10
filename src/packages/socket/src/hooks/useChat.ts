@@ -251,18 +251,40 @@ export function useChat({
     };
 
     const onPurgeUser = (payload: { sender_server_user_id: string; affected_conversations: string[] }) => {
+      const gone = payload.sender_server_user_id;
+
+      /**
+       * Their reactions on everybody else's messages, which the purge event
+       * does not name.
+       *
+       * The server has already removed them, and works this out the same way,
+       * but says nothing per message: someone with a few hundred reactions
+       * would otherwise be a few hundred broadcasts to convey something every
+       * client can derive. A reaction whose last user was this person is
+       * dropped rather than left showing zero.
+       */
+      const stripReactions = (list: ChatMessage[]): ChatMessage[] =>
+        list.map((m) => {
+          if (!m.reactions?.some((r) => r.users?.includes(gone))) return m;
+          const reactions = m.reactions
+            .map((r) =>
+              r.users?.includes(gone)
+                ? { ...r, users: r.users.filter((u) => u !== gone), amount: r.users.filter((u) => u !== gone).length }
+                : r,
+            )
+            .filter((r) => r.users.length > 0);
+          return { ...m, reactions: reactions.length > 0 ? reactions : null };
+        });
+
       setChatMessages((prev) =>
-        prev.filter((m) => m.sender_server_id !== payload.sender_server_user_id),
+        stripReactions(prev.filter((m) => m.sender_server_id !== gone)),
       );
       setMessageCache((prev) => {
         const next = { ...prev };
-        for (const convId of payload.affected_conversations) {
-          const key = cacheKeyFor(convId);
-          if (next[key]) {
-            next[key] = next[key].filter(
-              (m) => m.sender_server_id !== payload.sender_server_user_id,
-            );
-          }
+        // Their messages only exist in the conversations named, but their
+        // reactions can be anywhere, so every cached conversation is swept.
+        for (const key of Object.keys(next)) {
+          next[key] = stripReactions(next[key].filter((m) => m.sender_server_id !== gone));
         }
         return next;
       });

@@ -189,12 +189,25 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     }));
   });
 
-  socket.on("server:kicked", (data: { reason?: string }) => {
-    toast.error(data?.reason || "You were kicked from the server.");
+  socket.on("server:kicked", (data: { reason?: string; action?: "kick" | "ban" }) => {
+    const serverName = serversRef.current[host]?.name || host;
+    toast.error(data?.reason ? `${serverName}: ${data.reason}` : `You were removed from ${serverName}.`);
+
+    // Both, not just the access token. Keeping the refresh token is what let a
+    // kicked client mint a new access token and walk straight back in — the
+    // handler immediately below this one has always removed both.
     removeServerAccessToken(host);
+    removeServerRefreshToken(host);
+
     window.dispatchEvent(new CustomEvent("server_voice_disconnect", {
-      detail: { host, reason: "kicked_from_server" },
+      detail: { host, reason: data?.action === "ban" ? "banned_from_server" : "kicked_from_server" },
     }));
+
+    // Take it out of the sidebar. A kick is not permanent — rejoining by
+    // address, LAN discovery or a still-valid invite all still work — but
+    // leaving a server there that you have been removed from is worse than
+    // making you add it back.
+    window.dispatchEvent(new CustomEvent("server_force_remove", { detail: { host } }));
   });
 
   socket.on("server:session:replaced", (data: { message?: string }) => {
@@ -272,6 +285,57 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
           );
         }
       }, 2000);
+      return;
+    }
+
+    // A refusal, not a failure. It used to fall through to the generic branch
+    // below and read "Failed to join server <host>: banned" — repeatedly, since
+    // the retry loops keep re-emitting server:join. Clear the tokens so those
+    // loops have nothing left to try with.
+    // Moderation refusals and failures. These are not join problems, and the
+    // generic branch below renders every one of them as
+    // "Failed to join server <host>: forbidden", which is wrong in both halves.
+    const MODERATION_ERRORS = [
+      "forbidden",
+      "not_found",
+      "kick_failed",
+      "ban_failed",
+      "unban_failed",
+      "mute_failed",
+      "deafen_failed",
+      "bans_failed",
+    ];
+    if (MODERATION_ERRORS.includes(errorInfo.error)) {
+      toast.error(errorInfo.message || "That action was refused.");
+      return;
+    }
+
+    // The server will not say why, on purpose — a refusal does not confirm
+    // whether a ban exists or whether this identity is even known there. So the
+    // client cannot tell a ban from any other refusal, and must not guess:
+    // no force-remove, because a refusal may be temporary and deleting
+    // somebody's server entry is not recoverable.
+    //
+    // `banned` is still handled for servers that predate the generic refusal.
+    if (
+      errorInfo.error === 'join_refused' ||
+      errorInfo.error === 'banned' ||
+      errorInfo.error === 'membership_required'
+    ) {
+      removeServerAccessToken(host);
+      removeServerRefreshToken(host);
+      toast.error(errorInfo.message || `Sorry, you can't join ${host}.`);
+
+      // Recording it here is what stops the retry loops asking again every few
+      // seconds; without it the refusal repeats for as long as the app is open.
+      setFailedServerDetails((prev) => ({
+        ...prev,
+        [host]: {
+          error: errorInfo.error,
+          message: errorInfo.message || "Sorry, you can't join this server.",
+          timestamp: Date.now(),
+        },
+      }));
       return;
     }
 

@@ -41,6 +41,9 @@ export function ServerRolesTab({
   useSocketEvent<{ serverUserId: string; role: Role }>(socket, "server:role:updated", (payload) => {
     if (!payload?.serverUserId) return;
     setRoles((prev) => ({ ...prev, [payload.serverUserId]: payload.role }));
+    // The real confirmation, in place of the one that used to fire before the
+    // server had said anything.
+    toast.success(`Role set to ${payload.role}.`);
   });
 
   useEffect(() => {
@@ -55,8 +58,11 @@ export function ServerRolesTab({
     if (!accessToken) return toast.error("Join the server first.");
     setSubmitting(true);
     try {
+      // No success toast here. It used to fire unconditionally, before any
+      // acknowledgement, so the owner-only and self-change cases the server
+      // rejects still reported "Role updated". server:role:updated below is
+      // the actual confirmation; a refusal arrives as server:error.
       socket.emit("server:roles:set", { accessToken, serverUserId, role });
-      toast.success("Role updated");
     } finally {
       setSubmitting(false);
     }

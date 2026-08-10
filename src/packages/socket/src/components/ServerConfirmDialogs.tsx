@@ -1,6 +1,19 @@
-import { AlertDialog, Button, Flex } from "@radix-ui/themes";
+import { AlertDialog, Button, Checkbox, Flex, Select, Text, TextField } from "@radix-ui/themes";
+import { useEffect, useState } from "react";
 
 import type { Channel, SidebarItem } from "@/settings/src/types/server";
+
+/**
+ * Ban lengths, as minutes. Null is permanent, which is what the server stores
+ * as a null expiry — so the two agree without the client knowing the encoding.
+ */
+const BAN_DURATIONS: { value: string; label: string; minutes: number | null }[] = [
+  { value: "1h", label: "1 hour", minutes: 60 },
+  { value: "1d", label: "1 day", minutes: 1440 },
+  { value: "7d", label: "7 days", minutes: 10080 },
+  { value: "30d", label: "30 days", minutes: 43200 },
+  { value: "permanent", label: "Permanent", minutes: null },
+];
 
 interface PendingUser {
   id: string;
@@ -17,10 +30,10 @@ interface ServerConfirmDialogsProps {
   onDisconnectUser: (id: string) => void;
   pendingKickUser: PendingUser | null;
   setPendingKickUser: (v: PendingUser | null) => void;
-  onKickUser: (id: string) => void;
+  onKickUser: (id: string, reason?: string) => void;
   pendingBanUser: PendingUser | null;
   setPendingBanUser: (v: PendingUser | null) => void;
-  onBanUser: (id: string) => void;
+  onBanUser: (id: string, reason?: string, expiresInMinutes?: number | null, deleteContent?: boolean) => void;
 }
 
 export const ServerConfirmDialogs = ({
@@ -28,7 +41,23 @@ export const ServerConfirmDialogs = ({
   pendingDisconnectUser, setPendingDisconnectUser, onDisconnectUser,
   pendingKickUser, setPendingKickUser, onKickUser,
   pendingBanUser, setPendingBanUser, onBanUser,
-}: ServerConfirmDialogsProps) => (
+}: ServerConfirmDialogsProps) => {
+  // Optional on both, per Sivert: a moderator acting quickly should not be made
+  // to justify themselves first. When one is given the target sees it verbatim,
+  // and it goes into the audit log either way.
+  const [kickReason, setKickReason] = useState("");
+  const [banReason, setBanReason] = useState("");
+  const [banDuration, setBanDuration] = useState<string>("permanent");
+  const [banDeleteContent, setBanDeleteContent] = useState(true);
+
+  // Clear when the dialog opens rather than when it closes, so a reason typed
+  // for one person can never be carried onto the next.
+  useEffect(() => { if (pendingKickUser) setKickReason(""); }, [pendingKickUser]);
+  useEffect(() => {
+    if (pendingBanUser) { setBanReason(""); setBanDuration("permanent"); setBanDeleteContent(true); }
+  }, [pendingBanUser]);
+
+  return (
   <>
     <AlertDialog.Root open={!!pendingDeleteItem} onOpenChange={(open) => { if (!open) cancelDelete(); }}>
       <AlertDialog.Content maxWidth="420px">
@@ -70,14 +99,23 @@ export const ServerConfirmDialogs = ({
       <AlertDialog.Content maxWidth="420px">
         <AlertDialog.Title>Kick {pendingKickUser?.nickname}?</AlertDialog.Title>
         <AlertDialog.Description size="2">
-          Are you sure you want to kick {pendingKickUser?.nickname} from the server?
+          They will be removed from the server and can rejoin later.
         </AlertDialog.Description>
+        <Flex direction="column" gap="1" mt="3">
+          <Text size="1" color="gray">Reason (optional — shown to them)</Text>
+          <TextField.Root
+            value={kickReason}
+            onChange={(e) => setKickReason(e.target.value)}
+            placeholder="Spamming the general channel"
+            maxLength={200}
+          />
+        </Flex>
         <Flex gap="3" mt="4" justify="end">
           <AlertDialog.Cancel>
             <Button variant="soft" color="gray">Cancel</Button>
           </AlertDialog.Cancel>
           <AlertDialog.Action>
-            <Button variant="solid" color="red" onClick={() => { if (pendingKickUser) { onKickUser(pendingKickUser.id); setPendingKickUser(null); } }}>Kick</Button>
+            <Button variant="solid" color="red" onClick={() => { if (pendingKickUser) { onKickUser(pendingKickUser.id, kickReason); setPendingKickUser(null); } }}>Kick</Button>
           </AlertDialog.Action>
         </Flex>
       </AlertDialog.Content>
@@ -87,17 +125,62 @@ export const ServerConfirmDialogs = ({
       <AlertDialog.Content maxWidth="420px">
         <AlertDialog.Title>Ban {pendingBanUser?.nickname}?</AlertDialog.Title>
         <AlertDialog.Description size="2">
-          Are you sure you want to ban {pendingBanUser?.nickname}? They will not be able to rejoin.
+          They will be removed and cannot rejoin until the ban lifts.
         </AlertDialog.Description>
+        <Flex direction="column" gap="1" mt="3">
+          <Text size="1" color="gray">Reason (optional — shown to them)</Text>
+          <TextField.Root
+            value={banReason}
+            onChange={(e) => setBanReason(e.target.value)}
+            placeholder="Repeated harassment after a warning"
+            maxLength={200}
+          />
+        </Flex>
+        <Flex direction="column" gap="1" mt="3">
+          <Text size="1" color="gray">Duration</Text>
+          <Select.Root value={banDuration} onValueChange={setBanDuration}>
+            <Select.Trigger />
+            <Select.Content>
+              {BAN_DURATIONS.map((d) => (
+                <Select.Item key={d.value} value={d.value}>{d.label}</Select.Item>
+              ))}
+            </Select.Content>
+          </Select.Root>
+        </Flex>
+        <Text as="label" size="2" mt="3" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Checkbox
+            checked={banDeleteContent}
+            onCheckedChange={(v) => setBanDeleteContent(v === true)}
+          />
+          Delete their messages and reactions
+        </Text>
+        {!banDeleteContent && (
+          <Text size="1" color="gray" mt="1" as="div">
+            Their messages stay. Unbanning restores access but never restores
+            deleted messages, so this is the only chance to keep them.
+          </Text>
+        )}
         <Flex gap="3" mt="4" justify="end">
           <AlertDialog.Cancel>
             <Button variant="soft" color="gray">Cancel</Button>
           </AlertDialog.Cancel>
           <AlertDialog.Action>
-            <Button variant="solid" color="red" onClick={() => { if (pendingBanUser) { onBanUser(pendingBanUser.id); setPendingBanUser(null); } }}>Ban</Button>
+            <Button
+              variant="solid"
+              color="red"
+              onClick={() => {
+                if (!pendingBanUser) return;
+                const minutes = BAN_DURATIONS.find((d) => d.value === banDuration)?.minutes ?? null;
+                onBanUser(pendingBanUser.id, banReason, minutes, banDeleteContent);
+                setPendingBanUser(null);
+              }}
+            >
+              Ban
+            </Button>
           </AlertDialog.Action>
         </Flex>
       </AlertDialog.Content>
     </AlertDialog.Root>
   </>
-);
+  );
+};
