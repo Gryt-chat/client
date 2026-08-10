@@ -1,4 +1,4 @@
-import { AlertDialog, Button, Flex, Select, Text, TextField } from "@radix-ui/themes";
+import { AlertDialog, Button, Checkbox, Flex, Select, Text, TextField } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 
 import type { Channel, SidebarItem } from "@/settings/src/types/server";
@@ -33,7 +33,7 @@ interface ServerConfirmDialogsProps {
   onKickUser: (id: string, reason?: string) => void;
   pendingBanUser: PendingUser | null;
   setPendingBanUser: (v: PendingUser | null) => void;
-  onBanUser: (id: string, reason?: string, expiresInMinutes?: number | null) => void;
+  onBanUser: (id: string, reason?: string, expiresInMinutes?: number | null, deleteContent?: boolean) => void;
 }
 
 export const ServerConfirmDialogs = ({
@@ -48,12 +48,13 @@ export const ServerConfirmDialogs = ({
   const [kickReason, setKickReason] = useState("");
   const [banReason, setBanReason] = useState("");
   const [banDuration, setBanDuration] = useState<string>("permanent");
+  const [banDeleteContent, setBanDeleteContent] = useState(true);
 
   // Clear when the dialog opens rather than when it closes, so a reason typed
   // for one person can never be carried onto the next.
   useEffect(() => { if (pendingKickUser) setKickReason(""); }, [pendingKickUser]);
   useEffect(() => {
-    if (pendingBanUser) { setBanReason(""); setBanDuration("permanent"); }
+    if (pendingBanUser) { setBanReason(""); setBanDuration("permanent"); setBanDeleteContent(true); }
   }, [pendingBanUser]);
 
   return (
@@ -146,6 +147,19 @@ export const ServerConfirmDialogs = ({
             </Select.Content>
           </Select.Root>
         </Flex>
+        <Text as="label" size="2" mt="3" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Checkbox
+            checked={banDeleteContent}
+            onCheckedChange={(v) => setBanDeleteContent(v === true)}
+          />
+          Delete their messages and reactions
+        </Text>
+        {!banDeleteContent && (
+          <Text size="1" color="gray" mt="1" as="div">
+            Their messages stay. Unbanning restores access but never restores
+            deleted messages, so this is the only chance to keep them.
+          </Text>
+        )}
         <Flex gap="3" mt="4" justify="end">
           <AlertDialog.Cancel>
             <Button variant="soft" color="gray">Cancel</Button>
@@ -157,7 +171,7 @@ export const ServerConfirmDialogs = ({
               onClick={() => {
                 if (!pendingBanUser) return;
                 const minutes = BAN_DURATIONS.find((d) => d.value === banDuration)?.minutes ?? null;
-                onBanUser(pendingBanUser.id, banReason, minutes);
+                onBanUser(pendingBanUser.id, banReason, minutes, banDeleteContent);
                 setPendingBanUser(null);
               }}
             >

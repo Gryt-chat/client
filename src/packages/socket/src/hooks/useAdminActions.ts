@@ -62,11 +62,12 @@ export function useAdminActions({
   }, [send]);
 
   const handleBanUser = useCallback(
-    (targetServerUserId: string, reason?: string, expiresInMinutes?: number | null) => {
+    (targetServerUserId: string, reason?: string, expiresInMinutes?: number | null, deleteContent = true) => {
       void send("server:ban", {
         targetServerUserId,
         reason: reason?.trim() || undefined,
         expiresInMinutes: expiresInMinutes ?? null,
+        deleteContent,
       });
     },
     [send],

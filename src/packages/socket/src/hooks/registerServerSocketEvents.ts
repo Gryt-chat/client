@@ -310,19 +310,32 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       return;
     }
 
-    if (errorInfo.error === 'banned' || errorInfo.error === 'membership_required') {
+    // The server will not say why, on purpose — a refusal does not confirm
+    // whether a ban exists or whether this identity is even known there. So the
+    // client cannot tell a ban from any other refusal, and must not guess:
+    // no force-remove, because a refusal may be temporary and deleting
+    // somebody's server entry is not recoverable.
+    //
+    // `banned` is still handled for servers that predate the generic refusal.
+    if (
+      errorInfo.error === 'join_refused' ||
+      errorInfo.error === 'banned' ||
+      errorInfo.error === 'membership_required'
+    ) {
       removeServerAccessToken(host);
       removeServerRefreshToken(host);
-      toast.error(errorInfo.message || `You cannot join ${host}.`);
+      toast.error(errorInfo.message || `Sorry, you can't join ${host}.`);
 
-      // Only a ban takes the server out of the sidebar. Being told you are no
-      // longer a member can also mean a stale token against a rebuilt server,
-      // and deleting somebody's server entry over that is not a recoverable
-      // mistake — clearing the tokens already stops the retry loops, which is
-      // what was actually going wrong.
-      if (errorInfo.error === 'banned') {
-        window.dispatchEvent(new CustomEvent("server_force_remove", { detail: { host } }));
-      }
+      // Recording it here is what stops the retry loops asking again every few
+      // seconds; without it the refusal repeats for as long as the app is open.
+      setFailedServerDetails((prev) => ({
+        ...prev,
+        [host]: {
+          error: errorInfo.error,
+          message: errorInfo.message || "Sorry, you can't join this server.",
+          timestamp: Date.now(),
+        },
+      }));
       return;
     }
 
