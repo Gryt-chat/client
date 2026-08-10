@@ -314,10 +314,15 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       removeServerAccessToken(host);
       removeServerRefreshToken(host);
       toast.error(errorInfo.message || `You cannot join ${host}.`);
-      // Same reasoning as server:kicked — and here it also stops the retry
-      // loops, which would otherwise keep re-emitting server:join at a server
-      // that will keep saying no.
-      window.dispatchEvent(new CustomEvent("server_force_remove", { detail: { host } }));
+
+      // Only a ban takes the server out of the sidebar. Being told you are no
+      // longer a member can also mean a stale token against a rebuilt server,
+      // and deleting somebody's server entry over that is not a recoverable
+      // mistake — clearing the tokens already stops the retry loops, which is
+      // what was actually going wrong.
+      if (errorInfo.error === 'banned') {
+        window.dispatchEvent(new CustomEvent("server_force_remove", { detail: { host } }));
+      }
       return;
     }
 
