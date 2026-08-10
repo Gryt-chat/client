@@ -31,9 +31,7 @@
     "electron:preview": "npm run build:native && cross-env ELECTRON=1 vite build && electron .",
     "electron:preview:full": "npm run build:native && npm run build:embedded-server && cross-env ELECTRON=1 vite build && electron .",
     "icons:generate": "node scripts/generate-icons.mjs && node scripts/generate-tray-icon.mjs",
-    "generate:tray": "node scripts/generate-tray-icon.mjs",
-    "mediapipe:copy": "node scripts/copy-mediapipe.mjs",
-    "postinstall": "node scripts/copy-mediapipe.mjs"
+    "generate:tray": "node scripts/generate-tray-icon.mjs"
   },
   "dependencies": {
     "@dicebear/core": "^10",

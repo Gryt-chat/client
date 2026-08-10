@@ -1,10 +1,46 @@
 import react from "@vitejs/plugin-react";
+import { cpSync, existsSync, mkdirSync } from "fs";
+import { resolve } from "path";
 import { defineConfig } from "vite";
 import electron from "vite-plugin-electron";
 import renderer from "vite-plugin-electron-renderer";
 import tsconfigPaths from "vite-tsconfig-paths";
 
 import pkg from "./package.json";
+
+/**
+ * Copies MediaPipe's WASM into public/ so it is served from our own origin.
+ *
+ * It cannot come from Google's CDN at runtime: the desktop app runs under a CSP
+ * that blocks it, and a voice client should not need a third party reachable to
+ * frame a camera.
+ *
+ * This lives here rather than in a script under scripts/ because that directory
+ * is excluded from the Docker build context, and it ran as a postinstall hook
+ * before that — which the Dockerfile breaks by installing dependencies before it
+ * copies any source. Every build goes through Vite, so this is the one place
+ * that is always present and always runs.
+ *
+ * Copied rather than committed because it is about 34 MB of binary that moves
+ * with the dependency. public/mediapipe is gitignored for the same reason
+ * build/ is.
+ */
+function copyMediapipeWasm() {
+  return {
+    name: "gryt-copy-mediapipe-wasm",
+    buildStart() {
+      const from = resolve(
+        __dirname,
+        "node_modules/@mediapipe/tasks-vision/wasm",
+      );
+      if (!existsSync(from)) return;
+
+      const to = resolve(__dirname, "public/mediapipe");
+      mkdirSync(to, { recursive: true });
+      cpSync(from, to, { recursive: true });
+    },
+  };
+}
 
 const isElectron = !!process.env.ELECTRON;
 
@@ -13,6 +49,7 @@ export default defineConfig({
   plugins: [
     react(),
     tsconfigPaths(),
+    copyMediapipeWasm(),
     ...(isElectron
       ? [
           electron([
