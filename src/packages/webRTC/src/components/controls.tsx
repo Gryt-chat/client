@@ -1,11 +1,12 @@
 import { Flex, IconButton, Tooltip } from "@radix-ui/themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
+import { PiScanSmileyFill } from "react-icons/pi";
 import { PiMicrophoneFill, PiMicrophoneSlashFill, PiMonitorArrowUpFill, PiPhoneDisconnectFill, PiScreencastFill, PiSpeakerHighFill, PiSpeakerSlashFill, PiVideoCameraFill, PiVideoCameraSlashFill } from "react-icons/pi";
 
 import { estimateBitrate, getIsBrowserSupported, type ScreenShareQuality,useCamera, useScreenShare } from "@/audio";
 import { useSettings } from "@/settings";
-import { useSockets } from "@/socket";
+import { useSockets, useVideoFraming } from "@/socket";
 import { useSFU } from "@/webRTC";
 
 import { isElectron } from "../../../../lib/electron";
@@ -58,6 +59,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
   const { cameraStream, cameraEnabled, setCameraEnabled } = useCamera();
   const { screenVideoStream, screenAudioStream, screenShareActive, nativeAudioActive, nativeScreenCaptureAvailable, nativeEncodedCodec, subscribeEncodedFrames, startScreenShare, stopScreenShare } = useScreenShare();
   const { sockets } = useSockets();
+  const { recentre: recentreFace, detecting: detectingFace } = useVideoFraming();
   const {
     setIsMuted, isMuted, isDeafened, setIsDeafened,
     isServerMuted, isServerDeafened,
@@ -411,6 +413,24 @@ export function Controls({ onDisconnect }: ControlsProps) {
           >
             {cameraEnabled ? <PiVideoCameraFill size={16} /> : <PiVideoCameraSlashFill size={16} />}
           </IconButton>
+
+          {/* Only while the camera is on, because that is the only time it can
+              do anything, and next to the camera button because that is what
+              it acts on. The setting decides whether this also happens by
+              itself; the button is here so it never has to be found. */}
+          {cameraEnabled && (
+            <Tooltip content="Center my face" delayDuration={300}>
+              <IconButton
+                aria-label="Center my face"
+                variant="soft"
+                color="gray"
+                disabled={detectingFace}
+                onClick={() => void recentreFace()}
+              >
+                <PiScanSmileyFill size={16} />
+              </IconButton>
+            </Tooltip>
+          )}
 
           <IconButton
             aria-label={screenShareActive ? "Stop sharing your screen" : "Share your screen"}
