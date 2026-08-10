@@ -247,10 +247,15 @@ export function AudioSettings() {
         setMicDisplayVolume(smoothed);
       }
 
-      if (microphoneBuffer.finalAnalyser) {
-        const bufferLength = microphoneBuffer.finalAnalyser.frequencyBinCount;
+      // The monitor tap, not finalAnalyser: the meter should show what your
+      // processing is doing to your voice, which is a judgement about levels
+      // and has nothing to do with whether you happen to be muted.
+      const levelSource =
+        microphoneBuffer.monitorAnalyser ?? microphoneBuffer.finalAnalyser;
+      if (levelSource) {
+        const bufferLength = levelSource.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
-        microphoneBuffer.finalAnalyser.getByteFrequencyData(dataArray);
+        levelSource.getByteFrequencyData(dataArray);
 
         let sum = 0;
         for (let i = 0; i < bufferLength; i++) {
@@ -279,6 +284,7 @@ export function AudioSettings() {
   }, [
     microphoneBuffer.analyser,
     microphoneBuffer.finalAnalyser,
+    microphoneBuffer.monitorAnalyser,
     noiseGate,
     getRawVisualizerData,
     getGateLevel,
