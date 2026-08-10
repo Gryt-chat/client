@@ -140,6 +140,93 @@ function useFinalProcessedSpeaking(
   return speaking;
 }
 
+/**
+ * Detects a microphone that is open but producing nothing at all.
+ *
+ * This reads the raw analyser deliberately. It is tapped straight off the
+ * input, before RNNoise, the gate and muteGain, so muting yourself or sitting
+ * behind a closed gate does not look like a dead device.
+ *
+ * The test is digital silence rather than a low level: a live microphone in a
+ * quiet room still has a noise floor, so some bin is non-zero on every frame.
+ * All bins reading exactly zero for SILENCE_MS means no samples are arriving —
+ * the wrong device is selected, it is muted at the OS level, or it is a
+ * loopback device with nothing feeding it. Anything looser than this warns
+ * people who are simply not talking, which is worse than not warning at all.
+ */
+function useSustainedRawSilence(
+  analyser: AnalyserNode | undefined,
+  enabled: boolean,
+): boolean {
+  const [silent, setSilent] = useState(false);
+
+  useEffect(() => {
+    if (!enabled || !analyser) {
+      setSilent(false);
+      return;
+    }
+
+    const data = new Uint8Array(analyser.frequencyBinCount);
+
+    // Long enough that a device still starting up, or a moment of genuine
+    // digital silence, does not trip it.
+    const SILENCE_MS = 8000;
+
+    let silentSince = 0;
+    let reported = false;
+
+    const tick = () => {
+      // A suspended context reports all-zero bins too, and that is not the same
+      // thing as a dead microphone. Stop measuring rather than accumulate
+      // silence we cannot vouch for; useMicrophone resumes it on its own.
+      if (analyser.context.state !== "running") {
+        silentSince = 0;
+        return;
+      }
+
+      analyser.getByteFrequencyData(data);
+
+      let hasSignal = false;
+      for (let i = 0; i < data.length; i++) {
+        if (data[i] > 0) {
+          hasSignal = true;
+          break;
+        }
+      }
+
+      const now = performance.now();
+
+      if (hasSignal) {
+        silentSince = 0;
+
+        if (reported) {
+          reported = false;
+          setSilent(false);
+        }
+
+        return;
+      }
+
+      if (!silentSince) silentSince = now;
+
+      if (!reported && now - silentSince >= SILENCE_MS) {
+        reported = true;
+        setSilent(true);
+      }
+    };
+
+    tick();
+
+    const intervalId = window.setInterval(tick, 250);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [analyser, enabled]);
+
+  return silent;
+}
+
 function SortableParticipant({
   id,
   children,
@@ -308,6 +395,51 @@ export const VoiceView = ({
       },
     );
   }, [isInThisVoiceChannel, micUnavailable, setSettingsTab, setShowSettings]);
+
+  // The other half of the same problem. micUnavailable covers a microphone that
+  // could not be opened; this covers one that opened fine and produces nothing,
+  // which looks completely healthy from the outside. Only worth saying when the
+  // device itself is otherwise fine, so it stays quiet while micUnavailable has
+  // already spoken.
+  const rawInputSilent = useSustainedRawSilence(
+    microphoneBuffer.analyser,
+    isInThisVoiceChannel && !micUnavailable,
+  );
+
+  useEffect(() => {
+    if (!rawInputSilent) {
+      toast.dismiss("mic-silent");
+      return;
+    }
+
+    toast(
+      (t) => (
+        <Flex align="center" gap="3">
+          <Text size="2">
+            Your microphone is not picking up any sound — others cannot hear
+            you. Check the selected device, and that it is not muted.
+          </Text>
+          <Button
+            size="1"
+            variant="soft"
+            onClick={() => {
+              toast.dismiss(t.id);
+              setSettingsTab("sound-video");
+              setShowSettings(true);
+            }}
+          >
+            Open settings
+          </Button>
+        </Flex>
+      ),
+      {
+        // Same fixed-id reasoning as above.
+        id: "mic-silent",
+        duration: 12000,
+        icon: <PiMicrophoneSlashFill size={18} />,
+      },
+    );
+  }, [rawInputSilent, setSettingsTab, setShowSettings]);
 
   const panelRef = useRef<HTMLDivElement>(null);
 
