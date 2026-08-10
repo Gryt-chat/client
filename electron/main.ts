@@ -24,7 +24,6 @@ import {
 import { createServer, Server } from "http";
 import { dirname, extname, join, resolve } from "path";
 import semver from "semver";
-import { uIOhook, UiohookKey } from "uiohook-napi";
 import { fileURLToPath } from "url";
 
 import {
@@ -1115,7 +1114,44 @@ function createMainWindow(): BrowserWindow {
 
 // ── PTT helpers (uiohook – passive, does NOT consume key events) ────────
 
-const DOM_CODE_TO_UIOHOOK: Record<string, number> = {
+/**
+ * uiohook-napi, loaded only once something actually needs it.
+ *
+ * It used to be a static import at the top of this file, which loads the native
+ * addon during startup — before any of the gating below can run, and on macOS
+ * that is enough to crash the client on launch when Accessibility is denied.
+ * Nothing here is needed unless a push-to-talk key is set, so nothing here is
+ * loaded until one is.
+ */
+type UiohookLib = typeof import("uiohook-napi");
+let uiohookLib: UiohookLib | null | undefined;
+
+function loadUiohook(): UiohookLib | null {
+  if (uiohookLib !== undefined) return uiohookLib;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    uiohookLib = require("uiohook-napi") as UiohookLib;
+  } catch (err) {
+    startupLog(
+      `uiohook unavailable: ${err instanceof Error ? err.message : String(err)}`
+    );
+    uiohookLib = null;
+  }
+  return uiohookLib;
+}
+
+/**
+ * Built on first use rather than at module scope, because reading UiohookKey is
+ * itself enough to pull the addon in.
+ */
+let domCodeToKeycode: Record<string, number> | null = null;
+
+function keycodeForDomCode(code: string): number | undefined {
+  if (!domCodeToKeycode) {
+    const lib = loadUiohook();
+    if (!lib) return undefined;
+    const UiohookKey = lib.UiohookKey;
+    domCodeToKeycode = {
   KeyA: UiohookKey.A,
   KeyB: UiohookKey.B,
   KeyC: UiohookKey.C,
@@ -1207,6 +1243,9 @@ const DOM_CODE_TO_UIOHOOK: Record<string, number> = {
   BracketRight: UiohookKey.BracketRight,
   Quote: UiohookKey.Quote,
 };
+  }
+  return domCodeToKeycode[code];
+}
 
 let pttKeycode: number | null = null;
 let pttNeedsCtrl = false;
@@ -1226,7 +1265,7 @@ function registerPttShortcut(pttKey: string): void {
 
   const parts = pttKey.split("+");
   const baseKey = parts[parts.length - 1];
-  const keycode = DOM_CODE_TO_UIOHOOK[baseKey];
+  const keycode = keycodeForDomCode(baseKey);
   if (keycode == null) {
     console.warn(`No uiohook mapping for PTT key "${baseKey}"`);
     return;
@@ -1241,6 +1280,10 @@ function registerPttShortcut(pttKey: string): void {
 
 function ensureUiohook(): boolean {
   if (uiohookRunning) return true;
+
+  const lib = loadUiohook();
+  if (!lib) return false;
+  const uIOhook = lib.uIOhook;
 
   if (process.platform === "darwin") {
     const trusted = systemPreferences.isTrustedAccessibilityClient(false);
@@ -1657,12 +1700,11 @@ if (!gotSingleInstanceLock) {
       }
 
       try {
-        ensureUiohook();
-        startupLog(
-          uiohookRunning
-            ? "uiohook initialized"
-            : "uiohook deferred (no accessibility or not needed yet)"
-        );
+        // Deliberately not started here. The push-to-talk key reaches the main
+        // process over ptt-set-key once the renderer mounts, so at this point
+        // there is no key to listen for and starting the hook would only load
+        // the native addon for nothing. ptt-set-key starts it when a key is set.
+        startupLog("uiohook deferred until a push-to-talk key is set");
       } catch (err) {
         startupLog(
           `uiohook failed (PTT disabled): ${
@@ -2071,7 +2113,7 @@ if (!gotSingleInstanceLock) {
     flushUserStore();
     flushGlobalStore();
     if (uiohookRunning) {
-      uIOhook.stop();
+      uiohookLib?.uIOhook.stop();
       uiohookRunning = false;
     }
     localServer?.close();
