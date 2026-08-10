@@ -101,7 +101,7 @@ function UpdateControls() {
 
       <Flex direction="column" gap="4">
         <Flex align="center" gap="3">
-          <Text size="2" weight="medium">Current version</Text>
+          <Text size="2" weight="medium">Running</Text>
           <Badge variant="soft" color="gray">v{appVersion}</Badge>
           {betaChannel && <Badge variant="soft" color="orange">Beta</Badge>}
         </Flex>
@@ -117,6 +117,18 @@ function UpdateControls() {
           </Flex>
           <Switch checked={betaChannel} onCheckedChange={(enabled) => setPendingSwitch(enabled)} />
         </Flex>
+
+        {/* Something is always said here. The panel used to lead with a version
+            badge and show nothing else until a check finished, so a version
+            that had not moved was the only thing to read, and it reads as
+            failure. It cannot move without a restart: updates install while
+            Gryt starts, never from the running app. */}
+        {!statusText && (
+          <Text size="1" color="gray">
+            Updates install while Gryt starts, so the version above only changes
+            after a restart.
+          </Text>
+        )}
 
         {statusText && (
           <Flex direction="column" gap="1">
