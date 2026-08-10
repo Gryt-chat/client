@@ -9,6 +9,7 @@ export type MicrophoneBufferType = {
   mediaStream?: MediaStream; // Raw microphone stream
   processedStream?: MediaStream; // Processed stream (after noise suppression, mute, etc.)
   monitorTap?: GainNode; // Fully processed audio, tapped before muteGain, for the microphone test
+  monitorAnalyser?: AnalyserNode; // Level of that same tap, for the settings meter
   muteGain?: GainNode; // Dedicated gain node for muting
   volumeGain?: GainNode; // Dedicated gain node for volume control
   noiseGate?: GainNode; // Fallback gain node, used only when the gate worklet is unavailable

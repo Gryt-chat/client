@@ -54,6 +54,14 @@ export function createMicrophoneBuffer({
   const monitorTap = audioContext.createGain();
   monitorTap.gain.value = 1;
 
+  // A side branch off the same tap, so the settings meter measures exactly what
+  // the microphone test plays. It used to read finalAnalyser, which sits after
+  // muteGain — so with the test running in a voice channel, where the test
+  // mutes you on purpose, you heard yourself while the meter sat at zero.
+  const monitorAnalyser = audioContext.createAnalyser();
+  monitorAnalyser.fftSize = fftSize;
+  monitorAnalyser.smoothingTimeConstant = smoothing;
+
   volumeGain.gain.value = 2.0;
   rawOutput.gain.value = 1;
   noiseGate.gain.value = 1;
@@ -119,6 +127,7 @@ export function createMicrophoneBuffer({
     noiseGate.connect(monitorTap);
   }
 
+  monitorTap.connect(monitorAnalyser);
   monitorTap.connect(muteGain);
   muteGain.connect(finalAnalyser);
   finalAnalyser.connect(outputDestination);
@@ -130,6 +139,7 @@ export function createMicrophoneBuffer({
     analyser,
     finalAnalyser,
     monitorTap,
+    monitorAnalyser,
     mediaStream: micStream || new MediaStream(),
     processedStream: outputDestination.stream,
     muteGain,
