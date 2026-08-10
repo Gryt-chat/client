@@ -292,6 +292,24 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     // below and read "Failed to join server <host>: banned" — repeatedly, since
     // the retry loops keep re-emitting server:join. Clear the tokens so those
     // loops have nothing left to try with.
+    // Moderation refusals and failures. These are not join problems, and the
+    // generic branch below renders every one of them as
+    // "Failed to join server <host>: forbidden", which is wrong in both halves.
+    const MODERATION_ERRORS = [
+      "forbidden",
+      "not_found",
+      "kick_failed",
+      "ban_failed",
+      "unban_failed",
+      "mute_failed",
+      "deafen_failed",
+      "bans_failed",
+    ];
+    if (MODERATION_ERRORS.includes(errorInfo.error)) {
+      toast.error(errorInfo.message || "That action was refused.");
+      return;
+    }
+
     if (errorInfo.error === 'banned' || errorInfo.error === 'membership_required') {
       removeServerAccessToken(host);
       removeServerRefreshToken(host);
