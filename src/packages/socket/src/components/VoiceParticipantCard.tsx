@@ -7,6 +7,7 @@ import { useMicrophone } from "@/audio";
 import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 import type { StreamSources } from "@/webRTC";
 
+import { toObjectPosition, useVideoFraming } from "../hooks/useVideoFraming";
 import type { Client } from "../types/clients";
 import type { AdminActions, MemberInfo } from "./MemberSidebar";
 import { SkeletonBase } from "./skeletons";
@@ -47,6 +48,7 @@ export function VideoCard({
   mutedBadge,
   radius = TILE_RADIUS,
   objectFit = "cover",
+  objectPosition,
   onClick,
   pendingLabel = "Connecting video…",
 }: {
@@ -58,6 +60,8 @@ export function VideoCard({
   mutedBadge?: ReactNode;
   radius?: number;
   objectFit?: "cover" | "contain";
+  /** Where the crop sits, when the sender has published where their face is. */
+  objectPosition?: string;
   onClick?: () => void;
   pendingLabel?: string;
 }) {
@@ -126,6 +130,11 @@ export function VideoCard({
             width: "100%",
             height: "100%",
             objectFit,
+            objectPosition,
+            // Easing the crop rather than jumping it. The published value is
+            // already smoothed, but the first one after a reconnect can land
+            // a long way from centre.
+            transition: "object-position 400ms ease-out",
             transform: mirrored ? "scaleX(-1)" : undefined,
             pointerEvents: "none",
           }}
@@ -373,6 +382,7 @@ export function VoiceParticipantCard({
   tileRadius?: number;
 }) {
   const isScreenTile = itemId.startsWith("screen:");
+  const { framingByClient, localFraming } = useVideoFraming();
   const serverUserId: string | undefined = client?.serverUserId;
 
   // Above the screen-tile branch below, which returns early. A hook after an
@@ -769,6 +779,10 @@ export function VoiceParticipantCard({
           stream={cameraStream}
           nickname={client.nickname}
           mirrored={isSelf ? cameraMirrored : false}
+          objectPosition={toObjectPosition(
+            isSelf ? localFraming : framingByClient[itemId],
+            isSelf ? cameraMirrored : false,
+          )}
           isSpeaking={isSpeaking}
           statusIcons={statusBadges}
           radius={tileRadius}

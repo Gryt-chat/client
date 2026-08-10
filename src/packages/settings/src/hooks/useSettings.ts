@@ -37,6 +37,7 @@ function useSettingsHook() {
   const [cameraID, setCameraID] = useState("");
   const [cameraQuality, setCameraQuality] = useState("native");
   const [cameraMirrored, setCameraMirrored] = useState(true);
+  const [faceFramingEnabled, setFaceFramingEnabled] = useState(false);
   const [voiceTileLayout, setVoiceTileLayout] =
     useState<VoiceTileLayout>("meet");
   const [devFakeParticipants, setDevFakeParticipants] = useState(0);
@@ -93,6 +94,7 @@ function useSettingsHook() {
       setCameraID(getUserValue("cameraID", ""));
       setCameraQuality(getUserValue("cameraQuality", "native"));
       setCameraMirrored(getUserValue("cameraMirrored", true));
+      setFaceFramingEnabled(getUserValue("faceFramingEnabled", false));
       setVoiceTileLayout(
         getUserValue<VoiceTileLayout>("voiceTileLayout", "meet"),
       );
@@ -227,6 +229,11 @@ function useSettingsHook() {
   function updateCameraMirrored(mirrored: boolean) {
     setCameraMirrored(mirrored);
     setUserValue("cameraMirrored", mirrored);
+  }
+
+  function updateFaceFramingEnabled(enabled: boolean) {
+    setFaceFramingEnabled(enabled);
+    setUserValue("faceFramingEnabled", enabled);
   }
 
   function updateDevFakeParticipants(count: number) {
@@ -406,6 +413,8 @@ function useSettingsHook() {
     setCameraQuality: updateCameraQuality,
     cameraMirrored,
     setCameraMirrored: updateCameraMirrored,
+    faceFramingEnabled,
+    setFaceFramingEnabled: updateFaceFramingEnabled,
     voiceTileLayout,
     setVoiceTileLayout: updateVoiceTileLayout,
     devFakeParticipants,

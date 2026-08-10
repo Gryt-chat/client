@@ -150,6 +150,8 @@ export interface Settings {
   setCameraQuality: (quality: string) => void;
   cameraMirrored: boolean;
   setCameraMirrored: (mirrored: boolean) => void;
+  faceFramingEnabled: boolean;
+  setFaceFramingEnabled: (enabled: boolean) => void;
   voiceTileLayout: VoiceTileLayout;
   setVoiceTileLayout: (layout: VoiceTileLayout) => void;
   devFakeParticipants: number;
@@ -323,6 +325,8 @@ export const settingsInit: Settings = {
   setCameraQuality: noop,
   cameraMirrored: true,
   setCameraMirrored: noop,
+  faceFramingEnabled: false,
+  setFaceFramingEnabled: noop,
   voiceTileLayout: "meet",
   setVoiceTileLayout: noop,
   devFakeParticipants: 0,
