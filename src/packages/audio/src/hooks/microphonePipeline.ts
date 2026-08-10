@@ -47,6 +47,13 @@ export function createMicrophoneBuffer({
   finalAnalyser.fftSize = fftSize;
   finalAnalyser.smoothingTimeConstant = smoothing;
 
+  // Everything the pipeline does to your voice, taken before the mute. The
+  // microphone test plays this rather than finalAnalyser, which sits after
+  // muteGain and is therefore silent whenever you are muted — including the
+  // auto-mute the test itself applies when you are in a channel.
+  const monitorTap = audioContext.createGain();
+  monitorTap.gain.value = 1;
+
   volumeGain.gain.value = 2.0;
   rawOutput.gain.value = 1;
   noiseGate.gain.value = 1;
@@ -106,12 +113,13 @@ export function createMicrophoneBuffer({
     // change what the user's threshold percentage means.
     processingChain.connect(noiseGateNode, 0, 0);
     volumeGain.connect(noiseGateNode, 0, 1);
-    noiseGateNode.connect(muteGain);
+    noiseGateNode.connect(monitorTap);
   } else {
     processingChain.connect(noiseGate);
-    noiseGate.connect(muteGain);
+    noiseGate.connect(monitorTap);
   }
 
+  monitorTap.connect(muteGain);
   muteGain.connect(finalAnalyser);
   finalAnalyser.connect(outputDestination);
 
@@ -121,6 +129,7 @@ export function createMicrophoneBuffer({
     rawOutput,
     analyser,
     finalAnalyser,
+    monitorTap,
     mediaStream: micStream || new MediaStream(),
     processedStream: outputDestination.stream,
     muteGain,
@@ -556,7 +565,10 @@ export function usePipelineControls({
       volumeGainValue: microphoneBuffer.volumeGain?.gain.value,
     });
 
-    if (microphoneBuffer.finalAnalyser && audioContext) {
+    const monitorSource =
+      microphoneBuffer.monitorTap ?? microphoneBuffer.finalAnalyser;
+
+    if (monitorSource && audioContext) {
       try {
         if (loopbackGainRef.current) {
           voiceLog.info(
@@ -571,8 +583,8 @@ export function usePipelineControls({
         loopbackGain.gain.value = 1;
         loopbackGainRef.current = loopbackGain;
 
-        microphoneBuffer.finalAnalyser.connect(loopbackGain);
-        voiceLog.info("LOOPBACK", "Connected finalAnalyser → loopbackGain");
+        monitorSource.connect(loopbackGain);
+        voiceLog.info("LOOPBACK", "Connected monitor tap to loopbackGain");
 
         if (loopbackEnabled) {
           loopbackGain.connect(audioContext.destination);
@@ -620,6 +632,7 @@ export function usePipelineControls({
     };
   }, [
     loopbackEnabled,
+    microphoneBuffer.monitorTap,
     microphoneBuffer.finalAnalyser,
     audioContext,
     microphoneBuffer.muteGain,
