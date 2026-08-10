@@ -2,6 +2,13 @@ import { contextBridge, ipcRenderer } from "electron";
 
 type Callback = () => void;
 
+type EmbeddedLogLine = {
+  source: "sfu" | "server" | "worker";
+  level: "error" | "warn" | "info" | "debug";
+  text: string;
+  at: number;
+};
+
 // Buffer invite deep links that arrive before React mounts a listener
 // (happens when the app is cold-launched via gryt://invite?...).
 let bufferedInvite: { host: string; code: string } | null = null;
@@ -539,12 +546,24 @@ contextBridge.exposeInMainWorld("electronAPI", {
       ipcRenderer.removeListener("embedded-server:status-changed", handler);
   },
 
+  getEmbeddedServerLogs(): Promise<EmbeddedLogLine[]> {
+    return ipcRenderer.invoke("embedded-server:logs");
+  },
+
+  clearEmbeddedServerLogs(): Promise<void> {
+    return ipcRenderer.invoke("embedded-server:clear-logs");
+  },
+
   onEmbeddedServerLog(
-    callback: (log: { source: string; data: string }) => void
+    callback: (log: {
+      source: string;
+      data: string;
+      lines?: EmbeddedLogLine[];
+    }) => void
   ) {
     const handler = (
       _event: Electron.IpcRendererEvent,
-      data: { source: string; data: string }
+      data: { source: string; data: string; lines?: EmbeddedLogLine[] }
     ) => callback(data);
     ipcRenderer.on("embedded-server:log", handler);
     return () => ipcRenderer.removeListener("embedded-server:log", handler);

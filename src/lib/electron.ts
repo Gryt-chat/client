@@ -37,6 +37,16 @@ export type TrayVoiceState = {
 
 export type TrayVoiceCommand = "toggle-mute" | "toggle-deafen";
 
+export type EmbeddedLogSource = "sfu" | "server" | "worker";
+
+export type EmbeddedLogLine = {
+  source: EmbeddedLogSource;
+  level: "error" | "warn" | "info" | "debug";
+  text: string;
+  /** Epoch millis, stamped in the main process when the line arrived. */
+  at: number;
+};
+
 export type LanServer = {
   host: string;
   port: number;
@@ -171,8 +181,15 @@ export interface ElectronAPI {
     callback: (state: EmbeddedServerState) => void
   ): () => void;
   onEmbeddedServerLog(
-    callback: (log: { source: string; data: string }) => void
+    callback: (log: {
+      source: string;
+      data: string;
+      lines?: EmbeddedLogLine[];
+    }) => void
   ): () => void;
+  /** Everything retained so far, so an opening pane is not blank. */
+  getEmbeddedServerLogs(): Promise<EmbeddedLogLine[]>;
+  clearEmbeddedServerLogs(): Promise<void>;
   getEmbeddedServerAutoStart(): Promise<boolean>;
   setEmbeddedServerAutoStart(enabled: boolean): void;
 }
