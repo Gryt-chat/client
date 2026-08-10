@@ -14,6 +14,7 @@ import { useState } from "react";
 import { PiCheck, PiHardDrivesFill, PiInfoFill, PiPlayFill, PiStopFill, PiWarningFill, PiX } from "react-icons/pi";
 
 import { useEmbeddedServer } from "../hooks/useEmbeddedServer";
+import { EmbeddedServerLogs } from "./embeddedServerLogs";
 
 interface CreateServerPanelProps {
   onServerReady: (serverUrl: string, serverName: string) => void;
@@ -141,6 +142,8 @@ export function CreateServerPanel({ onServerReady }: CreateServerPanelProps) {
                     </Text>
                   </Flex>
                 </Flex>
+
+                <EmbeddedServerLogs />
 
                 <Flex asChild gap="2" align="center">
                   <label>

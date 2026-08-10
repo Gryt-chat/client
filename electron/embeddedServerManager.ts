@@ -86,10 +86,85 @@ function emitStatus(): void {
   }
 }
 
-function emitLog(source: string, data: string): void {
-  if (targetWindow && !targetWindow.isDestroyed()) {
-    targetWindow.webContents.send("embedded-server:log", { source, data });
+export type LogLevel = "error" | "warn" | "info" | "debug";
+export type LogSource = "sfu" | "server" | "worker";
+export type LogLine = {
+  source: LogSource;
+  level: LogLevel;
+  text: string;
+  at: number;
+};
+
+/**
+ * Enough history that opening the pane after something went wrong still shows
+ * it. The three children are quiet in normal operation and noisy exactly when
+ * you want to read them, so the cap is generous.
+ */
+const LOG_HISTORY = 2000;
+const logHistory: LogLine[] = [];
+
+/**
+ * The level, read out of the text, because none of the three emit one.
+ *
+ * The server and worker use consola, which prints a symbol and colour rather
+ * than a level field. The SFU uses Go's log package with its own prefix. So
+ * this is pattern matching, and it is wrong sometimes — a line containing the
+ * word "error" in passing reads as an error. Structured output from each
+ * component is the only real fix; this is the version that does not require
+ * changing the SFU and the image worker to get a log pane at all.
+ */
+function levelOf(source: LogSource, text: string): LogLevel {
+  const t = text.trim();
+
+  // consola's symbols, which survive even when colour is stripped.
+  if (/^[✖✗✕]|^\s*ERROR\b/i.test(t)) return "error";
+  if (/^[⚠]|^\s*WARN(ING)?\b/i.test(t)) return "warn";
+  if (/^[✔✓ℹ]|^\s*INFO\b/i.test(t)) return "info";
+
+  // Same vocabulary explainExit already looks for, so a line that would be
+  // shown as the reason a process died also reads as an error here.
+  if (
+    /\b(panic|fatal|error|failed|refused|denied|EADDR\w*|ENOENT)\b/i.test(t) ||
+    /address already in use|bind:/i.test(t)
+  ) {
+    return "error";
   }
+  if (/\b(warn(ing)?|deprecated|retrying)\b/i.test(t)) return "warn";
+  if (/\b(debug|trace|verbose)\b/i.test(t)) return "debug";
+  return "info";
+}
+
+function emitLog(source: string, data: string): void {
+  const src = source as LogSource;
+  const lines: LogLine[] = [];
+
+  for (const raw of data.split("\n")) {
+    // eslint-disable-next-line no-control-regex -- stripping real ANSI colour
+    const text = raw.replace(/\u001b\[[0-9;]*m/g, "").trimEnd();
+    if (!text.trim()) continue;
+    lines.push({ source: src, level: levelOf(src, text), text, at: Date.now() });
+  }
+  if (!lines.length) return;
+
+  logHistory.push(...lines);
+  if (logHistory.length > LOG_HISTORY) {
+    logHistory.splice(0, logHistory.length - LOG_HISTORY);
+  }
+
+  if (targetWindow && !targetWindow.isDestroyed()) {
+    // The raw payload stays for anything already listening; the parsed lines
+    // are what the pane renders.
+    targetWindow.webContents.send("embedded-server:log", { source, data, lines });
+  }
+}
+
+/** Everything retained so far, so an opening pane is not blank. */
+export function getEmbeddedServerLogs(): LogLine[] {
+  return logHistory;
+}
+
+export function clearEmbeddedServerLogs(): void {
+  logHistory.length = 0;
 }
 
 function setStatus(status: ServerStatus, error?: string): void {

@@ -42,10 +42,12 @@ import {
 import {
   autoStartIfNeeded,
   cleanupOnQuit,
+  clearEmbeddedServerLogs,
   createAndStartServer,
   dismissEmbeddedServerError,
   getAutoStart,
   getEmbeddedServerInfo,
+  getEmbeddedServerLogs,
   getState as getEmbeddedServerState,
   isEmbeddedServerAvailable,
   setAutoStart,
@@ -1791,6 +1793,10 @@ if (!gotSingleInstanceLock) {
       );
 
       ipcMain.handle("embedded-server:status", () => getEmbeddedServerState());
+      ipcMain.handle("embedded-server:logs", () => getEmbeddedServerLogs());
+      ipcMain.handle("embedded-server:clear-logs", () => {
+        clearEmbeddedServerLogs();
+      });
 
       ipcMain.handle("embedded-server:get-auto-start", () => getAutoStart());
 
