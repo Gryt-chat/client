@@ -4,6 +4,7 @@ import { PiArrowsClockwiseFill } from "react-icons/pi";
 
 import { CAMERA_FPS_OPTIONS, type CameraQuality, QUALITY_CONSTRAINTS, useCamera } from "@/audio";
 import { useSettings } from "@/settings";
+import { useVideoFraming } from "@/socket";
 
 import { SettingsContainer, ToggleSetting } from "./settingsComponents";
 
@@ -39,9 +40,12 @@ export function CameraSettings() {
     setCameraMirrored,
     cameraFlipped,
     setCameraFlipped,
+    faceFramingEnabled,
+    setFaceFramingEnabled,
   } = useSettings();
 
   const { cameraEnabled, cameraStream: globalStream, devices, getDevices } = useCamera();
+  const { recentre, detecting } = useVideoFraming();
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewStreamRef = useRef<MediaStream | null>(null);
@@ -314,6 +318,31 @@ export function CameraSettings() {
         checked={cameraFlipped}
         onCheckedChange={setCameraFlipped}
       />
+
+      <ToggleSetting
+        title="Keep my face centred"
+        description="Cameras get cropped to fit a tile, so a face off to one side gets cut off. This works out where yours is and tells the others, so their crop follows you. It runs once when your camera comes on, and again when you ask — not continuously, because a tile that tracks your head is more distracting than an off-centre face. Detection happens on this machine; two numbers are sent and no video, or anything made from it, leaves here."
+        checked={faceFramingEnabled}
+        onCheckedChange={setFaceFramingEnabled}
+      />
+
+      {faceFramingEnabled && (
+        <Flex align="center" gap="3" mt="-2">
+          <Button
+            size="1"
+            variant="soft"
+            disabled={!cameraEnabled || detecting}
+            onClick={() => void recentre()}
+          >
+            {detecting ? "Looking…" : "Re-centre now"}
+          </Button>
+          <Text size="1" color="gray">
+            {cameraEnabled
+              ? "Do this after you move, or move the camera."
+              : "Turn your camera on first."}
+          </Text>
+        </Flex>
+      )}
 
       <ToggleSetting
         title="Mirror preview"

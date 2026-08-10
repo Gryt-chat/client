@@ -31,7 +31,9 @@
     "electron:preview": "npm run build:native && cross-env ELECTRON=1 vite build && electron .",
     "electron:preview:full": "npm run build:native && npm run build:embedded-server && cross-env ELECTRON=1 vite build && electron .",
     "icons:generate": "node scripts/generate-icons.mjs && node scripts/generate-tray-icon.mjs",
-    "generate:tray": "node scripts/generate-tray-icon.mjs"
+    "generate:tray": "node scripts/generate-tray-icon.mjs",
+    "mediapipe:copy": "node scripts/copy-mediapipe.mjs",
+    "postinstall": "node scripts/copy-mediapipe.mjs"
   },
   "dependencies": {
     "@dicebear/core": "^10",
@@ -39,6 +41,7 @@
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@mediapipe/tasks-vision": "^1.0.1",
     "@radix-ui/themes": "^3.3.0",
     "@shiguredo/rnnoise-wasm": "^2025.1.5",
     "axios": "^1.13.5",
