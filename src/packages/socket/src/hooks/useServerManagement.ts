@@ -231,6 +231,27 @@ function useServerManagementHook(): ServerManagement {
     [servers, setServers, currentlyViewingServer, setCurrentlyViewingServer]
   );
 
+  /**
+   * Being kicked or banned takes the server out of the sidebar.
+   *
+   * The socket layer knows it happened but cannot reach `removeServer`, so it
+   * dispatches a window event and this picks it up — the same hop
+   * `server_settings_open` and `server_voice_disconnect` already use.
+   *
+   * `removeServer` is the whole removal: it drops the entry, and switches away
+   * if you were looking at it. The socket is closed by the effect in useSockets
+   * that watches for a host leaving the list — without that the client would
+   * reconnect and put the server straight back.
+   */
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const host = (event as CustomEvent<{ host?: string }>).detail?.host;
+      if (host) removeServer(host);
+    };
+    window.addEventListener("server_force_remove", handler);
+    return () => window.removeEventListener("server_force_remove", handler);
+  }, [removeServer]);
+
   const switchToServer = useCallback(
     (host: string) => {
       const normalizedHost = normalizeHost(host);

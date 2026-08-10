@@ -288,6 +288,29 @@ function useSocketsHook() {
       }
     });
 
+    // Close sockets whose server has gone.
+    //
+    // This loop only ever added them, so a removed server kept a live socket
+    // that reconnected on its own and re-emitted server:join — which quietly
+    // undid the removal. Being kicked made that visible: the server vanished
+    // from the sidebar and came straight back.
+    Object.keys(newSockets).forEach((host) => {
+      if (servers[host]) return;
+      try {
+        newSockets[host].removeAllListeners();
+        newSockets[host].disconnect();
+      } catch {
+        // Already gone. Dropping the reference below is what matters.
+      }
+      delete newSockets[host];
+      changed = true;
+      setServerConnectionStatus((prev) => {
+        const next = { ...prev };
+        delete next[host];
+        return next;
+      });
+    });
+
     if (changed) {
       setSockets(newSockets);
     }

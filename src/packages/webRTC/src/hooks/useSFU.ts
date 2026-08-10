@@ -448,10 +448,20 @@ function useSfuHook(): SFUInterface {
     }
   }, [isConnected]);
 
+  const connectionStateRef = useRef(connectionState);
+  useEffect(() => { connectionStateRef.current = connectionState; }, [connectionState]);
+
   // Listen for server-initiated disconnects (device switching)
   useEffect(() => {
     const handleServerDisconnect = (event: CustomEvent) => {
       const { host, reason } = event.detail;
+
+      // Only if the voice connection is actually on that server. This used to
+      // disconnect unconditionally, so being kicked from one server dropped
+      // your call on another — the host was already in the payload and simply
+      // never consulted. The same comparison is used a few lines below.
+      const connectedHost = connectionStateRef.current.serverId;
+      if (host && connectedHost && host !== connectedHost) return;
 
       disconnect(false).catch(error => {
         console.error('Error during server-initiated disconnect:', error);
@@ -474,8 +484,6 @@ function useSfuHook(): SFUInterface {
   // WebSocket + WebRTC peer connection are still alive, we skip the full SFU
   // teardown and let the server's grace-period restore voice state. If the SFU
   // connection also died, we fall back to a full reconnect with a short delay.
-  const connectionStateRef = useRef(connectionState);
-  useEffect(() => { connectionStateRef.current = connectionState; }, [connectionState]);
   const connectRef = useRef(connect);
   useEffect(() => { connectRef.current = connect; }, [connect]);
   const disconnectRef = useRef(disconnect);

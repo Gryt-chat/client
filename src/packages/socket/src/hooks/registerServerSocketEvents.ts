@@ -190,15 +190,24 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
   });
 
   socket.on("server:kicked", (data: { reason?: string; action?: "kick" | "ban" }) => {
-    toast.error(data?.reason || "You were kicked from the server.");
+    const serverName = serversRef.current[host]?.name || host;
+    toast.error(data?.reason ? `${serverName}: ${data.reason}` : `You were removed from ${serverName}.`);
+
     // Both, not just the access token. Keeping the refresh token is what let a
     // kicked client mint a new access token and walk straight back in — the
     // handler immediately below this one has always removed both.
     removeServerAccessToken(host);
     removeServerRefreshToken(host);
+
     window.dispatchEvent(new CustomEvent("server_voice_disconnect", {
       detail: { host, reason: data?.action === "ban" ? "banned_from_server" : "kicked_from_server" },
     }));
+
+    // Take it out of the sidebar. A kick is not permanent — rejoining by
+    // address, LAN discovery or a still-valid invite all still work — but
+    // leaving a server there that you have been removed from is worse than
+    // making you add it back.
+    window.dispatchEvent(new CustomEvent("server_force_remove", { detail: { host } }));
   });
 
   socket.on("server:session:replaced", (data: { message?: string }) => {
@@ -287,6 +296,10 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       removeServerAccessToken(host);
       removeServerRefreshToken(host);
       toast.error(errorInfo.message || `You cannot join ${host}.`);
+      // Same reasoning as server:kicked — and here it also stops the retry
+      // loops, which would otherwise keep re-emitting server:join at a server
+      // that will keep saying no.
+      window.dispatchEvent(new CustomEvent("server_force_remove", { detail: { host } }));
       return;
     }
 
