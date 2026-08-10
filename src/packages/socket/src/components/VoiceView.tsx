@@ -1387,27 +1387,32 @@ export const VoiceView = ({
                         </IconButton>
                       </Tooltip>
 
-                      <Tooltip
-                        content={isMaximized ? "Restore" : "Maximize"}
-                        delayDuration={300}
-                      >
-                        <IconButton
-                          variant="soft"
-                          color="gray"
-                          aria-label={
-                            isMaximized
-                              ? "Restore voice view"
-                              : "Maximize voice view"
-                          }
-                          onClick={onToggleMaximize}
+                      {/* Nothing to maximise into while the voice view already
+                          covers the screen, so the control goes rather than
+                          sitting there doing nothing. */}
+                      {!isFullscreen && (
+                        <Tooltip
+                          content={isMaximized ? "Restore" : "Maximize"}
+                          delayDuration={300}
                         >
-                          {isMaximized ? (
-                            <PiArrowLineLeftFill size={16} />
-                          ) : (
-                            <PiArrowLineRightFill size={16} />
-                          )}
-                        </IconButton>
-                      </Tooltip>
+                          <IconButton
+                            variant="soft"
+                            color="gray"
+                            aria-label={
+                              isMaximized
+                                ? "Restore voice view"
+                                : "Maximize voice view"
+                            }
+                            onClick={onToggleMaximize}
+                          >
+                            {isMaximized ? (
+                              <PiArrowLineLeftFill size={16} />
+                            ) : (
+                              <PiArrowLineRightFill size={16} />
+                            )}
+                          </IconButton>
+                        </Tooltip>
+                      )}
                     </Flex>
                   )}
                 </motion.div>
