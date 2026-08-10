@@ -40,6 +40,47 @@ function classifyMicFailure(error: unknown): MicrophoneUnavailableReason {
   return "failed";
 }
 
+/**
+ * Virtual and loopback inputs, by the names they ship under.
+ *
+ * These are real capture devices as far as the browser is concerned, so they
+ * enumerate like any other microphone and can sort first. Picking one by
+ * default gives you a device that opens cleanly and carries no sound, which is
+ * the failure GRYT-61 is about — on macOS with BlackHole installed it is a
+ * common way to end up silent without any hint.
+ */
+const VIRTUAL_INPUT_PATTERNS = [
+  "blackhole",
+  "soundflower",
+  "loopback",
+  "vb-audio",
+  "vb-cable",
+  "cable output",
+  "virtual audio",
+  "voicemeeter",
+  "ishowu",
+];
+
+function isVirtualInput(device: MediaDeviceInfo): boolean {
+  const label = device.label.toLowerCase();
+  return VIRTUAL_INPUT_PATTERNS.some((pattern) => label.includes(pattern));
+}
+
+/**
+ * The device to fall back on when nothing is stored, or when the stored one has
+ * gone away.
+ *
+ * Prefers the first real input over the first device. If every input is
+ * virtual, the first one is still returned — someone whose only input is
+ * BlackHole is presumably using it on purpose, and refusing to pick anything
+ * would be worse than picking the thing they have.
+ */
+function pickDefaultDevice(
+  devices: InputDeviceInfo[],
+): InputDeviceInfo | undefined {
+  return devices.find((d) => !isVirtualInput(d)) ?? devices[0];
+}
+
 function useCreateMicrophoneHook() {
   const { handles, addHandle, removeHandle, isLoaded } = useHandles();
 
@@ -324,13 +365,15 @@ function useCreateMicrophoneHook() {
       if (audioDevices.length > 0) {
         let selectedDeviceId = micID;
 
+        const fallbackDeviceId = pickDefaultDevice(audioDevices)?.deviceId;
+
         if (
           selectedDeviceId &&
           !audioDevices.find((d) => d.deviceId === selectedDeviceId)
         ) {
-          selectedDeviceId = audioDevices[0].deviceId;
+          selectedDeviceId = fallbackDeviceId;
         } else if (!selectedDeviceId) {
-          selectedDeviceId = audioDevices[0].deviceId;
+          selectedDeviceId = fallbackDeviceId;
         }
 
         if (selectedDeviceId !== currentDeviceId) {
