@@ -142,14 +142,14 @@ export function HotkeySettings() {
       )}
 
       <HotkeyCapture
-        label="Toggle Mute"
+        label="Toggle mute"
         description="Toggle your microphone on or off."
         value={muteHotkey}
         onChange={setMuteHotkey}
       />
 
       <HotkeyCapture
-        label="Toggle Deafen"
+        label="Toggle deafen"
         description="Mute all incoming audio and your microphone."
         value={deafenHotkey}
         onChange={setDeafenHotkey}

@@ -3,6 +3,7 @@ import {
   Flex,
   Heading,
   IconButton,
+  SegmentedControl,
   Select,
   Separator,
   Slider,
@@ -19,7 +20,7 @@ import { useSettings } from "@/settings";
 import { useSFU } from "@/webRTC";
 import { voiceLog } from "@/webRTC/src/hooks/voiceLogger";
 
-import { SettingsContainer, SliderSetting, ToggleSetting } from "./settingsComponents";
+import { SettingGroup, SettingsContainer, SliderSetting, ToggleSetting } from "./settingsComponents";
 
 /** Visualizer refresh rate. 30 fps is plenty for a level meter. */
 const VISUALIZER_INTERVAL_MS = 33;
@@ -80,6 +81,7 @@ export function AudioSettings() {
     isMuted,
     setIsMuted,
     inputMode,
+    setInputMode,
   } = useSettings();
 
   const { isConnected } = useSFU();
@@ -323,7 +325,30 @@ export function AudioSettings() {
 
   return (
     <SettingsContainer>
-      <Heading size="4">Audio Settings</Heading>
+      <Heading size="4">Audio</Heading>
+
+      {/* First, because it decides what the rest of this section even shows:
+          push to talk hides the noise gate below. It used to live further down
+          the page in another section, so choosing it made the gate vanish with
+          no visible cause. */}
+      <SettingGroup
+        title="Input mode"
+        description="Voice activity transmits whenever you speak above the noise gate. Push to talk only transmits while you hold a key, and hides the gate below."
+      >
+        <SegmentedControl.Root
+          value={inputMode}
+          onValueChange={(v) => setInputMode(v as "voice_activity" | "push_to_talk")}
+        >
+          <SegmentedControl.Item value="voice_activity">
+            Voice activity
+          </SegmentedControl.Item>
+          <SegmentedControl.Item value="push_to_talk">
+            Push to talk
+          </SegmentedControl.Item>
+        </SegmentedControl.Root>
+      </SettingGroup>
+
+      <Separator size="4" />
 
       {!audioContext && (
         <Callout.Root color="orange">
@@ -424,7 +449,7 @@ export function AudioSettings() {
 
       {!isPTT && <Flex direction="column" gap="2">
         <Text weight="medium" size="2">
-          Noise Gate: {noiseGate}%
+          Noise gate: {noiseGate}%
         </Text>
         <Text size="1" color="gray">
           Audio below this level will be muted. The indicator shows your raw microphone input level.
