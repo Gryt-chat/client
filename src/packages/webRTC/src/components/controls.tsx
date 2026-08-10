@@ -6,7 +6,8 @@ import { PiMicrophoneFill, PiMicrophoneSlashFill, PiMonitorArrowUpFill, PiPhoneD
 
 import { estimateBitrate, getIsBrowserSupported, type ScreenShareQuality,useCamera, useScreenShare } from "@/audio";
 import { useSettings } from "@/settings";
-import { useSockets, useVideoFraming } from "@/socket";
+import { useSockets } from "@/socket";
+import { useVideoFraming } from "@/socket/src/hooks/useVideoFraming";
 import { useSFU } from "@/webRTC";
 
 import { isElectron } from "../../../../lib/electron";

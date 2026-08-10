@@ -1,7 +1,6 @@
 // Hooks
 export * from "./src/hooks/useServerManagement";
 export * from "./src/hooks/useSockets";
-export * from "./src/hooks/useVideoFraming";
 
 // Utils
 export * from "./src/utils/joinServerOnce";

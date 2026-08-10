@@ -333,7 +333,7 @@ export function AudioSettings() {
           no visible cause. */}
       <SettingGroup
         title="Input mode"
-        description="Voice activity transmits whenever you speak above the noise gate. Push to talk only transmits while you hold a key."
+        description="Voice activity transmits whenever you speak above the noise gate. Push to talk only transmits while you hold a key, and hides the gate below."
       >
         <SegmentedControl.Root
           value={inputMode}
