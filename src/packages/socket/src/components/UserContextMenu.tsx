@@ -113,8 +113,13 @@ export function UserContextMenu({
 
   const volume = userVolumes[serverUserId] ?? 100;
   const showDisconnect = canDisconnect && isInVoice && onDisconnectFromVoice;
-  const isAdmin = role === "owner" || role === "admin";
-  const canAct = isAdmin && canTarget(role, targetRole);
+  // Two floors, matching the server. Kick, mute and deafen are reversible and
+  // start at mod; ban is not, and stays at admin. `mod` used to be excluded
+  // from both by an isAdmin check that ignored the ROLE_RANK table right above
+  // it, which is why the role was assignable and did nothing.
+  const outranksTarget = canTarget(role, targetRole);
+  const canModerate = !!role && ROLE_RANK[role] >= ROLE_RANK.mod && outranksTarget;
+  const canBan = !!role && ROLE_RANK[role] >= ROLE_RANK.admin && outranksTarget;
 
   return (
     <ContextMenu.Root>
@@ -189,7 +194,7 @@ export function UserContextMenu({
           </>
         )}
 
-        {canAct && (
+        {canModerate && (
           <>
             <ContextMenu.Separator />
 
@@ -231,7 +236,7 @@ export function UserContextMenu({
               </ContextMenu.Item>
             )}
 
-            {onBan && (
+            {canBan && onBan && (
               <ContextMenu.Item color="red" onClick={onBan}>
                 Ban from server
               </ContextMenu.Item>
