@@ -189,11 +189,15 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     }));
   });
 
-  socket.on("server:kicked", (data: { reason?: string }) => {
+  socket.on("server:kicked", (data: { reason?: string; action?: "kick" | "ban" }) => {
     toast.error(data?.reason || "You were kicked from the server.");
+    // Both, not just the access token. Keeping the refresh token is what let a
+    // kicked client mint a new access token and walk straight back in — the
+    // handler immediately below this one has always removed both.
     removeServerAccessToken(host);
+    removeServerRefreshToken(host);
     window.dispatchEvent(new CustomEvent("server_voice_disconnect", {
-      detail: { host, reason: "kicked_from_server" },
+      detail: { host, reason: data?.action === "ban" ? "banned_from_server" : "kicked_from_server" },
     }));
   });
 
@@ -272,6 +276,17 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
           );
         }
       }, 2000);
+      return;
+    }
+
+    // A refusal, not a failure. It used to fall through to the generic branch
+    // below and read "Failed to join server <host>: banned" — repeatedly, since
+    // the retry loops keep re-emitting server:join. Clear the tokens so those
+    // loops have nothing left to try with.
+    if (errorInfo.error === 'banned' || errorInfo.error === 'membership_required') {
+      removeServerAccessToken(host);
+      removeServerRefreshToken(host);
+      toast.error(errorInfo.message || `You cannot join ${host}.`);
       return;
     }
 

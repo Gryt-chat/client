@@ -250,6 +250,24 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
         console.error(`Token error for server ${host}:`, errorInfo);
         removeServerAccessToken(host);
 
+        // Errors the refresh token cannot fix. Retrying with it was an
+        // infinite loop: the server says the token is dead, we send the same
+        // dead token back, forever. It went unnoticed because only a leave on
+        // another device or an identity replace could revoke a token — until a
+        // kick started doing it, which is how a kick is made to stick.
+        const TERMINAL = [
+          "refresh_token_invalid",
+          "refresh_token_expired",
+          "membership_required",
+          "banned",
+        ];
+
+        if (TERMINAL.includes(errorInfo.error)) {
+          removeServerRefreshToken(host);
+          toast.error(errorInfo.message || `Signed out of ${host}.`);
+          return;
+        }
+
         const refreshToken = getServerRefreshToken(host);
         if (refreshToken) {
           console.log(`[Auth:Socket] token:error for ${host} — attempting refresh with refresh token`);
