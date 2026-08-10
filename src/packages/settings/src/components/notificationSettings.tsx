@@ -59,7 +59,7 @@ export function NotificationSettings() {
       <Separator size="4" />
 
       <SoundSettings
-        label="Message Sound"
+        label="Message sound"
         description="Play a sound when a new message arrives while the app is not focused"
         enabled={messageSoundEnabled}
         onEnabledChange={setMessageSoundEnabled}

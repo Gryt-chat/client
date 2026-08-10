@@ -3,7 +3,6 @@ import {
   Button,
   Flex,
   Heading,
-  SegmentedControl,
   Separator,
 } from "@radix-ui/themes";
 import { useState } from "react";
@@ -12,15 +11,13 @@ import connectMp3 from "@/audio/src/assets/connect.mp3";
 import disconnectMp3 from "@/audio/src/assets/disconnect.mp3";
 import { useSettings } from "@/settings";
 
-import { SettingGroup, SettingsContainer, ToggleSetting } from "./settingsComponents";
+import { SettingsContainer, ToggleSetting } from "./settingsComponents";
 import { SoundSettings } from "./SoundSettings";
 
 export function VoiceSettings() {
   const {
     eSportsModeEnabled,
     setESportsModeEnabled,
-    inputMode,
-    setInputMode,
     connectSoundEnabled,
     setConnectSoundEnabled,
     disconnectSoundEnabled,
@@ -61,25 +58,6 @@ export function VoiceSettings() {
         Voice
       </Heading>
 
-      <SettingGroup
-        title="Input mode"
-        description="Voice activity transmits whenever you speak above the noise gate. Push to talk only transmits while you hold a key."
-      >
-        <SegmentedControl.Root
-          value={inputMode}
-          onValueChange={(v) => setInputMode(v as "voice_activity" | "push_to_talk")}
-        >
-          <SegmentedControl.Item value="voice_activity">
-            Voice activity
-          </SegmentedControl.Item>
-          <SegmentedControl.Item value="push_to_talk">
-            Push to talk
-          </SegmentedControl.Item>
-        </SegmentedControl.Root>
-      </SettingGroup>
-
-      <Separator size="4" />
-
       <ToggleSetting
         title="eSports mode"
         description="Lowest possible latency. Disables all audio processing, enables push-to-talk, caps bitrate at 128kbps (studio quality), and optimizes Opus packetization (10ms frames)."
@@ -95,7 +73,7 @@ export function VoiceSettings() {
 
       <Flex direction="column" gap="4">
         <SoundSettings
-          label="Connect Sound"
+          label="Connect sound"
           description="Play sound when connecting to voice"
           enabled={connectSoundEnabled}
           onEnabledChange={setConnectSoundEnabled}
@@ -108,7 +86,7 @@ export function VoiceSettings() {
           showAlert={showAlert}
         />
         <SoundSettings
-          label="Disconnect Sound"
+          label="Disconnect sound"
           description="Play sound when disconnecting from voice"
           enabled={disconnectSoundEnabled}
           onEnabledChange={setDisconnectSoundEnabled}
