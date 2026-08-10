@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PiArrowsClockwiseFill, PiVideoCameraFill, PiX } from "react-icons/pi";
 
 import { CAMERA_FPS_OPTIONS, type CameraQuality, QUALITY_CONSTRAINTS } from "@/audio";
+import { useSettings } from "@/settings";
 
 interface CameraPreviewModalProps {
   open: boolean;
@@ -64,6 +65,7 @@ export function CameraPreviewModal({
   const [localQuality, setLocalQuality] = useState(quality);
   const [localFps, setLocalFps] = useState(fps);
   const [localMirrored, setLocalMirrored] = useState(mirrored);
+  const { faceFramingEnabled, setFaceFramingEnabled } = useSettings();
   const [localFlipped, setLocalFlipped] = useState(flipped);
   const [retryCount, setRetryCount] = useState(0);
   const [maxCameraHeight, setMaxCameraHeight] = useState<number | null>(null);
@@ -382,6 +384,17 @@ export function CameraPreviewModal({
             <Text as="label" size="2" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
               <Checkbox size="1" checked={localMirrored} onCheckedChange={(v) => setLocalMirrored(v === true)} />
               Mirror preview
+            </Text>
+
+            {/* Here as well as in settings, because this is the moment you are
+                looking at your own framing and can see whether it needs it. */}
+            <Text as="label" size="2" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+              <Checkbox
+                size="1"
+                checked={faceFramingEnabled}
+                onCheckedChange={(v) => setFaceFramingEnabled(v === true)}
+              />
+              Center my face automatically
             </Text>
           </Flex>
 
