@@ -9,6 +9,7 @@
 
 import { getCertificateSub, getValidCertificate } from "./identity-certificate";
 import { listLocalIdentityHosts, signAssertion } from "./identity-keys";
+import { getMergeChoice } from "./identity-merge";
 import { getValidIdentityToken } from "./keycloak";
 import { getLocalIdentity, signIdentityLink } from "./local-identity";
 
@@ -76,7 +77,15 @@ export async function answerChallenge(
     // so the server carries that membership over instead of treating a
     // returning person as a new one. Only when a key already exists — making
     // one in order to prove we hold it would prove nothing.
+    //
+    // And only once somebody has agreed to it. The proof is what lets an
+    // account absorb an identity, so offering it unasked would mean signing in
+    // on a borrowed machine quietly takes over whatever the last person joined
+    // as. Unanswered counts as no.
     let link: string | undefined;
+    if (getMergeChoice() !== "yes") {
+      return { certificate, assertion, tier: "account", link: undefined };
+    }
     const localHosts = await listLocalIdentityHosts().catch((): string[] => []);
     if (localHosts.includes(host)) {
       link = await signIdentityLink(host, challenge.serverHost, challenge.nonce, sub)

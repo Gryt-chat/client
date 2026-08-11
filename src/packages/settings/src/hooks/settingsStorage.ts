@@ -103,6 +103,9 @@ export interface Settings {
   setSettingsTab: (value: string) => void;
   openSettings: (tab?: string) => void;
 
+  /** Reveal the settings most people should not have to see. */
+  showAdvanced: boolean;
+  setShowAdvanced: (show: boolean) => void;
   showDebugOverlay: boolean;
   setShowDebugOverlay: (value: boolean) => void;
   showVideoDebugOverlay: boolean;
@@ -280,6 +283,8 @@ export const settingsInit: Settings = {
   setIsAFK: noop,
   afkTimeoutMinutes: 5,
   setAfkTimeoutMinutes: noop,
+  showAdvanced: false,
+  setShowAdvanced: () => {},
   showDebugOverlay: false,
   setShowDebugOverlay: noop,
   showVideoDebugOverlay: false,

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import type { Account } from "@/common";
-import { signOut } from "@/common";
+import { clearMergeChoice, signOut } from "@/common";
 import { clearUserCache } from "@/settings/src/hooks/userStorage";
 
 import { getElectronAPI, isElectron } from "../../../../lib/electron";
@@ -158,6 +158,9 @@ function useAccountHook(): Account {
     console.log("[Auth:Hook] logout() called", new Error().stack);
     signOut();
     clearUserCache();
+    // The next account gets asked for itself rather than inheriting a yes that
+    // was meant for this one.
+    clearMergeChoice();
     // Signing out drops back to being a guest rather than to a sign-in wall.
     // Local identities are untouched, so the servers joined without an account
     // are still there — signing out of an account is not a request to forget

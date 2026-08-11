@@ -2,6 +2,7 @@ export * from "./src/auth/account-api";
 export * from "./src/auth/answer-challenge";
 export * from "./src/auth/identity-certificate";
 export * from "./src/auth/identity-keys";
+export * from "./src/auth/identity-merge";
 export * from "./src/auth/keycloak";
 export * from "./src/auth/local-identity";
 export * from "./src/auth/server-pins";

@@ -21,6 +21,7 @@ import {
 } from "@/common";
 
 import { getCustomAuthIssuer, setCustomAuthIssuer } from "../../../../config";
+import { useSettings } from "../hooks/useSettings";
 import { SettingsContainer } from "./settingsComponents";
 
 const DEFAULT_ISSUER = "https://auth.gryt.chat/realms/gryt";
@@ -70,6 +71,7 @@ function formatDate(value?: string | number): string | null {
 
 export function AccountSettings() {
   const { isSignedIn, login, logout, loginInProgress } = useAccount();
+  const { showAdvanced } = useSettings();
   const [profile, setProfile] = useState<AccountProfile | null>(null);
   const [issuerInput, setIssuerInput] = useState(
     () => getCustomAuthIssuer() || "",
@@ -220,8 +222,14 @@ export function AccountSettings() {
         </Flex>
       )}
 
+      {/*
+        Advanced, because it is only meaningful to somebody running their own
+        Keycloak, and getting it wrong locks you out of signing in with a
+        message about certificates. Cyan matches every other advanced setting.
+      */}
+      {showAdvanced && (
       <Flex direction="column" gap="2">
-        <Text weight="medium" size="2">
+        <Text weight="medium" size="2" color="cyan">
           Auth server
         </Text>
         <Text size="1" color="gray">
@@ -249,6 +257,7 @@ export function AccountSettings() {
           </Text>
         )}
       </Flex>
+      )}
     </SettingsContainer>
   );
 }
