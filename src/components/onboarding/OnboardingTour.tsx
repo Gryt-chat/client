@@ -157,13 +157,12 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
         <p className="m-0 text-sm leading-6 text-gryt-muted">{step.body}</p>
 
         <div className="mt-4 flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={onFinish}
-            className="rounded-(--gryt-radius-md) px-1 text-sm text-gryt-muted transition-colors hover:text-gryt-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gryt-accent-light"
-          >
+          {/* Ghost rather than a bare element: it sits next to a real Button
+              and was the only control in the app hand-rolling its own hover and
+              focus. Same tone as the secondary in the welcome that hands here. */}
+          <Button tone="ghost" size="small" onClick={onFinish}>
             Skip
-          </button>
+          </Button>
 
           <Button size="small" onClick={advance}>
             {isLast ? "Done" : "Next"}
