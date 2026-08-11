@@ -7,7 +7,7 @@ import ReactDOM from "react-dom/client";
 import { Toaster } from "react-hot-toast";
 
 import { initPluginApi, updatePluginApiTheme, useAddonLoader } from "@/addons";
-import { useTheme, useZoomShortcuts } from "@/common";
+import { SingletonHooks, useTheme, useZoomShortcuts } from "@/common";
 
 import { App } from "./App.tsx";
 import { BrowserBanner } from "./components/browserBanner";
@@ -71,6 +71,9 @@ initPluginApi(__APP_VERSION__);
 initGlobalStorage().then(() => {
   ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
+      {/* Runs every singleton hook body, once, inside this tree. Must sit above
+          ThemedApp, which consumes several of them. */}
+      <SingletonHooks />
       <ThemedApp />
     </React.StrictMode>,
   );

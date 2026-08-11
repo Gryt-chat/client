@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { singletonHook } from "react-singleton-hook";
 
+import { singletonHook } from "@/common";
 import {
   clearStoredAvatar,
   getStoredAvatar,

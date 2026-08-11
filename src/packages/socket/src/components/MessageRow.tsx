@@ -397,7 +397,7 @@ function MessageContent({
   onOpenReactionPicker,
 }: {
   m: ChatMessage;
-  rowRef: React.RefObject<HTMLDivElement>;
+  rowRef: React.RefObject<HTMLDivElement | null>;
   bgColor: string;
   showToolbar: boolean;
   canDelete: boolean;

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { singletonHook } from "react-singleton-hook";
 
 import { useMicrophone, useSpeakers } from "@/audio";
 import connectMp3 from "@/audio/src/assets/connect.mp3";
 import disconnectMp3 from "@/audio/src/assets/disconnect.mp3";
+import { singletonHook } from "@/common";
 import { playNotificationSound } from "@/lib/notificationSound";
 import { useSettings } from "@/settings";
 import { useServerManagement,useSockets } from "@/socket";

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { singletonHook } from "react-singleton-hook";
+
+import { singletonHook } from "@/common";
 
 export interface SharedAudioContextValue {
   audioContext: AudioContext | undefined;

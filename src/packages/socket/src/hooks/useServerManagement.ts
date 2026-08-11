@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { singletonHook } from "react-singleton-hook";
 
+import { singletonHook } from "@/common";
 import { normalizeHost } from "@/common";
 import { useLanDiscovery } from "@/settings/src/hooks/useLanDiscovery";
 import { useServerSettings } from "@/settings/src/hooks/useServerSettings";

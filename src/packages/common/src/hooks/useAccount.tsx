@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { singletonHook } from "react-singleton-hook";
 
 import type { Account } from "@/common";
 import { signOut } from "@/common";
@@ -18,6 +17,7 @@ import {
   startLogin,
   startRegister,
 } from "../auth/keycloak";
+import { singletonHook } from "./singletonHook";
 
 function useAccountHook(): Account {
   const [isSignedIn, setIsSignedIn] = useState<boolean | undefined>(undefined);

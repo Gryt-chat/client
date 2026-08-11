@@ -12,7 +12,7 @@ interface MemberSidebarPanelProps {
   sidebarOpen: boolean;
   sidebarWidthPx: number;
   hoverPx: number;
-  contentRef: RefObject<HTMLDivElement>;
+  contentRef: RefObject<HTMLDivElement | null>;
   isUnreachableWhileConnected: boolean;
   onMouseEnter?: () => void;
   onMouseLeave: () => void;

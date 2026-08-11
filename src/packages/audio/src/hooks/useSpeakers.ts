@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { singletonHook } from "react-singleton-hook";
+
+import { singletonHook } from "@/common";
 
 import { useSharedAudioContext } from "./useAudioContext";
 
