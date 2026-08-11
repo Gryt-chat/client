@@ -1,6 +1,6 @@
 import { Box, Dialog, Flex, IconButton, Separator, Text, TextField } from "@radix-ui/themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { PiArrowFatLineDownFill, PiFadersHorizontalFill, PiFlaskFill, PiGearSixFill, PiHeartFill, PiMagnifyingGlassFill, PiPuzzlePieceFill, PiUserFill, PiVideoCameraFill, PiX } from "react-icons/pi";
+import { PiArrowFatLineDownFill, PiFadersHorizontalFill, PiFlaskFill, PiGearSixFill, PiHeartFill, PiMagnifyingGlassFill, PiPuzzlePieceFill, PiUserCircleFill, PiUserFill, PiVideoCameraFill, PiX } from "react-icons/pi";
 
 import { useSettings } from "@/settings";
 
@@ -8,6 +8,7 @@ import { isElectron } from "../../../../lib/electron";
 import type { SettingsIndexEntry } from "../hooks/settingsSearch";
 import { searchSettings } from "../hooks/settingsSearch";
 import { AboutSettings, UpdatesSettings } from "./aboutSettings";
+import { AccountSettings } from "./accountSettings";
 import { AddonsSettings } from "./addonsSettings";
 import { AdvancedSettings } from "./advancedSettings";
 import { AudioSettings } from "./audioSettings";
@@ -60,6 +61,12 @@ const DESTINATIONS = [
         <ServerIdentitySettings />
       </>
     ),
+  },
+  {
+    value: "account",
+    label: "Account",
+    icon: PiUserCircleFill,
+    content: <AccountSettings />,
   },
   {
     value: "sound-video",
