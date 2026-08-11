@@ -130,6 +130,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
         </Reorder.Group>
         <Tooltip content="Add new server" delayDuration={100} side="right">
           <IconButton
+            data-tour="add-server"
             variant="soft"
             color="gray"
             onClick={() => setShowAddServer(true)}
@@ -144,7 +145,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
         <MiniControls direction="column" />
         <DropdownMenu.Root>
           <DropdownMenu.Trigger>
-            <IconButton>
+            <IconButton data-tour="profile">
               <Avatar
                 fallback={displayNickname[0]}
                 src={displayAvatarUrl || undefined}

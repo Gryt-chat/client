@@ -1,12 +1,15 @@
 import { Flex } from "@radix-ui/themes";
 
+import { useSettings } from "@/settings";
 import { useServerManagement } from "@/socket";
 import { ServerView } from "@/socket/src/components/serverView";
 
+import { OnboardingTour } from "./onboarding/OnboardingTour";
 import { Sidebar } from "./sidebar";
 
 export function MainApp() {
   const { servers, setShowAddServer } = useServerManagement();
+  const { showTour, dismissTour } = useSettings();
 
   return (
     <Flex
@@ -24,6 +27,8 @@ export function MainApp() {
           👈 Add a server using this button
         </Flex>
       )}
+
+      {showTour && <OnboardingTour onFinish={dismissTour} />}
     </Flex>
   );
 }

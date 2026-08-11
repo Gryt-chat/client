@@ -21,6 +21,7 @@ function useSettingsHook() {
   const [settingsTab, setSettingsTab] = useState("profile");
   const [showNickname, setShowNickname] = useState(false);
   const [hasSeenWelcome, setHasSeenWelcome] = useState(false);
+  const [showTour, setShowTour] = useState(false);
 
   const avatarObjectUrlRef = useRef<string | null>(null);
   const [avatarDataUrl, setAvatarDataUrlState] = useState<string | null>(null);
@@ -121,14 +122,12 @@ function useSettingsHook() {
       setAfkTimeoutMinutes(getUserValue("afkTimeoutMinutes", 5));
 
       const seen = getUserValue<boolean>("hasSeenWelcome", false);
-      if (seen) {
-        setHasSeenWelcome(true);
-        if (!getUserValue<string>("nickname", "")) {
-          setSettingsTab("profile");
-          setShowSettings(true);
-        }
-      } else {
-        setHasSeenWelcome(false);
+      setHasSeenWelcome(seen);
+      // A returning user who never picked a nickname used to have Settings
+      // opened on top of them here, with no explanation of why. They get the
+      // tour instead, which at least says what it is pointing at.
+      if (seen && !getUserValue<string>("nickname", "")) {
+        setShowTour(true);
       }
 
       const rec = await getStoredAvatar(userId).catch(() => null);
@@ -347,9 +346,12 @@ function useSettingsHook() {
     setHasSeenWelcome(true);
     setUserValue("hasSeenWelcome", true);
     if (!getUserValue<string>("nickname", "")) {
-      setSettingsTab("profile");
-      setShowSettings(true);
+      setShowTour(true);
     }
+  }
+
+  function dismissTour() {
+    setShowTour(false);
   }
 
   function openSettings(tab: string = "appearance") {
@@ -383,6 +385,8 @@ function useSettingsHook() {
     setShowNickname,
     hasSeenWelcome,
     updateHasSeenWelcome,
+    showTour,
+    dismissTour,
     showVoiceView,
     setShowVoiceView,
     pinChannelsSidebar,
