@@ -3,14 +3,12 @@ import toast from "react-hot-toast";
 import { Socket } from "socket.io-client";
 
 import {
-  getCertificateSub,
+  answerChallenge,
   getServerRefreshToken,
-  getValidCertificate,
   markChannelUnread,
   removeServerAccessToken,
   removeServerRefreshToken,
   setServerAccessToken,
-  signAssertion,
 } from "@/common";
 import { playNotificationSound, preloadNotificationSound } from "@/lib/notificationSound";
 import {
@@ -217,9 +215,8 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
         }
 
         try {
-          const certificate = await getValidCertificate();
-          const sub = getCertificateSub() || "";
-          const assertion = await signAssertion(sub, challenge.serverHost, challenge.nonce);
+          const { certificate, assertion, tier } = await answerChallenge(host, challenge);
+          console.log(`[Auth:Socket] Answering as ${tier} identity`);
           socket.emit("server:verify", { certificate, assertion });
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);

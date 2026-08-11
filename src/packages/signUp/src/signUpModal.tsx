@@ -12,8 +12,14 @@ const DEFAULT_ISSUER = "https://auth.gryt.chat/realms/gryt";
 
 export function SignUpModal() {
   const [error, setError] = useState<string | undefined>(undefined);
-  const { login, register, registrationAllowed, loginInProgress, cancelLogin } =
-    useAccount();
+  const {
+    login,
+    register,
+    registrationAllowed,
+    loginInProgress,
+    cancelLogin,
+    continueWithoutAccount,
+  } = useAccount();
   const pendingInvite = readPendingInvite();
 
   const [countdown, setCountdown] = useState(0);
@@ -155,6 +161,18 @@ export function SignUpModal() {
                 {canRetry ? "Try again" : "Create a new account"}
               </Button>
             )}
+            <Button
+              variant="ghost"
+              disabled={loginInProgress && !canRetry}
+              onClick={() => continueWithoutAccount()}
+            >
+              Continue without an account
+            </Button>
+            <Text size="1" color="gray">
+              You&apos;ll get an identity held only on this device, and servers
+              choose whether to accept it. Nothing to recover it with if you
+              clear your browser data.
+            </Text>
             {canRetry && (
               <Text size="1" color="gray">
                 Didn't work? Check your browser or email inbox, then try again.

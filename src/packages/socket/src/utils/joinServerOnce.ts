@@ -1,6 +1,6 @@
 import { io } from "socket.io-client";
 
-import { clearIdentityCertificate, getCertificateSub, getServerWsBase, getValidCertificate, signAssertion } from "@/common";
+import { answerChallenge, clearIdentityCertificate, getServerWsBase } from "@/common";
 
 import { challengeHostMatches } from "./challengeHost";
 import { guardSocket, serverProofErrorMessage } from "./serverAuth";
@@ -201,9 +201,8 @@ async function attemptJoin(
 
       console.log(`[JoinServer] Received challenge from ${req.host}, signing assertion…`);
       try {
-        const certificate = await getValidCertificate();
-        const sub = getCertificateSub() || "";
-        const assertion = await signAssertion(sub, challenge.serverHost, challenge.nonce);
+        const { certificate, assertion, tier } = await answerChallenge(req.host, challenge);
+        console.log(`[JoinServer] Answering as ${tier} identity`);
         socket.emit("server:verify", { certificate, assertion });
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
