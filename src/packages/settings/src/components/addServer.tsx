@@ -41,6 +41,13 @@ export type FetchInfo = {
   description?: string;
   members: string;
   lanOpen?: boolean;
+  /**
+   * What the server asks of somebody who is not a member yet. Absent from
+   * servers older than GRYT-167, in which case nothing is claimed rather than
+   * something being guessed.
+   */
+  identityTiers?: ("account" | "local")[];
+  joinPolicy?: "invite" | "open";
 };
 
 interface AddNewServerProps {
@@ -201,6 +208,13 @@ export function AddNewServer({
       } else if (result.error.error === "invalid_invite") {
         setInviteRequired(true);
         setJoinError(result.error.message || "Invalid invite code.");
+      } else if (result.error.error === "identity_tier_refused") {
+        // Nothing about the address or the code is wrong, so say the one thing
+        // that is: this server wants an account and you are not using one.
+        // Without this it lands in the generic branch and reads like a fault.
+        setJoinError(
+          "This server requires a Gryt account. Sign in from the menu at the bottom left, then try again.",
+        );
       } else if (
         result.error.error === "invite_rate_limited" ||
         result.error.error === "rate_limited"
@@ -756,6 +770,28 @@ export function AddNewServer({
                           <Text size="2" color="gray">
                             Members: {serverInfo.members}
                           </Text>
+                          {/*
+                            The thing people actually want to know before
+                            typing an address in: whether this costs them an
+                            account. Only claimed when the server said so —
+                            an older one sends no tiers, and silence is better
+                            than a guess that turns into a refusal.
+                          */}
+                          {serverInfo.identityTiers && (
+                            <Badge
+                              size="1"
+                              variant="soft"
+                              color={
+                                serverInfo.identityTiers.includes("local")
+                                  ? "green"
+                                  : "gray"
+                              }
+                            >
+                              {serverInfo.identityTiers.includes("local")
+                                ? "No account needed"
+                                : "Gryt account required"}
+                            </Badge>
+                          )}
                         </Flex>
                       </Flex>
                     </Card>
