@@ -1,4 +1,4 @@
-import { Button, Callout, Dialog, Flex, IconButton, Text } from "@radix-ui/themes";
+import { Alert, Button, Dialog, IconButton } from "@gryt/ui";
 import Fireworks from "react-canvas-confetti/dist/presets/explosion";
 import { PiDownloadSimpleFill, PiHardDrivesFill, PiWarningFill, PiX } from "react-icons/pi";
 
@@ -15,99 +15,126 @@ export function Welcome() {
       {!hasSeenWelcome && (
         <Fireworks autorun={{ duration: 500, speed: 10, delay: 250 }} />
       )}
-      <Dialog.Root open={!hasSeenWelcome} onOpenChange={updateHasSeenWelcome}>
-        <Dialog.Content maxWidth="600px">
-          <Dialog.Close
-            style={{
-              position: "absolute",
-              top: "8px",
-              right: "8px",
-            }}
-          >
-            <IconButton variant="soft" color="gray">
+      {/* Guarded on `open` rather than passed straight through.
+          updateHasSeenWelcome takes no arguments and unconditionally marks the
+          welcome as seen, so wiring it directly to onOpenChange means any
+          open-state change dismisses it forever — including the one that opens
+          it. Radix only ever called this on close, which hid the problem. */}
+      <Dialog.Root
+        open={!hasSeenWelcome}
+        onOpenChange={(open) => {
+          if (!open) {
+            updateHasSeenWelcome();
+          }
+        }}
+      >
+        <Dialog.Portal>
+          <Dialog.Backdrop />
+          <Dialog.Popup className="w-[600px] max-w-[calc(100vw-3rem)]">
+            <Dialog.Close
+              className="absolute top-2 right-2"
+              render={<IconButton size="small" aria-label="Close" />}
+            >
               <PiX size={16} />
-            </IconButton>
-          </Dialog.Close>
-          <Flex direction="column" gap="2">
-            <Dialog.Title as="h1" weight="bold" size="6">
+            </Dialog.Close>
+
+            <Dialog.Title className="text-2xl font-bold">
               Welcome to Gryt!🎉
             </Dialog.Title>
 
             {inBrowser ? (
               <>
-                <Dialog.Description size="2" mb="2">
+                {/* Only one Description per dialog: Base UI wires it to
+                    aria-describedby, and several would leave a screen reader
+                    announcing whichever one won. The rest are plain paragraphs. */}
+                <Dialog.Description>
                   Gryt is an open-source voice chat app. You're trying it out
                   right in your browser — go ahead, add a server and start
                   talking!
                 </Dialog.Description>
 
-                <Callout.Root color="orange" size="1" mb="2">
-                  <Callout.Icon>
-                    <PiWarningFill size={16} />
-                  </Callout.Icon>
-                  <Callout.Text>
+                <Alert severity="warning" className="flex items-start gap-2">
+                  <PiWarningFill size={16} className="mt-0.5 shrink-0" />
+                  <span>
                     Some features are limited in the browser: global push-to-talk
                     (when the window is unfocused), auto-updates, and system
                     tray integration are only available in the desktop app.
-                  </Callout.Text>
-                </Callout.Root>
+                  </span>
+                </Alert>
 
-                <Text size="2" mb="3" color="gray">
+                <p className="text-sm text-gryt-muted">
                   You can spin up your own server and connect to it from this web
                   app, or download the desktop client for the full experience.
-                </Text>
+                </p>
 
-                <Flex gap="2" wrap="wrap">
-                  <Button asChild variant="solid" size="2">
-                    <a
-                      href="https://github.com/Gryt-chat/gryt/releases"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      <PiDownloadSimpleFill size={14} />
-                      Download Desktop App
-                    </a>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="small"
+                    className="no-underline"
+                    startIcon={<PiDownloadSimpleFill size={14} />}
+                    render={
+                      <a
+                        href="https://github.com/Gryt-chat/gryt/releases"
+                        target="_blank"
+                        rel="noreferrer"
+                      />
+                    }
+                  >
+                    Download Desktop App
                   </Button>
-                  <Button asChild variant="soft" size="2">
-                    <a
-                      href="https://docs.gryt.chat/docs/guide/quick-start"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      <PiHardDrivesFill size={14} />
-                      Self-Host a Server
-                    </a>
+                  <Button
+                    size="small"
+                    tone="neutral"
+                    className="no-underline"
+                    startIcon={<PiHardDrivesFill size={14} />}
+                    render={
+                      <a
+                        href="https://docs.gryt.chat/docs/guide/quick-start"
+                        target="_blank"
+                        rel="noreferrer"
+                      />
+                    }
+                  >
+                    Self-Host a Server
                   </Button>
-                </Flex>
+                </div>
               </>
             ) : (
               <>
-                <Dialog.Description size="2" mb="4">
+                <Dialog.Description>
                   Gryt is a voice chat app that allows you to connect with your
                   friends and family. You can create your own server, invite your
                   friends, and start talking!
                 </Dialog.Description>
 
-                <Dialog.Description size="2" mb="4">
+                <p className="text-sm text-gryt-muted">
                   To get started, use the menu on the left to add a server. Once
                   you do that, you can invite your friends to join you.
-                </Dialog.Description>
+                </p>
               </>
             )}
 
-            <Dialog.Description size="2" mb="4" mt={inBrowser ? "2" : undefined}>
+            <p className="text-sm text-gryt-muted">
               If you have any questions, feel free to ask in the{" "}
-              <a href="https://forum.gryt.chat/" target="_blank">
+              <a
+                className="text-gryt-text underline decoration-gryt-border underline-offset-2 hover:decoration-gryt-accent"
+                href="https://forum.gryt.chat/"
+                target="_blank"
+                rel="noreferrer"
+              >
                 Gryt Forum
               </a>{" "}
               or the{" "}
-              <a href="https://app.gryt.chat/invite?host=app.gryt.chat&code=gc9vHTFCOW">
+              <a
+                className="text-gryt-text underline decoration-gryt-border underline-offset-2 hover:decoration-gryt-accent"
+                href="https://app.gryt.chat/invite?host=app.gryt.chat&code=gc9vHTFCOW"
+              >
                 Official Gryt server
               </a>
               .
-            </Dialog.Description>
-          </Flex>
-        </Dialog.Content>
+            </p>
+          </Dialog.Popup>
+        </Dialog.Portal>
       </Dialog.Root>
     </>
   );

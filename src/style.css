@@ -14,27 +14,11 @@
 
 @source "./**/*.{ts,tsx}";
 
-@theme {
-    /* Mirrors the palette in @gryt/ui so utility classes and components agree.
-       The library ships compiled CSS, so its own @theme is already resolved by
-       the time it reaches us and cannot be read back as theme config — hence
-       the copy. Worth replacing with a shared token export from the library
-       before this drifts (GRYT-150). */
-    --color-gryt-bg: #111318;
-    --color-gryt-surface: #1a1d24;
-    --color-gryt-surface-raised: #1e2028;
-    --color-gryt-surface-hover: #334155;
-    --color-gryt-border: #2b303d;
-    --color-gryt-text: #e0e0e6;
-    --color-gryt-muted: #888888;
-    --color-gryt-accent: #968ff8;
-    --color-gryt-accent-light: #b4afff;
-    --color-gryt-secondary: #7dd3fc;
-    --color-gryt-success: #4ade80;
-    --color-gryt-danger: #f87171;
-    --color-gryt-warning: #fbbf24;
-    --color-gryt-on-accent: #141126;
-}
+/* The tokens come from the library now, not a copy of them. @gryt/ui ships
+   theme.css unprocessed for exactly this — importing dist/styles.css would give
+   us the resolved :root variables, which Tailwind cannot read back as theme
+   config. One source of truth for the palette (GRYT-150). */
+@import "@gryt/ui/theme.css";
 
 @font-face {
   font-family: "Atkinson Hyperlegible Next";
@@ -58,6 +42,19 @@
 
 .rt-BaseTabListTrigger {
   justify-content: flex-end;
+}
+
+/* Base typography on the document, not on .radix-themes.
+ *
+ * @gryt/ui portals its overlays to document.body — Dialog, Drawer, Menu, Select
+ * and Tooltip all do — which is outside the .radix-themes wrapper that used to
+ * be the only thing setting a font. Portaled content was falling back to the
+ * browser's serif default. Setting it here means anything portaled inherits,
+ * and it is where this belongs once Radix Themes is gone and that wrapper with
+ * it.
+ */
+html {
+  font-family: "Atkinson Hyperlegible Next", ui-sans-serif, system-ui, sans-serif;
 }
 
 .radix-themes {
