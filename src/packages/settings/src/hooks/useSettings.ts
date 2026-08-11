@@ -358,10 +358,23 @@ function useSettingsHook() {
     });
   }
 
-  function updateHasSeenWelcome() {
+  /**
+   * Close the welcome, and say whether the tour follows.
+   *
+   * Takes its answer in an options object rather than a bare boolean, which is
+   * defensive on purpose: this gets wired to `onOpenChange`, and a handler that
+   * receives an event where it expected a flag reads it as truthy. An event
+   * object here yields `startTour: undefined`, so the accident is a skip — the
+   * quiet outcome rather than the app suddenly performing a tour nobody asked
+   * for.
+   *
+   * The tour still only runs for somebody who has not picked a nickname; asking
+   * for it does not force it on a returning user who already has one.
+   */
+  function completeWelcome(options?: { startTour?: boolean }) {
     setHasSeenWelcome(true);
     setUserValue("hasSeenWelcome", true);
-    if (!getUserValue<string>("nickname", "")) {
+    if (options?.startTour === true && !getUserValue<string>("nickname", "")) {
       setShowTour(true);
     }
   }
@@ -400,7 +413,7 @@ function useSettingsHook() {
     showNickname,
     setShowNickname,
     hasSeenWelcome,
-    updateHasSeenWelcome,
+    completeWelcome,
     showTour,
     dismissTour,
     showVoiceView,
