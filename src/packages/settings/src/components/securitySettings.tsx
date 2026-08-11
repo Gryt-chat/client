@@ -20,8 +20,10 @@ import {
   fetchCredentials,
   startPasskeySetup,
   updateCredentialLabel,
+  useAccount,
 } from "@/common";
 
+import { LocalIdentitySection } from "./localIdentitySection";
 import { SettingsContainer } from "./settingsComponents";
 
 const PASSKEY_TYPE = "webauthn-passwordless";
@@ -192,6 +194,7 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
 }
 
 export function SecuritySettings() {
+  const { isSignedIn } = useAccount();
   const [credentials, setCredentials] = useState<KeycloakCredential[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -212,8 +215,15 @@ export function SecuritySettings() {
   }, []);
 
   useEffect(() => {
+    // Passkeys are a Keycloak credential, so without an account there is
+    // nothing to fetch and the request fails. Somebody using Gryt without one
+    // was being shown a section that could only ever say "Retry".
+    if (!isSignedIn) {
+      setLoading(false);
+      return;
+    }
     loadCredentials();
-  }, [loadCredentials]);
+  }, [isSignedIn, loadCredentials]);
 
   const handleAdd = useCallback(async () => {
     setAdding(true);
@@ -268,6 +278,9 @@ export function SecuritySettings() {
         Security
       </Heading>
 
+      <LocalIdentitySection />
+
+      {!isSignedIn ? null : (
       <Flex direction="column" gap="3">
         <Flex align="center" justify="between">
           <Flex direction="column" gap="1">
@@ -341,6 +354,7 @@ export function SecuritySettings() {
           {adding ? "Redirecting..." : "Add passkey"}
         </Button>
       </Flex>
+      )}
     </SettingsContainer>
   );
 }

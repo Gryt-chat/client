@@ -64,6 +64,15 @@ function idbPut(db: IDBDatabase, key: string, value: unknown): Promise<void> {
   });
 }
 
+function idbKeys(db: IDBDatabase): Promise<string[]> {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const req = tx.objectStore(STORE_NAME).getAllKeys();
+    req.onsuccess = () => resolve(req.result.map(String));
+    req.onerror = () => reject(req.error);
+  });
+}
+
 interface StoredKeyPair {
   privateKey: CryptoKey;
   publicKey: CryptoKey;
@@ -87,7 +96,19 @@ async function loadOrGenerateKeyPair(
     return existing;
   }
 
-  const keyPair = await crypto.subtle.generateKey(ALGO, false, [
+  // Local keys are extractable so they can be saved and restored; the account
+  // key is not, and does not need to be — losing it costs you nothing, because
+  // the CA will certify a fresh one for the same account.
+  //
+  // The trade is smaller than "extractable" makes it sound. A non-extractable
+  // key can still be *used* to sign by anything running in this page, so what
+  // extractability changes is whether a compromise outlives the page, not
+  // whether one is possible. Set against that: without it, clearing site data
+  // destroys every server this identity was known on — the roles, the
+  // ownership, the history — permanently, silently, and with no way back.
+  const extractable = source.kind === "local";
+
+  const keyPair = await crypto.subtle.generateKey(ALGO, extractable, [
     "sign",
     "verify",
   ]);
@@ -173,6 +194,152 @@ export async function signAssertion(
     },
     source,
   );
+}
+
+const LOCAL_PREFIX = "local:";
+
+/** Which hosts this device holds a local identity for. */
+export async function listLocalIdentityHosts(): Promise<string[]> {
+  const db = await openDB();
+  try {
+    return (await idbKeys(db))
+      .filter((k) => k.startsWith(LOCAL_PREFIX))
+      .map((k) => k.slice(LOCAL_PREFIX.length));
+  } finally {
+    db.close();
+  }
+}
+
+export interface IdentityBackup {
+  type: "gryt-local-identity-backup";
+  version: 1;
+  exportedAt: string;
+  identities: { host: string; privateJwk: JsonWebKey; publicJwk: JsonWebKey }[];
+}
+
+export interface ExportResult {
+  backup: IdentityBackup;
+  /**
+   * Hosts whose key could not be read. Keys made before local identities were
+   * extractable cannot be exported at all, and the only honest thing is to name
+   * them rather than hand over a backup that quietly omits some servers.
+   */
+  unexportable: string[];
+}
+
+/**
+ * Read every local identity out for safekeeping.
+ *
+ * This is the file that is the person. Anyone holding it can be them on every
+ * server listed in it, which is why the UI that calls this says so.
+ */
+export async function exportLocalIdentities(): Promise<ExportResult> {
+  const hosts = await listLocalIdentityHosts();
+  const db = await openDB();
+  const identities: IdentityBackup["identities"] = [];
+  const unexportable: string[] = [];
+
+  try {
+    for (const host of hosts) {
+      const pair = await idbGet<StoredKeyPair>(db, `${LOCAL_PREFIX}${host}`);
+      if (!pair?.privateKey || !pair?.publicKey) continue;
+      try {
+        identities.push({
+          host,
+          privateJwk: await crypto.subtle.exportKey("jwk", pair.privateKey),
+          publicJwk: await crypto.subtle.exportKey("jwk", pair.publicKey),
+        });
+      } catch {
+        unexportable.push(host);
+      }
+    }
+  } finally {
+    db.close();
+  }
+
+  return {
+    backup: {
+      type: "gryt-local-identity-backup",
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      identities,
+    },
+    unexportable,
+  };
+}
+
+function isBackup(value: unknown): value is IdentityBackup {
+  if (!value || typeof value !== "object") return false;
+  const b = value as Partial<IdentityBackup>;
+  return (
+    b.type === "gryt-local-identity-backup" &&
+    b.version === 1 &&
+    Array.isArray(b.identities)
+  );
+}
+
+/**
+ * Put saved identities back, and report which hosts were restored.
+ *
+ * Existing keys for the same host are replaced. That is the point — you are
+ * restoring after losing them — but it does mean importing somebody else's
+ * backup would hand you their identity and drop yours, so the UI asks first.
+ */
+export async function importLocalIdentities(raw: string): Promise<string[]> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error("That file isn't a Gryt identity backup.");
+  }
+  if (!isBackup(parsed)) {
+    throw new Error("That file isn't a Gryt identity backup.");
+  }
+
+  const db = await openDB();
+  const restored: string[] = [];
+
+  try {
+    for (const entry of parsed.identities) {
+      if (!entry?.host || !entry.privateJwk || !entry.publicJwk) continue;
+
+      // Imported extractable, so a restored identity can be saved again. A
+      // backup that could only be restored once would be a trap.
+      const privateKey = await crypto.subtle.importKey(
+        "jwk",
+        entry.privateJwk,
+        ALGO,
+        true,
+        ["sign"],
+      );
+      const publicKey = await crypto.subtle.importKey(
+        "jwk",
+        entry.publicJwk,
+        ALGO,
+        true,
+        ["verify"],
+      );
+
+      await idbPut(db, `${LOCAL_PREFIX}${entry.host}`, { privateKey, publicKey });
+      restored.push(entry.host);
+    }
+  } finally {
+    db.close();
+  }
+
+  // Everything, not just the entries written. Whatever is already cached was
+  // read before the restore, so none of it can be trusted to be what the user
+  // just asked to be using — and a stale key here is not a stale value, it is
+  // signing as the wrong person.
+  //
+  // The caller reloads as well. This alone is not enough: anything that already
+  // read a key holds it, and clearing the map cannot reach into those.
+  cachedKeyPairs.clear();
+
+  if (restored.length === 0) {
+    throw new Error("That backup contained no identities.");
+  }
+  return restored;
 }
 
 /**
