@@ -1,3 +1,41 @@
+/* Tailwind, without preflight.
+ *
+ * The usual `@import "tailwindcss"` pulls in preflight, which is a full CSS
+ * reset. This app already has one — Radix Themes ships its own — and stacking
+ * two resets changes margins, borders and form-control defaults across every
+ * screen at once. Importing theme and utilities separately gives the utility
+ * classes with none of that.
+ *
+ * Preflight comes back when Radix Themes goes, not before.
+ */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@source "./**/*.{ts,tsx}";
+
+@theme {
+    /* Mirrors the palette in @gryt/ui so utility classes and components agree.
+       The library ships compiled CSS, so its own @theme is already resolved by
+       the time it reaches us and cannot be read back as theme config — hence
+       the copy. Worth replacing with a shared token export from the library
+       before this drifts (GRYT-150). */
+    --color-gryt-bg: #111318;
+    --color-gryt-surface: #1a1d24;
+    --color-gryt-surface-raised: #1e2028;
+    --color-gryt-surface-hover: #334155;
+    --color-gryt-border: #2b303d;
+    --color-gryt-text: #e0e0e6;
+    --color-gryt-muted: #888888;
+    --color-gryt-accent: #968ff8;
+    --color-gryt-accent-light: #b4afff;
+    --color-gryt-secondary: #7dd3fc;
+    --color-gryt-success: #4ade80;
+    --color-gryt-danger: #f87171;
+    --color-gryt-warning: #fbbf24;
+    --color-gryt-on-accent: #141126;
+}
+
 @font-face {
   font-family: "Atkinson Hyperlegible Next";
   src: url("./assets/fonts/AtkinsonHyperlegibleNextVF-Variable.woff2") format("woff2");

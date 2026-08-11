@@ -70,6 +70,7 @@
     "uuid": "^10.0.0"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
     "@types/mdast": "^4.0.4",
     "@types/node": "^20.19.33",
     "@types/react": "^18.3.28",
@@ -89,6 +90,7 @@
     "eslint-plugin-unused-imports": "^4.4.1",
     "png-to-ico": "^3.0.1",
     "sharp": "^0.34.5",
+    "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3",
     "vite": "^5.4.21",
     "vite-plugin-electron": "^0.29.0",
