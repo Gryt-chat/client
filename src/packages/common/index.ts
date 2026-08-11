@@ -6,6 +6,8 @@ export * from "./src/auth/server-pins";
 export * from "./src/components/GeneratedServerIcon";
 export * from "./src/components/logo";
 export * from "./src/components/wordmark";
+export * from "./src/hooks/singletonHook";
+export * from "./src/hooks/SingletonHooks";
 export * from "./src/hooks/useAccount";
 export * from "./src/hooks/useTheme";
 export * from "./src/hooks/useUnreadBadge";

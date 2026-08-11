@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { singletonHook } from "react-singleton-hook";
 
+import { singletonHook } from "@/common";
 import { useUserId } from "@/common";
 
 import { Server, Servers } from "../types/server";

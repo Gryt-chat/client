@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { singletonHook } from "react-singleton-hook";
+
+import { singletonHook } from "@/common";
 
 import { getElectronAPI } from "../../../lib/electron";
 import type { AddonManifest } from "./types";

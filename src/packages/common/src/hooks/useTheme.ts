@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { singletonHook } from "react-singleton-hook";
+
+import { singletonHook } from "./singletonHook";
 
 type AppearancePreference = "system" | "light" | "dark";
 type AppearanceResolved = "light" | "dark";

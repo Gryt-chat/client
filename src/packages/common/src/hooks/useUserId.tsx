@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { singletonHook } from "react-singleton-hook";
 
 import { initKeycloak } from "../auth/keycloak";
+import { singletonHook } from "./singletonHook";
 import { useAccount } from "./useAccount";
 
 function useUserIdHook(): string | null {

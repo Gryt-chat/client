@@ -24,7 +24,7 @@ export const Visualizer: React.FC<VisualizerProps> = ({
   barsColor,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const drawVisualRef = useRef<number>();
+  const drawVisualRef = useRef<number | undefined>(undefined);
 
   const visualize = useCallback(() => {
     const canvas = canvasRef.current;

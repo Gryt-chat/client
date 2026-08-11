@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { singletonHook } from "react-singleton-hook";
 
+import { singletonHook } from "@/common";
 import { useSettings } from "@/settings";
 
 import { isElectron } from "../../../../lib/electron";

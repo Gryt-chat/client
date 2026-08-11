@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { singletonHook } from "react-singleton-hook";
 
 import { useCamera } from "@/audio/src/hooks/useCamera";
 import { CENTRED, detectFraming, type Framing } from "@/audio/src/lib/faceFraming";
+import { singletonHook } from "@/common";
 import { useSettings } from "@/settings/src/hooks/useSettings";
 
 import { useSockets } from "./useSockets";
