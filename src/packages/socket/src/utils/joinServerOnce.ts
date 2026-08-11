@@ -201,9 +201,9 @@ async function attemptJoin(
 
       console.log(`[JoinServer] Received challenge from ${req.host}, signing assertion…`);
       try {
-        const { certificate, assertion, tier } = await answerChallenge(req.host, challenge);
+        const { certificate, assertion, tier, link } = await answerChallenge(req.host, challenge);
         console.log(`[JoinServer] Answering as ${tier} identity`);
-        socket.emit("server:verify", { certificate, assertion });
+        socket.emit("server:verify", { certificate, assertion, link });
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         console.error(`[JoinServer] Failed to answer challenge for ${req.host}:`, msg);

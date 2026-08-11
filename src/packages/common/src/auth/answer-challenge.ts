@@ -8,14 +8,20 @@
  */
 
 import { getCertificateSub, getValidCertificate } from "./identity-certificate";
-import { signAssertion } from "./identity-keys";
+import { listLocalIdentityHosts, signAssertion } from "./identity-keys";
 import { getValidIdentityToken } from "./keycloak";
-import { getLocalIdentity } from "./local-identity";
+import { getLocalIdentity, signIdentityLink } from "./local-identity";
 
 export interface ChallengeAnswer {
   certificate: string;
   assertion: string;
   tier: "account" | "local";
+  /**
+   * Proof that this account is the same person who was here before without
+   * one. Present only when this device already holds a local identity for the
+   * host — see `signIdentityLink`.
+   */
+  link?: string;
 }
 
 /**
@@ -65,7 +71,21 @@ export async function answerChallenge(
       challenge.nonce,
       { kind: "account" },
     );
-    return { certificate, assertion, tier: "account" };
+
+    // If this device was here before without an account, say so and prove it,
+    // so the server carries that membership over instead of treating a
+    // returning person as a new one. Only when a key already exists — making
+    // one in order to prove we hold it would prove nothing.
+    let link: string | undefined;
+    const localHosts = await listLocalIdentityHosts().catch((): string[] => []);
+    if (localHosts.includes(host)) {
+      link = await signIdentityLink(host, challenge.serverHost, challenge.nonce, sub)
+        // A failure here costs the carry-over, not the join. Better to arrive
+        // as a new member than not at all.
+        .catch(() => undefined);
+    }
+
+    return { certificate, assertion, tier: "account", link };
   }
 
   if (!accepts("local")) {

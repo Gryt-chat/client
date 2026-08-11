@@ -76,3 +76,42 @@ export async function getLocalIdentity(host: string): Promise<LocalIdentity> {
 export function isLocalIdentitySub(sub: string): boolean {
   return sub.startsWith(LOCAL_SUB_PREFIX);
 }
+
+/** The `iss` the server dispatches a link proof on. */
+const LINK_ISSUER = "gryt:link";
+
+/**
+ * Prove that the account joining is the same person who was here before
+ * without one.
+ *
+ * Signed by this host's local key, which is the only thing that can say so: the
+ * account certificate carries a Keycloak id and knows nothing about the
+ * identity that came before it. Bound to the same nonce and audience as the
+ * assertion, so it is good for exactly this join at exactly this server.
+ *
+ * Sent only when a local key for the host already exists. Generating one to
+ * prove ownership of it would prove nothing.
+ */
+export async function signIdentityLink(
+  host: string,
+  serverHost: string,
+  nonce: string,
+  accountSub: string,
+): Promise<string> {
+  const source = { kind: "local", host } as const;
+  const publicJwk = await getPublicKeyJwk(source);
+  const now = Math.floor(Date.now() / 1000);
+
+  return signJwt(
+    {
+      iss: LINK_ISSUER,
+      aud: serverHost,
+      jwk: publicJwk,
+      nonce,
+      link_to: accountSub,
+      iat: now,
+      exp: now + 60,
+    },
+    source,
+  );
+}

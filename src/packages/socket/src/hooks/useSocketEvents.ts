@@ -215,9 +215,9 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
         }
 
         try {
-          const { certificate, assertion, tier } = await answerChallenge(host, challenge);
+          const { certificate, assertion, tier, link } = await answerChallenge(host, challenge);
           console.log(`[Auth:Socket] Answering as ${tier} identity`);
-          socket.emit("server:verify", { certificate, assertion });
+          socket.emit("server:verify", { certificate, assertion, link });
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
           console.error(`[Auth:Socket] Failed to answer challenge for ${host}:`, msg);
