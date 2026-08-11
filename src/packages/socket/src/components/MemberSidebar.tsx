@@ -1,9 +1,10 @@
-import { Avatar, Box, Flex, IconButton, Text, Tooltip } from "@radix-ui/themes";
+import { Avatar, Box, Flex, HoverCard, IconButton, Text, Tooltip } from "@radix-ui/themes";
 import { PiPushPinFill } from "react-icons/pi";
 
 import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 
 import { UserStatus } from "../types/clients";
+import { MemberIdentityCard } from "./MemberIdentityCard";
 import { UserContextMenu } from "./UserContextMenu";
 
 type Role = "owner" | "admin" | "mod" | "member";
@@ -18,6 +19,14 @@ export interface MemberInfo {
   status: UserStatus;
   lastSeen?: Date;
   createdAt?: string | Date;
+  /** Whether there is a Gryt account behind this member, or only a device key. */
+  identityTier?: "account" | "local";
+  /**
+   * Server-scoped marker for the identity, stable across renames. Not the Gryt
+   * user id — that one is the same on every server, and this deliberately is
+   * not.
+   */
+  identityFingerprint?: string;
   isMuted: boolean;
   isDeafened: boolean;
   isServerMuted?: boolean;
@@ -99,14 +108,16 @@ const MemberItem = ({
       onServerDeafen={adminActions?.onServerDeafenUser ? (deafened) => adminActions.onServerDeafenUser!(member.serverUserId, deafened) : undefined}
       onChangeRole={adminActions?.onChangeRole ? (role) => adminActions.onChangeRole!(member.serverUserId, role) : undefined}
     >
-      <div
-        style={{
-          background: "var(--gray-4)",
-          borderRadius: "var(--radius-6)",
-          padding: "8px 12px",
-          cursor: 'default',
-        }}
-      >
+      <HoverCard.Root>
+        <HoverCard.Trigger>
+          <div
+            style={{
+              background: "var(--gray-4)",
+              borderRadius: "var(--radius-6)",
+              padding: "8px 12px",
+              cursor: 'default',
+            }}
+          >
         <Flex align="center" gap="2" width="100%">
           <Avatar
             size="2"
@@ -141,7 +152,12 @@ const MemberItem = ({
             </Text>
           </Flex>
         </Flex>
-      </div>
+          </div>
+        </HoverCard.Trigger>
+        <HoverCard.Content size="1" side="left" align="start">
+          <MemberIdentityCard member={member} />
+        </HoverCard.Content>
+      </HoverCard.Root>
     </UserContextMenu>
   );
 };
