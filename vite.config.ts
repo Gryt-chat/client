@@ -1,3 +1,4 @@
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { cpSync, existsSync, mkdirSync } from "fs";
 import { resolve } from "path";
@@ -48,6 +49,7 @@ const isElectron = !!process.env.ELECTRON;
 export default defineConfig({
   plugins: [
     react(),
+    tailwindcss(),
     tsconfigPaths(),
     copyMediapipeWasm(),
     ...(isElectron
