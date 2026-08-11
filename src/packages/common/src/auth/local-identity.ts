@@ -14,6 +14,12 @@
  * One key per host, never shared between servers — see `IdentitySource`.
  */
 
+import {
+  clearDelegation,
+  delegationSub,
+  getStoredDelegation,
+  isDelegationExpired,
+} from "./device-delegation";
 import { getPublicKeyJwk, signJwt } from "./identity-keys";
 import { jwkThumbprint } from "./server-pins";
 
@@ -48,6 +54,34 @@ export interface LocalIdentity {
  */
 export async function getLocalIdentity(host: string): Promise<LocalIdentity> {
   const source = { kind: "local", host } as const;
+
+  // A delegation, if this device was authorised rather than restored. It says
+  // the identity is somebody else's key, so it has to win over the self-signed
+  // certificate below — which would otherwise quietly claim a different one.
+  const delegation = getStoredDelegation(host);
+  if (delegation) {
+    if (isDelegationExpired(delegation)) {
+      // Deliberately fatal rather than falling back. Signing self-signed here
+      // would join as this device's own key: a different `sub`, so a different
+      // member with none of the roles or history, while looking to the user
+      // like an ordinary join. Better to stop and say what to do.
+      clearDelegation(host);
+      throw new Error(
+        `This device's authorisation for ${host} has expired. ` +
+          `Authorise it again from Settings → You → Security.`,
+      );
+    }
+
+    const sub = await delegationSub(delegation);
+    if (sub) return { sub, certificate: delegation };
+
+    // Unreadable. Same reasoning as expiry — do not guess at an identity.
+    clearDelegation(host);
+    throw new Error(
+      `This device's authorisation for ${host} could not be read. ` +
+        `Authorise it again from Settings → You → Security.`,
+    );
+  }
 
   const publicJwk = await getPublicKeyJwk(source);
   const thumbprint = await jwkThumbprint(publicJwk);

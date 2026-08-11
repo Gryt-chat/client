@@ -1,11 +1,18 @@
 import { Button, Callout, Flex, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { PiDownloadSimple, PiUploadSimple, PiWarningFill } from "react-icons/pi";
+import {
+  PiDownloadSimple,
+  PiKeyholeFill,
+  PiUploadSimple,
+  PiWarningFill,
+} from "react-icons/pi";
 
 import {
+  authoriseDeviceFromBackup,
   exportLocalIdentities,
   importLocalIdentities,
+  listDelegations,
   listLocalIdentityHosts,
 } from "@/common";
 
@@ -23,13 +30,17 @@ import {
  */
 export function LocalIdentitySection() {
   const [hosts, setHosts] = useState<string[]>([]);
+  const [delegated, setDelegated] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  // Which button opened the picker. One input, two meanings.
+  const mode = useRef<"restore" | "authorise">("restore");
 
   const refresh = useCallback(() => {
     listLocalIdentityHosts()
       .then(setHosts)
       .catch(() => setHosts([]));
+    setDelegated(listDelegations().map((d) => d.host));
   }, []);
 
   useEffect(refresh, [refresh]);
@@ -79,6 +90,16 @@ export function LocalIdentitySection() {
     async (file: File) => {
       setBusy(true);
       try {
+        if (mode.current === "authorise") {
+          const authorised = await authoriseDeviceFromBackup(await file.text());
+          refresh();
+          toast.success(
+            `This device can now act as that identity on ${authorised.length} server${authorised.length === 1 ? "" : "s"}. Your key was not saved here.`,
+            { duration: 8000 },
+          );
+          return;
+        }
+
         const restored = await importLocalIdentities(await file.text());
         refresh();
         toast.success(
@@ -138,10 +159,25 @@ export function LocalIdentitySection() {
         <Button
           variant="soft"
           disabled={busy}
-          onClick={() => fileRef.current?.click()}
+          onClick={() => {
+            mode.current = "restore";
+            fileRef.current?.click();
+          }}
         >
           <PiUploadSimple size={16} />
           Restore from a file
+        </Button>
+
+        <Button
+          variant="soft"
+          disabled={busy}
+          onClick={() => {
+            mode.current = "authorise";
+            fileRef.current?.click();
+          }}
+        >
+          <PiKeyholeFill size={16} />
+          Authorise this device
         </Button>
 
         <input
@@ -158,10 +194,26 @@ export function LocalIdentitySection() {
         />
       </Flex>
 
+      {delegated.length > 0 && (
+        <Text size="1" color="gray">
+          This device is authorised to act as a saved identity on{" "}
+          {delegated.length} server{delegated.length === 1 ? "" : "s"}. The
+          authorisation runs out after 30 days, and renewing it means picking
+          the file again.
+        </Text>
+      )}
+
       <Text size="1" color="gray">
-        The file is the identity. Anyone who has it can be you on those servers,
-        so keep it as you would a password — and restoring one replaces whatever
-        identity this device is using.
+        The file is the identity — anyone who has it can be you on those
+        servers, so keep it as you would a password.
+      </Text>
+
+      <Text size="1" color="gray">
+        <strong>Restore</strong> makes this device that identity, by copying the
+        key into it. <strong>Authorise</strong> leaves the key in the file and
+        lets it vouch for this device instead, so the key is never stored here
+        and the permission expires on its own. Prefer authorising on a machine
+        you do not fully control.
       </Text>
     </Flex>
   );
