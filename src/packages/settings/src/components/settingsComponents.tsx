@@ -2,15 +2,32 @@ import { Flex, Slider, Switch, Text } from "@radix-ui/themes";
 import React from "react";
 
 import { settingAnchorId,SETTINGS_INDEX } from "../hooks/settingsSearch";
+import { useSettings } from "../hooks/useSettings";
+
+/**
+ * The colour advanced settings are titled in.
+ *
+ * Not the accent, which belongs to things you are meant to click, and not the
+ * amber used for warnings — nothing here is dangerous, it is just further in.
+ * Cyan at step 11, which is Radix's accessible-text step, so it holds contrast
+ * against the panel in both themes.
+ */
+const ADVANCED_COLOR = "cyan" as const;
 
 // Reusable wrapper components following DRY principles
 interface SettingGroupProps {
   title: string;
   description: string;
   children: React.ReactNode;
+  /**
+   * Hidden unless the advanced toggle is on, and titled in a different colour
+   * when it is, so it reads as "extra" rather than as something you skipped.
+   */
+  advanced?: boolean;
 }
 
-export function SettingGroup({ title, description, children }: SettingGroupProps) {
+export function SettingGroup({ title, description, children, advanced }: SettingGroupProps) {
+  const { showAdvanced } = useSettings();
   // Anchor for search results to scroll to. Derived from the title by the same
   // function the index uses, so the two cannot drift apart — and it ignores any
   // ": value" suffix, so it stays put as the value changes.
@@ -26,9 +43,13 @@ export function SettingGroup({ title, description, children }: SettingGroupProps
     }
   }
 
+  // Rendered nowhere rather than hidden with CSS, so search cannot find a
+  // setting the panel is not currently offering.
+  if (advanced && !showAdvanced) return null;
+
   return (
-    <Flex direction="column" gap="2" id={anchor} data-setting={anchor}>
-      <Text weight="medium" size="2">{title}</Text>
+    <Flex direction="column" gap="2" id={anchor} data-setting={anchor} data-advanced={advanced || undefined}>
+      <Text weight="medium" size="2" color={advanced ? ADVANCED_COLOR : undefined}>{title}</Text>
       <Text size="1" color="gray">{description}</Text>
       {children}
     </Flex>

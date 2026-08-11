@@ -21,7 +21,6 @@ import {
   useSettings,
   useSettingsShortcut,
 } from "@/settings";
-import { SignUpModal } from "@/signUp";
 import {
   DeviceSwitchModal,
   InviteAcceptModal,
@@ -33,6 +32,7 @@ import { useSFU } from "@/webRTC";
 
 import { AuthLoadingOverlay } from "./components/AuthLoadingOverlay";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { IdentityMergePrompt } from "./components/identityMergePrompt";
 import { LeaveServer } from "./components/leaveServer";
 import { MainApp } from "./components/mainApp";
 import { MicrophoneDebugOverlay } from "./components/microphoneDebugOverlay";
@@ -41,12 +41,18 @@ import { VideoDebugOverlay } from "./components/videoDebugOverlay";
 import { Welcome } from "./components/welcome";
 
 export function App() {
-  const { isSignedIn, usingLocalIdentity } = useAccount();
+  const { isSignedIn } = useAccount();
 
-  // Signing in is one way to reach the app; choosing not to is the other. Both
-  // land somewhere that can join a server, they differ in what a server is told
-  // about you when you do.
-  const canUseApp = isSignedIn || usingLocalIdentity;
+  // Nobody is asked to choose. You arrive as an identity held on this device,
+  // and signing in is something you do later from settings if you want a
+  // durable account — at which point the servers you already joined come with
+  // you (GRYT-170). `isSignedIn` still gates nothing; it only decides what a
+  // server is told about you at the moment you join one.
+  //
+  // Still waits for Keycloak to settle before mounting. It resolves to false
+  // quickly when there is no session, and mounting first would let a signed-in
+  // person's saved servers reconnect as a guest before their account was known.
+  const ready = isSignedIn !== undefined;
   const { showAddServer, setShowAddServer, addServer, hasServer, switchToServer } =
     useServerManagement();
   const { nickname, showDebugOverlay, showVideoDebugOverlay } = useSettings();
@@ -87,12 +93,12 @@ export function App() {
   // adding. Follows whichever way you got here — an invite link is just as
   // likely to be the reason somebody opened Gryt without an account.
   useEffect(() => {
-    if (!canUseApp) return;
+    if (!ready) return;
     const pending = readPendingInvite();
     if (!pending) return;
     setPendingInvite(pending);
     setInviteJoinState({ joining: false, error: "" });
-  }, [canUseApp]);
+  }, [ready]);
 
   const handleAcceptInvite = useCallback(() => {
     if (!pendingInvite) return;
@@ -162,7 +168,7 @@ export function App() {
 
   return (
     <ErrorBoundary>
-      {isSignedIn === undefined ? null : canUseApp ? (
+      {!ready ? null : (
         <>
           <MainApp />
           <Settings />
@@ -181,13 +187,12 @@ export function App() {
             onDismiss={handleDismissInvite}
             onGoToServer={handleGoToServer}
           />
+          <IdentityMergePrompt />
           <PushToTalkModal />
           <TrayVoiceState />
           <MicrophoneDebugOverlay isVisible={showDebugOverlay} />
           <VideoDebugOverlay isVisible={showVideoDebugOverlay} />
         </>
-      ) : (
-        <SignUpModal />
       )}
 
       <AuthLoadingOverlay open={showSplash} />

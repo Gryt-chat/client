@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import type { Account } from "@/common";
-import { signOut } from "@/common";
+import { clearMergeChoice, signOut } from "@/common";
 import { clearUserCache } from "@/settings/src/hooks/userStorage";
 
 import { getElectronAPI, isElectron } from "../../../../lib/electron";
@@ -20,24 +20,16 @@ import {
 import { singletonHook } from "./singletonHook";
 
 /**
- * Remembered so the choice survives a reload. Without it, "continue without an
- * account" would put you in front of the sign-in screen again on every start,
- * which reads as the choice not having been taken seriously.
+ * Left behind by the version of Gryt that asked people to choose between an
+ * account and a guest identity on first run. Nothing reads it now — being a
+ * guest is simply what you are until you sign in — so it is cleared once to
+ * keep it from sitting in storage looking meaningful.
  */
-const LOCAL_IDENTITY_KEY = "gryt_use_local_identity";
+const STALE_LOCAL_IDENTITY_KEY = "gryt_use_local_identity";
 
-function readLocalIdentityChoice(): boolean {
+function clearStaleIdentityChoice(): void {
   try {
-    return localStorage.getItem(LOCAL_IDENTITY_KEY) === "true";
-  } catch {
-    return false;
-  }
-}
-
-function writeLocalIdentityChoice(value: boolean): void {
-  try {
-    if (value) localStorage.setItem(LOCAL_IDENTITY_KEY, "true");
-    else localStorage.removeItem(LOCAL_IDENTITY_KEY);
+    localStorage.removeItem(STALE_LOCAL_IDENTITY_KEY);
   } catch {
     // localStorage not available
   }
@@ -45,9 +37,6 @@ function writeLocalIdentityChoice(value: boolean): void {
 
 function useAccountHook(): Account {
   const [isSignedIn, setIsSignedIn] = useState<boolean | undefined>(undefined);
-  const [usingLocalIdentity, setUsingLocalIdentity] = useState(
-    () => readLocalIdentityChoice(),
-  );
   const [loginInProgress, setLoginInProgress] = useState(false);
   const [registrationAllowed, setRegistrationAllowed] = useState(false);
 
@@ -73,6 +62,10 @@ function useAccountHook(): Account {
     });
 
     return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    clearStaleIdentityChoice();
   }, []);
 
   useEffect(() => {
@@ -161,25 +154,18 @@ function useAccountHook(): Account {
     setLoginInProgress(false);
   }
 
-  /**
-   * Use Gryt without signing in. Servers that accept a local identity will let
-   * you in on the strength of a key generated per server; ones that want a Gryt
-   * account will say so when you try to join.
-   */
-  function continueWithoutAccount() {
-    writeLocalIdentityChoice(true);
-    setUsingLocalIdentity(true);
-  }
-
   async function logout() {
     console.log("[Auth:Hook] logout() called", new Error().stack);
     signOut();
     clearUserCache();
+    // The next account gets asked for itself rather than inheriting a yes that
+    // was meant for this one.
+    clearMergeChoice();
+    // Signing out drops back to being a guest rather than to a sign-in wall.
+    // Local identities are untouched, so the servers joined without an account
+    // are still there — signing out of an account is not a request to forget
+    // everything else.
     setIsSignedIn(false);
-    // Back to the entry screen rather than silently continuing as a local
-    // identity, which would look like the logout had not worked.
-    writeLocalIdentityChoice(false);
-    setUsingLocalIdentity(false);
     try {
       await doLogout();
     } catch {
@@ -189,8 +175,6 @@ function useAccountHook(): Account {
 
   return {
     isSignedIn,
-    usingLocalIdentity,
-    continueWithoutAccount,
     loginInProgress,
     registrationAllowed,
     login,
@@ -202,14 +186,12 @@ function useAccountHook(): Account {
 
 const init: Account = {
   isSignedIn: undefined,
-  usingLocalIdentity: false,
   loginInProgress: false,
   registrationAllowed: false,
   login: async () => {},
   register: async () => {},
   logout: async () => {},
   cancelLogin: () => {},
-  continueWithoutAccount: () => {},
 };
 
 export const useAccount = singletonHook(init, useAccountHook);

@@ -26,6 +26,16 @@ function useSettingsHook() {
   const avatarObjectUrlRef = useRef<string | null>(null);
   const [avatarDataUrl, setAvatarDataUrlState] = useState<string | null>(null);
 
+  /**
+   * Whether settings show everything or only what most people need.
+   *
+   * Off by default, and off is the honest default: the panel had grown to the
+   * point where the essential controls sat between debug overlays and things
+   * nobody should touch without a reason. Turning it on reveals the rest in
+   * place rather than moving anything, so a setting somebody has been shown
+   * before does not wander off.
+   */
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [showDebugOverlay, setShowDebugOverlay] = useState(false);
   const [showVideoDebugOverlay, setShowVideoDebugOverlay] = useState(false);
   const [nickname, setNickname] = useState("Unknown");
@@ -85,6 +95,7 @@ function useSettingsHook() {
 
       setNickname(getUserValue("nickname", "Unknown"));
       setHasSeenWelcome(getUserValue("hasSeenWelcome", false));
+      setShowAdvanced(getUserValue("showAdvanced", false));
       setShowDebugOverlay(getUserValue("showDebugOverlay", false));
       setShowVideoDebugOverlay(getUserValue("showVideoDebugOverlay", false));
       setShowPeerLatency(getUserValue("showPeerLatency", true));
@@ -178,6 +189,11 @@ function useSettingsHook() {
   function updateAfkTimeoutMinutes(newTimeout: number) {
     setAfkTimeoutMinutes(newTimeout);
     setUserValue("afkTimeoutMinutes", newTimeout);
+  }
+
+  function updateShowAdvanced(show: boolean) {
+    setShowAdvanced(show);
+    setUserValue("showAdvanced", show);
   }
 
   function updateShowDebugOverlay(show: boolean) {
@@ -397,6 +413,8 @@ function useSettingsHook() {
     setIsAFK,
     afkTimeoutMinutes,
     setAfkTimeoutMinutes: updateAfkTimeoutMinutes,
+    showAdvanced,
+    setShowAdvanced: updateShowAdvanced,
     showDebugOverlay,
     setShowDebugOverlay: updateShowDebugOverlay,
     showVideoDebugOverlay,

@@ -9,6 +9,8 @@ import { SettingsContainer } from "./settingsComponents";
 
 export function AdvancedSettings() {
   const {
+    showAdvanced,
+    setShowAdvanced,
     showDebugOverlay,
     setShowDebugOverlay,
     showVideoDebugOverlay,
@@ -26,8 +28,33 @@ export function AdvancedSettings() {
 
   return (
     <SettingsContainer>
-      <Heading size="4">Advanced</Heading>
+      <Heading size="4" color="cyan">Advanced</Heading>
 
+      {/*
+        The toggle stays visible; what it reveals does not. Everything below is
+        diagnostics and internals — useful when something is wrong, noise the
+        rest of the time, and previously sitting between settings people
+        actually needed.
+
+        Advanced settings are titled in cyan wherever they appear, so once this
+        is on it is obvious which of the things now on screen arrived with it.
+      */}
+      <Box>
+        <Flex align="center" gap="3">
+          <Text size="2" weight="medium">Show advanced settings</Text>
+          <Switch
+            checked={showAdvanced}
+            onCheckedChange={setShowAdvanced}
+          />
+        </Flex>
+        <Text size="1" color="gray" mt="1">
+          Reveals diagnostics and internals across every section. They appear in
+          a different colour so you can tell them apart.
+        </Text>
+      </Box>
+
+      {!showAdvanced ? null : (
+      <>
       <LatencyPanel />
 
       <Separator size="4" />
@@ -89,6 +116,8 @@ export function AdvancedSettings() {
           Turn off to keep server access tokens in session storage (cleared when you close the browser).
         </Text>
       </Box>
+      </>
+      )}
     </SettingsContainer>
   );
 }
