@@ -41,7 +41,12 @@ import { VideoDebugOverlay } from "./components/videoDebugOverlay";
 import { Welcome } from "./components/welcome";
 
 export function App() {
-  const { isSignedIn } = useAccount();
+  const { isSignedIn, usingLocalIdentity } = useAccount();
+
+  // Signing in is one way to reach the app; choosing not to is the other. Both
+  // land somewhere that can join a server, they differ in what a server is told
+  // about you when you do.
+  const canUseApp = isSignedIn || usingLocalIdentity;
   const { showAddServer, setShowAddServer, addServer, hasServer, switchToServer } =
     useServerManagement();
   const { nickname, showDebugOverlay, showVideoDebugOverlay } = useSettings();
@@ -78,14 +83,16 @@ export function App() {
     });
   }, []);
 
-  // After sign-in, show the invite acceptance modal instead of silently adding.
+  // Once in the app, show the invite acceptance modal instead of silently
+  // adding. Follows whichever way you got here — an invite link is just as
+  // likely to be the reason somebody opened Gryt without an account.
   useEffect(() => {
-    if (!isSignedIn) return;
+    if (!canUseApp) return;
     const pending = readPendingInvite();
     if (!pending) return;
     setPendingInvite(pending);
     setInviteJoinState({ joining: false, error: "" });
-  }, [isSignedIn]);
+  }, [canUseApp]);
 
   const handleAcceptInvite = useCallback(() => {
     if (!pendingInvite) return;
@@ -155,7 +162,7 @@ export function App() {
 
   return (
     <ErrorBoundary>
-      {isSignedIn === undefined ? null : isSignedIn ? (
+      {isSignedIn === undefined ? null : canUseApp ? (
         <>
           <MainApp />
           <Settings />
