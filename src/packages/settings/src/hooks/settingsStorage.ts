@@ -87,6 +87,9 @@ export interface Settings {
 
   hasSeenWelcome: boolean;
   updateHasSeenWelcome: () => void;
+  /** The first-run coach-mark tour, shown in place of force-opening Settings. */
+  showTour: boolean;
+  dismissTour: () => void;
 
   showVoiceView: boolean;
   setShowVoiceView: (value: boolean) => void;
@@ -248,6 +251,8 @@ export const settingsInit: Settings = {
   setAvatarFile: async () => {},
   hasSeenWelcome: false,
   updateHasSeenWelcome: noop,
+  showTour: false,
+  dismissTour: noop,
   showVoiceView: true,
   setShowVoiceView: noop,
 
