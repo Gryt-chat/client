@@ -27,9 +27,49 @@ const TIER_LABEL: Record<string, { label: string; color: "gray" | "amber" }> = {
   local: { label: "No account", color: "amber" },
 };
 
+/**
+ * A rename described by when and how often, never by what it used to say.
+ *
+ * A recent rename is the thing worth noticing — an account that became this
+ * name an hour ago is worth a second look in a way that one which has held it
+ * for a year is not. Past names would answer a question nobody is asking here,
+ * at the cost of publishing something somebody may have had a good reason to
+ * change.
+ */
+function describeRenames(count?: number, at?: string | null): string | null {
+  if (!count || count < 1) return null;
+
+  const times = count === 1 ? "Renamed once" : `Renamed ${count} times`;
+  if (!at) return times;
+
+  const when = new Date(at);
+  if (Number.isNaN(when.getTime())) return times;
+
+  const minutes = Math.floor((Date.now() - when.getTime()) / 60_000);
+  if (minutes < 60) return `${times}, last just now`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) {
+    return `${times}, last ${hours} hour${hours === 1 ? "" : "s"} ago`;
+  }
+
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${times}, last ${days} day${days === 1 ? "" : "s"} ago`;
+
+  return `${times}, last ${when.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  })}`;
+}
+
 export function MemberIdentityCard({ member }: { member: MemberInfo }) {
   const joined = formatJoined(member.createdAt);
   const tier = member.identityTier ? TIER_LABEL[member.identityTier] : undefined;
+  const renames = describeRenames(
+    member.nicknameChangeCount,
+    member.nicknameChangedAt,
+  );
 
   return (
     <Flex direction="column" gap="2" style={{ maxWidth: 260 }}>
@@ -60,6 +100,13 @@ export function MemberIdentityCard({ member }: { member: MemberInfo }) {
           <DataList.Item>
             <DataList.Label>Joined</DataList.Label>
             <DataList.Value>{joined}</DataList.Value>
+          </DataList.Item>
+        )}
+
+        {renames && (
+          <DataList.Item>
+            <DataList.Label>Name</DataList.Label>
+            <DataList.Value>{renames}</DataList.Value>
           </DataList.Item>
         )}
 

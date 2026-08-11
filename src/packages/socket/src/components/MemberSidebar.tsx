@@ -27,6 +27,12 @@ export interface MemberInfo {
    * not.
    */
   identityFingerprint?: string;
+  /**
+   * How many times this member has renamed themselves here, and when they last
+   * did. The old names are deliberately not sent.
+   */
+  nicknameChangeCount?: number;
+  nicknameChangedAt?: string | null;
   isMuted: boolean;
   isDeafened: boolean;
   isServerMuted?: boolean;
