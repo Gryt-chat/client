@@ -5,14 +5,14 @@ import { PiX } from "react-icons/pi";
 import { useSettings } from "@/settings";
 
 export function ShareServer() {
-  const { hasSeenWelcome, updateHasSeenWelcome } = useSettings();
+  const { hasSeenWelcome, completeWelcome } = useSettings();
 
   return (
     <>
       {!hasSeenWelcome && (
         <Fireworks autorun={{ duration: 500, speed: 10, delay: 250 }} />
       )}
-      <Dialog.Root open={!hasSeenWelcome} onOpenChange={updateHasSeenWelcome}>
+      <Dialog.Root open={!hasSeenWelcome} onOpenChange={(open) => { if (!open) completeWelcome(); }}>
         <Dialog.Content maxWidth="600px">
           <Dialog.Close
             style={{

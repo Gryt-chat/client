@@ -1,36 +1,50 @@
-import { Alert, Button, Dialog, IconButton } from "@gryt/ui";
+/* Hallmark · component: dialog · genre: modern-minimal · theme: @gryt/ui (design.md)
+ * states: default · hover · focus · active · disabled · loading · error · success
+ *   — carried by @gryt/ui Button and IconButton; this file adds no new controls.
+ * pre-emit critique: P5 H5 E4 S5 R5 V4
+ */
+import { Button, Dialog, IconButton } from "@gryt/ui";
 import Fireworks from "react-canvas-confetti/dist/presets/explosion";
-import { PiWarningFill, PiX } from "react-icons/pi";
+import { PiX } from "react-icons/pi";
 
 import { useSettings } from "@/settings";
 
-import { isElectron } from "../lib/electron";
-
+/**
+ * The first thing anybody sees.
+ *
+ * It used to say welcome and then, in the same breath, list what does not work
+ * in a browser — a warning box above two paragraphs of links, before the person
+ * had seen a single channel. That is a lot to read to find out you are allowed
+ * in. The limitations are true and worth saying somewhere they can be acted on;
+ * a greeting is not that place.
+ *
+ * So: a line, and a choice. The tour or not.
+ */
 export function Welcome() {
-  const { hasSeenWelcome, updateHasSeenWelcome } = useSettings();
-  const inBrowser = !isElectron();
+  const { hasSeenWelcome, completeWelcome } = useSettings();
 
   return (
     <>
       {!hasSeenWelcome && (
         <Fireworks autorun={{ duration: 500, speed: 10, delay: 250 }} />
       )}
-      {/* Guarded on `open` rather than passed straight through.
-          updateHasSeenWelcome takes no arguments and unconditionally marks the
-          welcome as seen, so wiring it directly to onOpenChange means any
-          open-state change dismisses it forever — including the one that opens
-          it. Radix only ever called this on close, which hid the problem. */}
+
+      {/* Guarded on `open` rather than passed straight through. `completeWelcome`
+          marks the welcome seen whenever it runs, so wiring it directly to
+          `onOpenChange` would dismiss the dialog the instant it opened — a bug
+          this file has had before, hidden by a dialog library that only called
+          the handler on close. */}
       <Dialog.Root
         open={!hasSeenWelcome}
         onOpenChange={(open) => {
-          if (!open) {
-            updateHasSeenWelcome();
-          }
+          // Closing by the X, Esc or the backdrop is a skip. Starting something
+          // because somebody dismissed a thing is the wrong way round.
+          if (!open) completeWelcome();
         }}
       >
         <Dialog.Portal>
           <Dialog.Backdrop />
-          <Dialog.Popup className="w-[30rem] max-w-[calc(100vw-3rem)] gap-0">
+          <Dialog.Popup className="w-[26rem] max-w-[calc(100vw-2rem)] gap-0">
             <Dialog.Close
               className="absolute top-3 right-3"
               render={<IconButton size="small" aria-label="Close" />}
@@ -43,75 +57,21 @@ export function Welcome() {
             </Dialog.Title>
 
             <Dialog.Description className="mt-2 text-sm leading-6 text-gryt-muted">
-              An open-source voice chat app. Closing this starts a short tour of
-              the three things worth setting up — it takes about a minute.
+              Open-source voice chat. Three things are worth setting up first —
+              it takes about a minute.
             </Dialog.Description>
 
-            {/* One action, not two competing downloads.
-                The previous version put "Download Desktop App" and "Self-Host a
-                Server" side by side as equal primaries and offered no way into
-                the app at all, so the only obvious move was to close it. The
-                two links survive below, weighted as what they are: things you
-                might do later, not the first thing to do now. */}
-            <div className="mt-5">
-              <Button onClick={updateHasSeenWelcome}>Get started</Button>
+            {/* Stacked under 24rem so neither label can wrap to two lines, which
+                is the one thing a button must never do. Primary first in the
+                DOM, so it is also first for a keyboard and a screen reader. */}
+            <div className="mt-6 flex flex-col gap-2 min-[24rem]:flex-row">
+              <Button onClick={() => completeWelcome({ startTour: true })}>
+                Show me around
+              </Button>
+              <Button tone="neutral" onClick={() => completeWelcome()}>
+                Skip
+              </Button>
             </div>
-
-            {inBrowser ? (
-              <>
-                <Alert
-                  severity="warning"
-                  className="mt-5 flex items-start gap-2 text-xs leading-5"
-                >
-                  <PiWarningFill size={14} className="mt-0.5 shrink-0" />
-                  <span>
-                    In the browser, global push-to-talk, auto-updates and tray
-                    integration are unavailable. Everything else works.
-                  </span>
-                </Alert>
-
-                <p className="mt-4 mb-0 text-xs leading-5 text-gryt-muted">
-                  <a
-                    className="text-gryt-text underline decoration-gryt-border underline-offset-2 transition-colors hover:decoration-gryt-accent"
-                    href="https://github.com/Gryt-chat/gryt/releases"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Download the desktop app
-                  </a>{" "}
-                  for the full experience, or{" "}
-                  <a
-                    className="text-gryt-text underline decoration-gryt-border underline-offset-2 transition-colors hover:decoration-gryt-accent"
-                    href="https://docs.gryt.chat/docs/guide/quick-start"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    host your own server
-                  </a>
-                  .
-                </p>
-              </>
-            ) : null}
-
-            <p className="mt-4 mb-0 text-xs leading-5 text-gryt-muted">
-              Questions go to the{" "}
-              <a
-                className="text-gryt-text underline decoration-gryt-border underline-offset-2 transition-colors hover:decoration-gryt-accent"
-                href="https://forum.gryt.chat/"
-                target="_blank"
-                rel="noreferrer"
-              >
-                forum
-              </a>{" "}
-              or the{" "}
-              <a
-                className="text-gryt-text underline decoration-gryt-border underline-offset-2 transition-colors hover:decoration-gryt-accent"
-                href="https://app.gryt.chat/invite?host=app.gryt.chat&code=gc9vHTFCOW"
-              >
-                official server
-              </a>
-              .
-            </p>
           </Dialog.Popup>
         </Dialog.Portal>
       </Dialog.Root>
