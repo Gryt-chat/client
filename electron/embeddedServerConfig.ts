@@ -311,7 +311,17 @@ export async function generateConfig(
       `STUN_SERVERS=stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302`,
       `CORS_ORIGIN=*`,
       `EXTERNAL_HOST=${externalHost}`,
-      `IDENTITY_MODE=builtin`,
+      // Accept people who have no Gryt account. IDENTITY_MODE=builtin used to
+      // stand here, meaning to make this server independent of Gryt's auth; it
+      // never did, because nothing ever issued a certificate in that mode and
+      // its issuer was a loopback URL no other machine on the LAN could reach.
+      //
+      // This is the setting that actually does it. Not a wide-open door: who
+      // may join is still the server's join policy, which starts at
+      // invite-only, so this only means an invited person does not *also* need
+      // to go and make an account first — which is the whole point of hosting
+      // one of these for people in the same room.
+      `GRYT_IDENTITY_TIERS=account,local`,
       // Seeds the server's `discoverable` column on its first run. Replaces
       // MDNS_ENABLED, which nothing on the server ever read — so unticking the
       // box at creation did nothing. This file is written once, at creation,
