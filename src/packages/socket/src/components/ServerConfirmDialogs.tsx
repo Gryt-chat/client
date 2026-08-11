@@ -1,7 +1,9 @@
-import { AlertDialog, Button, Checkbox, Flex, Select, Text, TextField } from "@radix-ui/themes";
+import { AlertDialog, Button, Checkbox, Code, Flex, Select, Text, TextField } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 
 import type { Channel, SidebarItem } from "@/settings/src/types/server";
+
+import type { MemberInviteInfo } from "../hooks/useAdminActions";
 
 /**
  * Ban lengths, as minutes. Null is permanent, which is what the server stores
@@ -33,14 +35,16 @@ interface ServerConfirmDialogsProps {
   onKickUser: (id: string, reason?: string) => void;
   pendingBanUser: PendingUser | null;
   setPendingBanUser: (v: PendingUser | null) => void;
-  onBanUser: (id: string, reason?: string, expiresInMinutes?: number | null, deleteContent?: boolean) => void;
+  onBanUser: (id: string, reason?: string, expiresInMinutes?: number | null, deleteContent?: boolean, revokeInvite?: boolean) => void;
+  /** How the member got in, so the ban dialog can offer to close that door too. */
+  fetchMemberInvite?: (targetServerUserId: string) => Promise<MemberInviteInfo | null>;
 }
 
 export const ServerConfirmDialogs = ({
   pendingDeleteItem, channelById, cancelDelete, confirmDelete,
   pendingDisconnectUser, setPendingDisconnectUser, onDisconnectUser,
   pendingKickUser, setPendingKickUser, onKickUser,
-  pendingBanUser, setPendingBanUser, onBanUser,
+  pendingBanUser, setPendingBanUser, onBanUser, fetchMemberInvite,
 }: ServerConfirmDialogsProps) => {
   // Optional on both, per Sivert: a moderator acting quickly should not be made
   // to justify themselves first. When one is given the target sees it verbatim,
@@ -49,6 +53,32 @@ export const ServerConfirmDialogs = ({
   const [banReason, setBanReason] = useState("");
   const [banDuration, setBanDuration] = useState<string>("permanent");
   const [banDeleteContent, setBanDeleteContent] = useState(true);
+  const [banInvite, setBanInvite] = useState<MemberInviteInfo | null>(null);
+  // Defaults to off. Revoking takes the link away from everybody who has it,
+  // not just the person being banned, so it is a decision rather than a
+  // consequence.
+  const [banRevokeInvite, setBanRevokeInvite] = useState(false);
+
+  // Asked when the dialog opens, so the answer is there by the time somebody
+  // has finished typing a reason.
+  useEffect(() => {
+    if (!pendingBanUser || !fetchMemberInvite) {
+      setBanInvite(null);
+      setBanRevokeInvite(false);
+      return;
+    }
+    let cancelled = false;
+    setBanInvite(null);
+    setBanRevokeInvite(false);
+    fetchMemberInvite(pendingBanUser.id)
+      .then((info) => {
+        if (!cancelled) setBanInvite(info);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [pendingBanUser, fetchMemberInvite]);
 
   // Clear when the dialog opens rather than when it closes, so a reason typed
   // for one person can never be carried onto the next.
@@ -154,6 +184,32 @@ export const ServerConfirmDialogs = ({
           />
           Delete their messages and reactions
         </Text>
+
+        {/*
+          Only when there is a live invite to close. A ban on somebody who
+          arrived on one achieves less than it looks — an identity with no
+          account behind it costs nothing to replace, so they can return on a
+          new key with the same code. Offering it here is the moment it can be
+          acted on.
+        */}
+        {banInvite?.code && banInvite.active && (
+          <>
+            <Text as="label" size="2" mt="3" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Checkbox
+                checked={banRevokeInvite}
+                onCheckedChange={(v) => setBanRevokeInvite(v === true)}
+              />
+              Revoke the invite they joined with
+            </Text>
+            <Text size="1" color="gray" mt="1" as="div">
+              They joined with <Code size="1">{banInvite.code}</Code>, still
+              active and used {banInvite.usesConsumed}{" "}
+              {banInvite.usesConsumed === 1 ? "time" : "times"}. Leaving it open
+              lets them return on a new identity — and takes anyone else with
+              the link too, so weigh it.
+            </Text>
+          </>
+        )}
         {!banDeleteContent && (
           <Text size="1" color="gray" mt="1" as="div">
             Their messages stay. Unbanning restores access but never restores
@@ -171,7 +227,7 @@ export const ServerConfirmDialogs = ({
               onClick={() => {
                 if (!pendingBanUser) return;
                 const minutes = BAN_DURATIONS.find((d) => d.value === banDuration)?.minutes ?? null;
-                onBanUser(pendingBanUser.id, banReason, minutes, banDeleteContent);
+                onBanUser(pendingBanUser.id, banReason, minutes, banDeleteContent, banRevokeInvite);
                 setPendingBanUser(null);
               }}
             >

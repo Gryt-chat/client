@@ -112,7 +112,7 @@ export const ServerView = () => {
     pendingDisconnectUser, setPendingDisconnectUser,
     pendingKickUser, setPendingKickUser,
     pendingBanUser, setPendingBanUser,
-    handleDisconnectUser, handleKickUser, handleBanUser,
+    handleDisconnectUser, handleKickUser, handleBanUser, fetchMemberInvite,
     handleServerMuteUser, handleServerDeafenUser, handleChangeRole,
     requestDisconnectUser, requestKickUser, requestBanUser,
   } = useAdminActions({ currentConnection, currentlyViewingServer, accessToken, memberLists });
@@ -516,6 +516,7 @@ export const ServerView = () => {
         pendingBanUser={pendingBanUser}
         setPendingBanUser={setPendingBanUser}
         onBanUser={handleBanUser}
+        fetchMemberInvite={fetchMemberInvite}
       />
 
       <ReportsPanel

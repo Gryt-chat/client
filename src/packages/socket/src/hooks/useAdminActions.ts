@@ -10,6 +10,15 @@ interface PendingUser {
   nickname: string;
 }
 
+export interface MemberInviteInfo {
+  targetServerUserId: string;
+  /** Null when they did not arrive on an invite — a LAN join, an open server, or the first member. */
+  code: string | null;
+  active: boolean;
+  usesConsumed: number;
+  maxUses: number;
+}
+
 interface UseAdminActionsParams {
   currentConnection: Socket | null;
   currentlyViewingServer: { host: string; name: string } | null;
@@ -62,15 +71,54 @@ export function useAdminActions({
   }, [send]);
 
   const handleBanUser = useCallback(
-    (targetServerUserId: string, reason?: string, expiresInMinutes?: number | null, deleteContent = true) => {
+    (
+      targetServerUserId: string,
+      reason?: string,
+      expiresInMinutes?: number | null,
+      deleteContent = true,
+      revokeInvite = false,
+    ) => {
       void send("server:ban", {
         targetServerUserId,
         reason: reason?.trim() || undefined,
         expiresInMinutes: expiresInMinutes ?? null,
         deleteContent,
+        revokeInvite,
       });
     },
     [send],
+  );
+
+  /**
+   * How a member got in, asked for when the ban dialog opens.
+   *
+   * Banning somebody who arrived on a still-live invite achieves less than it
+   * looks: an identity with no account behind it costs nothing to replace, so
+   * they can come back on a new key using the same code. The moderator can
+   * only weigh that if they are told.
+   *
+   * Resolves to null rather than throwing. A dialog that cannot answer this
+   * should still let somebody be banned.
+   */
+  const fetchMemberInvite = useCallback(
+    (targetServerUserId: string): Promise<MemberInviteInfo | null> => {
+      if (!currentConnection) return Promise.resolve(null);
+      return new Promise((resolve) => {
+        const timer = setTimeout(() => {
+          currentConnection.off("server:member:invite", onInfo);
+          resolve(null);
+        }, 5000);
+        const onInfo = (info: MemberInviteInfo) => {
+          if (info?.targetServerUserId !== targetServerUserId) return;
+          clearTimeout(timer);
+          currentConnection.off("server:member:invite", onInfo);
+          resolve(info);
+        };
+        currentConnection.on("server:member:invite", onInfo);
+        void send("server:member:invite", { targetServerUserId });
+      });
+    },
+    [currentConnection, send],
   );
 
   const handleUnbanUser = useCallback((grytUserId: string) => {
@@ -110,7 +158,7 @@ export function useAdminActions({
     pendingDisconnectUser, setPendingDisconnectUser,
     pendingKickUser, setPendingKickUser,
     pendingBanUser, setPendingBanUser,
-    handleDisconnectUser, handleKickUser, handleBanUser, handleUnbanUser,
+    handleDisconnectUser, handleKickUser, handleBanUser, handleUnbanUser, fetchMemberInvite,
     handleServerMuteUser, handleServerDeafenUser, handleChangeRole,
     requestDisconnectUser, requestKickUser, requestBanUser,
   };
