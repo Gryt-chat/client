@@ -36,17 +36,25 @@ export interface ChallengeAnswer {
  * different `sub`, so a different member with different roles and history —
  * while looking to the user like a slow join.
  *
- * A server that accepts neither tier refuses with `identity_tier_refused` and
- * says so. Choosing from what the server advertises in `server:info` would be
- * better, since a server accepting only `local` turns away a signed-in user
- * today, but `server:info` and `server:challenge` race on connect and that
- * ordering has to be fixed first.
+ * The server says which tiers it takes in the challenge itself, so the choice
+ * is made knowing the answer rather than guessing and being refused. An older
+ * server sends no list, and then we fall back to preferring the account — which
+ * is what every server accepted before the tiers existed.
  */
 export async function answerChallenge(
   host: string,
-  challenge: { nonce: string; serverHost: string },
+  challenge: {
+    nonce: string;
+    serverHost: string;
+    identityTiers?: ChallengeAnswer["tier"][];
+  },
 ): Promise<ChallengeAnswer> {
-  const token = await getValidIdentityToken().catch(() => undefined);
+  const accepts = (tier: ChallengeAnswer["tier"]) =>
+    !challenge.identityTiers || challenge.identityTiers.includes(tier);
+
+  const token = accepts("account")
+    ? await getValidIdentityToken().catch(() => undefined)
+    : undefined;
 
   if (token) {
     const certificate = await getValidCertificate();
@@ -58,6 +66,13 @@ export async function answerChallenge(
       { kind: "account" },
     );
     return { certificate, assertion, tier: "account" };
+  }
+
+  if (!accepts("local")) {
+    // Signing a certificate this server has already said it will not take
+    // would spend a round trip to be told so, and the refusal that came back
+    // would read like something went wrong rather than like an answer.
+    throw new Error("This server requires a Gryt account to join.");
   }
 
   const { sub, certificate } = await getLocalIdentity(host);
