@@ -21,6 +21,20 @@ function useSettingsHook() {
   const [settingsTab, setSettingsTab] = useState("profile");
   const [showNickname, setShowNickname] = useState(false);
   const [hasSeenWelcome, setHasSeenWelcome] = useState(false);
+  /**
+   * Whether the stored settings have actually been read yet.
+   *
+   * Everything below defaults to something, and until the load has run those
+   * defaults are guesses rather than answers. That is fine for most of them,
+   * and wrong for anything that decides whether to show a first-run thing:
+   * `hasSeenWelcome` defaults to false, so without this the app is briefly
+   * certain that everybody is new.
+   *
+   * The window is not small. `useUserId` holds `userId` at null until Keycloak
+   * answers, on purpose, so the effect below does not even start until a
+   * network round trip has finished.
+   */
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [showTour, setShowTour] = useState(false);
 
   const avatarObjectUrlRef = useRef<string | null>(null);
@@ -148,6 +162,13 @@ function useSettingsHook() {
       ) {
         setShowTour(true);
       }
+
+      // Marked here rather than at the end of the effect. Everything the
+      // first-run decisions rest on has been read by this point, and the avatar
+      // below is a second await that has nothing to do with them — gating the
+      // welcome on it would hold the dialog back for an image nobody is waiting
+      // to see.
+      setSettingsLoaded(true);
 
       const rec = await getStoredAvatar(userId).catch(() => null);
       if (cancelled || !rec?.blob) return;
@@ -382,13 +403,25 @@ function useSettingsHook() {
   function completeWelcome(options?: { startTour?: boolean }) {
     setHasSeenWelcome(true);
     setUserValue("hasSeenWelcome", true);
-    if (
-      options?.startTour === true &&
-      !getUserValue<string>("nickname", "") &&
-      !getUserValue<boolean>("hasSeenTour", false)
-    ) {
-      setShowTour(true);
+
+    if (options?.startTour === true) {
+      if (
+        !getUserValue<string>("nickname", "") &&
+        !getUserValue<boolean>("hasSeenTour", false)
+      ) {
+        setShowTour(true);
+      }
+      return;
     }
+
+    // Anything that is not asking for the tour is declining it. The X, Esc, the
+    // backdrop and "I'll look myself" all say the same thing, and it has to be
+    // written down: the load path above offers the tour to anyone who has seen
+    // the welcome and has no nickname, which is exactly the person who just
+    // said no. Without this, declining bought nothing — the tour came back on
+    // the next reload, which is the same nagging the load path was already
+    // fixed once for.
+    setUserValue("hasSeenTour", true);
   }
 
   /**
@@ -431,6 +464,7 @@ function useSettingsHook() {
     showNickname,
     setShowNickname,
     hasSeenWelcome,
+    settingsLoaded,
     completeWelcome,
     showTour,
     dismissTour,

@@ -86,6 +86,15 @@ export interface Settings {
   setShowNickname: (value: boolean) => void;
 
   hasSeenWelcome: boolean;
+  /**
+   * Whether the stored settings have been read yet.
+   *
+   * Anything deciding whether to show a first-run thing has to wait for this.
+   * The defaults here say "new user" because that is the only safe default for
+   * a value nobody has set, and a first-run dialog cannot tell that apart from
+   * a genuine new user without being told.
+   */
+  settingsLoaded: boolean;
   completeWelcome: (options?: { startTour?: boolean }) => void;
   /** The first-run coach-mark tour, shown in place of force-opening Settings. */
   showTour: boolean;
@@ -253,6 +262,9 @@ export const settingsInit: Settings = {
   setAvatarDataUrl: noop,
   setAvatarFile: async () => {},
   hasSeenWelcome: false,
+  // False in the fallback context too. A consumer rendering outside the
+  // provider has certainly not had settings loaded for it.
+  settingsLoaded: false,
   completeWelcome: noop,
   showTour: false,
   dismissTour: noop,
