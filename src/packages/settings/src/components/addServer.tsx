@@ -2,64 +2,46 @@ import { Dialog } from "@gryt/ui";
 import {
   Avatar,
   Badge,
-  Box,
   Button,
   Callout,
   Card,
   Flex,
   IconButton,
-  Separator,
-  Spinner,
   Text,
   TextField,
   Theme,
   useThemeContext,
 } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   PiBroadcastFill,
-  PiCaretLeftBold,
+  PiCaretRightBold,
   PiHouseFill,
   PiInfoFill,
-  PiSignInFill,
   PiWarningFill,
-  PiWifiHighFill,
-  PiX
+  PiX,
 } from "react-icons/pi";
 
 import {
   GeneratedServerIcon,
-  getServerAccessToken,
   getServerHttpBase,
   normalizeCode,
-  normalizeHost,
-  setServerAccessToken,
-  setServerRefreshToken,
+  parseServerInput,
 } from "@/common";
-import { joinServerOnce } from "@/socket";
 
 import { SkeletonBase } from "../../../socket/src/components/skeletons";
 import { useServerManagement } from "../../../socket/src/hooks/useServerManagement";
 import { useEmbeddedServer } from "../hooks/useEmbeddedServer";
 import { useLanDiscovery } from "../hooks/useLanDiscovery";
-import { useSettings } from "../hooks/useSettings";
+import {
+  type FetchInfo,
+  fetchServerInfo,
+  useServerJoin,
+} from "../hooks/useServerJoin";
 import { CreateServerPanel } from "./createServer";
 
-export type FetchInfo = {
-  serverId?: string;
-  name: string;
-  description?: string;
-  members: string;
-  lanOpen?: boolean;
-  /**
-   * What the server asks of somebody who is not a member yet. Absent from
-   * servers older than GRYT-167, in which case nothing is claimed rather than
-   * something being guessed.
-   */
-  identityTiers?: ("account" | "local")[];
-  joinPolicy?: "invite" | "request" | "open";
-};
+export type { FetchInfo };
 
 interface AddNewServerProps {
   showAddServer: boolean;
@@ -67,30 +49,35 @@ interface AddNewServerProps {
 }
 
 /**
- * How long the modal looks before admitting it has found nothing.
+ * How long to wait after the last keystroke before asking the server about
+ * itself.
  *
- * Discovery never stops — this only decides when to stop saying "searching".
- * Servers that appear later still show up, replacing the empty state.
+ * The preview fetches on paste rather than on a button, which means it also
+ * fetches on every character somebody types by hand. Long enough that typing an
+ * address does not fire a request per letter, short enough that a paste — the
+ * case this is built for — feels immediate.
  */
-const LAN_EMPTY_AFTER_MS = 4000;
+const LOOKUP_DEBOUNCE_MS = 450;
 
 /**
- * Give up on /info after this long.
+ * What an invite looks like, for the three chips under the field.
  *
- * Without a deadline the fetch runs until the OS gives up on the TCP connect,
- * which is over a minute on macOS. isSearching stays true that whole time,
- * every Connect button is disabled and nothing explains why. A server that
- * advertises an address it does not listen on — binding loopback while
- * announcing its hostname, which the dev servers do — hits this every time.
+ * Kept as literal examples rather than a description of the format. "An invite
+ * link or a server address" tells somebody nothing about whether the thing on
+ * their clipboard is one.
  */
-const INFO_TIMEOUT_MS = 8000;
+const INPUT_EXAMPLES = [
+  "gryt.chat/invite?host=…",
+  "gryt.chat",
+  "192.168.1.42:5001",
+];
 
 export function AddNewServer({
   showAddServer,
   setShowAddServer,
 }: AddNewServerProps) {
-  const { addServer, servers, switchToServer } = useServerManagement();
-  const { nickname } = useSettings();
+  const { servers, switchToServer, setShowDiscovery, addServer } =
+    useServerManagement();
   /**
    * The app's own theme values, to be re-applied inside the dialog.
    *
@@ -102,352 +89,188 @@ export function AddNewServer({
    * popup restores the context the portal escaped.
    */
   const theme = useThemeContext();
-  const { lanServers, isElectron, rescan } = useLanDiscovery();
-  const { isAvailable: embeddedServerAvailable } = useEmbeddedServer();
-
-  const [serverHost, setServerHost] = useState("");
+  const { isElectron } = useLanDiscovery();
+  const {
+    isAvailable: embeddedServerAvailable,
+    hasExistingServer,
+    state: embeddedState,
+  } = useEmbeddedServer();
   /**
-   * Which errand this dialog is on.
+   * Whether this machine already has a server on it.
    *
-   * Hosting and joining are two different jobs that were sharing one column,
-   * stacked with the discovered servers in between. Null means the choice has
-   * not been made yet.
+   * The create step is only a create step the first time. Calling it that
+   * afterwards, over a card that says Running and offers Stop, is the dialog
+   * describing something other than what it is showing.
    */
-  const [mode, setMode] = useState<"host" | "join" | null>(null);
+  const hasOwnServer =
+    hasExistingServer ||
+    embeddedState.status === "running" ||
+    embeddedState.status === "starting";
+  const { join, joiningHost } = useServerJoin();
+
   /**
-   * Which half of the dialog to show.
+   * Which errand this dialog is on. Null means the choice has not been made.
    *
    * In a browser there is no embedded server to host with, so offering the
-   * choice would be offering one real option and one dead end. Straight to
-   * Join there.
+   * choice would be offering one real option and one dead end — `step` sends
+   * those straight to Join.
    */
+  const [mode, setMode] = useState<"host" | "join" | null>(null);
   const step = embeddedServerAvailable ? mode : "join";
 
+  /** Exactly what was pasted, before anything is read out of it. */
+  const [inviteInput, setInviteInput] = useState("");
+  const parsed = useMemo(() => parseServerInput(inviteInput), [inviteInput]);
+  const serverHost = parsed.host;
+
   const [serverInfo, setServerInfo] = useState<FetchInfo | null>(null);
-  const [hasError, setHasError] = useState("");
+  /** Public info is switched off. A code can still get you in. */
+  const [serverPrivate, setServerPrivate] = useState(false);
+  const [lookupError, setLookupError] = useState("");
   const [isSearching, setIsSearching] = useState(false);
-  // Drives the switch from "searching" to "found nothing". Reset each time the
-  // modal opens, so reopening looks again rather than showing a stale verdict.
-  const [lanSearchExpired, setLanSearchExpired] = useState(false);
-  // Set when Connect is pressed on a discovered server. Joining needs
-  // serverInfo, which arrives asynchronously, so the join is deferred until the
-  // fetch lands rather than fired blindly.
-  const autoJoinRef = useRef(false);
-  const [isJoining, setIsJoining] = useState(false);
+
+  /** A code typed by hand, when the link carried none or carried a bad one. */
+  const [manualCode, setManualCode] = useState("");
   const [inviteRequired, setInviteRequired] = useState(false);
-  // A line for whoever decides, offered up front rather than after a refusal:
-  // /info publishes joinPolicy, so the dialog knows before anybody tries.
   const [joinNote, setJoinNote] = useState("");
   const [awaitingApproval, setAwaitingApproval] = useState(false);
-  const [inviteCode, setInviteCode] = useState("");
   const [joinError, setJoinError] = useState("");
-  const [serverPrivate, setServerPrivate] = useState(false);
 
-  const abortRef = useRef<AbortController | null>(null);
+  const isJoining = joiningHost !== null;
+  const inviteCode = manualCode || parsed.code;
 
-  const normalizedServerHost = useMemo(
-    () => normalizeHost(serverHost),
-    [serverHost]
-  );
+  const existingServer = servers[serverHost];
+  const existingById = useMemo(() => {
+    if (!serverInfo?.serverId) return null;
+    return (
+      Object.entries(servers).find(
+        ([, server]) =>
+          !!server.serverId && server.serverId === serverInfo.serverId,
+      ) ?? null
+    );
+  }, [serverInfo?.serverId, servers]);
+  const alreadyMember = !!existingServer || !!existingById;
 
-  const findExistingServerById = useCallback(
-    (serverId?: string) => {
-      if (!serverId) return null;
-
-      return (
-        Object.entries(servers).find(
-          ([, server]) => !!server.serverId && server.serverId === serverId
-        ) ?? null
-      );
-    },
-    [servers]
-  );
-
-  const alreadyMemberByHost = useMemo(
-    () => normalizedServerHost.length > 0 && !!servers[normalizedServerHost],
-    [normalizedServerHost, servers]
-  );
-
-  const existingServerById = useMemo(
-    () => findExistingServerById(serverInfo?.serverId),
-    [findExistingServerById, serverInfo?.serverId]
-  );
-
-  const alreadyMemberByServerId = !!existingServerById;
-  const alreadyMember = alreadyMemberByHost || alreadyMemberByServerId;
-
-  const isLanDiscovered = useMemo(() => {
-    if (!serverHost) return false;
-    const nh = normalizeHost(serverHost);
-    return lanServers.some((s) => {
-      const addr = s.port === 443 ? s.host : `${s.host}:${s.port}`;
-      return normalizeHost(addr) === nh;
-    });
-  }, [serverHost, lanServers]);
+  function resetJoinState() {
+    setInviteInput("");
+    setServerInfo(null);
+    setServerPrivate(false);
+    setLookupError("");
+    setIsSearching(false);
+    setManualCode("");
+    setInviteRequired(false);
+    setJoinNote("");
+    setAwaitingApproval(false);
+    setJoinError("");
+  }
 
   function closeDialog() {
-    if (isSearching || isJoining) return;
+    if (isJoining) return;
 
     setMode(null);
-    setServerInfo(null);
-    setHasError("");
-    setIsSearching(false);
-    abortRef.current?.abort();
-    abortRef.current = null;
-    setIsJoining(false);
-    setInviteRequired(false);
-    setAwaitingApproval(false);
-    setInviteCode("");
-    setJoinError("");
-    setServerPrivate(false);
+    resetJoinState();
     setShowAddServer(false);
   }
 
-  async function joinServer() {
-    if (!serverInfo && !serverPrivate) return;
-
-    const normalizedHost = normalizeHost(serverHost);
-    if (!normalizedHost) return;
-
-    const existingByHost = servers[normalizedHost];
-    if (existingByHost) {
-      setJoinError("You are already a member of this server.");
-      switchToServer(existingByHost.host);
-      return;
-    }
-
-    if (serverInfo?.serverId) {
-      const existingById = findExistingServerById(serverInfo.serverId);
-      if (existingById) {
-        const [existingHost] = existingById;
-        setJoinError("You are already connected to this server.");
-        switchToServer(existingHost);
-        return;
-      }
-    }
-
-    const lanBypass = !!(isLanDiscovered && serverInfo?.lanOpen);
-    const code = inviteRequired && !lanBypass ? normalizeCode(inviteCode) : "";
-
-    if (inviteRequired && !lanBypass && code.length === 0) {
-      setJoinError("Invite code required to join this server.");
-      return;
-    }
-
-    setIsJoining(true);
-    setJoinError("");
-
-    const result = await joinServerOnce({
-      host: normalizedHost,
-      nickname,
-      inviteCode: code.length > 0 ? code : undefined,
-      note: joinNote.trim().length > 0 ? joinNote.trim() : undefined,
-    });
-
-    if (!result.ok) {
-      if (result.error.error === "approval_pending") {
-        // Not a failure and not something to retry — the answer comes from a
-        // person. The dialog says so and stops offering the button that would
-        // just ask again.
-        setAwaitingApproval(true);
-        setJoinError("");
-      } else if (result.error.error === "invite_required") {
-        setInviteRequired(true);
-        setJoinError(
-          result.error.message ||
-            "This server is invite-only. Paste an invite code to join."
-        );
-      } else if (result.error.error === "invalid_invite") {
-        setInviteRequired(true);
-        setJoinError(result.error.message || "Invalid invite code.");
-      } else if (result.error.error === "identity_tier_refused") {
-        // Nothing about the address or the code is wrong, so say the one thing
-        // that is: this server wants an account and you are not using one.
-        // Without this it lands in the generic branch and reads like a fault.
-        setJoinError(
-          "This server requires a Gryt account. Sign in from the menu at the bottom left, then try again.",
-        );
-      } else if (
-        result.error.error === "invite_rate_limited" ||
-        result.error.error === "rate_limited"
-      ) {
-        setJoinError(
-          result.error.message ||
-            "Too many attempts. Please wait and try again."
-        );
-      } else if (result.error.error === "connect_error") {
-        setJoinError(
-          result.error.message ||
-            "Could not connect to the server. Check the address and your network."
-        );
-      } else if (result.error.error === "timeout") {
-        setJoinError(
-          result.error.message ||
-            "Connection timed out. The server may be down or unreachable."
-        );
-      } else {
-        setJoinError(
-          result.error.message || `Failed to join server: ${result.error.error}`
-        );
-      }
-
-      setIsJoining(false);
-      return;
-    }
-
-    setServerAccessToken(normalizedHost, result.joinInfo.accessToken);
-    if (result.joinInfo.refreshToken) {
-      setServerRefreshToken(normalizedHost, result.joinInfo.refreshToken);
-    }
-
-    addServer(
-      {
-        name: serverInfo?.name || normalizedHost,
-        host: normalizedHost,
-        serverId: serverInfo?.serverId,
-      },
-      true
-    );
-
-    setIsJoining(false);
-    closeDialog();
-    setServerHost("");
-  }
-
+  /**
+   * Look the server up whenever the address changes, on a timer.
+   *
+   * The lookup owns everything downstream of it, so this is also where all of
+   * it is cleared — a preview left over from the last address is worse than an
+   * empty one, because it looks like an answer.
+   */
   useEffect(() => {
     setServerInfo(null);
-    setHasError("");
+    setServerPrivate(false);
+    setLookupError("");
+    setManualCode("");
     setInviteRequired(false);
     setAwaitingApproval(false);
-    setInviteCode("");
     setJoinError("");
-    setServerPrivate(false);
+
+    if (!serverHost) {
+      setIsSearching(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    setIsSearching(true);
+
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        const result = await fetchServerInfo(serverHost, controller.signal);
+        if (controller.signal.aborted) return;
+
+        if (result.kind === "info") setServerInfo(result.info);
+        else if (result.kind === "private") setServerPrivate(true);
+        else if (result.kind === "error") setLookupError(result.message);
+
+        setIsSearching(false);
+      })();
+    }, LOOKUP_DEBOUNCE_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
   }, [serverHost]);
 
+  // Reopening starts from the top rather than from wherever the last visit
+  // left off. Somebody who closed this halfway through joining one server is
+  // not usually coming back to finish that.
+  useEffect(() => {
+    if (showAddServer) return;
+    setMode(null);
+    resetJoinState();
+  }, [showAddServer]);
+
   useEffect(() => {
     setJoinError("");
-  }, [inviteCode]);
+  }, [manualCode]);
 
-  // Completes the Connect action once the fetch has landed. If the server turns
-  // out to need an invite, joinServer surfaces that and the card is already on
-  // screen for the code to be entered — so the fallback is the old behaviour
-  // rather than a dead end.
-  useEffect(() => {
-    if (!autoJoinRef.current) return;
-    if (isSearching) return;
+  async function handleJoin() {
+    if (!serverHost) return;
+    if (!serverInfo && !serverPrivate) return;
 
-    if (hasError) {
-      autoJoinRef.current = false;
+    setJoinError("");
+
+    const outcome = await join({
+      host: serverHost,
+      info: serverInfo,
+      inviteCode,
+      note: joinNote,
+    });
+
+    if (outcome.ok) {
+      closeDialog();
       return;
     }
 
-    if (!serverInfo && !serverPrivate) return;
+    if (outcome.kind === "approval_pending") {
+      // Not a failure and not something to retry — the answer comes from a
+      // person, so the dialog says so and stops offering the button that would
+      // just ask again.
+      setAwaitingApproval(true);
+      return;
+    }
 
-    autoJoinRef.current = false;
-    void joinServer();
-    // joinServer is recreated each render and depends on this same state;
-    // keying off the fetch result is what makes this fire exactly once.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serverInfo, serverPrivate, hasError, isSearching]);
-
-  // Restart the "searching" window each time the modal opens. Discovery itself
-  // runs continuously in the background; this only controls how long the modal
-  // claims to be looking before it admits it has found nothing.
-  useEffect(() => {
-    if (!showAddServer) return;
-
-    // Opening the modal starts a fresh scan rather than showing whatever was
-    // found at launch. Discovery announces each server once, so without this
-    // the list is only ever as current as the moment the app started.
-    rescan();
-
-    setLanSearchExpired(false);
-    const timer = window.setTimeout(
-      () => setLanSearchExpired(true),
-      LAN_EMPTY_AFTER_MS,
-    );
-
-    return () => window.clearTimeout(timer);
-  }, [showAddServer, rescan]);
-
-  function getServerInfo(overrideHost?: string) {
-    const normalizedHost = overrideHost || normalizeHost(serverHost);
-    if (!normalizedHost) return;
-
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    // Distinguishes "we gave up" from "a newer request replaced this one",
-    // which abort alone cannot tell apart.
-    let timedOut = false;
-    const timeout = window.setTimeout(() => {
-      timedOut = true;
-      controller.abort();
-    }, INFO_TIMEOUT_MS);
-
-    setIsSearching(true);
-    setHasError("");
-    setServerInfo(null);
-    setServerPrivate(false);
-    setInviteRequired(false);
-    setAwaitingApproval(false);
-    setInviteCode("");
-    setJoinError("");
-
-    const base = getServerHttpBase(normalizedHost);
-    const headers: Record<string, string> = {};
-    const storedToken = getServerAccessToken(normalizedHost);
-    if (storedToken) headers.Authorization = `Bearer ${storedToken}`;
-
-    fetch(`${base}/info`, { signal: controller.signal, headers })
-      .then((res) => {
-        if (res.status === 404) {
-          setServerPrivate(true);
-          setServerHost(normalizedHost);
-          return;
-        }
-        if (!res.ok) throw new Error(`Server responded with ${res.status}`);
-        return res.json() as Promise<FetchInfo>;
-      })
-      .then((info) => {
-        if (!info) return;
-
-        setServerInfo(info);
-        setServerHost(normalizedHost);
-
-        if (info.serverId) {
-          const existingById = findExistingServerById(info.serverId);
-          if (existingById) {
-            setJoinError("You are already connected to this server.");
-          }
-        }
-      })
-      .catch((err: unknown) => {
-        if (err instanceof DOMException && err.name === "AbortError") {
-          // Superseded by a newer lookup — the newer one owns the UI now.
-          if (!timedOut) return;
-          setHasError(
-            "No response from this server. It may be advertising an address it is not reachable on.",
-          );
-          return;
-        }
-        const message =
-          err instanceof Error ? err.message : "Server is not responding";
-        setHasError(message);
-      })
-      .finally(() => {
-        window.clearTimeout(timeout);
-        setIsSearching(false);
-      });
+    if (outcome.kind === "invite_required") setInviteRequired(true);
+    setJoinError(outcome.message);
   }
 
-  const handleEnterKey = (event: { key: string }) => {
-    if (event.key === "Enter") {
-      if (isSearching || isJoining) return;
-      getServerInfo();
-    }
-  };
+  function openDiscovery() {
+    setShowDiscovery(true);
+    closeDialog();
+  }
+
+  const canJoin =
+    !!serverHost &&
+    !alreadyMember &&
+    !isSearching &&
+    !isJoining &&
+    !awaitingApproval &&
+    (!!serverInfo || serverPrivate) &&
+    (!inviteRequired || normalizeCode(inviteCode).length > 0);
 
   return (
     <Dialog.Root
@@ -472,7 +295,7 @@ export function AddNewServer({
     >
       <Dialog.Portal>
         <Dialog.Backdrop />
-        <Dialog.Popup className="w-[37.5rem] max-w-[calc(100vw-2rem)] overflow-hidden">
+        <Dialog.Popup className="w-[30rem] max-w-[calc(100vw-2rem)] overflow-hidden">
           <Theme
             appearance={theme.appearance}
             accentColor={theme.accentColor}
@@ -482,585 +305,349 @@ export function AddNewServer({
             panelBackground={theme.panelBackground}
             hasBackground={false}
           >
-        {/* Positioned by a wrapper rather than by a class on either the Close or
-            the IconButton. Close renders *as* the IconButton, and the className
-            does not survive that clone in either position — the button was
-            dropping into normal flow at the top left of the content. */}
-        <div className="absolute top-2 right-2 z-10">
-          <Dialog.Close
-            render={<IconButton variant="soft" color="gray" aria-label="Close" />}
-          >
-            <PiX size={16} />
-          </Dialog.Close>
-        </div>
+            {/* Positioned by a wrapper rather than by a class on either the
+                Close or the IconButton. Close renders *as* the IconButton, and
+                the className does not survive that clone in either position —
+                the button was dropping into normal flow at the top left of the
+                content. */}
+            <div className="absolute top-2 right-2 z-10">
+              <Dialog.Close
+                render={
+                  <IconButton variant="soft" color="gray" aria-label="Close" />
+                }
+              >
+                <PiX size={16} />
+              </Dialog.Close>
+            </div>
 
-        <Flex direction="column" gap="2">
-          {/* Back sits above the title, in the same column, as the label half of
-              a label-and-heading pair. It used to hang below the description,
-              detached from both — a control for leaving the step, rendered
-              after the step had finished introducing itself. Above, it reads as
-              where you are as much as how to leave. */}
-          {step !== null && (
-            <button
-              type="button"
-              onClick={() => setMode(null)}
-              /* border-0 and bg-transparent are not redundant. This app imports
-                 Tailwind's theme and utilities but deliberately skips preflight
-                 — Radix Themes ships its own reset and two resets fight — so a
-                 bare <button> keeps the browser's default border and grey
-                 background. That is what made this look like a permanently
-                 focused control rather than a quiet label.
+            {/* m-0 on both, and it is not tidying. Tailwind's preflight is off
+                in this app — Radix Themes ships its own reset and two resets
+                fight — and that reset only covers elements Radix renders. A
+                raw <h2>/<p> keeps the browser's 1em margins, which is where
+                the gap under the title came from. */}
+            <Flex direction="column" gap="1" align="center">
+              <Dialog.Title className="m-0 text-xl font-bold">
+                {step === "host"
+                  ? hasOwnServer
+                    ? "Your server"
+                    : "Create your server"
+                  : step === "join"
+                    ? "Join a server"
+                    : "Add a server"}
+              </Dialog.Title>
 
-                 The focus ring is a shadow rather than an outline, so it cannot
-                 lose to the UA's own ring. */
-              className="-ml-1 flex w-fit cursor-pointer appearance-none items-center gap-1 rounded border-0 bg-transparent px-1 py-0.5 text-xs text-gryt-text/70 transition-colors duration-150 outline-none hover:text-gryt-text focus-visible:shadow-[0_0_0_2px_var(--color-gryt-accent)]"
-            >
-              <PiCaretLeftBold size={12} />
-              Add a server
-            </button>
-          )}
-
-          <Dialog.Title className="text-2xl font-bold">
-            {step === "host" ? "Host a server" : step === "join" ? "Join a server" : "Add a server"}
-          </Dialog.Title>
-
-          <Dialog.Description className="mb-4 text-sm">
-            {step === "host"
-              ? "Run a server on this machine. Your friends connect to you."
-              : step === "join"
-                ? "Enter an address, or pick one already running on your network."
-                : "Run one yourself, or join somebody else's."}
-          </Dialog.Description>
-
-          {/* The choice. Two errands that were sharing one column, with the
-              discovered servers stacked in between them. */}
-          {step === null && (
-            <Flex direction={{ initial: "column", sm: "row" }} gap="3" mb="2">
-              <Card asChild size="2" style={{ flex: 1 }}>
-                <button
-                  type="button"
-                  data-tour="choose-host"
-                  onClick={() => setMode("host")}
-                  style={{ cursor: "pointer", textAlign: "left" }}
-                >
-                  <Flex direction="column" gap="1" align="start">
-                    <PiHouseFill size={20} />
-                    <Text size="3" weight="bold">Host a server</Text>
-                    <Text size="2" color="gray">
-                      Runs on this machine. Best for a few friends.
-                    </Text>
-                  </Flex>
-                </button>
-              </Card>
-
-              <Card asChild size="2" style={{ flex: 1 }}>
-                <button
-                  type="button"
-                  data-tour="choose-join"
-                  onClick={() => setMode("join")}
-                  style={{ cursor: "pointer", textAlign: "left" }}
-                >
-                  <Flex direction="column" gap="1" align="start">
-                    <PiSignInFill size={20} />
-                    <Text size="3" weight="bold">Join a server</Text>
-                    <Text size="2" color="gray">
-                      With an invite, an address, or one on your network.
-                    </Text>
-                  </Flex>
-                </button>
-              </Card>
+              <Dialog.Description className="m-0 text-center text-sm">
+                {step === "host"
+                  ? hasOwnServer
+                    ? "It runs on this machine. Connect to it, or shut it down."
+                    : "It runs on this machine, and your friends connect to you."
+                  : step === "join"
+                    ? "Paste the invite a friend sent you, or the address of a server you already know."
+                    : "Start one of your own, or join somebody else's."}
+              </Dialog.Description>
             </Flex>
-          )}
 
-          <Flex direction="column" gap="4">
-            {step === "host" && embeddedServerAvailable && (
-              <>
-                <CreateServerPanel
-                  onServerReady={(serverUrl, serverName) => {
-                    const host = normalizeHost(
-                      serverUrl.replace(/^https?:\/\//, "")
-                    );
+            {/* Step one. A single row, because there is one thing to create and
+                Gryt has no templates to offer under it. */}
+            {step === null && (
+              <Flex direction="column" gap="5" mt="2">
+                <Card asChild size="2">
+                  <button
+                    type="button"
+                    data-tour="choose-host"
+                    onClick={() => setMode("host")}
+                    style={{ cursor: "pointer", textAlign: "left" }}
+                  >
+                    <Flex align="center" gap="3">
+                      <Flex
+                        align="center"
+                        justify="center"
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: "var(--radius-3)",
+                          background: "var(--accent-a3)",
+                          color: "var(--accent-11)",
+                          flexShrink: 0,
+                        }}
+                      >
+                        <PiHouseFill size={18} />
+                      </Flex>
 
-                    if (servers[host]) {
-                      switchToServer(host);
-                      closeDialog();
-                      return;
-                    }
+                      <Flex direction="column" gap="0" style={{ minWidth: 0 }}>
+                        <Text size="3" weight="bold">
+                          {hasOwnServer ? "Your server" : "Create my own"}
+                        </Text>
+                        <Text size="2" color="gray">
+                          {hasOwnServer
+                            ? "Already set up on this machine."
+                            : "Runs on this machine. Best for a few friends."}
+                        </Text>
+                      </Flex>
 
-                    addServer(
-                      {
-                        name: serverName,
-                        host,
-                      },
-                      true
-                    );
-                    closeDialog();
-                  }}
-                />
-                <Separator size="4" />
-              </>
+                      <Flex ml="auto" style={{ color: "var(--gray-9)" }}>
+                        <PiCaretRightBold size={14} />
+                      </Flex>
+                    </Flex>
+                  </button>
+                </Card>
+
+                {/* The other half of the dialog, and deliberately not a second
+                    card of equal weight. Most people arriving here have an
+                    invite in their clipboard, but "create" is the thing this
+                    step is named after — so joining gets its own line rather
+                    than competing for the same row. */}
+                <Flex direction="column" gap="2" align="center">
+                  <Text size="2" weight="bold">
+                    Have an invite already?
+                  </Text>
+                  <Button
+                    data-tour="choose-join"
+                    variant="soft"
+                    color="gray"
+                    size="3"
+                    style={{ width: "100%" }}
+                    onClick={() => setMode("join")}
+                  >
+                    Join a server
+                  </Button>
+                </Flex>
+              </Flex>
             )}
 
-            {step === "join" && isElectron && (
-              <>
-                <Flex direction="column" gap="2">
-                  {/* No count badge. It restated what the list below already
-                      shows by existing, and spent a semantic colour — green,
-                      which everywhere else in this app means good or connected
-                      — on a number that means neither. */}
-                  <Flex align="center" gap="2">
-                    <PiBroadcastFill size={16} />
-                    <Text size="2" weight="bold">
-                      Local servers
-                    </Text>
-                  </Flex>
+            {step === "host" && embeddedServerAvailable && (
+              <CreateServerPanel
+                onBack={() => setMode(null)}
+                onServerReady={(serverUrl, serverName) => {
+                  const { host } = parseServerInput(serverUrl);
 
-                  {lanServers.length === 0 && !lanSearchExpired && (
-                    <Flex align="center" gap="2" py="1">
-                      <Spinner size="1" />
-                      <Text size="2" color="gray">
-                        Searching for servers on your network&hellip;
-                      </Text>
-                    </Flex>
-                  )}
+                  if (servers[host]) {
+                    switchToServer(host);
+                    closeDialog();
+                    return;
+                  }
 
-                  {lanServers.length === 0 && lanSearchExpired && (
-                    <Flex direction="column" gap="1" py="1">
-                      <Text size="2" color="gray">
-                        No servers found on your network.
-                      </Text>
-                      <Text size="1" color="gray">
-                        Still looking &mdash; one will appear here as soon as it
-                        starts. You can also enter an address below.
-                      </Text>
-                    </Flex>
-                  )}
-
-                  <Flex direction="column" gap="2">
-                    {lanServers.map((s) => {
-                      const addr =
-                        s.port === 443 ? s.host : `${s.host}:${s.port}`;
-                      const normalizedAddr = normalizeHost(addr);
-
-                      const existingByHost = !!servers[normalizedAddr];
-                      const existingById = !!findExistingServerById(s.serverId);
-                      const isMember = existingByHost || existingById;
-
-                      // The row being acted on says so. Every other Connect is
-                      // disabled while one is in flight, and without this the
-                      // whole list just looks broken.
-                      const connectingThis =
-                        normalizeHost(serverHost) === normalizedAddr &&
-                        (isSearching || isJoining);
-
-                      return (
-                        <Card key={`${s.host}:${s.port}`} size="1">
-                          <Flex align="center" gap="3">
-                            {/*
-                              Streamed from the server's own /icon endpoint.
-                              Most servers have never uploaded one and return
-                              404, so the fallback initial is the common case
-                              rather than the exception.
-                            */}
-                            <Avatar
-                              size="2"
-                              radius="medium"
-                              src={`${getServerHttpBase(normalizedAddr)}/icon`}
-                              fallback={<GeneratedServerIcon host={normalizedAddr} />}
-                            />
-
-                            <Flex direction="column" style={{ minWidth: 0 }}>
-                              <Text size="2" weight="medium" truncate>
-                                {s.name}
-                              </Text>
-                              {/*
-                                Address only. The version is deliberately not
-                                shown: surfacing it makes it trivial to scan a
-                                network for hosts on a build with a known
-                                vulnerability. It is still in the mDNS TXT
-                                record and in /info, so this is not a fix for
-                                that — see GRYT-42.
-                              */}
-                              <Text size="1" color="gray" truncate>
-                                {addr}
-                              </Text>
-                            </Flex>
-
-                            {/* Neutral, not accent. A discovered list is six of
-                                these at once, and the accent marks one primary
-                                action per view — six of them is a wall of
-                                purple that tells you nothing about which to
-                                press. The accent stays on the address field's
-                                Connect, which is the deliberate act. */}
-                            <Button
-                              size="1"
-                              variant="soft"
-                              color="gray"
-                              ml="auto"
-                              disabled={isMember || isSearching || isJoining}
-                              loading={connectingThis}
-                              onClick={() => {
-                                // Connect should connect. Previously this only
-                                // filled the field and showed the info card,
-                                // leaving a second click to actually join.
-                                autoJoinRef.current = true;
-                                setServerHost(normalizedAddr);
-                                queueMicrotask(() =>
-                                  getServerInfo(normalizedAddr)
-                                );
-                              }}
-                            >
-                              {isMember ? "Joined" : "Connect"}
-                            </Button>
-                          </Flex>
-                        </Card>
-                      );
-                    })}
-                  </Flex>
-                </Flex>
-                <Separator size="4" />
-              </>
+                  addServer({ name: serverName, host }, true);
+                  closeDialog();
+                }}
+              />
             )}
 
             {step === "join" && (
-            <Flex gap="2" align="center" data-tour="join-address">
-              <TextField.Root
-                type="url"
-                disabled={isSearching || isJoining}
-                onKeyDown={handleEnterKey}
-                radius="full"
-                placeholder="gryt.chat"
-                value={serverHost}
-                onChange={(e) => setServerHost(normalizeHost(e.target.value))}
-                style={{ width: "100%" }}
-              >
-                <TextField.Slot>wss://</TextField.Slot>
-              </TextField.Root>
+              <Flex direction="column" gap="4">
+                <Flex direction="column" gap="2" data-tour="join-address">
+                  <Text size="2" weight="bold">
+                    Invite link{" "}
+                    <Text as="span" color="red">
+                      *
+                    </Text>
+                  </Text>
 
-              <Button
-                onClick={() => getServerInfo()}
-                disabled={isSearching || isJoining || serverHost.length === 0}
-              >
-                {isSearching ? (
-                  <SkeletonBase width="16px" height="16px" borderRadius="50%" />
-                ) : (
-                  <PiWifiHighFill size={16} />
-                )}
-                {isSearching ? "Connecting" : "Connect"}
-              </Button>
-            </Flex>
-            )}
+                  <TextField.Root
+                    autoFocus
+                    disabled={isJoining}
+                    placeholder="https://gryt.chat/invite?host=…&code=…"
+                    value={inviteInput}
+                    onChange={(e) => setInviteInput(e.target.value)}
+                  />
 
-            <AnimatePresence>
-              {alreadyMember && !serverInfo && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                >
-                  <Callout.Root color="blue">
-                    <Callout.Icon>
-                      <PiInfoFill size={16} />
-                    </Callout.Icon>
-                    <Callout.Text>
-                      You are already a member of this server.
-                    </Callout.Text>
-                  </Callout.Root>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                  <Flex direction="column" gap="1">
+                    <Text size="1" color="gray">
+                      Invites look like
+                    </Text>
+                    <Flex gap="1" wrap="wrap">
+                      {INPUT_EXAMPLES.map((example) => (
+                        <Badge key={example} size="1" variant="soft" color="gray">
+                          {example}
+                        </Badge>
+                      ))}
+                    </Flex>
+                  </Flex>
+                </Flex>
 
-            <AnimatePresence>
-              {hasError.length > 0 && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                >
-                  <Callout.Root color="red" role="alert">
-                    <Callout.Icon>
-                      <PiWarningFill size={16} />
-                    </Callout.Icon>
-                    <Callout.Text>
-                      Could not connect to the server. Please check the address
-                      and try again.
-                      <br />(
-                      {hasError === "xhr poll error"
-                        ? "Server is not responding"
-                        : hasError}
-                      )
-                    </Callout.Text>
-                  </Callout.Root>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                {/* The preview, and it stays a preview. There used to be a
+                    details card between pasting and joining, which is a whole
+                    screen spent confirming something the name alone settles. */}
+                <AnimatePresence>
+                  {serverHost.length > 0 && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      style={{ overflow: "hidden" }}
+                    >
+                      <ServerPreview
+                        host={serverHost}
+                        info={serverInfo}
+                        loading={isSearching}
+                        error={lookupError}
+                        privateInfo={serverPrivate}
+                        alreadyMember={alreadyMember}
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
-            <AnimatePresence>
-              {serverPrivate && !serverInfo && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  style={{
-                    overflow: "hidden",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "12px",
-                  }}
-                >
-                  <Callout.Root color="amber">
-                    <Callout.Icon>
-                      <PiInfoFill size={16} />
-                    </Callout.Icon>
-                    <Callout.Text>
-                      This server has public info disabled. If you are an
-                      existing member or have an invite code, you can still
-                      join.
-                    </Callout.Text>
-                  </Callout.Root>
-
-                  <AnimatePresence>
-                    {joinError.length > 0 && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                      >
-                        <Callout.Root color="red" role="alert">
-                          <Callout.Icon>
-                            <PiWarningFill size={16} />
-                          </Callout.Icon>
-                          <Callout.Text>{joinError}</Callout.Text>
-                        </Callout.Root>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  <AnimatePresence>
-                    {inviteRequired && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                      >
-                        <Flex direction="column" gap="2">
-                          <Text size="2" color="gray" weight="bold">
-                            Invite code
-                          </Text>
-                          <TextField.Root
-                            disabled={isJoining}
-                            radius="full"
-                            placeholder="Paste invite code"
-                            value={inviteCode}
-                            onChange={(e) =>
-                              setInviteCode(normalizeCode(e.target.value))
-                            }
-                          />
-                        </Flex>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  <Button
-                    disabled={
-                      alreadyMember ||
-                      isJoining ||
-                      (inviteRequired && normalizeCode(inviteCode).length === 0)
-                    }
-                    onClick={() => {
-                      void joinServer();
-                    }}
-                  >
-                    {alreadyMember ? (
-                      "You are already a member"
-                    ) : isJoining ? (
-                      <>
-                        <SkeletonBase
-                          width="16px"
-                          height="16px"
-                          borderRadius="50%"
-                        />{" "}
-                        Joining…
-                      </>
-                    ) : inviteRequired ? (
-                      <>Join with code</>
-                    ) : (
-                      <>Join server</>
-                    )}
-                  </Button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <AnimatePresence>
-              {serverInfo && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  style={{
-                    overflow: "hidden",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "12px",
-                  }}
-                >
-                  <Box maxWidth="100%">
-                    <Card>
-                      <Flex direction="column" gap="3" align="center">
-                        <Avatar
-                          size="8"
-                          src={`${getServerHttpBase(serverHost)}/icon`}
-                          radius="full"
-                          fallback={<GeneratedServerIcon host={serverHost} />}
+                <AnimatePresence>
+                  {inviteRequired && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      style={{ overflow: "hidden" }}
+                    >
+                      <Flex direction="column" gap="2">
+                        <Text size="2" color="gray" weight="bold">
+                          Invite code
+                        </Text>
+                        <TextField.Root
+                          disabled={isJoining}
+                          placeholder="Paste invite code"
+                          value={inviteCode}
+                          onChange={(e) =>
+                            setManualCode(normalizeCode(e.target.value))
+                          }
                         />
-                        <Flex gap="1" direction="column" align="center">
-                          <Text size="4" weight="bold">
-                            {serverInfo.name}
-                          </Text>
-                          {serverInfo.description ? (
-                            <Text
-                              size="2"
-                              color="gray"
-                              style={{ textAlign: "center" }}
-                            >
-                              {serverInfo.description}
-                            </Text>
-                          ) : null}
-                          <Text size="2" color="gray">
-                            Members: {serverInfo.members}
-                          </Text>
-                          {/*
-                            The thing people actually want to know before
-                            typing an address in: whether this costs them an
-                            account. Only claimed when the server said so —
-                            an older one sends no tiers, and silence is better
-                            than a guess that turns into a refusal.
-                          */}
-                          {serverInfo.identityTiers && (
-                            <Badge
-                              size="1"
-                              variant="soft"
-                              color={
-                                serverInfo.identityTiers.includes("local")
-                                  ? "green"
-                                  : "gray"
-                              }
-                            >
-                              {serverInfo.identityTiers.includes("local")
-                                ? "No account needed"
-                                : "Gryt account required"}
-                            </Badge>
-                          )}
-                        </Flex>
                       </Flex>
-                    </Card>
-                  </Box>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
-                  <AnimatePresence>
-                    {joinError.length > 0 && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                      >
-                        <Callout.Root color="red" role="alert">
-                          <Callout.Icon>
-                            <PiWarningFill size={16} />
-                          </Callout.Icon>
-                          <Callout.Text>{joinError}</Callout.Text>
-                        </Callout.Root>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                <AnimatePresence>
+                  {serverInfo?.joinPolicy === "request" && !awaitingApproval && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      style={{ overflow: "hidden" }}
+                    >
+                      <Flex direction="column" gap="2">
+                        <Text size="2" color="gray" weight="bold">
+                          Anything to say?
+                        </Text>
+                        <Text size="1" color="gray">
+                          This server lets people in by hand. A line about who
+                          you are gives them something to go on — a nickname on
+                          its own does not.
+                        </Text>
+                        <TextField.Root
+                          disabled={isJoining}
+                          placeholder="Optional"
+                          maxLength={300}
+                          value={joinNote}
+                          onChange={(e) => setJoinNote(e.target.value)}
+                        />
+                      </Flex>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
-                  <AnimatePresence>
-                    {inviteRequired &&
-                      !(isLanDiscovered && serverInfo.lanOpen) && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
+                <AnimatePresence>
+                  {awaitingApproval && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      style={{ overflow: "hidden" }}
+                    >
+                      <Callout.Root color="gray">
+                        <Callout.Text>
+                          Asked. Somebody who runs this server has to let you in
+                          — once they do, adding it again will work.
+                        </Callout.Text>
+                      </Callout.Root>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <AnimatePresence>
+                  {joinError.length > 0 && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      style={{ overflow: "hidden" }}
+                    >
+                      <Callout.Root color="red" role="alert">
+                        <Callout.Icon>
+                          <PiWarningFill size={16} />
+                        </Callout.Icon>
+                        <Callout.Text>{joinError}</Callout.Text>
+                      </Callout.Root>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Discovery lives in the rail now (GRYT-223), not stacked in
+                    this column fighting the field for the same space. This row
+                    is the way back to it for somebody who came here looking for
+                    a server on their own network. */}
+                {isElectron && (
+                  <Card asChild size="1">
+                    <button
+                      type="button"
+                      onClick={openDiscovery}
+                      style={{ cursor: "pointer", textAlign: "left" }}
+                    >
+                      <Flex align="center" gap="3">
+                        <Flex
+                          align="center"
+                          justify="center"
+                          style={{
+                            width: 28,
+                            height: 28,
+                            borderRadius: "50%",
+                            background: "var(--green-a3)",
+                            color: "var(--green-11)",
+                            flexShrink: 0,
+                          }}
                         >
-                          <Flex direction="column" gap="2">
-                            <Text size="2" color="gray" weight="bold">
-                              Invite code
-                            </Text>
-                            <TextField.Root
-                              disabled={isJoining}
-                              radius="full"
-                              placeholder="Paste invite code"
-                              value={inviteCode}
-                              onChange={(e) =>
-                                setInviteCode(normalizeCode(e.target.value))
-                              }
-                            />
-                          </Flex>
-                        </motion.div>
-                      )}
-                  </AnimatePresence>
+                          <PiBroadcastFill size={14} />
+                        </Flex>
 
-                  <AnimatePresence>
-                    {serverInfo.joinPolicy === "request" && !awaitingApproval && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                      >
-                        <Flex direction="column" gap="2">
-                          <Text size="2" color="gray" weight="bold">
-                            Anything to say?
+                        <Flex direction="column" style={{ minWidth: 0 }}>
+                          <Text size="2" weight="bold">
+                            Don&rsquo;t have an invite?
                           </Text>
                           <Text size="1" color="gray">
-                            This server lets people in by hand. A line about who you
-                            are gives them something to go on — a nickname on its own
-                            does not.
+                            Look for servers running on your network.
                           </Text>
-                          <TextField.Root
-                            disabled={isJoining}
-                            radius="full"
-                            placeholder="Optional"
-                            maxLength={300}
-                            value={joinNote}
-                            onChange={(e) => setJoinNote(e.target.value)}
-                          />
                         </Flex>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
 
-                  <AnimatePresence>
-                    {awaitingApproval && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                      >
-                        <Callout.Root color="gray">
-                          <Callout.Text>
-                            Asked. Somebody who runs this server has to let you in —
-                            once they do, adding it again will work.
-                          </Callout.Text>
-                        </Callout.Root>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                        <Flex ml="auto" style={{ color: "var(--gray-9)" }}>
+                          <PiCaretRightBold size={14} />
+                        </Flex>
+                      </Flex>
+                    </button>
+                  </Card>
+                )}
+
+                <Dialog.Footer className="justify-between">
+                  {/* Only offered when there is a step behind this one. In a
+                      browser Join *is* the first step, and a Back that lands on
+                      a choice between one real option and a dead end is worse
+                      than no Back. */}
+                  {embeddedServerAvailable ? (
+                    <Button
+                      variant="ghost"
+                      color="gray"
+                      disabled={isJoining}
+                      onClick={() => setMode(null)}
+                    >
+                      Back
+                    </Button>
+                  ) : (
+                    <span />
+                  )}
 
                   <Button
-                    disabled={
-                      alreadyMember ||
-                      isJoining ||
-                      awaitingApproval ||
-                      (inviteRequired &&
-                        !(isLanDiscovered && serverInfo.lanOpen) &&
-                        normalizeCode(inviteCode).length === 0)
-                    }
+                    disabled={!canJoin}
                     onClick={() => {
-                      void joinServer();
+                      void handleJoin();
                     }}
                   >
                     {alreadyMember ? (
-                      "You are already a member"
+                      "Already joined"
                     ) : isJoining ? (
                       <>
                         <SkeletonBase
@@ -1070,21 +657,109 @@ export function AddNewServer({
                         />{" "}
                         Joining…
                       </>
-                    ) : inviteRequired &&
-                      !(isLanDiscovered && serverInfo.lanOpen) ? (
-                      <>Join with code</>
                     ) : (
-                      <>Join {serverInfo.name}</>
+                      "Join server"
                     )}
                   </Button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </Flex>
-        </Flex>
+                </Dialog.Footer>
+              </Flex>
+            )}
           </Theme>
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>
+  );
+}
+
+interface ServerPreviewProps {
+  host: string;
+  info: FetchInfo | null;
+  loading: boolean;
+  error: string;
+  privateInfo: boolean;
+  alreadyMember: boolean;
+}
+
+/**
+ * The flat one-line preview that replaced the details card.
+ *
+ * Its height is the point of it: enough to tell you the address resolved to
+ * the server you were expecting, and not enough to feel like a screen you have
+ * to get through. Everything the old card carried that this drops — the
+ * description, the join policy — is on the other side of the join anyway.
+ */
+function ServerPreview({
+  host,
+  info,
+  loading,
+  error,
+  privateInfo,
+  alreadyMember,
+}: ServerPreviewProps) {
+  return (
+    <Card size="1">
+      <Flex align="center" gap="3">
+        <Avatar
+          size="2"
+          radius="medium"
+          src={info ? `${getServerHttpBase(host)}/icon` : undefined}
+          fallback={<GeneratedServerIcon host={host} />}
+        />
+
+        <Flex direction="column" style={{ minWidth: 0 }}>
+          {loading ? (
+            <SkeletonBase width="8rem" height="1rem" />
+          ) : (
+            <Text size="2" weight="bold" truncate>
+              {info?.name || host}
+            </Text>
+          )}
+
+          {loading ? (
+            <SkeletonBase width="5rem" height="0.75rem" />
+          ) : error ? (
+            <Text size="1" color="red">
+              {error}
+            </Text>
+          ) : privateInfo ? (
+            <Text size="1" color="gray">
+              Public info is off. An invite code can still get you in.
+            </Text>
+          ) : (
+            <Text size="1" color="gray" truncate>
+              {info
+                ? `${info.members} ${info.members === "1" ? "member" : "members"} · ${host}`
+                : host}
+            </Text>
+          )}
+        </Flex>
+
+        <Flex ml="auto" gap="2" align="center">
+          {alreadyMember && (
+            <Badge size="1" variant="soft" color="blue">
+              <PiInfoFill size={12} />
+              Joined
+            </Badge>
+          )}
+          {/*
+            The thing people actually want to know before joining: whether this
+            costs them an account. Only claimed when the server said so — an
+            older one sends no tiers, and silence is better than a guess that
+            turns into a refusal.
+          */}
+          {info?.identityTiers && !alreadyMember && (
+            <Badge
+              size="1"
+              variant="soft"
+              color={info.identityTiers.includes("local") ? "green" : "gray"}
+            >
+              {info.identityTiers.includes("local")
+                ? "No account needed"
+                : "Account required"}
+            </Badge>
+          )}
+        </Flex>
+      </Flex>
+    </Card>
   );
 }

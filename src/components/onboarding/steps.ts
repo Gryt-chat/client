@@ -99,8 +99,8 @@ export const tourSteps: TourStep[] = [
   {
     id: "join",
     target: "join-address",
-    title: "Paste an address to join",
-    body: "A friend's invite goes straight in here. No account needed, and you can leave again whenever you like.",
+    title: "Paste an invite to join",
+    body: "A friend's invite link goes straight in here, and a plain address works too. No account needed, and you can leave again whenever you like.",
     side: "top",
     // Two hops now that the dialog asks which errand you are on: open it, then
     // choose Join. The cursor makes the same choice a person would.

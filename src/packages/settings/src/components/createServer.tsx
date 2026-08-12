@@ -1,4 +1,4 @@
-import { Accordion } from "@gryt/ui";
+import { Accordion, Dialog } from "@gryt/ui";
 import {
   Avatar,
   Badge,
@@ -13,7 +13,7 @@ import {
 } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
-import { PiCheck, PiHardDrivesFill, PiInfoFill, PiPlayFill, PiStopFill, PiWarningFill, PiX } from "react-icons/pi";
+import { PiCheck, PiPlayFill, PiStopFill, PiWarningFill, PiX } from "react-icons/pi";
 
 import { GeneratedServerIcon } from "@/common";
 
@@ -22,9 +22,11 @@ import { EmbeddedServerLogs } from "./embeddedServerLogs";
 
 interface CreateServerPanelProps {
   onServerReady: (serverUrl: string, serverName: string) => void;
+  /** Back out to the step that chose this. */
+  onBack: () => void;
 }
 
-export function CreateServerPanel({ onServerReady }: CreateServerPanelProps) {
+export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelProps) {
   const {
     isAvailable,
     hasExistingServer,
@@ -55,14 +57,6 @@ export function CreateServerPanel({ onServerReady }: CreateServerPanelProps) {
     await createServer(serverName.trim() || "My Server", lanDiscoverable);
   }
 
-  async function handleStart() {
-    await startServer();
-  }
-
-  async function handleStop() {
-    await stopServer();
-  }
-
   function handleConnect() {
     if (state.serverUrl && state.config) {
       onServerReady(state.serverUrl, state.config.serverName);
@@ -70,17 +64,7 @@ export function CreateServerPanel({ onServerReady }: CreateServerPanelProps) {
   }
 
   return (
-    <Flex direction="column" gap="3">
-      <Flex align="center" gap="2">
-        <PiHardDrivesFill size={16} />
-        <Text size="2" weight="bold">
-          Host a server
-        </Text>
-        <Badge color="purple" size="1" variant="soft">
-          Local
-        </Badge>
-      </Flex>
-
+    <Flex direction="column" gap="4">
       <AnimatePresence mode="wait">
         {hasExistingServer && !isRunning && !isStarting ? (
           <motion.div
@@ -90,36 +74,16 @@ export function CreateServerPanel({ onServerReady }: CreateServerPanelProps) {
             exit={{ height: 0, opacity: 0 }}
           >
             <Card size="2">
-              <Flex direction="column" gap="3">
-                <Flex justify="between" align="center">
-                  <Flex direction="column" gap="1">
-                    <Text size="2" weight="bold">
-                      {existingConfig?.serverName ?? "My Server"}
-                    </Text>
-                    <Text size="1" color="gray">
-                      Port {existingConfig?.serverPort ?? "5000"}
-                    </Text>
-                  </Flex>
-                  <Badge color="gray" size="1">Stopped</Badge>
+              <Flex justify="between" align="center">
+                <Flex direction="column" gap="1">
+                  <Text size="2" weight="bold">
+                    {existingConfig?.serverName ?? "My Server"}
+                  </Text>
+                  <Text size="1" color="gray">
+                    Port {existingConfig?.serverPort ?? "5000"}
+                  </Text>
                 </Flex>
-                <Flex asChild gap="2" align="center">
-                  <label>
-                    <Checkbox
-                      checked={autoStart}
-                      onCheckedChange={(c) => setAutoStart(c === true)}
-                    />
-                    <Text size="1" color="gray">Start automatically with app</Text>
-                  </label>
-                </Flex>
-                <Button
-                  size="2"
-                  variant="soft"
-                  onClick={() => { void handleStart(); }}
-                  disabled={loading}
-                >
-                  {loading ? <Spinner size="1" /> : <PiPlayFill size={16} />}
-                  Start server
-                </Button>
+                <Badge color="gray" size="1">Stopped</Badge>
               </Flex>
             </Card>
           </motion.div>
@@ -132,21 +96,19 @@ export function CreateServerPanel({ onServerReady }: CreateServerPanelProps) {
           >
             <Card size="2">
               <Flex direction="column" gap="3">
-                <Flex justify="between" align="center">
-                  <Flex direction="column" gap="1">
-                    <Flex align="center" gap="2">
-                      <Text size="2" weight="bold">
-                        {state.config?.serverName ?? "Server"}
-                      </Text>
-                      <Badge color={isRunning ? "green" : "amber"} size="1">
-                        {isRunning ? "Running" : "Starting..."}
-                      </Badge>
-                    </Flex>
-                    <Text size="1" color="gray">
-                      127.0.0.1:{state.config?.serverPort}
-                      {state.config?.lanDiscoverable && ` (LAN: ${lanIp}:${state.config.serverPort})`}
+                <Flex direction="column" gap="1">
+                  <Flex align="center" gap="2">
+                    <Text size="2" weight="bold">
+                      {state.config?.serverName ?? "Server"}
                     </Text>
+                    <Badge color={isRunning ? "green" : "amber"} size="1">
+                      {isRunning ? "Running" : "Starting..."}
+                    </Badge>
                   </Flex>
+                  <Text size="1" color="gray">
+                    127.0.0.1:{state.config?.serverPort}
+                    {state.config?.lanDiscoverable && ` (LAN: ${lanIp}:${state.config.serverPort})`}
+                  </Text>
                 </Flex>
 
                 {/* Behind an accordion, and genuinely unmounted when shut.
@@ -167,42 +129,6 @@ export function CreateServerPanel({ onServerReady }: CreateServerPanelProps) {
                     </Accordion.Panel>
                   </Accordion.Item>
                 </Accordion>
-
-                <Flex asChild gap="2" align="center">
-                  <label>
-                    <Checkbox
-                      checked={autoStart}
-                      onCheckedChange={(c) => setAutoStart(c === true)}
-                    />
-                    <Text size="1" color="gray">Start automatically with app</Text>
-                  </label>
-                </Flex>
-
-                <Flex gap="2">
-                  {isRunning && (
-                    <Button
-                      size="2"
-                      variant="soft"
-                      color="green"
-                      onClick={handleConnect}
-                      style={{ flex: 1 }}
-                    >
-                      <PiCheck size={16} />
-                      Connect
-                    </Button>
-                  )}
-                  <Button
-                    size="2"
-                    variant="soft"
-                    color="red"
-                    onClick={() => { void handleStop(); }}
-                    disabled={loading}
-                    style={{ flex: isRunning ? undefined : 1 }}
-                  >
-                    {loading ? <Spinner size="1" /> : <PiStopFill size={16} />}
-                    Stop
-                  </Button>
-                </Flex>
               </Flex>
             </Card>
           </motion.div>
@@ -213,74 +139,61 @@ export function CreateServerPanel({ onServerReady }: CreateServerPanelProps) {
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
           >
-            <Card size="2">
-              <Flex direction="column" gap="3">
-                {/* The icon leads, and it is already theirs before they have
-                    finished naming it. Seeded on the name rather than the
-                    address: a server being created has no address yet, so every
-                    new one drew the same planet until it started. */}
-                <Flex direction="column" align="center" gap="1">
-                  <Avatar
-                    size="5"
-                    radius="full"
-                    src={undefined}
-                    fallback={
-                      <GeneratedServerIcon
-                        host={serverName}
-                        seed={serverName || "My Server"}
-                      />
-                    }
-                  />
-                  <Text size="1" color="gray">
-                    Generated from the name
-                  </Text>
-                </Flex>
+            {/* Icon and name, and nothing else on the way to a server. The
+                icon leads, and it is already theirs before they have finished
+                naming it — seeded on the name rather than the address, because
+                a server being created has no address yet and every new one
+                drew the same planet until it started. */}
+            <Flex direction="column" gap="4">
+              <Flex direction="column" align="center" gap="1">
+                <Avatar
+                  size="6"
+                  radius="full"
+                  src={undefined}
+                  fallback={
+                    <GeneratedServerIcon
+                      host={serverName}
+                      seed={serverName || "My Server"}
+                    />
+                  }
+                />
+                <Text size="1" color="gray">
+                  Generated from the name
+                </Text>
+              </Flex>
 
-                <Flex direction="column" gap="2">
-                  <Text size="2" color="gray" weight="bold">
-                    Server name
+              <Flex direction="column" gap="2">
+                <Text size="2" weight="bold">
+                  Server name{" "}
+                  <Text as="span" color="red">
+                    *
                   </Text>
-                  <TextField.Root
-                    radius="full"
-                    placeholder="My Server"
-                    value={serverName}
-                    onChange={(e) => setServerName(e.target.value)}
+                </Text>
+                <TextField.Root
+                  placeholder="My Server"
+                  value={serverName}
+                  onChange={(e) => setServerName(e.target.value)}
+                  disabled={loading}
+                />
+              </Flex>
+
+              {/* The one setting that survived the trim. It is not cosmetic:
+                  it decides whether anybody else on the network can find this
+                  server at all, and there is no other place to say so before
+                  it starts. */}
+              <Flex asChild gap="2" align="center">
+                <label>
+                  <Checkbox
+                    checked={lanDiscoverable}
+                    onCheckedChange={(c) => setLanDiscoverable(c === true)}
                     disabled={loading}
                   />
-                </Flex>
-
-                <Flex asChild gap="2" align="center">
-                  <label>
-                    <Checkbox
-                      checked={lanDiscoverable}
-                      onCheckedChange={(c) => setLanDiscoverable(c === true)}
-                      disabled={loading}
-                    />
-                    <Text size="2">Discoverable on LAN</Text>
-                  </label>
-                </Flex>
-
-                {lanDiscoverable && (
-                  <Callout.Root color="blue" size="1">
-                    <Callout.Icon>
-                      <PiInfoFill size={14} />
-                    </Callout.Icon>
-                    <Callout.Text>
-                      Other Gryt users on your network will see this server automatically.
-                    </Callout.Text>
-                  </Callout.Root>
-                )}
-
-                <Button
-                  size="2"
-                  onClick={() => { void handleCreate(); }}
-                  disabled={loading || !serverName.trim()}
-                >
-                  {loading ? <Spinner size="1" /> : <PiHardDrivesFill size={16} />}
-                  Create server
-                </Button>
+                  <Text size="2" color="gray">
+                    Let others on my network find it
+                  </Text>
+                </label>
               </Flex>
-            </Card>
+            </Flex>
           </motion.div>
         )}
       </AnimatePresence>
@@ -314,6 +227,65 @@ export function CreateServerPanel({ onServerReady }: CreateServerPanelProps) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Autostart sits with the footer rather than in the form. It is about
+          every launch after this one, not about the server being made. */}
+      {(hasExistingServer || isRunning || isStarting) && (
+        <Flex asChild gap="2" align="center">
+          <label>
+            <Checkbox
+              checked={autoStart}
+              onCheckedChange={(c) => setAutoStart(c === true)}
+            />
+            <Text size="1" color="gray">Start automatically with app</Text>
+          </label>
+        </Flex>
+      )}
+
+      <Dialog.Footer className="justify-between">
+        <Button variant="ghost" color="gray" onClick={onBack} disabled={loading}>
+          Back
+        </Button>
+
+        <Flex gap="2">
+          {(isRunning || isStarting) && (
+            <Button
+              variant="soft"
+              color="red"
+              onClick={() => { void stopServer(); }}
+              disabled={loading}
+            >
+              {loading ? <Spinner size="1" /> : <PiStopFill size={16} />}
+              Stop
+            </Button>
+          )}
+
+          {isRunning ? (
+            <Button onClick={handleConnect}>
+              <PiCheck size={16} />
+              Connect
+            </Button>
+          ) : isStarting ? (
+            <Button disabled>
+              <Spinner size="1" />
+              Starting…
+            </Button>
+          ) : hasExistingServer ? (
+            <Button onClick={() => { void startServer(); }} disabled={loading}>
+              {loading ? <Spinner size="1" /> : <PiPlayFill size={16} />}
+              Start server
+            </Button>
+          ) : (
+            <Button
+              onClick={() => { void handleCreate(); }}
+              disabled={loading || !serverName.trim()}
+            >
+              {loading ? <Spinner size="1" /> : null}
+              Create
+            </Button>
+          )}
+        </Flex>
+      </Dialog.Footer>
     </Flex>
   );
 }
