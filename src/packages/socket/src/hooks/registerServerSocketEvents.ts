@@ -262,6 +262,17 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       return;
     }
 
+    // Waiting on a person, not a code. Deliberately not an error toast: nothing
+    // went wrong and there is nothing to retry — the answer arrives when a
+    // moderator gets to it, and the message says so. A denial is reported the
+    // same way, because the server refuses to say which of the two it is.
+    if (errorInfo.error === "approval_pending") {
+      const message =
+        errorInfo.message || "This server admits people by request. Yours is with the moderators.";
+      toast(message, { duration: 8000, icon: "🖐" });
+      return;
+    }
+
     if (errorInfo.error === "invite_required") {
       const message = errorInfo.message || "This server is invite-only.";
       toast.error(message, { duration: 6000 });
