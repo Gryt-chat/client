@@ -13,8 +13,11 @@ interface ServerManagement {
   currentlyViewingServer: Server | null;
   showAddServer: boolean;
   showRemoveServer: string | null;
+  showDiscovery: boolean;
   orderedServerHosts: string[];
   pendingLanServers: LanServer[];
+  /** Discovered, not joined, and not looked at yet. What the rail badge means. */
+  newLanServers: LanServer[];
 
   addServer: (server: Server, focusNewServer?: boolean) => void;
   removeServer: (host: string) => void;
@@ -23,7 +26,9 @@ interface ServerManagement {
   reorderServers: (orderedHosts: string[]) => void;
   setShowAddServer: (show: boolean) => void;
   setShowRemoveServer: (host: string | null) => void;
+  setShowDiscovery: (show: boolean) => void;
   dismissLanServer: (key: string) => void;
+  markLanServersSeen: (keys: string[]) => void;
 
   getServer: (host: string) => Server | undefined;
   getAllServers: () => Server[];
@@ -33,8 +38,13 @@ interface ServerManagement {
   setLastSelectedChannelForServer: (host: string, channelId: string) => void;
 }
 
-function lanServerAddr(s: LanServer): string {
+export function lanServerAddr(s: LanServer): string {
   return s.port === 443 ? s.host : `${s.host}:${s.port}`;
+}
+
+/** How a discovered server is identified in the dismissed and seen lists. */
+export function lanServerKey(s: LanServer): string {
+  return `${s.host}:${s.port}`;
 }
 
 function useServerManagementHook(): ServerManagement {
@@ -49,12 +59,15 @@ function useServerManagementHook(): ServerManagement {
     setServerOrder,
     dismissedLanServers,
     dismissLanServer,
+    seenLanServers,
+    markLanServersSeen,
   } = useServerSettings();
 
   const { lanServers } = useLanDiscovery();
 
   const [showAddServer, setShowAddServer] = useState(false);
   const [showRemoveServer, setShowRemoveServer] = useState<string | null>(null);
+  const [showDiscovery, setShowDiscovery] = useState(false);
   const [pendingFocusServer, setPendingFocusServer] = useState<string | null>(
     null
   );
@@ -76,7 +89,7 @@ function useServerManagementHook(): ServerManagement {
     return lanServers.filter((s) => {
       const addr = lanServerAddr(s);
       const normalized = normalizeHost(addr);
-      const key = `${s.host}:${s.port}`;
+      const key = lanServerKey(s);
 
       if (servers[normalized]) return false;
       if (dismissedLanServers.includes(key)) return false;
@@ -91,6 +104,19 @@ function useServerManagementHook(): ServerManagement {
       return true;
     });
   }, [lanServers, servers, dismissedLanServers]);
+
+  /**
+   * What the badge on the rail is for.
+   *
+   * Deliberately not a count of what is on the network. Six servers run on this
+   * machine alone, so a count sits permanently at six and stops carrying any
+   * information at all. This is the ones that have turned up since Discovery
+   * was last open, which is the only thing worth interrupting somebody about.
+   */
+  const newLanServers = useMemo(
+    () => pendingLanServers.filter((s) => !seenLanServers.includes(lanServerKey(s))),
+    [pendingLanServers, seenLanServers],
+  );
 
   const orderedServerHosts = useMemo(() => {
     const allHosts = Object.keys(servers);
@@ -123,6 +149,10 @@ function useServerManagementHook(): ServerManagement {
 
   const addServer = useCallback(
     (incomingServer: Server, focusNewServer: boolean = true) => {
+      // Joining from Discovery is the common route now, and landing on the
+      // server you just joined is the point of it.
+      if (focusNewServer) setShowDiscovery(false);
+
       const normalizedHost = normalizeHost(incomingServer.host);
       const normalizedIncoming: Server = {
         ...incomingServer,
@@ -263,6 +293,10 @@ function useServerManagementHook(): ServerManagement {
         return;
       }
 
+      // Discovery is a destination in the same rail, so picking a server has to
+      // leave it. Without this the server switches underneath a pane that is
+      // still showing the network list, and the rail highlight lies.
+      setShowDiscovery(false);
       setCurrentlyViewingServer(normalizedHost);
     },
     [setCurrentlyViewingServer, servers]
@@ -323,8 +357,10 @@ function useServerManagementHook(): ServerManagement {
     currentlyViewingServer,
     showAddServer,
     showRemoveServer,
+    showDiscovery,
     orderedServerHosts,
     pendingLanServers,
+    newLanServers,
 
     addServer,
     removeServer,
@@ -333,7 +369,9 @@ function useServerManagementHook(): ServerManagement {
     reorderServers,
     setShowAddServer,
     setShowRemoveServer,
+    setShowDiscovery,
     dismissLanServer,
+    markLanServersSeen,
 
     getServer,
     getAllServers,
@@ -349,8 +387,10 @@ const init: ServerManagement = {
   currentlyViewingServer: null,
   showAddServer: false,
   showRemoveServer: null,
+  showDiscovery: false,
   orderedServerHosts: [],
   pendingLanServers: [],
+  newLanServers: [],
 
   addServer: () => {},
   removeServer: () => {},
@@ -359,7 +399,9 @@ const init: ServerManagement = {
   reorderServers: () => {},
   setShowAddServer: () => {},
   setShowRemoveServer: () => {},
+  setShowDiscovery: () => {},
   dismissLanServer: () => {},
+  markLanServersSeen: () => {},
 
   getServer: () => undefined,
   getAllServers: () => [],
