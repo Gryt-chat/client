@@ -20,11 +20,17 @@ import {
   useAccount,
 } from "@/common";
 
-import { getCustomAuthIssuer, setCustomAuthIssuer } from "../../../../config";
+import {
+  getCustomAuthIssuer,
+  getCustomIdentityUrl,
+  setCustomAuthIssuer,
+  setCustomIdentityUrl,
+} from "../../../../config";
 import { useSettings } from "../hooks/useSettings";
 import { SettingsContainer } from "./settingsComponents";
 
 const DEFAULT_ISSUER = "https://auth.gryt.chat/realms/gryt";
+const DEFAULT_IDENTITY = "https://id.gryt.chat";
 
 /**
  * Something worth hiding until asked for.
@@ -76,6 +82,9 @@ export function AccountSettings() {
   const [issuerInput, setIssuerInput] = useState(
     () => getCustomAuthIssuer() || "",
   );
+  const [identityInput, setIdentityInput] = useState(
+    () => getCustomIdentityUrl() || "",
+  );
   const [savedIssuer, setSavedIssuer] = useState(false);
 
   useEffect(() => {
@@ -98,21 +107,47 @@ export function AccountSettings() {
   }, [isSignedIn]);
 
   const handleSaveIssuer = useCallback(() => {
-    const trimmed = issuerInput.trim().replace(/\/+$/, "");
-    setCustomAuthIssuer(trimmed.length > 0 ? trimmed : null);
+    const issuer = issuerInput.trim().replace(/\/+$/, "");
+    const identity = identityInput.trim().replace(/\/+$/, "");
+
+    // The two go together. An issuer on its own sends a token from one Keycloak
+    // to the certificate authority of another, and the rejection reads as a key
+    // problem rather than a configuration one — so refuse the half-set state
+    // instead of letting somebody discover it at sign-in.
+    if (issuer.length > 0 && identity.length === 0) {
+      toast.error(
+        "Set the identity service too. Your auth server needs the one that signs for it, or signing in is rejected.",
+      );
+      return;
+    }
+
+    setCustomAuthIssuer(issuer.length > 0 ? issuer : null);
+    setCustomIdentityUrl(identity.length > 0 ? identity : null);
     // Keycloak is configured once at init, so the change means nothing until
     // that is thrown away and redone.
     resetKeycloakInit();
     setSavedIssuer(true);
     toast.success(
-      trimmed.length > 0
+      issuer.length > 0
         ? "Using your own auth server. Sign in to check it works."
         : "Back to the Gryt auth server.",
     );
-  }, [issuerInput]);
+  }, [issuerInput, identityInput]);
+
+  const handleClearIssuer = useCallback(() => {
+    setIssuerInput("");
+    setIdentityInput("");
+    setCustomAuthIssuer(null);
+    setCustomIdentityUrl(null);
+    resetKeycloakInit();
+    setSavedIssuer(false);
+    toast.success("Back to the Gryt auth server.");
+  }, []);
 
   const isCustom =
     issuerInput.trim().length > 0 && issuerInput.trim() !== DEFAULT_ISSUER;
+  const hasSaved =
+    (getCustomAuthIssuer() || getCustomIdentityUrl()) !== null;
 
   return (
     <SettingsContainer>

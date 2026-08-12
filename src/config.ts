@@ -8,6 +8,7 @@ export type GrytRuntimeConfig = {
 };
 
 const CUSTOM_AUTH_KEY = 'gryt_custom_auth';
+const CUSTOM_IDENTITY_KEY = 'gryt_custom_identity';
 
 const DEFAULT_OIDC_ISSUER = 'https://auth.gryt.chat/realms/gryt';
 
@@ -38,6 +39,40 @@ export function setCustomAuthIssuer(issuer: string | null): void {
       localStorage.setItem(CUSTOM_AUTH_KEY, issuer.replace(/\/+$/, ''));
     } else {
       localStorage.removeItem(CUSTOM_AUTH_KEY);
+    }
+  } catch {
+    // localStorage not available
+  }
+}
+
+/**
+ * The identity service that signs certificates for the auth server above.
+ *
+ * Kept separate rather than derived, because it is a different service on a
+ * different host — `id.gryt.chat` next to `auth.gryt.chat`, and whatever a
+ * self-hoster runs next to their own Keycloak. There is nothing in an issuer
+ * URL to derive it from.
+ *
+ * Pointing at another Keycloak without also moving this is what GRYT-156 was:
+ * the token came from the custom issuer and was posted to Gryt's certificate
+ * authority, which validates against its own configured issuer and rejects it.
+ * The 401 says "no applicable key found in the JWKS", which describes the
+ * symptom and not the cause.
+ */
+export function getCustomIdentityUrl(): string | null {
+  try {
+    return localStorage.getItem(CUSTOM_IDENTITY_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setCustomIdentityUrl(url: string | null): void {
+  try {
+    if (url) {
+      localStorage.setItem(CUSTOM_IDENTITY_KEY, url.replace(/\/+$/, ''));
+    } else {
+      localStorage.removeItem(CUSTOM_IDENTITY_KEY);
     }
   } catch {
     // localStorage not available
@@ -109,11 +144,13 @@ export function getGrytConfig(): Required<GrytRuntimeConfig> {
     'gryt-web',
   );
 
-  const identityUrl = configValue(
-    win?.GRYT_IDENTITY_URL,
-    import.meta.env.VITE_GRYT_IDENTITY_URL,
-    'https://id.gryt.chat',
-  );
+  const identityUrl =
+    getCustomIdentityUrl() ||
+    configValue(
+      win?.GRYT_IDENTITY_URL,
+      import.meta.env.VITE_GRYT_IDENTITY_URL,
+      'https://id.gryt.chat',
+    );
 
   const authApi =
     (customIssuer ? deriveAuthApiFromIssuer(customIssuer) : null) ||
