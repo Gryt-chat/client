@@ -204,7 +204,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
               position: "fixed",
               bottom: 80,
               right: 16,
-              zIndex: 999,
+              zIndex: "var(--gryt-z-sheet)",
             }}
           >
             <IconButton

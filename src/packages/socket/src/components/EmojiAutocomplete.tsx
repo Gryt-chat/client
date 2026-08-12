@@ -93,7 +93,7 @@ export const EmojiAutocomplete = ({ query, visible, onSelect, onClose, serverHos
         boxShadow: "0 8px 24px rgba(0, 0, 0, 0.25)",
         maxHeight: "280px",
         overflowY: "auto",
-        zIndex: 100,
+        zIndex: "var(--gryt-z-popover)",
         padding: "4px",
       }}
     >

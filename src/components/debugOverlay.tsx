@@ -78,7 +78,7 @@ export function DebugOverlay({
           padding: "12px",
           borderRadius: "var(--radius-3)",
           border: "1px solid var(--gray-7)",
-          zIndex: 9999,
+          zIndex: "var(--gryt-z-debug)",
           backdropFilter: "blur(12px)",
           boxShadow: "0 4px 12px var(--gray-a6)",
           cursor: "grab",

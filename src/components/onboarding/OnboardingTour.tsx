@@ -126,7 +126,7 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
         };
 
   return (
-    <div className="fixed inset-0 z-[9000]">
+    <div className="fixed inset-0 z-(--gryt-z-tour)">
       {/* One element does the whole scrim. An enormous spread shadow darkens
           everything outside the box, which leaves the control itself lit and
           still clickable — no four-rect construction, no SVG mask. */}

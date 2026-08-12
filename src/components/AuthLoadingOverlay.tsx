@@ -30,7 +30,7 @@ export function AuthLoadingOverlay({
             left: 0,
             right: 0,
             bottom: 0,
-            zIndex: 999999,
+            zIndex: "var(--gryt-z-splash)",
             background: "var(--color-background)",
             display: "flex",
             alignItems: "center",

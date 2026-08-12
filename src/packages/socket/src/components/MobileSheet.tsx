@@ -75,7 +75,7 @@ export const MobileSheet = ({ open, onClose, side, children, width, height }: Mo
               position: "fixed",
               inset: 0,
               background: "rgba(0,0,0,0.5)",
-              zIndex: 1000,
+              zIndex: "var(--gryt-z-sheet)",
             }}
           />
           <motion.div
@@ -88,7 +88,7 @@ export const MobileSheet = ({ open, onClose, side, children, width, height }: Mo
               position: "fixed",
               ...config.position,
               ...defaultSize,
-              zIndex: 1001,
+              zIndex: "var(--gryt-z-sheet)",
               background: "var(--color-background)",
               boxShadow: "0 0 24px rgba(0,0,0,0.3)",
               display: "flex",
