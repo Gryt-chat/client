@@ -3,6 +3,20 @@
  * contrast: pass (40-41)
  */
 
+/**
+ * What a step is allowed to do to the app when it becomes current.
+ *
+ * The first version of this tour only pointed at things that were already on
+ * screen, so it never had to open anything. Half of what a first-run person
+ * needs is behind a modal, and telling somebody "it's in Settings" is the same
+ * as not telling them.
+ */
+export interface TourControls {
+  openSettings: (tab: string) => void;
+  closeSettings: () => void;
+  setShowAddServer: (show: boolean) => void;
+}
+
 export interface TourStep {
   id: string;
   /** Matches a data-tour attribute in the app chrome. */
@@ -11,42 +25,70 @@ export interface TourStep {
   body: string;
   /** Where the card sits relative to the target. */
   side: "right" | "top";
+  /**
+   * Run when the step becomes current. Opens whatever this step points into.
+   * The target will not exist for a frame or two afterwards, which the tour
+   * waits out rather than treating as a missing control.
+   */
+  enter?: (app: TourControls) => void;
 }
 
 /**
- * Three steps, in the order a new account actually needs them.
+ * Five steps, in the order somebody actually needs them.
  *
  * Deliberately not a form. Each step points at the real control and says what
  * it is for; the user operates the app rather than a wizard standing in front
- * of it, and whatever they learn here still applies tomorrow.
+ * of it, and whatever they learn here still applies tomorrow. Where a control
+ * lives behind a modal the tour opens it, so the route is shown once rather
+ * than described.
  */
 export const tourSteps: TourStep[] = [
   {
-    id: "profile",
+    id: "menu",
     target: "profile",
-    title: "Make yourself recognisable",
-    // Nickname and picture are one step because they live on one screen, and
-    // the picture is optional — saying so is what keeps this from reading as a
-    // form with two required fields.
-    body: "Open your profile to pick a nickname, and a picture if you want one. Neither is permanent.",
-    side: "right"
+    title: "Everything about you is here",
+    body: "Your profile, your settings, and signing in when you want to. Bottom left, always.",
+    side: "right",
+    // Closes anything a re-run of the tour left open, so step one always starts
+    // from the same place.
+    enter: (app) => {
+      app.closeSettings();
+      app.setShowAddServer(false);
+    },
+  },
+  {
+    id: "profile",
+    target: "profile-editor",
+    title: "Pick a name and a face",
+    body: "A nickname, and a picture if you want one. Neither is permanent, and you can change them whenever.",
+    side: "right",
+    enter: (app) => app.openSettings("you"),
+  },
+  {
+    id: "account",
+    // The Account destination in the settings nav rather than the button inside
+    // it. See the note in the PR: the panel itself is being rewritten under
+    // GRYT-156, and pointing at the button would have collided with that.
+    target: "settings-account",
+    title: "An account, if you ever want one",
+    body: "You do not need one. It carries your servers and settings between machines, and that is the only thing it is for.",
+    side: "right",
+    enter: (app) => app.openSettings("account"),
   },
   {
     id: "server",
     target: "add-server",
-    title: "Add a server",
-    body: "Gryt is empty until you join one. Add a friend's server with an invite, or spin up your own.",
-    side: "right"
+    title: "Gryt is empty until you join a server",
+    body: "This is where you add one, whether it is a friend's or your own.",
+    side: "right",
+    enter: (app) => app.closeSettings(),
   },
   {
-    // Same anchor as step 1 on purpose. The voice controls are 0x0 until a
-    // connection exists, so at first run there is nothing to point at — but
-    // Sound & video sits behind this button too, and pointing at the real
-    // route beats pointing at an element that is not there.
-    id: "audio",
-    target: "profile",
-    title: "Check your microphone",
-    body: "Worth thirty seconds now rather than finding out mid-conversation. Settings, then Sound & video.",
-    side: "right"
-  }
+    id: "join",
+    target: "join-address",
+    title: "Paste an address to join",
+    body: "A friend's invite goes straight in here. No account needed, and you can leave again whenever you like.",
+    side: "top",
+    enter: (app) => app.setShowAddServer(true),
+  },
 ];

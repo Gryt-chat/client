@@ -378,6 +378,7 @@ export function Settings() {
                           type="button"
                           onClick={() => changeDestination(value)}
                           className="gryt-settings-nav"
+                          data-tour={`settings-${value}`}
                           data-active={value === active}
                         >
                           <Icon size={16} />

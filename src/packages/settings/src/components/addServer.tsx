@@ -564,7 +564,7 @@ export function AddNewServer({
               </>
             )}
 
-            <Flex gap="2" align="center">
+            <Flex gap="2" align="center" data-tour="join-address">
               <TextField.Root
                 type="url"
                 disabled={isSearching || isJoining}
