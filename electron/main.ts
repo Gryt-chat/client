@@ -865,20 +865,40 @@ function friendlyUpdateError(err: Error): string {
   ) {
     return "No update available for this channel yet. The release may still be building — try again in a few minutes.";
   }
-  // Throttling, which is neither end being broken. GitHub answers a burst of
-  // requests either by refusing the HTTP/2 stream or with a 403 whose body says
-  // it is a secondary rate limit, and both clear on their own.
+  // Throttling, and only when GitHub actually says so: a 429, or a 403 whose
+  // body names the secondary rate limit. Kept narrow deliberately — see below.
   //
-  // Checked before the two branches below, which would otherwise catch these
-  // and give advice that sends people the wrong way: the stream refusal reads
-  // as net::ERR_ and would tell somebody with a working connection to go and
-  // check it, and the 403 would tell them their token had expired.
+  // Ahead of the access-denied branch, which would otherwise catch the 403 and
+  // tell somebody their token had expired.
   if (
-    msg.includes("ERR_HTTP2_SERVER_REFUSED_STREAM") ||
     msg.includes("HttpError: 429") ||
     msg.toLowerCase().includes("rate limit")
   ) {
     return "GitHub is rate limiting this machine, so the update could not be fetched. It clears on its own, so try again in a few minutes.";
+  }
+
+  // The connection was torn down part-way through. This says nothing about why,
+  // and the message must not pretend otherwise.
+  //
+  // ERR_HTTP2_SERVER_REFUSED_STREAM was read as throttling once, and that was
+  // wrong. On a machine seeing it repeatedly: the GitHub rate limit had 40 of
+  // 60 remaining, plain curl to the same feed failed twice in ten with
+  // "connection died", and the host had seven tunnel interfaces with MTUs
+  // between 1000 and 2000 and more than one default route. A local path
+  // problem, not GitHub.
+  //
+  // This is the third wording of this error and the second cause it named
+  // wrongly — the first sent people to check a connection that was working.
+  // So it names the symptom and stops. The raw error goes to the startup log,
+  // which is where the real answer lives.
+  if (
+    msg.includes("ERR_HTTP2_SERVER_REFUSED_STREAM") ||
+    msg.includes("ERR_HTTP2_PROTOCOL_ERROR") ||
+    msg.includes("ERR_CONNECTION_CLOSED") ||
+    msg.includes("ERR_CONNECTION_RESET") ||
+    msg.includes("ERR_EMPTY_RESPONSE")
+  ) {
+    return "The update could not be fetched. The connection to GitHub closed before it finished. This is usually temporary, so try again in a few minutes.";
   }
   if (
     msg.includes("net::ERR_") ||
