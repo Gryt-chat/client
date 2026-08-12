@@ -74,8 +74,8 @@ export function Welcome() {
               <p>Hey there! 👋 Welcome to Gryt!</p>
               <p className="mt-2.5">
                 I&rsquo;m really glad you&rsquo;re here, and that you decided to
-                give it a go. It&rsquo;s all built by me, a product engineer
-                from Norway 🇳🇴
+                give it a go. It&rsquo;s all built by me, a senior product
+                engineer from Norway 🇳🇴
               </p>
               <p className="mt-2.5">
                 That does mean some things are still a bit rough around the
