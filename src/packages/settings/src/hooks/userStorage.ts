@@ -302,6 +302,7 @@ function migrateFromLocalStorage(userId: string, data: UserData): UserData {
 export const SETTINGS_KEYS = [
   "nickname",
   "hasSeenWelcome",
+  "hasSeenTour",
   "micID",
   "outputDeviceID",
   "micVolume",
