@@ -48,7 +48,6 @@ async function accountFetch(
 export interface AccountProfile {
   sub?: string;
   email?: string;
-  username?: string;
   /**
    * When the account was created, if it can be had.
    *
@@ -88,10 +87,6 @@ export async function getAccountProfile(): Promise<AccountProfile> {
   const profile: AccountProfile = {
     sub: typeof claims.sub === "string" ? claims.sub : undefined,
     email: typeof claims.email === "string" ? claims.email : undefined,
-    username:
-      typeof claims.preferred_username === "string"
-        ? claims.preferred_username
-        : undefined,
     createdAt:
       typeof claims.created_at === "number"
         ? claims.created_at * 1000
@@ -102,10 +97,8 @@ export async function getAccountProfile(): Promise<AccountProfile> {
     const res = await accountFetch("/");
     const account = (await res.json()) as {
       email?: string;
-      username?: string;
     };
     if (account.email) profile.email = account.email;
-    if (account.username) profile.username = account.username;
   } catch {
     // Token claims are enough to show something useful.
   }

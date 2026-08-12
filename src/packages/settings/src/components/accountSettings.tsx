@@ -179,13 +179,6 @@ export function AccountSettings() {
               </DataList.Item>
             )}
 
-            {profile?.username && (
-              <DataList.Item>
-                <DataList.Label>Username</DataList.Label>
-                <DataList.Value>{profile.username}</DataList.Value>
-              </DataList.Item>
-            )}
-
             {profile?.sub && (
               <DataList.Item>
                 <DataList.Label>Gryt ID</DataList.Label>
