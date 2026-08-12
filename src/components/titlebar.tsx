@@ -42,6 +42,18 @@ export function Titlebar() {
         borderBottom: "1px solid var(--gray-a3)",
         flexShrink: 0,
         position: "relative",
+        // Above the overlay band, so a modal cannot cover the window chrome.
+        // Dialog and Drawer backdrops are `fixed inset-0` portaled to body, and
+        // neither sets a z-index, so DOM order alone put them on top of this:
+        // the titlebar came out blurred, and because -webkit-app-region is
+        // hit-tested against the topmost element, the drag region and the
+        // back/forward buttons went with it.
+        //
+        // 10000 clears the overlays that do set one — the tour scrim at 9000,
+        // the lightbox and debug overlay at 9999 — while staying under the
+        // toasts (99999) and the auth splash (999999), which are deliberately
+        // above everything.
+        zIndex: 10000,
         display: "flex",
         alignItems: "center",
       } as React.CSSProperties}
