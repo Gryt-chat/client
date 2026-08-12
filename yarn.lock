@@ -576,10 +576,10 @@
   resolved "https://registry.yarnpkg.com/@floating-ui/utils/-/utils-0.2.12.tgz#afefe785949f16ac4cdd1e695935a321572dd56a"
   integrity sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==
 
-"@gryt/ui@^0.3.0":
-  version "0.3.0"
-  resolved "https://registry.yarnpkg.com/@gryt/ui/-/ui-0.3.0.tgz#19a686c47f01f87f824b74ec9a0b9bdee71c6e89"
-  integrity sha512-l1l9DhtdIJ3U73SKoUPwVOYPG1DngohDwL+RvHnF9kJGqbIAqDVWH/s8Bp7mh4VBrRsby4gUjBLDdeTGkKrqCw==
+"@gryt/ui@^0.4.0":
+  version "0.4.0"
+  resolved "https://registry.yarnpkg.com/@gryt/ui/-/ui-0.4.0.tgz#c1d4ae2e01ba75b15157600ba5ad388fc2e8e986"
+  integrity sha512-OLab7I1dVAGX07Y/feifc3fXztDpMh3hc3zxMjPgYUbhi4aE+eoYN3mgeE1ieUGdsbPsfb8VVRUwm6Z90Z6rwA==
   dependencies:
     "@base-ui/react" "^1.7.0"
     "@phosphor-icons/react" "^2.1.10"
