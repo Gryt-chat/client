@@ -137,7 +137,15 @@ function useSettingsHook() {
       // A returning user who never picked a nickname used to have Settings
       // opened on top of them here, with no explanation of why. They get the
       // tour instead, which at least says what it is pointing at.
-      if (seen && !getUserValue<string>("nickname", "")) {
+      //
+      // Once, though. This ran on every load, so a guest who skipped the tour
+      // and never set a nickname was shown it again every time they opened
+      // Gryt — the app nagging somebody for declining, forever.
+      if (
+        seen &&
+        !getUserValue<string>("nickname", "") &&
+        !getUserValue<boolean>("hasSeenTour", false)
+      ) {
         setShowTour(true);
       }
 
@@ -374,13 +382,23 @@ function useSettingsHook() {
   function completeWelcome(options?: { startTour?: boolean }) {
     setHasSeenWelcome(true);
     setUserValue("hasSeenWelcome", true);
-    if (options?.startTour === true && !getUserValue<string>("nickname", "")) {
+    if (
+      options?.startTour === true &&
+      !getUserValue<string>("nickname", "") &&
+      !getUserValue<boolean>("hasSeenTour", false)
+    ) {
       setShowTour(true);
     }
   }
 
+  /**
+   * Called when the tour finishes and when it is skipped, because both are the
+   * same statement: I am done with this. Written down, so it is still true
+   * after a reload.
+   */
   function dismissTour() {
     setShowTour(false);
+    setUserValue("hasSeenTour", true);
   }
 
   function openSettings(tab: string = "appearance") {
