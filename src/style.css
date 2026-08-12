@@ -38,6 +38,43 @@
 
 :root {
   --titlebar-inset: 0px;
+
+  /* ── Stacking scale ───────────────────────────────────────
+   *
+   * Every layer that competes across the whole window lives here, ten apart,
+   * lowest first. Before this the app had 999, 1000, 1001, 9000, 9999, 10000,
+   * 99999 and 999999, because each overlay picked a number big enough to win
+   * whatever argument it was having at the time. Ten is plenty of room; if two
+   * things need to sit between two rungs, the scale is wrong, not the gap.
+   *
+   * Only add a token for something that has to stack against the rest of the
+   * app. Stacking inside one component (a badge over an avatar, a drag lift in
+   * a reorder list) stays local and small, and does not belong here.
+   *
+   * @gryt/ui sets no z-index at all: its Dialog and Drawer portal to body and
+   * win on DOM order, which means they lose to anything positive. That is why
+   * a backdrop could cover the titlebar (GRYT-188) and why a dialog opened
+   * from a mobile sheet rendered underneath it. Both are placed by class
+   * further down this file rather than left to whoever renders last.
+   */
+  --gryt-z-popover: 10; /* autocompletes, emoji picker, anchored menus */
+  --gryt-z-sheet: 20; /* mobile server view and sheet */
+  --gryt-z-modal: 30; /* @gryt/ui Dialog and Drawer */
+  --gryt-z-tour: 40; /* onboarding coach marks */
+  --gryt-z-lightbox: 50; /* image lightbox and its controls */
+  --gryt-z-debug: 60; /* debug overlay */
+  --gryt-z-chrome: 70; /* Electron titlebar; window controls stay reachable */
+  --gryt-z-toast: 80; /* transient notifications */
+  --gryt-z-splash: 90; /* auth loading overlay */
+}
+
+/* The library's portaled overlays, given a home on the scale above. Without
+   this they sit at z-index auto and depend entirely on being rendered last. */
+.gryt-dialog-backdrop,
+.gryt-dialog,
+.gryt-drawer-backdrop,
+.gryt-drawer {
+  z-index: var(--gryt-z-modal);
 }
 
 .rt-BaseTabListTrigger {
@@ -524,7 +561,7 @@ body {
 .lightbox-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 9999;
+  z-index: var(--gryt-z-lightbox);
   display: flex;
   align-items: center;
   justify-content: center;

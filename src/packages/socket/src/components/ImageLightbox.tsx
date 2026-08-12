@@ -132,7 +132,7 @@ export const ImageLightbox = ({
         onMouseDown={handleMouseDown}
         onLoad={handleImageLoad}
       />
-      <div style={{ position: "fixed", top: "calc(var(--titlebar-inset) + 16px)", right: 16, display: "flex", gap: 8, zIndex: 10000 }}>
+      <div style={{ position: "fixed", top: "calc(var(--titlebar-inset) + 16px)", right: 16, display: "flex", gap: 8, zIndex: 1 }}>
         <button
           onClick={(e) => {
             e.stopPropagation();

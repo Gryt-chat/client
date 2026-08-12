@@ -54,7 +54,7 @@ function ThemedApp() {
       </div>
       <Toaster
         position="bottom-right"
-        containerStyle={{ zIndex: 99999 }}
+        containerStyle={{ zIndex: "var(--gryt-z-toast)" }}
         toastOptions={{
           style: {
             background: "var(--color-panel-solid)",
