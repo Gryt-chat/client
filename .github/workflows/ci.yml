@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      # Only the web bundle is linted and built here, and the Electron binary is
+      # a ~100MB download that nothing in this job runs. Skipping it also keeps a
+      # flaky download from failing a job that has nothing to do with it.
+      # Packaging the desktop app is release.yml's problem, not this one.
+      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      # tsc -b and eslint with --max-warnings 0. This is the check that was
+      # missing: client#115 merged with three TS6133 errors and main did not
+      # compile until the next PR happened to supply the code that used them.
+      - run: yarn lint
+      # lint already runs tsc, so this is really vite build — it catches what
+      # type-checking cannot, like an import that resolves for TypeScript and
+      # not for the bundler.
+      - run: yarn build
