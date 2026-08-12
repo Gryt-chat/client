@@ -21,6 +21,21 @@ const cardStyle: React.CSSProperties = {
   boxShadow: "0 1px 4px var(--gray-a3)",
 };
 
+/**
+ * Failures where the server answered and said no.
+ *
+ * Worth separating from the rest, because "Failed to load server" and a Retry
+ * button are wrong for all of them: nothing failed to load, and pressing Retry
+ * asks the same question and gets the same answer. What changes the outcome is
+ * signing in, or a moderator — never the button.
+ */
+const REFUSALS = new Set([
+  "identity_tier_refused",
+  "join_refused",
+  "banned",
+  "membership_required",
+]);
+
 const iconWrapStyle = (bg: string): React.CSSProperties => ({
   width: 56,
   height: 56,
@@ -40,6 +55,7 @@ export const ServerLoadingStates = ({
   onReconnect,
 }: ServerLoadingStatesProps) => {
   if (serverFailure) {
+    const wasRefused = REFUSALS.has(serverFailure.error);
     return (
       <Flex width="100%" height="100%" align="center" justify="center" p="4">
         <Box style={cardStyle}>
@@ -49,7 +65,7 @@ export const ServerLoadingStates = ({
             </div>
             <Flex direction="column" gap="2" align="center">
               <Text size="4" weight="bold">
-                Failed to load server
+                {wasRefused ? "You can't join this server" : "Failed to load server"}
               </Text>
               <Text size="2" color="gray" style={{ lineHeight: 1.5 }}>
                 {serverFailure.error === "rate_limited"
@@ -58,15 +74,17 @@ export const ServerLoadingStates = ({
                     "An error occurred while loading server details."}
               </Text>
             </Flex>
-            <Button
-              onClick={() => window.location.reload()}
-              variant="solid"
-              size="2"
-              style={{ marginTop: 4 }}
-            >
-              <PiArrowsClockwiseFill size={16} />
-              Retry
-            </Button>
+            {!wasRefused && (
+              <Button
+                onClick={() => window.location.reload()}
+                variant="solid"
+                size="2"
+                style={{ marginTop: 4 }}
+              >
+                <PiArrowsClockwiseFill size={16} />
+                Retry
+              </Button>
+            )}
           </Flex>
         </Box>
       </Flex>
