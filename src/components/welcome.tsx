@@ -71,14 +71,20 @@ export function Welcome() {
             {/* Description defaults to muted, which is right for a subtitle
                 under a title and wrong here — this is the whole message. */}
             <Dialog.Description className="text-gryt-text" render={<div />}>
-              <p>
-                Gryt is open-source voice chat, and it&rsquo;s mostly one
-                person&rsquo;s work. Some of it is rough. I&rsquo;d rather you
-                found that out from me than from the app.
+              <p>Hey there! 👋 Welcome to Gryt!</p>
+              <p className="mt-2.5">
+                I&rsquo;m really glad you&rsquo;re here, and that you decided to
+                give it a go. It&rsquo;s all built by me, a senior developer
+                from Norway 🇳🇴
               </p>
               <p className="mt-2.5">
-                There are three things worth setting up before you do anything
-                else. I can point at them, or you can help yourself.
+                That does mean some things are still a bit rough around the
+                edges. If something breaks, please tell me. There&rsquo;s a Give
+                feedback button in settings.
+              </p>
+              <p className="mt-2.5">
+                If you&rsquo;re ready, I&rsquo;d be happy to show you around.
+                Enjoy Gryt! 😊
               </p>
             </Dialog.Description>
           </MessageBubble>
