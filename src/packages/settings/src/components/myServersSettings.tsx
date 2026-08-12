@@ -73,14 +73,7 @@ export function MyServersSettings() {
   const name = config?.serverName ?? "My Server";
   const port = config?.serverPort;
 
-  /**
-   * The address this server is known by, which is also its icon's seed.
-   *
-   * It has to be the same string the rail uses or the same server draws two
-   * different planets — one here and another three inches to the left. The
-   * create form seeds on the typed name because a server being created has no
-   * address yet; from the moment it has one, the address wins.
-   */
+  /** Where this machine reaches it, and the key it goes into the rail under. */
   const host = port ? `127.0.0.1:${port}` : "";
 
   function hostAServer() {
@@ -145,7 +138,7 @@ export function MyServersSettings() {
                     size="3"
                     radius="full"
                     src={undefined}
-                    fallback={<GeneratedServerIcon host={host || name} />}
+                    fallback={<GeneratedServerIcon seed={name} />}
                   />
 
                   <Flex direction="column" gap="1" style={{ minWidth: 0 }}>

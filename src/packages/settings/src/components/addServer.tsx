@@ -708,11 +708,14 @@ function ServerPreview({
   return (
     <Card size="1">
       <Flex align="center" gap="3">
+        {/* Seeded on the address until /info answers, and on the name from then
+            on — so the planet in the preview is the one the rail will draw once
+            you have joined, rather than a different one you never see again. */}
         <Avatar
           size="2"
           radius="medium"
           src={info ? `${getServerHttpBase(host)}/icon` : undefined}
-          fallback={<GeneratedServerIcon host={host} />}
+          fallback={<GeneratedServerIcon seed={info?.name || host} />}
         />
 
         <Flex direction="column" style={{ minWidth: 0 }}>

@@ -90,12 +90,7 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
           size="6"
           radius="full"
           src={undefined}
-          fallback={
-            <GeneratedServerIcon
-              host={serverName}
-              seed={serverName || "My Server"}
-            />
-          }
+          fallback={<GeneratedServerIcon seed={serverName || "My Server"} />}
         />
         <Text size="1" color="gray">
           Generated from the name

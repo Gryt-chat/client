@@ -202,7 +202,7 @@ export function Discovery() {
                     size="3"
                     radius="medium"
                     src={`${getServerHttpBase(host)}/icon`}
-                    fallback={<GeneratedServerIcon host={host} />}
+                    fallback={<GeneratedServerIcon seed={server.name || host} />}
                   />
 
                   <Flex direction="column" style={{ minWidth: 0 }}>

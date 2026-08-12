@@ -49,13 +49,17 @@ import { bugReportUrl } from "../lib/bugReport";
  */
 function serverIconSrc(
   host: string,
+  name: string,
   serverDetailsList: ServerDetailsListType,
 ): string {
   const info = serverDetailsList[host]?.server_info;
   if (info?.icon_url) {
     return `${getServerHttpBase(host)}/icon?v=${encodeURIComponent(info.icon_url)}`;
   }
-  if (info) return generatedServerIconUrl(host);
+  // The server's own name first: it is the one the server reports, so a rename
+  // reaches the rail as soon as details refresh. The locally stored name is
+  // what we had before it answered.
+  if (info) return generatedServerIconUrl(info.name || name || host);
   return `${getServerHttpBase(host)}/icon`;
 }
 
@@ -320,7 +324,7 @@ function ServerItem({
                   size="2"
                   color="gray"
                   asChild
-                  fallback={<GeneratedServerIcon host={host} />}
+                  fallback={<GeneratedServerIcon seed={servers[host]?.name || host} />}
                   style={{
                     opacity:
                       currentlyViewingServer?.host === host
@@ -338,7 +342,7 @@ function ServerItem({
                       ? "pulse-reconnect 1.5s ease-in-out infinite"
                       : "none",
                   }}
-                  src={serverIconSrc(host, serverDetailsList)}
+                  src={serverIconSrc(host, servers[host]?.name || "", serverDetailsList)}
                 >
                   <Button
                     style={{
