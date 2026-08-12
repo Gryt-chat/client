@@ -226,7 +226,10 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
   // That never showed while the tour only pointed at things already on screen.
   // It opens modals now, so it has to live in the same stacking context they do.
   return createPortal(
-    <div className="fixed inset-0 z-(--gryt-z-tour)">
+    /* The layer itself stays transparent to the pointer so the control being
+       spotlighted is still clickable through it — that is the whole point of a
+       cut-out rather than a mask. Only the card takes clicks back. */
+    <div className="pointer-events-none fixed inset-0 z-(--gryt-z-tour)">
       {/* One element does the whole scrim. An enormous spread shadow darkens
           everything outside the box, which leaves the control itself lit and
           still clickable — no four-rect construction, no SVG mask. */}
@@ -240,7 +243,12 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
         role="dialog"
         aria-modal="false"
         aria-labelledby={`tour-${step.id}-title`}
-        className="fixed w-80 rounded-(--gryt-radius-xl) border border-gryt-border bg-gryt-surface p-4 transition-[top,left] duration-(--gryt-dur-spring) ease-spring motion-reduce:transition-none"
+        /* pointer-events back on, and this is load-bearing rather than tidying.
+           A Radix modal sets pointer-events: none on the body so the rest of
+           the app goes inert, and this is portaled to body — so from the moment
+           a step opened Settings, Skip and Next went inert with everything
+           else. The tour became unclickable at step two and stayed that way. */
+        className="pointer-events-auto fixed w-80 rounded-(--gryt-radius-xl) border border-gryt-border bg-gryt-surface p-4 transition-[top,left] duration-(--gryt-dur-spring) ease-spring motion-reduce:transition-none"
         style={card}
       >
         <p className="m-0 font-mono text-xs tracking-wide text-gryt-accent">
