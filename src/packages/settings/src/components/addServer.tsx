@@ -504,7 +504,16 @@ export function AddNewServer({
             <button
               type="button"
               onClick={() => setMode(null)}
-              className="-ml-1 flex w-fit cursor-pointer items-center gap-1 rounded px-1 py-0.5 text-xs text-gryt-text/70 transition-colors duration-150 hover:text-gryt-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-solid focus-visible:outline-[var(--color-gryt-accent)]"
+              /* border-0 and bg-transparent are not redundant. This app imports
+                 Tailwind's theme and utilities but deliberately skips preflight
+                 — Radix Themes ships its own reset and two resets fight — so a
+                 bare <button> keeps the browser's default border and grey
+                 background. That is what made this look like a permanently
+                 focused control rather than a quiet label.
+
+                 The focus ring is a shadow rather than an outline, so it cannot
+                 lose to the UA's own ring. */
+              className="-ml-1 flex w-fit cursor-pointer appearance-none items-center gap-1 rounded border-0 bg-transparent px-1 py-0.5 text-xs text-gryt-text/70 transition-colors duration-150 outline-none hover:text-gryt-text focus-visible:shadow-[0_0_0_2px_var(--color-gryt-accent)]"
             >
               <PiCaretLeftBold size={12} />
               Add a server
