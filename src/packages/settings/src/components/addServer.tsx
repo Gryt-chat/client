@@ -1,15 +1,19 @@
-import { Card, Dialog, IconButton } from "@gryt/ui";
+import { Dialog } from "@gryt/ui";
 import {
   Avatar,
   Badge,
   Box,
   Button,
   Callout,
+  Card,
   Flex,
+  IconButton,
   Separator,
   Spinner,
   Text,
   TextField,
+  Theme,
+  useThemeContext,
 } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -87,6 +91,17 @@ export function AddNewServer({
 }: AddNewServerProps) {
   const { addServer, servers, switchToServer } = useServerManagement();
   const { nickname } = useSettings();
+  /**
+   * The app's own theme values, to be re-applied inside the dialog.
+   *
+   * @gryt/ui's Dialog portals to document.body, which is outside the <Theme>
+   * wrapper in main.tsx — and that wrapper is the only thing defining the Radix
+   * variables. Portaled Radix components rendered with none of them: cards lost
+   * their borders and backgrounds, avatars ignored their size and blew the
+   * layout apart. Reading the values here and setting them again inside the
+   * popup restores the context the portal escaped.
+   */
+  const theme = useThemeContext();
   const { lanServers, isElectron, rescan } = useLanDiscovery();
   const { isAvailable: embeddedServerAvailable } = useEmbeddedServer();
 
@@ -440,6 +455,7 @@ export function AddNewServer({
       /* Same as the settings dialog: a coach mark is not "outside" in any
          sense the user cares about, and dismissing this on a Next click made
          the tour's last step close the thing it had just opened.
+
          Radix expressed this as onInteractOutside + preventDefault; Base UI
          hands the reason and the event to onOpenChange and cancels there. */
       onOpenChange={(open, details) => {
@@ -457,66 +473,78 @@ export function AddNewServer({
       <Dialog.Portal>
         <Dialog.Backdrop />
         <Dialog.Popup className="w-[37.5rem] max-w-[calc(100vw-2rem)] overflow-hidden">
+          <Theme
+            appearance={theme.appearance}
+            accentColor={theme.accentColor}
+            grayColor={theme.grayColor}
+            radius={theme.radius}
+            scaling={theme.scaling}
+            panelBackground={theme.panelBackground}
+            hasBackground={false}
+          >
+        {/* Positioned by a wrapper rather than by a class on either the Close or
+            the IconButton. Close renders *as* the IconButton, and the className
+            does not survive that clone in either position — the button was
+            dropping into normal flow at the top left of the content. */}
+        <div className="absolute top-2 right-2 z-10">
           <Dialog.Close
-            className="absolute top-2 right-2"
-            render={<IconButton size="small" aria-label="Close" />}
+            render={<IconButton variant="soft" color="gray" aria-label="Close" />}
           >
             <PiX size={16} />
           </Dialog.Close>
+        </div>
 
-          <Flex direction="column" gap="2">
-            <Dialog.Title className="text-2xl font-bold">
-              {step === "host" ? "Host a server" : step === "join" ? "Join a server" : "Add a server"}
-            </Dialog.Title>
+        <Flex direction="column" gap="2">
+          <Dialog.Title className="text-2xl font-bold">
+            {step === "host" ? "Host a server" : step === "join" ? "Join a server" : "Add a server"}
+          </Dialog.Title>
 
-            <Dialog.Description className="mb-4 text-sm">
-              {step === "host"
-                ? "Run a server on this machine. Your friends connect to you."
-                : step === "join"
-                  ? "Enter an address, or pick one already running on your network."
-                  : "Run one yourself, or join somebody else's."}
-            </Dialog.Description>
+          <Dialog.Description className="mb-4 text-sm">
+            {step === "host"
+              ? "Run a server on this machine. Your friends connect to you."
+              : step === "join"
+                ? "Enter an address, or pick one already running on your network."
+                : "Run one yourself, or join somebody else's."}
+          </Dialog.Description>
 
           {/* The choice. Two errands that were sharing one column, with the
               discovered servers stacked in between them. */}
           {step === null && (
-            /* @gryt/ui Card, not Radix's. The Dialog portals to document.body,
-               which is outside the .radix-themes wrapper, so a Radix Card in
-               here renders with none of its theme — measured: no border, no
-               background, just text on the popup. Anything visible inside a
-               migrated dialog has to come from the library that owns the
-               portal. */
-            <div className="mb-2 flex flex-col gap-3 sm:flex-row">
-              <Card className="flex-1 p-0">
+            <Flex direction={{ initial: "column", sm: "row" }} gap="3" mb="2">
+              <Card asChild size="2" style={{ flex: 1 }}>
                 <button
                   type="button"
                   data-tour="choose-host"
                   onClick={() => setMode("host")}
-                  className="flex h-full w-full cursor-pointer flex-col items-start gap-1 p-4 text-left"
+                  style={{ cursor: "pointer", textAlign: "left" }}
                 >
-                  <PiHouseFill size={20} />
-                  <span className="font-bold">Host a server</span>
-                  <span className="text-sm text-gryt-muted">
-                    Runs on this machine. Best for a few friends.
-                  </span>
+                  <Flex direction="column" gap="1" align="start">
+                    <PiHouseFill size={20} />
+                    <Text size="3" weight="bold">Host a server</Text>
+                    <Text size="2" color="gray">
+                      Runs on this machine. Best for a few friends.
+                    </Text>
+                  </Flex>
                 </button>
               </Card>
 
-              <Card className="flex-1 p-0">
+              <Card asChild size="2" style={{ flex: 1 }}>
                 <button
                   type="button"
                   data-tour="choose-join"
                   onClick={() => setMode("join")}
-                  className="flex h-full w-full cursor-pointer flex-col items-start gap-1 p-4 text-left"
+                  style={{ cursor: "pointer", textAlign: "left" }}
                 >
-                  <PiSignInFill size={20} />
-                  <span className="font-bold">Join a server</span>
-                  <span className="text-sm text-gryt-muted">
-                    With an invite, an address, or one on your network.
-                  </span>
+                  <Flex direction="column" gap="1" align="start">
+                    <PiSignInFill size={20} />
+                    <Text size="3" weight="bold">Join a server</Text>
+                    <Text size="2" color="gray">
+                      With an invite, an address, or one on your network.
+                    </Text>
+                  </Flex>
                 </button>
               </Card>
-            </div>
+            </Flex>
           )}
 
           {step !== null && (
@@ -611,7 +639,7 @@ export function AddNewServer({
                         (isSearching || isJoining);
 
                       return (
-                        <Card key={`${s.host}:${s.port}`} className="p-3">
+                        <Card key={`${s.host}:${s.port}`} size="1">
                           <Flex align="center" gap="3">
                             {/*
                               Streamed from the server's own /icon endpoint.
@@ -1031,7 +1059,8 @@ export function AddNewServer({
               )}
             </AnimatePresence>
           </Flex>
-          </Flex>
+        </Flex>
+          </Theme>
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>

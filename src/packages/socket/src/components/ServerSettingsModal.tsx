@@ -1,5 +1,4 @@
-import { Dialog, IconButton } from "@gryt/ui";
-import { Badge, Box, Flex, Spinner, Tabs, Text } from "@radix-ui/themes";
+import { Badge, Box, Dialog, Flex, IconButton, Spinner, Tabs, Text } from "@radix-ui/themes";
 import { useEffect, useMemo, useState } from "react";
 import { PiArrowsLeftRightFill, PiGearFill, PiHandWavingFill, PiLinkFill, PiListChecksFill, PiProhibitFill, PiSmileyFill, PiUsersFill, PiWebhooksLogoFill, PiX } from "react-icons/pi";
 
@@ -175,18 +174,21 @@ export function ServerSettingsModal() {
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={handleDialogChange}>
-      <Dialog.Portal>
-        <Dialog.Backdrop />
-        <Dialog.Popup className="h-[700px] max-h-[calc(100dvh-4rem)] w-[56rem] max-w-[calc(100vw-2rem)] min-w-[37.5rem]">
+      <Dialog.Content maxWidth="900px" style={{ height: "700px", minWidth: "600px" }}>
         <Dialog.Close
-          className="absolute top-2 right-2"
-          render={<IconButton size="small" aria-label="Close server settings" />}
+          style={{
+            position: "absolute",
+            top: "8px",
+            right: "8px",
+          }}
         >
-          <PiX size={16} />
+          <IconButton variant="soft" color="gray">
+            <PiX size={16} />
+          </IconButton>
         </Dialog.Close>
 
         <Flex direction="column" gap="4" height="100%">
-          <Dialog.Title className="text-2xl font-bold">
+          <Dialog.Title as="h1" weight="bold" size="6">
             Server settings
           </Dialog.Title>
 
@@ -291,8 +293,7 @@ export function ServerSettingsModal() {
             )
           )}
         </Flex>
-        </Dialog.Popup>
-      </Dialog.Portal>
+      </Dialog.Content>
     </Dialog.Root>
   );
 }
