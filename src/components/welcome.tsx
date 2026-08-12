@@ -23,7 +23,7 @@ import { useSettings } from "@/settings";
  * an apology reads as two different products talking.
  */
 export function Welcome() {
-  const { hasSeenWelcome, completeWelcome } = useSettings();
+  const { hasSeenWelcome, settingsLoaded, completeWelcome } = useSettings();
 
   return (
     /* Guarded on `open` rather than passed straight through. `completeWelcome`
@@ -31,8 +31,15 @@ export function Welcome() {
        `onOpenChange` would dismiss the dialog the instant it opened — a bug
        this file has had before, hidden by a dialog library that only called
        the handler on close. */
+    /* `settingsLoaded` and not a timer. Until the stored settings have been
+       read, "has this person seen the welcome" has no answer, and the default
+       of false made the app answer no — so a returning user got the welcome
+       flashed at them on every load while Keycloak was still being asked who
+       they were. Waiting a fixed second instead would be a guess in both
+       directions: still too short when auth is slow, and a second of nothing
+       for everybody when it is not. */
     <Dialog.Root
-      open={!hasSeenWelcome}
+      open={settingsLoaded && !hasSeenWelcome}
       onOpenChange={(open) => {
         // Closing by the X, Esc or the backdrop is a skip. Starting something
         // because somebody dismissed a thing is the wrong way round.

@@ -21,6 +21,20 @@ function useSettingsHook() {
   const [settingsTab, setSettingsTab] = useState("profile");
   const [showNickname, setShowNickname] = useState(false);
   const [hasSeenWelcome, setHasSeenWelcome] = useState(false);
+  /**
+   * Whether the stored settings have actually been read yet.
+   *
+   * Everything below defaults to something, and until the load has run those
+   * defaults are guesses rather than answers. That is fine for most of them,
+   * and wrong for anything that decides whether to show a first-run thing:
+   * `hasSeenWelcome` defaults to false, so without this the app is briefly
+   * certain that everybody is new.
+   *
+   * The window is not small. `useUserId` holds `userId` at null until Keycloak
+   * answers, on purpose, so the effect below does not even start until a
+   * network round trip has finished.
+   */
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [showTour, setShowTour] = useState(false);
 
   const avatarObjectUrlRef = useRef<string | null>(null);
@@ -148,6 +162,13 @@ function useSettingsHook() {
       ) {
         setShowTour(true);
       }
+
+      // Marked here rather than at the end of the effect. Everything the
+      // first-run decisions rest on has been read by this point, and the avatar
+      // below is a second await that has nothing to do with them — gating the
+      // welcome on it would hold the dialog back for an image nobody is waiting
+      // to see.
+      setSettingsLoaded(true);
 
       const rec = await getStoredAvatar(userId).catch(() => null);
       if (cancelled || !rec?.blob) return;
@@ -431,6 +452,7 @@ function useSettingsHook() {
     showNickname,
     setShowNickname,
     hasSeenWelcome,
+    settingsLoaded,
     completeWelcome,
     showTour,
     dismissTour,
