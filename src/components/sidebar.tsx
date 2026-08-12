@@ -11,7 +11,7 @@ import {
   Tooltip,
 } from "@radix-ui/themes";
 import { Reorder } from "motion/react";
-import { PiChatCircleDotsFill, PiGearFill, PiMicrophoneFill, PiPlus } from "react-icons/pi";
+import { PiChatCircleDotsFill, PiGearFill, PiMicrophoneFill, PiPlus, PiSignInFill } from "react-icons/pi";
 
 import {
   GeneratedServerIcon,
@@ -61,7 +61,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ setShowAddServer }: SidebarProps) {
-  const { logout } = useAccount();
+  const { isSignedIn, login, logout } = useAccount();
   const { nickname, avatarDataUrl, setShowSettings } = useSettings();
 
   const {
@@ -170,10 +170,29 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
                 Give feedback
               </Flex>
             </DropdownMenu.Item>
-            <DropdownMenu.Separator />
-            <DropdownMenu.Item color="red" onClick={logout}>
-              Sign out
-            </DropdownMenu.Item>
+            {/* Guest-by-default (GRYT-173) means most people on a first run
+                have no account, and offering them a way out of one they never
+                had is both wrong and a wasted invitation. `isSignedIn` is
+                undefined until Keycloak answers, so neither item is shown
+                until it does — a control that changes label a beat after you
+                open the menu is worse than one that arrives a beat late. */}
+            {isSignedIn !== undefined && (
+              <>
+                <DropdownMenu.Separator />
+                {isSignedIn ? (
+                  <DropdownMenu.Item color="red" onClick={logout}>
+                    Sign out
+                  </DropdownMenu.Item>
+                ) : (
+                  <DropdownMenu.Item onClick={login}>
+                    <Flex align="center" gap="1">
+                      <PiSignInFill size={14} />
+                      Sign in
+                    </Flex>
+                  </DropdownMenu.Item>
+                )}
+              </>
+            )}
           </DropdownMenu.Content>
         </DropdownMenu.Root>
       </Flex>
