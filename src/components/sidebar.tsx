@@ -11,7 +11,7 @@ import {
   Tooltip,
 } from "@radix-ui/themes";
 import { Reorder } from "motion/react";
-import { PiBugFill, PiChatCircleDotsFill, PiGearFill, PiMicrophoneFill, PiPlus, PiSignInFill } from "react-icons/pi";
+import { PiBroadcastFill, PiBugFill, PiChatCircleDotsFill, PiGearFill, PiMicrophoneFill, PiPlus, PiSignInFill } from "react-icons/pi";
 
 import {
   GeneratedServerIcon,
@@ -22,6 +22,7 @@ import {
   useUnreadTracker,
 } from "@/common";
 import { useSettings } from "@/settings";
+import { useLanDiscovery } from "@/settings/src/hooks/useLanDiscovery";
 import {
   Server,
   serverDetailsList as ServerDetailsListType,
@@ -73,7 +74,11 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
     switchToServer,
     orderedServerHosts,
     reorderServers,
+    showDiscovery,
+    setShowDiscovery,
+    newLanServers,
   } = useServerManagement();
+  const { isElectron } = useLanDiscovery();
 
   const { currentServerConnected, isConnected } = useSFU();
   const { serverConnectionStatus, serverProfiles, serverDetailsList } =
@@ -119,7 +124,9 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
               key={host}
               host={host}
               servers={servers}
-              currentlyViewingServer={currentlyViewingServer}
+              /* Nothing in the list is current while Discovery has the pane.
+                 Leaving the last server lit says you are looking at it. */
+              currentlyViewingServer={showDiscovery ? null : currentlyViewingServer}
               serverConnectionStatus={serverConnectionStatus}
               serverDetailsList={serverDetailsList}
               isConnected={isConnected}
@@ -140,6 +147,48 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
             <PiPlus size={16} />
           </IconButton>
         </Tooltip>
+
+        {/* Discovery is Electron-only because mDNS browsing is. A browser
+            would get a destination that can never have anything in it. */}
+        {isElectron && (
+          <Tooltip
+            content="Servers on your network"
+            delayDuration={100}
+            side="right"
+          >
+            <Box position="relative">
+              <IconButton
+                variant={showDiscovery ? "solid" : "soft"}
+                color="gray"
+                aria-label="Servers on your network"
+                onClick={() => setShowDiscovery(!showDiscovery)}
+              >
+                <PiBroadcastFill size={16} />
+              </IconButton>
+
+              {/* A dot, not a count. Six servers run on this machine alone, so
+                  a number here would sit permanently at six and stop meaning
+                  anything. This says "something turned up since you last
+                  looked", which is the only part worth interrupting for. */}
+              {newLanServers.length > 0 && !showDiscovery && (
+                <Box
+                  position="absolute"
+                  top="-2px"
+                  right="-2px"
+                  style={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: "50%",
+                    backgroundColor: "var(--accent-9)",
+                    border: "2px solid var(--color-background)",
+                    zIndex: 1,
+                    pointerEvents: "none",
+                  }}
+                />
+              )}
+            </Box>
+          </Tooltip>
+        )}
       </Flex>
 
       <Flex justify="center" align="center" direction="column" gap="3" pb="3">
