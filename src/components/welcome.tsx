@@ -78,9 +78,9 @@ export function Welcome() {
                 engineer from Norway 🇳🇴
               </p>
               <p className="mt-2.5">
-                That does mean some things are still a bit rough around the
-                edges. If something breaks, please tell me. There&rsquo;s a Give
-                feedback button in settings.
+                It&rsquo;s just me keeping it running, so some things are still
+                a bit rough around the edges. If something breaks, please tell
+                me. There&rsquo;s a Give feedback button in settings.
               </p>
               <p className="mt-2.5">
                 If you&rsquo;re ready, I&rsquo;d be happy to show you around.
