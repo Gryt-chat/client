@@ -39,6 +39,7 @@ import {
   fetchServerInfo,
   useServerJoin,
 } from "../hooks/useServerJoin";
+import { useSettings } from "../hooks/useSettings";
 import { CreateServerPanel } from "./createServer";
 
 export type { FetchInfo };
@@ -90,6 +91,7 @@ export function AddNewServer({
    */
   const theme = useThemeContext();
   const { isElectron } = useLanDiscovery();
+  const { openSettings } = useSettings();
   const {
     isAvailable: embeddedServerAvailable,
     hasExistingServer,
@@ -263,6 +265,11 @@ export function AddNewServer({
     closeDialog();
   }
 
+  function openMyServers() {
+    closeDialog();
+    openSettings("my-servers");
+  }
+
   const canJoin =
     !!serverHost &&
     !alreadyMember &&
@@ -328,9 +335,7 @@ export function AddNewServer({
             <Flex direction="column" gap="1" align="center">
               <Dialog.Title className="m-0 text-xl font-bold">
                 {step === "host"
-                  ? hasOwnServer
-                    ? "Your server"
-                    : "Create your server"
+                  ? "Create your server"
                   : step === "join"
                     ? "Join a server"
                     : "Add a server"}
@@ -338,9 +343,7 @@ export function AddNewServer({
 
               <Dialog.Description className="m-0 text-center text-sm">
                 {step === "host"
-                  ? hasOwnServer
-                    ? "It runs on this machine. Connect to it, or shut it down."
-                    : "It runs on this machine, and your friends connect to you."
+                  ? "It runs on this machine, and your friends connect to you."
                   : step === "join"
                     ? "Paste the invite a friend sent you, or the address of a server you already know."
                     : "Start one of your own, or join somebody else's."}
@@ -355,7 +358,13 @@ export function AddNewServer({
                   <button
                     type="button"
                     data-tour="choose-host"
-                    onClick={() => setMode("host")}
+                    /* One server per machine, so once you have one there is
+                       nothing to create and this row leads to managing it
+                       instead. Sending somebody to a create form that would
+                       refuse them is worse than sending them somewhere else. */
+                    onClick={() =>
+                      hasOwnServer ? openMyServers() : setMode("host")
+                    }
                     style={{ cursor: "pointer", textAlign: "left" }}
                   >
                     <Flex align="center" gap="3">
@@ -380,7 +389,7 @@ export function AddNewServer({
                         </Text>
                         <Text size="2" color="gray">
                           {hasOwnServer
-                            ? "Already set up on this machine."
+                            ? "Already running here. Manage it in settings."
                             : "Runs on this machine. Best for a few friends."}
                         </Text>
                       </Flex>
