@@ -1,5 +1,6 @@
 import { Accordion } from "@gryt/ui";
 import {
+  Avatar,
   Badge,
   Button,
   Callout,
@@ -13,6 +14,8 @@ import {
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { PiCheck, PiHardDrivesFill, PiInfoFill, PiPlayFill, PiStopFill, PiWarningFill, PiX } from "react-icons/pi";
+
+import { GeneratedServerIcon } from "@/common";
 
 import { useEmbeddedServer } from "../hooks/useEmbeddedServer";
 import { EmbeddedServerLogs } from "./embeddedServerLogs";
@@ -212,6 +215,27 @@ export function CreateServerPanel({ onServerReady }: CreateServerPanelProps) {
           >
             <Card size="2">
               <Flex direction="column" gap="3">
+                {/* The icon leads, and it is already theirs before they have
+                    finished naming it. Seeded on the name rather than the
+                    address: a server being created has no address yet, so every
+                    new one drew the same planet until it started. */}
+                <Flex direction="column" align="center" gap="1">
+                  <Avatar
+                    size="5"
+                    radius="full"
+                    src={undefined}
+                    fallback={
+                      <GeneratedServerIcon
+                        host={serverName}
+                        seed={serverName || "My Server"}
+                      />
+                    }
+                  />
+                  <Text size="1" color="gray">
+                    Generated from the name
+                  </Text>
+                </Flex>
+
                 <Flex direction="column" gap="2">
                   <Text size="2" color="gray" weight="bold">
                     Server name
