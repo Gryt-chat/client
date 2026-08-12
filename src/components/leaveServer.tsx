@@ -1,4 +1,4 @@
-import { AlertDialog, Button, Flex } from "@radix-ui/themes";
+import { Button, Dialog } from "@gryt/ui";
 
 import { useServerManagement } from "@/socket";
 
@@ -13,31 +13,40 @@ export function LeaveServer() {
     setShowRemoveServer(null);
   }
 
-  return (
-    <AlertDialog.Root open={!!showRemoveServer}>
-      <AlertDialog.Content maxWidth="450px">
-        <AlertDialog.Title>
-          Leave{" "}
-          <strong>{showRemoveServer && servers[showRemoveServer].name}</strong>
-        </AlertDialog.Title>
-        <AlertDialog.Description size="2">
-          Are you sure? You will lose access to all channels and messages in{" "}
-          {showRemoveServer && servers[showRemoveServer].name}.
-        </AlertDialog.Description>
+  const name = showRemoveServer && servers[showRemoveServer].name;
 
-        <Flex gap="3" mt="4" justify="end">
-          <AlertDialog.Cancel onClick={() => handleRemoveServer(false)}>
-            <Button variant="soft" color="gray">
+  return (
+    /* Dismissing this is a cancel. The Radix AlertDialog it replaces had no
+       onOpenChange at all, so Esc and the backdrop did nothing and the only way
+       out was the button — which is worse than it sounds on a dialog whose
+       other option is destructive. */
+    <Dialog.Root
+      open={!!showRemoveServer}
+      onOpenChange={(open) => {
+        if (!open) handleRemoveServer(false);
+      }}
+    >
+      <Dialog.Portal>
+        <Dialog.Backdrop />
+        <Dialog.Popup className="w-[28rem] max-w-[calc(100vw-2rem)]">
+          <Dialog.Title>
+            Leave <strong>{name}</strong>
+          </Dialog.Title>
+          <Dialog.Description className="mt-2">
+            Are you sure? You will lose access to all channels and messages in{" "}
+            {name}.
+          </Dialog.Description>
+
+          <Dialog.Footer>
+            <Button tone="ghost" onClick={() => handleRemoveServer(false)}>
               Cancel
             </Button>
-          </AlertDialog.Cancel>
-          <AlertDialog.Action onClick={() => handleRemoveServer(true)}>
-            <Button variant="solid" color="red">
+            <Button tone="danger" onClick={() => handleRemoveServer(true)}>
               Leave server
             </Button>
-          </AlertDialog.Action>
-        </Flex>
-      </AlertDialog.Content>
-    </AlertDialog.Root>
+          </Dialog.Footer>
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
