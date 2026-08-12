@@ -321,6 +321,37 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       return;
     }
 
+    // Refused for what this identity is rather than for who it is: the server
+    // does not admit this tier at all. This one the server does explain, and it
+    // says so in `server:info` before anyone tries, so the message is passed
+    // straight through.
+    //
+    // Recorded like the refusals below because that is what ends the attempt.
+    // Without it this fell to the generic branch, which toasts the raw error
+    // code and records nothing — so the connection never reached a terminal
+    // state, the panel sat on the connecting skeleton until its timeout, and
+    // the app blamed network conditions for a "no" that had arrived
+    // immediately. The retry loops kept asking for as long as it stayed open.
+    //
+    // Tokens are deliberately left alone, unlike the refusals below. Signing
+    // back in is the whole fix, and what was rejected is the identity in hand,
+    // not anything stored for this server.
+    if (errorInfo.error === "identity_tier_refused") {
+      const message =
+        errorInfo.message || "This server requires a Gryt account to join.";
+      toast.error(message, { duration: 6000 });
+
+      setFailedServerDetails((prev) => ({
+        ...prev,
+        [host]: {
+          error: errorInfo.error,
+          message,
+          timestamp: Date.now(),
+        },
+      }));
+      return;
+    }
+
     // The server will not say why, on purpose — a refusal does not confirm
     // whether a ban exists or whether this identity is even known there. So the
     // client cannot tell a ban from any other refusal, and must not guess:
