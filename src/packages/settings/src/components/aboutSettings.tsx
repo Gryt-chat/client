@@ -138,11 +138,6 @@ function UpdateControls() {
               {status?.status === "error" && <PiXCircleFill size={16} color="var(--red-9)" />}
               <Text size="2" color={statusColor}>{statusText}</Text>
             </Flex>
-            {status?.status === "error" && (
-              <Text size="1" color="gray">
-                This often happens right after a new version is released. Wait a few minutes and try again.
-              </Text>
-            )}
           </Flex>
         )}
 

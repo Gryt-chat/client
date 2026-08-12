@@ -634,6 +634,13 @@ function runSplashUpdateCheck(): Promise<void> {
     };
 
     const onError = (err?: Error) => {
+      // Raw, and before any of the branching below. The friendly text is lossy
+      // by design and the not-ready branch swallows the error entirely, so
+      // without this line a failed update on the way into the app leaves
+      // nothing to read afterwards — which is the exact hole this log exists
+      // to close.
+      startupLog(`Update failed: ${err ? err.stack || err.message : "unknown"}`);
+
       // A release that is still uploading is not a failure to launch through.
       // Flashing a red error on the way into the app, for something nobody can
       // act on and which fixes itself, is worse than saying nothing.
@@ -876,6 +883,8 @@ function initBackgroundUpdater() {
     sendToMain("downloaded", { version: info.version })
   );
   autoUpdater.on("error", (err) => {
+    startupLog(`Update failed: ${err.stack || err.message}`);
+
     if (isReleaseNotReadyYet(err)) {
       sendToMain("not-available", { version: app.getVersion() });
       return;
@@ -2010,6 +2019,8 @@ if (!gotSingleInstanceLock) {
         }
         pinFeedToNewestCompleteRelease().finally(() => {
           autoUpdater.checkForUpdates().catch((err) => {
+            startupLog(`Update check failed: ${err.stack || err.message}`);
+
             if (isReleaseNotReadyYet(err)) {
               sendToMain("not-available", { version: app.getVersion() });
               return;
