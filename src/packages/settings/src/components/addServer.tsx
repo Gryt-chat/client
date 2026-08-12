@@ -495,6 +495,22 @@ export function AddNewServer({
         </div>
 
         <Flex direction="column" gap="2">
+          {/* Back sits above the title, in the same column, as the label half of
+              a label-and-heading pair. It used to hang below the description,
+              detached from both — a control for leaving the step, rendered
+              after the step had finished introducing itself. Above, it reads as
+              where you are as much as how to leave. */}
+          {step !== null && (
+            <button
+              type="button"
+              onClick={() => setMode(null)}
+              className="-ml-1 flex w-fit cursor-pointer items-center gap-1 rounded px-1 py-0.5 text-xs text-gryt-text/70 transition-colors duration-150 hover:text-gryt-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-solid focus-visible:outline-[var(--color-gryt-accent)]"
+            >
+              <PiCaretLeftBold size={12} />
+              Add a server
+            </button>
+          )}
+
           <Dialog.Title className="text-2xl font-bold">
             {step === "host" ? "Host a server" : step === "join" ? "Join a server" : "Add a server"}
           </Dialog.Title>
@@ -547,15 +563,6 @@ export function AddNewServer({
             </Flex>
           )}
 
-          {step !== null && (
-            <Flex mb="2">
-              <Button variant="ghost" color="gray" onClick={() => setMode(null)}>
-                <PiCaretLeftBold size={14} />
-                Back
-              </Button>
-            </Flex>
-          )}
-
           <Flex direction="column" gap="4">
             {step === "host" && embeddedServerAvailable && (
               <>
@@ -588,16 +595,15 @@ export function AddNewServer({
             {step === "join" && isElectron && (
               <>
                 <Flex direction="column" gap="2">
+                  {/* No count badge. It restated what the list below already
+                      shows by existing, and spent a semantic colour — green,
+                      which everywhere else in this app means good or connected
+                      — on a number that means neither. */}
                   <Flex align="center" gap="2">
                     <PiBroadcastFill size={16} />
                     <Text size="2" weight="bold">
                       Local servers
                     </Text>
-                    {lanServers.length > 0 && (
-                      <Badge color="green" size="1" variant="soft">
-                        {lanServers.length}
-                      </Badge>
-                    )}
                   </Flex>
 
                   {lanServers.length === 0 && !lanSearchExpired && (
@@ -671,9 +677,16 @@ export function AddNewServer({
                               </Text>
                             </Flex>
 
+                            {/* Neutral, not accent. A discovered list is six of
+                                these at once, and the accent marks one primary
+                                action per view — six of them is a wall of
+                                purple that tells you nothing about which to
+                                press. The accent stays on the address field's
+                                Connect, which is the deliberate act. */}
                             <Button
                               size="1"
                               variant="soft"
+                              color="gray"
                               ml="auto"
                               disabled={isMember || isSearching || isJoining}
                               loading={connectingThis}
