@@ -1,0 +1,7 @@
+# Reporting a bug should not require a GitHub account. Anyone who lands here
+# without one gets a route that does not.
+blank_issues_enabled: true
+contact_links:
+  - name: Feedback, questions and ideas
+    url: https://feedback.gryt.chat
+    about: No GitHub account needed. Anything that is not a bug belongs here.

@@ -11,7 +11,7 @@ import {
   Tooltip,
 } from "@radix-ui/themes";
 import { Reorder } from "motion/react";
-import { PiChatCircleDotsFill, PiGearFill, PiMicrophoneFill, PiPlus, PiSignInFill } from "react-icons/pi";
+import { PiBugFill, PiChatCircleDotsFill, PiGearFill, PiMicrophoneFill, PiPlus, PiSignInFill } from "react-icons/pi";
 
 import {
   GeneratedServerIcon,
@@ -30,6 +30,8 @@ import {
 import { useServerManagement, useSockets } from "@/socket";
 import { useSFU } from "@/webRTC";
 import { MiniControls } from "@/webRTC/src/components/miniControls";
+
+import { bugReportUrl } from "../lib/bugReport";
 
 
 /**
@@ -168,6 +170,18 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
               <Flex align="center" gap="1">
                 <PiChatCircleDotsFill size={14} />
                 Give feedback
+              </Flex>
+            </DropdownMenu.Item>
+            {/* Kept separate from feedback rather than folded into it. "Give
+                feedback" is a suggestion box; this is for when something is
+                broken, and it arrives as an issue carrying the version and
+                platform, which a free-text form does not. */}
+            <DropdownMenu.Item
+              onClick={() => window.open(bugReportUrl(), "_blank")}
+            >
+              <Flex align="center" gap="1">
+                <PiBugFill size={14} />
+                Report a bug
               </Flex>
             </DropdownMenu.Item>
             {/* Guest-by-default (GRYT-173) means most people on a first run
