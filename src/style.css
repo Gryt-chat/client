@@ -107,6 +107,27 @@
   top: var(--titlebar-inset, 0px);
 }
 
+/* And the same for the box that actually holds the dim.
+ *
+ * Insetting the overlay above was not enough, because a Radix overlay paints
+ * nothing itself. Measured with the inset forced on:
+ *
+ *   .rt-BaseDialogOverlay            top: 36px   background: rgba(0, 0, 0, 0)
+ *   .rt-BaseDialogOverlay::before    inset: 0    background: rgba(0, 0, 0, 0.5)
+ *
+ * The dim lives in the pseudo-element, and it is position: fixed — so it is
+ * laid out against the viewport and `top` on its parent means nothing to it.
+ * It covered the titlebar however far the overlay was moved, which is why the
+ * titlebar kept looking faded while every measurement of the overlay said it
+ * was clear.
+ *
+ * @gryt/ui needs no equivalent. Its backdrop paints on the element itself and
+ * has no ::before, so the rule above already moves it.
+ */
+.rt-BaseDialogOverlay::before {
+  top: var(--titlebar-inset, 0px);
+}
+
 /* And give it back its clicks.
  *
  * A modal dialog puts pointer-events: none on the body to make the rest of the
