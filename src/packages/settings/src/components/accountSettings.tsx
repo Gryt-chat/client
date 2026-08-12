@@ -247,6 +247,7 @@ export function AccountSettings() {
           </Callout.Root>
 
           <Button
+            data-tour="account-signin"
             disabled={loginInProgress}
             style={{ alignSelf: "flex-start" }}
             onClick={() => void login()}

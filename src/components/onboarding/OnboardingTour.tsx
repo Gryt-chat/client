@@ -103,7 +103,16 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
     }
     const next = readRect(step.target);
     if (next) {
-      setRect(next);
+      // Only when it actually moved, or the poll below would re-render forever.
+      setRect((current) =>
+        current &&
+        current.top === next.top &&
+        current.left === next.left &&
+        current.width === next.width &&
+        current.height === next.height
+          ? current
+          : next
+      );
       return;
     }
     if (Date.now() - stepEnteredAt.current < TARGET_WAIT_MS) {
@@ -118,14 +127,19 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
 
   useLayoutEffect(measure, [measure]);
 
-  // The observers below only fire on layout the app happens to do. A target
-  // arriving inside a freshly-opened modal may produce none, so poll while
-  // waiting for it.
+  // The observers below only fire on layout the app happens to do, and a target
+  // inside a modal moves without producing any: switching the settings
+  // destination re-flows the panel while the body stays exactly the same size,
+  // so nothing fires and the spotlight stays where the last target was. It sat
+  // on "Addons" while pointing at the sign-in button.
+  //
+  // So this runs for as long as the tour does, not just while waiting for a
+  // target to appear. A getBoundingClientRect every 60ms costs nothing next to
+  // being wrong, and measure() only sets state when the rect has moved.
   useEffect(() => {
-    if (rect) return;
     const id = window.setInterval(measure, TARGET_POLL_MS);
     return () => window.clearInterval(id);
-  }, [rect, measure]);
+  }, [measure]);
 
   useEffect(() => {
     window.addEventListener("resize", measure);

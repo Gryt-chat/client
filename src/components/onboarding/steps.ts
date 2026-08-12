@@ -66,10 +66,7 @@ export const tourSteps: TourStep[] = [
   },
   {
     id: "account",
-    // The Account destination in the settings nav rather than the button inside
-    // it. See the note in the PR: the panel itself is being rewritten under
-    // GRYT-156, and pointing at the button would have collided with that.
-    target: "settings-account",
+    target: "account-signin",
     title: "An account, if you ever want one",
     body: "You do not need one. It carries your servers and settings between machines, and that is the only thing it is for.",
     side: "right",
