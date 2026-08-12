@@ -80,13 +80,40 @@
       padding-bottom: 26px;
     }
 
+    /* The reserved height fits the version pair below, not the sentence, so
+       the block does not shift when a check turns into a download. */
     .head {
       font-size: 15px;
       font-weight: 600;
       letter-spacing: -0.01em;
-      min-height: 22px;
+      min-height: 26px;
+      display: flex;
+      align-items: baseline;
+      gap: 9px;
     }
     .head.error { color: var(--error); }
+
+    /* What you are upgrading to is the reason this window is open, so it is
+       the headline and the sentence that used to be here moves down a line.
+       Only the states that have a version to point at get this treatment. */
+    .head.versions {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 21px;
+      letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* A beta pair is around 29 characters — "1.4.1-beta.12 → 1.5.0-beta.1" —
+       which runs past 420px at the size above. */
+    .head.versions.long { font-size: 15px; }
+
+    .head .from {
+      color: var(--faint);
+      font-size: 0.8em;
+      font-weight: 400;
+    }
+    .head .arrow { color: var(--muted); font-weight: 400; }
+    .head .to { color: var(--accent-soft); }
 
     .sub { font-size: 12px; color: var(--muted); min-height: 18px; }
     .foot { font-size: 12px; color: var(--faint); min-height: 18px; }
@@ -168,6 +195,7 @@
     }
 
     function setText(head, sub, foot, isError) {
+      $("head").classList.remove("versions", "long");
       $("head").textContent = head;
       $("head").classList.toggle("error", !!isError);
       $("sub").innerHTML = sub || "&nbsp;";
@@ -179,9 +207,61 @@
       return Math.round(bytes / (1024 * 1024)) + " MB";
     }
 
-    if (window.splashAPI) {
-      window.splashAPI.onUpdateStatus((data) => {
-        switch (data.status) {
+    // The version this build is, filled in once getAppVersion resolves. Until
+    // then there is only one half of the pair and the sentence form is used.
+    let currentVersion = null;
+    let lastStatus = null;
+
+    // A pair needs two versions that differ. `not-available` reports the
+    // version you are already running rather than one you are moving to, so
+    // without this it would draw an arrow from a version to itself.
+    function canPair(target) {
+      return !!currentVersion && !!target && currentVersion !== target;
+    }
+
+    function setVersionPair(target) {
+      const head = $("head");
+      head.textContent = "";
+      head.classList.remove("error");
+      head.classList.add("versions");
+      head.classList.toggle("long", (currentVersion + target).length > 18);
+
+      const from = document.createElement("span");
+      from.className = "from";
+      from.textContent = currentVersion;
+
+      const arrow = document.createElement("span");
+      arrow.className = "arrow";
+      arrow.textContent = "→";
+
+      const to = document.createElement("span");
+      to.className = "to";
+      to.textContent = target;
+
+      head.append(from, arrow, to);
+    }
+
+    /**
+     * The states that are actually an upgrade.
+     *
+     * `headline` is what used to be the head line — it moves down to the sub
+     * line so the pair can have the size, and comes back to the head line
+     * whenever there is no pair to draw.
+     */
+    function setUpdate(target, headline, detail, foot) {
+      if (!canPair(target)) {
+        const sub = "Version " + target + (detail ? " · " + detail : "");
+        setText(headline, sub, foot);
+        return;
+      }
+
+      setVersionPair(target);
+      $("sub").innerHTML = detail ? headline + " · " + detail : headline;
+      $("foot").innerHTML = foot || "&nbsp;";
+    }
+
+    function render(data) {
+      switch (data.status) {
           case "checking":
             setBar(null);
             setText("Checking for updates");
@@ -189,16 +269,17 @@
 
           case "available":
             setBar(null);
-            setText("Update available", "Version " + data.version);
+            setUpdate(data.version, "Update available");
             break;
 
           case "downloading": {
             const pct = data.percent || 0;
             const total = formatMb(data.total);
             setBar(pct);
-            setText(
+            setUpdate(
+              data.version,
               "Downloading update",
-              "Version " + data.version + " · " + pct + "%" + (total ? " of " + total : ""),
+              pct + "%" + (total ? " of " + total : ""),
               "Gryt will restart when this finishes."
             );
             break;
@@ -206,7 +287,7 @@
 
           case "downloaded":
             setBar(100);
-            setText("Installing update", "Version " + data.version, "Restarting…");
+            setUpdate(data.version, "Installing update", null, "Restarting…");
             break;
 
           // quitAndInstall did not quit immediately, which on macOS means
@@ -217,9 +298,10 @@
           // the old version and ask the user to quit it themselves.
           case "installing":
             setBar(100);
-            setText(
+            setUpdate(
+              data.version,
               "Installing update",
-              "Version " + data.version,
+              null,
               "Almost there — Gryt will restart on its own."
             );
             break;
@@ -229,9 +311,10 @@
           // it. The update is downloaded and applies on quit either way.
           case "deferred":
             setBar(100);
-            setText(
+            setUpdate(
+              data.version,
               "Update ready",
-              "Version " + data.version,
+              null,
               "It will finish installing when you quit Gryt."
             );
             break;
@@ -245,10 +328,18 @@
             setBar(100);
             setText("Could not check for updates", data.message || "", "Starting anyway…", true);
             break;
-        }
+      }
+    }
+
+    if (window.splashAPI) {
+      window.splashAPI.onUpdateStatus((data) => {
+        lastStatus = data;
+        render(data);
       });
 
       window.splashAPI.getAppVersion().then((v) => {
+        currentVersion = v;
+
         // The running build decides this, not the channel preference — someone
         // can be on the beta channel while still running the stable build they
         // last installed, and the mark should describe what is actually open.
@@ -263,6 +354,10 @@
           $("eye-left").setAttribute("stroke-linecap", "round");
           $("eye-left").setAttribute("fill", "none");
         }
+
+        // A check can finish before this promise does, and that first status
+        // would have been drawn with only half of the pair known.
+        if (lastStatus) render(lastStatus);
       });
     }
   </script>
