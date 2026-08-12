@@ -403,13 +403,25 @@ function useSettingsHook() {
   function completeWelcome(options?: { startTour?: boolean }) {
     setHasSeenWelcome(true);
     setUserValue("hasSeenWelcome", true);
-    if (
-      options?.startTour === true &&
-      !getUserValue<string>("nickname", "") &&
-      !getUserValue<boolean>("hasSeenTour", false)
-    ) {
-      setShowTour(true);
+
+    if (options?.startTour === true) {
+      if (
+        !getUserValue<string>("nickname", "") &&
+        !getUserValue<boolean>("hasSeenTour", false)
+      ) {
+        setShowTour(true);
+      }
+      return;
     }
+
+    // Anything that is not asking for the tour is declining it. The X, Esc, the
+    // backdrop and "I'll look myself" all say the same thing, and it has to be
+    // written down: the load path above offers the tour to anyone who has seen
+    // the welcome and has no nickname, which is exactly the person who just
+    // said no. Without this, declining bought nothing — the tour came back on
+    // the next reload, which is the same nagging the load path was already
+    // fixed once for.
+    setUserValue("hasSeenTour", true);
   }
 
   /**
