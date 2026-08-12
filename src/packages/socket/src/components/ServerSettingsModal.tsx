@@ -1,6 +1,6 @@
 import { Badge, Box, Dialog, Flex, IconButton, Spinner, Tabs, Text } from "@radix-ui/themes";
 import { useEffect, useMemo, useState } from "react";
-import { PiArrowsLeftRightFill, PiGearFill, PiLinkFill, PiListChecksFill, PiProhibitFill, PiSmileyFill, PiUsersFill, PiWebhooksLogoFill, PiX } from "react-icons/pi";
+import { PiArrowsLeftRightFill, PiGearFill, PiHandWavingFill, PiLinkFill, PiListChecksFill, PiProhibitFill, PiSmileyFill, PiUsersFill, PiWebhooksLogoFill, PiX } from "react-icons/pi";
 
 import { getServerAccessToken } from "@/common";
 
@@ -10,6 +10,7 @@ import { ServerAuditTab } from "./ServerAuditTab";
 import { ServerBansTab } from "./ServerBansTab";
 import { ServerEmojisTab } from "./ServerEmojisTab";
 import { ServerInvitesTab } from "./ServerInvitesTab";
+import { ServerJoinRequestsTab } from "./ServerJoinRequestsTab";
 import { type ServerOverviewInitialSettings,ServerOverviewTab } from "./ServerOverviewTab";
 import { ServerRolesTab } from "./ServerRolesTab";
 import { ServerUserReplaceTab } from "./ServerUserReplaceTab";
@@ -115,6 +116,12 @@ export function ServerSettingsModal() {
       label: "Invites",
       icon: PiLinkFill,
       content: <ServerInvitesTab host={host} socket={socket} accessToken={accessToken} />,
+    },
+    {
+      value: "requests",
+      label: "Requests",
+      icon: PiHandWavingFill,
+      content: <ServerJoinRequestsTab host={host} socket={socket} accessToken={accessToken} />,
     },
     {
       value: "roles",

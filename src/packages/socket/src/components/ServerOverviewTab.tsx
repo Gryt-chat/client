@@ -20,7 +20,16 @@ import type { Channel } from "@/settings/src/types/server";
 type ProfanityMode = "off" | "flag" | "censor" | "block";
 
 /** Mirrors the server's `JoinPolicy`. `approval` exists there as room to grow. */
-type JoinPolicy = "invite" | "open";
+type JoinPolicy = "invite" | "request" | "open";
+
+/**
+ * Anything unrecognised reads as `invite`, matching the server's own
+ * normaliseJoinPolicy. A value from a newer server must leave a server harder to
+ * get into, never easier — so this fails shut on both sides of the wire.
+ */
+function normalizeJoinPolicy(v: unknown): JoinPolicy {
+  return v === "open" ? "open" : v === "request" ? "request" : "invite";
+}
 type CensorStyle = "grawlix" | "emoji" | "asterisks" | "block" | "hearts";
 
 type ServerSettingsPayload = {
@@ -155,7 +164,7 @@ export function ServerOverviewTab({
       setCensorStyle(payload.profanityCensorStyle ?? "emoji");
       setSystemChannelId(payload.systemChannelId ?? null);
       setLanOpen(!!payload.lanOpen);
-      setJoinPolicy(payload.joinPolicy === "open" ? "open" : "invite");
+      setJoinPolicy(normalizeJoinPolicy(payload.joinPolicy));
       setDiscoverable(payload.discoverable !== false);
 
       if (!wasSaving) {
@@ -181,7 +190,7 @@ export function ServerOverviewTab({
         profanityCensorStyle: payload.profanityCensorStyle ?? "emoji",
         systemChannelId: payload.systemChannelId ?? null,
         lanOpen: !!payload.lanOpen,
-        joinPolicy: payload.joinPolicy === "open" ? "open" : "invite",
+        joinPolicy: normalizeJoinPolicy(payload.joinPolicy),
         discoverable: payload.discoverable !== false,
       };
     };
@@ -706,24 +715,33 @@ export function ServerOverviewTab({
           Who can join
         </Text>
         <Text size="1" color="gray" style={{ lineHeight: 1.4 }}>
-          An open server lets anyone in without an invite. Bans still apply, but
-          they hold only as well as the identity behind them — somebody without
-          a Gryt account can make a new one, so lean on invites if that matters.
+          Bans still apply whichever of these you pick, but they hold only as
+          well as the identity behind them — somebody without a Gryt account can
+          make a new one, so lean on invites if that matters.
         </Text>
-        <Flex align="center" gap="2">
-          <Switch
-            checked={joinPolicy === "open"}
-            onCheckedChange={(v) => {
-              const next: JoinPolicy = v ? "open" : "invite";
-              const previous = joinPolicy;
-              setJoinPolicy(next);
-              if (!saveIfChanged({ joinPolicy: next })) setJoinPolicy(previous);
-            }}
-            disabled={!isOwner}
-            size="1"
-          />
-          <Text size="2">Anyone can join without an invite</Text>
-        </Flex>
+        <Select.Root
+          value={joinPolicy}
+          onValueChange={(v) => {
+            const next = normalizeJoinPolicy(v);
+            const previous = joinPolicy;
+            setJoinPolicy(next);
+            if (!saveIfChanged({ joinPolicy: next })) setJoinPolicy(previous);
+          }}
+          disabled={!isOwner}
+        >
+          <Select.Trigger style={{ width: "100%", maxWidth: 320 }} />
+          <Select.Content position="popper" sideOffset={4}>
+            <Select.Item value="invite">With an invite</Select.Item>
+            <Select.Item value="request">After you let them in</Select.Item>
+            <Select.Item value="open">Anyone, no invite</Select.Item>
+          </Select.Content>
+        </Select.Root>
+        {joinPolicy === "request" && (
+          <Text size="1" color="gray" style={{ lineHeight: 1.4 }}>
+            People who ask show up under <strong>Requests</strong>. Nobody gets in
+            until somebody there approves them.
+          </Text>
+        )}
       </Flex>
 
       <Flex direction="column" gap="2">

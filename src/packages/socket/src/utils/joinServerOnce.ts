@@ -9,6 +9,15 @@ export type JoinServerOnceRequest = {
   host: string;
   nickname?: string;
   inviteCode?: string;
+  /**
+   * A line for whoever decides, on a server that admits people by request.
+   *
+   * Sent with the assertion rather than with the join, because the challenge
+   * binds what must not change between the two steps — the nickname, the invite
+   * claimed — and a note is a message to a person that nothing downstream
+   * trusts.
+   */
+  note?: string;
 };
 
 export type JoinServerOnceSuccess = {
@@ -203,7 +212,7 @@ async function attemptJoin(
       try {
         const { certificate, assertion, tier, link } = await answerChallenge(req.host, challenge);
         console.log(`[JoinServer] Answering as ${tier} identity`);
-        socket.emit("server:verify", { certificate, assertion, link });
+        socket.emit("server:verify", { certificate, assertion, link, note: req.note });
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         console.error(`[JoinServer] Failed to answer challenge for ${req.host}:`, msg);

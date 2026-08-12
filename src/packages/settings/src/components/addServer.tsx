@@ -47,7 +47,7 @@ export type FetchInfo = {
    * something being guessed.
    */
   identityTiers?: ("account" | "local")[];
-  joinPolicy?: "invite" | "open";
+  joinPolicy?: "invite" | "request" | "open";
 };
 
 interface AddNewServerProps {
@@ -96,6 +96,10 @@ export function AddNewServer({
   const autoJoinRef = useRef(false);
   const [isJoining, setIsJoining] = useState(false);
   const [inviteRequired, setInviteRequired] = useState(false);
+  // A line for whoever decides, offered up front rather than after a refusal:
+  // /info publishes joinPolicy, so the dialog knows before anybody tries.
+  const [joinNote, setJoinNote] = useState("");
+  const [awaitingApproval, setAwaitingApproval] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
   const [joinError, setJoinError] = useState("");
   const [serverPrivate, setServerPrivate] = useState(false);
@@ -152,6 +156,7 @@ export function AddNewServer({
     abortRef.current = null;
     setIsJoining(false);
     setInviteRequired(false);
+    setAwaitingApproval(false);
     setInviteCode("");
     setJoinError("");
     setServerPrivate(false);
@@ -196,10 +201,17 @@ export function AddNewServer({
       host: normalizedHost,
       nickname,
       inviteCode: code.length > 0 ? code : undefined,
+      note: joinNote.trim().length > 0 ? joinNote.trim() : undefined,
     });
 
     if (!result.ok) {
-      if (result.error.error === "invite_required") {
+      if (result.error.error === "approval_pending") {
+        // Not a failure and not something to retry — the answer comes from a
+        // person. The dialog says so and stops offering the button that would
+        // just ask again.
+        setAwaitingApproval(true);
+        setJoinError("");
+      } else if (result.error.error === "invite_required") {
         setInviteRequired(true);
         setJoinError(
           result.error.message ||
@@ -266,6 +278,7 @@ export function AddNewServer({
     setServerInfo(null);
     setHasError("");
     setInviteRequired(false);
+    setAwaitingApproval(false);
     setInviteCode("");
     setJoinError("");
     setServerPrivate(false);
@@ -338,6 +351,7 @@ export function AddNewServer({
     setServerInfo(null);
     setServerPrivate(false);
     setInviteRequired(false);
+    setAwaitingApproval(false);
     setInviteCode("");
     setJoinError("");
 
@@ -840,10 +854,57 @@ export function AddNewServer({
                       )}
                   </AnimatePresence>
 
+                  <AnimatePresence>
+                    {serverInfo.joinPolicy === "request" && !awaitingApproval && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                      >
+                        <Flex direction="column" gap="2">
+                          <Text size="2" color="gray" weight="bold">
+                            Anything to say?
+                          </Text>
+                          <Text size="1" color="gray">
+                            This server lets people in by hand. A line about who you
+                            are gives them something to go on — a nickname on its own
+                            does not.
+                          </Text>
+                          <TextField.Root
+                            disabled={isJoining}
+                            radius="full"
+                            placeholder="Optional"
+                            maxLength={300}
+                            value={joinNote}
+                            onChange={(e) => setJoinNote(e.target.value)}
+                          />
+                        </Flex>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <AnimatePresence>
+                    {awaitingApproval && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                      >
+                        <Callout.Root color="gray">
+                          <Callout.Text>
+                            Asked. Somebody who runs this server has to let you in —
+                            once they do, adding it again will work.
+                          </Callout.Text>
+                        </Callout.Root>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
                   <Button
                     disabled={
                       alreadyMember ||
                       isJoining ||
+                      awaitingApproval ||
                       (inviteRequired &&
                         !(isLanDiscovered && serverInfo.lanOpen) &&
                         normalizeCode(inviteCode).length === 0)
