@@ -639,7 +639,7 @@ function runSplashUpdateCheck(): Promise<void> {
       // without this line a failed update on the way into the app leaves
       // nothing to read afterwards — which is the exact hole this log exists
       // to close.
-      startupLog(`Update failed: ${err ? err.stack || err.message : "unknown"}`);
+      logUpdateFailure("Update failed", err);
 
       // A release that is still uploading is not a failure to launch through.
       // Flashing a red error on the way into the app, for something nobody can
@@ -827,6 +827,32 @@ async function pinFeedToNewestCompleteRelease(): Promise<void> {
   }
 }
 
+/**
+ * One failure, one line.
+ *
+ * The same error arrives here up to three times: autoUpdater emits `error`,
+ * `checkForUpdates` rejects with it, and the splash flow registers a second
+ * listener on the same emitter while it runs. A single dropped connection wrote
+ * three identical lines, which makes the log harder to read for no gain.
+ *
+ * Collapsed on the message rather than on the call site, because the duplicates
+ * are the same failure seen from different places, and the first one to arrive
+ * is as good as any. A genuine repeat later still gets its own line.
+ */
+let lastUpdateFailure = { message: "", at: 0 };
+
+function logUpdateFailure(context: string, err?: Error): void {
+  const message = err ? err.stack || err.message : "unknown";
+  const now = Date.now();
+
+  if (message === lastUpdateFailure.message && now - lastUpdateFailure.at < 10_000) {
+    return;
+  }
+
+  lastUpdateFailure = { message, at: now };
+  startupLog(`${context}: ${message}`);
+}
+
 function friendlyUpdateError(err: Error): string {
   const msg = err.message;
   if (msg.includes("status 404") || msg.includes("HttpError: 404")) {
@@ -838,6 +864,21 @@ function friendlyUpdateError(err: Error): string {
     msg.includes("latest-mac.yml")
   ) {
     return "No update available for this channel yet. The release may still be building — try again in a few minutes.";
+  }
+  // Throttling, which is neither end being broken. GitHub answers a burst of
+  // requests either by refusing the HTTP/2 stream or with a 403 whose body says
+  // it is a secondary rate limit, and both clear on their own.
+  //
+  // Checked before the two branches below, which would otherwise catch these
+  // and give advice that sends people the wrong way: the stream refusal reads
+  // as net::ERR_ and would tell somebody with a working connection to go and
+  // check it, and the 403 would tell them their token had expired.
+  if (
+    msg.includes("ERR_HTTP2_SERVER_REFUSED_STREAM") ||
+    msg.includes("HttpError: 429") ||
+    msg.toLowerCase().includes("rate limit")
+  ) {
+    return "GitHub is rate limiting this machine, so the update could not be fetched. It clears on its own, so try again in a few minutes.";
   }
   if (
     msg.includes("net::ERR_") ||
@@ -883,7 +924,7 @@ function initBackgroundUpdater() {
     sendToMain("downloaded", { version: info.version })
   );
   autoUpdater.on("error", (err) => {
-    startupLog(`Update failed: ${err.stack || err.message}`);
+    logUpdateFailure("Update failed", err);
 
     if (isReleaseNotReadyYet(err)) {
       sendToMain("not-available", { version: app.getVersion() });
@@ -2019,7 +2060,7 @@ if (!gotSingleInstanceLock) {
         }
         pinFeedToNewestCompleteRelease().finally(() => {
           autoUpdater.checkForUpdates().catch((err) => {
-            startupLog(`Update check failed: ${err.stack || err.message}`);
+            logUpdateFailure("Update check failed", err);
 
             if (isReleaseNotReadyYet(err)) {
               sendToMain("not-available", { version: app.getVersion() });
