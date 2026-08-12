@@ -1,3 +1,4 @@
+import { Accordion } from "@gryt/ui";
 import {
   Badge,
   Button,
@@ -38,6 +39,8 @@ export function CreateServerPanel({ onServerReady }: CreateServerPanelProps) {
 
   const [serverName, setServerName] = useState("My Server");
   const [lanDiscoverable, setLanDiscoverable] = useState(true);
+  /** Which accordion sections are open. Logs are not fetched until theirs is. */
+  const [logsOpen, setLogsOpen] = useState<string[]>([]);
 
   if (!isAvailable) return null;
 
@@ -143,7 +146,24 @@ export function CreateServerPanel({ onServerReady }: CreateServerPanelProps) {
                   </Flex>
                 </Flex>
 
-                <EmbeddedServerLogs />
+                {/* Behind an accordion, and genuinely unmounted when shut.
+                    EmbeddedServerLogs pulls the whole history and opens a live
+                    subscription the moment it mounts, so hiding it with CSS
+                    would have kept both running for a panel nobody had asked
+                    to see. Closed means not fetching. */}
+                <Accordion
+                  value={logsOpen}
+                  onValueChange={(value: unknown) =>
+                    setLogsOpen(value as string[])
+                  }
+                >
+                  <Accordion.Item value="logs">
+                    <Accordion.Trigger>Server logs</Accordion.Trigger>
+                    <Accordion.Panel>
+                      {logsOpen.includes("logs") && <EmbeddedServerLogs />}
+                    </Accordion.Panel>
+                  </Accordion.Item>
+                </Accordion>
 
                 <Flex asChild gap="2" align="center">
                   <label>

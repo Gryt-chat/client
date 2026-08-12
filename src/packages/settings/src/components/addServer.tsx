@@ -15,7 +15,16 @@ import {
 } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { PiBroadcastFill, PiInfoFill, PiWarningFill, PiWifiHighFill, PiX } from "react-icons/pi";
+import {
+  PiBroadcastFill,
+  PiCaretLeftBold,
+  PiHouseFill,
+  PiInfoFill,
+  PiSignInFill,
+  PiWarningFill,
+  PiWifiHighFill,
+  PiX
+} from "react-icons/pi";
 
 import {
   GeneratedServerIcon,
@@ -84,6 +93,23 @@ export function AddNewServer({
   const { isAvailable: embeddedServerAvailable } = useEmbeddedServer();
 
   const [serverHost, setServerHost] = useState("");
+  /**
+   * Which errand this dialog is on.
+   *
+   * Hosting and joining are two different jobs that were sharing one column,
+   * stacked with the discovered servers in between. Null means the choice has
+   * not been made yet.
+   */
+  const [mode, setMode] = useState<"host" | "join" | null>(null);
+  /**
+   * Which half of the dialog to show.
+   *
+   * In a browser there is no embedded server to host with, so offering the
+   * choice would be offering one real option and one dead end. Straight to
+   * Join there.
+   */
+  const step = embeddedServerAvailable ? mode : "join";
+
   const [serverInfo, setServerInfo] = useState<FetchInfo | null>(null);
   const [hasError, setHasError] = useState("");
   const [isSearching, setIsSearching] = useState(false);
@@ -149,6 +175,7 @@ export function AddNewServer({
   function closeDialog() {
     if (isSearching || isJoining) return;
 
+    setMode(null);
     setServerInfo(null);
     setHasError("");
     setIsSearching(false);
@@ -411,7 +438,19 @@ export function AddNewServer({
 
   return (
     <Dialog.Root open={showAddServer} onOpenChange={closeDialog}>
-      <Dialog.Content maxWidth="600px" style={{ overflow: "hidden" }}>
+      <Dialog.Content
+        maxWidth="600px"
+        style={{ overflow: "hidden" }}
+        /* Same as the settings dialog: a coach mark is not "outside" in any
+           sense the user cares about, and dismissing this on a Next click made
+           the tour's last step close the thing it had just opened. */
+        onInteractOutside={(event) => {
+          const target = event.target as HTMLElement | null;
+          if (target?.closest?.('[data-gryt="tour"]')) {
+            event.preventDefault();
+          }
+        }}
+      >
         <Dialog.Close
           style={{
             position: "absolute",
@@ -426,16 +465,68 @@ export function AddNewServer({
 
         <Flex direction="column" gap="2">
           <Dialog.Title as="h1" weight="bold" size="6">
-            New server
+            {step === "host" ? "Host a server" : step === "join" ? "Join a server" : "Add a server"}
           </Dialog.Title>
 
           <Dialog.Description size="2" mb="4">
-            To add a new server, enter the server&apos;s address below to fetch
-            its information.
+            {step === "host"
+              ? "Run a server on this machine. Your friends connect to you."
+              : step === "join"
+                ? "Enter an address, or pick one already running on your network."
+                : "Run one yourself, or join somebody else's."}
           </Dialog.Description>
 
+          {/* The choice. Two errands that were sharing one column, with the
+              discovered servers stacked in between them. */}
+          {step === null && (
+            <Flex direction={{ initial: "column", sm: "row" }} gap="3" mb="2">
+              <Card asChild size="2" style={{ flex: 1 }}>
+                <button
+                  type="button"
+                  data-tour="choose-host"
+                  onClick={() => setMode("host")}
+                  style={{ cursor: "pointer", textAlign: "left" }}
+                >
+                  <Flex direction="column" gap="1" align="start">
+                    <PiHouseFill size={20} />
+                    <Text size="3" weight="bold">Host a server</Text>
+                    <Text size="2" color="gray">
+                      Runs on this machine. Best for a few friends.
+                    </Text>
+                  </Flex>
+                </button>
+              </Card>
+
+              <Card asChild size="2" style={{ flex: 1 }}>
+                <button
+                  type="button"
+                  data-tour="choose-join"
+                  onClick={() => setMode("join")}
+                  style={{ cursor: "pointer", textAlign: "left" }}
+                >
+                  <Flex direction="column" gap="1" align="start">
+                    <PiSignInFill size={20} />
+                    <Text size="3" weight="bold">Join a server</Text>
+                    <Text size="2" color="gray">
+                      With an invite, an address, or one on your network.
+                    </Text>
+                  </Flex>
+                </button>
+              </Card>
+            </Flex>
+          )}
+
+          {step !== null && (
+            <Flex mb="2">
+              <Button variant="ghost" color="gray" onClick={() => setMode(null)}>
+                <PiCaretLeftBold size={14} />
+                Back
+              </Button>
+            </Flex>
+          )}
+
           <Flex direction="column" gap="4">
-            {embeddedServerAvailable && (
+            {step === "host" && embeddedServerAvailable && (
               <>
                 <CreateServerPanel
                   onServerReady={(serverUrl, serverName) => {
@@ -463,7 +554,7 @@ export function AddNewServer({
               </>
             )}
 
-            {isElectron && (
+            {step === "join" && isElectron && (
               <>
                 <Flex direction="column" gap="2">
                   <Flex align="center" gap="2">
@@ -578,6 +669,7 @@ export function AddNewServer({
               </>
             )}
 
+            {step === "join" && (
             <Flex gap="2" align="center" data-tour="join-address">
               <TextField.Root
                 type="url"
@@ -604,6 +696,7 @@ export function AddNewServer({
                 {isSearching ? "Connecting" : "Connect"}
               </Button>
             </Flex>
+            )}
 
             <AnimatePresence>
               {alreadyMember && !serverInfo && (

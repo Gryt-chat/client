@@ -31,6 +31,17 @@ export interface TourStep {
    * waits out rather than treating as a missing control.
    */
   enter?: (app: TourControls) => void;
+  /**
+   * Controls the cursor travels to and really presses, in order.
+   *
+   * These are genuine pointer events, not a mime: Radix opens its menus and
+   * dialogs from them, so the app does its own opening and the user watches it
+   * happen. Two hops is usually the honest route — press the avatar, the menu
+   * appears, press Settings in it.
+   *
+   * A step with `via` needs no `enter`; the presses are the action.
+   */
+  via?: string[];
 }
 
 /**
@@ -62,7 +73,9 @@ export const tourSteps: TourStep[] = [
     title: "Pick a name and a face",
     body: "A nickname, and a picture if you want one. Neither is permanent, and you can change them whenever.",
     side: "right",
-    enter: (app) => app.openSettings("you"),
+    // The honest route: the avatar opens its menu, and Settings is in the menu.
+    // Nothing here is simulated — these are the two presses a person makes.
+    via: ["profile", "menu-settings"],
   },
   {
     id: "account",
@@ -70,7 +83,8 @@ export const tourSteps: TourStep[] = [
     title: "An account, if you ever want one",
     body: "You do not need one. It carries your servers and settings between machines, and that is the only thing it is for.",
     side: "right",
-    enter: (app) => app.openSettings("account"),
+    // Already inside Settings, so this is one press on the destination itself.
+    via: ["settings-account"],
   },
   {
     id: "server",
@@ -78,7 +92,9 @@ export const tourSteps: TourStep[] = [
     title: "Gryt is empty until you join a server",
     body: "This is where you add one, whether it is a friend's or your own.",
     side: "right",
-    enter: (app) => app.closeSettings(),
+    // The panel closing needs a cause too, or it vanishes as abruptly as it
+    // arrived. The cursor presses the same X the user would.
+    via: ["settings-close"],
   },
   {
     id: "join",
@@ -86,6 +102,8 @@ export const tourSteps: TourStep[] = [
     title: "Paste an address to join",
     body: "A friend's invite goes straight in here. No account needed, and you can leave again whenever you like.",
     side: "top",
-    enter: (app) => app.setShowAddServer(true),
+    // Two hops now that the dialog asks which errand you are on: open it, then
+    // choose Join. The cursor makes the same choice a person would.
+    via: ["add-server", "choose-join"],
   },
 ];
