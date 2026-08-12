@@ -77,6 +77,44 @@
   z-index: var(--gryt-z-modal);
 }
 
+/* Keep every full-screen overlay clear of the window chrome.
+ *
+ * --gryt-z-chrome on the titlebar was not enough, and could never have been.
+ * The titlebar renders inside Radix Themes' <Theme>, which is position:
+ * relative with z-index: 0 — a stacking context — so the titlebar is sealed
+ * under level zero of the root however high its own z-index goes, while every
+ * dialog portals to body as a sibling. Measured in the real Electron build: an
+ * open dialog owned the point at the centre of the titlebar, and the element
+ * that owned it reported -webkit-app-region: none. That is the window's drag
+ * region and its back/forward buttons, gone for as long as a modal is up.
+ *
+ * Insetting is what the splash and the lightbox already do, and unlike a
+ * z-index it works from inside a sealed stacking context. --titlebar-inset is
+ * 0 everywhere but Electron, so this costs the browser build nothing.
+ */
+.gryt-dialog-backdrop,
+.gryt-drawer-backdrop,
+.rt-BaseDialogOverlay,
+.rt-BaseDialogScroll {
+  top: var(--titlebar-inset, 0px);
+}
+
+/* And give it back its clicks.
+ *
+ * A modal dialog puts pointer-events: none on the body to make the rest of the
+ * app inert, which is right for the app and wrong for the window: measured in
+ * Electron with a dialog open, the titlebar computed pointer-events: none, so
+ * back, forward and the window buttons were dead until the dialog closed.
+ * Moving the overlay out of the way does not help with that — inertness is
+ * inherited, not painted.
+ *
+ * The drag region survives regardless, since -webkit-app-region is read off
+ * layout rather than hit-testing. This is about the controls.
+ */
+[data-gryt="titlebar"] {
+  pointer-events: auto;
+}
+
 .rt-BaseTabListTrigger {
   justify-content: flex-end;
 }
