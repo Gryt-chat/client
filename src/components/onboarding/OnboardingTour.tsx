@@ -1,6 +1,11 @@
 import { Button } from "@gryt/ui";
-import { useCallback, useEffect, useLayoutEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
+import { useSettings } from "@/settings";
+import { useServerManagement } from "@/socket";
+
+import type { TourControls } from "./steps";
 import { tourSteps } from "./steps";
 
 /** Breathing room between the cut-out and the control it reveals. */
@@ -8,6 +13,16 @@ const HALO = 8;
 /** Gap between the cut-out and the card. */
 const OFFSET = 16;
 const CARD_WIDTH = 320;
+/**
+ * How long a step is allowed to wait for a target that is on its way.
+ *
+ * A step that opens a modal has no target for a frame or two, which is
+ * indistinguishable from a target that will never arrive. Waiting makes the
+ * first case work; the ceiling keeps the second from stranding anybody on a
+ * step that cannot render, which is what skipping was there to prevent.
+ */
+const TARGET_WAIT_MS = 1500;
+const TARGET_POLL_MS = 60;
 
 interface Rect {
   top: number;
@@ -35,13 +50,53 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
   const step = tourSteps[index];
   const isLast = index === tourSteps.length - 1;
 
+  const { openSettings, setShowSettings } = useSettings();
+  const { setShowAddServer } = useServerManagement();
+
+  // Held in a ref so changing step does not rebuild `measure` through them.
+  const controlsRef = useRef<TourControls>({
+    openSettings: () => undefined,
+    closeSettings: () => undefined,
+    setShowAddServer: () => undefined,
+  });
+  controlsRef.current = {
+    openSettings,
+    closeSettings: () => setShowSettings(false),
+    setShowAddServer,
+  };
+
+  /** When the current step became current, for the wait below. */
+  const stepEnteredAt = useRef(0);
+  /** Which step that timestamp belongs to. */
+  const timedStepId = useRef<string | null>(null);
+
+  // Started here rather than in the effect below because layout effects run
+  // before passive ones: measure() would otherwise read the *previous* step's
+  // timestamp, find the wait already expired, and skip a step whose target was
+  // still on its way. That skipped two of the five.
+  if (step && timedStepId.current !== step.id) {
+    timedStepId.current = step.id;
+    stepEnteredAt.current = Date.now();
+  }
+
+  // Opening happens once per step, not on every re-measure.
+  useEffect(() => {
+    if (!step) return;
+    setRect(null);
+    // Read through the ref so the controls, which are rebuilt every render,
+    // cannot re-trigger this and open the modal a second time.
+    step.enter?.(controlsRef.current);
+  }, [step]);
+
   // Re-measure on anything that can move the target. A coach mark pointing at
   // where a button used to be is worse than no coach mark.
   //
-  // A step whose target is absent or zero-sized is skipped rather than
-  // rendered. Returning null instead would end the tour silently at that step,
-  // which is what happened the first time: the voice controls are 0x0 until a
-  // connection exists, so step 3 killed the whole thing.
+  // A target that is absent or zero-sized is waited for, then skipped. Skipping
+  // immediately is what the first version did, and it is still the right end
+  // state — the voice controls are 0x0 until a connection exists, and a step
+  // that can never render must not kill the tour. But a step that just opened a
+  // modal looks exactly like that for a frame or two, so it gets TARGET_WAIT_MS
+  // before being given up on.
   const measure = useCallback(() => {
     if (!step) {
       return;
@@ -49,6 +104,9 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
     const next = readRect(step.target);
     if (next) {
       setRect(next);
+      return;
+    }
+    if (Date.now() - stepEnteredAt.current < TARGET_WAIT_MS) {
       return;
     }
     if (isLast) {
@@ -59,6 +117,15 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
   }, [step, isLast, onFinish]);
 
   useLayoutEffect(measure, [measure]);
+
+  // The observers below only fire on layout the app happens to do. A target
+  // arriving inside a freshly-opened modal may produce none, so poll while
+  // waiting for it.
+  useEffect(() => {
+    if (rect) return;
+    const id = window.setInterval(measure, TARGET_POLL_MS);
+    return () => window.clearInterval(id);
+  }, [rect, measure]);
 
   useEffect(() => {
     window.addEventListener("resize", measure);
@@ -108,6 +175,13 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
     height: rect.height + HALO * 2
   };
 
+  // Sitting to the right of the target only works while there is a right to sit
+  // in. Pointing into a modal put the target near the middle of the screen, and
+  // the card ran off the edge with its text cut in half, so it flips to the
+  // other side when it will not fit.
+  const rightOfTarget = cut.left + cut.width + OFFSET;
+  const fitsOnTheRight = rightOfTarget + CARD_WIDTH + 16 <= window.innerWidth;
+
   const card =
     step.side === "right"
       ? {
@@ -115,7 +189,9 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
             Math.max(cut.top + cut.height / 2 - 90, 16),
             window.innerHeight - 220
           ),
-          left: cut.left + cut.width + OFFSET
+          left: fitsOnTheRight
+            ? rightOfTarget
+            : Math.max(cut.left - CARD_WIDTH - OFFSET, 16)
         }
       : {
           top: Math.max(cut.top - 200, 16),
@@ -125,7 +201,17 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
           )
         };
 
-  return (
+  // Portaled to body, and it has to be.
+  //
+  // The app renders inside `.radix-themes`, which is position: relative with
+  // z-index: 0 — a stacking context. Anything inside it is sealed under level
+  // zero of the root, however high its own z-index goes, while Radix Themes
+  // portals its dialogs straight to body as siblings. So the tour at z-index 40
+  // lost to a dialog at z-index 1, and no number would have fixed it.
+  //
+  // That never showed while the tour only pointed at things already on screen.
+  // It opens modals now, so it has to live in the same stacking context they do.
+  return createPortal(
     <div className="fixed inset-0 z-(--gryt-z-tour)">
       {/* One element does the whole scrim. An enormous spread shadow darkens
           everything outside the box, which leaves the control itself lit and
@@ -169,6 +255,7 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

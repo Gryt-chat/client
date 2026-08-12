@@ -133,7 +133,13 @@ function ProfileEditor({
   }, [draft, nickname, onSaveNickname]);
 
   return (
-    <Flex direction="column" gap="5" align="center" style={{ paddingTop: 8 }}>
+    <Flex
+      direction="column"
+      gap="5"
+      align="center"
+      style={{ paddingTop: 8 }}
+      data-tour="profile-editor"
+    >
       {serverLabel && (
         <Text size="2" color="gray" weight="medium">
           {serverLabel}
