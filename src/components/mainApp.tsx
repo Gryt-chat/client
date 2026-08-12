@@ -5,11 +5,12 @@ import { useSettings } from "@/settings";
 import { useServerManagement } from "@/socket";
 import { ServerView } from "@/socket/src/components/serverView";
 
+import { Discovery } from "./discovery";
 import { OnboardingTour } from "./onboarding/OnboardingTour";
 import { Sidebar } from "./sidebar";
 
 export function MainApp() {
-  const { servers, setShowAddServer } = useServerManagement();
+  const { servers, setShowAddServer, showDiscovery } = useServerManagement();
   const { showTour, dismissTour } = useSettings();
 
   return (
@@ -21,7 +22,9 @@ export function MainApp() {
     >
       <Sidebar setShowAddServer={setShowAddServer} />
 
-      {Object.keys(servers).length > 0 ? (
+      {showDiscovery ? (
+        <Discovery />
+      ) : Object.keys(servers).length > 0 ? (
         <ServerView />
       ) : (
         /* Was a line of text with a finger emoji pointing at the sidebar, which

@@ -1,4 +1,4 @@
-import { Button, Dialog, Flex, Text } from "@radix-ui/themes";
+import { Button, Dialog } from "@gryt/ui";
 import { useEffect, useState } from "react";
 
 import {
@@ -54,40 +54,47 @@ export function IdentityMergePrompt() {
   const count = hosts?.length ?? 0;
 
   return (
+    /* No onOpenChange, deliberately. Both answers are recorded, and dismissing
+       this without answering would leave the choice unanswered while the
+       servers stay on the device — so the question has to be answered, not
+       escaped. That matches the Radix version, which also had none. */
     <Dialog.Root open={count > 0}>
-      <Dialog.Content maxWidth="440px">
-        <Dialog.Title>Bring your servers with you?</Dialog.Title>
-        <Dialog.Description size="2" mb="3">
-          You joined {count} server{count === 1 ? "" : "s"} on this device
-          before signing in. They can move to your account, keeping your roles
-          and anything you own.
-        </Dialog.Description>
+      <Dialog.Portal>
+        <Dialog.Backdrop />
+        <Dialog.Popup className="w-[27.5rem] max-w-[calc(100vw-2rem)]">
+          <Dialog.Title>Bring your servers with you?</Dialog.Title>
+          <Dialog.Description className="mt-2 mb-3">
+            You joined {count} server{count === 1 ? "" : "s"} on this device
+            before signing in. They can move to your account, keeping your roles
+            and anything you own.
+          </Dialog.Description>
 
-        <Flex direction="column" gap="2" mb="4">
-          {hosts?.slice(0, 5).map((host) => (
-            <Text key={host} size="1" color="gray">
-              {host}
-            </Text>
-          ))}
-          {count > 5 && (
-            <Text size="1" color="gray">
-              and {count - 5} more
-            </Text>
-          )}
-        </Flex>
+          <div className="mb-4 flex flex-col gap-2">
+            {hosts?.slice(0, 5).map((host) => (
+              <span key={host} className="text-xs text-gryt-muted">
+                {host}
+              </span>
+            ))}
+            {count > 5 && (
+              <span className="text-xs text-gryt-muted">
+                and {count - 5} more
+              </span>
+            )}
+          </div>
 
-        <Text size="1" color="gray">
-          Only say yes if this device is yours. On a shared one, those servers
-          belong to whoever used it before you.
-        </Text>
+          <p className="text-xs text-gryt-muted">
+            Only say yes if this device is yours. On a shared one, those servers
+            belong to whoever used it before you.
+          </p>
 
-        <Flex gap="3" mt="4" justify="end">
-          <Button variant="soft" color="gray" onClick={() => answer("no")}>
-            Keep them separate
-          </Button>
-          <Button onClick={() => answer("yes")}>Bring them over</Button>
-        </Flex>
-      </Dialog.Content>
+          <Dialog.Footer>
+            <Button tone="ghost" onClick={() => answer("no")}>
+              Keep them separate
+            </Button>
+            <Button onClick={() => answer("yes")}>Bring them over</Button>
+          </Dialog.Footer>
+        </Dialog.Popup>
+      </Dialog.Portal>
     </Dialog.Root>
   );
 }

@@ -482,7 +482,7 @@ export function ServerOverviewTab({
                 size="7"
                 radius="full"
                 src={iconUrl ? `${getServerHttpBase(host)}/icon?v=${iconCacheBuster}` : undefined}
-                fallback={host ? <GeneratedServerIcon host={host} /> : (displayName?.[0]?.toUpperCase() || "S")}
+                fallback={displayName || host ? <GeneratedServerIcon seed={displayName || host} /> : "S"}
               />
               {isOwner && (
                 <Flex

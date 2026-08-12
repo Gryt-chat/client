@@ -116,7 +116,7 @@ export function InviteAcceptModal({
                   size="7"
                   radius="full"
                   src={`${getServerHttpBase(invite.host)}/icon`}
-                  fallback={<GeneratedServerIcon host={invite.host} />}
+                  fallback={<GeneratedServerIcon seed={displayName || invite.host} />}
                 />
               )}
 

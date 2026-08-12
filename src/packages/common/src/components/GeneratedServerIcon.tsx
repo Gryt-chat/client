@@ -9,10 +9,10 @@ import { generatedServerIconUrl } from "../utils/generatedAvatar";
  * generated icon for a moment on startup and then swaps to its real one. As a
  * fallback it only ever appears when the request actually came back empty.
  */
-export function GeneratedServerIcon({ host }: { host: string }) {
+export function GeneratedServerIcon({ seed }: { seed: string }) {
   return (
     <img
-      src={generatedServerIconUrl(host)}
+      src={generatedServerIconUrl(seed)}
       alt=""
       style={{
         width: "100%",

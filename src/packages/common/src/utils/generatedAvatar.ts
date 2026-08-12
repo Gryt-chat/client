@@ -175,33 +175,41 @@ export function resolveAvatarSrc(
  * Planets rather than Moods: a server is not a person, and drawing one as a
  * person is the thing that made a generated fallback look wrong here.
  *
- * Seeded on the host, port included, because that is what identifies a server
- * to a client before it has told you anything about itself — and two servers
- * on one machine should not be the same icon. The cost is that a server moving
- * to a new address gets a new icon, which is the same cost as the certificate
- * pin and, like it, only affects servers that never set an icon.
+ * Seeded on the server's name. A server is the thing it calls itself, and the
+ * icon follows that: rename it and the planet changes with it, which is also
+ * what makes the create form able to draw a server's icon before it exists.
+ *
+ * This used to seed on the host, port included, so that two servers on one
+ * machine differed and nothing re-rolled when a name changed. Names carry that
+ * weight less strictly — two servers both called "My Server" now draw the same
+ * planet — but an address is not what anybody recognises a server by, and the
+ * icon changing when you rename is the behaviour people expect.
+ *
+ * Callers that have no name yet (an address pasted before /info answers, an
+ * invite before it is fetched) pass the host, so there is still something to
+ * draw; it re-seeds once the name arrives.
  */
-export function generatedServerIconUrl(host: string): string {
-  const key = `server:${host}`;
+export function generatedServerIconUrl(seed: string): string {
+  const key = `server:${seed}`;
   const cached = cache.get(key);
   if (cached) return cached;
 
   // No background palette here. Planets brings its own night sky, and forcing
   // the tile pastels onto it would light the sky the same colour as somebody's
   // avatar for no reason.
-  const svg = new Avatar(planets, { seed: host }).toString();
+  const svg = new Avatar(planets, { seed }).toString();
 
   const url = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
   cache.set(key, url);
   return url;
 }
 
-/** A server's own icon if it has one, otherwise a generated one. */
+/** A server's own icon if it has one, otherwise one generated from its name. */
 export function resolveServerIconSrc(
   iconUrl: string | null | undefined,
-  host: string | null | undefined,
+  seed: string | null | undefined,
 ): string | undefined {
   if (iconUrl) return iconUrl;
-  if (!host) return undefined;
-  return generatedServerIconUrl(host);
+  if (!seed) return undefined;
+  return generatedServerIconUrl(seed);
 }

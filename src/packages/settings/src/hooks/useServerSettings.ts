@@ -22,6 +22,8 @@ interface ServerSettings {
   dismissedLanServers: string[];
   dismissLanServer: (key: string) => void;
   undismissLanServer: (key: string) => void;
+  seenLanServers: string[];
+  markLanServersSeen: (keys: string[]) => void;
 }
 
 function useServerSettingsHook(): ServerSettings {
@@ -32,6 +34,7 @@ function useServerSettingsHook(): ServerSettings {
   const [lastSelectedChannels, setLastSelectedChannelsRaw] = useState<Record<string, string>>({});
   const [serverOrder, setServerOrderRaw] = useState<string[]>([]);
   const [dismissedLanServers, setDismissedLanServersRaw] = useState<string[]>([]);
+  const [seenLanServers, setSeenLanServersRaw] = useState<string[]>([]);
   const hasAutoFocused = useRef(false);
 
   useEffect(() => {
@@ -51,6 +54,7 @@ function useServerSettingsHook(): ServerSettings {
       setLastSelectedChannelsRaw(getUserValue<Record<string, string>>("lastSelectedChannels", {}));
       setServerOrderRaw(getUserValue<string[]>("serverOrder", []));
       setDismissedLanServersRaw(getUserValue<string[]>("dismissedLanServers", []));
+      setSeenLanServersRaw(getUserValue<string[]>("seenLanServers", []));
     })();
 
     return () => { cancelled = true; };
@@ -116,6 +120,24 @@ function useServerSettingsHook(): ServerSettings {
     });
   }, []);
 
+  /**
+   * Remember which discovered servers have been looked at.
+   *
+   * This is what the rail badge is counted against. It accumulates rather than
+   * being replaced, so a server that drops off the network and comes back is
+   * not announced twice — the badge is meant to say "there is something here
+   * you have not seen", and a machine rebooting is not that.
+   */
+  const markLanServersSeen = useCallback((keys: string[]) => {
+    setSeenLanServersRaw((prev) => {
+      const missing = keys.filter((key) => !prev.includes(key));
+      if (missing.length === 0) return prev;
+      const next = [...prev, ...missing];
+      if (userIdRef.current) setUserValue("seenLanServers", next);
+      return next;
+    });
+  }, []);
+
   useEffect(() => {
     const serverKeys = Object.keys(servers);
     if (serverKeys.length > 0 && !hasAutoFocused.current) {
@@ -148,6 +170,8 @@ function useServerSettingsHook(): ServerSettings {
     dismissedLanServers,
     dismissLanServer,
     undismissLanServer,
+    seenLanServers,
+    markLanServersSeen,
   };
 }
 
@@ -163,6 +187,8 @@ const init: ServerSettings = {
   dismissedLanServers: [],
   dismissLanServer: () => {},
   undismissLanServer: () => {},
+  seenLanServers: [],
+  markLanServersSeen: () => {},
 };
 
 export const useServerSettings = singletonHook(init, useServerSettingsHook);

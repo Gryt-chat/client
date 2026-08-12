@@ -1,6 +1,6 @@
 import { Box, Dialog, Flex, IconButton, Separator, Text, TextField } from "@radix-ui/themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { PiArrowFatLineDownFill, PiFadersHorizontalFill, PiFlaskFill, PiGearSixFill, PiHeartFill, PiMagnifyingGlassFill, PiPuzzlePieceFill, PiUserCircleFill, PiUserFill, PiVideoCameraFill, PiX } from "react-icons/pi";
+import { PiArrowFatLineDownFill, PiFadersHorizontalFill, PiFlaskFill, PiGearSixFill, PiHardDrivesFill, PiHeartFill, PiMagnifyingGlassFill, PiPuzzlePieceFill, PiUserCircleFill, PiUserFill, PiVideoCameraFill, PiX } from "react-icons/pi";
 
 import { useSettings } from "@/settings";
 
@@ -17,6 +17,7 @@ import { ChatSettings } from "./chatSettings";
 import { DesktopSettings } from "./desktopSettings";
 import { DeveloperSettings } from "./developerSettings";
 import { HotkeySettings } from "./hotkeySettings";
+import { MyServersSettings } from "./myServersSettings";
 import { NotificationSettings } from "./notificationSettings";
 import { PresenceSettings } from "./presenceSettings";
 import { ProfileSettings } from "./profileSettings";
@@ -68,6 +69,18 @@ const DESTINATIONS = [
     icon: PiUserCircleFill,
     content: <AccountSettings />,
   },
+  // Electron only, because the embedded server is. In a browser this would be
+  // a destination that can never have anything in it.
+  ...(isElectron()
+    ? [
+        {
+          value: "my-servers",
+          label: "My servers",
+          icon: PiHardDrivesFill,
+          content: <MyServersSettings />,
+        },
+      ]
+    : []),
   {
     value: "sound-video",
     label: "Sound & video",

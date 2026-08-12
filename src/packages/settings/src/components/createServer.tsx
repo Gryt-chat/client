@@ -1,9 +1,8 @@
-import { Accordion } from "@gryt/ui";
+import { Dialog } from "@gryt/ui";
 import {
-  Badge,
+  Avatar,
   Button,
   Callout,
-  Card,
   Checkbox,
   Flex,
   Spinner,
@@ -11,255 +10,125 @@ import {
   TextField,
 } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
-import { PiCheck, PiHardDrivesFill, PiInfoFill, PiPlayFill, PiStopFill, PiWarningFill, PiX } from "react-icons/pi";
+import { useEffect, useRef, useState } from "react";
+import { PiWarningFill, PiX } from "react-icons/pi";
+
+import { GeneratedServerIcon } from "@/common";
 
 import { useEmbeddedServer } from "../hooks/useEmbeddedServer";
-import { EmbeddedServerLogs } from "./embeddedServerLogs";
 
 interface CreateServerPanelProps {
+  /** Called once the new server is up and reachable. */
   onServerReady: (serverUrl: string, serverName: string) => void;
+  /** Back out to the step that chose this. */
+  onBack: () => void;
 }
 
-export function CreateServerPanel({ onServerReady }: CreateServerPanelProps) {
-  const {
-    isAvailable,
-    hasExistingServer,
-    existingConfig,
-    lanIp,
-    state,
-    loading,
-    autoStart,
-    setAutoStart,
-    createServer,
-    startServer,
-    stopServer,
-    dismissError,
-  } = useEmbeddedServer();
+/**
+ * Making a server, and nothing else.
+ *
+ * This used to be the whole embedded-server manager — create form, running
+ * card, logs, autostart, start and stop — reached through a dialog called "Add
+ * a server". Managing something you already run is not adding one, and the two
+ * jobs were taking turns in the same space depending on state you had no way
+ * to predict from the outside. The manager lives in Settings → My servers now.
+ *
+ * Create finishes the job: it writes the config, starts the process and hands
+ * the address back so the caller can join it. Previously it stopped after
+ * writing the config and left a second button, Connect, as the thing that
+ * actually got you there.
+ */
+export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelProps) {
+  const { isAvailable, state, loading, createServer, dismissError } =
+    useEmbeddedServer();
 
   const [serverName, setServerName] = useState("My Server");
   const [lanDiscoverable, setLanDiscoverable] = useState(true);
-  /** Which accordion sections are open. Logs are not fetched until theirs is. */
-  const [logsOpen, setLogsOpen] = useState<string[]>([]);
+  /**
+   * Set while this panel's own Create is in flight.
+   *
+   * The status effect below fires on any transition to running, including one
+   * caused by autostart or by Settings starting the server in another panel.
+   * Without this, opening the create form next to a server somebody else just
+   * started would join it as if you had asked for that.
+   */
+  const creating = useRef(false);
+
+  const isStarting = state.status === "starting";
+  const hasError = state.status === "error";
+  const busy = loading || isStarting || creating.current;
+
+  useEffect(() => {
+    if (!creating.current) return;
+
+    if (state.status === "running" && state.serverUrl && state.config) {
+      creating.current = false;
+      onServerReady(state.serverUrl, state.config.serverName);
+      return;
+    }
+
+    // A failure ends the attempt too, or the next unrelated start would be
+    // treated as this one finally succeeding.
+    if (state.status === "error") creating.current = false;
+  }, [state, onServerReady]);
 
   if (!isAvailable) return null;
 
-  const isRunning = state.status === "running";
-  const isStarting = state.status === "starting";
-  const hasError = state.status === "error";
-
   async function handleCreate() {
+    creating.current = true;
     await createServer(serverName.trim() || "My Server", lanDiscoverable);
   }
 
-  async function handleStart() {
-    await startServer();
-  }
-
-  async function handleStop() {
-    await stopServer();
-  }
-
-  function handleConnect() {
-    if (state.serverUrl && state.config) {
-      onServerReady(state.serverUrl, state.config.serverName);
-    }
-  }
-
   return (
-    <Flex direction="column" gap="3">
-      <Flex align="center" gap="2">
-        <PiHardDrivesFill size={16} />
-        <Text size="2" weight="bold">
-          Host a server
+    <Flex direction="column" gap="4">
+      {/* The icon leads, and it is already theirs before they have finished
+          naming it. Seeded on the name rather than the address, because a
+          server being created has no address yet and every new one drew the
+          same planet until it started. */}
+      <Flex direction="column" align="center" gap="1">
+        <Avatar
+          size="6"
+          radius="full"
+          src={undefined}
+          fallback={<GeneratedServerIcon seed={serverName || "My Server"} />}
+        />
+        <Text size="1" color="gray">
+          Generated from the name
         </Text>
-        <Badge color="purple" size="1" variant="soft">
-          Local
-        </Badge>
       </Flex>
 
-      <AnimatePresence mode="wait">
-        {hasExistingServer && !isRunning && !isStarting ? (
-          <motion.div
-            key="existing"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-          >
-            <Card size="2">
-              <Flex direction="column" gap="3">
-                <Flex justify="between" align="center">
-                  <Flex direction="column" gap="1">
-                    <Text size="2" weight="bold">
-                      {existingConfig?.serverName ?? "My Server"}
-                    </Text>
-                    <Text size="1" color="gray">
-                      Port {existingConfig?.serverPort ?? "5000"}
-                    </Text>
-                  </Flex>
-                  <Badge color="gray" size="1">Stopped</Badge>
-                </Flex>
-                <Flex asChild gap="2" align="center">
-                  <label>
-                    <Checkbox
-                      checked={autoStart}
-                      onCheckedChange={(c) => setAutoStart(c === true)}
-                    />
-                    <Text size="1" color="gray">Start automatically with app</Text>
-                  </label>
-                </Flex>
-                <Button
-                  size="2"
-                  variant="soft"
-                  onClick={() => { void handleStart(); }}
-                  disabled={loading}
-                >
-                  {loading ? <Spinner size="1" /> : <PiPlayFill size={16} />}
-                  Start server
-                </Button>
-              </Flex>
-            </Card>
-          </motion.div>
-        ) : (isRunning || isStarting) ? (
-          <motion.div
-            key="running"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-          >
-            <Card size="2">
-              <Flex direction="column" gap="3">
-                <Flex justify="between" align="center">
-                  <Flex direction="column" gap="1">
-                    <Flex align="center" gap="2">
-                      <Text size="2" weight="bold">
-                        {state.config?.serverName ?? "Server"}
-                      </Text>
-                      <Badge color={isRunning ? "green" : "amber"} size="1">
-                        {isRunning ? "Running" : "Starting..."}
-                      </Badge>
-                    </Flex>
-                    <Text size="1" color="gray">
-                      127.0.0.1:{state.config?.serverPort}
-                      {state.config?.lanDiscoverable && ` (LAN: ${lanIp}:${state.config.serverPort})`}
-                    </Text>
-                  </Flex>
-                </Flex>
+      <Flex direction="column" gap="2">
+        <Text size="2" weight="bold">
+          Server name{" "}
+          <Text as="span" color="red">
+            *
+          </Text>
+        </Text>
+        <TextField.Root
+          autoFocus
+          placeholder="My Server"
+          value={serverName}
+          onChange={(e) => setServerName(e.target.value)}
+          disabled={busy}
+          maxLength={64}
+        />
+      </Flex>
 
-                {/* Behind an accordion, and genuinely unmounted when shut.
-                    EmbeddedServerLogs pulls the whole history and opens a live
-                    subscription the moment it mounts, so hiding it with CSS
-                    would have kept both running for a panel nobody had asked
-                    to see. Closed means not fetching. */}
-                <Accordion
-                  value={logsOpen}
-                  onValueChange={(value: unknown) =>
-                    setLogsOpen(value as string[])
-                  }
-                >
-                  <Accordion.Item value="logs">
-                    <Accordion.Trigger>Server logs</Accordion.Trigger>
-                    <Accordion.Panel>
-                      {logsOpen.includes("logs") && <EmbeddedServerLogs />}
-                    </Accordion.Panel>
-                  </Accordion.Item>
-                </Accordion>
-
-                <Flex asChild gap="2" align="center">
-                  <label>
-                    <Checkbox
-                      checked={autoStart}
-                      onCheckedChange={(c) => setAutoStart(c === true)}
-                    />
-                    <Text size="1" color="gray">Start automatically with app</Text>
-                  </label>
-                </Flex>
-
-                <Flex gap="2">
-                  {isRunning && (
-                    <Button
-                      size="2"
-                      variant="soft"
-                      color="green"
-                      onClick={handleConnect}
-                      style={{ flex: 1 }}
-                    >
-                      <PiCheck size={16} />
-                      Connect
-                    </Button>
-                  )}
-                  <Button
-                    size="2"
-                    variant="soft"
-                    color="red"
-                    onClick={() => { void handleStop(); }}
-                    disabled={loading}
-                    style={{ flex: isRunning ? undefined : 1 }}
-                  >
-                    {loading ? <Spinner size="1" /> : <PiStopFill size={16} />}
-                    Stop
-                  </Button>
-                </Flex>
-              </Flex>
-            </Card>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="create"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-          >
-            <Card size="2">
-              <Flex direction="column" gap="3">
-                <Flex direction="column" gap="2">
-                  <Text size="2" color="gray" weight="bold">
-                    Server name
-                  </Text>
-                  <TextField.Root
-                    radius="full"
-                    placeholder="My Server"
-                    value={serverName}
-                    onChange={(e) => setServerName(e.target.value)}
-                    disabled={loading}
-                  />
-                </Flex>
-
-                <Flex asChild gap="2" align="center">
-                  <label>
-                    <Checkbox
-                      checked={lanDiscoverable}
-                      onCheckedChange={(c) => setLanDiscoverable(c === true)}
-                      disabled={loading}
-                    />
-                    <Text size="2">Discoverable on LAN</Text>
-                  </label>
-                </Flex>
-
-                {lanDiscoverable && (
-                  <Callout.Root color="blue" size="1">
-                    <Callout.Icon>
-                      <PiInfoFill size={14} />
-                    </Callout.Icon>
-                    <Callout.Text>
-                      Other Gryt users on your network will see this server automatically.
-                    </Callout.Text>
-                  </Callout.Root>
-                )}
-
-                <Button
-                  size="2"
-                  onClick={() => { void handleCreate(); }}
-                  disabled={loading || !serverName.trim()}
-                >
-                  {loading ? <Spinner size="1" /> : <PiHardDrivesFill size={16} />}
-                  Create server
-                </Button>
-              </Flex>
-            </Card>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* The one setting that survived the trim. It is not cosmetic: it decides
+          whether anybody else on the network can find this server at all, and
+          there is nowhere else to say so before it starts. */}
+      <Flex asChild gap="2" align="center">
+        <label>
+          <Checkbox
+            checked={lanDiscoverable}
+            onCheckedChange={(c) => setLanDiscoverable(c === true)}
+            disabled={busy}
+          />
+          <Text size="2" color="gray">
+            Let others on my network find it
+          </Text>
+        </label>
+      </Flex>
 
       <AnimatePresence>
         {hasError && state.error && (
@@ -267,21 +136,22 @@ export function CreateServerPanel({ onServerReady }: CreateServerPanelProps) {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
+            style={{ overflow: "hidden" }}
           >
             <Callout.Root color="red" role="alert">
               <Callout.Icon>
                 <PiWarningFill size={16} />
               </Callout.Icon>
-              <Callout.Text>
-                {state.error}
-              </Callout.Text>
+              <Callout.Text>{state.error}</Callout.Text>
             </Callout.Root>
             <Flex mt="2" justify="end">
               <Button
                 size="1"
                 variant="ghost"
                 color="gray"
-                onClick={() => { void dismissError(); }}
+                onClick={() => {
+                  void dismissError();
+                }}
               >
                 <PiX size={14} />
                 Dismiss
@@ -290,6 +160,22 @@ export function CreateServerPanel({ onServerReady }: CreateServerPanelProps) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <Dialog.Footer className="justify-between">
+        <Button variant="ghost" color="gray" onClick={onBack} disabled={busy}>
+          Back
+        </Button>
+
+        <Button
+          onClick={() => {
+            void handleCreate();
+          }}
+          disabled={busy || !serverName.trim()}
+        >
+          {busy ? <Spinner size="1" /> : null}
+          {isStarting ? "Starting…" : "Create"}
+        </Button>
+      </Dialog.Footer>
     </Flex>
   );
 }
