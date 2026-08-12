@@ -66,6 +66,14 @@
   --gryt-z-chrome: 70; /* Electron titlebar; window controls stay reachable */
   --gryt-z-toast: 80; /* transient notifications */
   --gryt-z-splash: 90; /* auth loading overlay */
+
+  /* The tour's cursor.
+   *
+   * Not from the palette on purpose. The spotlight ring, the buttons it
+   * presses and half the chrome are all accent purple, so a cursor drawn from
+   * the same family disappeared into what it was pointing at. This is the one
+   * thing on screen whose whole job is to be followed. */
+  --gryt-tour-cursor: #ff4d4f;
 }
 
 /* The library's portaled overlays, given a home on the scale above. Without

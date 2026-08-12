@@ -282,9 +282,21 @@ export function Settings() {
         data-gryt="settings"
         maxWidth="900px"
         style={{ height: "700px", minWidth: "600px" }}
+        /* The tour lives in a portal of its own, so pressing Next on a coach
+           mark counts as interacting outside this dialog and Radix dismissed
+           it. The panel closed on every step change and the next step opened
+           it again, which read as the whole thing flickering shut and back for
+           no reason. The tour is not outside in any sense the user cares
+           about. */
+        onInteractOutside={(event) => {
+          const target = event.target as HTMLElement | null;
+          if (target?.closest?.('[data-gryt="tour"]')) {
+            event.preventDefault();
+          }
+        }}
       >
         <Dialog.Close style={{ position: "absolute", top: "8px", right: "8px" }}>
-          <IconButton variant="soft" color="gray">
+          <IconButton data-tour="settings-close" variant="soft" color="gray">
             <PiX size={16} />
           </IconButton>
         </Dialog.Close>

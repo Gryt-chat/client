@@ -155,7 +155,10 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
             </IconButton>
           </DropdownMenu.Trigger>
           <DropdownMenu.Content>
-            <DropdownMenu.Item onClick={() => setShowSettings(true)}>
+            <DropdownMenu.Item
+              data-tour="menu-settings"
+              onClick={() => setShowSettings(true)}
+            >
               <Flex align="center" gap="1">
                 <PiGearFill size={14} />
                 Settings
