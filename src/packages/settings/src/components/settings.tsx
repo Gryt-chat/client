@@ -1,4 +1,5 @@
-import { Box, Dialog, Flex, IconButton, Separator, Text, TextField } from "@radix-ui/themes";
+import { Dialog, IconButton } from "@gryt/ui";
+import { Box, Flex, Separator, Text, TextField } from "@radix-ui/themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PiArrowFatLineDownFill, PiFadersHorizontalFill, PiFlaskFill, PiGearSixFill, PiHeartFill, PiMagnifyingGlassFill, PiPuzzlePieceFill, PiUserCircleFill, PiUserFill, PiVideoCameraFill, PiX } from "react-icons/pi";
 
@@ -277,28 +278,40 @@ export function Settings() {
   }, [highlighted]);
 
   return (
-    <Dialog.Root open={showSettings} onOpenChange={handleDialogChange}>
-      <Dialog.Content
-        data-gryt="settings"
-        maxWidth="900px"
-        style={{ height: "700px", minWidth: "600px" }}
-        /* The tour lives in a portal of its own, so pressing Next on a coach
-           mark counts as interacting outside this dialog and Radix dismissed
-           it. The panel closed on every step change and the next step opened
-           it again, which read as the whole thing flickering shut and back for
-           no reason. The tour is not outside in any sense the user cares
-           about. */
-        onInteractOutside={(event) => {
-          const target = event.target as HTMLElement | null;
+    <Dialog.Root
+      open={showSettings}
+      /* The tour lives in a portal of its own, so pressing Next on a coach
+         mark counts as interacting outside this dialog and it was dismissed.
+         The panel closed on every step change and the next step opened it
+         again, which read as the whole thing flickering shut and back for no
+         reason. The tour is not outside in any sense the user cares about.
+
+         Radix expressed this as onInteractOutside + preventDefault. Base UI
+         hands the reason and the originating event to onOpenChange, and
+         cancelling there is the equivalent. */
+      onOpenChange={(open, details) => {
+        if (!open) {
+          const target = details.event?.target as HTMLElement | null;
           if (target?.closest?.('[data-gryt="tour"]')) {
-            event.preventDefault();
+            details.cancel();
+            return;
           }
-        }}
-      >
-        <Dialog.Close style={{ position: "absolute", top: "8px", right: "8px" }}>
-          <IconButton data-tour="settings-close" variant="soft" color="gray">
-            <PiX size={16} />
-          </IconButton>
+        }
+
+        handleDialogChange(open);
+      }}
+    >
+      <Dialog.Portal>
+        <Dialog.Backdrop />
+        <Dialog.Popup
+          data-gryt="settings"
+          className="h-[700px] max-h-[calc(100dvh-4rem)] w-[56rem] max-w-[calc(100vw-2rem)] min-w-[37.5rem]"
+        >
+        <Dialog.Close
+          className="absolute top-2 right-2"
+          render={<IconButton data-tour="settings-close" size="small" aria-label="Close settings" />}
+        >
+          <PiX size={16} />
         </Dialog.Close>
 
         <style>{`
@@ -326,7 +339,7 @@ export function Settings() {
         `}</style>
 
         <Flex direction="column" gap="4" height="100%">
-          <Dialog.Title as="h1" weight="bold" size="6">
+          <Dialog.Title className="text-2xl font-bold">
             Settings
           </Dialog.Title>
 
@@ -364,9 +377,8 @@ export function Settings() {
                   {query && (
                     <TextField.Slot>
                       <IconButton
-                        size="1"
-                        variant="ghost"
-                        color="gray"
+                        size="xsmall"
+                        tone="ghost"
                         aria-label="Clear search"
                         onClick={() => {
                           setQuery("");
@@ -482,7 +494,8 @@ export function Settings() {
             color: var(--accent-11);
           }
         `}</style>
-      </Dialog.Content>
+        </Dialog.Popup>
+      </Dialog.Portal>
     </Dialog.Root>
   );
 }
