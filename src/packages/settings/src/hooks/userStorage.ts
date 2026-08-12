@@ -1,4 +1,7 @@
+import { getMergeChoice } from "@/common/src/auth/identity-merge";
+
 import { getElectronAPI, isElectron } from "../../../../lib/electron";
+import { getDeviceId, isDeviceId } from "./deviceId";
 
 type UserData = Record<string, unknown>;
 
@@ -24,48 +27,15 @@ export async function loadForUser(userId: string): Promise<UserData> {
   cachedUserId = userId;
 
   pendingLoad = (async () => {
-    let data: UserData = {};
-
-    if (isElectron()) {
-      const api = getElectronAPI();
-      if (api) {
-        data = await api.loadUserData(userId);
-        console.log("[UserStore] loadForUser: Electron IPC returned", Object.keys(data).length, "keys, hasServers:", data["servers"] !== undefined);
-      }
-    } else {
-      const prefix = `user:${userId}:`;
-      const allLsKeys: string[] = [];
-      const matchedKeys: string[] = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        if (k) allLsKeys.push(k);
-        if (k?.startsWith(prefix)) {
-          matchedKeys.push(k);
-          const short = k.slice(prefix.length);
-          const raw = localStorage.getItem(k);
-          if (raw !== null) {
-            try {
-              data[short] = JSON.parse(raw) as unknown;
-            } catch {
-              data[short] = raw;
-            }
-          }
-        }
-      }
-      console.log("[UserStore] loadForUser: localStorage has", allLsKeys.length, "total keys");
-      console.log("[UserStore] loadForUser: matched", matchedKeys.length, "keys for prefix", JSON.stringify(prefix));
-      if (matchedKeys.length > 0) {
-        console.log("[UserStore] loadForUser: matched keys:", matchedKeys.join(", "));
-      }
-      console.log("[UserStore] loadForUser: all localStorage keys:", allLsKeys.join(", "));
-      console.log("[UserStore] loadForUser: parsed data keys:", Object.keys(data).join(", "));
-    }
+    let data = await readStoredData(userId);
 
     const hasExistingData = Object.keys(data).length > 0;
     if (!hasExistingData) {
       console.log("[UserStore] loadForUser: no existing data, running migration");
       data = migrateFromLocalStorage(userId, data);
     }
+
+    data = await carryDeviceSettingsOver(userId, data);
 
     const servers = data["servers"];
     if (servers && typeof servers === "object") {
@@ -80,6 +50,96 @@ export async function loadForUser(userId: string): Promise<UserData> {
   })();
 
   return pendingLoad;
+}
+
+/** Everything stored under one id, from wherever this build keeps it. */
+async function readStoredData(userId: string): Promise<UserData> {
+  const data: UserData = {};
+
+  if (isElectron()) {
+    const api = getElectronAPI();
+    if (api) {
+      const loaded = await api.loadUserData(userId);
+      Object.assign(data, loaded);
+      console.log("[UserStore] readStoredData: Electron IPC returned", Object.keys(data).length, "keys for", userId, "hasServers:", data["servers"] !== undefined);
+    }
+    return data;
+  }
+
+  const prefix = `user:${userId}:`;
+  const matchedKeys: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (!k?.startsWith(prefix)) continue;
+    matchedKeys.push(k);
+    const raw = localStorage.getItem(k);
+    if (raw === null) continue;
+    const short = k.slice(prefix.length);
+    try {
+      data[short] = JSON.parse(raw) as unknown;
+    } catch {
+      data[short] = raw;
+    }
+  }
+  console.log("[UserStore] readStoredData: matched", matchedKeys.length, "keys for prefix", JSON.stringify(prefix));
+  return data;
+}
+
+/** Write a whole set of values under one id, without touching the live cache. */
+function persistUnder(userId: string, values: UserData): void {
+  if (isElectron()) {
+    const api = getElectronAPI();
+    if (api) {
+      api.saveUserData(userId, { ...values });
+      return;
+    }
+  }
+  for (const [k, v] of Object.entries(values)) {
+    localStorage.setItem(webKey(userId, k), JSON.stringify(v));
+  }
+}
+
+/**
+ * Move what this device set up as a guest onto the account that just signed in.
+ *
+ * Fixing the device id alone would have swapped one silent reset for another:
+ * settings survive a reload, then vanish the moment you sign in, because the
+ * account id is a different namespace with nothing in it.
+ *
+ * This rides on the answer GRYT-173 already collects rather than asking a second
+ * time. The reasoning there applies unchanged here, and the server list lives in
+ * this same store: carrying a guest's settings onto an account is right on your
+ * own machine and wrong on a borrowed one, where you would inherit whoever used
+ * it last. Unanswered means no.
+ *
+ * Only fills keys the account does not have. An account that has been used
+ * before keeps everything it already knows.
+ */
+async function carryDeviceSettingsOver(
+  userId: string,
+  data: UserData
+): Promise<UserData> {
+  if (isDeviceId(userId)) return data;
+  if (getMergeChoice() !== "yes") return data;
+
+  const deviceId = getDeviceId();
+  const guest = await readStoredData(deviceId);
+
+  const carried: UserData = {};
+  for (const [key, value] of Object.entries(guest)) {
+    if (data[key] !== undefined) continue;
+    data[key] = value;
+    carried[key] = value;
+  }
+
+  if (Object.keys(carried).length === 0) {
+    console.log("[UserStore] carryDeviceSettingsOver: nothing to carry from", deviceId);
+    return data;
+  }
+
+  console.log("[UserStore] carryDeviceSettingsOver: carried", Object.keys(carried).join(", "), "from", deviceId, "to", userId);
+  persistUnder(userId, data);
+  return data;
 }
 
 export function getUserValue<T>(key: string, fallback: T): T {
