@@ -86,6 +86,9 @@ export function AccountSettings() {
     () => getCustomIdentityUrl() || "",
   );
   const [savedIssuer, setSavedIssuer] = useState(false);
+  const [hasCustom, setHasCustom] = useState(
+    () => getCustomAuthIssuer() !== null || getCustomIdentityUrl() !== null,
+  );
 
   useEffect(() => {
     if (!isSignedIn) {
@@ -127,6 +130,7 @@ export function AccountSettings() {
     // that is thrown away and redone.
     resetKeycloakInit();
     setSavedIssuer(true);
+    setHasCustom(issuer.length > 0 || identity.length > 0);
     toast.success(
       issuer.length > 0
         ? "Using your own auth server. Sign in to check it works."
@@ -141,13 +145,12 @@ export function AccountSettings() {
     setCustomIdentityUrl(null);
     resetKeycloakInit();
     setSavedIssuer(false);
+    setHasCustom(false);
     toast.success("Back to the Gryt auth server.");
   }, []);
 
   const isCustom =
     issuerInput.trim().length > 0 && issuerInput.trim() !== DEFAULT_ISSUER;
-  const hasSaved =
-    (getCustomAuthIssuer() || getCustomIdentityUrl()) !== null;
 
   return (
     <SettingsContainer>
@@ -271,24 +274,43 @@ export function AccountSettings() {
           Where accounts come from. Leave this alone unless you run your own
           Keycloak — the address of its realm, not the server root.
         </Text>
+        <TextField.Root
+          placeholder={DEFAULT_ISSUER}
+          value={issuerInput}
+          onChange={(e) => {
+            setIssuerInput(e.target.value);
+            setSavedIssuer(false);
+          }}
+        />
+
+        <Text size="1" color="gray">
+          And the identity service that signs certificates for it. It is a
+          separate service, so it cannot be worked out from the address above.
+        </Text>
+        <TextField.Root
+          placeholder={DEFAULT_IDENTITY}
+          value={identityInput}
+          onChange={(e) => {
+            setIdentityInput(e.target.value);
+            setSavedIssuer(false);
+          }}
+        />
+
         <Flex gap="2" wrap="wrap">
-          <TextField.Root
-            style={{ flex: 1, minWidth: 240 }}
-            placeholder={DEFAULT_ISSUER}
-            value={issuerInput}
-            onChange={(e) => {
-              setIssuerInput(e.target.value);
-              setSavedIssuer(false);
-            }}
-          />
           <Button variant="soft" onClick={handleSaveIssuer}>
-            {savedIssuer ? "Saved" : "Use this"}
+            {savedIssuer ? "Saved" : "Use these"}
           </Button>
+          {hasCustom && (
+            <Button variant="soft" color="gray" onClick={handleClearIssuer}>
+              Back to Gryt
+            </Button>
+          )}
         </Flex>
+
         {isCustom && (
           <Text size="1" color="gray">
-            A server also has to trust certificates from whatever identity
-            service sits behind this, or it will refuse the join.
+            A server also has to trust certificates from your identity service,
+            or it will refuse the join.
           </Text>
         )}
       </Flex>
