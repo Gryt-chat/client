@@ -1,11 +1,10 @@
-import { Dialog, IconButton } from "@gryt/ui";
+import { Card, Dialog, IconButton } from "@gryt/ui";
 import {
   Avatar,
   Badge,
   Box,
   Button,
   Callout,
-  Card,
   Flex,
   Separator,
   Spinner,
@@ -481,41 +480,43 @@ export function AddNewServer({
           {/* The choice. Two errands that were sharing one column, with the
               discovered servers stacked in between them. */}
           {step === null && (
-            <Flex direction={{ initial: "column", sm: "row" }} gap="3" mb="2">
-              <Card asChild size="2" style={{ flex: 1 }}>
+            /* @gryt/ui Card, not Radix's. The Dialog portals to document.body,
+               which is outside the .radix-themes wrapper, so a Radix Card in
+               here renders with none of its theme — measured: no border, no
+               background, just text on the popup. Anything visible inside a
+               migrated dialog has to come from the library that owns the
+               portal. */
+            <div className="mb-2 flex flex-col gap-3 sm:flex-row">
+              <Card className="flex-1 p-0">
                 <button
                   type="button"
                   data-tour="choose-host"
                   onClick={() => setMode("host")}
-                  style={{ cursor: "pointer", textAlign: "left" }}
+                  className="flex h-full w-full cursor-pointer flex-col items-start gap-1 p-4 text-left"
                 >
-                  <Flex direction="column" gap="1" align="start">
-                    <PiHouseFill size={20} />
-                    <Text size="3" weight="bold">Host a server</Text>
-                    <Text size="2" color="gray">
-                      Runs on this machine. Best for a few friends.
-                    </Text>
-                  </Flex>
+                  <PiHouseFill size={20} />
+                  <span className="font-bold">Host a server</span>
+                  <span className="text-sm text-gryt-muted">
+                    Runs on this machine. Best for a few friends.
+                  </span>
                 </button>
               </Card>
 
-              <Card asChild size="2" style={{ flex: 1 }}>
+              <Card className="flex-1 p-0">
                 <button
                   type="button"
                   data-tour="choose-join"
                   onClick={() => setMode("join")}
-                  style={{ cursor: "pointer", textAlign: "left" }}
+                  className="flex h-full w-full cursor-pointer flex-col items-start gap-1 p-4 text-left"
                 >
-                  <Flex direction="column" gap="1" align="start">
-                    <PiSignInFill size={20} />
-                    <Text size="3" weight="bold">Join a server</Text>
-                    <Text size="2" color="gray">
-                      With an invite, an address, or one on your network.
-                    </Text>
-                  </Flex>
+                  <PiSignInFill size={20} />
+                  <span className="font-bold">Join a server</span>
+                  <span className="text-sm text-gryt-muted">
+                    With an invite, an address, or one on your network.
+                  </span>
                 </button>
               </Card>
-            </Flex>
+            </div>
           )}
 
           {step !== null && (
@@ -610,7 +611,7 @@ export function AddNewServer({
                         (isSearching || isJoining);
 
                       return (
-                        <Card key={`${s.host}:${s.port}`} size="1">
+                        <Card key={`${s.host}:${s.port}`} className="p-3">
                           <Flex align="center" gap="3">
                             {/*
                               Streamed from the server's own /icon endpoint.
