@@ -1,3 +1,4 @@
+import { Dialog, IconButton } from "@gryt/ui";
 import {
   Avatar,
   Badge,
@@ -5,9 +6,7 @@ import {
   Button,
   Callout,
   Card,
-  Dialog,
   Flex,
-  IconButton,
   Separator,
   Spinner,
   Text,
@@ -437,44 +436,47 @@ export function AddNewServer({
   };
 
   return (
-    <Dialog.Root open={showAddServer} onOpenChange={closeDialog}>
-      <Dialog.Content
-        maxWidth="600px"
-        style={{ overflow: "hidden" }}
-        /* Same as the settings dialog: a coach mark is not "outside" in any
-           sense the user cares about, and dismissing this on a Next click made
-           the tour's last step close the thing it had just opened. */
-        onInteractOutside={(event) => {
-          const target = event.target as HTMLElement | null;
-          if (target?.closest?.('[data-gryt="tour"]')) {
-            event.preventDefault();
-          }
-        }}
-      >
-        <Dialog.Close
-          style={{
-            position: "absolute",
-            top: "8px",
-            right: "8px",
-          }}
-        >
-          <IconButton variant="soft" color="gray">
+    <Dialog.Root
+      open={showAddServer}
+      /* Same as the settings dialog: a coach mark is not "outside" in any
+         sense the user cares about, and dismissing this on a Next click made
+         the tour's last step close the thing it had just opened.
+         Radix expressed this as onInteractOutside + preventDefault; Base UI
+         hands the reason and the event to onOpenChange and cancels there. */
+      onOpenChange={(open, details) => {
+        if (open) return;
+
+        const target = details.event?.target as HTMLElement | null;
+        if (target?.closest?.('[data-gryt="tour"]')) {
+          details.cancel();
+          return;
+        }
+
+        closeDialog();
+      }}
+    >
+      <Dialog.Portal>
+        <Dialog.Backdrop />
+        <Dialog.Popup className="w-[37.5rem] max-w-[calc(100vw-2rem)] overflow-hidden">
+          <Dialog.Close
+            className="absolute top-2 right-2"
+            render={<IconButton size="small" aria-label="Close" />}
+          >
             <PiX size={16} />
-          </IconButton>
-        </Dialog.Close>
+          </Dialog.Close>
 
-        <Flex direction="column" gap="2">
-          <Dialog.Title as="h1" weight="bold" size="6">
-            {step === "host" ? "Host a server" : step === "join" ? "Join a server" : "Add a server"}
-          </Dialog.Title>
+          <Flex direction="column" gap="2">
+            <Dialog.Title className="text-2xl font-bold">
+              {step === "host" ? "Host a server" : step === "join" ? "Join a server" : "Add a server"}
+            </Dialog.Title>
 
-          <Dialog.Description size="2" mb="4">
-            {step === "host"
-              ? "Run a server on this machine. Your friends connect to you."
-              : step === "join"
-                ? "Enter an address, or pick one already running on your network."
-                : "Run one yourself, or join somebody else's."}
-          </Dialog.Description>
+            <Dialog.Description className="mb-4 text-sm">
+              {step === "host"
+                ? "Run a server on this machine. Your friends connect to you."
+                : step === "join"
+                  ? "Enter an address, or pick one already running on your network."
+                  : "Run one yourself, or join somebody else's."}
+            </Dialog.Description>
 
           {/* The choice. Two errands that were sharing one column, with the
               discovered servers stacked in between them. */}
@@ -1028,8 +1030,9 @@ export function AddNewServer({
               )}
             </AnimatePresence>
           </Flex>
-        </Flex>
-      </Dialog.Content>
+          </Flex>
+        </Dialog.Popup>
+      </Dialog.Portal>
     </Dialog.Root>
   );
 }
