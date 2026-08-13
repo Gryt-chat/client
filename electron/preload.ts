@@ -2,7 +2,26 @@ import { contextBridge, ipcRenderer } from "electron";
 
 type Callback = () => void;
 
+type EmbeddedServerConfigShape = {
+  id: string;
+  serverName: string;
+  serverPort: number;
+  sfuPort: number;
+  lanDiscoverable: boolean;
+  externalHost: string;
+};
+
+type EmbeddedServerState = {
+  id: string;
+  status: string;
+  config: EmbeddedServerConfigShape | null;
+  error: string | null;
+  serverUrl: string | null;
+};
+
 type EmbeddedLogLine = {
+  /** The server this came from, or null for the SFU, which is shared. */
+  serverId: string | null;
   source: "sfu" | "server" | "worker";
   level: "error" | "warn" | "info" | "debug";
   text: string;
@@ -418,140 +437,78 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getEmbeddedServerInfo(): Promise<{
     available: boolean;
     hasExisting: boolean;
-    config: {
-      serverName: string;
-      serverPort: number;
-      sfuPort: number;
-      lanDiscoverable: boolean;
-      externalHost: string;
-    } | null;
     lanIp: string;
+    servers: EmbeddedServerState[];
   }> {
     return ipcRenderer.invoke("embedded-server:info");
   },
 
   createEmbeddedServer(
     serverName: string,
-    lanDiscoverable: boolean
-  ): Promise<{
-    status: string;
-    config: {
-      serverName: string;
-      serverPort: number;
-      sfuPort: number;
-      lanDiscoverable: boolean;
-      externalHost: string;
-    } | null;
-    error: string | null;
-    serverUrl: string | null;
-  }> {
+    lanDiscoverable: boolean,
+    port?: number
+  ): Promise<EmbeddedServerState | null> {
     return ipcRenderer.invoke(
       "embedded-server:create",
       serverName,
-      lanDiscoverable
+      lanDiscoverable,
+      port
     );
   },
 
-  startEmbeddedServer(): Promise<{
-    status: string;
-    config: {
-      serverName: string;
-      serverPort: number;
-      sfuPort: number;
-      lanDiscoverable: boolean;
-      externalHost: string;
-    } | null;
-    error: string | null;
-    serverUrl: string | null;
-  }> {
-    return ipcRenderer.invoke("embedded-server:start");
+  /** A free port to offer in the create form. */
+  suggestEmbeddedServerPort(): Promise<number> {
+    return ipcRenderer.invoke("embedded-server:suggest-port");
   },
 
-  stopEmbeddedServer(): Promise<{
-    status: string;
-    config: {
-      serverName: string;
-      serverPort: number;
-      sfuPort: number;
-      lanDiscoverable: boolean;
-      externalHost: string;
-    } | null;
-    error: string | null;
-    serverUrl: string | null;
-  }> {
-    return ipcRenderer.invoke("embedded-server:stop");
+  /** Whether a port somebody typed can actually be bound. */
+  checkEmbeddedServerPort(port: number): Promise<boolean> {
+    return ipcRenderer.invoke("embedded-server:check-port", port);
   },
 
-  dismissEmbeddedServerError(): Promise<{
-    status: string;
-    config: {
-      serverName: string;
-      serverPort: number;
-      sfuPort: number;
-      lanDiscoverable: boolean;
-      externalHost: string;
-    } | null;
-    error: string | null;
-    serverUrl: string | null;
-  }> {
-    return ipcRenderer.invoke("embedded-server:dismiss-error");
+  startEmbeddedServer(id: string): Promise<EmbeddedServerState | null> {
+    return ipcRenderer.invoke("embedded-server:start", id);
   },
 
-  getEmbeddedServerStatus(): Promise<{
-    status: string;
-    config: {
-      serverName: string;
-      serverPort: number;
-      sfuPort: number;
-      lanDiscoverable: boolean;
-      externalHost: string;
-    } | null;
-    error: string | null;
-    serverUrl: string | null;
-  }> {
+  stopEmbeddedServer(id: string): Promise<EmbeddedServerState | null> {
+    return ipcRenderer.invoke("embedded-server:stop", id);
+  },
+
+  dismissEmbeddedServerError(
+    id: string
+  ): Promise<EmbeddedServerState | null> {
+    return ipcRenderer.invoke("embedded-server:dismiss-error", id);
+  },
+
+  /** Stop a server and delete its files. There is no undo. */
+  deleteEmbeddedServer(id: string): Promise<EmbeddedServerState[]> {
+    return ipcRenderer.invoke("embedded-server:delete", id);
+  },
+
+  /** Every server this machine has, running or not. */
+  getEmbeddedServerStatus(): Promise<EmbeddedServerState[]> {
     return ipcRenderer.invoke("embedded-server:status");
   },
 
   onEmbeddedServerStatusChanged(
-    callback: (state: {
-      status: string;
-      config: {
-        serverName: string;
-        serverPort: number;
-        sfuPort: number;
-        lanDiscoverable: boolean;
-        externalHost: string;
-      } | null;
-      error: string | null;
-      serverUrl: string | null;
-    }) => void
+    callback: (states: EmbeddedServerState[]) => void
   ) {
     const handler = (
       _event: Electron.IpcRendererEvent,
-      data: {
-        status: string;
-        config: {
-          serverName: string;
-          serverPort: number;
-          sfuPort: number;
-          lanDiscoverable: boolean;
-          externalHost: string;
-        } | null;
-        error: string | null;
-        serverUrl: string | null;
-      }
+      data: EmbeddedServerState[]
     ) => callback(data);
     ipcRenderer.on("embedded-server:status-changed", handler);
     return () =>
       ipcRenderer.removeListener("embedded-server:status-changed", handler);
   },
 
-  getEmbeddedServerLogs(): Promise<EmbeddedLogLine[]> {
-    return ipcRenderer.invoke("embedded-server:logs");
+  /** One server's history, plus the shared SFU's. */
+  getEmbeddedServerLogs(id?: string): Promise<EmbeddedLogLine[]> {
+    return ipcRenderer.invoke("embedded-server:logs", id);
   },
 
-  clearEmbeddedServerLogs(): Promise<void> {
-    return ipcRenderer.invoke("embedded-server:clear-logs");
+  clearEmbeddedServerLogs(id?: string): Promise<void> {
+    return ipcRenderer.invoke("embedded-server:clear-logs", id);
   },
 
   onEmbeddedServerLog(
@@ -569,11 +526,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return () => ipcRenderer.removeListener("embedded-server:log", handler);
   },
 
-  getEmbeddedServerAutoStart(): Promise<boolean> {
-    return ipcRenderer.invoke("embedded-server:get-auto-start");
+  getEmbeddedServerAutoStart(id: string): Promise<boolean> {
+    return ipcRenderer.invoke("embedded-server:get-auto-start", id);
   },
 
-  setEmbeddedServerAutoStart(enabled: boolean) {
-    ipcRenderer.send("embedded-server:set-auto-start", enabled);
+  setEmbeddedServerAutoStart(id: string, enabled: boolean) {
+    ipcRenderer.send("embedded-server:set-auto-start", id, enabled);
   },
 });

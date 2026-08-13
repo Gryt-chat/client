@@ -40,6 +40,8 @@ export type TrayVoiceCommand = "toggle-mute" | "toggle-deafen";
 export type EmbeddedLogSource = "sfu" | "server" | "worker";
 
 export type EmbeddedLogLine = {
+  /** The server this came from, or null for the SFU, which every server shares. */
+  serverId: string | null;
   source: EmbeddedLogSource;
   level: "error" | "warn" | "info" | "debug";
   text: string;
@@ -63,6 +65,8 @@ export interface NativeScreenFrame {
 }
 
 export interface EmbeddedServerConfig {
+  /** Stable handle for this server, and the name of its directory on disk. */
+  id: string;
   serverName: string;
   serverPort: number;
   sfuPort: number;
@@ -71,6 +75,7 @@ export interface EmbeddedServerConfig {
 }
 
 export interface EmbeddedServerState {
+  id: string;
   status: string;
   config: EmbeddedServerConfig | null;
   error: string | null;
@@ -80,8 +85,8 @@ export interface EmbeddedServerState {
 export interface EmbeddedServerInfo {
   available: boolean;
   hasExisting: boolean;
-  config: EmbeddedServerConfig | null;
   lanIp: string;
+  servers: EmbeddedServerState[];
 }
 
 export interface ElectronAPI {
@@ -171,14 +176,18 @@ export interface ElectronAPI {
   getEmbeddedServerInfo(): Promise<EmbeddedServerInfo>;
   createEmbeddedServer(
     serverName: string,
-    lanDiscoverable: boolean
-  ): Promise<EmbeddedServerState>;
-  startEmbeddedServer(): Promise<EmbeddedServerState>;
-  stopEmbeddedServer(): Promise<EmbeddedServerState>;
-  dismissEmbeddedServerError(): Promise<EmbeddedServerState>;
-  getEmbeddedServerStatus(): Promise<EmbeddedServerState>;
+    lanDiscoverable: boolean,
+    port?: number
+  ): Promise<EmbeddedServerState | null>;
+  suggestEmbeddedServerPort(): Promise<number>;
+  checkEmbeddedServerPort(port: number): Promise<boolean>;
+  startEmbeddedServer(id: string): Promise<EmbeddedServerState | null>;
+  stopEmbeddedServer(id: string): Promise<EmbeddedServerState | null>;
+  dismissEmbeddedServerError(id: string): Promise<EmbeddedServerState | null>;
+  deleteEmbeddedServer(id: string): Promise<EmbeddedServerState[]>;
+  getEmbeddedServerStatus(): Promise<EmbeddedServerState[]>;
   onEmbeddedServerStatusChanged(
-    callback: (state: EmbeddedServerState) => void
+    callback: (states: EmbeddedServerState[]) => void
   ): () => void;
   onEmbeddedServerLog(
     callback: (log: {
@@ -188,10 +197,10 @@ export interface ElectronAPI {
     }) => void
   ): () => void;
   /** Everything retained so far, so an opening pane is not blank. */
-  getEmbeddedServerLogs(): Promise<EmbeddedLogLine[]>;
-  clearEmbeddedServerLogs(): Promise<void>;
-  getEmbeddedServerAutoStart(): Promise<boolean>;
-  setEmbeddedServerAutoStart(enabled: boolean): void;
+  getEmbeddedServerLogs(id?: string): Promise<EmbeddedLogLine[]>;
+  clearEmbeddedServerLogs(id?: string): Promise<void>;
+  getEmbeddedServerAutoStart(id: string): Promise<boolean>;
+  setEmbeddedServerAutoStart(id: string, enabled: boolean): void;
 }
 
 declare global {

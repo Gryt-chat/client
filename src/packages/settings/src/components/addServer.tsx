@@ -92,22 +92,16 @@ export function AddNewServer({
   const theme = useThemeContext();
   const { isElectron } = useLanDiscovery();
   const { openSettings } = useSettings();
-  const {
-    isAvailable: embeddedServerAvailable,
-    hasExistingServer,
-    state: embeddedState,
-  } = useEmbeddedServer();
+  const { isAvailable: embeddedServerAvailable, servers: hostedServers } =
+    useEmbeddedServer();
   /**
-   * Whether this machine already has a server on it.
+   * Whether this machine already hosts anything.
    *
-   * The create step is only a create step the first time. Calling it that
-   * afterwards, over a card that says Running and offers Stop, is the dialog
-   * describing something other than what it is showing.
+   * Only decides how the first row is worded now. It used to decide whether the
+   * create step was reachable at all, because there could be one server and no
+   * more — so having one meant there was nothing left to create. There is now.
    */
-  const hasOwnServer =
-    hasExistingServer ||
-    embeddedState.status === "running" ||
-    embeddedState.status === "starting";
+  const hasOwnServer = hostedServers.length > 0;
   const { join, joiningHost } = useServerJoin();
 
   /**
@@ -358,13 +352,7 @@ export function AddNewServer({
                   <button
                     type="button"
                     data-tour="choose-host"
-                    /* One server per machine, so once you have one there is
-                       nothing to create and this row leads to managing it
-                       instead. Sending somebody to a create form that would
-                       refuse them is worse than sending them somewhere else. */
-                    onClick={() =>
-                      hasOwnServer ? openMyServers() : setMode("host")
-                    }
+                    onClick={() => setMode("host")}
                     style={{ cursor: "pointer", textAlign: "left" }}
                   >
                     <Flex align="center" gap="3">
@@ -385,12 +373,10 @@ export function AddNewServer({
 
                       <Flex direction="column" gap="0" style={{ minWidth: 0 }}>
                         <Text size="3" weight="bold">
-                          {hasOwnServer ? "Your server" : "Create my own"}
+                          {hasOwnServer ? "Create another" : "Create my own"}
                         </Text>
                         <Text size="2" color="gray">
-                          {hasOwnServer
-                            ? "Already running here. Manage it in settings."
-                            : "Runs on this machine. Best for a few friends."}
+                          Runs on this machine. Best for a few friends.
                         </Text>
                       </Flex>
 
@@ -400,6 +386,33 @@ export function AddNewServer({
                     </Flex>
                   </button>
                 </Card>
+
+                {/* Only once there is something to manage. Creating and
+                    managing are different jobs and this dialog is for the
+                    first, but somebody who already hosts one and came here
+                    looking for the other should not have to guess. */}
+                {hasOwnServer && (
+                  <Text size="1" color="gray" align="center" mt="-3">
+                    Already running{" "}
+                    {hostedServers.length === 1
+                      ? "one"
+                      : `${hostedServers.length}`}
+                    .{" "}
+                    <Text
+                      asChild
+                      color="gray"
+                      style={{ textDecoration: "underline", cursor: "pointer" }}
+                    >
+                      <button
+                        type="button"
+                        onClick={openMyServers}
+                        className="cursor-pointer appearance-none border-0 bg-transparent p-0 text-inherit underline"
+                      >
+                        Manage in settings
+                      </button>
+                    </Text>
+                  </Text>
+                )}
 
                 {/* The other half of the dialog, and deliberately not a second
                     card of equal weight. Most people arriving here have an

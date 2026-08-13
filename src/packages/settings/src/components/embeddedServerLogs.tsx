@@ -28,7 +28,7 @@ const LEVEL_RANK = { debug: 0, info: 1, warn: 2, error: 3 } as const;
  * inside the app — so when a hosted server misbehaved the only way to find out
  * why was to leave Gryt and read a log file.
  */
-export function EmbeddedServerLogs() {
+export function EmbeddedServerLogs({ serverId }: { serverId: string }) {
   const [lines, setLines] = useState<EmbeddedLogLine[]>([]);
   const [source, setSource] = useState<EmbeddedLogSource | "all">("all");
   const [level, setLevel] = useState<keyof typeof LEVEL_RANK>("info");
@@ -41,13 +41,20 @@ export function EmbeddedServerLogs() {
 
     // The history first, so opening this after something has already gone
     // wrong shows the thing that went wrong.
-    void api.getEmbeddedServerLogs().then(setLines);
+    void api.getEmbeddedServerLogs(serverId).then(setLines);
 
     return api.onEmbeddedServerLog((entry) => {
       if (!entry.lines?.length) return;
-      setLines((prev) => [...prev, ...entry.lines!].slice(-2000));
+      // This server's lines, plus the SFU's — that one is shared, and it is
+      // where the reason voice failed shows up, so filtering it out would hide
+      // the answer to the question this pane is usually open for.
+      const mine = entry.lines.filter(
+        (l) => l.serverId === serverId || l.serverId === null,
+      );
+      if (!mine.length) return;
+      setLines((prev) => [...prev, ...mine].slice(-2000));
     });
-  }, []);
+  }, [serverId]);
 
   const visible = useMemo(
     () =>
@@ -95,7 +102,7 @@ export function EmbeddedServerLogs() {
           variant="soft"
           color="gray"
           onClick={() => {
-            void getElectronAPI()?.clearEmbeddedServerLogs();
+            void getElectronAPI()?.clearEmbeddedServerLogs(serverId);
             setLines([]);
           }}
         >

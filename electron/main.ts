@@ -44,15 +44,18 @@ import {
   cleanupOnQuit,
   clearEmbeddedServerLogs,
   createAndStartServer,
+  deleteServer,
   dismissEmbeddedServerError,
+  getAllStates,
   getAutoStart,
   getEmbeddedServerInfo,
   getEmbeddedServerLogs,
-  getState as getEmbeddedServerState,
   isEmbeddedServerAvailable,
+  isPortAvailable,
   setAutoStart,
   startExistingServer,
-  stopEmbeddedServer,
+  stopServer,
+  suggestServerPort,
 } from "./embeddedServerManager";
 import {
   deleteGlobalValue,
@@ -1842,38 +1845,63 @@ if (!gotSingleInstanceLock) {
 
       ipcMain.handle(
         "embedded-server:create",
-        async (_event, serverName: string, lanDiscoverable: boolean) => {
-          if (!mainWindow) return getEmbeddedServerState();
-          return createAndStartServer(mainWindow, serverName, lanDiscoverable);
+        async (
+          _event,
+          serverName: string,
+          lanDiscoverable: boolean,
+          port?: number
+        ) => {
+          if (!mainWindow) return null;
+          return createAndStartServer(
+            mainWindow,
+            serverName,
+            lanDiscoverable,
+            port
+          );
         }
       );
 
-      ipcMain.handle("embedded-server:start", async () => {
-        if (!mainWindow) return getEmbeddedServerState();
-        return startExistingServer(mainWindow);
-      });
+      ipcMain.handle("embedded-server:suggest-port", () => suggestServerPort());
 
-      ipcMain.handle("embedded-server:stop", () => {
-        stopEmbeddedServer();
-        return getEmbeddedServerState();
-      });
-
-      ipcMain.handle("embedded-server:dismiss-error", () =>
-        dismissEmbeddedServerError()
+      ipcMain.handle("embedded-server:check-port", (_event, port: number) =>
+        isPortAvailable(port)
       );
 
-      ipcMain.handle("embedded-server:status", () => getEmbeddedServerState());
-      ipcMain.handle("embedded-server:logs", () => getEmbeddedServerLogs());
-      ipcMain.handle("embedded-server:clear-logs", () => {
-        clearEmbeddedServerLogs();
+      ipcMain.handle("embedded-server:start", async (_event, id: string) => {
+        if (!mainWindow) return null;
+        return startExistingServer(mainWindow, id);
       });
 
-      ipcMain.handle("embedded-server:get-auto-start", () => getAutoStart());
+      ipcMain.handle("embedded-server:stop", (_event, id: string) =>
+        stopServer(id)
+      );
+
+      ipcMain.handle("embedded-server:dismiss-error", (_event, id: string) =>
+        dismissEmbeddedServerError(id)
+      );
+
+      ipcMain.handle("embedded-server:delete", async (_event, id: string) =>
+        deleteServer(id)
+      );
+
+      ipcMain.handle("embedded-server:status", () => getAllStates());
+
+      ipcMain.handle("embedded-server:logs", (_event, id?: string) =>
+        getEmbeddedServerLogs(id)
+      );
+
+      ipcMain.handle("embedded-server:clear-logs", (_event, id?: string) => {
+        clearEmbeddedServerLogs(id);
+      });
+
+      ipcMain.handle("embedded-server:get-auto-start", (_event, id: string) =>
+        getAutoStart(id)
+      );
 
       ipcMain.on(
         "embedded-server:set-auto-start",
-        (_event, enabled: boolean) => {
-          setAutoStart(enabled);
+        (_event, id: string, enabled: boolean) => {
+          setAutoStart(id, enabled);
         }
       );
 

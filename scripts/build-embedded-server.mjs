@@ -53,10 +53,24 @@ function describeVersion(dir) {
   }
 }
 
+/**
+ * What the output on disk was built from, if anything.
+ *
+ * Written by this script at the end of every run, so it is the only record of
+ * which submodule commit each artefact actually came from.
+ */
+function readBuiltVersions() {
+  try {
+    return JSON.parse(readFileSync(join(OUTDIR, "versions.json"), "utf8"));
+  } catch {
+    return {};
+  }
+}
+
 const args = process.argv.slice(2);
-const skipSfu = args.includes("--skip-sfu");
-const skipServer = args.includes("--skip-server");
-const skipWorker = args.includes("--skip-worker");
+let skipSfu = args.includes("--skip-sfu");
+let skipServer = args.includes("--skip-server");
+let skipWorker = args.includes("--skip-worker");
 // Used by electron:dev, which wants the embedded server present but must not
 // fail or stall the dev loop over it. Skips the build when the output is
 // already there, and never blocks a dev session that cannot produce it.
@@ -90,22 +104,63 @@ function assertExists(path, message) {
 }
 
 if (ifMissing) {
-  // Same two paths embeddedServerManager.ts probes in dev. If both are there,
-  // the app can host a server and there is nothing to do.
+  // Same paths embeddedServerManager.ts probes in dev.
   const haveServer = existsSync(join(OUTDIR, "server", "bundle.js"));
   const haveSfu = existsSync(
     join(OUTDIR, "sfu", `${ebOs}-${ebArch}`, `gryt_sfu${sfuExt}`)
   );
   const haveWorker = existsSync(join(OUTDIR, "worker", "dist", "index.js"));
 
-  if (haveServer && haveSfu && haveWorker) {
-    console.log("Embedded server already built — skipping.");
-    console.log(
-      "  Rebuild after changing packages/server, packages/sfu or packages/image-worker:"
-    );
-    console.log("    yarn build:embedded-server");
+  /**
+   * Present is not the same as current.
+   *
+   * This used to skip whenever all three files existed, which meant the output
+   * was built once and then never again however far the submodules moved. A
+   * bundle four days and ten commits behind `server:main` survived that way: it
+   * still carried an identity CA that had been deleted, and knew nothing of
+   * GRYT_IDENTITY_TIERS, which the client writes into every config it creates.
+   * The app looked broken in exactly the area somebody was working on, and
+   * nothing said why — the hint to rebuild is printed in the branch that skips,
+   * where it scrolls past in dev-server output.
+   *
+   * So compare what is on disk against what the submodules are now. Only the
+   * ones that moved are rebuilt, because the Go build is the slow part and
+   * rebuilding all three to pick up a server change is most of the reason
+   * skipping looked attractive in the first place.
+   */
+  const built = readBuiltVersions();
+  const stale = (have, builtVersion, dir) =>
+    !have || (existsSync(dir) && builtVersion !== describeVersion(dir));
+
+  const serverStale = stale(haveServer, built.server, SERVER_DIR);
+  const sfuStale = stale(haveSfu, built.sfu, SFU_DIR);
+  const workerStale = stale(haveWorker, built.worker, WORKER_DIR);
+
+  if (!serverStale && !sfuStale && !workerStale) {
+    console.log("Embedded server is up to date — skipping.");
     process.exit(0);
   }
+
+  for (const [name, isStale, have, dir, builtVersion] of [
+    ["server", serverStale, haveServer, SERVER_DIR, built.server],
+    ["sfu", sfuStale, haveSfu, SFU_DIR, built.sfu],
+    ["worker", workerStale, haveWorker, WORKER_DIR, built.worker],
+  ]) {
+    if (!isStale) continue;
+    // Missing and out of date are different problems and the version pair only
+    // means anything for the second — printing "1.2.1 → 1.2.1" for a deleted
+    // file reads as a bug in the check rather than a missing artefact.
+    console.log(
+      !have
+        ? `Embedded ${name} is missing — building.`
+        : `Embedded ${name} is out of date (${builtVersion} → ${describeVersion(dir)}) — rebuilding.`
+    );
+  }
+
+  // Anything already current is left alone.
+  skipServer = skipServer || !serverStale;
+  skipSfu = skipSfu || !sfuStale;
+  skipWorker = skipWorker || !workerStale;
 
   // Building needs Go and a working native toolchain. Plenty of people work on
   // the UI without either, and hosting is optional, so a failure here must not
@@ -360,13 +415,25 @@ if (skipWorker) {
  * Written from the sources actually built rather than from the client's own
  * version, because these three move independently of it and of each other.
  */
+/**
+ * Only what was actually built moves. A component that was skipped keeps the
+ * version it was last built from, or the next run would read this file, believe
+ * the old binary came from the current checkout, and skip it forever — which is
+ * the bug this file exists to prevent.
+ */
+const previous = readBuiltVersions();
+const versionFor = (skipped, dir, prior) => {
+  if (skipped) return prior ?? "unknown";
+  return existsSync(dir) ? describeVersion(dir) : "unknown";
+};
+
 writeFileSync(
   join(OUTDIR, "versions.json"),
   JSON.stringify(
     {
-      server: describeVersion(SERVER_DIR),
-      sfu: existsSync(SFU_DIR) ? describeVersion(SFU_DIR) : "unknown",
-      worker: existsSync(WORKER_DIR) ? describeVersion(WORKER_DIR) : "unknown",
+      server: versionFor(skipServer, SERVER_DIR, previous.server),
+      sfu: versionFor(skipSfu, SFU_DIR, previous.sfu),
+      worker: versionFor(skipWorker, WORKER_DIR, previous.worker),
       builtAt: new Date().toISOString(),
     },
     null,

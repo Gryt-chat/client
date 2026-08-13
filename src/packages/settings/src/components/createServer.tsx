@@ -11,7 +11,7 @@ import {
 } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import { PiWarningFill, PiX } from "react-icons/pi";
+import { PiCheckCircleFill, PiWarningFill, PiX } from "react-icons/pi";
 
 import { GeneratedServerIcon } from "@/common";
 
@@ -39,44 +39,87 @@ interface CreateServerPanelProps {
  * actually got you there.
  */
 export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelProps) {
-  const { isAvailable, state, loading, createServer, dismissError } =
+  const { isAvailable, creating, createServer, suggestPort, checkPort } =
     useEmbeddedServer();
 
   const [serverName, setServerName] = useState("My Server");
   const [lanDiscoverable, setLanDiscoverable] = useState(true);
-  /**
-   * Set while this panel's own Create is in flight.
-   *
-   * The status effect below fires on any transition to running, including one
-   * caused by autostart or by Settings starting the server in another panel.
-   * Without this, opening the create form next to a server somebody else just
-   * started would join it as if you had asked for that.
-   */
-  const creating = useRef(false);
+  const [error, setError] = useState("");
 
-  const isStarting = state.status === "starting";
-  const hasError = state.status === "error";
-  const busy = loading || isStarting || creating.current;
+  /**
+   * The port, offered rather than demanded.
+   *
+   * Prefilled with one that is actually free, so the common case is to leave it
+   * alone. Anybody who cares — a port already forwarded on their router, or one
+   * their firewall rules already name — can say so here instead of creating a
+   * server and then finding out it landed somewhere else.
+   */
+  const [port, setPort] = useState("");
+  const [portState, setPortState] = useState<
+    "loading" | "free" | "taken" | "invalid"
+  >("loading");
+  /** Distinguishes the offered port from one they typed, for the wording. */
+  const touched = useRef(false);
 
   useEffect(() => {
-    if (!creating.current) return;
+    let cancelled = false;
+    void suggestPort().then((p) => {
+      if (cancelled || touched.current) return;
+      if (p) {
+        setPort(String(p));
+        setPortState("free");
+      } else {
+        setPortState("invalid");
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [suggestPort]);
 
-    if (state.status === "running" && state.serverUrl && state.config) {
-      creating.current = false;
-      onServerReady(state.serverUrl, state.config.serverName);
+  // Debounced, because this binds a socket to find out and they are still
+  // typing. 1000 is a prefix of 10000.
+  useEffect(() => {
+    if (!touched.current) return;
+
+    const n = Number(port);
+    if (!port.trim() || !Number.isInteger(n) || n < 1 || n > 65535) {
+      setPortState("invalid");
       return;
     }
 
-    // A failure ends the attempt too, or the next unrelated start would be
-    // treated as this one finally succeeding.
-    if (state.status === "error") creating.current = false;
-  }, [state, onServerReady]);
+    setPortState("loading");
+    const timer = window.setTimeout(() => {
+      void checkPort(n).then((free) => setPortState(free ? "free" : "taken"));
+    }, 400);
+
+    return () => window.clearTimeout(timer);
+  }, [port, checkPort]);
 
   if (!isAvailable) return null;
 
+  /**
+   * Create, and hand back the server that was created.
+   *
+   * Deliberately keyed off the returned state rather than off a status effect.
+   * When there was only ever one server, watching for "a server went running"
+   * was good enough; with several, that fires for a server somebody else just
+   * started and would join you to the wrong one.
+   */
   async function handleCreate() {
-    creating.current = true;
-    await createServer(serverName.trim() || "My Server", lanDiscoverable);
+    setError("");
+    const created = await createServer(
+      serverName.trim() || "My Server",
+      lanDiscoverable,
+      Number(port) || undefined,
+    );
+
+    if (!created?.serverUrl || !created.config) {
+      setError("Could not create the server. The startup log has the details.");
+      return;
+    }
+
+    onServerReady(created.serverUrl, created.config.serverName);
   }
 
   return (
@@ -109,8 +152,50 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
           placeholder="My Server"
           value={serverName}
           onChange={(e) => setServerName(e.target.value)}
-          disabled={busy}
+          disabled={creating}
           maxLength={64}
+        />
+      </Flex>
+
+      <Flex direction="column" gap="2">
+        <Flex align="center" gap="2">
+          <Text size="2" weight="bold">
+            Port
+          </Text>
+          {portState === "free" && (
+            <Flex align="center" gap="1" style={{ color: "var(--green-11)" }}>
+              <PiCheckCircleFill size={12} />
+              <Text size="1">
+                {touched.current ? "Available" : "Picked for you"}
+              </Text>
+            </Flex>
+          )}
+          {portState === "taken" && (
+            <Text size="1" style={{ color: "var(--red-11)" }}>
+              Something else is using this port
+            </Text>
+          )}
+          {portState === "invalid" && (
+            <Text size="1" style={{ color: "var(--red-11)" }}>
+              Must be a number between 1 and 65535
+            </Text>
+          )}
+          {portState === "loading" && (
+            <Text size="1" color="gray">
+              Checking&hellip;
+            </Text>
+          )}
+        </Flex>
+        <TextField.Root
+          inputMode="numeric"
+          placeholder="5000"
+          value={port}
+          onChange={(e) => {
+            touched.current = true;
+            setPort(e.target.value.replace(/[^0-9]/g, ""));
+          }}
+          disabled={creating}
+          maxLength={5}
         />
       </Flex>
 
@@ -122,7 +207,7 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
           <Checkbox
             checked={lanDiscoverable}
             onCheckedChange={(c) => setLanDiscoverable(c === true)}
-            disabled={busy}
+            disabled={creating}
           />
           <Text size="2" color="gray">
             Let others on my network find it
@@ -131,7 +216,7 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
       </Flex>
 
       <AnimatePresence>
-        {hasError && state.error && (
+        {error && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
@@ -142,16 +227,14 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
               <Callout.Icon>
                 <PiWarningFill size={16} />
               </Callout.Icon>
-              <Callout.Text>{state.error}</Callout.Text>
+              <Callout.Text>{error}</Callout.Text>
             </Callout.Root>
             <Flex mt="2" justify="end">
               <Button
                 size="1"
                 variant="ghost"
                 color="gray"
-                onClick={() => {
-                  void dismissError();
-                }}
+                onClick={() => setError("")}
               >
                 <PiX size={14} />
                 Dismiss
@@ -162,7 +245,7 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
       </AnimatePresence>
 
       <Dialog.Footer className="justify-between">
-        <Button variant="ghost" color="gray" onClick={onBack} disabled={busy}>
+        <Button variant="ghost" color="gray" onClick={onBack} disabled={creating}>
           Back
         </Button>
 
@@ -170,10 +253,12 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
           onClick={() => {
             void handleCreate();
           }}
-          disabled={busy || !serverName.trim()}
+          disabled={
+            creating || !serverName.trim() || portState !== "free"
+          }
         >
-          {busy ? <Spinner size="1" /> : null}
-          {isStarting ? "Starting…" : "Create"}
+          {creating ? <Spinner size="1" /> : null}
+          {creating ? "Creating…" : "Create"}
         </Button>
       </Dialog.Footer>
     </Flex>
