@@ -8,7 +8,7 @@
  */
 
 import { getCertificateSub, getValidCertificate } from "./identity-certificate";
-import { listLocalIdentityHosts, signAssertion } from "./identity-keys";
+import { hasLocalIdentity, signAssertion } from "./identity-keys";
 import { getMergeChoice } from "./identity-merge";
 import { getValidIdentityToken } from "./keycloak";
 import { getLocalIdentity, signIdentityLink } from "./local-identity";
@@ -86,8 +86,9 @@ export async function answerChallenge(
     if (getMergeChoice() !== "yes") {
       return { certificate, assertion, tier: "account", link: undefined };
     }
-    const localHosts = await listLocalIdentityHosts().catch((): string[] => []);
-    if (localHosts.includes(host)) {
+    // Asked per-server rather than by matching an address, since GRYT-257 files
+    // these under the server and a moved one would no longer match by name.
+    if (await hasLocalIdentity(host).catch(() => false)) {
       link = await signIdentityLink(host, challenge.serverHost, challenge.nonce, sub)
         // A failure here costs the carry-over, not the join. Better to arrive
         // as a new member than not at all.

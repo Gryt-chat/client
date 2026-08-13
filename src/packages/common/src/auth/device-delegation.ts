@@ -14,7 +14,7 @@
  * stranger with a familiar name.
  */
 
-import { getPublicKeyJwk, type IdentityBackup } from "./identity-keys";
+import { getPublicKeyJwk, parseIdentityBackup } from "./identity-keys";
 import { jwkThumbprint } from "./server-pins";
 
 /** Must match `DELEGATED_ISSUER` in the server's `auth/identity.ts`. */
@@ -126,15 +126,6 @@ function base64Url(buf: ArrayBuffer | Uint8Array): string {
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-function isBackup(value: unknown): value is IdentityBackup {
-  if (!value || typeof value !== "object") return false;
-  const b = value as Partial<IdentityBackup>;
-  return (
-    b.type === "gryt-local-identity-backup" &&
-    b.version === 1 &&
-    Array.isArray(b.identities)
-  );
-}
 
 /**
  * Use a saved identity to vouch for this device, once, and keep only the
@@ -145,20 +136,15 @@ function isBackup(value: unknown): value is IdentityBackup {
  * dropped. That is the entire difference between this and restoring.
  */
 export async function authoriseDeviceFromBackup(raw: string): Promise<string[]> {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    throw new Error("That file isn't a Gryt identity backup.");
-  }
-  if (!isBackup(parsed)) {
-    throw new Error("That file isn't a Gryt identity backup.");
-  }
-
   const authorised: string[] = [];
 
-  for (const entry of parsed.identities) {
-    if (!entry?.host || !entry.privateJwk) continue;
+  for (const entry of parseIdentityBackup(raw)) {
+    if (!entry.privateJwk) continue;
+
+    // A delegation is filed per address, which is where `getStoredDelegation`
+    // looks for it. Entries from before identities carried a display label have
+    // the address as their scope, so that is the fallback.
+    const host = entry.host ?? entry.scope;
 
     // Not extractable. Nothing here needs to read it back, and a key that
     // cannot be exported cannot be exported by accident either.
@@ -171,7 +157,7 @@ export async function authoriseDeviceFromBackup(raw: string): Promise<string[]> 
     );
 
     // Generated on demand if this device has never talked to that host.
-    const deviceJwk = await getPublicKeyJwk({ kind: "local", host: entry.host });
+    const deviceJwk = await getPublicKeyJwk({ kind: "local", host });
 
     const now = Math.floor(Date.now() / 1000);
     const header = { alg: "ES256", typ: "JWT" };
@@ -195,10 +181,10 @@ export async function authoriseDeviceFromBackup(raw: string): Promise<string[]> 
 
     try {
       localStorage.setItem(
-        storageKey(entry.host),
+        storageKey(host),
         `${signingInput}.${base64Url(signature)}`,
       );
-      authorised.push(entry.host);
+      authorised.push(host);
     } catch {
       // Out of storage, or blocked. Skipped rather than reported as done.
     }

@@ -28,6 +28,19 @@ export interface ServerPin {
   lastSeenAt: number;
   /** Most recent address this key answered on. Display only — never a key. */
   lastHost: string;
+  /**
+   * The key this server was *first* pinned under, carried across rotations.
+   *
+   * `keyId` is what the server signs with today and changes every time it
+   * rotates. This does not, which is what makes it usable as a name for the
+   * server itself rather than for its current key — see `identityScopeFor` in
+   * `identity-keys.ts`, which files a guest identity under it.
+   *
+   * Optional because pins written before this existed do not have one. Absent
+   * means "treat today's key as the origin": the lineage starts from whatever
+   * is known now, which is the most that can be recovered.
+   */
+  originKeyId?: string;
 }
 
 export interface BlockedServer {
@@ -117,6 +130,38 @@ export function getExpectedKeyIdForHost(host: string): string | null {
 }
 
 /**
+ * A name for the server at an address that survives both moving and rotating.
+ *
+ * The address changes when a port is taken (GRYT-48) or a home router hands out
+ * a new lease; the key changes on rotation (GRYT-54). Neither is a different
+ * server, so neither should look like one to anything filed per-server.
+ *
+ * Null when the server offered no proof, which is the one case where there is
+ * nothing better than the address to go on.
+ */
+export function getOriginKeyIdForHost(host: string): string | null {
+  const keyId = getExpectedKeyIdForHost(host);
+  if (!keyId) return null;
+  return listPins()[keyId]?.originKeyId ?? keyId;
+}
+
+/**
+ * Every address currently expected to answer for one server.
+ *
+ * Moving does not remove the address a server used to be at — `savePin` adds
+ * the new one and leaves the old — so this is how something filed under an old
+ * address can still be found after the move. Used by the migration in
+ * `identity-keys.ts`, which would otherwise only look where the server is now
+ * and miss the very case it exists for.
+ */
+export function listHostsForOrigin(originKeyId: string): string[] {
+  const pins = listPins();
+  return Object.entries(readHostIndex())
+    .filter(([, keyId]) => (pins[keyId]?.originKeyId ?? keyId) === originKeyId)
+    .map(([host]) => host);
+}
+
+/**
  * Every address we currently expect a key at. Read-only; the settings screen
  * uses it to tell an orphaned pin from one still in use at another address,
  * which matters because the same key legitimately answers at several.
@@ -136,6 +181,7 @@ export function savePin(keyId: string, jwk: JsonWebKey, host: string): void {
     firstSeenAt: existing?.firstSeenAt ?? now,
     lastSeenAt: now,
     lastHost: host,
+    originKeyId: existing?.originKeyId ?? existing?.keyId ?? keyId,
   };
   writeJson(PINS_KEY, pins);
 
@@ -173,6 +219,11 @@ export function replacePin(
     firstSeenAt: previous?.firstSeenAt ?? now,
     lastSeenAt: now,
     lastHost: host,
+    // Carries over for the same reason `firstSeenAt` does: a key change is not
+    // a different server. Anything filed under the lineage — a guest identity,
+    // and its roles and history with it — survives the rotation because of this
+    // line.
+    originKeyId: previous?.originKeyId ?? oldKeyId,
   };
   writeJson(PINS_KEY, pins);
 

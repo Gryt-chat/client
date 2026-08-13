@@ -4,12 +4,15 @@
  */
 
 import { deriveLocalKeyPair, generateSeed, SEED_BYTES } from "./identity-seed";
+import { getOriginKeyIdForHost, listHostsForOrigin } from "./server-pins";
 
 const DB_NAME = "gryt_identity_keys";
 const DB_VERSION = 1;
 const STORE_NAME = "keys";
 const KEY_ID = "identity";
 const SEED_KEY = "identity-seed";
+const LOCAL_PREFIX = "local:";
+const SERVER_SCOPE_PREFIX = "srv:";
 
 /**
  * Where a signing key comes from.
@@ -29,8 +32,38 @@ export type IdentitySource =
   | { kind: "account" }
   | { kind: "local"; host: string };
 
+/**
+ * What a local identity is filed and calculated under (GRYT-257).
+ *
+ * The server, not the address it currently answers on. An address changes when
+ * a port is taken (GRYT-48) or a router hands out a new lease, and the client
+ * already recognises the server through that — pins are filed under the key for
+ * exactly this reason. Filing the identity under the address instead meant the
+ * client knew it was the same server and then arrived as a stranger: new `sub`,
+ * no roles, no ownership, no history, and nothing logged to say why.
+ *
+ * The lineage id rather than today's key, so a server rotating its key does not
+ * do the same thing (GRYT-54).
+ *
+ * One consequence worth knowing: a server reachable at two addresses — a LAN
+ * address and a tunnel, say — is one identity now, where it used to be two.
+ * That is the correct answer to "am I the same person on both", and it was
+ * previously no.
+ *
+ * Falls back to the address when the server offered no proof at all, since
+ * there is then nothing better to go on. Those identities keep the old
+ * behaviour, including its bug, because nothing else is available to fix it
+ * with.
+ */
+function identityScopeFor(host: string): string {
+  const origin = getOriginKeyIdForHost(host);
+  return origin ? `${SERVER_SCOPE_PREFIX}${origin}` : host;
+}
+
 function storageKeyFor(source: IdentitySource): string {
-  return source.kind === "account" ? KEY_ID : `local:${source.host}`;
+  return source.kind === "account"
+    ? KEY_ID
+    : `${LOCAL_PREFIX}${identityScopeFor(source.host)}`;
 }
 
 const ALGO: EcKeyGenParams = { name: "ECDSA", namedCurve: "P-256" };
@@ -68,6 +101,15 @@ function idbPut(db: IDBDatabase, key: string, value: unknown): Promise<void> {
   });
 }
 
+function idbDelete(db: IDBDatabase, key: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const req = tx.objectStore(STORE_NAME).delete(key);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
 function idbKeys(db: IDBDatabase): Promise<string[]> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, "readonly");
@@ -80,6 +122,16 @@ function idbKeys(db: IDBDatabase): Promise<string[]> {
 interface StoredKeyPair {
   privateKey: CryptoKey;
   publicKey: CryptoKey;
+  /**
+   * Last address this identity was used at. Display only — never a key, and
+   * never what anything is looked up by.
+   *
+   * Since GRYT-257 the storage key names the server rather than the address, and
+   * `srv:C6ylBHyqZU--…` is not something to show anybody. Absent on entries
+   * written before that, where the storage key was the address and can be shown
+   * as-is.
+   */
+  host?: string;
 }
 
 const cachedKeyPairs = new Map<string, StoredKeyPair>();
@@ -105,6 +157,35 @@ async function getOrCreateSeed(db: IDBDatabase): Promise<Uint8Array> {
   return seed;
 }
 
+/**
+ * An identity filed under an address this server answers, or used to.
+ *
+ * The current address first, which is the ordinary case of an existing install
+ * meeting this change. Then any other address still expected to reach the same
+ * server, which covers the case the change exists for: a server that moved
+ * before the client was updated left its identity behind under the address it
+ * had at the time, and looking only where it lives now would derive a fresh key
+ * and lose the member — the exact failure being fixed.
+ */
+async function findIdentityByAddress(
+  db: IDBDatabase,
+  host: string,
+  storageKey: string,
+): Promise<{ address: string; pair: StoredKeyPair } | null> {
+  const origin = getOriginKeyIdForHost(host);
+  const candidates = new Set([host, ...(origin ? listHostsForOrigin(origin) : [])]);
+
+  for (const address of candidates) {
+    const key = `${LOCAL_PREFIX}${address}`;
+    // Equal when the server offered no proof, so the identity is already filed
+    // where it belongs and there is nothing to move.
+    if (key === storageKey) continue;
+    const pair = await idbGet<StoredKeyPair>(db, key);
+    if (pair?.privateKey && pair?.publicKey) return { address, pair };
+  }
+  return null;
+}
+
 async function loadOrGenerateKeyPair(
   source: IdentitySource = { kind: "account" },
 ): Promise<StoredKeyPair> {
@@ -119,6 +200,29 @@ async function loadOrGenerateKeyPair(
     cachedKeyPairs.set(storageKey, existing);
     db.close();
     return existing;
+  }
+
+  // An identity filed under this server's address, from before GRYT-257.
+  //
+  // Moved rather than recalculated. The key material is what the server knows
+  // as this member, so deriving a fresh one here would correct the filing and
+  // lose the person — which is the bug, not the fix. Written to the new place
+  // before the old one is dropped, so an interruption leaves a duplicate rather
+  // than nothing.
+  if (source.kind === "local") {
+    const legacy = await findIdentityByAddress(db, source.host, storageKey);
+    if (legacy) {
+      const moved: StoredKeyPair = { ...legacy.pair, host: source.host };
+      await idbPut(db, storageKey, moved);
+      await idbDelete(db, `${LOCAL_PREFIX}${legacy.address}`);
+      db.close();
+
+      cachedKeyPairs.set(storageKey, moved);
+      console.log(
+        `[Identity] Filed the identity from ${legacy.address} under its server (${storageKey})`,
+      );
+      return moved;
+    }
   }
 
   // A local key is calculated from the seed, so the same identity comes back on
@@ -140,7 +244,16 @@ async function loadOrGenerateKeyPair(
   // ownership, the history — permanently, silently, and with no way back.
   const stored: StoredKeyPair =
     source.kind === "local"
-      ? await deriveLocalKeyPair(await getOrCreateSeed(db), source.host)
+      ? {
+          // Calculated from the scope, not the address, so the two properties
+          // hold together: another device with the seed derives the same key,
+          // and it keeps deriving it after the server moves.
+          ...(await deriveLocalKeyPair(
+            await getOrCreateSeed(db),
+            identityScopeFor(source.host),
+          )),
+          host: source.host,
+        }
       : await crypto.subtle.generateKey(ALGO, false, ["sign", "verify"]);
 
   // Written down even though a local key could be recalculated on demand. The
@@ -230,21 +343,77 @@ export async function signAssertion(
   );
 }
 
-const LOCAL_PREFIX = "local:";
+/** Every local identity on this device, by what it is filed under. */
+async function listLocalIdentityScopes(db: IDBDatabase): Promise<string[]> {
+  return (await idbKeys(db))
+    .filter((k) => k.startsWith(LOCAL_PREFIX))
+    .map((k) => k.slice(LOCAL_PREFIX.length));
+}
 
-/** Which hosts this device holds a local identity for. */
-export async function listLocalIdentityHosts(): Promise<string[]> {
+/**
+ * Whether this device already has a local identity for a server.
+ *
+ * Asked before an account offers to carry a previous identity over, so it has
+ * to mean "was actually joined as a guest" rather than "could produce a key
+ * for". Since GRYT-254 the seed can derive a key for anywhere, so the question
+ * is only ever about what is stored.
+ */
+export async function hasLocalIdentity(host: string): Promise<boolean> {
   const db = await openDB();
   try {
-    return (await idbKeys(db))
-      .filter((k) => k.startsWith(LOCAL_PREFIX))
-      .map((k) => k.slice(LOCAL_PREFIX.length));
+    const pair = await idbGet<StoredKeyPair>(db, storageKeyFor({ kind: "local", host }));
+    return Boolean(pair?.privateKey && pair?.publicKey);
   } finally {
     db.close();
   }
 }
 
+/**
+ * Addresses this device holds a local identity for, for showing someone.
+ *
+ * Reads the stored label rather than the key it is filed under, which since
+ * GRYT-257 names the server and is not meant for display. Entries written
+ * before that have no label and are filed under the address, so the key itself
+ * is the honest answer for them.
+ */
+export async function listLocalIdentityHosts(): Promise<string[]> {
+  const db = await openDB();
+  try {
+    const scopes = await listLocalIdentityScopes(db);
+    const hosts: string[] = [];
+    for (const scope of scopes) {
+      const pair = await idbGet<StoredKeyPair>(db, `${LOCAL_PREFIX}${scope}`);
+      hosts.push(pair?.host ?? scope);
+    }
+    return hosts;
+  } finally {
+    db.close();
+  }
+}
+
+export interface IdentityBackupEntry {
+  /**
+   * What the identity is filed under: a server lineage since GRYT-257, an
+   * address before it. Restored under the same name, so a backup taken from an
+   * older client keeps working and gets moved on the next join like any other
+   * address-filed identity.
+   */
+  scope: string;
+  /** Last address it was used at. Display only. */
+  host?: string;
+  privateJwk: JsonWebKey;
+  publicJwk: JsonWebKey;
+}
+
 export interface IdentityBackup {
+  type: "gryt-local-identity-backup";
+  version: 2;
+  exportedAt: string;
+  identities: IdentityBackupEntry[];
+}
+
+/** Version 1, where `host` held what version 2 calls `scope`. Read, never written. */
+interface IdentityBackupV1 {
   type: "gryt-local-identity-backup";
   version: 1;
   exportedAt: string;
@@ -254,7 +423,7 @@ export interface IdentityBackup {
 export interface ExportResult {
   backup: IdentityBackup;
   /**
-   * Hosts whose key could not be read. Keys made before local identities were
+   * Servers whose key could not be read. Keys made before local identities were
    * extractable cannot be exported at all, and the only honest thing is to name
    * them rather than hand over a backup that quietly omits some servers.
    */
@@ -268,23 +437,25 @@ export interface ExportResult {
  * server listed in it, which is why the UI that calls this says so.
  */
 export async function exportLocalIdentities(): Promise<ExportResult> {
-  const hosts = await listLocalIdentityHosts();
   const db = await openDB();
-  const identities: IdentityBackup["identities"] = [];
+  const identities: IdentityBackupEntry[] = [];
   const unexportable: string[] = [];
 
   try {
-    for (const host of hosts) {
-      const pair = await idbGet<StoredKeyPair>(db, `${LOCAL_PREFIX}${host}`);
+    for (const scope of await listLocalIdentityScopes(db)) {
+      const pair = await idbGet<StoredKeyPair>(db, `${LOCAL_PREFIX}${scope}`);
       if (!pair?.privateKey || !pair?.publicKey) continue;
       try {
         identities.push({
-          host,
+          scope,
+          host: pair.host,
           privateJwk: await crypto.subtle.exportKey("jwk", pair.privateKey),
           publicJwk: await crypto.subtle.exportKey("jwk", pair.publicKey),
         });
       } catch {
-        unexportable.push(host);
+        // Named by address where one is known, since the scope is a key id and
+        // means nothing to whoever is reading the warning.
+        unexportable.push(pair.host ?? scope);
       }
     }
   } finally {
@@ -294,7 +465,7 @@ export async function exportLocalIdentities(): Promise<ExportResult> {
   return {
     backup: {
       type: "gryt-local-identity-backup",
-      version: 1,
+      version: 2,
       exportedAt: new Date().toISOString(),
       identities,
     },
@@ -302,14 +473,54 @@ export async function exportLocalIdentities(): Promise<ExportResult> {
   };
 }
 
-function isBackup(value: unknown): value is IdentityBackup {
+type AnyIdentityBackup = IdentityBackup | IdentityBackupV1;
+
+function isBackup(value: unknown): value is AnyIdentityBackup {
   if (!value || typeof value !== "object") return false;
-  const b = value as Partial<IdentityBackup>;
+  const b = value as Partial<AnyIdentityBackup>;
   return (
     b.type === "gryt-local-identity-backup" &&
-    b.version === 1 &&
+    (b.version === 1 || b.version === 2) &&
     Array.isArray(b.identities)
   );
+}
+
+/**
+ * Both versions as one shape.
+ *
+ * Version 1 filed everything under the address and called that field `host`,
+ * which is what version 2 calls `scope`. So an old backup restores under the
+ * address, exactly where it came from, and the next join to that server moves
+ * it like any other address-filed identity.
+ */
+function backupEntries(backup: AnyIdentityBackup): IdentityBackupEntry[] {
+  if (backup.version === 2) return backup.identities;
+  return backup.identities.map((e) => ({
+    scope: e.host,
+    host: e.host,
+    privateJwk: e.privateJwk,
+    publicJwk: e.publicJwk,
+  }));
+}
+
+/**
+ * Read a backup file into entries, or say it is not one.
+ *
+ * Shared with `device-delegation.ts`, which reads the same files for a
+ * different purpose. It had its own copy of this, and a second copy is how one
+ * of them ends up rejecting a version the other writes.
+ */
+export function parseIdentityBackup(raw: string): IdentityBackupEntry[] {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error("That file isn't a Gryt identity backup.");
+  }
+  if (!isBackup(parsed)) {
+    throw new Error("That file isn't a Gryt identity backup.");
+  }
+  return backupEntries(parsed);
 }
 
 /**
@@ -320,22 +531,14 @@ function isBackup(value: unknown): value is IdentityBackup {
  * backup would hand you their identity and drop yours, so the UI asks first.
  */
 export async function importLocalIdentities(raw: string): Promise<string[]> {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    throw new Error("That file isn't a Gryt identity backup.");
-  }
-  if (!isBackup(parsed)) {
-    throw new Error("That file isn't a Gryt identity backup.");
-  }
+  const entries = parseIdentityBackup(raw);
 
   const db = await openDB();
   const restored: string[] = [];
 
   try {
-    for (const entry of parsed.identities) {
-      if (!entry?.host || !entry.privateJwk || !entry.publicJwk) continue;
+    for (const entry of entries) {
+      if (!entry?.scope || !entry.privateJwk || !entry.publicJwk) continue;
 
       // Imported extractable, so a restored identity can be saved again. A
       // backup that could only be restored once would be a trap.
@@ -354,8 +557,12 @@ export async function importLocalIdentities(raw: string): Promise<string[]> {
         ["verify"],
       );
 
-      await idbPut(db, `${LOCAL_PREFIX}${entry.host}`, { privateKey, publicKey });
-      restored.push(entry.host);
+      await idbPut(db, `${LOCAL_PREFIX}${entry.scope}`, {
+        privateKey,
+        publicKey,
+        host: entry.host,
+      });
+      restored.push(entry.host ?? entry.scope);
     }
   } finally {
     db.close();
