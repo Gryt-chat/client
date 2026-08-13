@@ -1,5 +1,5 @@
-import { Button, IconButton, Surface, TextField } from "@gryt/ui";
-import { AlertDialog, Dialog, Flex, Text } from "@radix-ui/themes";
+import { AlertDialog, Button, Dialog, IconButton, Surface, TextField } from "@gryt/ui";
+import { Flex, Text } from "@radix-ui/themes";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { PiPlus, PiTrashFill, PiX } from "react-icons/pi";
@@ -125,7 +125,9 @@ export function ServerChannelsModal() {
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={(o) => (o ? setIsOpen(true) : close())}>
-      <Dialog.Content style={{ maxWidth: 760 }}>
+      <Dialog.Portal>
+        <Dialog.Backdrop />
+        <Dialog.Popup style={{ maxWidth: 760 }}>
         <Flex direction="column" gap="4">
           <Flex align="center" justify="between">
             <Dialog.Title>Channels</Dialog.Title>
@@ -205,22 +207,26 @@ export function ServerChannelsModal() {
         </Flex>
 
         <AlertDialog.Root open={!!pendingDeleteId} onOpenChange={(open) => { if (!open) setPendingDeleteId(null); }}>
-          <AlertDialog.Content maxWidth="420px">
+          <AlertDialog.Portal>
+            <AlertDialog.Backdrop />
+            <AlertDialog.Popup className="max-w-105">
             <AlertDialog.Title>Delete channel?</AlertDialog.Title>
-            <AlertDialog.Description size="2">
+            <AlertDialog.Description>
               This will permanently delete &ldquo;{channels.find((c) => c.id === pendingDeleteId)?.name || "this channel"}&rdquo; and all associated data. This action cannot be undone.
             </AlertDialog.Description>
             <Flex gap="3" mt="4" justify="end">
-              <AlertDialog.Cancel>
+              <AlertDialog.Close render={<span />}>
                 <Button tone="neutral" size="small">Cancel</Button>
-              </AlertDialog.Cancel>
-              <AlertDialog.Action>
+              </AlertDialog.Close>
+              <AlertDialog.Close render={<span />}>
                 <Button tone="danger" size="small" onClick={() => { if (pendingDeleteId) { del(pendingDeleteId); setPendingDeleteId(null); } }}>Delete</Button>
-              </AlertDialog.Action>
+              </AlertDialog.Close>
             </Flex>
-          </AlertDialog.Content>
+          </AlertDialog.Popup>
+          </AlertDialog.Portal>
         </AlertDialog.Root>
-      </Dialog.Content>
+      </Dialog.Popup>
+      </Dialog.Portal>
     </Dialog.Root>
   );
 }

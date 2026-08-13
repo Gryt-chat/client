@@ -1,5 +1,5 @@
-import { Chip, IconButton, Spinner, Tabs } from "@gryt/ui";
-import { Box, Dialog, Flex, Text } from "@radix-ui/themes";
+import { Chip, Dialog, IconButton, Spinner, Tabs } from "@gryt/ui";
+import { Box, Flex, Text } from "@radix-ui/themes";
 import { useEffect, useMemo, useState } from "react";
 import { PiArrowsLeftRightFill, PiGearFill, PiHandWavingFill, PiLinkFill, PiListChecksFill, PiProhibitFill, PiSmileyFill, PiUsersFill, PiWebhooksLogoFill, PiX } from "react-icons/pi";
 
@@ -175,7 +175,9 @@ export function ServerSettingsModal() {
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={handleDialogChange}>
-      <Dialog.Content maxWidth="900px" style={{ height: "700px", minWidth: "600px" }}>
+      <Dialog.Portal>
+        <Dialog.Backdrop />
+        <Dialog.Popup className="max-w-225" style={{ height: "700px", minWidth: "600px" }}>
         <Dialog.Close
           style={{
             position: "absolute",
@@ -189,7 +191,7 @@ export function ServerSettingsModal() {
         </Dialog.Close>
 
         <Flex direction="column" gap="4" height="100%">
-          <Dialog.Title as="h1" weight="bold" size="6">
+          <Dialog.Title>
             Server settings
           </Dialog.Title>
 
@@ -286,7 +288,8 @@ export function ServerSettingsModal() {
             )
           )}
         </Flex>
-      </Dialog.Content>
+      </Dialog.Popup>
+      </Dialog.Portal>
     </Dialog.Root>
   );
 }

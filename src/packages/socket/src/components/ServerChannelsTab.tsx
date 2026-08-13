@@ -1,5 +1,5 @@
-import { Button, Select, Surface, Switch, TextField } from "@gryt/ui";
-import { AlertDialog, Flex, Text } from "@radix-ui/themes";
+import { AlertDialog, Button, Select, Surface, Switch, TextField } from "@gryt/ui";
+import { Flex, Text } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { PiPlus, PiTrashFill } from "react-icons/pi";
@@ -280,22 +280,25 @@ export function ServerChannelsTab({
       </Flex>
 
       <AlertDialog.Root open={!!pendingDeleteId} onOpenChange={(open) => { if (!open) setPendingDeleteId(null); }}>
-        <AlertDialog.Content maxWidth="420px">
+        <AlertDialog.Portal>
+          <AlertDialog.Backdrop />
+          <AlertDialog.Popup className="max-w-105">
           <AlertDialog.Title>Delete channel?</AlertDialog.Title>
-          <AlertDialog.Description size="2">
+          <AlertDialog.Description>
             This will permanently delete &ldquo;{pendingDeleteChannel?.name || "this channel"}&rdquo; and all associated data. This action cannot be undone.
           </AlertDialog.Description>
           <Flex gap="3" mt="4" justify="end">
-            <AlertDialog.Cancel>
+            <AlertDialog.Close render={<span />}>
               <Button size="small">Cancel</Button>
-            </AlertDialog.Cancel>
-            <AlertDialog.Action>
+            </AlertDialog.Close>
+            <AlertDialog.Close render={<span />}>
               <Button size="small" onClick={() => { if (pendingDeleteId) { del(pendingDeleteId); setPendingDeleteId(null); } }}>
                 Delete
               </Button>
-            </AlertDialog.Action>
+            </AlertDialog.Close>
           </Flex>
-        </AlertDialog.Content>
+        </AlertDialog.Popup>
+        </AlertDialog.Portal>
       </AlertDialog.Root>
     </Flex>
   );

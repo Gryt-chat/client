@@ -1,5 +1,5 @@
-import { Button, Checkbox, Chip, IconButton, Select } from "@gryt/ui";
-import { Dialog, Flex, Text } from "@radix-ui/themes";
+import { Button, Checkbox, Chip, Dialog, IconButton, Select } from "@gryt/ui";
+import { Flex, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PiArrowsClockwiseFill, PiVideoCameraFill, PiX } from "react-icons/pi";
 
@@ -261,7 +261,9 @@ export function CameraPreviewModal({
 
   return (
     <Dialog.Root open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
-      <Dialog.Content style={{ maxWidth: 520 }} aria-describedby={undefined}>
+      <Dialog.Portal>
+        <Dialog.Backdrop />
+        <Dialog.Popup style={{ maxWidth: 520 }}>
         <Flex direction="column" gap="4">
           <Flex align="center" justify="between">
             <Flex align="center" gap="2">
@@ -403,7 +405,8 @@ export function CameraPreviewModal({
             </Button>
           </Flex>
         </Flex>
-      </Dialog.Content>
+      </Dialog.Popup>
+      </Dialog.Portal>
     </Dialog.Root>
   );
 }

@@ -1,5 +1,5 @@
-import { Avatar, Button, IconButton, Tabs, TextField, Tooltip } from "@gryt/ui";
-import { AlertDialog, Flex, Heading, Text } from "@radix-ui/themes";
+import { AlertDialog, Avatar, Button, IconButton, Tabs, TextField, Tooltip } from "@gryt/ui";
+import { Flex, Heading, Text } from "@radix-ui/themes";
 import { useCallback,useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { PiArrowsClockwiseFill, PiCameraFill, PiCheck, PiCopyFill } from "react-icons/pi";
@@ -204,20 +204,23 @@ function ProfileEditor({
             Remove avatar
           </Button>
           <AlertDialog.Root open={showRemoveConfirm} onOpenChange={(open) => { if (!open) setShowRemoveConfirm(false); }}>
-            <AlertDialog.Content maxWidth="420px">
+            <AlertDialog.Portal>
+              <AlertDialog.Backdrop />
+              <AlertDialog.Popup className="max-w-105">
               <AlertDialog.Title>Remove avatar?</AlertDialog.Title>
-              <AlertDialog.Description size="2">
+              <AlertDialog.Description>
                 Your avatar will be removed{serverLabel ? ` from ${serverLabel}` : ""}. This action cannot be undone.
               </AlertDialog.Description>
               <Flex gap="3" mt="4" justify="end">
-                <AlertDialog.Cancel>
+                <AlertDialog.Close render={<span />}>
                   <Button size="small">Cancel</Button>
-                </AlertDialog.Cancel>
-                <AlertDialog.Action>
+                </AlertDialog.Close>
+                <AlertDialog.Close render={<span />}>
                   <Button size="small" onClick={() => { onRemoveAvatar(); setShowRemoveConfirm(false); }}>Remove</Button>
-                </AlertDialog.Action>
+                </AlertDialog.Close>
               </Flex>
-            </AlertDialog.Content>
+            </AlertDialog.Popup>
+            </AlertDialog.Portal>
           </AlertDialog.Root>
         </>
       ) : null}

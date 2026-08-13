@@ -1,5 +1,5 @@
 import { Chip } from "@gryt/ui";
-import { Code, DataList, Flex, Text } from "@radix-ui/themes";
+import { DataList, Flex, Text } from "@radix-ui/themes";
 
 import type { MemberInfo } from "./MemberSidebar";
 
@@ -122,13 +122,12 @@ export function MemberIdentityCard({ member }: { member: MemberInfo }) {
                 fingerprint so that cannot be done offline, and the full value
                 is what makes comparing it mean anything.
               */}
-              <Code
-                size="1"
-                variant="ghost"
+              <code
+                className="font-mono text-xs text-gryt-muted"
                 style={{ overflowWrap: "anywhere", userSelect: "all" }}
               >
                 {member.identityFingerprint}
-              </Code>
+              </code>
             </DataList.Value>
           </DataList.Item>
         )}

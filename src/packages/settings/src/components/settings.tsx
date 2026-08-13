@@ -1,5 +1,5 @@
-import { Divider, IconButton, TextField } from "@gryt/ui";
-import { Box, Dialog, Flex, Text } from "@radix-ui/themes";
+import { Dialog, Divider, IconButton, TextField } from "@gryt/ui";
+import { Box, Flex, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PiArrowFatLineDownFill, PiFadersHorizontalFill, PiFlaskFill, PiGearSixFill, PiHardDrivesFill, PiHeartFill, PiMagnifyingGlassFill, PiPuzzlePieceFill, PiUserCircleFill, PiUserFill, PiVideoCameraFill, PiX } from "react-icons/pi";
 
@@ -291,24 +291,35 @@ export function Settings() {
   }, [highlighted]);
 
   return (
-    <Dialog.Root open={showSettings} onOpenChange={handleDialogChange}>
-      <Dialog.Content
-        data-gryt="settings"
-        maxWidth="900px"
-        style={{ height: "700px", minWidth: "600px" }}
-        /* The tour lives in a portal of its own, so pressing Next on a coach
-           mark counts as interacting outside this dialog and Radix dismissed
-           it. The panel closed on every step change and the next step opened
-           it again, which read as the whole thing flickering shut and back for
-           no reason. The tour is not outside in any sense the user cares
-           about. */
-        onInteractOutside={(event) => {
-          const target = event.target as HTMLElement | null;
+    <Dialog.Root
+      open={showSettings}
+      /* The tour lives in a portal of its own, so pressing Next on a coach mark
+         counts as a press outside this dialog and used to dismiss it. The panel
+         closed on every step change and the next step opened it again, which
+         read as the whole thing flickering shut and back for no reason. The
+         tour is not outside in any sense the user cares about.
+
+         Radix took an onInteractOutside handler that could preventDefault. Base
+         UI routes every open change through one callback with the reason and a
+         cancel() on it, so the same exception is a check on the reason. */
+      onOpenChange={(open, details) => {
+        if (!open && details.reason === "outside-press") {
+          const target = details.event?.target as HTMLElement | null;
           if (target?.closest?.('[data-gryt="tour"]')) {
-            event.preventDefault();
+            details.cancel();
+            return;
           }
-        }}
-      >
+        }
+        handleDialogChange(open);
+      }}
+    >
+      <Dialog.Portal>
+        <Dialog.Backdrop />
+        <Dialog.Popup
+          data-gryt="settings"
+          className="max-w-225"
+          style={{ height: "700px", minWidth: "600px" }}
+        >
         <Dialog.Close style={{ position: "absolute", top: "8px", right: "8px" }}>
           <IconButton data-tour="settings-close">
             <PiX size={16} />
@@ -340,7 +351,7 @@ export function Settings() {
         `}</style>
 
         <Flex direction="column" gap="4" height="100%">
-          <Dialog.Title as="h1" weight="bold" size="6">
+          <Dialog.Title>
             Settings
           </Dialog.Title>
 
@@ -500,7 +511,8 @@ export function Settings() {
             color: var(--accent-11);
           }
         `}</style>
-      </Dialog.Content>
+      </Dialog.Popup>
+      </Dialog.Portal>
     </Dialog.Root>
   );
 }

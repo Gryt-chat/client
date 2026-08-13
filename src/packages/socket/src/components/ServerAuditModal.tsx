@@ -1,5 +1,5 @@
-import { Button, IconButton, Surface } from "@gryt/ui";
-import { Dialog, Flex, Text } from "@radix-ui/themes";
+import { Button, Dialog, IconButton, Surface } from "@gryt/ui";
+import { Flex, Text } from "@radix-ui/themes";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { PiX } from "react-icons/pi";
@@ -70,7 +70,9 @@ export function ServerAuditModal() {
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={(o) => (o ? setIsOpen(true) : close())}>
-      <Dialog.Content style={{ maxWidth: 860 }}>
+      <Dialog.Portal>
+        <Dialog.Backdrop />
+        <Dialog.Popup style={{ maxWidth: 860 }}>
         <Flex direction="column" gap="4">
           <Flex align="center" justify="between">
             <Dialog.Title>Audit log</Dialog.Title>
@@ -111,7 +113,8 @@ export function ServerAuditModal() {
             )}
           </Flex>
         </Flex>
-      </Dialog.Content>
+      </Dialog.Popup>
+      </Dialog.Portal>
     </Dialog.Root>
   );
 }

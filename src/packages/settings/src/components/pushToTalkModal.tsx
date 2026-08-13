@@ -1,5 +1,5 @@
-import { Button, Chip } from "@gryt/ui";
-import { Dialog, Flex, Text } from "@radix-ui/themes";
+import { Button, Chip, Dialog } from "@gryt/ui";
+import { Flex, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useState } from "react";
 
 import { useSettings } from "@/settings";
@@ -76,9 +76,11 @@ export function PushToTalkModal() {
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={(open) => { if (!open) handleCancel(); }}>
-      <Dialog.Content maxWidth="420px">
+      <Dialog.Portal>
+        <Dialog.Backdrop />
+        <Dialog.Popup className="max-w-105">
         <Dialog.Title>Set Push to Talk Key</Dialog.Title>
-        <Dialog.Description size="2" mb="4">
+        <Dialog.Description>
           Push to Talk is active but no key is bound. Press any key or combination to use as your PTT key.
         </Dialog.Description>
 
@@ -105,7 +107,8 @@ export function PushToTalkModal() {
             Confirm
           </Button>
         </Flex>
-      </Dialog.Content>
+      </Dialog.Popup>
+      </Dialog.Portal>
     </Dialog.Root>
   );
 }

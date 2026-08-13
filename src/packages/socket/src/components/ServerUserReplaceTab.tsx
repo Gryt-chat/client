@@ -1,5 +1,5 @@
-import { Avatar, Button, Surface, TextField } from "@gryt/ui";
-import { AlertDialog, Flex, Text } from "@radix-ui/themes";
+import { AlertDialog, Avatar, Button, Surface, TextField } from "@gryt/ui";
+import { Flex, Text } from "@radix-ui/themes";
 import { useCallback, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
@@ -270,26 +270,29 @@ export function ServerUserReplaceTab({
                   {submitting ? "Replacing…" : "Replace identity"}
                 </Button>
               </AlertDialog.Trigger>
-              <AlertDialog.Content maxWidth="480px">
+              <AlertDialog.Portal>
+                <AlertDialog.Backdrop />
+                <AlertDialog.Popup className="max-w-120">
                 <AlertDialog.Title>Replace user identity?</AlertDialog.Title>
-                <AlertDialog.Description size="2">
+                <AlertDialog.Description>
                   This will permanently re-bind{" "}
                   <strong>{selectedMember?.nickname ?? targetServerUserId}</strong>&apos;s server identity to a new
                   Keycloak account. The old account will lose access and any active sessions will be revoked.
                 </AlertDialog.Description>
                 <Flex gap="3" mt="4" justify="end">
-                  <AlertDialog.Cancel>
+                  <AlertDialog.Close render={<span />}>
                     <Button size="small">
                       Cancel
                     </Button>
-                  </AlertDialog.Cancel>
-                  <AlertDialog.Action>
+                  </AlertDialog.Close>
+                  <AlertDialog.Close render={<span />}>
                     <Button size="small" onClick={handleReplace} disabled={submitting}>
                       Confirm replace
                     </Button>
-                  </AlertDialog.Action>
+                  </AlertDialog.Close>
                 </Flex>
-              </AlertDialog.Content>
+              </AlertDialog.Popup>
+              </AlertDialog.Portal>
             </AlertDialog.Root>
           </Flex>
         </Flex>

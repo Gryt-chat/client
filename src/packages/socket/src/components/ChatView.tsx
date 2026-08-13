@@ -1,5 +1,5 @@
-import { Button } from "@gryt/ui";
-import { AlertDialog, Box, Flex, Text } from "@radix-ui/themes";
+import { AlertDialog, Button } from "@gryt/ui";
+import { Box, Flex, Text } from "@radix-ui/themes";
 import { AnimatePresence } from "motion/react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PiChatCircleFill, PiCloudArrowUpFill, PiSpeakerHighFill } from "react-icons/pi";
@@ -396,20 +396,23 @@ export const ChatView = memo(({
         />
       )}
       <AlertDialog.Root open={!!pendingDeleteMessage} onOpenChange={(open) => { if (!open) setPendingDeleteMessage(null); }}>
-        <AlertDialog.Content maxWidth="420px">
+        <AlertDialog.Portal>
+          <AlertDialog.Backdrop />
+          <AlertDialog.Popup className="max-w-105">
           <AlertDialog.Title>Delete message?</AlertDialog.Title>
-          <AlertDialog.Description size="2">
+          <AlertDialog.Description>
             This will permanently delete this message. This action cannot be undone.
           </AlertDialog.Description>
           <Flex gap="3" mt="4" justify="end">
-            <AlertDialog.Cancel>
+            <AlertDialog.Close render={<span />}>
               <Button tone="neutral" size="small">Cancel</Button>
-            </AlertDialog.Cancel>
-            <AlertDialog.Action>
+            </AlertDialog.Close>
+            <AlertDialog.Close render={<span />}>
               <Button tone="danger" size="small" onClick={confirmDelete}>Delete</Button>
-            </AlertDialog.Action>
+            </AlertDialog.Close>
           </Flex>
-        </AlertDialog.Content>
+        </AlertDialog.Popup>
+        </AlertDialog.Portal>
       </AlertDialog.Root>
     </>
   );

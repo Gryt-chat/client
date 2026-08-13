@@ -1,5 +1,5 @@
-import { Button, Chip, IconButton, ScrollArea, Spinner, Tooltip } from "@gryt/ui";
-import { AlertDialog, Box, Dialog, Flex, Text } from "@radix-ui/themes";
+import { AlertDialog, Button, Chip, Dialog, IconButton, ScrollArea, Spinner, Tooltip } from "@gryt/ui";
+import { Box, Flex, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { PiCheck, PiProhibitFill, PiTrashFill, PiWarningFill } from "react-icons/pi";
@@ -149,9 +149,9 @@ export function ReportsPanel({
   return (
     <>
       <Dialog.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <Dialog.Content
-          style={{ maxWidth: 700, maxHeight: "80vh" }}
-        >
+        <Dialog.Portal>
+          <Dialog.Backdrop />
+          <Dialog.Popup style={{ maxWidth: 700, maxHeight: "80vh" }}>
           <Dialog.Title>
             <Flex align="center" gap="2">
               <PiWarningFill size={16} />
@@ -163,7 +163,7 @@ export function ReportsPanel({
               )}
             </Flex>
           </Dialog.Title>
-          <Dialog.Description size="2" color="gray" mb="4">
+          <Dialog.Description>
             Review reported messages. Approve to dismiss or delete to remove the message.
           </Dialog.Description>
 
@@ -210,20 +210,23 @@ export function ReportsPanel({
               </Button>
             </Dialog.Close>
           </Flex>
-        </Dialog.Content>
+        </Dialog.Popup>
+        </Dialog.Portal>
       </Dialog.Root>
 
       <AlertDialog.Root
         open={!!confirmAction}
         onOpenChange={(open) => !open && setConfirmAction(null)}
       >
-        <AlertDialog.Content maxWidth="450px">
+        <AlertDialog.Portal>
+          <AlertDialog.Backdrop />
+          <AlertDialog.Popup className="max-w-112">
           <AlertDialog.Title>
             {confirmAction?.action === "delete_all_and_ban"
               ? "Delete all messages & ban user?"
               : "Delete this message?"}
           </AlertDialog.Title>
-          <AlertDialog.Description size="2">
+          <AlertDialog.Description>
             {confirmAction?.action === "delete_all_and_ban" ? (
               <>
                 This will permanently delete <strong>all messages</strong> from{" "}
@@ -235,12 +238,12 @@ export function ReportsPanel({
             )}
           </AlertDialog.Description>
           <Flex gap="3" mt="4" justify="end">
-            <AlertDialog.Cancel>
+            <AlertDialog.Close render={<span />}>
               <Button tone="neutral" size="small">
                 Cancel
               </Button>
-            </AlertDialog.Cancel>
-            <AlertDialog.Action>
+            </AlertDialog.Close>
+            <AlertDialog.Close render={<span />}>
               <Button tone="danger" size="small"
                 onClick={() => {
                   if (!confirmAction) return;
@@ -255,9 +258,10 @@ export function ReportsPanel({
                   ? "Delete All & Ban"
                   : "Delete Message"}
               </Button>
-            </AlertDialog.Action>
+            </AlertDialog.Close>
           </Flex>
-        </AlertDialog.Content>
+        </AlertDialog.Popup>
+        </AlertDialog.Portal>
       </AlertDialog.Root>
     </>
   );

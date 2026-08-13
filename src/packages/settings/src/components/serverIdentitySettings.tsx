@@ -1,6 +1,5 @@
-import { Button, Chip, IconButton, Tooltip } from "@gryt/ui";
+import { AlertDialog, Button, Chip, IconButton, Tooltip } from "@gryt/ui";
 import {
-  AlertDialog,
   Callout,
   Code,
   Flex,
@@ -124,20 +123,22 @@ function BlockedRow({
         >
           Unblock
         </Button>
-        <AlertDialog.Content maxWidth="460px">
+        <AlertDialog.Portal>
+          <AlertDialog.Backdrop />
+          <AlertDialog.Popup className="max-w-[460px]">
           <AlertDialog.Title>Unblock {entry.host}?</AlertDialog.Title>
-          <AlertDialog.Description size="2">
+          <AlertDialog.Description>
             Gryt will forget the identity it expected here and trust whatever
             answers next time, the same as joining a server for the first time.
             Only do this if you know why the identity changed.
           </AlertDialog.Description>
           <Flex gap="3" mt="4" justify="end">
-            <AlertDialog.Cancel>
+            <AlertDialog.Close render={<span />}>
               <Button tone="neutral" size="small">
                 Cancel
               </Button>
-            </AlertDialog.Cancel>
-            <AlertDialog.Action>
+            </AlertDialog.Close>
+            <AlertDialog.Close render={<span />}>
               <Button tone="danger" size="small"
                 onClick={() => {
                   onUnblock(entry);
@@ -146,9 +147,10 @@ function BlockedRow({
               >
                 Unblock
               </Button>
-            </AlertDialog.Action>
+            </AlertDialog.Close>
           </Flex>
-        </AlertDialog.Content>
+        </AlertDialog.Popup>
+        </AlertDialog.Portal>
       </AlertDialog.Root>
     </Flex>
   );
@@ -195,20 +197,22 @@ function KnownRow({ pin, onForget }: { pin: ServerPin; onForget: (keyId: string)
             <PiTrashFill size={16} />
           </IconButton>
         </Tooltip>
-        <AlertDialog.Content maxWidth="440px">
+        <AlertDialog.Portal>
+          <AlertDialog.Backdrop />
+          <AlertDialog.Popup className="max-w-110">
           <AlertDialog.Title>Forget {pin.lastHost}?</AlertDialog.Title>
-          <AlertDialog.Description size="2">
+          <AlertDialog.Description>
             Gryt will stop recognising this server&apos;s identity. The next time
             you connect it will be treated as a server you have never joined, and
             whatever answers will be trusted.
           </AlertDialog.Description>
           <Flex gap="3" mt="4" justify="end">
-            <AlertDialog.Cancel>
+            <AlertDialog.Close render={<span />}>
               <Button tone="neutral" size="small">
                 Cancel
               </Button>
-            </AlertDialog.Cancel>
-            <AlertDialog.Action>
+            </AlertDialog.Close>
+            <AlertDialog.Close render={<span />}>
               <Button tone="danger" size="small"
                 onClick={() => {
                   onForget(pin.keyId);
@@ -217,9 +221,10 @@ function KnownRow({ pin, onForget }: { pin: ServerPin; onForget: (keyId: string)
               >
                 Forget
               </Button>
-            </AlertDialog.Action>
+            </AlertDialog.Close>
           </Flex>
-        </AlertDialog.Content>
+        </AlertDialog.Popup>
+        </AlertDialog.Portal>
       </AlertDialog.Root>
     </Flex>
   );

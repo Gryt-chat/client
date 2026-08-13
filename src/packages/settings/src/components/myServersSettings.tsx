@@ -1,6 +1,5 @@
-import { Accordion, Avatar, Button, Checkbox, Chip, Spinner, Surface, TextField } from "@gryt/ui";
+import { Accordion, AlertDialog, Avatar, Button, Checkbox, Chip, Spinner, Surface, TextField } from "@gryt/ui";
 import {
-  AlertDialog,
   Callout,
   Code,
   Flex,
@@ -292,9 +291,11 @@ function HostedServerCard({
               Delete
             </Button>
 
-            <AlertDialog.Content maxWidth="460px">
+            <AlertDialog.Portal>
+              <AlertDialog.Backdrop />
+              <AlertDialog.Popup className="max-w-[460px]">
               <AlertDialog.Title>Delete {name}?</AlertDialog.Title>
-              <AlertDialog.Description size="2">
+              <AlertDialog.Description>
                 This deletes the server and everything on it — its messages, its
                 members, its uploads and its identity key. There is no other
                 copy.
@@ -322,11 +323,11 @@ function HostedServerCard({
               </Flex>
 
               <Flex gap="3" mt="4" justify="end">
-                <AlertDialog.Cancel>
+                <AlertDialog.Close render={<span />}>
                   <Button size="small">
                     Cancel
                   </Button>
-                </AlertDialog.Cancel>
+                </AlertDialog.Close>
                 <Button size="small"
                   disabled={typedName.trim() !== name}
                   onClick={() => {
@@ -338,7 +339,8 @@ function HostedServerCard({
                   Delete for good
                 </Button>
               </Flex>
-            </AlertDialog.Content>
+            </AlertDialog.Popup>
+            </AlertDialog.Portal>
           </AlertDialog.Root>
         </Flex>
 

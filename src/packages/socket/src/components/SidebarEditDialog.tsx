@@ -1,5 +1,5 @@
-import { IconButton, Select, Switch, TextField } from "@gryt/ui";
-import { Dialog, Flex, Text } from "@radix-ui/themes";
+import { Dialog, IconButton, Select, Switch, TextField } from "@gryt/ui";
+import { Flex, Text } from "@radix-ui/themes";
 import { useCallback, useRef } from "react";
 import { PiX } from "react-icons/pi";
 
@@ -70,10 +70,12 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
 
   return (
     <Dialog.Root open={open} onOpenChange={(o) => { if (!o) handleClose(); else onOpenChange(o); }}>
-      <Dialog.Content maxWidth="480px">
+      <Dialog.Portal>
+        <Dialog.Backdrop />
+        <Dialog.Popup className="max-w-120">
         <Flex direction="column" gap="4">
           <Flex align="center" justify="between">
-            <Dialog.Title as="h2" size="5" weight="bold" style={{ margin: 0 }}>
+            <Dialog.Title style={{ margin: 0 }}>
               {selectedSidebarItem?.kind === "channel" ? "Channel settings"
                 : selectedSidebarItem?.kind === "separator" ? "Separator settings"
                 : "Spacer settings"}
@@ -186,7 +188,8 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
             </Flex>
           )}
         </Flex>
-      </Dialog.Content>
+      </Dialog.Popup>
+      </Dialog.Portal>
     </Dialog.Root>
   );
 };

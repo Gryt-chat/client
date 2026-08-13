@@ -1,11 +1,8 @@
-import { Avatar, IconButton, Tooltip } from "@gryt/ui";
+import { Avatar, ContextMenu, IconButton, Menu, PreviewCard, Tooltip } from "@gryt/ui";
 import {
   Box,
-  ContextMenu,
-  DropdownMenu,
   Flex,
   Heading,
-  HoverCard,
 } from "@radix-ui/themes";
 import { Reorder } from "motion/react";
 import { PiBroadcastFill, PiBugFill, PiChatCircleDotsFill, PiGearFill, PiMicrophoneFill, PiPlus, PiSignInFill } from "react-icons/pi";
@@ -190,17 +187,19 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
       <Flex justify="center" align="center" direction="column" gap="3" pb="3">
         {/* Voice chat controls */}
         <MiniControls direction="column" />
-        <DropdownMenu.Root>
-          <DropdownMenu.Trigger>
+        <Menu.Root>
+          <Menu.Trigger>
             <IconButton size="xsmall" data-tour="profile">
               <Avatar
                 fallback={displayNickname[0]}
                 src={displayAvatarUrl || undefined}
               />
             </IconButton>
-          </DropdownMenu.Trigger>
-          <DropdownMenu.Content>
-            <DropdownMenu.Item
+          </Menu.Trigger>
+          <Menu.Portal>
+            <Menu.Positioner>
+              <Menu.Popup>
+            <Menu.Item
               data-tour="menu-settings"
               onClick={() => setShowSettings(true)}
             >
@@ -208,9 +207,9 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
                 <PiGearFill size={14} />
                 Settings
               </Flex>
-            </DropdownMenu.Item>
-            <DropdownMenu.Separator />
-            <DropdownMenu.Item
+            </Menu.Item>
+            <Menu.Separator />
+            <Menu.Item
               onClick={() =>
                 window.open("https://feedback.gryt.chat", "_blank")
               }
@@ -219,19 +218,19 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
                 <PiChatCircleDotsFill size={14} />
                 Give feedback
               </Flex>
-            </DropdownMenu.Item>
+            </Menu.Item>
             {/* Kept separate from feedback rather than folded into it. "Give
                 feedback" is a suggestion box; this is for when something is
                 broken, and it arrives as an issue carrying the version and
                 platform, which a free-text form does not. */}
-            <DropdownMenu.Item
+            <Menu.Item
               onClick={() => window.open(bugReportUrl(), "_blank")}
             >
               <Flex align="center" gap="1">
                 <PiBugFill size={14} />
                 Report a bug
               </Flex>
-            </DropdownMenu.Item>
+            </Menu.Item>
             {/* Guest-by-default (GRYT-173) means most people on a first run
                 have no account, and offering them a way out of one they never
                 had is both wrong and a wasted invitation. `isSignedIn` is
@@ -240,23 +239,25 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
                 open the menu is worse than one that arrives a beat late. */}
             {isSignedIn !== undefined && (
               <>
-                <DropdownMenu.Separator />
+                <Menu.Separator />
                 {isSignedIn ? (
-                  <DropdownMenu.Item color="red" onClick={logout}>
+                  <Menu.Item className="text-gryt-danger" onClick={logout}>
                     Sign out
-                  </DropdownMenu.Item>
+                  </Menu.Item>
                 ) : (
-                  <DropdownMenu.Item onClick={login}>
+                  <Menu.Item onClick={login}>
                     <Flex align="center" gap="1">
                       <PiSignInFill size={14} />
                       Sign in
                     </Flex>
-                  </DropdownMenu.Item>
+                  </Menu.Item>
                 )}
               </>
             )}
-          </DropdownMenu.Content>
-        </DropdownMenu.Root>
+          </Menu.Popup>
+            </Menu.Positioner>
+          </Menu.Portal>
+        </Menu.Root>
       </Flex>
     </Flex>
   );
@@ -307,10 +308,10 @@ function ServerItem({
       }}
       transition={{ type: "spring", stiffness: 400, damping: 30 }}
     >
-      <HoverCard.Root openDelay={500} closeDelay={0}>
+      <PreviewCard.Root>
         <ContextMenu.Root>
           <ContextMenu.Trigger>
-            <HoverCard.Trigger>
+            <PreviewCard.Trigger>
               <Box position="relative" onDragStart={(e) => e.preventDefault()}>
                 <Avatar
                   size="small"
@@ -386,32 +387,32 @@ function ServerItem({
                   />
                 )}
               </Box>
-            </HoverCard.Trigger>
+            </PreviewCard.Trigger>
           </ContextMenu.Trigger>
-          <ContextMenu.Content>
-            <ContextMenu.Label style={{ fontWeight: "bold" }}>
+          <ContextMenu.Portal>
+            <ContextMenu.Positioner>
+              <ContextMenu.Popup>
+            <ContextMenu.GroupLabel style={{ fontWeight: "bold" }}>
               {servers[host].name}
-            </ContextMenu.Label>
+            </ContextMenu.GroupLabel>
             <ContextMenu.Item>Edit</ContextMenu.Item>
             <ContextMenu.Item>Share</ContextMenu.Item>
             <ContextMenu.Item>Add to new group</ContextMenu.Item>
             <ContextMenu.Separator />
             <ContextMenu.Item
-              color="red"
               onClick={() => {
                 setShowRemoveServer(host);
               }}
             >
               Leave
             </ContextMenu.Item>
-          </ContextMenu.Content>
+          </ContextMenu.Popup>
+            </ContextMenu.Positioner>
+          </ContextMenu.Portal>
         </ContextMenu.Root>
-        <HoverCard.Content
-          maxWidth="300px"
-          side="right"
-          size="1"
-          align="center"
-        >
+        <PreviewCard.Portal>
+          <PreviewCard.Positioner side="right" align="center">
+            <PreviewCard.Popup>
           <Box>
             <Heading size="1">
               {servers[host].name}
@@ -437,8 +438,10 @@ function ServerItem({
               )}
             </Heading>
           </Box>
-        </HoverCard.Content>
-      </HoverCard.Root>
+        </PreviewCard.Popup>
+          </PreviewCard.Positioner>
+        </PreviewCard.Portal>
+      </PreviewCard.Root>
     </Reorder.Item>
   );
 }

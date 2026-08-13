@@ -1,6 +1,5 @@
-import { Button, Divider } from "@gryt/ui";
+import { AlertDialog, Button, Divider } from "@gryt/ui";
 import {
-  AlertDialog,
   Flex,
   Heading,
 } from "@radix-ui/themes";
@@ -107,14 +106,16 @@ export function VoiceSettings() {
             setAlertDialog({ ...alertDialog, open: false })
           }
         >
-          <AlertDialog.Content maxWidth="450px">
+          <AlertDialog.Portal>
+            <AlertDialog.Backdrop />
+            <AlertDialog.Popup className="max-w-112">
             <AlertDialog.Title>{alertDialog.title}</AlertDialog.Title>
             <AlertDialog.Description>
               {alertDialog.message}
             </AlertDialog.Description>
 
             <Flex gap="3" mt="4" justify="end">
-              <AlertDialog.Action>
+              <AlertDialog.Close render={<span />}>
                 <Button tone="neutral" size="small"
                   onClick={() =>
                     setAlertDialog({ ...alertDialog, open: false })
@@ -122,9 +123,10 @@ export function VoiceSettings() {
                 >
                   OK
                 </Button>
-              </AlertDialog.Action>
+              </AlertDialog.Close>
             </Flex>
-          </AlertDialog.Content>
+          </AlertDialog.Popup>
+          </AlertDialog.Portal>
         </AlertDialog.Root>
       )}
     </SettingsContainer>

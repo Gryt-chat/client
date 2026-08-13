@@ -1,5 +1,5 @@
-import { Avatar, Button, IconButton, Spinner } from "@gryt/ui";
-import { Callout, Dialog, Flex, Text } from "@radix-ui/themes";
+import { Avatar, Button, Dialog, IconButton, Spinner } from "@gryt/ui";
+import { Callout, Flex, Text } from "@radix-ui/themes";
 import { useEffect, useRef, useState } from "react";
 import { PiEnvelopeFill, PiUsersFill, PiWarningFill, PiX } from "react-icons/pi";
 
@@ -84,7 +84,9 @@ export function InviteAcceptModal({
         }
       }}
     >
-      <Dialog.Content style={{ maxWidth: 420 }}>
+      <Dialog.Portal>
+        <Dialog.Backdrop />
+        <Dialog.Popup style={{ maxWidth: 420 }}>
         <Flex direction="column" gap="4">
           <Flex align="center" justify="between">
             <Flex align="center" gap="2">
@@ -194,7 +196,8 @@ export function InviteAcceptModal({
             )}
           </Flex>
         </Flex>
-      </Dialog.Content>
+      </Dialog.Popup>
+      </Dialog.Portal>
     </Dialog.Root>
   );
 }

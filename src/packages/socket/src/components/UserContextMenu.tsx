@@ -1,5 +1,5 @@
-import { Slider } from "@gryt/ui";
-import { ContextMenu, Flex, Text } from "@radix-ui/themes";
+import { ContextMenu, Slider } from "@gryt/ui";
+import { Flex, Text } from "@radix-ui/themes";
 import { ReactNode } from "react";
 import toast from "react-hot-toast";
 import { PiAtFill, PiCopyFill } from "react-icons/pi";
@@ -77,13 +77,12 @@ export function UserContextMenu({
     return (
       <ContextMenu.Root>
         <ContextMenu.Trigger style={{ display: "contents" }}>{children}</ContextMenu.Trigger>
-        <ContextMenu.Content
-          style={{ minWidth: 180 }}
-          onCloseAutoFocus={(e) => e.preventDefault()}
-        >
-          <ContextMenu.Label style={{ fontWeight: "bold" }}>
+        <ContextMenu.Portal>
+          <ContextMenu.Positioner>
+            <ContextMenu.Popup className="min-w-45">
+          <ContextMenu.GroupLabel style={{ fontWeight: "bold" }}>
             {nickname}
-          </ContextMenu.Label>
+          </ContextMenu.GroupLabel>
           <ContextMenu.Separator />
           <ContextMenu.Item onClick={() => openSettings("profile")}>
             Edit Profile
@@ -103,7 +102,9 @@ export function UserContextMenu({
               </ContextMenu.Item>
             </>
           )}
-        </ContextMenu.Content>
+        </ContextMenu.Popup>
+          </ContextMenu.Positioner>
+        </ContextMenu.Portal>
       </ContextMenu.Root>
     );
   }
@@ -125,17 +126,16 @@ export function UserContextMenu({
   return (
     <ContextMenu.Root>
       <ContextMenu.Trigger style={{ display: "contents" }}>{children}</ContextMenu.Trigger>
-      <ContextMenu.Content
-        style={{ minWidth: 220 }}
-        onCloseAutoFocus={(e) => e.preventDefault()}
-      >
-        <ContextMenu.Label style={{ fontWeight: "bold" }}>
+      <ContextMenu.Portal>
+        <ContextMenu.Positioner>
+          <ContextMenu.Popup className="min-w-55">
+        <ContextMenu.GroupLabel style={{ fontWeight: "bold" }}>
           {nickname}
-        </ContextMenu.Label>
+        </ContextMenu.GroupLabel>
         {targetRole && (
-          <ContextMenu.Label>
+          <ContextMenu.GroupLabel>
             <Text size="1" color="gray" style={{ textTransform: "capitalize" }}>{targetRole}</Text>
-          </ContextMenu.Label>
+          </ContextMenu.GroupLabel>
         )}
         <ContextMenu.Item onClick={handleMention}>
           <Flex align="center" gap="2">
@@ -188,7 +188,7 @@ export function UserContextMenu({
         {showDisconnect && (
           <>
             <ContextMenu.Separator />
-            <ContextMenu.Item color="red" onClick={onDisconnectFromVoice}>
+            <ContextMenu.Item className="text-gryt-danger" onClick={onDisconnectFromVoice}>
               Disconnect from voice
             </ContextMenu.Item>
           </>
@@ -211,9 +211,11 @@ export function UserContextMenu({
             )}
 
             {role === "owner" && onChangeRole && (
-              <ContextMenu.Sub>
-                <ContextMenu.SubTrigger>Change role</ContextMenu.SubTrigger>
-                <ContextMenu.SubContent>
+              <ContextMenu.SubmenuRoot>
+                <ContextMenu.SubmenuTrigger>Change role</ContextMenu.SubmenuTrigger>
+                <ContextMenu.Portal>
+                  <ContextMenu.Positioner>
+                    <ContextMenu.Popup>
                   {(["admin", "mod", "member"] as Role[]).map((r) => (
                     <ContextMenu.Item
                       key={r}
@@ -224,26 +226,30 @@ export function UserContextMenu({
                       {r}{targetRole === r ? " (current)" : ""}
                     </ContextMenu.Item>
                   ))}
-                </ContextMenu.SubContent>
-              </ContextMenu.Sub>
+                </ContextMenu.Popup>
+                  </ContextMenu.Positioner>
+                </ContextMenu.Portal>
+              </ContextMenu.SubmenuRoot>
             )}
 
             <ContextMenu.Separator />
 
             {onKick && (
-              <ContextMenu.Item color="red" onClick={onKick}>
+              <ContextMenu.Item className="text-gryt-danger" onClick={onKick}>
                 Kick from server
               </ContextMenu.Item>
             )}
 
             {canBan && onBan && (
-              <ContextMenu.Item color="red" onClick={onBan}>
+              <ContextMenu.Item className="text-gryt-danger" onClick={onBan}>
                 Ban from server
               </ContextMenu.Item>
             )}
           </>
         )}
-      </ContextMenu.Content>
+      </ContextMenu.Popup>
+        </ContextMenu.Positioner>
+      </ContextMenu.Portal>
     </ContextMenu.Root>
   );
 }

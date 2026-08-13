@@ -1,6 +1,5 @@
-import { Button, Chip, TextField } from "@gryt/ui";
+import { Alert, Button, Chip, TextField } from "@gryt/ui";
 import {
-  Callout,
   Code,
   DataList,
   Flex,
@@ -221,15 +220,13 @@ export function AccountSettings() {
             </Text>
           </Flex>
 
-          <Callout.Root size="1">
-            <Callout.Icon>
-              <PiInfoFill size={15} />
-            </Callout.Icon>
-            <Callout.Text>
+          <Alert severity="info">
+            <span className="inline-flex items-start gap-2">
+              <PiInfoFill className="mt-0.5 shrink-0" size={15} />
               Signing in keeps the servers you have already joined. They move to
               your account the next time you connect to each one.
-            </Callout.Text>
-          </Callout.Root>
+            </span>
+          </Alert>
 
           <Button size="small"
             data-tour="account-signin"

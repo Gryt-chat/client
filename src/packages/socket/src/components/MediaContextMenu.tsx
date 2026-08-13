@@ -1,4 +1,5 @@
-import { ContextMenu, Flex } from "@radix-ui/themes";
+import { ContextMenu } from "@gryt/ui";
+import { Flex } from "@radix-ui/themes";
 import React, { type ReactNode, useCallback, useMemo } from "react";
 import { PiArrowBendUpLeftFill, PiArrowSquareOutFill, PiCloudArrowDownFill, PiCopyFill, PiFlagFill, PiImageFill, PiPencilSimpleFill, PiSmileyFill, PiTrashFill } from "react-icons/pi";
 
@@ -123,8 +124,8 @@ function QuickReactions({
             <EmojiText text={src} emojiSize={22} disableTooltip />
           </ContextMenu.Item>
         ))}
-        <ContextMenu.Sub>
-          <ContextMenu.SubTrigger
+        <ContextMenu.SubmenuRoot>
+          <ContextMenu.SubmenuTrigger
             className="emoji-picker-sub-trigger"
             style={{
               display: "inline-flex",
@@ -140,27 +141,21 @@ function QuickReactions({
             }}
           >
             <PiSmileyFill size={20} />
-          </ContextMenu.SubTrigger>
-          <ContextMenu.SubContent
-            sideOffset={2}
-            alignOffset={-6}
-            style={{
-              padding: 0,
-              width: 340,
-              maxHeight: 400,
-              display: "flex",
-              flexDirection: "column",
-              overflow: "hidden",
-              borderRadius: 12,
-            }}
-          >
+          </ContextMenu.SubmenuTrigger>
+          <ContextMenu.Portal>
+            <ContextMenu.Positioner sideOffset={2} alignOffset={-6}>
+              <ContextMenu.Popup
+                className="flex w-85 max-h-100 flex-col overflow-hidden p-0"
+              >
             <EmojiPickerContent
               onSelect={handleEmojiSelect}
               serverHost={serverHost}
               autoFocusSearch={false}
             />
-          </ContextMenu.SubContent>
-        </ContextMenu.Sub>
+          </ContextMenu.Popup>
+            </ContextMenu.Positioner>
+          </ContextMenu.Portal>
+        </ContextMenu.SubmenuRoot>
       </Flex>
       <ContextMenu.Separator />
     </>
@@ -195,7 +190,7 @@ function MessageActionItems({ actions }: { actions: MessageActions }) {
         </ContextMenu.Item>
       )}
       {actions.onReport && (
-        <ContextMenu.Item onClick={actions.onReport} color="red">
+        <ContextMenu.Item onClick={actions.onReport}>
           <Flex align="center" gap="1">
             <PiFlagFill size={14} />
             Report
@@ -203,7 +198,7 @@ function MessageActionItems({ actions }: { actions: MessageActions }) {
         </ContextMenu.Item>
       )}
       {actions.canDelete && actions.onDelete && (
-        <ContextMenu.Item onClick={actions.onDelete} color="red">
+        <ContextMenu.Item onClick={actions.onDelete}>
           <Flex align="center" gap="1">
             <PiTrashFill size={14} />
             Delete Message
@@ -231,14 +226,18 @@ export function MessageContextMenu({
       <ContextMenu.Trigger onContextMenu={media ? ((e: React.MouseEvent) => e.stopPropagation()) : undefined}>
         {children}
       </ContextMenu.Trigger>
-      <ContextMenu.Content style={{ minWidth: 180 }}>
+      <ContextMenu.Portal>
+        <ContextMenu.Positioner>
+          <ContextMenu.Popup className="min-w-45">
         {onReaction && (
           <QuickReactions onReaction={onReaction} serverHost={serverHost} />
         )}
         {media && <MediaItems media={media} />}
         {media && hasMessageActions && <ContextMenu.Separator />}
         {hasMessageActions && <MessageActionItems actions={messageActions} />}
-      </ContextMenu.Content>
+      </ContextMenu.Popup>
+        </ContextMenu.Positioner>
+      </ContextMenu.Portal>
     </ContextMenu.Root>
   );
 }

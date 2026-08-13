@@ -1,5 +1,5 @@
-import { Button, Checkbox, Select, TextField } from "@gryt/ui";
-import { AlertDialog, Code, Flex, Text } from "@radix-ui/themes";
+import { AlertDialog, Button, Checkbox, Select, TextField } from "@gryt/ui";
+import { Flex, Text } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 
 import type { Channel, SidebarItem } from "@/settings/src/types/server";
@@ -91,45 +91,53 @@ export const ServerConfirmDialogs = ({
   return (
   <>
     <AlertDialog.Root open={!!pendingDeleteItem} onOpenChange={(open) => { if (!open) cancelDelete(); }}>
-      <AlertDialog.Content maxWidth="420px">
+      <AlertDialog.Portal>
+        <AlertDialog.Backdrop />
+        <AlertDialog.Popup className="max-w-105">
         <AlertDialog.Title>Delete {pendingDeleteItem?.kind === "channel" ? "channel" : "item"}?</AlertDialog.Title>
-        <AlertDialog.Description size="2">
+        <AlertDialog.Description>
           {pendingDeleteItem?.kind === "channel"
             ? `This will permanently delete the channel "${channelById.get(pendingDeleteItem.channelId ?? pendingDeleteItem.id)?.name || "this channel"}" and all associated data. This action cannot be undone.`
             : "This will remove this item from the sidebar. This action cannot be undone."}
         </AlertDialog.Description>
         <Flex gap="3" mt="4" justify="end">
-          <AlertDialog.Cancel>
+          <AlertDialog.Close render={<span />}>
             <Button size="small">Cancel</Button>
-          </AlertDialog.Cancel>
-          <AlertDialog.Action>
+          </AlertDialog.Close>
+          <AlertDialog.Close render={<span />}>
             <Button size="small" onClick={confirmDelete}>Delete</Button>
-          </AlertDialog.Action>
+          </AlertDialog.Close>
         </Flex>
-      </AlertDialog.Content>
+      </AlertDialog.Popup>
+      </AlertDialog.Portal>
     </AlertDialog.Root>
 
     <AlertDialog.Root open={!!pendingDisconnectUser} onOpenChange={(open) => { if (!open) setPendingDisconnectUser(null); }}>
-      <AlertDialog.Content maxWidth="420px">
+      <AlertDialog.Portal>
+        <AlertDialog.Backdrop />
+        <AlertDialog.Popup className="max-w-105">
         <AlertDialog.Title>Disconnect {pendingDisconnectUser?.nickname}?</AlertDialog.Title>
-        <AlertDialog.Description size="2">
+        <AlertDialog.Description>
           This will disconnect {pendingDisconnectUser?.nickname} from the voice channel.
         </AlertDialog.Description>
         <Flex gap="3" mt="4" justify="end">
-          <AlertDialog.Cancel>
+          <AlertDialog.Close render={<span />}>
             <Button size="small">Cancel</Button>
-          </AlertDialog.Cancel>
-          <AlertDialog.Action>
+          </AlertDialog.Close>
+          <AlertDialog.Close render={<span />}>
             <Button size="small" onClick={() => { if (pendingDisconnectUser) { onDisconnectUser(pendingDisconnectUser.id); setPendingDisconnectUser(null); } }}>Disconnect</Button>
-          </AlertDialog.Action>
+          </AlertDialog.Close>
         </Flex>
-      </AlertDialog.Content>
+      </AlertDialog.Popup>
+      </AlertDialog.Portal>
     </AlertDialog.Root>
 
     <AlertDialog.Root open={!!pendingKickUser} onOpenChange={(open) => { if (!open) setPendingKickUser(null); }}>
-      <AlertDialog.Content maxWidth="420px">
+      <AlertDialog.Portal>
+        <AlertDialog.Backdrop />
+        <AlertDialog.Popup className="max-w-105">
         <AlertDialog.Title>Kick {pendingKickUser?.nickname}?</AlertDialog.Title>
-        <AlertDialog.Description size="2">
+        <AlertDialog.Description>
           They will be removed from the server and can rejoin later.
         </AlertDialog.Description>
         <Flex direction="column" gap="1" mt="3">
@@ -142,20 +150,23 @@ export const ServerConfirmDialogs = ({
           />
         </Flex>
         <Flex gap="3" mt="4" justify="end">
-          <AlertDialog.Cancel>
+          <AlertDialog.Close render={<span />}>
             <Button size="small">Cancel</Button>
-          </AlertDialog.Cancel>
-          <AlertDialog.Action>
+          </AlertDialog.Close>
+          <AlertDialog.Close render={<span />}>
             <Button size="small" onClick={() => { if (pendingKickUser) { onKickUser(pendingKickUser.id, kickReason); setPendingKickUser(null); } }}>Kick</Button>
-          </AlertDialog.Action>
+          </AlertDialog.Close>
         </Flex>
-      </AlertDialog.Content>
+      </AlertDialog.Popup>
+      </AlertDialog.Portal>
     </AlertDialog.Root>
 
     <AlertDialog.Root open={!!pendingBanUser} onOpenChange={(open) => { if (!open) setPendingBanUser(null); }}>
-      <AlertDialog.Content maxWidth="420px">
+      <AlertDialog.Portal>
+        <AlertDialog.Backdrop />
+        <AlertDialog.Popup className="max-w-105">
         <AlertDialog.Title>Ban {pendingBanUser?.nickname}?</AlertDialog.Title>
-        <AlertDialog.Description size="2">
+        <AlertDialog.Description>
           They will be removed and cannot rejoin until the ban lifts.
         </AlertDialog.Description>
         <Flex direction="column" gap="1" mt="3">
@@ -200,7 +211,7 @@ export const ServerConfirmDialogs = ({
               Revoke the invite they joined with
             </Text>
             <Text size="1" mt="1" as="div">
-              They joined with <Code size="1">{banInvite.code}</Code>, still
+              They joined with <code className="font-mono text-xs text-gryt-text">{banInvite.code}</code>, still
               active and used {banInvite.usesConsumed}{" "}
               {banInvite.usesConsumed === 1 ? "time" : "times"}. Leaving it open
               lets them return on a new identity — and takes anyone else with
@@ -215,10 +226,10 @@ export const ServerConfirmDialogs = ({
           </Text>
         )}
         <Flex gap="3" mt="4" justify="end">
-          <AlertDialog.Cancel>
+          <AlertDialog.Close render={<span />}>
             <Button size="small">Cancel</Button>
-          </AlertDialog.Cancel>
-          <AlertDialog.Action>
+          </AlertDialog.Close>
+          <AlertDialog.Close render={<span />}>
             <Button size="small"
               onClick={() => {
                 if (!pendingBanUser) return;
@@ -229,9 +240,10 @@ export const ServerConfirmDialogs = ({
             >
               Ban
             </Button>
-          </AlertDialog.Action>
+          </AlertDialog.Close>
         </Flex>
-      </AlertDialog.Content>
+      </AlertDialog.Popup>
+      </AlertDialog.Portal>
     </AlertDialog.Root>
   </>
   );

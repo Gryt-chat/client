@@ -1,6 +1,5 @@
-import { Avatar, Button, Switch, TextField } from "@gryt/ui";
+import { AlertDialog, Avatar, Button, Switch, TextField } from "@gryt/ui";
 import {
-  AlertDialog,
   Flex,
   Select,
   Text,
@@ -527,24 +526,27 @@ export function ServerOverviewTab({
               open={showClearIconConfirm}
               onOpenChange={(open) => { if (!open) setShowClearIconConfirm(false); }}
             >
-              <AlertDialog.Content maxWidth="420px">
+              <AlertDialog.Portal>
+                <AlertDialog.Backdrop />
+                <AlertDialog.Popup className="max-w-105">
                 <AlertDialog.Title>Clear server icon?</AlertDialog.Title>
-                <AlertDialog.Description size="2">
+                <AlertDialog.Description>
                   This will remove the current server icon. You can upload a new one at any time.
                 </AlertDialog.Description>
                 <Flex gap="3" mt="4" justify="end">
-                  <AlertDialog.Cancel>
+                  <AlertDialog.Close render={<span />}>
                     <Button size="small">Cancel</Button>
-                  </AlertDialog.Cancel>
-                  <AlertDialog.Action>
+                  </AlertDialog.Close>
+                  <AlertDialog.Close render={<span />}>
                     <Button size="small"
                       onClick={() => { clearIcon(); setShowClearIconConfirm(false); }}
                     >
                       Clear icon
                     </Button>
-                  </AlertDialog.Action>
+                  </AlertDialog.Close>
                 </Flex>
-              </AlertDialog.Content>
+              </AlertDialog.Popup>
+              </AlertDialog.Portal>
             </AlertDialog.Root>
           </>
         ) : null}

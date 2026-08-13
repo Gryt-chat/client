@@ -1,5 +1,5 @@
-import { Button, Checkbox, Chip, IconButton, Select, Tooltip } from "@gryt/ui";
-import { Dialog, Flex, Text } from "@radix-ui/themes";
+import { Button, Checkbox, Chip, Dialog, IconButton, Select, Tooltip } from "@gryt/ui";
+import { Flex, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PiCaretDownFill, PiCaretUpFill, PiMonitorFill, PiScreencastFill, PiSquaresFourFill, PiX } from "react-icons/pi";
 
@@ -232,7 +232,9 @@ export function ScreenSharePickerModal({
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Content style={{ maxWidth: 640 }} aria-describedby={undefined}>
+      <Dialog.Portal>
+        <Dialog.Backdrop />
+        <Dialog.Popup style={{ maxWidth: 640 }}>
         <Flex direction="column" gap="4">
           <Flex align="center" justify="between">
             <Flex align="center" gap="2">
@@ -538,7 +540,8 @@ export function ScreenSharePickerModal({
             </Button>
           </Flex>
         </Flex>
-      </Dialog.Content>
+      </Dialog.Popup>
+      </Dialog.Portal>
     </Dialog.Root>
   );
 }

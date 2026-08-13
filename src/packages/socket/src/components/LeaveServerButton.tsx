@@ -27,7 +27,7 @@ export const LeaveServerButton: React.FC<LeaveServerButtonProps> = ({
       <AlertDialog.Root open={showConfirm} onOpenChange={(open) => { if (!open) setShowConfirm(false); }}>
         <AlertDialog.Content maxWidth="420px">
           <AlertDialog.Title>Leave server?</AlertDialog.Title>
-          <AlertDialog.Description size="2">
+          <AlertDialog.Description>
             Are you sure you want to leave {host}? You will lose access to all channels and messages.
           </AlertDialog.Description>
           <Flex gap="3" mt="4" justify="end">

@@ -1,5 +1,5 @@
-import { Button, Chip, Divider, Surface, Switch } from "@gryt/ui";
-import { AlertDialog, Flex, Heading, Link, Text } from "@radix-ui/themes";
+import { AlertDialog, Button, Chip, Divider, Surface, Switch } from "@gryt/ui";
+import { Flex, Heading, Link, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useState } from "react";
 import { FaGithub } from "react-icons/fa";
 import { PiArrowsClockwiseFill, PiArrowSquareOutFill, PiChatCircleDotsFill, PiCheckCircleFill, PiClockClockwiseFill, PiDesktopFill, PiDownloadSimpleFill, PiXCircleFill } from "react-icons/pi";
@@ -169,7 +169,9 @@ function UpdateControls() {
       </Flex>
 
       <AlertDialog.Root open={pendingSwitch !== null} onOpenChange={(open) => { if (!open) setPendingSwitch(null); }}>
-        <AlertDialog.Content maxWidth="480px">
+        <AlertDialog.Portal>
+          <AlertDialog.Backdrop />
+          <AlertDialog.Popup className="max-w-120">
           <AlertDialog.Title>
             {switchingToBeta ? "Turn on beta releases?" : "Turn off beta releases?"}
           </AlertDialog.Title>
@@ -179,18 +181,19 @@ function UpdateControls() {
               : "Gryt will close and reopen to install the latest stable version. That is older than the beta you are on now, so anything added since will be gone until it reaches stable."}
           </AlertDialog.Description>
           <Flex gap="3" mt="4" justify="end">
-            <AlertDialog.Cancel>
+            <AlertDialog.Close render={<span />}>
               <Button tone="neutral" size="small">Cancel</Button>
-            </AlertDialog.Cancel>
-            <AlertDialog.Action>
+            </AlertDialog.Close>
+            <AlertDialog.Close render={<span />}>
               <Button size="small"
                 onClick={confirmChannelSwitch}
               >
                 {switchingToBeta ? "Turn on beta" : "Turn off beta"}
               </Button>
-            </AlertDialog.Action>
+            </AlertDialog.Close>
           </Flex>
-        </AlertDialog.Content>
+        </AlertDialog.Popup>
+        </AlertDialog.Portal>
       </AlertDialog.Root>
     </>
   );

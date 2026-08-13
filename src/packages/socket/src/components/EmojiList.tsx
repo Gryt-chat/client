@@ -1,6 +1,5 @@
-import { Button, IconButton, TextField } from "@gryt/ui";
+import { AlertDialog, Button, IconButton, TextField } from "@gryt/ui";
 import {
-  AlertDialog,
   Flex,
   Text,
 } from "@radix-ui/themes";
@@ -170,22 +169,25 @@ export function EmojiList({
                 {deletingAll ? "Deleting..." : "Delete all"}
               </Button>
             </AlertDialog.Trigger>
-            <AlertDialog.Content maxWidth="420px">
+            <AlertDialog.Portal>
+              <AlertDialog.Backdrop />
+              <AlertDialog.Popup className="max-w-105">
               <AlertDialog.Title>Delete all emojis?</AlertDialog.Title>
-              <AlertDialog.Description size="2">
+              <AlertDialog.Description>
                 This will permanently delete all {emojis.length} custom emoji{emojis.length !== 1 ? "s" : ""} from this server. This cannot be undone.
               </AlertDialog.Description>
               <Flex gap="3" mt="4" justify="end">
-                <AlertDialog.Cancel>
+                <AlertDialog.Close render={<span />}>
                   <Button size="small">Cancel</Button>
-                </AlertDialog.Cancel>
-                <AlertDialog.Action>
+                </AlertDialog.Close>
+                <AlertDialog.Close render={<span />}>
                   <Button size="small" onClick={handleDeleteAll}>
                     Delete all
                   </Button>
-                </AlertDialog.Action>
+                </AlertDialog.Close>
               </Flex>
-            </AlertDialog.Content>
+            </AlertDialog.Popup>
+            </AlertDialog.Portal>
           </AlertDialog.Root>
         )}
       </Flex>

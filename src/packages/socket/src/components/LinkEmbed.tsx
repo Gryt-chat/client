@@ -1,5 +1,5 @@
-import { Button } from "@gryt/ui";
-import { AlertDialog, Flex } from "@radix-ui/themes";
+import { AlertDialog, Button } from "@gryt/ui";
+import { Flex } from "@radix-ui/themes";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getServerAccessToken, getServerHttpBase } from "@/common";
@@ -254,20 +254,23 @@ export const MessageEmbeds = memo(({
       </Flex>
 
       <AlertDialog.Root open={!!pendingDismissUrl} onOpenChange={(open) => { if (!open) setPendingDismissUrl(null); }}>
-        <AlertDialog.Content maxWidth="400px">
+        <AlertDialog.Portal>
+          <AlertDialog.Backdrop />
+          <AlertDialog.Popup className="max-w-100">
           <AlertDialog.Title>Remove embed?</AlertDialog.Title>
-          <AlertDialog.Description size="2">
+          <AlertDialog.Description>
             This hides the embed for you. Edit the message to bring it back.
           </AlertDialog.Description>
           <Flex gap="3" mt="4" justify="end">
-            <AlertDialog.Cancel>
+            <AlertDialog.Close render={<span />}>
               <Button tone="neutral" size="small">Cancel</Button>
-            </AlertDialog.Cancel>
-            <AlertDialog.Action>
+            </AlertDialog.Close>
+            <AlertDialog.Close render={<span />}>
               <Button tone="danger" size="small" onClick={confirmDismiss}>Remove</Button>
-            </AlertDialog.Action>
+            </AlertDialog.Close>
           </Flex>
-        </AlertDialog.Content>
+        </AlertDialog.Popup>
+        </AlertDialog.Portal>
       </AlertDialog.Root>
     </>
   );

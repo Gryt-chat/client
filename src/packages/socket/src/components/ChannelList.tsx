@@ -1,5 +1,5 @@
-import { Button, Tooltip } from "@gryt/ui";
-import { Box, ContextMenu, Flex, Text } from "@radix-ui/themes";
+import { Button, ContextMenu, Tooltip } from "@gryt/ui";
+import { Box, Flex, Text } from "@radix-ui/themes";
 import { AnimatePresence, LayoutGroup, motion, Reorder } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PiChatCircleFill, PiGameControllerFill, PiGaugeFill, PiKeyboardFill, PiSpeakerHighFill } from "react-icons/pi";
@@ -325,10 +325,12 @@ export const ChannelList = ({
     return (
       <ContextMenu.Root>
         <ContextMenu.Trigger>{content}</ContextMenu.Trigger>
-        <ContextMenu.Content>
-          <ContextMenu.Label style={{ fontWeight: "bold" }}>
+        <ContextMenu.Portal>
+          <ContextMenu.Positioner>
+            <ContextMenu.Popup>
+          <ContextMenu.GroupLabel style={{ fontWeight: "bold" }}>
             <EmojiText text={label} disableTooltip />
-          </ContextMenu.Label>
+          </ContextMenu.GroupLabel>
           <ContextMenu.Item onClick={() => onEditItem?.(item)}>
             Edit
           </ContextMenu.Item>
@@ -340,10 +342,12 @@ export const ChannelList = ({
             Move down
           </ContextMenu.Item>
           <ContextMenu.Separator />
-          <ContextMenu.Item color="red" onClick={() => onDeleteItem?.(item)}>
+          <ContextMenu.Item className="text-gryt-danger" onClick={() => onDeleteItem?.(item)}>
             Delete
           </ContextMenu.Item>
-        </ContextMenu.Content>
+        </ContextMenu.Popup>
+          </ContextMenu.Positioner>
+        </ContextMenu.Portal>
       </ContextMenu.Root>
     );
   };
@@ -449,7 +453,9 @@ export const ChannelList = ({
           <div style={{ flex: 1 }} />
         </div>
       </ContextMenu.Trigger>
-      <ContextMenu.Content>
+      <ContextMenu.Portal>
+        <ContextMenu.Positioner>
+          <ContextMenu.Popup>
         <ContextMenu.Item onClick={() => onAddItem?.("channel:text")}>
           Add channel
         </ContextMenu.Item>
@@ -460,7 +466,9 @@ export const ChannelList = ({
         <ContextMenu.Item onClick={() => onAddItem?.("spacer")}>
           Add spacer
         </ContextMenu.Item>
-      </ContextMenu.Content>
+      </ContextMenu.Popup>
+        </ContextMenu.Positioner>
+      </ContextMenu.Portal>
     </ContextMenu.Root>
   );
 };

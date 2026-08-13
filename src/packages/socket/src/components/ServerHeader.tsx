@@ -1,5 +1,5 @@
-import { Button, Chip, IconButton, Surface, Tooltip } from "@gryt/ui";
-import { DropdownMenu, Flex, Text } from "@radix-ui/themes";
+import { Button, Chip, IconButton, Menu, Surface, Tooltip } from "@gryt/ui";
+import { Flex, Text } from "@radix-ui/themes";
 import { PiPushPinFill } from "react-icons/pi";
 
 export const ServerHeader = ({
@@ -45,25 +45,27 @@ export const ServerHeader = ({
             </Tooltip>
           )}
 
-          <DropdownMenu.Root>
-            <DropdownMenu.Trigger>
+          <Menu.Root>
+            <Menu.Trigger>
               <Button tone="neutral" size="xsmall">
-                <DropdownMenu.TriggerIcon />
+                
               </Button>
-            </DropdownMenu.Trigger>
-            <DropdownMenu.Content>
+            </Menu.Trigger>
+            <Menu.Portal>
+              <Menu.Positioner>
+                <Menu.Popup>
               {canManage && onOpenSettings && (
-                <DropdownMenu.Item onClick={onOpenSettings}>
+                <Menu.Item onClick={onOpenSettings}>
                   <Flex align="center" gap="2">
                     Server settings
                     {updateAvailable && (
                       <Chip tone="warning" label="!" />
                     )}
                   </Flex>
-                </DropdownMenu.Item>
+                </Menu.Item>
               )}
               {canManage && onOpenReports && (
-                <DropdownMenu.Item onClick={onOpenReports}>
+                <Menu.Item onClick={onOpenReports}>
                   <Flex align="center" gap="2">
                     Reports
                     {!!pendingReportCount && pendingReportCount > 0 && (
@@ -72,14 +74,16 @@ export const ServerHeader = ({
                       </Chip>
                     )}
                   </Flex>
-                </DropdownMenu.Item>
+                </Menu.Item>
               )}
-              <DropdownMenu.Separator />
-              <DropdownMenu.Item color="red" onClick={onLeave}>
+              <Menu.Separator />
+              <Menu.Item className="text-gryt-danger" onClick={onLeave}>
                 Leave
-              </DropdownMenu.Item>
-            </DropdownMenu.Content>
-          </DropdownMenu.Root>
+              </Menu.Item>
+            </Menu.Popup>
+              </Menu.Positioner>
+            </Menu.Portal>
+          </Menu.Root>
         </Flex>
       </Flex>
     </Surface>

@@ -1,5 +1,5 @@
-import { Button, IconButton } from "@gryt/ui";
-import { Dialog, Flex, Text } from "@radix-ui/themes";
+import { Button, Dialog, IconButton } from "@gryt/ui";
+import { Flex, Text } from "@radix-ui/themes";
 import { useEffect,useState } from "react";
 import { PiWarningFill, PiX } from "react-icons/pi";
 
@@ -35,7 +35,9 @@ export function DeviceSwitchModal() {
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={setIsOpen}>
-      <Dialog.Content style={{ maxWidth: 450 }}>
+      <Dialog.Portal>
+        <Dialog.Backdrop />
+        <Dialog.Popup style={{ maxWidth: 450 }}>
         <Flex direction="column" gap="4" align="center" p="4">
           <Flex align="center" gap="3" mb="2">
             <PiWarningFill 
@@ -91,7 +93,8 @@ export function DeviceSwitchModal() {
             <PiX size={16} />
           </IconButton>
         </Dialog.Close>
-      </Dialog.Content>
+      </Dialog.Popup>
+      </Dialog.Portal>
     </Dialog.Root>
   );
 }

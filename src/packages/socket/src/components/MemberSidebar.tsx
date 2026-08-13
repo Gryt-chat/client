@@ -1,5 +1,5 @@
-import { Avatar, IconButton, Tooltip } from "@gryt/ui";
-import { Box, Flex, HoverCard, Text } from "@radix-ui/themes";
+import { Avatar, IconButton, PreviewCard, Tooltip } from "@gryt/ui";
+import { Box, Flex, Text } from "@radix-ui/themes";
 import { PiPushPinFill } from "react-icons/pi";
 
 import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
@@ -115,8 +115,8 @@ const MemberItem = ({
       onServerDeafen={adminActions?.onServerDeafenUser ? (deafened) => adminActions.onServerDeafenUser!(member.serverUserId, deafened) : undefined}
       onChangeRole={adminActions?.onChangeRole ? (role) => adminActions.onChangeRole!(member.serverUserId, role) : undefined}
     >
-      <HoverCard.Root>
-        <HoverCard.Trigger>
+      <PreviewCard.Root>
+        <PreviewCard.Trigger>
           <div
             style={{
               background: "var(--gray-4)",
@@ -160,11 +160,15 @@ const MemberItem = ({
           </Flex>
         </Flex>
           </div>
-        </HoverCard.Trigger>
-        <HoverCard.Content size="1" side="left" align="start">
+        </PreviewCard.Trigger>
+        <PreviewCard.Portal>
+          <PreviewCard.Positioner side="left" align="start">
+            <PreviewCard.Popup>
           <MemberIdentityCard member={member} />
-        </HoverCard.Content>
-      </HoverCard.Root>
+        </PreviewCard.Popup>
+          </PreviewCard.Positioner>
+        </PreviewCard.Portal>
+      </PreviewCard.Root>
     </UserContextMenu>
   );
 };

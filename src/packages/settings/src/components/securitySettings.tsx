@@ -1,6 +1,5 @@
-import { Button, Chip, IconButton, Spinner, TextField, Tooltip } from "@gryt/ui";
+import { AlertDialog, Button, Chip, IconButton, Spinner, TextField, Tooltip } from "@gryt/ui";
 import {
-  AlertDialog,
   Flex,
   Heading,
   Text,
@@ -147,19 +146,21 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
             <PiTrashFill size={16} />
           </IconButton>
         </Tooltip>
-        <AlertDialog.Content maxWidth="420px">
+        <AlertDialog.Portal>
+          <AlertDialog.Backdrop />
+          <AlertDialog.Popup className="max-w-105">
           <AlertDialog.Title>Remove passkey?</AlertDialog.Title>
-          <AlertDialog.Description size="2">
+          <AlertDialog.Description>
             This passkey will be removed from your account. You won&apos;t be able to
             use it to sign in anymore.
           </AlertDialog.Description>
           <Flex gap="3" mt="4" justify="end">
-            <AlertDialog.Cancel>
+            <AlertDialog.Close render={<span />}>
               <Button size="small">
                 Cancel
               </Button>
-            </AlertDialog.Cancel>
-            <AlertDialog.Action>
+            </AlertDialog.Close>
+            <AlertDialog.Close render={<span />}>
               <Button size="small"
                 onClick={() => {
                   onDelete(credential.id);
@@ -168,9 +169,10 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
               >
                 Remove
               </Button>
-            </AlertDialog.Action>
+            </AlertDialog.Close>
           </Flex>
-        </AlertDialog.Content>
+        </AlertDialog.Popup>
+        </AlertDialog.Portal>
       </AlertDialog.Root>
     </Flex>
   );
