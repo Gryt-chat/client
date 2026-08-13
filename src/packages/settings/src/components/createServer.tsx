@@ -1,6 +1,5 @@
-import { Dialog } from "@gryt/ui";
+import { Avatar, Dialog } from "@gryt/ui";
 import {
-  Avatar,
   Button,
   Callout,
   Checkbox,
@@ -129,10 +128,12 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
           server being created has no address yet and every new one drew the
           same planet until it started. */}
       <Flex direction="column" align="center" gap="1">
+        {/* 80px, which is past the library's large — this is the preview of
+            the icon you are about to make, so it is the subject of the step
+            rather than a marker beside something else. */}
         <Avatar
-          size="6"
-          radius="full"
-          src={undefined}
+          size="large"
+          className="h-20 w-20 text-2xl"
           fallback={<GeneratedServerIcon seed={serverName || "My Server"} />}
         />
         <Text size="1" color="gray">

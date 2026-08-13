@@ -1,6 +1,6 @@
+import { Avatar } from "@gryt/ui";
 import {
   AlertDialog,
-  Avatar,
   Button,
   Flex,
   Select,
@@ -479,8 +479,8 @@ export function ServerOverviewTab({
           >
             <div style={{ position: "relative" }}>
               <Avatar
-                size="7"
-                radius="full"
+                size="large"
+                className="h-24 w-24 text-3xl"
                 src={iconUrl ? `${getServerHttpBase(host)}/icon?v=${iconCacheBuster}` : undefined}
                 fallback={displayName || host ? <GeneratedServerIcon seed={displayName || host} /> : "S"}
               />
