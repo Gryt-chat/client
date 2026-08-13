@@ -3,10 +3,13 @@
  * identity authentication. The private key never leaves the client.
  */
 
+import { deriveLocalKeyPair, generateSeed, SEED_BYTES } from "./identity-seed";
+
 const DB_NAME = "gryt_identity_keys";
 const DB_VERSION = 1;
 const STORE_NAME = "keys";
 const KEY_ID = "identity";
+const SEED_KEY = "identity-seed";
 
 /**
  * Where a signing key comes from.
@@ -15,11 +18,12 @@ const KEY_ID = "identity";
  * exactly one, because the certificate binds one key to one account, and the
  * account `sub` is the same on every server anyway.
  *
- * `local` is a key generated for one server and used nowhere else. Nothing
- * binds these together, which is the point: a local identity is its own key, so
- * one key per server means two servers cannot tell they are talking to the same
- * person. Costs nothing — the keys are generated on first join and never leave
- * the device either way.
+ * `local` is a key for one server and used nowhere else. Nothing binds these
+ * together as far as a server can tell, which is the point: a local identity is
+ * its own key, so one key per server means two servers cannot work out they are
+ * talking to the same person. They are calculated from a single seed rather
+ * than each generated separately — see `identity-seed.ts` — which keeps that
+ * property and makes the whole set portable at the same time.
  */
 export type IdentitySource =
   | { kind: "account" }
@@ -80,6 +84,27 @@ interface StoredKeyPair {
 
 const cachedKeyPairs = new Map<string, StoredKeyPair>();
 
+/**
+ * The seed every local key is calculated from, made on first use.
+ *
+ * Kept in the same store as the keys, because it is the same kind of secret and
+ * clearing site data should take it along with everything else it already
+ * takes. It is not filed under `local:`, so it stays out of
+ * `listLocalIdentityHosts` and out of the export that reads from it.
+ *
+ * Deliberately not cleared by `clearIdentityKeys`, for the reason given there:
+ * signing out of an account says nothing about the servers joined without one.
+ */
+async function getOrCreateSeed(db: IDBDatabase): Promise<Uint8Array> {
+  const existing = await idbGet<Uint8Array>(db, SEED_KEY);
+  if (existing?.length === SEED_BYTES) return existing;
+
+  const seed = generateSeed();
+  await idbPut(db, SEED_KEY, seed);
+  console.log("[Identity] Generated new local identity seed");
+  return seed;
+}
+
 async function loadOrGenerateKeyPair(
   source: IdentitySource = { kind: "account" },
 ): Promise<StoredKeyPair> {
@@ -96,6 +121,13 @@ async function loadOrGenerateKeyPair(
     return existing;
   }
 
+  // A local key is calculated from the seed, so the same identity comes back on
+  // any device that holds it, including for servers that device has never
+  // connected to. Anything already in the store above was generated at random
+  // before this existed and is kept as it is — there is no way to derive one of
+  // those after the fact, and stranding the roles, ownership and history behind
+  // it to tidy up would be a poor trade.
+  //
   // Local keys are extractable so they can be saved and restored; the account
   // key is not, and does not need to be — losing it costs you nothing, because
   // the CA will certify a fresh one for the same account.
@@ -106,23 +138,25 @@ async function loadOrGenerateKeyPair(
   // whether one is possible. Set against that: without it, clearing site data
   // destroys every server this identity was known on — the roles, the
   // ownership, the history — permanently, silently, and with no way back.
-  const extractable = source.kind === "local";
+  const stored: StoredKeyPair =
+    source.kind === "local"
+      ? await deriveLocalKeyPair(await getOrCreateSeed(db), source.host)
+      : await crypto.subtle.generateKey(ALGO, false, ["sign", "verify"]);
 
-  const keyPair = await crypto.subtle.generateKey(ALGO, extractable, [
-    "sign",
-    "verify",
-  ]);
-
-  const stored: StoredKeyPair = {
-    privateKey: keyPair.privateKey,
-    publicKey: keyPair.publicKey,
-  };
-
+  // Written down even though a local key could be recalculated on demand. The
+  // entry is also the record that this host was actually joined, which is what
+  // `listLocalIdentityHosts` reports and what decides whether an account offers
+  // to carry a previous identity over. Derivation alone cannot answer that —
+  // it will happily produce a key for a server nobody has ever visited.
   await idbPut(db, storageKey, stored);
   db.close();
 
   cachedKeyPairs.set(storageKey, stored);
-  console.log(`[Identity] Generated new ECDSA P-256 keypair (${storageKey})`);
+  console.log(
+    `[Identity] ${
+      source.kind === "local" ? "Derived" : "Generated"
+    } ECDSA P-256 keypair (${storageKey})`,
+  );
   return stored;
 }
 
