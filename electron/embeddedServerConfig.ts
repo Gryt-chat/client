@@ -70,12 +70,6 @@ export function hasExistingServer(): boolean {
   return listServerIds().length > 0;
 }
 
-/**
- * Can we actually bind this port, on the interface the server will use?
- *
- * Deliberately not 127.0.0.1: the embedded server runs with HOST=0.0.0.0, and a
- * loopback probe says nothing about whether the wildcard bind will succeed.
- */
 function canBind(port: number, host: string): Promise<boolean> {
   return new Promise((resolve) => {
     const srv = createServer();
@@ -86,12 +80,28 @@ function canBind(port: number, host: string): Promise<boolean> {
   });
 }
 
-async function findFreePortFrom(
-  preferred: number,
-  host: string,
-): Promise<number> {
-  if (await canBind(preferred, host)) return preferred;
+/**
+ * Is this port genuinely free — on the wildcard *and* on loopback?
+ *
+ * Both, and both matter, because they are different bindings. A process can
+ * hold 127.0.0.1:5001 while another binds 0.0.0.0:5001 and neither call fails.
+ * Connections to 127.0.0.1:5001 then go to the more specific of the two, which
+ * is the other process — and 127.0.0.1 is exactly how the client reaches an
+ * embedded server, since EXTERNAL_HOST is a loopback address.
+ *
+ * Checking only the wildcard produced a server that started cleanly, reported
+ * its own port, and answered with somebody else's `/info`. Checking only
+ * loopback is the other half of the same mistake: node sets SO_REUSEADDR, so
+ * that probe succeeds against a port already held on every interface, which is
+ * how a new server was once handed 5005 with a dev SFU sitting on it.
+ */
+async function portIsFree(port: number): Promise<boolean> {
+  if (!(await canBind(port, "0.0.0.0"))) return false;
+  return canBind(port, "127.0.0.1");
+}
 
+/** An OS-assigned port, as a starting point rather than an answer. */
+function ephemeralPort(host: string): Promise<number> {
   return new Promise((resolve, reject) => {
     const srv = createServer();
     srv.once("error", () => reject(new Error("No free port")));
@@ -103,6 +113,19 @@ async function findFreePortFrom(
       );
     });
   });
+}
+
+async function findFreePortFrom(preferred: number): Promise<number> {
+  if (preferred > 0 && (await portIsFree(preferred))) return preferred;
+
+  // The OS only promises the port is free on the interface it was asked about,
+  // so its answer is still checked against both.
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const port = await ephemeralPort("0.0.0.0");
+    if (await portIsFree(port)) return port;
+  }
+
+  throw new Error("No free port");
 }
 
 /**
@@ -122,14 +145,6 @@ async function findFreePortFrom(
  * nothing is going to start.
  */
 /**
- * The interface both child processes bind, and therefore the only one worth
- * probing. A loopback probe can succeed against a port something else already
- * holds on every interface, because node sets SO_REUSEADDR — which is how a
- * new server was once handed 5005 while a dev SFU sat on it.
- */
-const BIND_HOST = "0.0.0.0";
-
-/**
  * A free port to offer in the create form.
  *
  * Walks up from 5000 rather than asking the OS for any free port. The OS gives
@@ -140,9 +155,9 @@ const BIND_HOST = "0.0.0.0";
  */
 export async function suggestServerPort(preferred = 5000): Promise<number> {
   for (let port = preferred; port < preferred + 50; port++) {
-    if (await canBind(port, BIND_HOST)) return port;
+    if (await portIsFree(port)) return port;
   }
-  return findFreePortFrom(0, BIND_HOST);
+  return findFreePortFrom(0);
 }
 
 /** Whether a port somebody typed can actually be bound. */
@@ -150,7 +165,7 @@ export function isPortAvailable(port: number): Promise<boolean> {
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     return Promise.resolve(false);
   }
-  return canBind(port, BIND_HOST);
+  return portIsFree(port);
 }
 
 export async function ensurePortsAvailable(
@@ -162,13 +177,12 @@ export async function ensurePortsAvailable(
 
   let raw = readFileSync(configPath, "utf-8");
   const env = parseEnv(raw);
-  const host = env.HOST || "0.0.0.0";
   const notes: string[] = [];
 
   const serverPort = parseInt(env.PORT || "5000", 10);
   const sfuPort = parseInt(env.SFU_PORT || "5005", 10);
 
-  const nextServerPort = await findFreePortFrom(serverPort, host);
+  const nextServerPort = await findFreePortFrom(serverPort);
   if (nextServerPort !== serverPort) {
     raw = raw.replace(/^PORT=.*$/m, `PORT=${nextServerPort}`);
     raw = raw.replace(
@@ -179,7 +193,7 @@ export async function ensurePortsAvailable(
   }
 
   const nextSfuPort =
-    pinnedSfuPort ?? (await findFreePortFrom(sfuPort, host));
+    pinnedSfuPort ?? (await findFreePortFrom(sfuPort));
   if (nextSfuPort !== sfuPort) {
     raw = raw
       .replace(/^SFU_PORT=.*$/m, `SFU_PORT=${nextSfuPort}`)
@@ -386,9 +400,8 @@ export async function generateConfig(
   const serverPort =
     requestedPort && (await isPortAvailable(requestedPort))
       ? requestedPort
-      : await findFreePortFrom(5000, BIND_HOST);
-  const sfuPort =
-    existingSfuPort() ?? (await findFreePortFrom(5005, BIND_HOST));
+      : await findFreePortFrom(5000);
+  const sfuPort = existingSfuPort() ?? (await findFreePortFrom(5005));
   const jwtSecret = randomBytes(32).toString("hex");
   const lanIp = getLanIp();
   const externalHost = `http://127.0.0.1:${serverPort}`;
