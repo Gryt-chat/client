@@ -1,11 +1,39 @@
-import { useCallback, useEffect,useState } from "react";
+import { createGrytTheme, grytTheme, grytThemeToOptions } from "@gryt/ui";
+import { useCallback, useEffect, useMemo,useState } from "react";
 import { PiCaretLeftFill, PiCaretRightFill } from "react-icons/pi";
+
+import { useTheme } from "@/common";
 
 import { isElectron } from "../lib/electron";
 
 export const TITLEBAR_HEIGHT = 36;
 
 export function Titlebar() {
+  const { resolvedAppearance } = useTheme();
+
+  /* The window chrome stays on Gryt's own palette.
+   *
+   * An imported theme is painted onto document.documentElement, because
+   * overlays portal to document.body and would not see it anywhere lower. That
+   * takes the titlebar with it, and the titlebar is not part of the page — it
+   * is the window, sitting against the OS frame and the traffic lights, and it
+   * should not turn Dracula purple because the chat below it did.
+   *
+   * Re-declaring rather than unsetting: the theme is set as inline properties
+   * on the root, which beat the stylesheet's :root block, so there is nothing
+   * for a child to fall back to. These are the same values the stylesheet
+   * ships, computed for whichever appearance is showing.
+   *
+   * What this cannot reach is anything that portals out — a menu opened from
+   * the titlebar renders under document.body and wears the theme.
+   */
+  const shippedPalette = useMemo(
+    () =>
+      createGrytTheme(
+        grytThemeToOptions(grytTheme, resolvedAppearance),
+      ) as React.CSSProperties,
+    [resolvedAppearance],
+  );
   const [canGoBack, setCanGoBack] = useState(false);
   const [canGoForward, setCanGoForward] = useState(false);
 
@@ -34,6 +62,7 @@ export function Titlebar() {
     <div
       data-gryt="titlebar"
       style={{
+        ...shippedPalette,
         height: TITLEBAR_HEIGHT,
         appRegion: "drag",
         WebkitAppRegion: "drag",
