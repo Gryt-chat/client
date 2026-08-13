@@ -1,6 +1,5 @@
-import { Divider, IconButton, Slider, Tooltip } from "@gryt/ui";
+import { Alert, Divider, IconButton, Slider, Tooltip } from "@gryt/ui";
 import {
-  Callout,
   Flex,
   Heading,
   SegmentedControl,
@@ -348,14 +347,7 @@ export function AudioSettings() {
       <Divider />
 
       {!audioContext && (
-        <Callout.Root color="orange">
-          <Callout.Icon>
-            <PiWarningFill size={16} />
-          </Callout.Icon>
-          <Callout.Text>
-            Microphone is initializing. Audio levels and noise gate will be visible once ready.
-          </Callout.Text>
-        </Callout.Root>
+        <Alert severity="warning"><span className="inline-flex items-start gap-2"><PiWarningFill size={16} />Microphone is initializing. Audio levels and noise gate will be visible once ready.</span></Alert>
       )}
 
       {/* ── Devices ── */}
@@ -613,11 +605,7 @@ export function AudioSettings() {
       <Text weight="bold" color="gray">Screen Share</Text>
 
       {nativeAudioActive && (
-        <Callout.Root color="green">
-          <Callout.Text>
-            Native audio capture is active — Gryt voices are excluded at the OS level.
-          </Callout.Text>
-        </Callout.Root>
+        <Alert severity="success">Native audio capture is active — Gryt voices are excluded at the OS level.</Alert>
       )}
 
     </SettingsContainer>

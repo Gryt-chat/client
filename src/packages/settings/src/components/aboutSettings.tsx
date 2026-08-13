@@ -1,5 +1,5 @@
 import { AlertDialog, Button, Chip, Divider, Surface, Switch } from "@gryt/ui";
-import { Flex, Heading, Link, Text } from "@radix-ui/themes";
+import { Flex, Heading, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useState } from "react";
 import { FaGithub } from "react-icons/fa";
 import { PiArrowsClockwiseFill, PiArrowSquareOutFill, PiChatCircleDotsFill, PiCheckCircleFill, PiClockClockwiseFill, PiDesktopFill, PiDownloadSimpleFill, PiXCircleFill } from "react-icons/pi";
@@ -248,13 +248,14 @@ export function AboutSettings() {
         <Text color="gray">&copy; 2022–2026 Sivert Gullberg Hansen</Text>
         <Text color="gray">
           Licensed under{" "}
-          <Link
+          <a
+            className="text-gryt-accent underline-offset-2 hover:underline"
             href={`${GITHUB_URL}/blob/main/LICENSE`}
             target="_blank"
             rel="noopener noreferrer"
           >
             AGPL-3.0-or-later
-          </Link>
+          </a>
         </Text>
       </Flex>
 

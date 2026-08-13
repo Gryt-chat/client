@@ -1,5 +1,5 @@
-import { Button } from "@gryt/ui";
-import { Callout, Flex, Text } from "@radix-ui/themes";
+import { Alert, Button } from "@gryt/ui";
+import { Flex, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import {
@@ -136,15 +136,8 @@ export function LocalIdentitySection() {
       </Flex>
 
       {hosts.length > 0 && (
-        <Callout.Root color="amber" size="1">
-          <Callout.Icon>
-            <PiWarningFill size={15} />
-          </Callout.Icon>
-          <Callout.Text>
-            Clearing your browser data deletes these, and there is no way to get
-            them back — including any server you own. Save a copy somewhere safe.
-          </Callout.Text>
-        </Callout.Root>
+        <Alert severity="warning"><span className="inline-flex items-start gap-2"><PiWarningFill size={15} />Clearing your browser data deletes these, and there is no way to get
+            them back — including any server you own. Save a copy somewhere safe.</span></Alert>
       )}
 
       <Flex gap="2" wrap="wrap">

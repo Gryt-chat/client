@@ -1,7 +1,6 @@
 import { Alert, Button, Chip, TextField } from "@gryt/ui";
 import {
   Code,
-  DataList,
   Flex,
   Heading,
   Text,
@@ -164,32 +163,32 @@ export function AccountSettings() {
             <Chip tone="success" label="Gryt account" />
           </Flex>
 
-          <DataList.Root size="1" orientation="vertical">
+          <dl className="m-0 flex flex-col gap-3">
             {profile?.email && (
-              <DataList.Item>
-                <DataList.Label>Email</DataList.Label>
-                <DataList.Value>
+              <div className="flex flex-col gap-0.5">
+                <dt className="text-xs text-gryt-muted">Email</dt>
+                <dd className="m-0 text-sm text-gryt-text">
                   <Revealable value={profile.email} />
-                </DataList.Value>
-              </DataList.Item>
+                </dd>
+              </div>
             )}
 
             {profile?.sub && (
-              <DataList.Item>
-                <DataList.Label>Gryt ID</DataList.Label>
-                <DataList.Value>
+              <div className="flex flex-col gap-0.5">
+                <dt className="text-xs text-gryt-muted">Gryt ID</dt>
+                <dd className="m-0 text-sm text-gryt-text">
                   <Revealable value={profile.sub} />
-                </DataList.Value>
-              </DataList.Item>
+                </dd>
+              </div>
             )}
 
             {formatDate(profile?.createdAt) && (
-              <DataList.Item>
-                <DataList.Label>Registered</DataList.Label>
-                <DataList.Value>{formatDate(profile?.createdAt)}</DataList.Value>
-              </DataList.Item>
+              <div className="flex flex-col gap-0.5">
+                <dt className="text-xs text-gryt-muted">Registered</dt>
+                <dd className="m-0 text-sm text-gryt-text">{formatDate(profile?.createdAt)}</dd>
+              </div>
             )}
-          </DataList.Root>
+          </dl>
 
           <Text size="1">
             Servers you joined before signing in came with you — your roles and

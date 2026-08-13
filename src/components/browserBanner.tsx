@@ -1,5 +1,5 @@
 import { IconButton } from "@gryt/ui";
-import { Flex, Link, Text } from "@radix-ui/themes";
+import { Flex, Text } from "@radix-ui/themes";
 import { useState } from "react";
 import { PiDownloadSimpleFill, PiX } from "react-icons/pi";
 
@@ -30,15 +30,14 @@ export function BrowserBanner() {
       <PiDownloadSimpleFill size={14} style={{ flexShrink: 0, color: "var(--accent-11)" }} />
       <Text size="1" style={{ color: "var(--accent-11)" }}>
         You&apos;re using Gryt in your browser. Some features are limited.{" "}
-        <Link
+        <a
+          className="font-medium text-gryt-accent underline-offset-2 hover:underline"
           href="https://github.com/Gryt-chat/gryt/releases"
           target="_blank"
           rel="noreferrer"
-          size="1"
-          weight="medium"
         >
           Download the desktop app
-        </Link>{" "}
+        </a>{" "}
         for the full experience.
       </Text>
       <IconButton tone="ghost" size="xsmall"

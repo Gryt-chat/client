@@ -1,6 +1,5 @@
-import { Avatar, Button, Checkbox, Dialog, Spinner, TextField } from "@gryt/ui";
+import { Alert, Avatar, Button, Checkbox, Dialog, Spinner, TextField } from "@gryt/ui";
 import {
-  Callout,
   Flex,
   Text,
 } from "@radix-ui/themes";
@@ -220,12 +219,7 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
             exit={{ height: 0, opacity: 0 }}
             style={{ overflow: "hidden" }}
           >
-            <Callout.Root role="alert">
-              <Callout.Icon>
-                <PiWarningFill size={16} />
-              </Callout.Icon>
-              <Callout.Text>{error}</Callout.Text>
-            </Callout.Root>
+            <Alert severity="info" role="alert"><span className="inline-flex items-start gap-2"><PiWarningFill size={16} />{error}</span></Alert>
             <Flex mt="2" justify="end">
               <Button tone="ghost" size="xsmall"
                 onClick={() => setError("")}

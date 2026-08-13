@@ -1,6 +1,5 @@
-import { AlertDialog, Button, Chip, IconButton, Tooltip } from "@gryt/ui";
+import { Alert, AlertDialog, Button, Chip, IconButton, Tooltip } from "@gryt/ui";
 import {
-  Callout,
   Code,
   Flex,
   Heading,
@@ -108,13 +107,11 @@ function BlockedRow({
       {/* The whole point of blocking is that someone makes an informed choice
           here. Telling them where to find the real answer beats asking them to
           guess from two strings. */}
-      <Callout.Root size="1" color="gray" variant="surface">
-        <Callout.Text size="1">
+      <Alert severity="info">
           {entry.keyId
             ? "If you rebuilt or replaced this server yourself, check its startup log — it prints its identity key on boot. Unblock only if that matches the fingerprint above."
             : "If you downgraded this server to an older version, that would explain it. Otherwise treat it as suspicious."}
-        </Callout.Text>
-      </Callout.Root>
+        </Alert>
 
       <AlertDialog.Root open={confirm} onOpenChange={setConfirm}>
         <Button tone="danger" size="xsmall"

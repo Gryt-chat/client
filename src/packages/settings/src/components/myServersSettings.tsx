@@ -1,6 +1,5 @@
-import { Accordion, AlertDialog, Avatar, Button, Checkbox, Chip, Spinner, Surface, TextField } from "@gryt/ui";
+import { Accordion, Alert, AlertDialog, Avatar, Button, Checkbox, Chip, Spinner, Surface, TextField } from "@gryt/ui";
 import {
-  Callout,
   Code,
   Flex,
   Heading,
@@ -367,12 +366,7 @@ function HostedServerCard({
 
         {hasError && server.error && (
           <Flex direction="column" gap="2">
-            <Callout.Root role="alert">
-              <Callout.Icon>
-                <PiWarningFill size={16} />
-              </Callout.Icon>
-              <Callout.Text>{server.error}</Callout.Text>
-            </Callout.Root>
+            <Alert severity="info" role="alert"><span className="inline-flex items-start gap-2"><PiWarningFill size={16} />{server.error}</span></Alert>
             <Flex justify="end">
               <Button tone="ghost" size="xsmall" onClick={onDismissError}>
                 <PiX size={14} />

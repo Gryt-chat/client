@@ -1,5 +1,5 @@
-import { Avatar, Button, Dialog, IconButton, Spinner } from "@gryt/ui";
-import { Callout, Flex, Text } from "@radix-ui/themes";
+import { Alert, Avatar, Button, Dialog, IconButton, Spinner } from "@gryt/ui";
+import { Flex, Text } from "@radix-ui/themes";
 import { useEffect, useRef, useState } from "react";
 import { PiEnvelopeFill, PiUsersFill, PiWarningFill, PiX } from "react-icons/pi";
 
@@ -158,12 +158,7 @@ export function InviteAcceptModal({
           )}
 
           {!alreadyMember && joinError ? (
-            <Callout.Root color="red" role="alert">
-              <Callout.Icon>
-                <PiWarningFill size={16} />
-              </Callout.Icon>
-              <Callout.Text>{joinError}</Callout.Text>
-            </Callout.Root>
+            <Alert severity="error" role="alert"><span className="inline-flex items-start gap-2"><PiWarningFill size={16} />{joinError}</span></Alert>
           ) : null}
 
           <Flex justify="end" gap="2">
