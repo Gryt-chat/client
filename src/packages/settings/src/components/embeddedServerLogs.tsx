@@ -116,9 +116,9 @@ export function EmbeddedServerLogs({ serverId }: { serverId: string }) {
         style={{
           height: 320,
           overflowY: "auto",
-          background: "var(--gray-2)",
-          border: "1px solid var(--gray-5)",
-          borderRadius: "var(--radius-3)",
+          background: "var(--gryt-neutral-2)",
+          border: "1px solid var(--gryt-neutral-5)",
+          borderRadius: "var(--gryt-radius-md)",
           padding: "8px 10px",
           fontFamily: "var(--code-font-family, monospace)",
           fontSize: 11,
@@ -146,10 +146,10 @@ export function EmbeddedServerLogs({ serverId }: { serverId: string }) {
                   wordBreak: "break-word",
                   color:
                     l.level === "error"
-                      ? "var(--red-11)"
+                      ? "var(--gryt-danger-11)"
                       : l.level === "warn"
-                        ? "var(--amber-11)"
-                        : "var(--gray-12)",
+                        ? "var(--gryt-warning-11)"
+                        : "var(--gryt-neutral-12)",
                 }}
               >
                 {l.text}

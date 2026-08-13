@@ -22,9 +22,9 @@ export const BlurredWord = ({ word }: { word: string }) => {
         onClick={toggle}
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") toggle(); }}
         style={{
-          color: "var(--red-11)",
+          color: "var(--gryt-danger-11)",
           cursor: "pointer",
-          borderBottom: "1px dotted var(--red-8)",
+          borderBottom: "1px dotted var(--gryt-danger-8)",
         }}
       >
         {word}
@@ -44,8 +44,8 @@ export const BlurredWord = ({ word }: { word: string }) => {
           WebkitFilter: "blur(4px)",
           userSelect: "none",
           cursor: "pointer",
-          background: "var(--gray-5)",
-          borderRadius: "var(--radius-2)",
+          background: "var(--gryt-neutral-5)",
+          borderRadius: "var(--gryt-radius-sm)",
           padding: "0 2px",
           transition: "filter 0.2s",
         }}

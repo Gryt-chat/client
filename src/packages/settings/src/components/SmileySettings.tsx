@@ -143,8 +143,8 @@ export function SmileySettings() {
                         gap: 4,
                         padding: "3px 8px",
                         borderRadius: 6,
-                        border: "1px solid var(--gray-a6)",
-                        background: active ? "var(--accent-a3)" : "var(--gray-a2)",
+                        border: "1px solid var(--gryt-neutral-a6)",
+                        background: active ? "var(--gryt-accent-a3)" : "var(--gryt-neutral-a2)",
                         opacity: active ? 1 : 0.4,
                         cursor: "pointer",
                         fontSize: 13,
@@ -153,7 +153,7 @@ export function SmileySettings() {
                       }}
                     >
                       <span style={{ fontSize: 16 }}>{emoji}</span>
-                      <span style={{ color: "var(--gray-11)", fontFamily: "var(--code-font-family, monospace)" }}>
+                      <span style={{ color: "var(--gryt-neutral-11)", fontFamily: "var(--code-font-family, monospace)" }}>
                         {primarySmiley(sc)}
                       </span>
                     </button>

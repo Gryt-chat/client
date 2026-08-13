@@ -89,7 +89,7 @@ export const MobileSheet = ({ open, onClose, side, children, width, height }: Mo
               ...config.position,
               ...defaultSize,
               zIndex: "var(--gryt-z-sheet)",
-              background: "var(--color-background)",
+              background: "var(--gryt-neutral-1)",
               boxShadow: "0 0 24px rgba(0,0,0,0.3)",
               display: "flex",
               flexDirection: "column",

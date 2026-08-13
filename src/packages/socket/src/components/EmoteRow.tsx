@@ -18,8 +18,8 @@ export function EmoteRow({
 }: EmoteRowProps) {
   return (
     <div className="flex items-center gap-2 py-1 px-2" style={{
-        border: "1px solid var(--gray-a4)",
-        borderRadius: "var(--radius-1)",
+        border: "1px solid var(--gryt-neutral-a4)",
+        borderRadius: "var(--gryt-radius-sm)",
         opacity: e.selected ? 1 : 0.5,
       }}>
       <Checkbox

@@ -250,8 +250,8 @@ export const ChatView = memo(({
         containers rather than restructuring into main/nav/aside.
       */}
       <div className="grow overflow-hidden" role="main" aria-label="Conversation" data-gryt="chat-view" style={{ minWidth: 0,
-          background: "var(--gray-3)",
-          borderRadius: "var(--radius-5)",
+          background: "var(--gryt-neutral-3)",
+          borderRadius: "var(--gryt-radius-lg)",
           position: "relative",
         }} onDragEnter={handleViewDragEnter} onDragLeave={handleViewDragLeave} onDragOver={handleViewDragOver} onDrop={handleViewDrop}>
         {isDragOver && (
@@ -264,9 +264,9 @@ export const ChatView = memo(({
         )}
         <div className="flex h-full w-full flex-col p-3">
           {channelName && (
-            <div className="flex items-center gap-2" style={{ marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid var(--gray-6)" }}>
-              {channelType === "voice" ? <PiSpeakerHighFill size={18} style={{ color: "var(--gray-11)", flexShrink: 0 }} /> : <PiChatCircleFill size={18} style={{ color: "var(--gray-11)", flexShrink: 0 }} />}
-              <span className="text-lg font-bold" style={{ color: "var(--gray-12)" }}>
+            <div className="flex items-center gap-2" style={{ marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid var(--gryt-neutral-6)" }}>
+              {channelType === "voice" ? <PiSpeakerHighFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : <PiChatCircleFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} />}
+              <span className="text-lg font-bold" style={{ color: "var(--gryt-neutral-12)" }}>
                 <EmojiText text={channelName} />
               </span>
             </div>

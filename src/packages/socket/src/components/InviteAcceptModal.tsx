@@ -137,7 +137,7 @@ export function InviteAcceptModal({
 
               {preview?.members && (
                 <div className="flex items-center gap-1">
-                  <PiUsersFill size={14} style={{ color: "var(--gray-9)" }} />
+                  <PiUsersFill size={14} style={{ color: "var(--gryt-neutral-9)" }} />
                   <span className="text-sm text-gryt-muted">
                     {preview.members} members
                   </span>

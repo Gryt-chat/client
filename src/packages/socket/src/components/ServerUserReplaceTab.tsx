@@ -55,10 +55,10 @@ function MemberDropdownItem({
         alignItems: "center",
         gap: 8,
         padding: "6px 8px",
-        borderRadius: "var(--radius-2)",
+        borderRadius: "var(--gryt-radius-sm)",
         cursor: "pointer",
       }}
-      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gray-4)"; }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gryt-neutral-4)"; }}
       onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
     >
       <Avatar
@@ -144,9 +144,9 @@ function MemberCombobox({
             left: 0,
             right: 0,
             marginTop: 4,
-            background: "var(--color-panel-solid)",
-            border: "1px solid var(--gray-6)",
-            borderRadius: "var(--radius-3)",
+            background: "var(--gryt-neutral-2)",
+            border: "1px solid var(--gryt-neutral-6)",
+            borderRadius: "var(--gryt-radius-md)",
             boxShadow: "0 8px 24px rgba(0, 0, 0, 0.25)",
             maxHeight: 220,
             overflowY: "auto",

@@ -1,5 +1,4 @@
 import { Alert, Avatar, Button, Chip, Dialog, IconButton, Surface, TextField } from "@gryt/ui";
-import { Theme, useThemeContext } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -67,17 +66,6 @@ export function AddNewServer({
 }: AddNewServerProps) {
   const { servers, switchToServer, setShowDiscovery, addServer } =
     useServerManagement();
-  /**
-   * The app's own theme values, to be re-applied inside the dialog.
-   *
-   * @gryt/ui's Dialog portals to document.body, which is outside the <Theme>
-   * wrapper in main.tsx — and that wrapper is the only thing defining the Radix
-   * variables. Portaled Radix components rendered with none of them: cards lost
-   * their borders and backgrounds, avatars ignored their size and blew the
-   * layout apart. Reading the values here and setting them again inside the
-   * popup restores the context the portal escaped.
-   */
-  const theme = useThemeContext();
   const { isElectron } = useLanDiscovery();
   const { openSettings } = useSettings();
   const { isAvailable: embeddedServerAvailable, servers: hostedServers } =
@@ -285,15 +273,6 @@ export function AddNewServer({
       <Dialog.Portal>
         <Dialog.Backdrop />
         <Dialog.Popup className="w-[30rem] max-w-[calc(100vw-2rem)] overflow-hidden">
-          <Theme
-            appearance={theme.appearance}
-            accentColor={theme.accentColor}
-            grayColor={theme.grayColor}
-            radius={theme.radius}
-            scaling={theme.scaling}
-            panelBackground={theme.panelBackground}
-            hasBackground={false}
-          >
             {/* Positioned by a wrapper rather than by a class on either the
                 Close or the IconButton. Close renders *as* the IconButton, and
                 the className does not survive that clone in either position —
@@ -349,9 +328,9 @@ export function AddNewServer({
                       <div className="flex items-center justify-center" style={{
                           width: 36,
                           height: 36,
-                          borderRadius: "var(--radius-3)",
-                          background: "var(--accent-a3)",
-                          color: "var(--accent-11)",
+                          borderRadius: "var(--gryt-radius-md)",
+                          background: "var(--gryt-accent-a3)",
+                          color: "var(--gryt-accent-11)",
                           flexShrink: 0,
                         }}>
                         <PiHouseFill size={18} />
@@ -366,7 +345,7 @@ export function AddNewServer({
                         </span>
                       </div>
 
-                      <div className="flex ml-auto" style={{ color: "var(--gray-9)" }}>
+                      <div className="flex ml-auto" style={{ color: "var(--gryt-neutral-9)" }}>
                         <PiCaretRightBold size={14} />
                       </div>
                     </div>
@@ -590,8 +569,8 @@ export function AddNewServer({
                             width: 28,
                             height: 28,
                             borderRadius: "50%",
-                            background: "var(--green-a3)",
-                            color: "var(--green-11)",
+                            background: "color-mix(in oklab, var(--gryt-success-9) 7%, transparent)",
+                            color: "var(--gryt-success-11)",
                             flexShrink: 0,
                           }}>
                           <PiBroadcastFill size={14} />
@@ -606,7 +585,7 @@ export function AddNewServer({
                           </span>
                         </div>
 
-                        <div className="flex ml-auto" style={{ color: "var(--gray-9)" }}>
+                        <div className="flex ml-auto" style={{ color: "var(--gryt-neutral-9)" }}>
                           <PiCaretRightBold size={14} />
                         </div>
                     </div>
@@ -654,7 +633,6 @@ export function AddNewServer({
                 </Dialog.Footer>
               </div>
             )}
-          </Theme>
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>

@@ -74,18 +74,18 @@ function AddonCard({
 
   return (
     <div style={{
-        borderRadius: "var(--radius-4)",
-        border: "1px solid var(--gray-5)",
+        borderRadius: "var(--gryt-radius-md)",
+        border: "1px solid var(--gryt-neutral-5)",
         overflow: "hidden",
-        background: "var(--color-panel-solid)",
+        background: "var(--gryt-neutral-2)",
       }}>
       <div style={{
           height: 120,
           background: bannerUrl
             ? undefined
             : isTheme
-            ? "linear-gradient(135deg, var(--purple-9), var(--plum-9))"
-            : "linear-gradient(135deg, var(--blue-9), var(--cyan-9))",
+            ? "linear-gradient(135deg, var(--gryt-accent-9), var(--gryt-accent-9))"
+            : "linear-gradient(135deg, var(--gryt-secondary-9), var(--gryt-secondary-9))",
           backgroundImage: bannerUrl ? `url(${bannerUrl})` : undefined,
           backgroundSize: "cover",
           backgroundPosition: "center",
@@ -158,7 +158,7 @@ export function AddonsSettings() {
       </div>
 
       {addons.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 py-12" style={{ color: "var(--gray-9)" }}>
+        <div className="flex flex-col items-center gap-2 py-12" style={{ color: "var(--gryt-neutral-9)" }}>
           <span className="text-sm text-gryt-muted">
             No addons yet
           </span>
@@ -184,7 +184,7 @@ export function AddonsSettings() {
         <div style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-            gap: "var(--space-3)",
+            gap: "12px",
           }}>
           {addons.map((addon) => (
             <AddonCard

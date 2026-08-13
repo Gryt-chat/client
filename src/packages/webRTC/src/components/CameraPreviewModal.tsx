@@ -280,7 +280,7 @@ export function CameraPreviewModal({
             style={{
               position: "relative",
               aspectRatio: "16 / 9",
-              borderRadius: "var(--radius-3)",
+              borderRadius: "var(--gryt-radius-md)",
               overflow: "hidden",
               background: "#000",
             }}

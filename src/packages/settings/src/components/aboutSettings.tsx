@@ -133,9 +133,9 @@ function UpdateControls() {
         {statusText && (
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
-              {isReady && <PiClockClockwiseFill size={16} color="var(--green-9)" />}
-              {status?.status === "not-available" && <PiCheckCircleFill size={16} color="var(--green-9)" />}
-              {status?.status === "error" && <PiXCircleFill size={16} color="var(--red-9)" />}
+              {isReady && <PiClockClockwiseFill size={16} color="var(--gryt-success-9)" />}
+              {status?.status === "not-available" && <PiCheckCircleFill size={16} color="var(--gryt-success-9)" />}
+              {status?.status === "error" && <PiXCircleFill size={16} color="var(--gryt-danger-9)" />}
               <span color={statusColor}>{statusText}</span>
             </div>
           </div>

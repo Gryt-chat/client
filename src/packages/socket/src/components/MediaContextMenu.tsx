@@ -115,7 +115,7 @@ function QuickReactions({
               width: 36,
               height: 36,
               minWidth: "unset",
-              borderRadius: "var(--radius-2)",
+              borderRadius: "var(--gryt-radius-sm)",
               padding: 0,
               flex: "0 0 auto",
             }}
@@ -133,10 +133,10 @@ function QuickReactions({
               width: 36,
               height: 36,
               minWidth: "unset",
-              borderRadius: "var(--radius-2)",
+              borderRadius: "var(--gryt-radius-sm)",
               padding: 0,
               flex: "0 0 auto",
-              color: "var(--gray-10)",
+              color: "var(--gryt-neutral-10)",
             }}
           >
             <PiSmileyFill size={20} />

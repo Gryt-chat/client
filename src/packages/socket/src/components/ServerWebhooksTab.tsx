@@ -263,7 +263,7 @@ function WebhookCard({
               border: "none",
               padding: 0,
               cursor: "pointer",
-              borderRadius: "var(--radius-full)",
+              borderRadius: "var(--gryt-radius-full)",
               flexShrink: 0,
             }}
           >

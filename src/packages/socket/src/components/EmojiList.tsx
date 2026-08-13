@@ -200,7 +200,7 @@ export function EmojiList({
         <div className="flex flex-col gap-1">
           {emojis.map((e) => (
             <div className="flex items-center gap-3 py-1 px-2 emoji-row" key={e.name} style={{
-                borderRadius: "var(--radius-1)",
+                borderRadius: "var(--gryt-radius-sm)",
                 transition: "background 120ms",
               }}>
               <img

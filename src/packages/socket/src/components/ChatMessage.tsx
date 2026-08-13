@@ -18,9 +18,9 @@ export const MessageHoverToolbar = ({
         display: "inline-flex",
         alignItems: "center",
         gap: "1px",
-        background: "var(--color-panel-solid)",
-        border: "1px solid var(--gray-6)",
-        borderRadius: "var(--radius-4)",
+        background: "var(--gryt-neutral-2)",
+        border: "1px solid var(--gryt-neutral-6)",
+        borderRadius: "var(--gryt-radius-md)",
         padding: "2px 3px",
         boxShadow: "0 2px 10px rgba(0, 0, 0, 0.18)",
         pointerEvents: "auto",
@@ -38,15 +38,15 @@ export const MessageHoverToolbar = ({
             padding: "4px 6px",
             fontSize: "14px",
             lineHeight: 1,
-            borderRadius: "var(--radius-3)",
+            borderRadius: "var(--gryt-radius-md)",
             cursor: "pointer",
             display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
-            color: "var(--gray-11)",
+            color: "var(--gryt-neutral-11)",
             transition: "background 0.15s",
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gray-4)"; }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gryt-neutral-4)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
         >
           ↩
@@ -62,15 +62,15 @@ export const MessageHoverToolbar = ({
             padding: "4px 6px",
             fontSize: "13px",
             lineHeight: 1,
-            borderRadius: "var(--radius-3)",
+            borderRadius: "var(--gryt-radius-md)",
             cursor: "pointer",
             display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
-            color: "var(--red-11)",
+            color: "var(--gryt-danger-11)",
             transition: "background 0.15s",
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--red-3)"; }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gryt-danger-3)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
         >
           🗑
@@ -116,20 +116,20 @@ export const WelcomeMessage = ({ channelName, channelType = "text", onStart }: {
         width: "120px",
         height: "120px",
         borderRadius: "50%",
-        background: "var(--gray-4)",
+        background: "var(--gryt-neutral-4)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         marginBottom: "24px",
-        border: "3px solid var(--gray-6)",
+        border: "3px solid var(--gryt-neutral-6)",
         boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-        color: "var(--gray-9)",
+        color: "var(--gryt-neutral-9)",
       }}>
       <ChannelIcon type={channelType} size={48} />
     </div>
 
     <div className="flex items-center gap-2" style={{ marginBottom: "12px" }}>
-      <span className="text-3xl font-bold" style={{ color: "var(--gray-12)", display: "inline-flex", alignItems: "center", gap: "8px" }}>
+      <span className="text-3xl font-bold" style={{ color: "var(--gryt-neutral-12)", display: "inline-flex", alignItems: "center", gap: "8px" }}>
         Welcome to <ChannelIcon type={channelType} size={24} /> <EmojiText text={channelName || "channel"} />!
       </span>
     </div>
@@ -149,11 +149,11 @@ export const WelcomeMessage = ({ channelName, channelType = "text", onStart }: {
       at all, with no focus to receive it.
     */}
     <button className="flex items-center gap-3" type="button" onClick={onStart} style={{
-        color: "var(--accent-9)",
-        background: "var(--accent-2)",
+        color: "var(--gryt-accent-9)",
+        background: "var(--gryt-accent-2)",
         padding: "12px 20px",
-        borderRadius: "var(--radius-4)",
-        border: "1px solid var(--accent-6)",
+        borderRadius: "var(--gryt-radius-md)",
+        border: "1px solid var(--gryt-accent-6)",
         cursor: onStart ? "pointer" : "default",
         font: "inherit",
       }}>

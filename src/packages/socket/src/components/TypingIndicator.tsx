@@ -41,7 +41,7 @@ export function TypingIndicator({ typingUsers, serverHost }: TypingIndicatorProp
                 src={resolveAvatarSrc(first.avatarFileId && serverHost ? getUploadsFileUrl(serverHost, first.avatarFileId, { thumb: true }) : undefined, first.nickname)}
               />
             )}
-            <span className="text-xs" style={{ color: "var(--gray-11)", fontSize: 13 }}>
+            <span className="text-xs" style={{ color: "var(--gryt-neutral-11)", fontSize: 13 }}>
               {buildLabel(typingUsers)}
             </span>
           </div>

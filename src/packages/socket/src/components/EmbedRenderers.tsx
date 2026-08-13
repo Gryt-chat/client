@@ -283,7 +283,7 @@ export const XEmbed = ({ url, serverHost, onDismiss }: { url: string; serverHost
       <div className="link-embed-container">
         <DismissButton onDismiss={onDismiss} />
         <div className="link-embed-twitter-skeleton">
-          <SkeletonBase width="100%" height="100%" borderRadius="var(--radius-4)" />
+          <SkeletonBase width="100%" height="100%" borderRadius="var(--gryt-radius-md)" />
         </div>
       </div>
     );

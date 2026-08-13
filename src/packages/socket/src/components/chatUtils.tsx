@@ -103,7 +103,7 @@ export const MessageTimestamp = ({ date }: { date: Date }) => (
       12px rather than 10px because 10 was the smallest text in the app by some
       margin, and a timestamp nobody can read is not doing its job.
     */}
-    <span style={{ fontSize: 12, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gray-11)" }}>
+    <span style={{ fontSize: 12, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gryt-neutral-11)" }}>
       {formatMessageTime(date)}
     </span>
   </Tooltip>
@@ -111,20 +111,20 @@ export const MessageTimestamp = ({ date }: { date: Date }) => (
 
 export const DateSeparator = ({ date }: { date: Date }) => (
   <div className="flex items-center gap-3" style={{ padding: "8px 0", width: "100%" }}>
-    <div style={{ flex: 1, height: 1, background: "var(--gray-6)" }} />
+    <div style={{ flex: 1, height: 1, background: "var(--gryt-neutral-6)" }} />
     <span className="text-xs text-gryt-muted font-medium" style={{ whiteSpace: "nowrap" }}>
       {formatDateSeparator(date)}
     </span>
-    <div style={{ flex: 1, height: 1, background: "var(--gray-6)" }} />
+    <div style={{ flex: 1, height: 1, background: "var(--gryt-neutral-6)" }} />
   </div>
 );
 
 export const NewMessagesDivider = () => (
   <div className="flex items-center gap-3" style={{ padding: "8px 0", width: "100%" }}>
-    <div style={{ flex: 1, height: 1, background: "var(--red-8)" }} />
+    <div style={{ flex: 1, height: 1, background: "var(--gryt-danger-8)" }} />
     <span className="text-xs text-gryt-danger font-medium" style={{ whiteSpace: "nowrap" }}>
       New since last visit
     </span>
-    <div style={{ flex: 1, height: 1, background: "var(--red-8)" }} />
+    <div style={{ flex: 1, height: 1, background: "var(--gryt-danger-8)" }} />
   </div>
 );

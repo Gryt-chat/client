@@ -328,12 +328,12 @@ export function Settings() {
         <style>{`
           [data-setting].gryt-setting-hit {
             animation: gryt-setting-hit ${HIGHLIGHT_MS}ms ease-out;
-            border-radius: var(--radius-3);
+            border-radius: var(--gryt-radius-md);
           }
           @keyframes gryt-setting-hit {
             0%, 55% {
-              background-color: var(--accent-a4);
-              box-shadow: 0 0 0 8px var(--accent-a4);
+              background-color: var(--gryt-accent-a4);
+              box-shadow: 0 0 0 8px var(--gryt-accent-a4);
             }
             100% {
               background-color: transparent;
@@ -343,7 +343,7 @@ export function Settings() {
           @media (prefers-reduced-motion: reduce) {
             [data-setting].gryt-setting-hit {
               animation: none;
-              outline: 2px solid var(--accent-9);
+              outline: 2px solid var(--gryt-accent-9);
               outline-offset: 5px;
             }
           }
@@ -467,24 +467,24 @@ export function Settings() {
             width: 100%;
             text-align: left;
             font: inherit;
-            font-size: var(--font-size-2);
+            font-size: 14px;
             padding: 8px 10px;
-            border-radius: var(--radius-3);
+            border-radius: var(--gryt-radius-md);
             border: 0;
             cursor: pointer;
             background: transparent;
-            color: var(--gray-12);
+            color: var(--gryt-neutral-12);
           }
-          .gryt-settings-nav:hover { background: var(--gray-a3); }
+          .gryt-settings-nav:hover { background: var(--gryt-neutral-a3); }
           .gryt-settings-nav[data-active="true"] {
-            background: var(--accent-a3);
-            color: var(--accent-11);
+            background: var(--gryt-accent-a3);
+            color: var(--gryt-accent-11);
           }
           /* Just the heart carries the colour. A filled button competes with
              the active-item highlight and shouts in a settings sidebar; a red
              heart against grey labels catches the eye on its own. */
-          .gryt-settings-nav-cta svg { color: var(--red-9); }
-          .gryt-settings-nav-cta:hover svg { color: var(--red-10); }
+          .gryt-settings-nav-cta svg { color: var(--gryt-danger-9); }
+          .gryt-settings-nav-cta:hover svg { color: var(--gryt-danger-10); }
           .gryt-settings-result {
             display: flex;
             flex-direction: column;
@@ -494,15 +494,15 @@ export function Settings() {
             text-align: left;
             font: inherit;
             padding: 7px 10px;
-            border-radius: var(--radius-3);
+            border-radius: var(--gryt-radius-md);
             border: 0;
             cursor: pointer;
             background: transparent;
           }
-          .gryt-settings-result:hover { background: var(--gray-a3); }
+          .gryt-settings-result:hover { background: var(--gryt-neutral-a3); }
           .gryt-settings-result[data-picked="true"] {
-            background: var(--accent-a3);
-            color: var(--accent-11);
+            background: var(--gryt-accent-a3);
+            color: var(--gryt-accent-11);
           }
         `}</style>
       </Dialog.Popup>

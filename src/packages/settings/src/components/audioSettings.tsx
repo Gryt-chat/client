@@ -294,7 +294,7 @@ export function AudioSettings() {
             style={{
               width: '3px',
               height: `${height}px`,
-              backgroundColor: isAboveThreshold ? 'var(--green-9)' : 'var(--gray-9)',
+              backgroundColor: isAboveThreshold ? 'var(--gryt-success-9)' : 'var(--gryt-neutral-9)',
               marginRight: '1px',
               borderRadius: '1px',
             }}
@@ -409,10 +409,10 @@ export function AudioSettings() {
           <div className="flex flex-col gap-1">
             <span className="text-gryt-muted">Audio Spectrum (Raw Input)</span>
             <div style={{
-              border: '1px solid var(--gray-6)',
+              border: '1px solid var(--gryt-neutral-6)',
               borderRadius: '4px',
               padding: '4px',
-              backgroundColor: 'var(--gray-3)',
+              backgroundColor: 'var(--gryt-neutral-3)',
               minHeight: '48px',
               display: 'flex',
               alignItems: 'center',
@@ -457,7 +457,7 @@ export function AudioSettings() {
                 transform: 'translate(-50%, -50%)',
                 width: '3px',
                 height: '20px',
-                backgroundColor: isMicLive ? 'var(--green-9)' : 'var(--gray-9)',
+                backgroundColor: isMicLive ? 'var(--gryt-success-9)' : 'var(--gryt-neutral-9)',
                 borderRadius: '2px',
                 zIndex: 3,
                 pointerEvents: 'none',
@@ -475,7 +475,7 @@ export function AudioSettings() {
                 transform: 'translateY(-50%)',
                 width: `${micDisplayVolume}%`,
                 height: '8px',
-                backgroundColor: isMicLive ? 'var(--green-a4)' : 'var(--gray-a4)',
+                backgroundColor: isMicLive ? 'color-mix(in oklab, var(--gryt-success-9) 10%, transparent)' : 'var(--gryt-neutral-a4)',
                 borderRadius: '4px',
                 zIndex: 1,
                 pointerEvents: 'none',

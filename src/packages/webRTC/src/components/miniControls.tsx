@@ -100,7 +100,7 @@ export function MiniControls({
               alignItems: "center",
               gap: isColumn ? "4px" : "8px",
               ...(isColumn ? {
-                background: "var(--gray-a3)",
+                background: "var(--gryt-neutral-a3)",
                 borderRadius: "9999px",
                 padding: "2px",
               } : {}),

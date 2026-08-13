@@ -16,11 +16,11 @@ export function BrowserBanner() {
   return (
     <div className="flex items-center justify-center gap-2 px-3 py-1" style={{
         flexShrink: 0,
-        background: "var(--accent-a3)",
-        borderBottom: "1px solid var(--accent-a5)",
+        background: "var(--gryt-accent-a3)",
+        borderBottom: "1px solid var(--gryt-accent-a5)",
       }}>
-      <PiDownloadSimpleFill size={14} style={{ flexShrink: 0, color: "var(--accent-11)" }} />
-      <span className="text-xs" style={{ color: "var(--accent-11)" }}>
+      <PiDownloadSimpleFill size={14} style={{ flexShrink: 0, color: "var(--gryt-accent-11)" }} />
+      <span className="text-xs" style={{ color: "var(--gryt-accent-11)" }}>
         You&apos;re using Gryt in your browser. Some features are limited.{" "}
         <a
           className="font-medium text-gryt-accent underline-offset-2 hover:underline"

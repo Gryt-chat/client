@@ -32,7 +32,7 @@ export const Visualizer: React.FC<VisualizerProps> = ({
     if (!canvas || !canvasCtx) return;
 
     const effectiveColor = resolveColor(
-      barsColor || "var(--accent-9)",
+      barsColor || "var(--gryt-accent-9)",
       canvas.closest(".radix-themes") as HTMLElement
     );
 

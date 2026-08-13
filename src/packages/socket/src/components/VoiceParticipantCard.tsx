@@ -110,7 +110,7 @@ export function VideoCard({
         overflow: "hidden",
         background: "#000",
         outline: isSpeaking
-          ? `${SPEAKING_RING}px solid var(--accent-9)`
+          ? `${SPEAKING_RING}px solid var(--gryt-accent-9)`
           : `${SPEAKING_RING}px solid transparent`,
         // Inward, because the tile fills its cell exactly. An outline is drawn
         // outside the border box, so at offset 0 the ring lands in the gap
@@ -143,8 +143,8 @@ export function VideoCard({
         <div className="flex items-center justify-center" style={{
             width: "100%",
             height: "100%",
-            color: "var(--gray-10)",
-            background: "var(--gray-3)",
+            color: "var(--gryt-neutral-10)",
+            background: "var(--gryt-neutral-3)",
           }}>
           <span className="text-xs text-gryt-muted">
             {pendingLabel}
@@ -266,10 +266,10 @@ function useTileHeight(ref: React.RefObject<HTMLElement | null>): number {
 }
 
 function latencyColor(ms: number | null): string {
-  if (ms === null) return "var(--gray-9)";
-  if (ms < 30) return "var(--green-9)";
-  if (ms < 80) return "var(--yellow-9)";
-  return "var(--red-9)";
+  if (ms === null) return "var(--gryt-neutral-9)";
+  if (ms < 30) return "var(--gryt-success-9)";
+  if (ms < 80) return "var(--gryt-warning-9)";
+  return "var(--gryt-danger-9)";
 }
 
 function LatencyBadge({
@@ -463,7 +463,7 @@ export function VoiceParticipantCard({
           radius={tileRadius}
           objectFit="contain"
           pendingLabel="Connecting screen…"
-          statusIcons={<PiScreencastFill size={10} color="var(--blue-9)" />}
+          statusIcons={<PiScreencastFill size={10} color="var(--gryt-secondary-9)" />}
           onClick={
             screenStream
               ? () =>
@@ -520,11 +520,11 @@ export function VoiceParticipantCard({
       )}
 
       {(client.cameraEnabled || fallbackCameraStreamID) && (
-        <PiVideoCameraFill size={10} color="var(--green-9)" />
+        <PiVideoCameraFill size={10} color="var(--gryt-success-9)" />
       )}
 
       {client.screenShareEnabled && (
-        <PiScreencastFill size={10} color="var(--blue-9)" />
+        <PiScreencastFill size={10} color="var(--gryt-secondary-9)" />
       )}
 
       {/* Beside the name, the way the avatar tile does it. It used to sit
@@ -617,7 +617,7 @@ export function VoiceParticipantCard({
         />
 
         {(client.cameraEnabled || fallbackCameraStreamID) && (
-          <div className="flex absolute" style={{ top: "-4px", right: "-4px", background: "var(--green-9)",
+          <div className="flex absolute" style={{ top: "-4px", right: "-4px", background: "var(--gryt-success-9)",
               borderRadius: "50%",
               padding: "2px" }}>
             <PiVideoCameraFill size={10} color="white" />
@@ -625,7 +625,7 @@ export function VoiceParticipantCard({
         )}
 
         {client.screenShareEnabled && (
-          <div className="flex absolute" style={{ top: "-4px", left: "-4px", background: "var(--blue-9)",
+          <div className="flex absolute" style={{ top: "-4px", left: "-4px", background: "var(--gryt-secondary-9)",
               borderRadius: "50%",
               padding: "2px" }}>
             <PiScreencastFill size={10} color="white" />
@@ -638,7 +638,7 @@ export function VoiceParticipantCard({
               left: 0,
               right: 0,
               bottom: 0,
-              background: "var(--color-panel-translucent)",
+              background: "var(--gryt-neutral-a3)",
               borderRadius: "50%",
             }}>
             <SkeletonBase width="24px" height="24px" borderRadius="50%" />
@@ -650,14 +650,14 @@ export function VoiceParticipantCard({
             hang a badge on. */}
         {((compact && (client.isMuted || client.isDeafened)) ||
           client.isAFK) && (
-          <div className="flex absolute gap-1" style={{ bottom: "-4px", right: "-4px", background: "var(--gray-3)",
-              borderRadius: "var(--radius-4)",
+          <div className="flex absolute gap-1" style={{ bottom: "-4px", right: "-4px", background: "var(--gryt-neutral-3)",
+              borderRadius: "var(--gryt-radius-md)",
               padding: "2px 4px",
-              border: "1px solid var(--gray-6)" }}>
+              border: "1px solid var(--gryt-neutral-6)" }}>
             {compact && client.isDeafened ? (
-              <PiSpeakerSlashFill size={12} color="var(--red-9)" />
+              <PiSpeakerSlashFill size={12} color="var(--gryt-danger-9)" />
             ) : compact && client.isMuted ? (
-              <PiMicrophoneSlashFill size={12} color="var(--red-9)" />
+              <PiMicrophoneSlashFill size={12} color="var(--gryt-danger-9)" />
             ) : null}
 
             {client.isAFK && (

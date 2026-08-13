@@ -1,16 +1,15 @@
-/* Tailwind, without preflight.
+/* Tailwind, preflight included.
  *
- * The usual `@import "tailwindcss"` pulls in preflight, which is a full CSS
- * reset. This app already has one — Radix Themes ships its own — and stacking
- * two resets changes margins, borders and form-control defaults across every
- * screen at once. Importing theme and utilities separately gives the utility
- * classes with none of that.
+ * This used to import theme and utilities separately to keep preflight out,
+ * because Radix Themes shipped a reset of its own and stacking two of them
+ * changes margins, borders and form-control defaults across every screen at
+ * once. Radix Themes is gone, so the note that said "preflight comes back when
+ * Radix Themes goes" is now this line.
  *
- * Preflight comes back when Radix Themes goes, not before.
+ * @gryt/ui deliberately ships no reset — that is the consuming app's decision,
+ * made once — so this is the only one in the app.
  */
-@layer theme, base, components, utilities;
-@import "tailwindcss/theme.css" layer(theme);
-@import "tailwindcss/utilities.css" layer(utilities);
+@import "tailwindcss";
 
 @source "./**/*.{ts,tsx}";
 
@@ -101,30 +100,7 @@
  * 0 everywhere but Electron, so this costs the browser build nothing.
  */
 .gryt-dialog-backdrop,
-.gryt-drawer-backdrop,
-.rt-BaseDialogOverlay,
-.rt-BaseDialogScroll {
-  top: var(--titlebar-inset, 0px);
-}
-
-/* And the same for the box that actually holds the dim.
- *
- * Insetting the overlay above was not enough, because a Radix overlay paints
- * nothing itself. Measured with the inset forced on:
- *
- *   .rt-BaseDialogOverlay            top: 36px   background: rgba(0, 0, 0, 0)
- *   .rt-BaseDialogOverlay::before    inset: 0    background: rgba(0, 0, 0, 0.5)
- *
- * The dim lives in the pseudo-element, and it is position: fixed — so it is
- * laid out against the viewport and `top` on its parent means nothing to it.
- * It covered the titlebar however far the overlay was moved, which is why the
- * titlebar kept looking faded while every measurement of the overlay said it
- * was clear.
- *
- * @gryt/ui needs no equivalent. Its backdrop paints on the element itself and
- * has no ::before, so the rule above already moves it.
- */
-.rt-BaseDialogOverlay::before {
+.gryt-drawer-backdrop {
   top: var(--titlebar-inset, 0px);
 }
 
@@ -144,40 +120,26 @@
   pointer-events: auto;
 }
 
-.rt-BaseTabListTrigger {
-  justify-content: flex-end;
-}
-
-/* Base typography on the document, not on .radix-themes.
+/* Base typography on the document.
  *
  * @gryt/ui portals its overlays to document.body — Dialog, Drawer, Menu, Select
- * and Tooltip all do — which is outside the .radix-themes wrapper that used to
- * be the only thing setting a font. Portaled content was falling back to the
- * browser's serif default. Setting it here means anything portaled inherits,
- * and it is where this belongs once Radix Themes is gone and that wrapper with
- * it.
+ * and Tooltip all do — so a font set on any wrapper inside the app misses them
+ * and portaled content falls back to the browser's serif. This is the element
+ * everything inherits from, which is where it belonged all along.
  */
 html {
   font-family: "Atkinson Hyperlegible Next", ui-sans-serif, system-ui, sans-serif;
 }
 
-.radix-themes {
-  --cursor-button: pointer;
-  --cursor-checkbox: pointer;
-  --cursor-disabled: default;
-  --cursor-link: pointer;
-  --cursor-menu-item: pointer;
-  --cursor-radio: pointer;
-  --cursor-slider-thumb: grab;
-  --cursor-slider-thumb-active: grabbing;
-  --cursor-switch: pointer;
-  --default-font-family: "Atkinson Hyperlegible Next", sans-serif;
+/* Two things the .radix-themes wrapper used to carry and the app still wants.
+   Everything else in that block — the cursor variables, the scaling — was
+   Radix's own plumbing and went with it. */
+:root {
   --code-font-family: "Atkinson Hyperlegible Mono", monospace;
-  --scaling: 1.15;
 }
 
 /* Gryt light theme — gray background, white panels */
-.light, .light-theme, :is(.light .radix-themes) {
+.light, .light-theme {
   --gryt-titlebar-bg: #e8eaef;
   --color-background: #eef0f4;
   --color-panel-solid: #ffffff;
@@ -187,7 +149,7 @@ html {
 }
 
 /* Gryt dark theme — matches the site/splash palette */
-.dark, .dark-theme, :is(.dark .radix-themes) {
+.dark, .dark-theme {
   --gryt-titlebar-bg: #0d0f13;
   --color-background: #111318;
   --color-panel-solid: #1a1d24;
@@ -247,14 +209,14 @@ body {
 .chat-editor-wrapper {
   display: flex;
   flex-direction: column;
-  background: var(--gray-2);
-  border: 1px solid var(--gray-6);
-  border-radius: var(--radius-5);
+  background: var(--gryt-neutral-2);
+  border: 1px solid var(--gryt-neutral-6);
+  border-radius: var(--gryt-radius-lg);
   transition: border-color 0.15s ease;
 }
 
 .chat-editor-wrapper:focus-within {
-  border-color: var(--accent-8);
+  border-color: var(--gryt-accent-8);
 }
 
 .chat-editor-disabled {
@@ -272,7 +234,7 @@ body {
   background: transparent;
   font-size: var(--chat-font-size, 16px);
   line-height: 1.5;
-  color: var(--gray-12);
+  color: var(--gryt-neutral-12);
   font-family: inherit;
   flex: 1;
   min-width: 0;
@@ -283,7 +245,7 @@ body {
 
 .chat-editor-textarea:empty::before {
   content: attr(data-placeholder);
-  color: var(--gray-9);
+  color: var(--gryt-neutral-9);
   pointer-events: none;
 }
 
@@ -299,10 +261,10 @@ body {
 .chat-editor-mention {
   display: inline-flex;
   align-items: center;
-  color: var(--accent-11);
+  color: var(--gryt-accent-11);
   font-weight: 600;
-  background: var(--accent-a3);
-  border-radius: var(--radius-2);
+  background: var(--gryt-accent-a3);
+  border-radius: var(--gryt-radius-sm);
   padding: 0 2px;
   user-select: none;
   white-space: nowrap;
@@ -315,9 +277,9 @@ body {
   height: 32px;
   position: relative;
   flex-shrink: 0;
-  border-radius: var(--radius-1);
+  border-radius: var(--gryt-radius-sm);
   overflow: hidden;
-  background: var(--gray-3);
+  background: var(--gryt-neutral-3);
 }
 
 .emoji-upload-preview-img {
@@ -367,13 +329,13 @@ body {
 
 .emoji-upload-preview-bar-inner {
   height: 100%;
-  background: var(--accent-9);
+  background: var(--gryt-accent-9);
   transition: width 150ms ease;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25) inset;
 }
 
 .emoji-upload-preview-wrap[data-status="processing"] .emoji-upload-preview-bar-inner {
-  background: var(--amber-9);
+  background: var(--gryt-warning-9);
 }
 
 /* ── File Preview Bar (editor) ─────────────────────────────── */
@@ -382,7 +344,7 @@ body {
   display: flex;
   gap: 8px;
   padding: 8px 10px;
-  border-bottom: 1px solid var(--gray-5);
+  border-bottom: 1px solid var(--gryt-neutral-5);
   overflow-x: auto;
   flex-wrap: nowrap;
 }
@@ -394,10 +356,10 @@ body {
   flex-direction: column;
   align-items: center;
   width: 100px;
-  border-radius: var(--radius-4);
+  border-radius: var(--gryt-radius-md);
   overflow: hidden;
-  border: 1px solid var(--gray-5);
-  background: var(--gray-3);
+  border: 1px solid var(--gryt-neutral-5);
+  background: var(--gryt-neutral-3);
 }
 
 .chat-editor-file-preview img {
@@ -413,7 +375,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--gray-9);
+  color: var(--gryt-neutral-9);
   font-size: 28px;
 }
 
@@ -429,7 +391,7 @@ body {
 
 .chat-editor-file-preview-name {
   font-size: 10px;
-  color: var(--gray-11);
+  color: var(--gryt-neutral-11);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -439,7 +401,7 @@ body {
 
 .chat-editor-file-preview-size {
   font-size: 9px;
-  color: var(--gray-9);
+  color: var(--gryt-neutral-9);
 }
 
 .chat-editor-file-delete {
@@ -451,7 +413,7 @@ body {
   border-radius: 50%;
   border: none;
   background: var(--color-overlay);
-  color: var(--gray-1);
+  color: var(--gryt-neutral-1);
   font-size: 10px;
   line-height: 1;
   display: flex;
@@ -467,7 +429,7 @@ body {
 }
 
 .chat-editor-file-delete:hover {
-  background: var(--red-9);
+  background: var(--gryt-danger-9);
 }
 
 /* ── Editor Input Row ──────────────────────────────────────── */
@@ -488,15 +450,15 @@ body {
   margin: 2px 0 2px 4px;
   background: none;
   border: none;
-  color: var(--gray-9);
+  color: var(--gryt-neutral-9);
   cursor: pointer;
-  border-radius: var(--radius-3);
+  border-radius: var(--gryt-radius-md);
   transition: color 0.15s ease, background 0.15s ease;
 }
 
 .chat-editor-attach-btn:hover {
-  color: var(--gray-12);
-  background: var(--gray-4);
+  color: var(--gryt-neutral-12);
+  background: var(--gryt-neutral-4);
 }
 
 .chat-editor-attach-btn:disabled {
@@ -514,15 +476,15 @@ body {
   margin: 2px 0;
   background: none;
   border: none;
-  color: var(--gray-9);
+  color: var(--gryt-neutral-9);
   cursor: pointer;
-  border-radius: var(--radius-3);
+  border-radius: var(--gryt-radius-md);
   transition: color 0.15s ease, background 0.15s ease;
 }
 
 .chat-editor-emoji-btn:hover {
-  color: var(--gray-12);
-  background: var(--gray-4);
+  color: var(--gryt-neutral-12);
+  background: var(--gryt-neutral-4);
 }
 
 .chat-editor-emoji-btn:disabled {
@@ -540,15 +502,15 @@ body {
   margin: 2px 4px 2px 0;
   background: none;
   border: none;
-  color: var(--gray-9);
+  color: var(--gryt-neutral-9);
   cursor: pointer;
-  border-radius: var(--radius-3);
+  border-radius: var(--gryt-radius-md);
   transition: color 0.15s ease, background 0.15s ease;
 }
 
 .chat-editor-send-btn:hover {
-  color: var(--accent-9);
-  background: var(--gray-4);
+  color: var(--gryt-accent-9);
+  background: var(--gryt-neutral-4);
 }
 
 .chat-editor-send-btn:disabled {
@@ -565,10 +527,10 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in srgb, var(--accent-3) 85%, transparent);
+  background: color-mix(in srgb, var(--gryt-accent-3) 85%, transparent);
   backdrop-filter: blur(2px);
-  border: 2px dashed var(--accent-9);
-  border-radius: var(--radius-5);
+  border: 2px dashed var(--gryt-accent-9);
+  border-radius: var(--gryt-radius-lg);
   pointer-events: none;
 }
 
@@ -577,7 +539,7 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  color: var(--accent-11);
+  color: var(--gryt-accent-11);
   font-size: 16px;
   font-weight: 600;
 }
@@ -605,7 +567,7 @@ body {
   max-width: min(var(--img-w, 480px), 480px, 100%);
   max-height: 480px;
   width: fit-content;
-  border-radius: var(--radius-4);
+  border-radius: var(--gryt-radius-md);
   overflow: hidden;
 }
 
@@ -615,7 +577,7 @@ body {
   max-height: 480px;
   width: auto;
   height: auto;
-  border-radius: var(--radius-4);
+  border-radius: var(--gryt-radius-md);
   cursor: pointer;
 }
 
@@ -639,7 +601,7 @@ body {
 
 .lightbox-image {
   user-select: none;
-  border-radius: var(--radius-2);
+  border-radius: var(--gryt-radius-sm);
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
   transition: transform 0.05s linear;
 }
@@ -647,7 +609,7 @@ body {
 .lightbox-toolbar-btn {
   width: 40px;
   height: 40px;
-  border-radius: var(--radius-5);
+  border-radius: var(--gryt-radius-lg);
   border: 1px solid rgba(255, 255, 255, 0.15);
   background: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(8px);
@@ -683,9 +645,9 @@ body {
   align-items: center;
   gap: 12px;
   padding: 10px 14px;
-  background: var(--gray-2);
-  border: 1px solid var(--gray-5);
-  border-radius: var(--radius-4);
+  background: var(--gryt-neutral-2);
+  border: 1px solid var(--gryt-neutral-5);
+  border-radius: var(--gryt-radius-md);
   max-width: 340px;
   min-width: 220px;
 }
@@ -697,9 +659,9 @@ body {
   justify-content: center;
   width: 40px;
   height: 40px;
-  border-radius: var(--radius-4);
-  background: var(--gray-4);
-  color: var(--accent-9);
+  border-radius: var(--gryt-radius-md);
+  background: var(--gryt-neutral-4);
+  color: var(--gryt-accent-9);
 }
 
 .chat-file-card-download {
@@ -709,16 +671,16 @@ body {
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: var(--radius-3);
-  background: var(--gray-4);
-  color: var(--gray-11);
+  border-radius: var(--gryt-radius-md);
+  background: var(--gryt-neutral-4);
+  color: var(--gryt-neutral-11);
   transition: background 0.15s ease, color 0.15s ease;
   text-decoration: none;
 }
 
 .chat-file-card-download:hover {
-  background: var(--accent-4);
-  color: var(--accent-11);
+  background: var(--gryt-accent-4);
+  color: var(--gryt-accent-11);
 }
 
 /* ── Link Embeds ─────────────────────────────────────────── */
@@ -727,7 +689,7 @@ body {
   position: relative;
   max-width: 420px;
   overflow: hidden;
-  border-radius: var(--radius-4);
+  border-radius: var(--gryt-radius-md);
 }
 
 .link-embed-dismiss {
@@ -740,7 +702,7 @@ body {
   justify-content: center;
   width: 24px;
   height: 24px;
-  border-radius: var(--radius-3);
+  border-radius: var(--gryt-radius-md);
   border: none;
   background: rgba(0, 0, 0, 0.55);
   color: white;
@@ -762,10 +724,10 @@ body {
   max-height: 350px;
   height: auto;
   object-fit: cover;
-  border-radius: var(--radius-4);
+  border-radius: var(--gryt-radius-md);
   cursor: pointer;
   display: block;
-  background: var(--gray-3);
+  background: var(--gryt-neutral-3);
   transition: opacity 0.15s ease;
 }
 
@@ -776,7 +738,7 @@ body {
 .link-embed-video {
   max-width: 100%;
   max-height: 400px;
-  border-radius: var(--radius-4);
+  border-radius: var(--gryt-radius-md);
   display: block;
 }
 
@@ -784,26 +746,26 @@ body {
   width: 100%;
   aspect-ratio: 16 / 9;
   border: none;
-  border-radius: var(--radius-4);
+  border-radius: var(--gryt-radius-md);
   display: block;
-  background: var(--gray-3);
+  background: var(--gryt-neutral-3);
 }
 
 .link-embed-iframe-soundcloud {
   width: 100%;
   height: 166px;
   border: none;
-  border-radius: var(--radius-4);
+  border-radius: var(--gryt-radius-md);
   display: block;
-  background: var(--gray-3);
+  background: var(--gryt-neutral-3);
 }
 
 .link-embed-iframe-spotify {
   width: 100%;
   border: none;
-  border-radius: var(--radius-4);
+  border-radius: var(--gryt-radius-md);
   display: block;
-  background: var(--gray-3);
+  background: var(--gryt-neutral-3);
 }
 
 .link-embed-iframe-tiktok {
@@ -812,27 +774,27 @@ body {
   aspect-ratio: 9 / 16;
   max-height: 600px;
   border: none;
-  border-radius: var(--radius-4);
+  border-radius: var(--gryt-radius-md);
   display: block;
-  background: var(--gray-3);
+  background: var(--gryt-neutral-3);
 }
 
 .link-embed-iframe-instagram {
   width: 100%;
   height: 480px;
   border: none;
-  border-radius: var(--radius-4);
+  border-radius: var(--gryt-radius-md);
   display: block;
-  background: var(--gray-3);
+  background: var(--gryt-neutral-3);
 }
 
 .link-embed-iframe-twitter {
   width: 100%;
   height: 460px;
   border: none;
-  border-radius: var(--radius-4);
+  border-radius: var(--gryt-radius-md);
   display: block;
-  background: var(--gray-3);
+  background: var(--gryt-neutral-3);
 }
 
 .link-embed-twitter-skeleton {
@@ -842,9 +804,9 @@ body {
 
 .link-embed-audio-wrap {
   padding: 8px 12px;
-  background: var(--gray-2);
-  border: 1px solid var(--gray-5);
-  border-radius: var(--radius-4);
+  background: var(--gryt-neutral-2);
+  border: 1px solid var(--gryt-neutral-5);
+  border-radius: var(--gryt-radius-md);
 }
 
 .link-embed-audio {
@@ -856,22 +818,22 @@ body {
   display: flex;
   text-decoration: none;
   color: inherit;
-  border-radius: var(--radius-4);
+  border-radius: var(--gryt-radius-md);
   overflow: hidden;
-  background: var(--gray-2);
-  border: 1px solid var(--gray-5);
+  background: var(--gryt-neutral-2);
+  border: 1px solid var(--gryt-neutral-5);
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 
 .link-embed-card:hover {
-  border-color: var(--gray-7);
-  background: var(--gray-3);
+  border-color: var(--gryt-neutral-7);
+  background: var(--gryt-neutral-3);
 }
 
 .link-embed-card-accent {
   width: 4px;
   flex-shrink: 0;
-  background: var(--accent-9);
+  background: var(--gryt-accent-9);
 }
 
 .link-embed-card-inner {
@@ -903,7 +865,7 @@ body {
 
 .link-embed-card-hostname {
   font-size: 12px;
-  color: var(--gray-9);
+  color: var(--gryt-neutral-9);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -912,7 +874,7 @@ body {
 .link-embed-card-title {
   font-size: 14px;
   font-weight: 600;
-  color: var(--accent-11);
+  color: var(--gryt-accent-11);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -922,7 +884,7 @@ body {
 
 .link-embed-card-description {
   font-size: 13px;
-  color: var(--gray-11);
+  color: var(--gryt-neutral-11);
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
@@ -937,7 +899,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--gray-3);
+  background: var(--gryt-neutral-3);
 }
 
 .link-embed-card-image {
@@ -950,7 +912,7 @@ body {
 .link-embed-card-image-placeholder {
   width: 100%;
   height: 100%;
-  background: var(--gray-3);
+  background: var(--gryt-neutral-3);
 }
 
 /* ── Media Players ────────────────────────────────────────── */
@@ -963,7 +925,7 @@ body {
 .chat-audio-player audio {
   width: 100%;
   height: 36px;
-  border-radius: var(--radius-3);
+  border-radius: var(--gryt-radius-md);
 }
 
 .chat-video-player {
@@ -975,7 +937,7 @@ body {
   max-height: 480px;
   width: auto;
   height: auto;
-  border-radius: var(--radius-4);
+  border-radius: var(--gryt-radius-md);
   display: block;
 }
 
@@ -985,7 +947,7 @@ body {
   /* gray-10 is a solid step for backgrounds and borders; against the message
      surface it measures 3.74, under the 4.5 AA needs for 12px text. gray-11 is
      the low-contrast text step and measures 7.58. */
-  color: var(--gray-11);
+  color: var(--gryt-neutral-11);
   margin-bottom: 4px;
   white-space: nowrap;
   overflow: hidden;
@@ -1010,7 +972,7 @@ body {
   max-height: 300px;
   width: auto;
   height: auto;
-  border-radius: var(--radius-4);
+  border-radius: var(--gryt-radius-md);
   display: block;
   cursor: pointer;
 }
@@ -1036,7 +998,7 @@ body {
 /* ── Code highlighting (highlight.js compatible) ───────────── */
 
 .hljs {
-  color: var(--gray-12);
+  color: var(--gryt-neutral-12);
 }
 
 .hljs-keyword,
@@ -1044,7 +1006,7 @@ body {
 .hljs-literal,
 .hljs-section,
 .hljs-link {
-  color: var(--blue-11);
+  color: var(--gryt-secondary-11);
 }
 
 .hljs-string,
@@ -1058,25 +1020,25 @@ body {
 .hljs-variable,
 .hljs-template-tag,
 .hljs-template-variable {
-  color: var(--green-11);
+  color: var(--gryt-success-11);
 }
 
 .hljs-comment,
 .hljs-quote,
 .hljs-deletion,
 .hljs-meta {
-  color: var(--gray-9);
+  color: var(--gryt-neutral-9);
 }
 
 .hljs-number,
 .hljs-regexp,
 .hljs-literal,
 .hljs-params {
-  color: var(--orange-11);
+  color: var(--gryt-warning-11);
 }
 
 .hljs-built_in {
-  color: var(--cyan-11);
+  color: var(--gryt-secondary-11);
 }
 
 .hljs-emphasis {
@@ -1088,7 +1050,7 @@ body {
 }
 
 /* Hide the submenu arrow on the emoji picker trigger in context menus */
-.emoji-picker-sub-trigger > .rt-BaseMenuShortcut {
+.emoji-picker-sub-trigger > .gryt-menu-shortcut {
   display: none;
 }
 

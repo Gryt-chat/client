@@ -39,7 +39,7 @@ export function Titlebar() {
         WebkitAppRegion: "drag",
         userSelect: "none",
         background: "var(--gryt-titlebar-bg)",
-        borderBottom: "1px solid var(--gray-a3)",
+        borderBottom: "1px solid var(--gryt-neutral-a3)",
         flexShrink: 0,
         position: "relative",
         // Above the overlay band, so a modal cannot cover the window chrome.
@@ -88,7 +88,7 @@ export function Titlebar() {
             fontFamily: "var(--code-font-family)",
             fontSize: 12,
             fontWeight: 600,
-            color: "var(--gray-a9)",
+            color: "var(--gryt-neutral-a9)",
             letterSpacing: 0.5,
           }}
         >
@@ -122,15 +122,15 @@ function NavButton({
         width: 28,
         height: 24,
         border: "none",
-        borderRadius: "var(--radius-2)",
+        borderRadius: "var(--gryt-radius-sm)",
         background: "transparent",
-        color: disabled ? "var(--gray-a5)" : "var(--gray-a11)",
+        color: disabled ? "var(--gryt-neutral-a5)" : "var(--gryt-neutral-a11)",
         cursor: disabled ? "default" : "pointer",
         transition: "background 0.1s, color 0.1s",
         opacity: disabled ? 0.4 : 1,
       }}
       onMouseEnter={(e) => {
-        if (!disabled) e.currentTarget.style.background = "var(--gray-a3)";
+        if (!disabled) e.currentTarget.style.background = "var(--gryt-neutral-a3)";
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.background = "transparent";

@@ -39,8 +39,8 @@ export function EmoteImport({
 
   return (
     <div className="flex flex-col gap-3 p-3" style={{
-        border: "1px solid var(--gray-a5)",
-        borderRadius: "var(--radius-2)",
+        border: "1px solid var(--gryt-neutral-a5)",
+        borderRadius: "var(--gryt-radius-sm)",
       }}>
       <span className="text-sm font-medium">
         Import from a link

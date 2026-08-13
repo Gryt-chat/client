@@ -94,8 +94,8 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
   const canEdit = !!currentUserId && m.sender_server_id === currentUserId && !!m.text;
 
   const bgColor = (isHovered || isReactionPickerOpen || isCtxMenuOpen)
-    ? "var(--gray-4)"
-    : isMentioned ? "var(--accent-a3)" : "transparent";
+    ? "var(--gryt-neutral-4)"
+    : isMentioned ? "var(--gryt-accent-a3)" : "transparent";
 
   const messageActions: MessageActions = {
     messageText: m.text,
@@ -152,7 +152,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
           animate={{ marginBottom: m.reactions?.length ? 30 : 0, background: bgColor }}
           transition={{ type: "spring", stiffness: 500, damping: 30 }}
           style={{
-            borderRadius: "var(--radius-3)",
+            borderRadius: "var(--gryt-radius-md)",
             margin: "12px -6px 0",
           }}
         >
@@ -182,7 +182,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
               <div style={{ flexShrink: 0, width: 51 }} />
               <div className="flex flex-col" style={{ flex: 1, minWidth: 0, position: "relative" }}>
                 <div className="flex items-baseline gap-2" style={{ marginBottom: 2 }}>
-                  <span className="text-sm font-bold" style={{ color: "var(--gray-9)" }}>
+                  <span className="text-sm font-bold" style={{ color: "var(--gryt-neutral-9)" }}>
                     System
                   </span>
                   <MessageTimestamp date={toDate(m.created_at)} />
@@ -218,7 +218,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
             />
             <div className="flex flex-col" style={{ flex: 1, minWidth: 0 }}>
               <div className="flex items-baseline gap-2" style={{ marginBottom: 2 }}>
-                <span className="text-sm font-bold" style={{ color: meta.isSelf ? "var(--accent-11)" : "var(--gray-12)" }}>
+                <span className="text-sm font-bold" style={{ color: meta.isSelf ? "var(--gryt-accent-11)" : "var(--gryt-neutral-12)" }}>
                   {meta.senderName}
                 </span>
                 {meta.isWebhook && (
@@ -230,9 +230,9 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                     fontSize: 10,
                     fontWeight: 600,
                     lineHeight: 1,
-                    borderRadius: "var(--radius-1)",
-                    background: "var(--accent-9)",
-                    color: "var(--color-background)",
+                    borderRadius: "var(--gryt-radius-sm)",
+                    background: "var(--gryt-accent-9)",
+                    color: "var(--gryt-neutral-1)",
                     letterSpacing: "0.02em",
                     userSelect: "none",
                     flexShrink: 0,
@@ -243,7 +243,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                 <MessageTimestamp date={toDate(m.created_at)} />
                 {meta.isFirstEdited && (
                   <Tooltip title={`Edited ${new Date(m.edited_at!).toLocaleString()}`}>
-                    <span style={{ fontSize: 10, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gray-8)" }}>
+                    <span style={{ fontSize: 10, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gryt-neutral-8)" }}>
                       (edited)
                     </span>
                   </Tooltip>
@@ -422,7 +422,7 @@ function MessageContent({
       animate={{ marginBottom: hasReactions ? 30 : 0, background: bgColor }}
       transition={{ type: "spring", stiffness: 500, damping: 30 }}
       style={{
-        borderRadius: "var(--radius-3)",
+        borderRadius: "var(--gryt-radius-md)",
         margin: "0 -6px",
       }}
     >
@@ -452,7 +452,7 @@ function MessageContent({
         <div
           onClick={() => scrollToMessage(m.reply_to_message_id!)}
           style={{
-            borderLeft: "2px solid var(--accent-8)",
+            borderLeft: "2px solid var(--gryt-accent-8)",
             paddingLeft: "8px",
             marginBottom: "2px",
             opacity: 0.6,
@@ -487,7 +487,7 @@ function MessageContent({
         />
         {m.edited_at && !isFirstInGroup && (
           <Tooltip title={`Edited ${new Date(m.edited_at).toLocaleString()}`}>
-            <span style={{ fontSize: 10, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gray-8)" }}>
+            <span style={{ fontSize: 10, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gryt-neutral-8)" }}>
               (edited)
             </span>
           </Tooltip>
@@ -545,7 +545,7 @@ function MessageContent({
           </div>
         )}
         {m.failed && (
-          <span className="text-xs" style={{ color: "var(--red-9)", marginTop: "2px" }}>
+          <span className="text-xs" style={{ color: "var(--gryt-danger-9)", marginTop: "2px" }}>
             Failed to send
           </span>
         )}
@@ -628,16 +628,16 @@ function ReactionBadges({
                     minHeight: "28px",
                     fontSize: "14px",
                     lineHeight: 1,
-                    background: isMine ? "var(--accent-3)" : "var(--gray-3)",
-                    border: `1px solid ${isMine ? "var(--accent-7)" : "var(--gray-5)"}`,
-                    borderRadius: "var(--radius-3)",
+                    background: isMine ? "var(--gryt-accent-3)" : "var(--gryt-neutral-3)",
+                    border: `1px solid ${isMine ? "var(--gryt-accent-7)" : "var(--gryt-neutral-5)"}`,
+                    borderRadius: "var(--gryt-radius-md)",
                     cursor: "pointer",
                     transition: "background 0.15s, border-color 0.15s",
                     whiteSpace: "nowrap",
-                    color: isMine ? "var(--accent-11)" : "var(--gray-12)",
+                    color: isMine ? "var(--gryt-accent-11)" : "var(--gryt-neutral-12)",
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = isMine ? "var(--accent-4)" : "var(--gray-4)"; e.currentTarget.style.borderColor = isMine ? "var(--accent-8)" : "var(--gray-6)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = isMine ? "var(--accent-3)" : "var(--gray-3)"; e.currentTarget.style.borderColor = isMine ? "var(--accent-7)" : "var(--gray-5)"; }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = isMine ? "var(--gryt-accent-4)" : "var(--gryt-neutral-4)"; e.currentTarget.style.borderColor = isMine ? "var(--gryt-accent-8)" : "var(--gryt-neutral-6)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = isMine ? "var(--gryt-accent-3)" : "var(--gryt-neutral-3)"; e.currentTarget.style.borderColor = isMine ? "var(--gryt-accent-7)" : "var(--gryt-neutral-5)"; }}
                 >
                   <EmojiText text={reaction.src} emojiSize={18} />
                   <span style={{ fontWeight: 500, fontSize: "13px" }}>{reaction.amount}</span>
@@ -656,18 +656,18 @@ function ReactionBadges({
           justifyContent: "center",
           width: "28px",
           minHeight: "28px",
-          background: "var(--gray-3)",
-          border: "1px solid var(--gray-5)",
-          borderRadius: "var(--radius-3)",
+          background: "var(--gryt-neutral-3)",
+          border: "1px solid var(--gryt-neutral-5)",
+          borderRadius: "var(--gryt-radius-md)",
           cursor: "pointer",
           transition: "background 0.15s, border-color 0.15s",
-          color: "var(--gray-10)",
+          color: "var(--gryt-neutral-10)",
           fontSize: "16px",
           lineHeight: 1,
           padding: 0,
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gray-4)"; e.currentTarget.style.borderColor = "var(--gray-6)"; }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = "var(--gray-3)"; e.currentTarget.style.borderColor = "var(--gray-5)"; }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gryt-neutral-4)"; e.currentTarget.style.borderColor = "var(--gryt-neutral-6)"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = "var(--gryt-neutral-3)"; e.currentTarget.style.borderColor = "var(--gryt-neutral-5)"; }}
       >
         +
       </button>

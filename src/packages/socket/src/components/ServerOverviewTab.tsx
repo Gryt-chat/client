@@ -479,9 +479,9 @@ export function ServerOverviewTab({
                     width: 28,
                     height: 28,
                     borderRadius: "50%",
-                    background: "var(--accent-9)",
-                    color: "var(--accent-contrast)",
-                    boxShadow: "0 1px 4px var(--gray-a5)",
+                    background: "var(--gryt-accent-9)",
+                    color: "var(--gryt-on-accent)",
+                    boxShadow: "0 1px 4px var(--gryt-neutral-a5)",
                   }}>
                   <PiCameraFill size={14} />
                 </div>

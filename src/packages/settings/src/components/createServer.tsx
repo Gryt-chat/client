@@ -155,7 +155,7 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
             Port
           </span>
           {portState === "free" && (
-            <div className="flex items-center gap-1" style={{ color: "var(--green-11)" }}>
+            <div className="flex items-center gap-1" style={{ color: "var(--gryt-success-11)" }}>
               <PiCheckCircleFill size={12} />
               <span className="text-xs">
                 {touched.current ? "Available" : "Picked for you"}
@@ -163,12 +163,12 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
             </div>
           )}
           {portState === "taken" && (
-            <span className="text-xs" style={{ color: "var(--red-11)" }}>
+            <span className="text-xs" style={{ color: "var(--gryt-danger-11)" }}>
               Something else is using this port
             </span>
           )}
           {portState === "invalid" && (
-            <span className="text-xs" style={{ color: "var(--red-11)" }}>
+            <span className="text-xs" style={{ color: "var(--gryt-danger-11)" }}>
               Must be a number between 1 and 65535
             </span>
           )}

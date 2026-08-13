@@ -437,7 +437,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
   socket.on("members:list", (data: MemberInfo[]) => {
     const membersWithGrayColor = data.map(member => ({
       ...member,
-      color: "var(--gray-6)"
+      color: "var(--gryt-neutral-6)"
     }));
     setMemberLists((old) => ({ ...old, [host]: membersWithGrayColor }));
 

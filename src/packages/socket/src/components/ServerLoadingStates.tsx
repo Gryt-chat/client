@@ -15,10 +15,10 @@ const cardStyle: React.CSSProperties = {
   textAlign: "center",
   maxWidth: 380,
   padding: "40px 32px",
-  borderRadius: "var(--radius-6)",
-  background: "var(--color-panel-solid)",
-  border: "1px solid var(--gray-5)",
-  boxShadow: "0 1px 4px var(--gray-a3)",
+  borderRadius: "var(--gryt-radius-xl)",
+  background: "var(--gryt-neutral-2)",
+  border: "1px solid var(--gryt-neutral-5)",
+  boxShadow: "0 1px 4px var(--gryt-neutral-a3)",
 };
 
 /**
@@ -39,7 +39,7 @@ const REFUSALS = new Set([
 const iconWrapStyle = (bg: string): React.CSSProperties => ({
   width: 56,
   height: 56,
-  borderRadius: "var(--radius-5)",
+  borderRadius: "var(--gryt-radius-lg)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -60,8 +60,8 @@ export const ServerLoadingStates = ({
       <div className="flex w-full h-full items-center justify-center p-4">
         <div style={cardStyle}>
           <div className="flex flex-col items-center gap-4">
-            <div style={iconWrapStyle("var(--red-a3)")}>
-              <PiWarningCircleFill size={28} color="var(--red-9)" />
+            <div style={iconWrapStyle("color-mix(in oklab, var(--gryt-danger-9) 7%, transparent)")}>
+              <PiWarningCircleFill size={28} color="var(--gryt-danger-9)" />
             </div>
             <div className="flex flex-col gap-2 items-center">
               <span className="text-lg font-bold">
@@ -95,7 +95,7 @@ export const ServerLoadingStates = ({
         <div style={cardStyle}>
           <div className="flex flex-col items-center gap-4">
             <div style={{
-              ...iconWrapStyle("var(--orange-a3)"),
+              ...iconWrapStyle("color-mix(in oklab, var(--gryt-warning-9) 7%, transparent)"),
               animation: "pulse-reconnect 2s ease-in-out infinite",
             }}>
               <Spinner size={24} />
@@ -123,8 +123,8 @@ export const ServerLoadingStates = ({
       <div className="flex w-full h-full items-center justify-center p-4">
         <div style={cardStyle}>
           <div className="flex flex-col items-center gap-4">
-            <div style={iconWrapStyle("var(--red-a3)")}>
-              <PiWifiSlashFill size={26} color="var(--red-9)" />
+            <div style={iconWrapStyle("color-mix(in oklab, var(--gryt-danger-9) 7%, transparent)")}>
+              <PiWifiSlashFill size={26} color="var(--gryt-danger-9)" />
             </div>
             <div className="flex flex-col gap-2 items-center">
               <span className="text-lg font-bold">
@@ -146,8 +146,8 @@ export const ServerLoadingStates = ({
       <div className="flex w-full h-full items-center justify-center p-4">
         <div style={cardStyle}>
           <div className="flex flex-col items-center gap-4">
-            <div style={iconWrapStyle("var(--red-a3)")}>
-              <PiWifiSlashFill size={26} color="var(--red-9)" />
+            <div style={iconWrapStyle("color-mix(in oklab, var(--gryt-danger-9) 7%, transparent)")}>
+              <PiWifiSlashFill size={26} color="var(--gryt-danger-9)" />
             </div>
             <div className="flex flex-col gap-2 items-center">
               <span className="text-lg font-bold">
@@ -184,8 +184,8 @@ export const ServerLoadingStates = ({
     <div className="flex w-full h-full items-center justify-center p-4">
       <div style={cardStyle}>
         <div className="flex flex-col items-center gap-4">
-          <div style={iconWrapStyle("var(--orange-a3)")}>
-            <PiClockFill size={26} color="var(--orange-9)" />
+          <div style={iconWrapStyle("color-mix(in oklab, var(--gryt-warning-9) 7%, transparent)")}>
+            <PiClockFill size={26} color="var(--gryt-warning-9)" />
           </div>
           <div className="flex flex-col gap-2 items-center">
             <span className="text-lg font-bold">

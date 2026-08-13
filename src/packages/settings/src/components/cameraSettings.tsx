@@ -193,8 +193,8 @@ export function CameraSettings() {
       <div className="flex flex-col gap-2">
         <span className="font-medium">Preview</span>
         <div className="flex items-center justify-center" style={{
-            background: "var(--gray-3)",
-            borderRadius: "var(--radius-3)",
+            background: "var(--gryt-neutral-3)",
+            borderRadius: "var(--gryt-radius-md)",
             overflow: "hidden",
             aspectRatio: "16/9",
             maxHeight: 280,

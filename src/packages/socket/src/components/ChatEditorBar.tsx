@@ -46,9 +46,9 @@ export function ChatEditorBar({
         <div className="flex items-center gap-2" style={{
             padding: "6px 12px",
             marginBottom: "4px",
-            borderLeft: "3px solid var(--accent-9)",
-            background: "var(--gray-4)",
-            borderRadius: "0 var(--radius-3) var(--radius-3) 0",
+            borderLeft: "3px solid var(--gryt-accent-9)",
+            background: "var(--gryt-neutral-4)",
+            borderRadius: "0 var(--gryt-radius-md) var(--gryt-radius-md) 0",
             fontSize: "13px",
           }}>
           <div className="flex items-center gap-1" style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
@@ -71,9 +71,9 @@ export function ChatEditorBar({
         <div className="flex items-center gap-2" style={{
             padding: "6px 12px",
             marginBottom: "4px",
-            borderLeft: "3px solid var(--amber-9)",
-            background: "var(--gray-4)",
-            borderRadius: "0 var(--radius-3) var(--radius-3) 0",
+            borderLeft: "3px solid var(--gryt-warning-9)",
+            background: "var(--gryt-neutral-4)",
+            borderRadius: "0 var(--gryt-radius-md) var(--gryt-radius-md) 0",
             fontSize: "13px",
           }}>
           <div className="flex items-center gap-1" style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>

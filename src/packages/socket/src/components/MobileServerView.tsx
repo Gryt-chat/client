@@ -108,8 +108,8 @@ export const MobileServerView = (props: MobileServerViewProps) => {
       {/* Toolbar */}
       <div className="flex items-center justify-between px-3 py-2" style={{
           flexShrink: 0,
-          borderBottom: "1px solid var(--gray-a5)",
-          background: "var(--color-background)",
+          borderBottom: "1px solid var(--gryt-neutral-a5)",
+          background: "var(--gryt-neutral-1)",
           gap: 8,
         }}>
         <IconButton tone="ghost" size="xsmall"

@@ -172,7 +172,7 @@ export function ReportsPanel({
             </div>
           ) : reports.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 gap-2">
-              <PiCheck size={32} style={{ color: "var(--green-9)" }} />
+              <PiCheck size={32} style={{ color: "var(--gryt-success-9)" }} />
               <span className="text-base text-gryt-muted">
                 No pending reports
               </span>
@@ -286,15 +286,15 @@ function ReportCard({
   return (
     <>
       <div style={{
-          border: "1px solid var(--gray-6)",
-          borderRadius: "var(--radius-5)",
+          border: "1px solid var(--gryt-neutral-6)",
+          borderRadius: "var(--gryt-radius-lg)",
           padding: "14px",
-          background: "var(--gray-2)",
+          background: "var(--gryt-neutral-2)",
         }}>
         <div className="flex gap-3 items-start">
           <div className="flex flex-col gap-2" style={{ flex: 1, minWidth: 0 }}>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-bold" style={{ color: "var(--gray-12)" }}>
+              <span className="text-sm font-bold" style={{ color: "var(--gryt-neutral-12)" }}>
                 {report.senderNickname || getNickname(report.senderServerUserId)}
               </span>
               <Chip tone="danger">
@@ -303,14 +303,14 @@ function ReportCard({
             </div>
 
             <div style={{
-                background: "var(--gray-3)",
-                borderRadius: "var(--radius-4)",
+                background: "var(--gryt-neutral-3)",
+                borderRadius: "var(--gryt-radius-md)",
                 padding: "10px 12px",
-                borderLeft: "3px solid var(--red-8)",
+                borderLeft: "3px solid var(--gryt-danger-8)",
               }}>
               {report.messageText && (
                 <span className="text-sm" style={{
-                    color: "var(--gray-11)",
+                    color: "var(--gryt-neutral-11)",
                     wordBreak: "break-word",
                     whiteSpace: "pre-wrap",
                   }}>
@@ -334,7 +334,7 @@ function ReportCard({
                           style={{
                             maxWidth: "100%",
                             maxHeight: 200,
-                            borderRadius: "var(--radius-3)",
+                            borderRadius: "var(--gryt-radius-md)",
                             cursor: "pointer",
                             objectFit: "contain",
                           }}
@@ -351,7 +351,7 @@ function ReportCard({
                           src={url}
                           poster={thumbUrl}
                           controls
-                          style={{ maxWidth: "100%", maxHeight: 200, borderRadius: "var(--radius-3)" }}
+                          style={{ maxWidth: "100%", maxHeight: 200, borderRadius: "var(--gryt-radius-md)" }}
                         />
                       );
                     }

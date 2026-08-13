@@ -135,21 +135,21 @@ export function ConnectedUser({
           {screenShareEnabled && (
             <Tooltip title="Streaming">
               <div className="flex items-center">
-                <PiScreencastFill size={14} color="var(--accent-9)" />
+                <PiScreencastFill size={14} color="var(--gryt-accent-9)" />
               </div>
             </Tooltip>
           )}
           {cameraEnabled && (
             <Tooltip title="Camera on">
               <div className="flex items-center">
-                <PiVideoCameraFill size={14} color="var(--accent-9)" />
+                <PiVideoCameraFill size={14} color="var(--gryt-accent-9)" />
               </div>
             </Tooltip>
           )}
           {isDeafened ? (
-            <PiSpeakerSlashFill size={14} color="var(--red-8)" />
+            <PiSpeakerSlashFill size={14} color="var(--gryt-danger-8)" />
           ) : isMuted ? (
-            <PiMicrophoneSlashFill size={14} color="var(--red-8)" />
+            <PiMicrophoneSlashFill size={14} color="var(--gryt-danger-8)" />
           ) : null}
           {isAFK && (
             <span className="text-xs font-bold text-gryt-warning">

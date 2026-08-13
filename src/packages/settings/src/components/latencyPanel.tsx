@@ -31,13 +31,13 @@ function LatencyBar({ latency }: { latency: LatencyBreakdown }) {
   const segments: { label: string; ms: number; color: string }[] = [];
 
   if (latency.contextBaseLatencyMs !== null && latency.contextBaseLatencyMs > 0) {
-    segments.push({ label: "Context", ms: latency.contextBaseLatencyMs, color: "var(--blue-9)" });
+    segments.push({ label: "Context", ms: latency.contextBaseLatencyMs, color: "var(--gryt-secondary-9)" });
   }
   if (latency.rnnoiseBufferMs !== null && latency.rnnoiseBufferMs > 0) {
-    segments.push({ label: "RNNoise", ms: latency.rnnoiseBufferMs, color: "var(--orange-9)" });
+    segments.push({ label: "RNNoise", ms: latency.rnnoiseBufferMs, color: "var(--gryt-warning-9)" });
   }
   if (latency.oneWayNetworkMs !== null && latency.oneWayNetworkMs > 0) {
-    segments.push({ label: "Network", ms: latency.oneWayNetworkMs, color: "var(--green-9)" });
+    segments.push({ label: "Network", ms: latency.oneWayNetworkMs, color: "var(--gryt-success-9)" });
   }
 
   const total = segments.reduce((sum, s) => sum + s.ms, 0);
@@ -47,9 +47,9 @@ function LatencyBar({ latency }: { latency: LatencyBreakdown }) {
     <div className="flex flex-col gap-1">
       <div className="flex" style={{
           height: "20px",
-          borderRadius: "var(--radius-2)",
+          borderRadius: "var(--gryt-radius-sm)",
           overflow: "hidden",
-          background: "var(--gray-4)",
+          background: "var(--gryt-neutral-4)",
         }}>
         {segments.map((seg) => (
           <div key={seg.label} style={{
@@ -66,7 +66,7 @@ function LatencyBar({ latency }: { latency: LatencyBreakdown }) {
             <div style={{
                 width: "8px",
                 height: "8px",
-                borderRadius: "var(--radius-1)",
+                borderRadius: "var(--gryt-radius-sm)",
                 background: seg.color,
                 flexShrink: 0,
               }} />
@@ -81,11 +81,11 @@ function LatencyBar({ latency }: { latency: LatencyBreakdown }) {
 }
 
 function ratingColor(estimatedMs: number | null): string {
-  if (estimatedMs === null) return "var(--gray-11)";
-  if (estimatedMs < 30) return "var(--green-11)";
-  if (estimatedMs < 80) return "var(--blue-11)";
-  if (estimatedMs < 150) return "var(--orange-11)";
-  return "var(--red-11)";
+  if (estimatedMs === null) return "var(--gryt-neutral-11)";
+  if (estimatedMs < 30) return "var(--gryt-success-11)";
+  if (estimatedMs < 80) return "var(--gryt-secondary-11)";
+  if (estimatedMs < 150) return "var(--gryt-warning-11)";
+  return "var(--gryt-danger-11)";
 }
 
 function ratingLabel(estimatedMs: number | null): string {
@@ -110,9 +110,9 @@ export function LatencyPanel() {
 
       {/* Estimated total with rating */}
       <div className="flex p-3 flex-col gap-2" style={{
-          background: "var(--gray-3)",
-          borderRadius: "var(--radius-4)",
-          border: "1px solid var(--gray-5)",
+          background: "var(--gryt-neutral-3)",
+          borderRadius: "var(--gryt-radius-md)",
+          border: "1px solid var(--gryt-neutral-5)",
         }}>
         <div className="flex justify-between items-center">
           <span className="text-sm font-bold">Estimated one-way</span>
@@ -144,7 +144,7 @@ export function LatencyPanel() {
         <LatencyRow
           label="RNNoise buffer"
           value={latency.rnnoiseBufferMs}
-          color={latency.rnnoiseBufferMs !== null && latency.rnnoiseBufferMs > 50 ? "var(--orange-11)" : undefined}
+          color={latency.rnnoiseBufferMs !== null && latency.rnnoiseBufferMs > 50 ? "var(--gryt-warning-11)" : undefined}
         />
         <LatencyRow label="Total pipeline" value={latency.localPipelineMs} />
       </div>
@@ -158,12 +158,12 @@ export function LatencyPanel() {
           <LatencyRow
             label="Jitter"
             value={latency.jitterMs}
-            color={latency.jitterMs !== null && latency.jitterMs > 20 ? "var(--orange-11)" : undefined}
+            color={latency.jitterMs !== null && latency.jitterMs > 20 ? "var(--gryt-warning-11)" : undefined}
           />
           <LatencyRow
             label="Jitter buffer"
             value={latency.jitterBufferMs}
-            color={latency.jitterBufferMs !== null && latency.jitterBufferMs > 80 ? "var(--orange-11)" : undefined}
+            color={latency.jitterBufferMs !== null && latency.jitterBufferMs > 80 ? "var(--gryt-warning-11)" : undefined}
           />
         </div>
       )}
@@ -239,7 +239,7 @@ export function LatencyPanel() {
             <span className="text-xs text-gryt-muted">Packets lost</span>
             <span className="text-xs font-medium" style={{
                 fontFamily: "var(--code-font-family)",
-                color: latency.packetsLost !== null && latency.packetsLost > 0 ? "var(--red-11)" : undefined,
+                color: latency.packetsLost !== null && latency.packetsLost > 0 ? "var(--gryt-danger-11)" : undefined,
               }}>
               {latency.packetsLost ?? "—"}
             </span>

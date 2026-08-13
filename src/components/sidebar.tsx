@@ -99,7 +99,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
           style={{
             display: "flex",
             flexDirection: "column",
-            gap: "var(--space-4)",
+            gap: "16px",
             listStyle: "none",
             padding: 0,
             margin: 0,
@@ -155,8 +155,8 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
                 <div className="absolute" style={{ top: "-2px", right: "-2px", width: 10,
                     height: 10,
                     borderRadius: "50%",
-                    backgroundColor: "var(--accent-9)",
-                    border: "2px solid var(--color-background)",
+                    backgroundColor: "var(--gryt-accent-9)",
+                    border: "2px solid var(--gryt-neutral-1)",
                     zIndex: 1,
                     pointerEvents: "none" }} />
               )}
@@ -285,7 +285,7 @@ function ServerItem({
         boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
         zIndex: 10,
         cursor: "grabbing",
-        borderRadius: "var(--radius-2)",
+        borderRadius: "var(--gryt-radius-sm)",
       }}
       transition={{ type: "spring", stiffness: 400, damping: 30 }}
     >
@@ -335,21 +335,21 @@ function ServerItem({
                   <div className="absolute" style={{ top: "-2px", right: "-2px", width: "16px",
                       height: "16px",
                       borderRadius: "50%",
-                      backgroundColor: "var(--accent-9)",
-                      border: "2px solid var(--color-background)",
+                      backgroundColor: "var(--gryt-accent-9)",
+                      border: "2px solid var(--gryt-neutral-1)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       zIndex: 1 }}>
-                    <PiMicrophoneFill size={8} color="var(--accent-contrast)" />
+                    <PiMicrophoneFill size={8} color="var(--gryt-on-accent)" />
                   </div>
                 )}
                 {serverHasUnread(host) && (
                   <div className="absolute" style={{ bottom: "-2px", right: "-2px", width: 10,
                       height: 10,
                       borderRadius: "50%",
-                      backgroundColor: "var(--accent-9)",
-                      border: "2px solid var(--color-background)",
+                      backgroundColor: "var(--gryt-accent-9)",
+                      border: "2px solid var(--gryt-neutral-1)",
                       zIndex: 1,
                       pointerEvents: "none" }} />
                 )}
@@ -384,22 +384,22 @@ function ServerItem({
             <h2 className="text-xs">
               {servers[host].name}
               {isConnected && currentServerConnected === host && (
-                <span style={{ color: "var(--accent-9)", marginLeft: "8px" }}>
+                <span style={{ color: "var(--gryt-accent-9)", marginLeft: "8px" }}>
                   • Connected to voice
                 </span>
               )}
               {isUnavailable && (
-                <span style={{ color: "var(--red-9)", marginLeft: "8px" }}>
+                <span style={{ color: "var(--gryt-danger-9)", marginLeft: "8px" }}>
                   • OFFLINE
                 </span>
               )}
               {isReconnecting && (
-                <span style={{ color: "var(--orange-9)", marginLeft: "8px" }}>
+                <span style={{ color: "var(--gryt-warning-9)", marginLeft: "8px" }}>
                   • Reconnecting...
                 </span>
               )}
               {isConnecting && (
-                <span style={{ color: "var(--orange-9)", marginLeft: "8px" }}>
+                <span style={{ color: "var(--gryt-warning-9)", marginLeft: "8px" }}>
                   • Connecting...
                 </span>
               )}

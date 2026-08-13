@@ -1,7 +1,7 @@
-import { Radio, RadioGroup, Select, Slider } from "@gryt/ui";
+import { Radio, RadioGroup, Slider } from "@gryt/ui";
 import { useMemo } from "react";
 
-import { accentColors, grayColors, useTheme } from "@/common";
+import { useTheme } from "@/common";
 import { useSettings } from "@/settings";
 
 import { SettingGroup, SettingsContainer } from "../settingsComponents";
@@ -12,32 +12,10 @@ import { TileLayoutPicker } from "../tileLayoutPicker";
  * and look, then come back. Every option here is a Radix scale, so step 9 —
  * the solid step each scale is recognised by — is always available as a var.
  */
-function ColorSwatch({ scale }: { scale: string }) {
-  return (
-    <span
-      aria-hidden
-      style={{
-        width: 12,
-        height: 12,
-        borderRadius: "50%",
-        flexShrink: 0,
-        background: `var(--${scale}-9)`,
-        boxShadow: "inset 0 0 0 1px var(--gray-a5)",
-      }}
-    />
-  );
-}
-
 export function AppearanceSettings() {
   const {
     appearancePreference,
     setAppearancePreference,
-    accentColor,
-    setAccentColor,
-    grayColor,
-    setGrayColor,
-    radius,
-    setRadius,
     emojiSize,
     setEmojiSize,
     chatFontSize,
@@ -51,14 +29,6 @@ export function AppearanceSettings() {
     { value: "system", label: "System" },
     { value: "light", label: "Light" },
     { value: "dark", label: "Dark" },
-  ], []);
-
-  const radiusOptions = useMemo(() => [
-    { value: "none", label: "None" },
-    { value: "small", label: "Small" },
-    { value: "medium", label: "Medium" },
-    { value: "large", label: "Large" },
-    { value: "full", label: "Full" },
   ], []);
 
   const { voiceTileLayout, setVoiceTileLayout } = useSettings();
@@ -83,51 +53,11 @@ export function AppearanceSettings() {
         </RadioGroup>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <span className="font-medium text-sm">Accent color</span>
-        <Select
-          value={accentColor}
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          onValueChange={(v) => setAccentColor(v as any)}
-          options={accentColors.map((c) => ({
-            value: c,
-            label: (
-              <div className="flex items-center gap-2">
-                <ColorSwatch scale={c} />
-                {c}
-              </div>
-            ),
-          }))}
-        />
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <span className="font-medium text-sm">Gray color</span>
-        <Select
-          value={grayColor}
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          onValueChange={(v) => setGrayColor(v as any)}
-          options={grayColors.map((c) => ({
-            value: c,
-            label: (
-              <div className="flex items-center gap-2">
-                <ColorSwatch scale={c} />
-                {c}
-              </div>
-            ),
-          }))}
-        />
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <span className="font-medium text-sm">Rounded corners</span>
-        <Select
-          value={radius}
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          onValueChange={(v) => setRadius(v as any)}
-          options={radiusOptions.map((r) => ({ label: r.label, value: r.value }))}
-        />
-      </div>
+      {/* The accent, gray and radius pickers are gone with Radix Themes. They
+          set that library's theme props, and the palette is @gryt/ui's now —
+          one look rather than a themeable one. An addon can still replace the
+          whole palette through createGrytTheme, which is a better fit for
+          "make Gryt look different" than three dropdowns were. */}
 
       <div className="flex flex-col gap-2">
         <div className="flex justify-between items-center">
@@ -145,7 +75,7 @@ export function AppearanceSettings() {
           Ctrl+Plus / Ctrl+Minus to zoom, Ctrl+0 to reset
         </span>
         {uiScale !== 1 && (
-          <span className="text-xs" style={{ cursor: "pointer", width: "fit-content", color: "var(--accent-11)" }} onClick={resetZoom}>
+          <span className="text-xs" style={{ cursor: "pointer", width: "fit-content", color: "var(--gryt-accent-11)" }} onClick={resetZoom}>
             Reset to 100%
           </span>
         )}

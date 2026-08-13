@@ -50,10 +50,10 @@ const LinkPreviewSkeleton = memo(({ url, onDismiss }: { url: string; onDismiss: 
               <SkeletonBase width={16} height={16} borderRadius="2px" />
               <span className="link-embed-card-hostname">{hostname}</span>
             </div>
-            <SkeletonBase width="70%" height={14} borderRadius="var(--radius-2)" />
-            <SkeletonBase width="55%" height={14} borderRadius="var(--radius-2)" />
-            <SkeletonBase width="90%" height={12} borderRadius="var(--radius-2)" />
-            <SkeletonBase width="75%" height={12} borderRadius="var(--radius-2)" />
+            <SkeletonBase width="70%" height={14} borderRadius="var(--gryt-radius-sm)" />
+            <SkeletonBase width="55%" height={14} borderRadius="var(--gryt-radius-sm)" />
+            <SkeletonBase width="90%" height={12} borderRadius="var(--gryt-radius-sm)" />
+            <SkeletonBase width="75%" height={12} borderRadius="var(--gryt-radius-sm)" />
           </div>
           <div className="link-embed-card-image-wrap">
             <SkeletonBase width="100%" height="100%" borderRadius="0" />

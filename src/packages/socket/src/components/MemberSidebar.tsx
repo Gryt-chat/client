@@ -66,10 +66,10 @@ interface MemberSidebarProps {
 }
 
 const statusConfig: Record<UserStatus, { label: string; color: string }> = {
-  in_voice: { label: "In Voice", color: "var(--accent-9)" },
-  online: { label: "Online", color: "var(--green-9)" },
-  afk: { label: "AFK", color: "var(--amber-9)" },
-  offline: { label: "Offline", color: "var(--gray-9)" },
+  in_voice: { label: "In Voice", color: "var(--gryt-accent-9)" },
+  online: { label: "Online", color: "var(--gryt-success-9)" },
+  afk: { label: "AFK", color: "var(--gryt-warning-9)" },
+  offline: { label: "Offline", color: "var(--gryt-neutral-9)" },
 };
 
 const statusPriority: Record<UserStatus, number> = {
@@ -118,8 +118,8 @@ const MemberItem = ({
         <PreviewCard.Trigger>
           <div
             style={{
-              background: "var(--gray-4)",
-              borderRadius: "var(--radius-6)",
+              background: "var(--gryt-neutral-4)",
+              borderRadius: "var(--gryt-radius-xl)",
               padding: "8px 12px",
               cursor: 'default',
             }}
@@ -183,8 +183,8 @@ export const MemberSidebar = ({
 
   return (
     <div role="complementary" aria-label="Members" style={{ width: "240px",
-        background: "var(--gray-3)",
-        borderRadius: "var(--radius-5)",
+        background: "var(--gryt-neutral-3)",
+        borderRadius: "var(--gryt-radius-lg)",
         height: "100%",
         overflow: "hidden",
       }}>

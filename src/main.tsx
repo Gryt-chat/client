@@ -1,9 +1,7 @@
-import "@radix-ui/themes/styles.css";
 import "@gryt/ui/styles.css";
 import "./style.css";
 
-import { Theme } from "@radix-ui/themes";
-import React from "react";
+import React, { useEffect } from "react";
 import ReactDOM from "react-dom/client";
 import { Toaster } from "react-hot-toast";
 
@@ -20,29 +18,34 @@ function ThemedApp() {
   const {
     resolvedAppearance,
     accentColor,
-    grayColor,
-    radius,
     uiScale,
     chatFontSize,
   } = useTheme();
+
+  /* Radix's <Theme appearance> put .light or .dark on its own wrapper, and the
+     app's light and dark blocks in style.css hang off those classes. With the
+     wrapper gone the class has to go somewhere, and the root element is the
+     right place: the overlays portal to document.body, which is outside
+     anything else we could put it on. */
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle("dark", resolvedAppearance === "dark");
+    root.classList.toggle("light", resolvedAppearance !== "dark");
+    root.style.colorScheme = resolvedAppearance;
+  }, [resolvedAppearance]);
 
   useZoomShortcuts();
   useAddonLoader();
   updatePluginApiTheme({ appearance: resolvedAppearance, accentColor });
 
   return (
-    <Theme
-      appearance={resolvedAppearance}
-      accentColor={accentColor}
-      grayColor={grayColor}
-      radius={radius}
-      hasBackground
-      panelBackground="solid"
+    /* The <Theme> that used to sit here was Radix's, and it existed to define
+       --gray-*, --accent-* and --radius-*. Those come from @gryt/ui's
+       stylesheet now, which is imported once at the top of this file, so what
+       is left is the layout and the zoom it was also carrying. */
+    <div
+      className="gryt-app flex min-h-0 flex-1 flex-col"
       style={{
-        minHeight: 0,
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
         zoom: uiScale,
         "--chat-font-size": `${chatFontSize}px`,
       } as React.CSSProperties}
@@ -57,13 +60,13 @@ function ThemedApp() {
         containerStyle={{ zIndex: "var(--gryt-z-toast)" }}
         toastOptions={{
           style: {
-            background: "var(--color-panel-solid)",
-            color: "var(--gray-12)",
-            border: "1px solid var(--gray-6)",
+            background: "var(--gryt-neutral-2)",
+            color: "var(--gryt-neutral-12)",
+            border: "1px solid var(--gryt-neutral-6)",
           },
         }}
       />
-    </Theme>
+    </div>
   );
 }
 

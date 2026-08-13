@@ -54,8 +54,8 @@ export function DeviceSwitchModal() {
           
           {deviceSwitchData?.newDevice && (
             <div className="flex flex-col gap-2 p-3" style={{ 
-                backgroundColor: "var(--gray-3)", 
-                borderRadius: "var(--radius-4)",
+                backgroundColor: "var(--gryt-neutral-3)", 
+                borderRadius: "var(--gryt-radius-md)",
                 width: "100%"
               }}>
               <span className="text-sm font-medium text-gryt-muted">

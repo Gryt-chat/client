@@ -65,7 +65,7 @@ function EmojiCell({ entry, onSelect }: { entry: EmojiEntry; onSelect: (src: str
         transition: "background 0.12s",
         flexShrink: 0,
       }}
-      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gray-4)"; }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gryt-neutral-4)"; }}
       onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
     >
       {entry.emoji ? (
@@ -98,12 +98,12 @@ function CategorySection({
           position: "sticky",
           top: 0,
           zIndex: 2,
-          background: "var(--color-panel-solid)",
+          background: "var(--gryt-neutral-2)",
           padding: "6px 6px 4px",
           margin: "0 -6px",
           fontSize: 12,
           fontWeight: 600,
-          color: "var(--gray-10)",
+          color: "var(--gryt-neutral-10)",
           display: "flex",
           alignItems: "center",
           gap: 4,
@@ -147,7 +147,7 @@ function NavButton({ icon, label, onClick }: { icon: string; label: string; onCl
         transition: "background 0.12s",
         flexShrink: 0,
       }}
-      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gray-4)"; }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gryt-neutral-4)"; }}
       onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
     >
       {icon}
@@ -220,16 +220,16 @@ export function EmojiPickerContent({ onSelect, serverHost, autoFocusSearch = tru
           style={{
             width: "100%",
             padding: "6px 10px",
-            border: "1px solid var(--gray-6)",
+            border: "1px solid var(--gryt-neutral-6)",
             borderRadius: 8,
-            background: "var(--gray-2)",
-            color: "var(--gray-12)",
+            background: "var(--gryt-neutral-2)",
+            color: "var(--gryt-neutral-12)",
             fontSize: 13,
             outline: "none",
             boxSizing: "border-box",
           }}
-          onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent-8)"; }}
-          onBlur={(e) => { e.currentTarget.style.borderColor = "var(--gray-6)"; }}
+          onFocus={(e) => { e.currentTarget.style.borderColor = "var(--gryt-accent-8)"; }}
+          onBlur={(e) => { e.currentTarget.style.borderColor = "var(--gryt-neutral-6)"; }}
         />
       </div>
 
@@ -239,7 +239,7 @@ export function EmojiPickerContent({ onSelect, serverHost, autoFocusSearch = tru
             display: "flex",
             gap: 1,
             padding: "2px 6px 4px",
-            borderBottom: "1px solid var(--gray-5)",
+            borderBottom: "1px solid var(--gryt-neutral-5)",
             overflowX: "auto",
             flexShrink: 0,
           }}
@@ -270,7 +270,7 @@ export function EmojiPickerContent({ onSelect, serverHost, autoFocusSearch = tru
               <EmojiCell key={`${entry.isCustom ? "c:" : ""}${entry.name}-${idx}`} entry={entry} onSelect={onSelect} />
             ))}
             {searchResults.length === 0 && (
-              <div style={{ gridColumn: `1 / -1`, padding: 16, textAlign: "center", color: "var(--gray-9)", fontSize: 13 }}>
+              <div style={{ gridColumn: `1 / -1`, padding: 16, textAlign: "center", color: "var(--gryt-neutral-9)", fontSize: 13 }}>
                 No emojis found
               </div>
             )}
@@ -410,8 +410,8 @@ export const EmojiPicker = ({ onSelect, onClose, anchorEl, placement = "above", 
         left: fixedPos.left,
         width: PICKER_WIDTH,
         maxHeight: PICKER_MAX_HEIGHT,
-        background: "var(--color-panel-solid)",
-        border: "1px solid var(--gray-7)",
+        background: "var(--gryt-neutral-2)",
+        border: "1px solid var(--gryt-neutral-7)",
         borderRadius: 12,
         boxShadow: "0 12px 32px rgba(0, 0, 0, 0.3), 0 4px 8px rgba(0, 0, 0, 0.1)",
         display: "flex",

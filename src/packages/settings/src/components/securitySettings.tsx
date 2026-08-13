@@ -61,17 +61,17 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
 
   return (
     <div className="flex items-center gap-3 py-3 px-3" style={{
-        borderRadius: "var(--radius-2)",
-        background: "var(--gray-a2)",
+        borderRadius: "var(--gryt-radius-sm)",
+        background: "var(--gryt-neutral-a2)",
       }}>
       <div className="flex items-center justify-center" style={{
           width: 36,
           height: 36,
-          borderRadius: "var(--radius-2)",
-          background: "var(--accent-a3)",
+          borderRadius: "var(--gryt-radius-sm)",
+          background: "var(--gryt-accent-a3)",
           flexShrink: 0,
         }}>
-        <PiKeyFill size={18} style={{ color: "var(--accent-11)" }} />
+        <PiKeyFill size={18} style={{ color: "var(--gryt-accent-11)" }} />
       </div>
 
       <div className="flex flex-col gap-1" style={{ flex: 1, minWidth: 0 }}>
@@ -286,10 +286,10 @@ export function SecuritySettings() {
 
         {!loading && !error && credentials.length === 0 && (
           <div className="flex flex-col items-center gap-2 py-8" style={{
-              borderRadius: "var(--radius-2)",
-              border: "1px dashed var(--gray-a6)",
+              borderRadius: "var(--gryt-radius-sm)",
+              border: "1px dashed var(--gryt-neutral-a6)",
             }}>
-            <PiKeyFill size={32} style={{ color: "var(--gray-a8)" }} />
+            <PiKeyFill size={32} style={{ color: "var(--gryt-neutral-a8)" }} />
             <span className="text-sm">
               No passkeys registered yet
             </span>

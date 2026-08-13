@@ -11,7 +11,7 @@ interface SkeletonBaseProps {
 export const SkeletonBase = ({ 
   width = "100%", 
   height = "1rem", 
-  borderRadius = "var(--radius-2)",
+  borderRadius = "var(--gryt-radius-sm)",
   className,
   style 
 }: SkeletonBaseProps) => {
@@ -22,7 +22,7 @@ export const SkeletonBase = ({
         width,
         height,
         borderRadius,
-        background: "var(--gray-3)",
+        background: "var(--gryt-neutral-3)",
         ...style,
       }}
       animate={{

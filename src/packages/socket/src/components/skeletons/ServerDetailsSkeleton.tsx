@@ -8,8 +8,8 @@ export const ServerDetailsSkeleton = () => {
       <div className="flex flex-col gap-4 items-center w-full">
         {/* Server header skeleton */}
         <div className="flex flex-col gap-2 items-center w-full">
-          <SkeletonBase width="120px" height="24px" borderRadius="var(--radius-4)" />
-          <SkeletonBase width="80px" height="16px" borderRadius="var(--radius-2)" />
+          <SkeletonBase width="120px" height="24px" borderRadius="var(--gryt-radius-md)" />
+          <SkeletonBase width="80px" height="16px" borderRadius="var(--gryt-radius-sm)" />
         </div>
 
         {/* Channel list skeleton */}

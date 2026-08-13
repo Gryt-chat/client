@@ -264,9 +264,9 @@ export function ScreenSharePickerModal({
 
           {screenAccess !== null && screenAccess !== "granted" && (
             <div className="flex items-center gap-3 px-3 py-2" style={{
-                borderRadius: "var(--radius-2)",
-                background: "var(--orange-3)",
-                border: "1px solid var(--orange-6)",
+                borderRadius: "var(--gryt-radius-sm)",
+                background: "var(--gryt-warning-3)",
+                border: "1px solid var(--gryt-warning-6)",
               }}>
               <span className="text-sm text-gryt-warning" style={{ flex: 1 }}>
                 macOS requires Screen Recording permission. Grant access for Gryt in{" "}
@@ -306,13 +306,13 @@ export function ScreenSharePickerModal({
             {filteredSources.map((src) => (
               <div className="flex flex-col gap-1" key={src.id} onClick={() => setSelected(src.id)} style={{
                   cursor: "pointer",
-                  borderRadius: "var(--radius-3)",
-                  border: selected === src.id ? "2px solid var(--accent-9)" : "2px solid transparent",
+                  borderRadius: "var(--gryt-radius-md)",
+                  border: selected === src.id ? "2px solid var(--gryt-accent-9)" : "2px solid transparent",
                   padding: 4,
-                  background: selected === src.id ? "var(--accent-3)" : "var(--gray-3)",
+                  background: selected === src.id ? "var(--gryt-accent-3)" : "var(--gryt-neutral-3)",
                   transition: "border-color 0.15s, background 0.15s",
                 }}>
-                <div style={{ position: "relative", aspectRatio: "16 / 9", borderRadius: "var(--radius-2)", overflow: "hidden", background: "#000" }}>
+                <div style={{ position: "relative", aspectRatio: "16 / 9", borderRadius: "var(--gryt-radius-sm)", overflow: "hidden", background: "#000" }}>
                   {src.thumbnail ? (
                     <img
                       src={src.thumbnail}
@@ -396,8 +396,8 @@ export function ScreenSharePickerModal({
 
             {showAdvanced && (
               <div className="flex flex-col gap-3 px-3 py-3" style={{
-                  borderRadius: "var(--radius-2)",
-                  background: "var(--gray-3)",
+                  borderRadius: "var(--gryt-radius-sm)",
+                  background: "var(--gryt-neutral-3)",
                 }}>
                 <div className="flex items-center gap-4 flex-wrap">
                   <div className="flex items-center gap-2">
@@ -453,8 +453,8 @@ export function ScreenSharePickerModal({
 
           {fps > 60 && nativeScreenCaptureAvailable && (
             <div className="flex items-center gap-2 px-3 py-1" style={{
-                borderRadius: "var(--radius-2)",
-                background: "var(--green-3)",
+                borderRadius: "var(--gryt-radius-sm)",
+                background: "var(--gryt-success-3)",
               }}>
               <Chip tone="success" label="Native capture" />
               <span className="text-xs text-gryt-success">
@@ -465,8 +465,8 @@ export function ScreenSharePickerModal({
 
           {(maxBitrate > 0 || estimatedBps !== null) && (
             <div className="flex items-center gap-2 px-3 py-2" style={{
-                borderRadius: "var(--radius-2)",
-                background: "var(--gray-3)",
+                borderRadius: "var(--gryt-radius-sm)",
+                background: "var(--gryt-neutral-3)",
               }}>
               <span className="text-sm font-medium">
                 {maxBitrate > 0 ? "Bitrate:" : "Estimated bitrate:"}
@@ -485,8 +485,8 @@ export function ScreenSharePickerModal({
           )}
           {maxBitrate === 0 && estimatedBps === null && (
             <div className="flex items-center gap-2 px-3 py-2" style={{
-                borderRadius: "var(--radius-2)",
-                background: "var(--gray-3)",
+                borderRadius: "var(--gryt-radius-sm)",
+                background: "var(--gryt-neutral-3)",
               }}>
               <span className="text-sm text-gryt-muted">
                 Bandwidth varies by source resolution (native mode)

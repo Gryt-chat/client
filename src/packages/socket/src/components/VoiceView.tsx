@@ -249,7 +249,7 @@ function SortableParticipant({
     opacity: isDragging ? 0.85 : 1,
     zIndex: isDragging ? 10 : undefined,
     cursor: isDragging ? "grabbing" : "grab",
-    borderRadius: "var(--radius-5)",
+    borderRadius: "var(--gryt-radius-lg)",
     boxShadow: isDragging ? "0 8px 24px rgba(0,0,0,0.35)" : undefined,
     // Fill whatever the parent allots. Without this the card underneath sizes
     // against an auto-width box instead of its grid cell.
@@ -1021,12 +1021,12 @@ export const VoiceView = ({
           width: "100%",
           height: "100%",
           borderRadius: tileRadius(size.height),
-          background: "var(--gray-4)",
+          background: "var(--gryt-neutral-4)",
         }}>
-        <span className="text-xl font-medium" style={{ color: "var(--gray-12)" }}>
+        <span className="text-xl font-medium" style={{ color: "var(--gryt-neutral-12)" }}>
           +{hiddenCount}
         </span>
-        <span className="text-xs" style={{ color: "var(--gray-11)" }}>
+        <span className="text-xs" style={{ color: "var(--gryt-neutral-11)" }}>
           {hiddenCount === 1 ? "other" : "others"}
         </span>
       </div>
@@ -1147,8 +1147,8 @@ export const VoiceView = ({
       }}
     >
       <div className="flex h-full w-full flex-col p-3" style={{
-          background: "var(--gray-3)",
-          borderRadius: "var(--radius-5)",
+          background: "var(--gryt-neutral-3)",
+          borderRadius: "var(--gryt-radius-lg)",
         }}>
         <div
           ref={gridRef}
@@ -1259,10 +1259,10 @@ export const VoiceView = ({
                   isFocused
                     ? {
                         display: "flex",
-                        gap: "var(--space-2)",
+                        gap: "8px",
                         overflowX: "auto",
                         overflowY: "hidden",
-                        padding: "var(--space-2) 3px 3px",
+                        padding: "8px 3px 3px",
                         flexShrink: 0,
                       }
                     : {

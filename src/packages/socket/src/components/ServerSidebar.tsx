@@ -164,7 +164,7 @@ export const ServerSidebar = ({
           width: 4,
           height: "33%",
           borderRadius: 9999,
-          background: "var(--gray-a4)",
+          background: "var(--gryt-neutral-a4)",
           opacity: 0.5,
           transition: "background 0.15s",
         }}

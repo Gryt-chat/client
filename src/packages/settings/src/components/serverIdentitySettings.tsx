@@ -52,9 +52,9 @@ function BlockedRow({
   const [confirm, setConfirm] = useState(false);
 
   return (
-    <div className="flex flex-col gap-3 p-3" style={{ borderRadius: "var(--radius-2)", background: "var(--red-a2)" }}>
+    <div className="flex flex-col gap-3 p-3" style={{ borderRadius: "var(--gryt-radius-sm)", background: "color-mix(in oklab, var(--gryt-danger-9) 5%, transparent)" }}>
       <div className="flex items-center gap-2">
-        <PiWarningFill size={18} style={{ color: "var(--red-11)", flexShrink: 0 }} />
+        <PiWarningFill size={18} style={{ color: "var(--gryt-danger-11)", flexShrink: 0 }} />
         <span className="text-sm font-medium truncate" style={{ flex: 1, minWidth: 0 }}>
           {entry.host}
         </span>
@@ -144,15 +144,15 @@ function KnownRow({ pin, onForget }: { pin: ServerPin; onForget: (keyId: string)
   const [confirm, setConfirm] = useState(false);
 
   return (
-    <div className="flex items-center gap-3 py-3 px-3" style={{ borderRadius: "var(--radius-2)", background: "var(--gray-a2)" }}>
+    <div className="flex items-center gap-3 py-3 px-3" style={{ borderRadius: "var(--gryt-radius-sm)", background: "var(--gryt-neutral-a2)" }}>
       <div className="flex items-center justify-center" style={{
           width: 36,
           height: 36,
-          borderRadius: "var(--radius-2)",
-          background: "var(--accent-a3)",
+          borderRadius: "var(--gryt-radius-sm)",
+          background: "var(--gryt-accent-a3)",
           flexShrink: 0,
         }}>
-        <PiShieldCheckFill size={18} style={{ color: "var(--accent-11)" }} />
+        <PiShieldCheckFill size={18} style={{ color: "var(--gryt-accent-11)" }} />
       </div>
 
       <div className="flex flex-col gap-1" style={{ flex: 1, minWidth: 0 }}>
@@ -292,8 +292,8 @@ export function ServerIdentitySettings() {
         </div>
 
         {pins.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 py-8" style={{ borderRadius: "var(--radius-2)", border: "1px dashed var(--gray-a6)" }}>
-            <PiHardDrivesFill size={32} style={{ color: "var(--gray-a8)" }} />
+          <div className="flex flex-col items-center gap-2 py-8" style={{ borderRadius: "var(--gryt-radius-sm)", border: "1px dashed var(--gryt-neutral-a6)" }}>
+            <PiHardDrivesFill size={32} style={{ color: "var(--gryt-neutral-a8)" }} />
             <span className="text-sm text-gryt-muted">
               No server identities remembered yet
             </span>

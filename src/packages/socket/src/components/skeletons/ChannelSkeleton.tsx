@@ -10,9 +10,9 @@ export const ChannelSkeleton = () => {
           {/* Channel button skeleton */}
           <div className="flex items-center gap-2 p-2" style={{
               width: "100%",
-              background: "var(--gray-3)",
-              borderRadius: "var(--radius-5)",
-              border: "1px solid var(--gray-4)",
+              background: "var(--gryt-neutral-3)",
+              borderRadius: "var(--gryt-radius-lg)",
+              border: "1px solid var(--gryt-neutral-4)",
             }}>
             {/* Icon skeleton */}
             <SkeletonBase width="16px" height="16px" borderRadius="50%" />

@@ -120,13 +120,13 @@ export const ChannelList = ({
 
   const renderSeparator = (item: SidebarItem) => (
     <div className="flex w-full relative items-center gap-2">
-      <div style={{ height: 1, background: "var(--gray-6)", flex: 1, opacity: 0.7 }} />
+      <div style={{ height: 1, background: "var(--gryt-neutral-6)", flex: 1, opacity: 0.7 }} />
       {item.label ? (
         <span className="text-xs text-gryt-muted">
           <EmojiText text={item.label} />
         </span>
       ) : null}
-      <div style={{ height: 1, background: "var(--gray-6)", flex: 1, opacity: 0.7 }} />
+      <div style={{ height: 1, background: "var(--gryt-neutral-6)", flex: 1, opacity: 0.7 }} />
     </div>
   );
 
@@ -149,7 +149,7 @@ export const ChannelList = ({
           <div className="absolute" style={{ top: "-2px", right: "-2px", width: 8,
               height: 8,
               borderRadius: "50%",
-              backgroundColor: "var(--accent-9)",
+              backgroundColor: "var(--gryt-accent-9)",
               zIndex: 1,
               pointerEvents: "none" }} />
         )}
@@ -173,28 +173,28 @@ export const ChannelList = ({
             <div className="flex gap-1 items-center" style={{ marginLeft: "auto", flexShrink: 0 }}>
               {channel!.eSportsMode && (
                 <Tooltip title="eSports mode">
-                  <div className="flex items-center" style={{ color: "var(--gray-9)" }}>
+                  <div className="flex items-center" style={{ color: "var(--gryt-neutral-9)" }}>
                     <PiGameControllerFill size={14} />
                   </div>
                 </Tooltip>
               )}
               {channel!.requirePushToTalk && (
                 <Tooltip title="Push to Talk required">
-                  <div className="flex items-center" style={{ color: "var(--gray-9)" }}>
+                  <div className="flex items-center" style={{ color: "var(--gryt-neutral-9)" }}>
                     <PiKeyboardFill size={14} />
                   </div>
                 </Tooltip>
               )}
               {channel!.disableRnnoise && (
                 <Tooltip title="Noise suppression disabled">
-                  <span className="text-xs font-bold" style={{ color: "var(--gray-9)", fontSize: 9, lineHeight: 1, padding: "1px 3px", border: "1px solid var(--gray-7)", borderRadius: "var(--radius-1)" }}>
+                  <span className="text-xs font-bold" style={{ color: "var(--gryt-neutral-9)", fontSize: 9, lineHeight: 1, padding: "1px 3px", border: "1px solid var(--gryt-neutral-7)", borderRadius: "var(--gryt-radius-sm)" }}>
                     RAW
                   </span>
                 </Tooltip>
               )}
               {channel!.maxBitrate && (
                 <Tooltip title={`Max bitrate: ${Math.round(channel!.maxBitrate! / 1000)} kbps`}>
-                  <div className="flex items-center" style={{ color: "var(--gray-9)" }}>
+                  <div className="flex items-center" style={{ color: "var(--gryt-neutral-9)" }}>
                     <PiGaugeFill size={14} />
                   </div>
                 </Tooltip>
@@ -225,8 +225,8 @@ export const ChannelList = ({
                 style={{ overflow: "hidden", width: "100%" }}
               >
                 <div className="flex w-full pt-2 flex-col" style={{
-                    background: "var(--gray-3)",
-                    borderRadius: "0 0 var(--radius-5) var(--radius-5)",
+                    background: "var(--gryt-neutral-3)",
+                    borderRadius: "0 0 var(--gryt-radius-lg) var(--gryt-radius-lg)",
                   }}>
                   {Object.keys(clients)?.map(
                     (id) =>
@@ -416,7 +416,7 @@ export const ChannelList = ({
               boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
               cursor: "grabbing",
               zIndex: 50,
-              borderRadius: "var(--radius-4)",
+              borderRadius: "var(--gryt-radius-md)",
             }}
             onDragStart={() => { isDragging.current = true; }}
             onDragEnd={handleDragEnd}

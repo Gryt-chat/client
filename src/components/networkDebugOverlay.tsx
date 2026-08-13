@@ -21,7 +21,7 @@ export function NetworkDebugOverlay({ isVisible }: NetworkDebugOverlayProps) {
     >
       {/* Network-specific content would go here */}
       <div style={{ marginBottom: "8px" }}>
-        <div style={{ color: "var(--blue-11)", fontWeight: "bold" }}>Connection:</div>
+        <div style={{ color: "var(--gryt-secondary-11)", fontWeight: "bold" }}>Connection:</div>
         <div style={{ marginLeft: "8px", fontSize: "11px" }}>
           <div>Status: Connected</div>
           <div>Latency: 45ms</div>
@@ -30,7 +30,7 @@ export function NetworkDebugOverlay({ isVisible }: NetworkDebugOverlayProps) {
       </div>
 
       <div style={{ marginBottom: "8px" }}>
-        <div style={{ color: "var(--blue-11)", fontWeight: "bold" }}>Bandwidth:</div>
+        <div style={{ color: "var(--gryt-secondary-11)", fontWeight: "bold" }}>Bandwidth:</div>
         <div style={{ marginLeft: "8px", fontSize: "11px" }}>
           <div>Upload: 1.2 Mbps</div>
           <div>Download: 15.8 Mbps</div>

@@ -129,7 +129,7 @@ export function useChatActions({
     if (!el) return;
     el.scrollIntoView({ block: "center", behavior: "smooth" });
     setTimeout(() => {
-      el.style.background = "var(--accent-4)";
+      el.style.background = "var(--gryt-accent-4)";
       setTimeout(() => { el.style.background = "transparent"; }, 1500);
     }, 300);
   }, []);

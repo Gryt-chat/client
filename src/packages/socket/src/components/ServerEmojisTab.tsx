@@ -132,8 +132,8 @@ export function ServerEmojisTab({
       </span>
 
       <div className="flex flex-col gap-3 p-3" style={{
-          border: "1px solid var(--gray-a5)",
-          borderRadius: "var(--radius-2)",
+          border: "1px solid var(--gryt-neutral-a5)",
+          borderRadius: "var(--gryt-radius-sm)",
         }}>
         <div className="flex justify-between items-center">
           <span className="text-sm font-medium">
@@ -176,8 +176,8 @@ export function ServerEmojisTab({
           <div className="flex flex-col gap-2" style={{ maxHeight: 300, overflowY: "auto" }}>
             {pendingEmojis.map((p) => (
               <div className="flex items-center gap-2 py-1 px-2" key={p.id} style={{
-                  border: "1px solid var(--gray-a4)",
-                  borderRadius: "var(--radius-1)",
+                  border: "1px solid var(--gryt-neutral-a4)",
+                  borderRadius: "var(--gryt-radius-sm)",
                 }}>
                 <div className="emoji-upload-preview-wrap"
                   aria-busy={p.status === "uploading" || p.status === "processing"}
@@ -271,9 +271,9 @@ export function ServerEmojisTab({
 
       {queueJobs.length > 0 && (
         <div className="flex flex-col gap-2 p-3" style={{
-            border: "1px solid var(--amber-a5)",
-            borderRadius: "var(--radius-2)",
-            background: "var(--amber-a2)",
+            border: "1px solid color-mix(in oklab, var(--gryt-warning-9) 13%, transparent)",
+            borderRadius: "var(--gryt-radius-sm)",
+            background: "color-mix(in oklab, var(--gryt-warning-9) 5%, transparent)",
           }}>
           <span className="text-sm font-medium">
             Processing {queueJobs.length} emoji{queueJobs.length !== 1 ? "s" : ""}…

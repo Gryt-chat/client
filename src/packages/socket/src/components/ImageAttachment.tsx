@@ -33,7 +33,7 @@ export const ImageAttachment = memo(({
         <SkeletonBase
           width="100%"
           height="100%"
-          borderRadius="var(--radius-4)"
+          borderRadius="var(--gryt-radius-md)"
           style={{ position: "absolute", inset: 0 }}
         />
       )}
