@@ -6,11 +6,16 @@ import { useSettings } from "@/settings";
 
 import { SettingGroup, SettingsContainer } from "../settingsComponents";
 import { TileLayoutPicker } from "../tileLayoutPicker";
+import { ThemeLibrary } from "./themeLibrary";
 
 /**
- * A colour control that names a colour without showing it makes you apply it
- * and look, then come back. Every option here is a Radix scale, so step 9 —
- * the solid step each scale is recognised by — is always available as a var.
+ * Everything about how Gryt looks, in the order somebody reaches for it: the
+ * mode first, then the palette, then how big everything is.
+ *
+ * A control that names a colour without showing it makes you apply it and look,
+ * then come back — which is why the theme list draws each one rather than
+ * listing its name, and why importing a theme shows it on real components
+ * before it is saved.
  */
 export function AppearanceSettings() {
   const {
@@ -53,11 +58,16 @@ export function AppearanceSettings() {
         </RadioGroup>
       </div>
 
-      {/* The accent, gray and radius pickers are gone with Radix Themes. They
-          set that library's theme props, and the palette is @gryt/ui's now —
-          one look rather than a themeable one. An addon can still replace the
-          whole palette through createGrytTheme, which is a better fit for
-          "make Gryt look different" than three dropdowns were. */}
+      {/* Where the accent, gray and radius dropdowns used to be. Those set
+          Radix Themes' props, and one of them could change one thing. A theme
+          is the whole palette — every anchor, both appearances, the corner
+          radius — built on ui.gryt.chat and carried here as a link. */}
+      <SettingGroup
+        title="Theme"
+        description="Build one on ui.gryt.chat, press Copy link, and paste it here. A theme is a couple of dozen hex values, so a link is the whole thing."
+      >
+        <ThemeLibrary />
+      </SettingGroup>
 
       <div className="flex flex-col gap-2">
         <div className="flex justify-between items-center">
