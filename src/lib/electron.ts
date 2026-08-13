@@ -176,11 +176,15 @@ export interface ElectronAPI {
   getEmbeddedServerInfo(): Promise<EmbeddedServerInfo>;
   createEmbeddedServer(
     serverName: string,
-    lanDiscoverable: boolean
+    lanDiscoverable: boolean,
+    port?: number
   ): Promise<EmbeddedServerState | null>;
+  suggestEmbeddedServerPort(): Promise<number>;
+  checkEmbeddedServerPort(port: number): Promise<boolean>;
   startEmbeddedServer(id: string): Promise<EmbeddedServerState | null>;
   stopEmbeddedServer(id: string): Promise<EmbeddedServerState | null>;
   dismissEmbeddedServerError(id: string): Promise<EmbeddedServerState | null>;
+  deleteEmbeddedServer(id: string): Promise<EmbeddedServerState[]>;
   getEmbeddedServerStatus(): Promise<EmbeddedServerState[]>;
   onEmbeddedServerStatusChanged(
     callback: (states: EmbeddedServerState[]) => void

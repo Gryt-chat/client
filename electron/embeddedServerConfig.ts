@@ -1,6 +1,6 @@
 import { randomBytes } from "crypto";
 import { app } from "electron";
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { createServer } from "net";
 import { networkInterfaces } from "os";
 import { join } from "path";
@@ -18,31 +18,15 @@ export interface EmbeddedServerConfig {
   externalHost: string;
 }
 
-const BASE_DIR_NAME = "gryt-server";
 const SERVERS_DIR_NAME = "gryt-servers";
 
-/**
- * The id of the server that existed before there could be more than one.
- *
- * Its files stay exactly where they were written — `<userData>/gryt-server/` —
- * rather than being moved under the new directory. Moving them would be tidier
- * and is not worth it: the alternative is a migration that relocates somebody's
- * only database, and the cost of getting that wrong is their server.
- */
-const LEGACY_ID = "default";
-
-/** Where the pre-multi-server server lives, and still lives. */
-export function getEmbeddedServerDir(): string {
-  return join(app.getPath("userData"), BASE_DIR_NAME);
-}
-
-/** Where every server created from now on lives, one directory each. */
+/** Where every server lives, one directory each. */
 function getServersRootDir(): string {
   return join(app.getPath("userData"), SERVERS_DIR_NAME);
 }
 
 export function getServerDir(id: string): string {
-  return id === LEGACY_ID ? getEmbeddedServerDir() : join(getServersRootDir(), id);
+  return join(getServersRootDir(), id);
 }
 
 function getConfigPathFor(id: string): string {
@@ -69,8 +53,6 @@ function makeServerId(serverName: string): string {
 export function listServerIds(): string[] {
   const ids: string[] = [];
 
-  if (existsSync(getConfigPathFor(LEGACY_ID))) ids.push(LEGACY_ID);
-
   try {
     for (const entry of readdirSync(getServersRootDir(), { withFileTypes: true })) {
       if (!entry.isDirectory()) continue;
@@ -86,28 +68,6 @@ export function listServerIds(): string[] {
 
 export function hasExistingServer(): boolean {
   return listServerIds().length > 0;
-}
-
-function findFreePort(preferred: number): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const srv = createServer();
-
-    srv.listen(preferred, "127.0.0.1", () => {
-      const addr = srv.address();
-      const port = typeof addr === "object" && addr ? addr.port : preferred;
-      srv.close(() => resolve(port));
-    });
-
-    srv.on("error", () => {
-      srv.listen(0, "127.0.0.1", () => {
-        const addr = srv.address();
-        const port = typeof addr === "object" && addr ? addr.port : 0;
-        srv.close(() =>
-          port ? resolve(port) : reject(new Error("No free port")),
-        );
-      });
-    });
-  });
 }
 
 /**
@@ -161,6 +121,38 @@ async function findFreePortFrom(
  * its own — the probe would succeed and it would sit waiting for an SFU that
  * nothing is going to start.
  */
+/**
+ * The interface both child processes bind, and therefore the only one worth
+ * probing. A loopback probe can succeed against a port something else already
+ * holds on every interface, because node sets SO_REUSEADDR — which is how a
+ * new server was once handed 5005 while a dev SFU sat on it.
+ */
+const BIND_HOST = "0.0.0.0";
+
+/**
+ * A free port to offer in the create form.
+ *
+ * Walks up from 5000 rather than asking the OS for any free port. The OS gives
+ * back something like 54162, which is fine for a machine and unfriendly to show
+ * a person — this is a number they may have to type into a router, and 5001
+ * beats 54162 for that. Falls back to whatever is free if the whole run is
+ * taken, since a working port matters more than a tidy one.
+ */
+export async function suggestServerPort(preferred = 5000): Promise<number> {
+  for (let port = preferred; port < preferred + 50; port++) {
+    if (await canBind(port, BIND_HOST)) return port;
+  }
+  return findFreePortFrom(0, BIND_HOST);
+}
+
+/** Whether a port somebody typed can actually be bound. */
+export function isPortAvailable(port: number): Promise<boolean> {
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    return Promise.resolve(false);
+  }
+  return canBind(port, BIND_HOST);
+}
+
 export async function ensurePortsAvailable(
   id: string,
   pinnedSfuPort?: number,
@@ -374,20 +366,29 @@ function existingSfuPort(): number | null {
 export async function generateConfig(
   serverName: string,
   lanDiscoverable: boolean,
+  /**
+   * The port they asked for, if they asked for one.
+   *
+   * Still checked here rather than trusted from the form. The form's check and
+   * the create are two separate moments, and something else can take the port
+   * in between — so a port that has gone since it was offered falls back to a
+   * free one rather than producing a server that cannot start.
+   */
+  requestedPort?: number,
 ): Promise<EmbeddedServerConfig> {
-  const first = !hasExistingServer();
-  // The first server keeps the original directory, so an install that has one
-  // already is not asked to move it. Everything after gets its own.
-  const id = first ? LEGACY_ID : makeServerId(serverName);
-
+  const id = makeServerId(serverName);
   const baseDir = getServerDir(id);
   const dataDir = join(baseDir, "data");
   const configPath = getConfigPathFor(id);
 
   mkdirSync(dataDir, { recursive: true });
 
-  const serverPort = await findFreePort(5000);
-  const sfuPort = existingSfuPort() ?? (await findFreePort(5005));
+  const serverPort =
+    requestedPort && (await isPortAvailable(requestedPort))
+      ? requestedPort
+      : await findFreePortFrom(5000, BIND_HOST);
+  const sfuPort =
+    existingSfuPort() ?? (await findFreePortFrom(5005, BIND_HOST));
   const jwtSecret = randomBytes(32).toString("hex");
   const lanIp = getLanIp();
   const externalHost = `http://127.0.0.1:${serverPort}`;
@@ -474,6 +475,27 @@ export function loadConfig(id: string): EmbeddedServerConfig | null {
     lanDiscoverable: (env.SERVER_DISCOVERABLE || "").toLowerCase() !== "false",
     externalHost: env.EXTERNAL_HOST || `http://127.0.0.1:${env.PORT || "5000"}`,
   };
+}
+
+/**
+ * Remove a server's directory, and everything in it.
+ *
+ * This is the messages, the members, the uploads and the server's identity key.
+ * There is no second copy anywhere — the caller is responsible for having
+ * asked, and for having stopped the server first, because SQLite holds the file
+ * open while it runs.
+ *
+ * Deleting the identity key is the part that is not obvious: anybody who joined
+ * pinned it, so recreating a server with the same name and port is still a
+ * different server to them, and they will be told it answered with the wrong
+ * identity rather than let in.
+ */
+export function deleteServerFiles(id: string): void {
+  const dir = getServerDir(id);
+  // Refuse anything that is not a directory we own. `id` reaches here from IPC.
+  if (!existsSync(join(dir, "config.env"))) return;
+  rmSync(dir, { recursive: true, force: true });
+  console.log(`[EmbeddedServerConfig] deleted ${id}`);
 }
 
 export function listServerConfigs(): EmbeddedServerConfig[] {

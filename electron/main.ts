@@ -44,15 +44,18 @@ import {
   cleanupOnQuit,
   clearEmbeddedServerLogs,
   createAndStartServer,
+  deleteServer,
   dismissEmbeddedServerError,
   getAllStates,
   getAutoStart,
   getEmbeddedServerInfo,
   getEmbeddedServerLogs,
   isEmbeddedServerAvailable,
+  isPortAvailable,
   setAutoStart,
   startExistingServer,
   stopServer,
+  suggestServerPort,
 } from "./embeddedServerManager";
 import {
   deleteGlobalValue,
@@ -1842,10 +1845,26 @@ if (!gotSingleInstanceLock) {
 
       ipcMain.handle(
         "embedded-server:create",
-        async (_event, serverName: string, lanDiscoverable: boolean) => {
+        async (
+          _event,
+          serverName: string,
+          lanDiscoverable: boolean,
+          port?: number
+        ) => {
           if (!mainWindow) return null;
-          return createAndStartServer(mainWindow, serverName, lanDiscoverable);
+          return createAndStartServer(
+            mainWindow,
+            serverName,
+            lanDiscoverable,
+            port
+          );
         }
+      );
+
+      ipcMain.handle("embedded-server:suggest-port", () => suggestServerPort());
+
+      ipcMain.handle("embedded-server:check-port", (_event, port: number) =>
+        isPortAvailable(port)
       );
 
       ipcMain.handle("embedded-server:start", async (_event, id: string) => {
@@ -1859,6 +1878,10 @@ if (!gotSingleInstanceLock) {
 
       ipcMain.handle("embedded-server:dismiss-error", (_event, id: string) =>
         dismissEmbeddedServerError(id)
+      );
+
+      ipcMain.handle("embedded-server:delete", async (_event, id: string) =>
+        deleteServer(id)
       );
 
       ipcMain.handle("embedded-server:status", () => getAllStates());

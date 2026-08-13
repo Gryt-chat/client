@@ -77,11 +77,15 @@ export function useEmbeddedServer() {
   }, [api, refreshAutoStart]);
 
   const createServer = useCallback(
-    async (serverName: string, lanDiscoverable: boolean) => {
+    async (serverName: string, lanDiscoverable: boolean, port?: number) => {
       if (!api) return null;
       setCreating(true);
       try {
-        const created = await api.createEmbeddedServer(serverName, lanDiscoverable);
+        const created = await api.createEmbeddedServer(
+          serverName,
+          lanDiscoverable,
+          port,
+        );
         const info = await api.getEmbeddedServerInfo();
         setServers(info.servers);
         void refreshAutoStart(info.servers);
@@ -140,6 +144,50 @@ export function useEmbeddedServer() {
     [api],
   );
 
+  const deleteServer = useCallback(
+    async (id: string) => {
+      if (!api) return;
+      markBusy(id, true);
+      try {
+        const next = await api.deleteEmbeddedServer(id);
+        setServers(next);
+        setAutoStartState((prev) => {
+          const copy = { ...prev };
+          delete copy[id];
+          return copy;
+        });
+      } catch (err) {
+        console.error("[EmbeddedServer] delete failed:", err);
+      } finally {
+        markBusy(id, false);
+      }
+    },
+    [api, markBusy],
+  );
+
+  /** A free port to offer, found the same way the server will bind it. */
+  const suggestPort = useCallback(async () => {
+    if (!api) return null;
+    try {
+      return await api.suggestEmbeddedServerPort();
+    } catch {
+      return null;
+    }
+  }, [api]);
+
+  /** Whether a port somebody typed is actually free. */
+  const checkPort = useCallback(
+    async (port: number) => {
+      if (!api) return false;
+      try {
+        return await api.checkEmbeddedServerPort(port);
+      } catch {
+        return false;
+      }
+    },
+    [api],
+  );
+
   const setAutoStart = useCallback(
     (id: string, enabled: boolean) => {
       if (!api) return;
@@ -159,8 +207,11 @@ export function useEmbeddedServer() {
     autoStart,
     setAutoStart,
     createServer,
+    suggestPort,
+    checkPort,
     startServer,
     stopServer,
+    deleteServer,
     dismissError,
   };
 }

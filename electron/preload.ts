@@ -445,13 +445,25 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   createEmbeddedServer(
     serverName: string,
-    lanDiscoverable: boolean
+    lanDiscoverable: boolean,
+    port?: number
   ): Promise<EmbeddedServerState | null> {
     return ipcRenderer.invoke(
       "embedded-server:create",
       serverName,
-      lanDiscoverable
+      lanDiscoverable,
+      port
     );
+  },
+
+  /** A free port to offer in the create form. */
+  suggestEmbeddedServerPort(): Promise<number> {
+    return ipcRenderer.invoke("embedded-server:suggest-port");
+  },
+
+  /** Whether a port somebody typed can actually be bound. */
+  checkEmbeddedServerPort(port: number): Promise<boolean> {
+    return ipcRenderer.invoke("embedded-server:check-port", port);
   },
 
   startEmbeddedServer(id: string): Promise<EmbeddedServerState | null> {
@@ -466,6 +478,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     id: string
   ): Promise<EmbeddedServerState | null> {
     return ipcRenderer.invoke("embedded-server:dismiss-error", id);
+  },
+
+  /** Stop a server and delete its files. There is no undo. */
+  deleteEmbeddedServer(id: string): Promise<EmbeddedServerState[]> {
+    return ipcRenderer.invoke("embedded-server:delete", id);
   },
 
   /** Every server this machine has, running or not. */

@@ -1,5 +1,6 @@
 import { Accordion } from "@gryt/ui";
 import {
+  AlertDialog,
   Avatar,
   Badge,
   Button,
@@ -11,6 +12,7 @@ import {
   Heading,
   Spinner,
   Text,
+  TextField,
 } from "@radix-ui/themes";
 import { useState } from "react";
 import {
@@ -18,6 +20,7 @@ import {
   PiPlayFill,
   PiPlusBold,
   PiStopFill,
+  PiTrashFill,
   PiWarningFill,
   PiX,
 } from "react-icons/pi";
@@ -53,11 +56,13 @@ export function MyServersSettings() {
     setAutoStart,
     startServer,
     stopServer,
+    deleteServer,
     isBusy,
     dismissError,
   } = useEmbeddedServer();
   const { setShowSettings } = useSettings();
-  const { setShowAddServer } = useServerManagement();
+  const { setShowAddServer, servers: joinedServers, removeServer } =
+    useServerManagement();
 
   function hostAServer() {
     setShowSettings(false);
@@ -117,6 +122,16 @@ export function MyServersSettings() {
                 onStop={() => {
                   void stopServer(server.id);
                 }}
+                onDelete={() => {
+                  // The rail entry goes with it. Left behind it points at an
+                  // address nothing answers on, and looks like a server that
+                  // is merely offline rather than one that no longer exists.
+                  const host = server.serverUrl
+                    ? normalizeHost(server.serverUrl)
+                    : "";
+                  if (host && joinedServers[host]) removeServer(host);
+                  void deleteServer(server.id);
+                }}
                 onDismissError={() => {
                   void dismissError(server.id);
                 }}
@@ -150,6 +165,7 @@ function HostedServerCard({
   onAutoStart,
   onStart,
   onStop,
+  onDelete,
   onDismissError,
 }: {
   server: EmbeddedServerState;
@@ -159,6 +175,7 @@ function HostedServerCard({
   onAutoStart: (enabled: boolean) => void;
   onStart: () => void;
   onStop: () => void;
+  onDelete: () => void;
   onDismissError: () => void;
 }) {
   const { servers: joinedServers, addServer, switchToServer } =
@@ -167,6 +184,9 @@ function HostedServerCard({
 
   /** Which accordion sections are open. Logs are not fetched until theirs is. */
   const [logsOpen, setLogsOpen] = useState<string[]>([]);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  /** Typed back before Delete works. This destroys a database. */
+  const [typedName, setTypedName] = useState("");
 
   const isRunning = server.status === "running";
   const isStarting = server.status === "starting";
@@ -257,16 +277,88 @@ function HostedServerCard({
           </Flex>
         </Flex>
 
-        <Flex asChild gap="2" align="center">
-          <label>
-            <Checkbox
-              checked={autoStart}
-              onCheckedChange={(c) => onAutoStart(c === true)}
-            />
-            <Text size="1" color="gray">
-              Start automatically with app
-            </Text>
-          </label>
+        <Flex align="center" gap="3">
+          <Flex asChild gap="2" align="center">
+            <label>
+              <Checkbox
+                checked={autoStart}
+                onCheckedChange={(c) => onAutoStart(c === true)}
+              />
+              <Text size="1" color="gray">
+                Start automatically with app
+              </Text>
+            </label>
+          </Flex>
+
+          <AlertDialog.Root
+            open={confirmDelete}
+            onOpenChange={(open) => {
+              setConfirmDelete(open);
+              if (!open) setTypedName("");
+            }}
+          >
+            <Button
+              size="1"
+              variant="ghost"
+              color="red"
+              ml="auto"
+              disabled={busy}
+              onClick={() => setConfirmDelete(true)}
+            >
+              <PiTrashFill size={12} />
+              Delete
+            </Button>
+
+            <AlertDialog.Content maxWidth="460px">
+              <AlertDialog.Title>Delete {name}?</AlertDialog.Title>
+              <AlertDialog.Description size="2">
+                This deletes the server and everything on it — its messages, its
+                members, its uploads and its identity key. There is no other
+                copy.
+              </AlertDialog.Description>
+
+              {/* Said separately because it is the part nobody expects.
+                  Everyone who joined pinned this server's identity key, so a
+                  new server with the same name and port is a different server
+                  to them, and they are turned away rather than let back in. */}
+              <Text as="p" size="2" color="gray" mt="3">
+                Anybody who joined cannot rejoin a replacement, even with the
+                same name and port.
+              </Text>
+
+              <Flex direction="column" gap="2" mt="4">
+                <Text size="2">
+                  Type <strong>{name}</strong> to confirm.
+                </Text>
+                <TextField.Root
+                  value={typedName}
+                  onChange={(e) => setTypedName(e.target.value)}
+                  placeholder={name}
+                  autoFocus
+                />
+              </Flex>
+
+              <Flex gap="3" mt="4" justify="end">
+                <AlertDialog.Cancel>
+                  <Button variant="soft" color="gray">
+                    Cancel
+                  </Button>
+                </AlertDialog.Cancel>
+                <Button
+                  variant="solid"
+                  color="red"
+                  disabled={typedName.trim() !== name}
+                  onClick={() => {
+                    setConfirmDelete(false);
+                    setTypedName("");
+                    onDelete();
+                  }}
+                >
+                  Delete for good
+                </Button>
+              </Flex>
+            </AlertDialog.Content>
+          </AlertDialog.Root>
         </Flex>
 
         {/* Behind an accordion, and genuinely unmounted when shut.

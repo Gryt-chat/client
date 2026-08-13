@@ -5,15 +5,18 @@ import { createServer } from "net";
 import { join } from "path";
 
 import {
+  deleteServerFiles,
   type EmbeddedServerConfig,
   ensurePortsAvailable,
   generateConfig,
   getLanIp,
   getServerDir,
   hasExistingServer,
+  isPortAvailable,
   listServerConfigs,
   listServerIds,
   loadConfig,
+  suggestServerPort,
 } from "./embeddedServerConfig";
 import { loadGlobalStore, setGlobalValue } from "./globalStore";
 
@@ -604,15 +607,18 @@ function spawnWorker(
   return proc;
 }
 
+export { isPortAvailable, suggestServerPort };
+
 export async function createAndStartServer(
   window: BrowserWindow,
   serverName: string,
   lanDiscoverable: boolean,
+  requestedPort?: number,
 ): Promise<EmbeddedServerState | null> {
   targetWindow = window;
 
   try {
-    const config = await generateConfig(serverName, lanDiscoverable);
+    const config = await generateConfig(serverName, lanDiscoverable, requestedPort);
     instances.set(config.id, {
       config,
       server: null,
@@ -773,6 +779,35 @@ export function stopServer(id: string): EmbeddedServerState | null {
   return stateOf(inst);
 }
 
+/**
+ * Stop a server and delete it.
+ *
+ * Stops first and waits: SQLite holds its file open while the process is alive,
+ * and removing the directory underneath it leaves a running server writing into
+ * nothing. The auto-start entry goes too, or every launch would try to start
+ * something that is no longer there.
+ */
+export async function deleteServer(id: string): Promise<EmbeddedServerState[]> {
+  const inst = instances.get(id);
+
+  if (inst) {
+    stopServer(id);
+    // A moment for the child processes to actually exit and release the file.
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    instances.delete(id);
+  }
+
+  setAutoStart(id, false);
+  deleteServerFiles(id);
+
+  for (let i = logHistory.length - 1; i >= 0; i--) {
+    if (logHistory[i].serverId === id) logHistory.splice(i, 1);
+  }
+
+  emitStatus();
+  return getAllStates();
+}
+
 export function stopAllServers(): void {
   for (const id of [...instances.keys()]) stopServer(id);
   releaseSfu();
@@ -814,20 +849,17 @@ export function getEmbeddedServerInfo(): {
 const AUTO_START_KEY = "embeddedServer.autoStart";
 
 /**
- * Which servers start with the app.
+ * Which servers start with the app, as a list of ids.
  *
- * Stored as a list of ids. It used to be one boolean for the one server that
- * could exist; that value is read once here and treated as "the original server
- * starts automatically", so nobody's setting is silently dropped on upgrade.
+ * This was one boolean, for the one server that could exist. Nothing reads the
+ * old shape: the embedded server is beta and unused, so a server made before
+ * this change is not carried forward at all — see generateConfig.
  */
 function autoStartIds(): string[] {
   const store = loadGlobalStore();
   const raw = store[AUTO_START_KEY];
-
-  if (Array.isArray(raw)) return raw.filter((v): v is string => typeof v === "string");
-  // The pre-multi-server shape.
-  if (raw === true) return ["default"];
-  return [];
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((v): v is string => typeof v === "string");
 }
 
 export function getAutoStart(id: string): boolean {
