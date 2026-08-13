@@ -3,6 +3,7 @@
  * identity authentication. The private key never leaves the client.
  */
 
+import { getElectronAPI } from "../../../../lib/electron";
 import {
   deriveLocalKeyPair,
   generateSeed,
@@ -152,6 +153,77 @@ interface StoredKeyPair {
 const cachedKeyPairs = new Map<string, StoredKeyPair>();
 
 /**
+ * How the seed sits in the database.
+ *
+ * Sealed by the OS keychain where there is one (GRYT-256), and raw where there
+ * is not — the web client, and desktop on a Linux box with no keyring. Both
+ * shapes are read, so a profile that gains or loses the keychain keeps working.
+ */
+type StoredSeed = Uint8Array | { sealed: string };
+
+/** The bridge, but only when the OS will actually encrypt for us. */
+async function osKeychain() {
+  const api = getElectronAPI();
+  if (!api?.secretsAvailable || !api.sealSecret) return null;
+  try {
+    return (await api.secretsAvailable()) ? api : null;
+  } catch {
+    return null;
+  }
+}
+
+async function writeSeed(db: IDBDatabase, seed: Uint8Array): Promise<void> {
+  const api = await osKeychain();
+  if (!api) {
+    await idbPut(db, SEED_KEY, seed);
+    return;
+  }
+  await idbPut(db, SEED_KEY, {
+    sealed: await api.sealSecret(base64UrlEncode(seed)),
+  });
+}
+
+/**
+ * Read the seed back, whichever way it was written.
+ *
+ * A sealed seed that will not open throws rather than returning nothing. The
+ * tempting alternative — treat it as missing and make a fresh one — would hand
+ * somebody a brand new identity on every server they have, silently, at the
+ * exact moment their real one became temporarily unreadable. Failing loudly
+ * leaves the seed on disk to be recovered once the keychain is back.
+ */
+async function readSeed(stored: StoredSeed | undefined): Promise<Uint8Array | null> {
+  if (!stored) return null;
+
+  if (stored instanceof Uint8Array) {
+    return stored.length === SEED_BYTES ? stored : null;
+  }
+  if (typeof stored.sealed !== "string") return null;
+
+  const api = getElectronAPI();
+  if (!api?.unsealSecret) {
+    throw new Error(
+      "This identity was locked to this computer and cannot be read here. " +
+        "Restore it from your identity backup instead.",
+    );
+  }
+
+  let seed: Uint8Array;
+  try {
+    seed = base64UrlDecode(await api.unsealSecret(stored.sealed));
+  } catch {
+    throw new Error(
+      "Your saved identity could not be unlocked. If this computer's keychain " +
+        "was reset, restore from your identity backup.",
+    );
+  }
+  if (seed.length !== SEED_BYTES) {
+    throw new Error("Your saved identity is damaged and could not be read.");
+  }
+  return seed;
+}
+
+/**
  * The seed every local key is calculated from, made on first use.
  *
  * Kept in the same store as the keys, because it is the same kind of secret and
@@ -163,13 +235,45 @@ const cachedKeyPairs = new Map<string, StoredKeyPair>();
  * signing out of an account says nothing about the servers joined without one.
  */
 async function getOrCreateSeed(db: IDBDatabase): Promise<Uint8Array> {
-  const existing = await idbGet<Uint8Array>(db, SEED_KEY);
-  if (existing?.length === SEED_BYTES) return existing;
+  const existing = await readSeed(await idbGet<StoredSeed>(db, SEED_KEY));
+  if (existing) return existing;
 
   const seed = generateSeed();
-  await idbPut(db, SEED_KEY, seed);
+  await writeSeed(db, seed);
   console.log("[Identity] Generated new local identity seed");
   return seed;
+}
+
+/** Checked once a session; the answer cannot change while the app is running. */
+let seedSealChecked = false;
+
+/**
+ * Seal a seed that was written when no keychain was reachable.
+ *
+ * Happens on a Linux box where a keyring was installed after Gryt was, and to
+ * anything restored while the bridge was unavailable. Deliberately *not* left to
+ * `getOrCreateSeed`: that only runs when a key has to be worked out, so somebody
+ * whose servers all have a stored key already would never reach it and would
+ * keep an unsealed seed on disk indefinitely.
+ *
+ * Failures are swallowed. This is opportunistic hardening of something that
+ * already works, and a keychain that will not seal is not a reason to refuse
+ * somebody entry to a server.
+ */
+async function ensureSeedSealed(db: IDBDatabase): Promise<void> {
+  if (seedSealChecked) return;
+  seedSealChecked = true;
+
+  try {
+    const stored = await idbGet<StoredSeed>(db, SEED_KEY);
+    if (!(stored instanceof Uint8Array)) return;
+    if (!(await osKeychain())) return;
+
+    await writeSeed(db, stored);
+    console.log("[Identity] Locked the identity seed with the OS keychain");
+  } catch (e) {
+    console.warn("[Identity] Could not lock the identity seed:", e);
+  }
 }
 
 /**
@@ -209,6 +313,8 @@ async function loadOrGenerateKeyPair(
   if (cached) return cached;
 
   const db = await openDB();
+
+  if (source.kind === "local") await ensureSeedSealed(db);
 
   const existing = await idbGet<StoredKeyPair>(db, storageKey);
   if (existing?.privateKey && existing?.publicKey) {
@@ -480,8 +586,8 @@ export async function exportLocalIdentities(): Promise<ExportResult> {
     // Read rather than created. Exporting is not a reason to bring an identity
     // into existence, and a backup of a seed nothing has used yet is a file that
     // looks like a safety net and is not one.
-    const stored = await idbGet<Uint8Array>(db, SEED_KEY);
-    if (stored?.length === SEED_BYTES) seed = base64UrlEncode(stored);
+    const bytes = await readSeed(await idbGet<StoredSeed>(db, SEED_KEY));
+    if (bytes) seed = base64UrlEncode(bytes);
 
     for (const scope of await listLocalIdentityScopes(db)) {
       const pair = await idbGet<StoredKeyPair>(db, `${LOCAL_PREFIX}${scope}`);
@@ -593,7 +699,7 @@ export async function importLocalIdentities(raw: string): Promise<string[]> {
     // moment this returns rather than only after the next join.
     if (seed) {
       const bytes = base64UrlDecode(seed);
-      if (bytes.length === SEED_BYTES) await idbPut(db, SEED_KEY, bytes);
+      if (bytes.length === SEED_BYTES) await writeSeed(db, bytes);
     }
 
     for (const entry of identities) {
@@ -675,7 +781,7 @@ export async function restoreIdentityFromWords(phrase: string): Promise<void> {
 
   const db = await openDB();
   try {
-    await idbPut(db, SEED_KEY, seed);
+    await writeSeed(db, seed);
 
     for (const scope of await listLocalIdentityScopes(db)) {
       const key = `${LOCAL_PREFIX}${scope}`;

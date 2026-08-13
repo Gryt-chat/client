@@ -6,6 +6,7 @@ import {
   ipcMain,
   Menu,
   nativeImage,
+  safeStorage,
   screen,
   session,
   shell,
@@ -1687,6 +1688,34 @@ if (!gotSingleInstanceLock) {
       );
 
       // ── Global file store (backs localStorage) ───────────────────────
+      // ── Secrets at rest (GRYT-256) ──────────────────────────────
+      //
+      // `safeStorage` encrypts and decrypts; it does not store anything. The
+      // blob stays wherever the renderer already keeps it, and the OS holds the
+      // key — macOS Keychain, Windows DPAPI, libsecret or kwallet on Linux —
+      // tied to the login the user has already done. So the seed is protected
+      // at rest without a password prompt on every launch.
+      //
+      // Strings across IPC rather than Buffers: `encryptString` hands back a
+      // Buffer, and base64 is one obvious representation instead of relying on
+      // how the bridge happens to serialise binary today.
+      ipcMain.handle("secret:available", () => {
+        try {
+          return safeStorage.isEncryptionAvailable();
+        } catch {
+          // Linux without a keyring throws rather than returning false.
+          return false;
+        }
+      });
+
+      ipcMain.handle("secret:seal", (_event, plain: string) => {
+        return safeStorage.encryptString(plain).toString("base64");
+      });
+
+      ipcMain.handle("secret:unseal", (_event, sealed: string) => {
+        return safeStorage.decryptString(Buffer.from(sealed, "base64"));
+      });
+
       ipcMain.handle("global-store:load", () => loadGlobalStore());
       ipcMain.on("global-store:set", (_event, key: string, value: unknown) => {
         setGlobalValue(key, value);
