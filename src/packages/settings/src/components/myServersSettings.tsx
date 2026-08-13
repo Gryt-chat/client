@@ -11,7 +11,6 @@ import {
   Heading,
   Spinner,
   Text,
-  Tooltip,
 } from "@radix-ui/themes";
 import { useState } from "react";
 import {
@@ -25,6 +24,7 @@ import {
 
 import { GeneratedServerIcon, normalizeHost } from "@/common";
 
+import type { EmbeddedServerState } from "../../../../lib/electron";
 import { useServerManagement } from "../../../socket/src/hooks/useServerManagement";
 import { useEmbeddedServer } from "../hooks/useEmbeddedServer";
 import { useSettings } from "../hooks/useSettings";
@@ -40,56 +40,28 @@ import { SettingsContainer } from "./settingsComponents";
  * different job from adding one, and it belongs where you go to change things
  * rather than where you go to get somewhere.
  *
- * Built as a list of one. Gryt hosts a single embedded server per machine
- * today — GRYT-222 is what makes a second possible — so the shape is here and
- * the second row is the only thing missing.
+ * A list of however many you host. They share one SFU — it routes on the server
+ * id every message carries — so the second one costs a server process and an
+ * image worker rather than a whole stack.
  */
 export function MyServersSettings() {
   const {
     isAvailable,
-    hasExistingServer,
-    existingConfig,
+    servers,
     lanIp,
-    state,
-    loading,
     autoStart,
     setAutoStart,
     startServer,
     stopServer,
+    isBusy,
     dismissError,
   } = useEmbeddedServer();
-
-  const { servers, addServer, switchToServer, setShowAddServer } =
-    useServerManagement();
   const { setShowSettings } = useSettings();
-
-  /** Which accordion sections are open. Logs are not fetched until theirs is. */
-  const [logsOpen, setLogsOpen] = useState<string[]>([]);
-
-  const isRunning = state.status === "running";
-  const isStarting = state.status === "starting";
-  const hasError = state.status === "error";
-  const config = state.config ?? existingConfig;
-  const name = config?.serverName ?? "My Server";
-  const port = config?.serverPort;
-
-  /** Where this machine reaches it, and the key it goes into the rail under. */
-  const host = port ? `127.0.0.1:${port}` : "";
+  const { setShowAddServer } = useServerManagement();
 
   function hostAServer() {
     setShowSettings(false);
     setShowAddServer(true);
-  }
-
-  /** Put the running server in the rail and go look at it. */
-  function openServer() {
-    const target = normalizeHost(state.serverUrl || host);
-    if (!target) return;
-
-    if (servers[target]) switchToServer(target);
-    else addServer({ name, host: target }, true);
-
-    setShowSettings(false);
   }
 
   if (!isAvailable) {
@@ -114,12 +86,12 @@ export function MyServersSettings() {
 
       <Flex direction="column" gap="3">
         <Text size="1" color="gray">
-          A server Gryt runs on this machine. It is yours: it holds its own
-          messages and members, and it is only reachable while it is running and
-          this machine is on.
+          Servers Gryt runs on this machine. They are yours: each one holds its
+          own messages and members, and is only reachable while it is running
+          and this machine is on.
         </Text>
 
-        {!hasExistingServer && !isRunning && !isStarting ? (
+        {servers.length === 0 ? (
           <Flex direction="column" gap="3" align="start">
             <Text size="2" color="gray">
               You are not running one yet.
@@ -131,153 +103,203 @@ export function MyServersSettings() {
           </Flex>
         ) : (
           <>
-            <Card size="2">
-              <Flex direction="column" gap="3">
-                <Flex align="center" gap="3">
-                  <Avatar
-                    size="3"
-                    radius="full"
-                    src={undefined}
-                    fallback={<GeneratedServerIcon seed={name} />}
-                  />
+            {servers.map((server) => (
+              <HostedServerCard
+                key={server.id}
+                server={server}
+                lanIp={lanIp}
+                autoStart={autoStart[server.id] ?? false}
+                busy={isBusy(server.id)}
+                onAutoStart={(enabled) => setAutoStart(server.id, enabled)}
+                onStart={() => {
+                  void startServer(server.id);
+                }}
+                onStop={() => {
+                  void stopServer(server.id);
+                }}
+                onDismissError={() => {
+                  void dismissError(server.id);
+                }}
+              />
+            ))}
 
-                  <Flex direction="column" gap="1" style={{ minWidth: 0 }}>
-                    <Flex align="center" gap="2">
-                      <Text size="2" weight="bold" truncate>
-                        {name}
-                      </Text>
-                      <Badge
-                        size="1"
-                        color={
-                          isRunning ? "green" : isStarting ? "amber" : "gray"
-                        }
-                      >
-                        {isRunning
-                          ? "Running"
-                          : isStarting
-                            ? "Starting…"
-                            : "Stopped"}
-                      </Badge>
-                    </Flex>
-
-                    {/* Both addresses, because they answer different
-                        questions: the first is where this machine reaches it,
-                        the second is what you give somebody else. */}
-                    <Flex direction="column" gap="1">
-                      <Text size="1" color="gray">
-                        <Code size="1" variant="ghost">
-                          127.0.0.1:{port}
-                        </Code>
-                      </Text>
-                      {config?.lanDiscoverable && (
-                        <Text size="1" color="gray">
-                          On your network{" "}
-                          <Code size="1" variant="ghost">
-                            {lanIp}:{port}
-                          </Code>
-                        </Text>
-                      )}
-                    </Flex>
-                  </Flex>
-
-                  <Flex ml="auto" gap="2" align="center">
-                    {isRunning || isStarting ? (
-                      <Button
-                        variant="soft"
-                        color="red"
-                        onClick={() => {
-                          void stopServer();
-                        }}
-                        disabled={loading}
-                      >
-                        {loading ? <Spinner size="1" /> : <PiStopFill size={16} />}
-                        Stop
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="soft"
-                        onClick={() => {
-                          void startServer();
-                        }}
-                        disabled={loading}
-                      >
-                        {loading ? <Spinner size="1" /> : <PiPlayFill size={16} />}
-                        Start
-                      </Button>
-                    )}
-
-                    <Button onClick={openServer} disabled={!isRunning}>
-                      Open
-                    </Button>
-                  </Flex>
-                </Flex>
-
-                <Flex asChild gap="2" align="center">
-                  <label>
-                    <Checkbox
-                      checked={autoStart}
-                      onCheckedChange={(c) => setAutoStart(c === true)}
-                    />
-                    <Text size="1" color="gray">
-                      Start automatically with app
-                    </Text>
-                  </label>
-                </Flex>
-
-                {/* Behind an accordion, and genuinely unmounted when shut.
-                    EmbeddedServerLogs pulls the whole history and opens a live
-                    subscription the moment it mounts, so hiding it with CSS
-                    would have kept both running for a panel nobody had asked
-                    to see. Closed means not fetching. */}
-                {(isRunning || isStarting) && (
-                  <Accordion
-                    value={logsOpen}
-                    onValueChange={(value: unknown) =>
-                      setLogsOpen(value as string[])
-                    }
-                  >
-                    <Accordion.Item value="logs">
-                      <Accordion.Trigger>Server logs</Accordion.Trigger>
-                      <Accordion.Panel>
-                        {logsOpen.includes("logs") && <EmbeddedServerLogs />}
-                      </Accordion.Panel>
-                    </Accordion.Item>
-                  </Accordion>
-                )}
-              </Flex>
-            </Card>
-
-            {/* Shown and disabled rather than hidden. A list with no way to add
-                to it reads as a list that cannot grow, which is the wrong
-                impression to leave — this is a limit, and it says so. */}
-            <Tooltip content="Gryt runs one server per machine for now.">
-              <Flex width="fit-content">
-                <Button variant="soft" color="gray" disabled>
-                  <PiPlusBold size={14} />
-                  Host another server
-                </Button>
-              </Flex>
-            </Tooltip>
+            <Flex width="fit-content">
+              <Button variant="soft" color="gray" onClick={hostAServer}>
+                <PiPlusBold size={14} />
+                Host another server
+              </Button>
+            </Flex>
           </>
         )}
+      </Flex>
+    </SettingsContainer>
+  );
+}
 
-        {hasError && state.error && (
+/**
+ * Every control is passed in rather than pulled from useEmbeddedServer here.
+ * The hook opens an IPC subscription and fetches the server list when it
+ * mounts, so calling it per card would do both once per server on top of the
+ * parent's — the same work, N+1 times, for a list that is already in scope.
+ */
+function HostedServerCard({
+  server,
+  lanIp,
+  autoStart,
+  busy,
+  onAutoStart,
+  onStart,
+  onStop,
+  onDismissError,
+}: {
+  server: EmbeddedServerState;
+  lanIp: string;
+  autoStart: boolean;
+  busy: boolean;
+  onAutoStart: (enabled: boolean) => void;
+  onStart: () => void;
+  onStop: () => void;
+  onDismissError: () => void;
+}) {
+  const { servers: joinedServers, addServer, switchToServer } =
+    useServerManagement();
+  const { setShowSettings } = useSettings();
+
+  /** Which accordion sections are open. Logs are not fetched until theirs is. */
+  const [logsOpen, setLogsOpen] = useState<string[]>([]);
+
+  const isRunning = server.status === "running";
+  const isStarting = server.status === "starting";
+  const hasError = server.status === "error";
+  const name = server.config?.serverName ?? "My Server";
+  const port = server.config?.serverPort;
+  const host = server.serverUrl ? normalizeHost(server.serverUrl) : "";
+
+  /** Put this server in the rail and go look at it. */
+  function openServer() {
+    if (!host) return;
+
+    if (joinedServers[host]) switchToServer(host);
+    else addServer({ name, host }, true);
+
+    setShowSettings(false);
+  }
+
+  return (
+    <Card size="2">
+      <Flex direction="column" gap="3">
+        <Flex align="center" gap="3">
+          <Avatar
+            size="3"
+            radius="full"
+            src={undefined}
+            fallback={<GeneratedServerIcon seed={name} />}
+          />
+
+          <Flex direction="column" gap="1" style={{ minWidth: 0 }}>
+            <Flex align="center" gap="2">
+              <Text size="2" weight="bold" truncate>
+                {name}
+              </Text>
+              <Badge
+                size="1"
+                color={isRunning ? "green" : isStarting ? "amber" : "gray"}
+              >
+                {isRunning ? "Running" : isStarting ? "Starting…" : "Stopped"}
+              </Badge>
+            </Flex>
+
+            {/* Both addresses, because they answer different questions: the
+                first is where this machine reaches it, the second is what you
+                give somebody else. */}
+            <Flex direction="column" gap="1">
+              <Text size="1" color="gray">
+                <Code size="1" variant="ghost">
+                  127.0.0.1:{port}
+                </Code>
+              </Text>
+              {server.config?.lanDiscoverable && (
+                <Text size="1" color="gray">
+                  On your network{" "}
+                  <Code size="1" variant="ghost">
+                    {lanIp}:{port}
+                  </Code>
+                </Text>
+              )}
+            </Flex>
+          </Flex>
+
+          <Flex ml="auto" gap="2" align="center">
+            {isRunning || isStarting ? (
+              <Button
+                variant="soft"
+                color="red"
+                onClick={onStop}
+                disabled={busy}
+              >
+                {busy ? <Spinner size="1" /> : <PiStopFill size={16} />}
+                Stop
+              </Button>
+            ) : (
+              <Button
+                variant="soft"
+                onClick={onStart}
+                disabled={busy}
+              >
+                {busy ? <Spinner size="1" /> : <PiPlayFill size={16} />}
+                Start
+              </Button>
+            )}
+
+            <Button onClick={openServer} disabled={!isRunning}>
+              Open
+            </Button>
+          </Flex>
+        </Flex>
+
+        <Flex asChild gap="2" align="center">
+          <label>
+            <Checkbox
+              checked={autoStart}
+              onCheckedChange={(c) => onAutoStart(c === true)}
+            />
+            <Text size="1" color="gray">
+              Start automatically with app
+            </Text>
+          </label>
+        </Flex>
+
+        {/* Behind an accordion, and genuinely unmounted when shut.
+            EmbeddedServerLogs pulls the whole history and opens a live
+            subscription the moment it mounts, so hiding it with CSS would have
+            kept both running for a panel nobody had asked to see. Closed means
+            not fetching. */}
+        {(isRunning || isStarting) && (
+          <Accordion
+            value={logsOpen}
+            onValueChange={(value: unknown) => setLogsOpen(value as string[])}
+          >
+            <Accordion.Item value="logs">
+              <Accordion.Trigger>Server logs</Accordion.Trigger>
+              <Accordion.Panel>
+                {logsOpen.includes("logs") && (
+                  <EmbeddedServerLogs serverId={server.id} />
+                )}
+              </Accordion.Panel>
+            </Accordion.Item>
+          </Accordion>
+        )}
+
+        {hasError && server.error && (
           <Flex direction="column" gap="2">
             <Callout.Root color="red" role="alert">
               <Callout.Icon>
                 <PiWarningFill size={16} />
               </Callout.Icon>
-              <Callout.Text>{state.error}</Callout.Text>
+              <Callout.Text>{server.error}</Callout.Text>
             </Callout.Root>
             <Flex justify="end">
-              <Button
-                size="1"
-                variant="ghost"
-                color="gray"
-                onClick={() => {
-                  void dismissError();
-                }}
-              >
+              <Button size="1" variant="ghost" color="gray" onClick={onDismissError}>
                 <PiX size={14} />
                 Dismiss
               </Button>
@@ -285,6 +307,6 @@ export function MyServersSettings() {
           </Flex>
         )}
       </Flex>
-    </SettingsContainer>
+    </Card>
   );
 }

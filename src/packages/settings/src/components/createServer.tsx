@@ -10,7 +10,7 @@ import {
   TextField,
 } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { PiWarningFill, PiX } from "react-icons/pi";
 
 import { GeneratedServerIcon } from "@/common";
@@ -39,44 +39,35 @@ interface CreateServerPanelProps {
  * actually got you there.
  */
 export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelProps) {
-  const { isAvailable, state, loading, createServer, dismissError } =
-    useEmbeddedServer();
+  const { isAvailable, creating, createServer } = useEmbeddedServer();
 
   const [serverName, setServerName] = useState("My Server");
   const [lanDiscoverable, setLanDiscoverable] = useState(true);
-  /**
-   * Set while this panel's own Create is in flight.
-   *
-   * The status effect below fires on any transition to running, including one
-   * caused by autostart or by Settings starting the server in another panel.
-   * Without this, opening the create form next to a server somebody else just
-   * started would join it as if you had asked for that.
-   */
-  const creating = useRef(false);
-
-  const isStarting = state.status === "starting";
-  const hasError = state.status === "error";
-  const busy = loading || isStarting || creating.current;
-
-  useEffect(() => {
-    if (!creating.current) return;
-
-    if (state.status === "running" && state.serverUrl && state.config) {
-      creating.current = false;
-      onServerReady(state.serverUrl, state.config.serverName);
-      return;
-    }
-
-    // A failure ends the attempt too, or the next unrelated start would be
-    // treated as this one finally succeeding.
-    if (state.status === "error") creating.current = false;
-  }, [state, onServerReady]);
+  const [error, setError] = useState("");
 
   if (!isAvailable) return null;
 
+  /**
+   * Create, and hand back the server that was created.
+   *
+   * Deliberately keyed off the returned state rather than off a status effect.
+   * When there was only ever one server, watching for "a server went running"
+   * was good enough; with several, that fires for a server somebody else just
+   * started and would join you to the wrong one.
+   */
   async function handleCreate() {
-    creating.current = true;
-    await createServer(serverName.trim() || "My Server", lanDiscoverable);
+    setError("");
+    const created = await createServer(
+      serverName.trim() || "My Server",
+      lanDiscoverable,
+    );
+
+    if (!created?.serverUrl || !created.config) {
+      setError("Could not create the server. The startup log has the details.");
+      return;
+    }
+
+    onServerReady(created.serverUrl, created.config.serverName);
   }
 
   return (
@@ -109,7 +100,7 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
           placeholder="My Server"
           value={serverName}
           onChange={(e) => setServerName(e.target.value)}
-          disabled={busy}
+          disabled={creating}
           maxLength={64}
         />
       </Flex>
@@ -122,7 +113,7 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
           <Checkbox
             checked={lanDiscoverable}
             onCheckedChange={(c) => setLanDiscoverable(c === true)}
-            disabled={busy}
+            disabled={creating}
           />
           <Text size="2" color="gray">
             Let others on my network find it
@@ -131,7 +122,7 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
       </Flex>
 
       <AnimatePresence>
-        {hasError && state.error && (
+        {error && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
@@ -142,16 +133,14 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
               <Callout.Icon>
                 <PiWarningFill size={16} />
               </Callout.Icon>
-              <Callout.Text>{state.error}</Callout.Text>
+              <Callout.Text>{error}</Callout.Text>
             </Callout.Root>
             <Flex mt="2" justify="end">
               <Button
                 size="1"
                 variant="ghost"
                 color="gray"
-                onClick={() => {
-                  void dismissError();
-                }}
+                onClick={() => setError("")}
               >
                 <PiX size={14} />
                 Dismiss
@@ -162,7 +151,7 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
       </AnimatePresence>
 
       <Dialog.Footer className="justify-between">
-        <Button variant="ghost" color="gray" onClick={onBack} disabled={busy}>
+        <Button variant="ghost" color="gray" onClick={onBack} disabled={creating}>
           Back
         </Button>
 
@@ -170,10 +159,10 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
           onClick={() => {
             void handleCreate();
           }}
-          disabled={busy || !serverName.trim()}
+          disabled={creating || !serverName.trim()}
         >
-          {busy ? <Spinner size="1" /> : null}
-          {isStarting ? "Starting…" : "Create"}
+          {creating ? <Spinner size="1" /> : null}
+          {creating ? "Creating…" : "Create"}
         </Button>
       </Dialog.Footer>
     </Flex>

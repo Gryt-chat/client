@@ -8,62 +8,94 @@ import {
   type EmbeddedServerConfig,
   ensurePortsAvailable,
   generateConfig,
-  getEmbeddedServerDir,
   getLanIp,
+  getServerDir,
   hasExistingServer,
-  loadExistingConfig,
+  listServerConfigs,
+  listServerIds,
+  loadConfig,
 } from "./embeddedServerConfig";
 import { loadGlobalStore, setGlobalValue } from "./globalStore";
 
 export type ServerStatus = "stopped" | "starting" | "running" | "error";
 
 export interface EmbeddedServerState {
+  id: string;
   status: ServerStatus;
   config: EmbeddedServerConfig | null;
   error: string | null;
   serverUrl: string | null;
 }
 
-let serverProcess: ChildProcess | null = null;
+/**
+ * One server, and the two processes that are only its own.
+ *
+ * The SFU is deliberately not in here. It is one process for the whole app —
+ * it routes on the server id every message carries, which is how gryt.chat runs
+ * three servers against one — so it lives beside this map and is reference
+ * counted against the servers using it.
+ */
+interface Instance {
+  config: EmbeddedServerConfig;
+  server: ChildProcess | null;
+  worker: ChildProcess | null;
+  status: ServerStatus;
+  error: string | null;
+  /** Cancels the "assume it started" fallback if the server dies first. */
+  watchdog: NodeJS.Timeout | null;
+}
+
+const instances = new Map<string, Instance>();
+
 let sfuProcess: ChildProcess | null = null;
-let workerProcess: ChildProcess | null = null;
-let currentConfig: EmbeddedServerConfig | null = null;
-let currentStatus: ServerStatus = "stopped";
-let currentError: string | null = null;
+let sfuPort: number | null = null;
 let targetWindow: BrowserWindow | null = null;
 
 function log(msg: string): void {
   console.log("[EmbeddedServer]", msg);
 }
 
+/**
+ * Which server a line of output belongs to.
+ *
+ * `null` means the SFU, which belongs to all of them. The log pane needs this
+ * to keep two servers apart — they used to be tagged only `server`/`worker`, so
+ * a second one interleaved into the first one's pane with no way to tell which
+ * line came from where.
+ */
+export type LogOwner = string | null;
+
 // Both child processes explain themselves perfectly well on the way out — the
 // SFU prints "listen tcp :5005: bind: address already in use" — but that went
 // to the main process console while the user was shown "exited unexpectedly
 // (code 1)" and nothing else. Keep the tail so the error can say why.
 const OUTPUT_TAIL = 12;
-const recentOutput: Record<"sfu" | "server" | "worker", string[]> = {
-  sfu: [],
-  server: [],
-  worker: [],
-};
+const recentOutput = new Map<string, string[]>();
 
-function rememberOutput(source: "sfu" | "server" | "worker", msg: string): void {
-  const lines = recentOutput[source];
+function outputKey(owner: LogOwner, source: LogSource): string {
+  return `${owner ?? "-"}:${source}`;
+}
+
+function rememberOutput(owner: LogOwner, source: LogSource, msg: string): void {
+  const key = outputKey(owner, source);
+  const lines = recentOutput.get(key) ?? [];
   for (const line of msg.split("\n")) {
     const trimmed = line.trim();
     if (trimmed) lines.push(trimmed);
   }
   if (lines.length > OUTPUT_TAIL) lines.splice(0, lines.length - OUTPUT_TAIL);
+  recentOutput.set(key, lines);
 }
 
 /** The most useful line from a dead process, for the error the user sees. */
 function explainExit(
-  source: "sfu" | "server" | "worker",
+  owner: LogOwner,
+  source: LogSource,
   code: number | null,
 ): string {
   const label =
     source === "sfu" ? "SFU" : source === "worker" ? "Image worker" : "Server";
-  const lines = recentOutput[source];
+  const lines = recentOutput.get(outputKey(owner, source)) ?? [];
 
   // Prefer a line that names the actual failure over the last line, which is
   // often a shutdown notice rather than the cause.
@@ -82,13 +114,15 @@ function explainExit(
 
 function emitStatus(): void {
   if (targetWindow && !targetWindow.isDestroyed()) {
-    targetWindow.webContents.send("embedded-server:status-changed", getState());
+    targetWindow.webContents.send("embedded-server:status-changed", getAllStates());
   }
 }
 
 export type LogLevel = "error" | "warn" | "info" | "debug";
 export type LogSource = "sfu" | "server" | "worker";
 export type LogLine = {
+  /** The server this came from, or null for the shared SFU. */
+  serverId: LogOwner;
   source: LogSource;
   level: LogLevel;
   text: string;
@@ -97,10 +131,11 @@ export type LogLine = {
 
 /**
  * Enough history that opening the pane after something went wrong still shows
- * it. The three children are quiet in normal operation and noisy exactly when
- * you want to read them, so the cap is generous.
+ * it. The children are quiet in normal operation and noisy exactly when you
+ * want to read them, so the cap is generous — and it is now shared by every
+ * server, so it scales with how many are running.
  */
-const LOG_HISTORY = 2000;
+const LOG_HISTORY = 4000;
 const logHistory: LogLine[] = [];
 
 /**
@@ -134,15 +169,20 @@ function levelOf(source: LogSource, text: string): LogLevel {
   return "info";
 }
 
-function emitLog(source: string, data: string): void {
-  const src = source as LogSource;
+function emitLog(owner: LogOwner, source: LogSource, data: string): void {
   const lines: LogLine[] = [];
 
   for (const raw of data.split("\n")) {
     // eslint-disable-next-line no-control-regex -- stripping real ANSI colour
     const text = raw.replace(/\u001b\[[0-9;]*m/g, "").trimEnd();
     if (!text.trim()) continue;
-    lines.push({ source: src, level: levelOf(src, text), text, at: Date.now() });
+    lines.push({
+      serverId: owner,
+      source,
+      level: levelOf(source, text),
+      text,
+      at: Date.now(),
+    });
   }
   if (!lines.length) return;
 
@@ -158,18 +198,35 @@ function emitLog(source: string, data: string): void {
   }
 }
 
-/** Everything retained so far, so an opening pane is not blank. */
-export function getEmbeddedServerLogs(): LogLine[] {
-  return logHistory;
+/**
+ * Everything retained so far, so an opening pane is not blank.
+ *
+ * Filtered to one server plus the SFU, because the SFU carries the reason voice
+ * failed and it is shared — hiding it from a server's pane would hide the
+ * answer to the question the pane is usually open for.
+ */
+export function getEmbeddedServerLogs(serverId?: string): LogLine[] {
+  if (!serverId) return logHistory;
+  return logHistory.filter(
+    (l) => l.serverId === serverId || l.serverId === null,
+  );
 }
 
-export function clearEmbeddedServerLogs(): void {
-  logHistory.length = 0;
+export function clearEmbeddedServerLogs(serverId?: string): void {
+  if (!serverId) {
+    logHistory.length = 0;
+    return;
+  }
+  for (let i = logHistory.length - 1; i >= 0; i--) {
+    if (logHistory[i].serverId === serverId) logHistory.splice(i, 1);
+  }
 }
 
-function setStatus(status: ServerStatus, error?: string): void {
-  currentStatus = status;
-  currentError = error ?? null;
+function setStatus(id: string, status: ServerStatus, error?: string): void {
+  const inst = instances.get(id);
+  if (!inst) return;
+  inst.status = status;
+  inst.error = error ?? null;
   emitStatus();
 }
 
@@ -232,67 +289,155 @@ export function isEmbeddedServerAvailable(): boolean {
   return getServerBundlePath() !== null && getSfuBinaryPath() !== null;
 }
 
-export function getState(): EmbeddedServerState {
+function stateOf(inst: Instance): EmbeddedServerState {
   return {
-    status: currentStatus,
-    config: currentConfig,
-    error: currentError,
-    serverUrl: currentConfig ? `http://127.0.0.1:${currentConfig.serverPort}` : null,
+    id: inst.config.id,
+    status: inst.status,
+    config: inst.config,
+    error: inst.error,
+    serverUrl: `http://127.0.0.1:${inst.config.serverPort}`,
+  };
+}
+
+/**
+ * Every server this machine has, running or not.
+ *
+ * Built from disk rather than from the map, so a server that has never been
+ * started in this session still appears — the map only holds the ones that
+ * have been touched.
+ */
+export function getAllStates(): EmbeddedServerState[] {
+  const states: EmbeddedServerState[] = [];
+
+  for (const config of listServerConfigs()) {
+    const inst = instances.get(config.id);
+    if (inst) {
+      states.push(stateOf(inst));
+    } else {
+      states.push({
+        id: config.id,
+        status: "stopped",
+        config,
+        error: null,
+        serverUrl: `http://127.0.0.1:${config.serverPort}`,
+      });
+    }
+  }
+
+  return states;
+}
+
+export function getEmbeddedServerState(id: string): EmbeddedServerState | null {
+  const inst = instances.get(id);
+  if (inst) return stateOf(inst);
+
+  const config = loadConfig(id);
+  if (!config) return null;
+
+  return {
+    id,
+    status: "stopped",
+    config,
+    error: null,
+    serverUrl: `http://127.0.0.1:${config.serverPort}`,
   };
 }
 
 function parseEnvFile(path: string): Record<string, string> {
   const env: Record<string, string> = {};
-  const raw = readFileSync(path, "utf-8");
-  for (const line of raw.split("\n")) {
+  if (!existsSync(path)) return env;
+
+  for (const line of readFileSync(path, "utf-8").split("\n")) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith("#")) continue;
     const eq = trimmed.indexOf("=");
     if (eq < 0) continue;
     env[trimmed.slice(0, eq)] = trimmed.slice(eq + 1);
   }
+
   return env;
 }
 
+/** How many servers are relying on the SFU right now. */
+function sfuUsers(): number {
+  let n = 0;
+  for (const inst of instances.values()) {
+    if (inst.status === "running" || inst.status === "starting") n++;
+  }
+  return n;
+}
+
 function spawnSfu(config: EmbeddedServerConfig): ChildProcess | null {
-  const sfuPath = getSfuBinaryPath();
-  if (!sfuPath) return null;
+  const binary = getSfuBinaryPath();
+  if (!binary) return null;
 
-  const envVars = parseEnvFile(config.configPath);
-
-  const proc = spawn(sfuPath, [], {
+  const proc = spawn(binary, [], {
     env: {
       ...process.env,
-      ...envVars,
       PORT: String(config.sfuPort),
       SFU_PORT: String(config.sfuPort),
     },
     stdio: ["ignore", "pipe", "pipe"],
-    cwd: getEmbeddedServerDir(),
   });
 
-  const onSfuOutput = (data: Buffer) => {
+  const onOutput = (data: Buffer) => {
     const msg = data.toString().trim();
     if (msg) {
-      rememberOutput("sfu", msg);
+      rememberOutput(null, "sfu", msg);
       log(`[SFU] ${msg}`);
-      emitLog("sfu", msg);
+      emitLog(null, "sfu", msg);
     }
   };
 
-  proc.stdout?.on("data", onSfuOutput);
-  proc.stderr?.on("data", onSfuOutput);
+  proc.stdout?.on("data", onOutput);
+  proc.stderr?.on("data", onOutput);
 
   proc.on("exit", (code) => {
     log(`SFU exited with code ${code}`);
     sfuProcess = null;
-    if (currentStatus === "running" || currentStatus === "starting") {
-      setStatus("error", explainExit("sfu", code));
-      stopEmbeddedServer();
+    sfuPort = null;
+
+    // The SFU is shared, so its death is everybody's. Any server still up is
+    // now a server whose voice cannot work, and saying nothing would leave
+    // them all looking healthy.
+    for (const inst of instances.values()) {
+      if (inst.status === "running" || inst.status === "starting") {
+        setStatus(inst.config.id, "error", explainExit(null, "sfu", code));
+        stopServer(inst.config.id);
+      }
     }
   });
 
   return proc;
+}
+
+/**
+ * Start the SFU if it is not already up, and report the port it is on.
+ *
+ * One process for every server. Starting a second would not just be wasteful:
+ * the two would be competing for a port, and whichever lost would take the
+ * server that spawned it down with it.
+ */
+function ensureSfu(config: EmbeddedServerConfig): number | null {
+  if (sfuProcess && sfuPort !== null) return sfuPort;
+
+  sfuProcess = spawnSfu(config);
+  if (!sfuProcess) return null;
+
+  sfuPort = config.sfuPort;
+  log(`SFU started (pid=${sfuProcess.pid}, port=${sfuPort})`);
+  return sfuPort;
+}
+
+/** Shut the SFU down once the last server using it has gone. */
+function releaseSfu(): void {
+  if (sfuUsers() > 0) return;
+  if (!sfuProcess) return;
+
+  log("Last server stopped — shutting the SFU down");
+  killProcess(sfuProcess);
+  sfuProcess = null;
+  sfuPort = null;
 }
 
 function spawnServer(
@@ -304,6 +449,7 @@ function spawnServer(
 
   const envVars = parseEnvFile(config.configPath);
   const versions = readBundledVersions();
+  const id = config.id;
 
   const proc = fork(bundlePath, [], {
     env: {
@@ -320,20 +466,31 @@ function spawnServer(
         : {}),
     },
     stdio: ["ignore", "pipe", "pipe", "ipc"],
-    cwd: getEmbeddedServerDir(),
+    // Its own directory, not a shared one. The server calls dotenv's config()
+    // on "config.env" and ".env" relative to cwd, so two servers sharing a cwd
+    // would both read the first one's file. `override: false` means the env
+    // passed above still wins, but a key present in one config and absent from
+    // the other would leak across — and that is a bug that would only show up
+    // on the second server, months later.
+    cwd: getServerDir(id),
     silent: true,
   });
 
   proc.stdout?.on("data", (data: Buffer) => {
     const msg = data.toString().trim();
     if (msg) {
-      rememberOutput("server", msg);
-      log(`[Server] ${msg}`);
-      emitLog("server", msg);
-      if (msg.includes("listening on") || msg.includes("Server running") || msg.includes(`:${config.serverPort}`)) {
-        if (currentStatus === "starting") {
-          setStatus("running");
-        }
+      rememberOutput(id, "server", msg);
+      log(`[Server ${id}] ${msg}`);
+      emitLog(id, "server", msg);
+
+      const inst = instances.get(id);
+      if (
+        inst?.status === "starting" &&
+        (msg.includes("listening on") ||
+          msg.includes("Server running") ||
+          msg.includes(`:${config.serverPort}`))
+      ) {
+        setStatus(id, "running");
       }
     }
   });
@@ -341,18 +498,21 @@ function spawnServer(
   proc.stderr?.on("data", (data: Buffer) => {
     const msg = data.toString().trim();
     if (msg) {
-      rememberOutput("server", msg);
-      log(`[Server] ${msg}`);
-      emitLog("server", msg);
+      rememberOutput(id, "server", msg);
+      log(`[Server ${id}] ${msg}`);
+      emitLog(id, "server", msg);
     }
   });
 
   proc.on("exit", (code) => {
-    log(`Server exited with code ${code}`);
-    serverProcess = null;
-    if (currentStatus === "running" || currentStatus === "starting") {
-      setStatus("error", explainExit("server", code));
-      stopEmbeddedServer();
+    log(`Server ${id} exited with code ${code}`);
+    const inst = instances.get(id);
+    if (!inst) return;
+
+    inst.server = null;
+    if (inst.status === "running" || inst.status === "starting") {
+      setStatus(id, "error", explainExit(id, "server", code));
+      stopServer(id);
     }
   });
 
@@ -386,6 +546,9 @@ function findFreePort(): Promise<number> {
  * that a corrupt image should not be able to take down the process holding the
  * signing keys and every socket. Bundling it must not quietly undo that.
  *
+ * One per server, unlike the SFU. A worker opens exactly one DATA_DIR and polls
+ * exactly one gryt.db, so it cannot be shared the way the SFU can.
+ *
  * Its failure is not the server's failure. If this dies the server keeps
  * running, images simply stop being processed — which is exactly the state
  * every desktop-hosted server was in before it existed.
@@ -405,6 +568,7 @@ function spawnWorker(
   }
 
   const envVars = parseEnvFile(config.configPath);
+  const id = config.id;
 
   const proc = fork(entry, [], {
     env: {
@@ -414,16 +578,16 @@ function spawnWorker(
       HEALTH_PORT: String(healthPort),
     },
     stdio: ["ignore", "pipe", "pipe", "ipc"],
-    cwd: getEmbeddedServerDir(),
+    cwd: getServerDir(id),
     silent: true,
   });
 
   const onOutput = (data: Buffer) => {
     const msg = data.toString().trim();
     if (msg) {
-      rememberOutput("worker", msg);
-      log(`[Worker] ${msg}`);
-      emitLog("worker", msg);
+      rememberOutput(id, "worker", msg);
+      log(`[Worker ${id}] ${msg}`);
+      emitLog(id, "worker", msg);
     }
   };
 
@@ -431,8 +595,9 @@ function spawnWorker(
   proc.stderr?.on("data", onOutput);
 
   proc.on("exit", (code) => {
-    log(`Image worker exited with code ${code}`);
-    workerProcess = null;
+    log(`Image worker for ${id} exited with code ${code}`);
+    const inst = instances.get(id);
+    if (inst) inst.worker = null;
     // Deliberately does not touch status or stop anything else.
   });
 
@@ -443,73 +608,88 @@ export async function createAndStartServer(
   window: BrowserWindow,
   serverName: string,
   lanDiscoverable: boolean,
-): Promise<EmbeddedServerState> {
+): Promise<EmbeddedServerState | null> {
   targetWindow = window;
 
-  if (currentStatus === "running" || currentStatus === "starting") {
-    return getState();
-  }
-
-  setStatus("starting");
-
   try {
-    currentConfig = await generateConfig(serverName, lanDiscoverable);
-    setAutoStart(true);
-    return startProcesses();
+    const config = await generateConfig(serverName, lanDiscoverable);
+    instances.set(config.id, {
+      config,
+      server: null,
+      worker: null,
+      status: "starting",
+      error: null,
+      watchdog: null,
+    });
+    setAutoStart(config.id, true);
+    emitStatus();
+    return startProcesses(config.id);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     log(`Create failed: ${msg}`);
-    setStatus("error", msg);
-    return getState();
+    return null;
   }
 }
 
 export async function startExistingServer(
   window: BrowserWindow,
-): Promise<EmbeddedServerState> {
+  id: string,
+): Promise<EmbeddedServerState | null> {
   targetWindow = window;
 
-  if (currentStatus === "running" || currentStatus === "starting") {
-    return getState();
+  const existing = instances.get(id);
+  if (existing && (existing.status === "running" || existing.status === "starting")) {
+    return stateOf(existing);
   }
 
   // Ports were picked when the server was created and never re-checked. Move
   // off any that have since been taken, before loading the config — otherwise
   // the process just fails to bind and exits, every time, unrecoverably.
+  //
+  // The SFU port is pinned when one is already running, so the second server
+  // joins it rather than picking a free port and waiting for an SFU that is
+  // never going to arrive there.
   try {
-    const moved = await ensurePortsAvailable();
-    for (const note of moved) log(note);
+    const moved = await ensurePortsAvailable(id, sfuPort ?? undefined);
+    for (const note of moved) log(`${id}: ${note}`);
   } catch (err) {
     log(`Port re-check failed: ${err instanceof Error ? err.message : err}`);
   }
 
-  const config = loadExistingConfig();
-  if (!config) {
-    setStatus("error", "No existing server configuration found");
-    return getState();
-  }
+  const config = loadConfig(id);
+  if (!config) return null;
 
-  setStatus("starting");
-  currentConfig = config;
-  return startProcesses();
+  instances.set(id, {
+    config,
+    server: null,
+    worker: null,
+    status: "starting",
+    error: null,
+    watchdog: null,
+  });
+  emitStatus();
+
+  return startProcesses(id);
 }
 
-function startProcesses(): EmbeddedServerState {
-  if (!currentConfig) {
-    setStatus("error", "No configuration");
-    return getState();
+function startProcesses(id: string): EmbeddedServerState | null {
+  const inst = instances.get(id);
+  if (!inst) return null;
+
+  const config = inst.config;
+
+  if (ensureSfu(config) === null) {
+    setStatus(id, "error", "Failed to start SFU (binary not found)");
+    return stateOf(inst);
   }
 
-  sfuProcess = spawnSfu(currentConfig);
-  if (!sfuProcess) {
-    setStatus("error", "Failed to start SFU (binary not found)");
-    return getState();
-  }
-  log(`SFU started (pid=${sfuProcess.pid}, port=${currentConfig.sfuPort})`);
+  // Small delay to let SFU bind its port before the server connects. Skipped
+  // when it was already up, since there is nothing to wait for.
+  const delay = sfuUsers() > 1 ? 0 : 500;
 
-  // Small delay to let SFU bind its port before the server connects
   setTimeout(async () => {
-    if (!currentConfig || currentStatus !== "starting") return;
+    const current = instances.get(id);
+    if (!current || current.status !== "starting") return;
 
     // The worker's health port is picked before the server is forked rather
     // than when the worker starts, because the server has to be told where to
@@ -522,34 +702,32 @@ function startProcesses(): EmbeddedServerState {
       log("Could not find a free port for the image worker");
     }
 
-    serverProcess = spawnServer(currentConfig, workerHealthPort);
-    if (!serverProcess) {
-      setStatus("error", "Failed to start server (bundle not found)");
-      killProcess(sfuProcess);
-      sfuProcess = null;
+    current.server = spawnServer(config, workerHealthPort);
+    if (!current.server) {
+      setStatus(id, "error", "Failed to start server (bundle not found)");
+      releaseSfu();
       return;
     }
-    log(`Server started (pid=${serverProcess.pid}, port=${currentConfig.serverPort})`);
+    log(`Server ${id} started (pid=${current.server.pid}, port=${config.serverPort})`);
 
     // After the server, because it polls a database the server creates. Its
     // absence is not fatal — see spawnWorker — so nothing here waits on it or
     // fails the start over it.
     try {
-      workerProcess = spawnWorker(currentConfig, workerHealthPort);
-      if (workerProcess) log(`Image worker started (pid=${workerProcess.pid})`);
+      current.worker = spawnWorker(config, workerHealthPort);
+      if (current.worker) log(`Image worker for ${id} started (pid=${current.worker.pid})`);
     } catch (err) {
       log(`Image worker failed to start: ${err instanceof Error ? err.message : err}`);
     }
 
     // If no "listening" log within 10 seconds, assume it's running anyway
-    setTimeout(() => {
-      if (currentStatus === "starting") {
-        setStatus("running");
-      }
+    current.watchdog = setTimeout(() => {
+      const later = instances.get(id);
+      if (later?.status === "starting") setStatus(id, "running");
     }, 10_000);
-  }, 500);
+  }, delay);
 
-  return getState();
+  return stateOf(inst);
 }
 
 function killProcess(proc: ChildProcess | null): void {
@@ -568,72 +746,118 @@ function killProcess(proc: ChildProcess | null): void {
   }
 }
 
-export function stopEmbeddedServer(): void {
-  log("Stopping embedded server...");
+export function stopServer(id: string): EmbeddedServerState | null {
+  const inst = instances.get(id);
+  if (!inst) return null;
 
-  killProcess(workerProcess);
-  workerProcess = null;
+  log(`Stopping embedded server ${id}...`);
 
-  killProcess(serverProcess);
-  serverProcess = null;
-
-  killProcess(sfuProcess);
-  sfuProcess = null;
-
-  if (currentStatus !== "error") {
-    setStatus("stopped");
+  if (inst.watchdog) {
+    clearTimeout(inst.watchdog);
+    inst.watchdog = null;
   }
+
+  killProcess(inst.worker);
+  inst.worker = null;
+
+  killProcess(inst.server);
+  inst.server = null;
+
+  if (inst.status !== "error") {
+    setStatus(id, "stopped");
+  }
+
+  // After the status change, so this server no longer counts itself as a user.
+  releaseSfu();
+
+  return stateOf(inst);
+}
+
+export function stopAllServers(): void {
+  for (const id of [...instances.keys()]) stopServer(id);
+  releaseSfu();
 }
 
 /**
  * Clear a failure the user has read, without touching the processes.
  *
- * Dismissing used to call stopEmbeddedServer(), which cannot work: that guards
- * `if (currentStatus !== "error")` so a dying process does not overwrite the
- * reason it died with a bare "stopped". Correct for that job, but it meant the
- * button pressed to clear an error was the one call that refused to clear it.
+ * Dismissing used to call stop, which cannot work: that guards
+ * `if (status !== "error")` so a dying process does not overwrite the reason it
+ * died with a bare "stopped". Correct for that job, but it meant the button
+ * pressed to clear an error was the one call that refused to clear it.
  */
-export function dismissEmbeddedServerError(): EmbeddedServerState {
-  if (currentStatus === "error") {
-    setStatus("stopped");
+export function dismissEmbeddedServerError(id: string): EmbeddedServerState | null {
+  const inst = instances.get(id);
+  if (!inst) return null;
+
+  if (inst.status === "error") {
+    setStatus(id, "stopped");
   }
 
-  return getState();
+  return stateOf(inst);
 }
 
 export function getEmbeddedServerInfo(): {
   available: boolean;
   hasExisting: boolean;
-  config: EmbeddedServerConfig | null;
   lanIp: string;
+  servers: EmbeddedServerState[];
 } {
   return {
     available: isEmbeddedServerAvailable(),
     hasExisting: hasExistingServer(),
-    config: loadExistingConfig(),
     lanIp: getLanIp(),
+    servers: getAllStates(),
   };
 }
 
-export function setAutoStart(enabled: boolean): void {
-  setGlobalValue("embeddedServer.autoStart", enabled);
+const AUTO_START_KEY = "embeddedServer.autoStart";
+
+/**
+ * Which servers start with the app.
+ *
+ * Stored as a list of ids. It used to be one boolean for the one server that
+ * could exist; that value is read once here and treated as "the original server
+ * starts automatically", so nobody's setting is silently dropped on upgrade.
+ */
+function autoStartIds(): string[] {
+  const store = loadGlobalStore();
+  const raw = store[AUTO_START_KEY];
+
+  if (Array.isArray(raw)) return raw.filter((v): v is string => typeof v === "string");
+  // The pre-multi-server shape.
+  if (raw === true) return ["default"];
+  return [];
 }
 
-export function getAutoStart(): boolean {
-  const store = loadGlobalStore();
-  return store["embeddedServer.autoStart"] === true;
+export function getAutoStart(id: string): boolean {
+  return autoStartIds().includes(id);
+}
+
+export function setAutoStart(id: string, enabled: boolean): void {
+  const current = new Set(autoStartIds());
+  if (enabled) current.add(id);
+  else current.delete(id);
+  setGlobalValue(AUTO_START_KEY, [...current]);
 }
 
 export async function autoStartIfNeeded(window: BrowserWindow): Promise<void> {
-  if (!getAutoStart()) return;
   if (!isEmbeddedServerAvailable()) return;
-  if (!hasExistingServer()) return;
 
-  log("Auto-starting server from previous session...");
+  const wanted = autoStartIds().filter((id) => listServerIds().includes(id));
+  if (wanted.length === 0) return;
+
   targetWindow = window;
-  await startExistingServer(window);
+
+  // In sequence rather than in parallel. They contend for ports, and the first
+  // one to start is the one that decides which port the shared SFU is on — so
+  // the second must not be probing while that is still being settled.
+  for (const id of wanted) {
+    log(`Auto-starting ${id} from previous session...`);
+    await startExistingServer(window, id);
+  }
 }
 
 export function cleanupOnQuit(): void {
-  stopEmbeddedServer();
+  stopAllServers();
 }
