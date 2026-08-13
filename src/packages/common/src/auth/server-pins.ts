@@ -146,22 +146,6 @@ export function getOriginKeyIdForHost(host: string): string | null {
 }
 
 /**
- * Every address currently expected to answer for one server.
- *
- * Moving does not remove the address a server used to be at — `savePin` adds
- * the new one and leaves the old — so this is how something filed under an old
- * address can still be found after the move. Used by the migration in
- * `identity-keys.ts`, which would otherwise only look where the server is now
- * and miss the very case it exists for.
- */
-export function listHostsForOrigin(originKeyId: string): string[] {
-  const pins = listPins();
-  return Object.entries(readHostIndex())
-    .filter(([, keyId]) => (pins[keyId]?.originKeyId ?? keyId) === originKeyId)
-    .map(([host]) => host);
-}
-
-/**
  * Every address we currently expect a key at. Read-only; the settings screen
  * uses it to tell an orphaned pin from one still in use at another address,
  * which matters because the same key legitimately answers at several.

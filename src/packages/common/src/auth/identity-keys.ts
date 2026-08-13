@@ -11,7 +11,7 @@ import {
   seedToWords,
   wordsToSeed,
 } from "./identity-seed";
-import { getOriginKeyIdForHost, listHostsForOrigin } from "./server-pins";
+import { getOriginKeyIdForHost } from "./server-pins";
 
 const DB_NAME = "gryt_identity_keys";
 const DB_VERSION = 1;
@@ -139,15 +139,6 @@ interface StoredKeyPair {
    * as-is.
    */
   host?: string;
-  /**
-   * Whether the seed can reproduce this key.
-   *
-   * False or absent means it cannot: a key generated at random before GRYT-254,
-   * possibly moved under its server since. Those have to be carried in a backup
-   * explicitly, and have to survive restoring a different seed, because nothing
-   * else can bring them back.
-   */
-  derived?: boolean;
 }
 
 const cachedKeyPairs = new Map<string, StoredKeyPair>();
@@ -276,35 +267,6 @@ async function ensureSeedSealed(db: IDBDatabase): Promise<void> {
   }
 }
 
-/**
- * An identity filed under an address this server answers, or used to.
- *
- * The current address first, which is the ordinary case of an existing install
- * meeting this change. Then any other address still expected to reach the same
- * server, which covers the case the change exists for: a server that moved
- * before the client was updated left its identity behind under the address it
- * had at the time, and looking only where it lives now would derive a fresh key
- * and lose the member — the exact failure being fixed.
- */
-async function findIdentityByAddress(
-  db: IDBDatabase,
-  host: string,
-  storageKey: string,
-): Promise<{ address: string; pair: StoredKeyPair } | null> {
-  const origin = getOriginKeyIdForHost(host);
-  const candidates = new Set([host, ...(origin ? listHostsForOrigin(origin) : [])]);
-
-  for (const address of candidates) {
-    const key = `${LOCAL_PREFIX}${address}`;
-    // Equal when the server offered no proof, so the identity is already filed
-    // where it belongs and there is nothing to move.
-    if (key === storageKey) continue;
-    const pair = await idbGet<StoredKeyPair>(db, key);
-    if (pair?.privateKey && pair?.publicKey) return { address, pair };
-  }
-  return null;
-}
-
 async function loadOrGenerateKeyPair(
   source: IdentitySource = { kind: "account" },
 ): Promise<StoredKeyPair> {
@@ -323,35 +285,12 @@ async function loadOrGenerateKeyPair(
     return existing;
   }
 
-  // An identity filed under this server's address, from before GRYT-257.
-  //
-  // Moved rather than recalculated. The key material is what the server knows
-  // as this member, so deriving a fresh one here would correct the filing and
-  // lose the person — which is the bug, not the fix. Written to the new place
-  // before the old one is dropped, so an interruption leaves a duplicate rather
-  // than nothing.
-  if (source.kind === "local") {
-    const legacy = await findIdentityByAddress(db, source.host, storageKey);
-    if (legacy) {
-      const moved: StoredKeyPair = { ...legacy.pair, host: source.host };
-      await idbPut(db, storageKey, moved);
-      await idbDelete(db, `${LOCAL_PREFIX}${legacy.address}`);
-      db.close();
-
-      cachedKeyPairs.set(storageKey, moved);
-      console.log(
-        `[Identity] Filed the identity from ${legacy.address} under its server (${storageKey})`,
-      );
-      return moved;
-    }
-  }
-
   // A local key is calculated from the seed, so the same identity comes back on
   // any device that holds it, including for servers that device has never
-  // connected to. Anything already in the store above was generated at random
-  // before this existed and is kept as it is — there is no way to derive one of
-  // those after the fact, and stranding the roles, ownership and history behind
-  // it to tidy up would be a poor trade.
+  // connected to. Every local key on this device works this way — the random
+  // per-server keys that came before were only ever a day old when this landed,
+  // so nothing carries them forward and there is no second kind of key to
+  // reason about.
   //
   // Local keys are extractable so they can be saved and restored; the account
   // key is not, and does not need to be — losing it costs you nothing, because
@@ -374,7 +313,6 @@ async function loadOrGenerateKeyPair(
             identityScopeFor(source.host),
           )),
           host: source.host,
-          derived: true,
         }
       : await crypto.subtle.generateKey(ALGO, false, ["sign", "verify"]);
 
@@ -530,8 +468,6 @@ export interface IdentityBackupEntry {
   scope: string;
   /** Last address it was used at. Display only. */
   host?: string;
-  /** Whether the seed in this backup reproduces the key. */
-  derived?: boolean;
   privateJwk: JsonWebKey;
   publicJwk: JsonWebKey;
 }
@@ -562,12 +498,6 @@ interface IdentityBackupV1 {
 
 export interface ExportResult {
   backup: IdentityBackup;
-  /**
-   * Servers whose key could not be read. Keys made before local identities were
-   * extractable cannot be exported at all, and the only honest thing is to name
-   * them rather than hand over a backup that quietly omits some servers.
-   */
-  unexportable: string[];
 }
 
 /**
@@ -579,7 +509,6 @@ export interface ExportResult {
 export async function exportLocalIdentities(): Promise<ExportResult> {
   const db = await openDB();
   const identities: IdentityBackupEntry[] = [];
-  const unexportable: string[] = [];
   let seed: string | undefined;
 
   try {
@@ -589,22 +518,19 @@ export async function exportLocalIdentities(): Promise<ExportResult> {
     const bytes = await readSeed(await idbGet<StoredSeed>(db, SEED_KEY));
     if (bytes) seed = base64UrlEncode(bytes);
 
+    // Every key here is derived and extractable by construction, so a failure
+    // to read one is a bug rather than a case to report and step over. Left to
+    // throw: a backup that quietly omits a server is worse than no backup,
+    // because it gets trusted.
     for (const scope of await listLocalIdentityScopes(db)) {
       const pair = await idbGet<StoredKeyPair>(db, `${LOCAL_PREFIX}${scope}`);
       if (!pair?.privateKey || !pair?.publicKey) continue;
-      try {
-        identities.push({
-          scope,
-          host: pair.host,
-          derived: pair.derived,
-          privateJwk: await crypto.subtle.exportKey("jwk", pair.privateKey),
-          publicJwk: await crypto.subtle.exportKey("jwk", pair.publicKey),
-        });
-      } catch {
-        // Named by address where one is known, since the scope is a key id and
-        // means nothing to whoever is reading the warning.
-        unexportable.push(pair.host ?? scope);
-      }
+      identities.push({
+        scope,
+        host: pair.host,
+        privateJwk: await crypto.subtle.exportKey("jwk", pair.privateKey),
+        publicJwk: await crypto.subtle.exportKey("jwk", pair.publicKey),
+      });
     }
   } finally {
     db.close();
@@ -618,7 +544,6 @@ export async function exportLocalIdentities(): Promise<ExportResult> {
       seed,
       identities,
     },
-    unexportable,
   };
 }
 
@@ -726,7 +651,6 @@ export async function importLocalIdentities(raw: string): Promise<string[]> {
         privateKey,
         publicKey,
         host: entry.host,
-        derived: entry.derived,
       });
       restored.push(entry.host ?? entry.scope);
     }
@@ -767,10 +691,10 @@ export async function getIdentityWords(): Promise<string> {
 /**
  * Become the identity a phrase describes.
  *
- * Everything the old seed produced is dropped so it is produced again from this
- * one. Anything *not* derived stays: those were generated at random before
- * GRYT-254 and nothing can bring them back, so deleting them to be tidy would
- * destroy the identities they hold. A phrase is not a claim about them.
+ * Every stored key is dropped, because every stored key came from the old seed
+ * and the new one will produce its own. Nothing is kept back: there is only one
+ * kind of local key now, and it is always reproducible from whichever seed is
+ * in place.
  *
  * The caller reloads afterwards. Clearing the cache is not enough on its own —
  * anything that already read a key still holds it, and a stale key here is not
@@ -784,9 +708,7 @@ export async function restoreIdentityFromWords(phrase: string): Promise<void> {
     await writeSeed(db, seed);
 
     for (const scope of await listLocalIdentityScopes(db)) {
-      const key = `${LOCAL_PREFIX}${scope}`;
-      const pair = await idbGet<StoredKeyPair>(db, key);
-      if (pair?.derived) await idbDelete(db, key);
+      await idbDelete(db, `${LOCAL_PREFIX}${scope}`);
     }
   } finally {
     db.close();

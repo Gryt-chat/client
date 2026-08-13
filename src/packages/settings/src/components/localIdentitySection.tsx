@@ -35,13 +35,11 @@ import {
  * So this section exists to make the risk visible before it lands, and to give
  * people the one thing that actually fixes it: a copy of the key.
  *
- * Since GRYT-255 there are two copies to choose from, and they are not the same
- * thing. The **words** are the seed, which reproduces every identity calculated
- * from it — short enough to live in a password manager, which is where it wants
- * to be. The **file** is the words plus any identity the seed cannot reproduce,
- * which is the ones generated before the seed existed. Most people only need the
- * words; anyone who joined servers before this shipped needs the file too, and
- * is told so rather than left to find out.
+ * Since GRYT-255 that copy is 24 words: the seed, which reproduces every
+ * identity calculated from it, short enough to live in a password manager where
+ * it wants to be. The file is the same secret written out for a password
+ * manager that would rather have one, and it is what `authoriseDeviceFromBackup`
+ * reads, so it carries the keys as well.
  *
  * The words are shown as "identity backup" and never as a "recovery phrase" or
  * "seed phrase". Those belong to crypto wallets, and a screen that looks like
@@ -111,14 +109,10 @@ export function LocalIdentitySection() {
   const handleSaveFile = useCallback(async () => {
     setBusy(true);
     try {
-      const { backup, unexportable } = await exportLocalIdentities();
+      const { backup } = await exportLocalIdentities();
 
       if (!backup.seed && backup.identities.length === 0) {
-        toast.error(
-          unexportable.length > 0
-            ? "These identities were made before backups existed and cannot be saved."
-            : "There is no local identity on this device yet.",
-        );
+        toast.error("There is no local identity on this device yet.");
         return;
       }
 
@@ -134,17 +128,7 @@ export function LocalIdentitySection() {
       a.click();
       URL.revokeObjectURL(url);
       closePanel();
-
-      if (unexportable.length > 0) {
-        // Named rather than skipped. A backup that quietly leaves servers out
-        // is worse than none, because it is trusted.
-        toast.error(
-          `Saved, but ${unexportable.length} older identity could not be included: ${unexportable.join(", ")}`,
-          { duration: 8000 },
-        );
-      } else {
-        toast.success("Identity file saved");
-      }
+      toast.success("Identity file saved");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not save identity");
     } finally {
@@ -319,8 +303,8 @@ export function LocalIdentitySection() {
             </Button>
           </div>
           <span className="text-xs text-gryt-muted">
-            Anyone who has these words is you. They do not cover identities from
-            before this feature existed — for those, save a backup file as well.
+            Anyone who has these words is you, on every server you join without
+            an account. Treat them like a password.
           </span>
         </div>
       )}
