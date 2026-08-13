@@ -1,5 +1,5 @@
-import { Avatar } from "@gryt/ui";
-import { AlertDialog, Button, Card, Flex, Text, TextField } from "@radix-ui/themes";
+import { Avatar, TextField } from "@gryt/ui";
+import { AlertDialog, Button, Card, Flex, Text } from "@radix-ui/themes";
 import { useCallback, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
@@ -73,7 +73,7 @@ function MemberDropdownItem({
         <Text size="2" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {member.nickname}
         </Text>
-        <Text size="1" color="gray">
+        <Text size="1">
           Joined {formatJoinDate(member.createdAt)}
         </Text>
       </Flex>
@@ -122,7 +122,7 @@ function MemberCombobox({
             style={{ flexShrink: 0 }}
           />
         )}
-        <TextField.Root
+        <TextField
           style={{ flex: 1 }}
           placeholder={placeholder}
           value={displayValue}
@@ -227,7 +227,7 @@ export function ServerUserReplaceTab({
 
   return (
     <Flex direction="column" gap="4">
-      <Text size="2" color="gray">
+      <Text size="2">
         Re-map a user&apos;s Keycloak identity (gryt_user_id) while keeping their server user ID, messages, roles, and
         all other data intact. This is useful when a user re-registers and gets a new Keycloak account.
       </Text>
@@ -258,7 +258,7 @@ export function ServerUserReplaceTab({
               host={host}
               placeholder="Paste ID or search for a member…"
             />
-            <Text size="1" color="gray" mt="1" as="p">
+            <Text size="1" mt="1" as="p">
               The Keycloak subject ID from the new account, or select an existing member.
             </Text>
           </div>
@@ -266,7 +266,7 @@ export function ServerUserReplaceTab({
           <Flex justify="end" mt="2">
             <AlertDialog.Root>
               <AlertDialog.Trigger>
-                <Button color="red" disabled={submitting || !targetServerUserId || !newGrytUserId.trim()}>
+                <Button disabled={submitting || !targetServerUserId || !newGrytUserId.trim()}>
                   {submitting ? "Replacing…" : "Replace identity"}
                 </Button>
               </AlertDialog.Trigger>
@@ -279,12 +279,12 @@ export function ServerUserReplaceTab({
                 </AlertDialog.Description>
                 <Flex gap="3" mt="4" justify="end">
                   <AlertDialog.Cancel>
-                    <Button variant="soft" color="gray">
+                    <Button>
                       Cancel
                     </Button>
                   </AlertDialog.Cancel>
                   <AlertDialog.Action>
-                    <Button color="red" onClick={handleReplace} disabled={submitting}>
+                    <Button onClick={handleReplace} disabled={submitting}>
                       Confirm replace
                     </Button>
                   </AlertDialog.Action>

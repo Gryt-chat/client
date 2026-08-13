@@ -1,12 +1,10 @@
-import { Avatar, Dialog } from "@gryt/ui";
+import { Avatar, Checkbox, Dialog, TextField } from "@gryt/ui";
 import {
   Button,
   Callout,
-  Checkbox,
   Flex,
   Spinner,
   Text,
-  TextField,
 } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
@@ -136,7 +134,7 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
           className="h-20 w-20 text-2xl"
           fallback={<GeneratedServerIcon seed={serverName || "My Server"} />}
         />
-        <Text size="1" color="gray">
+        <Text size="1">
           Generated from the name
         </Text>
       </Flex>
@@ -144,11 +142,11 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
       <Flex direction="column" gap="2">
         <Text size="2" weight="bold">
           Server name{" "}
-          <Text as="span" color="red">
+          <Text as="span">
             *
           </Text>
         </Text>
-        <TextField.Root
+        <TextField
           autoFocus
           placeholder="My Server"
           value={serverName}
@@ -182,12 +180,12 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
             </Text>
           )}
           {portState === "loading" && (
-            <Text size="1" color="gray">
+            <Text size="1">
               Checking&hellip;
             </Text>
           )}
         </Flex>
-        <TextField.Root
+        <TextField
           inputMode="numeric"
           placeholder="5000"
           value={port}
@@ -210,7 +208,7 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
             onCheckedChange={(c) => setLanDiscoverable(c === true)}
             disabled={creating}
           />
-          <Text size="2" color="gray">
+          <Text size="2">
             Let others on my network find it
           </Text>
         </label>
@@ -224,7 +222,7 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
             exit={{ height: 0, opacity: 0 }}
             style={{ overflow: "hidden" }}
           >
-            <Callout.Root color="red" role="alert">
+            <Callout.Root role="alert">
               <Callout.Icon>
                 <PiWarningFill size={16} />
               </Callout.Icon>
@@ -234,7 +232,6 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
               <Button
                 size="1"
                 variant="ghost"
-                color="gray"
                 onClick={() => setError("")}
               >
                 <PiX size={14} />
@@ -246,7 +243,7 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
       </AnimatePresence>
 
       <Dialog.Footer className="justify-between">
-        <Button variant="ghost" color="gray" onClick={onBack} disabled={creating}>
+        <Button variant="ghost" onClick={onBack} disabled={creating}>
           Back
         </Button>
 

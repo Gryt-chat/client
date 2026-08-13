@@ -1,4 +1,5 @@
-import { AlertDialog, Button, Card, Flex, Select, Switch, Text, TextField } from "@radix-ui/themes";
+import { Switch, TextField } from "@gryt/ui";
+import { AlertDialog, Button, Card, Flex, Select, Text } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { PiPlus, PiTrashFill } from "react-icons/pi";
@@ -164,7 +165,7 @@ export function ServerChannelsTab({
               <Text size="2" weight="medium">
                 Name
               </Text>
-              <TextField.Root value={name} onChange={(e) => setName(e.target.value)} placeholder="Announcements" />
+              <TextField value={name} onChange={(e) => setName(e.target.value)} placeholder="Announcements" />
             </Flex>
             <Flex direction="column" gap="1" style={{ minWidth: 160 }}>
               <Text size="2" weight="medium">
@@ -179,7 +180,7 @@ export function ServerChannelsTab({
               <Text size="2" weight="medium">
                 Description
               </Text>
-              <TextField.Root value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional" />
+              <TextField value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional" />
             </Flex>
           </Flex>
           {type === "voice" && (
@@ -188,19 +189,19 @@ export function ServerChannelsTab({
                 <Switch checked={eSportsMode} onCheckedChange={(v) => {
                   setESportsMode(v);
                   if (v) { setRequirePushToTalk(true); setDisableRnnoise(true); }
-                }} size="1" />
+                }} />
                 <Flex direction="column">
                   <Text size="2" weight="medium">eSports Mode</Text>
-                  <Text size="1" color="gray">Lowest latency: PTT + no RNNoise + 128kbps studio cap + 10ms Opus frames</Text>
+                  <Text size="1">Lowest latency: PTT + no RNNoise + 128kbps studio cap + 10ms Opus frames</Text>
                 </Flex>
               </Flex>
               <Flex gap="4" wrap="wrap" align="center">
                 <Flex align="center" gap="2">
-                  <Switch checked={requirePushToTalk} onCheckedChange={setRequirePushToTalk} size="1" disabled={eSportsMode} />
+                  <Switch checked={requirePushToTalk} onCheckedChange={setRequirePushToTalk} disabled={eSportsMode} />
                   <Text size="2" color={eSportsMode ? "gray" : undefined}>Require Push to Talk</Text>
                 </Flex>
                 <Flex align="center" gap="2">
-                  <Switch checked={disableRnnoise} onCheckedChange={setDisableRnnoise} size="1" disabled={eSportsMode} />
+                  <Switch checked={disableRnnoise} onCheckedChange={setDisableRnnoise} disabled={eSportsMode} />
                   <Text size="2" color={eSportsMode ? "gray" : undefined}>Disable RNNoise</Text>
                 </Flex>
                 <Flex direction="column" gap="1" style={{ minWidth: 220 }}>
@@ -218,7 +219,7 @@ export function ServerChannelsTab({
             </Flex>
           )}
           <Flex justify="end" gap="2">
-            <Button variant="soft" color="gray" onClick={resetForm} disabled={submitting}>
+            <Button onClick={resetForm} disabled={submitting}>
               Reset
             </Button>
             <Button onClick={upsert} disabled={submitting}>
@@ -234,13 +235,13 @@ export function ServerChannelsTab({
           <Text size="2" weight="medium">
             Existing channels
           </Text>
-          <Button variant="soft" color="gray" onClick={refresh} disabled={submitting}>
+          <Button onClick={refresh} disabled={submitting}>
             Refresh
           </Button>
         </Flex>
 
         {channels.length === 0 ? (
-          <Text size="2" color="gray">
+          <Text size="2">
             No channels found.
           </Text>
         ) : (
@@ -254,7 +255,7 @@ export function ServerChannelsTab({
                     <Text size="2" weight="bold">
                       {ch.name}
                     </Text>
-                    <Text size="1" color="gray">
+                    <Text size="1">
                       #{ch.id} · {ch.type}
                       {ch.description ? ` · ${ch.description}` : ""}
                       {ch.eSportsMode ? " · eSports" : ""}
@@ -264,10 +265,10 @@ export function ServerChannelsTab({
                     </Text>
                   </Flex>
                   <Flex gap="2">
-                    <Button variant="soft" onClick={() => startEdit(ch)} disabled={submitting}>
+                    <Button onClick={() => startEdit(ch)} disabled={submitting}>
                       Edit
                     </Button>
-                    <Button variant="soft" color="red" onClick={() => setPendingDeleteId(ch.id)} disabled={submitting}>
+                    <Button onClick={() => setPendingDeleteId(ch.id)} disabled={submitting}>
                       <PiTrashFill size={16} />
                       Delete
                     </Button>
@@ -286,10 +287,10 @@ export function ServerChannelsTab({
           </AlertDialog.Description>
           <Flex gap="3" mt="4" justify="end">
             <AlertDialog.Cancel>
-              <Button variant="soft" color="gray">Cancel</Button>
+              <Button>Cancel</Button>
             </AlertDialog.Cancel>
             <AlertDialog.Action>
-              <Button variant="solid" color="red" onClick={() => { if (pendingDeleteId) { del(pendingDeleteId); setPendingDeleteId(null); } }}>
+              <Button variant="solid" onClick={() => { if (pendingDeleteId) { del(pendingDeleteId); setPendingDeleteId(null); } }}>
                 Delete
               </Button>
             </AlertDialog.Action>

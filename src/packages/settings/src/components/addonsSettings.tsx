@@ -1,3 +1,4 @@
+import { Switch } from "@gryt/ui";
 import {
   Badge,
   Box,
@@ -5,7 +6,6 @@ import {
   Flex,
   Heading,
   Link,
-  Switch,
   Text,
 } from "@radix-ui/themes";
 import { useEffect, useState } from "react";

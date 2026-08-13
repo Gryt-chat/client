@@ -1,4 +1,5 @@
-import { Badge, Button, Checkbox, Dialog, Flex, IconButton, Select, Text, Tooltip } from "@radix-ui/themes";
+import { Checkbox } from "@gryt/ui";
+import { Badge, Button, Dialog, Flex, IconButton, Select, Text, Tooltip } from "@radix-ui/themes";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PiCaretDownFill, PiCaretUpFill, PiMonitorFill, PiScreencastFill, PiSquaresFourFill, PiX } from "react-icons/pi";
 
@@ -370,14 +371,14 @@ export function ScreenSharePickerModal({
           <Flex align="center" gap="4" wrap="wrap">
             <Tooltip content="Capture desktop/application audio alongside the screen" delayDuration={300}>
               <Text as="label" size="2" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-                <Checkbox size="1" checked={includeAudio} onCheckedChange={(v) => setIncludeAudio(v === true)} />
+                <Checkbox checked={includeAudio} onCheckedChange={(v) => setIncludeAudio(v === true)} />
                 Include audio
               </Text>
             </Tooltip>
 
             <Tooltip content="Optimizes for fast-paced content like games. Allocates 50% more bitrate for smoother motion." delayDuration={300}>
               <Text as="label" size="2" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-                <Checkbox size="1" checked={gamingMode} onCheckedChange={(v) => onGamingModeChange(v === true)} />
+                <Checkbox checked={gamingMode} onCheckedChange={(v) => onGamingModeChange(v === true)} />
                 Gaming mode
               </Text>
             </Tooltip>

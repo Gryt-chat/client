@@ -1,6 +1,6 @@
+import { Checkbox } from "@gryt/ui";
 import {
   Badge,
-  Checkbox,
   Flex,
   Text,
   TextField,
@@ -35,7 +35,6 @@ export function EmoteRow({
       }}
     >
       <Checkbox
-        size="1"
         checked={e.selected}
         onCheckedChange={() => onToggleSelect(e.id)}
         disabled={importing}

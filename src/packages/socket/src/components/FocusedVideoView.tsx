@@ -1,4 +1,5 @@
-import { Flex, Slider, Text } from "@radix-ui/themes";
+import { Slider } from "@gryt/ui";
+import { Flex, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PiArrowLineLeftFill, PiArrowSquareOutFill, PiCornersInFill, PiCornersOutFill, PiSpeakerHighFill, PiSpeakerSlashFill } from "react-icons/pi";
 
@@ -96,8 +97,8 @@ export function FocusedVideoView({
   }, [audioStreamId, streamSources, hasAudio]);
 
   const handleVolumeChange = useCallback(
-    (values: number[]) => {
-      const v = values[0];
+    (next: number | readonly number[]) => {
+      const v = Number(next);
       setVolume(v);
       if (audioStreamId && streamSources?.[audioStreamId]) {
         streamSources[audioStreamId].gain.gain.setValueAtTime(
@@ -219,13 +220,12 @@ export function FocusedVideoView({
                 {volume > 0 ? <PiSpeakerHighFill size={16} /> : <PiSpeakerSlashFill size={16} />}
               </button>
               <Slider
-                size="1"
-                value={[volume]}
+                value={volume}
                 onValueChange={handleVolumeChange}
                 min={0}
                 max={200}
                 step={1}
-                style={{ width: 80 }}
+                className="w-20"
               />
             </Flex>
           )}

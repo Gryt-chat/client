@@ -1,3 +1,4 @@
+import { TextField } from "@gryt/ui";
 import {
   Badge,
   Button,
@@ -7,7 +8,6 @@ import {
   Flex,
   Heading,
   Text,
-  TextField,
 } from "@radix-ui/themes";
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
@@ -164,7 +164,7 @@ export function AccountSettings() {
             <Text weight="medium" size="2">
               Signed in
             </Text>
-            <Badge size="1" color="green" variant="soft">
+            <Badge size="1" color="green">
               Gryt account
             </Badge>
           </Flex>
@@ -196,14 +196,12 @@ export function AccountSettings() {
             )}
           </DataList.Root>
 
-          <Text size="1" color="gray">
+          <Text size="1">
             Servers you joined before signing in came with you — your roles and
             anything you own moved to this account the next time you connected.
           </Text>
 
           <Button
-            variant="soft"
-            color="red"
             style={{ alignSelf: "flex-start" }}
             onClick={() => void logout()}
           >
@@ -218,11 +216,11 @@ export function AccountSettings() {
               <Text weight="medium" size="2">
                 Not signed in
               </Text>
-              <Badge size="1" color="amber" variant="soft">
+              <Badge size="1" color="amber">
                 No account
               </Badge>
             </Flex>
-            <Text size="1" color="gray">
+            <Text size="1">
               Gryt works without an account. What one adds is a way back in: an
               identity that survives losing this device, and the same you on
               every server rather than a separate one each time.
@@ -264,11 +262,11 @@ export function AccountSettings() {
         <Text weight="medium" size="2" color="cyan">
           Auth server
         </Text>
-        <Text size="1" color="gray">
+        <Text size="1">
           Where accounts come from. Leave this alone unless you run your own
           Keycloak — the address of its realm, not the server root.
         </Text>
-        <TextField.Root
+        <TextField
           placeholder={DEFAULT_ISSUER}
           value={issuerInput}
           onChange={(e) => {
@@ -277,11 +275,11 @@ export function AccountSettings() {
           }}
         />
 
-        <Text size="1" color="gray">
+        <Text size="1">
           And the identity service that signs certificates for it. It is a
           separate service, so it cannot be worked out from the address above.
         </Text>
-        <TextField.Root
+        <TextField
           placeholder={DEFAULT_IDENTITY}
           value={identityInput}
           onChange={(e) => {
@@ -291,18 +289,18 @@ export function AccountSettings() {
         />
 
         <Flex gap="2" wrap="wrap">
-          <Button variant="soft" onClick={handleSaveIssuer}>
+          <Button onClick={handleSaveIssuer}>
             {savedIssuer ? "Saved" : "Use these"}
           </Button>
           {hasCustom && (
-            <Button variant="soft" color="gray" onClick={handleClearIssuer}>
+            <Button onClick={handleClearIssuer}>
               Back to Gryt
             </Button>
           )}
         </Flex>
 
         {isCustom && (
-          <Text size="1" color="gray">
+          <Text size="1">
             A server also has to trust certificates from your identity service,
             or it will refuse the join.
           </Text>

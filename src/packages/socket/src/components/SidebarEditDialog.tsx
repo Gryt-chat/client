@@ -1,4 +1,5 @@
-import { Dialog, Flex, IconButton, Select, Switch, Text, TextField } from "@radix-ui/themes";
+import { Switch, TextField } from "@gryt/ui";
+import { Dialog, Flex, IconButton, Select, Text } from "@radix-ui/themes";
 import { useCallback, useRef } from "react";
 import { PiX } from "react-icons/pi";
 
@@ -78,7 +79,7 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
                 : "Spacer settings"}
             </Dialog.Title>
             <Dialog.Close>
-              <IconButton variant="soft" color="gray"><PiX size={16} /></IconButton>
+              <IconButton><PiX size={16} /></IconButton>
             </Dialog.Close>
           </Flex>
 
@@ -86,7 +87,7 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
             <>
               <Flex direction="column" gap="2">
                 <Text size="2" weight="medium">Name</Text>
-                <TextField.Root
+                <TextField
                   value={sheetChannelName}
                   onChange={(e) => setSheetChannelName(e.target.value)}
                   onBlur={flushSave}
@@ -103,7 +104,7 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
                   <Flex align="center" justify="between">
                     <Flex direction="column" gap="1">
                       <Text size="2" weight="medium">eSports Mode</Text>
-                      <Text size="1" color="gray">Lowest latency: PTT, no RNNoise, 128 kbps bitrate, 10ms Opus</Text>
+                      <Text size="1">Lowest latency: PTT, no RNNoise, 128 kbps bitrate, 10ms Opus</Text>
                     </Flex>
                     <Switch checked={sheetEsportsMode} onCheckedChange={(v) => {
                       setSheetEsportsMode(v);
@@ -114,14 +115,14 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
                   <Flex align="center" justify="between">
                     <Flex direction="column" gap="1">
                       <Text size="2" weight="medium">Require Push to Talk</Text>
-                      <Text size="1" color="gray">Users must hold a key to transmit</Text>
+                      <Text size="1">Users must hold a key to transmit</Text>
                     </Flex>
                     <Switch checked={sheetRequirePtt} onCheckedChange={(v) => { setSheetRequirePtt(v); debouncedSave(); }} />
                   </Flex>
                   <Flex align="center" justify="between">
                     <Flex direction="column" gap="1">
                       <Text size="2" weight="medium">Disable Noise Reduction</Text>
-                      <Text size="1" color="gray">Raw audio with no processing for lower latency</Text>
+                      <Text size="1">Raw audio with no processing for lower latency</Text>
                     </Flex>
                     <Switch checked={sheetDisableRnnoise} disabled={sheetEsportsMode} onCheckedChange={(v) => { setSheetDisableRnnoise(v); debouncedSave(); }} />
                   </Flex>
@@ -147,7 +148,7 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
                   <Flex align="center" justify="between">
                     <Flex direction="column" gap="1">
                       <Text size="2" weight="medium">Enable Text Chat</Text>
-                      <Text size="1" color="gray">Allow text messages in this voice channel</Text>
+                      <Text size="1">Allow text messages in this voice channel</Text>
                     </Flex>
                     <Switch checked={sheetTextInVoice} onCheckedChange={(v) => { setSheetTextInVoice(v); debouncedSave(); }} />
                   </Flex>
@@ -159,7 +160,7 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
           {selectedSidebarItem?.kind === "spacer" && (
             <Flex direction="column" gap="2">
               <Text size="2" weight="medium">Height</Text>
-              <TextField.Root
+              <TextField
                 value={sheetSpacerHeight}
                 onChange={(e) => setSheetSpacerHeight(e.target.value)}
                 onBlur={flushSave}
@@ -172,7 +173,7 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
           {selectedSidebarItem?.kind === "separator" && (
             <Flex direction="column" gap="2">
               <Text size="2" weight="medium">Label</Text>
-              <TextField.Root
+              <TextField
                 value={sheetSeparatorLabel}
                 onChange={(e) => setSheetSeparatorLabel(e.target.value)}
                 onBlur={flushSave}

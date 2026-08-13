@@ -1,5 +1,5 @@
-import { Avatar } from "@gryt/ui";
-import { Button, Card, Flex, IconButton, Select, Text, TextField, Tooltip } from "@radix-ui/themes";
+import { Avatar, TextField } from "@gryt/ui";
+import { Button, Card, Flex, IconButton, Select, Text, Tooltip } from "@radix-ui/themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { PiCopyFill, PiPlus, PiTrashFill } from "react-icons/pi";
@@ -94,7 +94,7 @@ export function ServerWebhooksTab({
 
   return (
     <Flex direction="column" gap="4">
-      <Text size="2" color="gray">
+      <Text size="2">
         Webhooks let external services post messages into your channels.
         Each webhook gets a unique URL that can be used to send messages.
       </Text>
@@ -108,15 +108,15 @@ export function ServerWebhooksTab({
       </Flex>
 
       {textChannels.length === 0 && (
-        <Text size="2" color="red">No text channels available. Create a text channel first.</Text>
+        <Text size="2">No text channels available. Create a text channel first.</Text>
       )}
 
       {loading && webhooks.length === 0 && (
-        <Text size="2" color="gray">Loading...</Text>
+        <Text size="2">Loading...</Text>
       )}
 
       {!loading && webhooks.length === 0 && (
-        <Text size="2" color="gray">No webhooks yet.</Text>
+        <Text size="2">No webhooks yet.</Text>
       )}
 
       <Flex direction="column" gap="3">
@@ -282,8 +282,8 @@ function WebhookCard({
         <Flex direction="column" gap="2" style={{ flex: 1, minWidth: 0 }}>
           <Flex gap="2" align="end" wrap="wrap">
             <Flex direction="column" gap="1" style={{ flex: 1, minWidth: 160 }}>
-              <Text size="1" weight="medium" color="gray">Name</Text>
-              <TextField.Root
+              <Text size="1" weight="medium">Name</Text>
+              <TextField
                 value={name}
                 onChange={(e) => handleNameChange(e.target.value)}
                 onBlur={handleNameBlur}
@@ -292,7 +292,7 @@ function WebhookCard({
             </Flex>
 
             <Flex direction="column" gap="1" style={{ minWidth: 160 }}>
-              <Text size="1" weight="medium" color="gray">Channel</Text>
+              <Text size="1" weight="medium">Channel</Text>
               <Select.Root
                 value={webhook.channel_id}
                 onValueChange={handleChannelChange}
@@ -310,12 +310,12 @@ function WebhookCard({
 
             <Flex gap="1" style={{ paddingBottom: 1 }}>
               <Tooltip content="Copy webhook URL">
-                <IconButton variant="soft" onClick={copyUrl}>
+                <IconButton onClick={copyUrl}>
                   <PiCopyFill size={16} />
                 </IconButton>
               </Tooltip>
               <Tooltip content="Delete webhook">
-                <IconButton variant="soft" color="red" onClick={() => onDelete(webhook.webhook_id)}>
+                <IconButton onClick={() => onDelete(webhook.webhook_id)}>
                   <PiTrashFill size={16} />
                 </IconButton>
               </Tooltip>
@@ -323,7 +323,7 @@ function WebhookCard({
           </Flex>
 
           <Flex align="center" gap="2">
-            <Text size="1" color="gray" style={{
+            <Text size="1" style={{
               fontFamily: "var(--code-font-family)",
               overflow: "hidden",
               textOverflow: "ellipsis",

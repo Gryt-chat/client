@@ -1,4 +1,4 @@
-import { Avatar, Dialog } from "@gryt/ui";
+import { Avatar, Dialog, TextField } from "@gryt/ui";
 import {
   Badge,
   Button,
@@ -7,7 +7,6 @@ import {
   Flex,
   IconButton,
   Text,
-  TextField,
   Theme,
   useThemeContext,
 } from "@radix-ui/themes";
@@ -313,7 +312,7 @@ export function AddNewServer({
             <div className="absolute top-2 right-2 z-10">
               <Dialog.Close
                 render={
-                  <IconButton variant="soft" color="gray" aria-label="Close" />
+                  <IconButton aria-label="Close" />
                 }
               >
                 <PiX size={16} />
@@ -374,7 +373,7 @@ export function AddNewServer({
                         <Text size="3" weight="bold">
                           {hasOwnServer ? "Create another" : "Create my own"}
                         </Text>
-                        <Text size="2" color="gray">
+                        <Text size="2">
                           Runs on this machine. Best for a few friends.
                         </Text>
                       </Flex>
@@ -391,7 +390,7 @@ export function AddNewServer({
                     first, but somebody who already hosts one and came here
                     looking for the other should not have to guess. */}
                 {hasOwnServer && (
-                  <Text size="1" color="gray" align="center" mt="-3">
+                  <Text size="1" align="center" mt="-3">
                     Already running{" "}
                     {hostedServers.length === 1
                       ? "one"
@@ -399,7 +398,6 @@ export function AddNewServer({
                     .{" "}
                     <Text
                       asChild
-                      color="gray"
                       style={{ textDecoration: "underline", cursor: "pointer" }}
                     >
                       <button
@@ -424,8 +422,6 @@ export function AddNewServer({
                   </Text>
                   <Button
                     data-tour="choose-join"
-                    variant="soft"
-                    color="gray"
                     size="3"
                     style={{ width: "100%" }}
                     onClick={() => setMode("join")}
@@ -459,12 +455,12 @@ export function AddNewServer({
                 <Flex direction="column" gap="2" data-tour="join-address">
                   <Text size="2" weight="bold">
                     Invite link{" "}
-                    <Text as="span" color="red">
+                    <Text as="span">
                       *
                     </Text>
                   </Text>
 
-                  <TextField.Root
+                  <TextField
                     autoFocus
                     disabled={isJoining}
                     placeholder="https://gryt.chat/invite?host=…&code=…"
@@ -473,12 +469,12 @@ export function AddNewServer({
                   />
 
                   <Flex direction="column" gap="1">
-                    <Text size="1" color="gray">
+                    <Text size="1">
                       Invites look like
                     </Text>
                     <Flex gap="1" wrap="wrap">
                       {INPUT_EXAMPLES.map((example) => (
-                        <Badge key={example} size="1" variant="soft" color="gray">
+                        <Badge key={example} size="1">
                           {example}
                         </Badge>
                       ))}
@@ -518,10 +514,10 @@ export function AddNewServer({
                       style={{ overflow: "hidden" }}
                     >
                       <Flex direction="column" gap="2">
-                        <Text size="2" color="gray" weight="bold">
+                        <Text size="2" weight="bold">
                           Invite code
                         </Text>
-                        <TextField.Root
+                        <TextField
                           disabled={isJoining}
                           placeholder="Paste invite code"
                           value={inviteCode}
@@ -543,15 +539,15 @@ export function AddNewServer({
                       style={{ overflow: "hidden" }}
                     >
                       <Flex direction="column" gap="2">
-                        <Text size="2" color="gray" weight="bold">
+                        <Text size="2" weight="bold">
                           Anything to say?
                         </Text>
-                        <Text size="1" color="gray">
+                        <Text size="1">
                           This server lets people in by hand. A line about who
                           you are gives them something to go on — a nickname on
                           its own does not.
                         </Text>
-                        <TextField.Root
+                        <TextField
                           disabled={isJoining}
                           placeholder="Optional"
                           maxLength={300}
@@ -571,7 +567,7 @@ export function AddNewServer({
                       exit={{ height: 0, opacity: 0 }}
                       style={{ overflow: "hidden" }}
                     >
-                      <Callout.Root color="gray">
+                      <Callout.Root>
                         <Callout.Text>
                           Asked. Somebody who runs this server has to let you in
                           — once they do, adding it again will work.
@@ -589,7 +585,7 @@ export function AddNewServer({
                       exit={{ height: 0, opacity: 0 }}
                       style={{ overflow: "hidden" }}
                     >
-                      <Callout.Root color="red" role="alert">
+                      <Callout.Root role="alert">
                         <Callout.Icon>
                           <PiWarningFill size={16} />
                         </Callout.Icon>
@@ -630,7 +626,7 @@ export function AddNewServer({
                           <Text size="2" weight="bold">
                             Don&rsquo;t have an invite?
                           </Text>
-                          <Text size="1" color="gray">
+                          <Text size="1">
                             Look for servers running on your network.
                           </Text>
                         </Flex>
@@ -651,7 +647,6 @@ export function AddNewServer({
                   {embeddedServerAvailable ? (
                     <Button
                       variant="ghost"
-                      color="gray"
                       disabled={isJoining}
                       onClick={() => setMode(null)}
                     >
@@ -742,15 +737,15 @@ function ServerPreview({
           {loading ? (
             <SkeletonBase width="5rem" height="0.75rem" />
           ) : error ? (
-            <Text size="1" color="red">
+            <Text size="1">
               {error}
             </Text>
           ) : privateInfo ? (
-            <Text size="1" color="gray">
+            <Text size="1">
               Public info is off. An invite code can still get you in.
             </Text>
           ) : (
-            <Text size="1" color="gray" truncate>
+            <Text size="1" truncate>
               {info
                 ? `${info.members} ${info.members === "1" ? "member" : "members"} · ${host}`
                 : host}
@@ -760,7 +755,7 @@ function ServerPreview({
 
         <Flex ml="auto" gap="2" align="center">
           {alreadyMember && (
-            <Badge size="1" variant="soft" color="blue">
+            <Badge size="1" color="blue">
               <PiInfoFill size={12} />
               Joined
             </Badge>
@@ -774,7 +769,6 @@ function ServerPreview({
           {info?.identityTiers && !alreadyMember && (
             <Badge
               size="1"
-              variant="soft"
               color={info.identityTiers.includes("local") ? "green" : "gray"}
             >
               {info.identityTiers.includes("local")

@@ -1,13 +1,11 @@
-import { Avatar } from "@gryt/ui";
+import { Avatar, Switch, TextField } from "@gryt/ui";
 import {
   AlertDialog,
   Button,
   Flex,
   Select,
-  Switch,
   Text,
   TextArea,
-  TextField,
 } from "@radix-ui/themes";
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
@@ -407,7 +405,7 @@ export function ServerOverviewTab({
 
   return (
     <Flex direction="column" gap="4">
-      <Text size="2" color="gray">
+      <Text size="2">
         {isOwner
           ? "Update the server display name and icon."
           : "You can view settings, but only the owner can make changes."}
@@ -417,7 +415,7 @@ export function ServerOverviewTab({
         <Text size="2" weight="medium">
           Server
         </Text>
-        <Text size="2" color="gray">
+        <Text size="2">
           {host}
         </Text>
       </Flex>
@@ -426,7 +424,7 @@ export function ServerOverviewTab({
         <Text size="2" weight="medium">
           Display name
         </Text>
-        <TextField.Root
+        <TextField
           value={displayName}
           onChange={(e: ChangeEvent<HTMLInputElement>) => setDisplayName(e.target.value)}
           onBlur={() => saveIfChanged({ displayName: displayName.trim() })}
@@ -505,7 +503,7 @@ export function ServerOverviewTab({
               )}
             </div>
           </button>
-          <Text size="1" color="gray">
+          <Text size="1">
             {isUploadingIcon
               ? "Uploading..."
               : isClearingIcon
@@ -519,8 +517,6 @@ export function ServerOverviewTab({
         {isOwner && iconUrl ? (
           <>
             <Button
-              variant="soft"
-              color="red"
               disabled={isUploadingIcon || isClearingIcon}
               onClick={() => setShowClearIconConfirm(true)}
               style={{ alignSelf: "center" }}
@@ -539,12 +535,11 @@ export function ServerOverviewTab({
                 </AlertDialog.Description>
                 <Flex gap="3" mt="4" justify="end">
                   <AlertDialog.Cancel>
-                    <Button variant="soft" color="gray">Cancel</Button>
+                    <Button>Cancel</Button>
                   </AlertDialog.Cancel>
                   <AlertDialog.Action>
                     <Button
                       variant="solid"
-                      color="red"
                       onClick={() => { clearIcon(); setShowClearIconConfirm(false); }}
                     >
                       Clear icon
@@ -573,7 +568,7 @@ export function ServerOverviewTab({
         <Text size="2" weight="medium">
           Limits (optional)
         </Text>
-        <Text size="2" color="gray">
+        <Text size="2">
           Leave blank for defaults. These affect uploads and voice bandwidth.
         </Text>
 
@@ -581,7 +576,7 @@ export function ServerOverviewTab({
           <Text size="2" weight="medium">
             Max avatar upload (MB)
           </Text>
-          <TextField.Root
+          <TextField
             type="number"
             inputMode="decimal"
             step="0.5"
@@ -598,7 +593,7 @@ export function ServerOverviewTab({
           <Text size="2" weight="medium">
             Max file upload (MB)
           </Text>
-          <TextField.Root
+          <TextField
             type="number"
             inputMode="decimal"
             step="1"
@@ -615,7 +610,7 @@ export function ServerOverviewTab({
           <Text size="2" weight="medium">
             Max emoji upload (MB)
           </Text>
-          <TextField.Root
+          <TextField
             type="number"
             inputMode="decimal"
             step="0.5"
@@ -634,7 +629,7 @@ export function ServerOverviewTab({
         <Text size="2" weight="medium">
           Profanity filter
         </Text>
-        <Text size="1" color="gray" style={{ lineHeight: 1.4 }}>
+        <Text size="1" style={{ lineHeight: 1.4 }}>
           Controls how profane messages are handled on this server.
         </Text>
         <Flex gap="2" wrap="wrap">
@@ -686,7 +681,7 @@ export function ServerOverviewTab({
         <Text size="2" weight="medium">
           System messages channel
         </Text>
-        <Text size="1" color="gray" style={{ lineHeight: 1.4 }}>
+        <Text size="1" style={{ lineHeight: 1.4 }}>
           Choose which text channel receives system messages like &ldquo;user joined&rdquo; and &ldquo;user left&rdquo;.
         </Text>
         <Select.Root
@@ -714,7 +709,7 @@ export function ServerOverviewTab({
         <Text size="2" weight="medium">
           Who can join
         </Text>
-        <Text size="1" color="gray" style={{ lineHeight: 1.4 }}>
+        <Text size="1" style={{ lineHeight: 1.4 }}>
           Bans still apply whichever of these you pick, but they hold only as
           well as the identity behind them — somebody without a Gryt account can
           make a new one, so lean on invites if that matters.
@@ -737,7 +732,7 @@ export function ServerOverviewTab({
           </Select.Content>
         </Select.Root>
         {joinPolicy === "request" && (
-          <Text size="1" color="gray" style={{ lineHeight: 1.4 }}>
+          <Text size="1" style={{ lineHeight: 1.4 }}>
             People who ask show up under <strong>Requests</strong>. Nobody gets in
             until somebody there approves them.
           </Text>
@@ -748,7 +743,7 @@ export function ServerOverviewTab({
         <Text size="2" weight="medium">
           LAN access
         </Text>
-        <Text size="1" color="gray" style={{ lineHeight: 1.4 }}>
+        <Text size="1" style={{ lineHeight: 1.4 }}>
           When enabled, clients on the same local network can join without an invite code. Remote connections still require an invite.
         </Text>
         <Flex align="center" gap="2">
@@ -759,7 +754,6 @@ export function ServerOverviewTab({
               if (!saveIfChanged({ lanOpen: v })) setLanOpen(!v);
             }}
             disabled={!isOwner}
-            size="1"
           />
           <Text size="2">Allow anyone on LAN to join</Text>
         </Flex>
@@ -769,7 +763,7 @@ export function ServerOverviewTab({
         <Text size="2" weight="medium">
           Discoverability
         </Text>
-        <Text size="1" color="gray" style={{ lineHeight: 1.4 }}>
+        <Text size="1" style={{ lineHeight: 1.4 }}>
           When disabled, the server&rsquo;s public info endpoint is hidden. Non-members will not be able to see the server name, description, or member count before joining.
         </Text>
         <Flex align="center" gap="2">
@@ -780,7 +774,6 @@ export function ServerOverviewTab({
               if (!saveIfChanged({ discoverable: v })) setDiscoverable(!v);
             }}
             disabled={!isOwner}
-            size="1"
           />
           <Text size="2">Allow public server info</Text>
         </Flex>
@@ -788,7 +781,7 @@ export function ServerOverviewTab({
 
       {autosaving ? (
         <Flex justify="end">
-          <Text size="2" color="gray">Saving…</Text>
+          <Text size="2">Saving…</Text>
         </Flex>
       ) : null}
     </Flex>

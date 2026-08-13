@@ -1,4 +1,5 @@
-import { Box, Dialog, Flex, IconButton, Separator, Text, TextField } from "@radix-ui/themes";
+import { IconButton, TextField } from "@gryt/ui";
+import { Box, Dialog, Flex, Separator, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PiArrowFatLineDownFill, PiFadersHorizontalFill, PiFlaskFill, PiGearSixFill, PiHardDrivesFill, PiHeartFill, PiMagnifyingGlassFill, PiPuzzlePieceFill, PiUserCircleFill, PiUserFill, PiVideoCameraFill, PiX } from "react-icons/pi";
 
@@ -309,7 +310,7 @@ export function Settings() {
         }}
       >
         <Dialog.Close style={{ position: "absolute", top: "8px", right: "8px" }}>
-          <IconButton data-tour="settings-close" variant="soft" color="gray">
+          <IconButton data-tour="settings-close">
             <PiX size={16} />
           </IconButton>
         </Dialog.Close>
@@ -355,42 +356,46 @@ export function Settings() {
                   minHeight: 0,
                 }}
               >
-                <TextField.Root
-                  placeholder="Search settings"
-                  value={query}
-                  onChange={(e) => setQuery(e.currentTarget.value)}
-                  onKeyDown={(e) => {
-                    // Clear the query first; only close the dialog once the
-                    // search is already empty.
-                    if (e.key === "Escape" && query) {
-                      e.stopPropagation();
-                      setQuery("");
-                    }
-                    if (e.key === "Enter" && results.length > 0) {
-                      jumpTo(results[0]);
-                    }
-                  }}
-                >
-                  <TextField.Slot>
-                    <PiMagnifyingGlassFill size={15} />
-                  </TextField.Slot>
+                {/* The library's TextField has no slot API — it is a field,
+                    not a container. The icons sit over it instead, with padding
+                    making room for them, which is what Radix's slots were doing
+                    behind their own markup anyway. */}
+                <div className="relative">
+                  <PiMagnifyingGlassFill
+                    className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-gryt-muted"
+                    size={15}
+                  />
+                  <TextField
+                    className="px-10"
+                    placeholder="Search settings"
+                    value={query}
+                    onChange={(e) => setQuery(e.currentTarget.value)}
+                    onKeyDown={(e) => {
+                      // Clear the query first; only close the dialog once the
+                      // search is already empty.
+                      if (e.key === "Escape" && query) {
+                        e.stopPropagation();
+                        setQuery("");
+                      }
+                      if (e.key === "Enter" && results.length > 0) {
+                        jumpTo(results[0]);
+                      }
+                    }}
+                  />
                   {query && (
-                    <TextField.Slot>
-                      <IconButton
-                        size="1"
-                        variant="ghost"
-                        color="gray"
-                        aria-label="Clear search"
-                        onClick={() => {
-                          setQuery("");
-                          setPicked(null);
-                        }}
-                      >
-                        <PiX size={14} />
-                      </IconButton>
-                    </TextField.Slot>
+                    <IconButton
+                      aria-label="Clear search"
+                      className="absolute top-1/2 right-2 -translate-y-1/2"
+                      size="small"
+                      onClick={() => {
+                        setQuery("");
+                        setPicked(null);
+                      }}
+                    >
+                      <PiX size={14} />
+                    </IconButton>
                   )}
-                </TextField.Root>
+                </div>
 
                 <Box style={{ overflowY: "auto", minHeight: 0, flex: 1 }}>
                   {searching ? (

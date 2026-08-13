@@ -1,10 +1,10 @@
+import { TextField } from "@gryt/ui";
 import {
   AlertDialog,
   Button,
   Flex,
   IconButton,
   Text,
-  TextField,
 } from "@radix-ui/themes";
 import { type ChangeEvent, useState } from "react";
 import toast from "react-hot-toast";
@@ -167,7 +167,7 @@ export function EmojiList({
         {emojis.length > 0 && (
           <AlertDialog.Root>
             <AlertDialog.Trigger>
-              <Button variant="soft" color="red" size="1" disabled={deletingAll}>
+              <Button size="1" disabled={deletingAll}>
                 <PiTrashFill size={14} />
                 {deletingAll ? "Deleting..." : "Delete all"}
               </Button>
@@ -179,10 +179,10 @@ export function EmojiList({
               </AlertDialog.Description>
               <Flex gap="3" mt="4" justify="end">
                 <AlertDialog.Cancel>
-                  <Button variant="soft" color="gray">Cancel</Button>
+                  <Button>Cancel</Button>
                 </AlertDialog.Cancel>
                 <AlertDialog.Action>
-                  <Button variant="solid" color="red" onClick={handleDeleteAll}>
+                  <Button variant="solid" onClick={handleDeleteAll}>
                     Delete all
                   </Button>
                 </AlertDialog.Action>
@@ -193,11 +193,11 @@ export function EmojiList({
       </Flex>
 
       {loading ? (
-        <Text size="2" color="gray">
+        <Text size="2">
           Loading...
         </Text>
       ) : emojis.length === 0 ? (
-        <Text size="2" color="gray">
+        <Text size="2">
           No custom emojis yet.
         </Text>
       ) : (
@@ -227,8 +227,7 @@ export function EmojiList({
               {editingEmoji === e.name ? (
                 <Flex direction="column" gap="1" style={{ flex: 1, minWidth: 0 }}>
                   <Flex align="center" gap="1">
-                    <TextField.Root
-                      size="1"
+                    <TextField size="small"
                       value={editingName}
                       onChange={(ev: ChangeEvent<HTMLInputElement>) => {
                         const v = ev.target.value.replace(/[^A-Za-z0-9_]/g, "");
@@ -265,7 +264,7 @@ export function EmojiList({
                     </IconButton>
                   </Flex>
                   {editingError && (
-                    <Text size="1" color="red" style={{ lineHeight: 1.2 }}>
+                    <Text size="1" style={{ lineHeight: 1.2 }}>
                       {editingError}
                     </Text>
                   )}
@@ -288,7 +287,6 @@ export function EmojiList({
                   </IconButton>
                   <IconButton
                     variant="ghost"
-                    color="red"
                     size="1"
                     onClick={() => handleDelete(e.name)}
                     disabled={deletingName === e.name}
