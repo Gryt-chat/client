@@ -1,5 +1,4 @@
-import { Checkbox, Chip } from "@gryt/ui";
-import { TextField } from "@radix-ui/themes";
+import { Checkbox, Chip, TextField } from "@gryt/ui";
 import { type ChangeEvent } from "react";
 
 import { type ImportEmoteWithMeta } from "../utils/emoteImportUtils";
@@ -63,15 +62,15 @@ export function EmoteRow({
       </div>
       <div className="flex flex-col gap-1" style={{ flex: 1, minWidth: 0 }}>
         <div className="flex items-center gap-1">
-          <TextField.Root
-            size="1"
+          <TextField
+            size="small"
             value={e.name}
             onChange={(ev: ChangeEvent<HTMLInputElement>) =>
               onUpdateName(e.id, ev.target.value)
             }
             placeholder="shortcode"
             disabled={importing || !e.selected}
-            style={{ flex: 1 }}
+            className="flex-1"
           />
           {e.code !== e.name && (
             <span className="text-xs text-gryt-muted" style={{

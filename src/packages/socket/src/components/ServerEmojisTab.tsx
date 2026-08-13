@@ -1,5 +1,4 @@
-import { Button, Chip, IconButton } from "@gryt/ui";
-import { TextField } from "@radix-ui/themes";
+import { Button, Chip, IconButton, TextField } from "@gryt/ui";
 import { type ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { PiUploadSimpleFill, PiX } from "react-icons/pi";
@@ -203,8 +202,8 @@ export function ServerEmojisTab({
                   )}
                 </div>
                 <div className="flex flex-col gap-1" style={{ flex: 1, minWidth: 0 }}>
-                  <TextField.Root
-                    size="1"
+                  <TextField
+                    size="small"
                     value={p.name}
                     onChange={(e: ChangeEvent<HTMLInputElement>) => updatePendingName(p.id, e.target.value)}
                     placeholder="shortcode"

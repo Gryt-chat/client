@@ -1,5 +1,4 @@
 import { Chip } from "@gryt/ui";
-import { DataList } from "@radix-ui/themes";
 
 import type { MemberInfo } from "./MemberSidebar";
 
@@ -85,36 +84,36 @@ export function MemberIdentityCard({ member }: { member: MemberInfo }) {
         )}
       </div>
 
-      <DataList.Root size="1" orientation="vertical">
+      <dl className="m-0 flex flex-col gap-3">
         {tier && (
-          <DataList.Item>
-            <DataList.Label>Identity</DataList.Label>
-            <DataList.Value>
+          <div className="flex flex-col gap-0.5">
+            <dt className="text-xs text-gryt-muted">Identity</dt>
+            <dd className="m-0 text-sm text-gryt-text">
               <Chip tone="neutral" color={tier.color}>
                 {tier.label}
               </Chip>
-            </DataList.Value>
-          </DataList.Item>
+            </dd>
+          </div>
         )}
 
         {joined && (
-          <DataList.Item>
-            <DataList.Label>Joined</DataList.Label>
-            <DataList.Value>{joined}</DataList.Value>
-          </DataList.Item>
+          <div className="flex flex-col gap-0.5">
+            <dt className="text-xs text-gryt-muted">Joined</dt>
+            <dd className="m-0 text-sm text-gryt-text">{joined}</dd>
+          </div>
         )}
 
         {renames && (
-          <DataList.Item>
-            <DataList.Label>Name</DataList.Label>
-            <DataList.Value>{renames}</DataList.Value>
-          </DataList.Item>
+          <div className="flex flex-col gap-0.5">
+            <dt className="text-xs text-gryt-muted">Name</dt>
+            <dd className="m-0 text-sm text-gryt-text">{renames}</dd>
+          </div>
         )}
 
         {member.identityFingerprint && (
-          <DataList.Item>
-            <DataList.Label>Fingerprint</DataList.Label>
-            <DataList.Value>
+          <div className="flex flex-col gap-0.5">
+            <dt className="text-xs text-gryt-muted">Fingerprint</dt>
+            <dd className="m-0 text-sm text-gryt-text">
               {/*
                 Shown whole rather than shortened. A local identity is a keypair
                 its holder makes, so a few characters could be ground out to
@@ -128,10 +127,10 @@ export function MemberIdentityCard({ member }: { member: MemberInfo }) {
               >
                 {member.identityFingerprint}
               </code>
-            </DataList.Value>
-          </DataList.Item>
+            </dd>
+          </div>
         )}
-      </DataList.Root>
+      </dl>
 
       <span className="text-xs text-gryt-muted">
         Names are not unique. Check the fingerprint if it matters.

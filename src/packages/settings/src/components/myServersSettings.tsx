@@ -1,5 +1,4 @@
 import { Accordion, Alert, AlertDialog, Avatar, Button, Checkbox, Chip, Spinner, Surface, TextField } from "@gryt/ui";
-import { Code } from "@radix-ui/themes";
 import { useState } from "react";
 import {
   PiHardDrivesFill,
@@ -214,16 +213,16 @@ function HostedServerCard({
                 give somebody else. */}
             <div className="flex flex-col gap-1">
               <span className="text-xs">
-                <Code size="1" variant="ghost">
+                <code className="font-mono text-xs text-gryt-muted">
                   127.0.0.1:{port}
-                </Code>
+                </code>
               </span>
               {server.config?.lanDiscoverable && (
                 <span className="text-xs">
                   On your network{" "}
-                  <Code size="1" variant="ghost">
+                  <code className="font-mono text-xs text-gryt-muted">
                     {lanIp}:{port}
-                  </Code>
+                  </code>
                 </span>
               )}
             </div>

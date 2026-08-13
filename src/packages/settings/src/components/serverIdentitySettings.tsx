@@ -1,5 +1,4 @@
 import { Alert, AlertDialog, Button, Chip, IconButton, Tooltip } from "@gryt/ui";
-import { Code } from "@radix-ui/themes";
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { PiHardDrivesFill, PiShieldCheckFill, PiTrashFill, PiWarningFill } from "react-icons/pi";
@@ -26,9 +25,7 @@ function Fingerprint({ value }: { value: string }) {
   const grouped = (value.match(/.{1,8}/g) || [value]).join(" ");
   return (
     <Tooltip title="Click to copy">
-      <Code
-        size="1"
-        variant="soft"
+      <code className="font-mono text-xs text-gryt-muted"
         style={{ cursor: "pointer", wordBreak: "break-all" }}
         onClick={() => {
           navigator.clipboard?.writeText(value).then(
@@ -38,7 +35,7 @@ function Fingerprint({ value }: { value: string }) {
         }}
       >
         {grouped}
-      </Code>
+      </code>
     </Tooltip>
   );
 }

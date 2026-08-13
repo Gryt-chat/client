@@ -1,5 +1,4 @@
 import { Alert, Button, Chip, TextField } from "@gryt/ui";
-import { Code } from "@radix-ui/themes";
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { PiEyeFill, PiInfoFill, PiSignOutFill } from "react-icons/pi";
@@ -35,9 +34,7 @@ function Revealable({ value }: { value: string }) {
 
   return (
     <div className="flex items-center gap-2">
-      <Code
-        size="1"
-        variant="ghost"
+      <code className="font-mono text-xs text-gryt-muted"
         onClick={() => setShown((s) => !s)}
         title={shown ? "Click to hide" : "Click to reveal"}
         style={{
@@ -49,7 +46,7 @@ function Revealable({ value }: { value: string }) {
         }}
       >
         {value}
-      </Code>
+      </code>
       {!shown && <PiEyeFill size={13} style={{ opacity: 0.5, flexShrink: 0 }} />}
     </div>
   );

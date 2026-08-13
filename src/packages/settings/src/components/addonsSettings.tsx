@@ -1,5 +1,4 @@
 import { Button, Chip, Switch } from "@gryt/ui";
-import { Link } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 import { PiFolderFill } from "react-icons/pi";
 
@@ -173,14 +172,13 @@ export function AddonsSettings() {
               ? "Addons are folders in your addons directory, each with an addon.json manifest."
               : "Addons load from a mounted addons directory. The desktop app can open that folder for you."}
           </span>
-          <Link
+          <a className="text-gryt-accent underline-offset-2 hover:underline"
             href="https://docs.gryt.chat/docs"
             target="_blank"
             rel="noreferrer"
-            size="1"
           >
             Read the addon docs
-          </Link>
+          </a>
         </div>
       ) : (
         <div style={{

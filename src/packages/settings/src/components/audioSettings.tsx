@@ -1,5 +1,4 @@
-import { Alert, Divider, IconButton, Slider, Tooltip } from "@gryt/ui";
-import { SegmentedControl, Select } from "@radix-ui/themes";
+import { Alert, Divider, IconButton, Select, Slider, Tabs, Tooltip } from "@gryt/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PiArrowsClockwiseFill, PiWarningFill } from "react-icons/pi";
 
@@ -325,17 +324,18 @@ export function AudioSettings() {
         title="Input mode"
         description="Voice activity transmits whenever you speak above the noise gate. Push to talk only transmits while you hold a key, and hides the gate below."
       >
-        <SegmentedControl.Root
+        <Tabs
           value={inputMode}
-          onValueChange={(v) => setInputMode(v as "voice_activity" | "push_to_talk")}
+          onValueChange={(v) =>
+            setInputMode(v as "voice_activity" | "push_to_talk")
+          }
         >
-          <SegmentedControl.Item value="voice_activity">
-            Voice activity
-          </SegmentedControl.Item>
-          <SegmentedControl.Item value="push_to_talk">
-            Push to talk
-          </SegmentedControl.Item>
-        </SegmentedControl.Root>
+          <Tabs.List aria-label="Input mode">
+            <Tabs.Tab value="voice_activity">Voice activity</Tabs.Tab>
+            <Tabs.Tab value="push_to_talk">Push to talk</Tabs.Tab>
+            <Tabs.Indicator />
+          </Tabs.List>
+        </Tabs>
       </SettingGroup>
 
       <Divider />
@@ -356,16 +356,15 @@ export function AudioSettings() {
             </IconButton>
           </Tooltip>
         </div>
-        <Select.Root value={micID || ""} onValueChange={setMicID}>
-          <Select.Trigger placeholder="Select microphone device" />
-          <Select.Content position="popper" sideOffset={4}>
-            {devices.map((device) => (
-              <Select.Item key={device.deviceId || device.label} value={device.deviceId || `device-${device.label}`}>
-                {device.label || `Microphone ${device.deviceId.slice(0, 8)}`}
-              </Select.Item>
-            ))}
-          </Select.Content>
-        </Select.Root>
+        <Select
+          value={micID || ""}
+          onValueChange={(v) => setMicID(String(v))}
+          placeholder="Select microphone device"
+          options={devices.map((device) => ({
+            label: device.label || `Microphone ${device.deviceId.slice(0, 8)}`,
+            value: device.deviceId || `device-${device.label}`,
+          }))}
+        />
       </div>
 
       <div className="flex flex-col gap-2">
@@ -377,17 +376,18 @@ export function AudioSettings() {
             </IconButton>
           </Tooltip>
         </div>
-        <Select.Root value={outputDeviceID || "default"} onValueChange={handleOutputDeviceChange}>
-          <Select.Trigger placeholder="Select output device" />
-          <Select.Content position="popper" sideOffset={4}>
-            <Select.Item value="default">Default</Select.Item>
-            {outputDevices.map((device) => (
-              <Select.Item key={device.deviceId || device.label} value={device.deviceId || `device-${device.label}`}>
-                {device.label || `Speaker ${device.deviceId.slice(0, 8)}`}
-              </Select.Item>
-            ))}
-          </Select.Content>
-        </Select.Root>
+        <Select
+          value={outputDeviceID || "default"}
+          onValueChange={(v) => handleOutputDeviceChange(String(v))}
+          placeholder="Select output device"
+          options={[
+            { label: "Default", value: "default" },
+            ...outputDevices.map((device) => ({
+              label: device.label || `Speaker ${device.deviceId.slice(0, 8)}`,
+              value: device.deviceId || `device-${device.label}`,
+            })),
+          ]}
+        />
       </div>
 
       <Divider />

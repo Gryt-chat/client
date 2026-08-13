@@ -1,5 +1,4 @@
-import { AlertDialog, Avatar, Button, Switch, TextField } from "@gryt/ui";
-import { Select, TextArea } from "@radix-ui/themes";
+import { AlertDialog, Avatar, Button, Select, Switch, TextField } from "@gryt/ui";
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { PiCameraFill, PiTrashFill } from "react-icons/pi";
@@ -430,9 +429,11 @@ export function ServerOverviewTab({
         <span className="text-sm font-medium">
           Description
         </span>
-        <TextArea
+        <TextField
+          multiline
+          minRows={3}
           value={description}
-          onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
+          onChange={(e) => setDescription(e.target.value)}
           onBlur={() => saveIfChanged({ description: description.trim() })}
           placeholder="A place to hang out"
           disabled={!isOwner}
@@ -620,7 +621,7 @@ export function ServerOverviewTab({
         </span>
         <div className="flex gap-2 flex-wrap">
           <div style={{ flex: "1 1 180px" }}>
-            <Select.Root
+            <Select
               value={profanityMode}
               onValueChange={(v) => {
                 const mode = v as ProfanityMode;
@@ -628,19 +629,20 @@ export function ServerOverviewTab({
                 saveIfChanged({ profanityMode: mode });
               }}
               disabled={!isOwner}
-            >
-              <Select.Trigger style={{ width: "100%" }} />
-              <Select.Content position="popper" sideOffset={4}>
-                <Select.Item value="off">Off — no filtering</Select.Item>
-                <Select.Item value="flag">Flag — blur profanity (clients can reveal)</Select.Item>
-                <Select.Item value="censor">Censor — replace profanity</Select.Item>
-                <Select.Item value="block">Block — reject message entirely</Select.Item>
-              </Select.Content>
-            </Select.Root>
+              options={[
+                { label: "Off — no filtering", value: "off" },
+                {
+                  label: "Flag — blur profanity (clients can reveal)",
+                  value: "flag",
+                },
+                { label: "Censor — replace profanity", value: "censor" },
+                { label: "Block — reject message entirely", value: "block" },
+              ]}
+            />
           </div>
           {profanityMode === "censor" && (
             <div style={{ flex: "1 1 180px" }}>
-              <Select.Root
+              <Select
                 value={censorStyle}
                 onValueChange={(v) => {
                   const style = v as CensorStyle;
@@ -648,16 +650,15 @@ export function ServerOverviewTab({
                   saveIfChanged({ profanityCensorStyle: style });
                 }}
                 disabled={!isOwner}
-              >
-                <Select.Trigger style={{ width: "100%" }} placeholder="Replacement style" />
-                <Select.Content position="popper" sideOffset={4}>
-                  <Select.Item value="grawlix">Symbols — $#@!%&*</Select.Item>
-                  <Select.Item value="asterisks">Asterisks — ****</Select.Item>
-                  <Select.Item value="emoji">Swear emoji — 🤬🤬</Select.Item>
-                  <Select.Item value="block">Black bars — ████</Select.Item>
-                  <Select.Item value="hearts">Hearts — ♥♥♥♥</Select.Item>
-                </Select.Content>
-              </Select.Root>
+                placeholder="Replacement style"
+                options={[
+                  { label: "Symbols — $#@!%&*", value: "grawlix" },
+                  { label: "Asterisks — ****", value: "asterisks" },
+                  { label: "Swear emoji — 🤬🤬", value: "emoji" },
+                  { label: "Black bars — ████", value: "block" },
+                  { label: "Hearts — ♥♥♥♥", value: "hearts" },
+                ]}
+              />
             </div>
           )}
         </div>
@@ -670,25 +671,20 @@ export function ServerOverviewTab({
         <span className="text-xs" style={{ lineHeight: 1.4 }}>
           Choose which text channel receives system messages like &ldquo;user joined&rdquo; and &ldquo;user left&rdquo;.
         </span>
-        <Select.Root
+        <Select
+          className="max-w-80"
           value={systemChannelId ?? "__auto__"}
           onValueChange={(v) => {
-            const id = v === "__auto__" ? null : v;
+            const id = v === "__auto__" ? null : String(v);
             setSystemChannelId(id);
             saveIfChanged({ systemChannelId: id });
           }}
           disabled={!isOwner}
-        >
-          <Select.Trigger style={{ width: "100%", maxWidth: 320 }} />
-          <Select.Content position="popper" sideOffset={4}>
-            <Select.Item value="__auto__">Auto (first text channel)</Select.Item>
-            {textChannels.map((ch) => (
-              <Select.Item key={ch.id} value={ch.id}>
-                #{ch.name}
-              </Select.Item>
-            ))}
-          </Select.Content>
-        </Select.Root>
+          options={[
+            { label: "Auto (first text channel)", value: "__auto__" },
+            ...textChannels.map((ch) => ({ label: `#${ch.name}`, value: ch.id })),
+          ]}
+        />
       </div>
 
       <div className="flex flex-col gap-2">
@@ -700,23 +696,22 @@ export function ServerOverviewTab({
           well as the identity behind them — somebody without a Gryt account can
           make a new one, so lean on invites if that matters.
         </span>
-        <Select.Root
+        <Select
+          className="max-w-80"
           value={joinPolicy}
           onValueChange={(v) => {
-            const next = normalizeJoinPolicy(v);
+            const next = normalizeJoinPolicy(String(v));
             const previous = joinPolicy;
             setJoinPolicy(next);
             if (!saveIfChanged({ joinPolicy: next })) setJoinPolicy(previous);
           }}
           disabled={!isOwner}
-        >
-          <Select.Trigger style={{ width: "100%", maxWidth: 320 }} />
-          <Select.Content position="popper" sideOffset={4}>
-            <Select.Item value="invite">With an invite</Select.Item>
-            <Select.Item value="request">After you let them in</Select.Item>
-            <Select.Item value="open">Anyone, no invite</Select.Item>
-          </Select.Content>
-        </Select.Root>
+          options={[
+            { label: "With an invite", value: "invite" },
+            { label: "After you let them in", value: "request" },
+            { label: "Anyone, no invite", value: "open" },
+          ]}
+        />
         {joinPolicy === "request" && (
           <span className="text-xs" style={{ lineHeight: 1.4 }}>
             People who ask show up under <strong>Requests</strong>. Nobody gets in
