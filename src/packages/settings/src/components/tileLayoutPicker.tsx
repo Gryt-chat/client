@@ -117,6 +117,7 @@ export function TileLayoutPicker({
         const selected = value === option.value;
         return (
           <button className="flex flex-col gap-2 items-center"
+              key={option.value}
               type="button"
               role="radio"
               aria-checked={selected}

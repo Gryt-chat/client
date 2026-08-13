@@ -79,9 +79,14 @@ export function UserContextMenu({
         <ContextMenu.Portal>
           <ContextMenu.Positioner>
             <ContextMenu.Popup className="min-w-45">
-          <ContextMenu.GroupLabel style={{ fontWeight: "bold" }}>
-            {nickname}
-          </ContextMenu.GroupLabel>
+          {/* The label names a group, and Base UI reads the group's id off
+              context to point aria-labelledby at it. Without one it throws —
+              which is what took the app down on a right-click. */}
+          <ContextMenu.Group>
+            <ContextMenu.GroupLabel style={{ fontWeight: "bold" }}>
+              {nickname}
+            </ContextMenu.GroupLabel>
+          </ContextMenu.Group>
           <ContextMenu.Separator />
           <ContextMenu.Item onClick={() => openSettings("profile")}>
             Edit Profile
@@ -128,13 +133,16 @@ export function UserContextMenu({
       <ContextMenu.Portal>
         <ContextMenu.Positioner>
           <ContextMenu.Popup className="min-w-55">
-        <ContextMenu.GroupLabel style={{ fontWeight: "bold" }}>
-          {nickname}
-        </ContextMenu.GroupLabel>
-        {targetRole && (
-          <ContextMenu.GroupLabel>
-            <span className="text-xs text-gryt-muted" style={{ textTransform: "capitalize" }}>{targetRole}</span>
+        <ContextMenu.Group>
+          <ContextMenu.GroupLabel style={{ fontWeight: "bold" }}>
+            {nickname}
           </ContextMenu.GroupLabel>
+        </ContextMenu.Group>
+        {targetRole && (
+          // A subtitle rather than a second heading: one group, one label.
+          <div className="px-3 pb-1">
+            <span className="text-xs text-gryt-muted" style={{ textTransform: "capitalize" }}>{targetRole}</span>
+          </div>
         )}
         <ContextMenu.Item onClick={handleMention}>
           <div className="flex items-center gap-2">

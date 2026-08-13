@@ -169,13 +169,15 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
         {/* Voice chat controls */}
         <MiniControls direction="column" />
         <Menu.Root>
-          <Menu.Trigger>
-            <IconButton size="xsmall" data-tour="profile">
-              <Avatar
-                fallback={displayNickname[0]}
-                src={displayAvatarUrl || undefined}
-              />
-            </IconButton>
+          {/* render, not children. Menu.Trigger is itself a button, so a
+              button inside it is a button inside a button — invalid HTML that
+              React warns about and browsers resolve however they like. render
+              merges the two into one element. */}
+          <Menu.Trigger render={<IconButton size="xsmall" data-tour="profile" />}>
+            <Avatar
+              fallback={displayNickname[0]}
+              src={displayAvatarUrl || undefined}
+            />
           </Menu.Trigger>
           <Menu.Portal>
             <Menu.Positioner>
@@ -359,9 +361,14 @@ function ServerItem({
           <ContextMenu.Portal>
             <ContextMenu.Positioner>
               <ContextMenu.Popup>
-            <ContextMenu.GroupLabel style={{ fontWeight: "bold" }}>
-              {servers[host].name}
-            </ContextMenu.GroupLabel>
+            {/* The label names a group, and Base UI reads the group's id off
+                context to point aria-labelledby at it. Without one it throws,
+                which is what a right-click here used to do. */}
+            <ContextMenu.Group>
+              <ContextMenu.GroupLabel style={{ fontWeight: "bold" }}>
+                {servers[host].name}
+              </ContextMenu.GroupLabel>
+            </ContextMenu.Group>
             <ContextMenu.Item>Edit</ContextMenu.Item>
             <ContextMenu.Item>Share</ContextMenu.Item>
             <ContextMenu.Item>Add to new group</ContextMenu.Item>

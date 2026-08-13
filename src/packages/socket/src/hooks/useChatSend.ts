@@ -161,11 +161,19 @@ export function useChatSend({
     if (!body && files.length === 0) return;
 
     if (!canSendRef.current) {
+      // Rate limiting has its own countdown on screen, so a toast would be
+      // saying it twice. Everything else has to say something: the composer
+      // clears either way, and a message that vanishes without a word reads
+      // as one that was sent.
       if (isRateLimitedRef.current) return;
       if (isVoiceChannelTextChatRef.current && !textInVoiceEnabledRef.current) {
         toast.error("Text chat is disabled in this voice channel");
       } else if (isVoiceChannelTextChatRef.current && !isConnectedRef.current) {
         toast.error("You must be connected to this voice channel to send messages");
+      } else if (!isConnectedRef.current) {
+        toast.error("Not connected to this server");
+      } else {
+        toast.error("That message could not be sent");
       }
       return;
     }

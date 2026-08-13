@@ -176,7 +176,18 @@ export function ServerSettingsModal() {
     <Dialog.Root open={isOpen} onOpenChange={handleDialogChange}>
       <Dialog.Portal>
         <Dialog.Backdrop />
-        <Dialog.Popup className="max-w-225" style={{ height: "700px", minWidth: "600px" }}>
+        {/* Sized rather than bounded. max-width with no width leaves the
+            dialog to its content, and a 200px rail beside a column of fields
+            settles near the 600px minimum — narrow enough that a one-line
+            description wrapped and the textarea was a slot. Both dimensions
+            give way to the viewport before they clip. */}
+        <Dialog.Popup
+          className="max-w-none"
+          style={{
+            width: "min(1040px, calc(100vw - 4rem))",
+            height: "min(700px, calc(100vh - 4rem))",
+          }}
+        >
         <Dialog.Close
           style={{
             position: "absolute",

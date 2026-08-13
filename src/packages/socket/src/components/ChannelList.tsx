@@ -153,7 +153,12 @@ export const ChannelList = ({
               zIndex: 1,
               pointerEvents: "none" }} />
         )}
+        {/* Ghost unless it is the one you are in. Every row was a plain
+            <Button>, which is the filled accent one, so the whole list read as
+            selected and the channel you were actually in was invisible —
+            "you are here" was the one thing the list stopped saying. */}
         <Button size="small"
+          tone={channel?.id === selectedChannelId ? "primary" : "ghost"}
           style={{
             width: "100%",
             justifyContent: "start",
@@ -311,9 +316,13 @@ export const ChannelList = ({
         <ContextMenu.Portal>
           <ContextMenu.Positioner>
             <ContextMenu.Popup>
-          <ContextMenu.GroupLabel style={{ fontWeight: "bold" }}>
-            <EmojiText text={label} disableTooltip />
-          </ContextMenu.GroupLabel>
+          {/* The label names a group; without one Base UI throws, and a
+              right-click on a channel took the app down. */}
+          <ContextMenu.Group>
+            <ContextMenu.GroupLabel style={{ fontWeight: "bold" }}>
+              <EmojiText text={label} disableTooltip />
+            </ContextMenu.GroupLabel>
+          </ContextMenu.Group>
           <ContextMenu.Item onClick={() => onEditItem?.(item)}>
             Edit
           </ContextMenu.Item>

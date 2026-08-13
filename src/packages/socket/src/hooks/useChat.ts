@@ -4,7 +4,7 @@ import { Socket } from "socket.io-client";
 import useSound from "use-sound";
 
 import messageSoundMp3 from "@/audio/src/assets/universfield-computer-mouse-click-02-383961.mp3";
-import { getServerAccessToken, isUserAuthenticated, markChannelUnread, useUnreadBadge } from "@/common";
+import { getServerAccessToken, markChannelUnread, useUnreadBadge } from "@/common";
 import { useSettings } from "@/settings";
 import { serverDetailsList as ServerDetailsList } from "@/settings/src/types/server";
 
@@ -115,10 +115,18 @@ export function useChat({
   const canSendToVoiceChannel = !isVoiceChannelTextChat || (isConnected && textInVoiceEnabled);
   const canViewVoiceChannelText = !isVoiceChannelTextChat || (isConnected && textInVoiceEnabled);
 
+  /**
+   * The server's own token is the credential, not a Keycloak session.
+   *
+   * This used to require isUserAuthenticated() as well, which is true only
+   * when Keycloak says so — and a server that admits the local tier issues a
+   * token to somebody who has never seen Keycloak. The join dialog tells them
+   * "No account needed", and then the composer took what they typed, cleared
+   * it, and sent nothing.
+   */
   const canSend = !!currentConnection &&
                   !!activeConversationId &&
                   !!getServerAccessToken(currentlyViewingServer?.host || "") &&
-                  isUserAuthenticated() &&
                   canSendToVoiceChannel &&
                   !isRateLimited;
 
