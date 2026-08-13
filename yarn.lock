@@ -1003,6 +1003,13 @@
   resolved "https://registry.yarnpkg.com/@rollup/rollup-win32-x64-msvc/-/rollup-win32-x64-msvc-4.59.0.tgz#4584a8a87b29188a4c1fe987a9fcf701e256d86c"
   integrity sha512-2HRCml6OztYXyJXAvdDXPKcawukWY2GpR5/nxKp4iBgiO3wcoEGkAaqctIbZcNB6KlUQBIqt8VYkNSj2397EfA==
 
+"@scure/bip39@^2.3.0":
+  version "2.3.0"
+  resolved "https://registry.yarnpkg.com/@scure/bip39/-/bip39-2.3.0.tgz#38da3f75760e8b599eb0bfd4e52ed491e5ba4fff"
+  integrity sha512-qdyWuxoYwi3+YmqIsfkpz1I029m980WkVPilj+kG7VxSm+gKQ2BmQru3nv3LbMtpSUXuyZwdFT65JkpKu5OHOQ==
+  dependencies:
+    "@noble/hashes" "2.3.0"
+
 "@shiguredo/rnnoise-wasm@^2025.1.5":
   version "2025.1.5"
   resolved "https://registry.npmjs.org/@shiguredo/rnnoise-wasm/-/rnnoise-wasm-2025.1.5.tgz"

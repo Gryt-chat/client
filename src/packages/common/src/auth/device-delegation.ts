@@ -138,7 +138,7 @@ function base64Url(buf: ArrayBuffer | Uint8Array): string {
 export async function authoriseDeviceFromBackup(raw: string): Promise<string[]> {
   const authorised: string[] = [];
 
-  for (const entry of parseIdentityBackup(raw)) {
+  for (const entry of parseIdentityBackup(raw).identities) {
     if (!entry.privateJwk) continue;
 
     // A delegation is filed per address, which is where `getStoredDelegation`

@@ -3,7 +3,13 @@
  * identity authentication. The private key never leaves the client.
  */
 
-import { deriveLocalKeyPair, generateSeed, SEED_BYTES } from "./identity-seed";
+import {
+  deriveLocalKeyPair,
+  generateSeed,
+  SEED_BYTES,
+  seedToWords,
+  wordsToSeed,
+} from "./identity-seed";
 import { getOriginKeyIdForHost, listHostsForOrigin } from "./server-pins";
 
 const DB_NAME = "gryt_identity_keys";
@@ -132,6 +138,15 @@ interface StoredKeyPair {
    * as-is.
    */
   host?: string;
+  /**
+   * Whether the seed can reproduce this key.
+   *
+   * False or absent means it cannot: a key generated at random before GRYT-254,
+   * possibly moved under its server since. Those have to be carried in a backup
+   * explicitly, and have to survive restoring a different seed, because nothing
+   * else can bring them back.
+   */
+  derived?: boolean;
 }
 
 const cachedKeyPairs = new Map<string, StoredKeyPair>();
@@ -253,6 +268,7 @@ async function loadOrGenerateKeyPair(
             identityScopeFor(source.host),
           )),
           host: source.host,
+          derived: true,
         }
       : await crypto.subtle.generateKey(ALGO, false, ["sign", "verify"]);
 
@@ -285,6 +301,13 @@ function base64UrlEncode(buf: ArrayBuffer | Uint8Array): string {
   let binary = "";
   for (const b of bytes) binary += String.fromCharCode(b);
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function base64UrlDecode(value: string): Uint8Array<ArrayBuffer> {
+  const binary = atob(value.replace(/-/g, "+").replace(/_/g, "/"));
+  const out = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
+  return out as Uint8Array<ArrayBuffer>;
 }
 
 function utf8ToBuffer(str: string): Uint8Array<ArrayBuffer> {
@@ -401,6 +424,8 @@ export interface IdentityBackupEntry {
   scope: string;
   /** Last address it was used at. Display only. */
   host?: string;
+  /** Whether the seed in this backup reproduces the key. */
+  derived?: boolean;
   privateJwk: JsonWebKey;
   publicJwk: JsonWebKey;
 }
@@ -409,6 +434,15 @@ export interface IdentityBackup {
   type: "gryt-local-identity-backup";
   version: 2;
   exportedAt: string;
+  /**
+   * The seed, base64url (GRYT-255). Absent in files written before it existed,
+   * and in that case the identities listed are all there is.
+   *
+   * Carried alongside the keys rather than instead of them: the seed reproduces
+   * everything derived from it, and nothing else. Identities generated at random
+   * before GRYT-254 have to travel as themselves.
+   */
+  seed?: string;
   identities: IdentityBackupEntry[];
 }
 
@@ -440,8 +474,15 @@ export async function exportLocalIdentities(): Promise<ExportResult> {
   const db = await openDB();
   const identities: IdentityBackupEntry[] = [];
   const unexportable: string[] = [];
+  let seed: string | undefined;
 
   try {
+    // Read rather than created. Exporting is not a reason to bring an identity
+    // into existence, and a backup of a seed nothing has used yet is a file that
+    // looks like a safety net and is not one.
+    const stored = await idbGet<Uint8Array>(db, SEED_KEY);
+    if (stored?.length === SEED_BYTES) seed = base64UrlEncode(stored);
+
     for (const scope of await listLocalIdentityScopes(db)) {
       const pair = await idbGet<StoredKeyPair>(db, `${LOCAL_PREFIX}${scope}`);
       if (!pair?.privateKey || !pair?.publicKey) continue;
@@ -449,6 +490,7 @@ export async function exportLocalIdentities(): Promise<ExportResult> {
         identities.push({
           scope,
           host: pair.host,
+          derived: pair.derived,
           privateJwk: await crypto.subtle.exportKey("jwk", pair.privateKey),
           publicJwk: await crypto.subtle.exportKey("jwk", pair.publicKey),
         });
@@ -467,6 +509,7 @@ export async function exportLocalIdentities(): Promise<ExportResult> {
       type: "gryt-local-identity-backup",
       version: 2,
       exportedAt: new Date().toISOString(),
+      seed,
       identities,
     },
     unexportable,
@@ -510,7 +553,13 @@ function backupEntries(backup: AnyIdentityBackup): IdentityBackupEntry[] {
  * different purpose. It had its own copy of this, and a second copy is how one
  * of them ends up rejecting a version the other writes.
  */
-export function parseIdentityBackup(raw: string): IdentityBackupEntry[] {
+export interface ParsedIdentityBackup {
+  /** Base64url, when the file carries one. */
+  seed?: string;
+  identities: IdentityBackupEntry[];
+}
+
+export function parseIdentityBackup(raw: string): ParsedIdentityBackup {
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
@@ -520,7 +569,10 @@ export function parseIdentityBackup(raw: string): IdentityBackupEntry[] {
   if (!isBackup(parsed)) {
     throw new Error("That file isn't a Gryt identity backup.");
   }
-  return backupEntries(parsed);
+  return {
+    seed: parsed.version === 2 ? parsed.seed : undefined,
+    identities: backupEntries(parsed),
+  };
 }
 
 /**
@@ -531,13 +583,20 @@ export function parseIdentityBackup(raw: string): IdentityBackupEntry[] {
  * backup would hand you their identity and drop yours, so the UI asks first.
  */
 export async function importLocalIdentities(raw: string): Promise<string[]> {
-  const entries = parseIdentityBackup(raw);
+  const { seed, identities } = parseIdentityBackup(raw);
 
   const db = await openDB();
   const restored: string[] = [];
 
   try {
-    for (const entry of entries) {
+    // The seed first, so every server the file did not list is derivable the
+    // moment this returns rather than only after the next join.
+    if (seed) {
+      const bytes = base64UrlDecode(seed);
+      if (bytes.length === SEED_BYTES) await idbPut(db, SEED_KEY, bytes);
+    }
+
+    for (const entry of identities) {
       if (!entry?.scope || !entry.privateJwk || !entry.publicJwk) continue;
 
       // Imported extractable, so a restored identity can be saved again. A
@@ -561,6 +620,7 @@ export async function importLocalIdentities(raw: string): Promise<string[]> {
         privateKey,
         publicKey,
         host: entry.host,
+        derived: entry.derived,
       });
       restored.push(entry.host ?? entry.scope);
     }
@@ -581,6 +641,52 @@ export async function importLocalIdentities(raw: string): Promise<string[]> {
     throw new Error("That backup contained no identities.");
   }
   return restored;
+}
+
+/**
+ * This device's identity as 24 words (GRYT-255).
+ *
+ * Creates the seed if there is not one yet, which is the right moment: somebody
+ * asking to back their identity up is asking for one to exist.
+ */
+export async function getIdentityWords(): Promise<string> {
+  const db = await openDB();
+  try {
+    return seedToWords(await getOrCreateSeed(db));
+  } finally {
+    db.close();
+  }
+}
+
+/**
+ * Become the identity a phrase describes.
+ *
+ * Everything the old seed produced is dropped so it is produced again from this
+ * one. Anything *not* derived stays: those were generated at random before
+ * GRYT-254 and nothing can bring them back, so deleting them to be tidy would
+ * destroy the identities they hold. A phrase is not a claim about them.
+ *
+ * The caller reloads afterwards. Clearing the cache is not enough on its own —
+ * anything that already read a key still holds it, and a stale key here is not
+ * a stale value, it is signing as the wrong person.
+ */
+export async function restoreIdentityFromWords(phrase: string): Promise<void> {
+  const seed = wordsToSeed(phrase);
+
+  const db = await openDB();
+  try {
+    await idbPut(db, SEED_KEY, seed);
+
+    for (const scope of await listLocalIdentityScopes(db)) {
+      const key = `${LOCAL_PREFIX}${scope}`;
+      const pair = await idbGet<StoredKeyPair>(db, key);
+      if (pair?.derived) await idbDelete(db, key);
+    }
+  } finally {
+    db.close();
+  }
+
+  cachedKeyPairs.clear();
 }
 
 /**

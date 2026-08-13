@@ -23,6 +23,12 @@ import { mapHashToField } from "@noble/curves/abstract/modular.js";
 import { p256 } from "@noble/curves/nist.js";
 import { hkdf } from "@noble/hashes/hkdf.js";
 import { sha256 } from "@noble/hashes/sha2.js";
+import {
+  entropyToMnemonic,
+  mnemonicToEntropy,
+  validateMnemonic,
+} from "@scure/bip39";
+import { wordlist } from "@scure/bip39/wordlists/english.js";
 
 /** Length of the seed every local identity is calculated from. */
 export const SEED_BYTES = 32;
@@ -95,6 +101,51 @@ function assertUsableSeed(seed: Uint8Array): void {
 export function generateSeed(): Uint8Array<ArrayBuffer> {
   const seed = new Uint8Array(SEED_BYTES);
   crypto.getRandomValues(seed);
+  assertUsableSeed(seed);
+  return seed as Uint8Array<ArrayBuffer>;
+}
+
+/**
+ * The seed as 24 words (GRYT-255).
+ *
+ * The standard 2048-word list, which is 11 bits a word: 256 bits of seed plus 8
+ * bits of checksum makes 264, which is 24 words exactly. The checksum lives
+ * inside the words rather than beside them, so a mistyped or reordered phrase is
+ * rejected instead of quietly producing a different identity — and since no two
+ * words in the list share their first four letters, a misread word usually is
+ * not a word at all and fails before the checksum is even reached.
+ *
+ * Only the encoding is borrowed. The key-stretching step wallets do on top is
+ * not wanted here: these 256 bits are the seed already.
+ */
+export function seedToWords(seed: Uint8Array): string {
+  assertUsableSeed(seed);
+  return entropyToMnemonic(seed, wordlist);
+}
+
+/**
+ * Read a phrase back, or say what is wrong with it.
+ *
+ * The checksum catches roughly 255 mistakes in 256, which is worth having and is
+ * not a guarantee — so this can say a phrase is wrong, and cannot say which word
+ * is. It is also not a security check: anyone can produce a valid phrase, it
+ * only ever guards against fingers.
+ */
+export function wordsToSeed(phrase: string): Uint8Array<ArrayBuffer> {
+  const normalised = phrase.trim().toLowerCase().split(/\s+/).join(" ");
+  if (!normalised) throw new Error("Enter your identity words.");
+
+  const count = normalised.split(" ").length;
+  if (count !== 24) {
+    throw new Error(`That is ${count} words — an identity backup is 24.`);
+  }
+  if (!validateMnemonic(normalised, wordlist)) {
+    throw new Error(
+      "Those words aren't a valid identity backup. Check for a mistyped or swapped word.",
+    );
+  }
+
+  const seed = mnemonicToEntropy(normalised, wordlist);
   assertUsableSeed(seed);
   return seed as Uint8Array<ArrayBuffer>;
 }
