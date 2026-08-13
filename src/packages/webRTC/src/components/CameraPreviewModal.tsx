@@ -1,4 +1,5 @@
-import { Badge, Button, Checkbox, Dialog, Flex, IconButton, Select, Text } from "@radix-ui/themes";
+import { Checkbox } from "@gryt/ui";
+import { Badge, Button, Dialog, Flex, IconButton, Select, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PiArrowsClockwiseFill, PiVideoCameraFill, PiX } from "react-icons/pi";
 
@@ -377,12 +378,12 @@ export function CameraPreviewModal({
             </Flex>
 
             <Text as="label" size="2" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-              <Checkbox size="1" checked={localFlipped} onCheckedChange={(v) => setLocalFlipped(v === true)} />
+              <Checkbox checked={localFlipped} onCheckedChange={(v) => setLocalFlipped(v === true)} />
               Flip camera (affects what everyone sees)
             </Text>
 
             <Text as="label" size="2" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-              <Checkbox size="1" checked={localMirrored} onCheckedChange={(v) => setLocalMirrored(v === true)} />
+              <Checkbox checked={localMirrored} onCheckedChange={(v) => setLocalMirrored(v === true)} />
               Mirror preview
             </Text>
 
@@ -390,7 +391,6 @@ export function CameraPreviewModal({
                 looking at your own framing and can see whether it needs it. */}
             <Text as="label" size="2" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
               <Checkbox
-                size="1"
                 checked={faceFramingEnabled}
                 onCheckedChange={(v) => setFaceFramingEnabled(v === true)}
               />

@@ -1,4 +1,5 @@
-import { Button, Card, Flex, Switch, Text, TextField } from "@radix-ui/themes";
+import { Switch, TextField } from "@gryt/ui";
+import { Button, Card, Flex, Text } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { PiCopyFill, PiPlus } from "react-icons/pi";
@@ -168,7 +169,7 @@ export function ServerInvitesTab({
 
   return (
     <Flex direction="column" gap="4">
-      <Text size="2" color="gray">
+      <Text size="2">
         This server is invite-only. Create invite codes to share with people you want to join.
       </Text>
 
@@ -185,7 +186,7 @@ export function ServerInvitesTab({
               <Text size="2" weight="medium">
                 Max uses
               </Text>
-              <TextField.Root
+              <TextField
                 value={infiniteUses ? "∞" : maxUses}
                 onChange={(e) => setMaxUses(e.target.value)}
                 placeholder="1"
@@ -196,7 +197,7 @@ export function ServerInvitesTab({
               <Text size="2" weight="medium">
                 Expires (hours)
               </Text>
-              <TextField.Root
+              <TextField
                 value={expiresInHours}
                 onChange={(e) => setExpiresInHours(e.target.value)}
                 placeholder="e.g. 24"
@@ -206,7 +207,7 @@ export function ServerInvitesTab({
               <Text size="2" weight="medium">
                 Custom code
               </Text>
-              <TextField.Root
+              <TextField
                 value={customCode}
                 onChange={(e) => setCustomCode(e.target.value.replace(/[^a-zA-Z0-9_-]/g, ""))}
                 placeholder="Leave blank for random"
@@ -216,11 +217,11 @@ export function ServerInvitesTab({
               <Text size="2" weight="medium">
                 Note
               </Text>
-              <TextField.Root value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />
+              <TextField value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />
             </Flex>
           </Flex>
           <Flex justify="end" gap="2">
-            <Button variant="soft" color="gray" onClick={refresh} disabled={creating || loading}>
+            <Button onClick={refresh} disabled={creating || loading}>
               Refresh
             </Button>
             <Button onClick={create} disabled={creating}>
@@ -236,7 +237,7 @@ export function ServerInvitesTab({
           Active &amp; past invites
         </Text>
         {invites.length === 0 ? (
-          <Text size="2" color="gray">
+          <Text size="2">
             No invites yet.
           </Text>
         ) : (
@@ -254,24 +255,22 @@ export function ServerInvitesTab({
                       <Text size="2" weight="bold">
                         {i.code}
                       </Text>
-                      <Text size="1" color="gray">
+                      <Text size="1">
                         Uses: {uses} · Expires: {expiry}
                         {i.revoked ? " · Revoked" : ""}
                       </Text>
                       {i.note ? (
-                        <Text size="1" color="gray">
+                        <Text size="1">
                           {i.note}
                         </Text>
                       ) : null}
                     </Flex>
                     <Flex gap="2">
-                      <Button variant="soft" onClick={() => copy(i.code)}>
+                      <Button onClick={() => copy(i.code)}>
                         <PiCopyFill size={16} />
                         Copy
                       </Button>
                       <Button
-                        color="red"
-                        variant="soft"
                         disabled={!!i.revoked}
                         onClick={() => revoke(i.code)}
                       >

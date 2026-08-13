@@ -1,4 +1,5 @@
-import { Box, Flex, Heading, Separator, Switch, Text } from "@radix-ui/themes";
+import { Switch } from "@gryt/ui";
+import { Box, Flex, Heading, Separator, Text } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 
 import { getAccessTokenStorageMode, migrateAccessTokensToMode } from "@/common";

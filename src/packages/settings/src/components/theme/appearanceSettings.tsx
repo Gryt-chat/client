@@ -1,4 +1,5 @@
-import { Flex, Heading, RadioGroup, Select, Slider, Text } from "@radix-ui/themes";
+import { Slider } from "@gryt/ui";
+import { Flex, Heading, RadioGroup, Select, Text } from "@radix-ui/themes";
 import { useMemo } from "react";
 
 import { accentColors, grayColors, useTheme } from "@/common";
@@ -135,8 +136,8 @@ export function AppearanceSettings() {
           min={50}
           max={200}
           step={10}
-          value={[Math.round(uiScale * 100)]}
-          onValueChange={([v]) => setUiScale(v / 100)}
+          value={Math.round(uiScale * 100)}
+          onValueChange={(next) => setUiScale(Number(next) / 100)}
         />
         <Text size="1" color="gray">
           Ctrl+Plus / Ctrl+Minus to zoom, Ctrl+0 to reset
@@ -161,8 +162,8 @@ export function AppearanceSettings() {
           min={10}
           max={24}
           step={1}
-          value={[chatFontSize]}
-          onValueChange={([v]) => setChatFontSize(v)}
+          value={chatFontSize}
+          onValueChange={(next) => setChatFontSize(Number(next))}
         />
         <Text size="1" color="gray" style={{ fontSize: chatFontSize, lineHeight: 1.5 }}>
           Preview text at {chatFontSize}px
@@ -178,8 +179,8 @@ export function AppearanceSettings() {
           min={12}
           max={96}
           step={4}
-          value={[emojiSize]}
-          onValueChange={([v]) => setEmojiSize(v)}
+          value={emojiSize}
+          onValueChange={(next) => setEmojiSize(Number(next))}
         />
         <Flex align="center" gap="2" pt="1">
           <Text size="1" color="gray">Preview:</Text>

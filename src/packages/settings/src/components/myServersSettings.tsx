@@ -1,17 +1,15 @@
-import { Accordion, Avatar } from "@gryt/ui";
+import { Accordion, Avatar, Checkbox, TextField } from "@gryt/ui";
 import {
   AlertDialog,
   Badge,
   Button,
   Callout,
   Card,
-  Checkbox,
   Code,
   Flex,
   Heading,
   Spinner,
   Text,
-  TextField,
 } from "@radix-ui/themes";
 import { useState } from "react";
 import {
@@ -74,7 +72,7 @@ export function MyServersSettings() {
         <Heading as="h2" size="4">
           My servers
         </Heading>
-        <Text size="2" color="gray">
+        <Text size="2">
           This build does not have a server bundled with it, so there is nothing
           to run here. Joining somebody else&rsquo;s works as normal.
         </Text>
@@ -89,7 +87,7 @@ export function MyServersSettings() {
       </Heading>
 
       <Flex direction="column" gap="3">
-        <Text size="1" color="gray">
+        <Text size="1">
           Servers Gryt runs on this machine. They are yours: each one holds its
           own messages and members, and is only reachable while it is running
           and this machine is on.
@@ -97,7 +95,7 @@ export function MyServersSettings() {
 
         {servers.length === 0 ? (
           <Flex direction="column" gap="3" align="start">
-            <Text size="2" color="gray">
+            <Text size="2">
               You are not running one yet.
             </Text>
             <Button onClick={hostAServer}>
@@ -138,7 +136,7 @@ export function MyServersSettings() {
             ))}
 
             <Flex width="fit-content">
-              <Button variant="soft" color="gray" onClick={hostAServer}>
+              <Button onClick={hostAServer}>
                 <PiPlusBold size={14} />
                 Host another server
               </Button>
@@ -227,13 +225,13 @@ function HostedServerCard({
                 first is where this machine reaches it, the second is what you
                 give somebody else. */}
             <Flex direction="column" gap="1">
-              <Text size="1" color="gray">
+              <Text size="1">
                 <Code size="1" variant="ghost">
                   127.0.0.1:{port}
                 </Code>
               </Text>
               {server.config?.lanDiscoverable && (
-                <Text size="1" color="gray">
+                <Text size="1">
                   On your network{" "}
                   <Code size="1" variant="ghost">
                     {lanIp}:{port}
@@ -246,8 +244,6 @@ function HostedServerCard({
           <Flex ml="auto" gap="2" align="center">
             {isRunning || isStarting ? (
               <Button
-                variant="soft"
-                color="red"
                 onClick={onStop}
                 disabled={busy}
               >
@@ -256,7 +252,6 @@ function HostedServerCard({
               </Button>
             ) : (
               <Button
-                variant="soft"
                 onClick={onStart}
                 disabled={busy}
               >
@@ -278,7 +273,7 @@ function HostedServerCard({
                 checked={autoStart}
                 onCheckedChange={(c) => onAutoStart(c === true)}
               />
-              <Text size="1" color="gray">
+              <Text size="1">
                 Start automatically with app
               </Text>
             </label>
@@ -294,7 +289,6 @@ function HostedServerCard({
             <Button
               size="1"
               variant="ghost"
-              color="red"
               ml="auto"
               disabled={busy}
               onClick={() => setConfirmDelete(true)}
@@ -315,7 +309,7 @@ function HostedServerCard({
                   Everyone who joined pinned this server's identity key, so a
                   new server with the same name and port is a different server
                   to them, and they are turned away rather than let back in. */}
-              <Text as="p" size="2" color="gray" mt="3">
+              <Text as="p" size="2" mt="3">
                 Anybody who joined cannot rejoin a replacement, even with the
                 same name and port.
               </Text>
@@ -324,7 +318,7 @@ function HostedServerCard({
                 <Text size="2">
                   Type <strong>{name}</strong> to confirm.
                 </Text>
-                <TextField.Root
+                <TextField
                   value={typedName}
                   onChange={(e) => setTypedName(e.target.value)}
                   placeholder={name}
@@ -334,13 +328,12 @@ function HostedServerCard({
 
               <Flex gap="3" mt="4" justify="end">
                 <AlertDialog.Cancel>
-                  <Button variant="soft" color="gray">
+                  <Button>
                     Cancel
                   </Button>
                 </AlertDialog.Cancel>
                 <Button
                   variant="solid"
-                  color="red"
                   disabled={typedName.trim() !== name}
                   onClick={() => {
                     setConfirmDelete(false);
@@ -378,14 +371,14 @@ function HostedServerCard({
 
         {hasError && server.error && (
           <Flex direction="column" gap="2">
-            <Callout.Root color="red" role="alert">
+            <Callout.Root role="alert">
               <Callout.Icon>
                 <PiWarningFill size={16} />
               </Callout.Icon>
               <Callout.Text>{server.error}</Callout.Text>
             </Callout.Root>
             <Flex justify="end">
-              <Button size="1" variant="ghost" color="gray" onClick={onDismissError}>
+              <Button size="1" variant="ghost" onClick={onDismissError}>
                 <PiX size={14} />
                 Dismiss
               </Button>

@@ -1,3 +1,4 @@
+import { Slider } from "@gryt/ui";
 import {
   Callout,
   Flex,
@@ -6,7 +7,6 @@ import {
   SegmentedControl,
   Select,
   Separator,
-  Slider,
   Text,
   Tooltip,
 } from "@radix-ui/themes";
@@ -457,8 +457,8 @@ export function AudioSettings() {
 
         <div style={{ position: 'relative' }}>
           <Slider
-            value={[noiseGate]}
-            onValueChange={(value) => setNoiseGate(value[0])}
+            value={noiseGate}
+            onValueChange={(next) => setNoiseGate(Number(next))}
             max={100}
             min={0}
             step={1}
@@ -523,8 +523,8 @@ export function AudioSettings() {
             How long the gate stays open after your voice drops below the threshold.
           </Text>
           <Slider
-            value={[noiseGateRelease]}
-            onValueChange={(value) => setNoiseGateRelease(value[0])}
+            value={noiseGateRelease}
+            onValueChange={(next) => setNoiseGateRelease(Number(next))}
             max={1000}
             min={0}
             step={10}

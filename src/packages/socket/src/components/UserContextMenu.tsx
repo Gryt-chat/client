@@ -1,4 +1,5 @@
-import { ContextMenu, Flex, Slider, Text } from "@radix-ui/themes";
+import { Slider } from "@gryt/ui";
+import { ContextMenu, Flex, Text } from "@radix-ui/themes";
 import { ReactNode } from "react";
 import toast from "react-hot-toast";
 import { PiAtFill, PiCopyFill } from "react-icons/pi";
@@ -164,9 +165,8 @@ export function UserContextMenu({
             min={0}
             max={200}
             step={1}
-            value={[volume]}
-            onValueChange={([v]) => updateUserVolume(serverUserId, v)}
-            size="1"
+            value={volume}
+            onValueChange={(next) => updateUserVolume(serverUserId, Number(next))}
           />
         </Flex>
         {volume !== 100 && (

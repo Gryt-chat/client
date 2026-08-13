@@ -1,4 +1,5 @@
-import { Flex, Slider, Switch, Text } from "@radix-ui/themes";
+import { Slider, Switch } from "@gryt/ui";
+import { Flex, Text } from "@radix-ui/themes";
 import React from "react";
 
 import { settingAnchorId,SETTINGS_INDEX } from "../hooks/settingsSearch";
@@ -70,8 +71,8 @@ export function SliderSetting({ title, description, value, onChange, min = 0, ma
   return (
     <SettingGroup title={title} description={description}>
       <Slider
-        value={[value]}
-        onValueChange={(value) => onChange(value[0])}
+        value={value}
+        onValueChange={(next) => onChange(Number(next))}
         max={max}
         min={min}
         step={step}

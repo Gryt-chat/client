@@ -1,4 +1,5 @@
-import { AlertDialog, Badge, Button, Card, Flex, Heading, Link, Separator, Switch, Text } from "@radix-ui/themes";
+import { Switch } from "@gryt/ui";
+import { AlertDialog, Badge, Button, Card, Flex, Heading, Link, Separator, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useState } from "react";
 import { FaGithub } from "react-icons/fa";
 import { PiArrowsClockwiseFill, PiArrowSquareOutFill, PiChatCircleDotsFill, PiCheckCircleFill, PiClockClockwiseFill, PiDesktopFill, PiDownloadSimpleFill, PiXCircleFill } from "react-icons/pi";

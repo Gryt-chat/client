@@ -1,3 +1,4 @@
+import { TextField } from "@gryt/ui";
 import {
   AlertDialog,
   Badge,
@@ -7,7 +8,6 @@ import {
   IconButton,
   Spinner,
   Text,
-  TextField,
   Tooltip,
 } from "@radix-ui/themes";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -98,9 +98,8 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
       <Flex direction="column" gap="1" style={{ flex: 1, minWidth: 0 }}>
         {editing ? (
           <Flex align="center" gap="1">
-            <TextField.Root
-              ref={inputRef}
-              size="1"
+            <TextField
+              ref={inputRef} size="small"
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => {
@@ -113,13 +112,11 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
               disabled={saving}
               style={{ flex: 1 }}
             />
-            <IconButton size="1" variant="soft" onClick={handleSave} disabled={saving}>
+            <IconButton size="1" onClick={handleSave} disabled={saving}>
               <PiCheck size={14} />
             </IconButton>
             <IconButton
               size="1"
-              variant="soft"
-              color="gray"
               onClick={() => {
                 setEditing(false);
                 setDraft(credential.userLabel);
@@ -137,7 +134,6 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
               <IconButton
                 size="1"
                 variant="ghost"
-                color="gray"
                 onClick={() => setEditing(true)}
               >
                 <PiPencilSimpleFill size={12} />
@@ -145,7 +141,7 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
             </Tooltip>
           </Flex>
         )}
-        <Text size="1" color="gray">
+        <Text size="1">
           Added {formatDate(credential.createdDate)}
         </Text>
       </Flex>
@@ -155,7 +151,6 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
           <IconButton
             size="1"
             variant="ghost"
-            color="red"
             disabled={deleting}
             onClick={() => setConfirmDelete(true)}
           >
@@ -170,14 +165,13 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
           </AlertDialog.Description>
           <Flex gap="3" mt="4" justify="end">
             <AlertDialog.Cancel>
-              <Button variant="soft" color="gray">
+              <Button>
                 Cancel
               </Button>
             </AlertDialog.Cancel>
             <AlertDialog.Action>
               <Button
                 variant="solid"
-                color="red"
                 onClick={() => {
                   onDelete(credential.id);
                   setConfirmDelete(false);
@@ -287,12 +281,12 @@ export function SecuritySettings() {
             <Text weight="medium" size="2">
               Passkeys
             </Text>
-            <Text size="1" color="gray">
+            <Text size="1">
               Passkeys let you sign in without a password using your fingerprint,
               face, or device PIN.
             </Text>
           </Flex>
-          <Badge variant="soft" size="1">
+          <Badge size="1">
             {credentials.length}
           </Badge>
         </Flex>
@@ -305,10 +299,10 @@ export function SecuritySettings() {
 
         {error && (
           <Flex direction="column" align="center" gap="2" py="4">
-            <Text size="2" color="red">
+            <Text size="2">
               {error}
             </Text>
-            <Button variant="soft" size="1" onClick={loadCredentials}>
+            <Button size="1" onClick={loadCredentials}>
               Retry
             </Button>
           </Flex>
@@ -326,7 +320,7 @@ export function SecuritySettings() {
             }}
           >
             <PiKeyFill size={32} style={{ color: "var(--gray-a8)" }} />
-            <Text size="2" color="gray">
+            <Text size="2">
               No passkeys registered yet
             </Text>
           </Flex>
@@ -345,7 +339,6 @@ export function SecuritySettings() {
           ))}
 
         <Button
-          variant="soft"
           onClick={handleAdd}
           disabled={adding}
           style={{ alignSelf: "flex-start" }}

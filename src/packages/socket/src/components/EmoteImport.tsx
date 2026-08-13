@@ -1,9 +1,9 @@
+import { TextField } from "@gryt/ui";
 import {
   Badge,
   Button,
   Flex,
   Text,
-  TextField,
 } from "@radix-ui/themes";
 import { type ChangeEvent } from "react";
 import { PiDownloadSimpleFill, PiMagnifyingGlassFill, PiX } from "react-icons/pi";
@@ -61,8 +61,8 @@ export function EmoteImport({
       </Text>
 
       <Flex gap="2" align="center">
-        <TextField.Root
-          size="1"
+        <TextField
+          size="small"
           placeholder="https://emoji.gg/pack/... or https://betterttv.com/users/..."
           value={url}
           onChange={(e: ChangeEvent<HTMLInputElement>) => setUrl(e.target.value)}
@@ -70,7 +70,7 @@ export function EmoteImport({
             if (e.key === "Enter") handleFetch();
           }}
           disabled={fetching || importing}
-          style={{ flex: 1 }}
+          className="flex-1"
         />
         <Button
           size="1"
@@ -119,18 +119,23 @@ export function EmoteImport({
           </Flex>
 
           {emotes.length > 10 && (
-            <TextField.Root
-              size="1"
-              placeholder="Filter emotes..."
-              value={filterText}
-              onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                setFilterText(e.target.value)
-              }
-            >
-              <TextField.Slot>
-                <PiMagnifyingGlassFill size={14} />
-              </TextField.Slot>
-            </TextField.Root>
+            <div className="relative">
+              {/* Same trick as the settings search: the library's TextField is
+                  a field rather than a container, so the icon sits over it. */}
+              <PiMagnifyingGlassFill
+                className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-gryt-muted"
+                size={14}
+              />
+              <TextField
+                className="pl-8"
+                size="small"
+                placeholder="Filter emotes..."
+                value={filterText}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  setFilterText(e.target.value)
+                }
+              />
+            </div>
           )}
 
           <Flex

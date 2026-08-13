@@ -1,4 +1,5 @@
-import { AlertDialog, Button, Card,Dialog, Flex, IconButton, Text, TextField } from "@radix-ui/themes";
+import { TextField } from "@gryt/ui";
+import { AlertDialog, Button, Card, Dialog, Flex, IconButton, Text } from "@radix-ui/themes";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { PiPlus, PiTrashFill, PiX } from "react-icons/pi";
@@ -143,7 +144,7 @@ export function ServerChannelsModal() {
               <Flex gap="3" wrap="wrap">
                 <Flex direction="column" gap="1" style={{ flex: 1, minWidth: 240 }}>
                   <Text size="2" weight="medium">Name</Text>
-                  <TextField.Root value={name} onChange={(e) => setName(e.target.value)} placeholder="Announcements" />
+                  <TextField value={name} onChange={(e) => setName(e.target.value)} placeholder="Announcements" />
                 </Flex>
                 <Flex direction="column" gap="1" style={{ minWidth: 160 }}>
                   <Text size="2" weight="medium">Type</Text>
@@ -154,7 +155,7 @@ export function ServerChannelsModal() {
                 </Flex>
                 <Flex direction="column" gap="1" style={{ flex: 1, minWidth: 240 }}>
                   <Text size="2" weight="medium">Description</Text>
-                  <TextField.Root value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional" />
+                  <TextField value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional" />
                 </Flex>
               </Flex>
               <Flex justify="end" gap="2">

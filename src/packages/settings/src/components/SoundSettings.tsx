@@ -1,9 +1,8 @@
+import { Slider, Switch } from "@gryt/ui";
 import {
   Button,
   Flex,
   IconButton,
-  Slider,
-  Switch,
   Text,
   Tooltip,
 } from "@radix-ui/themes";
@@ -232,10 +231,11 @@ export function SoundSettings({
               <Slider
                 min={0}
                 max={100}
-                value={[volume]}
-                onValueChange={(value) => {
-                  if (!Number.isNaN(value[0])) {
-                    onVolumeChange(Math.min(100, Math.max(0, value[0])));
+                value={volume}
+                onValueChange={(next) => {
+                  const value = Number(next);
+                  if (!Number.isNaN(value)) {
+                    onVolumeChange(Math.min(100, Math.max(0, value)));
                   }
                 }}
               />

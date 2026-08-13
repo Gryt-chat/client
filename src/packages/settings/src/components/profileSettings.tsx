@@ -1,5 +1,5 @@
-import { Avatar } from "@gryt/ui";
-import { AlertDialog, Button, Flex, Heading, IconButton, SegmentedControl, Text, TextField, Tooltip } from "@radix-ui/themes";
+import { Avatar, TextField } from "@gryt/ui";
+import { AlertDialog, Button, Flex, Heading, IconButton, SegmentedControl, Text, Tooltip } from "@radix-ui/themes";
 import { useCallback,useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { PiArrowsClockwiseFill, PiCameraFill, PiCheck, PiCopyFill } from "react-icons/pi";
@@ -142,7 +142,7 @@ function ProfileEditor({
       data-tour="profile-editor"
     >
       {serverLabel && (
-        <Text size="2" color="gray" weight="medium">
+        <Text size="2" weight="medium">
           {serverLabel}
         </Text>
       )}
@@ -190,7 +190,7 @@ function ProfileEditor({
             </Flex>
           </div>
         </button>
-        <Text size="1" color="gray">
+        <Text size="1">
           {uploading ? "Uploading..." : removing ? "Removing..." : "Click to change avatar"}
         </Text>
       </Flex>
@@ -198,8 +198,6 @@ function ProfileEditor({
       {avatarUrl ? (
         <>
           <Button
-            variant="soft"
-            color="red"
             disabled={uploading || removing}
             onClick={() => setShowRemoveConfirm(true)}
           >
@@ -213,10 +211,10 @@ function ProfileEditor({
               </AlertDialog.Description>
               <Flex gap="3" mt="4" justify="end">
                 <AlertDialog.Cancel>
-                  <Button variant="soft" color="gray">Cancel</Button>
+                  <Button>Cancel</Button>
                 </AlertDialog.Cancel>
                 <AlertDialog.Action>
-                  <Button variant="solid" color="red" onClick={() => { onRemoveAvatar(); setShowRemoveConfirm(false); }}>Remove</Button>
+                  <Button variant="solid" onClick={() => { onRemoveAvatar(); setShowRemoveConfirm(false); }}>Remove</Button>
                 </AlertDialog.Action>
               </Flex>
             </AlertDialog.Content>
@@ -238,12 +236,12 @@ function ProfileEditor({
             both places is what let a local name of "Sivert" sit next to a
             server holding "Unknown" without anything looking wrong.
           */}
-          <Text size="1" color="gray">
+          <Text size="1">
             {scopedToServer
               ? `This is how other people on ${scopedToServer} see you.`
               : "Used on servers you join from now on. Use Sync to apply it to servers you are already on."}
           </Text>
-          <TextField.Root
+          <TextField
             placeholder="Enter a nickname"
             maxLength={20}
             value={draft}
@@ -615,7 +613,6 @@ export function ProfileSettings() {
           {connectedHosts.length > 0 && (
             <Flex justify="center" style={{ paddingTop: 4 }}>
               <Button
-                variant="soft"
                 size="2"
                 disabled={syncing || uploading || removing}
                 onClick={handleSyncToAll}
@@ -655,14 +652,13 @@ export function ProfileSettings() {
 
       {userId && (
         <Flex align="center" justify="center" gap="1" style={{ marginTop: "auto", paddingTop: 16 }}>
-          <Text size="1" color="gray" style={{ fontFamily: "var(--code-font-family)", userSelect: "all" }}>
+          <Text size="1" style={{ fontFamily: "var(--code-font-family)", userSelect: "all" }}>
             {userId}
           </Text>
           <Tooltip content={copied ? "Copied!" : "Copy User ID"}>
             <IconButton
               size="1"
               variant="ghost"
-              color="gray"
               style={{ flexShrink: 0 }}
               onClick={() => {
                 navigator.clipboard.writeText(userId).then(() => {

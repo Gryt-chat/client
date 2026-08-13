@@ -1,4 +1,5 @@
-import { Dialog, Flex, IconButton, TextField } from "@radix-ui/themes";
+import { TextField } from "@gryt/ui";
+import { Dialog, Flex, IconButton } from "@radix-ui/themes";
 import { useState } from "react";
 import { PiX } from "react-icons/pi";
 
@@ -36,7 +37,7 @@ export function Nickname() {
             right: "8px",
           }}
         >
-          <IconButton variant="soft" color="gray">
+          <IconButton>
             <PiX size={16} />
           </IconButton>
         </Dialog.Close>
@@ -45,9 +46,8 @@ export function Nickname() {
             Set nickname
           </Dialog.Title>
 
-          <TextField.Root
+          <TextField
             onKeyDown={handleEnterKey}
-            radius="full"
             placeholder="Unknown"
             max={20}
             maxLength={20}
