@@ -1,5 +1,5 @@
-import { Avatar, Button, IconButton, Surface, TextField, Tooltip } from "@gryt/ui";
-import { Flex, Select, Text } from "@radix-ui/themes";
+import { Avatar, Button, IconButton, Select, Surface, TextField, Tooltip } from "@gryt/ui";
+import { Flex, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { PiCopyFill, PiPlus, PiTrashFill } from "react-icons/pi";
@@ -293,19 +293,15 @@ function WebhookCard({
 
             <Flex direction="column" gap="1" style={{ minWidth: 160 }}>
               <Text size="1" weight="medium">Channel</Text>
-              <Select.Root
+              <Select
                 value={webhook.channel_id}
-                onValueChange={handleChannelChange}
-              >
-                <Select.Trigger placeholder="Select channel" />
-                <Select.Content>
-                  {textChannels.map((ch) => (
-                    <Select.Item key={ch.id} value={ch.id}>
-                      # {ch.name}
-                    </Select.Item>
-                  ))}
-                </Select.Content>
-              </Select.Root>
+                onValueChange={(v) => handleChannelChange(String(v))}
+                placeholder="Select channel"
+                options={textChannels.map((ch) => ({
+                  label: `# ${ch.name}`,
+                  value: ch.id,
+                }))}
+              />
             </Flex>
 
             <Flex gap="1" style={{ paddingBottom: 1 }}>

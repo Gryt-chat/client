@@ -1,5 +1,5 @@
-import { Button, Checkbox, Chip, IconButton } from "@gryt/ui";
-import { Dialog, Flex, Select, Text } from "@radix-ui/themes";
+import { Button, Checkbox, Chip, IconButton, Select } from "@gryt/ui";
+import { Dialog, Flex, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PiArrowsClockwiseFill, PiVideoCameraFill, PiX } from "react-icons/pi";
 
@@ -335,44 +335,42 @@ export function CameraPreviewModal({
           <Flex direction="column" gap="3">
             <Flex align="center" gap="3">
               <Text size="2" style={{ minWidth: 60 }}>Camera</Text>
-              <Select.Root value={localCameraID} onValueChange={setLocalCameraID}>
-                <Select.Trigger variant="soft" style={{ flex: 1 }} />
-                <Select.Content position="popper" sideOffset={4}>
-                  {devices.length === 0 ? (
-                    <Select.Item value="__none__" disabled>No cameras found</Select.Item>
-                  ) : (
-                    devices.map((d, i) => (
-                      <Select.Item key={d.deviceId || i} value={d.deviceId || `device-${i}`}>
-                        {d.label || `Camera ${i + 1}`}
-                      </Select.Item>
-                    ))
-                  )}
-                </Select.Content>
-              </Select.Root>
+              <Select
+                className="flex-1"
+                value={localCameraID}
+                onValueChange={(v) => setLocalCameraID(String(v))}
+                options={
+                  devices.length === 0
+                    ? [{ label: "No cameras found", value: "__none__", disabled: true }]
+                    : devices.map((d, i) => ({
+                        label: d.label || `Camera ${i + 1}`,
+                        value: d.deviceId || `device-${i}`,
+                      }))
+                }
+              />
             </Flex>
 
             <Flex align="center" gap="3">
               <Text size="2" style={{ minWidth: 60 }}>Quality</Text>
-              <Select.Root value={localQuality} onValueChange={setLocalQuality}>
-                <Select.Trigger variant="soft" style={{ flex: 1 }} />
-                <Select.Content position="popper" sideOffset={4} style={{ maxHeight: 300 }}>
-                  {filteredOptions.map((o) => (
-                    <Select.Item key={o.value} value={o.value}>{o.label}</Select.Item>
-                  ))}
-                </Select.Content>
-              </Select.Root>
+              <Select
+                className="flex-1"
+                value={localQuality}
+                onValueChange={(v) => setLocalQuality(String(v))}
+                options={filteredOptions.map((o) => ({ label: o.label, value: o.value }))}
+              />
             </Flex>
 
             <Flex align="center" gap="3">
               <Text size="2" style={{ minWidth: 60 }}>FPS</Text>
-              <Select.Root value={String(localFps)} onValueChange={(v) => setLocalFps(Number(v))}>
-                <Select.Trigger variant="soft" style={{ flex: 1 }} />
-                <Select.Content position="popper" sideOffset={4}>
-                  {CAMERA_FPS_OPTIONS.map((f) => (
-                    <Select.Item key={f} value={String(f)}>{f} FPS</Select.Item>
-                  ))}
-                </Select.Content>
-              </Select.Root>
+              <Select
+                className="flex-1"
+                value={String(localFps)}
+                onValueChange={(v) => setLocalFps(Number(v))}
+                options={CAMERA_FPS_OPTIONS.map((f) => ({
+                  label: `${f} FPS`,
+                  value: String(f),
+                }))}
+              />
             </Flex>
 
             <Text as="label" size="2" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>

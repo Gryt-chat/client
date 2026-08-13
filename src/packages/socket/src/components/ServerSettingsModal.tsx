@@ -1,5 +1,5 @@
-import { Chip, IconButton, Spinner } from "@gryt/ui";
-import { Box, Dialog, Flex, Tabs, Text } from "@radix-ui/themes";
+import { Chip, IconButton, Spinner, Tabs } from "@gryt/ui";
+import { Box, Dialog, Flex, Text } from "@radix-ui/themes";
 import { useEffect, useMemo, useState } from "react";
 import { PiArrowsLeftRightFill, PiGearFill, PiHandWavingFill, PiLinkFill, PiListChecksFill, PiProhibitFill, PiSmileyFill, PiUsersFill, PiWebhooksLogoFill, PiX } from "react-icons/pi";
 
@@ -195,30 +195,22 @@ export function ServerSettingsModal() {
 
           {isOpen && (
             allowTabs ? (
-              <Tabs.Root
+              <Tabs
                 value={tab}
-                onValueChange={setTab}
+                onValueChange={(v) => setTab(String(v))}
                 orientation="vertical"
                 style={{ flex: 1, minHeight: 0 }}
               >
                 <Flex gap="4" height="100%">
                   <Box style={{ minWidth: "200px", flexShrink: 0, overflowY: "auto" }}>
-                    <Tabs.List
-                      style={{
-                        flexDirection: "column",
-                        alignItems: "stretch",
-                        height: "fit-content",
-                        gap: "4px",
-                      }}
-                    >
+                    <Tabs.List aria-label="Server settings" className="gap-1">
                       {TAB_CONFIG.map(({ value, label, icon: Icon }) => (
-                        <Tabs.Trigger key={value} value={value}>
-                          <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <Icon size={16} />
-                            {label}
-                          </span>
-                        </Tabs.Trigger>
+                        <Tabs.Tab key={value} value={value}>
+                          <Icon size={16} />
+                          {label}
+                        </Tabs.Tab>
                       ))}
+                      <Tabs.Indicator />
                     </Tabs.List>
                     <Flex
                       direction="column"
@@ -278,13 +270,13 @@ export function ServerSettingsModal() {
                       </Text>
                     ) : null}
                     {TAB_CONFIG.map(({ value, content }) => (
-                      <Tabs.Content key={value} value={value}>
+                      <Tabs.Panel key={value} value={value}>
                         {content}
-                      </Tabs.Content>
+                      </Tabs.Panel>
                     ))}
                   </Box>
                 </Flex>
-              </Tabs.Root>
+              </Tabs>
             ) : (
               <Flex direction="column" gap="3">
                 <Text size="2" color="gray">

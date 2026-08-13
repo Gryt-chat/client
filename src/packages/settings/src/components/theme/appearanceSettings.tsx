@@ -1,5 +1,5 @@
-import { Slider } from "@gryt/ui";
-import { Flex, Heading, RadioGroup, Select, Text } from "@radix-ui/themes";
+import { Radio, RadioGroup, Select, Slider } from "@gryt/ui";
+import { Flex, Heading, Text } from "@radix-ui/themes";
 import { useMemo } from "react";
 
 import { accentColors, grayColors, useTheme } from "@/common";
@@ -70,61 +70,64 @@ export function AppearanceSettings() {
 
       <Flex direction="column" gap="2">
         <Text weight="medium" size="2">Mode</Text>
-        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        <RadioGroup.Root value={appearancePreference} onValueChange={(v) => setAppearancePreference(v as any)}>
-          {appearanceOptions.map(o => (
-            <RadioGroup.Item key={o.value} value={o.value}>{o.label}</RadioGroup.Item>
+        <RadioGroup
+          value={appearancePreference}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          onValueChange={(v) => setAppearancePreference(v as any)}
+        >
+          {appearanceOptions.map((o) => (
+            <label key={o.value} className="flex items-center gap-2 text-sm">
+              <Radio value={o.value} />
+              {o.label}
+            </label>
           ))}
-        </RadioGroup.Root>
+        </RadioGroup>
       </Flex>
 
       <Flex direction="column" gap="2">
         <Text weight="medium" size="2">Accent color</Text>
-        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        <Select.Root value={accentColor} onValueChange={(v) => setAccentColor(v as any)}>
-          <Select.Trigger />
-          <Select.Content position="popper" sideOffset={4} style={{ maxHeight: 300 }}>
-            {accentColors.map(c => (
-              <Select.Item key={c} value={c}>
-                <Flex align="center" gap="2">
-                  <ColorSwatch scale={c} />
-                  {c}
-                </Flex>
-              </Select.Item>
-            ))}
-          </Select.Content>
-        </Select.Root>
+        <Select
+          value={accentColor}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          onValueChange={(v) => setAccentColor(v as any)}
+          options={accentColors.map((c) => ({
+            value: c,
+            label: (
+              <Flex align="center" gap="2">
+                <ColorSwatch scale={c} />
+                {c}
+              </Flex>
+            ),
+          }))}
+        />
       </Flex>
 
       <Flex direction="column" gap="2">
         <Text weight="medium" size="2">Gray color</Text>
-        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        <Select.Root value={grayColor} onValueChange={(v) => setGrayColor(v as any)}>
-          <Select.Trigger />
-          <Select.Content position="popper" sideOffset={4}>
-            {grayColors.map(c => (
-              <Select.Item key={c} value={c}>
-                <Flex align="center" gap="2">
-                  <ColorSwatch scale={c} />
-                  {c}
-                </Flex>
-              </Select.Item>
-            ))}
-          </Select.Content>
-        </Select.Root>
+        <Select
+          value={grayColor}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          onValueChange={(v) => setGrayColor(v as any)}
+          options={grayColors.map((c) => ({
+            value: c,
+            label: (
+              <Flex align="center" gap="2">
+                <ColorSwatch scale={c} />
+                {c}
+              </Flex>
+            ),
+          }))}
+        />
       </Flex>
 
       <Flex direction="column" gap="2">
         <Text weight="medium" size="2">Rounded corners</Text>
-        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        <Select.Root value={radius} onValueChange={(v) => setRadius(v as any)}>
-          <Select.Trigger />
-          <Select.Content position="popper" sideOffset={4}>
-            {radiusOptions.map(r => (
-              <Select.Item key={r.value} value={r.value}>{r.label}</Select.Item>
-            ))}
-          </Select.Content>
-        </Select.Root>
+        <Select
+          value={radius}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          onValueChange={(v) => setRadius(v as any)}
+          options={radiusOptions.map((r) => ({ label: r.label, value: r.value }))}
+        />
       </Flex>
 
       <Flex direction="column" gap="2">

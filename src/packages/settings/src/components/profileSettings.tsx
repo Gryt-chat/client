@@ -1,5 +1,5 @@
-import { Avatar, Button, IconButton, TextField, Tooltip } from "@gryt/ui";
-import { AlertDialog, Flex, Heading, SegmentedControl, Text } from "@radix-ui/themes";
+import { Avatar, Button, IconButton, Tabs, TextField, Tooltip } from "@gryt/ui";
+import { AlertDialog, Flex, Heading, Text } from "@radix-ui/themes";
 import { useCallback,useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { PiArrowsClockwiseFill, PiCameraFill, PiCheck, PiCopyFill } from "react-icons/pi";
@@ -578,21 +578,20 @@ export function ProfileSettings() {
 
       {serverHosts.length > 0 && (
         <Flex justify="center" style={{ paddingTop: 4, paddingBottom: 4 }}>
-          <SegmentedControl.Root
-            value={selectedTab}
-            onValueChange={setSelectedTab}
-            size="1"
-          >
-            <SegmentedControl.Item value="all">All Servers</SegmentedControl.Item>
-            {serverHosts.map(host => {
-              const name = serverDetailsList?.[host]?.server_info?.name || servers[host]?.name || host;
-              return (
-                <SegmentedControl.Item key={host} value={host}>
-                  {name}
-                </SegmentedControl.Item>
-              );
-            })}
-          </SegmentedControl.Root>
+          <Tabs value={selectedTab} onValueChange={(v) => setSelectedTab(String(v))}>
+            <Tabs.List aria-label="Which server">
+              <Tabs.Tab value="all">All Servers</Tabs.Tab>
+              {serverHosts.map((host) => {
+                const name = serverDetailsList?.[host]?.server_info?.name || servers[host]?.name || host;
+                return (
+                  <Tabs.Tab key={host} value={host}>
+                    {name}
+                  </Tabs.Tab>
+                );
+              })}
+              <Tabs.Indicator />
+            </Tabs.List>
+          </Tabs>
         </Flex>
       )}
 

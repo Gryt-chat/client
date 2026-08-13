@@ -1,5 +1,5 @@
-import { IconButton, Switch, TextField } from "@gryt/ui";
-import { Dialog, Flex, Select, Text } from "@radix-ui/themes";
+import { IconButton, Select, Switch, TextField } from "@gryt/ui";
+import { Dialog, Flex, Text } from "@radix-ui/themes";
 import { useCallback, useRef } from "react";
 import { PiX } from "react-icons/pi";
 
@@ -128,22 +128,25 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
                   </Flex>
                   <Flex direction="column" gap="2">
                     <Text size="2" weight="medium">Max Bitrate</Text>
-                    <Select.Root
+                    {/* The separator under Default is gone: the library's
+                        Select takes a flat list of options, and Default reads
+                        as the first of them well enough without a rule. */}
+                    <Select
                       value={sheetMaxBitrate || "default"}
-                      onValueChange={(v) => { setSheetMaxBitrate(v === "default" ? "" : v); debouncedSave(); }}
-                    >
-                      <Select.Trigger />
-                      <Select.Content position="popper" sideOffset={4}>
-                        <Select.Item value="default">Default</Select.Item>
-                        <Select.Separator />
-                        <Select.Item value="32000">32 kbps</Select.Item>
-                        <Select.Item value="64000">64 kbps</Select.Item>
-                        <Select.Item value="96000">96 kbps</Select.Item>
-                        <Select.Item value="128000">128 kbps</Select.Item>
-                        <Select.Item value="256000">256 kbps</Select.Item>
-                        <Select.Item value="510000">510 kbps</Select.Item>
-                      </Select.Content>
-                    </Select.Root>
+                      onValueChange={(v) => {
+                        setSheetMaxBitrate(v === "default" ? "" : String(v));
+                        debouncedSave();
+                      }}
+                      options={[
+                        { label: "Default", value: "default" },
+                        { label: "32 kbps", value: "32000" },
+                        { label: "64 kbps", value: "64000" },
+                        { label: "96 kbps", value: "96000" },
+                        { label: "128 kbps", value: "128000" },
+                        { label: "256 kbps", value: "256000" },
+                        { label: "510 kbps", value: "510000" },
+                      ]}
+                    />
                   </Flex>
                   <Flex align="center" justify="between">
                     <Flex direction="column" gap="1">

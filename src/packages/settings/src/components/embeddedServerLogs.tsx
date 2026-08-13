@@ -1,5 +1,5 @@
-import { Button, Chip } from "@gryt/ui";
-import { Flex, SegmentedControl, Text } from "@radix-ui/themes";
+import { Button, Chip, Tabs } from "@gryt/ui";
+import { Flex, Text } from "@radix-ui/themes";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PiTrashFill } from "react-icons/pi";
 
@@ -76,27 +76,25 @@ export function EmbeddedServerLogs({ serverId }: { serverId: string }) {
   return (
     <Flex direction="column" gap="3">
       <Flex align="center" gap="3" wrap="wrap">
-        <SegmentedControl.Root
-          size="1"
-          value={source}
-          onValueChange={(v) => setSource(v as EmbeddedLogSource | "all")}
-        >
-          <SegmentedControl.Item value="all">All</SegmentedControl.Item>
-          <SegmentedControl.Item value="server">Server</SegmentedControl.Item>
-          <SegmentedControl.Item value="sfu">SFU</SegmentedControl.Item>
-          <SegmentedControl.Item value="worker">Worker</SegmentedControl.Item>
-        </SegmentedControl.Root>
+        <Tabs value={source} onValueChange={(v) => setSource(v as EmbeddedLogSource | "all")}>
+          <Tabs.List aria-label="source">
+          <Tabs.Tab value="all">All</Tabs.Tab>
+          <Tabs.Tab value="server">Server</Tabs.Tab>
+          <Tabs.Tab value="sfu">SFU</Tabs.Tab>
+          <Tabs.Tab value="worker">Worker</Tabs.Tab>
+        <Tabs.Indicator />
+        </Tabs.List>
+        </Tabs>
 
-        <SegmentedControl.Root
-          size="1"
-          value={level}
-          onValueChange={(v) => setLevel(v as keyof typeof LEVEL_RANK)}
-        >
-          <SegmentedControl.Item value="debug">Debug</SegmentedControl.Item>
-          <SegmentedControl.Item value="info">Info</SegmentedControl.Item>
-          <SegmentedControl.Item value="warn">Warnings</SegmentedControl.Item>
-          <SegmentedControl.Item value="error">Errors</SegmentedControl.Item>
-        </SegmentedControl.Root>
+        <Tabs value={level} onValueChange={(v) => setLevel(v as keyof typeof LEVEL_RANK)}>
+          <Tabs.List aria-label="level">
+          <Tabs.Tab value="debug">Debug</Tabs.Tab>
+          <Tabs.Tab value="info">Info</Tabs.Tab>
+          <Tabs.Tab value="warn">Warnings</Tabs.Tab>
+          <Tabs.Tab value="error">Errors</Tabs.Tab>
+        <Tabs.Indicator />
+        </Tabs.List>
+        </Tabs>
 
         <Button tone="neutral" size="xsmall"
           onClick={() => {

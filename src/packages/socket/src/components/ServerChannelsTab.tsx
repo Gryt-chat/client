@@ -1,5 +1,5 @@
-import { Button, Surface, Switch, TextField } from "@gryt/ui";
-import { AlertDialog, Flex, Select, Text } from "@radix-ui/themes";
+import { Button, Select, Surface, Switch, TextField } from "@gryt/ui";
+import { AlertDialog, Flex, Text } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { PiPlus, PiTrashFill } from "react-icons/pi";
@@ -206,14 +206,14 @@ export function ServerChannelsTab({
                 </Flex>
                 <Flex direction="column" gap="1" style={{ minWidth: 220 }}>
                   <Text size="2" weight="medium">Max Bitrate</Text>
-                  <Select.Root value={maxBitrate} onValueChange={setMaxBitrate}>
-                    <Select.Trigger />
-                    <Select.Content position="popper" sideOffset={4}>
-                      {BITRATE_PRESETS.map((p) => (
-                        <Select.Item key={p.value} value={p.value}>{p.label}</Select.Item>
-                      ))}
-                    </Select.Content>
-                  </Select.Root>
+                  <Select
+                    value={maxBitrate}
+                    onValueChange={(v) => setMaxBitrate(String(v))}
+                    options={BITRATE_PRESETS.map((p) => ({
+                      label: p.label,
+                      value: p.value,
+                    }))}
+                  />
                 </Flex>
               </Flex>
             </Flex>

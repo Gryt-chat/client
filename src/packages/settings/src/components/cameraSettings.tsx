@@ -1,5 +1,5 @@
-import { Button, Chip, Divider } from "@gryt/ui";
-import { Flex, Heading, Select, Text } from "@radix-ui/themes";
+import { Button, Chip, Divider, Select } from "@gryt/ui";
+import { Flex, Heading, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PiArrowsClockwiseFill } from "react-icons/pi";
 
@@ -255,58 +255,43 @@ export function CameraSettings() {
 
       <Flex direction="column" gap="2">
         <Text weight="medium">Camera Device</Text>
-        <Select.Root
+        <Select
           value={cameraID || ""}
-          onValueChange={(value) => setCameraID(value)}
-        >
-          <Select.Trigger placeholder="Select a camera" />
-          <Select.Content position="popper" sideOffset={4}>
-            {devices.map((device) => (
-              <Select.Item key={device.deviceId || device.label} value={device.deviceId || `device-${device.label}`}>
-                {device.label || `Camera ${device.deviceId.slice(0, 8)}`}
-              </Select.Item>
-            ))}
-            {devices.length === 0 && (
-              <Select.Item value="__none__" disabled>
-                No cameras found
-              </Select.Item>
-            )}
-          </Select.Content>
-        </Select.Root>
+          onValueChange={(value) => setCameraID(String(value))}
+          placeholder="Select a camera"
+          options={
+            devices.length === 0
+              ? [{ label: "No cameras found", value: "__none__", disabled: true }]
+              : devices.map((device) => ({
+                  label: device.label || `Camera ${device.deviceId.slice(0, 8)}`,
+                  value: device.deviceId || `device-${device.label}`,
+                }))
+          }
+        />
       </Flex>
 
       <Flex direction="column" gap="2">
         <Text weight="medium">Video Quality</Text>
-        <Select.Root
+        <Select
           value={cameraQuality}
-          onValueChange={(value) => setCameraQuality(value)}
-        >
-          <Select.Trigger />
-          <Select.Content position="popper" sideOffset={4} style={{ maxHeight: 300 }}>
-            {filteredOptions.map((opt) => (
-              <Select.Item key={opt.value} value={opt.value}>
-                {opt.label}
-              </Select.Item>
-            ))}
-          </Select.Content>
-        </Select.Root>
+          onValueChange={(value) => setCameraQuality(String(value))}
+          options={filteredOptions.map((opt) => ({
+            label: opt.label,
+            value: opt.value,
+          }))}
+        />
       </Flex>
 
       <Flex direction="column" gap="2">
         <Text weight="medium">Frame Rate</Text>
-        <Select.Root
+        <Select
           value={String(cameraFps)}
           onValueChange={(v) => setCameraFps(Number(v))}
-        >
-          <Select.Trigger />
-          <Select.Content position="popper" sideOffset={4}>
-            {CAMERA_FPS_OPTIONS.map((fps) => (
-              <Select.Item key={fps} value={String(fps)}>
-                {fps} FPS
-              </Select.Item>
-            ))}
-          </Select.Content>
-        </Select.Root>
+          options={CAMERA_FPS_OPTIONS.map((fps) => ({
+            label: `${fps} FPS`,
+            value: String(fps),
+          }))}
+        />
       </Flex>
 
       <ToggleSetting

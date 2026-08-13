@@ -1,5 +1,5 @@
-import { Button, Checkbox, Chip, IconButton, Tooltip } from "@gryt/ui";
-import { Dialog, Flex, Select, Text } from "@radix-ui/themes";
+import { Button, Checkbox, Chip, IconButton, Select, Tooltip } from "@gryt/ui";
+import { Dialog, Flex, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PiCaretDownFill, PiCaretUpFill, PiMonitorFill, PiScreencastFill, PiSquaresFourFill, PiX } from "react-icons/pi";
 
@@ -373,28 +373,26 @@ export function ScreenSharePickerModal({
               <Tooltip title="Capture resolution. Lower values use less bandwidth.">
                 <Text size="2" style={{ cursor: "help", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}>Quality</Text>
               </Tooltip>
-              <Select.Root value={quality} onValueChange={(v) => onQualityChange(v as ScreenShareQuality)}>
-                <Select.Trigger variant="soft" />
-                <Select.Content position="popper" sideOffset={4} style={{ maxHeight: 300 }}>
-                  {qualityOptions.map((o) => (
-                    <Select.Item key={o.value} value={o.value}>{o.label}</Select.Item>
-                  ))}
-                </Select.Content>
-              </Select.Root>
+              <Select
+                value={quality}
+                onValueChange={(v) => onQualityChange(v as ScreenShareQuality)}
+                options={qualityOptions.map((o) => ({ label: o.label, value: o.value }))}
+              />
             </Flex>
 
             <Flex align="center" gap="2">
               <Tooltip title="Frames per second. Values above 60 use native DXGI screen capture (Windows desktop app only) to bypass browser FPS limits.">
                 <Text size="2" style={{ cursor: "help", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}>FPS</Text>
               </Tooltip>
-              <Select.Root value={String(fps)} onValueChange={(v) => onFpsChange(Number(v))}>
-                <Select.Trigger variant="soft" />
-                <Select.Content position="popper" sideOffset={4}>
-                  {fpsOptions.map((o) => (
-                    <Select.Item key={o.value} value={String(o.value)} disabled={o.disabled}>{o.label}</Select.Item>
-                  ))}
-                </Select.Content>
-              </Select.Root>
+              <Select
+                value={String(fps)}
+                onValueChange={(v) => onFpsChange(Number(v))}
+                options={fpsOptions.map((o) => ({
+                  label: o.label,
+                  value: String(o.value),
+                  disabled: o.disabled,
+                }))}
+              />
             </Flex>
           </Flex>
 
@@ -423,28 +421,27 @@ export function ScreenSharePickerModal({
                     <Tooltip title="H.264 has the widest hardware support. VP9/AV1 offer better compression but need newer GPUs (RTX 40+, Intel Arc, AMD RX 7000+).">
                       <Text size="2" style={{ cursor: "help", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}>Codec</Text>
                     </Tooltip>
-                    <Select.Root value={codec} onValueChange={(v) => onCodecChange(v as ScreenShareCodec)}>
-                      <Select.Trigger variant="soft" />
-                      <Select.Content position="popper" sideOffset={4}>
-                        {CODEC_OPTIONS.filter(o => availableCodecs.includes(o.value)).map((o) => (
-                          <Select.Item key={o.value} value={o.value}>{o.label}</Select.Item>
-                        ))}
-                      </Select.Content>
-                    </Select.Root>
+                    <Select
+                      value={codec}
+                      onValueChange={(v) => onCodecChange(v as ScreenShareCodec)}
+                      options={CODEC_OPTIONS.filter((o) =>
+                        availableCodecs.includes(o.value),
+                      ).map((o) => ({ label: o.label, value: o.value }))}
+                    />
                   </Flex>
 
                   <Flex align="center" gap="2">
                     <Tooltip title="Fixed encoding bitrate. Auto estimates based on resolution and FPS. Higher values mean sharper video but require more upload bandwidth.">
                       <Text size="2" style={{ cursor: "help", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}>Bitrate</Text>
                     </Tooltip>
-                    <Select.Root value={String(maxBitrate)} onValueChange={(v) => onMaxBitrateChange(Number(v))}>
-                      <Select.Trigger variant="soft" />
-                      <Select.Content position="popper" sideOffset={4} style={{ maxHeight: 300 }}>
-                        {BITRATE_OPTIONS.map((o) => (
-                          <Select.Item key={o.value} value={String(o.value)}>{o.label}</Select.Item>
-                        ))}
-                      </Select.Content>
-                    </Select.Root>
+                    <Select
+                      value={String(maxBitrate)}
+                      onValueChange={(v) => onMaxBitrateChange(Number(v))}
+                      options={BITRATE_OPTIONS.map((o) => ({
+                        label: o.label,
+                        value: String(o.value),
+                      }))}
+                    />
                   </Flex>
 
                   <Flex align="center" gap="2" style={svcDisabled ? { opacity: 0.5 } : undefined}>
@@ -454,14 +451,17 @@ export function ScreenSharePickerModal({
                     }>
                       <Text size="2" style={{ cursor: "help", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}>SVC layers</Text>
                     </Tooltip>
-                    <Select.Root value={scalabilityMode} onValueChange={(v) => onScalabilityModeChange(v as ScalabilityMode)} disabled={svcDisabled}>
-                      <Select.Trigger variant="soft" />
-                      <Select.Content position="popper" sideOffset={4}>
-                        {SVC_OPTIONS.map((o) => (
-                          <Select.Item key={o.value} value={o.value}>{o.label}</Select.Item>
-                        ))}
-                      </Select.Content>
-                    </Select.Root>
+                    <Select
+                      value={scalabilityMode}
+                      onValueChange={(v) =>
+                        onScalabilityModeChange(v as ScalabilityMode)
+                      }
+                      disabled={svcDisabled}
+                      options={SVC_OPTIONS.map((o) => ({
+                        label: o.label,
+                        value: o.value,
+                      }))}
+                    />
                   </Flex>
                 </Flex>
               </Flex>

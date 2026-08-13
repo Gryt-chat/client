@@ -1,5 +1,5 @@
-import { Button, Checkbox, TextField } from "@gryt/ui";
-import { AlertDialog, Code, Flex, Select, Text } from "@radix-ui/themes";
+import { Button, Checkbox, Select, TextField } from "@gryt/ui";
+import { AlertDialog, Code, Flex, Text } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 
 import type { Channel, SidebarItem } from "@/settings/src/types/server";
@@ -169,14 +169,11 @@ export const ServerConfirmDialogs = ({
         </Flex>
         <Flex direction="column" gap="1" mt="3">
           <Text size="1">Duration</Text>
-          <Select.Root value={banDuration} onValueChange={setBanDuration}>
-            <Select.Trigger />
-            <Select.Content>
-              {BAN_DURATIONS.map((d) => (
-                <Select.Item key={d.value} value={d.value}>{d.label}</Select.Item>
-              ))}
-            </Select.Content>
-          </Select.Root>
+          <Select
+            value={banDuration}
+            onValueChange={(v) => setBanDuration(String(v))}
+            options={BAN_DURATIONS.map((d) => ({ label: d.label, value: d.value }))}
+          />
         </Flex>
         <Text as="label" size="2" mt="3" style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <Checkbox
