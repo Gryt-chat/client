@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { singletonHook } from "@/common";
-import { normalizeHost } from "@/common";
+import {
+  forgetHost,
+  normalizeHost,
+  removeServerAccessToken,
+  removeServerRefreshToken,
+} from "@/common";
 import { useLanDiscovery } from "@/settings/src/hooks/useLanDiscovery";
 import { useServerSettings } from "@/settings/src/hooks/useServerSettings";
 import { Server, Servers } from "@/settings/src/types/server";
@@ -240,12 +245,29 @@ function useServerManagementHook(): ServerManagement {
     [servers, setServers, setCurrentlyViewingServer, findServerById]
   );
 
+  /**
+   * Leaving a server, and meaning it.
+   *
+   * This used to remove the sidebar entry and stop there, which left two things
+   * behind that only make sense for a member. The tokens: being kicked drops
+   * both, and the comment there says keeping the refresh token is what let a
+   * kicked client mint a new access token and walk back in — leaving
+   * voluntarily should not keep the credential either.
+   *
+   * And the pinned identity, which is the one people actually hit. It outlived
+   * the membership, so rebuilding a server on the same address was refused with
+   * a message pointing at a settings screen you had to already know about.
+   */
   const removeServer = useCallback(
     (host: string) => {
       const normalizedHost = normalizeHost(host);
       const newServers = { ...servers };
       delete newServers[normalizedHost];
       setServers(newServers);
+
+      removeServerAccessToken(normalizedHost);
+      removeServerRefreshToken(normalizedHost);
+      forgetHost(normalizedHost);
 
       if (currentlyViewingServer?.host === normalizedHost) {
         const remainingServers = Object.values(newServers) as Server[];

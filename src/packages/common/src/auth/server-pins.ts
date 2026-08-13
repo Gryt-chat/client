@@ -197,6 +197,52 @@ export function forgetPin(keyId: string): void {
   writeJson(HOST_INDEX_KEY, index);
 }
 
+/**
+ * Forget everything this client knows about one address.
+ *
+ * What leaving a server should do. A pin protects an ongoing relationship: it
+ * says "the server I am a member of answers with this key, and I want to know
+ * if something else ever answers instead". Once you have left, there is no
+ * relationship left to protect, and rejoining is the same fresh trust decision
+ * you made the first time.
+ *
+ * Leaving used to drop the sidebar entry and nothing else, so the expectation
+ * outlived the membership. Rebuild a server on the same address and the client
+ * refused it, and the only way out was Settings → Server identities, which you
+ * had to already know existed.
+ *
+ * Deliberately not `forgetPin`. That deletes the key and every address
+ * expecting it, and the same key legitimately answers at several — a server
+ * reachable on its LAN address and through a tunnel is one key and two hosts.
+ * Leaving one of those must not un-pin the other. So the expectation for this
+ * host goes, and the pin itself goes only once no address still expects it.
+ *
+ * Any block recorded against this address goes too. It describes a refusal
+ * that can no longer happen, and leaving it behind would refuse the next join
+ * by a rule about a membership that has ended.
+ */
+export function forgetHost(host: string): void {
+  const index = readHostIndex();
+  const keyId = index[host];
+
+  delete index[host];
+  writeJson(HOST_INDEX_KEY, index);
+
+  writeJson(
+    BLOCKLIST_KEY,
+    listBlocked().filter((b) => b.host !== host),
+  );
+
+  if (!keyId) return;
+
+  const stillExpected = Object.values(index).includes(keyId);
+  if (stillExpected) return;
+
+  const pins = listPins();
+  delete pins[keyId];
+  writeJson(PINS_KEY, pins);
+}
+
 // ── Blocklist ───────────────────────────────────────────────────────
 
 export function listBlocked(): BlockedServer[] {
