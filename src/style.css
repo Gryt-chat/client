@@ -127,7 +127,16 @@
  * and portaled content falls back to the browser's serif. This is the element
  * everything inherits from, which is where it belonged all along.
  */
+/* The page's own colours.
+ *
+ * Radix's <Theme hasBackground> painted these, and taking it out left nothing
+ * doing it: html and body were transparent and the text colour fell back to
+ * the browser's black, which is invisible on a dark app and was only hidden by
+ * the UA canvas happening to match. On html rather than body so the canvas is
+ * painted too — overscroll and the area behind a short page both show it. */
 html {
+  background: var(--gryt-bg);
+  color: var(--gryt-text);
   font-family: "Atkinson Hyperlegible Next", ui-sans-serif, system-ui, sans-serif;
 }
 
