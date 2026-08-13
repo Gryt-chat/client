@@ -26,6 +26,7 @@ interface ServerManagement {
 
   addServer: (server: Server, focusNewServer?: boolean) => void;
   removeServer: (host: string) => void;
+  removeServers: (hosts: string[]) => void;
   switchToServer: (host: string) => void;
   reconnectServer: (host: string) => void;
   reorderServers: (orderedHosts: string[]) => void;
@@ -258,29 +259,50 @@ function useServerManagementHook(): ServerManagement {
    * the membership, so rebuilding a server on the same address was refused with
    * a message pointing at a settings screen you had to already know about.
    */
-  const removeServer = useCallback(
-    (host: string) => {
-      const normalizedHost = normalizeHost(host);
+  /**
+   * The same, for every address one server was reachable at.
+   *
+   * Deleting a server you host has to forget all of them at once. Calling
+   * removeServer in a loop cannot do it: `servers` is state read out of this
+   * closure, so the second call rebuilds the map from the version that still
+   * holds the first call's entry, and writes it back — one removal survives,
+   * and the persisted copy is the wrong one.
+   */
+  const removeServers = useCallback(
+    (hosts: string[]) => {
+      const normalized = hosts.map(normalizeHost).filter(Boolean);
+      if (normalized.length === 0) return;
+
       const newServers = { ...servers };
-      delete newServers[normalizedHost];
+      for (const host of normalized) {
+        delete newServers[host];
+
+        removeServerAccessToken(host);
+        removeServerRefreshToken(host);
+        forgetHost(host);
+      }
       setServers(newServers);
 
-      removeServerAccessToken(normalizedHost);
-      removeServerRefreshToken(normalizedHost);
-      forgetHost(normalizedHost);
-
-      if (currentlyViewingServer?.host === normalizedHost) {
+      if (
+        currentlyViewingServer &&
+        normalized.includes(currentlyViewingServer.host)
+      ) {
         const remainingServers = Object.values(newServers) as Server[];
-        if (remainingServers.length > 0) {
-          setCurrentlyViewingServer(remainingServers[0].host);
-        } else {
-          setCurrentlyViewingServer(null);
-        }
+        setCurrentlyViewingServer(
+          remainingServers.length > 0 ? remainingServers[0].host : null
+        );
       }
 
       setShowRemoveServer(null);
     },
     [servers, setServers, currentlyViewingServer, setCurrentlyViewingServer]
+  );
+
+  const removeServer = useCallback(
+    (host: string) => {
+      removeServers([host]);
+    },
+    [removeServers]
   );
 
   /**
@@ -386,6 +408,7 @@ function useServerManagementHook(): ServerManagement {
 
     addServer,
     removeServer,
+    removeServers,
     switchToServer,
     reconnectServer,
     reorderServers,
@@ -416,6 +439,7 @@ const init: ServerManagement = {
 
   addServer: () => {},
   removeServer: () => {},
+  removeServers: () => {},
   switchToServer: () => {},
   reconnectServer: () => {},
   reorderServers: () => {},

@@ -16,6 +16,7 @@ import type { EmbeddedServerState } from "../../../../lib/electron";
 import { useServerManagement } from "../../../socket/src/hooks/useServerManagement";
 import { useEmbeddedServer } from "../hooks/useEmbeddedServer";
 import { useSettings } from "../hooks/useSettings";
+import type { Servers } from "../types/server";
 import { EmbeddedServerLogs } from "./embeddedServerLogs";
 import { SettingsContainer } from "./settingsComponents";
 
@@ -46,7 +47,7 @@ export function MyServersSettings() {
     dismissError,
   } = useEmbeddedServer();
   const { setShowSettings } = useSettings();
-  const { setShowAddServer, servers: joinedServers, removeServer } =
+  const { setShowAddServer, servers: joinedServers, removeServers } =
     useServerManagement();
 
   function hostAServer() {
@@ -108,13 +109,10 @@ export function MyServersSettings() {
                   void stopServer(server.id);
                 }}
                 onDelete={() => {
-                  // The rail entry goes with it. Left behind it points at an
-                  // address nothing answers on, and looks like a server that
-                  // is merely offline rather than one that no longer exists.
-                  const host = server.serverUrl
-                    ? normalizeHost(server.serverUrl)
-                    : "";
-                  if (host && joinedServers[host]) removeServer(host);
+                  // The rail entries go with it. Left behind they point at an
+                  // address nothing answers on, and look like a server that is
+                  // merely offline rather than one that no longer exists.
+                  removeServers(railEntriesFor(server, joinedServers));
                   void deleteServer(server.id);
                 }}
                 onDismissError={() => {
@@ -134,6 +132,40 @@ export function MyServersSettings() {
       </div>
     </SettingsContainer>
   );
+}
+
+/**
+ * Every rail entry pointing at a server this machine hosts.
+ *
+ * The address on its own was not enough. The rail keys an entry on whatever
+ * address you joined at, and joining your own server from the LAN — which is
+ * what the discovery list and an invite you sent somebody both hand you — keys
+ * it on 192.168.x.x, not 127.0.0.1. Deleting the server matched only the
+ * loopback address and left the other entry sitting there.
+ *
+ * That entry is not merely untidy. It keeps the tokens and the pinned identity
+ * for a server that no longer exists, and the next server created takes the
+ * same preferred port, so it inherits them and is refused by a server that has
+ * never issued them.
+ *
+ * The id is the half that holds: the config id here is SERVER_INSTANCE_ID, and
+ * that is what the server reports as its serverId. The address stays as a
+ * fallback for an entry added before the server ever answered with one.
+ */
+function railEntriesFor(
+  server: EmbeddedServerState,
+  joined: Servers,
+): string[] {
+  const hosts = new Set<string>();
+
+  for (const [host, entry] of Object.entries(joined)) {
+    if (entry.serverId && entry.serverId === server.id) hosts.add(host);
+  }
+
+  const loopback = server.serverUrl ? normalizeHost(server.serverUrl) : "";
+  if (loopback && joined[loopback]) hosts.add(loopback);
+
+  return [...hosts];
 }
 
 /**
