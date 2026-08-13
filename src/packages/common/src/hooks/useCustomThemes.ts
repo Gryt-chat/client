@@ -1,5 +1,5 @@
 import type { GrytTheme } from "@gryt/ui";
-import { decodeGrytTheme } from "@gryt/ui";
+import { decodeGrytTheme, grytPresetsById } from "@gryt/ui";
 import { useCallback, useState } from "react";
 
 import { singletonHook } from "./singletonHook";
@@ -21,6 +21,12 @@ import { singletonHook } from "./singletonHook";
 
 const THEMES_KEY = "theme.custom.themes";
 const ACTIVE_KEY = "theme.custom.active";
+/** How a library preset is named in storage, so it cannot collide with a saved id. */
+const PRESET_PREFIX = "preset:";
+
+export function presetThemeId(id: string): string {
+  return `${PRESET_PREFIX}${id}`;
+}
 
 export interface SavedTheme {
   id: string;
@@ -159,8 +165,21 @@ function useCustomThemesImpl(): CustomThemesState {
     [persist]
   );
 
+  /**
+   * A preset the library ships, or one somebody saved.
+   *
+   * Presets are stored as "preset:<id>" rather than copied into the saved list,
+   * so a newer @gryt/ui brings its corrections with it — a palette that gets a
+   * contrast fix should not be frozen on this machine because somebody clicked
+   * it once.
+   */
   const activeTheme =
-    themes.find((entry) => entry.id === activeId)?.theme ?? null;
+    activeId === null
+      ? null
+      : activeId.startsWith(PRESET_PREFIX)
+        ? (grytPresetsById.get(activeId.slice(PRESET_PREFIX.length))?.theme ??
+          null)
+        : (themes.find((entry) => entry.id === activeId)?.theme ?? null);
 
   return {
     themes,
