@@ -1,9 +1,7 @@
-import { Avatar, Dialog, TextField } from "@gryt/ui";
+import { Alert, Avatar, Dialog, Surface, TextField } from "@gryt/ui";
 import {
   Badge,
   Button,
-  Callout,
-  Card,
   Flex,
   IconButton,
   Text,
@@ -346,13 +344,15 @@ export function AddNewServer({
                 Gryt has no templates to offer under it. */}
             {step === null && (
               <Flex direction="column" gap="5" mt="2">
-                <Card asChild size="2">
-                  <button
-                    type="button"
-                    data-tour="choose-host"
-                    onClick={() => setMode("host")}
-                    style={{ cursor: "pointer", textAlign: "left" }}
-                  >
+                {/* Surface is a plain div with no asChild, and a box that only
+                    looks clickable wrapping a button is worse than the button
+                    wearing the surface itself. */}
+                <button
+                  type="button"
+                  data-tour="choose-host"
+                  className="rounded-(--gryt-radius-lg) border border-gryt-border bg-gryt-surface text-gryt-text w-full cursor-pointer p-4 text-left"
+                  onClick={() => setMode("host")}
+                >
                     <Flex align="center" gap="3">
                       <Flex
                         align="center"
@@ -382,8 +382,7 @@ export function AddNewServer({
                         <PiCaretRightBold size={14} />
                       </Flex>
                     </Flex>
-                  </button>
-                </Card>
+                </button>
 
                 {/* Only once there is something to manage. Creating and
                     managing are different jobs and this dialog is for the
@@ -567,12 +566,10 @@ export function AddNewServer({
                       exit={{ height: 0, opacity: 0 }}
                       style={{ overflow: "hidden" }}
                     >
-                      <Callout.Root>
-                        <Callout.Text>
-                          Asked. Somebody who runs this server has to let you in
-                          — once they do, adding it again will work.
-                        </Callout.Text>
-                      </Callout.Root>
+                      <Alert severity="info">
+                        Asked. Somebody who runs this server has to let you in
+                        — once they do, adding it again will work.
+                      </Alert>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -585,12 +582,12 @@ export function AddNewServer({
                       exit={{ height: 0, opacity: 0 }}
                       style={{ overflow: "hidden" }}
                     >
-                      <Callout.Root role="alert">
-                        <Callout.Icon>
+                      <Alert severity="error" role="alert">
+                        <span className="inline-flex items-center gap-2">
                           <PiWarningFill size={16} />
-                        </Callout.Icon>
-                        <Callout.Text>{joinError}</Callout.Text>
-                      </Callout.Root>
+                          {joinError}
+                        </span>
+                      </Alert>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -600,12 +597,11 @@ export function AddNewServer({
                     is the way back to it for somebody who came here looking for
                     a server on their own network. */}
                 {isElectron && (
-                  <Card asChild size="1">
-                    <button
-                      type="button"
-                      onClick={openDiscovery}
-                      style={{ cursor: "pointer", textAlign: "left" }}
-                    >
+                  <button
+                    type="button"
+                    className="rounded-(--gryt-radius-lg) border border-gryt-border bg-gryt-surface text-gryt-text w-full cursor-pointer p-3 text-left"
+                    onClick={openDiscovery}
+                  >
                       <Flex align="center" gap="3">
                         <Flex
                           align="center"
@@ -634,9 +630,8 @@ export function AddNewServer({
                         <Flex ml="auto" style={{ color: "var(--gray-9)" }}>
                           <PiCaretRightBold size={14} />
                         </Flex>
-                      </Flex>
-                    </button>
-                  </Card>
+                    </Flex>
+                  </button>
                 )}
 
                 <Dialog.Footer className="justify-between">
@@ -713,7 +708,7 @@ function ServerPreview({
   alreadyMember,
 }: ServerPreviewProps) {
   return (
-    <Card size="1">
+    <Surface className="p-3">
       <Flex align="center" gap="3">
         {/* Seeded on the address until /info answers, and on the name from then
             on — so the planet in the preview is the one the rail will draw once
@@ -778,6 +773,6 @@ function ServerPreview({
           )}
         </Flex>
       </Flex>
-    </Card>
+    </Surface>
   );
 }

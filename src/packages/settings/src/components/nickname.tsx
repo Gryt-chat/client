@@ -1,5 +1,5 @@
-import { TextField } from "@gryt/ui";
-import { Dialog, Flex, IconButton } from "@radix-ui/themes";
+import { IconButton, TextField } from "@gryt/ui";
+import { Dialog, Flex } from "@radix-ui/themes";
 import { useState } from "react";
 import { PiX } from "react-icons/pi";
 
@@ -37,7 +37,7 @@ export function Nickname() {
             right: "8px",
           }}
         >
-          <IconButton>
+          <IconButton size="xsmall">
             <PiX size={16} />
           </IconButton>
         </Dialog.Close>

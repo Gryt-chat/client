@@ -1,14 +1,10 @@
-import { Accordion, Avatar, Checkbox, TextField } from "@gryt/ui";
+import { Accordion, Avatar, Button, Checkbox, Chip, Spinner, Surface, TextField } from "@gryt/ui";
 import {
   AlertDialog,
-  Badge,
-  Button,
   Callout,
-  Card,
   Code,
   Flex,
   Heading,
-  Spinner,
   Text,
 } from "@radix-ui/themes";
 import { useState } from "react";
@@ -98,7 +94,7 @@ export function MyServersSettings() {
             <Text size="2">
               You are not running one yet.
             </Text>
-            <Button onClick={hostAServer}>
+            <Button size="small" onClick={hostAServer}>
               <PiHardDrivesFill size={16} />
               Host a server
             </Button>
@@ -136,7 +132,7 @@ export function MyServersSettings() {
             ))}
 
             <Flex width="fit-content">
-              <Button onClick={hostAServer}>
+              <Button size="small" onClick={hostAServer}>
                 <PiPlusBold size={14} />
                 Host another server
               </Button>
@@ -203,7 +199,7 @@ function HostedServerCard({
   }
 
   return (
-    <Card size="2">
+    <Surface className="p-4">
       <Flex direction="column" gap="3">
         <Flex align="center" gap="3">
           <Avatar fallback={<GeneratedServerIcon seed={name} />} />
@@ -213,12 +209,11 @@ function HostedServerCard({
               <Text size="2" weight="bold" truncate>
                 {name}
               </Text>
-              <Badge
-                size="1"
+              <Chip tone="neutral"
                 color={isRunning ? "green" : isStarting ? "amber" : "gray"}
               >
                 {isRunning ? "Running" : isStarting ? "Starting…" : "Stopped"}
-              </Badge>
+              </Chip>
             </Flex>
 
             {/* Both addresses, because they answer different questions: the
@@ -243,24 +238,24 @@ function HostedServerCard({
 
           <Flex ml="auto" gap="2" align="center">
             {isRunning || isStarting ? (
-              <Button
+              <Button size="small"
                 onClick={onStop}
                 disabled={busy}
               >
-                {busy ? <Spinner size="1" /> : <PiStopFill size={16} />}
+                {busy ? <Spinner size={16} /> : <PiStopFill size={16} />}
                 Stop
               </Button>
             ) : (
-              <Button
+              <Button size="small"
                 onClick={onStart}
                 disabled={busy}
               >
-                {busy ? <Spinner size="1" /> : <PiPlayFill size={16} />}
+                {busy ? <Spinner size={16} /> : <PiPlayFill size={16} />}
                 Start
               </Button>
             )}
 
-            <Button onClick={openServer} disabled={!isRunning}>
+            <Button size="small" onClick={openServer} disabled={!isRunning}>
               Open
             </Button>
           </Flex>
@@ -287,9 +282,9 @@ function HostedServerCard({
             }}
           >
             <Button
-              size="1"
-              variant="ghost"
-              ml="auto"
+              tone="ghost"
+              size="xsmall"
+              className="ml-auto"
               disabled={busy}
               onClick={() => setConfirmDelete(true)}
             >
@@ -328,12 +323,11 @@ function HostedServerCard({
 
               <Flex gap="3" mt="4" justify="end">
                 <AlertDialog.Cancel>
-                  <Button>
+                  <Button size="small">
                     Cancel
                   </Button>
                 </AlertDialog.Cancel>
-                <Button
-                  variant="solid"
+                <Button size="small"
                   disabled={typedName.trim() !== name}
                   onClick={() => {
                     setConfirmDelete(false);
@@ -378,7 +372,7 @@ function HostedServerCard({
               <Callout.Text>{server.error}</Callout.Text>
             </Callout.Root>
             <Flex justify="end">
-              <Button size="1" variant="ghost" onClick={onDismissError}>
+              <Button tone="ghost" size="xsmall" onClick={onDismissError}>
                 <PiX size={14} />
                 Dismiss
               </Button>
@@ -386,6 +380,6 @@ function HostedServerCard({
           </Flex>
         )}
       </Flex>
-    </Card>
+    </Surface>
   );
 }

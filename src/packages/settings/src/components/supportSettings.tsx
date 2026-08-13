@@ -1,4 +1,5 @@
-import { Button, Card, Flex, Heading, Text } from "@radix-ui/themes";
+import { Button, Surface } from "@gryt/ui";
+import { Flex, Heading, Text } from "@radix-ui/themes";
 import { FaGithub } from "react-icons/fa";
 import { PiArrowSquareOutFill } from "react-icons/pi";
 import { SiKofi } from "react-icons/si";
@@ -17,7 +18,7 @@ export function SupportSettings() {
         Gryt is free and open source. Stars and donations help keep it going.
       </Text>
 
-      <Card size="2">
+      <Surface className="p-4">
         <Flex direction="column" gap="3">
           <Flex align="center" gap="2">
             <FaGithub size={18} />
@@ -27,17 +28,20 @@ export function SupportSettings() {
             A star helps others discover Gryt and shows that people find it
             useful.
           </Text>
-          <Button variant="soft" size="2" asChild>
-            <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
-              <FaGithub size={16} />
-              Star on GitHub
-              <PiArrowSquareOutFill size={14} />
-            </a>
+          <Button size="small"
+            tone="neutral"
+            render={
+              <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" />
+            }
+          >
+            <FaGithub size={16} />
+            Star on GitHub
+            <PiArrowSquareOutFill size={14} />
           </Button>
         </Flex>
-      </Card>
+      </Surface>
 
-      <Card size="2">
+      <Surface className="p-4">
         <Flex direction="column" gap="3">
           <Flex align="center" gap="2">
             <SiKofi size={18} />
@@ -47,15 +51,18 @@ export function SupportSettings() {
             Donations go directly toward hosting, development, and keeping Gryt
             free for everyone.
           </Text>
-          <Button variant="soft" size="2" asChild>
-            <a href={KOFI_URL} target="_blank" rel="noopener noreferrer">
-              <SiKofi size={16} />
-              Donate on Ko-fi
-              <PiArrowSquareOutFill size={14} />
-            </a>
+          <Button size="small"
+            tone="neutral"
+            render={
+              <a href={KOFI_URL} target="_blank" rel="noopener noreferrer" />
+            }
+          >
+            <SiKofi size={16} />
+            Donate on Ko-fi
+            <PiArrowSquareOutFill size={14} />
           </Button>
         </Flex>
-      </Card>
+      </Surface>
     </SettingsContainer>
   );
 }

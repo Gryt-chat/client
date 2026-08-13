@@ -1,7 +1,5 @@
-import { TextField } from "@gryt/ui";
+import { Button, Chip, TextField } from "@gryt/ui";
 import {
-  Badge,
-  Button,
   Flex,
   Text,
 } from "@radix-ui/themes";
@@ -72,9 +70,7 @@ export function EmoteImport({
           disabled={fetching || importing}
           className="flex-1"
         />
-        <Button
-          size="1"
-          variant="soft"
+        <Button tone="neutral" size="xsmall"
           disabled={fetching || importing || !url.trim()}
           onClick={handleFetch}
         >
@@ -91,25 +87,21 @@ export function EmoteImport({
                   {username}
                 </Text>
               )}
-              <Badge size="1" variant="soft">
+              <Chip tone="neutral">
                 {emotes.length} emote{emotes.length !== 1 && "s"}
-              </Badge>
-              <Badge size="1" variant="soft" color="green">
+              </Chip>
+              <Chip tone="success">
                 {selectedEmotes.length} selected
-              </Badge>
+              </Chip>
             </Flex>
             <Flex gap="2">
-              <Button
-                size="1"
-                variant="ghost"
+              <Button tone="ghost" size="xsmall"
                 onClick={() => toggleAll(true)}
                 disabled={importing}
               >
                 Select all
               </Button>
-              <Button
-                size="1"
-                variant="ghost"
+              <Button tone="ghost" size="xsmall"
                 onClick={() => toggleAll(false)}
                 disabled={importing}
               >
@@ -155,17 +147,13 @@ export function EmoteImport({
           </Flex>
 
           <Flex justify="end" gap="2">
-            <Button
-              variant="soft"
-              color="gray"
-              size="1"
+            <Button tone="neutral" size="xsmall"
               disabled={importing}
               onClick={handleClear}
             >
               <PiX size={14} /> Clear
             </Button>
-            <Button
-              size="1"
+            <Button size="xsmall"
               disabled={importing || validSelectedCount === 0}
               onClick={handleImport}
             >

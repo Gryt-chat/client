@@ -13,7 +13,8 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Button, Flex, IconButton, Text, Tooltip } from "@radix-ui/themes";
+import { Button, IconButton, Tooltip } from "@gryt/ui";
+import { Flex, Text } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
 import type { CSSProperties, ReactNode } from "react";
 import {
@@ -374,9 +375,7 @@ export const VoiceView = ({
             {reasons[micUnavailable]} — you can hear others, but they cannot
             hear you.
           </Text>
-          <Button
-            size="1"
-            variant="soft"
+          <Button tone="neutral" size="xsmall"
             onClick={() => {
               toast.dismiss(t.id);
               setSettingsTab("sound-video");
@@ -419,9 +418,7 @@ export const VoiceView = ({
             Your microphone is not picking up any sound — others cannot hear
             you. Check the selected device, and that it is not muted.
           </Text>
-          <Button
-            size="1"
-            variant="soft"
+          <Button tone="neutral" size="xsmall"
             onClick={() => {
               toast.dismiss(t.id);
               setSettingsTab("sound-video");
@@ -1498,12 +1495,9 @@ export const VoiceView = ({
                       }}
                     >
                       <Tooltip
-                        content={isFullscreen ? "Leave fullscreen" : "Fullscreen"}
-                        delayDuration={300}
+                        title={isFullscreen ? "Leave fullscreen" : "Fullscreen"}
                       >
-                        <IconButton
-                          variant="soft"
-                          color="gray"
+                        <IconButton tone="neutral" size="xsmall"
                           aria-label={
                             isFullscreen
                               ? "Leave fullscreen"
@@ -1524,12 +1518,9 @@ export const VoiceView = ({
                           sitting there doing nothing. */}
                       {!isFullscreen && (
                         <Tooltip
-                          content={isMaximized ? "Restore" : "Maximize"}
-                          delayDuration={300}
+                          title={isMaximized ? "Restore" : "Maximize"}
                         >
-                          <IconButton
-                            variant="soft"
-                            color="gray"
+                          <IconButton tone="neutral" size="xsmall"
                             aria-label={
                               isMaximized
                                 ? "Restore voice view"
@@ -1566,12 +1557,9 @@ export const VoiceView = ({
             {onToggleChat && (
               <Flex style={{ position: "absolute", right: 0 }}>
                 <Tooltip
-                  content={chatHidden ? "Show chat" : "Hide chat"}
-                  delayDuration={300}
+                  title={chatHidden ? "Show chat" : "Hide chat"}
                 >
-                  <IconButton
-                    variant="soft"
-                    color="gray"
+                  <IconButton tone="neutral" size="xsmall"
                     onClick={onToggleChat}
                     style={{ opacity: chatHidden ? 0.5 : 1 }}
                   >

@@ -1,4 +1,4 @@
-import { Tooltip } from "@radix-ui/themes";
+import { Tooltip } from "@gryt/ui";
 import { cloneElement, isValidElement, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PiCheck, PiCopyFill } from "react-icons/pi";
 import type { Components } from "react-markdown";
@@ -334,7 +334,7 @@ const components: Components = {
         ?? alt
         ?? "";
       return (
-        <Tooltip content={emojiId} delayDuration={200}>
+        <Tooltip title={emojiId}>
           <img
             src={src}
             alt={alt || ""}
@@ -490,7 +490,7 @@ export const MarkdownRenderer = memo(({
             ?? alt
             ?? "";
           return (
-            <Tooltip content={emojiId} delayDuration={200}>
+            <Tooltip title={emojiId}>
               <img
                 src={src}
                 alt={alt || ""}

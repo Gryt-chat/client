@@ -1,6 +1,5 @@
-import { Checkbox } from "@gryt/ui";
+import { Checkbox, Chip } from "@gryt/ui";
 import {
-  Badge,
   Flex,
   Text,
   TextField,
@@ -123,9 +122,7 @@ export function EmoteRow({
         )}
       </Flex>
       {e.animated && (
-        <Badge size="1" variant="soft" color="purple">
-          GIF
-        </Badge>
+        <Chip tone="primary" label="GIF" />
       )}
     </Flex>
   );

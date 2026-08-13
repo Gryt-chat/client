@@ -1,4 +1,5 @@
-import { Button, Card,Dialog, Flex, IconButton, Text } from "@radix-ui/themes";
+import { Button, IconButton, Surface } from "@gryt/ui";
+import { Dialog, Flex, Text } from "@radix-ui/themes";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { PiX } from "react-icons/pi";
@@ -87,7 +88,7 @@ export function ServerRolesModal() {
           <Flex align="center" justify="between">
             <Dialog.Title>Roles</Dialog.Title>
             <Dialog.Close>
-              <IconButton variant="ghost" color="gray" onClick={close} disabled={submitting}>
+              <IconButton tone="ghost" size="xsmall" onClick={close} disabled={submitting}>
                 <PiX size={16} />
               </IconButton>
             </Dialog.Close>
@@ -98,7 +99,7 @@ export function ServerRolesModal() {
           </Text>
 
           <Flex justify="end" gap="2">
-            <Button variant="soft" color="gray" onClick={refresh} disabled={submitting}>
+            <Button tone="neutral" size="small" onClick={refresh} disabled={submitting}>
               Refresh
             </Button>
           </Flex>
@@ -110,7 +111,7 @@ export function ServerRolesModal() {
               members.map((m) => {
                 const r = roles[m.serverUserId] || "member";
                 return (
-                  <Card key={m.serverUserId}>
+                  <Surface key={m.serverUserId}>
                     <Flex align="center" justify="between" gap="2" wrap="wrap">
                       <Flex direction="column" gap="1">
                         <Text size="2" weight="bold">{m.nickname}</Text>
@@ -130,7 +131,7 @@ export function ServerRolesModal() {
                         </select>
                       </Flex>
                     </Flex>
-                  </Card>
+                  </Surface>
                 );
               })
             )}

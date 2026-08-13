@@ -1,4 +1,5 @@
-import { Button, Card, Flex, Text } from "@radix-ui/themes";
+import { Button, Surface } from "@gryt/ui";
+import { Flex, Text } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
@@ -50,7 +51,7 @@ export function ServerAuditTab({
   return (
     <Flex direction="column" gap="4">
       <Flex justify="end" gap="2">
-        <Button variant="soft" color="gray" onClick={refresh}>
+        <Button tone="neutral" size="small" onClick={refresh}>
           Refresh
         </Button>
       </Flex>
@@ -62,7 +63,7 @@ export function ServerAuditTab({
           </Text>
         ) : (
           items.map((it) => (
-            <Card key={it.eventId}>
+            <Surface key={it.eventId}>
               <Flex direction="column" gap="1">
                 <Text size="2" weight="bold">
                   {it.action}
@@ -77,7 +78,7 @@ export function ServerAuditTab({
                   </Text>
                 ) : null}
               </Flex>
-            </Card>
+            </Surface>
           ))
         )}
       </Flex>

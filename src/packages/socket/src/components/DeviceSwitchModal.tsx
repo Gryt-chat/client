@@ -1,4 +1,5 @@
-import { Button, Dialog, Flex, IconButton,Text } from "@radix-ui/themes";
+import { Button, IconButton } from "@gryt/ui";
+import { Dialog, Flex, Text } from "@radix-ui/themes";
 import { useEffect,useState } from "react";
 import { PiWarningFill, PiX } from "react-icons/pi";
 
@@ -74,19 +75,16 @@ export function DeviceSwitchModal() {
             Only one device can be connected to voice at a time. You can rejoin from any device.
           </Text>
           
-          <Button 
+          <Button size="small" 
             onClick={handleClose}
             style={{ marginTop: "8px" }}
-            size="2"
           >
             Got it
           </Button>
         </Flex>
         
         <Dialog.Close>
-          <IconButton
-            variant="ghost"
-            color="gray"
+          <IconButton tone="ghost" size="xsmall"
             style={{ position: "absolute", top: "12px", right: "12px" }}
             onClick={handleClose}
           >

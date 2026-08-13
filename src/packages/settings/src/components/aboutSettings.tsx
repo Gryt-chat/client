@@ -1,5 +1,5 @@
-import { Switch } from "@gryt/ui";
-import { AlertDialog, Badge, Button, Card, Flex, Heading, Link, Separator, Text } from "@radix-ui/themes";
+import { Button, Chip, Divider, Surface, Switch } from "@gryt/ui";
+import { AlertDialog, Flex, Heading, Link, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useState } from "react";
 import { FaGithub } from "react-icons/fa";
 import { PiArrowsClockwiseFill, PiArrowSquareOutFill, PiChatCircleDotsFill, PiCheckCircleFill, PiClockClockwiseFill, PiDesktopFill, PiDownloadSimpleFill, PiXCircleFill } from "react-icons/pi";
@@ -96,21 +96,21 @@ function UpdateControls() {
 
   return (
     <>
-      <Separator size="4" />
+      <Divider />
 
-      <Heading size="3">Updates</Heading>
+      <Heading>Updates</Heading>
 
       <Flex direction="column" gap="4">
         <Flex align="center" gap="3">
-          <Text size="2" weight="medium">Running</Text>
-          <Badge variant="soft" color="gray">v{appVersion}</Badge>
-          {betaChannel && <Badge variant="soft" color="orange">Beta</Badge>}
+          <Text weight="medium">Running</Text>
+          <Chip tone="neutral">v{appVersion}</Chip>
+          {betaChannel && <Chip tone="warning" label="Beta" />}
         </Flex>
 
         <Flex align="center" justify="between">
           <Flex direction="column" gap="1">
-            <Text size="2" weight="medium">Beta releases</Text>
-            <Text size="1" color="gray">
+            <Text weight="medium">Beta releases</Text>
+            <Text color="gray">
               {betaChannel
                 ? "You get new versions early. They break more often."
                 : "Get new versions early, before they have been tested as much."}
@@ -125,7 +125,7 @@ function UpdateControls() {
             failure. It cannot move without a restart: updates install while
             Gryt starts, never from the running app. */}
         {!statusText && (
-          <Text size="1" color="gray">
+          <Text color="gray">
             Updates install while Gryt starts, so the version above only changes
             after a restart.
           </Text>
@@ -137,15 +137,14 @@ function UpdateControls() {
               {isReady && <PiClockClockwiseFill size={16} color="var(--green-9)" />}
               {status?.status === "not-available" && <PiCheckCircleFill size={16} color="var(--green-9)" />}
               {status?.status === "error" && <PiXCircleFill size={16} color="var(--red-9)" />}
-              <Text size="2" color={statusColor}>{statusText}</Text>
+              <Text color={statusColor}>{statusText}</Text>
             </Flex>
           </Flex>
         )}
 
         <Flex gap="2" wrap="wrap">
           {!isAvailable && !isReady && !isPending && (
-            <Button
-              variant="soft"
+            <Button tone="neutral" size="small"
               onClick={handleCheckForUpdates}
               disabled={isBusy}
             >
@@ -158,7 +157,10 @@ function UpdateControls() {
               launch, where the installer has an empty app to work around
               instead of a loaded one. */}
           {(isAvailable || isReady) && !isPending && (
-            <Button variant="solid" color="green" onClick={handleUpdateNow}>
+            <Button size="small"
+              className="bg-gryt-success text-gryt-bg hover:not-data-disabled:bg-gryt-success/85"
+              onClick={handleUpdateNow}
+            >
               <PiClockClockwiseFill size={16} />
               Restart and update to v{status?.version}
             </Button>
@@ -171,19 +173,17 @@ function UpdateControls() {
           <AlertDialog.Title>
             {switchingToBeta ? "Turn on beta releases?" : "Turn off beta releases?"}
           </AlertDialog.Title>
-          <AlertDialog.Description size="2">
+          <AlertDialog.Description>
             {switchingToBeta
               ? "Gryt will close and reopen to install the latest beta. Beta builds can have bugs and unfinished features."
               : "Gryt will close and reopen to install the latest stable version. That is older than the beta you are on now, so anything added since will be gone until it reaches stable."}
           </AlertDialog.Description>
           <Flex gap="3" mt="4" justify="end">
             <AlertDialog.Cancel>
-              <Button variant="soft" color="gray">Cancel</Button>
+              <Button tone="neutral" size="small">Cancel</Button>
             </AlertDialog.Cancel>
             <AlertDialog.Action>
-              <Button
-                variant="solid"
-                color={switchingToBeta ? "orange" : "blue"}
+              <Button size="small"
                 onClick={confirmChannelSwitch}
               >
                 {switchingToBeta ? "Turn on beta" : "Turn off beta"}
@@ -199,30 +199,32 @@ function UpdateControls() {
 function DesktopAppCard() {
   return (
     <>
-      <Separator size="4" />
+      <Divider />
 
-      <Card size="2">
+      <Surface>
         <Flex direction="column" gap="3">
           <Flex align="center" gap="2">
             <PiDesktopFill size={18} />
-            <Text size="3" weight="medium">Get the desktop app</Text>
+            <Text weight="medium">Get the desktop app</Text>
           </Flex>
-          <Text size="2" color="gray">
+          <Text color="gray">
             The desktop app includes auto-updates, system tray integration,
             push-to-talk hotkeys, and native notifications.
           </Text>
-          <Text size="2" color="gray">
+          <Text color="gray">
             Available for Windows, macOS, and Linux.
           </Text>
-          <Button variant="solid" size="2" asChild>
-            <a href={RELEASES_URL} target="_blank" rel="noopener noreferrer">
-              <PiDownloadSimpleFill size={16} />
-              Download Gryt Desktop
-              <PiArrowSquareOutFill size={14} />
-            </a>
+          <Button size="small"
+            render={
+              <a href={RELEASES_URL} target="_blank" rel="noopener noreferrer" />
+            }
+          >
+            <PiDownloadSimpleFill size={16} />
+            Download Gryt Desktop
+            <PiArrowSquareOutFill size={14} />
           </Button>
         </Flex>
-      </Card>
+      </Surface>
     </>
   );
 }
@@ -230,18 +232,18 @@ function DesktopAppCard() {
 export function AboutSettings() {
   return (
     <SettingsContainer>
-      <Heading size="4">About</Heading>
+      <Heading>About</Heading>
 
       <Flex direction="column" gap="1">
         <Wordmark size="5" />
-        <Text size="2" color="gray" style={{ fontFamily: "var(--code-font-family)" }}>
+        <Text color="gray" style={{ fontFamily: "var(--code-font-family)" }}>
           v{__APP_VERSION__}
         </Text>
       </Flex>
 
       <Flex direction="column" gap="1">
-        <Text size="1" color="gray">&copy; 2022–2026 Sivert Gullberg Hansen</Text>
-        <Text size="1" color="gray">
+        <Text color="gray">&copy; 2022–2026 Sivert Gullberg Hansen</Text>
+        <Text color="gray">
           Licensed under{" "}
           <Link
             href={`${GITHUB_URL}/blob/main/LICENSE`}
@@ -254,17 +256,23 @@ export function AboutSettings() {
       </Flex>
 
       <Flex gap="3" wrap="wrap">
-        <Button variant="soft" color="gray" asChild>
-          <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
-            <FaGithub size={16} />
-            GitHub
-          </a>
+        <Button size="small"
+          tone="neutral"
+          render={
+            <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" />
+          }
+        >
+          <FaGithub size={16} />
+          GitHub
         </Button>
-        <Button variant="soft" color="gray" asChild>
-          <a href={FEEDBACK_URL} target="_blank" rel="noopener noreferrer">
-            <PiChatCircleDotsFill size={16} />
-            Give feedback
-          </a>
+        <Button size="small"
+          tone="neutral"
+          render={
+            <a href={FEEDBACK_URL} target="_blank" rel="noopener noreferrer" />
+          }
+        >
+          <PiChatCircleDotsFill size={16} />
+          Give feedback
         </Button>
       </Flex>
 

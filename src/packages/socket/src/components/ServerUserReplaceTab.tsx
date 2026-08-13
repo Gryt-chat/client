@@ -1,5 +1,5 @@
-import { Avatar, TextField } from "@gryt/ui";
-import { AlertDialog, Button, Card, Flex, Text } from "@radix-ui/themes";
+import { Avatar, Button, Surface, TextField } from "@gryt/ui";
+import { AlertDialog, Flex, Text } from "@radix-ui/themes";
 import { useCallback, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
@@ -232,7 +232,7 @@ export function ServerUserReplaceTab({
         all other data intact. This is useful when a user re-registers and gets a new Keycloak account.
       </Text>
 
-      <Card>
+      <Surface>
         <Flex direction="column" gap="3">
           <div>
             <Text size="2" weight="bold" mb="1" as="p">
@@ -266,7 +266,7 @@ export function ServerUserReplaceTab({
           <Flex justify="end" mt="2">
             <AlertDialog.Root>
               <AlertDialog.Trigger>
-                <Button disabled={submitting || !targetServerUserId || !newGrytUserId.trim()}>
+                <Button size="small" disabled={submitting || !targetServerUserId || !newGrytUserId.trim()}>
                   {submitting ? "Replacing…" : "Replace identity"}
                 </Button>
               </AlertDialog.Trigger>
@@ -279,12 +279,12 @@ export function ServerUserReplaceTab({
                 </AlertDialog.Description>
                 <Flex gap="3" mt="4" justify="end">
                   <AlertDialog.Cancel>
-                    <Button>
+                    <Button size="small">
                       Cancel
                     </Button>
                   </AlertDialog.Cancel>
                   <AlertDialog.Action>
-                    <Button onClick={handleReplace} disabled={submitting}>
+                    <Button size="small" onClick={handleReplace} disabled={submitting}>
                       Confirm replace
                     </Button>
                   </AlertDialog.Action>
@@ -293,7 +293,7 @@ export function ServerUserReplaceTab({
             </AlertDialog.Root>
           </Flex>
         </Flex>
-      </Card>
+      </Surface>
     </Flex>
   );
 }

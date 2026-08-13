@@ -1,4 +1,5 @@
-import { Flex, IconButton, Link, Text } from "@radix-ui/themes";
+import { IconButton } from "@gryt/ui";
+import { Flex, Link, Text } from "@radix-ui/themes";
 import { useState } from "react";
 import { PiDownloadSimpleFill, PiX } from "react-icons/pi";
 
@@ -40,10 +41,7 @@ export function BrowserBanner() {
         </Link>{" "}
         for the full experience.
       </Text>
-      <IconButton
-        variant="ghost"
-        color="gray"
-        size="1"
+      <IconButton tone="ghost" size="xsmall"
         style={{ marginLeft: "auto", flexShrink: 0 }}
         onClick={() => {
           localStorage.setItem(STORAGE_KEY, "true");

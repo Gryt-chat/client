@@ -1,10 +1,7 @@
-import { Slider, Switch } from "@gryt/ui";
+import { Button, IconButton, Slider, Switch, Tooltip } from "@gryt/ui";
 import {
-  Button,
   Flex,
-  IconButton,
   Text,
-  Tooltip,
 } from "@radix-ui/themes";
 import { useEffect, useRef, useState } from "react";
 import { PiArrowsClockwiseFill, PiPlayFill, PiStopFill } from "react-icons/pi";
@@ -212,13 +209,10 @@ export function SoundSettings({
               </Text>
               <Flex gap="1">
                 <Tooltip
-                  content={`Reset to default (${defaultVolume}%)`}
+                  title={`Reset to default (${defaultVolume}%)`}
                   side="top"
                 >
-                  <IconButton
-                    size="1"
-                    variant="ghost"
-                    color={volume !== defaultVolume ? "red" : "gray"}
+                  <IconButton tone="ghost" size="xsmall"
                     onClick={resetVolume}
                     disabled={volume === defaultVolume}
                   >
@@ -251,11 +245,8 @@ export function SoundSettings({
               <Text weight="medium" size="2">
                 Custom Sound File
               </Text>
-              <Tooltip content="Reset to default sound" side="top">
-                <IconButton
-                  size="1"
-                  variant="ghost"
-                  color={customSoundFile ? "red" : "gray"}
+              <Tooltip title="Reset to default sound" side="top">
+                <IconButton tone="ghost" size="xsmall"
                   onClick={resetSound}
                   disabled={!customSoundFile}
                 >
@@ -271,25 +262,21 @@ export function SoundSettings({
                 onChange={handleFileUpload}
                 style={{ display: "none" }}
               />
-              <Button
-                variant="soft"
+              <Button tone="neutral" size="small"
                 onClick={() => fileInputRef.current?.click()}
                 style={{ flexGrow: 1 }}
               >
                 {customSoundFile ? "Change File" : "Choose File"}
               </Button>
-              <Tooltip content="Test sound" side="top">
+              <Tooltip title="Test sound" side="top">
                 {isPlaying ? (
-                  <Button
-                    variant="ghost"
-                    size="2"
+                  <Button tone="danger" size="small"
                     onClick={stopSoundTest}
-                    color="red"
                   >
                     <PiStopFill size={16} />
                   </Button>
                 ) : (
-                  <Button variant="ghost" size="2" onClick={testSound}>
+                  <Button tone="ghost" size="small" onClick={testSound}>
                     <PiPlayFill size={16} />
                   </Button>
                 )}

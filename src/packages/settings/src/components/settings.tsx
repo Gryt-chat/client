@@ -1,5 +1,5 @@
-import { IconButton, TextField } from "@gryt/ui";
-import { Box, Dialog, Flex, Separator, Text } from "@radix-ui/themes";
+import { Divider, IconButton, TextField } from "@gryt/ui";
+import { Box, Dialog, Flex, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PiArrowFatLineDownFill, PiFadersHorizontalFill, PiFlaskFill, PiGearSixFill, PiHardDrivesFill, PiHeartFill, PiMagnifyingGlassFill, PiPuzzlePieceFill, PiUserCircleFill, PiUserFill, PiVideoCameraFill, PiX } from "react-icons/pi";
 
@@ -37,7 +37,7 @@ import { VoiceSettings } from "./voiceSettings";
  * supplies the separation that used to come from being on different tabs.
  */
 function PanelDivider() {
-  return <Separator size="4" my="5" />;
+  return <Divider className="my-5" />;
 }
 
 /**
@@ -517,7 +517,6 @@ function SearchResults({
   if (results.length === 0) {
     return (
       <Text
-        size="1"
         color="gray"
         style={{ padding: "8px 10px", display: "block" }}
       >
@@ -537,8 +536,8 @@ function SearchResults({
           className="gryt-settings-result"
           data-picked={entry.id === picked}
         >
-          <Text size="2">{entry.title}</Text>
-          <Text size="1" color="gray">{entry.section}</Text>
+          <Text>{entry.title}</Text>
+          <Text color="gray">{entry.section}</Text>
         </button>
       ))}
     </Flex>

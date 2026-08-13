@@ -1,5 +1,5 @@
-import { Avatar } from "@gryt/ui";
-import { Box, Flex, HoverCard, IconButton, Text, Tooltip } from "@radix-ui/themes";
+import { Avatar, IconButton, Tooltip } from "@gryt/ui";
+import { Box, Flex, HoverCard, Text } from "@radix-ui/themes";
 import { PiPushPinFill } from "react-icons/pi";
 
 import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
@@ -208,11 +208,8 @@ export const MemberSidebar = ({
               Members — {members.length}
             </Text>
             {onTogglePinned && (
-              <Tooltip content={pinned ? "Unpin sidebar" : "Pin sidebar"} delayDuration={200}>
-                <IconButton
-                  size="1"
-                  variant={pinned ? "solid" : "soft"}
-                  color="gray"
+              <Tooltip title={pinned ? "Unpin sidebar" : "Pin sidebar"}>
+                <IconButton tone="neutral" size="xsmall"
                   onClick={onTogglePinned}
                   aria-label={pinned ? "Unpin sidebar" : "Pin sidebar"}
                 >

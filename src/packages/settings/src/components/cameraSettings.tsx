@@ -1,4 +1,5 @@
-import { Badge, Button, Flex, Heading, Select, Separator, Text } from "@radix-ui/themes";
+import { Button, Chip, Divider } from "@gryt/ui";
+import { Flex, Heading, Select, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PiArrowsClockwiseFill } from "react-icons/pi";
 
@@ -188,10 +189,10 @@ export function CameraSettings() {
 
   return (
     <SettingsContainer>
-      <Heading size="4">Camera</Heading>
+      <Heading>Camera</Heading>
 
       <Flex direction="column" gap="2">
-        <Text weight="medium" size="2">Preview</Text>
+        <Text weight="medium">Preview</Text>
         <Flex
           align="center"
           justify="center"
@@ -219,9 +220,7 @@ export function CameraSettings() {
                 }}
               />
               {actualRes && (
-                <Badge
-                  variant="solid"
-                  size="1"
+                <Chip tone="neutral"
                   style={{
                     position: "absolute",
                     top: 8,
@@ -233,16 +232,16 @@ export function CameraSettings() {
                   }}
                 >
                   {actualRes.w}×{actualRes.h}
-                </Badge>
+                </Chip>
               )}
             </div>
           ) : (
             <Flex direction="column" align="center" gap="2" p="4">
-              <Text size="2" color={activeError ? "red" : "gray"}>
+              <Text color={activeError ? "red" : "gray"}>
                 {activeError ?? "No camera detected"}
               </Text>
               {activeError && (
-                <Button variant="soft" size="1" onClick={startPreview}>
+                <Button tone="neutral" size="xsmall" onClick={startPreview}>
                   <PiArrowsClockwiseFill size={14} />
                   Retry
                 </Button>
@@ -252,10 +251,10 @@ export function CameraSettings() {
         </Flex>
       </Flex>
 
-      <Separator size="4" />
+      <Divider />
 
       <Flex direction="column" gap="2">
-        <Text weight="medium" size="2">Camera Device</Text>
+        <Text weight="medium">Camera Device</Text>
         <Select.Root
           value={cameraID || ""}
           onValueChange={(value) => setCameraID(value)}
@@ -277,7 +276,7 @@ export function CameraSettings() {
       </Flex>
 
       <Flex direction="column" gap="2">
-        <Text weight="medium" size="2">Video Quality</Text>
+        <Text weight="medium">Video Quality</Text>
         <Select.Root
           value={cameraQuality}
           onValueChange={(value) => setCameraQuality(value)}
@@ -294,7 +293,7 @@ export function CameraSettings() {
       </Flex>
 
       <Flex direction="column" gap="2">
-        <Text weight="medium" size="2">Frame Rate</Text>
+        <Text weight="medium">Frame Rate</Text>
         <Select.Root
           value={String(cameraFps)}
           onValueChange={(v) => setCameraFps(Number(v))}

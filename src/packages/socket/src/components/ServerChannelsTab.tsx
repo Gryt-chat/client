@@ -1,5 +1,5 @@
-import { Switch, TextField } from "@gryt/ui";
-import { AlertDialog, Button, Card, Flex, Select, Text } from "@radix-ui/themes";
+import { Button, Surface, Switch, TextField } from "@gryt/ui";
+import { AlertDialog, Flex, Select, Text } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { PiPlus, PiTrashFill } from "react-icons/pi";
@@ -155,7 +155,7 @@ export function ServerChannelsTab({
 
   return (
     <Flex direction="column" gap="4">
-      <Card>
+      <Surface>
         <Flex direction="column" gap="3">
           <Text size="2" weight="medium">
             {editingId ? "Edit channel" : "Create channel"}
@@ -219,23 +219,23 @@ export function ServerChannelsTab({
             </Flex>
           )}
           <Flex justify="end" gap="2">
-            <Button onClick={resetForm} disabled={submitting}>
+            <Button size="small" onClick={resetForm} disabled={submitting}>
               Reset
             </Button>
-            <Button onClick={upsert} disabled={submitting}>
+            <Button size="small" onClick={upsert} disabled={submitting}>
               <PiPlus size={16} />
               {editingId ? "Save" : "Add"}
             </Button>
           </Flex>
         </Flex>
-      </Card>
+      </Surface>
 
       <Flex direction="column" gap="2">
         <Flex align="center" justify="between" wrap="wrap" gap="2">
           <Text size="2" weight="medium">
             Existing channels
           </Text>
-          <Button onClick={refresh} disabled={submitting}>
+          <Button size="small" onClick={refresh} disabled={submitting}>
             Refresh
           </Button>
         </Flex>
@@ -249,7 +249,7 @@ export function ServerChannelsTab({
             .slice()
             .sort((a, b) => ((a.position ?? 0) - (b.position ?? 0)) || a.name.localeCompare(b.name))
             .map((ch) => (
-              <Card key={ch.id}>
+              <Surface key={ch.id}>
                 <Flex align="center" justify="between" gap="2" wrap="wrap">
                   <Flex direction="column" gap="1">
                     <Text size="2" weight="bold">
@@ -265,16 +265,16 @@ export function ServerChannelsTab({
                     </Text>
                   </Flex>
                   <Flex gap="2">
-                    <Button onClick={() => startEdit(ch)} disabled={submitting}>
+                    <Button size="small" onClick={() => startEdit(ch)} disabled={submitting}>
                       Edit
                     </Button>
-                    <Button onClick={() => setPendingDeleteId(ch.id)} disabled={submitting}>
+                    <Button size="small" onClick={() => setPendingDeleteId(ch.id)} disabled={submitting}>
                       <PiTrashFill size={16} />
                       Delete
                     </Button>
                   </Flex>
                 </Flex>
-              </Card>
+              </Surface>
             ))
         )}
       </Flex>
@@ -287,10 +287,10 @@ export function ServerChannelsTab({
           </AlertDialog.Description>
           <Flex gap="3" mt="4" justify="end">
             <AlertDialog.Cancel>
-              <Button>Cancel</Button>
+              <Button size="small">Cancel</Button>
             </AlertDialog.Cancel>
             <AlertDialog.Action>
-              <Button variant="solid" onClick={() => { if (pendingDeleteId) { del(pendingDeleteId); setPendingDeleteId(null); } }}>
+              <Button size="small" onClick={() => { if (pendingDeleteId) { del(pendingDeleteId); setPendingDeleteId(null); } }}>
                 Delete
               </Button>
             </AlertDialog.Action>

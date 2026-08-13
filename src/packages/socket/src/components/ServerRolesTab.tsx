@@ -1,4 +1,5 @@
-import { Button, Card, Flex, Text } from "@radix-ui/themes";
+import { Button, Surface } from "@gryt/ui";
+import { Flex, Text } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
@@ -75,7 +76,7 @@ export function ServerRolesTab({
       </Text>
 
       <Flex justify="end" gap="2">
-        <Button variant="soft" color="gray" onClick={refresh} disabled={submitting}>
+        <Button tone="neutral" size="small" onClick={refresh} disabled={submitting}>
           Refresh
         </Button>
       </Flex>
@@ -89,7 +90,7 @@ export function ServerRolesTab({
           members.map((m) => {
             const r = roles[m.serverUserId] || "member";
             return (
-              <Card key={m.serverUserId}>
+              <Surface key={m.serverUserId}>
                 <Flex align="center" justify="between" gap="2" wrap="wrap">
                   <Flex direction="column" gap="1">
                     <Text size="2" weight="bold">
@@ -115,7 +116,7 @@ export function ServerRolesTab({
                     </select>
                   </Flex>
                 </Flex>
-              </Card>
+              </Surface>
             );
           })
         )}

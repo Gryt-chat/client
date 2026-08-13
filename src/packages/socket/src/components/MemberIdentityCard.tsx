@@ -1,4 +1,5 @@
-import { Badge, Code, DataList, Flex, Text } from "@radix-ui/themes";
+import { Chip } from "@gryt/ui";
+import { Code, DataList, Flex, Text } from "@radix-ui/themes";
 
 import type { MemberInfo } from "./MemberSidebar";
 
@@ -78,9 +79,9 @@ export function MemberIdentityCard({ member }: { member: MemberInfo }) {
           {member.nickname}
         </Text>
         {member.role && member.role !== "member" && (
-          <Badge size="1" variant="soft">
+          <Chip tone="neutral">
             {member.role}
-          </Badge>
+          </Chip>
         )}
       </Flex>
 
@@ -89,9 +90,9 @@ export function MemberIdentityCard({ member }: { member: MemberInfo }) {
           <DataList.Item>
             <DataList.Label>Identity</DataList.Label>
             <DataList.Value>
-              <Badge size="1" color={tier.color} variant="soft">
+              <Chip tone="neutral" color={tier.color}>
                 {tier.label}
-              </Badge>
+              </Chip>
             </DataList.Value>
           </DataList.Item>
         )}

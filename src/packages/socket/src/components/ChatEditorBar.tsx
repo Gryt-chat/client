@@ -1,4 +1,5 @@
-import { Button, Flex, Text } from "@radix-ui/themes";
+import { Button } from "@gryt/ui";
+import { Flex, Text } from "@radix-ui/themes";
 import type { RefObject } from "react";
 
 import { ChatEditor, type ChatEditorHandle } from "./ChatEditor";
@@ -62,9 +63,7 @@ export function ChatEditorBar({
               {getReplyPreview(replyingTo, 80)}
             </Text>
           </Flex>
-          <Button
-            variant="ghost"
-            size="1"
+          <Button tone="ghost" size="xsmall"
             onClick={onCancelReply}
             style={{ padding: "2px 6px", minWidth: "auto", cursor: "pointer" }}
           >
@@ -92,9 +91,7 @@ export function ChatEditorBar({
               press Escape to cancel
             </Text>
           </Flex>
-          <Button
-            variant="ghost"
-            size="1"
+          <Button tone="ghost" size="xsmall"
             onClick={onCancelEditing}
             style={{ padding: "2px 6px", minWidth: "auto", cursor: "pointer" }}
           >

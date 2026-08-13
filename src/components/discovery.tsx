@@ -1,16 +1,8 @@
-import { Avatar } from "@gryt/ui";
+import { Alert, Avatar, Button, Chip, Divider, IconButton, Spinner, Surface, Tooltip } from "@gryt/ui";
 import {
-  Badge,
-  Button,
-  Callout,
-  Card,
   Flex,
   Heading,
-  IconButton,
-  Separator,
-  Spinner,
   Text,
-  Tooltip,
 } from "@radix-ui/themes";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -119,11 +111,11 @@ export function Discovery() {
         <PiBroadcastFill size={20} />
         <Heading size="5">Servers on your network</Heading>
 
-        <Tooltip content="Look again">
+        <Tooltip title="Look again">
           <IconButton
-            ml="auto"
-            variant="soft"
-            color="gray"
+            tone="neutral"
+            size="xsmall"
+            className="ml-auto"
             aria-label="Look again"
             onClick={() => {
               setSearchExpired(false);
@@ -137,18 +129,18 @@ export function Discovery() {
         </Tooltip>
       </Flex>
 
-      <Text size="2" color="gray">
+      <Text color="gray">
         Gryt servers announce themselves on the local network. Anything running
         on the same Wi-Fi or LAN turns up here on its own — no invite needed for
         the ones that are open to it.
       </Text>
 
-      <Separator size="4" />
+      <Divider />
 
       {lanServers.length === 0 && !searchExpired && (
         <Flex align="center" gap="2">
-          <Spinner size="1" />
-          <Text size="2" color="gray">
+          <Spinner />
+          <Text color="gray">
             Searching&hellip;
           </Text>
         </Flex>
@@ -156,17 +148,14 @@ export function Discovery() {
 
       {lanServers.length === 0 && searchExpired && (
         <Flex direction="column" gap="2" align="start">
-          <Text size="2" color="gray">
+          <Text color="gray">
             No servers found on your network.
           </Text>
-          <Text size="1" color="gray">
+          <Text color="gray">
             Still looking — one will appear here as soon as it starts. If you
             have an invite link, add it directly instead.
           </Text>
-          <Button
-            mt="2"
-            variant="soft"
-            color="gray"
+          <Button tone="neutral" size="small" className="mt-2"
             onClick={() => setShowAddServer(true)}
           >
             Add a server
@@ -190,7 +179,7 @@ export function Discovery() {
           const isConnectingThis = connecting === key;
 
           return (
-            <Card key={key} size="1">
+            <Surface key={key}>
               <Flex direction="column" gap="2">
                 <Flex align="center" gap="3">
                   {/*
@@ -207,7 +196,7 @@ export function Discovery() {
                   />
 
                   <Flex direction="column" style={{ minWidth: 0 }}>
-                    <Text size="2" weight="bold" truncate>
+                    <Text weight="bold" truncate>
                       {server.name}
                     </Text>
                     {/*
@@ -217,7 +206,7 @@ export function Discovery() {
                       mDNS TXT record and in /info, so this is not a fix for
                       that — see GRYT-42.
                     */}
-                    <Text size="1" color="gray" truncate>
+                    <Text color="gray" truncate>
                       {addr}
                     </Text>
                   </Flex>
@@ -225,13 +214,8 @@ export function Discovery() {
                   <Flex ml="auto" align="center" gap="2">
                     {isMember ? (
                       <>
-                        <Badge size="1" variant="soft" color="green">
-                          Joined
-                        </Badge>
-                        <Button
-                          size="1"
-                          variant="soft"
-                          color="gray"
+                        <Chip tone="success" label="Joined" />
+                        <Button tone="neutral" size="xsmall"
                           onClick={() => switchToServer(host)}
                         >
                           Open
@@ -239,45 +223,43 @@ export function Discovery() {
                       </>
                     ) : (
                       <Button
-                        size="1"
-                        disabled={busy}
-                        loading={isConnectingThis}
+                        size="xsmall"
+                        disabled={busy || isConnectingThis}
+                        startIcon={
+                          isConnectingThis ? <Spinner /> : undefined
+                        }
                         onClick={() => {
                           void handleJoin(server);
                         }}
                       >
-                        Join
+                        {isConnectingThis ? "Joining" : "Join"}
                       </Button>
                     )}
                   </Flex>
                 </Flex>
 
                 {error && (
-                  <Callout.Root color="red" size="1" role="alert">
-                    <Callout.Icon>
+                  <Alert severity="error" role="alert">
+                    <span className="inline-flex items-center gap-2">
                       <PiWarningFill size={14} />
-                    </Callout.Icon>
-                    <Callout.Text>
                       {error}
                       {/* An invite cannot be typed here, and saying so without
                           offering the field that takes one is a dead end. */}
                       {error.toLowerCase().includes("invite") && (
                         <>
                           {" "}
-                          <Button
-                            size="1"
-                            variant="ghost"
+                          <Button tone="ghost" size="xsmall"
                             onClick={() => setShowAddServer(true)}
                           >
                             Use an invite
                           </Button>
                         </>
                       )}
-                    </Callout.Text>
-                  </Callout.Root>
+                    </span>
+                  </Alert>
                 )}
               </Flex>
-            </Card>
+            </Surface>
           );
         })}
       </Flex>

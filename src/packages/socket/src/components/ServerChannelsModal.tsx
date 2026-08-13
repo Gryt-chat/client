@@ -1,5 +1,5 @@
-import { TextField } from "@gryt/ui";
-import { AlertDialog, Button, Card, Dialog, Flex, IconButton, Text } from "@radix-ui/themes";
+import { Button, IconButton, Surface, TextField } from "@gryt/ui";
+import { AlertDialog, Dialog, Flex, Text } from "@radix-ui/themes";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { PiPlus, PiTrashFill, PiX } from "react-icons/pi";
@@ -130,13 +130,13 @@ export function ServerChannelsModal() {
           <Flex align="center" justify="between">
             <Dialog.Title>Channels</Dialog.Title>
             <Dialog.Close>
-              <IconButton variant="ghost" color="gray" onClick={close} disabled={submitting}>
+              <IconButton tone="ghost" size="xsmall" onClick={close} disabled={submitting}>
                 <PiX size={16} />
               </IconButton>
             </Dialog.Close>
           </Flex>
 
-          <Card>
+          <Surface>
             <Flex direction="column" gap="3">
               <Text size="2" weight="medium">
                 {editingId ? "Edit channel" : "Create channel"}
@@ -159,16 +159,16 @@ export function ServerChannelsModal() {
                 </Flex>
               </Flex>
               <Flex justify="end" gap="2">
-                <Button variant="soft" color="gray" onClick={resetForm} disabled={submitting}>
+                <Button tone="neutral" size="small" onClick={resetForm} disabled={submitting}>
                   Reset
                 </Button>
-                <Button onClick={upsert} disabled={submitting}>
+                <Button size="small" onClick={upsert} disabled={submitting}>
                   <PiPlus size={16} />
                   {editingId ? "Save" : "Add"}
                 </Button>
               </Flex>
             </Flex>
-          </Card>
+          </Surface>
 
           <Flex direction="column" gap="2">
             <Text size="2" weight="medium">Existing channels</Text>
@@ -179,7 +179,7 @@ export function ServerChannelsModal() {
                 .slice()
                 .sort((a, b) => ((a.position ?? 0) - (b.position ?? 0)) || a.name.localeCompare(b.name))
                 .map((ch) => (
-                  <Card key={ch.id}>
+                  <Surface key={ch.id}>
                     <Flex align="center" justify="between" gap="2" wrap="wrap">
                       <Flex direction="column" gap="1">
                         <Text size="2" weight="bold">{ch.name}</Text>
@@ -189,16 +189,16 @@ export function ServerChannelsModal() {
                         </Text>
                       </Flex>
                       <Flex gap="2">
-                        <Button variant="soft" onClick={() => startEdit(ch)} disabled={submitting}>
+                        <Button tone="neutral" size="small" onClick={() => startEdit(ch)} disabled={submitting}>
                           Edit
                         </Button>
-                        <Button variant="soft" color="red" onClick={() => setPendingDeleteId(ch.id)} disabled={submitting}>
+                        <Button tone="danger" size="small" onClick={() => setPendingDeleteId(ch.id)} disabled={submitting}>
                           <PiTrashFill size={16} />
                           Delete
                         </Button>
                       </Flex>
                     </Flex>
-                  </Card>
+                  </Surface>
                 ))
             )}
           </Flex>
@@ -212,10 +212,10 @@ export function ServerChannelsModal() {
             </AlertDialog.Description>
             <Flex gap="3" mt="4" justify="end">
               <AlertDialog.Cancel>
-                <Button variant="soft" color="gray">Cancel</Button>
+                <Button tone="neutral" size="small">Cancel</Button>
               </AlertDialog.Cancel>
               <AlertDialog.Action>
-                <Button variant="solid" color="red" onClick={() => { if (pendingDeleteId) { del(pendingDeleteId); setPendingDeleteId(null); } }}>Delete</Button>
+                <Button tone="danger" size="small" onClick={() => { if (pendingDeleteId) { del(pendingDeleteId); setPendingDeleteId(null); } }}>Delete</Button>
               </AlertDialog.Action>
             </Flex>
           </AlertDialog.Content>

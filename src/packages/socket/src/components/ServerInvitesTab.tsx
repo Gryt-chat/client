@@ -1,5 +1,5 @@
-import { Switch, TextField } from "@gryt/ui";
-import { Button, Card, Flex, Text } from "@radix-ui/themes";
+import { Button, Surface, Switch, TextField } from "@gryt/ui";
+import { Flex, Text } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { PiCopyFill, PiPlus } from "react-icons/pi";
@@ -173,7 +173,7 @@ export function ServerInvitesTab({
         This server is invite-only. Create invite codes to share with people you want to join.
       </Text>
 
-      <Card>
+      <Surface>
         <Flex direction="column" gap="3">
           <Flex gap="3" wrap="wrap">
             <Flex align="center" gap="2" style={{ minWidth: 170, paddingTop: 22 }}>
@@ -221,16 +221,16 @@ export function ServerInvitesTab({
             </Flex>
           </Flex>
           <Flex justify="end" gap="2">
-            <Button onClick={refresh} disabled={creating || loading}>
+            <Button size="small" onClick={refresh} disabled={creating || loading}>
               Refresh
             </Button>
-            <Button onClick={create} disabled={creating}>
+            <Button size="small" onClick={create} disabled={creating}>
               <PiPlus size={16} />
               Create invite
             </Button>
           </Flex>
         </Flex>
-      </Card>
+      </Surface>
 
       <Flex direction="column" gap="2">
         <Text size="2" weight="medium">
@@ -248,7 +248,7 @@ export function ServerInvitesTab({
               ? `${typeof i.usesConsumed === "number" ? i.usesConsumed : 0} / ∞`
               : formatUses(i.usesRemaining, i.maxUses);
             return (
-              <Card key={i.code}>
+              <Surface key={i.code}>
                 <Flex direction="column" gap="2">
                   <Flex align="center" justify="between" gap="2" wrap="wrap">
                     <Flex direction="column" gap="1">
@@ -266,11 +266,11 @@ export function ServerInvitesTab({
                       ) : null}
                     </Flex>
                     <Flex gap="2">
-                      <Button onClick={() => copy(i.code)}>
+                      <Button size="small" onClick={() => copy(i.code)}>
                         <PiCopyFill size={16} />
                         Copy
                       </Button>
-                      <Button
+                      <Button size="small"
                         disabled={!!i.revoked}
                         onClick={() => revoke(i.code)}
                       >
@@ -279,7 +279,7 @@ export function ServerInvitesTab({
                     </Flex>
                   </Flex>
                 </Flex>
-              </Card>
+              </Surface>
             );
           })
         )}

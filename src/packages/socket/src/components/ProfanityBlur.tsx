@@ -1,4 +1,4 @@
-import { Tooltip } from "@radix-ui/themes";
+import { Tooltip } from "@gryt/ui";
 import { memo, useCallback, useState } from "react";
 
 import type { ProfanityMatchRange } from "./chatUtils";
@@ -33,7 +33,7 @@ export const BlurredWord = ({ word }: { word: string }) => {
   }
 
   return (
-    <Tooltip content="Click to reveal" delayDuration={200}>
+    <Tooltip title="Click to reveal">
       <span
         role="button"
         tabIndex={0}

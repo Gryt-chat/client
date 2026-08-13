@@ -1,8 +1,6 @@
+import { Button, Chip, IconButton } from "@gryt/ui";
 import {
-  Badge,
-  Button,
   Flex,
-  IconButton,
   Text,
   TextField,
 } from "@radix-ui/themes";
@@ -151,9 +149,7 @@ export function ServerEmojisTab({
           <Text size="2" weight="medium">
             Upload new emojis
           </Text>
-          <Button
-            variant="soft"
-            size="1"
+          <Button tone="neutral" size="xsmall"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
           >
@@ -253,9 +249,7 @@ export function ServerEmojisTab({
                     Failed
                   </Text>
                 )}
-                <IconButton
-                  variant="ghost"
-                  size="1"
+                <IconButton tone="ghost" size="xsmall"
                   title="Upload this emoji"
                   disabled={uploading || !!p.nameError || p.status === "uploading"}
                   onClick={() => handleUploadSingle(p.id)}
@@ -263,10 +257,7 @@ export function ServerEmojisTab({
                 >
                   <PiUploadSimpleFill size={14} />
                 </IconButton>
-                <IconButton
-                  variant="ghost"
-                  color="red"
-                  size="1"
+                <IconButton tone="danger" size="xsmall"
                   title="Remove"
                   disabled={uploading}
                   onClick={() => removePending(p.id)}
@@ -281,17 +272,13 @@ export function ServerEmojisTab({
 
         {pendingEmojis.length > 0 && (
           <Flex justify="end" gap="2">
-            <Button
-              variant="soft"
-              color="gray"
-              size="1"
+            <Button tone="neutral" size="xsmall"
               disabled={uploading}
               onClick={clearAllPending}
             >
               Clear all
             </Button>
-            <Button
-              size="1"
+            <Button size="xsmall"
               disabled={uploading || uploadableCount === 0}
               onClick={() => handleUploadAll(effectiveAccessToken)}
             >
@@ -320,9 +307,9 @@ export function ServerEmojisTab({
               <Text size="2" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 :{j.name}:
               </Text>
-              <Badge size="1" variant="soft" color={j.status === "processing" ? "amber" : "gray"}>
+              <Chip tone="neutral" color={j.status === "processing" ? "amber" : "gray"}>
                 {j.status}
-              </Badge>
+              </Chip>
             </Flex>
           ))}
         </Flex>

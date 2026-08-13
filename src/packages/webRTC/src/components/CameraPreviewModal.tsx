@@ -1,5 +1,5 @@
-import { Checkbox } from "@gryt/ui";
-import { Badge, Button, Dialog, Flex, IconButton, Select, Text } from "@radix-ui/themes";
+import { Button, Checkbox, Chip, IconButton } from "@gryt/ui";
+import { Dialog, Flex, Select, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PiArrowsClockwiseFill, PiVideoCameraFill, PiX } from "react-icons/pi";
 
@@ -269,7 +269,7 @@ export function CameraPreviewModal({
               <Dialog.Title>Camera Preview</Dialog.Title>
             </Flex>
             <Dialog.Close>
-              <IconButton variant="ghost" color="gray" onClick={handleClose}>
+              <IconButton tone="ghost" size="xsmall" onClick={handleClose}>
                 <PiX size={16} />
               </IconButton>
             </Dialog.Close>
@@ -297,9 +297,7 @@ export function CameraPreviewModal({
               }}
             />
             {previewStream && actualRes && (
-              <Badge
-                variant="solid"
-                size="1"
+              <Chip tone="neutral"
                 style={{
                   position: "absolute",
                   top: 8,
@@ -311,7 +309,7 @@ export function CameraPreviewModal({
                 }}
               >
                 {actualRes.w}×{actualRes.h}
-              </Badge>
+              </Chip>
             )}
             {!previewStream && (
               <Flex
@@ -325,7 +323,7 @@ export function CameraPreviewModal({
                   {previewError ?? "Starting camera..."}
                 </Text>
                 {previewError && (
-                  <Button variant="soft" size="1" onClick={() => setRetryCount((c) => c + 1)}>
+                  <Button tone="neutral" size="xsmall" onClick={() => setRetryCount((c) => c + 1)}>
                     <PiArrowsClockwiseFill size={14} />
                     Retry
                   </Button>
@@ -399,10 +397,10 @@ export function CameraPreviewModal({
           </Flex>
 
           <Flex justify="end" gap="2">
-            <Button variant="soft" color="gray" onClick={handleClose}>
+            <Button tone="neutral" size="small" onClick={handleClose}>
               Cancel
             </Button>
-            <Button onClick={handleStart} disabled={!previewStream}>
+            <Button size="small" onClick={handleStart} disabled={!previewStream}>
               Start Camera
             </Button>
           </Flex>

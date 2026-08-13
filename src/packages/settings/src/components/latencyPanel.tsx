@@ -1,4 +1,5 @@
-import { Badge, Box, Flex, Text } from "@radix-ui/themes";
+import { Chip } from "@gryt/ui";
+import { Box, Flex, Text } from "@radix-ui/themes";
 
 import type { LatencyBreakdown } from "@/audio";
 import { useVoiceLatency } from "@/audio";
@@ -112,7 +113,7 @@ export function LatencyPanel() {
     <Flex direction="column" gap="3">
       <Flex justify="between" align="center">
         <Text weight="medium" size="2">Voice Latency</Text>
-        <Badge size="1" variant="surface">{modeLabel}</Badge>
+        <Chip tone="neutral">{modeLabel}</Chip>
       </Flex>
 
       {/* Estimated total with rating */}
@@ -136,8 +137,7 @@ export function LatencyPanel() {
             >
               {ms(latency.estimatedOneWayMs)}
             </Text>
-            <Badge
-              size="1"
+            <Chip tone="neutral"
               color={
                 latency.estimatedOneWayMs === null ? "gray"
                   : latency.estimatedOneWayMs < 30 ? "green"
@@ -146,7 +146,7 @@ export function LatencyPanel() {
               }
             >
               {ratingLabel(latency.estimatedOneWayMs)}
-            </Badge>
+            </Chip>
           </Flex>
         </Flex>
 

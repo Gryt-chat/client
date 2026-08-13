@@ -1,4 +1,5 @@
-import { Badge, Button, Flex, Heading, Text } from "@radix-ui/themes";
+import { Button, Chip } from "@gryt/ui";
+import { Flex, Heading, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useState } from "react";
 
 import { useSettings } from "@/settings";
@@ -76,27 +77,20 @@ function HotkeyCapture({
   return (
     <SettingGroup title={label} description={description}>
       <Flex align="center" justify="between" gap="2">
-        <Badge
-          size="2"
-          variant="surface"
+        <Chip tone="neutral"
           color={listening ? "blue" : undefined}
           style={{ fontFamily: "var(--code-font-family)", minWidth: "80px", textAlign: "center" }}
         >
           {listening ? "Press a key..." : formatKeyCombo(value)}
-        </Badge>
+        </Chip>
         <Flex gap="2">
-          <Button
-            size="1"
-            variant={listening ? "solid" : "soft"}
+          <Button size="xsmall"
             onClick={() => setListening(!listening)}
           >
             {listening ? "Cancel" : "Edit"}
           </Button>
           {value && (
-            <Button
-              size="1"
-              variant="soft"
-              color="red"
+            <Button tone="danger" size="xsmall"
               onClick={() => onChange("")}
             >
               Clear

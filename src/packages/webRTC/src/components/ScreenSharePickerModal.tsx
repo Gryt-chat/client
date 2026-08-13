@@ -1,5 +1,5 @@
-import { Checkbox } from "@gryt/ui";
-import { Badge, Button, Dialog, Flex, IconButton, Select, Text, Tooltip } from "@radix-ui/themes";
+import { Button, Checkbox, Chip, IconButton, Tooltip } from "@gryt/ui";
+import { Dialog, Flex, Select, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PiCaretDownFill, PiCaretUpFill, PiMonitorFill, PiScreencastFill, PiSquaresFourFill, PiX } from "react-icons/pi";
 
@@ -240,26 +240,20 @@ export function ScreenSharePickerModal({
               <Dialog.Title>Share your screen</Dialog.Title>
             </Flex>
             <Dialog.Close>
-              <IconButton variant="ghost" color="gray" onClick={() => onOpenChange(false)}>
+              <IconButton tone="ghost" size="xsmall" onClick={() => onOpenChange(false)}>
                 <PiX size={16} />
               </IconButton>
             </Dialog.Close>
           </Flex>
 
           <Flex gap="2">
-            <Button
-              variant={tab === "screens" ? "solid" : "soft"}
-              color={tab === "screens" ? undefined : "gray"}
-              size="1"
+            <Button size="xsmall"
               onClick={() => setTab("screens")}
             >
               <PiMonitorFill size={14} />
               Screens
             </Button>
-            <Button
-              variant={tab === "windows" ? "solid" : "soft"}
-              color={tab === "windows" ? undefined : "gray"}
-              size="1"
+            <Button size="xsmall"
               onClick={() => setTab("windows")}
             >
               <PiSquaresFourFill size={14} />
@@ -284,10 +278,7 @@ export function ScreenSharePickerModal({
                 <strong>System Settings &rarr; Privacy &amp; Security &rarr; Screen Recording</strong>,
                 then restart the app.
               </Text>
-              <Button
-                variant="soft"
-                color="orange"
-                size="1"
+              <Button tone="neutral" size="xsmall"
                 style={{ flexShrink: 0 }}
                 onClick={() => window.electronAPI?.openExternal(
                   "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture",
@@ -346,14 +337,9 @@ export function ScreenSharePickerModal({
                     </Flex>
                   )}
                   {selected === src.id && (
-                    <Badge
-                      color="blue"
-                      variant="solid"
-                      size="1"
+                    <Chip tone="secondary"
                       style={{ position: "absolute", top: 4, right: 4 }}
-                    >
-                      Selected
-                    </Badge>
+                     label="Selected" />
                   )}
                 </div>
                 <Flex align="center" gap="1" px="1">
@@ -369,14 +355,14 @@ export function ScreenSharePickerModal({
           </div>
 
           <Flex align="center" gap="4" wrap="wrap">
-            <Tooltip content="Capture desktop/application audio alongside the screen" delayDuration={300}>
+            <Tooltip title="Capture desktop/application audio alongside the screen">
               <Text as="label" size="2" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
                 <Checkbox checked={includeAudio} onCheckedChange={(v) => setIncludeAudio(v === true)} />
                 Include audio
               </Text>
             </Tooltip>
 
-            <Tooltip content="Optimizes for fast-paced content like games. Allocates 50% more bitrate for smoother motion." delayDuration={300}>
+            <Tooltip title="Optimizes for fast-paced content like games. Allocates 50% more bitrate for smoother motion.">
               <Text as="label" size="2" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
                 <Checkbox checked={gamingMode} onCheckedChange={(v) => onGamingModeChange(v === true)} />
                 Gaming mode
@@ -384,7 +370,7 @@ export function ScreenSharePickerModal({
             </Tooltip>
 
             <Flex align="center" gap="2" ml="auto">
-              <Tooltip content="Capture resolution. Lower values use less bandwidth." delayDuration={300}>
+              <Tooltip title="Capture resolution. Lower values use less bandwidth.">
                 <Text size="2" style={{ cursor: "help", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}>Quality</Text>
               </Tooltip>
               <Select.Root value={quality} onValueChange={(v) => onQualityChange(v as ScreenShareQuality)}>
@@ -398,7 +384,7 @@ export function ScreenSharePickerModal({
             </Flex>
 
             <Flex align="center" gap="2">
-              <Tooltip content="Frames per second. Values above 60 use native DXGI screen capture (Windows desktop app only) to bypass browser FPS limits." delayDuration={300}>
+              <Tooltip title="Frames per second. Values above 60 use native DXGI screen capture (Windows desktop app only) to bypass browser FPS limits.">
                 <Text size="2" style={{ cursor: "help", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}>FPS</Text>
               </Tooltip>
               <Select.Root value={String(fps)} onValueChange={(v) => onFpsChange(Number(v))}>
@@ -413,10 +399,7 @@ export function ScreenSharePickerModal({
           </Flex>
 
           <Flex direction="column" gap="3">
-            <Button
-              variant="ghost"
-              color="gray"
-              size="1"
+            <Button tone="ghost" size="xsmall"
               onClick={() => setShowAdvanced(v => !v)}
               style={{ alignSelf: "flex-start", cursor: "pointer" }}
             >
@@ -437,7 +420,7 @@ export function ScreenSharePickerModal({
               >
                 <Flex align="center" gap="4" wrap="wrap">
                   <Flex align="center" gap="2">
-                    <Tooltip content="H.264 has the widest hardware support. VP9/AV1 offer better compression but need newer GPUs (RTX 40+, Intel Arc, AMD RX 7000+)." delayDuration={300}>
+                    <Tooltip title="H.264 has the widest hardware support. VP9/AV1 offer better compression but need newer GPUs (RTX 40+, Intel Arc, AMD RX 7000+).">
                       <Text size="2" style={{ cursor: "help", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}>Codec</Text>
                     </Tooltip>
                     <Select.Root value={codec} onValueChange={(v) => onCodecChange(v as ScreenShareCodec)}>
@@ -451,7 +434,7 @@ export function ScreenSharePickerModal({
                   </Flex>
 
                   <Flex align="center" gap="2">
-                    <Tooltip content="Fixed encoding bitrate. Auto estimates based on resolution and FPS. Higher values mean sharper video but require more upload bandwidth." delayDuration={300}>
+                    <Tooltip title="Fixed encoding bitrate. Auto estimates based on resolution and FPS. Higher values mean sharper video but require more upload bandwidth.">
                       <Text size="2" style={{ cursor: "help", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}>Bitrate</Text>
                     </Tooltip>
                     <Select.Root value={String(maxBitrate)} onValueChange={(v) => onMaxBitrateChange(Number(v))}>
@@ -465,10 +448,10 @@ export function ScreenSharePickerModal({
                   </Flex>
 
                   <Flex align="center" gap="2" style={svcDisabled ? { opacity: 0.5 } : undefined}>
-                    <Tooltip content={svcDisabled
+                    <Tooltip title={svcDisabled
                       ? "SVC is not supported with H.264. Switch to VP9 or AV1 to enable temporal scalability layers."
                       : "Temporal scalability layers (VP9/AV1 only). Encodes multiple frame-rate tiers into a single stream."
-                    } delayDuration={300}>
+                    }>
                       <Text size="2" style={{ cursor: "help", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}>SVC layers</Text>
                     </Tooltip>
                     <Select.Root value={scalabilityMode} onValueChange={(v) => onScalabilityModeChange(v as ScalabilityMode)} disabled={svcDisabled}>
@@ -496,7 +479,7 @@ export function ScreenSharePickerModal({
                 background: "var(--green-3)",
               }}
             >
-              <Badge color="green" variant="soft" size="1">Native capture</Badge>
+              <Chip tone="success" label="Native capture" />
               <Text size="1" color="green">
                 DXGI Desktop Duplication will be used for {fps} FPS capture
               </Text>
@@ -517,13 +500,11 @@ export function ScreenSharePickerModal({
               <Text size="2" weight="medium">
                 {maxBitrate > 0 ? "Bitrate:" : "Estimated bitrate:"}
               </Text>
-              <Badge
+              <Chip tone="neutral"
                 color={bitrateColor(maxBitrate > 0 ? maxBitrate : estimatedBps!)}
-                variant="soft"
-                size="1"
               >
                 {formatBitrate(maxBitrate > 0 ? maxBitrate : estimatedBps!)}
-              </Badge>
+              </Chip>
               {(maxBitrate > 0 ? maxBitrate : estimatedBps!) / 1_000_000 > 30 && (
                 <Text size="1" color="red">
                   Very high &mdash; ensure your connection can handle this
@@ -549,10 +530,10 @@ export function ScreenSharePickerModal({
           )}
 
           <Flex justify="end" gap="2">
-            <Button variant="soft" color="gray" onClick={() => onOpenChange(false)}>
+            <Button tone="neutral" size="small" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleShare} disabled={inElectron && !selected}>
+            <Button size="small" onClick={handleShare} disabled={inElectron && !selected}>
               Share
             </Button>
           </Flex>

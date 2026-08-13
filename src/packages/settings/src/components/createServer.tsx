@@ -1,9 +1,7 @@
-import { Avatar, Checkbox, Dialog, TextField } from "@gryt/ui";
+import { Avatar, Button, Checkbox, Dialog, Spinner, TextField } from "@gryt/ui";
 import {
-  Button,
   Callout,
   Flex,
-  Spinner,
   Text,
 } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
@@ -229,9 +227,7 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
               <Callout.Text>{error}</Callout.Text>
             </Callout.Root>
             <Flex mt="2" justify="end">
-              <Button
-                size="1"
-                variant="ghost"
+              <Button tone="ghost" size="xsmall"
                 onClick={() => setError("")}
               >
                 <PiX size={14} />
@@ -243,11 +239,11 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
       </AnimatePresence>
 
       <Dialog.Footer className="justify-between">
-        <Button variant="ghost" onClick={onBack} disabled={creating}>
+        <Button tone="ghost" size="small" onClick={onBack} disabled={creating}>
           Back
         </Button>
 
-        <Button
+        <Button size="small"
           onClick={() => {
             void handleCreate();
           }}
@@ -255,7 +251,7 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
             creating || !serverName.trim() || portState !== "free"
           }
         >
-          {creating ? <Spinner size="1" /> : null}
+          {creating ? <Spinner size={16} /> : null}
           {creating ? "Creating…" : "Create"}
         </Button>
       </Dialog.Footer>

@@ -1,4 +1,5 @@
-import { AlertDialog, Badge, Box, Button, Dialog, Flex, IconButton, ScrollArea, Spinner, Text, Tooltip } from "@radix-ui/themes";
+import { Button, Chip, IconButton, ScrollArea, Spinner, Tooltip } from "@gryt/ui";
+import { AlertDialog, Box, Dialog, Flex, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { PiCheck, PiProhibitFill, PiTrashFill, PiWarningFill } from "react-icons/pi";
@@ -156,9 +157,9 @@ export function ReportsPanel({
               <PiWarningFill size={16} />
               Reported Messages
               {reports.length > 0 && (
-                <Badge color="red" variant="solid" size="1">
+                <Chip tone="danger">
                   {reports.length}
-                </Badge>
+                </Chip>
               )}
             </Flex>
           </Dialog.Title>
@@ -168,7 +169,7 @@ export function ReportsPanel({
 
           {isLoading ? (
             <Flex align="center" justify="center" py="8">
-              <Spinner size="3" />
+              <Spinner size={24} />
             </Flex>
           ) : reports.length === 0 ? (
             <Flex direction="column" align="center" justify="center" py="8" gap="2">
@@ -178,7 +179,9 @@ export function ReportsPanel({
               </Text>
             </Flex>
           ) : (
-            <ScrollArea style={{ maxHeight: "55vh" }}>
+            <ScrollArea.Root className="max-h-[55vh]">
+              <ScrollArea.Viewport className="max-h-[55vh]">
+               <ScrollArea.Content>
               <Flex direction="column" gap="3">
                 {reports.map((report) => (
                   <ReportCard
@@ -194,12 +197,15 @@ export function ReportsPanel({
                   />
                 ))}
               </Flex>
-            </ScrollArea>
+              </ScrollArea.Content>
+              </ScrollArea.Viewport>
+              <ScrollArea.Scrollbar orientation="vertical" />
+            </ScrollArea.Root>
           )}
 
           <Flex justify="end" mt="4">
             <Dialog.Close>
-              <Button variant="soft" color="gray">
+              <Button tone="neutral" size="small">
                 Close
               </Button>
             </Dialog.Close>
@@ -230,14 +236,12 @@ export function ReportsPanel({
           </AlertDialog.Description>
           <Flex gap="3" mt="4" justify="end">
             <AlertDialog.Cancel>
-              <Button variant="soft" color="gray">
+              <Button tone="neutral" size="small">
                 Cancel
               </Button>
             </AlertDialog.Cancel>
             <AlertDialog.Action>
-              <Button
-                variant="solid"
-                color="red"
+              <Button tone="danger" size="small"
                 onClick={() => {
                   if (!confirmAction) return;
                   if (confirmAction.action === "delete_all_and_ban") {
@@ -292,9 +296,9 @@ function ReportCard({
               <Text size="2" weight="bold" style={{ color: "var(--gray-12)" }}>
                 {report.senderNickname || getNickname(report.senderServerUserId)}
               </Text>
-              <Badge color="red" variant="soft" size="1">
+              <Chip tone="danger">
                 {report.reportCount} {report.reportCount === 1 ? "report" : "reports"}
-              </Badge>
+              </Chip>
             </Flex>
 
             <Box
@@ -386,12 +390,8 @@ function ReportCard({
           </Flex>
 
           <Flex direction="column" gap="2" align="center" style={{ flexShrink: 0 }}>
-            <Tooltip content="Dismiss (message is fine)">
-              <IconButton
-                variant="soft"
-                color="green"
-                size="3"
-                radius="full"
+            <Tooltip title="Dismiss (message is fine)">
+              <IconButton tone="neutral" size="medium"
                 onClick={onApprove}
                 style={{ cursor: "pointer" }}
               >
@@ -399,12 +399,8 @@ function ReportCard({
               </IconButton>
             </Tooltip>
 
-            <Tooltip content="Delete this message">
-              <IconButton
-                variant="soft"
-                color="red"
-                size="3"
-                radius="full"
+            <Tooltip title="Delete this message">
+              <IconButton tone="danger" size="medium"
                 onClick={onDelete}
                 style={{ cursor: "pointer" }}
               >
@@ -412,12 +408,8 @@ function ReportCard({
               </IconButton>
             </Tooltip>
 
-            <Tooltip content="Delete all messages from user & ban">
-              <IconButton
-                variant="solid"
-                color="red"
-                size="3"
-                radius="full"
+            <Tooltip title="Delete all messages from user & ban">
+              <IconButton tone="danger" size="medium"
                 onClick={onDeleteAllAndBan}
                 style={{ cursor: "pointer" }}
               >

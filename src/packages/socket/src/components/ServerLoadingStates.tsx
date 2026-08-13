@@ -1,4 +1,5 @@
-import { Box, Button, Flex, Spinner, Text } from "@radix-ui/themes";
+import { Button, Spinner } from "@gryt/ui";
+import { Box, Flex, Text } from "@radix-ui/themes";
 import { PiArrowsClockwiseFill, PiClockFill, PiWarningCircleFill, PiWifiSlashFill } from "react-icons/pi";
 
 import { ServerDetailsSkeleton } from "./skeletons";
@@ -75,10 +76,8 @@ export const ServerLoadingStates = ({
               </Text>
             </Flex>
             {!wasRefused && (
-              <Button
+              <Button size="small"
                 onClick={() => window.location.reload()}
-                variant="solid"
-                size="2"
                 style={{ marginTop: 4 }}
               >
                 <PiArrowsClockwiseFill size={16} />
@@ -100,7 +99,7 @@ export const ServerLoadingStates = ({
               ...iconWrapStyle("var(--orange-a3)"),
               animation: "pulse-reconnect 2s ease-in-out infinite",
             }}>
-              <Spinner size="3" />
+              <Spinner size={24} />
             </div>
             <Flex direction="column" gap="2" align="center">
               <Text size="4" weight="bold">
@@ -159,10 +158,8 @@ export const ServerLoadingStates = ({
                 Unable to establish a connection. The server may be offline or there could be a network issue.
               </Text>
             </Flex>
-            <Button
+            <Button size="small"
               onClick={onReconnect ?? (() => window.location.reload())}
-              variant="solid"
-              size="2"
               style={{ marginTop: 4 }}
             >
               <PiArrowsClockwiseFill size={16} />
@@ -199,10 +196,8 @@ export const ServerLoadingStates = ({
               The server is taking a while to respond. This could be due to network conditions or the server being under load.
             </Text>
           </Flex>
-          <Button
+          <Button size="small"
             onClick={onReconnect ?? (() => window.location.reload())}
-            variant="solid"
-            size="2"
             style={{ marginTop: 4 }}
           >
             <PiArrowsClockwiseFill size={16} />

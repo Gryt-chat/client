@@ -1,5 +1,5 @@
-import { Avatar } from "@gryt/ui";
-import { Flex, Text, Tooltip } from "@radix-ui/themes";
+import { Avatar, Tooltip } from "@gryt/ui";
+import { Flex, Text } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
 import { forwardRef, memo, useCallback, useRef, useState } from "react";
 
@@ -251,7 +251,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                 )}
                 <MessageTimestamp date={toDate(m.created_at)} />
                 {meta.isFirstEdited && (
-                  <Tooltip content={`Edited ${new Date(m.edited_at!).toLocaleString()}`} delayDuration={200}>
+                  <Tooltip title={`Edited ${new Date(m.edited_at!).toLocaleString()}`}>
                     <Text style={{ fontSize: 10, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gray-8)" }}>
                       (edited)
                     </Text>
@@ -502,7 +502,7 @@ function MessageContent({
           disabledSmileys={disabledSmileys}
         />
         {m.edited_at && !isFirstInGroup && (
-          <Tooltip content={`Edited ${new Date(m.edited_at).toLocaleString()}`} delayDuration={200}>
+          <Tooltip title={`Edited ${new Date(m.edited_at).toLocaleString()}`}>
             <Text style={{ fontSize: 10, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gray-8)" }}>
               (edited)
             </Text>
@@ -627,13 +627,12 @@ function ReactionBadges({
               transition={{ type: "spring", stiffness: 500, damping: 25 }}
             >
               <Tooltip
-                content={(
+                title={(
                   <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                     <div style={{ fontWeight: 600 }}>{emojiId}</div>
                     <div style={{ opacity: 0.9 }}>{usersLabel}</div>
                   </div>
                 )}
-                delayDuration={200}
               >
                 <button
                   onClick={() => onReaction(reaction.src)}

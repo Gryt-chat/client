@@ -1,4 +1,5 @@
-import { Badge, Button, Flex, SegmentedControl, Text } from "@radix-ui/themes";
+import { Button, Chip } from "@gryt/ui";
+import { Flex, SegmentedControl, Text } from "@radix-ui/themes";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PiTrashFill } from "react-icons/pi";
 
@@ -97,10 +98,7 @@ export function EmbeddedServerLogs({ serverId }: { serverId: string }) {
           <SegmentedControl.Item value="error">Errors</SegmentedControl.Item>
         </SegmentedControl.Root>
 
-        <Button
-          size="1"
-          variant="soft"
-          color="gray"
+        <Button tone="neutral" size="xsmall"
           onClick={() => {
             void getElectronAPI()?.clearEmbeddedServerLogs(serverId);
             setLines([]);
@@ -139,14 +137,12 @@ export function EmbeddedServerLogs({ serverId }: { serverId: string }) {
         ) : (
           visible.map((l, i) => (
             <Flex key={`${l.at}-${i}`} gap="2" align="start">
-              <Badge
-                size="1"
-                variant="soft"
+              <Chip tone="neutral"
                 color={LEVEL_COLOR[l.level]}
                 style={{ flexShrink: 0, minWidth: 62, justifyContent: "center" }}
               >
                 {SOURCE_LABEL[l.source]}
-              </Badge>
+              </Chip>
               <span
                 style={{
                   whiteSpace: "pre-wrap",

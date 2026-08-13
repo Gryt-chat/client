@@ -1,4 +1,5 @@
-import { Box, Flex, Skeleton, Text } from "@radix-ui/themes";
+import { Skeleton } from "@gryt/ui";
+import { Box, Flex, Text } from "@radix-ui/themes";
 import { PiChatCircleFill, PiSpeakerHighFill } from "react-icons/pi";
 
 import { EmojiText } from "./EmojiText";

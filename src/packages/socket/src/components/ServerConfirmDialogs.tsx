@@ -1,5 +1,5 @@
-import { Checkbox, TextField } from "@gryt/ui";
-import { AlertDialog, Button, Code, Flex, Select, Text } from "@radix-ui/themes";
+import { Button, Checkbox, TextField } from "@gryt/ui";
+import { AlertDialog, Code, Flex, Select, Text } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 
 import type { Channel, SidebarItem } from "@/settings/src/types/server";
@@ -100,10 +100,10 @@ export const ServerConfirmDialogs = ({
         </AlertDialog.Description>
         <Flex gap="3" mt="4" justify="end">
           <AlertDialog.Cancel>
-            <Button>Cancel</Button>
+            <Button size="small">Cancel</Button>
           </AlertDialog.Cancel>
           <AlertDialog.Action>
-            <Button variant="solid" onClick={confirmDelete}>Delete</Button>
+            <Button size="small" onClick={confirmDelete}>Delete</Button>
           </AlertDialog.Action>
         </Flex>
       </AlertDialog.Content>
@@ -117,10 +117,10 @@ export const ServerConfirmDialogs = ({
         </AlertDialog.Description>
         <Flex gap="3" mt="4" justify="end">
           <AlertDialog.Cancel>
-            <Button>Cancel</Button>
+            <Button size="small">Cancel</Button>
           </AlertDialog.Cancel>
           <AlertDialog.Action>
-            <Button variant="solid" onClick={() => { if (pendingDisconnectUser) { onDisconnectUser(pendingDisconnectUser.id); setPendingDisconnectUser(null); } }}>Disconnect</Button>
+            <Button size="small" onClick={() => { if (pendingDisconnectUser) { onDisconnectUser(pendingDisconnectUser.id); setPendingDisconnectUser(null); } }}>Disconnect</Button>
           </AlertDialog.Action>
         </Flex>
       </AlertDialog.Content>
@@ -143,10 +143,10 @@ export const ServerConfirmDialogs = ({
         </Flex>
         <Flex gap="3" mt="4" justify="end">
           <AlertDialog.Cancel>
-            <Button>Cancel</Button>
+            <Button size="small">Cancel</Button>
           </AlertDialog.Cancel>
           <AlertDialog.Action>
-            <Button variant="solid" onClick={() => { if (pendingKickUser) { onKickUser(pendingKickUser.id, kickReason); setPendingKickUser(null); } }}>Kick</Button>
+            <Button size="small" onClick={() => { if (pendingKickUser) { onKickUser(pendingKickUser.id, kickReason); setPendingKickUser(null); } }}>Kick</Button>
           </AlertDialog.Action>
         </Flex>
       </AlertDialog.Content>
@@ -219,11 +219,10 @@ export const ServerConfirmDialogs = ({
         )}
         <Flex gap="3" mt="4" justify="end">
           <AlertDialog.Cancel>
-            <Button>Cancel</Button>
+            <Button size="small">Cancel</Button>
           </AlertDialog.Cancel>
           <AlertDialog.Action>
-            <Button
-              variant="solid"
+            <Button size="small"
               onClick={() => {
                 if (!pendingBanUser) return;
                 const minutes = BAN_DURATIONS.find((d) => d.value === banDuration)?.minutes ?? null;

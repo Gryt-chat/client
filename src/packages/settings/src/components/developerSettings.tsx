@@ -1,4 +1,5 @@
-import { Badge, Button, Flex, Heading, Separator, Text } from "@radix-ui/themes";
+import { Button, Chip, Divider } from "@gryt/ui";
+import { Flex, Heading, Text } from "@radix-ui/themes";
 import { PiPlayFill, PiStopFill } from "react-icons/pi";
 
 import { useSettings } from "@/settings";
@@ -48,17 +49,15 @@ export function DeveloperSettings() {
   return (
     <SettingsContainer>
       <Flex align="center" gap="2">
-        <Heading size="4">Developer</Heading>
-        <Badge color="orange" variant="soft">
-          Dev build only
-        </Badge>
+        <Heading>Developer</Heading>
+        <Chip tone="warning" label="Dev build only" />
       </Flex>
 
-      <Text size="1" color="gray">
+      <Text color="gray">
         These do not exist in a release build.
       </Text>
 
-      <Separator size="4" />
+      <Divider />
 
       <SettingGroup
         title="Fake participants"
@@ -124,7 +123,7 @@ export function DeveloperSettings() {
         />
       </SettingGroup>
 
-      <Separator size="4" />
+      <Divider />
 
       <SettingGroup
         title="Fake chat"
@@ -141,16 +140,13 @@ export function DeveloperSettings() {
         />
 
         <Flex direction="column" gap="2">
-          <Button
-            size="2"
-            color={chatRunning ? "red" : undefined}
-            variant={chatRunning ? "soft" : "solid"}
+          <Button size="small"
             onClick={() => setFakeChatRunning(!chatRunning)}
           >
             {chatRunning ? <PiStopFill size={16} /> : <PiPlayFill size={16} />}
             {chatRunning ? "Stop" : "Start"}
           </Button>
-          <Text size="1" color="gray">
+          <Text color="gray">
             {chatRunning
               ? "Running. It keeps going until you stop it or quit — nothing turns it off on its own."
               : "The message sound only plays when the window is not focused, which is what a real message does too. Click away from Gryt to hear it."}
@@ -158,9 +154,9 @@ export function DeveloperSettings() {
         </Flex>
       </SettingGroup>
 
-      <Separator size="4" />
+      <Divider />
 
-      <Text size="1" color="gray">
+      <Text color="gray">
         The query string still works and overrides these while it is present:
         <br />
         <code>

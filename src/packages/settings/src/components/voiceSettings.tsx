@@ -1,9 +1,8 @@
+import { Button, Divider } from "@gryt/ui";
 import {
   AlertDialog,
-  Button,
   Flex,
   Heading,
-  Separator,
 } from "@radix-ui/themes";
 import { useState } from "react";
 
@@ -54,7 +53,7 @@ export function VoiceSettings() {
 
   return (
     <SettingsContainer>
-      <Heading as="h2" size="4">
+      <Heading as="h2">
         Voice
       </Heading>
 
@@ -69,7 +68,7 @@ export function VoiceSettings() {
         }
       />
 
-      <Separator size="4" />
+      <Divider />
 
       <Flex direction="column" gap="4">
         <SoundSettings
@@ -110,15 +109,13 @@ export function VoiceSettings() {
         >
           <AlertDialog.Content maxWidth="450px">
             <AlertDialog.Title>{alertDialog.title}</AlertDialog.Title>
-            <AlertDialog.Description size="2">
+            <AlertDialog.Description>
               {alertDialog.message}
             </AlertDialog.Description>
 
             <Flex gap="3" mt="4" justify="end">
               <AlertDialog.Action>
-                <Button
-                  variant="soft"
-                  color={alertDialog.type === "error" ? "red" : "green"}
+                <Button tone="neutral" size="small"
                   onClick={() =>
                     setAlertDialog({ ...alertDialog, open: false })
                   }

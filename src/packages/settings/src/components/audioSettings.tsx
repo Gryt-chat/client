@@ -1,14 +1,11 @@
-import { Slider } from "@gryt/ui";
+import { Divider, IconButton, Slider, Tooltip } from "@gryt/ui";
 import {
   Callout,
   Flex,
   Heading,
-  IconButton,
   SegmentedControl,
   Select,
-  Separator,
   Text,
-  Tooltip,
 } from "@radix-ui/themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PiArrowsClockwiseFill, PiWarningFill } from "react-icons/pi";
@@ -325,7 +322,7 @@ export function AudioSettings() {
 
   return (
     <SettingsContainer>
-      <Heading size="4">Audio</Heading>
+      <Heading>Audio</Heading>
 
       {/* First, because it decides what the rest of this section even shows:
           push to talk hides the noise gate below. It used to live further down
@@ -348,7 +345,7 @@ export function AudioSettings() {
         </SegmentedControl.Root>
       </SettingGroup>
 
-      <Separator size="4" />
+      <Divider />
 
       {!audioContext && (
         <Callout.Root color="orange">
@@ -362,13 +359,13 @@ export function AudioSettings() {
       )}
 
       {/* ── Devices ── */}
-      <Text size="3" weight="bold" color="gray">Devices</Text>
+      <Text weight="bold" color="gray">Devices</Text>
 
       <Flex direction="column" gap="2">
         <Flex align="center" justify="between">
-          <Text weight="medium" size="2">Microphone</Text>
-          <Tooltip content="Refresh device list">
-            <IconButton variant="soft" size="1" onClick={getDevices}>
+          <Text weight="medium">Microphone</Text>
+          <Tooltip title="Refresh device list">
+            <IconButton tone="neutral" size="xsmall" onClick={getDevices}>
               <PiArrowsClockwiseFill size={12} />
             </IconButton>
           </Tooltip>
@@ -387,9 +384,9 @@ export function AudioSettings() {
 
       <Flex direction="column" gap="2">
         <Flex align="center" justify="between">
-          <Text weight="medium" size="2">Speaker</Text>
-          <Tooltip content="Refresh device list">
-            <IconButton variant="soft" size="1" onClick={getOutputDevices}>
+          <Text weight="medium">Speaker</Text>
+          <Tooltip title="Refresh device list">
+            <IconButton tone="neutral" size="xsmall" onClick={getOutputDevices}>
               <PiArrowsClockwiseFill size={12} />
             </IconButton>
           </Tooltip>
@@ -407,10 +404,10 @@ export function AudioSettings() {
         </Select.Root>
       </Flex>
 
-      <Separator size="4" />
+      <Divider />
 
       {/* ── Input ── */}
-      <Text size="3" weight="bold" color="gray">Input</Text>
+      <Text weight="bold" color="gray">Input</Text>
 
       <SliderSetting
         title={`Microphone volume: ${micVolume}%`}
@@ -422,9 +419,9 @@ export function AudioSettings() {
 
       {audioContext && (
         <Flex direction="column" gap="2">
-          <Text weight="medium" size="2">Audio Levels</Text>
+          <Text weight="medium">Audio Levels</Text>
           <Flex direction="column" gap="1">
-            <Text size="1" color="gray">Audio Spectrum (Raw Input)</Text>
+            <Text color="gray">Audio Spectrum (Raw Input)</Text>
             <div style={{
               border: '1px solid var(--gray-6)',
               borderRadius: '4px',
@@ -439,7 +436,7 @@ export function AudioSettings() {
             </div>
           </Flex>
           <Flex direction="column" gap="1">
-            <Text size="1" color="gray">
+            <Text color="gray">
               Status: {audioContext ? "Active" : "Inactive"}
               {loopbackEnabled && " | Playback on"}
             </Text>
@@ -448,10 +445,10 @@ export function AudioSettings() {
       )}
 
       {!isPTT && <Flex direction="column" gap="2">
-        <Text weight="medium" size="2">
+        <Text weight="medium">
           Noise gate: {noiseGate}%
         </Text>
-        <Text size="1" color="gray">
+        <Text color="gray">
           Audio below this level will be muted. The indicator shows your raw microphone input level.
         </Text>
 
@@ -503,11 +500,10 @@ export function AudioSettings() {
         </div>
 
         <Flex align="center" justify="between">
-          <Text size="1" color="gray">
+          <Text color="gray">
             Raw Input: {Math.round(micRawVolume)}% | Processed: {Math.round(micLiveVolume)}%
           </Text>
           <Text
-            size="1"
             color={micRawVolume < noiseGate ? "red" : isMicLive ? "green" : "gray"}
             weight="medium"
           >
@@ -516,10 +512,10 @@ export function AudioSettings() {
         </Flex>
 
         <Flex direction="column" gap="1" mt="2">
-          <Text weight="medium" size="2">
+          <Text weight="medium">
             Release: {noiseGateRelease} ms
           </Text>
-          <Text size="1" color="gray">
+          <Text color="gray">
             How long the gate stays open after your voice drops below the threshold.
           </Text>
           <Slider
@@ -539,10 +535,10 @@ export function AudioSettings() {
         onCheckedChange={handleLoopbackChange}
       />
 
-      <Separator size="4" />
+      <Divider />
 
       {/* ── Voice Processing ── */}
-      <Text size="3" weight="bold" color="gray">Voice Processing</Text>
+      <Text weight="bold" color="gray">Voice Processing</Text>
 
       <ToggleSetting
         title="Noise reduction"
@@ -598,10 +594,10 @@ export function AudioSettings() {
         />
       )}
 
-      <Separator size="4" />
+      <Divider />
 
       {/* ── Output ── */}
-      <Text size="3" weight="bold" color="gray">Output</Text>
+      <Text weight="bold" color="gray">Output</Text>
 
       <SliderSetting
         title={`Output volume: ${outputVolume}%`}
@@ -611,13 +607,13 @@ export function AudioSettings() {
         max={MAX_VOLUME_PERCENT}
       />
 
-      <Separator size="4" />
+      <Divider />
 
       {/* ── Screen Share ── */}
-      <Text size="3" weight="bold" color="gray">Screen Share</Text>
+      <Text weight="bold" color="gray">Screen Share</Text>
 
       {nativeAudioActive && (
-        <Callout.Root size="1" color="green">
+        <Callout.Root color="green">
           <Callout.Text>
             Native audio capture is active — Gryt voices are excluded at the OS level.
           </Callout.Text>

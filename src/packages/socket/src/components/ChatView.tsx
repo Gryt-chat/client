@@ -1,4 +1,5 @@
-import { AlertDialog, Box, Button, Flex, Text } from "@radix-ui/themes";
+import { Button } from "@gryt/ui";
+import { AlertDialog, Box, Flex, Text } from "@radix-ui/themes";
 import { AnimatePresence } from "motion/react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PiChatCircleFill, PiCloudArrowUpFill, PiSpeakerHighFill } from "react-icons/pi";
@@ -402,10 +403,10 @@ export const ChatView = memo(({
           </AlertDialog.Description>
           <Flex gap="3" mt="4" justify="end">
             <AlertDialog.Cancel>
-              <Button variant="soft" color="gray">Cancel</Button>
+              <Button tone="neutral" size="small">Cancel</Button>
             </AlertDialog.Cancel>
             <AlertDialog.Action>
-              <Button variant="solid" color="red" onClick={confirmDelete}>Delete</Button>
+              <Button tone="danger" size="small" onClick={confirmDelete}>Delete</Button>
             </AlertDialog.Action>
           </Flex>
         </AlertDialog.Content>

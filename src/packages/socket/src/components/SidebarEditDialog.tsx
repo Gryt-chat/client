@@ -1,5 +1,5 @@
-import { Switch, TextField } from "@gryt/ui";
-import { Dialog, Flex, IconButton, Select, Text } from "@radix-ui/themes";
+import { IconButton, Switch, TextField } from "@gryt/ui";
+import { Dialog, Flex, Select, Text } from "@radix-ui/themes";
 import { useCallback, useRef } from "react";
 import { PiX } from "react-icons/pi";
 
@@ -79,7 +79,7 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
                 : "Spacer settings"}
             </Dialog.Title>
             <Dialog.Close>
-              <IconButton><PiX size={16} /></IconButton>
+              <IconButton size="xsmall"><PiX size={16} /></IconButton>
             </Dialog.Close>
           </Flex>
 

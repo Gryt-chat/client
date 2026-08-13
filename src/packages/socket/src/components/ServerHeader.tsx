@@ -1,4 +1,5 @@
-import { Badge, Button, Card, DropdownMenu, Flex, IconButton, Text, Tooltip } from "@radix-ui/themes";
+import { Button, Chip, IconButton, Surface, Tooltip } from "@gryt/ui";
+import { DropdownMenu, Flex, Text } from "@radix-ui/themes";
 import { PiPushPinFill } from "react-icons/pi";
 
 export const ServerHeader = ({
@@ -24,7 +25,7 @@ export const ServerHeader = ({
 }) => {
   const canManage = role === "owner" || role === "admin";
   return (
-    <Card
+    <Surface
       style={{
         width: "100%",
         flexShrink: 0,
@@ -34,11 +35,8 @@ export const ServerHeader = ({
         <Text>{serverName}</Text>
         <Flex align="center" gap="2">
           {onTogglePinned && (
-            <Tooltip content={pinned ? "Unpin sidebar" : "Pin sidebar"} delayDuration={200}>
-              <IconButton
-                size="1"
-                variant={pinned ? "solid" : "soft"}
-                color="gray"
+            <Tooltip title={pinned ? "Unpin sidebar" : "Pin sidebar"}>
+              <IconButton tone="neutral" size="xsmall"
                 onClick={onTogglePinned}
                 aria-label={pinned ? "Unpin sidebar" : "Pin sidebar"}
               >
@@ -49,7 +47,7 @@ export const ServerHeader = ({
 
           <DropdownMenu.Root>
             <DropdownMenu.Trigger>
-              <Button variant="soft" size="1" color="gray">
+              <Button tone="neutral" size="xsmall">
                 <DropdownMenu.TriggerIcon />
               </Button>
             </DropdownMenu.Trigger>
@@ -59,9 +57,7 @@ export const ServerHeader = ({
                   <Flex align="center" gap="2">
                     Server settings
                     {updateAvailable && (
-                      <Badge color="orange" variant="soft" size="1" radius="full">
-                        !
-                      </Badge>
+                      <Chip tone="warning" label="!" />
                     )}
                   </Flex>
                 </DropdownMenu.Item>
@@ -71,9 +67,9 @@ export const ServerHeader = ({
                   <Flex align="center" gap="2">
                     Reports
                     {!!pendingReportCount && pendingReportCount > 0 && (
-                      <Badge color="red" variant="solid" size="1" radius="full">
+                      <Chip tone="danger">
                         {pendingReportCount}
-                      </Badge>
+                      </Chip>
                     )}
                   </Flex>
                 </DropdownMenu.Item>
@@ -86,6 +82,6 @@ export const ServerHeader = ({
           </DropdownMenu.Root>
         </Flex>
       </Flex>
-    </Card>
+    </Surface>
   );
 }; 

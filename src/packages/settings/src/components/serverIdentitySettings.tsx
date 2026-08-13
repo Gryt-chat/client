@@ -1,14 +1,11 @@
+import { Button, Chip, IconButton, Tooltip } from "@gryt/ui";
 import {
   AlertDialog,
-  Badge,
-  Button,
   Callout,
   Code,
   Flex,
   Heading,
-  IconButton,
   Text,
-  Tooltip,
 } from "@radix-ui/themes";
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
@@ -35,7 +32,7 @@ function formatDate(epoch: number): string {
 function Fingerprint({ value }: { value: string }) {
   const grouped = (value.match(/.{1,8}/g) || [value]).join(" ");
   return (
-    <Tooltip content="Click to copy">
+    <Tooltip title="Click to copy">
       <Code
         size="1"
         variant="soft"
@@ -76,9 +73,9 @@ function BlockedRow({
         <Text size="2" weight="medium" style={{ flex: 1, minWidth: 0 }} truncate>
           {entry.host}
         </Text>
-        <Badge color="red" variant="soft" size="1">
+        <Chip tone="danger">
           Blocked {formatDate(entry.blockedAt)}
-        </Badge>
+        </Chip>
       </Flex>
 
       <Text size="1" color="gray">
@@ -121,10 +118,7 @@ function BlockedRow({
       </Callout.Root>
 
       <AlertDialog.Root open={confirm} onOpenChange={setConfirm}>
-        <Button
-          size="1"
-          variant="soft"
-          color="red"
+        <Button tone="danger" size="xsmall"
           style={{ alignSelf: "flex-start" }}
           onClick={() => setConfirm(true)}
         >
@@ -139,14 +133,12 @@ function BlockedRow({
           </AlertDialog.Description>
           <Flex gap="3" mt="4" justify="end">
             <AlertDialog.Cancel>
-              <Button variant="soft" color="gray">
+              <Button tone="neutral" size="small">
                 Cancel
               </Button>
             </AlertDialog.Cancel>
             <AlertDialog.Action>
-              <Button
-                variant="solid"
-                color="red"
+              <Button tone="danger" size="small"
                 onClick={() => {
                   onUnblock(entry);
                   setConfirm(false);
@@ -198,8 +190,8 @@ function KnownRow({ pin, onForget }: { pin: ServerPin; onForget: (keyId: string)
       </Flex>
 
       <AlertDialog.Root open={confirm} onOpenChange={setConfirm}>
-        <Tooltip content="Forget this server">
-          <IconButton size="1" variant="ghost" color="red" onClick={() => setConfirm(true)}>
+        <Tooltip title="Forget this server">
+          <IconButton tone="danger" size="xsmall" onClick={() => setConfirm(true)}>
             <PiTrashFill size={16} />
           </IconButton>
         </Tooltip>
@@ -212,14 +204,12 @@ function KnownRow({ pin, onForget }: { pin: ServerPin; onForget: (keyId: string)
           </AlertDialog.Description>
           <Flex gap="3" mt="4" justify="end">
             <AlertDialog.Cancel>
-              <Button variant="soft" color="gray">
+              <Button tone="neutral" size="small">
                 Cancel
               </Button>
             </AlertDialog.Cancel>
             <AlertDialog.Action>
-              <Button
-                variant="solid"
-                color="red"
+              <Button tone="danger" size="small"
                 onClick={() => {
                   onForget(pin.keyId);
                   setConfirm(false);
@@ -298,9 +288,9 @@ export function ServerIdentitySettings() {
               <Text weight="medium" size="2">
                 Blocked
               </Text>
-              <Badge color="red" variant="soft" size="1">
+              <Chip tone="danger">
                 {blocked.length}
-              </Badge>
+              </Chip>
             </Flex>
             {blocked.map((entry) => (
               <BlockedRow
@@ -317,9 +307,9 @@ export function ServerIdentitySettings() {
           <Text weight="medium" size="2">
             Known servers
           </Text>
-          <Badge variant="soft" size="1">
+          <Chip tone="neutral">
             {pins.length}
-          </Badge>
+          </Chip>
         </Flex>
 
         {pins.length === 0 ? (

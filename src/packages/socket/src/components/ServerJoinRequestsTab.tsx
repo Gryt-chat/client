@@ -1,4 +1,5 @@
-import { Button, Card, Flex, Text } from "@radix-ui/themes";
+import { Button, Surface } from "@gryt/ui";
+import { Flex, Text } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
@@ -86,7 +87,7 @@ export function ServerJoinRequestsTab({
             ? `${requests.length} ${requests.length === 1 ? "person waiting" : "people waiting"}`
             : "Loading…"}
         </Text>
-        <Button size="1" variant="soft" onClick={refresh}>
+        <Button tone="neutral" size="xsmall" onClick={refresh}>
           Refresh
         </Button>
       </Flex>
@@ -103,7 +104,7 @@ export function ServerJoinRequestsTab({
       )}
 
       {requests.map((request) => (
-        <Card key={request.grytUserId}>
+        <Surface key={request.grytUserId}>
           <Flex align="center" justify="between" gap="3">
             <Flex direction="column" gap="1" style={{ minWidth: 0 }}>
               <Text size="2" weight="medium" truncate>
@@ -119,18 +120,13 @@ export function ServerJoinRequestsTab({
               </Text>
             </Flex>
             <Flex gap="2" style={{ flexShrink: 0 }}>
-              <Button
-                size="1"
-                variant="soft"
-                color="gray"
+              <Button tone="neutral" size="xsmall"
                 disabled={deciding === request.grytUserId}
                 onClick={() => decide(request.grytUserId, "denied")}
               >
                 Turn down
               </Button>
-              <Button
-                size="1"
-                variant="soft"
+              <Button tone="neutral" size="xsmall"
                 disabled={deciding === request.grytUserId}
                 onClick={() => decide(request.grytUserId, "approved")}
               >
@@ -138,7 +134,7 @@ export function ServerJoinRequestsTab({
               </Button>
             </Flex>
           </Flex>
-        </Card>
+        </Surface>
       ))}
     </Flex>
   );

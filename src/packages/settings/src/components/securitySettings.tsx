@@ -1,14 +1,9 @@
-import { TextField } from "@gryt/ui";
+import { Button, Chip, IconButton, Spinner, TextField, Tooltip } from "@gryt/ui";
 import {
   AlertDialog,
-  Badge,
-  Button,
   Flex,
   Heading,
-  IconButton,
-  Spinner,
   Text,
-  Tooltip,
 } from "@radix-ui/themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
@@ -112,11 +107,10 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
               disabled={saving}
               style={{ flex: 1 }}
             />
-            <IconButton size="1" onClick={handleSave} disabled={saving}>
+            <IconButton size="xsmall" onClick={handleSave} disabled={saving}>
               <PiCheck size={14} />
             </IconButton>
-            <IconButton
-              size="1"
+            <IconButton size="xsmall"
               onClick={() => {
                 setEditing(false);
                 setDraft(credential.userLabel);
@@ -130,10 +124,8 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
             <Text size="2" weight="medium" truncate>
               {credential.userLabel || "Unnamed passkey"}
             </Text>
-            <Tooltip content="Rename">
-              <IconButton
-                size="1"
-                variant="ghost"
+            <Tooltip title="Rename">
+              <IconButton tone="ghost" size="xsmall"
                 onClick={() => setEditing(true)}
               >
                 <PiPencilSimpleFill size={12} />
@@ -147,10 +139,8 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
       </Flex>
 
       <AlertDialog.Root open={confirmDelete} onOpenChange={setConfirmDelete}>
-        <Tooltip content="Remove passkey">
-          <IconButton
-            size="1"
-            variant="ghost"
+        <Tooltip title="Remove passkey">
+          <IconButton tone="ghost" size="xsmall"
             disabled={deleting}
             onClick={() => setConfirmDelete(true)}
           >
@@ -165,13 +155,12 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
           </AlertDialog.Description>
           <Flex gap="3" mt="4" justify="end">
             <AlertDialog.Cancel>
-              <Button>
+              <Button size="small">
                 Cancel
               </Button>
             </AlertDialog.Cancel>
             <AlertDialog.Action>
-              <Button
-                variant="solid"
+              <Button size="small"
                 onClick={() => {
                   onDelete(credential.id);
                   setConfirmDelete(false);
@@ -286,14 +275,14 @@ export function SecuritySettings() {
               face, or device PIN.
             </Text>
           </Flex>
-          <Badge size="1">
+          <Chip tone="neutral">
             {credentials.length}
-          </Badge>
+          </Chip>
         </Flex>
 
         {loading && (
           <Flex align="center" justify="center" py="6">
-            <Spinner size="3" />
+            <Spinner size={24} />
           </Flex>
         )}
 
@@ -302,7 +291,7 @@ export function SecuritySettings() {
             <Text size="2">
               {error}
             </Text>
-            <Button size="1" onClick={loadCredentials}>
+            <Button size="xsmall" onClick={loadCredentials}>
               Retry
             </Button>
           </Flex>
@@ -338,7 +327,7 @@ export function SecuritySettings() {
             />
           ))}
 
-        <Button
+        <Button size="small"
           onClick={handleAdd}
           disabled={adding}
           style={{ alignSelf: "flex-start" }}

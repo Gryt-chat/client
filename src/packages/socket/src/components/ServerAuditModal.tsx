@@ -1,4 +1,5 @@
-import { Button, Card,Dialog, Flex, IconButton, Text } from "@radix-ui/themes";
+import { Button, IconButton, Surface } from "@gryt/ui";
+import { Dialog, Flex, Text } from "@radix-ui/themes";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { PiX } from "react-icons/pi";
@@ -74,14 +75,14 @@ export function ServerAuditModal() {
           <Flex align="center" justify="between">
             <Dialog.Title>Audit log</Dialog.Title>
             <Dialog.Close>
-              <IconButton variant="ghost" color="gray" onClick={close}>
+              <IconButton tone="ghost" size="xsmall" onClick={close}>
                 <PiX size={16} />
               </IconButton>
             </Dialog.Close>
           </Flex>
 
           <Flex justify="end" gap="2">
-            <Button variant="soft" color="gray" onClick={refresh}>
+            <Button tone="neutral" size="small" onClick={refresh}>
               Refresh
             </Button>
           </Flex>
@@ -91,7 +92,7 @@ export function ServerAuditModal() {
               <Text size="2" color="gray">No audit entries.</Text>
             ) : (
               items.map((it) => (
-                <Card key={it.eventId}>
+                <Surface key={it.eventId}>
                   <Flex direction="column" gap="1">
                     <Text size="2" weight="bold">
                       {it.action}{it.target ? ` · ${it.target}` : ""}
@@ -105,7 +106,7 @@ export function ServerAuditModal() {
                       </Text>
                     ) : null}
                   </Flex>
-                </Card>
+                </Surface>
               ))
             )}
           </Flex>

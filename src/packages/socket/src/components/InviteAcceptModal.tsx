@@ -1,5 +1,5 @@
-import { Avatar } from "@gryt/ui";
-import { Button, Callout, Dialog, Flex, IconButton, Spinner, Text } from "@radix-ui/themes";
+import { Avatar, Button, IconButton, Spinner } from "@gryt/ui";
+import { Callout, Dialog, Flex, Text } from "@radix-ui/themes";
 import { useEffect, useRef, useState } from "react";
 import { PiEnvelopeFill, PiUsersFill, PiWarningFill, PiX } from "react-icons/pi";
 
@@ -92,9 +92,7 @@ export function InviteAcceptModal({
               <Dialog.Title>Server Invite</Dialog.Title>
             </Flex>
             <Dialog.Close>
-              <IconButton
-                variant="ghost"
-                color="gray"
+              <IconButton tone="ghost" size="xsmall"
                 disabled={joining}
                 onClick={() => {
                   if (joining) return;
@@ -108,7 +106,7 @@ export function InviteAcceptModal({
 
           {loading ? (
             <Flex align="center" justify="center" py="6">
-              <Spinner size="3" />
+              <Spinner size={24} />
             </Flex>
           ) : (
             <Flex direction="column" gap="3" align="center">
@@ -167,9 +165,7 @@ export function InviteAcceptModal({
           ) : null}
 
           <Flex justify="end" gap="2">
-            <Button
-              variant="soft"
-              color="gray"
+            <Button tone="neutral" size="small"
               disabled={joining}
               onClick={() => {
                 if (joining) return;
@@ -179,9 +175,9 @@ export function InviteAcceptModal({
               {alreadyMember ? "Dismiss" : "Cancel"}
             </Button>
             {alreadyMember ? (
-              <Button onClick={() => onGoToServer?.()}>Go to Server</Button>
+              <Button size="small" onClick={() => onGoToServer?.()}>Go to Server</Button>
             ) : (
-              <Button
+              <Button size="small"
                 onClick={() => {
                   void onAccept();
                 }}
@@ -189,7 +185,7 @@ export function InviteAcceptModal({
               >
                 {joining ? (
                   <>
-                    <Spinner size="2" /> Joining…
+                    <Spinner size={20} /> Joining…
                   </>
                 ) : (
                   "Accept Invite"

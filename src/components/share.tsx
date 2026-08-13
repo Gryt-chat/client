@@ -1,4 +1,5 @@
-import { Dialog, Flex, IconButton } from "@radix-ui/themes";
+import { IconButton } from "@gryt/ui";
+import { Dialog, Flex } from "@radix-ui/themes";
 import Fireworks from "react-canvas-confetti/dist/presets/explosion";
 import { PiX } from "react-icons/pi";
 
@@ -21,7 +22,7 @@ export function ShareServer() {
               right: "8px",
             }}
           >
-            <IconButton variant="soft" color="gray">
+            <IconButton tone="neutral" size="xsmall">
               <PiX size={16} />
             </IconButton>
           </Dialog.Close>

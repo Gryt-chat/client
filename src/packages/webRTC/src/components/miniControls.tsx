@@ -1,4 +1,4 @@
-import { IconButton } from "@radix-ui/themes";
+import { IconButton } from "@gryt/ui";
 import { AnimatePresence, motion, Variants } from "motion/react";
 import { useCallback, useState } from "react";
 import toast from "react-hot-toast";
@@ -81,7 +81,6 @@ export function MiniControls({
   }, [screenShareActive, stopScreenShare]);
 
   const isColumn = direction === "column";
-  const btnSize = isColumn ? "2" : "1" as const;
   const iconSize = isColumn ? 14 : 12;
 
   return (
@@ -108,11 +107,7 @@ export function MiniControls({
             }}
           >
             <motion.div variants={buttonAnimations}>
-              <IconButton
-                size={btnSize}
-                color={(isMuted || isServerMuted) ? "red" : "gray"}
-                variant="soft"
-                radius="full"
+              <IconButton tone="neutral" size="xsmall"
                 style={isServerMuted ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
                 onClick={() => {
                   if (isServerMuted) {
@@ -127,11 +122,7 @@ export function MiniControls({
             </motion.div>
 
             <motion.div variants={buttonAnimations}>
-              <IconButton
-                size={btnSize}
-                color={(isDeafened || isServerDeafened) ? "red" : "gray"}
-                variant="soft"
-                radius="full"
+              <IconButton tone="neutral" size="xsmall"
                 style={isServerDeafened ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
                 onClick={() => {
                   if (isServerDeafened) {
@@ -150,11 +141,7 @@ export function MiniControls({
             </motion.div>
 
             <motion.div variants={buttonAnimations}>
-              <IconButton
-                size={btnSize}
-                color={cameraEnabled ? "green" : "gray"}
-                variant="soft"
-                radius="full"
+              <IconButton tone="neutral" size="xsmall"
                 onClick={handleCameraClick}
               >
                 {cameraEnabled ? <PiVideoCameraFill size={iconSize} /> : <PiVideoCameraSlashFill size={iconSize} />}
@@ -162,11 +149,7 @@ export function MiniControls({
             </motion.div>
 
             <motion.div variants={buttonAnimations}>
-              <IconButton
-                size={btnSize}
-                color={screenShareActive ? "green" : "gray"}
-                variant="soft"
-                radius="full"
+              <IconButton tone="neutral" size="xsmall"
                 onClick={handleScreenShareClick}
               >
                 {screenShareActive ? <PiMonitorArrowUpFill size={iconSize} /> : <PiScreencastFill size={iconSize} />}
@@ -174,11 +157,7 @@ export function MiniControls({
             </motion.div>
 
             <motion.div variants={buttonAnimations}>
-              <IconButton
-                size={btnSize}
-                variant="soft"
-                color="red"
-                radius="full"
+              <IconButton tone="danger" size="xsmall"
                 onClick={() => {
                   if (cameraEnabled) setCameraEnabled(false);
                   if (screenShareActive) stopScreenShare();

@@ -1,4 +1,5 @@
-import { Flex, Text, Tooltip } from "@radix-ui/themes";
+import { Tooltip } from "@gryt/ui";
+import { Flex, Text } from "@radix-ui/themes";
 
 export type Reaction = {
   src: string;
@@ -92,7 +93,7 @@ function formatDateSeparator(d: Date): string {
 }
 
 export const MessageTimestamp = ({ date }: { date: Date }) => (
-  <Tooltip content={formatFullDate(date)} delayDuration={200}>
+  <Tooltip title={formatFullDate(date)}>
     {/*
       gray-11 is Radix's low-contrast *text* step. gray-9 and gray-10 are solid
       steps meant for backgrounds and borders, and against the message surface

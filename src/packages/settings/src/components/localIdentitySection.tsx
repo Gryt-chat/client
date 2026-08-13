@@ -1,4 +1,5 @@
-import { Button, Callout, Flex, Text } from "@radix-ui/themes";
+import { Button } from "@gryt/ui";
+import { Callout, Flex, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import {
@@ -147,8 +148,7 @@ export function LocalIdentitySection() {
       )}
 
       <Flex gap="2" wrap="wrap">
-        <Button
-          variant="soft"
+        <Button tone="neutral" size="small"
           disabled={busy || hosts.length === 0}
           onClick={() => void handleSave()}
         >
@@ -156,8 +156,7 @@ export function LocalIdentitySection() {
           Save my identity
         </Button>
 
-        <Button
-          variant="soft"
+        <Button tone="neutral" size="small"
           disabled={busy}
           onClick={() => {
             mode.current = "restore";
@@ -168,8 +167,7 @@ export function LocalIdentitySection() {
           Restore from a file
         </Button>
 
-        <Button
-          variant="soft"
+        <Button tone="neutral" size="small"
           disabled={busy}
           onClick={() => {
             mode.current = "authorise";

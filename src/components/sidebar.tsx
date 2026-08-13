@@ -1,4 +1,4 @@
-import { Avatar } from "@gryt/ui";
+import { Avatar, IconButton, Tooltip } from "@gryt/ui";
 import {
   Box,
   ContextMenu,
@@ -6,8 +6,6 @@ import {
   Flex,
   Heading,
   HoverCard,
-  IconButton,
-  Tooltip,
 } from "@radix-ui/themes";
 import { Reorder } from "motion/react";
 import { PiBroadcastFill, PiBugFill, PiChatCircleDotsFill, PiGearFill, PiMicrophoneFill, PiPlus, PiSignInFill } from "react-icons/pi";
@@ -140,11 +138,9 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
             />
           ))}
         </Reorder.Group>
-        <Tooltip content="Add new server" delayDuration={100} side="right">
-          <IconButton
+        <Tooltip title="Add new server" side="right">
+          <IconButton tone="neutral" size="xsmall"
             data-tour="add-server"
-            variant="soft"
-            color="gray"
             onClick={() => setShowAddServer(true)}
           >
             <PiPlus size={16} />
@@ -155,14 +151,11 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
             would get a destination that can never have anything in it. */}
         {isElectron && (
           <Tooltip
-            content="Servers on your network"
-            delayDuration={100}
+            title="Servers on your network"
             side="right"
           >
             <Box position="relative">
-              <IconButton
-                variant={showDiscovery ? "solid" : "soft"}
-                color="gray"
+              <IconButton tone="neutral" size="xsmall"
                 aria-label="Servers on your network"
                 onClick={() => setShowDiscovery(!showDiscovery)}
               >
@@ -199,7 +192,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
         <MiniControls direction="column" />
         <DropdownMenu.Root>
           <DropdownMenu.Trigger>
-            <IconButton data-tour="profile">
+            <IconButton size="xsmall" data-tour="profile">
               <Avatar
                 fallback={displayNickname[0]}
                 src={displayAvatarUrl || undefined}

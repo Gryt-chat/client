@@ -1,4 +1,5 @@
-import { Badge, Button, Dialog, Flex, Text } from "@radix-ui/themes";
+import { Button, Chip } from "@gryt/ui";
+import { Dialog, Flex, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useState } from "react";
 
 import { useSettings } from "@/settings";
@@ -82,14 +83,12 @@ export function PushToTalkModal() {
         </Dialog.Description>
 
         <Flex direction="column" gap="4" align="center" py="4">
-          <Badge
-            size="2"
-            variant="surface"
+          <Chip tone="neutral"
             color={captured ? "green" : "blue"}
             style={{ fontFamily: "var(--code-font-family)", minWidth: "120px", textAlign: "center", padding: "8px 16px", fontSize: 16 }}
           >
             {captured ? formatKeyCombo(captured) : "Press a key..."}
-          </Badge>
+          </Chip>
 
           {captured && (
             <Text size="1" color="gray">
@@ -99,10 +98,10 @@ export function PushToTalkModal() {
         </Flex>
 
         <Flex gap="3" justify="end">
-          <Button variant="soft" color="gray" onClick={handleCancel}>
+          <Button tone="neutral" size="small" onClick={handleCancel}>
             Cancel
           </Button>
-          <Button onClick={handleConfirm} disabled={!captured}>
+          <Button size="small" onClick={handleConfirm} disabled={!captured}>
             Confirm
           </Button>
         </Flex>

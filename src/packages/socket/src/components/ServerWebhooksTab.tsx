@@ -1,5 +1,5 @@
-import { Avatar, TextField } from "@gryt/ui";
-import { Button, Card, Flex, IconButton, Select, Text, Tooltip } from "@radix-ui/themes";
+import { Avatar, Button, IconButton, Surface, TextField, Tooltip } from "@gryt/ui";
+import { Flex, Select, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { PiCopyFill, PiPlus, PiTrashFill } from "react-icons/pi";
@@ -101,7 +101,7 @@ export function ServerWebhooksTab({
 
       <Flex justify="between" align="center">
         <Text size="3" weight="bold">Webhooks</Text>
-        <Button onClick={createWebhook} disabled={textChannels.length === 0}>
+        <Button size="small" onClick={createWebhook} disabled={textChannels.length === 0}>
           <PiPlus size={16} />
           Create webhook
         </Button>
@@ -254,9 +254,9 @@ function WebhookCard({
     : undefined;
 
   return (
-    <Card>
+    <Surface>
       <Flex gap="3" align="start">
-        <Tooltip content="Click to change avatar">
+        <Tooltip title="Click to change avatar">
           <button
             onClick={handleAvatarClick}
             style={{
@@ -309,13 +309,13 @@ function WebhookCard({
             </Flex>
 
             <Flex gap="1" style={{ paddingBottom: 1 }}>
-              <Tooltip content="Copy webhook URL">
-                <IconButton onClick={copyUrl}>
+              <Tooltip title="Copy webhook URL">
+                <IconButton size="xsmall" onClick={copyUrl}>
                   <PiCopyFill size={16} />
                 </IconButton>
               </Tooltip>
-              <Tooltip content="Delete webhook">
-                <IconButton onClick={() => onDelete(webhook.webhook_id)}>
+              <Tooltip title="Delete webhook">
+                <IconButton size="xsmall" onClick={() => onDelete(webhook.webhook_id)}>
                   <PiTrashFill size={16} />
                 </IconButton>
               </Tooltip>
@@ -336,6 +336,6 @@ function WebhookCard({
           </Flex>
         </Flex>
       </Flex>
-    </Card>
+    </Surface>
   );
 }

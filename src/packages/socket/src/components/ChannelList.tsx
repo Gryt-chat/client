@@ -1,4 +1,5 @@
-import { Box, Button, ContextMenu, Flex, Text, Tooltip } from "@radix-ui/themes";
+import { Button, Tooltip } from "@gryt/ui";
+import { Box, ContextMenu, Flex, Text } from "@radix-ui/themes";
 import { AnimatePresence, LayoutGroup, motion, Reorder } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PiChatCircleFill, PiGameControllerFill, PiGaugeFill, PiKeyboardFill, PiSpeakerHighFill } from "react-icons/pi";
@@ -164,9 +165,7 @@ export const ChannelList = ({
             }}
           />
         )}
-        <Button
-          variant={channel?.id === selectedChannelId ? "solid" : "soft"}
-          radius="large"
+        <Button size="small"
           style={{
             width: "100%",
             justifyContent: "start",
@@ -185,28 +184,28 @@ export const ChannelList = ({
           {hasIndicators && (
             <Flex gap="1" align="center" style={{ marginLeft: "auto", flexShrink: 0 }}>
               {channel!.eSportsMode && (
-                <Tooltip content="eSports mode">
+                <Tooltip title="eSports mode">
                   <Flex align="center" style={{ color: "var(--gray-9)" }}>
                     <PiGameControllerFill size={14} />
                   </Flex>
                 </Tooltip>
               )}
               {channel!.requirePushToTalk && (
-                <Tooltip content="Push to Talk required">
+                <Tooltip title="Push to Talk required">
                   <Flex align="center" style={{ color: "var(--gray-9)" }}>
                     <PiKeyboardFill size={14} />
                   </Flex>
                 </Tooltip>
               )}
               {channel!.disableRnnoise && (
-                <Tooltip content="Noise suppression disabled">
+                <Tooltip title="Noise suppression disabled">
                   <Text size="1" weight="bold" style={{ color: "var(--gray-9)", fontSize: 9, lineHeight: 1, padding: "1px 3px", border: "1px solid var(--gray-7)", borderRadius: "var(--radius-1)" }}>
                     RAW
                   </Text>
                 </Tooltip>
               )}
               {channel!.maxBitrate && (
-                <Tooltip content={`Max bitrate: ${Math.round(channel!.maxBitrate! / 1000)} kbps`}>
+                <Tooltip title={`Max bitrate: ${Math.round(channel!.maxBitrate! / 1000)} kbps`}>
                   <Flex align="center" style={{ color: "var(--gray-9)" }}>
                     <PiGaugeFill size={14} />
                   </Flex>

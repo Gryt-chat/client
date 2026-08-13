@@ -1,5 +1,5 @@
-import { Avatar, TextField } from "@gryt/ui";
-import { AlertDialog, Button, Flex, Heading, IconButton, SegmentedControl, Text, Tooltip } from "@radix-ui/themes";
+import { Avatar, Button, IconButton, TextField, Tooltip } from "@gryt/ui";
+import { AlertDialog, Flex, Heading, SegmentedControl, Text } from "@radix-ui/themes";
 import { useCallback,useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { PiArrowsClockwiseFill, PiCameraFill, PiCheck, PiCopyFill } from "react-icons/pi";
@@ -197,7 +197,7 @@ function ProfileEditor({
 
       {avatarUrl ? (
         <>
-          <Button
+          <Button size="small"
             disabled={uploading || removing}
             onClick={() => setShowRemoveConfirm(true)}
           >
@@ -211,10 +211,10 @@ function ProfileEditor({
               </AlertDialog.Description>
               <Flex gap="3" mt="4" justify="end">
                 <AlertDialog.Cancel>
-                  <Button>Cancel</Button>
+                  <Button size="small">Cancel</Button>
                 </AlertDialog.Cancel>
                 <AlertDialog.Action>
-                  <Button variant="solid" onClick={() => { onRemoveAvatar(); setShowRemoveConfirm(false); }}>Remove</Button>
+                  <Button size="small" onClick={() => { onRemoveAvatar(); setShowRemoveConfirm(false); }}>Remove</Button>
                 </AlertDialog.Action>
               </Flex>
             </AlertDialog.Content>
@@ -612,8 +612,7 @@ export function ProfileSettings() {
           />
           {connectedHosts.length > 0 && (
             <Flex justify="center" style={{ paddingTop: 4 }}>
-              <Button
-                size="2"
+              <Button size="small"
                 disabled={syncing || uploading || removing}
                 onClick={handleSyncToAll}
               >
@@ -655,10 +654,8 @@ export function ProfileSettings() {
           <Text size="1" style={{ fontFamily: "var(--code-font-family)", userSelect: "all" }}>
             {userId}
           </Text>
-          <Tooltip content={copied ? "Copied!" : "Copy User ID"}>
-            <IconButton
-              size="1"
-              variant="ghost"
+          <Tooltip title={copied ? "Copied!" : "Copy User ID"}>
+            <IconButton tone="ghost" size="xsmall"
               style={{ flexShrink: 0 }}
               onClick={() => {
                 navigator.clipboard.writeText(userId).then(() => {

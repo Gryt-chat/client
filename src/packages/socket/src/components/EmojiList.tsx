@@ -1,9 +1,7 @@
-import { TextField } from "@gryt/ui";
+import { Button, IconButton, TextField } from "@gryt/ui";
 import {
   AlertDialog,
-  Button,
   Flex,
-  IconButton,
   Text,
 } from "@radix-ui/themes";
 import { type ChangeEvent, useState } from "react";
@@ -167,7 +165,7 @@ export function EmojiList({
         {emojis.length > 0 && (
           <AlertDialog.Root>
             <AlertDialog.Trigger>
-              <Button size="1" disabled={deletingAll}>
+              <Button size="xsmall" disabled={deletingAll}>
                 <PiTrashFill size={14} />
                 {deletingAll ? "Deleting..." : "Delete all"}
               </Button>
@@ -179,10 +177,10 @@ export function EmojiList({
               </AlertDialog.Description>
               <Flex gap="3" mt="4" justify="end">
                 <AlertDialog.Cancel>
-                  <Button>Cancel</Button>
+                  <Button size="small">Cancel</Button>
                 </AlertDialog.Cancel>
                 <AlertDialog.Action>
-                  <Button variant="solid" onClick={handleDeleteAll}>
+                  <Button size="small" onClick={handleDeleteAll}>
                     Delete all
                   </Button>
                 </AlertDialog.Action>
@@ -242,9 +240,7 @@ export function EmojiList({
                       autoFocus
                       style={{ flex: 1 }}
                     />
-                    <IconButton
-                      variant="ghost"
-                      size="1"
+                    <IconButton tone="ghost" size="xsmall"
                       title="Save"
                       disabled={renaming}
                       onClick={handleRename}
@@ -252,9 +248,7 @@ export function EmojiList({
                     >
                       <PiCheck size={14} />
                     </IconButton>
-                    <IconButton
-                      variant="ghost"
-                      size="1"
+                    <IconButton tone="ghost" size="xsmall"
                       title="Cancel"
                       disabled={renaming}
                       onClick={cancelEditing}
@@ -276,18 +270,14 @@ export function EmojiList({
               )}
               {editingEmoji !== e.name && (
                 <>
-                  <IconButton
-                    variant="ghost"
-                    size="1"
+                  <IconButton tone="ghost" size="xsmall"
                     onClick={() => startEditing(e.name)}
                     title={`Rename :${e.name}:`}
                     style={{ cursor: "pointer" }}
                   >
                     <PiPencilSimpleFill size={14} />
                   </IconButton>
-                  <IconButton
-                    variant="ghost"
-                    size="1"
+                  <IconButton tone="ghost" size="xsmall"
                     onClick={() => handleDelete(e.name)}
                     disabled={deletingName === e.name}
                     title={`Delete :${e.name}:`}

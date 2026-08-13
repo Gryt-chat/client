@@ -1,4 +1,5 @@
-import { Heading, Separator } from "@radix-ui/themes";
+import { Divider } from "@gryt/ui";
+import { Heading } from "@radix-ui/themes";
 import { useCallback, useEffect, useState } from "react";
 
 import { getElectronAPI } from "../../../../lib/electron";
@@ -53,7 +54,7 @@ export function DesktopSettings() {
 
   return (
     <SettingsContainer>
-      <Heading as="h2" size="4">
+      <Heading as="h2">
         Desktop
       </Heading>
 
@@ -67,7 +68,7 @@ export function DesktopSettings() {
           />
           {startWithWindows && (
             <>
-              <Separator size="4" />
+              <Divider />
               <ToggleSetting
                 title="Start minimized on login"
                 description="Only applies when Gryt is launched automatically on sign-in. Manual launches will still show the window."
@@ -76,7 +77,7 @@ export function DesktopSettings() {
               />
             </>
           )}
-          <Separator size="4" />
+          <Divider />
         </>
       )}
 
@@ -87,7 +88,7 @@ export function DesktopSettings() {
         onCheckedChange={handleCloseToTrayToggle}
       />
 
-      <Separator size="4" />
+      <Divider />
 
       <ToggleSetting
         title="Hardware acceleration"

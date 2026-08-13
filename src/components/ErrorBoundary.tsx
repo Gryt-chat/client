@@ -1,4 +1,5 @@
-import { Box, Button, Flex, Text } from "@radix-ui/themes";
+import { Button } from "@gryt/ui";
+import { Box, Flex, Text } from "@radix-ui/themes";
 import { Component, type ErrorInfo, type ReactNode } from "react";
 
 interface Props {
@@ -39,8 +40,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <Text size="2" color="gray" mb="4" as="p" style={{ marginTop: 8 }}>
             {this.state.error?.message || "An unexpected error occurred."}
           </Text>
-          <Button
-            variant="solid"
+          <Button size="small"
             style={{ marginTop: 16 }}
             onClick={() => window.location.reload()}
           >

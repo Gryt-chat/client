@@ -1,4 +1,5 @@
-import { Box, Flex, IconButton, Text } from "@radix-ui/themes";
+import { IconButton } from "@gryt/ui";
+import { Box, Flex, Text } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useState } from "react";
 import { PiList, PiPhoneCallFill, PiUsersFill } from "react-icons/pi";
@@ -118,9 +119,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
           gap: 8,
         }}
       >
-        <IconButton
-          variant="ghost"
-          size="2"
+        <IconButton tone="ghost" size="xsmall"
           onClick={() => setChannelsOpen(true)}
           aria-label="Open channels"
         >
@@ -141,9 +140,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
           {props.channelName ?? props.serverName ?? ""}
         </Text>
 
-        <IconButton
-          variant="ghost"
-          size="2"
+        <IconButton tone="ghost" size="xsmall"
           onClick={() => setMembersOpen(true)}
           aria-label="Open members"
         >
@@ -207,10 +204,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
               zIndex: "var(--gryt-z-sheet)",
             }}
           >
-            <IconButton
-              size="4"
-              variant="solid"
-              radius="full"
+            <IconButton size="large"
               onClick={() => setVoiceOpen(true)}
               style={{
                 width: 56,

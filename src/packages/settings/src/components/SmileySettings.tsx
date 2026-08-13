@@ -1,4 +1,5 @@
-import { Button, Flex, Separator, Text } from "@radix-ui/themes";
+import { Button, Divider } from "@gryt/ui";
+import { Flex, Text } from "@radix-ui/themes";
 import { nameToEmoji } from "gemoji";
 import { useCallback, useMemo } from "react";
 
@@ -113,17 +114,17 @@ export function SmileySettings() {
       {smileyConversion && (
         <Flex direction="column" gap="3" pl="1">
           <Flex gap="2">
-            <Button size="1" variant="soft" onClick={enableAll}>
+            <Button tone="neutral" size="xsmall" onClick={enableAll}>
               Enable All
             </Button>
-            <Button size="1" variant="soft" color="gray" onClick={disableAll}>
+            <Button tone="neutral" size="xsmall" onClick={disableAll}>
               Disable All
             </Button>
           </Flex>
 
           {CATEGORY_ORDER.map((cat) => (
             <Flex key={cat.label} direction="column" gap="1">
-              <Text size="1" color="gray" weight="medium">
+              <Text color="gray" weight="medium">
                 {cat.label}
               </Text>
               <Flex gap="2" wrap="wrap">
@@ -163,8 +164,8 @@ export function SmileySettings() {
             </Flex>
           ))}
 
-          <Separator size="4" />
-          <Text size="1" color="gray">
+          <Divider />
+          <Text color="gray">
             Click a chip to toggle that conversion on or off. Disabled
             smileys stay as typed text.
           </Text>

@@ -1,7 +1,6 @@
-import { Avatar, Switch, TextField } from "@gryt/ui";
+import { Avatar, Button, Switch, TextField } from "@gryt/ui";
 import {
   AlertDialog,
-  Button,
   Flex,
   Select,
   Text,
@@ -516,7 +515,7 @@ export function ServerOverviewTab({
 
         {isOwner && iconUrl ? (
           <>
-            <Button
+            <Button size="small"
               disabled={isUploadingIcon || isClearingIcon}
               onClick={() => setShowClearIconConfirm(true)}
               style={{ alignSelf: "center" }}
@@ -535,11 +534,10 @@ export function ServerOverviewTab({
                 </AlertDialog.Description>
                 <Flex gap="3" mt="4" justify="end">
                   <AlertDialog.Cancel>
-                    <Button>Cancel</Button>
+                    <Button size="small">Cancel</Button>
                   </AlertDialog.Cancel>
                   <AlertDialog.Action>
-                    <Button
-                      variant="solid"
+                    <Button size="small"
                       onClick={() => { clearIcon(); setShowClearIconConfirm(false); }}
                     >
                       Clear icon

@@ -1,5 +1,5 @@
-import { Avatar } from "@gryt/ui";
-import { Flex, Text, Tooltip } from "@radix-ui/themes";
+import { Avatar, Tooltip } from "@gryt/ui";
+import { Flex, Text } from "@radix-ui/themes";
 import { motion } from "motion/react";
 import { PiMicrophoneSlashFill, PiScreencastFill, PiSpeakerSlashFill, PiVideoCameraFill } from "react-icons/pi";
 
@@ -146,14 +146,14 @@ export function ConnectedUser({
             <SkeletonBase width="12px" height="12px" borderRadius="50%" />
           )}
           {screenShareEnabled && (
-            <Tooltip content="Streaming">
+            <Tooltip title="Streaming">
               <Flex align="center">
                 <PiScreencastFill size={14} color="var(--accent-9)" />
               </Flex>
             </Tooltip>
           )}
           {cameraEnabled && (
-            <Tooltip content="Camera on">
+            <Tooltip title="Camera on">
               <Flex align="center">
                 <PiVideoCameraFill size={14} color="var(--accent-9)" />
               </Flex>

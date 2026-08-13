@@ -1,4 +1,5 @@
-import { AlertDialog, Button, Flex } from "@radix-ui/themes";
+import { Button } from "@gryt/ui";
+import { AlertDialog, Flex } from "@radix-ui/themes";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getServerAccessToken, getServerHttpBase } from "@/common";
@@ -260,10 +261,10 @@ export const MessageEmbeds = memo(({
           </AlertDialog.Description>
           <Flex gap="3" mt="4" justify="end">
             <AlertDialog.Cancel>
-              <Button variant="soft" color="gray">Cancel</Button>
+              <Button tone="neutral" size="small">Cancel</Button>
             </AlertDialog.Cancel>
             <AlertDialog.Action>
-              <Button variant="solid" color="red" onClick={confirmDismiss}>Remove</Button>
+              <Button tone="danger" size="small" onClick={confirmDismiss}>Remove</Button>
             </AlertDialog.Action>
           </Flex>
         </AlertDialog.Content>

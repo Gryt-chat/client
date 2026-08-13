@@ -1,4 +1,5 @@
-import { Badge, Box, Dialog, Flex, IconButton, Spinner, Tabs, Text } from "@radix-ui/themes";
+import { Chip, IconButton, Spinner } from "@gryt/ui";
+import { Box, Dialog, Flex, Tabs, Text } from "@radix-ui/themes";
 import { useEffect, useMemo, useState } from "react";
 import { PiArrowsLeftRightFill, PiGearFill, PiHandWavingFill, PiLinkFill, PiListChecksFill, PiProhibitFill, PiSmileyFill, PiUsersFill, PiWebhooksLogoFill, PiX } from "react-icons/pi";
 
@@ -182,7 +183,7 @@ export function ServerSettingsModal() {
             right: "8px",
           }}
         >
-          <IconButton variant="soft" color="gray">
+          <IconButton tone="neutral" size="xsmall">
             <PiX size={16} />
           </IconButton>
         </Dialog.Close>
@@ -229,11 +230,11 @@ export function ServerSettingsModal() {
                           <Text size="1" color="gray" style={{ opacity: 0.5 }}>
                             Server v{serverInfo.version}
                           </Text>
-                          {versionLoading && <Spinner size="1" />}
+                          {versionLoading && <Spinner size={16} />}
                           {versionStatus?.server.updateAvailable && (
-                            <Badge size="1" color="orange" variant="soft">
+                            <Chip tone="warning">
                               v{versionStatus.server.latest}
-                            </Badge>
+                            </Chip>
                           )}
                         </Flex>
                       )}
@@ -243,9 +244,9 @@ export function ServerSettingsModal() {
                             SFU {versionStatus.sfu.current ? `v${versionStatus.sfu.current}` : "—"}
                           </Text>
                           {versionStatus.sfu.updateAvailable && (
-                            <Badge size="1" color="orange" variant="soft">
+                            <Chip tone="warning">
                               v{versionStatus.sfu.latest}
-                            </Badge>
+                            </Chip>
                           )}
                         </Flex>
                       )}
@@ -261,9 +262,9 @@ export function ServerSettingsModal() {
                               : "—"}
                           </Text>
                           {versionStatus.worker.updateAvailable && (
-                            <Badge size="1" color="orange" variant="soft">
+                            <Chip tone="warning">
                               v{versionStatus.worker.latest}
-                            </Badge>
+                            </Chip>
                           )}
                         </Flex>
                       )}

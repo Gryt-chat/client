@@ -1,5 +1,5 @@
-import { Avatar } from "@gryt/ui";
-import { Flex, Text, Tooltip } from "@radix-ui/themes";
+import { Avatar, Tooltip } from "@gryt/ui";
+import { Flex, Text } from "@radix-ui/themes";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { PiMicrophoneSlashFill, PiScreencastFill, PiSpeakerSlashFill, PiVideoCameraFill } from "react-icons/pi";
@@ -312,7 +312,7 @@ function LatencyBadge({
   }
 
   return (
-    <Tooltip content={tooltipParts.join(" · ")}>
+    <Tooltip title={tooltipParts.join(" · ")}>
       <Text
         size="1"
         style={{

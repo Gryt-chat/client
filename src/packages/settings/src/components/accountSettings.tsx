@@ -1,7 +1,5 @@
-import { TextField } from "@gryt/ui";
+import { Button, Chip, TextField } from "@gryt/ui";
 import {
-  Badge,
-  Button,
   Callout,
   Code,
   DataList,
@@ -164,9 +162,7 @@ export function AccountSettings() {
             <Text weight="medium" size="2">
               Signed in
             </Text>
-            <Badge size="1" color="green">
-              Gryt account
-            </Badge>
+            <Chip tone="success" label="Gryt account" />
           </Flex>
 
           <DataList.Root size="1" orientation="vertical">
@@ -201,7 +197,7 @@ export function AccountSettings() {
             anything you own moved to this account the next time you connected.
           </Text>
 
-          <Button
+          <Button size="small"
             style={{ alignSelf: "flex-start" }}
             onClick={() => void logout()}
           >
@@ -216,9 +212,7 @@ export function AccountSettings() {
               <Text weight="medium" size="2">
                 Not signed in
               </Text>
-              <Badge size="1" color="amber">
-                No account
-              </Badge>
+              <Chip tone="warning" label="No account" />
             </Flex>
             <Text size="1">
               Gryt works without an account. What one adds is a way back in: an
@@ -237,7 +231,7 @@ export function AccountSettings() {
             </Callout.Text>
           </Callout.Root>
 
-          <Button
+          <Button size="small"
             data-tour="account-signin"
             disabled={loginInProgress}
             style={{ alignSelf: "flex-start" }}
@@ -289,11 +283,11 @@ export function AccountSettings() {
         />
 
         <Flex gap="2" wrap="wrap">
-          <Button onClick={handleSaveIssuer}>
+          <Button size="small" onClick={handleSaveIssuer}>
             {savedIssuer ? "Saved" : "Use these"}
           </Button>
           {hasCustom && (
-            <Button onClick={handleClearIssuer}>
+            <Button size="small" onClick={handleClearIssuer}>
               Back to Gryt
             </Button>
           )}

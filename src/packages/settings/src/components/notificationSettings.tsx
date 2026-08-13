@@ -1,9 +1,8 @@
+import { Button, Divider } from "@gryt/ui";
 import {
   AlertDialog,
-  Button,
   Flex,
   Heading,
-  Separator,
 } from "@radix-ui/themes";
 import { useState } from "react";
 
@@ -47,7 +46,7 @@ export function NotificationSettings() {
 
   return (
     <SettingsContainer>
-      <Heading size="4">Notifications</Heading>
+      <Heading>Notifications</Heading>
 
       <ToggleSetting
         title="Unread message badge"
@@ -56,7 +55,7 @@ export function NotificationSettings() {
         onCheckedChange={setNotificationBadgeEnabled}
       />
 
-      <Separator size="4" />
+      <Divider />
 
       <SoundSettings
         label="Message sound"
@@ -81,15 +80,13 @@ export function NotificationSettings() {
         >
           <AlertDialog.Content maxWidth="450px">
             <AlertDialog.Title>{alertDialog.title}</AlertDialog.Title>
-            <AlertDialog.Description size="2">
+            <AlertDialog.Description>
               {alertDialog.message}
             </AlertDialog.Description>
 
             <Flex gap="3" mt="4" justify="end">
               <AlertDialog.Action>
-                <Button
-                  variant="soft"
-                  color={alertDialog.type === "error" ? "red" : "green"}
+                <Button tone="neutral" size="small"
                   onClick={() =>
                     setAlertDialog({ ...alertDialog, open: false })
                   }
