@@ -1,5 +1,4 @@
 import { Dialog, IconButton } from "@gryt/ui";
-import { Flex } from "@radix-ui/themes";
 import Fireworks from "react-canvas-confetti/dist/presets/explosion";
 import { PiX } from "react-icons/pi";
 
@@ -28,7 +27,7 @@ export function ShareServer() {
               <PiX size={16} />
             </IconButton>
           </Dialog.Close>
-          <Flex direction="column" gap="2">
+          <div className="flex flex-col gap-2">
             <Dialog.Title>
               Welcome to Gryt!🎉
             </Dialog.Title>
@@ -55,7 +54,7 @@ export function ShareServer() {
               </a>
               .
             </Dialog.Description>
-          </Flex>
+          </div>
         </Dialog.Popup>
         </Dialog.Portal>
       </Dialog.Root>

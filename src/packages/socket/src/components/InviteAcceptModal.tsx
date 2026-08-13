@@ -1,5 +1,4 @@
 import { Alert, Avatar, Button, Dialog, IconButton, Spinner } from "@gryt/ui";
-import { Flex, Text } from "@radix-ui/themes";
 import { useEffect, useRef, useState } from "react";
 import { PiEnvelopeFill, PiUsersFill, PiWarningFill, PiX } from "react-icons/pi";
 
@@ -87,12 +86,12 @@ export function InviteAcceptModal({
       <Dialog.Portal>
         <Dialog.Backdrop />
         <Dialog.Popup style={{ maxWidth: 420 }}>
-        <Flex direction="column" gap="4">
-          <Flex align="center" justify="between">
-            <Flex align="center" gap="2">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
               <PiEnvelopeFill size={16} />
               <Dialog.Title>Server Invite</Dialog.Title>
-            </Flex>
+            </div>
             <Dialog.Close>
               <IconButton tone="ghost" size="xsmall"
                 disabled={joining}
@@ -104,14 +103,14 @@ export function InviteAcceptModal({
                 <PiX size={16} />
               </IconButton>
             </Dialog.Close>
-          </Flex>
+          </div>
 
           {loading ? (
-            <Flex align="center" justify="center" py="6">
+            <div className="flex items-center justify-center py-8">
               <Spinner size={24} />
-            </Flex>
+            </div>
           ) : (
-            <Flex direction="column" gap="3" align="center">
+            <div className="flex flex-col gap-3 items-center">
               {invite && (
                 <Avatar
                   size="large"
@@ -121,47 +120,47 @@ export function InviteAcceptModal({
                 />
               )}
 
-              <Flex direction="column" gap="1" align="center">
-                <Text size="4" weight="bold">
+              <div className="flex flex-col gap-1 items-center">
+                <span className="text-lg font-bold">
                   {displayName}
-                </Text>
+                </span>
                 {preview?.description && (
-                  <Text size="2" color="gray" align="center">
+                  <span className="text-sm text-gryt-muted text-center">
                     {preview.description}
-                  </Text>
+                  </span>
                 )}
-              </Flex>
+              </div>
 
-              <Text size="2" color="gray" style={{ fontFamily: "var(--code-font-family)" }}>
+              <span className="text-sm text-gryt-muted" style={{ fontFamily: "var(--code-font-family)" }}>
                 {invite?.host}
-              </Text>
+              </span>
 
               {preview?.members && (
-                <Flex align="center" gap="1">
+                <div className="flex items-center gap-1">
                   <PiUsersFill size={14} style={{ color: "var(--gray-9)" }} />
-                  <Text size="2" color="gray">
+                  <span className="text-sm text-gryt-muted">
                     {preview.members} members
-                  </Text>
-                </Flex>
+                  </span>
+                </div>
               )}
-            </Flex>
+            </div>
           )}
 
           {alreadyMember ? (
-            <Text size="2" color="gray" align="center">
+            <span className="text-sm text-gryt-muted text-center">
               You are already a member of this server.
-            </Text>
+            </span>
           ) : (
-            <Text size="2" color="gray" align="center">
+            <span className="text-sm text-gryt-muted text-center">
               You&apos;ve been invited to join this server. No password required.
-            </Text>
+            </span>
           )}
 
           {!alreadyMember && joinError ? (
             <Alert severity="error" role="alert"><span className="inline-flex items-start gap-2"><PiWarningFill size={16} />{joinError}</span></Alert>
           ) : null}
 
-          <Flex justify="end" gap="2">
+          <div className="flex justify-end gap-2">
             <Button tone="neutral" size="small"
               disabled={joining}
               onClick={() => {
@@ -189,8 +188,8 @@ export function InviteAcceptModal({
                 )}
               </Button>
             )}
-          </Flex>
-        </Flex>
+          </div>
+        </div>
       </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>

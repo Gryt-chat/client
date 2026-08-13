@@ -1,8 +1,4 @@
 import { Button, Chip, TextField } from "@gryt/ui";
-import {
-  Flex,
-  Text,
-} from "@radix-ui/themes";
 import { type ChangeEvent } from "react";
 import { PiDownloadSimpleFill, PiMagnifyingGlassFill, PiX } from "react-icons/pi";
 
@@ -42,23 +38,18 @@ export function EmoteImport({
   } = useEmoteImport({ host, accessToken, socket, existingNames });
 
   return (
-    <Flex
-      direction="column"
-      gap="3"
-      p="3"
-      style={{
+    <div className="flex flex-col gap-3 p-3" style={{
         border: "1px solid var(--gray-a5)",
         borderRadius: "var(--radius-2)",
-      }}
-    >
-      <Text size="2" weight="medium">
+      }}>
+      <span className="text-sm font-medium">
         Import from a link
-      </Text>
-      <Text size="1" color="gray" style={{ marginTop: -6 }}>
+      </span>
+      <span className="text-xs text-gryt-muted" style={{ marginTop: -6 }}>
         A BetterTTV user or emote, or an emoji.gg user, pack or emoji.
-      </Text>
+      </span>
 
-      <Flex gap="2" align="center">
+      <div className="flex gap-2 items-center">
         <TextField
           size="small"
           placeholder="https://emoji.gg/pack/... or https://betterttv.com/users/..."
@@ -76,16 +67,16 @@ export function EmoteImport({
         >
           {fetching ? "Fetching..." : "Fetch"}
         </Button>
-      </Flex>
+      </div>
 
       {emotes.length > 0 && (
         <>
-          <Flex justify="between" align="center" gap="2">
-            <Flex align="center" gap="2">
+          <div className="flex justify-between items-center gap-2">
+            <div className="flex items-center gap-2">
               {username && (
-                <Text size="1" color="gray">
+                <span className="text-xs text-gryt-muted">
                   {username}
-                </Text>
+                </span>
               )}
               <Chip tone="neutral">
                 {emotes.length} emote{emotes.length !== 1 && "s"}
@@ -93,8 +84,8 @@ export function EmoteImport({
               <Chip tone="success">
                 {selectedEmotes.length} selected
               </Chip>
-            </Flex>
-            <Flex gap="2">
+            </div>
+            <div className="flex gap-2">
               <Button tone="ghost" size="xsmall"
                 onClick={() => toggleAll(true)}
                 disabled={importing}
@@ -107,8 +98,8 @@ export function EmoteImport({
               >
                 Deselect all
               </Button>
-            </Flex>
-          </Flex>
+            </div>
+          </div>
 
           {emotes.length > 10 && (
             <div className="relative">
@@ -130,11 +121,7 @@ export function EmoteImport({
             </div>
           )}
 
-          <Flex
-            direction="column"
-            gap="1"
-            style={{ maxHeight: 400, overflowY: "auto" }}
-          >
+          <div className="flex flex-col gap-1" style={{ maxHeight: 400, overflowY: "auto" }}>
             {filteredEmotes.map((e) => (
               <EmoteRow
                 key={e.id}
@@ -144,9 +131,9 @@ export function EmoteImport({
                 onUpdateName={updateName}
               />
             ))}
-          </Flex>
+          </div>
 
-          <Flex justify="end" gap="2">
+          <div className="flex justify-end gap-2">
             <Button tone="neutral" size="xsmall"
               disabled={importing}
               onClick={handleClear}
@@ -162,9 +149,9 @@ export function EmoteImport({
                 ? "Importing..."
                 : `Import ${validSelectedCount} emoji${validSelectedCount !== 1 ? "s" : ""}`}
             </Button>
-          </Flex>
+          </div>
         </>
       )}
-    </Flex>
+    </div>
   );
 }

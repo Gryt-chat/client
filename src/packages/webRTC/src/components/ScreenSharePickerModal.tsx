@@ -1,5 +1,4 @@
 import { Button, Checkbox, Chip, Dialog, IconButton, Select, Tooltip } from "@gryt/ui";
-import { Flex, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PiCaretDownFill, PiCaretUpFill, PiMonitorFill, PiScreencastFill, PiSquaresFourFill, PiX } from "react-icons/pi";
 
@@ -235,20 +234,20 @@ export function ScreenSharePickerModal({
       <Dialog.Portal>
         <Dialog.Backdrop />
         <Dialog.Popup style={{ maxWidth: 640 }}>
-        <Flex direction="column" gap="4">
-          <Flex align="center" justify="between">
-            <Flex align="center" gap="2">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
               <PiScreencastFill size={16} />
               <Dialog.Title>Share your screen</Dialog.Title>
-            </Flex>
+            </div>
             <Dialog.Close>
               <IconButton tone="ghost" size="xsmall" onClick={() => onOpenChange(false)}>
                 <PiX size={16} />
               </IconButton>
             </Dialog.Close>
-          </Flex>
+          </div>
 
-          <Flex gap="2">
+          <div className="flex gap-2">
             <Button size="xsmall"
               onClick={() => setTab("screens")}
             >
@@ -261,25 +260,19 @@ export function ScreenSharePickerModal({
               <PiSquaresFourFill size={14} />
               Windows
             </Button>
-          </Flex>
+          </div>
 
           {screenAccess !== null && screenAccess !== "granted" && (
-            <Flex
-              align="center"
-              gap="3"
-              px="3"
-              py="2"
-              style={{
+            <div className="flex items-center gap-3 px-3 py-2" style={{
                 borderRadius: "var(--radius-2)",
                 background: "var(--orange-3)",
                 border: "1px solid var(--orange-6)",
-              }}
-            >
-              <Text size="2" color="orange" style={{ flex: 1 }}>
+              }}>
+              <span className="text-sm text-gryt-warning" style={{ flex: 1 }}>
                 macOS requires Screen Recording permission. Grant access for Gryt in{" "}
                 <strong>System Settings &rarr; Privacy &amp; Security &rarr; Screen Recording</strong>,
                 then restart the app.
-              </Text>
+              </span>
               <Button tone="neutral" size="xsmall"
                 style={{ flexShrink: 0 }}
                 onClick={() => window.electronAPI?.openExternal(
@@ -288,7 +281,7 @@ export function ScreenSharePickerModal({
               >
                 Open Settings
               </Button>
-            </Flex>
+            </div>
           )}
 
           <div
@@ -301,30 +294,24 @@ export function ScreenSharePickerModal({
             }}
           >
             {loading && sources.length === 0 && (
-              <Text size="2" color="gray" style={{ gridColumn: "1 / -1", textAlign: "center", padding: 24 }}>
+              <span className="text-sm text-gryt-muted" style={{ gridColumn: "1 / -1", textAlign: "center", padding: 24 }}>
                 Loading sources...
-              </Text>
+              </span>
             )}
             {!loading && filteredSources.length === 0 && (
-              <Text size="2" color="gray" style={{ gridColumn: "1 / -1", textAlign: "center", padding: 24 }}>
+              <span className="text-sm text-gryt-muted" style={{ gridColumn: "1 / -1", textAlign: "center", padding: 24 }}>
                 No {tab === "screens" ? "screens" : "windows"} found
-              </Text>
+              </span>
             )}
             {filteredSources.map((src) => (
-              <Flex
-                key={src.id}
-                direction="column"
-                gap="1"
-                onClick={() => setSelected(src.id)}
-                style={{
+              <div className="flex flex-col gap-1" key={src.id} onClick={() => setSelected(src.id)} style={{
                   cursor: "pointer",
                   borderRadius: "var(--radius-3)",
                   border: selected === src.id ? "2px solid var(--accent-9)" : "2px solid transparent",
                   padding: 4,
                   background: selected === src.id ? "var(--accent-3)" : "var(--gray-3)",
                   transition: "border-color 0.15s, background 0.15s",
-                }}
-              >
+                }}>
                 <div style={{ position: "relative", aspectRatio: "16 / 9", borderRadius: "var(--radius-2)", overflow: "hidden", background: "#000" }}>
                   {src.thumbnail ? (
                     <img
@@ -334,9 +321,9 @@ export function ScreenSharePickerModal({
                       draggable={false}
                     />
                   ) : (
-                    <Flex align="center" justify="center" style={{ width: "100%", height: "100%" }}>
+                    <div className="flex items-center justify-center" style={{ width: "100%", height: "100%" }}>
                       {src.sourceType === "screen" ? <PiMonitorFill size={24} /> : <PiSquaresFourFill size={24} />}
-                    </Flex>
+                    </div>
                   )}
                   {selected === src.id && (
                     <Chip tone="secondary"
@@ -344,47 +331,47 @@ export function ScreenSharePickerModal({
                      label="Selected" />
                   )}
                 </div>
-                <Flex align="center" gap="1" px="1">
+                <div className="flex items-center gap-1 px-1">
                   {src.appIcon && src.sourceType === "window" && (
                     <img src={src.appIcon} alt="" style={{ width: 14, height: 14 }} draggable={false} />
                   )}
-                  <Text size="1" truncate style={{ flex: 1 }}>
+                  <span className="text-xs truncate" style={{ flex: 1 }}>
                     {src.name}
-                  </Text>
-                </Flex>
-              </Flex>
+                  </span>
+                </div>
+              </div>
             ))}
           </div>
 
-          <Flex align="center" gap="4" wrap="wrap">
+          <div className="flex items-center gap-4 flex-wrap">
             <Tooltip title="Capture desktop/application audio alongside the screen">
-              <Text as="label" size="2" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+              <label className="text-sm" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
                 <Checkbox checked={includeAudio} onCheckedChange={(v) => setIncludeAudio(v === true)} />
                 Include audio
-              </Text>
+              </label>
             </Tooltip>
 
             <Tooltip title="Optimizes for fast-paced content like games. Allocates 50% more bitrate for smoother motion.">
-              <Text as="label" size="2" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+              <label className="text-sm" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
                 <Checkbox checked={gamingMode} onCheckedChange={(v) => onGamingModeChange(v === true)} />
                 Gaming mode
-              </Text>
+              </label>
             </Tooltip>
 
-            <Flex align="center" gap="2" ml="auto">
+            <div className="flex items-center gap-2 ml-auto">
               <Tooltip title="Capture resolution. Lower values use less bandwidth.">
-                <Text size="2" style={{ cursor: "help", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}>Quality</Text>
+                <span className="text-sm" style={{ cursor: "help", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}>Quality</span>
               </Tooltip>
               <Select
                 value={quality}
                 onValueChange={(v) => onQualityChange(v as ScreenShareQuality)}
                 options={qualityOptions.map((o) => ({ label: o.label, value: o.value }))}
               />
-            </Flex>
+            </div>
 
-            <Flex align="center" gap="2">
+            <div className="flex items-center gap-2">
               <Tooltip title="Frames per second. Values above 60 use native DXGI screen capture (Windows desktop app only) to bypass browser FPS limits.">
-                <Text size="2" style={{ cursor: "help", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}>FPS</Text>
+                <span className="text-sm" style={{ cursor: "help", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}>FPS</span>
               </Tooltip>
               <Select
                 value={String(fps)}
@@ -395,10 +382,10 @@ export function ScreenSharePickerModal({
                   disabled: o.disabled,
                 }))}
               />
-            </Flex>
-          </Flex>
+            </div>
+          </div>
 
-          <Flex direction="column" gap="3">
+          <div className="flex flex-col gap-3">
             <Button tone="ghost" size="xsmall"
               onClick={() => setShowAdvanced(v => !v)}
               style={{ alignSelf: "flex-start", cursor: "pointer" }}
@@ -408,20 +395,14 @@ export function ScreenSharePickerModal({
             </Button>
 
             {showAdvanced && (
-              <Flex
-                direction="column"
-                gap="3"
-                px="3"
-                py="3"
-                style={{
+              <div className="flex flex-col gap-3 px-3 py-3" style={{
                   borderRadius: "var(--radius-2)",
                   background: "var(--gray-3)",
-                }}
-              >
-                <Flex align="center" gap="4" wrap="wrap">
-                  <Flex align="center" gap="2">
+                }}>
+                <div className="flex items-center gap-4 flex-wrap">
+                  <div className="flex items-center gap-2">
                     <Tooltip title="H.264 has the widest hardware support. VP9/AV1 offer better compression but need newer GPUs (RTX 40+, Intel Arc, AMD RX 7000+).">
-                      <Text size="2" style={{ cursor: "help", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}>Codec</Text>
+                      <span className="text-sm" style={{ cursor: "help", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}>Codec</span>
                     </Tooltip>
                     <Select
                       value={codec}
@@ -430,11 +411,11 @@ export function ScreenSharePickerModal({
                         availableCodecs.includes(o.value),
                       ).map((o) => ({ label: o.label, value: o.value }))}
                     />
-                  </Flex>
+                  </div>
 
-                  <Flex align="center" gap="2">
+                  <div className="flex items-center gap-2">
                     <Tooltip title="Fixed encoding bitrate. Auto estimates based on resolution and FPS. Higher values mean sharper video but require more upload bandwidth.">
-                      <Text size="2" style={{ cursor: "help", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}>Bitrate</Text>
+                      <span className="text-sm" style={{ cursor: "help", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}>Bitrate</span>
                     </Tooltip>
                     <Select
                       value={String(maxBitrate)}
@@ -444,14 +425,14 @@ export function ScreenSharePickerModal({
                         value: String(o.value),
                       }))}
                     />
-                  </Flex>
+                  </div>
 
-                  <Flex align="center" gap="2" style={svcDisabled ? { opacity: 0.5 } : undefined}>
+                  <div className="flex items-center gap-2" style={svcDisabled ? { opacity: 0.5 } : undefined}>
                     <Tooltip title={svcDisabled
                       ? "SVC is not supported with H.264. Switch to VP9 or AV1 to enable temporal scalability layers."
                       : "Temporal scalability layers (VP9/AV1 only). Encodes multiple frame-rate tiers into a single stream."
                     }>
-                      <Text size="2" style={{ cursor: "help", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}>SVC layers</Text>
+                      <span className="text-sm" style={{ cursor: "help", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}>SVC layers</span>
                     </Tooltip>
                     <Select
                       value={scalabilityMode}
@@ -464,82 +445,64 @@ export function ScreenSharePickerModal({
                         value: o.value,
                       }))}
                     />
-                  </Flex>
-                </Flex>
-              </Flex>
+                  </div>
+                </div>
+              </div>
             )}
-          </Flex>
+          </div>
 
           {fps > 60 && nativeScreenCaptureAvailable && (
-            <Flex
-              align="center"
-              gap="2"
-              px="3"
-              py="1"
-              style={{
+            <div className="flex items-center gap-2 px-3 py-1" style={{
                 borderRadius: "var(--radius-2)",
                 background: "var(--green-3)",
-              }}
-            >
+              }}>
               <Chip tone="success" label="Native capture" />
-              <Text size="1" color="green">
+              <span className="text-xs text-gryt-success">
                 DXGI Desktop Duplication will be used for {fps} FPS capture
-              </Text>
-            </Flex>
+              </span>
+            </div>
           )}
 
           {(maxBitrate > 0 || estimatedBps !== null) && (
-            <Flex
-              align="center"
-              gap="2"
-              px="3"
-              py="2"
-              style={{
+            <div className="flex items-center gap-2 px-3 py-2" style={{
                 borderRadius: "var(--radius-2)",
                 background: "var(--gray-3)",
-              }}
-            >
-              <Text size="2" weight="medium">
+              }}>
+              <span className="text-sm font-medium">
                 {maxBitrate > 0 ? "Bitrate:" : "Estimated bitrate:"}
-              </Text>
+              </span>
               <Chip tone="neutral"
                 color={bitrateColor(maxBitrate > 0 ? maxBitrate : estimatedBps!)}
               >
                 {formatBitrate(maxBitrate > 0 ? maxBitrate : estimatedBps!)}
               </Chip>
               {(maxBitrate > 0 ? maxBitrate : estimatedBps!) / 1_000_000 > 30 && (
-                <Text size="1" color="red">
+                <span className="text-xs text-gryt-danger">
                   Very high &mdash; ensure your connection can handle this
-                </Text>
+                </span>
               )}
-            </Flex>
+            </div>
           )}
           {maxBitrate === 0 && estimatedBps === null && (
-            <Flex
-              align="center"
-              gap="2"
-              px="3"
-              py="2"
-              style={{
+            <div className="flex items-center gap-2 px-3 py-2" style={{
                 borderRadius: "var(--radius-2)",
                 background: "var(--gray-3)",
-              }}
-            >
-              <Text size="2" color="gray">
+              }}>
+              <span className="text-sm text-gryt-muted">
                 Bandwidth varies by source resolution (native mode)
-              </Text>
-            </Flex>
+              </span>
+            </div>
           )}
 
-          <Flex justify="end" gap="2">
+          <div className="flex justify-end gap-2">
             <Button tone="neutral" size="small" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button size="small" onClick={handleShare} disabled={inElectron && !selected}>
               Share
             </Button>
-          </Flex>
-        </Flex>
+          </div>
+        </div>
       </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>

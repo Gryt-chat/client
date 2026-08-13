@@ -1,4 +1,3 @@
-import { Flex, Text } from "@radix-ui/themes";
 import { useCallback } from "react";
 import { PiCode, PiDownloadSimpleFill, PiFileAudioFill, PiFileFill, PiFileTextFill, PiFileVideoFill, PiFileZipFill, PiImageFill } from "react-icons/pi";
 const FaFilePdf = PiFileTextFill;
@@ -63,18 +62,18 @@ export const FileCard = ({
   }, [fileUrl, originalName]);
 
   return (
-    <Flex className="chat-file-card" align="center" gap="3">
+    <div className="flex items-center gap-3 chat-file-card">
       <div className="chat-file-card-icon">
         {getFileIcon(mime)}
       </div>
-      <Flex direction="column" style={{ flex: 1, minWidth: 0 }}>
-        <Text size="2" weight="medium" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+      <div className="flex flex-col" style={{ flex: 1, minWidth: 0 }}>
+        <span className="text-sm font-medium" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {displayName}
-        </Text>
-        <Text size="1" color="gray">
+        </span>
+        <span className="text-xs text-gryt-muted">
           {mimeToLabel(mime)}{size != null ? ` \u2022 ${formatFileSize(size)}` : ""}
-        </Text>
-      </Flex>
+        </span>
+      </div>
       <button
         type="button"
         onClick={handleDownload}
@@ -83,6 +82,6 @@ export const FileCard = ({
       >
         <PiDownloadSimpleFill size={14} />
       </button>
-    </Flex>
+    </div>
   );
 };

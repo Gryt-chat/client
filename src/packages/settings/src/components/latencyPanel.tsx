@@ -1,5 +1,4 @@
 import { Chip } from "@gryt/ui";
-import { Box, Flex, Text } from "@radix-ui/themes";
 
 import type { LatencyBreakdown } from "@/audio";
 import { useVoiceLatency } from "@/audio";
@@ -19,12 +18,12 @@ function LatencyRow({
   color?: string;
 }) {
   return (
-    <Flex justify="between" align="center" py="1">
-      <Text size="1" color="gray">{label}</Text>
-      <Text size="1" weight="medium" style={{ color: color || "inherit", fontFamily: "var(--code-font-family)" }}>
+    <div className="flex justify-between items-center py-1">
+      <span className="text-xs text-gryt-muted">{label}</span>
+      <span className="text-xs font-medium" style={{ color: color || "inherit", fontFamily: "var(--code-font-family)" }}>
         {ms(value)}
-      </Text>
-    </Flex>
+      </span>
+    </div>
   );
 }
 
@@ -45,46 +44,39 @@ function LatencyBar({ latency }: { latency: LatencyBreakdown }) {
   if (total === 0) return null;
 
   return (
-    <Flex direction="column" gap="1">
-      <Flex
-        style={{
+    <div className="flex flex-col gap-1">
+      <div className="flex" style={{
           height: "20px",
           borderRadius: "var(--radius-2)",
           overflow: "hidden",
           background: "var(--gray-4)",
-        }}
-      >
+        }}>
         {segments.map((seg) => (
-          <Box
-            key={seg.label}
-            style={{
+          <div key={seg.label} style={{
               width: `${(seg.ms / total) * 100}%`,
               minWidth: "2px",
               background: seg.color,
               transition: "width 0.3s ease",
-            }}
-          />
+            }} />
         ))}
-      </Flex>
-      <Flex gap="3" wrap="wrap">
+      </div>
+      <div className="flex gap-3 flex-wrap">
         {segments.map((seg) => (
-          <Flex key={seg.label} align="center" gap="1">
-            <Box
-              style={{
+          <div className="flex items-center gap-1" key={seg.label}>
+            <div style={{
                 width: "8px",
                 height: "8px",
                 borderRadius: "var(--radius-1)",
                 background: seg.color,
                 flexShrink: 0,
-              }}
-            />
-            <Text size="1" color="gray">
+              }} />
+            <span className="text-xs text-gryt-muted">
               {seg.label} {seg.ms.toFixed(1)}ms
-            </Text>
-          </Flex>
+            </span>
+          </div>
         ))}
-      </Flex>
-    </Flex>
+      </div>
+    </div>
   );
 }
 
@@ -110,33 +102,24 @@ export function LatencyPanel() {
   const hasNetworkData = latency.networkRttMs !== null;
 
   return (
-    <Flex direction="column" gap="3">
-      <Flex justify="between" align="center">
-        <Text weight="medium" size="2">Voice Latency</Text>
+    <div className="flex flex-col gap-3">
+      <div className="flex justify-between items-center">
+        <span className="font-medium text-sm">Voice Latency</span>
         <Chip tone="neutral">{modeLabel}</Chip>
-      </Flex>
+      </div>
 
       {/* Estimated total with rating */}
-      <Flex
-        p="3"
-        direction="column"
-        gap="2"
-        style={{
+      <div className="flex p-3 flex-col gap-2" style={{
           background: "var(--gray-3)",
           borderRadius: "var(--radius-4)",
           border: "1px solid var(--gray-5)",
-        }}
-      >
-        <Flex justify="between" align="center">
-          <Text size="2" weight="bold">Estimated one-way</Text>
-          <Flex align="center" gap="2">
-            <Text
-              size="3"
-              weight="bold"
-              style={{ color: ratingColor(latency.estimatedOneWayMs), fontFamily: "var(--code-font-family)" }}
-            >
+        }}>
+        <div className="flex justify-between items-center">
+          <span className="text-sm font-bold">Estimated one-way</span>
+          <div className="flex items-center gap-2">
+            <span className="text-base font-bold" style={{ color: ratingColor(latency.estimatedOneWayMs), fontFamily: "var(--code-font-family)" }}>
               {ms(latency.estimatedOneWayMs)}
-            </Text>
+            </span>
             <Chip tone="neutral"
               color={
                 latency.estimatedOneWayMs === null ? "gray"
@@ -147,15 +130,15 @@ export function LatencyPanel() {
             >
               {ratingLabel(latency.estimatedOneWayMs)}
             </Chip>
-          </Flex>
-        </Flex>
+          </div>
+        </div>
 
         <LatencyBar latency={latency} />
-      </Flex>
+      </div>
 
       {/* Pipeline breakdown */}
-      <Flex direction="column" gap="1">
-        <Text size="1" weight="bold" color="gray">Local Pipeline</Text>
+      <div className="flex flex-col gap-1">
+        <span className="text-xs font-bold text-gryt-muted">Local Pipeline</span>
         <LatencyRow label="AudioContext base" value={latency.contextBaseLatencyMs} />
         <LatencyRow label="AudioContext output" value={latency.contextOutputLatencyMs} />
         <LatencyRow
@@ -164,12 +147,12 @@ export function LatencyPanel() {
           color={latency.rnnoiseBufferMs !== null && latency.rnnoiseBufferMs > 50 ? "var(--orange-11)" : undefined}
         />
         <LatencyRow label="Total pipeline" value={latency.localPipelineMs} />
-      </Flex>
+      </div>
 
       {/* Network breakdown */}
       {hasNetworkData && (
-        <Flex direction="column" gap="1">
-          <Text size="1" weight="bold" color="gray">Network</Text>
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-bold text-gryt-muted">Network</span>
           <LatencyRow label="RTT" value={latency.networkRttMs} />
           <LatencyRow label="One-way" value={latency.oneWayNetworkMs} />
           <LatencyRow
@@ -182,97 +165,93 @@ export function LatencyPanel() {
             value={latency.jitterBufferMs}
             color={latency.jitterBufferMs !== null && latency.jitterBufferMs > 80 ? "var(--orange-11)" : undefined}
           />
-        </Flex>
+        </div>
       )}
 
       {/* Connection info */}
       {hasNetworkData && (latency.sfuEndpoint || latency.remoteAddress) && (
-        <Flex direction="column" gap="1">
-          <Text size="1" weight="bold" color="gray">Connection</Text>
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-bold text-gryt-muted">Connection</span>
           {latency.sfuEndpoint && (
-            <Flex justify="between" align="center" py="1">
-              <Text size="1" color="gray">SFU endpoint</Text>
-              <Text size="1" weight="medium" style={{ fontFamily: "var(--code-font-family)", maxWidth: "60%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "right" }}>
+            <div className="flex justify-between items-center py-1">
+              <span className="text-xs text-gryt-muted">SFU endpoint</span>
+              <span className="text-xs font-medium" style={{ fontFamily: "var(--code-font-family)", maxWidth: "60%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "right" }}>
                 {latency.sfuEndpoint.replace(/^wss?:\/\//, "")}
-              </Text>
-            </Flex>
+              </span>
+            </div>
           )}
           {latency.remoteAddress && (
-            <Flex justify="between" align="center" py="1">
-              <Text size="1" color="gray">ICE remote</Text>
-              <Text size="1" weight="medium" style={{ fontFamily: "var(--code-font-family)" }}>
+            <div className="flex justify-between items-center py-1">
+              <span className="text-xs text-gryt-muted">ICE remote</span>
+              <span className="text-xs font-medium" style={{ fontFamily: "var(--code-font-family)" }}>
                 {latency.remoteAddress}
-              </Text>
-            </Flex>
+              </span>
+            </div>
           )}
           {latency.localAddress && (
-            <Flex justify="between" align="center" py="1">
-              <Text size="1" color="gray">ICE local</Text>
-              <Text size="1" weight="medium" style={{ fontFamily: "var(--code-font-family)" }}>
+            <div className="flex justify-between items-center py-1">
+              <span className="text-xs text-gryt-muted">ICE local</span>
+              <span className="text-xs font-medium" style={{ fontFamily: "var(--code-font-family)" }}>
                 {latency.localAddress}
-              </Text>
-            </Flex>
+              </span>
+            </div>
           )}
           {latency.candidateType && (
-            <Flex justify="between" align="center" py="1">
-              <Text size="1" color="gray">Candidate type</Text>
-              <Text size="1" weight="medium" style={{ fontFamily: "var(--code-font-family)" }}>
+            <div className="flex justify-between items-center py-1">
+              <span className="text-xs text-gryt-muted">Candidate type</span>
+              <span className="text-xs font-medium" style={{ fontFamily: "var(--code-font-family)" }}>
                 {latency.candidateType}
-              </Text>
-            </Flex>
+              </span>
+            </div>
           )}
-        </Flex>
+        </div>
       )}
 
       {/* Transport stats */}
       {hasNetworkData && (
-        <Flex direction="column" gap="1">
-          <Text size="1" weight="bold" color="gray">Transport</Text>
-          <Flex justify="between" align="center" py="1">
-            <Text size="1" color="gray">Codec</Text>
-            <Text size="1" weight="medium" style={{ fontFamily: "var(--code-font-family)" }}>
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-bold text-gryt-muted">Transport</span>
+          <div className="flex justify-between items-center py-1">
+            <span className="text-xs text-gryt-muted">Codec</span>
+            <span className="text-xs font-medium" style={{ fontFamily: "var(--code-font-family)" }}>
               {latency.codec || "—"}
-            </Text>
-          </Flex>
-          <Flex justify="between" align="center" py="1">
-            <Text size="1" color="gray">Bitrate</Text>
-            <Text size="1" weight="medium" style={{ fontFamily: "var(--code-font-family)" }}>
+            </span>
+          </div>
+          <div className="flex justify-between items-center py-1">
+            <span className="text-xs text-gryt-muted">Bitrate</span>
+            <span className="text-xs font-medium" style={{ fontFamily: "var(--code-font-family)" }}>
               {latency.bitrateKbps !== null ? `${latency.bitrateKbps.toFixed(1)} kbps` : "—"}
-            </Text>
-          </Flex>
-          <Flex justify="between" align="center" py="1">
-            <Text size="1" color="gray">Available out</Text>
-            <Text size="1" weight="medium" style={{ fontFamily: "var(--code-font-family)" }}>
+            </span>
+          </div>
+          <div className="flex justify-between items-center py-1">
+            <span className="text-xs text-gryt-muted">Available out</span>
+            <span className="text-xs font-medium" style={{ fontFamily: "var(--code-font-family)" }}>
               {latency.availableOutKbps !== null ? `${Math.round(latency.availableOutKbps)} kbps` : "—"}
-            </Text>
-          </Flex>
-          <Flex justify="between" align="center" py="1">
-            <Text size="1" color="gray">Packets sent / recv</Text>
-            <Text size="1" weight="medium" style={{ fontFamily: "var(--code-font-family)" }}>
+            </span>
+          </div>
+          <div className="flex justify-between items-center py-1">
+            <span className="text-xs text-gryt-muted">Packets sent / recv</span>
+            <span className="text-xs font-medium" style={{ fontFamily: "var(--code-font-family)" }}>
               {latency.packetsSent ?? "—"} / {latency.packetsReceived ?? "—"}
-            </Text>
-          </Flex>
-          <Flex justify="between" align="center" py="1">
-            <Text size="1" color="gray">Packets lost</Text>
-            <Text
-              size="1"
-              weight="medium"
-              style={{
+            </span>
+          </div>
+          <div className="flex justify-between items-center py-1">
+            <span className="text-xs text-gryt-muted">Packets lost</span>
+            <span className="text-xs font-medium" style={{
                 fontFamily: "var(--code-font-family)",
                 color: latency.packetsLost !== null && latency.packetsLost > 0 ? "var(--red-11)" : undefined,
-              }}
-            >
+              }}>
               {latency.packetsLost ?? "—"}
-            </Text>
-          </Flex>
-        </Flex>
+            </span>
+          </div>
+        </div>
       )}
 
       {!hasNetworkData && (
-        <Text size="1" color="gray">
+        <span className="text-xs text-gryt-muted">
           Connect to a voice channel to see network latency metrics.
-        </Text>
+        </span>
       )}
-    </Flex>
+    </div>
   );
 }

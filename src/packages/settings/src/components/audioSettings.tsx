@@ -1,11 +1,5 @@
 import { Alert, Divider, IconButton, Slider, Tooltip } from "@gryt/ui";
-import {
-  Flex,
-  Heading,
-  SegmentedControl,
-  Select,
-  Text,
-} from "@radix-ui/themes";
+import { SegmentedControl, Select } from "@radix-ui/themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PiArrowsClockwiseFill, PiWarningFill } from "react-icons/pi";
 
@@ -310,9 +304,9 @@ export function AudioSettings() {
       });
 
       return (
-        <Flex align="end" gap="0" style={{ height: '40px', padding: '4px' }}>
+        <div className="flex items-end gap-0" style={{ height: '40px', padding: '4px' }}>
           {bars}
-        </Flex>
+        </div>
       );
     };
   }, [visualizerData, micRawVolume, noiseGate]);
@@ -321,7 +315,7 @@ export function AudioSettings() {
 
   return (
     <SettingsContainer>
-      <Heading>Audio</Heading>
+      <h2>Audio</h2>
 
       {/* First, because it decides what the rest of this section even shows:
           push to talk hides the noise gate below. It used to live further down
@@ -351,17 +345,17 @@ export function AudioSettings() {
       )}
 
       {/* ── Devices ── */}
-      <Text weight="bold" color="gray">Devices</Text>
+      <span className="font-bold text-gryt-muted">Devices</span>
 
-      <Flex direction="column" gap="2">
-        <Flex align="center" justify="between">
-          <Text weight="medium">Microphone</Text>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <span className="font-medium">Microphone</span>
           <Tooltip title="Refresh device list">
             <IconButton tone="neutral" size="xsmall" onClick={getDevices}>
               <PiArrowsClockwiseFill size={12} />
             </IconButton>
           </Tooltip>
-        </Flex>
+        </div>
         <Select.Root value={micID || ""} onValueChange={setMicID}>
           <Select.Trigger placeholder="Select microphone device" />
           <Select.Content position="popper" sideOffset={4}>
@@ -372,17 +366,17 @@ export function AudioSettings() {
             ))}
           </Select.Content>
         </Select.Root>
-      </Flex>
+      </div>
 
-      <Flex direction="column" gap="2">
-        <Flex align="center" justify="between">
-          <Text weight="medium">Speaker</Text>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <span className="font-medium">Speaker</span>
           <Tooltip title="Refresh device list">
             <IconButton tone="neutral" size="xsmall" onClick={getOutputDevices}>
               <PiArrowsClockwiseFill size={12} />
             </IconButton>
           </Tooltip>
-        </Flex>
+        </div>
         <Select.Root value={outputDeviceID || "default"} onValueChange={handleOutputDeviceChange}>
           <Select.Trigger placeholder="Select output device" />
           <Select.Content position="popper" sideOffset={4}>
@@ -394,12 +388,12 @@ export function AudioSettings() {
             ))}
           </Select.Content>
         </Select.Root>
-      </Flex>
+      </div>
 
       <Divider />
 
       {/* ── Input ── */}
-      <Text weight="bold" color="gray">Input</Text>
+      <span className="font-bold text-gryt-muted">Input</span>
 
       <SliderSetting
         title={`Microphone volume: ${micVolume}%`}
@@ -410,10 +404,10 @@ export function AudioSettings() {
       />
 
       {audioContext && (
-        <Flex direction="column" gap="2">
-          <Text weight="medium">Audio Levels</Text>
-          <Flex direction="column" gap="1">
-            <Text color="gray">Audio Spectrum (Raw Input)</Text>
+        <div className="flex flex-col gap-2">
+          <span className="font-medium">Audio Levels</span>
+          <div className="flex flex-col gap-1">
+            <span className="text-gryt-muted">Audio Spectrum (Raw Input)</span>
             <div style={{
               border: '1px solid var(--gray-6)',
               borderRadius: '4px',
@@ -426,23 +420,23 @@ export function AudioSettings() {
             }}>
               <AudioVisualizer />
             </div>
-          </Flex>
-          <Flex direction="column" gap="1">
-            <Text color="gray">
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-gryt-muted">
               Status: {audioContext ? "Active" : "Inactive"}
               {loopbackEnabled && " | Playback on"}
-            </Text>
-          </Flex>
-        </Flex>
+            </span>
+          </div>
+        </div>
       )}
 
-      {!isPTT && <Flex direction="column" gap="2">
-        <Text weight="medium">
+      {!isPTT && <div className="flex flex-col gap-2">
+        <span className="font-medium">
           Noise gate: {noiseGate}%
-        </Text>
-        <Text color="gray">
+        </span>
+        <span className="text-gryt-muted">
           Audio below this level will be muted. The indicator shows your raw microphone input level.
-        </Text>
+        </span>
 
         <div style={{ position: 'relative' }}>
           <Slider
@@ -491,25 +485,22 @@ export function AudioSettings() {
           )}
         </div>
 
-        <Flex align="center" justify="between">
-          <Text color="gray">
+        <div className="flex items-center justify-between">
+          <span className="text-gryt-muted">
             Raw Input: {Math.round(micRawVolume)}% | Processed: {Math.round(micLiveVolume)}%
-          </Text>
-          <Text
-            color={micRawVolume < noiseGate ? "red" : isMicLive ? "green" : "gray"}
-            weight="medium"
-          >
+          </span>
+          <span className="font-medium" color={micRawVolume < noiseGate ? "red" : isMicLive ? "green" : "gray"}>
             {micRawVolume < noiseGate ? "GATED" : isMicLive ? "OPEN" : "QUIET"}
-          </Text>
-        </Flex>
+          </span>
+        </div>
 
-        <Flex direction="column" gap="1" mt="2">
-          <Text weight="medium">
+        <div className="flex flex-col gap-1 mt-2">
+          <span className="font-medium">
             Release: {noiseGateRelease} ms
-          </Text>
-          <Text color="gray">
+          </span>
+          <span className="text-gryt-muted">
             How long the gate stays open after your voice drops below the threshold.
-          </Text>
+          </span>
           <Slider
             value={noiseGateRelease}
             onValueChange={(next) => setNoiseGateRelease(Number(next))}
@@ -517,8 +508,8 @@ export function AudioSettings() {
             min={0}
             step={10}
           />
-        </Flex>
-      </Flex>}
+        </div>
+      </div>}
 
       <ToggleSetting
         title="Test microphone"
@@ -530,7 +521,7 @@ export function AudioSettings() {
       <Divider />
 
       {/* ── Voice Processing ── */}
-      <Text weight="bold" color="gray">Voice Processing</Text>
+      <span className="font-bold text-gryt-muted">Voice Processing</span>
 
       <ToggleSetting
         title="Noise reduction"
@@ -589,7 +580,7 @@ export function AudioSettings() {
       <Divider />
 
       {/* ── Output ── */}
-      <Text weight="bold" color="gray">Output</Text>
+      <span className="font-bold text-gryt-muted">Output</span>
 
       <SliderSetting
         title={`Output volume: ${outputVolume}%`}
@@ -602,7 +593,7 @@ export function AudioSettings() {
       <Divider />
 
       {/* ── Screen Share ── */}
-      <Text weight="bold" color="gray">Screen Share</Text>
+      <span className="font-bold text-gryt-muted">Screen Share</span>
 
       {nativeAudioActive && (
         <Alert severity="success">Native audio capture is active — Gryt voices are excluded at the OS level.</Alert>

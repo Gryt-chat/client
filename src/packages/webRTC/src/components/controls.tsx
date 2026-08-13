@@ -1,5 +1,4 @@
 import { IconButton, Tooltip } from "@gryt/ui";
-import { Flex } from "@radix-ui/themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { PiScanSmileyFill } from "react-icons/pi";
@@ -371,7 +370,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
   return (
     <>
       {isBrowserSupported && (
-        <Flex align="center" justify="center" gap="4">
+        <div className="flex items-center justify-center gap-4">
           {/*
             Every control here is icon-only, so the tooltip text is also the
             accessible name — without aria-label a screen reader announced five
@@ -436,7 +435,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
           <IconButton tone="danger" size="xsmall" aria-label="Leave voice channel" onClick={handleDisconnect}>
             <PiPhoneDisconnectFill size={16} />
           </IconButton>
-        </Flex>
+        </div>
       )}
 
       <CameraPreviewModal

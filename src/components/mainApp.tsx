@@ -1,5 +1,4 @@
 import { Button } from "@gryt/ui";
-import { Flex, Heading, Text } from "@radix-ui/themes";
 
 import { useSettings } from "@/settings";
 import { useServerManagement } from "@/socket";
@@ -14,12 +13,7 @@ export function MainApp() {
   const { showTour, dismissTour } = useSettings();
 
   return (
-    <Flex
-      style={{ position: "absolute", inset: 0 }}
-      gap="4"
-      overflow="hidden"
-      p="4"
-    >
+    <div className="flex gap-4 p-4 overflow-hidden" style={{ position: "absolute", inset: 0 }}>
       <Sidebar setShowAddServer={setShowAddServer} />
 
       {showDiscovery ? (
@@ -32,24 +26,19 @@ export function MainApp() {
            state: it explained where a button was instead of offering the thing
            the button does. Somebody who dismissed the tour still ends up here,
            so this has to stand on its own. */
-        <Flex flexGrow="1" align="center" justify="center">
-          <Flex
-            direction="column"
-            align="center"
-            gap="3"
-            style={{ maxWidth: "24rem", textAlign: "center" }}
-          >
-            <Heading size="4">Nothing here yet</Heading>
-            <Text size="2" color="gray">
+        <div className="flex grow items-center justify-center">
+          <div className="flex flex-col items-center gap-3" style={{ maxWidth: "24rem", textAlign: "center" }}>
+            <h2 className="text-lg">Nothing here yet</h2>
+            <span className="text-sm text-gryt-muted">
               Gryt is empty until you join a server. Add a friend&rsquo;s with an
               invite, or start one of your own.
-            </Text>
+            </span>
             <Button onClick={() => setShowAddServer(true)}>Add a server</Button>
-          </Flex>
-        </Flex>
+          </div>
+        </div>
       )}
 
       {showTour && <OnboardingTour onFinish={dismissTour} />}
-    </Flex>
+    </div>
   );
 }

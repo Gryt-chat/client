@@ -1,5 +1,4 @@
 import { Divider } from "@gryt/ui";
-import { Heading } from "@radix-ui/themes";
 
 import { useSettings } from "@/settings";
 
@@ -14,9 +13,9 @@ export function ChatSettings() {
 
   return (
     <SettingsContainer>
-      <Heading as="h2">
+      <h2>
         Chat
-      </Heading>
+      </h2>
 
       <ToggleSetting
         title="Blur profanity"

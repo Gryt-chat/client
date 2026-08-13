@@ -1,5 +1,4 @@
 import { Avatar, Tooltip } from "@gryt/ui";
-import { Flex, Text } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
 import { forwardRef, memo, useCallback, useRef, useState } from "react";
 
@@ -157,20 +156,12 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
             margin: "12px -6px 0",
           }}
         >
-            <Flex
-              ref={rowRef}
-              data-message-id={m.message_id}
-              gap="3"
-              align="start"
-              onMouseEnter={handleMouseEnter}
-              onMouseLeave={handleMouseLeave}
-              style={{
+            <div className="flex gap-3 items-start" ref={rowRef} data-message-id={m.message_id} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave} style={{
                 width: "100%",
                 padding: "2px 6px",
                 cursor: "default",
                 position: "relative",
-              }}
-            >
+              }}>
               <AnimatePresence>
                 {showToolbar && (
                   <motion.div
@@ -189,21 +180,21 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                 )}
               </AnimatePresence>
               <div style={{ flexShrink: 0, width: 51 }} />
-              <Flex direction="column" style={{ flex: 1, minWidth: 0, position: "relative" }}>
-                <Flex align="baseline" gap="2" style={{ marginBottom: 2 }}>
-                  <Text size="2" weight="bold" style={{ color: "var(--gray-9)" }}>
+              <div className="flex flex-col" style={{ flex: 1, minWidth: 0, position: "relative" }}>
+                <div className="flex items-baseline gap-2" style={{ marginBottom: 2 }}>
+                  <span className="text-sm font-bold" style={{ color: "var(--gray-9)" }}>
                     System
-                  </Text>
+                  </span>
                   <MessageTimestamp date={toDate(m.created_at)} />
-                </Flex>
-                <Text size="2" style={{ wordBreak: "break-word" }}>
+                </div>
+                <span className="text-sm" style={{ wordBreak: "break-word" }}>
                   <MarkdownRenderer
                     content={m.text}
                     memberNicknames={memberNicknames}
                     mentionMembersById={memberList}
                     serverHost={serverHost}
                   />
-                </Text>
+                </span>
                 <ReactionBadges
                   reactions={m.reactions}
                   currentUserId={currentUserId}
@@ -212,24 +203,24 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                   onReaction={(src) => onReaction(src, m)}
                   onOpenPicker={handleOpenReactionPicker}
                 />
-              </Flex>
-            </Flex>
+              </div>
+            </div>
           </motion.div>
         </MessageContextMenu>
       ) : meta.isFirstInGroup ? (
         <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange} onReaction={(src) => onReaction(src, m)} serverHost={serverHost}>
-          <Flex gap="3" style={{ width: "100%", marginTop: 12 }} align="start">
+          <div className="flex gap-3 items-start" style={{ width: "100%", marginTop: 12 }}>
             <Avatar
               size="large"
               className="mt-0.5 h-[51px] w-[51px] shrink-0 text-lg"
               fallback={meta.senderName[0]}
               src={meta.avatarUrl}
             />
-            <Flex direction="column" style={{ flex: 1, minWidth: 0 }}>
-              <Flex align="baseline" gap="2" style={{ marginBottom: 2 }}>
-                <Text size="2" weight="bold" style={{ color: meta.isSelf ? "var(--accent-11)" : "var(--gray-12)" }}>
+            <div className="flex flex-col" style={{ flex: 1, minWidth: 0 }}>
+              <div className="flex items-baseline gap-2" style={{ marginBottom: 2 }}>
+                <span className="text-sm font-bold" style={{ color: meta.isSelf ? "var(--accent-11)" : "var(--gray-12)" }}>
                   {meta.senderName}
-                </Text>
+                </span>
                 {meta.isWebhook && (
                   <span style={{
                     display: "inline-flex",
@@ -252,12 +243,12 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                 <MessageTimestamp date={toDate(m.created_at)} />
                 {meta.isFirstEdited && (
                   <Tooltip title={`Edited ${new Date(m.edited_at!).toLocaleString()}`}>
-                    <Text style={{ fontSize: 10, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gray-8)" }}>
+                    <span style={{ fontSize: 10, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gray-8)" }}>
                       (edited)
-                    </Text>
+                    </span>
                   </Tooltip>
                 )}
-              </Flex>
+              </div>
               <MessageContent
                 m={m}
                 rowRef={rowRef}
@@ -287,13 +278,13 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                 onMouseLeave={handleMouseLeave}
                 onOpenReactionPicker={handleOpenReactionPicker}
               />
-            </Flex>
-          </Flex>
+            </div>
+          </div>
         </MessageContextMenu>
       ) : (
         <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange} onReaction={(src) => onReaction(src, m)} serverHost={serverHost}>
-          <Flex style={{ width: "100%", paddingLeft: 63 }}>
-            <Flex direction="column" style={{ flex: 1, minWidth: 0 }}>
+          <div className="flex" style={{ width: "100%", paddingLeft: 63 }}>
+            <div className="flex flex-col" style={{ flex: 1, minWidth: 0 }}>
               <MessageContent
                 m={m}
                 rowRef={rowRef}
@@ -323,8 +314,8 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                 onMouseLeave={handleMouseLeave}
                 onOpenReactionPicker={handleOpenReactionPicker}
               />
-            </Flex>
-          </Flex>
+            </div>
+          </div>
         </MessageContextMenu>
       )}
     </>
@@ -435,18 +426,11 @@ function MessageContent({
         margin: "0 -6px",
       }}
     >
-    <Flex
-      ref={rowRef}
-      data-message-id={m.message_id}
-      direction="column"
-      style={{
+    <div className="flex flex-col" ref={rowRef} data-message-id={m.message_id} style={{
         padding: "2px 6px",
         cursor: "default",
         position: "relative",
-      }}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
-    >
+      }} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
       <AnimatePresence>
         {showToolbar && (
           <motion.div
@@ -482,7 +466,7 @@ function MessageContent({
             whiteSpace: "nowrap",
           }}
         >
-          <Text size="1">{replyPreviewText ?? "Original message"}</Text>
+          <span className="text-xs">{replyPreviewText ?? "Original message"}</span>
         </div>
       )}
       <motion.div
@@ -503,16 +487,16 @@ function MessageContent({
         />
         {m.edited_at && !isFirstInGroup && (
           <Tooltip title={`Edited ${new Date(m.edited_at).toLocaleString()}`}>
-            <Text style={{ fontSize: 10, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gray-8)" }}>
+            <span style={{ fontSize: 10, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gray-8)" }}>
               (edited)
-            </Text>
+            </span>
           </Tooltip>
         )}
         {serverHost && !m.pending && (
           <MessageEmbeds messageId={m.message_id} text={m.text} serverHost={serverHost} />
         )}
         {m.attachments && m.attachments.length > 0 && serverHost && (
-          <Flex gap="2" wrap="wrap" direction="column" style={{ marginTop: "4px" }}>
+          <div className="flex gap-2 flex-wrap flex-col" style={{ marginTop: "4px" }}>
             {m.attachments.map((fileId, attIdx) => {
               const attachMeta: AttachmentMeta | undefined = m.enriched_attachments?.[attIdx];
               const url = getUploadsFileUrl(serverHost, fileId);
@@ -558,12 +542,12 @@ function MessageContent({
                 />
               );
             })}
-          </Flex>
+          </div>
         )}
         {m.failed && (
-          <Text size="1" style={{ color: "var(--red-9)", marginTop: "2px" }}>
+          <span className="text-xs" style={{ color: "var(--red-9)", marginTop: "2px" }}>
             Failed to send
-          </Text>
+          </span>
         )}
       </motion.div>
       <ReactionBadges
@@ -574,7 +558,7 @@ function MessageContent({
         onReaction={(src) => onReaction(src, m)}
         onOpenPicker={onOpenReactionPicker}
       />
-    </Flex>
+    </div>
     </motion.div>
   );
 }
@@ -598,7 +582,7 @@ function ReactionBadges({
   if (!hasReactions) return null;
 
   return (
-    <Flex wrap="wrap" align="center" style={{
+    <div className="flex flex-wrap items-center" style={{
       position: "absolute",
       bottom: 0,
       left: "6px",
@@ -687,6 +671,6 @@ function ReactionBadges({
       >
         +
       </button>
-    </Flex>
+    </div>
   );
 }

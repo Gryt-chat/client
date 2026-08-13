@@ -1,9 +1,5 @@
 import { Button, Chip, IconButton } from "@gryt/ui";
-import {
-  Flex,
-  Text,
-  TextField,
-} from "@radix-ui/themes";
+import { TextField } from "@radix-ui/themes";
 import { type ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { PiUploadSimpleFill, PiX } from "react-icons/pi";
@@ -130,25 +126,20 @@ export function ServerEmojisTab({
   } = useEmojiUpload({ host, socket, existingNames, emojiMaxBytes });
 
   return (
-    <Flex direction="column" gap="4">
-      <Text size="2" color="gray">
+    <div className="flex flex-col gap-4">
+      <span className="text-sm text-gryt-muted">
         Upload custom emojis for this server. Members can use them with{" "}
         <code>:name:</code> syntax.
-      </Text>
+      </span>
 
-      <Flex
-        direction="column"
-        gap="3"
-        p="3"
-        style={{
+      <div className="flex flex-col gap-3 p-3" style={{
           border: "1px solid var(--gray-a5)",
           borderRadius: "var(--radius-2)",
-        }}
-      >
-        <Flex justify="between" align="center">
-          <Text size="2" weight="medium">
+        }}>
+        <div className="flex justify-between items-center">
+          <span className="text-sm font-medium">
             Upload new emojis
-          </Text>
+          </span>
           <Button tone="neutral" size="xsmall"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
@@ -163,7 +154,7 @@ export function ServerEmojisTab({
             style={{ display: "none" }}
             onChange={handleFileSelect}
           />
-        </Flex>
+        </div>
 
         {lastSelectSummary && (() => {
           const skippedTotal = lastSelectSummary.skippedTooLarge +
@@ -176,28 +167,20 @@ export function ServerEmojisTab({
           if (lastSelectSummary.tooLargeExamples.length > 0) parts.push(`Too large: ${lastSelectSummary.tooLargeExamples.join(", ")}`);
           if (lastSelectSummary.unsupportedExamples.length > 0) parts.push(`Unsupported: ${lastSelectSummary.unsupportedExamples.join(", ")}`);
           return (
-            <Text size="1" color="yellow">
+            <span className="text-xs" color="yellow">
               Skipped {skippedTotal} item(s) from your selection{parts.length > 0 ? ` (${parts.join(" · ")})` : ""}.
-            </Text>
+            </span>
           );
         })()}
 
         {pendingEmojis.length > 0 && (
-          <Flex direction="column" gap="2" style={{ maxHeight: 300, overflowY: "auto" }}>
+          <div className="flex flex-col gap-2" style={{ maxHeight: 300, overflowY: "auto" }}>
             {pendingEmojis.map((p) => (
-              <Flex
-                key={p.id}
-                align="center"
-                gap="2"
-                py="1"
-                px="2"
-                style={{
+              <div className="flex items-center gap-2 py-1 px-2" key={p.id} style={{
                   border: "1px solid var(--gray-a4)",
                   borderRadius: "var(--radius-1)",
-                }}
-              >
-                <div
-                  className="emoji-upload-preview-wrap"
+                }}>
+                <div className="emoji-upload-preview-wrap"
                   aria-busy={p.status === "uploading" || p.status === "processing"}
                   data-status={p.status}
                 >
@@ -212,15 +195,14 @@ export function ServerEmojisTab({
                         {p.status === "processing" ? "Converting…" : `${p.progress}%`}
                       </div>
                       <div className="emoji-upload-preview-bar">
-                        <div
-                          className="emoji-upload-preview-bar-inner"
+                        <div className="emoji-upload-preview-bar-inner"
                           style={{ width: `${p.progress}%` }}
                         />
                       </div>
                     </div>
                   )}
                 </div>
-                <Flex direction="column" gap="1" style={{ flex: 1, minWidth: 0 }}>
+                <div className="flex flex-col gap-1" style={{ flex: 1, minWidth: 0 }}>
                   <TextField.Root
                     size="1"
                     value={p.name}
@@ -229,25 +211,25 @@ export function ServerEmojisTab({
                     disabled={uploading || p.status === "uploading"}
                   />
                   {p.nameError && (
-                    <Text size="1" color="red" style={{ lineHeight: 1.2 }}>
+                    <span className="text-xs text-gryt-danger" style={{ lineHeight: 1.2 }}>
                       {p.nameError}
-                    </Text>
+                    </span>
                   )}
                   {!p.nameError && p.nameWarning && (
-                    <Text size="1" color="yellow" style={{ lineHeight: 1.2 }}>
+                    <span className="text-xs" color="yellow" style={{ lineHeight: 1.2 }}>
                       {p.nameWarning}
-                    </Text>
+                    </span>
                   )}
-                </Flex>
+                </div>
                 {p.status === "uploading" && (
-                  <Text size="1" color="gray" style={{ flexShrink: 0, minWidth: 32, textAlign: "right" }}>
+                  <span className="text-xs text-gryt-muted" style={{ flexShrink: 0, minWidth: 32, textAlign: "right" }}>
                     {p.progress}%
-                  </Text>
+                  </span>
                 )}
                 {p.status === "error" && (
-                  <Text size="1" color="red" style={{ flexShrink: 0 }}>
+                  <span className="text-xs text-gryt-danger" style={{ flexShrink: 0 }}>
                     Failed
-                  </Text>
+                  </span>
                 )}
                 <IconButton tone="ghost" size="xsmall"
                   title="Upload this emoji"
@@ -265,13 +247,13 @@ export function ServerEmojisTab({
                 >
                   <PiX size={14} />
                 </IconButton>
-              </Flex>
+              </div>
             ))}
-          </Flex>
+          </div>
         )}
 
         {pendingEmojis.length > 0 && (
-          <Flex justify="end" gap="2">
+          <div className="flex justify-end gap-2">
             <Button tone="neutral" size="xsmall"
               disabled={uploading}
               onClick={clearAllPending}
@@ -284,35 +266,30 @@ export function ServerEmojisTab({
             >
               {uploading ? "Uploading..." : `Upload all (${uploadableCount})`}
             </Button>
-          </Flex>
+          </div>
         )}
-      </Flex>
+      </div>
 
       {queueJobs.length > 0 && (
-        <Flex
-          direction="column"
-          gap="2"
-          p="3"
-          style={{
+        <div className="flex flex-col gap-2 p-3" style={{
             border: "1px solid var(--amber-a5)",
             borderRadius: "var(--radius-2)",
             background: "var(--amber-a2)",
-          }}
-        >
-          <Text size="2" weight="medium">
+          }}>
+          <span className="text-sm font-medium">
             Processing {queueJobs.length} emoji{queueJobs.length !== 1 ? "s" : ""}…
-          </Text>
+          </span>
           {queueJobs.map((j) => (
-            <Flex key={j.job_id} justify="between" align="center" gap="2">
-              <Text size="2" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <div className="flex justify-between items-center gap-2" key={j.job_id}>
+              <span className="text-sm" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 :{j.name}:
-              </Text>
+              </span>
               <Chip tone="neutral" color={j.status === "processing" ? "amber" : "gray"}>
                 {j.status}
               </Chip>
-            </Flex>
+            </div>
           ))}
-        </Flex>
+        </div>
       )}
 
       <EmoteImport
@@ -330,6 +307,6 @@ export function ServerEmojisTab({
         existingNames={existingNames}
         refresh={refresh}
       />
-    </Flex>
+    </div>
   );
 }

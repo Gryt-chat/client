@@ -1,4 +1,3 @@
-import { Box, Flex } from "@radix-ui/themes";
 import { motion } from "motion/react";
 import { RefObject } from "react";
 
@@ -102,11 +101,8 @@ export const ServerSidebar = ({
           pointerEvents: sidebarOpen ? "auto" : "none",
         }}
       >
-        <Box
-          width="240px"
-          style={{ position: "relative", width: "100%", height: "100%" }}
-        >
-          <Flex direction="column" height="100%" width="100%" align="center" gap="4">
+        <div style={{ position: "relative", width: "100%", height: "100%" }}>
+          <div className="flex flex-col h-full w-full items-center gap-4">
             <ServerHeader
               serverName={serverName}
               role={serverRole}
@@ -118,7 +114,7 @@ export const ServerSidebar = ({
               updateAvailable={updateAvailable}
               onLeave={onLeave}
             />
-            <Box style={{ flex: 1, width: "100%", minHeight: 0, display: "flex", flexDirection: "column", overflowY: "auto" }}>
+            <div style={{ flex: 1, width: "100%", minHeight: 0, display: "flex", flexDirection: "column", overflowY: "auto" }}>
               <ChannelList
                 channels={channels}
                 items={sidebarItems}
@@ -145,9 +141,9 @@ export const ServerSidebar = ({
                 adminActions={adminActions}
                 unreadChannelIds={unreadChannelIds}
               />
-            </Box>
-          </Flex>
-        </Box>
+            </div>
+          </div>
+        </div>
       </div>
     </motion.div>
 

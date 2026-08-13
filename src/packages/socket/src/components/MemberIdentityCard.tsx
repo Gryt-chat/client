@@ -1,5 +1,5 @@
 import { Chip } from "@gryt/ui";
-import { DataList, Flex, Text } from "@radix-ui/themes";
+import { DataList } from "@radix-ui/themes";
 
 import type { MemberInfo } from "./MemberSidebar";
 
@@ -73,17 +73,17 @@ export function MemberIdentityCard({ member }: { member: MemberInfo }) {
   );
 
   return (
-    <Flex direction="column" gap="2" style={{ maxWidth: 260 }}>
-      <Flex align="center" gap="2" wrap="wrap">
-        <Text size="2" weight="bold">
+    <div className="flex flex-col gap-2" style={{ maxWidth: 260 }}>
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-sm font-bold">
           {member.nickname}
-        </Text>
+        </span>
         {member.role && member.role !== "member" && (
           <Chip tone="neutral">
             {member.role}
           </Chip>
         )}
-      </Flex>
+      </div>
 
       <DataList.Root size="1" orientation="vertical">
         {tier && (
@@ -133,9 +133,9 @@ export function MemberIdentityCard({ member }: { member: MemberInfo }) {
         )}
       </DataList.Root>
 
-      <Text size="1" color="gray">
+      <span className="text-xs text-gryt-muted">
         Names are not unique. Check the fingerprint if it matters.
-      </Text>
-    </Flex>
+      </span>
+    </div>
   );
 }

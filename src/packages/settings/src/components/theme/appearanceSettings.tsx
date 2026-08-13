@@ -1,5 +1,4 @@
 import { Radio, RadioGroup, Select, Slider } from "@gryt/ui";
-import { Flex, Heading, Text } from "@radix-ui/themes";
 import { useMemo } from "react";
 
 import { accentColors, grayColors, useTheme } from "@/common";
@@ -66,10 +65,10 @@ export function AppearanceSettings() {
 
   return (
     <SettingsContainer>
-      <Heading size="4">Appearance</Heading>
+      <h2 className="text-lg">Appearance</h2>
 
-      <Flex direction="column" gap="2">
-        <Text weight="medium" size="2">Mode</Text>
+      <div className="flex flex-col gap-2">
+        <span className="font-medium text-sm">Mode</span>
         <RadioGroup
           value={appearancePreference}
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -82,10 +81,10 @@ export function AppearanceSettings() {
             </label>
           ))}
         </RadioGroup>
-      </Flex>
+      </div>
 
-      <Flex direction="column" gap="2">
-        <Text weight="medium" size="2">Accent color</Text>
+      <div className="flex flex-col gap-2">
+        <span className="font-medium text-sm">Accent color</span>
         <Select
           value={accentColor}
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -93,17 +92,17 @@ export function AppearanceSettings() {
           options={accentColors.map((c) => ({
             value: c,
             label: (
-              <Flex align="center" gap="2">
+              <div className="flex items-center gap-2">
                 <ColorSwatch scale={c} />
                 {c}
-              </Flex>
+              </div>
             ),
           }))}
         />
-      </Flex>
+      </div>
 
-      <Flex direction="column" gap="2">
-        <Text weight="medium" size="2">Gray color</Text>
+      <div className="flex flex-col gap-2">
+        <span className="font-medium text-sm">Gray color</span>
         <Select
           value={grayColor}
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -111,30 +110,30 @@ export function AppearanceSettings() {
           options={grayColors.map((c) => ({
             value: c,
             label: (
-              <Flex align="center" gap="2">
+              <div className="flex items-center gap-2">
                 <ColorSwatch scale={c} />
                 {c}
-              </Flex>
+              </div>
             ),
           }))}
         />
-      </Flex>
+      </div>
 
-      <Flex direction="column" gap="2">
-        <Text weight="medium" size="2">Rounded corners</Text>
+      <div className="flex flex-col gap-2">
+        <span className="font-medium text-sm">Rounded corners</span>
         <Select
           value={radius}
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           onValueChange={(v) => setRadius(v as any)}
           options={radiusOptions.map((r) => ({ label: r.label, value: r.value }))}
         />
-      </Flex>
+      </div>
 
-      <Flex direction="column" gap="2">
-        <Flex justify="between" align="center">
-          <Text weight="medium" size="2">UI scale</Text>
-          <Text size="1" color="gray">{Math.round(uiScale * 100)}%</Text>
-        </Flex>
+      <div className="flex flex-col gap-2">
+        <div className="flex justify-between items-center">
+          <span className="font-medium text-sm">UI scale</span>
+          <span className="text-xs text-gryt-muted">{Math.round(uiScale * 100)}%</span>
+        </div>
         <Slider
           min={50}
           max={200}
@@ -142,25 +141,21 @@ export function AppearanceSettings() {
           value={Math.round(uiScale * 100)}
           onValueChange={(next) => setUiScale(Number(next) / 100)}
         />
-        <Text size="1" color="gray">
+        <span className="text-xs text-gryt-muted">
           Ctrl+Plus / Ctrl+Minus to zoom, Ctrl+0 to reset
-        </Text>
+        </span>
         {uiScale !== 1 && (
-          <Text
-            size="1"
-            style={{ cursor: "pointer", width: "fit-content", color: "var(--accent-11)" }}
-            onClick={resetZoom}
-          >
+          <span className="text-xs" style={{ cursor: "pointer", width: "fit-content", color: "var(--accent-11)" }} onClick={resetZoom}>
             Reset to 100%
-          </Text>
+          </span>
         )}
-      </Flex>
+      </div>
 
-      <Flex direction="column" gap="2">
-        <Flex justify="between" align="center">
-          <Text weight="medium" size="2">Chat font size</Text>
-          <Text size="1" color="gray">{chatFontSize}px</Text>
-        </Flex>
+      <div className="flex flex-col gap-2">
+        <div className="flex justify-between items-center">
+          <span className="font-medium text-sm">Chat font size</span>
+          <span className="text-xs text-gryt-muted">{chatFontSize}px</span>
+        </div>
         <Slider
           min={10}
           max={24}
@@ -168,16 +163,16 @@ export function AppearanceSettings() {
           value={chatFontSize}
           onValueChange={(next) => setChatFontSize(Number(next))}
         />
-        <Text size="1" color="gray" style={{ fontSize: chatFontSize, lineHeight: 1.5 }}>
+        <span className="text-xs text-gryt-muted" style={{ fontSize: chatFontSize, lineHeight: 1.5 }}>
           Preview text at {chatFontSize}px
-        </Text>
-      </Flex>
+        </span>
+      </div>
 
-      <Flex direction="column" gap="2">
-        <Flex justify="between" align="center">
-          <Text weight="medium" size="2">Standalone emoji size</Text>
-          <Text size="1" color="gray">{emojiSize}px</Text>
-        </Flex>
+      <div className="flex flex-col gap-2">
+        <div className="flex justify-between items-center">
+          <span className="font-medium text-sm">Standalone emoji size</span>
+          <span className="text-xs text-gryt-muted">{emojiSize}px</span>
+        </div>
         <Slider
           min={12}
           max={96}
@@ -185,11 +180,11 @@ export function AppearanceSettings() {
           value={emojiSize}
           onValueChange={(next) => setEmojiSize(Number(next))}
         />
-        <Flex align="center" gap="2" pt="1">
-          <Text size="1" color="gray">Preview:</Text>
+        <div className="flex items-center gap-2 pt-1">
+          <span className="text-xs text-gryt-muted">Preview:</span>
           <span style={{ fontSize: emojiSize, lineHeight: 1.25 }}>😀</span>
-        </Flex>
-      </Flex>
+        </div>
+      </div>
 
       <SettingGroup
         title="Tile layout"

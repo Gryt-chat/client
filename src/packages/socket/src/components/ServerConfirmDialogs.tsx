@@ -1,5 +1,4 @@
 import { AlertDialog, Button, Checkbox, Select, TextField } from "@gryt/ui";
-import { Flex, Text } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 
 import type { Channel, SidebarItem } from "@/settings/src/types/server";
@@ -100,14 +99,14 @@ export const ServerConfirmDialogs = ({
             ? `This will permanently delete the channel "${channelById.get(pendingDeleteItem.channelId ?? pendingDeleteItem.id)?.name || "this channel"}" and all associated data. This action cannot be undone.`
             : "This will remove this item from the sidebar. This action cannot be undone."}
         </AlertDialog.Description>
-        <Flex gap="3" mt="4" justify="end">
+        <div className="flex gap-3 mt-4 justify-end">
           <AlertDialog.Close render={<span />}>
             <Button size="small">Cancel</Button>
           </AlertDialog.Close>
           <AlertDialog.Close render={<span />}>
             <Button size="small" onClick={confirmDelete}>Delete</Button>
           </AlertDialog.Close>
-        </Flex>
+        </div>
       </AlertDialog.Popup>
       </AlertDialog.Portal>
     </AlertDialog.Root>
@@ -120,14 +119,14 @@ export const ServerConfirmDialogs = ({
         <AlertDialog.Description>
           This will disconnect {pendingDisconnectUser?.nickname} from the voice channel.
         </AlertDialog.Description>
-        <Flex gap="3" mt="4" justify="end">
+        <div className="flex gap-3 mt-4 justify-end">
           <AlertDialog.Close render={<span />}>
             <Button size="small">Cancel</Button>
           </AlertDialog.Close>
           <AlertDialog.Close render={<span />}>
             <Button size="small" onClick={() => { if (pendingDisconnectUser) { onDisconnectUser(pendingDisconnectUser.id); setPendingDisconnectUser(null); } }}>Disconnect</Button>
           </AlertDialog.Close>
-        </Flex>
+        </div>
       </AlertDialog.Popup>
       </AlertDialog.Portal>
     </AlertDialog.Root>
@@ -140,23 +139,23 @@ export const ServerConfirmDialogs = ({
         <AlertDialog.Description>
           They will be removed from the server and can rejoin later.
         </AlertDialog.Description>
-        <Flex direction="column" gap="1" mt="3">
-          <Text size="1">Reason (optional — shown to them)</Text>
+        <div className="flex flex-col gap-1 mt-3">
+          <span className="text-xs">Reason (optional — shown to them)</span>
           <TextField
             value={kickReason}
             onChange={(e) => setKickReason(e.target.value)}
             placeholder="Spamming the general channel"
             maxLength={200}
           />
-        </Flex>
-        <Flex gap="3" mt="4" justify="end">
+        </div>
+        <div className="flex gap-3 mt-4 justify-end">
           <AlertDialog.Close render={<span />}>
             <Button size="small">Cancel</Button>
           </AlertDialog.Close>
           <AlertDialog.Close render={<span />}>
             <Button size="small" onClick={() => { if (pendingKickUser) { onKickUser(pendingKickUser.id, kickReason); setPendingKickUser(null); } }}>Kick</Button>
           </AlertDialog.Close>
-        </Flex>
+        </div>
       </AlertDialog.Popup>
       </AlertDialog.Portal>
     </AlertDialog.Root>
@@ -169,30 +168,30 @@ export const ServerConfirmDialogs = ({
         <AlertDialog.Description>
           They will be removed and cannot rejoin until the ban lifts.
         </AlertDialog.Description>
-        <Flex direction="column" gap="1" mt="3">
-          <Text size="1">Reason (optional — shown to them)</Text>
+        <div className="flex flex-col gap-1 mt-3">
+          <span className="text-xs">Reason (optional — shown to them)</span>
           <TextField
             value={banReason}
             onChange={(e) => setBanReason(e.target.value)}
             placeholder="Repeated harassment after a warning"
             maxLength={200}
           />
-        </Flex>
-        <Flex direction="column" gap="1" mt="3">
-          <Text size="1">Duration</Text>
+        </div>
+        <div className="flex flex-col gap-1 mt-3">
+          <span className="text-xs">Duration</span>
           <Select
             value={banDuration}
             onValueChange={(v) => setBanDuration(String(v))}
             options={BAN_DURATIONS.map((d) => ({ label: d.label, value: d.value }))}
           />
-        </Flex>
-        <Text as="label" size="2" mt="3" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        </div>
+        <label className="text-sm mt-3" style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <Checkbox
             checked={banDeleteContent}
             onCheckedChange={(v) => setBanDeleteContent(v === true)}
           />
           Delete their messages and reactions
-        </Text>
+        </label>
 
         {/*
           Only when there is a live invite to close. A ban on somebody who
@@ -203,29 +202,29 @@ export const ServerConfirmDialogs = ({
         */}
         {banInvite?.code && banInvite.active && (
           <>
-            <Text as="label" size="2" mt="3" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <label className="text-sm mt-3" style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <Checkbox
                 checked={banRevokeInvite}
                 onCheckedChange={(v) => setBanRevokeInvite(v === true)}
               />
               Revoke the invite they joined with
-            </Text>
-            <Text size="1" mt="1" as="div">
+            </label>
+            <div className="text-xs mt-1">
               They joined with <code className="font-mono text-xs text-gryt-text">{banInvite.code}</code>, still
               active and used {banInvite.usesConsumed}{" "}
               {banInvite.usesConsumed === 1 ? "time" : "times"}. Leaving it open
               lets them return on a new identity — and takes anyone else with
               the link too, so weigh it.
-            </Text>
+            </div>
           </>
         )}
         {!banDeleteContent && (
-          <Text size="1" mt="1" as="div">
+          <div className="text-xs mt-1">
             Their messages stay. Unbanning restores access but never restores
             deleted messages, so this is the only chance to keep them.
-          </Text>
+          </div>
         )}
-        <Flex gap="3" mt="4" justify="end">
+        <div className="flex gap-3 mt-4 justify-end">
           <AlertDialog.Close render={<span />}>
             <Button size="small">Cancel</Button>
           </AlertDialog.Close>
@@ -241,7 +240,7 @@ export const ServerConfirmDialogs = ({
               Ban
             </Button>
           </AlertDialog.Close>
-        </Flex>
+        </div>
       </AlertDialog.Popup>
       </AlertDialog.Portal>
     </AlertDialog.Root>

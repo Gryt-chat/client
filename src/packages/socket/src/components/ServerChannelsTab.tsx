@@ -1,5 +1,4 @@
 import { AlertDialog, Button, Select, Surface, Switch, TextField } from "@gryt/ui";
-import { Flex, Text } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { PiPlus, PiTrashFill } from "react-icons/pi";
@@ -154,58 +153,58 @@ export function ServerChannelsTab({
   };
 
   return (
-    <Flex direction="column" gap="4">
+    <div className="flex flex-col gap-4">
       <Surface>
-        <Flex direction="column" gap="3">
-          <Text size="2" weight="medium">
+        <div className="flex flex-col gap-3">
+          <span className="text-sm font-medium">
             {editingId ? "Edit channel" : "Create channel"}
-          </Text>
-          <Flex gap="3" wrap="wrap">
-            <Flex direction="column" gap="1" style={{ flex: 1, minWidth: 240 }}>
-              <Text size="2" weight="medium">
+          </span>
+          <div className="flex gap-3 flex-wrap">
+            <div className="flex flex-col gap-1" style={{ flex: 1, minWidth: 240 }}>
+              <span className="text-sm font-medium">
                 Name
-              </Text>
+              </span>
               <TextField value={name} onChange={(e) => setName(e.target.value)} placeholder="Announcements" />
-            </Flex>
-            <Flex direction="column" gap="1" style={{ minWidth: 160 }}>
-              <Text size="2" weight="medium">
+            </div>
+            <div className="flex flex-col gap-1" style={{ minWidth: 160 }}>
+              <span className="text-sm font-medium">
                 Type
-              </Text>
+              </span>
               <select value={type} onChange={(e) => setType(e.target.value === "voice" ? "voice" : "text")}>
                 <option value="text">text</option>
                 <option value="voice">voice</option>
               </select>
-            </Flex>
-            <Flex direction="column" gap="1" style={{ flex: 1, minWidth: 240 }}>
-              <Text size="2" weight="medium">
+            </div>
+            <div className="flex flex-col gap-1" style={{ flex: 1, minWidth: 240 }}>
+              <span className="text-sm font-medium">
                 Description
-              </Text>
+              </span>
               <TextField value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional" />
-            </Flex>
-          </Flex>
+            </div>
+          </div>
           {type === "voice" && (
-            <Flex direction="column" gap="3">
-              <Flex align="center" gap="2">
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2">
                 <Switch checked={eSportsMode} onCheckedChange={(v) => {
                   setESportsMode(v);
                   if (v) { setRequirePushToTalk(true); setDisableRnnoise(true); }
                 }} />
-                <Flex direction="column">
-                  <Text size="2" weight="medium">eSports Mode</Text>
-                  <Text size="1">Lowest latency: PTT + no RNNoise + 128kbps studio cap + 10ms Opus frames</Text>
-                </Flex>
-              </Flex>
-              <Flex gap="4" wrap="wrap" align="center">
-                <Flex align="center" gap="2">
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium">eSports Mode</span>
+                  <span className="text-xs">Lowest latency: PTT + no RNNoise + 128kbps studio cap + 10ms Opus frames</span>
+                </div>
+              </div>
+              <div className="flex gap-4 flex-wrap items-center">
+                <div className="flex items-center gap-2">
                   <Switch checked={requirePushToTalk} onCheckedChange={setRequirePushToTalk} disabled={eSportsMode} />
-                  <Text size="2" color={eSportsMode ? "gray" : undefined}>Require Push to Talk</Text>
-                </Flex>
-                <Flex align="center" gap="2">
+                  <span className="text-sm" color={eSportsMode ? "gray" : undefined}>Require Push to Talk</span>
+                </div>
+                <div className="flex items-center gap-2">
                   <Switch checked={disableRnnoise} onCheckedChange={setDisableRnnoise} disabled={eSportsMode} />
-                  <Text size="2" color={eSportsMode ? "gray" : undefined}>Disable RNNoise</Text>
-                </Flex>
-                <Flex direction="column" gap="1" style={{ minWidth: 220 }}>
-                  <Text size="2" weight="medium">Max Bitrate</Text>
+                  <span className="text-sm" color={eSportsMode ? "gray" : undefined}>Disable RNNoise</span>
+                </div>
+                <div className="flex flex-col gap-1" style={{ minWidth: 220 }}>
+                  <span className="text-sm font-medium">Max Bitrate</span>
                   <Select
                     value={maxBitrate}
                     onValueChange={(v) => setMaxBitrate(String(v))}
@@ -214,11 +213,11 @@ export function ServerChannelsTab({
                       value: p.value,
                     }))}
                   />
-                </Flex>
-              </Flex>
-            </Flex>
+                </div>
+              </div>
+            </div>
           )}
-          <Flex justify="end" gap="2">
+          <div className="flex justify-end gap-2">
             <Button size="small" onClick={resetForm} disabled={submitting}>
               Reset
             </Button>
@@ -226,45 +225,45 @@ export function ServerChannelsTab({
               <PiPlus size={16} />
               {editingId ? "Save" : "Add"}
             </Button>
-          </Flex>
-        </Flex>
+          </div>
+        </div>
       </Surface>
 
-      <Flex direction="column" gap="2">
-        <Flex align="center" justify="between" wrap="wrap" gap="2">
-          <Text size="2" weight="medium">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <span className="text-sm font-medium">
             Existing channels
-          </Text>
+          </span>
           <Button size="small" onClick={refresh} disabled={submitting}>
             Refresh
           </Button>
-        </Flex>
+        </div>
 
         {channels.length === 0 ? (
-          <Text size="2">
+          <span className="text-sm">
             No channels found.
-          </Text>
+          </span>
         ) : (
           channels
             .slice()
             .sort((a, b) => ((a.position ?? 0) - (b.position ?? 0)) || a.name.localeCompare(b.name))
             .map((ch) => (
               <Surface key={ch.id}>
-                <Flex align="center" justify="between" gap="2" wrap="wrap">
-                  <Flex direction="column" gap="1">
-                    <Text size="2" weight="bold">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-sm font-bold">
                       {ch.name}
-                    </Text>
-                    <Text size="1">
+                    </span>
+                    <span className="text-xs">
                       #{ch.id} · {ch.type}
                       {ch.description ? ` · ${ch.description}` : ""}
                       {ch.eSportsMode ? " · eSports" : ""}
                       {ch.requirePushToTalk ? " · PTT" : ""}
                       {ch.disableRnnoise ? " · No RNNoise" : ""}
                       {ch.maxBitrate ? ` · ${formatBitrate(ch.maxBitrate)}` : ""}
-                    </Text>
-                  </Flex>
-                  <Flex gap="2">
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
                     <Button size="small" onClick={() => startEdit(ch)} disabled={submitting}>
                       Edit
                     </Button>
@@ -272,12 +271,12 @@ export function ServerChannelsTab({
                       <PiTrashFill size={16} />
                       Delete
                     </Button>
-                  </Flex>
-                </Flex>
+                  </div>
+                </div>
               </Surface>
             ))
         )}
-      </Flex>
+      </div>
 
       <AlertDialog.Root open={!!pendingDeleteId} onOpenChange={(open) => { if (!open) setPendingDeleteId(null); }}>
         <AlertDialog.Portal>
@@ -287,7 +286,7 @@ export function ServerChannelsTab({
           <AlertDialog.Description>
             This will permanently delete &ldquo;{pendingDeleteChannel?.name || "this channel"}&rdquo; and all associated data. This action cannot be undone.
           </AlertDialog.Description>
-          <Flex gap="3" mt="4" justify="end">
+          <div className="flex gap-3 mt-4 justify-end">
             <AlertDialog.Close render={<span />}>
               <Button size="small">Cancel</Button>
             </AlertDialog.Close>
@@ -296,11 +295,11 @@ export function ServerChannelsTab({
                 Delete
               </Button>
             </AlertDialog.Close>
-          </Flex>
+          </div>
         </AlertDialog.Popup>
         </AlertDialog.Portal>
       </AlertDialog.Root>
-    </Flex>
+    </div>
   );
 }
 

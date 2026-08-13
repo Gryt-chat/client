@@ -1,5 +1,4 @@
 import { AlertDialog, Button, Chip, Divider, Surface, Switch } from "@gryt/ui";
-import { Flex, Heading, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useState } from "react";
 import { FaGithub } from "react-icons/fa";
 import { PiArrowsClockwiseFill, PiArrowSquareOutFill, PiChatCircleDotsFill, PiCheckCircleFill, PiClockClockwiseFill, PiDesktopFill, PiDownloadSimpleFill, PiXCircleFill } from "react-icons/pi";
@@ -98,26 +97,26 @@ function UpdateControls() {
     <>
       <Divider />
 
-      <Heading>Updates</Heading>
+      <h2>Updates</h2>
 
-      <Flex direction="column" gap="4">
-        <Flex align="center" gap="3">
-          <Text weight="medium">Running</Text>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-3">
+          <span className="font-medium">Running</span>
           <Chip tone="neutral">v{appVersion}</Chip>
           {betaChannel && <Chip tone="warning" label="Beta" />}
-        </Flex>
+        </div>
 
-        <Flex align="center" justify="between">
-          <Flex direction="column" gap="1">
-            <Text weight="medium">Beta releases</Text>
-            <Text color="gray">
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-1">
+            <span className="font-medium">Beta releases</span>
+            <span className="text-gryt-muted">
               {betaChannel
                 ? "You get new versions early. They break more often."
                 : "Get new versions early, before they have been tested as much."}
-            </Text>
-          </Flex>
+            </span>
+          </div>
           <Switch checked={betaChannel} onCheckedChange={(enabled) => setPendingSwitch(enabled)} />
-        </Flex>
+        </div>
 
         {/* Something is always said here. The panel used to lead with a version
             badge and show nothing else until a check finished, so a version
@@ -125,24 +124,24 @@ function UpdateControls() {
             failure. It cannot move without a restart: updates install while
             Gryt starts, never from the running app. */}
         {!statusText && (
-          <Text color="gray">
+          <span className="text-gryt-muted">
             Updates install while Gryt starts, so the version above only changes
             after a restart.
-          </Text>
+          </span>
         )}
 
         {statusText && (
-          <Flex direction="column" gap="1">
-            <Flex align="center" gap="2">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
               {isReady && <PiClockClockwiseFill size={16} color="var(--green-9)" />}
               {status?.status === "not-available" && <PiCheckCircleFill size={16} color="var(--green-9)" />}
               {status?.status === "error" && <PiXCircleFill size={16} color="var(--red-9)" />}
-              <Text color={statusColor}>{statusText}</Text>
-            </Flex>
-          </Flex>
+              <span color={statusColor}>{statusText}</span>
+            </div>
+          </div>
         )}
 
-        <Flex gap="2" wrap="wrap">
+        <div className="flex gap-2 flex-wrap">
           {!isAvailable && !isReady && !isPending && (
             <Button tone="neutral" size="small"
               onClick={handleCheckForUpdates}
@@ -165,8 +164,8 @@ function UpdateControls() {
               Restart and update to v{status?.version}
             </Button>
           )}
-        </Flex>
-      </Flex>
+        </div>
+      </div>
 
       <AlertDialog.Root open={pendingSwitch !== null} onOpenChange={(open) => { if (!open) setPendingSwitch(null); }}>
         <AlertDialog.Portal>
@@ -180,7 +179,7 @@ function UpdateControls() {
               ? "Gryt will close and reopen to install the latest beta. Beta builds can have bugs and unfinished features."
               : "Gryt will close and reopen to install the latest stable version. That is older than the beta you are on now, so anything added since will be gone until it reaches stable."}
           </AlertDialog.Description>
-          <Flex gap="3" mt="4" justify="end">
+          <div className="flex gap-3 mt-4 justify-end">
             <AlertDialog.Close render={<span />}>
               <Button tone="neutral" size="small">Cancel</Button>
             </AlertDialog.Close>
@@ -191,7 +190,7 @@ function UpdateControls() {
                 {switchingToBeta ? "Turn on beta" : "Turn off beta"}
               </Button>
             </AlertDialog.Close>
-          </Flex>
+          </div>
         </AlertDialog.Popup>
         </AlertDialog.Portal>
       </AlertDialog.Root>
@@ -205,18 +204,18 @@ function DesktopAppCard() {
       <Divider />
 
       <Surface>
-        <Flex direction="column" gap="3">
-          <Flex align="center" gap="2">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
             <PiDesktopFill size={18} />
-            <Text weight="medium">Get the desktop app</Text>
-          </Flex>
-          <Text color="gray">
+            <span className="font-medium">Get the desktop app</span>
+          </div>
+          <span className="text-gryt-muted">
             The desktop app includes auto-updates, system tray integration,
             push-to-talk hotkeys, and native notifications.
-          </Text>
-          <Text color="gray">
+          </span>
+          <span className="text-gryt-muted">
             Available for Windows, macOS, and Linux.
-          </Text>
+          </span>
           <Button size="small"
             render={
               <a href={RELEASES_URL} target="_blank" rel="noopener noreferrer" />
@@ -226,7 +225,7 @@ function DesktopAppCard() {
             Download Gryt Desktop
             <PiArrowSquareOutFill size={14} />
           </Button>
-        </Flex>
+        </div>
       </Surface>
     </>
   );
@@ -235,18 +234,18 @@ function DesktopAppCard() {
 export function AboutSettings() {
   return (
     <SettingsContainer>
-      <Heading>About</Heading>
+      <h2>About</h2>
 
-      <Flex direction="column" gap="1">
+      <div className="flex flex-col gap-1">
         <Wordmark size="5" />
-        <Text color="gray" style={{ fontFamily: "var(--code-font-family)" }}>
+        <span className="text-gryt-muted" style={{ fontFamily: "var(--code-font-family)" }}>
           v{__APP_VERSION__}
-        </Text>
-      </Flex>
+        </span>
+      </div>
 
-      <Flex direction="column" gap="1">
-        <Text color="gray">&copy; 2022–2026 Sivert Gullberg Hansen</Text>
-        <Text color="gray">
+      <div className="flex flex-col gap-1">
+        <span className="text-gryt-muted">&copy; 2022–2026 Sivert Gullberg Hansen</span>
+        <span className="text-gryt-muted">
           Licensed under{" "}
           <a
             className="text-gryt-accent underline-offset-2 hover:underline"
@@ -256,10 +255,10 @@ export function AboutSettings() {
           >
             AGPL-3.0-or-later
           </a>
-        </Text>
-      </Flex>
+        </span>
+      </div>
 
-      <Flex gap="3" wrap="wrap">
+      <div className="flex gap-3 flex-wrap">
         <Button size="small"
           tone="neutral"
           render={
@@ -278,7 +277,7 @@ export function AboutSettings() {
           <PiChatCircleDotsFill size={16} />
           Give feedback
         </Button>
-      </Flex>
+      </div>
 
     </SettingsContainer>
   );

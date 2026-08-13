@@ -1,5 +1,4 @@
 import { Button, Divider } from "@gryt/ui";
-import { Flex, Text } from "@radix-ui/themes";
 import { nameToEmoji } from "gemoji";
 import { useCallback, useMemo } from "react";
 
@@ -103,7 +102,7 @@ export function SmileySettings() {
   );
 
   return (
-    <Flex direction="column" gap="3">
+    <div className="flex flex-col gap-3">
       <ToggleSetting
         title="Smiley conversion"
         description="Automatically convert text smileys like :) and :D into emoji"
@@ -112,22 +111,22 @@ export function SmileySettings() {
       />
 
       {smileyConversion && (
-        <Flex direction="column" gap="3" pl="1">
-          <Flex gap="2">
+        <div className="flex flex-col gap-3 pl-1">
+          <div className="flex gap-2">
             <Button tone="neutral" size="xsmall" onClick={enableAll}>
               Enable All
             </Button>
             <Button tone="neutral" size="xsmall" onClick={disableAll}>
               Disable All
             </Button>
-          </Flex>
+          </div>
 
           {CATEGORY_ORDER.map((cat) => (
-            <Flex key={cat.label} direction="column" gap="1">
-              <Text color="gray" weight="medium">
+            <div className="flex flex-col gap-1" key={cat.label}>
+              <span className="text-gryt-muted font-medium">
                 {cat.label}
-              </Text>
-              <Flex gap="2" wrap="wrap">
+              </span>
+              <div className="flex gap-2 flex-wrap">
                 {cat.shortcodes.map((sc) => {
                   const emoji = nameToEmoji[sc];
                   if (!emoji) return null;
@@ -160,17 +159,17 @@ export function SmileySettings() {
                     </button>
                   );
                 })}
-              </Flex>
-            </Flex>
+              </div>
+            </div>
           ))}
 
           <Divider />
-          <Text color="gray">
+          <span className="text-gryt-muted">
             Click a chip to toggle that conversion on or off. Disabled
             smileys stay as typed text.
-          </Text>
-        </Flex>
+          </span>
+        </div>
       )}
-    </Flex>
+    </div>
   );
 }

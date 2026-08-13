@@ -1,10 +1,5 @@
 import { Alert, Button, Chip, TextField } from "@gryt/ui";
-import {
-  Code,
-  Flex,
-  Heading,
-  Text,
-} from "@radix-ui/themes";
+import { Code } from "@radix-ui/themes";
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { PiEyeFill, PiInfoFill, PiSignOutFill } from "react-icons/pi";
@@ -39,7 +34,7 @@ function Revealable({ value }: { value: string }) {
   const [shown, setShown] = useState(false);
 
   return (
-    <Flex align="center" gap="2">
+    <div className="flex items-center gap-2">
       <Code
         size="1"
         variant="ghost"
@@ -56,7 +51,7 @@ function Revealable({ value }: { value: string }) {
         {value}
       </Code>
       {!shown && <PiEyeFill size={13} style={{ opacity: 0.5, flexShrink: 0 }} />}
-    </Flex>
+    </div>
   );
 }
 
@@ -150,18 +145,18 @@ export function AccountSettings() {
 
   return (
     <SettingsContainer>
-      <Heading as="h2" size="4">
+      <h2 className="text-lg">
         Account
-      </Heading>
+      </h2>
 
       {isSignedIn ? (
-        <Flex direction="column" gap="3">
-          <Flex align="center" gap="2">
-            <Text weight="medium" size="2">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-sm">
               Signed in
-            </Text>
+            </span>
             <Chip tone="success" label="Gryt account" />
-          </Flex>
+          </div>
 
           <dl className="m-0 flex flex-col gap-3">
             {profile?.email && (
@@ -190,10 +185,10 @@ export function AccountSettings() {
             )}
           </dl>
 
-          <Text size="1">
+          <span className="text-xs">
             Servers you joined before signing in came with you — your roles and
             anything you own moved to this account the next time you connected.
-          </Text>
+          </span>
 
           <Button size="small"
             style={{ alignSelf: "flex-start" }}
@@ -202,22 +197,22 @@ export function AccountSettings() {
             <PiSignOutFill size={16} />
             Sign out
           </Button>
-        </Flex>
+        </div>
       ) : (
-        <Flex direction="column" gap="3">
-          <Flex direction="column" gap="1">
-            <Flex align="center" gap="2">
-              <Text weight="medium" size="2">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-sm">
                 Not signed in
-              </Text>
+              </span>
               <Chip tone="warning" label="No account" />
-            </Flex>
-            <Text size="1">
+            </div>
+            <span className="text-xs">
               Gryt works without an account. What one adds is a way back in: an
               identity that survives losing this device, and the same you on
               every server rather than a separate one each time.
-            </Text>
-          </Flex>
+            </span>
+          </div>
 
           <Alert severity="info">
             <span className="inline-flex items-start gap-2">
@@ -239,7 +234,7 @@ export function AccountSettings() {
                 ? "Sign in with your own auth"
                 : "Sign in with Gryt"}
           </Button>
-        </Flex>
+        </div>
       )}
 
       {/*
@@ -248,14 +243,14 @@ export function AccountSettings() {
         message about certificates. Cyan matches every other advanced setting.
       */}
       {showAdvanced && (
-      <Flex direction="column" gap="2">
-        <Text weight="medium" size="2" color="cyan">
+      <div className="flex flex-col gap-2">
+        <span className="font-medium text-sm" color="cyan">
           Auth server
-        </Text>
-        <Text size="1">
+        </span>
+        <span className="text-xs">
           Where accounts come from. Leave this alone unless you run your own
           Keycloak — the address of its realm, not the server root.
-        </Text>
+        </span>
         <TextField
           placeholder={DEFAULT_ISSUER}
           value={issuerInput}
@@ -265,10 +260,10 @@ export function AccountSettings() {
           }}
         />
 
-        <Text size="1">
+        <span className="text-xs">
           And the identity service that signs certificates for it. It is a
           separate service, so it cannot be worked out from the address above.
-        </Text>
+        </span>
         <TextField
           placeholder={DEFAULT_IDENTITY}
           value={identityInput}
@@ -278,7 +273,7 @@ export function AccountSettings() {
           }}
         />
 
-        <Flex gap="2" wrap="wrap">
+        <div className="flex gap-2 flex-wrap">
           <Button size="small" onClick={handleSaveIssuer}>
             {savedIssuer ? "Saved" : "Use these"}
           </Button>
@@ -287,15 +282,15 @@ export function AccountSettings() {
               Back to Gryt
             </Button>
           )}
-        </Flex>
+        </div>
 
         {isCustom && (
-          <Text size="1">
+          <span className="text-xs">
             A server also has to trust certificates from your identity service,
             or it will refuse the join.
-          </Text>
+          </span>
         )}
-      </Flex>
+      </div>
       )}
     </SettingsContainer>
   );

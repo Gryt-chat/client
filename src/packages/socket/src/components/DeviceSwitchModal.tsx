@@ -1,5 +1,4 @@
 import { Button, Dialog, IconButton } from "@gryt/ui";
-import { Flex, Text } from "@radix-ui/themes";
 import { useEffect,useState } from "react";
 import { PiWarningFill, PiX } from "react-icons/pi";
 
@@ -38,44 +37,39 @@ export function DeviceSwitchModal() {
       <Dialog.Portal>
         <Dialog.Backdrop />
         <Dialog.Popup style={{ maxWidth: 450 }}>
-        <Flex direction="column" gap="4" align="center" p="4">
-          <Flex align="center" gap="3" mb="2">
+        <div className="flex flex-col gap-4 items-center p-4">
+          <div className="flex items-center gap-3 mb-2">
             <PiWarningFill 
               size={24} 
               color="orange" 
             />
-            <Text size="4" weight="bold" color="orange">
+            <span className="text-lg font-bold text-gryt-warning">
               Device Switch Detected
-            </Text>
-          </Flex>
+            </span>
+          </div>
           
-          <Text size="3" align="center" color="gray">
+          <span className="text-base text-center text-gryt-muted">
             You've been disconnected because you joined from another device.
-          </Text>
+          </span>
           
           {deviceSwitchData?.newDevice && (
-            <Flex 
-              direction="column" 
-              gap="2" 
-              p="3" 
-              style={{ 
+            <div className="flex flex-col gap-2 p-3" style={{ 
                 backgroundColor: "var(--gray-3)", 
                 borderRadius: "var(--radius-4)",
                 width: "100%"
-              }}
-            >
-              <Text size="2" weight="medium" color="gray">
+              }}>
+              <span className="text-sm font-medium text-gryt-muted">
                 New connection from:
-              </Text>
-              <Text size="3" weight="medium">
+              </span>
+              <span className="text-base font-medium">
                 {deviceSwitchData.newDevice.nickname}
-              </Text>
-            </Flex>
+              </span>
+            </div>
           )}
           
-          <Text size="2" align="center" color="gray" mt="2">
+          <span className="text-sm text-center text-gryt-muted mt-2">
             Only one device can be connected to voice at a time. You can rejoin from any device.
-          </Text>
+          </span>
           
           <Button size="small" 
             onClick={handleClose}
@@ -83,7 +77,7 @@ export function DeviceSwitchModal() {
           >
             Got it
           </Button>
-        </Flex>
+        </div>
         
         <Dialog.Close>
           <IconButton tone="ghost" size="xsmall"

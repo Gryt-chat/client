@@ -1,5 +1,4 @@
 import { IconButton } from "@gryt/ui";
-import { Box, Flex, Text } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useState } from "react";
 import { PiList, PiPhoneCallFill, PiUsersFill } from "react-icons/pi";
@@ -105,20 +104,14 @@ export const MobileServerView = (props: MobileServerViewProps) => {
   );
 
   return (
-    <Flex direction="column" style={{ flex: 1, overflow: "hidden" }}>
+    <div className="flex flex-col" style={{ flex: 1, overflow: "hidden" }}>
       {/* Toolbar */}
-      <Flex
-        align="center"
-        justify="between"
-        px="3"
-        py="2"
-        style={{
+      <div className="flex items-center justify-between px-3 py-2" style={{
           flexShrink: 0,
           borderBottom: "1px solid var(--gray-a5)",
           background: "var(--color-background)",
           gap: 8,
-        }}
-      >
+        }}>
         <IconButton tone="ghost" size="xsmall"
           onClick={() => setChannelsOpen(true)}
           aria-label="Open channels"
@@ -126,19 +119,15 @@ export const MobileServerView = (props: MobileServerViewProps) => {
           <PiList size={22} />
         </IconButton>
 
-        <Text
-          size="2"
-          weight="medium"
-          style={{
+        <span className="text-sm font-medium" style={{
             flex: 1,
             textAlign: "center",
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
-          }}
-        >
+          }}>
           {props.channelName ?? props.serverName ?? ""}
-        </Text>
+        </span>
 
         <IconButton tone="ghost" size="xsmall"
           onClick={() => setMembersOpen(true)}
@@ -146,7 +135,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
         >
           <PiUsersFill size={22} />
         </IconButton>
-      </Flex>
+      </div>
 
       {/* Chat (main content) */}
       <div
@@ -220,8 +209,8 @@ export const MobileServerView = (props: MobileServerViewProps) => {
 
       {/* Channels sheet (left) */}
       <MobileSheet open={channelsOpen} onClose={() => setChannelsOpen(false)} side="left">
-        <Flex direction="column" style={{ height: "100%", overflow: "hidden" }}>
-          <Box p="3" style={{ flexShrink: 0 }}>
+        <div className="flex flex-col" style={{ height: "100%", overflow: "hidden" }}>
+          <div className="p-3" style={{ flexShrink: 0 }}>
             <ServerHeader
               serverName={props.serverName}
               role={props.serverRole}
@@ -231,8 +220,8 @@ export const MobileServerView = (props: MobileServerViewProps) => {
               updateAvailable={props.updateAvailable}
               onLeave={props.onLeave}
             />
-          </Box>
-          <Box style={{ flex: 1, overflowY: "auto", padding: "0 12px 12px" }}>
+          </div>
+          <div style={{ flex: 1, overflowY: "auto", padding: "0 12px 12px" }}>
             <ChannelList
               channels={props.channels}
               items={props.sidebarItems}
@@ -259,13 +248,13 @@ export const MobileServerView = (props: MobileServerViewProps) => {
               adminActions={props.adminActions}
               unreadChannelIds={props.unreadChannelIds}
             />
-          </Box>
-        </Flex>
+          </div>
+        </div>
       </MobileSheet>
 
       {/* Members sheet (right) */}
       <MobileSheet open={membersOpen} onClose={() => setMembersOpen(false)} side="right">
-        <Box style={{ height: "100%", overflow: "hidden" }}>
+        <div style={{ height: "100%", overflow: "hidden" }}>
           <MemberSidebar
             members={props.members}
             currentConnectionId={props.currentConnectionId}
@@ -275,12 +264,12 @@ export const MobileServerView = (props: MobileServerViewProps) => {
             serverHost={props.serverHost}
             adminActions={props.adminActions}
           />
-        </Box>
+        </div>
       </MobileSheet>
 
       {/* Voice sheet (bottom) */}
       <MobileSheet open={voiceOpen} onClose={() => setVoiceOpen(false)} side="bottom">
-        <Box style={{ flex: 1, overflow: "auto", padding: 12 }}>
+        <div style={{ flex: 1, overflow: "auto", padding: 12 }}>
           <VoiceView
             showVoiceView
             voiceWidth="100%"
@@ -300,8 +289,8 @@ export const MobileServerView = (props: MobileServerViewProps) => {
             videoStreams={props.videoStreams}
             streamSources={props.streamSources}
           />
-        </Box>
+        </div>
       </MobileSheet>
-    </Flex>
+    </div>
   );
 };

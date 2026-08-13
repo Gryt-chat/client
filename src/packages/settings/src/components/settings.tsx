@@ -1,5 +1,4 @@
 import { Dialog, Divider, IconButton, TextField } from "@gryt/ui";
-import { Box, Flex, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PiArrowFatLineDownFill, PiFadersHorizontalFill, PiFlaskFill, PiGearSixFill, PiHardDrivesFill, PiHeartFill, PiMagnifyingGlassFill, PiPuzzlePieceFill, PiUserCircleFill, PiUserFill, PiVideoCameraFill, PiX } from "react-icons/pi";
 
@@ -350,23 +349,21 @@ export function Settings() {
           }
         `}</style>
 
-        <Flex direction="column" gap="4" height="100%">
+        <div className="flex flex-col gap-4 h-full">
           <Dialog.Title>
             Settings
           </Dialog.Title>
 
           {showSettings && (
-            <Flex gap="4" height="100%" style={{ flex: 1, minHeight: 0 }}>
-              <Box
-                style={{
+            <div className="flex gap-4 h-full" style={{ flex: 1, minHeight: 0 }}>
+              <div style={{
                   width: "220px",
                   flexShrink: 0,
                   display: "flex",
                   flexDirection: "column",
                   gap: "8px",
                   minHeight: 0,
-                }}
-              >
+                }}>
                 {/* The library's TextField has no slot API — it is a field,
                     not a container. The icons sit over it instead, with padding
                     making room for them, which is what Radix's slots were doing
@@ -408,11 +405,11 @@ export function Settings() {
                   )}
                 </div>
 
-                <Box style={{ overflowY: "auto", minHeight: 0, flex: 1 }}>
+                <div style={{ overflowY: "auto", minHeight: 0, flex: 1 }}>
                   {searching ? (
                     <SearchResults results={results} onPick={jumpTo} picked={picked} />
                   ) : (
-                    <Flex direction="column" gap="1" height="100%">
+                    <div className="flex flex-col gap-1 h-full">
                       {MAIN_DESTINATIONS.map(({ value, label, icon: Icon }) => (
                         <button
                           key={value}
@@ -427,7 +424,7 @@ export function Settings() {
                         </button>
                       ))}
 
-                      <Box style={{ flex: 1, minHeight: "12px" }} />
+                      <div style={{ flex: 1, minHeight: "12px" }} />
 
                       {PINNED_DESTINATIONS.map(({ value, label, icon: Icon }) => (
                         <button
@@ -441,29 +438,26 @@ export function Settings() {
                           {label}
                         </button>
                       ))}
-                    </Flex>
+                    </div>
                   )}
-                </Box>
-              </Box>
+                </div>
+              </div>
 
-              <Box
-                ref={contentRef}
-                style={{
+              <div ref={contentRef} style={{
                   flex: 1,
                   overflowY: "auto",
                   overflowX: "hidden",
                   minWidth: 0,
-                }}
-              >
+                }}>
                 {DESTINATIONS.map(({ value, content, mountWhenActive }) => (
                   <div key={value} hidden={value !== active}>
                     {mountWhenActive ? value === active && content : content}
                   </div>
                 ))}
-              </Box>
-            </Flex>
+              </div>
+            </div>
           )}
-        </Flex>
+        </div>
 
         <style>{`
           .gryt-settings-nav {
@@ -528,18 +522,15 @@ function SearchResults({
 }) {
   if (results.length === 0) {
     return (
-      <Text
-        color="gray"
-        style={{ padding: "8px 10px", display: "block" }}
-      >
+      <span className="text-gryt-muted" style={{ padding: "8px 10px", display: "block" }}>
         Nothing matches. Try the name of the control, or a word from its
         description.
-      </Text>
+      </span>
     );
   }
 
   return (
-    <Flex direction="column" gap="1">
+    <div className="flex flex-col gap-1">
       {results.map((entry) => (
         <button
           key={entry.id}
@@ -548,10 +539,10 @@ function SearchResults({
           className="gryt-settings-result"
           data-picked={entry.id === picked}
         >
-          <Text>{entry.title}</Text>
-          <Text color="gray">{entry.section}</Text>
+          <span>{entry.title}</span>
+          <span className="text-gryt-muted">{entry.section}</span>
         </button>
       ))}
-    </Flex>
+    </div>
   );
 }

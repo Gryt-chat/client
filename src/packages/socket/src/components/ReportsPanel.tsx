@@ -1,5 +1,4 @@
 import { AlertDialog, Button, Chip, Dialog, IconButton, ScrollArea, Spinner, Tooltip } from "@gryt/ui";
-import { Box, Flex, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { PiCheck, PiProhibitFill, PiTrashFill, PiWarningFill } from "react-icons/pi";
@@ -153,7 +152,7 @@ export function ReportsPanel({
           <Dialog.Backdrop />
           <Dialog.Popup style={{ maxWidth: 700, maxHeight: "80vh" }}>
           <Dialog.Title>
-            <Flex align="center" gap="2">
+            <div className="flex items-center gap-2">
               <PiWarningFill size={16} />
               Reported Messages
               {reports.length > 0 && (
@@ -161,28 +160,28 @@ export function ReportsPanel({
                   {reports.length}
                 </Chip>
               )}
-            </Flex>
+            </div>
           </Dialog.Title>
           <Dialog.Description>
             Review reported messages. Approve to dismiss or delete to remove the message.
           </Dialog.Description>
 
           {isLoading ? (
-            <Flex align="center" justify="center" py="8">
+            <div className="flex items-center justify-center py-12">
               <Spinner size={24} />
-            </Flex>
+            </div>
           ) : reports.length === 0 ? (
-            <Flex direction="column" align="center" justify="center" py="8" gap="2">
+            <div className="flex flex-col items-center justify-center py-12 gap-2">
               <PiCheck size={32} style={{ color: "var(--green-9)" }} />
-              <Text size="3" color="gray">
+              <span className="text-base text-gryt-muted">
                 No pending reports
-              </Text>
-            </Flex>
+              </span>
+            </div>
           ) : (
             <ScrollArea.Root className="max-h-[55vh]">
               <ScrollArea.Viewport className="max-h-[55vh]">
                <ScrollArea.Content>
-              <Flex direction="column" gap="3">
+              <div className="flex flex-col gap-3">
                 {reports.map((report) => (
                   <ReportCard
                     key={report.messageId}
@@ -196,20 +195,20 @@ export function ReportsPanel({
                     }
                   />
                 ))}
-              </Flex>
+              </div>
               </ScrollArea.Content>
               </ScrollArea.Viewport>
               <ScrollArea.Scrollbar orientation="vertical" />
             </ScrollArea.Root>
           )}
 
-          <Flex justify="end" mt="4">
+          <div className="flex justify-end mt-4">
             <Dialog.Close>
               <Button tone="neutral" size="small">
                 Close
               </Button>
             </Dialog.Close>
-          </Flex>
+          </div>
         </Dialog.Popup>
         </Dialog.Portal>
       </Dialog.Root>
@@ -237,7 +236,7 @@ export function ReportsPanel({
               "This will permanently delete this reported message. This cannot be undone."
             )}
           </AlertDialog.Description>
-          <Flex gap="3" mt="4" justify="end">
+          <div className="flex gap-3 mt-4 justify-end">
             <AlertDialog.Close render={<span />}>
               <Button tone="neutral" size="small">
                 Cancel
@@ -259,7 +258,7 @@ export function ReportsPanel({
                   : "Delete Message"}
               </Button>
             </AlertDialog.Close>
-          </Flex>
+          </div>
         </AlertDialog.Popup>
         </AlertDialog.Portal>
       </AlertDialog.Root>
@@ -286,48 +285,41 @@ function ReportCard({
 
   return (
     <>
-      <Box
-        style={{
+      <div style={{
           border: "1px solid var(--gray-6)",
           borderRadius: "var(--radius-5)",
           padding: "14px",
           background: "var(--gray-2)",
-        }}
-      >
-        <Flex gap="3" align="start">
-          <Flex direction="column" gap="2" style={{ flex: 1, minWidth: 0 }}>
-            <Flex align="center" gap="2" wrap="wrap">
-              <Text size="2" weight="bold" style={{ color: "var(--gray-12)" }}>
+        }}>
+        <div className="flex gap-3 items-start">
+          <div className="flex flex-col gap-2" style={{ flex: 1, minWidth: 0 }}>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-bold" style={{ color: "var(--gray-12)" }}>
                 {report.senderNickname || getNickname(report.senderServerUserId)}
-              </Text>
+              </span>
               <Chip tone="danger">
                 {report.reportCount} {report.reportCount === 1 ? "report" : "reports"}
               </Chip>
-            </Flex>
+            </div>
 
-            <Box
-              style={{
+            <div style={{
                 background: "var(--gray-3)",
                 borderRadius: "var(--radius-4)",
                 padding: "10px 12px",
                 borderLeft: "3px solid var(--red-8)",
-              }}
-            >
+              }}>
               {report.messageText && (
-                <Text
-                  size="2"
-                  style={{
+                <span className="text-sm" style={{
                     color: "var(--gray-11)",
                     wordBreak: "break-word",
                     whiteSpace: "pre-wrap",
-                  }}
-                >
+                  }}>
                   {report.messageText}
-                </Text>
+                </span>
               )}
 
               {report.attachments && report.attachments.length > 0 && serverHost && (
-                <Flex gap="2" wrap="wrap" direction="column" style={{ marginTop: report.messageText ? "8px" : undefined }}>
+                <div className="flex gap-2 flex-wrap flex-col" style={{ marginTop: report.messageText ? "8px" : undefined }}>
                   {report.attachments.map((fileId, idx) => {
                     const meta = report.enrichedAttachments?.[idx];
                     const url = getUploadsFileUrl(serverHost, fileId);
@@ -375,25 +367,25 @@ function ReportCard({
                       />
                     );
                   })}
-                </Flex>
+                </div>
               )}
 
               {!report.messageText && (!report.attachments || report.attachments.length === 0) && (
-                <Text size="2" color="gray" style={{ fontStyle: "italic" }}>
+                <span className="text-sm text-gryt-muted" style={{ fontStyle: "italic" }}>
                   (empty message)
-                </Text>
+                </span>
               )}
-            </Box>
+            </div>
 
-            <Flex align="center" gap="1">
-              <Text size="1" color="gray">
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-gryt-muted">
                 Reported by:{" "}
                 {report.reporters.map((r) => getNickname(r)).join(", ")}
-              </Text>
-            </Flex>
-          </Flex>
+              </span>
+            </div>
+          </div>
 
-          <Flex direction="column" gap="2" align="center" style={{ flexShrink: 0 }}>
+          <div className="flex flex-col gap-2 items-center" style={{ flexShrink: 0 }}>
             <Tooltip title="Dismiss (message is fine)">
               <IconButton tone="neutral" size="medium"
                 onClick={onApprove}
@@ -420,9 +412,9 @@ function ReportCard({
                 <PiProhibitFill size={18} />
               </IconButton>
             </Tooltip>
-          </Flex>
-        </Flex>
-      </Box>
+          </div>
+        </div>
+      </div>
       {lightboxImage && (
         <ImageLightbox
           src={lightboxImage.src}

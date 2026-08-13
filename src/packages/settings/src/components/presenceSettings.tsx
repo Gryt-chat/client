@@ -1,4 +1,3 @@
-import { Heading } from "@radix-ui/themes";
 
 import { useSettings } from "@/settings";
 
@@ -15,9 +14,9 @@ export function PresenceSettings() {
 
   return (
     <SettingsContainer>
-      <Heading as="h2" size="4">
+      <h2 className="text-lg">
         Voice
-      </Heading>
+      </h2>
 
       <SliderSetting
         title={`AFK timeout: ${afkTimeoutMinutes} minutes`}

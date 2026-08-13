@@ -1,5 +1,4 @@
 import { Slider } from "@gryt/ui";
-import { Flex, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PiArrowLineLeftFill, PiArrowSquareOutFill, PiCornersInFill, PiCornersOutFill, PiSpeakerHighFill, PiSpeakerSlashFill } from "react-icons/pi";
 
@@ -137,7 +136,7 @@ export function FocusedVideoView({
   }, []);
 
   return (
-    <Flex direction="column" style={{ flex: 1, minHeight: 0 }}>
+    <div className="flex flex-col" style={{ flex: 1, minHeight: 0 }}>
       <div
         ref={containerRef}
         onClick={isFullscreen ? toggleFullscreen : onClose}
@@ -171,11 +170,7 @@ export function FocusedVideoView({
         />
 
         {/* Title overlay — top-left */}
-        <Text
-          size="1"
-          weight="medium"
-          truncate
-          style={{
+        <span className="text-xs font-medium truncate" style={{
             position: "absolute",
             top: 10,
             left: 12,
@@ -185,19 +180,12 @@ export function FocusedVideoView({
             opacity: controlsVisible ? 1 : 0,
             transition: "opacity 0.2s",
             pointerEvents: "none",
-          }}
-        >
+          }}>
           {title}
-        </Text>
+        </span>
 
         {/* Bottom-right hover controls */}
-        <Flex
-          align="center"
-          gap="2"
-          onClick={(e) => e.stopPropagation()}
-          onMouseEnter={keepControls}
-          onMouseLeave={showControls}
-          style={{
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()} onMouseEnter={keepControls} onMouseLeave={showControls} style={{
             position: "absolute",
             bottom: 12,
             right: 12,
@@ -207,10 +195,9 @@ export function FocusedVideoView({
             padding: "4px 8px",
             opacity: controlsVisible ? 1 : 0,
             transition: "opacity 0.2s",
-          }}
-        >
+          }}>
           {hasAudio && (
-            <Flex align="center" gap="1" onPointerDown={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-1" onPointerDown={(e) => e.stopPropagation()}>
               <button
                 type="button"
                 style={iconBtnStyle}
@@ -227,7 +214,7 @@ export function FocusedVideoView({
                 step={1}
                 className="w-20"
               />
-            </Flex>
+            </div>
           )}
 
           {onPopout && (
@@ -258,8 +245,8 @@ export function FocusedVideoView({
           >
             <PiArrowLineLeftFill size={16} />
           </button>
-        </Flex>
+        </div>
       </div>
-    </Flex>
+    </div>
   );
 }

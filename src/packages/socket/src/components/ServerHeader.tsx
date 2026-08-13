@@ -1,5 +1,4 @@
 import { Button, Chip, IconButton, Menu, Surface, Tooltip } from "@gryt/ui";
-import { Flex, Text } from "@radix-ui/themes";
 import { PiPushPinFill } from "react-icons/pi";
 
 export const ServerHeader = ({
@@ -31,9 +30,9 @@ export const ServerHeader = ({
         flexShrink: 0,
       }}
     >
-      <Flex justify="between" align="center">
-        <Text>{serverName}</Text>
-        <Flex align="center" gap="2">
+      <div className="flex justify-between items-center">
+        <span>{serverName}</span>
+        <div className="flex items-center gap-2">
           {onTogglePinned && (
             <Tooltip title={pinned ? "Unpin sidebar" : "Pin sidebar"}>
               <IconButton tone="neutral" size="xsmall"
@@ -56,24 +55,24 @@ export const ServerHeader = ({
                 <Menu.Popup>
               {canManage && onOpenSettings && (
                 <Menu.Item onClick={onOpenSettings}>
-                  <Flex align="center" gap="2">
+                  <div className="flex items-center gap-2">
                     Server settings
                     {updateAvailable && (
                       <Chip tone="warning" label="!" />
                     )}
-                  </Flex>
+                  </div>
                 </Menu.Item>
               )}
               {canManage && onOpenReports && (
                 <Menu.Item onClick={onOpenReports}>
-                  <Flex align="center" gap="2">
+                  <div className="flex items-center gap-2">
                     Reports
                     {!!pendingReportCount && pendingReportCount > 0 && (
                       <Chip tone="danger">
                         {pendingReportCount}
                       </Chip>
                     )}
-                  </Flex>
+                  </div>
                 </Menu.Item>
               )}
               <Menu.Separator />
@@ -84,8 +83,8 @@ export const ServerHeader = ({
               </Menu.Positioner>
             </Menu.Portal>
           </Menu.Root>
-        </Flex>
-      </Flex>
+        </div>
+      </div>
     </Surface>
   );
 }; 

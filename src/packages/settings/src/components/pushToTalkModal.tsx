@@ -1,5 +1,4 @@
 import { Button, Chip, Dialog } from "@gryt/ui";
-import { Flex, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useState } from "react";
 
 import { useSettings } from "@/settings";
@@ -84,7 +83,7 @@ export function PushToTalkModal() {
           Push to Talk is active but no key is bound. Press any key or combination to use as your PTT key.
         </Dialog.Description>
 
-        <Flex direction="column" gap="4" align="center" py="4">
+        <div className="flex flex-col gap-4 items-center py-4">
           <Chip tone="neutral"
             color={captured ? "green" : "blue"}
             style={{ fontFamily: "var(--code-font-family)", minWidth: "120px", textAlign: "center", padding: "8px 16px", fontSize: 16 }}
@@ -93,20 +92,20 @@ export function PushToTalkModal() {
           </Chip>
 
           {captured && (
-            <Text size="1" color="gray">
+            <span className="text-xs text-gryt-muted">
               Press a different key to change, or confirm below.
-            </Text>
+            </span>
           )}
-        </Flex>
+        </div>
 
-        <Flex gap="3" justify="end">
+        <div className="flex gap-3 justify-end">
           <Button tone="neutral" size="small" onClick={handleCancel}>
             Cancel
           </Button>
           <Button size="small" onClick={handleConfirm} disabled={!captured}>
             Confirm
           </Button>
-        </Flex>
+        </div>
       </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>

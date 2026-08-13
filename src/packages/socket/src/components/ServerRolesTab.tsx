@@ -1,5 +1,4 @@
 import { Button, Surface } from "@gryt/ui";
-import { Flex, Text } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
@@ -70,40 +69,40 @@ export function ServerRolesTab({
   };
 
   return (
-    <Flex direction="column" gap="4">
-      <Text size="2" color="gray">
+    <div className="flex flex-col gap-4">
+      <span className="text-sm text-gryt-muted">
         Owners can assign roles to members. Admins can manage invites/channels and view the audit log.
-      </Text>
+      </span>
 
-      <Flex justify="end" gap="2">
+      <div className="flex justify-end gap-2">
         <Button tone="neutral" size="small" onClick={refresh} disabled={submitting}>
           Refresh
         </Button>
-      </Flex>
+      </div>
 
-      <Flex direction="column" gap="2">
+      <div className="flex flex-col gap-2">
         {members.length === 0 ? (
-          <Text size="2" color="gray">
+          <span className="text-sm text-gryt-muted">
             No members found.
-          </Text>
+          </span>
         ) : (
           members.map((m) => {
             const r = roles[m.serverUserId] || "member";
             return (
               <Surface key={m.serverUserId}>
-                <Flex align="center" justify="between" gap="2" wrap="wrap">
-                  <Flex direction="column" gap="1">
-                    <Text size="2" weight="bold">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-sm font-bold">
                       {m.nickname}
-                    </Text>
-                    <Text size="1" color="gray">
+                    </span>
+                    <span className="text-xs text-gryt-muted">
                       ID: {m.serverUserId}
-                    </Text>
-                  </Flex>
-                  <Flex align="center" gap="2">
-                    <Text size="2" color="gray">
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gryt-muted">
                       Role
-                    </Text>
+                    </span>
                     <select
                       value={r}
                       onChange={(e) => setRole(m.serverUserId, (e.target.value as Role) || "member")}
@@ -114,14 +113,14 @@ export function ServerRolesTab({
                       <option value="mod">mod</option>
                       <option value="member">member</option>
                     </select>
-                  </Flex>
-                </Flex>
+                  </div>
+                </div>
               </Surface>
             );
           })
         )}
-      </Flex>
-    </Flex>
+      </div>
+    </div>
   );
 }
 

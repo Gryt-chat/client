@@ -1,5 +1,4 @@
 import { Button, Chip, Tabs } from "@gryt/ui";
-import { Flex, Text } from "@radix-ui/themes";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PiTrashFill } from "react-icons/pi";
 
@@ -74,8 +73,8 @@ export function EmbeddedServerLogs({ serverId }: { serverId: string }) {
   }, [visible]);
 
   return (
-    <Flex direction="column" gap="3">
-      <Flex align="center" gap="3" wrap="wrap">
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <Tabs value={source} onValueChange={(v) => setSource(v as EmbeddedLogSource | "all")}>
           <Tabs.List aria-label="source">
           <Tabs.Tab value="all">All</Tabs.Tab>
@@ -105,7 +104,7 @@ export function EmbeddedServerLogs({ serverId }: { serverId: string }) {
           <PiTrashFill size={14} />
           Clear
         </Button>
-      </Flex>
+      </div>
 
       <div
         ref={scroller}
@@ -127,14 +126,14 @@ export function EmbeddedServerLogs({ serverId }: { serverId: string }) {
         }}
       >
         {visible.length === 0 ? (
-          <Text size="1" color="gray">
+          <span className="text-xs text-gryt-muted">
             {lines.length === 0
               ? "Nothing yet. Start the server and its output shows up here."
               : "Nothing at this level from this source."}
-          </Text>
+          </span>
         ) : (
           visible.map((l, i) => (
-            <Flex key={`${l.at}-${i}`} gap="2" align="start">
+            <div className="flex gap-2 items-start" key={`${l.at}-${i}`}>
               <Chip tone="neutral"
                 color={LEVEL_COLOR[l.level]}
                 style={{ flexShrink: 0, minWidth: 62, justifyContent: "center" }}
@@ -155,10 +154,10 @@ export function EmbeddedServerLogs({ serverId }: { serverId: string }) {
               >
                 {l.text}
               </span>
-            </Flex>
+            </div>
           ))
         )}
       </div>
-    </Flex>
+    </div>
   );
 }

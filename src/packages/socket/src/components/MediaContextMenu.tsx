@@ -1,5 +1,4 @@
 import { ContextMenu } from "@gryt/ui";
-import { Flex } from "@radix-ui/themes";
 import React, { type ReactNode, useCallback, useMemo } from "react";
 import { PiArrowBendUpLeftFill, PiArrowSquareOutFill, PiCloudArrowDownFill, PiCopyFill, PiFlagFill, PiImageFill, PiPencilSimpleFill, PiSmileyFill, PiTrashFill } from "react-icons/pi";
 
@@ -55,30 +54,30 @@ function MediaItems({ media }: { media: MediaProps }) {
     <>
       {media.isImage && (
         <ContextMenu.Item onClick={() => copyImageToClipboard(media.src)}>
-          <Flex align="center" gap="1">
+          <div className="flex items-center gap-1">
             <PiImageFill size={14} />
             Copy Image
-          </Flex>
+          </div>
         </ContextMenu.Item>
       )}
       <ContextMenu.Item onClick={() => void triggerDownload(media.src, media.fileName)}>
-        <Flex align="center" gap="1">
+        <div className="flex items-center gap-1">
           <PiCloudArrowDownFill size={14} />
           Save As
-        </Flex>
+        </div>
       </ContextMenu.Item>
       <ContextMenu.Item onClick={() => copyToClipboard(media.src)}>
-        <Flex align="center" gap="1">
+        <div className="flex items-center gap-1">
           <PiCopyFill size={14} />
           Copy Link
-        </Flex>
+        </div>
       </ContextMenu.Item>
       <ContextMenu.Separator />
       <ContextMenu.Item onClick={() => window.open(media.src, "_blank", "noopener,noreferrer")}>
-        <Flex align="center" gap="1">
+        <div className="flex items-center gap-1">
           <PiArrowSquareOutFill size={14} />
           Open in Browser
-        </Flex>
+        </div>
       </ContextMenu.Item>
     </>
   );
@@ -104,7 +103,7 @@ function QuickReactions({
 
   return (
     <>
-      <Flex gap="1" px="2" py="1" justify="center">
+      <div className="flex gap-1 px-2 py-1 justify-center">
         {recent.map((src) => (
           <ContextMenu.Item
             key={src}
@@ -156,7 +155,7 @@ function QuickReactions({
             </ContextMenu.Positioner>
           </ContextMenu.Portal>
         </ContextMenu.SubmenuRoot>
-      </Flex>
+      </div>
       <ContextMenu.Separator />
     </>
   );
@@ -167,42 +166,42 @@ function MessageActionItems({ actions }: { actions: MessageActions }) {
     <>
       {actions.messageText && (
         <ContextMenu.Item onClick={() => copyToClipboard(actions.messageText!)}>
-          <Flex align="center" gap="1">
+          <div className="flex items-center gap-1">
             <PiCopyFill size={14} />
             Copy Message
-          </Flex>
+          </div>
         </ContextMenu.Item>
       )}
       {actions.onReply && (
         <ContextMenu.Item onClick={actions.onReply}>
-          <Flex align="center" gap="1">
+          <div className="flex items-center gap-1">
             <PiArrowBendUpLeftFill size={14} />
             Reply
-          </Flex>
+          </div>
         </ContextMenu.Item>
       )}
       {actions.canEdit && actions.onEdit && (
         <ContextMenu.Item onClick={actions.onEdit}>
-          <Flex align="center" gap="1">
+          <div className="flex items-center gap-1">
             <PiPencilSimpleFill size={14} />
             Edit Message
-          </Flex>
+          </div>
         </ContextMenu.Item>
       )}
       {actions.onReport && (
         <ContextMenu.Item onClick={actions.onReport}>
-          <Flex align="center" gap="1">
+          <div className="flex items-center gap-1">
             <PiFlagFill size={14} />
             Report
-          </Flex>
+          </div>
         </ContextMenu.Item>
       )}
       {actions.canDelete && actions.onDelete && (
         <ContextMenu.Item onClick={actions.onDelete}>
-          <Flex align="center" gap="1">
+          <div className="flex items-center gap-1">
             <PiTrashFill size={14} />
             Delete Message
-          </Flex>
+          </div>
         </ContextMenu.Item>
       )}
     </>

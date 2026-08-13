@@ -1,10 +1,5 @@
 import { Alert, AlertDialog, Button, Chip, IconButton, Tooltip } from "@gryt/ui";
-import {
-  Code,
-  Flex,
-  Heading,
-  Text,
-} from "@radix-ui/themes";
+import { Code } from "@radix-ui/themes";
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { PiHardDrivesFill, PiShieldCheckFill, PiTrashFill, PiWarningFill } from "react-icons/pi";
@@ -60,49 +55,44 @@ function BlockedRow({
   const [confirm, setConfirm] = useState(false);
 
   return (
-    <Flex
-      direction="column"
-      gap="3"
-      p="3"
-      style={{ borderRadius: "var(--radius-2)", background: "var(--red-a2)" }}
-    >
-      <Flex align="center" gap="2">
+    <div className="flex flex-col gap-3 p-3" style={{ borderRadius: "var(--radius-2)", background: "var(--red-a2)" }}>
+      <div className="flex items-center gap-2">
         <PiWarningFill size={18} style={{ color: "var(--red-11)", flexShrink: 0 }} />
-        <Text size="2" weight="medium" style={{ flex: 1, minWidth: 0 }} truncate>
+        <span className="text-sm font-medium truncate" style={{ flex: 1, minWidth: 0 }}>
           {entry.host}
-        </Text>
+        </span>
         <Chip tone="danger">
           Blocked {formatDate(entry.blockedAt)}
         </Chip>
-      </Flex>
+      </div>
 
-      <Text size="1" color="gray">
+      <span className="text-xs text-gryt-muted">
         {entry.reason === "key_mismatch"
           ? "A different server answered at this address than the one you joined before."
           : "This server proved its identity before, and then stopped."}
-      </Text>
+      </span>
 
-      <Flex direction="column" gap="2">
-        <Flex direction="column" gap="1">
-          <Text size="1" color="gray">
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-1">
+          <span className="text-xs text-gryt-muted">
             Expected{firstPinnedAt ? `, first seen ${formatDate(firstPinnedAt)}` : ""}
-          </Text>
+          </span>
           <Fingerprint value={entry.expectedKeyId} />
-        </Flex>
+        </div>
 
         {entry.keyId ? (
-          <Flex direction="column" gap="1">
-            <Text size="1" color="gray">
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-gryt-muted">
               Got instead
-            </Text>
+            </span>
             <Fingerprint value={entry.keyId} />
-          </Flex>
+          </div>
         ) : (
-          <Text size="1" color="gray">
+          <span className="text-xs text-gryt-muted">
             No identity was offered at all, so there is no fingerprint to compare.
-          </Text>
+          </span>
         )}
-      </Flex>
+      </div>
 
       {/* The whole point of blocking is that someone makes an informed choice
           here. Telling them where to find the real answer beats asking them to
@@ -129,7 +119,7 @@ function BlockedRow({
             answers next time, the same as joining a server for the first time.
             Only do this if you know why the identity changed.
           </AlertDialog.Description>
-          <Flex gap="3" mt="4" justify="end">
+          <div className="flex gap-3 mt-4 justify-end">
             <AlertDialog.Close render={<span />}>
               <Button tone="neutral" size="small">
                 Cancel
@@ -145,11 +135,11 @@ function BlockedRow({
                 Unblock
               </Button>
             </AlertDialog.Close>
-          </Flex>
+          </div>
         </AlertDialog.Popup>
         </AlertDialog.Portal>
       </AlertDialog.Root>
-    </Flex>
+    </div>
   );
 }
 
@@ -157,36 +147,26 @@ function KnownRow({ pin, onForget }: { pin: ServerPin; onForget: (keyId: string)
   const [confirm, setConfirm] = useState(false);
 
   return (
-    <Flex
-      align="center"
-      gap="3"
-      py="3"
-      px="3"
-      style={{ borderRadius: "var(--radius-2)", background: "var(--gray-a2)" }}
-    >
-      <Flex
-        align="center"
-        justify="center"
-        style={{
+    <div className="flex items-center gap-3 py-3 px-3" style={{ borderRadius: "var(--radius-2)", background: "var(--gray-a2)" }}>
+      <div className="flex items-center justify-center" style={{
           width: 36,
           height: 36,
           borderRadius: "var(--radius-2)",
           background: "var(--accent-a3)",
           flexShrink: 0,
-        }}
-      >
+        }}>
         <PiShieldCheckFill size={18} style={{ color: "var(--accent-11)" }} />
-      </Flex>
+      </div>
 
-      <Flex direction="column" gap="1" style={{ flex: 1, minWidth: 0 }}>
-        <Text size="2" weight="medium" truncate>
+      <div className="flex flex-col gap-1" style={{ flex: 1, minWidth: 0 }}>
+        <span className="text-sm font-medium truncate">
           {pin.lastHost}
-        </Text>
-        <Text size="1" color="gray">
+        </span>
+        <span className="text-xs text-gryt-muted">
           Trusted since {formatDate(pin.firstSeenAt)}
-        </Text>
+        </span>
         <Fingerprint value={pin.keyId} />
-      </Flex>
+      </div>
 
       <AlertDialog.Root open={confirm} onOpenChange={setConfirm}>
         <Tooltip title="Forget this server">
@@ -203,7 +183,7 @@ function KnownRow({ pin, onForget }: { pin: ServerPin; onForget: (keyId: string)
             you connect it will be treated as a server you have never joined, and
             whatever answers will be trusted.
           </AlertDialog.Description>
-          <Flex gap="3" mt="4" justify="end">
+          <div className="flex gap-3 mt-4 justify-end">
             <AlertDialog.Close render={<span />}>
               <Button tone="neutral" size="small">
                 Cancel
@@ -219,11 +199,11 @@ function KnownRow({ pin, onForget }: { pin: ServerPin; onForget: (keyId: string)
                 Forget
               </Button>
             </AlertDialog.Close>
-          </Flex>
+          </div>
         </AlertDialog.Popup>
         </AlertDialog.Portal>
       </AlertDialog.Root>
-    </Flex>
+    </div>
   );
 }
 
@@ -273,27 +253,27 @@ export function ServerIdentitySettings() {
 
   return (
     <SettingsContainer>
-      <Heading as="h2" size="4">
+      <h2 className="text-lg">
         Server identities
-      </Heading>
+      </h2>
 
-      <Flex direction="column" gap="3">
-        <Text size="1" color="gray">
+      <div className="flex flex-col gap-3">
+        <span className="text-xs text-gryt-muted">
           Gryt remembers each server&apos;s identity key the first time you join,
           so it can tell that a server which moved to a new address is still the
           same one — and notice when something else answers in its place.
-        </Text>
+        </span>
 
         {blocked.length > 0 && (
-          <Flex direction="column" gap="2">
-            <Flex align="center" justify="between">
-              <Text weight="medium" size="2">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-sm">
                 Blocked
-              </Text>
+              </span>
               <Chip tone="danger">
                 {blocked.length}
               </Chip>
-            </Flex>
+            </div>
             {blocked.map((entry) => (
               <BlockedRow
                 key={`${entry.host}:${entry.keyId ?? "none"}`}
@@ -302,35 +282,29 @@ export function ServerIdentitySettings() {
                 onUnblock={handleUnblock}
               />
             ))}
-          </Flex>
+          </div>
         )}
 
-        <Flex align="center" justify="between">
-          <Text weight="medium" size="2">
+        <div className="flex items-center justify-between">
+          <span className="font-medium text-sm">
             Known servers
-          </Text>
+          </span>
           <Chip tone="neutral">
             {pins.length}
           </Chip>
-        </Flex>
+        </div>
 
         {pins.length === 0 ? (
-          <Flex
-            direction="column"
-            align="center"
-            gap="2"
-            py="6"
-            style={{ borderRadius: "var(--radius-2)", border: "1px dashed var(--gray-a6)" }}
-          >
+          <div className="flex flex-col items-center gap-2 py-8" style={{ borderRadius: "var(--radius-2)", border: "1px dashed var(--gray-a6)" }}>
             <PiHardDrivesFill size={32} style={{ color: "var(--gray-a8)" }} />
-            <Text size="2" color="gray">
+            <span className="text-sm text-gryt-muted">
               No server identities remembered yet
-            </Text>
-          </Flex>
+            </span>
+          </div>
         ) : (
           pins.map((pin) => <KnownRow key={pin.keyId} pin={pin} onForget={handleForget} />)
         )}
-      </Flex>
+      </div>
     </SettingsContainer>
   );
 }

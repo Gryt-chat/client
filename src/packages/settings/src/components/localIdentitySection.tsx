@@ -1,5 +1,4 @@
 import { Alert, Button } from "@gryt/ui";
-import { Flex, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import {
@@ -123,24 +122,24 @@ export function LocalIdentitySection() {
   );
 
   return (
-    <Flex direction="column" gap="3">
-      <Flex direction="column" gap="1">
-        <Text weight="medium" size="2">
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1">
+        <span className="font-medium text-sm">
           Identity without an account
-        </Text>
-        <Text size="1" color="gray">
+        </span>
+        <span className="text-xs text-gryt-muted">
           {hosts.length > 0
             ? `You have an identity on ${hosts.length} server${hosts.length === 1 ? "" : "s"} that isn't tied to a Gryt account. A separate key per server, held only on this device.`
             : "Servers you join without a Gryt account give you an identity held only on this device."}
-        </Text>
-      </Flex>
+        </span>
+      </div>
 
       {hosts.length > 0 && (
         <Alert severity="warning"><span className="inline-flex items-start gap-2"><PiWarningFill size={15} />Clearing your browser data deletes these, and there is no way to get
             them back — including any server you own. Save a copy somewhere safe.</span></Alert>
       )}
 
-      <Flex gap="2" wrap="wrap">
+      <div className="flex gap-2 flex-wrap">
         <Button tone="neutral" size="small"
           disabled={busy || hosts.length === 0}
           onClick={() => void handleSave()}
@@ -183,29 +182,29 @@ export function LocalIdentitySection() {
             if (file) void handleFile(file);
           }}
         />
-      </Flex>
+      </div>
 
       {delegated.length > 0 && (
-        <Text size="1" color="gray">
+        <span className="text-xs text-gryt-muted">
           This device is authorised to act as a saved identity on{" "}
           {delegated.length} server{delegated.length === 1 ? "" : "s"}. The
           authorisation runs out after 30 days, and renewing it means picking
           the file again.
-        </Text>
+        </span>
       )}
 
-      <Text size="1" color="gray">
+      <span className="text-xs text-gryt-muted">
         The file is the identity — anyone who has it can be you on those
         servers, so keep it as you would a password.
-      </Text>
+      </span>
 
-      <Text size="1" color="gray">
+      <span className="text-xs text-gryt-muted">
         <strong>Restore</strong> makes this device that identity, by copying the
         key into it. <strong>Authorise</strong> leaves the key in the file and
         lets it vouch for this device instead, so the key is never stored here
         and the permission expires on its own. Prefer authorising on a machine
         you do not fully control.
-      </Text>
-    </Flex>
+      </span>
+    </div>
   );
 }

@@ -1,9 +1,4 @@
 import { Avatar, ContextMenu, IconButton, Menu, PreviewCard, Tooltip } from "@gryt/ui";
-import {
-  Box,
-  Flex,
-  Heading,
-} from "@radix-ui/themes";
 import { Reorder } from "motion/react";
 import { PiBroadcastFill, PiBugFill, PiChatCircleDotsFill, PiGearFill, PiMicrophoneFill, PiPlus, PiSignInFill } from "react-icons/pi";
 
@@ -94,15 +89,8 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
     displayNickname,
   );
   return (
-    <Flex
-      data-gryt="sidebar"
-      direction="column"
-      height="100%"
-      gap="4"
-      align="center"
-      justify="between"
-    >
-      <Flex direction="column" gap="4" pt="2">
+    <div className="flex flex-col h-full gap-4 items-center justify-between" data-gryt="sidebar">
+      <div className="flex flex-col gap-4 pt-2">
         <Reorder.Group
           axis="y"
           values={orderedServerHosts}
@@ -151,7 +139,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
             title="Servers on your network"
             side="right"
           >
-            <Box position="relative">
+            <div className="relative">
               <IconButton tone="neutral" size="xsmall"
                 aria-label="Servers on your network"
                 onClick={() => setShowDiscovery(!showDiscovery)}
@@ -164,27 +152,20 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
                   anything. This says "something turned up since you last
                   looked", which is the only part worth interrupting for. */}
               {newLanServers.length > 0 && !showDiscovery && (
-                <Box
-                  position="absolute"
-                  top="-2px"
-                  right="-2px"
-                  style={{
-                    width: 10,
+                <div className="absolute" style={{ top: "-2px", right: "-2px", width: 10,
                     height: 10,
                     borderRadius: "50%",
                     backgroundColor: "var(--accent-9)",
                     border: "2px solid var(--color-background)",
                     zIndex: 1,
-                    pointerEvents: "none",
-                  }}
-                />
+                    pointerEvents: "none" }} />
               )}
-            </Box>
+            </div>
           </Tooltip>
         )}
-      </Flex>
+      </div>
 
-      <Flex justify="center" align="center" direction="column" gap="3" pb="3">
+      <div className="flex justify-center items-center flex-col gap-3 pb-3">
         {/* Voice chat controls */}
         <MiniControls direction="column" />
         <Menu.Root>
@@ -203,10 +184,10 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
               data-tour="menu-settings"
               onClick={() => setShowSettings(true)}
             >
-              <Flex align="center" gap="1">
+              <div className="flex items-center gap-1">
                 <PiGearFill size={14} />
                 Settings
-              </Flex>
+              </div>
             </Menu.Item>
             <Menu.Separator />
             <Menu.Item
@@ -214,10 +195,10 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
                 window.open("https://feedback.gryt.chat", "_blank")
               }
             >
-              <Flex align="center" gap="1">
+              <div className="flex items-center gap-1">
                 <PiChatCircleDotsFill size={14} />
                 Give feedback
-              </Flex>
+              </div>
             </Menu.Item>
             {/* Kept separate from feedback rather than folded into it. "Give
                 feedback" is a suggestion box; this is for when something is
@@ -226,10 +207,10 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
             <Menu.Item
               onClick={() => window.open(bugReportUrl(), "_blank")}
             >
-              <Flex align="center" gap="1">
+              <div className="flex items-center gap-1">
                 <PiBugFill size={14} />
                 Report a bug
-              </Flex>
+              </div>
             </Menu.Item>
             {/* Guest-by-default (GRYT-173) means most people on a first run
                 have no account, and offering them a way out of one they never
@@ -246,10 +227,10 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
                   </Menu.Item>
                 ) : (
                   <Menu.Item onClick={login}>
-                    <Flex align="center" gap="1">
+                    <div className="flex items-center gap-1">
                       <PiSignInFill size={14} />
                       Sign in
-                    </Flex>
+                    </div>
                   </Menu.Item>
                 )}
               </>
@@ -258,8 +239,8 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
             </Menu.Positioner>
           </Menu.Portal>
         </Menu.Root>
-      </Flex>
-    </Flex>
+      </div>
+    </div>
   );
 }
 
@@ -312,7 +293,7 @@ function ServerItem({
         <ContextMenu.Root>
           <ContextMenu.Trigger>
             <PreviewCard.Trigger>
-              <Box position="relative" onDragStart={(e) => e.preventDefault()}>
+              <div className="relative" onDragStart={(e) => e.preventDefault()}>
                 <Avatar
                   size="small"
                   className="rounded-(--gryt-radius-md) p-0"
@@ -351,12 +332,7 @@ function ServerItem({
                 />
 
                 {isConnected && currentServerConnected === host && (
-                  <Box
-                    position="absolute"
-                    top="-2px"
-                    right="-2px"
-                    style={{
-                      width: "16px",
+                  <div className="absolute" style={{ top: "-2px", right: "-2px", width: "16px",
                       height: "16px",
                       borderRadius: "50%",
                       backgroundColor: "var(--accent-9)",
@@ -364,29 +340,20 @@ function ServerItem({
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      zIndex: 1,
-                    }}
-                  >
+                      zIndex: 1 }}>
                     <PiMicrophoneFill size={8} color="var(--accent-contrast)" />
-                  </Box>
+                  </div>
                 )}
                 {serverHasUnread(host) && (
-                  <Box
-                    position="absolute"
-                    bottom="-2px"
-                    right="-2px"
-                    style={{
-                      width: 10,
+                  <div className="absolute" style={{ bottom: "-2px", right: "-2px", width: 10,
                       height: 10,
                       borderRadius: "50%",
                       backgroundColor: "var(--accent-9)",
                       border: "2px solid var(--color-background)",
                       zIndex: 1,
-                      pointerEvents: "none",
-                    }}
-                  />
+                      pointerEvents: "none" }} />
                 )}
-              </Box>
+              </div>
             </PreviewCard.Trigger>
           </ContextMenu.Trigger>
           <ContextMenu.Portal>
@@ -413,8 +380,8 @@ function ServerItem({
         <PreviewCard.Portal>
           <PreviewCard.Positioner side="right" align="center">
             <PreviewCard.Popup>
-          <Box>
-            <Heading size="1">
+          <div>
+            <h2 className="text-xs">
               {servers[host].name}
               {isConnected && currentServerConnected === host && (
                 <span style={{ color: "var(--accent-9)", marginLeft: "8px" }}>
@@ -436,8 +403,8 @@ function ServerItem({
                   • Connecting...
                 </span>
               )}
-            </Heading>
-          </Box>
+            </h2>
+          </div>
         </PreviewCard.Popup>
           </PreviewCard.Positioner>
         </PreviewCard.Portal>

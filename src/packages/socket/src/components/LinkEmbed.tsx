@@ -1,5 +1,4 @@
 import { AlertDialog, Button } from "@gryt/ui";
-import { Flex } from "@radix-ui/themes";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getServerAccessToken, getServerHttpBase } from "@/common";
@@ -146,8 +145,7 @@ const LinkPreviewCard = memo(({
               </div>
             )}
           </div>
-          <div
-            className="link-embed-card-image-wrap"
+          <div className="link-embed-card-image-wrap"
             style={
               data.imageWidth && data.imageHeight
                 ? { aspectRatio: `${data.imageWidth} / ${data.imageHeight}` }
@@ -220,7 +218,7 @@ export const MessageEmbeds = memo(({
 
   return (
     <>
-      <Flex direction="column" gap="2" style={{ marginTop: "4px" }}>
+      <div className="flex flex-col gap-2" style={{ marginTop: "4px" }}>
         {visibleUrls.map((url) => {
           const onDismiss = () => setPendingDismissUrl(url);
           const type = getEmbedType(url);
@@ -251,7 +249,7 @@ export const MessageEmbeds = memo(({
               return <LinkPreviewCard key={url} url={url} serverHost={serverHost} onDismiss={onDismiss} />;
           }
         })}
-      </Flex>
+      </div>
 
       <AlertDialog.Root open={!!pendingDismissUrl} onOpenChange={(open) => { if (!open) setPendingDismissUrl(null); }}>
         <AlertDialog.Portal>
@@ -261,14 +259,14 @@ export const MessageEmbeds = memo(({
           <AlertDialog.Description>
             This hides the embed for you. Edit the message to bring it back.
           </AlertDialog.Description>
-          <Flex gap="3" mt="4" justify="end">
+          <div className="flex gap-3 mt-4 justify-end">
             <AlertDialog.Close render={<span />}>
               <Button tone="neutral" size="small">Cancel</Button>
             </AlertDialog.Close>
             <AlertDialog.Close render={<span />}>
               <Button tone="danger" size="small" onClick={confirmDismiss}>Remove</Button>
             </AlertDialog.Close>
-          </Flex>
+          </div>
         </AlertDialog.Popup>
         </AlertDialog.Portal>
       </AlertDialog.Root>

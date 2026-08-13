@@ -1,5 +1,4 @@
 import { Button } from "@gryt/ui";
-import { Box, Flex, Text } from "@radix-ui/themes";
 import { Component, type ErrorInfo, type ReactNode } from "react";
 
 interface Props {
@@ -26,28 +25,22 @@ export class ErrorBoundary extends Component<Props, State> {
     if (!this.state.hasError) return this.props.children;
 
     return (
-      <Flex
-        width="100vw"
-        height="100vh"
-        align="center"
-        justify="center"
-        style={{ background: "var(--color-background)" }}
-      >
-        <Box style={{ textAlign: "center", maxWidth: 420, padding: 32 }}>
-          <Text size="5" weight="bold" mb="3" as="p">
+      <div className="flex items-center justify-center" style={{ width: "100vw", height: "100vh", background: "var(--color-background)" }}>
+        <div style={{ textAlign: "center", maxWidth: 420, padding: 32 }}>
+          <p className="text-xl font-bold mb-3">
             Something went wrong
-          </Text>
-          <Text size="2" color="gray" mb="4" as="p" style={{ marginTop: 8 }}>
+          </p>
+          <p className="text-sm text-gryt-muted mb-4" style={{ marginTop: 8 }}>
             {this.state.error?.message || "An unexpected error occurred."}
-          </Text>
+          </p>
           <Button size="small"
             style={{ marginTop: 16 }}
             onClick={() => window.location.reload()}
           >
             Reload
           </Button>
-        </Box>
-      </Flex>
+        </div>
+      </div>
     );
   }
 }

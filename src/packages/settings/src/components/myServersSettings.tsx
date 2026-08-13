@@ -1,10 +1,5 @@
 import { Accordion, Alert, AlertDialog, Avatar, Button, Checkbox, Chip, Spinner, Surface, TextField } from "@gryt/ui";
-import {
-  Code,
-  Flex,
-  Heading,
-  Text,
-} from "@radix-ui/themes";
+import { Code } from "@radix-ui/themes";
 import { useState } from "react";
 import {
   PiHardDrivesFill,
@@ -63,40 +58,40 @@ export function MyServersSettings() {
   if (!isAvailable) {
     return (
       <SettingsContainer>
-        <Heading as="h2" size="4">
+        <h2 className="text-lg">
           My servers
-        </Heading>
-        <Text size="2">
+        </h2>
+        <span className="text-sm">
           This build does not have a server bundled with it, so there is nothing
           to run here. Joining somebody else&rsquo;s works as normal.
-        </Text>
+        </span>
       </SettingsContainer>
     );
   }
 
   return (
     <SettingsContainer>
-      <Heading as="h2" size="4">
+      <h2 className="text-lg">
         My servers
-      </Heading>
+      </h2>
 
-      <Flex direction="column" gap="3">
-        <Text size="1">
+      <div className="flex flex-col gap-3">
+        <span className="text-xs">
           Servers Gryt runs on this machine. They are yours: each one holds its
           own messages and members, and is only reachable while it is running
           and this machine is on.
-        </Text>
+        </span>
 
         {servers.length === 0 ? (
-          <Flex direction="column" gap="3" align="start">
-            <Text size="2">
+          <div className="flex flex-col gap-3 items-start">
+            <span className="text-sm">
               You are not running one yet.
-            </Text>
+            </span>
             <Button size="small" onClick={hostAServer}>
               <PiHardDrivesFill size={16} />
               Host a server
             </Button>
-          </Flex>
+          </div>
         ) : (
           <>
             {servers.map((server) => (
@@ -129,15 +124,15 @@ export function MyServersSettings() {
               />
             ))}
 
-            <Flex width="fit-content">
+            <div className="flex w-fit">
               <Button size="small" onClick={hostAServer}>
                 <PiPlusBold size={14} />
                 Host another server
               </Button>
-            </Flex>
+            </div>
           </>
         )}
-      </Flex>
+      </div>
     </SettingsContainer>
   );
 }
@@ -198,43 +193,43 @@ function HostedServerCard({
 
   return (
     <Surface className="p-4">
-      <Flex direction="column" gap="3">
-        <Flex align="center" gap="3">
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-3">
           <Avatar fallback={<GeneratedServerIcon seed={name} />} />
 
-          <Flex direction="column" gap="1" style={{ minWidth: 0 }}>
-            <Flex align="center" gap="2">
-              <Text size="2" weight="bold" truncate>
+          <div className="flex flex-col gap-1" style={{ minWidth: 0 }}>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold truncate">
                 {name}
-              </Text>
+              </span>
               <Chip tone="neutral"
                 color={isRunning ? "green" : isStarting ? "amber" : "gray"}
               >
                 {isRunning ? "Running" : isStarting ? "Starting…" : "Stopped"}
               </Chip>
-            </Flex>
+            </div>
 
             {/* Both addresses, because they answer different questions: the
                 first is where this machine reaches it, the second is what you
                 give somebody else. */}
-            <Flex direction="column" gap="1">
-              <Text size="1">
+            <div className="flex flex-col gap-1">
+              <span className="text-xs">
                 <Code size="1" variant="ghost">
                   127.0.0.1:{port}
                 </Code>
-              </Text>
+              </span>
               {server.config?.lanDiscoverable && (
-                <Text size="1">
+                <span className="text-xs">
                   On your network{" "}
                   <Code size="1" variant="ghost">
                     {lanIp}:{port}
                   </Code>
-                </Text>
+                </span>
               )}
-            </Flex>
-          </Flex>
+            </div>
+          </div>
 
-          <Flex ml="auto" gap="2" align="center">
+          <div className="flex gap-2 items-center ml-auto">
             {isRunning || isStarting ? (
               <Button size="small"
                 onClick={onStop}
@@ -256,21 +251,19 @@ function HostedServerCard({
             <Button size="small" onClick={openServer} disabled={!isRunning}>
               Open
             </Button>
-          </Flex>
-        </Flex>
+          </div>
+        </div>
 
-        <Flex align="center" gap="3">
-          <Flex asChild gap="2" align="center">
-            <label>
+        <div className="flex items-center gap-3">
+          <label className="flex gap-2 items-center">
               <Checkbox
                 checked={autoStart}
                 onCheckedChange={(c) => onAutoStart(c === true)}
               />
-              <Text size="1">
+              <span className="text-xs">
                 Start automatically with app
-              </Text>
+              </span>
             </label>
-          </Flex>
 
           <AlertDialog.Root
             open={confirmDelete}
@@ -304,24 +297,24 @@ function HostedServerCard({
                   Everyone who joined pinned this server's identity key, so a
                   new server with the same name and port is a different server
                   to them, and they are turned away rather than let back in. */}
-              <Text as="p" size="2" mt="3">
+              <p className="text-sm mt-3">
                 Anybody who joined cannot rejoin a replacement, even with the
                 same name and port.
-              </Text>
+              </p>
 
-              <Flex direction="column" gap="2" mt="4">
-                <Text size="2">
+              <div className="flex flex-col gap-2 mt-4">
+                <span className="text-sm">
                   Type <strong>{name}</strong> to confirm.
-                </Text>
+                </span>
                 <TextField
                   value={typedName}
                   onChange={(e) => setTypedName(e.target.value)}
                   placeholder={name}
                   autoFocus
                 />
-              </Flex>
+              </div>
 
-              <Flex gap="3" mt="4" justify="end">
+              <div className="flex gap-3 mt-4 justify-end">
                 <AlertDialog.Close render={<span />}>
                   <Button size="small">
                     Cancel
@@ -337,11 +330,11 @@ function HostedServerCard({
                 >
                   Delete for good
                 </Button>
-              </Flex>
+              </div>
             </AlertDialog.Popup>
             </AlertDialog.Portal>
           </AlertDialog.Root>
-        </Flex>
+        </div>
 
         {/* Behind an accordion, and genuinely unmounted when shut.
             EmbeddedServerLogs pulls the whole history and opens a live
@@ -365,17 +358,17 @@ function HostedServerCard({
         )}
 
         {hasError && server.error && (
-          <Flex direction="column" gap="2">
+          <div className="flex flex-col gap-2">
             <Alert severity="info" role="alert"><span className="inline-flex items-start gap-2"><PiWarningFill size={16} />{server.error}</span></Alert>
-            <Flex justify="end">
+            <div className="flex justify-end">
               <Button tone="ghost" size="xsmall" onClick={onDismissError}>
                 <PiX size={14} />
                 Dismiss
               </Button>
-            </Flex>
-          </Flex>
+            </div>
+          </div>
         )}
-      </Flex>
+      </div>
     </Surface>
   );
 }

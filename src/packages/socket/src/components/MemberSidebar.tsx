@@ -1,5 +1,4 @@
 import { Avatar, IconButton, PreviewCard, Tooltip } from "@gryt/ui";
-import { Box, Flex, Text } from "@radix-ui/themes";
 import { PiPushPinFill } from "react-icons/pi";
 
 import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
@@ -125,7 +124,7 @@ const MemberItem = ({
               cursor: 'default',
             }}
           >
-        <Flex align="center" gap="2" width="100%">
+        <div className="flex items-center gap-2 w-full">
           <Avatar
             size="small"
             fallback={member.nickname[0]}
@@ -136,29 +135,23 @@ const MemberItem = ({
             }}
           />
 
-          <Flex direction="column" style={{ flex: 1, minWidth: 0, gap: "1px" }}>
-            <Flex align="center" gap="1">
-              <Text
-                size="2"
-                style={{
+          <div className="flex flex-col" style={{ flex: 1, minWidth: 0, gap: "1px" }}>
+            <div className="flex items-center gap-1">
+              <span className="text-sm" style={{
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
                   color: isOffline ? statusColor : undefined,
-                }}
-              >
+                }}>
                 {member.nickname}
-              </Text>
-            </Flex>
+              </span>
+            </div>
 
-            <Text
-              size="1"
-              style={{ color: statusColor, lineHeight: 1.2 }}
-            >
+            <span className="text-xs" style={{ color: statusColor, lineHeight: 1.2 }}>
               {statusLabel}
-            </Text>
-          </Flex>
-        </Flex>
+            </span>
+          </div>
+        </div>
           </div>
         </PreviewCard.Trigger>
         <PreviewCard.Portal>
@@ -189,28 +182,18 @@ export const MemberSidebar = ({
   });
 
   return (
-    <Box
-      role="complementary"
-      aria-label="Members"
-      width="240px"
-      style={{
+    <div role="complementary" aria-label="Members" style={{ width: "240px",
         background: "var(--gray-3)",
         borderRadius: "var(--radius-5)",
         height: "100%",
         overflow: "hidden",
-      }}
-    >
-      <Flex
-        direction="column"
-        height="100%"
-        p="3"
-        gap="1"
-      >
-        <Box pb="2">
-          <Flex align="center" justify="between" gap="2">
-            <Text size="2" weight="bold" color="gray">
+      }}>
+      <div className="flex flex-col h-full p-3 gap-1">
+        <div className="pb-2">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm font-bold text-gryt-muted">
               Members — {members.length}
-            </Text>
+            </span>
             {onTogglePinned && (
               <Tooltip title={pinned ? "Unpin sidebar" : "Pin sidebar"}>
                 <IconButton tone="neutral" size="xsmall"
@@ -221,10 +204,10 @@ export const MemberSidebar = ({
                 </IconButton>
               </Tooltip>
             )}
-          </Flex>
-        </Box>
+          </div>
+        </div>
 
-        <Flex direction="column" gap="2" style={{ overflow: "auto", flex: 1 }}>
+        <div className="flex flex-col gap-2" style={{ overflow: "auto", flex: 1 }}>
           {sortedMembers.map((member) => (
             <MemberItem
               key={member.serverUserId}
@@ -235,8 +218,8 @@ export const MemberSidebar = ({
               adminActions={adminActions}
             />
           ))}
-        </Flex>
-      </Flex>
-    </Box>
+        </div>
+      </div>
+    </div>
   );
 };

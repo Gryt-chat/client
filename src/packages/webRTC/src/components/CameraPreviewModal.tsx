@@ -1,5 +1,4 @@
 import { Button, Checkbox, Chip, Dialog, IconButton, Select } from "@gryt/ui";
-import { Flex, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PiArrowsClockwiseFill, PiVideoCameraFill, PiX } from "react-icons/pi";
 
@@ -264,18 +263,18 @@ export function CameraPreviewModal({
       <Dialog.Portal>
         <Dialog.Backdrop />
         <Dialog.Popup style={{ maxWidth: 520 }}>
-        <Flex direction="column" gap="4">
-          <Flex align="center" justify="between">
-            <Flex align="center" gap="2">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
               <PiVideoCameraFill size={16} />
               <Dialog.Title>Camera Preview</Dialog.Title>
-            </Flex>
+            </div>
             <Dialog.Close>
               <IconButton tone="ghost" size="xsmall" onClick={handleClose}>
                 <PiX size={16} />
               </IconButton>
             </Dialog.Close>
-          </Flex>
+          </div>
 
           <div
             style={{
@@ -314,29 +313,23 @@ export function CameraPreviewModal({
               </Chip>
             )}
             {!previewStream && (
-              <Flex
-                align="center"
-                justify="center"
-                direction="column"
-                gap="2"
-                style={{ position: "absolute", inset: 0 }}
-              >
-                <Text size="2" color={previewError ? "red" : "gray"}>
+              <div className="flex items-center justify-center flex-col gap-2" style={{ position: "absolute", inset: 0 }}>
+                <span className="text-sm" color={previewError ? "red" : "gray"}>
                   {previewError ?? "Starting camera..."}
-                </Text>
+                </span>
                 {previewError && (
                   <Button tone="neutral" size="xsmall" onClick={() => setRetryCount((c) => c + 1)}>
                     <PiArrowsClockwiseFill size={14} />
                     Retry
                   </Button>
                 )}
-              </Flex>
+              </div>
             )}
           </div>
 
-          <Flex direction="column" gap="3">
-            <Flex align="center" gap="3">
-              <Text size="2" style={{ minWidth: 60 }}>Camera</Text>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+              <span className="text-sm" style={{ minWidth: 60 }}>Camera</span>
               <Select
                 className="flex-1"
                 value={localCameraID}
@@ -350,20 +343,20 @@ export function CameraPreviewModal({
                       }))
                 }
               />
-            </Flex>
+            </div>
 
-            <Flex align="center" gap="3">
-              <Text size="2" style={{ minWidth: 60 }}>Quality</Text>
+            <div className="flex items-center gap-3">
+              <span className="text-sm" style={{ minWidth: 60 }}>Quality</span>
               <Select
                 className="flex-1"
                 value={localQuality}
                 onValueChange={(v) => setLocalQuality(String(v))}
                 options={filteredOptions.map((o) => ({ label: o.label, value: o.value }))}
               />
-            </Flex>
+            </div>
 
-            <Flex align="center" gap="3">
-              <Text size="2" style={{ minWidth: 60 }}>FPS</Text>
+            <div className="flex items-center gap-3">
+              <span className="text-sm" style={{ minWidth: 60 }}>FPS</span>
               <Select
                 className="flex-1"
                 value={String(localFps)}
@@ -373,38 +366,38 @@ export function CameraPreviewModal({
                   value: String(f),
                 }))}
               />
-            </Flex>
+            </div>
 
-            <Text as="label" size="2" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+            <label className="text-sm" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
               <Checkbox checked={localFlipped} onCheckedChange={(v) => setLocalFlipped(v === true)} />
               Flip camera (affects what everyone sees)
-            </Text>
+            </label>
 
-            <Text as="label" size="2" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+            <label className="text-sm" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
               <Checkbox checked={localMirrored} onCheckedChange={(v) => setLocalMirrored(v === true)} />
               Mirror preview
-            </Text>
+            </label>
 
             {/* Here as well as in settings, because this is the moment you are
                 looking at your own framing and can see whether it needs it. */}
-            <Text as="label" size="2" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+            <label className="text-sm" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
               <Checkbox
                 checked={faceFramingEnabled}
                 onCheckedChange={(v) => setFaceFramingEnabled(v === true)}
               />
               Center my face automatically
-            </Text>
-          </Flex>
+            </label>
+          </div>
 
-          <Flex justify="end" gap="2">
+          <div className="flex justify-end gap-2">
             <Button tone="neutral" size="small" onClick={handleClose}>
               Cancel
             </Button>
             <Button size="small" onClick={handleStart} disabled={!previewStream}>
               Start Camera
             </Button>
-          </Flex>
-        </Flex>
+          </div>
+        </div>
       </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>

@@ -23,8 +23,7 @@ export const ImageAttachment = memo(({
   const hasDimensions = width && height;
 
   return (
-    <div
-      className="chat-attachment-image-wrapper"
+    <div className="chat-attachment-image-wrapper"
       style={hasDimensions ? {
         aspectRatio: `${width} / ${height}`,
         "--img-w": `${width}px`,

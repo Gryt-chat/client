@@ -1,8 +1,4 @@
 import { AlertDialog, Button, Divider } from "@gryt/ui";
-import {
-  Flex,
-  Heading,
-} from "@radix-ui/themes";
 import { useState } from "react";
 
 import messageSoundMp3 from "@/audio/src/assets/universfield-computer-mouse-click-02-383961.mp3";
@@ -45,7 +41,7 @@ export function NotificationSettings() {
 
   return (
     <SettingsContainer>
-      <Heading>Notifications</Heading>
+      <h2>Notifications</h2>
 
       <ToggleSetting
         title="Unread message badge"
@@ -85,7 +81,7 @@ export function NotificationSettings() {
               {alertDialog.message}
             </AlertDialog.Description>
 
-            <Flex gap="3" mt="4" justify="end">
+            <div className="flex gap-3 mt-4 justify-end">
               <AlertDialog.Close render={<span />}>
                 <Button tone="neutral" size="small"
                   onClick={() =>
@@ -95,7 +91,7 @@ export function NotificationSettings() {
                   OK
                 </Button>
               </AlertDialog.Close>
-            </Flex>
+            </div>
           </AlertDialog.Popup>
           </AlertDialog.Portal>
         </AlertDialog.Root>

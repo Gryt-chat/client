@@ -1,9 +1,4 @@
 import { AlertDialog, Button, Chip, IconButton, Spinner, TextField, Tooltip } from "@gryt/ui";
-import {
-  Flex,
-  Heading,
-  Text,
-} from "@radix-ui/themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { PiCheck, PiKeyFill, PiPencilSimpleFill, PiPlus, PiTrashFill, PiX } from "react-icons/pi";
@@ -65,33 +60,23 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
   }, [draft, credential.userLabel, credential.id, onRename]);
 
   return (
-    <Flex
-      align="center"
-      gap="3"
-      py="3"
-      px="3"
-      style={{
+    <div className="flex items-center gap-3 py-3 px-3" style={{
         borderRadius: "var(--radius-2)",
         background: "var(--gray-a2)",
-      }}
-    >
-      <Flex
-        align="center"
-        justify="center"
-        style={{
+      }}>
+      <div className="flex items-center justify-center" style={{
           width: 36,
           height: 36,
           borderRadius: "var(--radius-2)",
           background: "var(--accent-a3)",
           flexShrink: 0,
-        }}
-      >
+        }}>
         <PiKeyFill size={18} style={{ color: "var(--accent-11)" }} />
-      </Flex>
+      </div>
 
-      <Flex direction="column" gap="1" style={{ flex: 1, minWidth: 0 }}>
+      <div className="flex flex-col gap-1" style={{ flex: 1, minWidth: 0 }}>
         {editing ? (
-          <Flex align="center" gap="1">
+          <div className="flex items-center gap-1">
             <TextField
               ref={inputRef} size="small"
               value={draft}
@@ -117,12 +102,12 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
             >
               <PiX size={14} />
             </IconButton>
-          </Flex>
+          </div>
         ) : (
-          <Flex align="center" gap="2">
-            <Text size="2" weight="medium" truncate>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium truncate">
               {credential.userLabel || "Unnamed passkey"}
-            </Text>
+            </span>
             <Tooltip title="Rename">
               <IconButton tone="ghost" size="xsmall"
                 onClick={() => setEditing(true)}
@@ -130,12 +115,12 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
                 <PiPencilSimpleFill size={12} />
               </IconButton>
             </Tooltip>
-          </Flex>
+          </div>
         )}
-        <Text size="1">
+        <span className="text-xs">
           Added {formatDate(credential.createdDate)}
-        </Text>
-      </Flex>
+        </span>
+      </div>
 
       <AlertDialog.Root open={confirmDelete} onOpenChange={setConfirmDelete}>
         <Tooltip title="Remove passkey">
@@ -154,7 +139,7 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
             This passkey will be removed from your account. You won&apos;t be able to
             use it to sign in anymore.
           </AlertDialog.Description>
-          <Flex gap="3" mt="4" justify="end">
+          <div className="flex gap-3 mt-4 justify-end">
             <AlertDialog.Close render={<span />}>
               <Button size="small">
                 Cancel
@@ -170,11 +155,11 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
                 Remove
               </Button>
             </AlertDialog.Close>
-          </Flex>
+          </div>
         </AlertDialog.Popup>
         </AlertDialog.Portal>
       </AlertDialog.Root>
-    </Flex>
+    </div>
   );
 }
 
@@ -259,62 +244,56 @@ export function SecuritySettings() {
 
   return (
     <SettingsContainer>
-      <Heading as="h2" size="4">
+      <h2 className="text-lg">
         Security
-      </Heading>
+      </h2>
 
       <LocalIdentitySection />
 
       {!isSignedIn ? null : (
-      <Flex direction="column" gap="3">
-        <Flex align="center" justify="between">
-          <Flex direction="column" gap="1">
-            <Text weight="medium" size="2">
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-1">
+            <span className="font-medium text-sm">
               Passkeys
-            </Text>
-            <Text size="1">
+            </span>
+            <span className="text-xs">
               Passkeys let you sign in without a password using your fingerprint,
               face, or device PIN.
-            </Text>
-          </Flex>
+            </span>
+          </div>
           <Chip tone="neutral">
             {credentials.length}
           </Chip>
-        </Flex>
+        </div>
 
         {loading && (
-          <Flex align="center" justify="center" py="6">
+          <div className="flex items-center justify-center py-8">
             <Spinner size={24} />
-          </Flex>
+          </div>
         )}
 
         {error && (
-          <Flex direction="column" align="center" gap="2" py="4">
-            <Text size="2">
+          <div className="flex flex-col items-center gap-2 py-4">
+            <span className="text-sm">
               {error}
-            </Text>
+            </span>
             <Button size="xsmall" onClick={loadCredentials}>
               Retry
             </Button>
-          </Flex>
+          </div>
         )}
 
         {!loading && !error && credentials.length === 0 && (
-          <Flex
-            direction="column"
-            align="center"
-            gap="2"
-            py="6"
-            style={{
+          <div className="flex flex-col items-center gap-2 py-8" style={{
               borderRadius: "var(--radius-2)",
               border: "1px dashed var(--gray-a6)",
-            }}
-          >
+            }}>
             <PiKeyFill size={32} style={{ color: "var(--gray-a8)" }} />
-            <Text size="2">
+            <span className="text-sm">
               No passkeys registered yet
-            </Text>
-          </Flex>
+            </span>
+          </div>
         )}
 
         {!loading &&
@@ -337,7 +316,7 @@ export function SecuritySettings() {
           <PiPlus size={16} />
           {adding ? "Redirecting..." : "Add passkey"}
         </Button>
-      </Flex>
+      </div>
       )}
     </SettingsContainer>
   );

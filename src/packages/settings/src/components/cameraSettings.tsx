@@ -1,5 +1,4 @@
 import { Button, Chip, Divider, Select } from "@gryt/ui";
-import { Flex, Heading, Text } from "@radix-ui/themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PiArrowsClockwiseFill } from "react-icons/pi";
 
@@ -189,21 +188,17 @@ export function CameraSettings() {
 
   return (
     <SettingsContainer>
-      <Heading>Camera</Heading>
+      <h2>Camera</h2>
 
-      <Flex direction="column" gap="2">
-        <Text weight="medium">Preview</Text>
-        <Flex
-          align="center"
-          justify="center"
-          style={{
+      <div className="flex flex-col gap-2">
+        <span className="font-medium">Preview</span>
+        <div className="flex items-center justify-center" style={{
             background: "var(--gray-3)",
             borderRadius: "var(--radius-3)",
             overflow: "hidden",
             aspectRatio: "16/9",
             maxHeight: 280,
-          }}
-        >
+          }}>
           {activeStream ? (
             <div style={{ position: "relative", width: "100%", height: "100%" }}>
               <video
@@ -236,25 +231,25 @@ export function CameraSettings() {
               )}
             </div>
           ) : (
-            <Flex direction="column" align="center" gap="2" p="4">
-              <Text color={activeError ? "red" : "gray"}>
+            <div className="flex flex-col items-center gap-2 p-4">
+              <span color={activeError ? "red" : "gray"}>
                 {activeError ?? "No camera detected"}
-              </Text>
+              </span>
               {activeError && (
                 <Button tone="neutral" size="xsmall" onClick={startPreview}>
                   <PiArrowsClockwiseFill size={14} />
                   Retry
                 </Button>
               )}
-            </Flex>
+            </div>
           )}
-        </Flex>
-      </Flex>
+        </div>
+      </div>
 
       <Divider />
 
-      <Flex direction="column" gap="2">
-        <Text weight="medium">Camera Device</Text>
+      <div className="flex flex-col gap-2">
+        <span className="font-medium">Camera Device</span>
         <Select
           value={cameraID || ""}
           onValueChange={(value) => setCameraID(String(value))}
@@ -268,10 +263,10 @@ export function CameraSettings() {
                 }))
           }
         />
-      </Flex>
+      </div>
 
-      <Flex direction="column" gap="2">
-        <Text weight="medium">Video Quality</Text>
+      <div className="flex flex-col gap-2">
+        <span className="font-medium">Video Quality</span>
         <Select
           value={cameraQuality}
           onValueChange={(value) => setCameraQuality(String(value))}
@@ -280,10 +275,10 @@ export function CameraSettings() {
             value: opt.value,
           }))}
         />
-      </Flex>
+      </div>
 
-      <Flex direction="column" gap="2">
-        <Text weight="medium">Frame Rate</Text>
+      <div className="flex flex-col gap-2">
+        <span className="font-medium">Frame Rate</span>
         <Select
           value={String(cameraFps)}
           onValueChange={(v) => setCameraFps(Number(v))}
@@ -292,7 +287,7 @@ export function CameraSettings() {
             value: String(fps),
           }))}
         />
-      </Flex>
+      </div>
 
       <ToggleSetting
         title="Flip camera"

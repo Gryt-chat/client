@@ -1,5 +1,4 @@
 import { Avatar, Tooltip } from "@gryt/ui";
-import { Flex, Text } from "@radix-ui/themes";
 import { motion } from "motion/react";
 import { PiMicrophoneSlashFill, PiScreencastFill, PiSpeakerSlashFill, PiVideoCameraFill } from "react-icons/pi";
 
@@ -100,24 +99,12 @@ export function ConnectedUser({
       transition={{ duration: 0.25 }}
       style={{ width: "100%", overflow: "hidden" }}
     >
-      <Flex
-        gap="2"
-        align="center"
-        px="3"
-        py="2"
-        width="100%"
-        style={{
+      <div className="flex gap-2 items-center px-3 py-2 w-full" style={{
           opacity: 1,
           transition: "opacity 0.3s ease",
-        }}
-      >
-        <Flex gap="2" align="center" style={{ flex: 1, minWidth: 0 }}>
-          <Flex
-            align="center"
-            justify="center"
-            position="relative"
-            style={{ flexShrink: 0 }}
-          >
+        }}>
+        <div className="flex gap-2 items-center" style={{ flex: 1, minWidth: 0 }}>
+          <div className="flex items-center justify-center relative" style={{ flexShrink: 0 }}>
             <SpeakingHalo
               analyser={speakingAnalyser}
               hue={hue}
@@ -137,26 +124,26 @@ export function ConnectedUser({
                 ...speakingRingStyle(hue, isSpeaking, SIDEBAR_RING),
               }}
             />
-          </Flex>
-          <Text size="2" truncate style={{ whiteSpace: "nowrap" }}>{nickname}</Text>
-        </Flex>
+          </div>
+          <span className="text-sm truncate" style={{ whiteSpace: "nowrap" }}>{nickname}</span>
+        </div>
 
-        <Flex gap="1" align="center" style={{ flexShrink: 0 }}>
+        <div className="flex gap-1 items-center" style={{ flexShrink: 0 }}>
           {isConnectingToVoice && (
             <SkeletonBase width="12px" height="12px" borderRadius="50%" />
           )}
           {screenShareEnabled && (
             <Tooltip title="Streaming">
-              <Flex align="center">
+              <div className="flex items-center">
                 <PiScreencastFill size={14} color="var(--accent-9)" />
-              </Flex>
+              </div>
             </Tooltip>
           )}
           {cameraEnabled && (
             <Tooltip title="Camera on">
-              <Flex align="center">
+              <div className="flex items-center">
                 <PiVideoCameraFill size={14} color="var(--accent-9)" />
-              </Flex>
+              </div>
             </Tooltip>
           )}
           {isDeafened ? (
@@ -165,12 +152,12 @@ export function ConnectedUser({
             <PiMicrophoneSlashFill size={14} color="var(--red-8)" />
           ) : null}
           {isAFK && (
-            <Text size="1" weight="bold" color="orange">
+            <span className="text-xs font-bold text-gryt-warning">
               AFK
-            </Text>
+            </span>
           )}
-        </Flex>
-      </Flex>
+        </div>
+      </div>
     </motion.div>
     </UserContextMenu>
   );

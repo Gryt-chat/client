@@ -1,21 +1,20 @@
-import { Flex } from "@radix-ui/themes";
 
 import { ChannelSkeleton } from "./ChannelSkeleton";
 import { SkeletonBase } from "./SkeletonBase";
 
 export const ServerDetailsSkeleton = () => {
   return (
-    <Flex direction="column" align="center" justify="between" height="100%" width="100%">
-      <Flex direction="column" gap="4" align="center" width="100%">
+    <div className="flex flex-col items-center justify-between h-full w-full">
+      <div className="flex flex-col gap-4 items-center w-full">
         {/* Server header skeleton */}
-        <Flex direction="column" gap="2" align="center" width="100%">
+        <div className="flex flex-col gap-2 items-center w-full">
           <SkeletonBase width="120px" height="24px" borderRadius="var(--radius-4)" />
           <SkeletonBase width="80px" height="16px" borderRadius="var(--radius-2)" />
-        </Flex>
+        </div>
 
         {/* Channel list skeleton */}
         <ChannelSkeleton />
-      </Flex>
-    </Flex>
+      </div>
+    </div>
   );
 };

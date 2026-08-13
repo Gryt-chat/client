@@ -1,5 +1,4 @@
 import { Divider, Switch } from "@gryt/ui";
-import { Box, Flex, Heading, Text } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 
 import { getAccessTokenStorageMode, migrateAccessTokensToMode } from "@/common";
@@ -29,7 +28,7 @@ export function AdvancedSettings() {
 
   return (
     <SettingsContainer>
-      <Heading color="cyan">Advanced</Heading>
+      <h2 color="cyan">Advanced</h2>
 
       {/*
         The toggle stays visible; what it reveals does not. Everything below is
@@ -40,19 +39,19 @@ export function AdvancedSettings() {
         Advanced settings are titled in cyan wherever they appear, so once this
         is on it is obvious which of the things now on screen arrived with it.
       */}
-      <Box>
-        <Flex align="center" gap="3">
-          <Text weight="medium">Show advanced settings</Text>
+      <div>
+        <div className="flex items-center gap-3">
+          <span className="font-medium">Show advanced settings</span>
           <Switch
             checked={showAdvanced}
             onCheckedChange={setShowAdvanced}
           />
-        </Flex>
-        <Text color="gray" mt="1">
+        </div>
+        <span className="text-gryt-muted mt-1">
           Reveals diagnostics and internals across every section. They appear in
           a different colour so you can tell them apart.
-        </Text>
-      </Box>
+        </span>
+      </div>
 
       {!showAdvanced ? null : (
       <>
@@ -60,50 +59,50 @@ export function AdvancedSettings() {
 
       <Divider />
 
-      <Text weight="bold" color="gray">Diagnostics</Text>
+      <span className="font-bold text-gryt-muted">Diagnostics</span>
 
-      <Box>
-        <Flex align="center" gap="3">
-          <Text weight="medium">Show Peer Latency</Text>
+      <div>
+        <div className="flex items-center gap-3">
+          <span className="font-medium">Show Peer Latency</span>
           <Switch
             checked={showPeerLatency}
             onCheckedChange={setShowPeerLatency}
           />
-        </Flex>
-        <Text color="gray" mt="1">
+        </div>
+        <span className="text-gryt-muted mt-1">
           Display latency (ping) next to each user in the voice view
-        </Text>
-      </Box>
+        </span>
+      </div>
 
-      <Box>
-        <Flex align="center" gap="3">
-          <Text weight="medium">Show Microphone Debug Overlay</Text>
+      <div>
+        <div className="flex items-center gap-3">
+          <span className="font-medium">Show Microphone Debug Overlay</span>
           <Switch
             checked={showDebugOverlay}
             onCheckedChange={setShowDebugOverlay}
           />
-        </Flex>
-        <Text color="gray" mt="1">
+        </div>
+        <span className="text-gryt-muted mt-1">
           Display a floating debug overlay with real-time microphone information
-        </Text>
-      </Box>
+        </span>
+      </div>
 
-      <Box>
-        <Flex align="center" gap="3">
-          <Text weight="medium">Show Video Debug Overlay</Text>
+      <div>
+        <div className="flex items-center gap-3">
+          <span className="font-medium">Show Video Debug Overlay</span>
           <Switch
             checked={showVideoDebugOverlay}
             onCheckedChange={setShowVideoDebugOverlay}
           />
-        </Flex>
-        <Text color="gray" mt="1">
+        </div>
+        <span className="text-gryt-muted mt-1">
           Display a floating debug overlay with real-time video codec, resolution, and bitrate information
-        </Text>
-      </Box>
+        </span>
+      </div>
 
-      <Box>
-        <Flex align="center" gap="3">
-          <Text weight="medium">Persist server access tokens</Text>
+      <div>
+        <div className="flex items-center gap-3">
+          <span className="font-medium">Persist server access tokens</span>
           <Switch
             checked={persistTokens}
             onCheckedChange={(v) => {
@@ -112,11 +111,11 @@ export function AdvancedSettings() {
               migrateAccessTokensToMode(next ? "local" : "session");
             }}
           />
-        </Flex>
-        <Text color="gray" mt="1">
+        </div>
+        <span className="text-gryt-muted mt-1">
           Turn off to keep server access tokens in session storage (cleared when you close the browser).
-        </Text>
-      </Box>
+        </span>
+      </div>
       </>
       )}
     </SettingsContainer>

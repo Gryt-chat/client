@@ -1,5 +1,4 @@
 import { ContextMenu, Slider } from "@gryt/ui";
-import { Flex, Text } from "@radix-ui/themes";
 import { ReactNode } from "react";
 import toast from "react-hot-toast";
 import { PiAtFill, PiCopyFill } from "react-icons/pi";
@@ -89,9 +88,9 @@ export function UserContextMenu({
           </ContextMenu.Item>
           {serverUserId && (
             <ContextMenu.Item onClick={handleCopyId}>
-              <Flex align="center" gap="2">
+              <div className="flex items-center gap-2">
                 <PiCopyFill size={14} /> Copy ID
-              </Flex>
+              </div>
             </ContextMenu.Item>
           )}
           {onPopoutVideo && (
@@ -134,33 +133,27 @@ export function UserContextMenu({
         </ContextMenu.GroupLabel>
         {targetRole && (
           <ContextMenu.GroupLabel>
-            <Text size="1" color="gray" style={{ textTransform: "capitalize" }}>{targetRole}</Text>
+            <span className="text-xs text-gryt-muted" style={{ textTransform: "capitalize" }}>{targetRole}</span>
           </ContextMenu.GroupLabel>
         )}
         <ContextMenu.Item onClick={handleMention}>
-          <Flex align="center" gap="2">
+          <div className="flex items-center gap-2">
             <PiAtFill size={14} /> Mention
-          </Flex>
+          </div>
         </ContextMenu.Item>
         <ContextMenu.Item onClick={handleCopyId}>
-          <Flex align="center" gap="2">
+          <div className="flex items-center gap-2">
             <PiCopyFill size={14} /> Copy ID
-          </Flex>
+          </div>
         </ContextMenu.Item>
         <ContextMenu.Separator />
-        <Flex
-          direction="column"
-          gap="2"
-          px="2"
-          py="1"
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          <Flex align="center" justify="between">
-            <Text size="1" color="gray">Volume</Text>
-            <Text size="1" weight="medium" style={{ fontVariantNumeric: "tabular-nums" }}>
+        <div className="flex flex-col gap-2 px-2 py-1" onPointerDown={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gryt-muted">Volume</span>
+            <span className="text-xs font-medium" style={{ fontVariantNumeric: "tabular-nums" }}>
               {volume}%
-            </Text>
-          </Flex>
+            </span>
+          </div>
           <Slider
             min={0}
             max={200}
@@ -168,7 +161,7 @@ export function UserContextMenu({
             value={volume}
             onValueChange={(next) => updateUserVolume(serverUserId, Number(next))}
           />
-        </Flex>
+        </div>
         {volume !== 100 && (
           <>
             <ContextMenu.Separator />

@@ -1,5 +1,4 @@
 import { AlertDialog, Avatar, Button, Surface, TextField } from "@gryt/ui";
-import { Flex, Text } from "@radix-ui/themes";
 import { useCallback, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
@@ -69,14 +68,14 @@ function MemberDropdownItem({
         src={resolveAvatarSrc(member.avatarFileId ? getUploadsFileUrl(host, member.avatarFileId, { thumb: true }) : undefined, member.nickname)}
         style={{ flexShrink: 0 }}
       />
-      <Flex direction="column" style={{ flex: 1, minWidth: 0 }}>
-        <Text size="2" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+      <div className="flex flex-col" style={{ flex: 1, minWidth: 0 }}>
+        <span className="text-sm" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {member.nickname}
-        </Text>
-        <Text size="1">
+        </span>
+        <span className="text-xs">
           Joined {formatJoinDate(member.createdAt)}
-        </Text>
-      </Flex>
+        </span>
+      </div>
     </div>
   );
 }
@@ -112,7 +111,7 @@ function MemberCombobox({
 
   return (
     <div style={{ position: "relative" }}>
-      <Flex gap="2" align="center">
+      <div className="flex gap-2 items-center">
         {selectedMember && (
           <Avatar
             size="small"
@@ -136,7 +135,7 @@ function MemberCombobox({
             blurTimeoutRef.current = setTimeout(() => setFocused(false), 150);
           }}
         />
-      </Flex>
+      </div>
       {focused && filtered.length > 0 && (
         <div
           style={{
@@ -226,18 +225,18 @@ export function ServerUserReplaceTab({
   const selectedMember = members.find((m) => m.serverUserId === targetServerUserId);
 
   return (
-    <Flex direction="column" gap="4">
-      <Text size="2">
+    <div className="flex flex-col gap-4">
+      <span className="text-sm">
         Re-map a user&apos;s Keycloak identity (gryt_user_id) while keeping their server user ID, messages, roles, and
         all other data intact. This is useful when a user re-registers and gets a new Keycloak account.
-      </Text>
+      </span>
 
       <Surface>
-        <Flex direction="column" gap="3">
+        <div className="flex flex-col gap-3">
           <div>
-            <Text size="2" weight="bold" mb="1" as="p">
+            <p className="text-sm font-bold mb-1">
               Old user (current member)
-            </Text>
+            </p>
             <MemberCombobox
               value={targetServerUserId}
               onChange={setTargetServerUserId}
@@ -248,9 +247,9 @@ export function ServerUserReplaceTab({
           </div>
 
           <div>
-            <Text size="2" weight="bold" mb="1" as="p">
+            <p className="text-sm font-bold mb-1">
               New Gryt User ID
-            </Text>
+            </p>
             <MemberCombobox
               value={newGrytUserId}
               onChange={setNewGrytUserId}
@@ -258,12 +257,12 @@ export function ServerUserReplaceTab({
               host={host}
               placeholder="Paste ID or search for a member…"
             />
-            <Text size="1" mt="1" as="p">
+            <p className="text-xs mt-1">
               The Keycloak subject ID from the new account, or select an existing member.
-            </Text>
+            </p>
           </div>
 
-          <Flex justify="end" mt="2">
+          <div className="flex justify-end mt-2">
             <AlertDialog.Root>
               <AlertDialog.Trigger>
                 <Button size="small" disabled={submitting || !targetServerUserId || !newGrytUserId.trim()}>
@@ -279,7 +278,7 @@ export function ServerUserReplaceTab({
                   <strong>{selectedMember?.nickname ?? targetServerUserId}</strong>&apos;s server identity to a new
                   Keycloak account. The old account will lose access and any active sessions will be revoked.
                 </AlertDialog.Description>
-                <Flex gap="3" mt="4" justify="end">
+                <div className="flex gap-3 mt-4 justify-end">
                   <AlertDialog.Close render={<span />}>
                     <Button size="small">
                       Cancel
@@ -290,13 +289,13 @@ export function ServerUserReplaceTab({
                       Confirm replace
                     </Button>
                   </AlertDialog.Close>
-                </Flex>
+                </div>
               </AlertDialog.Popup>
               </AlertDialog.Portal>
             </AlertDialog.Root>
-          </Flex>
-        </Flex>
+          </div>
+        </div>
       </Surface>
-    </Flex>
+    </div>
   );
 }

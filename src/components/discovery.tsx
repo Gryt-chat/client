@@ -1,9 +1,4 @@
 import { Alert, Avatar, Button, Chip, Divider, IconButton, Spinner, Surface, Tooltip } from "@gryt/ui";
-import {
-  Flex,
-  Heading,
-  Text,
-} from "@radix-ui/themes";
 import { useCallback, useEffect, useState } from "react";
 import {
   PiArrowsClockwiseBold,
@@ -106,10 +101,10 @@ export function Discovery() {
   const busy = connecting !== null || joiningHost !== null;
 
   return (
-    <Flex direction="column" flexGrow="1" gap="4" p="5" overflow="auto">
-      <Flex align="center" gap="3">
+    <div className="flex flex-col grow gap-4 p-6 overflow-auto">
+      <div className="flex items-center gap-3">
         <PiBroadcastFill size={20} />
-        <Heading size="5">Servers on your network</Heading>
+        <h2 className="text-xl">Servers on your network</h2>
 
         <Tooltip title="Look again">
           <IconButton
@@ -127,43 +122,43 @@ export function Discovery() {
             <PiArrowsClockwiseBold size={14} />
           </IconButton>
         </Tooltip>
-      </Flex>
+      </div>
 
-      <Text color="gray">
+      <span className="text-gryt-muted">
         Gryt servers announce themselves on the local network. Anything running
         on the same Wi-Fi or LAN turns up here on its own — no invite needed for
         the ones that are open to it.
-      </Text>
+      </span>
 
       <Divider />
 
       {lanServers.length === 0 && !searchExpired && (
-        <Flex align="center" gap="2">
+        <div className="flex items-center gap-2">
           <Spinner />
-          <Text color="gray">
+          <span className="text-gryt-muted">
             Searching&hellip;
-          </Text>
-        </Flex>
+          </span>
+        </div>
       )}
 
       {lanServers.length === 0 && searchExpired && (
-        <Flex direction="column" gap="2" align="start">
-          <Text color="gray">
+        <div className="flex flex-col gap-2 items-start">
+          <span className="text-gryt-muted">
             No servers found on your network.
-          </Text>
-          <Text color="gray">
+          </span>
+          <span className="text-gryt-muted">
             Still looking — one will appear here as soon as it starts. If you
             have an invite link, add it directly instead.
-          </Text>
+          </span>
           <Button tone="neutral" size="small" className="mt-2"
             onClick={() => setShowAddServer(true)}
           >
             Add a server
           </Button>
-        </Flex>
+        </div>
       )}
 
-      <Flex direction="column" gap="2">
+      <div className="flex flex-col gap-2">
         {lanServers.map((server) => {
           const key = lanServerKey(server);
           const addr = lanServerAddr(server);
@@ -180,8 +175,8 @@ export function Discovery() {
 
           return (
             <Surface key={key}>
-              <Flex direction="column" gap="2">
-                <Flex align="center" gap="3">
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-3">
                   {/*
                     Streamed from the server's own /icon endpoint. Most servers
                     have never uploaded one and return 404, so the fallback is
@@ -195,10 +190,10 @@ export function Discovery() {
                     fallback={<GeneratedServerIcon seed={server.name || host} />}
                   />
 
-                  <Flex direction="column" style={{ minWidth: 0 }}>
-                    <Text weight="bold" truncate>
+                  <div className="flex flex-col" style={{ minWidth: 0 }}>
+                    <span className="font-bold truncate">
                       {server.name}
-                    </Text>
+                    </span>
                     {/*
                       Address only. The version is deliberately not shown:
                       surfacing it makes it trivial to scan a network for hosts
@@ -206,12 +201,12 @@ export function Discovery() {
                       mDNS TXT record and in /info, so this is not a fix for
                       that — see GRYT-42.
                     */}
-                    <Text color="gray" truncate>
+                    <span className="text-gryt-muted truncate">
                       {addr}
-                    </Text>
-                  </Flex>
+                    </span>
+                  </div>
 
-                  <Flex ml="auto" align="center" gap="2">
+                  <div className="flex items-center gap-2 ml-auto">
                     {isMember ? (
                       <>
                         <Chip tone="success" label="Joined" />
@@ -235,8 +230,8 @@ export function Discovery() {
                         {isConnectingThis ? "Joining" : "Join"}
                       </Button>
                     )}
-                  </Flex>
-                </Flex>
+                  </div>
+                </div>
 
                 {error && (
                   <Alert severity="error" role="alert">
@@ -258,11 +253,11 @@ export function Discovery() {
                     </span>
                   </Alert>
                 )}
-              </Flex>
+              </div>
             </Surface>
           );
         })}
-      </Flex>
-    </Flex>
+      </div>
+    </div>
   );
 }

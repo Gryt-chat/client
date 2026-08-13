@@ -1,5 +1,4 @@
 import { Skeleton } from "@gryt/ui";
-import { Box, Flex, Text } from "@radix-ui/themes";
 import { PiChatCircleFill, PiSpeakerHighFill } from "react-icons/pi";
 
 import { EmojiText } from "./EmojiText";
@@ -89,22 +88,22 @@ export const MessageSkeleton = () => {
   ];
 
   return (
-    <Flex direction="column" style={{ gap: 16, paddingBottom: "16px" }}>
+    <div className="flex flex-col" style={{ gap: 16, paddingBottom: "16px" }}>
       {skeletonGroups.map((group, i) => (
-        <Flex key={i} gap="3" align="start" style={{ width: "100%" }}>
+        <div className="flex gap-3 items-start" key={i} style={{ width: "100%" }}>
           <Skeleton width="51px" height="51px" style={{ borderRadius: "50%", flexShrink: 0 }} />
-          <Flex direction="column" gap="1" style={{ flex: 1 }}>
-            <Flex align="baseline" gap="2" style={{ marginBottom: 2 }}>
+          <div className="flex flex-col gap-1" style={{ flex: 1 }}>
+            <div className="flex items-baseline gap-2" style={{ marginBottom: 2 }}>
               <Skeleton height="14px" width="80px" style={{ opacity: 0.7 }} />
               <Skeleton height="10px" width="40px" style={{ opacity: 0.4 }} />
-            </Flex>
+            </div>
             {group.lines.map((w, j) => (
               <Skeleton key={j} height="16px" width={w} style={{ opacity: 0.5 }} />
             ))}
-          </Flex>
-        </Flex>
+          </div>
+        </div>
       ))}
-    </Flex>
+    </div>
   );
 };
 
@@ -112,9 +111,8 @@ const ChannelIcon = ({ type, size }: { type: "text" | "voice"; size: number }) =
   type === "voice" ? <PiSpeakerHighFill size={size} /> : <PiChatCircleFill size={size} />;
 
 export const WelcomeMessage = ({ channelName, channelType = "text", onStart }: { channelName?: string; channelType?: "text" | "voice"; onStart?: () => void }) => (
-  <Flex direction="column" style={{ padding: "48px 24px", alignItems: "center", textAlign: "center" }}>
-    <Box
-      style={{
+  <div className="flex flex-col" style={{ padding: "48px 24px", alignItems: "center", textAlign: "center" }}>
+    <div style={{
         width: "120px",
         height: "120px",
         borderRadius: "50%",
@@ -126,24 +124,23 @@ export const WelcomeMessage = ({ channelName, channelType = "text", onStart }: {
         border: "3px solid var(--gray-6)",
         boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
         color: "var(--gray-9)",
-      }}
-    >
+      }}>
       <ChannelIcon type={channelType} size={48} />
-    </Box>
+    </div>
 
-    <Flex align="center" gap="2" style={{ marginBottom: "12px" }}>
-      <Text size="7" weight="bold" style={{ color: "var(--gray-12)", display: "inline-flex", alignItems: "center", gap: "8px" }}>
+    <div className="flex items-center gap-2" style={{ marginBottom: "12px" }}>
+      <span className="text-3xl font-bold" style={{ color: "var(--gray-12)", display: "inline-flex", alignItems: "center", gap: "8px" }}>
         Welcome to <ChannelIcon type={channelType} size={24} /> <EmojiText text={channelName || "channel"} />!
-      </Text>
-    </Flex>
+      </span>
+    </div>
 
-    <Text size="4" color="gray" style={{ marginBottom: "24px", maxWidth: "500px", lineHeight: 1.5 }}>
+    <span className="text-lg text-gryt-muted" style={{ marginBottom: "24px", maxWidth: "500px", lineHeight: 1.5 }}>
       This is the start of the{" "}
-      <Text weight="medium" color="gray" style={{ display: "inline-flex", alignItems: "center", gap: "4px", verticalAlign: "middle" }}>
+      <span className="font-medium text-gryt-muted" style={{ display: "inline-flex", alignItems: "center", gap: "4px", verticalAlign: "middle" }}>
         <ChannelIcon type={channelType} size={16} /> <EmojiText text={channelName || "channel"} />
-      </Text>{" "}
+      </span>{" "}
       channel. Start a conversation by typing a message below.
-    </Text>
+    </span>
 
     {/*
       This looks like a button — border, fill, accent text, icon — so it has to
@@ -151,11 +148,7 @@ export const WelcomeMessage = ({ channelName, channelType = "text", onStart }: {
       not focus the composer, so anything typed straight afterwards went nowhere
       at all, with no focus to receive it.
     */}
-    <Flex
-      asChild
-      align="center"
-      gap="3"
-      style={{
+    <button className="flex items-center gap-3" type="button" onClick={onStart} style={{
         color: "var(--accent-9)",
         background: "var(--accent-2)",
         padding: "12px 20px",
@@ -163,14 +156,11 @@ export const WelcomeMessage = ({ channelName, channelType = "text", onStart }: {
         border: "1px solid var(--accent-6)",
         cursor: onStart ? "pointer" : "default",
         font: "inherit",
-      }}
-    >
-      <button type="button" onClick={onStart}>
-        <Text size="3">💬</Text>
-        <Text size="3" color="blue" weight="medium">
+      }}>
+        <span className="text-base">💬</span>
+        <span className="text-base text-gryt-secondary font-medium">
           Type a message to get started
-        </Text>
+        </span>
       </button>
-    </Flex>
-  </Flex>
+  </div>
 );

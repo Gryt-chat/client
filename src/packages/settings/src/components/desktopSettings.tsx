@@ -1,5 +1,4 @@
 import { Divider } from "@gryt/ui";
-import { Heading } from "@radix-ui/themes";
 import { useCallback, useEffect, useState } from "react";
 
 import { getElectronAPI } from "../../../../lib/electron";
@@ -54,9 +53,9 @@ export function DesktopSettings() {
 
   return (
     <SettingsContainer>
-      <Heading as="h2">
+      <h2>
         Desktop
-      </Heading>
+      </h2>
 
       {startWithWindowsSupported && (
         <>

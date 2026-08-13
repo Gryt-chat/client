@@ -1,5 +1,4 @@
 import { Chip, Dialog, IconButton, Spinner, Tabs } from "@gryt/ui";
-import { Box, Flex, Text } from "@radix-ui/themes";
 import { useEffect, useMemo, useState } from "react";
 import { PiArrowsLeftRightFill, PiGearFill, PiHandWavingFill, PiLinkFill, PiListChecksFill, PiProhibitFill, PiSmileyFill, PiUsersFill, PiWebhooksLogoFill, PiX } from "react-icons/pi";
 
@@ -190,7 +189,7 @@ export function ServerSettingsModal() {
           </IconButton>
         </Dialog.Close>
 
-        <Flex direction="column" gap="4" height="100%">
+        <div className="flex flex-col gap-4 h-full">
           <Dialog.Title>
             Server settings
           </Dialog.Title>
@@ -203,8 +202,8 @@ export function ServerSettingsModal() {
                 orientation="vertical"
                 style={{ flex: 1, minHeight: 0 }}
               >
-                <Flex gap="4" height="100%">
-                  <Box style={{ minWidth: "200px", flexShrink: 0, overflowY: "auto" }}>
+                <div className="flex gap-4 h-full">
+                  <div style={{ minWidth: "200px", flexShrink: 0, overflowY: "auto" }}>
                     <Tabs.List aria-label="Server settings" className="gap-1">
                       {TAB_CONFIG.map(({ value, label, icon: Icon }) => (
                         <Tabs.Tab key={value} value={value}>
@@ -214,80 +213,76 @@ export function ServerSettingsModal() {
                       ))}
                       <Tabs.Indicator />
                     </Tabs.List>
-                    <Flex
-                      direction="column"
-                      gap="1"
-                      style={{ padding: "12px 16px", fontFamily: "var(--code-font-family)" }}
-                    >
+                    <div className="flex flex-col gap-1" style={{ padding: "12px 16px", fontFamily: "var(--code-font-family)" }}>
                       {serverInfo?.version && (
-                        <Flex align="center" gap="2">
-                          <Text size="1" color="gray" style={{ opacity: 0.5 }}>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gryt-muted" style={{ opacity: 0.5 }}>
                             Server v{serverInfo.version}
-                          </Text>
+                          </span>
                           {versionLoading && <Spinner size={16} />}
                           {versionStatus?.server.updateAvailable && (
                             <Chip tone="warning">
                               v{versionStatus.server.latest}
                             </Chip>
                           )}
-                        </Flex>
+                        </div>
                       )}
                       {versionStatus?.sfu && (
-                        <Flex align="center" gap="2">
-                          <Text size="1" color="gray" style={{ opacity: 0.5 }}>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gryt-muted" style={{ opacity: 0.5 }}>
                             SFU {versionStatus.sfu.current ? `v${versionStatus.sfu.current}` : "—"}
-                          </Text>
+                          </span>
                           {versionStatus.sfu.updateAvailable && (
                             <Chip tone="warning">
                               v{versionStatus.sfu.latest}
                             </Chip>
                           )}
-                        </Flex>
+                        </div>
                       )}
                       {/* Absent, not dashed, when there is no worker to ask.
                           A server without one is a normal deployment, and a
                           permanent "—" would read as something being broken. */}
                       {versionStatus?.worker && (
-                        <Flex align="center" gap="2">
-                          <Text size="1" color="gray" style={{ opacity: 0.5 }}>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gryt-muted" style={{ opacity: 0.5 }}>
                             Image worker{" "}
                             {versionStatus.worker.current
                               ? `v${versionStatus.worker.current}`
                               : "—"}
-                          </Text>
+                          </span>
                           {versionStatus.worker.updateAvailable && (
                             <Chip tone="warning">
                               v{versionStatus.worker.latest}
                             </Chip>
                           )}
-                        </Flex>
+                        </div>
                       )}
-                    </Flex>
-                  </Box>
+                    </div>
+                  </div>
 
-                  <Box style={{ flex: 1, overflow: "auto", minWidth: 0 }}>
+                  <div style={{ flex: 1, overflow: "auto", minWidth: 0 }}>
                     {!permissionKnown ? (
-                      <Text size="2" color="gray" style={{ marginBottom: 12 }}>
+                      <span className="text-sm text-gryt-muted" style={{ marginBottom: 12 }}>
                         Loading permissions…
-                      </Text>
+                      </span>
                     ) : null}
                     {TAB_CONFIG.map(({ value, content }) => (
                       <Tabs.Panel key={value} value={value}>
                         {content}
                       </Tabs.Panel>
                     ))}
-                  </Box>
-                </Flex>
+                  </div>
+                </div>
               </Tabs>
             ) : (
-              <Flex direction="column" gap="3">
-                <Text size="2" color="gray">
+              <div className="flex flex-col gap-3">
+                <span className="text-sm text-gryt-muted">
                   Server settings are only available to server admins.
-                </Text>
-              </Flex>
+                </span>
+              </div>
             )
           )}
-        </Flex>
+        </div>
       </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>

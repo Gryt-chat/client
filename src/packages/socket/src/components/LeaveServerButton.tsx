@@ -1,4 +1,4 @@
-import { AlertDialog, Button, Flex } from '@radix-ui/themes';
+import { AlertDialog, Button } from "@gryt/ui";
 import React, { useState } from 'react';
 
 import { useSockets } from '../hooks/useSockets';
@@ -17,28 +17,35 @@ export const LeaveServerButton: React.FC<LeaveServerButtonProps> = ({
 
   return (
     <>
-      <Button
-        variant="solid"
-        color="red"
-        onClick={() => setShowConfirm(true)}
-      >
+      <Button tone="danger" onClick={() => setShowConfirm(true)}>
         {children}
       </Button>
       <AlertDialog.Root open={showConfirm} onOpenChange={(open) => { if (!open) setShowConfirm(false); }}>
-        <AlertDialog.Content maxWidth="420px">
+        <AlertDialog.Portal>
+          <AlertDialog.Backdrop />
+          <AlertDialog.Popup className="max-w-105">
           <AlertDialog.Title>Leave server?</AlertDialog.Title>
           <AlertDialog.Description>
             Are you sure you want to leave {host}? You will lose access to all channels and messages.
           </AlertDialog.Description>
-          <Flex gap="3" mt="4" justify="end">
-            <AlertDialog.Cancel>
-              <Button variant="soft" color="gray">Cancel</Button>
-            </AlertDialog.Cancel>
-            <AlertDialog.Action>
-              <Button variant="solid" color="red" onClick={() => { leaveServer(host); setShowConfirm(false); }}>Leave</Button>
-            </AlertDialog.Action>
-          </Flex>
-        </AlertDialog.Content>
+          <div className="flex gap-3 mt-4 justify-end">
+            <AlertDialog.Close render={<span />}>
+              <Button tone="neutral">Cancel</Button>
+            </AlertDialog.Close>
+            <AlertDialog.Close render={<span />}>
+              <Button
+                tone="danger"
+                onClick={() => {
+                  leaveServer(host);
+                  setShowConfirm(false);
+                }}
+              >
+                Leave
+              </Button>
+            </AlertDialog.Close>
+          </div>
+          </AlertDialog.Popup>
+        </AlertDialog.Portal>
       </AlertDialog.Root>
     </>
   );

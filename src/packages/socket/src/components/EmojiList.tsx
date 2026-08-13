@@ -1,8 +1,4 @@
 import { AlertDialog, Button, IconButton, TextField } from "@gryt/ui";
-import {
-  Flex,
-  Text,
-} from "@radix-ui/themes";
 import { type ChangeEvent, useState } from "react";
 import toast from "react-hot-toast";
 import { PiCheck, PiPencilSimpleFill, PiTrashFill, PiX } from "react-icons/pi";
@@ -156,11 +152,11 @@ export function EmojiList({
   };
 
   return (
-    <Flex direction="column" gap="2">
-      <Flex justify="between" align="center">
-        <Text size="2" weight="medium">
+    <div className="flex flex-col gap-2">
+      <div className="flex justify-between items-center">
+        <span className="text-sm font-medium">
           Custom emojis {!loading && `(${emojis.length})`}
-        </Text>
+        </span>
         {emojis.length > 0 && (
           <AlertDialog.Root>
             <AlertDialog.Trigger>
@@ -176,7 +172,7 @@ export function EmojiList({
               <AlertDialog.Description>
                 This will permanently delete all {emojis.length} custom emoji{emojis.length !== 1 ? "s" : ""} from this server. This cannot be undone.
               </AlertDialog.Description>
-              <Flex gap="3" mt="4" justify="end">
+              <div className="flex gap-3 mt-4 justify-end">
                 <AlertDialog.Close render={<span />}>
                   <Button size="small">Cancel</Button>
                 </AlertDialog.Close>
@@ -185,36 +181,28 @@ export function EmojiList({
                     Delete all
                   </Button>
                 </AlertDialog.Close>
-              </Flex>
+              </div>
             </AlertDialog.Popup>
             </AlertDialog.Portal>
           </AlertDialog.Root>
         )}
-      </Flex>
+      </div>
 
       {loading ? (
-        <Text size="2">
+        <span className="text-sm">
           Loading...
-        </Text>
+        </span>
       ) : emojis.length === 0 ? (
-        <Text size="2">
+        <span className="text-sm">
           No custom emojis yet.
-        </Text>
+        </span>
       ) : (
-        <Flex direction="column" gap="1">
+        <div className="flex flex-col gap-1">
           {emojis.map((e) => (
-            <Flex
-              key={e.name}
-              align="center"
-              gap="3"
-              py="1"
-              px="2"
-              style={{
+            <div className="flex items-center gap-3 py-1 px-2 emoji-row" key={e.name} style={{
                 borderRadius: "var(--radius-1)",
                 transition: "background 120ms",
-              }}
-              className="emoji-row"
-            >
+              }}>
               <img
                 src={getCustomEmojiUrl(host, e.name)}
                 alt={`:${e.name}:`}
@@ -225,8 +213,8 @@ export function EmojiList({
                 }}
               />
               {editingEmoji === e.name ? (
-                <Flex direction="column" gap="1" style={{ flex: 1, minWidth: 0 }}>
-                  <Flex align="center" gap="1">
+                <div className="flex flex-col gap-1" style={{ flex: 1, minWidth: 0 }}>
+                  <div className="flex items-center gap-1">
                     <TextField size="small"
                       value={editingName}
                       onChange={(ev: ChangeEvent<HTMLInputElement>) => {
@@ -258,17 +246,17 @@ export function EmojiList({
                     >
                       <PiX size={14} />
                     </IconButton>
-                  </Flex>
+                  </div>
                   {editingError && (
-                    <Text size="1" style={{ lineHeight: 1.2 }}>
+                    <span className="text-xs" style={{ lineHeight: 1.2 }}>
                       {editingError}
-                    </Text>
+                    </span>
                   )}
-                </Flex>
+                </div>
               ) : (
-                <Text size="2" style={{ flex: 1 }}>
+                <span className="text-sm" style={{ flex: 1 }}>
                   <code>:{e.name}:</code>
-                </Text>
+                </span>
               )}
               {editingEmoji !== e.name && (
                 <>
@@ -289,10 +277,10 @@ export function EmojiList({
                   </IconButton>
                 </>
               )}
-            </Flex>
+            </div>
           ))}
-        </Flex>
+        </div>
       )}
-    </Flex>
+    </div>
   );
 }

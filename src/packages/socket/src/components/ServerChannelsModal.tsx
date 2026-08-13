@@ -1,5 +1,4 @@
 import { AlertDialog, Button, Dialog, IconButton, Surface, TextField } from "@gryt/ui";
-import { Flex, Text } from "@radix-ui/themes";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { PiPlus, PiTrashFill, PiX } from "react-icons/pi";
@@ -128,39 +127,39 @@ export function ServerChannelsModal() {
       <Dialog.Portal>
         <Dialog.Backdrop />
         <Dialog.Popup style={{ maxWidth: 760 }}>
-        <Flex direction="column" gap="4">
-          <Flex align="center" justify="between">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
             <Dialog.Title>Channels</Dialog.Title>
             <Dialog.Close>
               <IconButton tone="ghost" size="xsmall" onClick={close} disabled={submitting}>
                 <PiX size={16} />
               </IconButton>
             </Dialog.Close>
-          </Flex>
+          </div>
 
           <Surface>
-            <Flex direction="column" gap="3">
-              <Text size="2" weight="medium">
+            <div className="flex flex-col gap-3">
+              <span className="text-sm font-medium">
                 {editingId ? "Edit channel" : "Create channel"}
-              </Text>
-              <Flex gap="3" wrap="wrap">
-                <Flex direction="column" gap="1" style={{ flex: 1, minWidth: 240 }}>
-                  <Text size="2" weight="medium">Name</Text>
+              </span>
+              <div className="flex gap-3 flex-wrap">
+                <div className="flex flex-col gap-1" style={{ flex: 1, minWidth: 240 }}>
+                  <span className="text-sm font-medium">Name</span>
                   <TextField value={name} onChange={(e) => setName(e.target.value)} placeholder="Announcements" />
-                </Flex>
-                <Flex direction="column" gap="1" style={{ minWidth: 160 }}>
-                  <Text size="2" weight="medium">Type</Text>
+                </div>
+                <div className="flex flex-col gap-1" style={{ minWidth: 160 }}>
+                  <span className="text-sm font-medium">Type</span>
                   <select value={type} onChange={(e) => setType(e.target.value === "voice" ? "voice" : "text")}>
                     <option value="text">text</option>
                     <option value="voice">voice</option>
                   </select>
-                </Flex>
-                <Flex direction="column" gap="1" style={{ flex: 1, minWidth: 240 }}>
-                  <Text size="2" weight="medium">Description</Text>
+                </div>
+                <div className="flex flex-col gap-1" style={{ flex: 1, minWidth: 240 }}>
+                  <span className="text-sm font-medium">Description</span>
                   <TextField value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional" />
-                </Flex>
-              </Flex>
-              <Flex justify="end" gap="2">
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
                 <Button tone="neutral" size="small" onClick={resetForm} disabled={submitting}>
                   Reset
                 </Button>
@@ -168,29 +167,29 @@ export function ServerChannelsModal() {
                   <PiPlus size={16} />
                   {editingId ? "Save" : "Add"}
                 </Button>
-              </Flex>
-            </Flex>
+              </div>
+            </div>
           </Surface>
 
-          <Flex direction="column" gap="2">
-            <Text size="2" weight="medium">Existing channels</Text>
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium">Existing channels</span>
             {channels.length === 0 ? (
-              <Text size="2" color="gray">No channels found.</Text>
+              <span className="text-sm text-gryt-muted">No channels found.</span>
             ) : (
               channels
                 .slice()
                 .sort((a, b) => ((a.position ?? 0) - (b.position ?? 0)) || a.name.localeCompare(b.name))
                 .map((ch) => (
                   <Surface key={ch.id}>
-                    <Flex align="center" justify="between" gap="2" wrap="wrap">
-                      <Flex direction="column" gap="1">
-                        <Text size="2" weight="bold">{ch.name}</Text>
-                        <Text size="1" color="gray">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-sm font-bold">{ch.name}</span>
+                        <span className="text-xs text-gryt-muted">
                           #{ch.id} · {ch.type}
                           {ch.description ? ` · ${ch.description}` : ""}
-                        </Text>
-                      </Flex>
-                      <Flex gap="2">
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
                         <Button tone="neutral" size="small" onClick={() => startEdit(ch)} disabled={submitting}>
                           Edit
                         </Button>
@@ -198,13 +197,13 @@ export function ServerChannelsModal() {
                           <PiTrashFill size={16} />
                           Delete
                         </Button>
-                      </Flex>
-                    </Flex>
+                      </div>
+                    </div>
                   </Surface>
                 ))
             )}
-          </Flex>
-        </Flex>
+          </div>
+        </div>
 
         <AlertDialog.Root open={!!pendingDeleteId} onOpenChange={(open) => { if (!open) setPendingDeleteId(null); }}>
           <AlertDialog.Portal>
@@ -214,14 +213,14 @@ export function ServerChannelsModal() {
             <AlertDialog.Description>
               This will permanently delete &ldquo;{channels.find((c) => c.id === pendingDeleteId)?.name || "this channel"}&rdquo; and all associated data. This action cannot be undone.
             </AlertDialog.Description>
-            <Flex gap="3" mt="4" justify="end">
+            <div className="flex gap-3 mt-4 justify-end">
               <AlertDialog.Close render={<span />}>
                 <Button tone="neutral" size="small">Cancel</Button>
               </AlertDialog.Close>
               <AlertDialog.Close render={<span />}>
                 <Button tone="danger" size="small" onClick={() => { if (pendingDeleteId) { del(pendingDeleteId); setPendingDeleteId(null); } }}>Delete</Button>
               </AlertDialog.Close>
-            </Flex>
+            </div>
           </AlertDialog.Popup>
           </AlertDialog.Portal>
         </AlertDialog.Root>

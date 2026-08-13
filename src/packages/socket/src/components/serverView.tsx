@@ -1,4 +1,3 @@
-import { Flex } from "@radix-ui/themes";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useUnreadTracker } from "@/common";
@@ -291,7 +290,7 @@ export const ServerView = () => {
 
   return (
     <>
-      <Flex data-gryt="server-view" width="100%" height="100%" gap="4" direction="column">
+      <div className="flex w-full h-full gap-4 flex-col" data-gryt="server-view">
         {isServerUnreachable && (
           <ConnectionBanner connectionStatus={currentConnectionStatus} onReconnect={() => reconnectServer(host)} />
         )}
@@ -359,14 +358,11 @@ export const ServerView = () => {
             streamSources={voiceStreamSources}
           />
         ) : (
-          <Flex
-            width="100%" gap="4"
-            style={{
+          <div className="flex w-full gap-4" style={{
               flex: 1, overflow: "hidden",
               ...(isServerUnreachable && !isVoiceOnThisServer && { opacity: 0.5, pointerEvents: "none" as const }),
               transition: "opacity 0.3s ease",
-            }}
-          >
+            }}>
             <ServerSidebar
               sidebarOpen={leftSidebarOpen && !voiceFocused}
               sidebarWidthPx={SIDEBAR_WIDTH_PX}
@@ -409,7 +405,7 @@ export const ServerView = () => {
               unreadChannelIds={unreadChannelIds}
               streamSources={voiceStreamSources}
             />
-            <Flex flexGrow="1" ref={voiceContainerRef} style={{ position: "relative", minWidth: 0 }}>
+            <div className="flex grow" ref={voiceContainerRef} style={{ position: "relative", minWidth: 0 }}>
               <VoiceView
                 showVoiceView={showVoiceView && (!isCompact || voiceFocused)}
                 voiceWidth={voiceFocused
@@ -477,7 +473,7 @@ export const ServerView = () => {
                   {...(isLoadingMessages !== undefined && { isLoadingMessages })}
                 />
               </div>
-            </Flex>
+            </div>
             <MemberSidebarPanel
               sidebarOpen={rightSidebarOpen && !voiceFocused}
               sidebarWidthPx={SIDEBAR_WIDTH_PX}
@@ -496,9 +492,9 @@ export const ServerView = () => {
               pinned={pinMembersSidebar}
               onTogglePinned={() => setPinMembersSidebar(!pinMembersSidebar)}
             />
-          </Flex>
+          </div>
         )}
-      </Flex>
+      </div>
 
       <SidebarEditDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} editor={sidebarEditor} />
 

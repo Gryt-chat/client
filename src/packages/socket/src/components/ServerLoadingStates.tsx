@@ -1,5 +1,4 @@
 import { Button, Spinner } from "@gryt/ui";
-import { Box, Flex, Text } from "@radix-ui/themes";
 import { PiArrowsClockwiseFill, PiClockFill, PiWarningCircleFill, PiWifiSlashFill } from "react-icons/pi";
 
 import { ServerDetailsSkeleton } from "./skeletons";
@@ -58,23 +57,23 @@ export const ServerLoadingStates = ({
   if (serverFailure) {
     const wasRefused = REFUSALS.has(serverFailure.error);
     return (
-      <Flex width="100%" height="100%" align="center" justify="center" p="4">
-        <Box style={cardStyle}>
-          <Flex direction="column" align="center" gap="4">
+      <div className="flex w-full h-full items-center justify-center p-4">
+        <div style={cardStyle}>
+          <div className="flex flex-col items-center gap-4">
             <div style={iconWrapStyle("var(--red-a3)")}>
               <PiWarningCircleFill size={28} color="var(--red-9)" />
             </div>
-            <Flex direction="column" gap="2" align="center">
-              <Text size="4" weight="bold">
+            <div className="flex flex-col gap-2 items-center">
+              <span className="text-lg font-bold">
                 {wasRefused ? "You can't join this server" : "Failed to load server"}
-              </Text>
-              <Text size="2" color="gray" style={{ lineHeight: 1.5 }}>
+              </span>
+              <span className="text-sm text-gryt-muted" style={{ lineHeight: 1.5 }}>
                 {serverFailure.error === "rate_limited"
                   ? "You're being rate limited. Please wait a moment and try again."
                   : serverFailure.message ||
                     "An error occurred while loading server details."}
-              </Text>
-            </Flex>
+              </span>
+            </div>
             {!wasRefused && (
               <Button size="small"
                 onClick={() => window.location.reload()}
@@ -84,34 +83,34 @@ export const ServerLoadingStates = ({
                 Retry
               </Button>
             )}
-          </Flex>
-        </Box>
-      </Flex>
+          </div>
+        </div>
+      </div>
     );
   }
 
   if (connectionStatus === 'reconnecting') {
     return (
-      <Flex width="100%" height="100%" align="center" justify="center" p="4">
-        <Box style={cardStyle}>
-          <Flex direction="column" align="center" gap="4">
+      <div className="flex w-full h-full items-center justify-center p-4">
+        <div style={cardStyle}>
+          <div className="flex flex-col items-center gap-4">
             <div style={{
               ...iconWrapStyle("var(--orange-a3)"),
               animation: "pulse-reconnect 2s ease-in-out infinite",
             }}>
               <Spinner size={24} />
             </div>
-            <Flex direction="column" gap="2" align="center">
-              <Text size="4" weight="bold">
+            <div className="flex flex-col gap-2 items-center">
+              <span className="text-lg font-bold">
                 Reconnecting...
-              </Text>
-              <Text size="2" color="gray" style={{ lineHeight: 1.5 }}>
+              </span>
+              <span className="text-sm text-gryt-muted" style={{ lineHeight: 1.5 }}>
                 Lost connection to the server. Attempting to reconnect automatically.
-              </Text>
-            </Flex>
-          </Flex>
-        </Box>
-      </Flex>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -121,43 +120,43 @@ export const ServerLoadingStates = ({
   // button, because retrying is not the answer.
   if (connectionStatus === 'refused') {
     return (
-      <Flex width="100%" height="100%" align="center" justify="center" p="4">
-        <Box style={cardStyle}>
-          <Flex direction="column" align="center" gap="4">
+      <div className="flex w-full h-full items-center justify-center p-4">
+        <div style={cardStyle}>
+          <div className="flex flex-col items-center gap-4">
             <div style={iconWrapStyle("var(--red-a3)")}>
               <PiWifiSlashFill size={26} color="var(--red-9)" />
             </div>
-            <Flex direction="column" gap="2" align="center">
-              <Text size="4" weight="bold">
+            <div className="flex flex-col gap-2 items-center">
+              <span className="text-lg font-bold">
                 Server identity not recognised
-              </Text>
-              <Text size="2" color="gray" style={{ lineHeight: 1.5 }}>
+              </span>
+              <span className="text-sm text-gryt-muted" style={{ lineHeight: 1.5 }}>
                 {refusalReason ??
                   "This server could not prove it is the one you joined before."}
-              </Text>
-            </Flex>
-          </Flex>
-        </Box>
-      </Flex>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
     );
   }
 
   if (connectionStatus === 'disconnected') {
     return (
-      <Flex width="100%" height="100%" align="center" justify="center" p="4">
-        <Box style={cardStyle}>
-          <Flex direction="column" align="center" gap="4">
+      <div className="flex w-full h-full items-center justify-center p-4">
+        <div style={cardStyle}>
+          <div className="flex flex-col items-center gap-4">
             <div style={iconWrapStyle("var(--red-a3)")}>
               <PiWifiSlashFill size={26} color="var(--red-9)" />
             </div>
-            <Flex direction="column" gap="2" align="center">
-              <Text size="4" weight="bold">
+            <div className="flex flex-col gap-2 items-center">
+              <span className="text-lg font-bold">
                 Server unreachable
-              </Text>
-              <Text size="2" color="gray" style={{ lineHeight: 1.5 }}>
+              </span>
+              <span className="text-sm text-gryt-muted" style={{ lineHeight: 1.5 }}>
                 Unable to establish a connection. The server may be offline or there could be a network issue.
-              </Text>
-            </Flex>
+              </span>
+            </div>
             <Button size="small"
               onClick={onReconnect ?? (() => window.location.reload())}
               style={{ marginTop: 4 }}
@@ -165,37 +164,37 @@ export const ServerLoadingStates = ({
               <PiArrowsClockwiseFill size={16} />
               Reconnect
             </Button>
-          </Flex>
-        </Box>
-      </Flex>
+          </div>
+        </div>
+      </div>
     );
   }
 
   if (!hasTimedOut) {
     return (
-      <Flex width="100%" height="100%" gap="4">
-        <Box width={{ sm: "240px", initial: "100%" }}>
+      <div className="flex w-full h-full gap-4">
+        <div className="w-[100%] sm:w-[240px]">
           <ServerDetailsSkeleton />
-        </Box>
-      </Flex>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Flex width="100%" height="100%" align="center" justify="center" p="4">
-      <Box style={cardStyle}>
-        <Flex direction="column" align="center" gap="4">
+    <div className="flex w-full h-full items-center justify-center p-4">
+      <div style={cardStyle}>
+        <div className="flex flex-col items-center gap-4">
           <div style={iconWrapStyle("var(--orange-a3)")}>
             <PiClockFill size={26} color="var(--orange-9)" />
           </div>
-          <Flex direction="column" gap="2" align="center">
-            <Text size="4" weight="bold">
+          <div className="flex flex-col gap-2 items-center">
+            <span className="text-lg font-bold">
               Taking longer than expected
-            </Text>
-            <Text size="2" color="gray" style={{ lineHeight: 1.5 }}>
+            </span>
+            <span className="text-sm text-gryt-muted" style={{ lineHeight: 1.5 }}>
               The server is taking a while to respond. This could be due to network conditions or the server being under load.
-            </Text>
-          </Flex>
+            </span>
+          </div>
           <Button size="small"
             onClick={onReconnect ?? (() => window.location.reload())}
             style={{ marginTop: 4 }}
@@ -203,8 +202,8 @@ export const ServerLoadingStates = ({
             <PiArrowsClockwiseFill size={16} />
             Retry
           </Button>
-        </Flex>
-      </Box>
-    </Flex>
+        </div>
+      </div>
+    </div>
   );
 };

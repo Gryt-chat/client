@@ -1,5 +1,4 @@
 import { AlertDialog, Avatar, Button, IconButton, Tabs, TextField, Tooltip } from "@gryt/ui";
-import { Flex, Heading, Text } from "@radix-ui/themes";
 import { useCallback,useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { PiArrowsClockwiseFill, PiCameraFill, PiCheck, PiCopyFill } from "react-icons/pi";
@@ -134,25 +133,14 @@ function ProfileEditor({
   }, [draft, nickname, onSaveNickname]);
 
   return (
-    <Flex
-      direction="column"
-      gap="5"
-      align="center"
-      style={{ paddingTop: 8 }}
-      data-tour="profile-editor"
-    >
+    <div className="flex flex-col gap-6 items-center" style={{ paddingTop: 8 }} data-tour="profile-editor">
       {serverLabel && (
-        <Text size="2" weight="medium">
+        <span className="text-sm font-medium">
           {serverLabel}
-        </Text>
+        </span>
       )}
 
-      <Flex
-        direction="column"
-        align="center"
-        gap="2"
-        style={{ cursor: "default", opacity: uploading || removing ? 0.6 : 1, transition: "opacity 200ms" }}
-      >
+      <div className="flex flex-col items-center gap-2" style={{ cursor: "default", opacity: uploading || removing ? 0.6 : 1, transition: "opacity 200ms" }}>
         <button
           type="button"
           disabled={uploading || removing}
@@ -171,10 +159,7 @@ function ProfileEditor({
               src={previewSrc}
               fallback={initial}
             />
-            <Flex
-              align="center"
-              justify="center"
-              style={{
+            <div className="flex items-center justify-center" style={{
                 position: "absolute",
                 bottom: 0,
                 right: 0,
@@ -184,16 +169,15 @@ function ProfileEditor({
                 background: "var(--accent-9)",
                 color: "var(--accent-contrast)",
                 boxShadow: "0 1px 4px var(--gray-a5)",
-              }}
-            >
+              }}>
               <PiCameraFill size={14} />
-            </Flex>
+            </div>
           </div>
         </button>
-        <Text size="1">
+        <span className="text-xs">
           {uploading ? "Uploading..." : removing ? "Removing..." : "Click to change avatar"}
-        </Text>
-      </Flex>
+        </span>
+      </div>
 
       {avatarUrl ? (
         <>
@@ -211,25 +195,25 @@ function ProfileEditor({
               <AlertDialog.Description>
                 Your avatar will be removed{serverLabel ? ` from ${serverLabel}` : ""}. This action cannot be undone.
               </AlertDialog.Description>
-              <Flex gap="3" mt="4" justify="end">
+              <div className="flex gap-3 mt-4 justify-end">
                 <AlertDialog.Close render={<span />}>
                   <Button size="small">Cancel</Button>
                 </AlertDialog.Close>
                 <AlertDialog.Close render={<span />}>
                   <Button size="small" onClick={() => { onRemoveAvatar(); setShowRemoveConfirm(false); }}>Remove</Button>
                 </AlertDialog.Close>
-              </Flex>
+              </div>
             </AlertDialog.Popup>
             </AlertDialog.Portal>
           </AlertDialog.Root>
         </>
       ) : null}
 
-      <Flex align="center" justify="center" style={{ width: "100%" }}>
-        <Flex direction="column" gap="2" style={{ maxWidth: 400, width: "100%" }}>
-          <Text weight="medium" size="2">
+      <div className="flex items-center justify-center" style={{ width: "100%" }}>
+        <div className="flex flex-col gap-2" style={{ maxWidth: 400, width: "100%" }}>
+          <span className="font-medium text-sm">
             Nickname
-          </Text>
+          </span>
           {/*
             On a server tab this is a statement of fact — the value comes from
             that server's member list, so it is literally what everyone there
@@ -239,11 +223,11 @@ function ProfileEditor({
             both places is what let a local name of "Sivert" sit next to a
             server holding "Unknown" without anything looking wrong.
           */}
-          <Text size="1">
+          <span className="text-xs">
             {scopedToServer
               ? `This is how other people on ${scopedToServer} see you.`
               : "Used on servers you join from now on. Use Sync to apply it to servers you are already on."}
-          </Text>
+          </span>
           <TextField
             placeholder="Enter a nickname"
             maxLength={20}
@@ -257,9 +241,9 @@ function ProfileEditor({
               }
             }}
           />
-        </Flex>
-      </Flex>
-    </Flex>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -575,12 +559,12 @@ export function ProfileSettings() {
 
   return (
     <SettingsContainer>
-      <Heading as="h2" size="4">
+      <h2 className="text-lg">
         Profile
-      </Heading>
+      </h2>
 
       {serverHosts.length > 0 && (
-        <Flex justify="center" style={{ paddingTop: 4, paddingBottom: 4 }}>
+        <div className="flex justify-center" style={{ paddingTop: 4, paddingBottom: 4 }}>
           <Tabs value={selectedTab} onValueChange={(v) => setSelectedTab(String(v))}>
             <Tabs.List aria-label="Which server">
               <Tabs.Tab value="all">All Servers</Tabs.Tab>
@@ -595,7 +579,7 @@ export function ProfileSettings() {
               <Tabs.Indicator />
             </Tabs.List>
           </Tabs>
-        </Flex>
+        </div>
       )}
 
       {selectedTab === "all" ? (
@@ -613,7 +597,7 @@ export function ProfileSettings() {
             serverLabel={serverHosts.length > 0 ? "Changes apply to all servers" : undefined}
           />
           {connectedHosts.length > 0 && (
-            <Flex justify="center" style={{ paddingTop: 4 }}>
+            <div className="flex justify-center" style={{ paddingTop: 4 }}>
               <Button size="small"
                 disabled={syncing || uploading || removing}
                 onClick={handleSyncToAll}
@@ -621,7 +605,7 @@ export function ProfileSettings() {
                 <PiArrowsClockwiseFill size={16} style={syncing ? { animation: "spin 1s linear infinite" } : undefined} />
                 {syncing ? "Syncing..." : "Sync to all servers"}
               </Button>
-            </Flex>
+            </div>
           )}
         </>
       ) : (
@@ -652,10 +636,10 @@ export function ProfileSettings() {
       )}
 
       {userId && (
-        <Flex align="center" justify="center" gap="1" style={{ marginTop: "auto", paddingTop: 16 }}>
-          <Text size="1" style={{ fontFamily: "var(--code-font-family)", userSelect: "all" }}>
+        <div className="flex items-center justify-center gap-1" style={{ marginTop: "auto", paddingTop: 16 }}>
+          <span className="text-xs" style={{ fontFamily: "var(--code-font-family)", userSelect: "all" }}>
             {userId}
-          </Text>
+          </span>
           <Tooltip title={copied ? "Copied!" : "Copy User ID"}>
             <IconButton tone="ghost" size="xsmall"
               style={{ flexShrink: 0 }}
@@ -669,7 +653,7 @@ export function ProfileSettings() {
               {copied ? <PiCheck size={12} /> : <PiCopyFill size={12} />}
             </IconButton>
           </Tooltip>
-        </Flex>
+        </div>
       )}
 
       <input

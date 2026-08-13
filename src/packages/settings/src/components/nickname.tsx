@@ -1,5 +1,4 @@
 import { Dialog, IconButton, TextField } from "@gryt/ui";
-import { Flex } from "@radix-ui/themes";
 import { useState } from "react";
 import { PiX } from "react-icons/pi";
 
@@ -43,7 +42,7 @@ export function Nickname() {
             <PiX size={16} />
           </IconButton>
         </Dialog.Close>
-        <Flex direction="column" gap="2">
+        <div className="flex flex-col gap-2">
           <Dialog.Title>
             Set nickname
           </Dialog.Title>
@@ -56,7 +55,7 @@ export function Nickname() {
             value={newNick}
             onChange={(e) => setNewNick(e.target.value)}
           />
-        </Flex>
+        </div>
       </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>

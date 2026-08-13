@@ -1,8 +1,4 @@
 import { AlertDialog, Button, Divider } from "@gryt/ui";
-import {
-  Flex,
-  Heading,
-} from "@radix-ui/themes";
 import { useState } from "react";
 
 import connectMp3 from "@/audio/src/assets/connect.mp3";
@@ -52,9 +48,9 @@ export function VoiceSettings() {
 
   return (
     <SettingsContainer>
-      <Heading as="h2">
+      <h2>
         Voice
-      </Heading>
+      </h2>
 
       <ToggleSetting
         title="eSports mode"
@@ -69,7 +65,7 @@ export function VoiceSettings() {
 
       <Divider />
 
-      <Flex direction="column" gap="4">
+      <div className="flex flex-col gap-4">
         <SoundSettings
           label="Connect sound"
           description="Play sound when connecting to voice"
@@ -96,7 +92,7 @@ export function VoiceSettings() {
           defaultSoundSrc={disconnectMp3}
           showAlert={showAlert}
         />
-      </Flex>
+      </div>
 
 
       {alertDialog.open && (
@@ -114,7 +110,7 @@ export function VoiceSettings() {
               {alertDialog.message}
             </AlertDialog.Description>
 
-            <Flex gap="3" mt="4" justify="end">
+            <div className="flex gap-3 mt-4 justify-end">
               <AlertDialog.Close render={<span />}>
                 <Button tone="neutral" size="small"
                   onClick={() =>
@@ -124,7 +120,7 @@ export function VoiceSettings() {
                   OK
                 </Button>
               </AlertDialog.Close>
-            </Flex>
+            </div>
           </AlertDialog.Popup>
           </AlertDialog.Portal>
         </AlertDialog.Root>

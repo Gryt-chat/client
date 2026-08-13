@@ -1,5 +1,4 @@
 import { Button, Dialog, IconButton, Surface } from "@gryt/ui";
-import { Flex, Text } from "@radix-ui/themes";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { PiX } from "react-icons/pi";
@@ -73,46 +72,46 @@ export function ServerAuditModal() {
       <Dialog.Portal>
         <Dialog.Backdrop />
         <Dialog.Popup style={{ maxWidth: 860 }}>
-        <Flex direction="column" gap="4">
-          <Flex align="center" justify="between">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
             <Dialog.Title>Audit log</Dialog.Title>
             <Dialog.Close>
               <IconButton tone="ghost" size="xsmall" onClick={close}>
                 <PiX size={16} />
               </IconButton>
             </Dialog.Close>
-          </Flex>
+          </div>
 
-          <Flex justify="end" gap="2">
+          <div className="flex justify-end gap-2">
             <Button tone="neutral" size="small" onClick={refresh}>
               Refresh
             </Button>
-          </Flex>
+          </div>
 
-          <Flex direction="column" gap="2">
+          <div className="flex flex-col gap-2">
             {items.length === 0 ? (
-              <Text size="2" color="gray">No audit entries.</Text>
+              <span className="text-sm text-gryt-muted">No audit entries.</span>
             ) : (
               items.map((it) => (
                 <Surface key={it.eventId}>
-                  <Flex direction="column" gap="1">
-                    <Text size="2" weight="bold">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-sm font-bold">
                       {it.action}{it.target ? ` · ${it.target}` : ""}
-                    </Text>
-                    <Text size="1" color="gray">
+                    </span>
+                    <span className="text-xs text-gryt-muted">
                       {fmt(it.createdAt)} · actor: {it.actorServerUserId || "system"}
-                    </Text>
+                    </span>
                     {it.meta ? (
-                      <Text size="1" color="gray" style={{ whiteSpace: "pre-wrap" }}>
+                      <span className="text-xs text-gryt-muted" style={{ whiteSpace: "pre-wrap" }}>
                         {typeof it.meta === "string" ? it.meta : JSON.stringify(it.meta, null, 2)}
-                      </Text>
+                      </span>
                     ) : null}
-                  </Flex>
+                  </div>
                 </Surface>
               ))
             )}
-          </Flex>
-        </Flex>
+          </div>
+        </div>
       </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>

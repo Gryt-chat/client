@@ -1,5 +1,4 @@
 import { IconButton } from "@gryt/ui";
-import { Flex, Text } from "@radix-ui/themes";
 import { useState } from "react";
 import { PiDownloadSimpleFill, PiX } from "react-icons/pi";
 
@@ -15,20 +14,13 @@ export function BrowserBanner() {
   if (isElectron() || dismissed) return null;
 
   return (
-    <Flex
-      align="center"
-      justify="center"
-      gap="2"
-      px="3"
-      py="1"
-      style={{
+    <div className="flex items-center justify-center gap-2 px-3 py-1" style={{
         flexShrink: 0,
         background: "var(--accent-a3)",
         borderBottom: "1px solid var(--accent-a5)",
-      }}
-    >
+      }}>
       <PiDownloadSimpleFill size={14} style={{ flexShrink: 0, color: "var(--accent-11)" }} />
-      <Text size="1" style={{ color: "var(--accent-11)" }}>
+      <span className="text-xs" style={{ color: "var(--accent-11)" }}>
         You&apos;re using Gryt in your browser. Some features are limited.{" "}
         <a
           className="font-medium text-gryt-accent underline-offset-2 hover:underline"
@@ -39,7 +31,7 @@ export function BrowserBanner() {
           Download the desktop app
         </a>{" "}
         for the full experience.
-      </Text>
+      </span>
       <IconButton tone="ghost" size="xsmall"
         style={{ marginLeft: "auto", flexShrink: 0 }}
         onClick={() => {
@@ -50,6 +42,6 @@ export function BrowserBanner() {
       >
         <PiX size={14} />
       </IconButton>
-    </Flex>
+    </div>
   );
 }

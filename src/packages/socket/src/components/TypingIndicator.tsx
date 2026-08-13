@@ -1,5 +1,4 @@
 import { Avatar } from "@gryt/ui";
-import { Flex, Text } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
 
 import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
@@ -31,7 +30,7 @@ export function TypingIndicator({ typingUsers, serverHost }: TypingIndicatorProp
           transition={{ duration: 0.15, ease: "easeOut" }}
           style={{ overflow: "hidden" }}
         >
-          <Flex align="center" gap="1" style={{ padding: "2px 12px 4px" }}>
+          <div className="flex items-center gap-1" style={{ padding: "2px 12px 4px" }}>
             {/* 16px — this sits inline with 13px text, so it is closer to a
                 glyph than to an avatar. */}
             {first && (
@@ -42,10 +41,10 @@ export function TypingIndicator({ typingUsers, serverHost }: TypingIndicatorProp
                 src={resolveAvatarSrc(first.avatarFileId && serverHost ? getUploadsFileUrl(serverHost, first.avatarFileId, { thumb: true }) : undefined, first.nickname)}
               />
             )}
-            <Text size="1" style={{ color: "var(--gray-11)", fontSize: 13 }}>
+            <span className="text-xs" style={{ color: "var(--gray-11)", fontSize: 13 }}>
               {buildLabel(typingUsers)}
-            </Text>
-          </Flex>
+            </span>
+          </div>
         </motion.div>
       )}
     </AnimatePresence>
