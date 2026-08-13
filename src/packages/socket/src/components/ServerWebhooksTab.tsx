@@ -1,4 +1,5 @@
-import { Avatar, Button, Card, Flex, IconButton, Select, Text, TextField, Tooltip } from "@radix-ui/themes";
+import { Avatar } from "@gryt/ui";
+import { Button, Card, Flex, IconButton, Select, Text, TextField, Tooltip } from "@radix-ui/themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { PiCopyFill, PiPlus, PiTrashFill } from "react-icons/pi";
@@ -267,12 +268,7 @@ function WebhookCard({
               flexShrink: 0,
             }}
           >
-            <Avatar
-              radius="full"
-              size="4"
-              fallback={name[0] || "W"}
-              src={avatarUrl}
-            />
+            <Avatar size="large" fallback={name[0] || "W"} src={avatarUrl} />
           </button>
         </Tooltip>
         <input

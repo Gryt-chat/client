@@ -1,7 +1,6 @@
+import { Avatar } from "@gryt/ui";
 import {
-  Avatar,
   Box,
-  Button,
   ContextMenu,
   DropdownMenu,
   Flex,
@@ -321,9 +320,21 @@ function ServerItem({
             <HoverCard.Trigger>
               <Box position="relative" onDragStart={(e) => e.preventDefault()}>
                 <Avatar
-                  size="2"
-                  color="gray"
-                  asChild
+                  size="small"
+                  className="rounded-(--gryt-radius-md) p-0"
+                  render={
+                    <button
+                      type="button"
+                      style={{
+                        cursor: isUnavailable ? "not-allowed" : "pointer",
+                      }}
+                      onClick={() => {
+                        if (!isUnavailable) {
+                          switchToServer(host);
+                        }
+                      }}
+                    />
+                  }
                   fallback={<GeneratedServerIcon seed={servers[host]?.name || host} />}
                   style={{
                     opacity:
@@ -343,19 +354,7 @@ function ServerItem({
                       : "none",
                   }}
                   src={serverIconSrc(host, servers[host]?.name || "", serverDetailsList)}
-                >
-                  <Button
-                    style={{
-                      padding: "0",
-                      cursor: isUnavailable ? "not-allowed" : "pointer",
-                    }}
-                    onClick={() => {
-                      if (!isUnavailable) {
-                        switchToServer(host);
-                      }
-                    }}
-                  ></Button>
-                </Avatar>
+                />
 
                 {isConnected && currentServerConnected === host && (
                   <Box

@@ -1,4 +1,5 @@
-import { Avatar, Box, Flex, HoverCard, IconButton, Text, Tooltip } from "@radix-ui/themes";
+import { Avatar } from "@gryt/ui";
+import { Box, Flex, HoverCard, IconButton, Text, Tooltip } from "@radix-ui/themes";
 import { PiPushPinFill } from "react-icons/pi";
 
 import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
@@ -126,7 +127,7 @@ const MemberItem = ({
           >
         <Flex align="center" gap="2" width="100%">
           <Avatar
-            size="2"
+            size="small"
             fallback={member.nickname[0]}
             src={resolveAvatarSrc(member.avatarFileId ? getUploadsFileUrl(serverHost, member.avatarFileId, { thumb: true }) : undefined, member.nickname)}
             style={{

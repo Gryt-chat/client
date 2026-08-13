@@ -1,4 +1,5 @@
-import { Avatar, Button, Callout, Dialog, Flex, IconButton, Spinner, Text } from "@radix-ui/themes";
+import { Avatar } from "@gryt/ui";
+import { Button, Callout, Dialog, Flex, IconButton, Spinner, Text } from "@radix-ui/themes";
 import { useEffect, useRef, useState } from "react";
 import { PiEnvelopeFill, PiUsersFill, PiWarningFill, PiX } from "react-icons/pi";
 
@@ -113,8 +114,8 @@ export function InviteAcceptModal({
             <Flex direction="column" gap="3" align="center">
               {invite && (
                 <Avatar
-                  size="7"
-                  radius="full"
+                  size="large"
+                  className="h-24 w-24 text-3xl"
                   src={`${getServerHttpBase(invite.host)}/icon`}
                   fallback={<GeneratedServerIcon seed={displayName || invite.host} />}
                 />

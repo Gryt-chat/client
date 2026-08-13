@@ -1,7 +1,6 @@
-import { Accordion } from "@gryt/ui";
+import { Accordion, Avatar } from "@gryt/ui";
 import {
   AlertDialog,
-  Avatar,
   Badge,
   Button,
   Callout,
@@ -209,12 +208,7 @@ function HostedServerCard({
     <Card size="2">
       <Flex direction="column" gap="3">
         <Flex align="center" gap="3">
-          <Avatar
-            size="3"
-            radius="full"
-            src={undefined}
-            fallback={<GeneratedServerIcon seed={name} />}
-          />
+          <Avatar fallback={<GeneratedServerIcon seed={name} />} />
 
           <Flex direction="column" gap="1" style={{ minWidth: 0 }}>
             <Flex align="center" gap="2">

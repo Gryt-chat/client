@@ -1,4 +1,5 @@
-import { AlertDialog, Avatar, Button, Card, Flex, Text, TextField } from "@radix-ui/themes";
+import { Avatar } from "@gryt/ui";
+import { AlertDialog, Button, Card, Flex, Text, TextField } from "@radix-ui/themes";
 import { useCallback, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
@@ -62,7 +63,8 @@ function MemberDropdownItem({
       onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
     >
       <Avatar
-        size="1"
+        size="small"
+        className="h-6 w-6 text-[10px]"
         fallback={member.nickname[0]}
         src={resolveAvatarSrc(member.avatarFileId ? getUploadsFileUrl(host, member.avatarFileId, { thumb: true }) : undefined, member.nickname)}
         style={{ flexShrink: 0 }}
@@ -113,7 +115,8 @@ function MemberCombobox({
       <Flex gap="2" align="center">
         {selectedMember && (
           <Avatar
-            size="1"
+            size="small"
+            className="h-6 w-6 text-[10px]"
             fallback={selectedMember.nickname[0]}
             src={resolveAvatarSrc(selectedMember.avatarFileId ? getUploadsFileUrl(host, selectedMember.avatarFileId, { thumb: true }) : undefined, selectedMember.nickname)}
             style={{ flexShrink: 0 }}

@@ -1,4 +1,5 @@
-import { AlertDialog, Avatar, Button, Flex, Heading, IconButton, SegmentedControl, Text, TextField, Tooltip } from "@radix-ui/themes";
+import { Avatar } from "@gryt/ui";
+import { AlertDialog, Button, Flex, Heading, IconButton, SegmentedControl, Text, TextField, Tooltip } from "@radix-ui/themes";
 import { useCallback,useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { PiArrowsClockwiseFill, PiCameraFill, PiCheck, PiCopyFill } from "react-icons/pi";
@@ -165,8 +166,8 @@ function ProfileEditor({
         >
           <div style={{ position: "relative" }}>
             <Avatar
-              size="7"
-              radius="full"
+              size="large"
+              className="h-24 w-24 text-3xl"
               src={previewSrc}
               fallback={initial}
             />

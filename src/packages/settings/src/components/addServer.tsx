@@ -1,6 +1,5 @@
-import { Dialog } from "@gryt/ui";
+import { Avatar, Dialog } from "@gryt/ui";
 import {
-  Avatar,
   Badge,
   Button,
   Callout,
@@ -725,8 +724,8 @@ function ServerPreview({
             on — so the planet in the preview is the one the rail will draw once
             you have joined, rather than a different one you never see again. */}
         <Avatar
-          size="2"
-          radius="medium"
+          size="small"
+          className="rounded-(--gryt-radius-md)"
           src={info ? `${getServerHttpBase(host)}/icon` : undefined}
           fallback={<GeneratedServerIcon seed={info?.name || host} />}
         />

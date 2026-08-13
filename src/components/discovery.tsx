@@ -1,5 +1,5 @@
+import { Avatar } from "@gryt/ui";
 import {
-  Avatar,
   Badge,
   Button,
   Callout,
@@ -198,9 +198,10 @@ export function Discovery() {
                     have never uploaded one and return 404, so the fallback is
                     the common case rather than the exception.
                   */}
+                  {/* Squircle rather than a circle: a server is a place, and
+                      the round ones in this app are people. */}
                   <Avatar
-                    size="3"
-                    radius="medium"
+                    className="rounded-(--gryt-radius-md)"
                     src={`${getServerHttpBase(host)}/icon`}
                     fallback={<GeneratedServerIcon seed={server.name || host} />}
                   />

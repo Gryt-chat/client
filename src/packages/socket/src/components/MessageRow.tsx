@@ -1,4 +1,5 @@
-import { Avatar, Flex, Text, Tooltip } from "@radix-ui/themes";
+import { Avatar } from "@gryt/ui";
+import { Flex, Text, Tooltip } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
 import { forwardRef, memo, useCallback, useRef, useState } from "react";
 
@@ -219,10 +220,10 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
         <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange} onReaction={(src) => onReaction(src, m)} serverHost={serverHost}>
           <Flex gap="3" style={{ width: "100%", marginTop: 12 }} align="start">
             <Avatar
-              radius="full"
+              size="large"
+              className="mt-0.5 h-[51px] w-[51px] shrink-0 text-lg"
               fallback={meta.senderName[0]}
               src={meta.avatarUrl}
-              style={{ flexShrink: 0, marginTop: 2, width: 51, height: 51 }}
             />
             <Flex direction="column" style={{ flex: 1, minWidth: 0 }}>
               <Flex align="baseline" gap="2" style={{ marginBottom: 2 }}>

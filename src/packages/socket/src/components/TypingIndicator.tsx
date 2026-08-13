@@ -1,4 +1,5 @@
-import { Avatar, Flex, Text } from "@radix-ui/themes";
+import { Avatar } from "@gryt/ui";
+import { Flex, Text } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "motion/react";
 
 import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
@@ -31,13 +32,14 @@ export function TypingIndicator({ typingUsers, serverHost }: TypingIndicatorProp
           style={{ overflow: "hidden" }}
         >
           <Flex align="center" gap="1" style={{ padding: "2px 12px 4px" }}>
+            {/* 16px — this sits inline with 13px text, so it is closer to a
+                glyph than to an avatar. */}
             {first && (
               <Avatar
-                size="1"
-                radius="full"
+                size="small"
+                className="h-4 w-4 shrink-0 text-[9px]"
                 fallback={first.nickname[0]}
                 src={resolveAvatarSrc(first.avatarFileId && serverHost ? getUploadsFileUrl(serverHost, first.avatarFileId, { thumb: true }) : undefined, first.nickname)}
-                style={{ width: 16, height: 16, flexShrink: 0 }}
               />
             )}
             <Text size="1" style={{ color: "var(--gray-11)", fontSize: 13 }}>

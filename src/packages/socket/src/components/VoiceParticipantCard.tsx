@@ -1,4 +1,5 @@
-import { Avatar, Flex, Text, Tooltip } from "@radix-ui/themes";
+import { Avatar } from "@gryt/ui";
+import { Flex, Text, Tooltip } from "@radix-ui/themes";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { PiMicrophoneSlashFill, PiScreencastFill, PiSpeakerSlashFill, PiVideoCameraFill } from "react-icons/pi";
@@ -617,7 +618,7 @@ export function VoiceParticipantCard({
         )}
 
         <Avatar
-          size={compact ? "2" : "3"}
+          size={compact ? "small" : "medium"}
           fallback={client.nickname[0]}
           src={resolveAvatarSrc(
             avatarFileId

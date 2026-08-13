@@ -1,4 +1,5 @@
-import { Avatar, Flex, Text, Tooltip } from "@radix-ui/themes";
+import { Avatar } from "@gryt/ui";
+import { Flex, Text, Tooltip } from "@radix-ui/themes";
 import { motion } from "motion/react";
 import { PiMicrophoneSlashFill, PiScreencastFill, PiSpeakerSlashFill, PiVideoCameraFill } from "react-icons/pi";
 
@@ -123,8 +124,8 @@ export function ConnectedUser({
               size={SIDEBAR_AVATAR_PX}
             />
             <Avatar
-              radius="full"
-              size="1"
+              size="small"
+              className="h-6 w-6 text-[10px]"
               fallback={nickname[0]}
               src={avatarSrc}
               style={{
