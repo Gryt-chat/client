@@ -1,12 +1,18 @@
 import "@gryt/ui/styles.css";
 import "./style.css";
 
+import { createGrytTheme, grytThemeToOptions } from "@gryt/ui";
 import React, { useEffect } from "react";
 import ReactDOM from "react-dom/client";
 import { Toaster } from "react-hot-toast";
 
 import { initPluginApi, updatePluginApiTheme, useAddonLoader } from "@/addons";
-import { SingletonHooks, useTheme, useZoomShortcuts } from "@/common";
+import {
+  SingletonHooks,
+  useCustomThemes,
+  useTheme,
+  useZoomShortcuts,
+} from "@/common";
 
 import { App } from "./App.tsx";
 import { BrowserBanner } from "./components/browserBanner";
@@ -21,6 +27,7 @@ function ThemedApp() {
     uiScale,
     chatFontSize,
   } = useTheme();
+  const { activeTheme } = useCustomThemes();
 
   /* Radix's <Theme appearance> put .light or .dark on its own wrapper, and the
      app's light and dark blocks in style.css hang off those classes. With the
@@ -33,6 +40,33 @@ function ThemedApp() {
     root.classList.toggle("light", resolvedAppearance !== "dark");
     root.style.colorScheme = resolvedAppearance;
   }, [resolvedAppearance]);
+
+  /* An imported theme, painted onto the same element for the same reason: the
+     variables have to be somewhere every overlay can read them, and overlays
+     portal to document.body.
+
+     Every property is removed before the next set goes on, because a theme is
+     not guaranteed to declare what the one before it did — switching from a
+     theme with a split light hue set to one without would otherwise leave the
+     old light accent behind, on an element nothing else ever cleans. */
+  useEffect(() => {
+    const root = document.documentElement;
+    if (activeTheme === null) return;
+
+    const variables = createGrytTheme(
+      grytThemeToOptions(activeTheme, resolvedAppearance),
+    ) as Record<string, string>;
+
+    for (const [name, value] of Object.entries(variables)) {
+      root.style.setProperty(name, value);
+    }
+
+    return () => {
+      for (const name of Object.keys(variables)) {
+        root.style.removeProperty(name);
+      }
+    };
+  }, [activeTheme, resolvedAppearance]);
 
   useZoomShortcuts();
   useAddonLoader();
