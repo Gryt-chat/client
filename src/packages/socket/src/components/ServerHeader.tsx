@@ -45,10 +45,10 @@ export const ServerHeader = ({
           )}
 
           <Menu.Root>
-            <Menu.Trigger>
-              <Button tone="neutral" size="xsmall">
-                
-              </Button>
+            {/* render, not children: Menu.Trigger is a button already, and a
+                button inside a button is invalid HTML. */}
+            <Menu.Trigger render={<Button tone="neutral" size="xsmall" />}>
+              
             </Menu.Trigger>
             <Menu.Portal>
               <Menu.Positioner>
