@@ -37,16 +37,42 @@ const OUTDIR = join(CLIENT_DIR, "build", "embedded-server");
  * A checkout that is not exactly on a tag reports the tag it descends from
  * plus the distance, which is what `git describe` gives and is honest about
  * being between releases.
+ *
+ * The tags on the commit are checked first, highest version wins, because
+ * `git describe` picks a different one. Both the SFU and the image worker have
+ * two tags on one commit — v1.0.48 and v1.0.49 are both 736fd25, tagged in the
+ * same second, and v1.2.1 and v1.2.2 are both ad5d029 — and describe returned
+ * the lower of each. So versions.json said 1.0.48 while the latest release was
+ * 1.0.49, and every desktop-hosted server reported an update that did not
+ * exist: the binary it was already running was that release.
  */
 function describeVersion(dir) {
-  try {
-    const described = execSync("git describe --tags --always --dirty", {
+  const git = (command) =>
+    execSync(command, {
       cwd: dir,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
-    })
-      .trim()
-      .replace(/^v/, "");
+    }).trim();
+
+  try {
+    // --sort=-v:refname is a version sort, descending, so v1.0.49 comes before
+    // v1.0.48 rather than after it the way a plain string sort would put v1.0.9.
+    const exact = git("git tag --points-at HEAD --sort=-v:refname")
+      .split("\n")
+      .map((tag) => tag.trim())
+      .filter(Boolean)[0];
+
+    if (exact) {
+      // describe --dirty would have said so, and a local build off a modified
+      // checkout should not claim to be the release it is sitting on.
+      const dirty = git("git status --porcelain") ? "-dirty" : "";
+      return exact.replace(/^v/, "") + dirty;
+    }
+
+    const described = git("git describe --tags --always --dirty").replace(
+      /^v/,
+      "",
+    );
     return described || "unknown";
   } catch {
     return "unknown";
