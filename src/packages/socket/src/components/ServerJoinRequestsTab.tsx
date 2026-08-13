@@ -1,4 +1,4 @@
-import { Button, Card, Flex, Text } from "@radix-ui/themes";
+import { Button, Surface } from "@gryt/ui";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
@@ -79,67 +79,62 @@ export function ServerJoinRequestsTab({
   };
 
   return (
-    <Flex direction="column" gap="3">
-      <Flex align="center" justify="between">
-        <Text size="2" color="gray">
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-gryt-muted">
           {loaded
             ? `${requests.length} ${requests.length === 1 ? "person waiting" : "people waiting"}`
             : "Loading…"}
-        </Text>
-        <Button size="1" variant="soft" onClick={refresh}>
+        </span>
+        <Button tone="neutral" size="xsmall" onClick={refresh}>
           Refresh
         </Button>
-      </Flex>
+      </div>
 
-      <Text size="1" color="gray" style={{ lineHeight: 1.4 }}>
+      <span className="text-xs text-gryt-muted" style={{ lineHeight: 1.4 }}>
         Only fills up while <strong>Who can join</strong> is set to asking first. Approving
         somebody does not pull them in — they get in the next time they try.
-      </Text>
+      </span>
 
       {loaded && requests.length === 0 && (
-        <Text size="2" color="gray">
+        <span className="text-sm text-gryt-muted">
           Nobody is waiting.
-        </Text>
+        </span>
       )}
 
       {requests.map((request) => (
-        <Card key={request.grytUserId}>
-          <Flex align="center" justify="between" gap="3">
-            <Flex direction="column" gap="1" style={{ minWidth: 0 }}>
-              <Text size="2" weight="medium" truncate>
+        <Surface key={request.grytUserId}>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col gap-1" style={{ minWidth: 0 }}>
+              <span className="text-sm font-medium truncate">
                 {request.nickname}
-              </Text>
+              </span>
               {request.note && (
-                <Text size="1" style={{ overflowWrap: "anywhere" }}>
+                <span className="text-xs" style={{ overflowWrap: "anywhere" }}>
                   {request.note}
-                </Text>
+                </span>
               )}
-              <Text size="1" color="gray">
+              <span className="text-xs text-gryt-muted">
                 {fmt(request.createdAt)}
-              </Text>
-            </Flex>
-            <Flex gap="2" style={{ flexShrink: 0 }}>
-              <Button
-                size="1"
-                variant="soft"
-                color="gray"
+              </span>
+            </div>
+            <div className="flex gap-2" style={{ flexShrink: 0 }}>
+              <Button tone="neutral" size="xsmall"
                 disabled={deciding === request.grytUserId}
                 onClick={() => decide(request.grytUserId, "denied")}
               >
                 Turn down
               </Button>
-              <Button
-                size="1"
-                variant="soft"
+              <Button tone="neutral" size="xsmall"
                 disabled={deciding === request.grytUserId}
                 onClick={() => decide(request.grytUserId, "approved")}
               >
                 Let in
               </Button>
-            </Flex>
-          </Flex>
-        </Card>
+            </div>
+          </div>
+        </Surface>
       ))}
-    </Flex>
+    </div>
   );
 }

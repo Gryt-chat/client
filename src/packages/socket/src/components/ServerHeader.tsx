@@ -1,4 +1,4 @@
-import { Badge, Button, Card, DropdownMenu, Flex, IconButton, Text, Tooltip } from "@radix-ui/themes";
+import { Button, Chip, IconButton, Menu, Surface, Tooltip } from "@gryt/ui";
 import { PiPushPinFill } from "react-icons/pi";
 
 export const ServerHeader = ({
@@ -24,21 +24,18 @@ export const ServerHeader = ({
 }) => {
   const canManage = role === "owner" || role === "admin";
   return (
-    <Card
+    <Surface
       style={{
         width: "100%",
         flexShrink: 0,
       }}
     >
-      <Flex justify="between" align="center">
-        <Text>{serverName}</Text>
-        <Flex align="center" gap="2">
+      <div className="flex justify-between items-center">
+        <span>{serverName}</span>
+        <div className="flex items-center gap-2">
           {onTogglePinned && (
-            <Tooltip content={pinned ? "Unpin sidebar" : "Pin sidebar"} delayDuration={200}>
-              <IconButton
-                size="1"
-                variant={pinned ? "solid" : "soft"}
-                color="gray"
+            <Tooltip title={pinned ? "Unpin sidebar" : "Pin sidebar"}>
+              <IconButton tone="neutral" size="xsmall"
                 onClick={onTogglePinned}
                 aria-label={pinned ? "Unpin sidebar" : "Pin sidebar"}
               >
@@ -47,45 +44,47 @@ export const ServerHeader = ({
             </Tooltip>
           )}
 
-          <DropdownMenu.Root>
-            <DropdownMenu.Trigger>
-              <Button variant="soft" size="1" color="gray">
-                <DropdownMenu.TriggerIcon />
+          <Menu.Root>
+            <Menu.Trigger>
+              <Button tone="neutral" size="xsmall">
+                
               </Button>
-            </DropdownMenu.Trigger>
-            <DropdownMenu.Content>
+            </Menu.Trigger>
+            <Menu.Portal>
+              <Menu.Positioner>
+                <Menu.Popup>
               {canManage && onOpenSettings && (
-                <DropdownMenu.Item onClick={onOpenSettings}>
-                  <Flex align="center" gap="2">
+                <Menu.Item onClick={onOpenSettings}>
+                  <div className="flex items-center gap-2">
                     Server settings
                     {updateAvailable && (
-                      <Badge color="orange" variant="soft" size="1" radius="full">
-                        !
-                      </Badge>
+                      <Chip tone="warning" label="!" />
                     )}
-                  </Flex>
-                </DropdownMenu.Item>
+                  </div>
+                </Menu.Item>
               )}
               {canManage && onOpenReports && (
-                <DropdownMenu.Item onClick={onOpenReports}>
-                  <Flex align="center" gap="2">
+                <Menu.Item onClick={onOpenReports}>
+                  <div className="flex items-center gap-2">
                     Reports
                     {!!pendingReportCount && pendingReportCount > 0 && (
-                      <Badge color="red" variant="solid" size="1" radius="full">
+                      <Chip tone="danger">
                         {pendingReportCount}
-                      </Badge>
+                      </Chip>
                     )}
-                  </Flex>
-                </DropdownMenu.Item>
+                  </div>
+                </Menu.Item>
               )}
-              <DropdownMenu.Separator />
-              <DropdownMenu.Item color="red" onClick={onLeave}>
+              <Menu.Separator />
+              <Menu.Item className="text-gryt-danger" onClick={onLeave}>
                 Leave
-              </DropdownMenu.Item>
-            </DropdownMenu.Content>
-          </DropdownMenu.Root>
-        </Flex>
-      </Flex>
-    </Card>
+              </Menu.Item>
+            </Menu.Popup>
+              </Menu.Positioner>
+            </Menu.Portal>
+          </Menu.Root>
+        </div>
+      </div>
+    </Surface>
   );
 }; 

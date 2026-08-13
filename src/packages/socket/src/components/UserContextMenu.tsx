@@ -1,5 +1,4 @@
-import { Slider } from "@gryt/ui";
-import { ContextMenu, Flex, Text } from "@radix-ui/themes";
+import { ContextMenu, Slider } from "@gryt/ui";
 import { ReactNode } from "react";
 import toast from "react-hot-toast";
 import { PiAtFill, PiCopyFill } from "react-icons/pi";
@@ -77,22 +76,21 @@ export function UserContextMenu({
     return (
       <ContextMenu.Root>
         <ContextMenu.Trigger style={{ display: "contents" }}>{children}</ContextMenu.Trigger>
-        <ContextMenu.Content
-          style={{ minWidth: 180 }}
-          onCloseAutoFocus={(e) => e.preventDefault()}
-        >
-          <ContextMenu.Label style={{ fontWeight: "bold" }}>
+        <ContextMenu.Portal>
+          <ContextMenu.Positioner>
+            <ContextMenu.Popup className="min-w-45">
+          <ContextMenu.GroupLabel style={{ fontWeight: "bold" }}>
             {nickname}
-          </ContextMenu.Label>
+          </ContextMenu.GroupLabel>
           <ContextMenu.Separator />
           <ContextMenu.Item onClick={() => openSettings("profile")}>
             Edit Profile
           </ContextMenu.Item>
           {serverUserId && (
             <ContextMenu.Item onClick={handleCopyId}>
-              <Flex align="center" gap="2">
+              <div className="flex items-center gap-2">
                 <PiCopyFill size={14} /> Copy ID
-              </Flex>
+              </div>
             </ContextMenu.Item>
           )}
           {onPopoutVideo && (
@@ -103,7 +101,9 @@ export function UserContextMenu({
               </ContextMenu.Item>
             </>
           )}
-        </ContextMenu.Content>
+        </ContextMenu.Popup>
+          </ContextMenu.Positioner>
+        </ContextMenu.Portal>
       </ContextMenu.Root>
     );
   }
@@ -125,42 +125,35 @@ export function UserContextMenu({
   return (
     <ContextMenu.Root>
       <ContextMenu.Trigger style={{ display: "contents" }}>{children}</ContextMenu.Trigger>
-      <ContextMenu.Content
-        style={{ minWidth: 220 }}
-        onCloseAutoFocus={(e) => e.preventDefault()}
-      >
-        <ContextMenu.Label style={{ fontWeight: "bold" }}>
+      <ContextMenu.Portal>
+        <ContextMenu.Positioner>
+          <ContextMenu.Popup className="min-w-55">
+        <ContextMenu.GroupLabel style={{ fontWeight: "bold" }}>
           {nickname}
-        </ContextMenu.Label>
+        </ContextMenu.GroupLabel>
         {targetRole && (
-          <ContextMenu.Label>
-            <Text size="1" color="gray" style={{ textTransform: "capitalize" }}>{targetRole}</Text>
-          </ContextMenu.Label>
+          <ContextMenu.GroupLabel>
+            <span className="text-xs text-gryt-muted" style={{ textTransform: "capitalize" }}>{targetRole}</span>
+          </ContextMenu.GroupLabel>
         )}
         <ContextMenu.Item onClick={handleMention}>
-          <Flex align="center" gap="2">
+          <div className="flex items-center gap-2">
             <PiAtFill size={14} /> Mention
-          </Flex>
+          </div>
         </ContextMenu.Item>
         <ContextMenu.Item onClick={handleCopyId}>
-          <Flex align="center" gap="2">
+          <div className="flex items-center gap-2">
             <PiCopyFill size={14} /> Copy ID
-          </Flex>
+          </div>
         </ContextMenu.Item>
         <ContextMenu.Separator />
-        <Flex
-          direction="column"
-          gap="2"
-          px="2"
-          py="1"
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          <Flex align="center" justify="between">
-            <Text size="1" color="gray">Volume</Text>
-            <Text size="1" weight="medium" style={{ fontVariantNumeric: "tabular-nums" }}>
+        <div className="flex flex-col gap-2 px-2 py-1" onPointerDown={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gryt-muted">Volume</span>
+            <span className="text-xs font-medium" style={{ fontVariantNumeric: "tabular-nums" }}>
               {volume}%
-            </Text>
-          </Flex>
+            </span>
+          </div>
           <Slider
             min={0}
             max={200}
@@ -168,7 +161,7 @@ export function UserContextMenu({
             value={volume}
             onValueChange={(next) => updateUserVolume(serverUserId, Number(next))}
           />
-        </Flex>
+        </div>
         {volume !== 100 && (
           <>
             <ContextMenu.Separator />
@@ -188,7 +181,7 @@ export function UserContextMenu({
         {showDisconnect && (
           <>
             <ContextMenu.Separator />
-            <ContextMenu.Item color="red" onClick={onDisconnectFromVoice}>
+            <ContextMenu.Item className="text-gryt-danger" onClick={onDisconnectFromVoice}>
               Disconnect from voice
             </ContextMenu.Item>
           </>
@@ -211,9 +204,11 @@ export function UserContextMenu({
             )}
 
             {role === "owner" && onChangeRole && (
-              <ContextMenu.Sub>
-                <ContextMenu.SubTrigger>Change role</ContextMenu.SubTrigger>
-                <ContextMenu.SubContent>
+              <ContextMenu.SubmenuRoot>
+                <ContextMenu.SubmenuTrigger>Change role</ContextMenu.SubmenuTrigger>
+                <ContextMenu.Portal>
+                  <ContextMenu.Positioner>
+                    <ContextMenu.Popup>
                   {(["admin", "mod", "member"] as Role[]).map((r) => (
                     <ContextMenu.Item
                       key={r}
@@ -224,26 +219,30 @@ export function UserContextMenu({
                       {r}{targetRole === r ? " (current)" : ""}
                     </ContextMenu.Item>
                   ))}
-                </ContextMenu.SubContent>
-              </ContextMenu.Sub>
+                </ContextMenu.Popup>
+                  </ContextMenu.Positioner>
+                </ContextMenu.Portal>
+              </ContextMenu.SubmenuRoot>
             )}
 
             <ContextMenu.Separator />
 
             {onKick && (
-              <ContextMenu.Item color="red" onClick={onKick}>
+              <ContextMenu.Item className="text-gryt-danger" onClick={onKick}>
                 Kick from server
               </ContextMenu.Item>
             )}
 
             {canBan && onBan && (
-              <ContextMenu.Item color="red" onClick={onBan}>
+              <ContextMenu.Item className="text-gryt-danger" onClick={onBan}>
                 Ban from server
               </ContextMenu.Item>
             )}
           </>
         )}
-      </ContextMenu.Content>
+      </ContextMenu.Popup>
+        </ContextMenu.Positioner>
+      </ContextMenu.Portal>
     </ContextMenu.Root>
   );
 }

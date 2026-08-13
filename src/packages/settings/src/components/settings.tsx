@@ -1,5 +1,4 @@
-import { IconButton, TextField } from "@gryt/ui";
-import { Box, Dialog, Flex, Separator, Text } from "@radix-ui/themes";
+import { Dialog, Divider, IconButton, TextField } from "@gryt/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PiArrowFatLineDownFill, PiFadersHorizontalFill, PiFlaskFill, PiGearSixFill, PiHardDrivesFill, PiHeartFill, PiMagnifyingGlassFill, PiPuzzlePieceFill, PiUserCircleFill, PiUserFill, PiVideoCameraFill, PiX } from "react-icons/pi";
 
@@ -37,7 +36,7 @@ import { VoiceSettings } from "./voiceSettings";
  * supplies the separation that used to come from being on different tabs.
  */
 function PanelDivider() {
-  return <Separator size="4" my="5" />;
+  return <Divider className="my-5" />;
 }
 
 /**
@@ -291,24 +290,35 @@ export function Settings() {
   }, [highlighted]);
 
   return (
-    <Dialog.Root open={showSettings} onOpenChange={handleDialogChange}>
-      <Dialog.Content
-        data-gryt="settings"
-        maxWidth="900px"
-        style={{ height: "700px", minWidth: "600px" }}
-        /* The tour lives in a portal of its own, so pressing Next on a coach
-           mark counts as interacting outside this dialog and Radix dismissed
-           it. The panel closed on every step change and the next step opened
-           it again, which read as the whole thing flickering shut and back for
-           no reason. The tour is not outside in any sense the user cares
-           about. */
-        onInteractOutside={(event) => {
-          const target = event.target as HTMLElement | null;
+    <Dialog.Root
+      open={showSettings}
+      /* The tour lives in a portal of its own, so pressing Next on a coach mark
+         counts as a press outside this dialog and used to dismiss it. The panel
+         closed on every step change and the next step opened it again, which
+         read as the whole thing flickering shut and back for no reason. The
+         tour is not outside in any sense the user cares about.
+
+         Radix took an onInteractOutside handler that could preventDefault. Base
+         UI routes every open change through one callback with the reason and a
+         cancel() on it, so the same exception is a check on the reason. */
+      onOpenChange={(open, details) => {
+        if (!open && details.reason === "outside-press") {
+          const target = details.event?.target as HTMLElement | null;
           if (target?.closest?.('[data-gryt="tour"]')) {
-            event.preventDefault();
+            details.cancel();
+            return;
           }
-        }}
-      >
+        }
+        handleDialogChange(open);
+      }}
+    >
+      <Dialog.Portal>
+        <Dialog.Backdrop />
+        <Dialog.Popup
+          data-gryt="settings"
+          className="max-w-225"
+          style={{ height: "700px", minWidth: "600px" }}
+        >
         <Dialog.Close style={{ position: "absolute", top: "8px", right: "8px" }}>
           <IconButton data-tour="settings-close">
             <PiX size={16} />
@@ -318,12 +328,12 @@ export function Settings() {
         <style>{`
           [data-setting].gryt-setting-hit {
             animation: gryt-setting-hit ${HIGHLIGHT_MS}ms ease-out;
-            border-radius: var(--radius-3);
+            border-radius: var(--gryt-radius-md);
           }
           @keyframes gryt-setting-hit {
             0%, 55% {
-              background-color: var(--accent-a4);
-              box-shadow: 0 0 0 8px var(--accent-a4);
+              background-color: var(--gryt-accent-a4);
+              box-shadow: 0 0 0 8px var(--gryt-accent-a4);
             }
             100% {
               background-color: transparent;
@@ -333,29 +343,27 @@ export function Settings() {
           @media (prefers-reduced-motion: reduce) {
             [data-setting].gryt-setting-hit {
               animation: none;
-              outline: 2px solid var(--accent-9);
+              outline: 2px solid var(--gryt-accent-9);
               outline-offset: 5px;
             }
           }
         `}</style>
 
-        <Flex direction="column" gap="4" height="100%">
-          <Dialog.Title as="h1" weight="bold" size="6">
+        <div className="flex flex-col gap-4 h-full">
+          <Dialog.Title>
             Settings
           </Dialog.Title>
 
           {showSettings && (
-            <Flex gap="4" height="100%" style={{ flex: 1, minHeight: 0 }}>
-              <Box
-                style={{
+            <div className="flex gap-4 h-full" style={{ flex: 1, minHeight: 0 }}>
+              <div style={{
                   width: "220px",
                   flexShrink: 0,
                   display: "flex",
                   flexDirection: "column",
                   gap: "8px",
                   minHeight: 0,
-                }}
-              >
+                }}>
                 {/* The library's TextField has no slot API — it is a field,
                     not a container. The icons sit over it instead, with padding
                     making room for them, which is what Radix's slots were doing
@@ -397,11 +405,11 @@ export function Settings() {
                   )}
                 </div>
 
-                <Box style={{ overflowY: "auto", minHeight: 0, flex: 1 }}>
+                <div style={{ overflowY: "auto", minHeight: 0, flex: 1 }}>
                   {searching ? (
                     <SearchResults results={results} onPick={jumpTo} picked={picked} />
                   ) : (
-                    <Flex direction="column" gap="1" height="100%">
+                    <div className="flex flex-col gap-1 h-full">
                       {MAIN_DESTINATIONS.map(({ value, label, icon: Icon }) => (
                         <button
                           key={value}
@@ -416,7 +424,7 @@ export function Settings() {
                         </button>
                       ))}
 
-                      <Box style={{ flex: 1, minHeight: "12px" }} />
+                      <div style={{ flex: 1, minHeight: "12px" }} />
 
                       {PINNED_DESTINATIONS.map(({ value, label, icon: Icon }) => (
                         <button
@@ -430,29 +438,26 @@ export function Settings() {
                           {label}
                         </button>
                       ))}
-                    </Flex>
+                    </div>
                   )}
-                </Box>
-              </Box>
+                </div>
+              </div>
 
-              <Box
-                ref={contentRef}
-                style={{
+              <div ref={contentRef} style={{
                   flex: 1,
                   overflowY: "auto",
                   overflowX: "hidden",
                   minWidth: 0,
-                }}
-              >
+                }}>
                 {DESTINATIONS.map(({ value, content, mountWhenActive }) => (
                   <div key={value} hidden={value !== active}>
                     {mountWhenActive ? value === active && content : content}
                   </div>
                 ))}
-              </Box>
-            </Flex>
+              </div>
+            </div>
           )}
-        </Flex>
+        </div>
 
         <style>{`
           .gryt-settings-nav {
@@ -462,24 +467,24 @@ export function Settings() {
             width: 100%;
             text-align: left;
             font: inherit;
-            font-size: var(--font-size-2);
+            font-size: 14px;
             padding: 8px 10px;
-            border-radius: var(--radius-3);
+            border-radius: var(--gryt-radius-md);
             border: 0;
             cursor: pointer;
             background: transparent;
-            color: var(--gray-12);
+            color: var(--gryt-neutral-12);
           }
-          .gryt-settings-nav:hover { background: var(--gray-a3); }
+          .gryt-settings-nav:hover { background: var(--gryt-neutral-a3); }
           .gryt-settings-nav[data-active="true"] {
-            background: var(--accent-a3);
-            color: var(--accent-11);
+            background: var(--gryt-accent-a3);
+            color: var(--gryt-accent-11);
           }
           /* Just the heart carries the colour. A filled button competes with
              the active-item highlight and shouts in a settings sidebar; a red
              heart against grey labels catches the eye on its own. */
-          .gryt-settings-nav-cta svg { color: var(--red-9); }
-          .gryt-settings-nav-cta:hover svg { color: var(--red-10); }
+          .gryt-settings-nav-cta svg { color: var(--gryt-danger-9); }
+          .gryt-settings-nav-cta:hover svg { color: var(--gryt-danger-10); }
           .gryt-settings-result {
             display: flex;
             flex-direction: column;
@@ -489,18 +494,19 @@ export function Settings() {
             text-align: left;
             font: inherit;
             padding: 7px 10px;
-            border-radius: var(--radius-3);
+            border-radius: var(--gryt-radius-md);
             border: 0;
             cursor: pointer;
             background: transparent;
           }
-          .gryt-settings-result:hover { background: var(--gray-a3); }
+          .gryt-settings-result:hover { background: var(--gryt-neutral-a3); }
           .gryt-settings-result[data-picked="true"] {
-            background: var(--accent-a3);
-            color: var(--accent-11);
+            background: var(--gryt-accent-a3);
+            color: var(--gryt-accent-11);
           }
         `}</style>
-      </Dialog.Content>
+      </Dialog.Popup>
+      </Dialog.Portal>
     </Dialog.Root>
   );
 }
@@ -516,19 +522,15 @@ function SearchResults({
 }) {
   if (results.length === 0) {
     return (
-      <Text
-        size="1"
-        color="gray"
-        style={{ padding: "8px 10px", display: "block" }}
-      >
+      <span className="text-gryt-muted" style={{ padding: "8px 10px", display: "block" }}>
         Nothing matches. Try the name of the control, or a word from its
         description.
-      </Text>
+      </span>
     );
   }
 
   return (
-    <Flex direction="column" gap="1">
+    <div className="flex flex-col gap-1">
       {results.map((entry) => (
         <button
           key={entry.id}
@@ -537,10 +539,10 @@ function SearchResults({
           className="gryt-settings-result"
           data-picked={entry.id === picked}
         >
-          <Text size="2">{entry.title}</Text>
-          <Text size="1" color="gray">{entry.section}</Text>
+          <span>{entry.title}</span>
+          <span className="text-gryt-muted">{entry.section}</span>
         </button>
       ))}
-    </Flex>
+    </div>
   );
 }

@@ -1,5 +1,4 @@
-import { TextField } from "@gryt/ui";
-import { Dialog, Flex, IconButton } from "@radix-ui/themes";
+import { Dialog, IconButton, TextField } from "@gryt/ui";
 import { useState } from "react";
 import { PiX } from "react-icons/pi";
 
@@ -29,7 +28,9 @@ export function Nickname() {
 
   return (
     <Dialog.Root open={showNickname} onOpenChange={handleDialogChange}>
-      <Dialog.Content maxWidth="600px">
+      <Dialog.Portal>
+        <Dialog.Backdrop />
+        <Dialog.Popup className="max-w-150">
         <Dialog.Close
           style={{
             position: "absolute",
@@ -37,12 +38,12 @@ export function Nickname() {
             right: "8px",
           }}
         >
-          <IconButton>
+          <IconButton size="xsmall">
             <PiX size={16} />
           </IconButton>
         </Dialog.Close>
-        <Flex direction="column" gap="2">
-          <Dialog.Title as="h1" weight="bold" size="6">
+        <div className="flex flex-col gap-2">
+          <Dialog.Title>
             Set nickname
           </Dialog.Title>
 
@@ -54,8 +55,9 @@ export function Nickname() {
             value={newNick}
             onChange={(e) => setNewNick(e.target.value)}
           />
-        </Flex>
-      </Dialog.Content>
+        </div>
+      </Dialog.Popup>
+      </Dialog.Portal>
     </Dialog.Root>
   );
 }

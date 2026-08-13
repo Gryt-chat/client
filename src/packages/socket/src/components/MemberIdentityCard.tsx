@@ -1,4 +1,4 @@
-import { Badge, Code, DataList, Flex, Text } from "@radix-ui/themes";
+import { Chip } from "@gryt/ui";
 
 import type { MemberInfo } from "./MemberSidebar";
 
@@ -72,48 +72,48 @@ export function MemberIdentityCard({ member }: { member: MemberInfo }) {
   );
 
   return (
-    <Flex direction="column" gap="2" style={{ maxWidth: 260 }}>
-      <Flex align="center" gap="2" wrap="wrap">
-        <Text size="2" weight="bold">
+    <div className="flex flex-col gap-2" style={{ maxWidth: 260 }}>
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-sm font-bold">
           {member.nickname}
-        </Text>
+        </span>
         {member.role && member.role !== "member" && (
-          <Badge size="1" variant="soft">
+          <Chip tone="neutral">
             {member.role}
-          </Badge>
+          </Chip>
         )}
-      </Flex>
+      </div>
 
-      <DataList.Root size="1" orientation="vertical">
+      <dl className="m-0 flex flex-col gap-3">
         {tier && (
-          <DataList.Item>
-            <DataList.Label>Identity</DataList.Label>
-            <DataList.Value>
-              <Badge size="1" color={tier.color} variant="soft">
+          <div className="flex flex-col gap-0.5">
+            <dt className="text-xs text-gryt-muted">Identity</dt>
+            <dd className="m-0 text-sm text-gryt-text">
+              <Chip tone="neutral" color={tier.color}>
                 {tier.label}
-              </Badge>
-            </DataList.Value>
-          </DataList.Item>
+              </Chip>
+            </dd>
+          </div>
         )}
 
         {joined && (
-          <DataList.Item>
-            <DataList.Label>Joined</DataList.Label>
-            <DataList.Value>{joined}</DataList.Value>
-          </DataList.Item>
+          <div className="flex flex-col gap-0.5">
+            <dt className="text-xs text-gryt-muted">Joined</dt>
+            <dd className="m-0 text-sm text-gryt-text">{joined}</dd>
+          </div>
         )}
 
         {renames && (
-          <DataList.Item>
-            <DataList.Label>Name</DataList.Label>
-            <DataList.Value>{renames}</DataList.Value>
-          </DataList.Item>
+          <div className="flex flex-col gap-0.5">
+            <dt className="text-xs text-gryt-muted">Name</dt>
+            <dd className="m-0 text-sm text-gryt-text">{renames}</dd>
+          </div>
         )}
 
         {member.identityFingerprint && (
-          <DataList.Item>
-            <DataList.Label>Fingerprint</DataList.Label>
-            <DataList.Value>
+          <div className="flex flex-col gap-0.5">
+            <dt className="text-xs text-gryt-muted">Fingerprint</dt>
+            <dd className="m-0 text-sm text-gryt-text">
               {/*
                 Shown whole rather than shortened. A local identity is a keypair
                 its holder makes, so a few characters could be ground out to
@@ -121,21 +121,20 @@ export function MemberIdentityCard({ member }: { member: MemberInfo }) {
                 fingerprint so that cannot be done offline, and the full value
                 is what makes comparing it mean anything.
               */}
-              <Code
-                size="1"
-                variant="ghost"
+              <code
+                className="font-mono text-xs text-gryt-muted"
                 style={{ overflowWrap: "anywhere", userSelect: "all" }}
               >
                 {member.identityFingerprint}
-              </Code>
-            </DataList.Value>
-          </DataList.Item>
+              </code>
+            </dd>
+          </div>
         )}
-      </DataList.Root>
+      </dl>
 
-      <Text size="1" color="gray">
+      <span className="text-xs text-gryt-muted">
         Names are not unique. Check the fingerprint if it matters.
-      </Text>
-    </Flex>
+      </span>
+    </div>
   );
 }

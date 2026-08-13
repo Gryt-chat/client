@@ -1,15 +1,4 @@
-import { Avatar, Dialog, TextField } from "@gryt/ui";
-import {
-  Badge,
-  Button,
-  Callout,
-  Card,
-  Flex,
-  IconButton,
-  Text,
-  Theme,
-  useThemeContext,
-} from "@radix-ui/themes";
+import { Alert, Avatar, Button, Chip, Dialog, IconButton, Surface, TextField } from "@gryt/ui";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -77,17 +66,6 @@ export function AddNewServer({
 }: AddNewServerProps) {
   const { servers, switchToServer, setShowDiscovery, addServer } =
     useServerManagement();
-  /**
-   * The app's own theme values, to be re-applied inside the dialog.
-   *
-   * @gryt/ui's Dialog portals to document.body, which is outside the <Theme>
-   * wrapper in main.tsx — and that wrapper is the only thing defining the Radix
-   * variables. Portaled Radix components rendered with none of them: cards lost
-   * their borders and backgrounds, avatars ignored their size and blew the
-   * layout apart. Reading the values here and setting them again inside the
-   * popup restores the context the portal escaped.
-   */
-  const theme = useThemeContext();
   const { isElectron } = useLanDiscovery();
   const { openSettings } = useSettings();
   const { isAvailable: embeddedServerAvailable, servers: hostedServers } =
@@ -295,15 +273,6 @@ export function AddNewServer({
       <Dialog.Portal>
         <Dialog.Backdrop />
         <Dialog.Popup className="w-[30rem] max-w-[calc(100vw-2rem)] overflow-hidden">
-          <Theme
-            appearance={theme.appearance}
-            accentColor={theme.accentColor}
-            grayColor={theme.grayColor}
-            radius={theme.radius}
-            scaling={theme.scaling}
-            panelBackground={theme.panelBackground}
-            hasBackground={false}
-          >
             {/* Positioned by a wrapper rather than by a class on either the
                 Close or the IconButton. Close renders *as* the IconButton, and
                 the className does not survive that clone in either position —
@@ -324,7 +293,7 @@ export function AddNewServer({
                 fight — and that reset only covers elements Radix renders. A
                 raw <h2>/<p> keeps the browser's 1em margins, which is where
                 the gap under the title came from. */}
-            <Flex direction="column" gap="1" align="center">
+            <div className="flex flex-col gap-1 items-center">
               <Dialog.Title className="m-0 text-xl font-bold">
                 {step === "host"
                   ? "Create your server"
@@ -340,75 +309,67 @@ export function AddNewServer({
                     ? "Paste the invite a friend sent you, or the address of a server you already know."
                     : "Start one of your own, or join somebody else's."}
               </Dialog.Description>
-            </Flex>
+            </div>
 
             {/* Step one. A single row, because there is one thing to create and
                 Gryt has no templates to offer under it. */}
             {step === null && (
-              <Flex direction="column" gap="5" mt="2">
-                <Card asChild size="2">
-                  <button
-                    type="button"
-                    data-tour="choose-host"
-                    onClick={() => setMode("host")}
-                    style={{ cursor: "pointer", textAlign: "left" }}
-                  >
-                    <Flex align="center" gap="3">
-                      <Flex
-                        align="center"
-                        justify="center"
-                        style={{
+              <div className="flex flex-col gap-6 mt-2">
+                {/* Surface is a plain div with no asChild, and a box that only
+                    looks clickable wrapping a button is worse than the button
+                    wearing the surface itself. */}
+                <button
+                  type="button"
+                  data-tour="choose-host"
+                  className="rounded-(--gryt-radius-lg) border border-gryt-border bg-gryt-surface text-gryt-text w-full cursor-pointer p-4 text-left"
+                  onClick={() => setMode("host")}
+                >
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center" style={{
                           width: 36,
                           height: 36,
-                          borderRadius: "var(--radius-3)",
-                          background: "var(--accent-a3)",
-                          color: "var(--accent-11)",
+                          borderRadius: "var(--gryt-radius-md)",
+                          background: "var(--gryt-accent-a3)",
+                          color: "var(--gryt-accent-11)",
                           flexShrink: 0,
-                        }}
-                      >
+                        }}>
                         <PiHouseFill size={18} />
-                      </Flex>
+                      </div>
 
-                      <Flex direction="column" gap="0" style={{ minWidth: 0 }}>
-                        <Text size="3" weight="bold">
+                      <div className="flex flex-col gap-0" style={{ minWidth: 0 }}>
+                        <span className="text-base font-bold">
                           {hasOwnServer ? "Create another" : "Create my own"}
-                        </Text>
-                        <Text size="2">
+                        </span>
+                        <span className="text-sm">
                           Runs on this machine. Best for a few friends.
-                        </Text>
-                      </Flex>
+                        </span>
+                      </div>
 
-                      <Flex ml="auto" style={{ color: "var(--gray-9)" }}>
+                      <div className="flex ml-auto" style={{ color: "var(--gryt-neutral-9)" }}>
                         <PiCaretRightBold size={14} />
-                      </Flex>
-                    </Flex>
-                  </button>
-                </Card>
+                      </div>
+                    </div>
+                </button>
 
                 {/* Only once there is something to manage. Creating and
                     managing are different jobs and this dialog is for the
                     first, but somebody who already hosts one and came here
                     looking for the other should not have to guess. */}
                 {hasOwnServer && (
-                  <Text size="1" align="center" mt="-3">
+                  <span className="text-xs text-center -mt-3">
                     Already running{" "}
                     {hostedServers.length === 1
                       ? "one"
                       : `${hostedServers.length}`}
                     .{" "}
-                    <Text
-                      asChild
-                      style={{ textDecoration: "underline", cursor: "pointer" }}
+                    <button
+                      type="button"
+                      onClick={openMyServers}
+                      className="cursor-pointer appearance-none border-0 bg-transparent p-0 text-inherit underline"
                     >
-                      <button
-                        type="button"
-                        onClick={openMyServers}
-                        className="cursor-pointer appearance-none border-0 bg-transparent p-0 text-inherit underline"
-                      >
-                        Manage in settings
-                      </button>
-                    </Text>
-                  </Text>
+                      Manage in settings
+                    </button>
+                  </span>
                 )}
 
                 {/* The other half of the dialog, and deliberately not a second
@@ -416,20 +377,20 @@ export function AddNewServer({
                     invite in their clipboard, but "create" is the thing this
                     step is named after — so joining gets its own line rather
                     than competing for the same row. */}
-                <Flex direction="column" gap="2" align="center">
-                  <Text size="2" weight="bold">
+                <div className="flex flex-col gap-2 items-center">
+                  <span className="text-sm font-bold">
                     Have an invite already?
-                  </Text>
+                  </span>
                   <Button
                     data-tour="choose-join"
-                    size="3"
+                    size="medium"
                     style={{ width: "100%" }}
                     onClick={() => setMode("join")}
                   >
                     Join a server
                   </Button>
-                </Flex>
-              </Flex>
+                </div>
+              </div>
             )}
 
             {step === "host" && embeddedServerAvailable && (
@@ -451,14 +412,14 @@ export function AddNewServer({
             )}
 
             {step === "join" && (
-              <Flex direction="column" gap="4">
-                <Flex direction="column" gap="2" data-tour="join-address">
-                  <Text size="2" weight="bold">
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-2" data-tour="join-address">
+                  <span className="text-sm font-bold">
                     Invite link{" "}
-                    <Text as="span">
+                    <span>
                       *
-                    </Text>
-                  </Text>
+                    </span>
+                  </span>
 
                   <TextField
                     autoFocus
@@ -468,19 +429,19 @@ export function AddNewServer({
                     onChange={(e) => setInviteInput(e.target.value)}
                   />
 
-                  <Flex direction="column" gap="1">
-                    <Text size="1">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs">
                       Invites look like
-                    </Text>
-                    <Flex gap="1" wrap="wrap">
+                    </span>
+                    <div className="flex gap-1 flex-wrap">
                       {INPUT_EXAMPLES.map((example) => (
-                        <Badge key={example} size="1">
+                        <Chip key={example}>
                           {example}
-                        </Badge>
+                        </Chip>
                       ))}
-                    </Flex>
-                  </Flex>
-                </Flex>
+                    </div>
+                  </div>
+                </div>
 
                 {/* The preview, and it stays a preview. There used to be a
                     details card between pasting and joining, which is a whole
@@ -513,10 +474,10 @@ export function AddNewServer({
                       exit={{ height: 0, opacity: 0 }}
                       style={{ overflow: "hidden" }}
                     >
-                      <Flex direction="column" gap="2">
-                        <Text size="2" weight="bold">
+                      <div className="flex flex-col gap-2">
+                        <span className="text-sm font-bold">
                           Invite code
-                        </Text>
+                        </span>
                         <TextField
                           disabled={isJoining}
                           placeholder="Paste invite code"
@@ -525,7 +486,7 @@ export function AddNewServer({
                             setManualCode(normalizeCode(e.target.value))
                           }
                         />
-                      </Flex>
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -538,15 +499,15 @@ export function AddNewServer({
                       exit={{ height: 0, opacity: 0 }}
                       style={{ overflow: "hidden" }}
                     >
-                      <Flex direction="column" gap="2">
-                        <Text size="2" weight="bold">
+                      <div className="flex flex-col gap-2">
+                        <span className="text-sm font-bold">
                           Anything to say?
-                        </Text>
-                        <Text size="1">
+                        </span>
+                        <span className="text-xs">
                           This server lets people in by hand. A line about who
                           you are gives them something to go on — a nickname on
                           its own does not.
-                        </Text>
+                        </span>
                         <TextField
                           disabled={isJoining}
                           placeholder="Optional"
@@ -554,7 +515,7 @@ export function AddNewServer({
                           value={joinNote}
                           onChange={(e) => setJoinNote(e.target.value)}
                         />
-                      </Flex>
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -567,12 +528,10 @@ export function AddNewServer({
                       exit={{ height: 0, opacity: 0 }}
                       style={{ overflow: "hidden" }}
                     >
-                      <Callout.Root>
-                        <Callout.Text>
-                          Asked. Somebody who runs this server has to let you in
-                          — once they do, adding it again will work.
-                        </Callout.Text>
-                      </Callout.Root>
+                      <Alert severity="info">
+                        Asked. Somebody who runs this server has to let you in
+                        — once they do, adding it again will work.
+                      </Alert>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -585,12 +544,12 @@ export function AddNewServer({
                       exit={{ height: 0, opacity: 0 }}
                       style={{ overflow: "hidden" }}
                     >
-                      <Callout.Root role="alert">
-                        <Callout.Icon>
+                      <Alert severity="error" role="alert">
+                        <span className="inline-flex items-center gap-2">
                           <PiWarningFill size={16} />
-                        </Callout.Icon>
-                        <Callout.Text>{joinError}</Callout.Text>
-                      </Callout.Root>
+                          {joinError}
+                        </span>
+                      </Alert>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -600,43 +559,37 @@ export function AddNewServer({
                     is the way back to it for somebody who came here looking for
                     a server on their own network. */}
                 {isElectron && (
-                  <Card asChild size="1">
-                    <button
-                      type="button"
-                      onClick={openDiscovery}
-                      style={{ cursor: "pointer", textAlign: "left" }}
-                    >
-                      <Flex align="center" gap="3">
-                        <Flex
-                          align="center"
-                          justify="center"
-                          style={{
+                  <button
+                    type="button"
+                    className="rounded-(--gryt-radius-lg) border border-gryt-border bg-gryt-surface text-gryt-text w-full cursor-pointer p-3 text-left"
+                    onClick={openDiscovery}
+                  >
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center" style={{
                             width: 28,
                             height: 28,
                             borderRadius: "50%",
-                            background: "var(--green-a3)",
-                            color: "var(--green-11)",
+                            background: "color-mix(in oklab, var(--gryt-success-9) 7%, transparent)",
+                            color: "var(--gryt-success-11)",
                             flexShrink: 0,
-                          }}
-                        >
+                          }}>
                           <PiBroadcastFill size={14} />
-                        </Flex>
+                        </div>
 
-                        <Flex direction="column" style={{ minWidth: 0 }}>
-                          <Text size="2" weight="bold">
+                        <div className="flex flex-col" style={{ minWidth: 0 }}>
+                          <span className="text-sm font-bold">
                             Don&rsquo;t have an invite?
-                          </Text>
-                          <Text size="1">
+                          </span>
+                          <span className="text-xs">
                             Look for servers running on your network.
-                          </Text>
-                        </Flex>
+                          </span>
+                        </div>
 
-                        <Flex ml="auto" style={{ color: "var(--gray-9)" }}>
+                        <div className="flex ml-auto" style={{ color: "var(--gryt-neutral-9)" }}>
                           <PiCaretRightBold size={14} />
-                        </Flex>
-                      </Flex>
-                    </button>
-                  </Card>
+                        </div>
+                    </div>
+                  </button>
                 )}
 
                 <Dialog.Footer className="justify-between">
@@ -646,7 +599,7 @@ export function AddNewServer({
                       than no Back. */}
                   {embeddedServerAvailable ? (
                     <Button
-                      variant="ghost"
+                      tone="ghost"
                       disabled={isJoining}
                       onClick={() => setMode(null)}
                     >
@@ -678,9 +631,8 @@ export function AddNewServer({
                     )}
                   </Button>
                 </Dialog.Footer>
-              </Flex>
+              </div>
             )}
-          </Theme>
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>
@@ -713,8 +665,8 @@ function ServerPreview({
   alreadyMember,
 }: ServerPreviewProps) {
   return (
-    <Card size="1">
-      <Flex align="center" gap="3">
+    <Surface className="p-3">
+      <div className="flex items-center gap-3">
         {/* Seeded on the address until /info answers, and on the name from then
             on — so the planet in the preview is the one the rail will draw once
             you have joined, rather than a different one you never see again. */}
@@ -725,40 +677,40 @@ function ServerPreview({
           fallback={<GeneratedServerIcon seed={info?.name || host} />}
         />
 
-        <Flex direction="column" style={{ minWidth: 0 }}>
+        <div className="flex flex-col" style={{ minWidth: 0 }}>
           {loading ? (
             <SkeletonBase width="8rem" height="1rem" />
           ) : (
-            <Text size="2" weight="bold" truncate>
+            <span className="text-sm font-bold truncate">
               {info?.name || host}
-            </Text>
+            </span>
           )}
 
           {loading ? (
             <SkeletonBase width="5rem" height="0.75rem" />
           ) : error ? (
-            <Text size="1">
+            <span className="text-xs">
               {error}
-            </Text>
+            </span>
           ) : privateInfo ? (
-            <Text size="1">
+            <span className="text-xs">
               Public info is off. An invite code can still get you in.
-            </Text>
+            </span>
           ) : (
-            <Text size="1" truncate>
+            <span className="text-xs truncate">
               {info
                 ? `${info.members} ${info.members === "1" ? "member" : "members"} · ${host}`
                 : host}
-            </Text>
+            </span>
           )}
-        </Flex>
+        </div>
 
-        <Flex ml="auto" gap="2" align="center">
+        <div className="flex gap-2 items-center ml-auto">
           {alreadyMember && (
-            <Badge size="1" color="blue">
+            <Chip>
               <PiInfoFill size={12} />
               Joined
-            </Badge>
+            </Chip>
           )}
           {/*
             The thing people actually want to know before joining: whether this
@@ -767,17 +719,16 @@ function ServerPreview({
             turns into a refusal.
           */}
           {info?.identityTiers && !alreadyMember && (
-            <Badge
-              size="1"
+            <Chip
               color={info.identityTiers.includes("local") ? "green" : "gray"}
             >
               {info.identityTiers.includes("local")
                 ? "No account needed"
                 : "Account required"}
-            </Badge>
+            </Chip>
           )}
-        </Flex>
-      </Flex>
-    </Card>
+        </div>
+      </div>
+    </Surface>
   );
 }

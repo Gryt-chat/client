@@ -1,5 +1,4 @@
-import { Switch, TextField } from "@gryt/ui";
-import { Dialog, Flex, IconButton, Select, Text } from "@radix-ui/themes";
+import { Dialog, IconButton, Select, Switch, TextField } from "@gryt/ui";
 import { useCallback, useRef } from "react";
 import { PiX } from "react-icons/pi";
 
@@ -70,23 +69,25 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
 
   return (
     <Dialog.Root open={open} onOpenChange={(o) => { if (!o) handleClose(); else onOpenChange(o); }}>
-      <Dialog.Content maxWidth="480px">
-        <Flex direction="column" gap="4">
-          <Flex align="center" justify="between">
-            <Dialog.Title as="h2" size="5" weight="bold" style={{ margin: 0 }}>
+      <Dialog.Portal>
+        <Dialog.Backdrop />
+        <Dialog.Popup className="max-w-120">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <Dialog.Title style={{ margin: 0 }}>
               {selectedSidebarItem?.kind === "channel" ? "Channel settings"
                 : selectedSidebarItem?.kind === "separator" ? "Separator settings"
                 : "Spacer settings"}
             </Dialog.Title>
             <Dialog.Close>
-              <IconButton><PiX size={16} /></IconButton>
+              <IconButton size="xsmall"><PiX size={16} /></IconButton>
             </Dialog.Close>
-          </Flex>
+          </div>
 
           {selectedSidebarItem?.kind === "channel" && (
             <>
-              <Flex direction="column" gap="2">
-                <Text size="2" weight="medium">Name</Text>
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-medium">Name</span>
                 <TextField
                   value={sheetChannelName}
                   onChange={(e) => setSheetChannelName(e.target.value)}
@@ -94,72 +95,75 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
                   onKeyDown={handleKeyEnter}
                   placeholder="Channel name"
                 />
-              </Flex>
-              <Flex align="center" justify="between">
-                <Text size="2" weight="medium">Voice channel</Text>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Voice channel</span>
                 <Switch checked={sheetChannelIsVoice} onCheckedChange={(v) => { setSheetChannelIsVoice(v); debouncedSave(); }} />
-              </Flex>
+              </div>
               {sheetChannelIsVoice && (
                 <>
-                  <Flex align="center" justify="between">
-                    <Flex direction="column" gap="1">
-                      <Text size="2" weight="medium">eSports Mode</Text>
-                      <Text size="1">Lowest latency: PTT, no RNNoise, 128 kbps bitrate, 10ms Opus</Text>
-                    </Flex>
+                  <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-sm font-medium">eSports Mode</span>
+                      <span className="text-xs">Lowest latency: PTT, no RNNoise, 128 kbps bitrate, 10ms Opus</span>
+                    </div>
                     <Switch checked={sheetEsportsMode} onCheckedChange={(v) => {
                       setSheetEsportsMode(v);
                       if (v) { setSheetRequirePtt(true); setSheetDisableRnnoise(true); }
                       debouncedSave();
                     }} />
-                  </Flex>
-                  <Flex align="center" justify="between">
-                    <Flex direction="column" gap="1">
-                      <Text size="2" weight="medium">Require Push to Talk</Text>
-                      <Text size="1">Users must hold a key to transmit</Text>
-                    </Flex>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-sm font-medium">Require Push to Talk</span>
+                      <span className="text-xs">Users must hold a key to transmit</span>
+                    </div>
                     <Switch checked={sheetRequirePtt} onCheckedChange={(v) => { setSheetRequirePtt(v); debouncedSave(); }} />
-                  </Flex>
-                  <Flex align="center" justify="between">
-                    <Flex direction="column" gap="1">
-                      <Text size="2" weight="medium">Disable Noise Reduction</Text>
-                      <Text size="1">Raw audio with no processing for lower latency</Text>
-                    </Flex>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-sm font-medium">Disable Noise Reduction</span>
+                      <span className="text-xs">Raw audio with no processing for lower latency</span>
+                    </div>
                     <Switch checked={sheetDisableRnnoise} disabled={sheetEsportsMode} onCheckedChange={(v) => { setSheetDisableRnnoise(v); debouncedSave(); }} />
-                  </Flex>
-                  <Flex direction="column" gap="2">
-                    <Text size="2" weight="medium">Max Bitrate</Text>
-                    <Select.Root
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <span className="text-sm font-medium">Max Bitrate</span>
+                    {/* The separator under Default is gone: the library's
+                        Select takes a flat list of options, and Default reads
+                        as the first of them well enough without a rule. */}
+                    <Select
                       value={sheetMaxBitrate || "default"}
-                      onValueChange={(v) => { setSheetMaxBitrate(v === "default" ? "" : v); debouncedSave(); }}
-                    >
-                      <Select.Trigger />
-                      <Select.Content position="popper" sideOffset={4}>
-                        <Select.Item value="default">Default</Select.Item>
-                        <Select.Separator />
-                        <Select.Item value="32000">32 kbps</Select.Item>
-                        <Select.Item value="64000">64 kbps</Select.Item>
-                        <Select.Item value="96000">96 kbps</Select.Item>
-                        <Select.Item value="128000">128 kbps</Select.Item>
-                        <Select.Item value="256000">256 kbps</Select.Item>
-                        <Select.Item value="510000">510 kbps</Select.Item>
-                      </Select.Content>
-                    </Select.Root>
-                  </Flex>
-                  <Flex align="center" justify="between">
-                    <Flex direction="column" gap="1">
-                      <Text size="2" weight="medium">Enable Text Chat</Text>
-                      <Text size="1">Allow text messages in this voice channel</Text>
-                    </Flex>
+                      onValueChange={(v) => {
+                        setSheetMaxBitrate(v === "default" ? "" : String(v));
+                        debouncedSave();
+                      }}
+                      options={[
+                        { label: "Default", value: "default" },
+                        { label: "32 kbps", value: "32000" },
+                        { label: "64 kbps", value: "64000" },
+                        { label: "96 kbps", value: "96000" },
+                        { label: "128 kbps", value: "128000" },
+                        { label: "256 kbps", value: "256000" },
+                        { label: "510 kbps", value: "510000" },
+                      ]}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-sm font-medium">Enable Text Chat</span>
+                      <span className="text-xs">Allow text messages in this voice channel</span>
+                    </div>
                     <Switch checked={sheetTextInVoice} onCheckedChange={(v) => { setSheetTextInVoice(v); debouncedSave(); }} />
-                  </Flex>
+                  </div>
                 </>
               )}
             </>
           )}
 
           {selectedSidebarItem?.kind === "spacer" && (
-            <Flex direction="column" gap="2">
-              <Text size="2" weight="medium">Height</Text>
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">Height</span>
               <TextField
                 value={sheetSpacerHeight}
                 onChange={(e) => setSheetSpacerHeight(e.target.value)}
@@ -167,12 +171,12 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
                 onKeyDown={handleKeyEnter}
                 placeholder="16"
               />
-            </Flex>
+            </div>
           )}
 
           {selectedSidebarItem?.kind === "separator" && (
-            <Flex direction="column" gap="2">
-              <Text size="2" weight="medium">Label</Text>
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">Label</span>
               <TextField
                 value={sheetSeparatorLabel}
                 onChange={(e) => setSheetSeparatorLabel(e.target.value)}
@@ -180,10 +184,11 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
                 onKeyDown={handleKeyEnter}
                 placeholder="Optional"
               />
-            </Flex>
+            </div>
           )}
-        </Flex>
-      </Dialog.Content>
+        </div>
+      </Dialog.Popup>
+      </Dialog.Portal>
     </Dialog.Root>
   );
 };

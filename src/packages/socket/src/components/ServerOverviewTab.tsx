@@ -1,12 +1,4 @@
-import { Avatar, Switch, TextField } from "@gryt/ui";
-import {
-  AlertDialog,
-  Button,
-  Flex,
-  Select,
-  Text,
-  TextArea,
-} from "@radix-ui/themes";
+import { AlertDialog, Avatar, Button, Select, Switch, TextField } from "@gryt/ui";
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { PiCameraFill, PiTrashFill } from "react-icons/pi";
@@ -404,26 +396,26 @@ export function ServerOverviewTab({
   };
 
   return (
-    <Flex direction="column" gap="4">
-      <Text size="2">
+    <div className="flex flex-col gap-4">
+      <span className="text-sm">
         {isOwner
           ? "Update the server display name and icon."
           : "You can view settings, but only the owner can make changes."}
-      </Text>
+      </span>
 
-      <Flex direction="column" gap="2">
-        <Text size="2" weight="medium">
+      <div className="flex flex-col gap-2">
+        <span className="text-sm font-medium">
           Server
-        </Text>
-        <Text size="2">
+        </span>
+        <span className="text-sm">
           {host}
-        </Text>
-      </Flex>
+        </span>
+      </div>
 
-      <Flex direction="column" gap="2">
-        <Text size="2" weight="medium">
+      <div className="flex flex-col gap-2">
+        <span className="text-sm font-medium">
           Display name
-        </Text>
+        </span>
         <TextField
           value={displayName}
           onChange={(e: ChangeEvent<HTMLInputElement>) => setDisplayName(e.target.value)}
@@ -431,39 +423,36 @@ export function ServerOverviewTab({
           placeholder="My Gryt Server"
           disabled={!isOwner}
         />
-      </Flex>
+      </div>
 
-      <Flex direction="column" gap="2">
-        <Text size="2" weight="medium">
+      <div className="flex flex-col gap-2">
+        <span className="text-sm font-medium">
           Description
-        </Text>
-        <TextArea
+        </span>
+        <TextField
+          multiline
+          minRows={3}
           value={description}
-          onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
+          onChange={(e) => setDescription(e.target.value)}
           onBlur={() => saveIfChanged({ description: description.trim() })}
           placeholder="A place to hang out"
           disabled={!isOwner}
           style={{ minHeight: 90 }}
         />
-      </Flex>
+      </div>
 
-      <Flex direction="column" gap="2">
-        <Text size="2" weight="medium">
+      <div className="flex flex-col gap-2">
+        <span className="text-sm font-medium">
           Server icon
-        </Text>
+        </span>
         {/** Only the avatar is clickable (not whitespace). */}
-        <Flex
-          direction="column"
-          align="center"
-          gap="2"
-          style={{
+        <div className="flex flex-col items-center gap-2" style={{
             cursor: "default",
             opacity: iconBusy ? 0.6 : 1,
             transition: "opacity 200ms",
             paddingTop: 8,
             paddingBottom: 4,
-          }}
-        >
+          }}>
           <button
             type="button"
             disabled={!isOwner || iconBusy}
@@ -483,27 +472,23 @@ export function ServerOverviewTab({
                 fallback={displayName || host ? <GeneratedServerIcon seed={displayName || host} /> : "S"}
               />
               {isOwner && (
-                <Flex
-                  align="center"
-                  justify="center"
-                  style={{
+                <div className="flex items-center justify-center" style={{
                     position: "absolute",
                     bottom: 0,
                     right: 0,
                     width: 28,
                     height: 28,
                     borderRadius: "50%",
-                    background: "var(--accent-9)",
-                    color: "var(--accent-contrast)",
-                    boxShadow: "0 1px 4px var(--gray-a5)",
-                  }}
-                >
+                    background: "var(--gryt-accent-9)",
+                    color: "var(--gryt-on-accent)",
+                    boxShadow: "0 1px 4px var(--gryt-neutral-a5)",
+                  }}>
                   <PiCameraFill size={14} />
-                </Flex>
+                </div>
               )}
             </div>
           </button>
-          <Text size="1">
+          <span className="text-xs">
             {isUploadingIcon
               ? "Uploading..."
               : isClearingIcon
@@ -511,12 +496,12 @@ export function ServerOverviewTab({
                 : isOwner
                   ? "Click to change icon"
                   : "Server icon"}
-          </Text>
-        </Flex>
+          </span>
+        </div>
 
         {isOwner && iconUrl ? (
           <>
-            <Button
+            <Button size="small"
               disabled={isUploadingIcon || isClearingIcon}
               onClick={() => setShowClearIconConfirm(true)}
               style={{ alignSelf: "center" }}
@@ -528,25 +513,27 @@ export function ServerOverviewTab({
               open={showClearIconConfirm}
               onOpenChange={(open) => { if (!open) setShowClearIconConfirm(false); }}
             >
-              <AlertDialog.Content maxWidth="420px">
+              <AlertDialog.Portal>
+                <AlertDialog.Backdrop />
+                <AlertDialog.Popup className="max-w-105">
                 <AlertDialog.Title>Clear server icon?</AlertDialog.Title>
-                <AlertDialog.Description size="2">
+                <AlertDialog.Description>
                   This will remove the current server icon. You can upload a new one at any time.
                 </AlertDialog.Description>
-                <Flex gap="3" mt="4" justify="end">
-                  <AlertDialog.Cancel>
-                    <Button>Cancel</Button>
-                  </AlertDialog.Cancel>
-                  <AlertDialog.Action>
-                    <Button
-                      variant="solid"
+                <div className="flex gap-3 mt-4 justify-end">
+                  <AlertDialog.Close render={<span />}>
+                    <Button size="small">Cancel</Button>
+                  </AlertDialog.Close>
+                  <AlertDialog.Close render={<span />}>
+                    <Button size="small"
                       onClick={() => { clearIcon(); setShowClearIconConfirm(false); }}
                     >
                       Clear icon
                     </Button>
-                  </AlertDialog.Action>
-                </Flex>
-              </AlertDialog.Content>
+                  </AlertDialog.Close>
+                </div>
+              </AlertDialog.Popup>
+              </AlertDialog.Portal>
             </AlertDialog.Root>
           </>
         ) : null}
@@ -562,20 +549,20 @@ export function ServerOverviewTab({
             e.currentTarget.value = "";
           }}
         />
-      </Flex>
+      </div>
 
-      <Flex direction="column" gap="2">
-        <Text size="2" weight="medium">
+      <div className="flex flex-col gap-2">
+        <span className="text-sm font-medium">
           Limits (optional)
-        </Text>
-        <Text size="2">
+        </span>
+        <span className="text-sm">
           Leave blank for defaults. These affect uploads and voice bandwidth.
-        </Text>
+        </span>
 
-        <Flex direction="column" gap="2">
-          <Text size="2" weight="medium">
+        <div className="flex flex-col gap-2">
+          <span className="text-sm font-medium">
             Max avatar upload (MB)
-          </Text>
+          </span>
           <TextField
             type="number"
             inputMode="decimal"
@@ -587,12 +574,12 @@ export function ServerOverviewTab({
             placeholder="e.g. 5"
             disabled={!isOwner}
           />
-        </Flex>
+        </div>
 
-        <Flex direction="column" gap="2">
-          <Text size="2" weight="medium">
+        <div className="flex flex-col gap-2">
+          <span className="text-sm font-medium">
             Max file upload (MB)
-          </Text>
+          </span>
           <TextField
             type="number"
             inputMode="decimal"
@@ -604,12 +591,12 @@ export function ServerOverviewTab({
             placeholder="e.g. 25"
             disabled={!isOwner}
           />
-        </Flex>
+        </div>
 
-        <Flex direction="column" gap="2">
-          <Text size="2" weight="medium">
+        <div className="flex flex-col gap-2">
+          <span className="text-sm font-medium">
             Max emoji upload (MB)
-          </Text>
+          </span>
           <TextField
             type="number"
             inputMode="decimal"
@@ -621,20 +608,20 @@ export function ServerOverviewTab({
             placeholder="e.g. 5"
             disabled={!isOwner}
           />
-        </Flex>
+        </div>
 
-      </Flex>
+      </div>
 
-      <Flex direction="column" gap="2">
-        <Text size="2" weight="medium">
+      <div className="flex flex-col gap-2">
+        <span className="text-sm font-medium">
           Profanity filter
-        </Text>
-        <Text size="1" style={{ lineHeight: 1.4 }}>
+        </span>
+        <span className="text-xs" style={{ lineHeight: 1.4 }}>
           Controls how profane messages are handled on this server.
-        </Text>
-        <Flex gap="2" wrap="wrap">
+        </span>
+        <div className="flex gap-2 flex-wrap">
           <div style={{ flex: "1 1 180px" }}>
-            <Select.Root
+            <Select
               value={profanityMode}
               onValueChange={(v) => {
                 const mode = v as ProfanityMode;
@@ -642,19 +629,20 @@ export function ServerOverviewTab({
                 saveIfChanged({ profanityMode: mode });
               }}
               disabled={!isOwner}
-            >
-              <Select.Trigger style={{ width: "100%" }} />
-              <Select.Content position="popper" sideOffset={4}>
-                <Select.Item value="off">Off — no filtering</Select.Item>
-                <Select.Item value="flag">Flag — blur profanity (clients can reveal)</Select.Item>
-                <Select.Item value="censor">Censor — replace profanity</Select.Item>
-                <Select.Item value="block">Block — reject message entirely</Select.Item>
-              </Select.Content>
-            </Select.Root>
+              options={[
+                { label: "Off — no filtering", value: "off" },
+                {
+                  label: "Flag — blur profanity (clients can reveal)",
+                  value: "flag",
+                },
+                { label: "Censor — replace profanity", value: "censor" },
+                { label: "Block — reject message entirely", value: "block" },
+              ]}
+            />
           </div>
           {profanityMode === "censor" && (
             <div style={{ flex: "1 1 180px" }}>
-              <Select.Root
+              <Select
                 value={censorStyle}
                 onValueChange={(v) => {
                   const style = v as CensorStyle;
@@ -662,91 +650,84 @@ export function ServerOverviewTab({
                   saveIfChanged({ profanityCensorStyle: style });
                 }}
                 disabled={!isOwner}
-              >
-                <Select.Trigger style={{ width: "100%" }} placeholder="Replacement style" />
-                <Select.Content position="popper" sideOffset={4}>
-                  <Select.Item value="grawlix">Symbols — $#@!%&*</Select.Item>
-                  <Select.Item value="asterisks">Asterisks — ****</Select.Item>
-                  <Select.Item value="emoji">Swear emoji — 🤬🤬</Select.Item>
-                  <Select.Item value="block">Black bars — ████</Select.Item>
-                  <Select.Item value="hearts">Hearts — ♥♥♥♥</Select.Item>
-                </Select.Content>
-              </Select.Root>
+                placeholder="Replacement style"
+                options={[
+                  { label: "Symbols — $#@!%&*", value: "grawlix" },
+                  { label: "Asterisks — ****", value: "asterisks" },
+                  { label: "Swear emoji — 🤬🤬", value: "emoji" },
+                  { label: "Black bars — ████", value: "block" },
+                  { label: "Hearts — ♥♥♥♥", value: "hearts" },
+                ]}
+              />
             </div>
           )}
-        </Flex>
-      </Flex>
+        </div>
+      </div>
 
-      <Flex direction="column" gap="2">
-        <Text size="2" weight="medium">
+      <div className="flex flex-col gap-2">
+        <span className="text-sm font-medium">
           System messages channel
-        </Text>
-        <Text size="1" style={{ lineHeight: 1.4 }}>
+        </span>
+        <span className="text-xs" style={{ lineHeight: 1.4 }}>
           Choose which text channel receives system messages like &ldquo;user joined&rdquo; and &ldquo;user left&rdquo;.
-        </Text>
-        <Select.Root
+        </span>
+        <Select
+          className="max-w-80"
           value={systemChannelId ?? "__auto__"}
           onValueChange={(v) => {
-            const id = v === "__auto__" ? null : v;
+            const id = v === "__auto__" ? null : String(v);
             setSystemChannelId(id);
             saveIfChanged({ systemChannelId: id });
           }}
           disabled={!isOwner}
-        >
-          <Select.Trigger style={{ width: "100%", maxWidth: 320 }} />
-          <Select.Content position="popper" sideOffset={4}>
-            <Select.Item value="__auto__">Auto (first text channel)</Select.Item>
-            {textChannels.map((ch) => (
-              <Select.Item key={ch.id} value={ch.id}>
-                #{ch.name}
-              </Select.Item>
-            ))}
-          </Select.Content>
-        </Select.Root>
-      </Flex>
+          options={[
+            { label: "Auto (first text channel)", value: "__auto__" },
+            ...textChannels.map((ch) => ({ label: `#${ch.name}`, value: ch.id })),
+          ]}
+        />
+      </div>
 
-      <Flex direction="column" gap="2">
-        <Text size="2" weight="medium">
+      <div className="flex flex-col gap-2">
+        <span className="text-sm font-medium">
           Who can join
-        </Text>
-        <Text size="1" style={{ lineHeight: 1.4 }}>
+        </span>
+        <span className="text-xs" style={{ lineHeight: 1.4 }}>
           Bans still apply whichever of these you pick, but they hold only as
           well as the identity behind them — somebody without a Gryt account can
           make a new one, so lean on invites if that matters.
-        </Text>
-        <Select.Root
+        </span>
+        <Select
+          className="max-w-80"
           value={joinPolicy}
           onValueChange={(v) => {
-            const next = normalizeJoinPolicy(v);
+            const next = normalizeJoinPolicy(String(v));
             const previous = joinPolicy;
             setJoinPolicy(next);
             if (!saveIfChanged({ joinPolicy: next })) setJoinPolicy(previous);
           }}
           disabled={!isOwner}
-        >
-          <Select.Trigger style={{ width: "100%", maxWidth: 320 }} />
-          <Select.Content position="popper" sideOffset={4}>
-            <Select.Item value="invite">With an invite</Select.Item>
-            <Select.Item value="request">After you let them in</Select.Item>
-            <Select.Item value="open">Anyone, no invite</Select.Item>
-          </Select.Content>
-        </Select.Root>
+          options={[
+            { label: "With an invite", value: "invite" },
+            { label: "After you let them in", value: "request" },
+            { label: "Anyone, no invite", value: "open" },
+          ]}
+        />
         {joinPolicy === "request" && (
-          <Text size="1" style={{ lineHeight: 1.4 }}>
+          <span className="text-xs" style={{ lineHeight: 1.4 }}>
             People who ask show up under <strong>Requests</strong>. Nobody gets in
             until somebody there approves them.
-          </Text>
+          </span>
         )}
-      </Flex>
+      </div>
 
-      <Flex direction="column" gap="2">
-        <Text size="2" weight="medium">
+      <div className="flex flex-col gap-2">
+        <span className="text-sm font-medium">
           LAN access
-        </Text>
-        <Text size="1" style={{ lineHeight: 1.4 }}>
+        </span>
+        <span className="text-xs" style={{ lineHeight: 1.4 }}>
           When enabled, clients on the same local network can join without an invite code. Remote connections still require an invite.
-        </Text>
-        <Flex align="center" gap="2">
+        </span>
+        <div className="flex items-center gap-2">
           <Switch
             checked={lanOpen}
             onCheckedChange={(v) => {
@@ -755,18 +736,18 @@ export function ServerOverviewTab({
             }}
             disabled={!isOwner}
           />
-          <Text size="2">Allow anyone on LAN to join</Text>
-        </Flex>
-      </Flex>
+          <span className="text-sm">Allow anyone on LAN to join</span>
+        </div>
+      </div>
 
-      <Flex direction="column" gap="2">
-        <Text size="2" weight="medium">
+      <div className="flex flex-col gap-2">
+        <span className="text-sm font-medium">
           Discoverability
-        </Text>
-        <Text size="1" style={{ lineHeight: 1.4 }}>
+        </span>
+        <span className="text-xs" style={{ lineHeight: 1.4 }}>
           When disabled, the server&rsquo;s public info endpoint is hidden. Non-members will not be able to see the server name, description, or member count before joining.
-        </Text>
-        <Flex align="center" gap="2">
+        </span>
+        <div className="flex items-center gap-2">
           <Switch
             checked={discoverable}
             onCheckedChange={(v) => {
@@ -775,16 +756,16 @@ export function ServerOverviewTab({
             }}
             disabled={!isOwner}
           />
-          <Text size="2">Allow public server info</Text>
-        </Flex>
-      </Flex>
+          <span className="text-sm">Allow public server info</span>
+        </div>
+      </div>
 
       {autosaving ? (
-        <Flex justify="end">
-          <Text size="2">Saving…</Text>
-        </Flex>
+        <div className="flex justify-end">
+          <span className="text-sm">Saving…</span>
+        </div>
       ) : null}
-    </Flex>
+    </div>
   );
 }
 

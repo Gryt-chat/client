@@ -1,4 +1,4 @@
-import { Button, Card, Flex, Text } from "@radix-ui/themes";
+import { Button, Surface } from "@gryt/ui";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
@@ -48,40 +48,40 @@ export function ServerAuditTab({
   }, [host, socket?.connected]);
 
   return (
-    <Flex direction="column" gap="4">
-      <Flex justify="end" gap="2">
-        <Button variant="soft" color="gray" onClick={refresh}>
+    <div className="flex flex-col gap-4">
+      <div className="flex justify-end gap-2">
+        <Button tone="neutral" size="small" onClick={refresh}>
           Refresh
         </Button>
-      </Flex>
+      </div>
 
-      <Flex direction="column" gap="2">
+      <div className="flex flex-col gap-2">
         {items.length === 0 ? (
-          <Text size="2" color="gray">
+          <span className="text-sm text-gryt-muted">
             No audit entries.
-          </Text>
+          </span>
         ) : (
           items.map((it) => (
-            <Card key={it.eventId}>
-              <Flex direction="column" gap="1">
-                <Text size="2" weight="bold">
+            <Surface key={it.eventId}>
+              <div className="flex flex-col gap-1">
+                <span className="text-sm font-bold">
                   {it.action}
                   {it.target ? ` · ${it.target}` : ""}
-                </Text>
-                <Text size="1" color="gray">
+                </span>
+                <span className="text-xs text-gryt-muted">
                   {fmt(it.createdAt)} · actor: {it.actorServerUserId || "system"}
-                </Text>
+                </span>
                 {it.meta ? (
-                  <Text size="1" color="gray" style={{ whiteSpace: "pre-wrap" }}>
+                  <span className="text-xs text-gryt-muted" style={{ whiteSpace: "pre-wrap" }}>
                     {typeof it.meta === "string" ? it.meta : JSON.stringify(it.meta, null, 2)}
-                  </Text>
+                  </span>
                 ) : null}
-              </Flex>
-            </Card>
+              </div>
+            </Surface>
           ))
         )}
-      </Flex>
-    </Flex>
+      </div>
+    </div>
   );
 }
 

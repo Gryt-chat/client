@@ -62,25 +62,25 @@ export function DebugOverlay({
         }}
         whileDrag={{ 
           scale: 1.05,
-          boxShadow: "0 8px 24px var(--gray-a8)"
+          boxShadow: "0 8px 24px var(--gryt-neutral-a8)"
         }}
         whileHover={{
           scale: 1.02,
-          boxShadow: "0 6px 16px var(--gray-a7)"
+          boxShadow: "0 6px 16px var(--gryt-neutral-a7)"
         }}
         style={{
           position: "absolute",
           width: "320px",
-          backgroundColor: "var(--color-panel-translucent)",
-          color: "var(--gray-12)",
+          backgroundColor: "var(--gryt-neutral-a3)",
+          color: "var(--gryt-neutral-12)",
           fontFamily: "var(--code-font-family)",
           fontSize: "12px",
           padding: "12px",
-          borderRadius: "var(--radius-3)",
-          border: "1px solid var(--gray-7)",
+          borderRadius: "var(--gryt-radius-md)",
+          border: "1px solid var(--gryt-neutral-7)",
           zIndex: "var(--gryt-z-debug)",
           backdropFilter: "blur(12px)",
-          boxShadow: "0 4px 12px var(--gray-a6)",
+          boxShadow: "0 4px 12px var(--gryt-neutral-a6)",
           cursor: "grab",
           pointerEvents: "auto",
           userSelect: "none",
@@ -93,15 +93,15 @@ export function DebugOverlay({
             justifyContent: "space-between", 
             alignItems: "center",
             marginBottom: "8px",
-            borderBottom: "1px solid var(--gray-7)",
+            borderBottom: "1px solid var(--gryt-neutral-7)",
             paddingBottom: "6px",
             cursor: "grab",
             userSelect: "none"
           }}
           onPointerDown={(e) => dragControls.start(e)}
         >
-          <h3 style={{ margin: 0, color: "var(--green-11)" }}>{icon} {title}</h3>
-          <div style={{ fontSize: "10px", color: "var(--gray-9)", display: "flex", alignItems: "center", gap: "4px" }}>
+          <h3 style={{ margin: 0, color: "var(--gryt-success-11)" }}>{icon} {title}</h3>
+          <div style={{ fontSize: "10px", color: "var(--gryt-neutral-9)", display: "flex", alignItems: "center", gap: "4px" }}>
             <span>⋮⋮</span>
             {status.active ? "🟢 Active" : "🔴 Inactive"} - {status.label}
           </div>

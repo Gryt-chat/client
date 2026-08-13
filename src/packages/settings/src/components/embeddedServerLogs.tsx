@@ -1,4 +1,4 @@
-import { Badge, Button, Flex, SegmentedControl, Text } from "@radix-ui/themes";
+import { Button, Chip, Tabs } from "@gryt/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PiTrashFill } from "react-icons/pi";
 
@@ -73,34 +73,29 @@ export function EmbeddedServerLogs({ serverId }: { serverId: string }) {
   }, [visible]);
 
   return (
-    <Flex direction="column" gap="3">
-      <Flex align="center" gap="3" wrap="wrap">
-        <SegmentedControl.Root
-          size="1"
-          value={source}
-          onValueChange={(v) => setSource(v as EmbeddedLogSource | "all")}
-        >
-          <SegmentedControl.Item value="all">All</SegmentedControl.Item>
-          <SegmentedControl.Item value="server">Server</SegmentedControl.Item>
-          <SegmentedControl.Item value="sfu">SFU</SegmentedControl.Item>
-          <SegmentedControl.Item value="worker">Worker</SegmentedControl.Item>
-        </SegmentedControl.Root>
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
+        <Tabs value={source} onValueChange={(v) => setSource(v as EmbeddedLogSource | "all")}>
+          <Tabs.List aria-label="source">
+          <Tabs.Tab value="all">All</Tabs.Tab>
+          <Tabs.Tab value="server">Server</Tabs.Tab>
+          <Tabs.Tab value="sfu">SFU</Tabs.Tab>
+          <Tabs.Tab value="worker">Worker</Tabs.Tab>
+        <Tabs.Indicator />
+        </Tabs.List>
+        </Tabs>
 
-        <SegmentedControl.Root
-          size="1"
-          value={level}
-          onValueChange={(v) => setLevel(v as keyof typeof LEVEL_RANK)}
-        >
-          <SegmentedControl.Item value="debug">Debug</SegmentedControl.Item>
-          <SegmentedControl.Item value="info">Info</SegmentedControl.Item>
-          <SegmentedControl.Item value="warn">Warnings</SegmentedControl.Item>
-          <SegmentedControl.Item value="error">Errors</SegmentedControl.Item>
-        </SegmentedControl.Root>
+        <Tabs value={level} onValueChange={(v) => setLevel(v as keyof typeof LEVEL_RANK)}>
+          <Tabs.List aria-label="level">
+          <Tabs.Tab value="debug">Debug</Tabs.Tab>
+          <Tabs.Tab value="info">Info</Tabs.Tab>
+          <Tabs.Tab value="warn">Warnings</Tabs.Tab>
+          <Tabs.Tab value="error">Errors</Tabs.Tab>
+        <Tabs.Indicator />
+        </Tabs.List>
+        </Tabs>
 
-        <Button
-          size="1"
-          variant="soft"
-          color="gray"
+        <Button tone="neutral" size="xsmall"
           onClick={() => {
             void getElectronAPI()?.clearEmbeddedServerLogs(serverId);
             setLines([]);
@@ -109,7 +104,7 @@ export function EmbeddedServerLogs({ serverId }: { serverId: string }) {
           <PiTrashFill size={14} />
           Clear
         </Button>
-      </Flex>
+      </div>
 
       <div
         ref={scroller}
@@ -121,9 +116,9 @@ export function EmbeddedServerLogs({ serverId }: { serverId: string }) {
         style={{
           height: 320,
           overflowY: "auto",
-          background: "var(--gray-2)",
-          border: "1px solid var(--gray-5)",
-          borderRadius: "var(--radius-3)",
+          background: "var(--gryt-neutral-2)",
+          border: "1px solid var(--gryt-neutral-5)",
+          borderRadius: "var(--gryt-radius-md)",
           padding: "8px 10px",
           fontFamily: "var(--code-font-family, monospace)",
           fontSize: 11,
@@ -131,40 +126,38 @@ export function EmbeddedServerLogs({ serverId }: { serverId: string }) {
         }}
       >
         {visible.length === 0 ? (
-          <Text size="1" color="gray">
+          <span className="text-xs text-gryt-muted">
             {lines.length === 0
               ? "Nothing yet. Start the server and its output shows up here."
               : "Nothing at this level from this source."}
-          </Text>
+          </span>
         ) : (
           visible.map((l, i) => (
-            <Flex key={`${l.at}-${i}`} gap="2" align="start">
-              <Badge
-                size="1"
-                variant="soft"
+            <div className="flex gap-2 items-start" key={`${l.at}-${i}`}>
+              <Chip tone="neutral"
                 color={LEVEL_COLOR[l.level]}
                 style={{ flexShrink: 0, minWidth: 62, justifyContent: "center" }}
               >
                 {SOURCE_LABEL[l.source]}
-              </Badge>
+              </Chip>
               <span
                 style={{
                   whiteSpace: "pre-wrap",
                   wordBreak: "break-word",
                   color:
                     l.level === "error"
-                      ? "var(--red-11)"
+                      ? "var(--gryt-danger-11)"
                       : l.level === "warn"
-                        ? "var(--amber-11)"
-                        : "var(--gray-12)",
+                        ? "var(--gryt-warning-11)"
+                        : "var(--gryt-neutral-12)",
                 }}
               >
                 {l.text}
               </span>
-            </Flex>
+            </div>
           ))
         )}
       </div>
-    </Flex>
+    </div>
   );
 }

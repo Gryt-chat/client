@@ -1,10 +1,4 @@
-import {
-  AlertDialog,
-  Button,
-  Flex,
-  Heading,
-  Separator,
-} from "@radix-ui/themes";
+import { AlertDialog, Button, Divider } from "@gryt/ui";
 import { useState } from "react";
 
 import connectMp3 from "@/audio/src/assets/connect.mp3";
@@ -54,9 +48,9 @@ export function VoiceSettings() {
 
   return (
     <SettingsContainer>
-      <Heading as="h2" size="4">
+      <h2>
         Voice
-      </Heading>
+      </h2>
 
       <ToggleSetting
         title="eSports mode"
@@ -69,9 +63,9 @@ export function VoiceSettings() {
         }
       />
 
-      <Separator size="4" />
+      <Divider />
 
-      <Flex direction="column" gap="4">
+      <div className="flex flex-col gap-4">
         <SoundSettings
           label="Connect sound"
           description="Play sound when connecting to voice"
@@ -98,7 +92,7 @@ export function VoiceSettings() {
           defaultSoundSrc={disconnectMp3}
           showAlert={showAlert}
         />
-      </Flex>
+      </div>
 
 
       {alertDialog.open && (
@@ -108,26 +102,27 @@ export function VoiceSettings() {
             setAlertDialog({ ...alertDialog, open: false })
           }
         >
-          <AlertDialog.Content maxWidth="450px">
+          <AlertDialog.Portal>
+            <AlertDialog.Backdrop />
+            <AlertDialog.Popup className="max-w-112">
             <AlertDialog.Title>{alertDialog.title}</AlertDialog.Title>
-            <AlertDialog.Description size="2">
+            <AlertDialog.Description>
               {alertDialog.message}
             </AlertDialog.Description>
 
-            <Flex gap="3" mt="4" justify="end">
-              <AlertDialog.Action>
-                <Button
-                  variant="soft"
-                  color={alertDialog.type === "error" ? "red" : "green"}
+            <div className="flex gap-3 mt-4 justify-end">
+              <AlertDialog.Close render={<span />}>
+                <Button tone="neutral" size="small"
                   onClick={() =>
                     setAlertDialog({ ...alertDialog, open: false })
                   }
                 >
                   OK
                 </Button>
-              </AlertDialog.Action>
-            </Flex>
-          </AlertDialog.Content>
+              </AlertDialog.Close>
+            </div>
+          </AlertDialog.Popup>
+          </AlertDialog.Portal>
         </AlertDialog.Root>
       )}
     </SettingsContainer>

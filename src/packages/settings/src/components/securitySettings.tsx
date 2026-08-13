@@ -1,15 +1,4 @@
-import { TextField } from "@gryt/ui";
-import {
-  AlertDialog,
-  Badge,
-  Button,
-  Flex,
-  Heading,
-  IconButton,
-  Spinner,
-  Text,
-  Tooltip,
-} from "@radix-ui/themes";
+import { AlertDialog, Button, Chip, IconButton, Spinner, TextField, Tooltip } from "@gryt/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { PiCheck, PiKeyFill, PiPencilSimpleFill, PiPlus, PiTrashFill, PiX } from "react-icons/pi";
@@ -71,33 +60,23 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
   }, [draft, credential.userLabel, credential.id, onRename]);
 
   return (
-    <Flex
-      align="center"
-      gap="3"
-      py="3"
-      px="3"
-      style={{
-        borderRadius: "var(--radius-2)",
-        background: "var(--gray-a2)",
-      }}
-    >
-      <Flex
-        align="center"
-        justify="center"
-        style={{
+    <div className="flex items-center gap-3 py-3 px-3" style={{
+        borderRadius: "var(--gryt-radius-sm)",
+        background: "var(--gryt-neutral-a2)",
+      }}>
+      <div className="flex items-center justify-center" style={{
           width: 36,
           height: 36,
-          borderRadius: "var(--radius-2)",
-          background: "var(--accent-a3)",
+          borderRadius: "var(--gryt-radius-sm)",
+          background: "var(--gryt-accent-a3)",
           flexShrink: 0,
-        }}
-      >
-        <PiKeyFill size={18} style={{ color: "var(--accent-11)" }} />
-      </Flex>
+        }}>
+        <PiKeyFill size={18} style={{ color: "var(--gryt-accent-11)" }} />
+      </div>
 
-      <Flex direction="column" gap="1" style={{ flex: 1, minWidth: 0 }}>
+      <div className="flex flex-col gap-1" style={{ flex: 1, minWidth: 0 }}>
         {editing ? (
-          <Flex align="center" gap="1">
+          <div className="flex items-center gap-1">
             <TextField
               ref={inputRef} size="small"
               value={draft}
@@ -112,11 +91,10 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
               disabled={saving}
               style={{ flex: 1 }}
             />
-            <IconButton size="1" onClick={handleSave} disabled={saving}>
+            <IconButton size="xsmall" onClick={handleSave} disabled={saving}>
               <PiCheck size={14} />
             </IconButton>
-            <IconButton
-              size="1"
+            <IconButton size="xsmall"
               onClick={() => {
                 setEditing(false);
                 setDraft(credential.userLabel);
@@ -124,54 +102,51 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
             >
               <PiX size={14} />
             </IconButton>
-          </Flex>
+          </div>
         ) : (
-          <Flex align="center" gap="2">
-            <Text size="2" weight="medium" truncate>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium truncate">
               {credential.userLabel || "Unnamed passkey"}
-            </Text>
-            <Tooltip content="Rename">
-              <IconButton
-                size="1"
-                variant="ghost"
+            </span>
+            <Tooltip title="Rename">
+              <IconButton tone="ghost" size="xsmall"
                 onClick={() => setEditing(true)}
               >
                 <PiPencilSimpleFill size={12} />
               </IconButton>
             </Tooltip>
-          </Flex>
+          </div>
         )}
-        <Text size="1">
+        <span className="text-xs">
           Added {formatDate(credential.createdDate)}
-        </Text>
-      </Flex>
+        </span>
+      </div>
 
       <AlertDialog.Root open={confirmDelete} onOpenChange={setConfirmDelete}>
-        <Tooltip content="Remove passkey">
-          <IconButton
-            size="1"
-            variant="ghost"
+        <Tooltip title="Remove passkey">
+          <IconButton tone="ghost" size="xsmall"
             disabled={deleting}
             onClick={() => setConfirmDelete(true)}
           >
             <PiTrashFill size={16} />
           </IconButton>
         </Tooltip>
-        <AlertDialog.Content maxWidth="420px">
+        <AlertDialog.Portal>
+          <AlertDialog.Backdrop />
+          <AlertDialog.Popup className="max-w-105">
           <AlertDialog.Title>Remove passkey?</AlertDialog.Title>
-          <AlertDialog.Description size="2">
+          <AlertDialog.Description>
             This passkey will be removed from your account. You won&apos;t be able to
             use it to sign in anymore.
           </AlertDialog.Description>
-          <Flex gap="3" mt="4" justify="end">
-            <AlertDialog.Cancel>
-              <Button>
+          <div className="flex gap-3 mt-4 justify-end">
+            <AlertDialog.Close render={<span />}>
+              <Button size="small">
                 Cancel
               </Button>
-            </AlertDialog.Cancel>
-            <AlertDialog.Action>
-              <Button
-                variant="solid"
+            </AlertDialog.Close>
+            <AlertDialog.Close render={<span />}>
+              <Button size="small"
                 onClick={() => {
                   onDelete(credential.id);
                   setConfirmDelete(false);
@@ -179,11 +154,12 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
               >
                 Remove
               </Button>
-            </AlertDialog.Action>
-          </Flex>
-        </AlertDialog.Content>
+            </AlertDialog.Close>
+          </div>
+        </AlertDialog.Popup>
+        </AlertDialog.Portal>
       </AlertDialog.Root>
-    </Flex>
+    </div>
   );
 }
 
@@ -268,62 +244,56 @@ export function SecuritySettings() {
 
   return (
     <SettingsContainer>
-      <Heading as="h2" size="4">
+      <h2 className="text-lg">
         Security
-      </Heading>
+      </h2>
 
       <LocalIdentitySection />
 
       {!isSignedIn ? null : (
-      <Flex direction="column" gap="3">
-        <Flex align="center" justify="between">
-          <Flex direction="column" gap="1">
-            <Text weight="medium" size="2">
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-1">
+            <span className="font-medium text-sm">
               Passkeys
-            </Text>
-            <Text size="1">
+            </span>
+            <span className="text-xs">
               Passkeys let you sign in without a password using your fingerprint,
               face, or device PIN.
-            </Text>
-          </Flex>
-          <Badge size="1">
+            </span>
+          </div>
+          <Chip tone="neutral">
             {credentials.length}
-          </Badge>
-        </Flex>
+          </Chip>
+        </div>
 
         {loading && (
-          <Flex align="center" justify="center" py="6">
-            <Spinner size="3" />
-          </Flex>
+          <div className="flex items-center justify-center py-8">
+            <Spinner size={24} />
+          </div>
         )}
 
         {error && (
-          <Flex direction="column" align="center" gap="2" py="4">
-            <Text size="2">
+          <div className="flex flex-col items-center gap-2 py-4">
+            <span className="text-sm">
               {error}
-            </Text>
-            <Button size="1" onClick={loadCredentials}>
+            </span>
+            <Button size="xsmall" onClick={loadCredentials}>
               Retry
             </Button>
-          </Flex>
+          </div>
         )}
 
         {!loading && !error && credentials.length === 0 && (
-          <Flex
-            direction="column"
-            align="center"
-            gap="2"
-            py="6"
-            style={{
-              borderRadius: "var(--radius-2)",
-              border: "1px dashed var(--gray-a6)",
-            }}
-          >
-            <PiKeyFill size={32} style={{ color: "var(--gray-a8)" }} />
-            <Text size="2">
+          <div className="flex flex-col items-center gap-2 py-8" style={{
+              borderRadius: "var(--gryt-radius-sm)",
+              border: "1px dashed var(--gryt-neutral-a6)",
+            }}>
+            <PiKeyFill size={32} style={{ color: "var(--gryt-neutral-a8)" }} />
+            <span className="text-sm">
               No passkeys registered yet
-            </Text>
-          </Flex>
+            </span>
+          </div>
         )}
 
         {!loading &&
@@ -338,7 +308,7 @@ export function SecuritySettings() {
             />
           ))}
 
-        <Button
+        <Button size="small"
           onClick={handleAdd}
           disabled={adding}
           style={{ alignSelf: "flex-start" }}
@@ -346,7 +316,7 @@ export function SecuritySettings() {
           <PiPlus size={16} />
           {adding ? "Redirecting..." : "Add passkey"}
         </Button>
-      </Flex>
+      </div>
       )}
     </SettingsContainer>
   );

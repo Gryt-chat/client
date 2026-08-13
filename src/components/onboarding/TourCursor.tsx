@@ -95,8 +95,7 @@ export function TourCursor({
             invisible. A pointer should read against whatever it is over, which
             is why real ones are pale with a dark edge rather than a brand
             colour. */}
-        <div
-          className="absolute rounded-full"
+        <div className="absolute rounded-full"
           style={{
             left: -19,
             top: -19,

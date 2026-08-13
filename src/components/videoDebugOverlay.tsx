@@ -13,7 +13,7 @@ interface VideoDebugOverlayProps {
 }
 
 const sectionTitle: React.CSSProperties = {
-  color: "var(--blue-11)",
+  color: "var(--gryt-secondary-11)",
   fontWeight: "bold",
   marginBottom: "4px",
 };
@@ -56,7 +56,7 @@ function OutboundSection({ s }: { s: OutboundVideoStats }) {
           style={{
             color:
               s.qualityLimitationReason && s.qualityLimitationReason !== "none"
-                ? "var(--orange-11)"
+                ? "var(--gryt-warning-11)"
                 : undefined,
           }}
         >
@@ -121,7 +121,7 @@ export function VideoDebugOverlay({ isVisible }: VideoDebugOverlayProps) {
       {stats.outbound.length === 0 && (
         <div style={{ marginBottom: "8px" }}>
           <div style={sectionTitle}>Outbound:</div>
-          <div style={{ ...indent, color: "var(--gray-9)" }}>No outbound video</div>
+          <div style={{ ...indent, color: "var(--gryt-neutral-9)" }}>No outbound video</div>
         </div>
       )}
       {stats.outbound.map((s, i) => (
@@ -132,7 +132,7 @@ export function VideoDebugOverlay({ isVisible }: VideoDebugOverlayProps) {
       {stats.inbound.length === 0 && (
         <div style={{ marginBottom: "8px" }}>
           <div style={sectionTitle}>Inbound:</div>
-          <div style={{ ...indent, color: "var(--gray-9)" }}>No inbound video</div>
+          <div style={{ ...indent, color: "var(--gryt-neutral-9)" }}>No inbound video</div>
         </div>
       )}
       {stats.inbound.map((s, i) => (

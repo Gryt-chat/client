@@ -1,4 +1,4 @@
-import { Badge, Button, Dialog, Flex, Text } from "@radix-ui/themes";
+import { Button, Chip, Dialog } from "@gryt/ui";
 import { useCallback, useEffect, useState } from "react";
 
 import { useSettings } from "@/settings";
@@ -75,38 +75,39 @@ export function PushToTalkModal() {
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={(open) => { if (!open) handleCancel(); }}>
-      <Dialog.Content maxWidth="420px">
+      <Dialog.Portal>
+        <Dialog.Backdrop />
+        <Dialog.Popup className="max-w-105">
         <Dialog.Title>Set Push to Talk Key</Dialog.Title>
-        <Dialog.Description size="2" mb="4">
+        <Dialog.Description>
           Push to Talk is active but no key is bound. Press any key or combination to use as your PTT key.
         </Dialog.Description>
 
-        <Flex direction="column" gap="4" align="center" py="4">
-          <Badge
-            size="2"
-            variant="surface"
+        <div className="flex flex-col gap-4 items-center py-4">
+          <Chip tone="neutral"
             color={captured ? "green" : "blue"}
             style={{ fontFamily: "var(--code-font-family)", minWidth: "120px", textAlign: "center", padding: "8px 16px", fontSize: 16 }}
           >
             {captured ? formatKeyCombo(captured) : "Press a key..."}
-          </Badge>
+          </Chip>
 
           {captured && (
-            <Text size="1" color="gray">
+            <span className="text-xs text-gryt-muted">
               Press a different key to change, or confirm below.
-            </Text>
+            </span>
           )}
-        </Flex>
+        </div>
 
-        <Flex gap="3" justify="end">
-          <Button variant="soft" color="gray" onClick={handleCancel}>
+        <div className="flex gap-3 justify-end">
+          <Button tone="neutral" size="small" onClick={handleCancel}>
             Cancel
           </Button>
-          <Button onClick={handleConfirm} disabled={!captured}>
+          <Button size="small" onClick={handleConfirm} disabled={!captured}>
             Confirm
           </Button>
-        </Flex>
-      </Dialog.Content>
+        </div>
+      </Dialog.Popup>
+      </Dialog.Portal>
     </Dialog.Root>
   );
 }

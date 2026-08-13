@@ -1,10 +1,4 @@
-import { Checkbox } from "@gryt/ui";
-import {
-  Badge,
-  Flex,
-  Text,
-  TextField,
-} from "@radix-ui/themes";
+import { Checkbox, Chip, TextField } from "@gryt/ui";
 import { type ChangeEvent } from "react";
 
 import { type ImportEmoteWithMeta } from "../utils/emoteImportUtils";
@@ -23,24 +17,17 @@ export function EmoteRow({
   onUpdateName,
 }: EmoteRowProps) {
   return (
-    <Flex
-      align="center"
-      gap="2"
-      py="1"
-      px="2"
-      style={{
-        border: "1px solid var(--gray-a4)",
-        borderRadius: "var(--radius-1)",
+    <div className="flex items-center gap-2 py-1 px-2" style={{
+        border: "1px solid var(--gryt-neutral-a4)",
+        borderRadius: "var(--gryt-radius-sm)",
         opacity: e.selected ? 1 : 0.5,
-      }}
-    >
+      }}>
       <Checkbox
         checked={e.selected}
         onCheckedChange={() => onToggleSelect(e.id)}
         disabled={importing}
       />
-      <div
-        className="emoji-upload-preview-wrap"
+      <div className="emoji-upload-preview-wrap"
         data-status={
           e.status === "processing"
             ? "processing"
@@ -65,8 +52,7 @@ export function EmoteRow({
             </div>
             {(e.status === "downloading" || e.status === "uploading" || e.status === "processing") && (
               <div className="emoji-upload-preview-bar">
-                <div
-                  className="emoji-upload-preview-bar-inner"
+                <div className="emoji-upload-preview-bar-inner"
                   style={{ width: `${e.status === "processing" ? 100 : e.progress}%` }}
                 />
               </div>
@@ -74,59 +60,49 @@ export function EmoteRow({
           </div>
         )}
       </div>
-      <Flex
-        direction="column"
-        gap="1"
-        style={{ flex: 1, minWidth: 0 }}
-      >
-        <Flex align="center" gap="1">
-          <TextField.Root
-            size="1"
+      <div className="flex flex-col gap-1" style={{ flex: 1, minWidth: 0 }}>
+        <div className="flex items-center gap-1">
+          <TextField
+            size="small"
             value={e.name}
             onChange={(ev: ChangeEvent<HTMLInputElement>) =>
               onUpdateName(e.id, ev.target.value)
             }
             placeholder="shortcode"
             disabled={importing || !e.selected}
-            style={{ flex: 1 }}
+            className="flex-1"
           />
           {e.code !== e.name && (
-            <Text
-              size="1"
-              color="gray"
-              style={{
+            <span className="text-xs text-gryt-muted" style={{
                 flexShrink: 0,
                 maxWidth: 100,
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
-              }}
-            >
+              }}>
               {e.code}
-            </Text>
+            </span>
           )}
-        </Flex>
+        </div>
         {e.selected && e.nameError && (
-          <Text size="1" color="red" style={{ lineHeight: 1.2 }}>
+          <span className="text-xs text-gryt-danger" style={{ lineHeight: 1.2 }}>
             {e.nameError}
-          </Text>
+          </span>
         )}
         {e.selected && !e.nameError && e.nameWarning && (
-          <Text size="1" color="yellow" style={{ lineHeight: 1.2 }}>
+          <span className="text-xs" color="yellow" style={{ lineHeight: 1.2 }}>
             {e.nameWarning}
-          </Text>
+          </span>
         )}
         {e.selected && e.status === "error" && e.lastError && (
-          <Text size="1" color="red" style={{ lineHeight: 1.2 }}>
+          <span className="text-xs text-gryt-danger" style={{ lineHeight: 1.2 }}>
             {e.lastError}
-          </Text>
+          </span>
         )}
-      </Flex>
+      </div>
       {e.animated && (
-        <Badge size="1" variant="soft" color="purple">
-          GIF
-        </Badge>
+        <Chip tone="primary" label="GIF" />
       )}
-    </Flex>
+    </div>
   );
 }

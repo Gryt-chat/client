@@ -1,5 +1,4 @@
-import { Avatar, TextField } from "@gryt/ui";
-import { Button, Card, Flex, IconButton, Select, Text, Tooltip } from "@radix-ui/themes";
+import { Avatar, Button, IconButton, Select, Surface, TextField, Tooltip } from "@gryt/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { PiCopyFill, PiPlus, PiTrashFill } from "react-icons/pi";
@@ -93,33 +92,33 @@ export function ServerWebhooksTab({
   };
 
   return (
-    <Flex direction="column" gap="4">
-      <Text size="2">
+    <div className="flex flex-col gap-4">
+      <span className="text-sm">
         Webhooks let external services post messages into your channels.
         Each webhook gets a unique URL that can be used to send messages.
-      </Text>
+      </span>
 
-      <Flex justify="between" align="center">
-        <Text size="3" weight="bold">Webhooks</Text>
-        <Button onClick={createWebhook} disabled={textChannels.length === 0}>
+      <div className="flex justify-between items-center">
+        <span className="text-base font-bold">Webhooks</span>
+        <Button size="small" onClick={createWebhook} disabled={textChannels.length === 0}>
           <PiPlus size={16} />
           Create webhook
         </Button>
-      </Flex>
+      </div>
 
       {textChannels.length === 0 && (
-        <Text size="2">No text channels available. Create a text channel first.</Text>
+        <span className="text-sm">No text channels available. Create a text channel first.</span>
       )}
 
       {loading && webhooks.length === 0 && (
-        <Text size="2">Loading...</Text>
+        <span className="text-sm">Loading...</span>
       )}
 
       {!loading && webhooks.length === 0 && (
-        <Text size="2">No webhooks yet.</Text>
+        <span className="text-sm">No webhooks yet.</span>
       )}
 
-      <Flex direction="column" gap="3">
+      <div className="flex flex-col gap-3">
         {webhooks.map((w) => (
           <WebhookCard
             key={w.webhook_id}
@@ -134,8 +133,8 @@ export function ServerWebhooksTab({
             }
           />
         ))}
-      </Flex>
-    </Flex>
+      </div>
+    </div>
   );
 }
 
@@ -254,9 +253,9 @@ function WebhookCard({
     : undefined;
 
   return (
-    <Card>
-      <Flex gap="3" align="start">
-        <Tooltip content="Click to change avatar">
+    <Surface>
+      <div className="flex gap-3 items-start">
+        <Tooltip title="Click to change avatar">
           <button
             onClick={handleAvatarClick}
             style={{
@@ -264,7 +263,7 @@ function WebhookCard({
               border: "none",
               padding: 0,
               cursor: "pointer",
-              borderRadius: "var(--radius-full)",
+              borderRadius: "var(--gryt-radius-full)",
               flexShrink: 0,
             }}
           >
@@ -279,51 +278,47 @@ function WebhookCard({
           onChange={handleAvatarUpload}
         />
 
-        <Flex direction="column" gap="2" style={{ flex: 1, minWidth: 0 }}>
-          <Flex gap="2" align="end" wrap="wrap">
-            <Flex direction="column" gap="1" style={{ flex: 1, minWidth: 160 }}>
-              <Text size="1" weight="medium">Name</Text>
+        <div className="flex flex-col gap-2" style={{ flex: 1, minWidth: 0 }}>
+          <div className="flex gap-2 items-end flex-wrap">
+            <div className="flex flex-col gap-1" style={{ flex: 1, minWidth: 160 }}>
+              <span className="text-xs font-medium">Name</span>
               <TextField
                 value={name}
                 onChange={(e) => handleNameChange(e.target.value)}
                 onBlur={handleNameBlur}
                 placeholder="Webhook name"
               />
-            </Flex>
+            </div>
 
-            <Flex direction="column" gap="1" style={{ minWidth: 160 }}>
-              <Text size="1" weight="medium">Channel</Text>
-              <Select.Root
+            <div className="flex flex-col gap-1" style={{ minWidth: 160 }}>
+              <span className="text-xs font-medium">Channel</span>
+              <Select
                 value={webhook.channel_id}
-                onValueChange={handleChannelChange}
-              >
-                <Select.Trigger placeholder="Select channel" />
-                <Select.Content>
-                  {textChannels.map((ch) => (
-                    <Select.Item key={ch.id} value={ch.id}>
-                      # {ch.name}
-                    </Select.Item>
-                  ))}
-                </Select.Content>
-              </Select.Root>
-            </Flex>
+                onValueChange={(v) => handleChannelChange(String(v))}
+                placeholder="Select channel"
+                options={textChannels.map((ch) => ({
+                  label: `# ${ch.name}`,
+                  value: ch.id,
+                }))}
+              />
+            </div>
 
-            <Flex gap="1" style={{ paddingBottom: 1 }}>
-              <Tooltip content="Copy webhook URL">
-                <IconButton onClick={copyUrl}>
+            <div className="flex gap-1" style={{ paddingBottom: 1 }}>
+              <Tooltip title="Copy webhook URL">
+                <IconButton size="xsmall" onClick={copyUrl}>
                   <PiCopyFill size={16} />
                 </IconButton>
               </Tooltip>
-              <Tooltip content="Delete webhook">
-                <IconButton onClick={() => onDelete(webhook.webhook_id)}>
+              <Tooltip title="Delete webhook">
+                <IconButton size="xsmall" onClick={() => onDelete(webhook.webhook_id)}>
                   <PiTrashFill size={16} />
                 </IconButton>
               </Tooltip>
-            </Flex>
-          </Flex>
+            </div>
+          </div>
 
-          <Flex align="center" gap="2">
-            <Text size="1" style={{
+          <div className="flex items-center gap-2">
+            <span className="text-xs" style={{
               fontFamily: "var(--code-font-family)",
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -332,10 +327,10 @@ function WebhookCard({
               opacity: 0.6,
             }}>
               {webhookUrl}
-            </Text>
-          </Flex>
-        </Flex>
-      </Flex>
-    </Card>
+            </span>
+          </div>
+        </div>
+      </div>
+    </Surface>
   );
 }

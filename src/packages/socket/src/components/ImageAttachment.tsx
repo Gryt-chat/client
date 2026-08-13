@@ -23,8 +23,7 @@ export const ImageAttachment = memo(({
   const hasDimensions = width && height;
 
   return (
-    <div
-      className="chat-attachment-image-wrapper"
+    <div className="chat-attachment-image-wrapper"
       style={hasDimensions ? {
         aspectRatio: `${width} / ${height}`,
         "--img-w": `${width}px`,
@@ -34,7 +33,7 @@ export const ImageAttachment = memo(({
         <SkeletonBase
           width="100%"
           height="100%"
-          borderRadius="var(--radius-4)"
+          borderRadius="var(--gryt-radius-md)"
           style={{ position: "absolute", inset: 0 }}
         />
       )}

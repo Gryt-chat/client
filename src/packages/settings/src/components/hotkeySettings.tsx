@@ -1,4 +1,4 @@
-import { Badge, Button, Flex, Heading, Text } from "@radix-ui/themes";
+import { Button, Chip } from "@gryt/ui";
 import { useCallback, useEffect, useState } from "react";
 
 import { useSettings } from "@/settings";
@@ -75,35 +75,28 @@ function HotkeyCapture({
 
   return (
     <SettingGroup title={label} description={description}>
-      <Flex align="center" justify="between" gap="2">
-        <Badge
-          size="2"
-          variant="surface"
+      <div className="flex items-center justify-between gap-2">
+        <Chip tone="neutral"
           color={listening ? "blue" : undefined}
           style={{ fontFamily: "var(--code-font-family)", minWidth: "80px", textAlign: "center" }}
         >
           {listening ? "Press a key..." : formatKeyCombo(value)}
-        </Badge>
-        <Flex gap="2">
-          <Button
-            size="1"
-            variant={listening ? "solid" : "soft"}
+        </Chip>
+        <div className="flex gap-2">
+          <Button size="xsmall"
             onClick={() => setListening(!listening)}
           >
             {listening ? "Cancel" : "Edit"}
           </Button>
           {value && (
-            <Button
-              size="1"
-              variant="soft"
-              color="red"
+            <Button tone="danger" size="xsmall"
               onClick={() => onChange("")}
             >
               Clear
             </Button>
           )}
-        </Flex>
-      </Flex>
+        </div>
+      </div>
     </SettingGroup>
   );
 }
@@ -123,14 +116,14 @@ export function HotkeySettings() {
 
   return (
     <SettingsContainer>
-      <Heading size="4">Hotkeys</Heading>
+      <h2 className="text-lg">Hotkeys</h2>
 
-      <Flex direction="column" gap="2">
-        <Text size="3" weight="bold">Shortcuts</Text>
-        <Text size="1" color="gray">
+      <div className="flex flex-col gap-2">
+        <span className="text-base font-bold">Shortcuts</span>
+        <span className="text-xs text-gryt-muted">
           These shortcuts work globally when not typing in a text field. Press Escape to cancel binding.
-        </Text>
-      </Flex>
+        </span>
+      </div>
 
       {inputMode === "push_to_talk" && (
         <HotkeyCapture

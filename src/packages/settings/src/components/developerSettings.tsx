@@ -1,4 +1,4 @@
-import { Badge, Button, Flex, Heading, Separator, Text } from "@radix-ui/themes";
+import { Button, Chip, Divider } from "@gryt/ui";
 import { PiPlayFill, PiStopFill } from "react-icons/pi";
 
 import { useSettings } from "@/settings";
@@ -47,18 +47,16 @@ export function DeveloperSettings() {
 
   return (
     <SettingsContainer>
-      <Flex align="center" gap="2">
-        <Heading size="4">Developer</Heading>
-        <Badge color="orange" variant="soft">
-          Dev build only
-        </Badge>
-      </Flex>
+      <div className="flex items-center gap-2">
+        <h2>Developer</h2>
+        <Chip tone="warning" label="Dev build only" />
+      </div>
 
-      <Text size="1" color="gray">
+      <span className="text-gryt-muted">
         These do not exist in a release build.
-      </Text>
+      </span>
 
-      <Separator size="4" />
+      <Divider />
 
       <SettingGroup
         title="Fake participants"
@@ -124,7 +122,7 @@ export function DeveloperSettings() {
         />
       </SettingGroup>
 
-      <Separator size="4" />
+      <Divider />
 
       <SettingGroup
         title="Fake chat"
@@ -140,33 +138,30 @@ export function DeveloperSettings() {
           step={1}
         />
 
-        <Flex direction="column" gap="2">
-          <Button
-            size="2"
-            color={chatRunning ? "red" : undefined}
-            variant={chatRunning ? "soft" : "solid"}
+        <div className="flex flex-col gap-2">
+          <Button size="small"
             onClick={() => setFakeChatRunning(!chatRunning)}
           >
             {chatRunning ? <PiStopFill size={16} /> : <PiPlayFill size={16} />}
             {chatRunning ? "Stop" : "Start"}
           </Button>
-          <Text size="1" color="gray">
+          <span className="text-gryt-muted">
             {chatRunning
               ? "Running. It keeps going until you stop it or quit — nothing turns it off on its own."
               : "The message sound only plays when the window is not focused, which is what a real message does too. Click away from Gryt to hear it."}
-          </Text>
-        </Flex>
+          </span>
+        </div>
       </SettingGroup>
 
-      <Separator size="4" />
+      <Divider />
 
-      <Text size="1" color="gray">
+      <span className="text-gryt-muted">
         The query string still works and overrides these while it is present:
         <br />
         <code>
           ?fake=6&amp;fakemembers=8&amp;fakemuted=2&amp;fakeshare=1&amp;fakedeaf=1&amp;fakespeak=0
         </code>
-      </Text>
+      </span>
     </SettingsContainer>
   );
 }

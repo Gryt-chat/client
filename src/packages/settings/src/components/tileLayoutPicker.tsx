@@ -1,4 +1,3 @@
-import { Flex, Text } from "@radix-ui/themes";
 
 import { computeGridLayout, GRID_GAP } from "@/socket/src/lib/voiceLayout";
 
@@ -54,34 +53,29 @@ function LayoutSwatch({ rule }: { rule: VoiceTileLayout }) {
   const gap = Math.max(1, GRID_GAP * scale);
 
   return (
-    <Flex
-      direction="column"
-      align="center"
-      justify="center"
-      style={{
+    <div className="flex flex-col items-center justify-center" style={{
         width: SWATCH.width,
         height: SWATCH.height,
         gap,
-        background: "var(--gray-3)",
-        borderRadius: "var(--radius-2)",
-      }}
-    >
+        background: "var(--gryt-neutral-3)",
+        borderRadius: "var(--gryt-radius-sm)",
+      }}>
       {layout.rows.map((row, rowIndex) => (
-        <Flex key={rowIndex} justify="center" style={{ gap }}>
+        <div className="flex justify-center" key={rowIndex} style={{ gap }}>
           {Array.from({ length: row.count }, (_, i) => (
             <div
               key={i}
               style={{
                 width: Math.max(2, row.width * scale),
                 height: Math.max(2, row.height * scale),
-                background: "var(--accent-9)",
+                background: "var(--gryt-accent-9)",
                 borderRadius: 2,
               }}
             />
           ))}
-        </Flex>
+        </div>
       ))}
-    </Flex>
+    </div>
   );
 }
 
@@ -118,18 +112,11 @@ export function TileLayoutPicker({
   onChange: (layout: VoiceTileLayout) => void;
 }) {
   return (
-    <Flex gap="3" wrap="wrap" role="radiogroup" aria-label="Tile layout">
+    <div className="flex gap-3 flex-wrap" role="radiogroup" aria-label="Tile layout">
       {OPTIONS.map((option) => {
         const selected = value === option.value;
         return (
-          <Flex
-            key={option.value}
-            asChild
-            direction="column"
-            gap="2"
-            align="center"
-          >
-            <button
+          <button className="flex flex-col gap-2 items-center"
               type="button"
               role="radio"
               aria-checked={selected}
@@ -137,11 +124,11 @@ export function TileLayoutPicker({
               style={{
                 cursor: "pointer",
                 padding: 8,
-                borderRadius: "var(--radius-3)",
-                background: selected ? "var(--accent-a3)" : "transparent",
+                borderRadius: "var(--gryt-radius-md)",
+                background: selected ? "var(--gryt-accent-a3)" : "transparent",
                 border: selected
-                  ? "1px solid var(--accent-8)"
-                  : "1px solid var(--gray-6)",
+                  ? "1px solid var(--gryt-accent-8)"
+                  : "1px solid var(--gryt-neutral-6)",
                 font: "inherit",
                 color: "inherit",
                 textAlign: "center",
@@ -149,18 +136,17 @@ export function TileLayoutPicker({
               }}
             >
               <LayoutSwatch rule={option.value} />
-              <Text size="1" weight={selected ? "bold" : "regular"}>
+              <span className={`text-xs ${selected ? "font-bold" : "font-normal"}`}>
                 {option.label}
-              </Text>
+              </span>
               {/* The prose stays, under the picture rather than instead of it,
                   so this is still readable to a screen reader. */}
-              <Text size="1" color="gray">
+              <span className="text-xs text-gryt-muted">
                 {option.hint}
-              </Text>
+              </span>
             </button>
-          </Flex>
         );
       })}
-    </Flex>
+    </div>
   );
 }

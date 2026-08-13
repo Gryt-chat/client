@@ -1,4 +1,3 @@
-import { Flex, Heading } from "@radix-ui/themes";
 
 import { BETA_ACCENT, useIsBetaBuild } from "../utils/betaBuild";
 import { BetaTag } from "./wordmark";
@@ -48,10 +47,10 @@ export function Logo() {
   const isBeta = useIsBetaBuild();
 
   return (
-    <Flex justify="center" align="center" gap="3">
-      <Heading size="8">Gryt</Heading>
+    <div className="flex justify-center items-center gap-3">
+      <h2 className="text-4xl">Gryt</h2>
       {isBeta && <BetaTag />}
       <LogoIcon beta={isBeta} />
-    </Flex>
+    </div>
   );
 }

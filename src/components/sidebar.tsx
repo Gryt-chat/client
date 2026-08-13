@@ -1,14 +1,4 @@
-import { Avatar } from "@gryt/ui";
-import {
-  Box,
-  ContextMenu,
-  DropdownMenu,
-  Flex,
-  Heading,
-  HoverCard,
-  IconButton,
-  Tooltip,
-} from "@radix-ui/themes";
+import { Avatar, ContextMenu, IconButton, Menu, PreviewCard, Tooltip } from "@gryt/ui";
 import { Reorder } from "motion/react";
 import { PiBroadcastFill, PiBugFill, PiChatCircleDotsFill, PiGearFill, PiMicrophoneFill, PiPlus, PiSignInFill } from "react-icons/pi";
 
@@ -99,15 +89,8 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
     displayNickname,
   );
   return (
-    <Flex
-      data-gryt="sidebar"
-      direction="column"
-      height="100%"
-      gap="4"
-      align="center"
-      justify="between"
-    >
-      <Flex direction="column" gap="4" pt="2">
+    <div className="flex flex-col h-full gap-4 items-center justify-between" data-gryt="sidebar">
+      <div className="flex flex-col gap-4 pt-2">
         <Reorder.Group
           axis="y"
           values={orderedServerHosts}
@@ -116,7 +99,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
           style={{
             display: "flex",
             flexDirection: "column",
-            gap: "var(--space-4)",
+            gap: "16px",
             listStyle: "none",
             padding: 0,
             margin: 0,
@@ -140,11 +123,9 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
             />
           ))}
         </Reorder.Group>
-        <Tooltip content="Add new server" delayDuration={100} side="right">
-          <IconButton
+        <Tooltip title="Add new server" side="right">
+          <IconButton tone="neutral" size="xsmall"
             data-tour="add-server"
-            variant="soft"
-            color="gray"
             onClick={() => setShowAddServer(true)}
           >
             <PiPlus size={16} />
@@ -155,14 +136,11 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
             would get a destination that can never have anything in it. */}
         {isElectron && (
           <Tooltip
-            content="Servers on your network"
-            delayDuration={100}
+            title="Servers on your network"
             side="right"
           >
-            <Box position="relative">
-              <IconButton
-                variant={showDiscovery ? "solid" : "soft"}
-                color="gray"
+            <div className="relative">
+              <IconButton tone="neutral" size="xsmall"
                 aria-label="Servers on your network"
                 onClick={() => setShowDiscovery(!showDiscovery)}
               >
@@ -174,71 +152,66 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
                   anything. This says "something turned up since you last
                   looked", which is the only part worth interrupting for. */}
               {newLanServers.length > 0 && !showDiscovery && (
-                <Box
-                  position="absolute"
-                  top="-2px"
-                  right="-2px"
-                  style={{
-                    width: 10,
+                <div className="absolute" style={{ top: "-2px", right: "-2px", width: 10,
                     height: 10,
                     borderRadius: "50%",
-                    backgroundColor: "var(--accent-9)",
-                    border: "2px solid var(--color-background)",
+                    backgroundColor: "var(--gryt-accent-9)",
+                    border: "2px solid var(--gryt-neutral-1)",
                     zIndex: 1,
-                    pointerEvents: "none",
-                  }}
-                />
+                    pointerEvents: "none" }} />
               )}
-            </Box>
+            </div>
           </Tooltip>
         )}
-      </Flex>
+      </div>
 
-      <Flex justify="center" align="center" direction="column" gap="3" pb="3">
+      <div className="flex justify-center items-center flex-col gap-3 pb-3">
         {/* Voice chat controls */}
         <MiniControls direction="column" />
-        <DropdownMenu.Root>
-          <DropdownMenu.Trigger>
-            <IconButton data-tour="profile">
+        <Menu.Root>
+          <Menu.Trigger>
+            <IconButton size="xsmall" data-tour="profile">
               <Avatar
                 fallback={displayNickname[0]}
                 src={displayAvatarUrl || undefined}
               />
             </IconButton>
-          </DropdownMenu.Trigger>
-          <DropdownMenu.Content>
-            <DropdownMenu.Item
+          </Menu.Trigger>
+          <Menu.Portal>
+            <Menu.Positioner>
+              <Menu.Popup>
+            <Menu.Item
               data-tour="menu-settings"
               onClick={() => setShowSettings(true)}
             >
-              <Flex align="center" gap="1">
+              <div className="flex items-center gap-1">
                 <PiGearFill size={14} />
                 Settings
-              </Flex>
-            </DropdownMenu.Item>
-            <DropdownMenu.Separator />
-            <DropdownMenu.Item
+              </div>
+            </Menu.Item>
+            <Menu.Separator />
+            <Menu.Item
               onClick={() =>
                 window.open("https://feedback.gryt.chat", "_blank")
               }
             >
-              <Flex align="center" gap="1">
+              <div className="flex items-center gap-1">
                 <PiChatCircleDotsFill size={14} />
                 Give feedback
-              </Flex>
-            </DropdownMenu.Item>
+              </div>
+            </Menu.Item>
             {/* Kept separate from feedback rather than folded into it. "Give
                 feedback" is a suggestion box; this is for when something is
                 broken, and it arrives as an issue carrying the version and
                 platform, which a free-text form does not. */}
-            <DropdownMenu.Item
+            <Menu.Item
               onClick={() => window.open(bugReportUrl(), "_blank")}
             >
-              <Flex align="center" gap="1">
+              <div className="flex items-center gap-1">
                 <PiBugFill size={14} />
                 Report a bug
-              </Flex>
-            </DropdownMenu.Item>
+              </div>
+            </Menu.Item>
             {/* Guest-by-default (GRYT-173) means most people on a first run
                 have no account, and offering them a way out of one they never
                 had is both wrong and a wasted invitation. `isSignedIn` is
@@ -247,25 +220,27 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
                 open the menu is worse than one that arrives a beat late. */}
             {isSignedIn !== undefined && (
               <>
-                <DropdownMenu.Separator />
+                <Menu.Separator />
                 {isSignedIn ? (
-                  <DropdownMenu.Item color="red" onClick={logout}>
+                  <Menu.Item className="text-gryt-danger" onClick={logout}>
                     Sign out
-                  </DropdownMenu.Item>
+                  </Menu.Item>
                 ) : (
-                  <DropdownMenu.Item onClick={login}>
-                    <Flex align="center" gap="1">
+                  <Menu.Item onClick={login}>
+                    <div className="flex items-center gap-1">
                       <PiSignInFill size={14} />
                       Sign in
-                    </Flex>
-                  </DropdownMenu.Item>
+                    </div>
+                  </Menu.Item>
                 )}
               </>
             )}
-          </DropdownMenu.Content>
-        </DropdownMenu.Root>
-      </Flex>
-    </Flex>
+          </Menu.Popup>
+            </Menu.Positioner>
+          </Menu.Portal>
+        </Menu.Root>
+      </div>
+    </div>
   );
 }
 
@@ -310,15 +285,15 @@ function ServerItem({
         boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
         zIndex: 10,
         cursor: "grabbing",
-        borderRadius: "var(--radius-2)",
+        borderRadius: "var(--gryt-radius-sm)",
       }}
       transition={{ type: "spring", stiffness: 400, damping: 30 }}
     >
-      <HoverCard.Root openDelay={500} closeDelay={0}>
+      <PreviewCard.Root>
         <ContextMenu.Root>
           <ContextMenu.Trigger>
-            <HoverCard.Trigger>
-              <Box position="relative" onDragStart={(e) => e.preventDefault()}>
+            <PreviewCard.Trigger>
+              <div className="relative" onDragStart={(e) => e.preventDefault()}>
                 <Avatar
                   size="small"
                   className="rounded-(--gryt-radius-md) p-0"
@@ -357,95 +332,83 @@ function ServerItem({
                 />
 
                 {isConnected && currentServerConnected === host && (
-                  <Box
-                    position="absolute"
-                    top="-2px"
-                    right="-2px"
-                    style={{
-                      width: "16px",
+                  <div className="absolute" style={{ top: "-2px", right: "-2px", width: "16px",
                       height: "16px",
                       borderRadius: "50%",
-                      backgroundColor: "var(--accent-9)",
-                      border: "2px solid var(--color-background)",
+                      backgroundColor: "var(--gryt-accent-9)",
+                      border: "2px solid var(--gryt-neutral-1)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      zIndex: 1,
-                    }}
-                  >
-                    <PiMicrophoneFill size={8} color="var(--accent-contrast)" />
-                  </Box>
+                      zIndex: 1 }}>
+                    <PiMicrophoneFill size={8} color="var(--gryt-on-accent)" />
+                  </div>
                 )}
                 {serverHasUnread(host) && (
-                  <Box
-                    position="absolute"
-                    bottom="-2px"
-                    right="-2px"
-                    style={{
-                      width: 10,
+                  <div className="absolute" style={{ bottom: "-2px", right: "-2px", width: 10,
                       height: 10,
                       borderRadius: "50%",
-                      backgroundColor: "var(--accent-9)",
-                      border: "2px solid var(--color-background)",
+                      backgroundColor: "var(--gryt-accent-9)",
+                      border: "2px solid var(--gryt-neutral-1)",
                       zIndex: 1,
-                      pointerEvents: "none",
-                    }}
-                  />
+                      pointerEvents: "none" }} />
                 )}
-              </Box>
-            </HoverCard.Trigger>
+              </div>
+            </PreviewCard.Trigger>
           </ContextMenu.Trigger>
-          <ContextMenu.Content>
-            <ContextMenu.Label style={{ fontWeight: "bold" }}>
+          <ContextMenu.Portal>
+            <ContextMenu.Positioner>
+              <ContextMenu.Popup>
+            <ContextMenu.GroupLabel style={{ fontWeight: "bold" }}>
               {servers[host].name}
-            </ContextMenu.Label>
+            </ContextMenu.GroupLabel>
             <ContextMenu.Item>Edit</ContextMenu.Item>
             <ContextMenu.Item>Share</ContextMenu.Item>
             <ContextMenu.Item>Add to new group</ContextMenu.Item>
             <ContextMenu.Separator />
             <ContextMenu.Item
-              color="red"
               onClick={() => {
                 setShowRemoveServer(host);
               }}
             >
               Leave
             </ContextMenu.Item>
-          </ContextMenu.Content>
+          </ContextMenu.Popup>
+            </ContextMenu.Positioner>
+          </ContextMenu.Portal>
         </ContextMenu.Root>
-        <HoverCard.Content
-          maxWidth="300px"
-          side="right"
-          size="1"
-          align="center"
-        >
-          <Box>
-            <Heading size="1">
+        <PreviewCard.Portal>
+          <PreviewCard.Positioner side="right" align="center">
+            <PreviewCard.Popup>
+          <div>
+            <h2 className="text-xs">
               {servers[host].name}
               {isConnected && currentServerConnected === host && (
-                <span style={{ color: "var(--accent-9)", marginLeft: "8px" }}>
+                <span style={{ color: "var(--gryt-accent-9)", marginLeft: "8px" }}>
                   • Connected to voice
                 </span>
               )}
               {isUnavailable && (
-                <span style={{ color: "var(--red-9)", marginLeft: "8px" }}>
+                <span style={{ color: "var(--gryt-danger-9)", marginLeft: "8px" }}>
                   • OFFLINE
                 </span>
               )}
               {isReconnecting && (
-                <span style={{ color: "var(--orange-9)", marginLeft: "8px" }}>
+                <span style={{ color: "var(--gryt-warning-9)", marginLeft: "8px" }}>
                   • Reconnecting...
                 </span>
               )}
               {isConnecting && (
-                <span style={{ color: "var(--orange-9)", marginLeft: "8px" }}>
+                <span style={{ color: "var(--gryt-warning-9)", marginLeft: "8px" }}>
                   • Connecting...
                 </span>
               )}
-            </Heading>
-          </Box>
-        </HoverCard.Content>
-      </HoverCard.Root>
+            </h2>
+          </div>
+        </PreviewCard.Popup>
+          </PreviewCard.Positioner>
+        </PreviewCard.Portal>
+      </PreviewCard.Root>
     </Reorder.Item>
   );
 }

@@ -1,5 +1,4 @@
-import { Switch } from "@gryt/ui";
-import { AlertDialog, Badge, Button, Card, Flex, Heading, Link, Separator, Text } from "@radix-ui/themes";
+import { AlertDialog, Button, Chip, Divider, Surface, Switch } from "@gryt/ui";
 import { useCallback, useEffect, useState } from "react";
 import { FaGithub } from "react-icons/fa";
 import { PiArrowsClockwiseFill, PiArrowSquareOutFill, PiChatCircleDotsFill, PiCheckCircleFill, PiClockClockwiseFill, PiDesktopFill, PiDownloadSimpleFill, PiXCircleFill } from "react-icons/pi";
@@ -96,28 +95,28 @@ function UpdateControls() {
 
   return (
     <>
-      <Separator size="4" />
+      <Divider />
 
-      <Heading size="3">Updates</Heading>
+      <h2>Updates</h2>
 
-      <Flex direction="column" gap="4">
-        <Flex align="center" gap="3">
-          <Text size="2" weight="medium">Running</Text>
-          <Badge variant="soft" color="gray">v{appVersion}</Badge>
-          {betaChannel && <Badge variant="soft" color="orange">Beta</Badge>}
-        </Flex>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-3">
+          <span className="font-medium">Running</span>
+          <Chip tone="neutral">v{appVersion}</Chip>
+          {betaChannel && <Chip tone="warning" label="Beta" />}
+        </div>
 
-        <Flex align="center" justify="between">
-          <Flex direction="column" gap="1">
-            <Text size="2" weight="medium">Beta releases</Text>
-            <Text size="1" color="gray">
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-1">
+            <span className="font-medium">Beta releases</span>
+            <span className="text-gryt-muted">
               {betaChannel
                 ? "You get new versions early. They break more often."
                 : "Get new versions early, before they have been tested as much."}
-            </Text>
-          </Flex>
+            </span>
+          </div>
           <Switch checked={betaChannel} onCheckedChange={(enabled) => setPendingSwitch(enabled)} />
-        </Flex>
+        </div>
 
         {/* Something is always said here. The panel used to lead with a version
             badge and show nothing else until a check finished, so a version
@@ -125,27 +124,26 @@ function UpdateControls() {
             failure. It cannot move without a restart: updates install while
             Gryt starts, never from the running app. */}
         {!statusText && (
-          <Text size="1" color="gray">
+          <span className="text-gryt-muted">
             Updates install while Gryt starts, so the version above only changes
             after a restart.
-          </Text>
+          </span>
         )}
 
         {statusText && (
-          <Flex direction="column" gap="1">
-            <Flex align="center" gap="2">
-              {isReady && <PiClockClockwiseFill size={16} color="var(--green-9)" />}
-              {status?.status === "not-available" && <PiCheckCircleFill size={16} color="var(--green-9)" />}
-              {status?.status === "error" && <PiXCircleFill size={16} color="var(--red-9)" />}
-              <Text size="2" color={statusColor}>{statusText}</Text>
-            </Flex>
-          </Flex>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              {isReady && <PiClockClockwiseFill size={16} color="var(--gryt-success-9)" />}
+              {status?.status === "not-available" && <PiCheckCircleFill size={16} color="var(--gryt-success-9)" />}
+              {status?.status === "error" && <PiXCircleFill size={16} color="var(--gryt-danger-9)" />}
+              <span color={statusColor}>{statusText}</span>
+            </div>
+          </div>
         )}
 
-        <Flex gap="2" wrap="wrap">
+        <div className="flex gap-2 flex-wrap">
           {!isAvailable && !isReady && !isPending && (
-            <Button
-              variant="soft"
+            <Button tone="neutral" size="small"
               onClick={handleCheckForUpdates}
               disabled={isBusy}
             >
@@ -158,39 +156,43 @@ function UpdateControls() {
               launch, where the installer has an empty app to work around
               instead of a loaded one. */}
           {(isAvailable || isReady) && !isPending && (
-            <Button variant="solid" color="green" onClick={handleUpdateNow}>
+            <Button size="small"
+              className="bg-gryt-success text-gryt-bg hover:not-data-disabled:bg-gryt-success/85"
+              onClick={handleUpdateNow}
+            >
               <PiClockClockwiseFill size={16} />
               Restart and update to v{status?.version}
             </Button>
           )}
-        </Flex>
-      </Flex>
+        </div>
+      </div>
 
       <AlertDialog.Root open={pendingSwitch !== null} onOpenChange={(open) => { if (!open) setPendingSwitch(null); }}>
-        <AlertDialog.Content maxWidth="480px">
+        <AlertDialog.Portal>
+          <AlertDialog.Backdrop />
+          <AlertDialog.Popup className="max-w-120">
           <AlertDialog.Title>
             {switchingToBeta ? "Turn on beta releases?" : "Turn off beta releases?"}
           </AlertDialog.Title>
-          <AlertDialog.Description size="2">
+          <AlertDialog.Description>
             {switchingToBeta
               ? "Gryt will close and reopen to install the latest beta. Beta builds can have bugs and unfinished features."
               : "Gryt will close and reopen to install the latest stable version. That is older than the beta you are on now, so anything added since will be gone until it reaches stable."}
           </AlertDialog.Description>
-          <Flex gap="3" mt="4" justify="end">
-            <AlertDialog.Cancel>
-              <Button variant="soft" color="gray">Cancel</Button>
-            </AlertDialog.Cancel>
-            <AlertDialog.Action>
-              <Button
-                variant="solid"
-                color={switchingToBeta ? "orange" : "blue"}
+          <div className="flex gap-3 mt-4 justify-end">
+            <AlertDialog.Close render={<span />}>
+              <Button tone="neutral" size="small">Cancel</Button>
+            </AlertDialog.Close>
+            <AlertDialog.Close render={<span />}>
+              <Button size="small"
                 onClick={confirmChannelSwitch}
               >
                 {switchingToBeta ? "Turn on beta" : "Turn off beta"}
               </Button>
-            </AlertDialog.Action>
-          </Flex>
-        </AlertDialog.Content>
+            </AlertDialog.Close>
+          </div>
+        </AlertDialog.Popup>
+        </AlertDialog.Portal>
       </AlertDialog.Root>
     </>
   );
@@ -199,30 +201,32 @@ function UpdateControls() {
 function DesktopAppCard() {
   return (
     <>
-      <Separator size="4" />
+      <Divider />
 
-      <Card size="2">
-        <Flex direction="column" gap="3">
-          <Flex align="center" gap="2">
+      <Surface>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
             <PiDesktopFill size={18} />
-            <Text size="3" weight="medium">Get the desktop app</Text>
-          </Flex>
-          <Text size="2" color="gray">
+            <span className="font-medium">Get the desktop app</span>
+          </div>
+          <span className="text-gryt-muted">
             The desktop app includes auto-updates, system tray integration,
             push-to-talk hotkeys, and native notifications.
-          </Text>
-          <Text size="2" color="gray">
+          </span>
+          <span className="text-gryt-muted">
             Available for Windows, macOS, and Linux.
-          </Text>
-          <Button variant="solid" size="2" asChild>
-            <a href={RELEASES_URL} target="_blank" rel="noopener noreferrer">
-              <PiDownloadSimpleFill size={16} />
-              Download Gryt Desktop
-              <PiArrowSquareOutFill size={14} />
-            </a>
+          </span>
+          <Button size="small"
+            render={
+              <a href={RELEASES_URL} target="_blank" rel="noopener noreferrer" />
+            }
+          >
+            <PiDownloadSimpleFill size={16} />
+            Download Gryt Desktop
+            <PiArrowSquareOutFill size={14} />
           </Button>
-        </Flex>
-      </Card>
+        </div>
+      </Surface>
     </>
   );
 }
@@ -230,43 +234,50 @@ function DesktopAppCard() {
 export function AboutSettings() {
   return (
     <SettingsContainer>
-      <Heading size="4">About</Heading>
+      <h2>About</h2>
 
-      <Flex direction="column" gap="1">
+      <div className="flex flex-col gap-1">
         <Wordmark size="5" />
-        <Text size="2" color="gray" style={{ fontFamily: "var(--code-font-family)" }}>
+        <span className="text-gryt-muted" style={{ fontFamily: "var(--code-font-family)" }}>
           v{__APP_VERSION__}
-        </Text>
-      </Flex>
+        </span>
+      </div>
 
-      <Flex direction="column" gap="1">
-        <Text size="1" color="gray">&copy; 2022–2026 Sivert Gullberg Hansen</Text>
-        <Text size="1" color="gray">
+      <div className="flex flex-col gap-1">
+        <span className="text-gryt-muted">&copy; 2022–2026 Sivert Gullberg Hansen</span>
+        <span className="text-gryt-muted">
           Licensed under{" "}
-          <Link
+          <a
+            className="text-gryt-accent underline-offset-2 hover:underline"
             href={`${GITHUB_URL}/blob/main/LICENSE`}
             target="_blank"
             rel="noopener noreferrer"
           >
             AGPL-3.0-or-later
-          </Link>
-        </Text>
-      </Flex>
+          </a>
+        </span>
+      </div>
 
-      <Flex gap="3" wrap="wrap">
-        <Button variant="soft" color="gray" asChild>
-          <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
-            <FaGithub size={16} />
-            GitHub
-          </a>
+      <div className="flex gap-3 flex-wrap">
+        <Button size="small"
+          tone="neutral"
+          render={
+            <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" />
+          }
+        >
+          <FaGithub size={16} />
+          GitHub
         </Button>
-        <Button variant="soft" color="gray" asChild>
-          <a href={FEEDBACK_URL} target="_blank" rel="noopener noreferrer">
-            <PiChatCircleDotsFill size={16} />
-            Give feedback
-          </a>
+        <Button size="small"
+          tone="neutral"
+          render={
+            <a href={FEEDBACK_URL} target="_blank" rel="noopener noreferrer" />
+          }
+        >
+          <PiChatCircleDotsFill size={16} />
+          Give feedback
         </Button>
-      </Flex>
+      </div>
 
     </SettingsContainer>
   );

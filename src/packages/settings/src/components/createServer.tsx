@@ -1,11 +1,4 @@
-import { Avatar, Checkbox, Dialog, TextField } from "@gryt/ui";
-import {
-  Button,
-  Callout,
-  Flex,
-  Spinner,
-  Text,
-} from "@radix-ui/themes";
+import { Alert, Avatar, Button, Checkbox, Dialog, Spinner, TextField } from "@gryt/ui";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { PiCheckCircleFill, PiWarningFill, PiX } from "react-icons/pi";
@@ -120,12 +113,12 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
   }
 
   return (
-    <Flex direction="column" gap="4">
+    <div className="flex flex-col gap-4">
       {/* The icon leads, and it is already theirs before they have finished
           naming it. Seeded on the name rather than the address, because a
           server being created has no address yet and every new one drew the
           same planet until it started. */}
-      <Flex direction="column" align="center" gap="1">
+      <div className="flex flex-col items-center gap-1">
         {/* 80px, which is past the library's large — this is the preview of
             the icon you are about to make, so it is the subject of the step
             rather than a marker beside something else. */}
@@ -134,18 +127,18 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
           className="h-20 w-20 text-2xl"
           fallback={<GeneratedServerIcon seed={serverName || "My Server"} />}
         />
-        <Text size="1">
+        <span className="text-xs">
           Generated from the name
-        </Text>
-      </Flex>
+        </span>
+      </div>
 
-      <Flex direction="column" gap="2">
-        <Text size="2" weight="bold">
+      <div className="flex flex-col gap-2">
+        <span className="text-sm font-bold">
           Server name{" "}
-          <Text as="span">
+          <span>
             *
-          </Text>
-        </Text>
+          </span>
+        </span>
         <TextField
           autoFocus
           placeholder="My Server"
@@ -154,37 +147,37 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
           disabled={creating}
           maxLength={64}
         />
-      </Flex>
+      </div>
 
-      <Flex direction="column" gap="2">
-        <Flex align="center" gap="2">
-          <Text size="2" weight="bold">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-bold">
             Port
-          </Text>
+          </span>
           {portState === "free" && (
-            <Flex align="center" gap="1" style={{ color: "var(--green-11)" }}>
+            <div className="flex items-center gap-1" style={{ color: "var(--gryt-success-11)" }}>
               <PiCheckCircleFill size={12} />
-              <Text size="1">
+              <span className="text-xs">
                 {touched.current ? "Available" : "Picked for you"}
-              </Text>
-            </Flex>
+              </span>
+            </div>
           )}
           {portState === "taken" && (
-            <Text size="1" style={{ color: "var(--red-11)" }}>
+            <span className="text-xs" style={{ color: "var(--gryt-danger-11)" }}>
               Something else is using this port
-            </Text>
+            </span>
           )}
           {portState === "invalid" && (
-            <Text size="1" style={{ color: "var(--red-11)" }}>
+            <span className="text-xs" style={{ color: "var(--gryt-danger-11)" }}>
               Must be a number between 1 and 65535
-            </Text>
+            </span>
           )}
           {portState === "loading" && (
-            <Text size="1">
+            <span className="text-xs">
               Checking&hellip;
-            </Text>
+            </span>
           )}
-        </Flex>
+        </div>
         <TextField
           inputMode="numeric"
           placeholder="5000"
@@ -196,23 +189,21 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
           disabled={creating}
           maxLength={5}
         />
-      </Flex>
+      </div>
 
       {/* The one setting that survived the trim. It is not cosmetic: it decides
           whether anybody else on the network can find this server at all, and
           there is nowhere else to say so before it starts. */}
-      <Flex asChild gap="2" align="center">
-        <label>
+      <label className="flex gap-2 items-center">
           <Checkbox
             checked={lanDiscoverable}
             onCheckedChange={(c) => setLanDiscoverable(c === true)}
             disabled={creating}
           />
-          <Text size="2">
+          <span className="text-sm">
             Let others on my network find it
-          </Text>
+          </span>
         </label>
-      </Flex>
 
       <AnimatePresence>
         {error && (
@@ -222,32 +213,25 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
             exit={{ height: 0, opacity: 0 }}
             style={{ overflow: "hidden" }}
           >
-            <Callout.Root role="alert">
-              <Callout.Icon>
-                <PiWarningFill size={16} />
-              </Callout.Icon>
-              <Callout.Text>{error}</Callout.Text>
-            </Callout.Root>
-            <Flex mt="2" justify="end">
-              <Button
-                size="1"
-                variant="ghost"
+            <Alert severity="info" role="alert"><span className="inline-flex items-start gap-2"><PiWarningFill size={16} />{error}</span></Alert>
+            <div className="flex mt-2 justify-end">
+              <Button tone="ghost" size="xsmall"
                 onClick={() => setError("")}
               >
                 <PiX size={14} />
                 Dismiss
               </Button>
-            </Flex>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
       <Dialog.Footer className="justify-between">
-        <Button variant="ghost" onClick={onBack} disabled={creating}>
+        <Button tone="ghost" size="small" onClick={onBack} disabled={creating}>
           Back
         </Button>
 
-        <Button
+        <Button size="small"
           onClick={() => {
             void handleCreate();
           }}
@@ -255,10 +239,10 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
             creating || !serverName.trim() || portState !== "free"
           }
         >
-          {creating ? <Spinner size="1" /> : null}
+          {creating ? <Spinner size={16} /> : null}
           {creating ? "Creating…" : "Create"}
         </Button>
       </Dialog.Footer>
-    </Flex>
+    </div>
   );
 }

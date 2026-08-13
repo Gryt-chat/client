@@ -1,13 +1,4 @@
-import { Switch } from "@gryt/ui";
-import {
-  Badge,
-  Box,
-  Button,
-  Flex,
-  Heading,
-  Link,
-  Text,
-} from "@radix-ui/themes";
+import { Button, Chip, Switch } from "@gryt/ui";
 import { useEffect, useState } from "react";
 import { PiFolderFill } from "react-icons/pi";
 
@@ -82,81 +73,69 @@ function AddonCard({
   const bannerUrl = useAddonAssetUrl(addon.id, addon.banner);
 
   return (
-    <Box
-      style={{
-        borderRadius: "var(--radius-4)",
-        border: "1px solid var(--gray-5)",
+    <div style={{
+        borderRadius: "var(--gryt-radius-md)",
+        border: "1px solid var(--gryt-neutral-5)",
         overflow: "hidden",
-        background: "var(--color-panel-solid)",
-      }}
-    >
-      <Box
-        style={{
+        background: "var(--gryt-neutral-2)",
+      }}>
+      <div style={{
           height: 120,
           background: bannerUrl
             ? undefined
             : isTheme
-            ? "linear-gradient(135deg, var(--purple-9), var(--plum-9))"
-            : "linear-gradient(135deg, var(--blue-9), var(--cyan-9))",
+            ? "linear-gradient(135deg, var(--gryt-accent-9), var(--gryt-accent-9))"
+            : "linear-gradient(135deg, var(--gryt-secondary-9), var(--gryt-secondary-9))",
           backgroundImage: bannerUrl ? `url(${bannerUrl})` : undefined,
           backgroundSize: "cover",
           backgroundPosition: "center",
-        }}
-      />
+        }} />
 
-      <Flex direction="column" gap="2" p="3">
-        <Flex justify="between" align="start">
-          <Flex direction="column" gap="1" style={{ minWidth: 0, flex: 1 }}>
-            <Flex align="center" gap="2" wrap="wrap">
-              <Badge
-                size="1"
+      <div className="flex flex-col gap-2 p-3">
+        <div className="flex justify-between items-start">
+          <div className="flex flex-col gap-1" style={{ minWidth: 0, flex: 1 }}>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Chip tone="neutral"
                 color={isTheme ? "purple" : "blue"}
-                variant="soft"
               >
                 {isTheme ? "Theme" : "Plugin"}
-              </Badge>
-              <Text size="1" color="gray">
+              </Chip>
+              <span className="text-xs text-gryt-muted">
                 v{addon.version}
-              </Text>
+              </span>
               {!isTheme && addon.requiresReloadOnDisable && (
-                <Badge size="1" color="orange" variant="soft">
-                  Reload on disable
-                </Badge>
+                <Chip tone="warning" label="Reload on disable" />
               )}
-            </Flex>
-            <Text weight="bold" size="3" truncate>
+            </div>
+            <span className="font-bold text-base truncate">
               {addon.name}
-            </Text>
-          </Flex>
+            </span>
+          </div>
           <Switch
             checked={enabled}
             onCheckedChange={onToggle}
             style={{ flexShrink: 0 }}
           />
-        </Flex>
+        </div>
 
         {addon.description && (
-          <Text
-            size="2"
-            color="gray"
-            style={{
+          <span className="text-sm text-gryt-muted" style={{
               display: "-webkit-box",
               WebkitLineClamp: 2,
               WebkitBoxOrient: "vertical",
               overflow: "hidden",
-            }}
-          >
+            }}>
             {addon.description}
-          </Text>
+          </span>
         )}
 
         {addon.author && (
-          <Text size="1" color="gray">
+          <span className="text-xs text-gryt-muted">
             by {addon.author}
-          </Text>
+          </span>
         )}
-      </Flex>
-    </Box>
+      </div>
+    </div>
   );
 }
 
@@ -166,59 +145,47 @@ export function AddonsSettings() {
 
   return (
     <SettingsContainer>
-      <Flex justify="between" align="center">
-        <Heading size="4">Addons</Heading>
+      <div className="flex justify-between items-center">
+        <h2 className="text-lg">Addons</h2>
         {inElectron && (
-          <Button
-            variant="soft"
-            color="gray"
-            size="2"
+          <Button tone="neutral" size="small"
             onClick={openAddonsFolder}
           >
             <PiFolderFill size={16} />
             Open Addons Folder
           </Button>
         )}
-      </Flex>
+      </div>
 
       {addons.length === 0 ? (
-        <Flex
-          direction="column"
-          align="center"
-          gap="2"
-          py="8"
-          style={{ color: "var(--gray-9)" }}
-        >
-          <Text size="2" color="gray">
+        <div className="flex flex-col items-center gap-2 py-12" style={{ color: "var(--gryt-neutral-9)" }}>
+          <span className="text-sm text-gryt-muted">
             No addons yet
-          </Text>
+          </span>
           {/*
             Every other empty state in the app offers somewhere to go. This one
             described a file format and stopped, which reads as an error to
             anyone who has not written an addon before.
           */}
-          <Text size="1" color="gray" align="center" style={{ maxWidth: 380 }}>
+          <span className="text-xs text-gryt-muted text-center" style={{ maxWidth: 380 }}>
             {inElectron
               ? "Addons are folders in your addons directory, each with an addon.json manifest."
               : "Addons load from a mounted addons directory. The desktop app can open that folder for you."}
-          </Text>
-          <Link
+          </span>
+          <a className="text-gryt-accent underline-offset-2 hover:underline"
             href="https://docs.gryt.chat/docs"
             target="_blank"
             rel="noreferrer"
-            size="1"
           >
             Read the addon docs
-          </Link>
-        </Flex>
+          </a>
+        </div>
       ) : (
-        <Box
-          style={{
+        <div style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-            gap: "var(--space-3)",
-          }}
-        >
+            gap: "12px",
+          }}>
           {addons.map((addon) => (
             <AddonCard
               key={addon.id}
@@ -227,7 +194,7 @@ export function AddonsSettings() {
               onToggle={() => toggleAddon(addon.id)}
             />
           ))}
-        </Box>
+        </div>
       )}
     </SettingsContainer>
   );

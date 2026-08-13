@@ -1,4 +1,4 @@
-import { Flex, IconButton, Link, Text } from "@radix-ui/themes";
+import { IconButton } from "@gryt/ui";
 import { useState } from "react";
 import { PiDownloadSimpleFill, PiX } from "react-icons/pi";
 
@@ -14,36 +14,25 @@ export function BrowserBanner() {
   if (isElectron() || dismissed) return null;
 
   return (
-    <Flex
-      align="center"
-      justify="center"
-      gap="2"
-      px="3"
-      py="1"
-      style={{
+    <div className="flex items-center justify-center gap-2 px-3 py-1" style={{
         flexShrink: 0,
-        background: "var(--accent-a3)",
-        borderBottom: "1px solid var(--accent-a5)",
-      }}
-    >
-      <PiDownloadSimpleFill size={14} style={{ flexShrink: 0, color: "var(--accent-11)" }} />
-      <Text size="1" style={{ color: "var(--accent-11)" }}>
+        background: "var(--gryt-accent-a3)",
+        borderBottom: "1px solid var(--gryt-accent-a5)",
+      }}>
+      <PiDownloadSimpleFill size={14} style={{ flexShrink: 0, color: "var(--gryt-accent-11)" }} />
+      <span className="text-xs" style={{ color: "var(--gryt-accent-11)" }}>
         You&apos;re using Gryt in your browser. Some features are limited.{" "}
-        <Link
+        <a
+          className="font-medium text-gryt-accent underline-offset-2 hover:underline"
           href="https://github.com/Gryt-chat/gryt/releases"
           target="_blank"
           rel="noreferrer"
-          size="1"
-          weight="medium"
         >
           Download the desktop app
-        </Link>{" "}
+        </a>{" "}
         for the full experience.
-      </Text>
-      <IconButton
-        variant="ghost"
-        color="gray"
-        size="1"
+      </span>
+      <IconButton tone="ghost" size="xsmall"
         style={{ marginLeft: "auto", flexShrink: 0 }}
         onClick={() => {
           localStorage.setItem(STORAGE_KEY, "true");
@@ -53,6 +42,6 @@ export function BrowserBanner() {
       >
         <PiX size={14} />
       </IconButton>
-    </Flex>
+    </div>
   );
 }

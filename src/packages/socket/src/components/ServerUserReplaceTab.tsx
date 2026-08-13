@@ -1,5 +1,4 @@
-import { Avatar, TextField } from "@gryt/ui";
-import { AlertDialog, Button, Card, Flex, Text } from "@radix-ui/themes";
+import { AlertDialog, Avatar, Button, Surface, TextField } from "@gryt/ui";
 import { useCallback, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
@@ -56,10 +55,10 @@ function MemberDropdownItem({
         alignItems: "center",
         gap: 8,
         padding: "6px 8px",
-        borderRadius: "var(--radius-2)",
+        borderRadius: "var(--gryt-radius-sm)",
         cursor: "pointer",
       }}
-      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gray-4)"; }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gryt-neutral-4)"; }}
       onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
     >
       <Avatar
@@ -69,14 +68,14 @@ function MemberDropdownItem({
         src={resolveAvatarSrc(member.avatarFileId ? getUploadsFileUrl(host, member.avatarFileId, { thumb: true }) : undefined, member.nickname)}
         style={{ flexShrink: 0 }}
       />
-      <Flex direction="column" style={{ flex: 1, minWidth: 0 }}>
-        <Text size="2" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+      <div className="flex flex-col" style={{ flex: 1, minWidth: 0 }}>
+        <span className="text-sm" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {member.nickname}
-        </Text>
-        <Text size="1">
+        </span>
+        <span className="text-xs">
           Joined {formatJoinDate(member.createdAt)}
-        </Text>
-      </Flex>
+        </span>
+      </div>
     </div>
   );
 }
@@ -112,7 +111,7 @@ function MemberCombobox({
 
   return (
     <div style={{ position: "relative" }}>
-      <Flex gap="2" align="center">
+      <div className="flex gap-2 items-center">
         {selectedMember && (
           <Avatar
             size="small"
@@ -136,7 +135,7 @@ function MemberCombobox({
             blurTimeoutRef.current = setTimeout(() => setFocused(false), 150);
           }}
         />
-      </Flex>
+      </div>
       {focused && filtered.length > 0 && (
         <div
           style={{
@@ -145,9 +144,9 @@ function MemberCombobox({
             left: 0,
             right: 0,
             marginTop: 4,
-            background: "var(--color-panel-solid)",
-            border: "1px solid var(--gray-6)",
-            borderRadius: "var(--radius-3)",
+            background: "var(--gryt-neutral-2)",
+            border: "1px solid var(--gryt-neutral-6)",
+            borderRadius: "var(--gryt-radius-md)",
             boxShadow: "0 8px 24px rgba(0, 0, 0, 0.25)",
             maxHeight: 220,
             overflowY: "auto",
@@ -226,18 +225,18 @@ export function ServerUserReplaceTab({
   const selectedMember = members.find((m) => m.serverUserId === targetServerUserId);
 
   return (
-    <Flex direction="column" gap="4">
-      <Text size="2">
+    <div className="flex flex-col gap-4">
+      <span className="text-sm">
         Re-map a user&apos;s Keycloak identity (gryt_user_id) while keeping their server user ID, messages, roles, and
         all other data intact. This is useful when a user re-registers and gets a new Keycloak account.
-      </Text>
+      </span>
 
-      <Card>
-        <Flex direction="column" gap="3">
+      <Surface>
+        <div className="flex flex-col gap-3">
           <div>
-            <Text size="2" weight="bold" mb="1" as="p">
+            <p className="text-sm font-bold mb-1">
               Old user (current member)
-            </Text>
+            </p>
             <MemberCombobox
               value={targetServerUserId}
               onChange={setTargetServerUserId}
@@ -248,9 +247,9 @@ export function ServerUserReplaceTab({
           </div>
 
           <div>
-            <Text size="2" weight="bold" mb="1" as="p">
+            <p className="text-sm font-bold mb-1">
               New Gryt User ID
-            </Text>
+            </p>
             <MemberCombobox
               value={newGrytUserId}
               onChange={setNewGrytUserId}
@@ -258,42 +257,45 @@ export function ServerUserReplaceTab({
               host={host}
               placeholder="Paste ID or search for a member…"
             />
-            <Text size="1" mt="1" as="p">
+            <p className="text-xs mt-1">
               The Keycloak subject ID from the new account, or select an existing member.
-            </Text>
+            </p>
           </div>
 
-          <Flex justify="end" mt="2">
+          <div className="flex justify-end mt-2">
             <AlertDialog.Root>
               <AlertDialog.Trigger>
-                <Button disabled={submitting || !targetServerUserId || !newGrytUserId.trim()}>
+                <Button size="small" disabled={submitting || !targetServerUserId || !newGrytUserId.trim()}>
                   {submitting ? "Replacing…" : "Replace identity"}
                 </Button>
               </AlertDialog.Trigger>
-              <AlertDialog.Content maxWidth="480px">
+              <AlertDialog.Portal>
+                <AlertDialog.Backdrop />
+                <AlertDialog.Popup className="max-w-120">
                 <AlertDialog.Title>Replace user identity?</AlertDialog.Title>
-                <AlertDialog.Description size="2">
+                <AlertDialog.Description>
                   This will permanently re-bind{" "}
                   <strong>{selectedMember?.nickname ?? targetServerUserId}</strong>&apos;s server identity to a new
                   Keycloak account. The old account will lose access and any active sessions will be revoked.
                 </AlertDialog.Description>
-                <Flex gap="3" mt="4" justify="end">
-                  <AlertDialog.Cancel>
-                    <Button>
+                <div className="flex gap-3 mt-4 justify-end">
+                  <AlertDialog.Close render={<span />}>
+                    <Button size="small">
                       Cancel
                     </Button>
-                  </AlertDialog.Cancel>
-                  <AlertDialog.Action>
-                    <Button onClick={handleReplace} disabled={submitting}>
+                  </AlertDialog.Close>
+                  <AlertDialog.Close render={<span />}>
+                    <Button size="small" onClick={handleReplace} disabled={submitting}>
                       Confirm replace
                     </Button>
-                  </AlertDialog.Action>
-                </Flex>
-              </AlertDialog.Content>
+                  </AlertDialog.Close>
+                </div>
+              </AlertDialog.Popup>
+              </AlertDialog.Portal>
             </AlertDialog.Root>
-          </Flex>
-        </Flex>
-      </Card>
-    </Flex>
+          </div>
+        </div>
+      </Surface>
+    </div>
   );
 }

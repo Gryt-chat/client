@@ -1,4 +1,4 @@
-import { Badge, Button, Flex, Heading, Select, Separator, Text } from "@radix-ui/themes";
+import { Button, Chip, Divider, Select } from "@gryt/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PiArrowsClockwiseFill } from "react-icons/pi";
 
@@ -188,21 +188,17 @@ export function CameraSettings() {
 
   return (
     <SettingsContainer>
-      <Heading size="4">Camera</Heading>
+      <h2>Camera</h2>
 
-      <Flex direction="column" gap="2">
-        <Text weight="medium" size="2">Preview</Text>
-        <Flex
-          align="center"
-          justify="center"
-          style={{
-            background: "var(--gray-3)",
-            borderRadius: "var(--radius-3)",
+      <div className="flex flex-col gap-2">
+        <span className="font-medium">Preview</span>
+        <div className="flex items-center justify-center" style={{
+            background: "var(--gryt-neutral-3)",
+            borderRadius: "var(--gryt-radius-md)",
             overflow: "hidden",
             aspectRatio: "16/9",
             maxHeight: 280,
-          }}
-        >
+          }}>
           {activeStream ? (
             <div style={{ position: "relative", width: "100%", height: "100%" }}>
               <video
@@ -219,9 +215,7 @@ export function CameraSettings() {
                 }}
               />
               {actualRes && (
-                <Badge
-                  variant="solid"
-                  size="1"
+                <Chip tone="neutral"
                   style={{
                     position: "absolute",
                     top: 8,
@@ -233,82 +227,67 @@ export function CameraSettings() {
                   }}
                 >
                   {actualRes.w}×{actualRes.h}
-                </Badge>
+                </Chip>
               )}
             </div>
           ) : (
-            <Flex direction="column" align="center" gap="2" p="4">
-              <Text size="2" color={activeError ? "red" : "gray"}>
+            <div className="flex flex-col items-center gap-2 p-4">
+              <span color={activeError ? "red" : "gray"}>
                 {activeError ?? "No camera detected"}
-              </Text>
+              </span>
               {activeError && (
-                <Button variant="soft" size="1" onClick={startPreview}>
+                <Button tone="neutral" size="xsmall" onClick={startPreview}>
                   <PiArrowsClockwiseFill size={14} />
                   Retry
                 </Button>
               )}
-            </Flex>
+            </div>
           )}
-        </Flex>
-      </Flex>
+        </div>
+      </div>
 
-      <Separator size="4" />
+      <Divider />
 
-      <Flex direction="column" gap="2">
-        <Text weight="medium" size="2">Camera Device</Text>
-        <Select.Root
+      <div className="flex flex-col gap-2">
+        <span className="font-medium">Camera Device</span>
+        <Select
           value={cameraID || ""}
-          onValueChange={(value) => setCameraID(value)}
-        >
-          <Select.Trigger placeholder="Select a camera" />
-          <Select.Content position="popper" sideOffset={4}>
-            {devices.map((device) => (
-              <Select.Item key={device.deviceId || device.label} value={device.deviceId || `device-${device.label}`}>
-                {device.label || `Camera ${device.deviceId.slice(0, 8)}`}
-              </Select.Item>
-            ))}
-            {devices.length === 0 && (
-              <Select.Item value="__none__" disabled>
-                No cameras found
-              </Select.Item>
-            )}
-          </Select.Content>
-        </Select.Root>
-      </Flex>
+          onValueChange={(value) => setCameraID(String(value))}
+          placeholder="Select a camera"
+          options={
+            devices.length === 0
+              ? [{ label: "No cameras found", value: "__none__", disabled: true }]
+              : devices.map((device) => ({
+                  label: device.label || `Camera ${device.deviceId.slice(0, 8)}`,
+                  value: device.deviceId || `device-${device.label}`,
+                }))
+          }
+        />
+      </div>
 
-      <Flex direction="column" gap="2">
-        <Text weight="medium" size="2">Video Quality</Text>
-        <Select.Root
+      <div className="flex flex-col gap-2">
+        <span className="font-medium">Video Quality</span>
+        <Select
           value={cameraQuality}
-          onValueChange={(value) => setCameraQuality(value)}
-        >
-          <Select.Trigger />
-          <Select.Content position="popper" sideOffset={4} style={{ maxHeight: 300 }}>
-            {filteredOptions.map((opt) => (
-              <Select.Item key={opt.value} value={opt.value}>
-                {opt.label}
-              </Select.Item>
-            ))}
-          </Select.Content>
-        </Select.Root>
-      </Flex>
+          onValueChange={(value) => setCameraQuality(String(value))}
+          options={filteredOptions.map((opt) => ({
+            label: opt.label,
+            value: opt.value,
+          }))}
+        />
+      </div>
 
-      <Flex direction="column" gap="2">
-        <Text weight="medium" size="2">Frame Rate</Text>
-        <Select.Root
+      <div className="flex flex-col gap-2">
+        <span className="font-medium">Frame Rate</span>
+        <Select
           value={String(cameraFps)}
           onValueChange={(v) => setCameraFps(Number(v))}
-        >
-          <Select.Trigger />
-          <Select.Content position="popper" sideOffset={4}>
-            {CAMERA_FPS_OPTIONS.map((fps) => (
-              <Select.Item key={fps} value={String(fps)}>
-                {fps} FPS
-              </Select.Item>
-            ))}
-          </Select.Content>
-        </Select.Root>
-      </Flex>
+          options={CAMERA_FPS_OPTIONS.map((fps) => ({
+            label: `${fps} FPS`,
+            value: String(fps),
+          }))}
+        />
+      </div>
 
       <ToggleSetting
         title="Flip camera"

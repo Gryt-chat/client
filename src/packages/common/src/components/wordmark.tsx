@@ -1,4 +1,3 @@
-import { Flex, Text } from "@radix-ui/themes";
 
 import { BETA_ACCENT, useIsBetaBuild } from "../utils/betaBuild";
 
@@ -31,6 +30,24 @@ export function BetaTag() {
  * Everywhere the name is written should use this, so a beta build is marked in
  * all of them at once rather than in whichever ones someone remembered.
  */
+const TEXT_SIZE = {
+  "1": "text-xs",
+  "2": "text-sm",
+  "3": "text-base",
+  "4": "text-lg",
+  "5": "text-xl",
+  "6": "text-2xl",
+  "7": "text-3xl",
+  "8": "text-4xl",
+  "9": "text-6xl",
+} as const;
+
+const FONT_WEIGHT = {
+  regular: "font-normal",
+  medium: "font-medium",
+  bold: "font-bold",
+} as const;
+
 export function Wordmark({
   size = "5",
   weight = "bold",
@@ -41,11 +58,11 @@ export function Wordmark({
   const isBeta = useIsBetaBuild();
 
   return (
-    <Flex align="center" gap="2">
-      <Text size={size} weight={weight}>
-        Gryt
-      </Text>
+    <div className="flex items-center gap-2">
+      {/* The size and weight props kept Radix's scales; these are the same
+          steps in Tailwind's. */}
+      <span className={`${TEXT_SIZE[size]} ${FONT_WEIGHT[weight]}`}>Gryt</span>
       {isBeta && <BetaTag />}
-    </Flex>
+    </div>
   );
 }

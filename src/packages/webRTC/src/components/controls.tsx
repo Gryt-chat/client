@@ -1,4 +1,4 @@
-import { Flex, IconButton, Tooltip } from "@radix-ui/themes";
+import { IconButton, Tooltip } from "@gryt/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { PiScanSmileyFill } from "react-icons/pi";
@@ -36,7 +36,7 @@ function MaybeTooltip({
 }) {
   if (!content) return children;
   return (
-    <Tooltip content={content} delayDuration={300}>
+    <Tooltip title={content}>
       {children}
     </Tooltip>
   );
@@ -370,7 +370,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
   return (
     <>
       {isBrowserSupported && (
-        <Flex align="center" justify="center" gap="4">
+        <div className="flex items-center justify-center gap-4">
           {/*
             Every control here is icon-only, so the tooltip text is also the
             accessible name — without aria-label a screen reader announced five
@@ -383,10 +383,8 @@ export function Controls({ onDisconnect }: ControlsProps) {
             you hovered previously.
           */}
           <MaybeTooltip content={isServerMuted ? "Server muted by admin" : null}>
-            <IconButton
+            <IconButton tone="neutral" size="xsmall"
               aria-label={(isMuted || isServerMuted) ? "Unmute microphone" : "Mute microphone"}
-              color={(isMuted || isServerMuted) ? "red" : "gray"}
-              variant="soft"
               onClick={handleMute}
               style={isServerMuted ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
             >
@@ -395,10 +393,8 @@ export function Controls({ onDisconnect }: ControlsProps) {
           </MaybeTooltip>
 
           <MaybeTooltip content={isServerDeafened ? "Server deafened by admin" : null}>
-            <IconButton
+            <IconButton tone="neutral" size="xsmall"
               aria-label={(isDeafened || isServerDeafened) ? "Undeafen" : "Deafen"}
-              color={(isDeafened || isServerDeafened) ? "red" : "gray"}
-              variant="soft"
               onClick={handleDeafen}
               style={isServerDeafened ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
             >
@@ -406,10 +402,8 @@ export function Controls({ onDisconnect }: ControlsProps) {
             </IconButton>
           </MaybeTooltip>
 
-          <IconButton
+          <IconButton tone="neutral" size="xsmall"
             aria-label={cameraEnabled ? "Turn camera off" : "Turn camera on"}
-            color={cameraEnabled ? "green" : "gray"}
-            variant="soft"
             onClick={handleCameraClick}
           >
             {cameraEnabled ? <PiVideoCameraFill size={16} /> : <PiVideoCameraSlashFill size={16} />}
@@ -420,11 +414,9 @@ export function Controls({ onDisconnect }: ControlsProps) {
               it acts on. The setting decides whether this also happens by
               itself; the button is here so it never has to be found. */}
           {cameraEnabled && (
-            <Tooltip content="Center my face" delayDuration={300}>
-              <IconButton
+            <Tooltip title="Center my face">
+              <IconButton tone="neutral" size="xsmall"
                 aria-label="Center my face"
-                variant="soft"
-                color="gray"
                 disabled={detectingFace}
                 onClick={() => void recentreFace()}
               >
@@ -433,19 +425,17 @@ export function Controls({ onDisconnect }: ControlsProps) {
             </Tooltip>
           )}
 
-          <IconButton
+          <IconButton tone="neutral" size="xsmall"
             aria-label={screenShareActive ? "Stop sharing your screen" : "Share your screen"}
-            color={screenShareActive ? "red" : "gray"}
-            variant="soft"
             onClick={handleScreenShareClick}
           >
             {screenShareActive ? <PiMonitorArrowUpFill size={16} /> : <PiScreencastFill size={16} />}
           </IconButton>
 
-          <IconButton aria-label="Leave voice channel" variant="soft" color="red" onClick={handleDisconnect}>
+          <IconButton tone="danger" size="xsmall" aria-label="Leave voice channel" onClick={handleDisconnect}>
             <PiPhoneDisconnectFill size={16} />
           </IconButton>
-        </Flex>
+        </div>
       )}
 
       <CameraPreviewModal

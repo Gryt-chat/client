@@ -1,4 +1,4 @@
-import { Badge, Button, Card, Flex, Text } from "@radix-ui/themes";
+import { Button, Chip, Surface } from "@gryt/ui";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
@@ -67,51 +67,49 @@ export function ServerBansTab({
   }, [host, socket?.connected, accessToken]);
 
   return (
-    <Flex direction="column" gap="3">
-      <Flex align="center" justify="between">
-        <Text size="2" color="gray">
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-gryt-muted">
           {loaded ? `${bans.length} ${bans.length === 1 ? "ban" : "bans"}` : "Loading…"}
-        </Text>
-        <Button size="1" variant="soft" onClick={refresh}>Refresh</Button>
-      </Flex>
+        </span>
+        <Button tone="neutral" size="xsmall" onClick={refresh}>Refresh</Button>
+      </div>
 
       {loaded && bans.length === 0 && (
-        <Text size="2" color="gray">Nobody is banned from this server.</Text>
+        <span className="text-sm text-gryt-muted">Nobody is banned from this server.</span>
       )}
 
       {bans.map((ban) => (
-        <Card key={ban.gryt_user_id}>
-          <Flex align="center" justify="between" gap="3">
-            <Flex direction="column" gap="1" style={{ minWidth: 0 }}>
-              <Flex align="center" gap="2">
-                <Text size="2" weight="medium" truncate>
+        <Surface key={ban.gryt_user_id}>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col gap-1" style={{ minWidth: 0 }}>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium truncate">
                   {ban.nickname || ban.gryt_user_id}
-                </Text>
+                </span>
                 {ban.expires_at ? (
-                  <Badge color="orange" variant="soft" size="1">
+                  <Chip tone="warning">
                     until {fmt(ban.expires_at)}
-                  </Badge>
+                  </Chip>
                 ) : (
-                  <Badge color="red" variant="soft" size="1">permanent</Badge>
+                  <Chip tone="danger" label="permanent" />
                 )}
-              </Flex>
-              {ban.reason && <Text size="1">{ban.reason}</Text>}
-              <Text size="1" color="gray">
+              </div>
+              {ban.reason && <span className="text-xs">{ban.reason}</span>}
+              <span className="text-xs text-gryt-muted">
                 {fmt(ban.created_at)}
                 {ban.banned_by_nickname ? ` · by ${ban.banned_by_nickname}` : ""}
-              </Text>
-            </Flex>
-            <Button
-              size="1"
-              variant="soft"
+              </span>
+            </div>
+            <Button tone="neutral" size="xsmall"
               onClick={() => onUnban(ban.gryt_user_id)}
               style={{ flexShrink: 0 }}
             >
               Unban
             </Button>
-          </Flex>
-        </Card>
+          </div>
+        </Surface>
       ))}
-    </Flex>
+    </div>
   );
 }

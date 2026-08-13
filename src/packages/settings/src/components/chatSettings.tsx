@@ -1,4 +1,4 @@
-import { Heading, Separator } from "@radix-ui/themes";
+import { Divider } from "@gryt/ui";
 
 import { useSettings } from "@/settings";
 
@@ -13,9 +13,9 @@ export function ChatSettings() {
 
   return (
     <SettingsContainer>
-      <Heading as="h2" size="4">
+      <h2>
         Chat
-      </Heading>
+      </h2>
 
       <ToggleSetting
         title="Blur profanity"
@@ -24,7 +24,7 @@ export function ChatSettings() {
         onCheckedChange={setBlurProfanity}
       />
 
-      <Separator size="4" />
+      <Divider />
 
       <SmileySettings />
     </SettingsContainer>

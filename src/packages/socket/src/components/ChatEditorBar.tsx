@@ -1,4 +1,4 @@
-import { Button, Flex, Text } from "@radix-ui/themes";
+import { Button } from "@gryt/ui";
 import type { RefObject } from "react";
 
 import { ChatEditor, type ChatEditorHandle } from "./ChatEditor";
@@ -43,64 +43,52 @@ export function ChatEditorBar({
   return (
     <>
       {replyingTo && (
-        <Flex
-          align="center"
-          gap="2"
-          style={{
+        <div className="flex items-center gap-2" style={{
             padding: "6px 12px",
             marginBottom: "4px",
-            borderLeft: "3px solid var(--accent-9)",
-            background: "var(--gray-4)",
-            borderRadius: "0 var(--radius-3) var(--radius-3) 0",
+            borderLeft: "3px solid var(--gryt-accent-9)",
+            background: "var(--gryt-neutral-4)",
+            borderRadius: "0 var(--gryt-radius-md) var(--gryt-radius-md) 0",
             fontSize: "13px",
-          }}
-        >
-          <Flex align="center" gap="1" style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
-            <Text size="2" color="gray">Replying to</Text>
-            <Text size="2" weight="bold">{getSenderName(replyingTo)}</Text>
-            <Text size="1" color="gray" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          }}>
+          <div className="flex items-center gap-1" style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+            <span className="text-sm text-gryt-muted">Replying to</span>
+            <span className="text-sm font-bold">{getSenderName(replyingTo)}</span>
+            <span className="text-xs text-gryt-muted" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {getReplyPreview(replyingTo, 80)}
-            </Text>
-          </Flex>
-          <Button
-            variant="ghost"
-            size="1"
+            </span>
+          </div>
+          <Button tone="ghost" size="xsmall"
             onClick={onCancelReply}
             style={{ padding: "2px 6px", minWidth: "auto", cursor: "pointer" }}
           >
             ✕
           </Button>
-        </Flex>
+        </div>
       )}
 
       {editingMessage && (
-        <Flex
-          align="center"
-          gap="2"
-          style={{
+        <div className="flex items-center gap-2" style={{
             padding: "6px 12px",
             marginBottom: "4px",
-            borderLeft: "3px solid var(--amber-9)",
-            background: "var(--gray-4)",
-            borderRadius: "0 var(--radius-3) var(--radius-3) 0",
+            borderLeft: "3px solid var(--gryt-warning-9)",
+            background: "var(--gryt-neutral-4)",
+            borderRadius: "0 var(--gryt-radius-md) var(--gryt-radius-md) 0",
             fontSize: "13px",
-          }}
-        >
-          <Flex align="center" gap="1" style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
-            <Text size="2" color="gray">Editing message</Text>
-            <Text size="1" color="gray" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginLeft: 4 }}>
+          }}>
+          <div className="flex items-center gap-1" style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+            <span className="text-sm text-gryt-muted">Editing message</span>
+            <span className="text-xs text-gryt-muted" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginLeft: 4 }}>
               press Escape to cancel
-            </Text>
-          </Flex>
-          <Button
-            variant="ghost"
-            size="1"
+            </span>
+          </div>
+          <Button tone="ghost" size="xsmall"
             onClick={onCancelEditing}
             style={{ padding: "2px 6px", minWidth: "auto", cursor: "pointer" }}
           >
             ✕
           </Button>
-        </Flex>
+        </div>
       )}
 
       <ChatEditor

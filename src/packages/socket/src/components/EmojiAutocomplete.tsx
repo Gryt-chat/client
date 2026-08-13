@@ -87,9 +87,9 @@ export const EmojiAutocomplete = ({ query, visible, onSelect, onClose, serverHos
         left: 0,
         right: 0,
         marginBottom: "4px",
-        background: "var(--color-panel-solid)",
-        border: "1px solid var(--gray-6)",
-        borderRadius: "var(--radius-5)",
+        background: "var(--gryt-neutral-2)",
+        border: "1px solid var(--gryt-neutral-6)",
+        borderRadius: "var(--gryt-radius-lg)",
         boxShadow: "0 8px 24px rgba(0, 0, 0, 0.25)",
         maxHeight: "280px",
         overflowY: "auto",
@@ -103,7 +103,7 @@ export const EmojiAutocomplete = ({ query, visible, onSelect, onClose, serverHos
             padding: "4px 10px 2px",
             fontSize: "11px",
             fontWeight: 600,
-            color: "var(--gray-9)",
+            color: "var(--gryt-neutral-9)",
             textTransform: "uppercase",
             letterSpacing: "0.5px",
             userSelect: "none",
@@ -125,9 +125,9 @@ export const EmojiAutocomplete = ({ query, visible, onSelect, onClose, serverHos
             alignItems: "center",
             gap: "10px",
             padding: "6px 10px",
-            borderRadius: "var(--radius-3)",
+            borderRadius: "var(--gryt-radius-md)",
             cursor: "pointer",
-            background: idx === selectedIndex ? "var(--gray-4)" : "transparent",
+            background: idx === selectedIndex ? "var(--gryt-neutral-4)" : "transparent",
             transition: "background 0.1s ease",
             fontSize: "var(--chat-font-size, 16px)",
           }}
@@ -153,17 +153,17 @@ export const EmojiAutocomplete = ({ query, visible, onSelect, onClose, serverHos
               />
             ) : null}
           </span>
-          <span style={{ color: "var(--gray-12)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <span style={{ color: "var(--gryt-neutral-12)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             :{entry.name}:
           </span>
           {entry.isCustom && (
             <span
               style={{
                 fontSize: "10px",
-                color: "var(--gray-9)",
-                background: "var(--gray-3)",
+                color: "var(--gryt-neutral-9)",
+                background: "var(--gryt-neutral-3)",
                 padding: "1px 5px",
-                borderRadius: "var(--radius-2)",
+                borderRadius: "var(--gryt-radius-sm)",
                 flexShrink: 0,
               }}
             >

@@ -1,4 +1,4 @@
-import { Button, Card,Dialog, Flex, IconButton, Text } from "@radix-ui/themes";
+import { Button, Dialog, IconButton, Surface } from "@gryt/ui";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { PiX } from "react-icons/pi";
@@ -82,42 +82,44 @@ export function ServerRolesModal() {
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={(o) => (o ? setIsOpen(true) : close())}>
-      <Dialog.Content style={{ maxWidth: 760 }}>
-        <Flex direction="column" gap="4">
-          <Flex align="center" justify="between">
+      <Dialog.Portal>
+        <Dialog.Backdrop />
+        <Dialog.Popup style={{ maxWidth: 760 }}>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
             <Dialog.Title>Roles</Dialog.Title>
             <Dialog.Close>
-              <IconButton variant="ghost" color="gray" onClick={close} disabled={submitting}>
+              <IconButton tone="ghost" size="xsmall" onClick={close} disabled={submitting}>
                 <PiX size={16} />
               </IconButton>
             </Dialog.Close>
-          </Flex>
+          </div>
 
-          <Text size="2" color="gray">
+          <span className="text-sm text-gryt-muted">
             Owners can assign roles to members. Admins can manage invites/channels and view the audit log.
-          </Text>
+          </span>
 
-          <Flex justify="end" gap="2">
-            <Button variant="soft" color="gray" onClick={refresh} disabled={submitting}>
+          <div className="flex justify-end gap-2">
+            <Button tone="neutral" size="small" onClick={refresh} disabled={submitting}>
               Refresh
             </Button>
-          </Flex>
+          </div>
 
-          <Flex direction="column" gap="2">
+          <div className="flex flex-col gap-2">
             {members.length === 0 ? (
-              <Text size="2" color="gray">No members found.</Text>
+              <span className="text-sm text-gryt-muted">No members found.</span>
             ) : (
               members.map((m) => {
                 const r = roles[m.serverUserId] || "member";
                 return (
-                  <Card key={m.serverUserId}>
-                    <Flex align="center" justify="between" gap="2" wrap="wrap">
-                      <Flex direction="column" gap="1">
-                        <Text size="2" weight="bold">{m.nickname}</Text>
-                        <Text size="1" color="gray">ID: {m.serverUserId}</Text>
-                      </Flex>
-                      <Flex align="center" gap="2">
-                        <Text size="2" color="gray">Role</Text>
+                  <Surface key={m.serverUserId}>
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-sm font-bold">{m.nickname}</span>
+                        <span className="text-xs text-gryt-muted">ID: {m.serverUserId}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gryt-muted">Role</span>
                         <select
                           value={r}
                           onChange={(e) => setRole(m.serverUserId, (e.target.value as Role) || "member")}
@@ -128,15 +130,16 @@ export function ServerRolesModal() {
                           <option value="mod">mod</option>
                           <option value="member">member</option>
                         </select>
-                      </Flex>
-                    </Flex>
-                  </Card>
+                      </div>
+                    </div>
+                  </Surface>
                 );
               })
             )}
-          </Flex>
-        </Flex>
-      </Dialog.Content>
+          </div>
+        </div>
+      </Dialog.Popup>
+      </Dialog.Portal>
     </Dialog.Root>
   );
 }

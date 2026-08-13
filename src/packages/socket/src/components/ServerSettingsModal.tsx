@@ -1,4 +1,4 @@
-import { Badge, Box, Dialog, Flex, IconButton, Spinner, Tabs, Text } from "@radix-ui/themes";
+import { Chip, Dialog, IconButton, Spinner, Tabs } from "@gryt/ui";
 import { useEffect, useMemo, useState } from "react";
 import { PiArrowsLeftRightFill, PiGearFill, PiHandWavingFill, PiLinkFill, PiListChecksFill, PiProhibitFill, PiSmileyFill, PiUsersFill, PiWebhooksLogoFill, PiX } from "react-icons/pi";
 
@@ -174,7 +174,9 @@ export function ServerSettingsModal() {
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={handleDialogChange}>
-      <Dialog.Content maxWidth="900px" style={{ height: "700px", minWidth: "600px" }}>
+      <Dialog.Portal>
+        <Dialog.Backdrop />
+        <Dialog.Popup className="max-w-225" style={{ height: "700px", minWidth: "600px" }}>
         <Dialog.Close
           style={{
             position: "absolute",
@@ -182,118 +184,107 @@ export function ServerSettingsModal() {
             right: "8px",
           }}
         >
-          <IconButton variant="soft" color="gray">
+          <IconButton tone="neutral" size="xsmall">
             <PiX size={16} />
           </IconButton>
         </Dialog.Close>
 
-        <Flex direction="column" gap="4" height="100%">
-          <Dialog.Title as="h1" weight="bold" size="6">
+        <div className="flex flex-col gap-4 h-full">
+          <Dialog.Title>
             Server settings
           </Dialog.Title>
 
           {isOpen && (
             allowTabs ? (
-              <Tabs.Root
+              <Tabs
                 value={tab}
-                onValueChange={setTab}
+                onValueChange={(v) => setTab(String(v))}
                 orientation="vertical"
                 style={{ flex: 1, minHeight: 0 }}
               >
-                <Flex gap="4" height="100%">
-                  <Box style={{ minWidth: "200px", flexShrink: 0, overflowY: "auto" }}>
-                    <Tabs.List
-                      style={{
-                        flexDirection: "column",
-                        alignItems: "stretch",
-                        height: "fit-content",
-                        gap: "4px",
-                      }}
-                    >
+                <div className="flex gap-4 h-full">
+                  <div style={{ minWidth: "200px", flexShrink: 0, overflowY: "auto" }}>
+                    <Tabs.List aria-label="Server settings" className="gap-1">
                       {TAB_CONFIG.map(({ value, label, icon: Icon }) => (
-                        <Tabs.Trigger key={value} value={value}>
-                          <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <Icon size={16} />
-                            {label}
-                          </span>
-                        </Tabs.Trigger>
+                        <Tabs.Tab key={value} value={value}>
+                          <Icon size={16} />
+                          {label}
+                        </Tabs.Tab>
                       ))}
+                      <Tabs.Indicator />
                     </Tabs.List>
-                    <Flex
-                      direction="column"
-                      gap="1"
-                      style={{ padding: "12px 16px", fontFamily: "var(--code-font-family)" }}
-                    >
+                    <div className="flex flex-col gap-1" style={{ padding: "12px 16px", fontFamily: "var(--code-font-family)" }}>
                       {serverInfo?.version && (
-                        <Flex align="center" gap="2">
-                          <Text size="1" color="gray" style={{ opacity: 0.5 }}>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gryt-muted" style={{ opacity: 0.5 }}>
                             Server v{serverInfo.version}
-                          </Text>
-                          {versionLoading && <Spinner size="1" />}
+                          </span>
+                          {versionLoading && <Spinner size={16} />}
                           {versionStatus?.server.updateAvailable && (
-                            <Badge size="1" color="orange" variant="soft">
+                            <Chip tone="warning">
                               v{versionStatus.server.latest}
-                            </Badge>
+                            </Chip>
                           )}
-                        </Flex>
+                        </div>
                       )}
                       {versionStatus?.sfu && (
-                        <Flex align="center" gap="2">
-                          <Text size="1" color="gray" style={{ opacity: 0.5 }}>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gryt-muted" style={{ opacity: 0.5 }}>
                             SFU {versionStatus.sfu.current ? `v${versionStatus.sfu.current}` : "—"}
-                          </Text>
+                          </span>
                           {versionStatus.sfu.updateAvailable && (
-                            <Badge size="1" color="orange" variant="soft">
+                            <Chip tone="warning">
                               v{versionStatus.sfu.latest}
-                            </Badge>
+                            </Chip>
                           )}
-                        </Flex>
+                        </div>
                       )}
                       {/* Absent, not dashed, when there is no worker to ask.
                           A server without one is a normal deployment, and a
                           permanent "—" would read as something being broken. */}
                       {versionStatus?.worker && (
-                        <Flex align="center" gap="2">
-                          <Text size="1" color="gray" style={{ opacity: 0.5 }}>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gryt-muted" style={{ opacity: 0.5 }}>
                             Image worker{" "}
                             {versionStatus.worker.current
                               ? `v${versionStatus.worker.current}`
                               : "—"}
-                          </Text>
+                          </span>
                           {versionStatus.worker.updateAvailable && (
-                            <Badge size="1" color="orange" variant="soft">
+                            <Chip tone="warning">
                               v{versionStatus.worker.latest}
-                            </Badge>
+                            </Chip>
                           )}
-                        </Flex>
+                        </div>
                       )}
-                    </Flex>
-                  </Box>
+                    </div>
+                  </div>
 
-                  <Box style={{ flex: 1, overflow: "auto", minWidth: 0 }}>
+                  <div style={{ flex: 1, overflow: "auto", minWidth: 0 }}>
                     {!permissionKnown ? (
-                      <Text size="2" color="gray" style={{ marginBottom: 12 }}>
+                      <span className="text-sm text-gryt-muted" style={{ marginBottom: 12 }}>
                         Loading permissions…
-                      </Text>
+                      </span>
                     ) : null}
                     {TAB_CONFIG.map(({ value, content }) => (
-                      <Tabs.Content key={value} value={value}>
+                      <Tabs.Panel key={value} value={value}>
                         {content}
-                      </Tabs.Content>
+                      </Tabs.Panel>
                     ))}
-                  </Box>
-                </Flex>
-              </Tabs.Root>
+                  </div>
+                </div>
+              </Tabs>
             ) : (
-              <Flex direction="column" gap="3">
-                <Text size="2" color="gray">
+              <div className="flex flex-col gap-3">
+                <span className="text-sm text-gryt-muted">
                   Server settings are only available to server admins.
-                </Text>
-              </Flex>
+                </span>
+              </div>
             )
           )}
-        </Flex>
-      </Dialog.Content>
+        </div>
+      </Dialog.Popup>
+      </Dialog.Portal>
     </Dialog.Root>
   );
 }

@@ -1,4 +1,4 @@
-import { Tooltip } from "@radix-ui/themes";
+import { Tooltip } from "@gryt/ui";
 import { cloneElement, isValidElement, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PiCheck, PiCopyFill } from "react-icons/pi";
 import type { Components } from "react-markdown";
@@ -189,9 +189,9 @@ function CodeBlockPre({ children }: { children: React.ReactNode }) {
       ref={preRef}
       style={{
         position: "relative",
-        background: "var(--gray-2)",
-        border: "1px solid var(--gray-5)",
-        borderRadius: "var(--radius-4)",
+        background: "var(--gryt-neutral-2)",
+        border: "1px solid var(--gryt-neutral-5)",
+        borderRadius: "var(--gryt-radius-md)",
         padding: "10px 12px",
         margin: "4px 0",
         overflowX: "auto",
@@ -213,9 +213,9 @@ function CodeBlockPre({ children }: { children: React.ReactNode }) {
           width: 26,
           height: 26,
           border: "none",
-          borderRadius: "var(--radius-2)",
-          background: copied ? "var(--green-4)" : "var(--gray-4)",
-          color: copied ? "var(--green-11)" : "var(--gray-11)",
+          borderRadius: "var(--gryt-radius-sm)",
+          background: copied ? "var(--gryt-success-4)" : "var(--gryt-neutral-4)",
+          color: copied ? "var(--gryt-success-11)" : "var(--gryt-neutral-11)",
           cursor: "pointer",
           transition: "background 0.15s, color 0.15s",
         }}
@@ -252,10 +252,10 @@ const components: Components = {
       return (
         <span
           style={{
-            color: "var(--accent-11)",
+            color: "var(--gryt-accent-11)",
             fontWeight: 600,
-            background: "var(--accent-a3)",
-            borderRadius: "var(--radius-2)",
+            background: "var(--gryt-accent-a3)",
+            borderRadius: "var(--gryt-radius-sm)",
             padding: "0 2px",
             cursor: "default",
           }}
@@ -272,7 +272,7 @@ const components: Components = {
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        style={{ color: "var(--accent-11)", textDecoration: "underline" }}
+        style={{ color: "var(--gryt-accent-11)", textDecoration: "underline" }}
       >
         {children}
       </a>
@@ -290,9 +290,9 @@ const components: Components = {
     return (
       <code
         style={{
-          background: "var(--gray-4)",
+          background: "var(--gryt-neutral-4)",
           padding: "1px 5px",
-          borderRadius: "var(--radius-2)",
+          borderRadius: "var(--gryt-radius-sm)",
           fontSize: "0.85em",
           fontFamily: "var(--code-font-family)",
         }}
@@ -305,10 +305,10 @@ const components: Components = {
   blockquote: ({ children }) => (
     <blockquote
       style={{
-        borderLeft: "3px solid var(--accent-9)",
+        borderLeft: "3px solid var(--gryt-accent-9)",
         paddingLeft: "12px",
         margin: "4px 0",
-        color: "var(--gray-11)",
+        color: "var(--gryt-neutral-11)",
       }}
     >
       {children}
@@ -334,7 +334,7 @@ const components: Components = {
         ?? alt
         ?? "";
       return (
-        <Tooltip content={emojiId} delayDuration={200}>
+        <Tooltip title={emojiId}>
           <img
             src={src}
             alt={alt || ""}
@@ -380,7 +380,7 @@ const components: Components = {
     );
   },
   hr: () => (
-    <hr style={{ border: "none", borderTop: "1px solid var(--gray-6)", margin: "6px 0" }} />
+    <hr style={{ border: "none", borderTop: "1px solid var(--gryt-neutral-6)", margin: "6px 0" }} />
   ),
   table: ({ children }) => (
     <div style={{ overflowX: "auto", margin: "4px 0" }}>
@@ -398,9 +398,9 @@ const components: Components = {
   th: ({ children }) => (
     <th
       style={{
-        border: "1px solid var(--gray-6)",
+        border: "1px solid var(--gryt-neutral-6)",
         padding: "4px 8px",
-        background: "var(--gray-3)",
+        background: "var(--gryt-neutral-3)",
         fontWeight: 600,
         textAlign: "left",
       }}
@@ -409,7 +409,7 @@ const components: Components = {
     </th>
   ),
   td: ({ children }) => (
-    <td style={{ border: "1px solid var(--gray-6)", padding: "4px 8px" }}>{children}</td>
+    <td style={{ border: "1px solid var(--gryt-neutral-6)", padding: "4px 8px" }}>{children}</td>
   ),
 };
 
@@ -490,7 +490,7 @@ export const MarkdownRenderer = memo(({
             ?? alt
             ?? "";
           return (
-            <Tooltip content={emojiId} delayDuration={200}>
+            <Tooltip title={emojiId}>
               <img
                 src={src}
                 alt={alt || ""}
@@ -534,10 +534,10 @@ export const MarkdownRenderer = memo(({
           return (
             <span
               style={{
-                color: "var(--accent-11)",
+                color: "var(--gryt-accent-11)",
                 fontWeight: 600,
-                background: "var(--accent-a3)",
-                borderRadius: "var(--radius-2)",
+                background: "var(--gryt-accent-a3)",
+                borderRadius: "var(--gryt-radius-sm)",
                 padding: "0 2px",
                 cursor: "default",
               }}
@@ -553,7 +553,7 @@ export const MarkdownRenderer = memo(({
           href={href}
           target="_blank"
           rel="noopener noreferrer"
-          style={{ color: "var(--accent-11)", textDecoration: "underline" }}
+          style={{ color: "var(--gryt-accent-11)", textDecoration: "underline" }}
         >
           {children}
         </a>

@@ -4,7 +4,6 @@
  *     apply; these are the four it actually has.
  * pre-emit critique: P5 H5 E5 S5 R5 V4
  */
-import { Flex, Text } from "@radix-ui/themes";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useState } from "react";
 
@@ -79,7 +78,7 @@ export function AuthLoadingOverlay({
           aria-live="polite"
           aria-busy="true"
         >
-          <Flex direction="column" align="center" gap="5">
+          <div className="flex flex-col items-center gap-6">
             <Logo />
 
             {/* A travelling hairline rather than a spinner.
@@ -141,16 +140,10 @@ export function AuthLoadingOverlay({
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.25 }}
                   >
-                    <Text
-                      size="2"
-                      color="gray"
-                      align="center"
-                      as="p"
-                      style={{ margin: 0, lineHeight: 1.5 }}
-                    >
+                    <p className="text-sm text-gryt-muted text-center" style={{ margin: 0, lineHeight: 1.5 }}>
                       This is taking longer than it should. Gryt will carry on
                       without an account in a moment.
-                    </Text>
+                    </p>
                   </motion.div>
                 ) : (
                   <motion.div
@@ -160,28 +153,24 @@ export function AuthLoadingOverlay({
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.25 }}
                   >
-                    <Text size="2" color="gray" align="center" as="p" style={{ margin: 0 }}>
+                    <p className="text-sm text-gryt-muted text-center" style={{ margin: 0 }}>
                       Checking whether you&rsquo;re signed in
-                    </Text>
+                    </p>
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
-          </Flex>
+          </div>
 
-          <Text
-            size="1"
-            color="gray"
-            style={{
+          <span className="text-xs text-gryt-muted" style={{
               position: "absolute",
               bottom: 12,
               left: 16,
               fontFamily: "var(--code-font-family)",
               opacity: 0.5
-            }}
-          >
+            }}>
             v{__APP_VERSION__}
-          </Text>
+          </span>
         </motion.div>
       )}
     </AnimatePresence>

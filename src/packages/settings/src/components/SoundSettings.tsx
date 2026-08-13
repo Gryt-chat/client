@@ -1,11 +1,4 @@
-import { Slider, Switch } from "@gryt/ui";
-import {
-  Button,
-  Flex,
-  IconButton,
-  Text,
-  Tooltip,
-} from "@radix-ui/themes";
+import { Button, IconButton, Slider, Switch, Tooltip } from "@gryt/ui";
 import { useEffect, useRef, useState } from "react";
 import { PiArrowsClockwiseFill, PiPlayFill, PiStopFill } from "react-icons/pi";
 import useSound from "use-sound";
@@ -190,44 +183,41 @@ export function SoundSettings({
   };
 
   return (
-    <Flex direction="column" gap="3">
-      <Text weight="medium" size="3">
+    <div className="flex flex-col gap-3">
+      <span className="font-medium text-base">
         {label}
-      </Text>
+      </span>
 
-      <Flex align="center" justify="between">
-        <Text size="2" color="gray">
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-gryt-muted">
           {description}
-        </Text>
+        </span>
         <Switch checked={enabled} onCheckedChange={onEnabledChange} />
-      </Flex>
+      </div>
 
       {enabled && (
         <>
           {/* Volume */}
-          <Flex direction="column" gap="2">
-            <Flex align="center" justify="between">
-              <Text weight="medium" size="2">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-sm">
                 Volume
-              </Text>
-              <Flex gap="1">
+              </span>
+              <div className="flex gap-1">
                 <Tooltip
-                  content={`Reset to default (${defaultVolume}%)`}
+                  title={`Reset to default (${defaultVolume}%)`}
                   side="top"
                 >
-                  <IconButton
-                    size="1"
-                    variant="ghost"
-                    color={volume !== defaultVolume ? "red" : "gray"}
+                  <IconButton tone="ghost" size="xsmall"
                     onClick={resetVolume}
                     disabled={volume === defaultVolume}
                   >
                     <PiArrowsClockwiseFill size={12} />
                   </IconButton>
                 </Tooltip>
-              </Flex>
-            </Flex>
-            <Flex align="center" gap="2">
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
               <Slider
                 min={0}
                 max={100}
@@ -239,31 +229,28 @@ export function SoundSettings({
                   }
                 }}
               />
-              <Text style={{ minWidth: "36px" }} size="2">
+              <span className="text-sm" style={{ minWidth: "36px" }}>
                 {volume}%
-              </Text>
-            </Flex>
-          </Flex>
+              </span>
+            </div>
+          </div>
 
           {/* Custom Sound File */}
-          <Flex direction="column" gap="2">
-            <Flex align="center" justify="between">
-              <Text weight="medium" size="2">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-sm">
                 Custom Sound File
-              </Text>
-              <Tooltip content="Reset to default sound" side="top">
-                <IconButton
-                  size="1"
-                  variant="ghost"
-                  color={customSoundFile ? "red" : "gray"}
+              </span>
+              <Tooltip title="Reset to default sound" side="top">
+                <IconButton tone="ghost" size="xsmall"
                   onClick={resetSound}
                   disabled={!customSoundFile}
                 >
                   <PiArrowsClockwiseFill size={12} />
                 </IconButton>
               </Tooltip>
-            </Flex>
-            <Flex align="center" gap="2">
+            </div>
+            <div className="flex items-center gap-2">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -271,38 +258,34 @@ export function SoundSettings({
                 onChange={handleFileUpload}
                 style={{ display: "none" }}
               />
-              <Button
-                variant="soft"
+              <Button tone="neutral" size="small"
                 onClick={() => fileInputRef.current?.click()}
                 style={{ flexGrow: 1 }}
               >
                 {customSoundFile ? "Change File" : "Choose File"}
               </Button>
-              <Tooltip content="Test sound" side="top">
+              <Tooltip title="Test sound" side="top">
                 {isPlaying ? (
-                  <Button
-                    variant="ghost"
-                    size="2"
+                  <Button tone="danger" size="small"
                     onClick={stopSoundTest}
-                    color="red"
                   >
                     <PiStopFill size={16} />
                   </Button>
                 ) : (
-                  <Button variant="ghost" size="2" onClick={testSound}>
+                  <Button tone="ghost" size="small" onClick={testSound}>
                     <PiPlayFill size={16} />
                   </Button>
                 )}
               </Tooltip>
-            </Flex>
+            </div>
             {customSoundFile && (
-              <Text size="1" color="green">
+              <span className="text-xs text-gryt-success">
                 ✓ Custom sound file loaded
-              </Text>
+              </span>
             )}
-          </Flex>
+          </div>
         </>
       )}
-    </Flex>
+    </div>
   );
 }

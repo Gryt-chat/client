@@ -1,5 +1,4 @@
-import { Avatar } from "@gryt/ui";
-import { Flex, Text, Tooltip } from "@radix-ui/themes";
+import { Avatar, Tooltip } from "@gryt/ui";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { PiMicrophoneSlashFill, PiScreencastFill, PiSpeakerSlashFill, PiVideoCameraFill } from "react-icons/pi";
@@ -111,7 +110,7 @@ export function VideoCard({
         overflow: "hidden",
         background: "#000",
         outline: isSpeaking
-          ? `${SPEAKING_RING}px solid var(--accent-9)`
+          ? `${SPEAKING_RING}px solid var(--gryt-accent-9)`
           : `${SPEAKING_RING}px solid transparent`,
         // Inward, because the tile fills its cell exactly. An outline is drawn
         // outside the border box, so at offset 0 the ring lands in the gap
@@ -141,29 +140,21 @@ export function VideoCard({
           }}
         />
       ) : (
-        <Flex
-          align="center"
-          justify="center"
-          style={{
+        <div className="flex items-center justify-center" style={{
             width: "100%",
             height: "100%",
-            color: "var(--gray-10)",
-            background: "var(--gray-3)",
-          }}
-        >
-          <Text size="1" color="gray">
+            color: "var(--gryt-neutral-10)",
+            background: "var(--gryt-neutral-3)",
+          }}>
+          <span className="text-xs text-gryt-muted">
             {pendingLabel}
-          </Text>
-        </Flex>
+          </span>
+        </div>
       )}
 
       {mutedBadge}
 
-      <Flex
-        align="center"
-        gap="1"
-        px="2"
-        style={{
+      <div className="flex items-center gap-1 px-2" style={{
           position: "absolute",
           // 12px in, 9px up — measured off Meet. The dark scrim that used to
           // sit behind this is gone: the tile's own colour carries the
@@ -173,18 +164,12 @@ export function VideoCard({
           left: 12,
           right: 12,
           padding: 0,
-        }}
-      >
-        <Text
-          size="3"
-          weight="medium"
-          style={{ color: "#fff", fontSize: 16, lineHeight: 1.2 }}
-          truncate
-        >
+        }}>
+        <span className="text-base font-medium truncate" style={{ color: "#fff", fontSize: 16, lineHeight: 1.2 }}>
           {nickname}
-        </Text>
+        </span>
         {statusIcons}
-      </Flex>
+      </div>
     </div>
   );
 }
@@ -217,10 +202,7 @@ function MutedBadge({
   const size = tileHeight >= 170 ? 28 : 20;
 
   return (
-    <Flex
-      align="center"
-      justify="center"
-      style={{
+    <div className="flex items-center justify-center" style={{
         position: "absolute",
         top: 12,
         right: 12,
@@ -231,14 +213,13 @@ function MutedBadge({
           ? `hsl(${tileHue(hueId, hueAvatarColor)} 45% 26%)`
           : "rgba(0, 0, 0, 0.6)",
         pointerEvents: "none",
-      }}
-    >
+      }}>
       {deafened ? (
         <PiSpeakerSlashFill size={Math.round(size * 0.55)} color="#fff" />
       ) : (
         <PiMicrophoneSlashFill size={Math.round(size * 0.55)} color="#fff" />
       )}
-    </Flex>
+    </div>
   );
 }
 
@@ -285,10 +266,10 @@ function useTileHeight(ref: React.RefObject<HTMLElement | null>): number {
 }
 
 function latencyColor(ms: number | null): string {
-  if (ms === null) return "var(--gray-9)";
-  if (ms < 30) return "var(--green-9)";
-  if (ms < 80) return "var(--yellow-9)";
-  return "var(--red-9)";
+  if (ms === null) return "var(--gryt-neutral-9)";
+  if (ms < 30) return "var(--gryt-success-9)";
+  if (ms < 80) return "var(--gryt-warning-9)";
+  return "var(--gryt-danger-9)";
 }
 
 function LatencyBadge({
@@ -312,17 +293,14 @@ function LatencyBadge({
   }
 
   return (
-    <Tooltip content={tooltipParts.join(" · ")}>
-      <Text
-        size="1"
-        style={{
+    <Tooltip title={tooltipParts.join(" · ")}>
+      <span className="text-xs" style={{
           color: latencyColor(oneWay),
           fontVariantNumeric: "tabular-nums",
           cursor: "default",
-        }}
-      >
+        }}>
         {Math.round(oneWay)}ms
-      </Text>
+      </span>
     </Tooltip>
   );
 }
@@ -485,7 +463,7 @@ export function VoiceParticipantCard({
           radius={tileRadius}
           objectFit="contain"
           pendingLabel="Connecting screen…"
-          statusIcons={<PiScreencastFill size={10} color="var(--blue-9)" />}
+          statusIcons={<PiScreencastFill size={10} color="var(--gryt-secondary-9)" />}
           onClick={
             screenStream
               ? () =>
@@ -536,17 +514,17 @@ export function VoiceParticipantCard({
       {/* Mute and deafen are the top-right badge now, not an icon in the name
           row. Everything else still belongs beside the name. */}
       {client.isAFK && (
-        <Text size="1" weight="bold" style={{ color: "#fff" }}>
+        <span className="text-xs font-bold" style={{ color: "#fff" }}>
           AFK
-        </Text>
+        </span>
       )}
 
       {(client.cameraEnabled || fallbackCameraStreamID) && (
-        <PiVideoCameraFill size={10} color="var(--green-9)" />
+        <PiVideoCameraFill size={10} color="var(--gryt-success-9)" />
       )}
 
       {client.screenShareEnabled && (
-        <PiScreencastFill size={10} color="var(--blue-9)" />
+        <PiScreencastFill size={10} color="var(--gryt-secondary-9)" />
       )}
 
       {/* Beside the name, the way the avatar tile does it. It used to sit
@@ -612,7 +590,7 @@ export function VoiceParticipantCard({
             }
       }
     >
-      <Flex align="center" justify="center" position="relative">
+      <div className="flex items-center justify-center relative">
         {!compact && (
           <SpeakingHalo analyser={speakingAnalyser} hue={hue} size={avatarPx} />
         )}
@@ -639,51 +617,32 @@ export function VoiceParticipantCard({
         />
 
         {(client.cameraEnabled || fallbackCameraStreamID) && (
-          <Flex
-            position="absolute"
-            top="-4px"
-            right="-4px"
-            style={{
-              background: "var(--green-9)",
+          <div className="flex absolute" style={{ top: "-4px", right: "-4px", background: "var(--gryt-success-9)",
               borderRadius: "50%",
-              padding: "2px",
-            }}
-          >
+              padding: "2px" }}>
             <PiVideoCameraFill size={10} color="white" />
-          </Flex>
+          </div>
         )}
 
         {client.screenShareEnabled && (
-          <Flex
-            position="absolute"
-            top="-4px"
-            left="-4px"
-            style={{
-              background: "var(--blue-9)",
+          <div className="flex absolute" style={{ top: "-4px", left: "-4px", background: "var(--gryt-secondary-9)",
               borderRadius: "50%",
-              padding: "2px",
-            }}
-          >
+              padding: "2px" }}>
             <PiScreencastFill size={10} color="white" />
-          </Flex>
+          </div>
         )}
 
         {isUserConnecting && (
-          <Flex
-            position="absolute"
-            align="center"
-            justify="center"
-            style={{
+          <div className="flex absolute items-center justify-center" style={{
               top: 0,
               left: 0,
               right: 0,
               bottom: 0,
-              background: "var(--color-panel-translucent)",
+              background: "var(--gryt-neutral-a3)",
               borderRadius: "50%",
-            }}
-          >
+            }}>
             <SkeletonBase width="24px" height="24px" borderRadius="50%" />
-          </Flex>
+          </div>
         )}
 
         {/* Mute state moved to the tile's top-right badge, so this chip is
@@ -691,32 +650,24 @@ export function VoiceParticipantCard({
             hang a badge on. */}
         {((compact && (client.isMuted || client.isDeafened)) ||
           client.isAFK) && (
-          <Flex
-            position="absolute"
-            bottom="-4px"
-            right="-4px"
-            gap="1"
-            style={{
-              background: "var(--gray-3)",
-              borderRadius: "var(--radius-4)",
+          <div className="flex absolute gap-1" style={{ bottom: "-4px", right: "-4px", background: "var(--gryt-neutral-3)",
+              borderRadius: "var(--gryt-radius-md)",
               padding: "2px 4px",
-              border: "1px solid var(--gray-6)",
-            }}
-          >
+              border: "1px solid var(--gryt-neutral-6)" }}>
             {compact && client.isDeafened ? (
-              <PiSpeakerSlashFill size={12} color="var(--red-9)" />
+              <PiSpeakerSlashFill size={12} color="var(--gryt-danger-9)" />
             ) : compact && client.isMuted ? (
-              <PiMicrophoneSlashFill size={12} color="var(--red-9)" />
+              <PiMicrophoneSlashFill size={12} color="var(--gryt-danger-9)" />
             ) : null}
 
             {client.isAFK && (
-              <Text size="1" weight="bold" color="orange">
+              <span className="text-xs font-bold text-gryt-warning">
                 AFK
-              </Text>
+              </span>
             )}
-          </Flex>
+          </div>
         )}
-      </Flex>
+      </div>
 
       {showMutedBadge && (
         <MutedBadge
@@ -728,12 +679,9 @@ export function VoiceParticipantCard({
       )}
 
       {compact ? (
-        <Text size="1">{client.nickname}</Text>
+        <span className="text-xs">{client.nickname}</span>
       ) : (
-        <Flex
-          align="center"
-          gap="2"
-          style={{
+        <div className="flex items-center gap-2" style={{
             // Bottom-left, 12 in and 9 up, measured off Meet. No scrim — the
             // tile's own colour carries the contrast.
             position: "absolute",
@@ -741,25 +689,20 @@ export function VoiceParticipantCard({
             left: isSmallTile ? 8 : 12,
             right: isSmallTile ? 8 : 12,
             minWidth: 0,
-          }}
-        >
-          <Text
-            weight="medium"
-            style={{
+          }}>
+          <span className="font-medium truncate" style={{
               color: "#fff",
               fontSize: isSmallTile ? 12 : 16,
               lineHeight: 1.2,
-            }}
-            truncate
-          >
+            }}>
             {client.nickname}
-          </Text>
+          </span>
           {/* The latency figure is the first thing to go when there is no room
               for it — the name has to survive, the number does not. */}
           {showPeerLatency && !isSmallTile && (
             <LatencyBadge stats={latencyStats} isSelf={isSelf} />
           )}
-        </Flex>
+        </div>
       )}
     </div>
   );

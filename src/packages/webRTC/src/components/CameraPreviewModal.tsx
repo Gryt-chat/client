@@ -1,5 +1,4 @@
-import { Checkbox } from "@gryt/ui";
-import { Badge, Button, Dialog, Flex, IconButton, Select, Text } from "@radix-ui/themes";
+import { Button, Checkbox, Chip, Dialog, IconButton, Select } from "@gryt/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PiArrowsClockwiseFill, PiVideoCameraFill, PiX } from "react-icons/pi";
 
@@ -261,25 +260,27 @@ export function CameraPreviewModal({
 
   return (
     <Dialog.Root open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
-      <Dialog.Content style={{ maxWidth: 520 }} aria-describedby={undefined}>
-        <Flex direction="column" gap="4">
-          <Flex align="center" justify="between">
-            <Flex align="center" gap="2">
+      <Dialog.Portal>
+        <Dialog.Backdrop />
+        <Dialog.Popup style={{ maxWidth: 520 }}>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
               <PiVideoCameraFill size={16} />
               <Dialog.Title>Camera Preview</Dialog.Title>
-            </Flex>
+            </div>
             <Dialog.Close>
-              <IconButton variant="ghost" color="gray" onClick={handleClose}>
+              <IconButton tone="ghost" size="xsmall" onClick={handleClose}>
                 <PiX size={16} />
               </IconButton>
             </Dialog.Close>
-          </Flex>
+          </div>
 
           <div
             style={{
               position: "relative",
               aspectRatio: "16 / 9",
-              borderRadius: "var(--radius-3)",
+              borderRadius: "var(--gryt-radius-md)",
               overflow: "hidden",
               background: "#000",
             }}
@@ -297,9 +298,7 @@ export function CameraPreviewModal({
               }}
             />
             {previewStream && actualRes && (
-              <Badge
-                variant="solid"
-                size="1"
+              <Chip tone="neutral"
                 style={{
                   position: "absolute",
                   top: 8,
@@ -311,103 +310,96 @@ export function CameraPreviewModal({
                 }}
               >
                 {actualRes.w}×{actualRes.h}
-              </Badge>
+              </Chip>
             )}
             {!previewStream && (
-              <Flex
-                align="center"
-                justify="center"
-                direction="column"
-                gap="2"
-                style={{ position: "absolute", inset: 0 }}
-              >
-                <Text size="2" color={previewError ? "red" : "gray"}>
+              <div className="flex items-center justify-center flex-col gap-2" style={{ position: "absolute", inset: 0 }}>
+                <span className="text-sm" color={previewError ? "red" : "gray"}>
                   {previewError ?? "Starting camera..."}
-                </Text>
+                </span>
                 {previewError && (
-                  <Button variant="soft" size="1" onClick={() => setRetryCount((c) => c + 1)}>
+                  <Button tone="neutral" size="xsmall" onClick={() => setRetryCount((c) => c + 1)}>
                     <PiArrowsClockwiseFill size={14} />
                     Retry
                   </Button>
                 )}
-              </Flex>
+              </div>
             )}
           </div>
 
-          <Flex direction="column" gap="3">
-            <Flex align="center" gap="3">
-              <Text size="2" style={{ minWidth: 60 }}>Camera</Text>
-              <Select.Root value={localCameraID} onValueChange={setLocalCameraID}>
-                <Select.Trigger variant="soft" style={{ flex: 1 }} />
-                <Select.Content position="popper" sideOffset={4}>
-                  {devices.length === 0 ? (
-                    <Select.Item value="__none__" disabled>No cameras found</Select.Item>
-                  ) : (
-                    devices.map((d, i) => (
-                      <Select.Item key={d.deviceId || i} value={d.deviceId || `device-${i}`}>
-                        {d.label || `Camera ${i + 1}`}
-                      </Select.Item>
-                    ))
-                  )}
-                </Select.Content>
-              </Select.Root>
-            </Flex>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+              <span className="text-sm" style={{ minWidth: 60 }}>Camera</span>
+              <Select
+                className="flex-1"
+                value={localCameraID}
+                onValueChange={(v) => setLocalCameraID(String(v))}
+                options={
+                  devices.length === 0
+                    ? [{ label: "No cameras found", value: "__none__", disabled: true }]
+                    : devices.map((d, i) => ({
+                        label: d.label || `Camera ${i + 1}`,
+                        value: d.deviceId || `device-${i}`,
+                      }))
+                }
+              />
+            </div>
 
-            <Flex align="center" gap="3">
-              <Text size="2" style={{ minWidth: 60 }}>Quality</Text>
-              <Select.Root value={localQuality} onValueChange={setLocalQuality}>
-                <Select.Trigger variant="soft" style={{ flex: 1 }} />
-                <Select.Content position="popper" sideOffset={4} style={{ maxHeight: 300 }}>
-                  {filteredOptions.map((o) => (
-                    <Select.Item key={o.value} value={o.value}>{o.label}</Select.Item>
-                  ))}
-                </Select.Content>
-              </Select.Root>
-            </Flex>
+            <div className="flex items-center gap-3">
+              <span className="text-sm" style={{ minWidth: 60 }}>Quality</span>
+              <Select
+                className="flex-1"
+                value={localQuality}
+                onValueChange={(v) => setLocalQuality(String(v))}
+                options={filteredOptions.map((o) => ({ label: o.label, value: o.value }))}
+              />
+            </div>
 
-            <Flex align="center" gap="3">
-              <Text size="2" style={{ minWidth: 60 }}>FPS</Text>
-              <Select.Root value={String(localFps)} onValueChange={(v) => setLocalFps(Number(v))}>
-                <Select.Trigger variant="soft" style={{ flex: 1 }} />
-                <Select.Content position="popper" sideOffset={4}>
-                  {CAMERA_FPS_OPTIONS.map((f) => (
-                    <Select.Item key={f} value={String(f)}>{f} FPS</Select.Item>
-                  ))}
-                </Select.Content>
-              </Select.Root>
-            </Flex>
+            <div className="flex items-center gap-3">
+              <span className="text-sm" style={{ minWidth: 60 }}>FPS</span>
+              <Select
+                className="flex-1"
+                value={String(localFps)}
+                onValueChange={(v) => setLocalFps(Number(v))}
+                options={CAMERA_FPS_OPTIONS.map((f) => ({
+                  label: `${f} FPS`,
+                  value: String(f),
+                }))}
+              />
+            </div>
 
-            <Text as="label" size="2" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+            <label className="text-sm" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
               <Checkbox checked={localFlipped} onCheckedChange={(v) => setLocalFlipped(v === true)} />
               Flip camera (affects what everyone sees)
-            </Text>
+            </label>
 
-            <Text as="label" size="2" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+            <label className="text-sm" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
               <Checkbox checked={localMirrored} onCheckedChange={(v) => setLocalMirrored(v === true)} />
               Mirror preview
-            </Text>
+            </label>
 
             {/* Here as well as in settings, because this is the moment you are
                 looking at your own framing and can see whether it needs it. */}
-            <Text as="label" size="2" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+            <label className="text-sm" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
               <Checkbox
                 checked={faceFramingEnabled}
                 onCheckedChange={(v) => setFaceFramingEnabled(v === true)}
               />
               Center my face automatically
-            </Text>
-          </Flex>
+            </label>
+          </div>
 
-          <Flex justify="end" gap="2">
-            <Button variant="soft" color="gray" onClick={handleClose}>
+          <div className="flex justify-end gap-2">
+            <Button tone="neutral" size="small" onClick={handleClose}>
               Cancel
             </Button>
-            <Button onClick={handleStart} disabled={!previewStream}>
+            <Button size="small" onClick={handleStart} disabled={!previewStream}>
               Start Camera
             </Button>
-          </Flex>
-        </Flex>
-      </Dialog.Content>
+          </div>
+        </div>
+      </Dialog.Popup>
+      </Dialog.Portal>
     </Dialog.Root>
   );
 }

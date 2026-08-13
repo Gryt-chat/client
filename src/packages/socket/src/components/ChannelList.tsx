@@ -1,4 +1,4 @@
-import { Box, Button, ContextMenu, Flex, Text, Tooltip } from "@radix-ui/themes";
+import { Button, ContextMenu, Tooltip } from "@gryt/ui";
 import { AnimatePresence, LayoutGroup, motion, Reorder } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PiChatCircleFill, PiGameControllerFill, PiGaugeFill, PiKeyboardFill, PiSpeakerHighFill } from "react-icons/pi";
@@ -119,25 +119,21 @@ export const ChannelList = ({
   }, [effectiveItems, channelById, serverHost]);
 
   const renderSeparator = (item: SidebarItem) => (
-    <Flex width="100%" position="relative" align="center" gap="2">
-      <Box style={{ height: 1, background: "var(--gray-6)", flex: 1, opacity: 0.7 }} />
+    <div className="flex w-full relative items-center gap-2">
+      <div style={{ height: 1, background: "var(--gryt-neutral-6)", flex: 1, opacity: 0.7 }} />
       {item.label ? (
-        <Text size="1" color="gray">
+        <span className="text-xs text-gryt-muted">
           <EmojiText text={item.label} />
-        </Text>
+        </span>
       ) : null}
-      <Box style={{ height: 1, background: "var(--gray-6)", flex: 1, opacity: 0.7 }} />
-    </Flex>
+      <div style={{ height: 1, background: "var(--gryt-neutral-6)", flex: 1, opacity: 0.7 }} />
+    </div>
   );
 
   const renderSpacer = (item: SidebarItem) => {
     const h = Math.max(0, Math.min(500, Math.floor(item.spacerHeight ?? 16)));
     return (
-      <Box
-        width="100%"
-        position="relative"
-        style={{ height: h }}
-      />
+      <div className="w-full relative" style={{ height: h }} />
     );
   };
 
@@ -148,25 +144,16 @@ export const ChannelList = ({
     const isUnread = !!channel && channel.id !== selectedChannelId && !!unreadChannelIds?.has(channel.id);
 
     return (
-      <Flex direction="column" align="start" width="100%" position="relative">
+      <div className="flex flex-col items-start w-full relative">
         {isUnread && (
-          <Box
-            position="absolute"
-            top="-2px"
-            right="-2px"
-            style={{
-              width: 8,
+          <div className="absolute" style={{ top: "-2px", right: "-2px", width: 8,
               height: 8,
               borderRadius: "50%",
-              backgroundColor: "var(--accent-9)",
+              backgroundColor: "var(--gryt-accent-9)",
               zIndex: 1,
-              pointerEvents: "none",
-            }}
-          />
+              pointerEvents: "none" }} />
         )}
-        <Button
-          variant={channel?.id === selectedChannelId ? "solid" : "soft"}
-          radius="large"
+        <Button size="small"
           style={{
             width: "100%",
             justifyContent: "start",
@@ -176,43 +163,43 @@ export const ChannelList = ({
             if (channel) onChannelClick(channel);
           }}
         >
-          <Flex align="center" style={{ flexShrink: 0 }}>
+          <div className="flex items-center" style={{ flexShrink: 0 }}>
             {channel?.type === "voice" ? <PiSpeakerHighFill size={16} /> : <PiChatCircleFill size={16} />}
-          </Flex>
-          <Text truncate style={{ flex: 1, minWidth: 0, textAlign: "left", display: "block" }}>
+          </div>
+          <span className="truncate" style={{ flex: 1, minWidth: 0, textAlign: "left", display: "block" }}>
             <EmojiText text={channel?.name || "(missing channel)"} />
-          </Text>
+          </span>
           {hasIndicators && (
-            <Flex gap="1" align="center" style={{ marginLeft: "auto", flexShrink: 0 }}>
+            <div className="flex gap-1 items-center" style={{ marginLeft: "auto", flexShrink: 0 }}>
               {channel!.eSportsMode && (
-                <Tooltip content="eSports mode">
-                  <Flex align="center" style={{ color: "var(--gray-9)" }}>
+                <Tooltip title="eSports mode">
+                  <div className="flex items-center" style={{ color: "var(--gryt-neutral-9)" }}>
                     <PiGameControllerFill size={14} />
-                  </Flex>
+                  </div>
                 </Tooltip>
               )}
               {channel!.requirePushToTalk && (
-                <Tooltip content="Push to Talk required">
-                  <Flex align="center" style={{ color: "var(--gray-9)" }}>
+                <Tooltip title="Push to Talk required">
+                  <div className="flex items-center" style={{ color: "var(--gryt-neutral-9)" }}>
                     <PiKeyboardFill size={14} />
-                  </Flex>
+                  </div>
                 </Tooltip>
               )}
               {channel!.disableRnnoise && (
-                <Tooltip content="Noise suppression disabled">
-                  <Text size="1" weight="bold" style={{ color: "var(--gray-9)", fontSize: 9, lineHeight: 1, padding: "1px 3px", border: "1px solid var(--gray-7)", borderRadius: "var(--radius-1)" }}>
+                <Tooltip title="Noise suppression disabled">
+                  <span className="text-xs font-bold" style={{ color: "var(--gryt-neutral-9)", fontSize: 9, lineHeight: 1, padding: "1px 3px", border: "1px solid var(--gryt-neutral-7)", borderRadius: "var(--gryt-radius-sm)" }}>
                     RAW
-                  </Text>
+                  </span>
                 </Tooltip>
               )}
               {channel!.maxBitrate && (
-                <Tooltip content={`Max bitrate: ${Math.round(channel!.maxBitrate! / 1000)} kbps`}>
-                  <Flex align="center" style={{ color: "var(--gray-9)" }}>
+                <Tooltip title={`Max bitrate: ${Math.round(channel!.maxBitrate! / 1000)} kbps`}>
+                  <div className="flex items-center" style={{ color: "var(--gryt-neutral-9)" }}>
                     <PiGaugeFill size={14} />
-                  </Flex>
+                  </div>
                 </Tooltip>
               )}
-            </Flex>
+            </div>
           )}
           {channel?.type === "voice" &&
             isConnecting &&
@@ -237,15 +224,10 @@ export const ChannelList = ({
                 transition={{ duration: 0.25 }}
                 style={{ overflow: "hidden", width: "100%" }}
               >
-                <Flex
-                  width="100%"
-                  pt="2"
-                  direction="column"
-                  style={{
-                    background: "var(--gray-3)",
-                    borderRadius: "0 0 var(--radius-5) var(--radius-5)",
-                  }}
-                >
+                <div className="flex w-full pt-2 flex-col" style={{
+                    background: "var(--gryt-neutral-3)",
+                    borderRadius: "0 0 var(--gryt-radius-lg) var(--gryt-radius-lg)",
+                  }}>
                   {Object.keys(clients)?.map(
                     (id) =>
                       clients[id].voiceChannelId === channelId && (
@@ -300,12 +282,12 @@ export const ChannelList = ({
                         />
                       )
                   )}
-                </Flex>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
         )}
-      </Flex>
+      </div>
     );
   };
 
@@ -326,10 +308,12 @@ export const ChannelList = ({
     return (
       <ContextMenu.Root>
         <ContextMenu.Trigger>{content}</ContextMenu.Trigger>
-        <ContextMenu.Content>
-          <ContextMenu.Label style={{ fontWeight: "bold" }}>
+        <ContextMenu.Portal>
+          <ContextMenu.Positioner>
+            <ContextMenu.Popup>
+          <ContextMenu.GroupLabel style={{ fontWeight: "bold" }}>
             <EmojiText text={label} disableTooltip />
-          </ContextMenu.Label>
+          </ContextMenu.GroupLabel>
           <ContextMenu.Item onClick={() => onEditItem?.(item)}>
             Edit
           </ContextMenu.Item>
@@ -341,10 +325,12 @@ export const ChannelList = ({
             Move down
           </ContextMenu.Item>
           <ContextMenu.Separator />
-          <ContextMenu.Item color="red" onClick={() => onDeleteItem?.(item)}>
+          <ContextMenu.Item className="text-gryt-danger" onClick={() => onDeleteItem?.(item)}>
             Delete
           </ContextMenu.Item>
-        </ContextMenu.Content>
+        </ContextMenu.Popup>
+          </ContextMenu.Positioner>
+        </ContextMenu.Portal>
       </ContextMenu.Root>
     );
   };
@@ -375,7 +361,7 @@ export const ChannelList = ({
 
   const staticList = (
     <LayoutGroup id={serverHost}>
-      <Flex direction="column" gap="3" align="center" width="100%">
+      <div className="flex flex-col gap-3 items-center w-full">
         <AnimatePresence initial={false} mode="popLayout">
           {displayItems.map((item, index) => (
             <motion.div
@@ -395,7 +381,7 @@ export const ChannelList = ({
             </motion.div>
           ))}
         </AnimatePresence>
-      </Flex>
+      </div>
     </LayoutGroup>
   );
 
@@ -430,7 +416,7 @@ export const ChannelList = ({
               boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
               cursor: "grabbing",
               zIndex: 50,
-              borderRadius: "var(--radius-4)",
+              borderRadius: "var(--gryt-radius-md)",
             }}
             onDragStart={() => { isDragging.current = true; }}
             onDragEnd={handleDragEnd}
@@ -450,7 +436,9 @@ export const ChannelList = ({
           <div style={{ flex: 1 }} />
         </div>
       </ContextMenu.Trigger>
-      <ContextMenu.Content>
+      <ContextMenu.Portal>
+        <ContextMenu.Positioner>
+          <ContextMenu.Popup>
         <ContextMenu.Item onClick={() => onAddItem?.("channel:text")}>
           Add channel
         </ContextMenu.Item>
@@ -461,7 +449,9 @@ export const ChannelList = ({
         <ContextMenu.Item onClick={() => onAddItem?.("spacer")}>
           Add spacer
         </ContextMenu.Item>
-      </ContextMenu.Content>
+      </ContextMenu.Popup>
+        </ContextMenu.Positioner>
+      </ContextMenu.Portal>
     </ContextMenu.Root>
   );
 };

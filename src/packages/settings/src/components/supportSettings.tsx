@@ -1,4 +1,4 @@
-import { Button, Card, Flex, Heading, Text } from "@radix-ui/themes";
+import { Button, Surface } from "@gryt/ui";
 import { FaGithub } from "react-icons/fa";
 import { PiArrowSquareOutFill } from "react-icons/pi";
 import { SiKofi } from "react-icons/si";
@@ -11,51 +11,57 @@ const KOFI_URL = "https://ko-fi.com/sivert";
 export function SupportSettings() {
   return (
     <SettingsContainer>
-      <Heading size="4">Support Gryt</Heading>
+      <h2 className="text-lg">Support Gryt</h2>
 
-      <Text size="2" color="gray">
+      <span className="text-sm text-gryt-muted">
         Gryt is free and open source. Stars and donations help keep it going.
-      </Text>
+      </span>
 
-      <Card size="2">
-        <Flex direction="column" gap="3">
-          <Flex align="center" gap="2">
+      <Surface className="p-4">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
             <FaGithub size={18} />
-            <Text size="3" weight="medium">Star on GitHub</Text>
-          </Flex>
-          <Text size="2" color="gray">
+            <span className="text-base font-medium">Star on GitHub</span>
+          </div>
+          <span className="text-sm text-gryt-muted">
             A star helps others discover Gryt and shows that people find it
             useful.
-          </Text>
-          <Button variant="soft" size="2" asChild>
-            <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
-              <FaGithub size={16} />
-              Star on GitHub
-              <PiArrowSquareOutFill size={14} />
-            </a>
+          </span>
+          <Button size="small"
+            tone="neutral"
+            render={
+              <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" />
+            }
+          >
+            <FaGithub size={16} />
+            Star on GitHub
+            <PiArrowSquareOutFill size={14} />
           </Button>
-        </Flex>
-      </Card>
+        </div>
+      </Surface>
 
-      <Card size="2">
-        <Flex direction="column" gap="3">
-          <Flex align="center" gap="2">
+      <Surface className="p-4">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
             <SiKofi size={18} />
-            <Text size="3" weight="medium">Donate on Ko-fi</Text>
-          </Flex>
-          <Text size="2" color="gray">
+            <span className="text-base font-medium">Donate on Ko-fi</span>
+          </div>
+          <span className="text-sm text-gryt-muted">
             Donations go directly toward hosting, development, and keeping Gryt
             free for everyone.
-          </Text>
-          <Button variant="soft" size="2" asChild>
-            <a href={KOFI_URL} target="_blank" rel="noopener noreferrer">
-              <SiKofi size={16} />
-              Donate on Ko-fi
-              <PiArrowSquareOutFill size={14} />
-            </a>
+          </span>
+          <Button size="small"
+            tone="neutral"
+            render={
+              <a href={KOFI_URL} target="_blank" rel="noopener noreferrer" />
+            }
+          >
+            <SiKofi size={16} />
+            Donate on Ko-fi
+            <PiArrowSquareOutFill size={14} />
           </Button>
-        </Flex>
-      </Card>
+        </div>
+      </Surface>
     </SettingsContainer>
   );
 }

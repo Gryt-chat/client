@@ -1,4 +1,4 @@
-import { Button, Flex, Separator, Text } from "@radix-ui/themes";
+import { Button, Divider } from "@gryt/ui";
 import { nameToEmoji } from "gemoji";
 import { useCallback, useMemo } from "react";
 
@@ -102,7 +102,7 @@ export function SmileySettings() {
   );
 
   return (
-    <Flex direction="column" gap="3">
+    <div className="flex flex-col gap-3">
       <ToggleSetting
         title="Smiley conversion"
         description="Automatically convert text smileys like :) and :D into emoji"
@@ -111,22 +111,22 @@ export function SmileySettings() {
       />
 
       {smileyConversion && (
-        <Flex direction="column" gap="3" pl="1">
-          <Flex gap="2">
-            <Button size="1" variant="soft" onClick={enableAll}>
+        <div className="flex flex-col gap-3 pl-1">
+          <div className="flex gap-2">
+            <Button tone="neutral" size="xsmall" onClick={enableAll}>
               Enable All
             </Button>
-            <Button size="1" variant="soft" color="gray" onClick={disableAll}>
+            <Button tone="neutral" size="xsmall" onClick={disableAll}>
               Disable All
             </Button>
-          </Flex>
+          </div>
 
           {CATEGORY_ORDER.map((cat) => (
-            <Flex key={cat.label} direction="column" gap="1">
-              <Text size="1" color="gray" weight="medium">
+            <div className="flex flex-col gap-1" key={cat.label}>
+              <span className="text-gryt-muted font-medium">
                 {cat.label}
-              </Text>
-              <Flex gap="2" wrap="wrap">
+              </span>
+              <div className="flex gap-2 flex-wrap">
                 {cat.shortcodes.map((sc) => {
                   const emoji = nameToEmoji[sc];
                   if (!emoji) return null;
@@ -143,8 +143,8 @@ export function SmileySettings() {
                         gap: 4,
                         padding: "3px 8px",
                         borderRadius: 6,
-                        border: "1px solid var(--gray-a6)",
-                        background: active ? "var(--accent-a3)" : "var(--gray-a2)",
+                        border: "1px solid var(--gryt-neutral-a6)",
+                        background: active ? "var(--gryt-accent-a3)" : "var(--gryt-neutral-a2)",
                         opacity: active ? 1 : 0.4,
                         cursor: "pointer",
                         fontSize: 13,
@@ -153,23 +153,23 @@ export function SmileySettings() {
                       }}
                     >
                       <span style={{ fontSize: 16 }}>{emoji}</span>
-                      <span style={{ color: "var(--gray-11)", fontFamily: "var(--code-font-family, monospace)" }}>
+                      <span style={{ color: "var(--gryt-neutral-11)", fontFamily: "var(--code-font-family, monospace)" }}>
                         {primarySmiley(sc)}
                       </span>
                     </button>
                   );
                 })}
-              </Flex>
-            </Flex>
+              </div>
+            </div>
           ))}
 
-          <Separator size="4" />
-          <Text size="1" color="gray">
+          <Divider />
+          <span className="text-gryt-muted">
             Click a chip to toggle that conversion on or off. Disabled
             smileys stay as typed text.
-          </Text>
-        </Flex>
+          </span>
+        </div>
       )}
-    </Flex>
+    </div>
   );
 }

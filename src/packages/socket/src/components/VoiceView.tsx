@@ -13,7 +13,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Button, Flex, IconButton, Text, Tooltip } from "@radix-ui/themes";
+import { Button, IconButton, Tooltip } from "@gryt/ui";
 import { AnimatePresence, motion } from "motion/react";
 import type { CSSProperties, ReactNode } from "react";
 import {
@@ -249,7 +249,7 @@ function SortableParticipant({
     opacity: isDragging ? 0.85 : 1,
     zIndex: isDragging ? 10 : undefined,
     cursor: isDragging ? "grabbing" : "grab",
-    borderRadius: "var(--radius-5)",
+    borderRadius: "var(--gryt-radius-lg)",
     boxShadow: isDragging ? "0 8px 24px rgba(0,0,0,0.35)" : undefined,
     // Fill whatever the parent allots. Without this the card underneath sizes
     // against an auto-width box instead of its grid cell.
@@ -369,14 +369,12 @@ export const VoiceView = ({
 
     toast(
       (t) => (
-        <Flex align="center" gap="3">
-          <Text size="2">
+        <div className="flex items-center gap-3">
+          <span className="text-sm">
             {reasons[micUnavailable]} — you can hear others, but they cannot
             hear you.
-          </Text>
-          <Button
-            size="1"
-            variant="soft"
+          </span>
+          <Button tone="neutral" size="xsmall"
             onClick={() => {
               toast.dismiss(t.id);
               setSettingsTab("sound-video");
@@ -385,7 +383,7 @@ export const VoiceView = ({
           >
             Open settings
           </Button>
-        </Flex>
+        </div>
       ),
       {
         // Fixed id so a reconnect or a re-render cannot stack duplicates.
@@ -414,14 +412,12 @@ export const VoiceView = ({
 
     toast(
       (t) => (
-        <Flex align="center" gap="3">
-          <Text size="2">
+        <div className="flex items-center gap-3">
+          <span className="text-sm">
             Your microphone is not picking up any sound — others cannot hear
             you. Check the selected device, and that it is not muted.
-          </Text>
-          <Button
-            size="1"
-            variant="soft"
+          </span>
+          <Button tone="neutral" size="xsmall"
             onClick={() => {
               toast.dismiss(t.id);
               setSettingsTab("sound-video");
@@ -430,7 +426,7 @@ export const VoiceView = ({
           >
             Open settings
           </Button>
-        </Flex>
+        </div>
       ),
       {
         // Same fixed-id reasoning as above.
@@ -1021,25 +1017,19 @@ export const VoiceView = ({
       transition={{ duration: 0.2 }}
       style={{ width: size.width, height: size.height, flexShrink: 0 }}
     >
-      <Flex
-        align="center"
-        justify="center"
-        direction="column"
-        gap="1"
-        style={{
+      <div className="flex items-center justify-center flex-col gap-1" style={{
           width: "100%",
           height: "100%",
           borderRadius: tileRadius(size.height),
-          background: "var(--gray-4)",
-        }}
-      >
-        <Text size="5" weight="medium" style={{ color: "var(--gray-12)" }}>
+          background: "var(--gryt-neutral-4)",
+        }}>
+        <span className="text-xl font-medium" style={{ color: "var(--gryt-neutral-12)" }}>
           +{hiddenCount}
-        </Text>
-        <Text size="1" style={{ color: "var(--gray-11)" }}>
+        </span>
+        <span className="text-xs" style={{ color: "var(--gryt-neutral-11)" }}>
           {hiddenCount === 1 ? "other" : "others"}
-        </Text>
-      </Flex>
+        </span>
+      </div>
     </motion.div>
   );
 
@@ -1156,16 +1146,10 @@ export const VoiceView = ({
               }),
       }}
     >
-      <Flex
-        style={{
-          background: "var(--gray-3)",
-          borderRadius: "var(--radius-5)",
-        }}
-        height="100%"
-        width="100%"
-        direction="column"
-        p="3"
-      >
+      <div className="flex h-full w-full flex-col p-3" style={{
+          background: "var(--gryt-neutral-3)",
+          borderRadius: "var(--gryt-radius-lg)",
+        }}>
         <div
           ref={gridRef}
           style={{
@@ -1275,10 +1259,10 @@ export const VoiceView = ({
                   isFocused
                     ? {
                         display: "flex",
-                        gap: "var(--space-2)",
+                        gap: "8px",
                         overflowX: "auto",
                         overflowY: "hidden",
-                        padding: "var(--space-2) 3px 3px",
+                        padding: "8px 3px 3px",
                         flexShrink: 0,
                       }
                     : {
@@ -1488,22 +1472,16 @@ export const VoiceView = ({
                   </div>
 
                   {onToggleMaximize && (
-                    <Flex
-                      gap="2"
-                      style={{
+                    <div className="flex gap-2" style={{
                         position: "absolute",
                         right: 12,
                         bottom: 12,
                         pointerEvents: "auto",
-                      }}
-                    >
+                      }}>
                       <Tooltip
-                        content={isFullscreen ? "Leave fullscreen" : "Fullscreen"}
-                        delayDuration={300}
+                        title={isFullscreen ? "Leave fullscreen" : "Fullscreen"}
                       >
-                        <IconButton
-                          variant="soft"
-                          color="gray"
+                        <IconButton tone="neutral" size="xsmall"
                           aria-label={
                             isFullscreen
                               ? "Leave fullscreen"
@@ -1524,12 +1502,9 @@ export const VoiceView = ({
                           sitting there doing nothing. */}
                       {!isFullscreen && (
                         <Tooltip
-                          content={isMaximized ? "Restore" : "Maximize"}
-                          delayDuration={300}
+                          title={isMaximized ? "Restore" : "Maximize"}
                         >
-                          <IconButton
-                            variant="soft"
-                            color="gray"
+                          <IconButton tone="neutral" size="xsmall"
                             aria-label={
                               isMaximized
                                 ? "Restore voice view"
@@ -1545,7 +1520,7 @@ export const VoiceView = ({
                           </IconButton>
                         </Tooltip>
                       )}
-                    </Flex>
+                    </div>
                   )}
                 </motion.div>
               )}
@@ -1554,35 +1529,26 @@ export const VoiceView = ({
         </div>
 
         {isFocused && currentServerConnected && (
-          <Flex
-            justify="center"
-            align="center"
-            py="2"
-            flexShrink="0"
-            style={{ position: "relative" }}
-          >
+          <div className="flex justify-center items-center py-2 shrink-0" style={{ position: "relative" }}>
             <Controls onDisconnect={onDisconnect} />
 
             {onToggleChat && (
-              <Flex style={{ position: "absolute", right: 0 }}>
+              <div className="flex" style={{ position: "absolute", right: 0 }}>
                 <Tooltip
-                  content={chatHidden ? "Show chat" : "Hide chat"}
-                  delayDuration={300}
+                  title={chatHidden ? "Show chat" : "Hide chat"}
                 >
-                  <IconButton
-                    variant="soft"
-                    color="gray"
+                  <IconButton tone="neutral" size="xsmall"
                     onClick={onToggleChat}
                     style={{ opacity: chatHidden ? 0.5 : 1 }}
                   >
                     <PiChatCircleFill size={16} />
                   </IconButton>
                 </Tooltip>
-              </Flex>
+              </div>
             )}
-          </Flex>
+          </div>
         )}
-      </Flex>
+      </div>
     </motion.div>
   );
 };

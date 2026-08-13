@@ -1,4 +1,4 @@
-import { AlertDialog, Button, Flex } from "@radix-ui/themes";
+import { AlertDialog, Button } from "@gryt/ui";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getServerAccessToken, getServerHttpBase } from "@/common";
@@ -50,10 +50,10 @@ const LinkPreviewSkeleton = memo(({ url, onDismiss }: { url: string; onDismiss: 
               <SkeletonBase width={16} height={16} borderRadius="2px" />
               <span className="link-embed-card-hostname">{hostname}</span>
             </div>
-            <SkeletonBase width="70%" height={14} borderRadius="var(--radius-2)" />
-            <SkeletonBase width="55%" height={14} borderRadius="var(--radius-2)" />
-            <SkeletonBase width="90%" height={12} borderRadius="var(--radius-2)" />
-            <SkeletonBase width="75%" height={12} borderRadius="var(--radius-2)" />
+            <SkeletonBase width="70%" height={14} borderRadius="var(--gryt-radius-sm)" />
+            <SkeletonBase width="55%" height={14} borderRadius="var(--gryt-radius-sm)" />
+            <SkeletonBase width="90%" height={12} borderRadius="var(--gryt-radius-sm)" />
+            <SkeletonBase width="75%" height={12} borderRadius="var(--gryt-radius-sm)" />
           </div>
           <div className="link-embed-card-image-wrap">
             <SkeletonBase width="100%" height="100%" borderRadius="0" />
@@ -145,8 +145,7 @@ const LinkPreviewCard = memo(({
               </div>
             )}
           </div>
-          <div
-            className="link-embed-card-image-wrap"
+          <div className="link-embed-card-image-wrap"
             style={
               data.imageWidth && data.imageHeight
                 ? { aspectRatio: `${data.imageWidth} / ${data.imageHeight}` }
@@ -219,7 +218,7 @@ export const MessageEmbeds = memo(({
 
   return (
     <>
-      <Flex direction="column" gap="2" style={{ marginTop: "4px" }}>
+      <div className="flex flex-col gap-2" style={{ marginTop: "4px" }}>
         {visibleUrls.map((url) => {
           const onDismiss = () => setPendingDismissUrl(url);
           const type = getEmbedType(url);
@@ -250,23 +249,26 @@ export const MessageEmbeds = memo(({
               return <LinkPreviewCard key={url} url={url} serverHost={serverHost} onDismiss={onDismiss} />;
           }
         })}
-      </Flex>
+      </div>
 
       <AlertDialog.Root open={!!pendingDismissUrl} onOpenChange={(open) => { if (!open) setPendingDismissUrl(null); }}>
-        <AlertDialog.Content maxWidth="400px">
+        <AlertDialog.Portal>
+          <AlertDialog.Backdrop />
+          <AlertDialog.Popup className="max-w-100">
           <AlertDialog.Title>Remove embed?</AlertDialog.Title>
-          <AlertDialog.Description size="2">
+          <AlertDialog.Description>
             This hides the embed for you. Edit the message to bring it back.
           </AlertDialog.Description>
-          <Flex gap="3" mt="4" justify="end">
-            <AlertDialog.Cancel>
-              <Button variant="soft" color="gray">Cancel</Button>
-            </AlertDialog.Cancel>
-            <AlertDialog.Action>
-              <Button variant="solid" color="red" onClick={confirmDismiss}>Remove</Button>
-            </AlertDialog.Action>
-          </Flex>
-        </AlertDialog.Content>
+          <div className="flex gap-3 mt-4 justify-end">
+            <AlertDialog.Close render={<span />}>
+              <Button tone="neutral" size="small">Cancel</Button>
+            </AlertDialog.Close>
+            <AlertDialog.Close render={<span />}>
+              <Button tone="danger" size="small" onClick={confirmDismiss}>Remove</Button>
+            </AlertDialog.Close>
+          </div>
+        </AlertDialog.Popup>
+        </AlertDialog.Portal>
       </AlertDialog.Root>
     </>
   );

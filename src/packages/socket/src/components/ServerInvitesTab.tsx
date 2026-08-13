@@ -1,5 +1,4 @@
-import { Switch, TextField } from "@gryt/ui";
-import { Button, Card, Flex, Text } from "@radix-ui/themes";
+import { Button, Surface, Switch, TextField } from "@gryt/ui";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { PiCopyFill, PiPlus } from "react-icons/pi";
@@ -168,78 +167,78 @@ export function ServerInvitesTab({
   };
 
   return (
-    <Flex direction="column" gap="4">
-      <Text size="2">
+    <div className="flex flex-col gap-4">
+      <span className="text-sm">
         This server is invite-only. Create invite codes to share with people you want to join.
-      </Text>
+      </span>
 
-      <Card>
-        <Flex direction="column" gap="3">
-          <Flex gap="3" wrap="wrap">
-            <Flex align="center" gap="2" style={{ minWidth: 170, paddingTop: 22 }}>
+      <Surface>
+        <div className="flex flex-col gap-3">
+          <div className="flex gap-3 flex-wrap">
+            <div className="flex items-center gap-2" style={{ minWidth: 170, paddingTop: 22 }}>
               <Switch checked={infiniteUses} onCheckedChange={setInfiniteUses} />
-              <Text size="2" weight="medium">
+              <span className="text-sm font-medium">
                 Infinite uses
-              </Text>
-            </Flex>
-            <Flex direction="column" gap="1" style={{ minWidth: 140 }}>
-              <Text size="2" weight="medium">
+              </span>
+            </div>
+            <div className="flex flex-col gap-1" style={{ minWidth: 140 }}>
+              <span className="text-sm font-medium">
                 Max uses
-              </Text>
+              </span>
               <TextField
                 value={infiniteUses ? "∞" : maxUses}
                 onChange={(e) => setMaxUses(e.target.value)}
                 placeholder="1"
                 disabled={infiniteUses}
               />
-            </Flex>
-            <Flex direction="column" gap="1" style={{ minWidth: 180 }}>
-              <Text size="2" weight="medium">
+            </div>
+            <div className="flex flex-col gap-1" style={{ minWidth: 180 }}>
+              <span className="text-sm font-medium">
                 Expires (hours)
-              </Text>
+              </span>
               <TextField
                 value={expiresInHours}
                 onChange={(e) => setExpiresInHours(e.target.value)}
                 placeholder="e.g. 24"
               />
-            </Flex>
-            <Flex direction="column" gap="1" style={{ minWidth: 180 }}>
-              <Text size="2" weight="medium">
+            </div>
+            <div className="flex flex-col gap-1" style={{ minWidth: 180 }}>
+              <span className="text-sm font-medium">
                 Custom code
-              </Text>
+              </span>
               <TextField
                 value={customCode}
                 onChange={(e) => setCustomCode(e.target.value.replace(/[^a-zA-Z0-9_-]/g, ""))}
                 placeholder="Leave blank for random"
               />
-            </Flex>
-            <Flex direction="column" gap="1" style={{ flex: 1, minWidth: 220 }}>
-              <Text size="2" weight="medium">
+            </div>
+            <div className="flex flex-col gap-1" style={{ flex: 1, minWidth: 220 }}>
+              <span className="text-sm font-medium">
                 Note
-              </Text>
+              </span>
               <TextField value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />
-            </Flex>
-          </Flex>
-          <Flex justify="end" gap="2">
-            <Button onClick={refresh} disabled={creating || loading}>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button size="small" onClick={refresh} disabled={creating || loading}>
               Refresh
             </Button>
-            <Button onClick={create} disabled={creating}>
+            <Button size="small" onClick={create} disabled={creating}>
               <PiPlus size={16} />
               Create invite
             </Button>
-          </Flex>
-        </Flex>
-      </Card>
+          </div>
+        </div>
+      </Surface>
 
-      <Flex direction="column" gap="2">
-        <Text size="2" weight="medium">
+      <div className="flex flex-col gap-2">
+        <span className="text-sm font-medium">
           Active &amp; past invites
-        </Text>
+        </span>
         {invites.length === 0 ? (
-          <Text size="2">
+          <span className="text-sm">
             No invites yet.
-          </Text>
+          </span>
         ) : (
           invites.map((i) => {
             const expiry = formatExpiry(toDate(i.expiresAt));
@@ -248,43 +247,43 @@ export function ServerInvitesTab({
               ? `${typeof i.usesConsumed === "number" ? i.usesConsumed : 0} / ∞`
               : formatUses(i.usesRemaining, i.maxUses);
             return (
-              <Card key={i.code}>
-                <Flex direction="column" gap="2">
-                  <Flex align="center" justify="between" gap="2" wrap="wrap">
-                    <Flex direction="column" gap="1">
-                      <Text size="2" weight="bold">
+              <Surface key={i.code}>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-sm font-bold">
                         {i.code}
-                      </Text>
-                      <Text size="1">
+                      </span>
+                      <span className="text-xs">
                         Uses: {uses} · Expires: {expiry}
                         {i.revoked ? " · Revoked" : ""}
-                      </Text>
+                      </span>
                       {i.note ? (
-                        <Text size="1">
+                        <span className="text-xs">
                           {i.note}
-                        </Text>
+                        </span>
                       ) : null}
-                    </Flex>
-                    <Flex gap="2">
-                      <Button onClick={() => copy(i.code)}>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="small" onClick={() => copy(i.code)}>
                         <PiCopyFill size={16} />
                         Copy
                       </Button>
-                      <Button
+                      <Button size="small"
                         disabled={!!i.revoked}
                         onClick={() => revoke(i.code)}
                       >
                         Revoke
                       </Button>
-                    </Flex>
-                  </Flex>
-                </Flex>
-              </Card>
+                    </div>
+                  </div>
+                </div>
+              </Surface>
             );
           })
         )}
-      </Flex>
-    </Flex>
+      </div>
+    </div>
   );
 }
 

@@ -134,13 +134,13 @@ export function MicrophoneDebugOverlay({ isVisible }: MicrophoneDebugOverlayProp
     >
       {/* Device Information */}
       <div style={{ marginBottom: "8px" }}>
-        <div style={{ color: "var(--blue-11)", fontWeight: "bold" }}>Device:</div>
+        <div style={{ color: "var(--gryt-secondary-11)", fontWeight: "bold" }}>Device:</div>
         <div style={{ marginLeft: "8px", fontSize: "11px" }}>
           <div>ID: {micID ? micID.slice(0, 8) + "..." : "None"}</div>
           <div>Name: {currentDevice?.label || "Unknown"}</div>
           <div>Available: {devicesLoading ? "Loading..." : devicesError ? "Error" : `${devices.length} devices`}</div>
           {devicesError && (
-            <div style={{ color: "var(--red-11)", fontSize: "10px" }}>
+            <div style={{ color: "var(--gryt-danger-11)", fontSize: "10px" }}>
               {devicesError}
             </div>
           )}
@@ -149,7 +149,7 @@ export function MicrophoneDebugOverlay({ isVisible }: MicrophoneDebugOverlayProp
 
       {/* Audio Levels */}
       <div style={{ marginBottom: "8px" }}>
-        <div style={{ color: "var(--blue-11)", fontWeight: "bold" }}>Audio Levels:</div>
+        <div style={{ color: "var(--gryt-secondary-11)", fontWeight: "bold" }}>Audio Levels:</div>
         <div style={{ marginLeft: "8px", fontSize: "11px" }}>
           <div>Raw: {rawVolume.toFixed(1)}%</div>
           <div>Processed: {processedVolume.toFixed(1)}%</div>
@@ -159,7 +159,7 @@ export function MicrophoneDebugOverlay({ isVisible }: MicrophoneDebugOverlayProp
 
       {/* Settings */}
       <div style={{ marginBottom: "8px" }}>
-        <div style={{ color: "var(--blue-11)", fontWeight: "bold" }}>Settings:</div>
+        <div style={{ color: "var(--gryt-secondary-11)", fontWeight: "bold" }}>Settings:</div>
         <div style={{ marginLeft: "8px", fontSize: "11px" }}>
           <div>Volume: {micVolume}%</div>
           <div>Noise Gate: {noiseGate}%</div>
@@ -170,7 +170,7 @@ export function MicrophoneDebugOverlay({ isVisible }: MicrophoneDebugOverlayProp
 
       {/* Status */}
       <div style={{ marginBottom: "8px" }}>
-        <div style={{ color: "var(--blue-11)", fontWeight: "bold" }}>Status:</div>
+        <div style={{ color: "var(--gryt-secondary-11)", fontWeight: "bold" }}>Status:</div>
         <div style={{ marginLeft: "8px", fontSize: "11px" }}>
           <div>Transmitting: {isTransmitting ? "🟢 Yes" : "🔴 No"}</div>
           <div>Stream Active: {microphoneBuffer.mediaStream?.active ? "🟢 Yes" : "🔴 No"}</div>
@@ -180,25 +180,25 @@ export function MicrophoneDebugOverlay({ isVisible }: MicrophoneDebugOverlayProp
 
       {/* Visual Audio Level Bar */}
       <div style={{ marginTop: "8px" }}>
-        <div style={{ color: "var(--blue-11)", fontWeight: "bold", marginBottom: "4px" }}>Level:</div>
+        <div style={{ color: "var(--gryt-secondary-11)", fontWeight: "bold", marginBottom: "4px" }}>Level:</div>
         <div style={{ 
           width: "100%", 
           height: "8px", 
-          backgroundColor: "var(--gray-7)", 
+          backgroundColor: "var(--gryt-neutral-7)", 
           borderRadius: "4px",
           overflow: "hidden"
         }}>
           <div style={{
             width: `${Math.min(processedVolume, 100)}%`,
             height: "100%",
-            backgroundColor: processedVolume > 80 ? "var(--red-9)" : 
-                           processedVolume > 50 ? "var(--orange-9)" : "var(--green-9)",
+            backgroundColor: processedVolume > 80 ? "var(--gryt-danger-9)" : 
+                           processedVolume > 50 ? "var(--gryt-warning-9)" : "var(--gryt-success-9)",
             transition: "width 0.1s ease-out"
           }} />
         </div>
         <div style={{ 
           fontSize: "10px", 
-          color: "var(--gray-9)", 
+          color: "var(--gryt-neutral-9)", 
           marginTop: "2px",
           textAlign: "right" 
         }}>
@@ -208,7 +208,7 @@ export function MicrophoneDebugOverlay({ isVisible }: MicrophoneDebugOverlayProp
 
       {/* Network / latency */}
       <div style={{ marginTop: "12px" }}>
-        <div style={{ color: "var(--blue-11)", fontWeight: "bold", marginBottom: "4px" }}>Latency:</div>
+        <div style={{ color: "var(--gryt-secondary-11)", fontWeight: "bold", marginBottom: "4px" }}>Latency:</div>
         <div style={{ marginLeft: "8px", fontSize: "11px" }}>
           <div>Socket RTT: {socketRttMs == null ? "—" : `${Math.round(socketRttMs)} ms`}</div>
           <div>WebRTC RTT: {latency.networkRttMs == null ? "—" : `${latency.networkRttMs.toFixed(1)} ms`}</div>
@@ -222,11 +222,11 @@ export function MicrophoneDebugOverlay({ isVisible }: MicrophoneDebugOverlayProp
 
       {/* Pipeline latency */}
       <div style={{ marginTop: "8px" }}>
-        <div style={{ color: "var(--blue-11)", fontWeight: "bold", marginBottom: "4px" }}>Pipeline ({modeLabel}):</div>
+        <div style={{ color: "var(--gryt-secondary-11)", fontWeight: "bold", marginBottom: "4px" }}>Pipeline ({modeLabel}):</div>
         <div style={{ marginLeft: "8px", fontSize: "11px" }}>
           <div>Context base: {latency.contextBaseLatencyMs == null ? "—" : `${latency.contextBaseLatencyMs.toFixed(1)} ms`}</div>
           <div>Context output: {latency.contextOutputLatencyMs == null ? "—" : `${latency.contextOutputLatencyMs.toFixed(1)} ms`}</div>
-          <div style={{ color: latency.rnnoiseBufferMs != null && latency.rnnoiseBufferMs > 50 ? "var(--orange-11)" : "inherit" }}>
+          <div style={{ color: latency.rnnoiseBufferMs != null && latency.rnnoiseBufferMs > 50 ? "var(--gryt-warning-11)" : "inherit" }}>
             RNNoise buffer: {latency.rnnoiseBufferMs == null ? "off" : `${latency.rnnoiseBufferMs.toFixed(1)} ms`}
           </div>
           <div>Local pipeline: {latency.localPipelineMs == null ? "—" : `${latency.localPipelineMs.toFixed(1)} ms`}</div>
@@ -235,7 +235,7 @@ export function MicrophoneDebugOverlay({ isVisible }: MicrophoneDebugOverlayProp
 
       {/* Estimated totals */}
       <div style={{ marginTop: "8px" }}>
-        <div style={{ color: "var(--green-11)", fontWeight: "bold", marginBottom: "4px" }}>Estimated:</div>
+        <div style={{ color: "var(--gryt-success-11)", fontWeight: "bold", marginBottom: "4px" }}>Estimated:</div>
         <div style={{ marginLeft: "8px", fontSize: "11px" }}>
           <div style={{ fontWeight: "bold" }}>
             One-way: {latency.estimatedOneWayMs == null ? "—" : `${latency.estimatedOneWayMs.toFixed(1)} ms`}

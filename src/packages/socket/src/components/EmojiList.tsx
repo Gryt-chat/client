@@ -1,11 +1,4 @@
-import { TextField } from "@gryt/ui";
-import {
-  AlertDialog,
-  Button,
-  Flex,
-  IconButton,
-  Text,
-} from "@radix-ui/themes";
+import { AlertDialog, Button, IconButton, TextField } from "@gryt/ui";
 import { type ChangeEvent, useState } from "react";
 import toast from "react-hot-toast";
 import { PiCheck, PiPencilSimpleFill, PiTrashFill, PiX } from "react-icons/pi";
@@ -159,62 +152,57 @@ export function EmojiList({
   };
 
   return (
-    <Flex direction="column" gap="2">
-      <Flex justify="between" align="center">
-        <Text size="2" weight="medium">
+    <div className="flex flex-col gap-2">
+      <div className="flex justify-between items-center">
+        <span className="text-sm font-medium">
           Custom emojis {!loading && `(${emojis.length})`}
-        </Text>
+        </span>
         {emojis.length > 0 && (
           <AlertDialog.Root>
             <AlertDialog.Trigger>
-              <Button size="1" disabled={deletingAll}>
+              <Button size="xsmall" disabled={deletingAll}>
                 <PiTrashFill size={14} />
                 {deletingAll ? "Deleting..." : "Delete all"}
               </Button>
             </AlertDialog.Trigger>
-            <AlertDialog.Content maxWidth="420px">
+            <AlertDialog.Portal>
+              <AlertDialog.Backdrop />
+              <AlertDialog.Popup className="max-w-105">
               <AlertDialog.Title>Delete all emojis?</AlertDialog.Title>
-              <AlertDialog.Description size="2">
+              <AlertDialog.Description>
                 This will permanently delete all {emojis.length} custom emoji{emojis.length !== 1 ? "s" : ""} from this server. This cannot be undone.
               </AlertDialog.Description>
-              <Flex gap="3" mt="4" justify="end">
-                <AlertDialog.Cancel>
-                  <Button>Cancel</Button>
-                </AlertDialog.Cancel>
-                <AlertDialog.Action>
-                  <Button variant="solid" onClick={handleDeleteAll}>
+              <div className="flex gap-3 mt-4 justify-end">
+                <AlertDialog.Close render={<span />}>
+                  <Button size="small">Cancel</Button>
+                </AlertDialog.Close>
+                <AlertDialog.Close render={<span />}>
+                  <Button size="small" onClick={handleDeleteAll}>
                     Delete all
                   </Button>
-                </AlertDialog.Action>
-              </Flex>
-            </AlertDialog.Content>
+                </AlertDialog.Close>
+              </div>
+            </AlertDialog.Popup>
+            </AlertDialog.Portal>
           </AlertDialog.Root>
         )}
-      </Flex>
+      </div>
 
       {loading ? (
-        <Text size="2">
+        <span className="text-sm">
           Loading...
-        </Text>
+        </span>
       ) : emojis.length === 0 ? (
-        <Text size="2">
+        <span className="text-sm">
           No custom emojis yet.
-        </Text>
+        </span>
       ) : (
-        <Flex direction="column" gap="1">
+        <div className="flex flex-col gap-1">
           {emojis.map((e) => (
-            <Flex
-              key={e.name}
-              align="center"
-              gap="3"
-              py="1"
-              px="2"
-              style={{
-                borderRadius: "var(--radius-1)",
+            <div className="flex items-center gap-3 py-1 px-2 emoji-row" key={e.name} style={{
+                borderRadius: "var(--gryt-radius-sm)",
                 transition: "background 120ms",
-              }}
-              className="emoji-row"
-            >
+              }}>
               <img
                 src={getCustomEmojiUrl(host, e.name)}
                 alt={`:${e.name}:`}
@@ -225,8 +213,8 @@ export function EmojiList({
                 }}
               />
               {editingEmoji === e.name ? (
-                <Flex direction="column" gap="1" style={{ flex: 1, minWidth: 0 }}>
-                  <Flex align="center" gap="1">
+                <div className="flex flex-col gap-1" style={{ flex: 1, minWidth: 0 }}>
+                  <div className="flex items-center gap-1">
                     <TextField size="small"
                       value={editingName}
                       onChange={(ev: ChangeEvent<HTMLInputElement>) => {
@@ -242,9 +230,7 @@ export function EmojiList({
                       autoFocus
                       style={{ flex: 1 }}
                     />
-                    <IconButton
-                      variant="ghost"
-                      size="1"
+                    <IconButton tone="ghost" size="xsmall"
                       title="Save"
                       disabled={renaming}
                       onClick={handleRename}
@@ -252,9 +238,7 @@ export function EmojiList({
                     >
                       <PiCheck size={14} />
                     </IconButton>
-                    <IconButton
-                      variant="ghost"
-                      size="1"
+                    <IconButton tone="ghost" size="xsmall"
                       title="Cancel"
                       disabled={renaming}
                       onClick={cancelEditing}
@@ -262,32 +246,28 @@ export function EmojiList({
                     >
                       <PiX size={14} />
                     </IconButton>
-                  </Flex>
+                  </div>
                   {editingError && (
-                    <Text size="1" style={{ lineHeight: 1.2 }}>
+                    <span className="text-xs" style={{ lineHeight: 1.2 }}>
                       {editingError}
-                    </Text>
+                    </span>
                   )}
-                </Flex>
+                </div>
               ) : (
-                <Text size="2" style={{ flex: 1 }}>
+                <span className="text-sm" style={{ flex: 1 }}>
                   <code>:{e.name}:</code>
-                </Text>
+                </span>
               )}
               {editingEmoji !== e.name && (
                 <>
-                  <IconButton
-                    variant="ghost"
-                    size="1"
+                  <IconButton tone="ghost" size="xsmall"
                     onClick={() => startEditing(e.name)}
                     title={`Rename :${e.name}:`}
                     style={{ cursor: "pointer" }}
                   >
                     <PiPencilSimpleFill size={14} />
                   </IconButton>
-                  <IconButton
-                    variant="ghost"
-                    size="1"
+                  <IconButton tone="ghost" size="xsmall"
                     onClick={() => handleDelete(e.name)}
                     disabled={deletingName === e.name}
                     title={`Delete :${e.name}:`}
@@ -297,10 +277,10 @@ export function EmojiList({
                   </IconButton>
                 </>
               )}
-            </Flex>
+            </div>
           ))}
-        </Flex>
+        </div>
       )}
-    </Flex>
+    </div>
   );
 }

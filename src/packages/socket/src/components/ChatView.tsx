@@ -1,4 +1,4 @@
-import { AlertDialog, Box, Button, Flex, Text } from "@radix-ui/themes";
+import { AlertDialog, Button } from "@gryt/ui";
 import { AnimatePresence } from "motion/react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PiChatCircleFill, PiCloudArrowUpFill, PiSpeakerHighFill } from "react-icons/pi";
@@ -249,23 +249,11 @@ export const ChatView = memo(({
         Box and Flex only render as div or span, so the roles go on the existing
         containers rather than restructuring into main/nav/aside.
       */}
-      <Box
-        role="main"
-        aria-label="Conversation"
-        data-gryt="chat-view"
-        overflow="hidden"
-        flexGrow="1"
-        minWidth="0"
-        style={{
-          background: "var(--gray-3)",
-          borderRadius: "var(--radius-5)",
+      <div className="grow overflow-hidden" role="main" aria-label="Conversation" data-gryt="chat-view" style={{ minWidth: 0,
+          background: "var(--gryt-neutral-3)",
+          borderRadius: "var(--gryt-radius-lg)",
           position: "relative",
-        }}
-        onDragEnter={handleViewDragEnter}
-        onDragLeave={handleViewDragLeave}
-        onDragOver={handleViewDragOver}
-        onDrop={handleViewDrop}
-      >
+        }} onDragEnter={handleViewDragEnter} onDragLeave={handleViewDragLeave} onDragOver={handleViewDragOver} onDrop={handleViewDrop}>
         {isDragOver && (
           <div className="chat-view-drop-overlay">
             <div className="chat-view-drop-overlay-content">
@@ -274,42 +262,42 @@ export const ChatView = memo(({
             </div>
           </div>
         )}
-        <Flex height="100%" width="100%" direction="column" p="3">
+        <div className="flex h-full w-full flex-col p-3">
           {channelName && (
-            <Flex align="center" gap="2" style={{ marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid var(--gray-6)" }}>
-              {channelType === "voice" ? <PiSpeakerHighFill size={18} style={{ color: "var(--gray-11)", flexShrink: 0 }} /> : <PiChatCircleFill size={18} style={{ color: "var(--gray-11)", flexShrink: 0 }} />}
-              <Text size="4" weight="bold" style={{ color: "var(--gray-12)" }}>
+            <div className="flex items-center gap-2" style={{ marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid var(--gryt-neutral-6)" }}>
+              {channelType === "voice" ? <PiSpeakerHighFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : <PiChatCircleFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} />}
+              <span className="text-lg font-bold" style={{ color: "var(--gryt-neutral-12)" }}>
                 <EmojiText text={channelName} />
-              </Text>
-            </Flex>
+              </span>
+            </div>
           )}
 
           {isVoiceChannelTextChat && !canViewVoiceChannelText && (
-            <Flex align="center" justify="center" style={{ padding: "24px", textAlign: "center" }}>
-              <Text size="3" color="gray" style={{ maxWidth: "300px" }}>
+            <div className="flex items-center justify-center" style={{ padding: "24px", textAlign: "center" }}>
+              <span className="text-base text-gryt-muted" style={{ maxWidth: "300px" }}>
                 Text chat is not available in this voice channel
-              </Text>
-            </Flex>
+              </span>
+            </div>
           )}
 
           {showVoiceDisabled ? (
-            <Flex flexGrow="1" align="center" justify="center">
-              <Text size="2" color="gray" style={{ textAlign: "center", padding: "16px" }}>
+            <div className="flex grow items-center justify-center">
+              <span className="text-sm text-gryt-muted" style={{ textAlign: "center", padding: "16px" }}>
                 Text chat is disabled in this voice channel
-              </Text>
-            </Flex>
+              </span>
+            </div>
           ) : isLoadingMessages ? (
-            <Flex flexGrow="1" direction="column" justify="end" style={{ paddingBottom: "16px" }}>
+            <div className="flex grow flex-col justify-end" style={{ paddingBottom: "16px" }}>
               <MessageSkeleton />
-            </Flex>
+            </div>
           ) : chatMessages.length === 0 ? (
-            <Flex flexGrow="1" direction="column" justify="end" style={{ paddingBottom: "16px" }}>
+            <div className="flex grow flex-col justify-end" style={{ paddingBottom: "16px" }}>
               <WelcomeMessage
                 channelName={channelName}
                 channelType={channelType}
                 onStart={() => editorRef.current?.focus()}
               />
-            </Flex>
+            </div>
           ) : showMessages ? (
             <div
               ref={scrollRef}
@@ -317,9 +305,9 @@ export const ChatView = memo(({
               onScroll={handleScroll}
             >
               {isLoadingOlder && (
-                <Flex justify="center" py="2">
-                  <Text size="1" color="gray">Loading older messages...</Text>
-                </Flex>
+                <div className="flex justify-center py-2">
+                  <span className="text-xs text-gryt-muted">Loading older messages...</span>
+                </div>
               )}
               <AnimatePresence mode="popLayout" initial={false}>
                 {chatMessages.map((m, i) => {
@@ -385,8 +373,8 @@ export const ChatView = memo(({
             onStopTyping={emitStopTyping}
             serverHost={serverHost}
           />
-        </Flex>
-      </Box>
+        </div>
+      </div>
       {lightboxImage && (
         <ImageLightbox
           src={lightboxImage.src}
@@ -395,20 +383,23 @@ export const ChatView = memo(({
         />
       )}
       <AlertDialog.Root open={!!pendingDeleteMessage} onOpenChange={(open) => { if (!open) setPendingDeleteMessage(null); }}>
-        <AlertDialog.Content maxWidth="420px">
+        <AlertDialog.Portal>
+          <AlertDialog.Backdrop />
+          <AlertDialog.Popup className="max-w-105">
           <AlertDialog.Title>Delete message?</AlertDialog.Title>
-          <AlertDialog.Description size="2">
+          <AlertDialog.Description>
             This will permanently delete this message. This action cannot be undone.
           </AlertDialog.Description>
-          <Flex gap="3" mt="4" justify="end">
-            <AlertDialog.Cancel>
-              <Button variant="soft" color="gray">Cancel</Button>
-            </AlertDialog.Cancel>
-            <AlertDialog.Action>
-              <Button variant="solid" color="red" onClick={confirmDelete}>Delete</Button>
-            </AlertDialog.Action>
-          </Flex>
-        </AlertDialog.Content>
+          <div className="flex gap-3 mt-4 justify-end">
+            <AlertDialog.Close render={<span />}>
+              <Button tone="neutral" size="small">Cancel</Button>
+            </AlertDialog.Close>
+            <AlertDialog.Close render={<span />}>
+              <Button tone="danger" size="small" onClick={confirmDelete}>Delete</Button>
+            </AlertDialog.Close>
+          </div>
+        </AlertDialog.Popup>
+        </AlertDialog.Portal>
       </AlertDialog.Root>
     </>
   );

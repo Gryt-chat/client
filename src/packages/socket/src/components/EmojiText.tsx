@@ -1,4 +1,4 @@
-import { Tooltip } from "@radix-ui/themes";
+import { Tooltip } from "@gryt/ui";
 import { nameToEmoji } from "gemoji";
 import { memo, useSyncExternalStore } from "react";
 
@@ -40,7 +40,7 @@ export const EmojiText = memo(({ text, emojiSize, disableTooltip }: EmojiTextPro
       );
       parts.push(
         disableTooltip ? span : (
-          <Tooltip key={`emoji-${start}`} content={emojiId} delayDuration={200}>
+          <Tooltip key={`emoji-${start}`} title={emojiId}>
             {span}
           </Tooltip>
         ),
@@ -70,7 +70,7 @@ export const EmojiText = memo(({ text, emojiSize, disableTooltip }: EmojiTextPro
         );
         parts.push(
           disableTooltip ? img : (
-            <Tooltip key={`emoji-${start}`} content={emojiId} delayDuration={200}>
+            <Tooltip key={`emoji-${start}`} title={emojiId}>
               {img}
             </Tooltip>
           ),

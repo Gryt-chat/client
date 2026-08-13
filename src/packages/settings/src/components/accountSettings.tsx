@@ -1,14 +1,4 @@
-import { TextField } from "@gryt/ui";
-import {
-  Badge,
-  Button,
-  Callout,
-  Code,
-  DataList,
-  Flex,
-  Heading,
-  Text,
-} from "@radix-ui/themes";
+import { Alert, Button, Chip, TextField } from "@gryt/ui";
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { PiEyeFill, PiInfoFill, PiSignOutFill } from "react-icons/pi";
@@ -43,10 +33,8 @@ function Revealable({ value }: { value: string }) {
   const [shown, setShown] = useState(false);
 
   return (
-    <Flex align="center" gap="2">
-      <Code
-        size="1"
-        variant="ghost"
+    <div className="flex items-center gap-2">
+      <code className="font-mono text-xs text-gryt-muted"
         onClick={() => setShown((s) => !s)}
         title={shown ? "Click to hide" : "Click to reveal"}
         style={{
@@ -58,9 +46,9 @@ function Revealable({ value }: { value: string }) {
         }}
       >
         {value}
-      </Code>
+      </code>
       {!shown && <PiEyeFill size={13} style={{ opacity: 0.5, flexShrink: 0 }} />}
-    </Flex>
+    </div>
   );
 }
 
@@ -154,90 +142,84 @@ export function AccountSettings() {
 
   return (
     <SettingsContainer>
-      <Heading as="h2" size="4">
+      <h2 className="text-lg">
         Account
-      </Heading>
+      </h2>
 
       {isSignedIn ? (
-        <Flex direction="column" gap="3">
-          <Flex align="center" gap="2">
-            <Text weight="medium" size="2">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-sm">
               Signed in
-            </Text>
-            <Badge size="1" color="green">
-              Gryt account
-            </Badge>
-          </Flex>
+            </span>
+            <Chip tone="success" label="Gryt account" />
+          </div>
 
-          <DataList.Root size="1" orientation="vertical">
+          <dl className="m-0 flex flex-col gap-3">
             {profile?.email && (
-              <DataList.Item>
-                <DataList.Label>Email</DataList.Label>
-                <DataList.Value>
+              <div className="flex flex-col gap-0.5">
+                <dt className="text-xs text-gryt-muted">Email</dt>
+                <dd className="m-0 text-sm text-gryt-text">
                   <Revealable value={profile.email} />
-                </DataList.Value>
-              </DataList.Item>
+                </dd>
+              </div>
             )}
 
             {profile?.sub && (
-              <DataList.Item>
-                <DataList.Label>Gryt ID</DataList.Label>
-                <DataList.Value>
+              <div className="flex flex-col gap-0.5">
+                <dt className="text-xs text-gryt-muted">Gryt ID</dt>
+                <dd className="m-0 text-sm text-gryt-text">
                   <Revealable value={profile.sub} />
-                </DataList.Value>
-              </DataList.Item>
+                </dd>
+              </div>
             )}
 
             {formatDate(profile?.createdAt) && (
-              <DataList.Item>
-                <DataList.Label>Registered</DataList.Label>
-                <DataList.Value>{formatDate(profile?.createdAt)}</DataList.Value>
-              </DataList.Item>
+              <div className="flex flex-col gap-0.5">
+                <dt className="text-xs text-gryt-muted">Registered</dt>
+                <dd className="m-0 text-sm text-gryt-text">{formatDate(profile?.createdAt)}</dd>
+              </div>
             )}
-          </DataList.Root>
+          </dl>
 
-          <Text size="1">
+          <span className="text-xs">
             Servers you joined before signing in came with you — your roles and
             anything you own moved to this account the next time you connected.
-          </Text>
+          </span>
 
-          <Button
+          <Button size="small"
             style={{ alignSelf: "flex-start" }}
             onClick={() => void logout()}
           >
             <PiSignOutFill size={16} />
             Sign out
           </Button>
-        </Flex>
+        </div>
       ) : (
-        <Flex direction="column" gap="3">
-          <Flex direction="column" gap="1">
-            <Flex align="center" gap="2">
-              <Text weight="medium" size="2">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-sm">
                 Not signed in
-              </Text>
-              <Badge size="1" color="amber">
-                No account
-              </Badge>
-            </Flex>
-            <Text size="1">
+              </span>
+              <Chip tone="warning" label="No account" />
+            </div>
+            <span className="text-xs">
               Gryt works without an account. What one adds is a way back in: an
               identity that survives losing this device, and the same you on
               every server rather than a separate one each time.
-            </Text>
-          </Flex>
+            </span>
+          </div>
 
-          <Callout.Root size="1">
-            <Callout.Icon>
-              <PiInfoFill size={15} />
-            </Callout.Icon>
-            <Callout.Text>
+          <Alert severity="info">
+            <span className="inline-flex items-start gap-2">
+              <PiInfoFill className="mt-0.5 shrink-0" size={15} />
               Signing in keeps the servers you have already joined. They move to
               your account the next time you connect to each one.
-            </Callout.Text>
-          </Callout.Root>
+            </span>
+          </Alert>
 
-          <Button
+          <Button size="small"
             data-tour="account-signin"
             disabled={loginInProgress}
             style={{ alignSelf: "flex-start" }}
@@ -249,7 +231,7 @@ export function AccountSettings() {
                 ? "Sign in with your own auth"
                 : "Sign in with Gryt"}
           </Button>
-        </Flex>
+        </div>
       )}
 
       {/*
@@ -258,14 +240,14 @@ export function AccountSettings() {
         message about certificates. Cyan matches every other advanced setting.
       */}
       {showAdvanced && (
-      <Flex direction="column" gap="2">
-        <Text weight="medium" size="2" color="cyan">
+      <div className="flex flex-col gap-2">
+        <span className="font-medium text-sm" color="cyan">
           Auth server
-        </Text>
-        <Text size="1">
+        </span>
+        <span className="text-xs">
           Where accounts come from. Leave this alone unless you run your own
           Keycloak — the address of its realm, not the server root.
-        </Text>
+        </span>
         <TextField
           placeholder={DEFAULT_ISSUER}
           value={issuerInput}
@@ -275,10 +257,10 @@ export function AccountSettings() {
           }}
         />
 
-        <Text size="1">
+        <span className="text-xs">
           And the identity service that signs certificates for it. It is a
           separate service, so it cannot be worked out from the address above.
-        </Text>
+        </span>
         <TextField
           placeholder={DEFAULT_IDENTITY}
           value={identityInput}
@@ -288,24 +270,24 @@ export function AccountSettings() {
           }}
         />
 
-        <Flex gap="2" wrap="wrap">
-          <Button onClick={handleSaveIssuer}>
+        <div className="flex gap-2 flex-wrap">
+          <Button size="small" onClick={handleSaveIssuer}>
             {savedIssuer ? "Saved" : "Use these"}
           </Button>
           {hasCustom && (
-            <Button onClick={handleClearIssuer}>
+            <Button size="small" onClick={handleClearIssuer}>
               Back to Gryt
             </Button>
           )}
-        </Flex>
+        </div>
 
         {isCustom && (
-          <Text size="1">
+          <span className="text-xs">
             A server also has to trust certificates from your identity service,
             or it will refuse the join.
-          </Text>
+          </span>
         )}
-      </Flex>
+      </div>
       )}
     </SettingsContainer>
   );

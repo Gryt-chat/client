@@ -1,5 +1,4 @@
 import { Slider, Switch } from "@gryt/ui";
-import { Flex, Text } from "@radix-ui/themes";
 import React from "react";
 
 import { settingAnchorId,SETTINGS_INDEX } from "../hooks/settingsSearch";
@@ -49,11 +48,11 @@ export function SettingGroup({ title, description, children, advanced }: Setting
   if (advanced && !showAdvanced) return null;
 
   return (
-    <Flex direction="column" gap="2" id={anchor} data-setting={anchor} data-advanced={advanced || undefined}>
-      <Text weight="medium" size="2" color={advanced ? ADVANCED_COLOR : undefined}>{title}</Text>
-      <Text size="1" color="gray">{description}</Text>
+    <div className="flex flex-col gap-2" id={anchor} data-setting={anchor} data-advanced={advanced || undefined}>
+      <span className="font-medium text-sm" color={advanced ? ADVANCED_COLOR : undefined}>{title}</span>
+      <span className="text-xs text-gryt-muted">{description}</span>
       {children}
-    </Flex>
+    </div>
   );
 }
 
@@ -92,15 +91,15 @@ interface ToggleSettingProps {
 export function ToggleSetting({ title, description, checked, onCheckedChange, statusText }: ToggleSettingProps) {
   return (
     <SettingGroup title={title} description={description}>
-      <Flex align="center" justify="between">
-        <Flex direction="column" gap="1">
-          <Text size="2" color="gray">Enable {title}</Text>
+      <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-1">
+          <span className="text-sm text-gryt-muted">Enable {title}</span>
           {statusText && (
-            <Text size="1" color="gray">{statusText}</Text>
+            <span className="text-xs text-gryt-muted">{statusText}</span>
           )}
-        </Flex>
+        </div>
         <Switch checked={checked} onCheckedChange={onCheckedChange} />
-      </Flex>
+      </div>
     </SettingGroup>
   );
 }
@@ -112,8 +111,8 @@ interface SettingsContainerProps {
 
 export function SettingsContainer({ children }: SettingsContainerProps) {
   return (
-    <Flex direction="column" gap="6" pb="4">
+    <div className="flex flex-col gap-8 pb-4">
       {children}
-    </Flex>
+    </div>
   );
 }

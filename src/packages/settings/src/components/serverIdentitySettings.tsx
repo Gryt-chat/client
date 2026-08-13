@@ -1,15 +1,4 @@
-import {
-  AlertDialog,
-  Badge,
-  Button,
-  Callout,
-  Code,
-  Flex,
-  Heading,
-  IconButton,
-  Text,
-  Tooltip,
-} from "@radix-ui/themes";
+import { Alert, AlertDialog, Button, Chip, IconButton, Tooltip } from "@gryt/ui";
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { PiHardDrivesFill, PiShieldCheckFill, PiTrashFill, PiWarningFill } from "react-icons/pi";
@@ -35,10 +24,8 @@ function formatDate(epoch: number): string {
 function Fingerprint({ value }: { value: string }) {
   const grouped = (value.match(/.{1,8}/g) || [value]).join(" ");
   return (
-    <Tooltip content="Click to copy">
-      <Code
-        size="1"
-        variant="soft"
+    <Tooltip title="Click to copy">
+      <code className="font-mono text-xs text-gryt-muted"
         style={{ cursor: "pointer", wordBreak: "break-all" }}
         onClick={() => {
           navigator.clipboard?.writeText(value).then(
@@ -48,7 +35,7 @@ function Fingerprint({ value }: { value: string }) {
         }}
       >
         {grouped}
-      </Code>
+      </code>
     </Tooltip>
   );
 }
@@ -65,88 +52,78 @@ function BlockedRow({
   const [confirm, setConfirm] = useState(false);
 
   return (
-    <Flex
-      direction="column"
-      gap="3"
-      p="3"
-      style={{ borderRadius: "var(--radius-2)", background: "var(--red-a2)" }}
-    >
-      <Flex align="center" gap="2">
-        <PiWarningFill size={18} style={{ color: "var(--red-11)", flexShrink: 0 }} />
-        <Text size="2" weight="medium" style={{ flex: 1, minWidth: 0 }} truncate>
+    <div className="flex flex-col gap-3 p-3" style={{ borderRadius: "var(--gryt-radius-sm)", background: "color-mix(in oklab, var(--gryt-danger-9) 5%, transparent)" }}>
+      <div className="flex items-center gap-2">
+        <PiWarningFill size={18} style={{ color: "var(--gryt-danger-11)", flexShrink: 0 }} />
+        <span className="text-sm font-medium truncate" style={{ flex: 1, minWidth: 0 }}>
           {entry.host}
-        </Text>
-        <Badge color="red" variant="soft" size="1">
+        </span>
+        <Chip tone="danger">
           Blocked {formatDate(entry.blockedAt)}
-        </Badge>
-      </Flex>
+        </Chip>
+      </div>
 
-      <Text size="1" color="gray">
+      <span className="text-xs text-gryt-muted">
         {entry.reason === "key_mismatch"
           ? "A different server answered at this address than the one you joined before."
           : "This server proved its identity before, and then stopped."}
-      </Text>
+      </span>
 
-      <Flex direction="column" gap="2">
-        <Flex direction="column" gap="1">
-          <Text size="1" color="gray">
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-1">
+          <span className="text-xs text-gryt-muted">
             Expected{firstPinnedAt ? `, first seen ${formatDate(firstPinnedAt)}` : ""}
-          </Text>
+          </span>
           <Fingerprint value={entry.expectedKeyId} />
-        </Flex>
+        </div>
 
         {entry.keyId ? (
-          <Flex direction="column" gap="1">
-            <Text size="1" color="gray">
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-gryt-muted">
               Got instead
-            </Text>
+            </span>
             <Fingerprint value={entry.keyId} />
-          </Flex>
+          </div>
         ) : (
-          <Text size="1" color="gray">
+          <span className="text-xs text-gryt-muted">
             No identity was offered at all, so there is no fingerprint to compare.
-          </Text>
+          </span>
         )}
-      </Flex>
+      </div>
 
       {/* The whole point of blocking is that someone makes an informed choice
           here. Telling them where to find the real answer beats asking them to
           guess from two strings. */}
-      <Callout.Root size="1" color="gray" variant="surface">
-        <Callout.Text size="1">
+      <Alert severity="info">
           {entry.keyId
             ? "If you rebuilt or replaced this server yourself, check its startup log — it prints its identity key on boot. Unblock only if that matches the fingerprint above."
             : "If you downgraded this server to an older version, that would explain it. Otherwise treat it as suspicious."}
-        </Callout.Text>
-      </Callout.Root>
+        </Alert>
 
       <AlertDialog.Root open={confirm} onOpenChange={setConfirm}>
-        <Button
-          size="1"
-          variant="soft"
-          color="red"
+        <Button tone="danger" size="xsmall"
           style={{ alignSelf: "flex-start" }}
           onClick={() => setConfirm(true)}
         >
           Unblock
         </Button>
-        <AlertDialog.Content maxWidth="460px">
+        <AlertDialog.Portal>
+          <AlertDialog.Backdrop />
+          <AlertDialog.Popup className="max-w-[460px]">
           <AlertDialog.Title>Unblock {entry.host}?</AlertDialog.Title>
-          <AlertDialog.Description size="2">
+          <AlertDialog.Description>
             Gryt will forget the identity it expected here and trust whatever
             answers next time, the same as joining a server for the first time.
             Only do this if you know why the identity changed.
           </AlertDialog.Description>
-          <Flex gap="3" mt="4" justify="end">
-            <AlertDialog.Cancel>
-              <Button variant="soft" color="gray">
+          <div className="flex gap-3 mt-4 justify-end">
+            <AlertDialog.Close render={<span />}>
+              <Button tone="neutral" size="small">
                 Cancel
               </Button>
-            </AlertDialog.Cancel>
-            <AlertDialog.Action>
-              <Button
-                variant="solid"
-                color="red"
+            </AlertDialog.Close>
+            <AlertDialog.Close render={<span />}>
+              <Button tone="danger" size="small"
                 onClick={() => {
                   onUnblock(entry);
                   setConfirm(false);
@@ -154,11 +131,12 @@ function BlockedRow({
               >
                 Unblock
               </Button>
-            </AlertDialog.Action>
-          </Flex>
-        </AlertDialog.Content>
+            </AlertDialog.Close>
+          </div>
+        </AlertDialog.Popup>
+        </AlertDialog.Portal>
       </AlertDialog.Root>
-    </Flex>
+    </div>
   );
 }
 
@@ -166,60 +144,50 @@ function KnownRow({ pin, onForget }: { pin: ServerPin; onForget: (keyId: string)
   const [confirm, setConfirm] = useState(false);
 
   return (
-    <Flex
-      align="center"
-      gap="3"
-      py="3"
-      px="3"
-      style={{ borderRadius: "var(--radius-2)", background: "var(--gray-a2)" }}
-    >
-      <Flex
-        align="center"
-        justify="center"
-        style={{
+    <div className="flex items-center gap-3 py-3 px-3" style={{ borderRadius: "var(--gryt-radius-sm)", background: "var(--gryt-neutral-a2)" }}>
+      <div className="flex items-center justify-center" style={{
           width: 36,
           height: 36,
-          borderRadius: "var(--radius-2)",
-          background: "var(--accent-a3)",
+          borderRadius: "var(--gryt-radius-sm)",
+          background: "var(--gryt-accent-a3)",
           flexShrink: 0,
-        }}
-      >
-        <PiShieldCheckFill size={18} style={{ color: "var(--accent-11)" }} />
-      </Flex>
+        }}>
+        <PiShieldCheckFill size={18} style={{ color: "var(--gryt-accent-11)" }} />
+      </div>
 
-      <Flex direction="column" gap="1" style={{ flex: 1, minWidth: 0 }}>
-        <Text size="2" weight="medium" truncate>
+      <div className="flex flex-col gap-1" style={{ flex: 1, minWidth: 0 }}>
+        <span className="text-sm font-medium truncate">
           {pin.lastHost}
-        </Text>
-        <Text size="1" color="gray">
+        </span>
+        <span className="text-xs text-gryt-muted">
           Trusted since {formatDate(pin.firstSeenAt)}
-        </Text>
+        </span>
         <Fingerprint value={pin.keyId} />
-      </Flex>
+      </div>
 
       <AlertDialog.Root open={confirm} onOpenChange={setConfirm}>
-        <Tooltip content="Forget this server">
-          <IconButton size="1" variant="ghost" color="red" onClick={() => setConfirm(true)}>
+        <Tooltip title="Forget this server">
+          <IconButton tone="danger" size="xsmall" onClick={() => setConfirm(true)}>
             <PiTrashFill size={16} />
           </IconButton>
         </Tooltip>
-        <AlertDialog.Content maxWidth="440px">
+        <AlertDialog.Portal>
+          <AlertDialog.Backdrop />
+          <AlertDialog.Popup className="max-w-110">
           <AlertDialog.Title>Forget {pin.lastHost}?</AlertDialog.Title>
-          <AlertDialog.Description size="2">
+          <AlertDialog.Description>
             Gryt will stop recognising this server&apos;s identity. The next time
             you connect it will be treated as a server you have never joined, and
             whatever answers will be trusted.
           </AlertDialog.Description>
-          <Flex gap="3" mt="4" justify="end">
-            <AlertDialog.Cancel>
-              <Button variant="soft" color="gray">
+          <div className="flex gap-3 mt-4 justify-end">
+            <AlertDialog.Close render={<span />}>
+              <Button tone="neutral" size="small">
                 Cancel
               </Button>
-            </AlertDialog.Cancel>
-            <AlertDialog.Action>
-              <Button
-                variant="solid"
-                color="red"
+            </AlertDialog.Close>
+            <AlertDialog.Close render={<span />}>
+              <Button tone="danger" size="small"
                 onClick={() => {
                   onForget(pin.keyId);
                   setConfirm(false);
@@ -227,11 +195,12 @@ function KnownRow({ pin, onForget }: { pin: ServerPin; onForget: (keyId: string)
               >
                 Forget
               </Button>
-            </AlertDialog.Action>
-          </Flex>
-        </AlertDialog.Content>
+            </AlertDialog.Close>
+          </div>
+        </AlertDialog.Popup>
+        </AlertDialog.Portal>
       </AlertDialog.Root>
-    </Flex>
+    </div>
   );
 }
 
@@ -281,27 +250,27 @@ export function ServerIdentitySettings() {
 
   return (
     <SettingsContainer>
-      <Heading as="h2" size="4">
+      <h2 className="text-lg">
         Server identities
-      </Heading>
+      </h2>
 
-      <Flex direction="column" gap="3">
-        <Text size="1" color="gray">
+      <div className="flex flex-col gap-3">
+        <span className="text-xs text-gryt-muted">
           Gryt remembers each server&apos;s identity key the first time you join,
           so it can tell that a server which moved to a new address is still the
           same one — and notice when something else answers in its place.
-        </Text>
+        </span>
 
         {blocked.length > 0 && (
-          <Flex direction="column" gap="2">
-            <Flex align="center" justify="between">
-              <Text weight="medium" size="2">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-sm">
                 Blocked
-              </Text>
-              <Badge color="red" variant="soft" size="1">
+              </span>
+              <Chip tone="danger">
                 {blocked.length}
-              </Badge>
-            </Flex>
+              </Chip>
+            </div>
             {blocked.map((entry) => (
               <BlockedRow
                 key={`${entry.host}:${entry.keyId ?? "none"}`}
@@ -310,35 +279,29 @@ export function ServerIdentitySettings() {
                 onUnblock={handleUnblock}
               />
             ))}
-          </Flex>
+          </div>
         )}
 
-        <Flex align="center" justify="between">
-          <Text weight="medium" size="2">
+        <div className="flex items-center justify-between">
+          <span className="font-medium text-sm">
             Known servers
-          </Text>
-          <Badge variant="soft" size="1">
+          </span>
+          <Chip tone="neutral">
             {pins.length}
-          </Badge>
-        </Flex>
+          </Chip>
+        </div>
 
         {pins.length === 0 ? (
-          <Flex
-            direction="column"
-            align="center"
-            gap="2"
-            py="6"
-            style={{ borderRadius: "var(--radius-2)", border: "1px dashed var(--gray-a6)" }}
-          >
-            <PiHardDrivesFill size={32} style={{ color: "var(--gray-a8)" }} />
-            <Text size="2" color="gray">
+          <div className="flex flex-col items-center gap-2 py-8" style={{ borderRadius: "var(--gryt-radius-sm)", border: "1px dashed var(--gryt-neutral-a6)" }}>
+            <PiHardDrivesFill size={32} style={{ color: "var(--gryt-neutral-a8)" }} />
+            <span className="text-sm text-gryt-muted">
               No server identities remembered yet
-            </Text>
-          </Flex>
+            </span>
+          </div>
         ) : (
           pins.map((pin) => <KnownRow key={pin.keyId} pin={pin} onForget={handleForget} />)
         )}
-      </Flex>
+      </div>
     </SettingsContainer>
   );
 }

@@ -1,4 +1,4 @@
-import { Flex, Text, Tooltip } from "@radix-ui/themes";
+import { Tooltip } from "@gryt/ui";
 
 export type Reaction = {
   src: string;
@@ -92,7 +92,7 @@ function formatDateSeparator(d: Date): string {
 }
 
 export const MessageTimestamp = ({ date }: { date: Date }) => (
-  <Tooltip content={formatFullDate(date)} delayDuration={200}>
+  <Tooltip title={formatFullDate(date)}>
     {/*
       gray-11 is Radix's low-contrast *text* step. gray-9 and gray-10 are solid
       steps meant for backgrounds and borders, and against the message surface
@@ -103,28 +103,28 @@ export const MessageTimestamp = ({ date }: { date: Date }) => (
       12px rather than 10px because 10 was the smallest text in the app by some
       margin, and a timestamp nobody can read is not doing its job.
     */}
-    <Text style={{ fontSize: 12, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gray-11)" }}>
+    <span style={{ fontSize: 12, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gryt-neutral-11)" }}>
       {formatMessageTime(date)}
-    </Text>
+    </span>
   </Tooltip>
 );
 
 export const DateSeparator = ({ date }: { date: Date }) => (
-  <Flex align="center" gap="3" style={{ padding: "8px 0", width: "100%" }}>
-    <div style={{ flex: 1, height: 1, background: "var(--gray-6)" }} />
-    <Text size="1" color="gray" weight="medium" style={{ whiteSpace: "nowrap" }}>
+  <div className="flex items-center gap-3" style={{ padding: "8px 0", width: "100%" }}>
+    <div style={{ flex: 1, height: 1, background: "var(--gryt-neutral-6)" }} />
+    <span className="text-xs text-gryt-muted font-medium" style={{ whiteSpace: "nowrap" }}>
       {formatDateSeparator(date)}
-    </Text>
-    <div style={{ flex: 1, height: 1, background: "var(--gray-6)" }} />
-  </Flex>
+    </span>
+    <div style={{ flex: 1, height: 1, background: "var(--gryt-neutral-6)" }} />
+  </div>
 );
 
 export const NewMessagesDivider = () => (
-  <Flex align="center" gap="3" style={{ padding: "8px 0", width: "100%" }}>
-    <div style={{ flex: 1, height: 1, background: "var(--red-8)" }} />
-    <Text size="1" color="red" weight="medium" style={{ whiteSpace: "nowrap" }}>
+  <div className="flex items-center gap-3" style={{ padding: "8px 0", width: "100%" }}>
+    <div style={{ flex: 1, height: 1, background: "var(--gryt-danger-8)" }} />
+    <span className="text-xs text-gryt-danger font-medium" style={{ whiteSpace: "nowrap" }}>
       New since last visit
-    </Text>
-    <div style={{ flex: 1, height: 1, background: "var(--red-8)" }} />
-  </Flex>
+    </span>
+    <div style={{ flex: 1, height: 1, background: "var(--gryt-danger-8)" }} />
+  </div>
 );
