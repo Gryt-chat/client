@@ -3,15 +3,20 @@ import {
   AlertDialog,
   Button,
   encodeGrytTheme,
-  grytTheme,
+  grytPresets,
   grytThemeHues,
 } from "@gryt/ui";
 import { useState } from "react";
 import toast from "react-hot-toast";
-import { PiCheckBold, PiLinkSimpleBold, PiTrashBold } from "react-icons/pi";
+import {
+  PiCheckBold,
+  PiLinkSimpleBold,
+  PiPencilSimpleBold,
+  PiTrashBold,
+} from "react-icons/pi";
 
 import type { SavedTheme } from "@/common";
-import { useCustomThemes, useTheme } from "@/common";
+import { presetThemeId, useCustomThemes, useTheme } from "@/common";
 
 import { ImportThemeDialog } from "./importThemeDialog";
 
@@ -20,8 +25,11 @@ const GENERATOR = "https://ui.gryt.chat/theme/generator";
 /**
  * The themes on this machine, and the one in use.
  *
- * Gryt's own is first and cannot be deleted, because there has to be something
- * to go back to. Everything under it arrived as a link.
+ * The built-in half comes from @gryt/ui rather than from a list here, so a
+ * newer library brings new ones with it and nobody has to copy a palette
+ * across. They cannot be deleted — there has to be something to go back to —
+ * but any of them opens in the generator, for somebody who wants Dracula with
+ * a different accent.
  */
 export function ThemeLibrary() {
   const { themes, activeId, setActiveTheme, deleteTheme } = useCustomThemes();
@@ -31,16 +39,29 @@ export function ThemeLibrary() {
   return (
     <div className="flex flex-col gap-2">
       <ul className="m-0 flex list-none flex-col gap-2 p-0">
-        <li>
-          <ThemeRow
-            active={activeId === null}
-            appearance={resolvedAppearance}
-            name="Gryt"
-            note="What the app ships with."
-            theme={grytTheme}
-            onSelect={() => setActiveTheme(null)}
-          />
-        </li>
+        {grytPresets.map((preset) => (
+          <li key={preset.id}>
+            <ThemeRow
+              active={
+                preset.id === "gryt"
+                  ? activeId === null
+                  : activeId === presetThemeId(preset.id)
+              }
+              appearance={resolvedAppearance}
+              name={preset.name}
+              note={preset.note}
+              theme={preset.theme}
+              onSelect={() =>
+                setActiveTheme(
+                  // Gryt's own is the absence of a theme rather than a theme:
+                  // nothing on the root, the stylesheet as shipped.
+                  preset.id === "gryt" ? null : presetThemeId(preset.id),
+                )
+              }
+              onOpenInGenerator={() => openInGenerator(preset.theme)}
+            />
+          </li>
+        ))}
         {themes.map((entry) => (
           <li key={entry.id}>
             <ThemeRow
@@ -51,6 +72,7 @@ export function ThemeLibrary() {
               theme={entry.theme}
               onSelect={() => setActiveTheme(entry.id)}
               onCopyLink={() => copyLink(entry)}
+              onOpenInGenerator={() => openInGenerator(entry.theme)}
               onDelete={() => deleteTheme(entry.id)}
             />
           </li>
@@ -76,6 +98,15 @@ export function ThemeLibrary() {
   );
 }
 
+/** The theme, loaded into the generator, ready to be argued with. */
+function openInGenerator(theme: GrytTheme) {
+  window.open(
+    `${GENERATOR}?${encodeGrytTheme(theme).toString()}`,
+    "_blank",
+    "noreferrer",
+  );
+}
+
 function copyLink(entry: SavedTheme) {
   const url = `${GENERATOR}?${encodeGrytTheme(entry.theme).toString()}`;
   void navigator.clipboard
@@ -94,6 +125,7 @@ function ThemeRow({
   theme,
   onSelect,
   onCopyLink,
+  onOpenInGenerator,
   onDelete,
 }: {
   active: boolean;
@@ -103,6 +135,7 @@ function ThemeRow({
   theme: GrytTheme;
   onSelect: () => void;
   onCopyLink?: () => void;
+  onOpenInGenerator?: () => void;
   onDelete?: () => void;
 }) {
   const [confirming, setConfirming] = useState(false);
@@ -150,6 +183,17 @@ function ThemeRow({
           <PiCheckBold aria-label="In use" className="shrink-0 text-gryt-accent-11" />
         ) : null}
       </button>
+
+      {onOpenInGenerator ? (
+        <Button
+          aria-label={`Open ${name} in the theme generator`}
+          size="xsmall"
+          tone="ghost"
+          onClick={onOpenInGenerator}
+        >
+          <PiPencilSimpleBold />
+        </Button>
+      ) : null}
 
       {onCopyLink ? (
         <Button
