@@ -16,6 +16,8 @@ export interface EmbeddedServerConfig {
   jwtSecret: string;
   lanDiscoverable: boolean;
   externalHost: string;
+  advertisedAddresses: string[];
+  customAdvertisedAddresses: string[];
 }
 
 const SERVERS_DIR_NAME = "gryt-servers";
@@ -176,6 +178,7 @@ export async function ensurePortsAvailable(
   if (!existsSync(configPath)) return [];
 
   let raw = readFileSync(configPath, "utf-8");
+  const originalRaw = raw;
   const env = parseEnv(raw);
   const notes: string[] = [];
 
@@ -197,11 +200,7 @@ export async function ensurePortsAvailable(
   if (nextSfuPort !== sfuPort) {
     raw = raw
       .replace(/^SFU_PORT=.*$/m, `SFU_PORT=${nextSfuPort}`)
-      .replace(/^SFU_WS_HOST=.*$/m, `SFU_WS_HOST=ws://127.0.0.1:${nextSfuPort}`)
-      .replace(
-        /^SFU_PUBLIC_HOST=.*$/m,
-        `SFU_PUBLIC_HOST=${extractHostFromHostPort(env.SFU_PUBLIC_HOST || getLanIp())}:${nextSfuPort}`,
-      );
+      .replace(/^SFU_WS_HOST=.*$/m, `SFU_WS_HOST=ws://127.0.0.1:${nextSfuPort}`);
     notes.push(
       pinnedSfuPort
         ? `pointed at the running SFU on ${nextSfuPort}`
@@ -209,8 +208,12 @@ export async function ensurePortsAvailable(
     );
   }
 
-  if (notes.length > 0) {
+  raw = withAdvertisedAddresses(raw, nextSfuPort);
+
+  if (raw !== originalRaw) {
     writeFileSync(configPath, raw, "utf-8");
+  }
+  if (notes.length > 0) {
     for (const n of notes) console.log(`[EmbeddedServerConfig] ${id}: ${n}`);
   }
 
@@ -218,6 +221,7 @@ export async function ensurePortsAvailable(
 }
 
 function parseIpv4(ip: string): number[] | null {
+  if (!/^\d{1,3}(?:\.\d{1,3}){3}$/.test(ip)) return null;
   const parts = ip.split(".").map(Number);
 
   if (
@@ -253,13 +257,21 @@ function isCgnatOrTailscaleIp(ip: string): boolean {
   return a === 100 && b >= 64 && b <= 127;
 }
 
+const VIRTUAL_INTERFACE =
+  /^(docker|br-|bridge|veth|virbr|vmnet|utun|tun|tap|tailscale|zt|wg|vboxnet|vethernet)/i;
+
 function getIpv4Candidates(): string[] {
   const ifaces = networkInterfaces();
   const candidates: string[] = [];
 
   for (const name of Object.keys(ifaces)) {
+    if (VIRTUAL_INTERFACE.test(name)) continue;
     for (const iface of ifaces[name] ?? []) {
-      if (iface.family === "IPv4" && !iface.internal) {
+      if (
+        iface.family === "IPv4" &&
+        !iface.internal &&
+        !isCgnatOrTailscaleIp(iface.address)
+      ) {
         candidates.push(iface.address);
       }
     }
@@ -268,8 +280,14 @@ function getIpv4Candidates(): string[] {
   return candidates;
 }
 
+export function getAdvertisedAddresses(): string[] {
+  return [...new Set(getIpv4Candidates())].sort(
+    (left, right) => Number(isPrivateLanIp(right)) - Number(isPrivateLanIp(left)),
+  );
+}
+
 export function getLanIp(): string {
-  const candidates = getIpv4Candidates();
+  const candidates = getAdvertisedAddresses();
 
   const privateLan = candidates.find(isPrivateLanIp);
   if (privateLan) return privateLan;
@@ -278,6 +296,91 @@ export function getLanIp(): string {
   if (nonCgnat) return nonCgnat;
 
   return candidates[0] || "127.0.0.1";
+}
+
+function splitAddresses(value: string | undefined): string[] {
+  return [...new Set((value ?? "").split(",").map((v) => v.trim()).filter(Boolean))];
+}
+
+function isHostname(value: string): boolean {
+  return (
+    value.length <= 253 &&
+    value.includes(".") &&
+    /[a-z]/i.test(value) &&
+    value.split(".").every((label) =>
+      /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i.test(label),
+    )
+  );
+}
+
+function validateCustomAddress(value: string): boolean {
+  return parseIpv4(value) !== null || isHostname(value);
+}
+
+function setEnvValue(raw: string, key: string, value: string): string {
+  const line = `${key}=${value}`;
+  const pattern = new RegExp(`^${key}=.*$`, "m");
+  if (pattern.test(raw)) return raw.replace(pattern, line);
+  return `${raw.trimEnd()}\n${line}\n`;
+}
+
+function customAddressesFrom(env: Record<string, string>): string[] {
+  if (Object.prototype.hasOwnProperty.call(env, "EMBEDDED_SERVER_CUSTOM_ADDRESSES")) {
+    return splitAddresses(env.EMBEDDED_SERVER_CUSTOM_ADDRESSES);
+  }
+
+  // Older configs had no separate custom field. Keep deliberate public IPs
+  // and hostnames, but drop the private or tunnel address the app generated.
+  return splitAddresses(env.SFU_PUBLIC_HOST)
+    .map(extractHostFromHostPort)
+    .filter((host) =>
+      isHostname(host) ||
+      (parseIpv4(host) !== null && !isPrivateLanIp(host) && !isCgnatOrTailscaleIp(host)),
+    );
+}
+
+function withAdvertisedAddresses(raw: string, sfuPort: number): string {
+  const env = parseEnv(raw);
+  const custom = customAddressesFrom(env);
+  const effective = [...new Set([...getAdvertisedAddresses(), ...custom])];
+  const fallback = effective.length > 0 ? effective : ["127.0.0.1"];
+
+  let next = setEnvValue(
+    raw,
+    "EMBEDDED_SERVER_CUSTOM_ADDRESSES",
+    custom.join(","),
+  );
+  next = setEnvValue(
+    next,
+    "SFU_PUBLIC_HOST",
+    fallback.map((address) => `${address}:${sfuPort}`).join(","),
+  );
+  next = setEnvValue(
+    next,
+    "ICE_ADVERTISE_IP",
+    effective.filter((address) => parseIpv4(address) !== null).join(","),
+  );
+  return next;
+}
+
+export function updateCustomAdvertisedAddresses(
+  id: string,
+  addresses: string[],
+): EmbeddedServerConfig | null {
+  const configPath = getConfigPathFor(id);
+  if (!existsSync(configPath)) return null;
+
+  const custom = [...new Set(addresses.map((v) => v.trim()).filter(Boolean))];
+  if (custom.some((value) => !validateCustomAddress(value))) {
+    throw new Error("Use IPv4 addresses or fully qualified hostnames without ports");
+  }
+
+  let raw = readFileSync(configPath, "utf-8");
+  const env = parseEnv(raw);
+  const sfuPort = parseInt(env.SFU_PORT || "5005", 10);
+  raw = setEnvValue(raw, "EMBEDDED_SERVER_CUSTOM_ADDRESSES", custom.join(","));
+  writeFileSync(configPath, withAdvertisedAddresses(raw, sfuPort), "utf-8");
+  return loadConfig(id);
 }
 
 function parseEnv(raw: string): Record<string, string> {
@@ -312,53 +415,6 @@ function extractHostFromHostPort(value: string): string {
   } catch {
     return trimmed.split(":")[0] || "";
   }
-}
-
-function migrateExistingConfigIfNeeded(configPath: string): void {
-  if (!existsSync(configPath)) return;
-
-  const raw = readFileSync(configPath, "utf-8");
-  const env = parseEnv(raw);
-
-  const currentSfuPublicHost = env.SFU_PUBLIC_HOST;
-  const sfuPort = env.SFU_PORT || "5005";
-
-  if (!currentSfuPublicHost) return;
-
-  const currentHost = extractHostFromHostPort(currentSfuPublicHost);
-  const betterLanIp = getLanIp();
-
-  // Two reasons to rewrite a stored address:
-  //
-  //   1. It is CGNAT/Tailscale, which the LAN cannot route to. This is what the
-  //      migration was originally written for.
-  //   2. It is a private LAN address that this machine no longer holds. DHCP
-  //      hands out a different lease and the config keeps pointing at the old
-  //      one forever — the server reports the right IP in its own UI while
-  //      handing clients a dead SFU address, and joining voice fails with
-  //      "SFU WebSocket connection failed".
-  //
-  // Anything else is left alone: a deliberately configured hostname or public
-  // address is not ours to second-guess.
-  const isStaleLanIp =
-    isPrivateLanIp(currentHost) && !getIpv4Candidates().includes(currentHost);
-
-  if (!isCgnatOrTailscaleIp(currentHost) && !isStaleLanIp) return;
-  if (!isPrivateLanIp(betterLanIp)) return;
-  if (currentHost === betterLanIp) return;
-
-  const nextSfuPublicHost = `${betterLanIp}:${sfuPort}`;
-
-  const nextRaw = raw.replace(
-    /^SFU_PUBLIC_HOST=.*$/m,
-    `SFU_PUBLIC_HOST=${nextSfuPublicHost}`,
-  );
-
-  writeFileSync(configPath, nextRaw, "utf-8");
-
-  console.log(
-    `[EmbeddedServerConfig] Migrated SFU_PUBLIC_HOST from ${currentSfuPublicHost} to ${nextSfuPublicHost}`,
-  );
 }
 
 /**
@@ -403,7 +459,8 @@ export async function generateConfig(
       : await findFreePortFrom(5000);
   const sfuPort = existingSfuPort() ?? (await findFreePortFrom(5005));
   const jwtSecret = randomBytes(32).toString("hex");
-  const lanIp = getLanIp();
+  const advertisedAddresses = getAdvertisedAddresses();
+  const lanIp = advertisedAddresses[0] || "127.0.0.1";
   const externalHost = `http://127.0.0.1:${serverPort}`;
 
   const envContent =
@@ -424,7 +481,9 @@ export async function generateConfig(
       `JWT_SECRET=${jwtSecret}`,
       `SFU_PORT=${sfuPort}`,
       `SFU_WS_HOST=ws://127.0.0.1:${sfuPort}`,
-      `SFU_PUBLIC_HOST=${lanIp}:${sfuPort}`,
+      `EMBEDDED_SERVER_CUSTOM_ADDRESSES=`,
+      `SFU_PUBLIC_HOST=${advertisedAddresses.map((address) => `${address}:${sfuPort}`).join(",") || `${lanIp}:${sfuPort}`}`,
+      `ICE_ADVERTISE_IP=${advertisedAddresses.join(",")}`,
       `STUN_SERVERS=stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302`,
       `CORS_ORIGIN=*`,
       `EXTERNAL_HOST=${externalHost}`,
@@ -465,6 +524,8 @@ export async function generateConfig(
     jwtSecret,
     lanDiscoverable,
     externalHost,
+    advertisedAddresses,
+    customAdvertisedAddresses: [],
   };
 }
 
@@ -472,10 +533,16 @@ export function loadConfig(id: string): EmbeddedServerConfig | null {
   const configPath = getConfigPathFor(id);
   if (!existsSync(configPath)) return null;
 
-  migrateExistingConfigIfNeeded(configPath);
-
-  const raw = readFileSync(configPath, "utf-8");
+  const originalRaw = readFileSync(configPath, "utf-8");
+  const originalEnv = parseEnv(originalRaw);
+  const sfuPort = parseInt(originalEnv.SFU_PORT || "5005", 10);
+  const raw = withAdvertisedAddresses(originalRaw, sfuPort);
+  if (raw !== originalRaw) writeFileSync(configPath, raw, "utf-8");
   const env = parseEnv(raw);
+  const customAdvertisedAddresses = customAddressesFrom(env);
+  const advertisedAddresses = [
+    ...new Set([...getAdvertisedAddresses(), ...customAdvertisedAddresses]),
+  ];
 
   return {
     id,
@@ -487,6 +554,8 @@ export function loadConfig(id: string): EmbeddedServerConfig | null {
     jwtSecret: env.JWT_SECRET || "",
     lanDiscoverable: (env.SERVER_DISCOVERABLE || "").toLowerCase() !== "false",
     externalHost: env.EXTERNAL_HOST || `http://127.0.0.1:${env.PORT || "5000"}`,
+    advertisedAddresses,
+    customAdvertisedAddresses,
   };
 }
 

@@ -17,6 +17,7 @@ import {
   listServerIds,
   loadConfig,
   suggestServerPort,
+  updateCustomAdvertisedAddresses,
 } from "./embeddedServerConfig";
 import { loadGlobalStore, setGlobalValue } from "./globalStore";
 
@@ -346,6 +347,25 @@ export function getEmbeddedServerState(id: string): EmbeddedServerState | null {
   };
 }
 
+export function updateServerAdvertisedAddresses(
+  id: string,
+  addresses: string[],
+): EmbeddedServerState | null {
+  const current = getEmbeddedServerState(id);
+  if (!current) return null;
+  if (current.status === "running" || current.status === "starting") {
+    throw new Error("Stop the server before changing its advertised addresses");
+  }
+
+  const config = updateCustomAdvertisedAddresses(id, addresses);
+  if (!config) return null;
+
+  const inst = instances.get(id);
+  if (inst) inst.config = config;
+  emitStatus();
+  return getEmbeddedServerState(id);
+}
+
 function parseEnvFile(path: string): Record<string, string> {
   const env: Record<string, string> = {};
   if (!existsSync(path)) return env;
@@ -373,12 +393,14 @@ function sfuUsers(): number {
 function spawnSfu(config: EmbeddedServerConfig): ChildProcess | null {
   const binary = getSfuBinaryPath();
   if (!binary) return null;
+  const envVars = parseEnvFile(config.configPath);
 
   const proc = spawn(binary, [], {
     env: {
       ...process.env,
       PORT: String(config.sfuPort),
       SFU_PORT: String(config.sfuPort),
+      ICE_ADVERTISE_IP: envVars.ICE_ADVERTISE_IP || "",
     },
     stdio: ["ignore", "pipe", "pipe"],
   });

@@ -1,5 +1,5 @@
 import { Accordion, Alert, AlertDialog, Avatar, Button, Checkbox, Chip, Spinner, Surface, TextField } from "@gryt/ui";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   PiHardDrivesFill,
   PiPlayFill,
@@ -42,6 +42,7 @@ export function MyServersSettings() {
     setAutoStart,
     startServer,
     stopServer,
+    updateAdvertisedAddresses,
     deleteServer,
     isBusy,
     dismissError,
@@ -108,6 +109,9 @@ export function MyServersSettings() {
                 onStop={() => {
                   void stopServer(server.id);
                 }}
+                onUpdateAdvertisedAddresses={(addresses) =>
+                  updateAdvertisedAddresses(server.id, addresses)
+                }
                 onDelete={() => {
                   // The rail entries go with it. Left behind they point at an
                   // address nothing answers on, and look like a server that is
@@ -182,6 +186,7 @@ function HostedServerCard({
   onAutoStart,
   onStart,
   onStop,
+  onUpdateAdvertisedAddresses,
   onDelete,
   onDismissError,
 }: {
@@ -192,6 +197,7 @@ function HostedServerCard({
   onAutoStart: (enabled: boolean) => void;
   onStart: () => void;
   onStop: () => void;
+  onUpdateAdvertisedAddresses: (addresses: string[]) => Promise<boolean>;
   onDelete: () => void;
   onDismissError: () => void;
 }) {
@@ -204,6 +210,8 @@ function HostedServerCard({
   const [confirmDelete, setConfirmDelete] = useState(false);
   /** Typed back before Delete works. This destroys a database. */
   const [typedName, setTypedName] = useState("");
+  const [customAddresses, setCustomAddresses] = useState("");
+  const [addressSaveFailed, setAddressSaveFailed] = useState(false);
 
   const isRunning = server.status === "running";
   const isStarting = server.status === "starting";
@@ -211,6 +219,13 @@ function HostedServerCard({
   const name = server.config?.serverName ?? "My Server";
   const port = server.config?.serverPort;
   const host = server.serverUrl ? normalizeHost(server.serverUrl) : "";
+
+  useEffect(() => {
+    setCustomAddresses(
+      server.config?.customAdvertisedAddresses.join(", ") ?? "",
+    );
+    setAddressSaveFailed(false);
+  }, [server.config?.customAdvertisedAddresses]);
 
   /** Put this server in the rail and go look at it. */
   function openServer() {
@@ -365,6 +380,65 @@ function HostedServerCard({
             </AlertDialog.Popup>
             </AlertDialog.Portal>
           </AlertDialog.Root>
+        </div>
+
+        <div className="flex flex-col gap-2 border-t border-gryt-border pt-3">
+          <span className="text-sm font-bold">Advertised addresses</span>
+          <span className="text-xs">
+            Voice currently advertises{" "}
+            {server.config?.advertisedAddresses.length ? (
+              server.config.advertisedAddresses.map((address, index) => (
+                <span key={address}>
+                  {index > 0 ? ", " : ""}
+                  <code className="font-mono text-xs text-gryt-muted">
+                    {address}
+                  </code>
+                </span>
+              ))
+            ) : (
+              "no external address"
+            )}
+            . Gryt adds usable addresses from this machine automatically.
+          </span>
+          <div className="flex gap-2 items-end">
+            <label className="flex flex-col gap-1 flex-1">
+              <span className="text-xs">Public IPs or hostnames</span>
+              <TextField
+                value={customAddresses}
+                onChange={(event) => {
+                  setCustomAddresses(event.target.value);
+                  setAddressSaveFailed(false);
+                }}
+                placeholder="203.0.113.10, voice.example.com"
+                disabled={isRunning || isStarting || busy}
+              />
+            </label>
+            <Button
+              size="small"
+              disabled={isRunning || isStarting || busy}
+              onClick={() => {
+                const addresses = customAddresses
+                  .split(",")
+                  .map((address) => address.trim())
+                  .filter(Boolean);
+                void onUpdateAdvertisedAddresses(addresses).then((saved) =>
+                  setAddressSaveFailed(!saved),
+                );
+              }}
+            >
+              Save
+            </Button>
+          </div>
+          {(isRunning || isStarting) && (
+            <span className="text-xs text-gryt-muted">
+              Stop the server before changing these addresses.
+            </span>
+          )}
+          {addressSaveFailed && (
+            <Alert severity="info" role="alert">
+              Use IPv4 addresses or fully qualified hostnames without ports.
+            </Alert>
+          )}
         </div>
 
         {/* Behind an accordion, and genuinely unmounted when shut.

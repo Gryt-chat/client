@@ -72,6 +72,8 @@ export interface EmbeddedServerConfig {
   sfuPort: number;
   lanDiscoverable: boolean;
   externalHost: string;
+  advertisedAddresses: string[];
+  customAdvertisedAddresses: string[];
 }
 
 export interface EmbeddedServerState {
@@ -200,6 +202,10 @@ export interface ElectronAPI {
   dismissEmbeddedServerError(id: string): Promise<EmbeddedServerState | null>;
   deleteEmbeddedServer(id: string): Promise<EmbeddedServerState[]>;
   getEmbeddedServerStatus(): Promise<EmbeddedServerState[]>;
+  updateEmbeddedServerAdvertisedAddresses(
+    id: string,
+    addresses: string[],
+  ): Promise<EmbeddedServerState | null>;
   onEmbeddedServerStatusChanged(
     callback: (states: EmbeddedServerState[]) => void
   ): () => void;
