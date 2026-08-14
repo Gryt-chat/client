@@ -42,27 +42,99 @@ async function generatePKCE(): Promise<{
 
 // ── Token storage ────────────────────────────────────────────────────────
 
-export function getStoredTokens(): ElectronTokens | null {
+/**
+ * Tokens sealed by the OS keychain (GRYT-264).
+ *
+ * The refresh token is the valuable half — it renews a session rather than
+ * being one — and both used to sit in the app's data folder as plain text,
+ * readable by anything that could read the folder.
+ */
+interface SealedTokens {
+  sealed: string;
+}
+
+function isSealed(value: unknown): value is SealedTokens {
+  return (
+    !!value &&
+    typeof value === "object" &&
+    typeof (value as SealedTokens).sealed === "string"
+  );
+}
+
+/** The bridge, but only when the OS will actually encrypt for us. */
+async function keychain() {
+  const api = getElectronAPI();
+  if (!api?.secretsAvailable || !api.sealSecret) return null;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      console.log("[Auth:Electron] No stored tokens found");
-      return null;
-    }
-    const tokens = JSON.parse(raw) as ElectronTokens;
-    const ttl = tokens.expires_at - Date.now();
-    console.log("[Auth:Electron] Loaded stored tokens — expires in", Math.round(ttl / 1000), "s");
-    return tokens;
-  } catch (e) {
-    console.warn("[Auth:Electron] Failed to parse stored tokens:", e);
+    return (await api.secretsAvailable()) ? api : null;
+  } catch {
+    // Throws rather than returning false on a Linux box with no keyring.
     return null;
   }
 }
 
-export function storeTokens(tokens: ElectronTokens): void {
+export async function getStoredTokens(): Promise<ElectronTokens | null> {
+  let raw: string | null = null;
+  try {
+    raw = localStorage.getItem(STORAGE_KEY);
+  } catch {
+    return null;
+  }
+
+  if (!raw) {
+    console.log("[Auth:Electron] No stored tokens found");
+    return null;
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(raw);
+
+    let tokens: ElectronTokens;
+    if (isSealed(parsed)) {
+      const api = getElectronAPI();
+      if (!api?.unsealSecret) {
+        throw new Error("sealed, and there is no keychain here to open them");
+      }
+      tokens = JSON.parse(await api.unsealSecret(parsed.sealed)) as ElectronTokens;
+    } else {
+      // Written before this shipped, or by the web client. Read as-is rather
+      // than rejected, so an upgrade does not sign everybody out; the next
+      // write seals them.
+      tokens = parsed as ElectronTokens;
+    }
+
+    const ttl = tokens.expires_at - Date.now();
+    console.log("[Auth:Electron] Loaded stored tokens — expires in", Math.round(ttl / 1000), "s");
+    return tokens;
+  } catch (e) {
+    // Thrown away rather than kept, which is the opposite of what `readSeed`
+    // does with an identity seed it cannot open — and deliberately so. A token
+    // that will not open costs one sign-in. A seed that will not open is every
+    // identity on every server, so that one has to fail loudly and leave the
+    // value alone to be recovered. Here there is nothing to recover, and
+    // leaving unreadable tokens in place would retry and fail on every launch.
+    console.warn("[Auth:Electron] Could not read stored tokens, signing out:", e);
+    clearStoredTokens();
+    return null;
+  }
+}
+
+export async function storeTokens(tokens: ElectronTokens): Promise<void> {
   const ttl = tokens.expires_at - Date.now();
   console.log("[Auth:Electron] Storing tokens — expires in", Math.round(ttl / 1000), "s");
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(tokens));
+
+  const api = await keychain();
+  const payload = api
+    ? JSON.stringify({ sealed: await api.sealSecret(JSON.stringify(tokens)) })
+    : JSON.stringify(tokens);
+
+  try {
+    localStorage.setItem(STORAGE_KEY, payload);
+  } catch (e) {
+    // Out of storage, or blocked. Worth saying, because the symptom otherwise
+    // is being asked to sign in again on the next launch for no visible reason.
+    console.warn("[Auth:Electron] Could not save tokens:", e);
+  }
 }
 
 export function clearStoredTokens(): void {
@@ -161,7 +233,7 @@ export async function refreshTokens(
     expires_at: Date.now() + data.expires_in * 1000,
   };
   console.log("[Auth:Electron] Token refresh succeeded — new expiry in", data.expires_in, "s");
-  storeTokens(tokens);
+  await storeTokens(tokens);
   return tokens;
 }
 
@@ -212,7 +284,7 @@ export async function handleAuthCallback(url: string): Promise<void> {
     }
 
     const tokens = await exchangeCodeForTokens(code, codeVerifier);
-    storeTokens(tokens);
+    await storeTokens(tokens);
     resolve(tokens);
   } catch (err) {
     reject(err instanceof Error ? err : new Error(String(err)));
@@ -303,7 +375,7 @@ export async function electronRegister(): Promise<ElectronTokens> {
  * Logs out: invalidates the refresh token server-side and clears local storage.
  */
 export async function electronLogout(): Promise<void> {
-  const tokens = getStoredTokens();
+  const tokens = await getStoredTokens();
   if (tokens) {
     const cfg = getGrytConfig();
     try {
@@ -327,7 +399,7 @@ export async function electronLogout(): Promise<void> {
  * Returns undefined if not authenticated.
  */
 export async function getValidElectronToken(): Promise<string | undefined> {
-  const tokens = getStoredTokens();
+  const tokens = await getStoredTokens();
   if (!tokens) {
     console.log("[Auth:Electron] getValidElectronToken: no tokens");
     return undefined;

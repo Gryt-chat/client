@@ -304,6 +304,19 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("user-store:set", userId, key, value);
   },
 
+  // ── Secrets at rest (GRYT-256) ────────────────────────────────
+  secretsAvailable(): Promise<boolean> {
+    return ipcRenderer.invoke("secret:available");
+  },
+
+  sealSecret(plain: string): Promise<string> {
+    return ipcRenderer.invoke("secret:seal", plain);
+  },
+
+  unsealSecret(sealed: string): Promise<string> {
+    return ipcRenderer.invoke("secret:unseal", sealed);
+  },
+
   // ── Global file store (backs localStorage) ─────────────────────
   loadGlobalStore(): Promise<Record<string, unknown>> {
     return ipcRenderer.invoke("global-store:load");

@@ -45,7 +45,7 @@ function parseJwtPayload(token: string): Record<string, unknown> {
 }
 
 async function refreshElectronKeycloakToken(keycloak: Keycloak): Promise<void> {
-  const stored = getStoredTokens();
+  const stored = await getStoredTokens();
   if (!stored) throw new Error("No stored tokens for Electron refresh");
   const newTokens = await refreshTokens(stored.refresh_token);
   keycloak.token = newTokens.access_token;
@@ -122,7 +122,7 @@ function installKeycloakEventHandlers(keycloak: Keycloak, context: string): void
         await keycloak.updateToken(30);
         console.log("[Auth:KC] updateToken succeeded — authenticated:", keycloak.authenticated);
         if (keycloak.token && keycloak.refreshToken && keycloak.idToken) {
-          storeTokens({
+          await storeTokens({
             access_token: keycloak.token,
             refresh_token: keycloak.refreshToken,
             id_token: keycloak.idToken,
@@ -167,7 +167,7 @@ function installKeycloakEventHandlers(keycloak: Keycloak, context: string): void
 async function initKeycloakForElectron(): Promise<KeycloakInitResult> {
   console.log("[Auth:KC] initKeycloakForElectron starting…");
   const keycloak = getKeycloak();
-  const stored = getStoredTokens();
+  const stored = await getStoredTokens();
 
   if (stored) {
     const ttl = stored.expires_at - Date.now();

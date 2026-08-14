@@ -3,10 +3,23 @@
  * identity authentication. The private key never leaves the client.
  */
 
+import { getElectronAPI } from "../../../../lib/electron";
+import {
+  deriveLocalKeyPair,
+  generateSeed,
+  SEED_BYTES,
+  seedToWords,
+  wordsToSeed,
+} from "./identity-seed";
+import { getOriginKeyIdForHost } from "./server-pins";
+
 const DB_NAME = "gryt_identity_keys";
 const DB_VERSION = 1;
 const STORE_NAME = "keys";
 const KEY_ID = "identity";
+const SEED_KEY = "identity-seed";
+const LOCAL_PREFIX = "local:";
+const SERVER_SCOPE_PREFIX = "srv:";
 
 /**
  * Where a signing key comes from.
@@ -15,18 +28,49 @@ const KEY_ID = "identity";
  * exactly one, because the certificate binds one key to one account, and the
  * account `sub` is the same on every server anyway.
  *
- * `local` is a key generated for one server and used nowhere else. Nothing
- * binds these together, which is the point: a local identity is its own key, so
- * one key per server means two servers cannot tell they are talking to the same
- * person. Costs nothing — the keys are generated on first join and never leave
- * the device either way.
+ * `local` is a key for one server and used nowhere else. Nothing binds these
+ * together as far as a server can tell, which is the point: a local identity is
+ * its own key, so one key per server means two servers cannot work out they are
+ * talking to the same person. They are calculated from a single seed rather
+ * than each generated separately — see `identity-seed.ts` — which keeps that
+ * property and makes the whole set portable at the same time.
  */
 export type IdentitySource =
   | { kind: "account" }
   | { kind: "local"; host: string };
 
+/**
+ * What a local identity is filed and calculated under (GRYT-257).
+ *
+ * The server, not the address it currently answers on. An address changes when
+ * a port is taken (GRYT-48) or a router hands out a new lease, and the client
+ * already recognises the server through that — pins are filed under the key for
+ * exactly this reason. Filing the identity under the address instead meant the
+ * client knew it was the same server and then arrived as a stranger: new `sub`,
+ * no roles, no ownership, no history, and nothing logged to say why.
+ *
+ * The lineage id rather than today's key, so a server rotating its key does not
+ * do the same thing (GRYT-54).
+ *
+ * One consequence worth knowing: a server reachable at two addresses — a LAN
+ * address and a tunnel, say — is one identity now, where it used to be two.
+ * That is the correct answer to "am I the same person on both", and it was
+ * previously no.
+ *
+ * Falls back to the address when the server offered no proof at all, since
+ * there is then nothing better to go on. Those identities keep the old
+ * behaviour, including its bug, because nothing else is available to fix it
+ * with.
+ */
+function identityScopeFor(host: string): string {
+  const origin = getOriginKeyIdForHost(host);
+  return origin ? `${SERVER_SCOPE_PREFIX}${origin}` : host;
+}
+
 function storageKeyFor(source: IdentitySource): string {
-  return source.kind === "account" ? KEY_ID : `local:${source.host}`;
+  return source.kind === "account"
+    ? KEY_ID
+    : `${LOCAL_PREFIX}${identityScopeFor(source.host)}`;
 }
 
 const ALGO: EcKeyGenParams = { name: "ECDSA", namedCurve: "P-256" };
@@ -64,6 +108,15 @@ function idbPut(db: IDBDatabase, key: string, value: unknown): Promise<void> {
   });
 }
 
+function idbDelete(db: IDBDatabase, key: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const req = tx.objectStore(STORE_NAME).delete(key);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
 function idbKeys(db: IDBDatabase): Promise<string[]> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, "readonly");
@@ -76,9 +129,143 @@ function idbKeys(db: IDBDatabase): Promise<string[]> {
 interface StoredKeyPair {
   privateKey: CryptoKey;
   publicKey: CryptoKey;
+  /**
+   * Last address this identity was used at. Display only — never a key, and
+   * never what anything is looked up by.
+   *
+   * Since GRYT-257 the storage key names the server rather than the address, and
+   * `srv:C6ylBHyqZU--…` is not something to show anybody. Absent on entries
+   * written before that, where the storage key was the address and can be shown
+   * as-is.
+   */
+  host?: string;
 }
 
 const cachedKeyPairs = new Map<string, StoredKeyPair>();
+
+/**
+ * How the seed sits in the database.
+ *
+ * Sealed by the OS keychain where there is one (GRYT-256), and raw where there
+ * is not — the web client, and desktop on a Linux box with no keyring. Both
+ * shapes are read, so a profile that gains or loses the keychain keeps working.
+ */
+type StoredSeed = Uint8Array | { sealed: string };
+
+/** The bridge, but only when the OS will actually encrypt for us. */
+async function osKeychain() {
+  const api = getElectronAPI();
+  if (!api?.secretsAvailable || !api.sealSecret) return null;
+  try {
+    return (await api.secretsAvailable()) ? api : null;
+  } catch {
+    return null;
+  }
+}
+
+async function writeSeed(db: IDBDatabase, seed: Uint8Array): Promise<void> {
+  const api = await osKeychain();
+  if (!api) {
+    await idbPut(db, SEED_KEY, seed);
+    return;
+  }
+  await idbPut(db, SEED_KEY, {
+    sealed: await api.sealSecret(base64UrlEncode(seed)),
+  });
+}
+
+/**
+ * Read the seed back, whichever way it was written.
+ *
+ * A sealed seed that will not open throws rather than returning nothing. The
+ * tempting alternative — treat it as missing and make a fresh one — would hand
+ * somebody a brand new identity on every server they have, silently, at the
+ * exact moment their real one became temporarily unreadable. Failing loudly
+ * leaves the seed on disk to be recovered once the keychain is back.
+ */
+async function readSeed(stored: StoredSeed | undefined): Promise<Uint8Array | null> {
+  if (!stored) return null;
+
+  if (stored instanceof Uint8Array) {
+    return stored.length === SEED_BYTES ? stored : null;
+  }
+  if (typeof stored.sealed !== "string") return null;
+
+  const api = getElectronAPI();
+  if (!api?.unsealSecret) {
+    throw new Error(
+      "This identity was locked to this computer and cannot be read here. " +
+        "Restore it from your identity backup instead.",
+    );
+  }
+
+  let seed: Uint8Array;
+  try {
+    seed = base64UrlDecode(await api.unsealSecret(stored.sealed));
+  } catch {
+    throw new Error(
+      "Your saved identity could not be unlocked. If this computer's keychain " +
+        "was reset, restore from your identity backup.",
+    );
+  }
+  if (seed.length !== SEED_BYTES) {
+    throw new Error("Your saved identity is damaged and could not be read.");
+  }
+  return seed;
+}
+
+/**
+ * The seed every local key is calculated from, made on first use.
+ *
+ * Kept in the same store as the keys, because it is the same kind of secret and
+ * clearing site data should take it along with everything else it already
+ * takes. It is not filed under `local:`, so it stays out of
+ * `listLocalIdentityHosts` and out of the export that reads from it.
+ *
+ * Deliberately not cleared by `clearIdentityKeys`, for the reason given there:
+ * signing out of an account says nothing about the servers joined without one.
+ */
+async function getOrCreateSeed(db: IDBDatabase): Promise<Uint8Array> {
+  const existing = await readSeed(await idbGet<StoredSeed>(db, SEED_KEY));
+  if (existing) return existing;
+
+  const seed = generateSeed();
+  await writeSeed(db, seed);
+  console.log("[Identity] Generated new local identity seed");
+  return seed;
+}
+
+/** Checked once a session; the answer cannot change while the app is running. */
+let seedSealChecked = false;
+
+/**
+ * Seal a seed that was written when no keychain was reachable.
+ *
+ * Happens on a Linux box where a keyring was installed after Gryt was, and to
+ * anything restored while the bridge was unavailable. Deliberately *not* left to
+ * `getOrCreateSeed`: that only runs when a key has to be worked out, so somebody
+ * whose servers all have a stored key already would never reach it and would
+ * keep an unsealed seed on disk indefinitely.
+ *
+ * Failures are swallowed. This is opportunistic hardening of something that
+ * already works, and a keychain that will not seal is not a reason to refuse
+ * somebody entry to a server.
+ */
+async function ensureSeedSealed(db: IDBDatabase): Promise<void> {
+  if (seedSealChecked) return;
+  seedSealChecked = true;
+
+  try {
+    const stored = await idbGet<StoredSeed>(db, SEED_KEY);
+    if (!(stored instanceof Uint8Array)) return;
+    if (!(await osKeychain())) return;
+
+    await writeSeed(db, stored);
+    console.log("[Identity] Locked the identity seed with the OS keychain");
+  } catch (e) {
+    console.warn("[Identity] Could not lock the identity seed:", e);
+  }
+}
 
 async function loadOrGenerateKeyPair(
   source: IdentitySource = { kind: "account" },
@@ -89,6 +276,8 @@ async function loadOrGenerateKeyPair(
 
   const db = await openDB();
 
+  if (source.kind === "local") await ensureSeedSealed(db);
+
   const existing = await idbGet<StoredKeyPair>(db, storageKey);
   if (existing?.privateKey && existing?.publicKey) {
     cachedKeyPairs.set(storageKey, existing);
@@ -96,6 +285,13 @@ async function loadOrGenerateKeyPair(
     return existing;
   }
 
+  // A local key is calculated from the seed, so the same identity comes back on
+  // any device that holds it, including for servers that device has never
+  // connected to. Every local key on this device works this way — the random
+  // per-server keys that came before were only ever a day old when this landed,
+  // so nothing carries them forward and there is no second kind of key to
+  // reason about.
+  //
   // Local keys are extractable so they can be saved and restored; the account
   // key is not, and does not need to be — losing it costs you nothing, because
   // the CA will certify a fresh one for the same account.
@@ -106,23 +302,34 @@ async function loadOrGenerateKeyPair(
   // whether one is possible. Set against that: without it, clearing site data
   // destroys every server this identity was known on — the roles, the
   // ownership, the history — permanently, silently, and with no way back.
-  const extractable = source.kind === "local";
+  const stored: StoredKeyPair =
+    source.kind === "local"
+      ? {
+          // Calculated from the scope, not the address, so the two properties
+          // hold together: another device with the seed derives the same key,
+          // and it keeps deriving it after the server moves.
+          ...(await deriveLocalKeyPair(
+            await getOrCreateSeed(db),
+            identityScopeFor(source.host),
+          )),
+          host: source.host,
+        }
+      : await crypto.subtle.generateKey(ALGO, false, ["sign", "verify"]);
 
-  const keyPair = await crypto.subtle.generateKey(ALGO, extractable, [
-    "sign",
-    "verify",
-  ]);
-
-  const stored: StoredKeyPair = {
-    privateKey: keyPair.privateKey,
-    publicKey: keyPair.publicKey,
-  };
-
+  // Written down even though a local key could be recalculated on demand. The
+  // entry is also the record that this host was actually joined, which is what
+  // `listLocalIdentityHosts` reports and what decides whether an account offers
+  // to carry a previous identity over. Derivation alone cannot answer that —
+  // it will happily produce a key for a server nobody has ever visited.
   await idbPut(db, storageKey, stored);
   db.close();
 
   cachedKeyPairs.set(storageKey, stored);
-  console.log(`[Identity] Generated new ECDSA P-256 keypair (${storageKey})`);
+  console.log(
+    `[Identity] ${
+      source.kind === "local" ? "Derived" : "Generated"
+    } ECDSA P-256 keypair (${storageKey})`,
+  );
   return stored;
 }
 
@@ -138,6 +345,13 @@ function base64UrlEncode(buf: ArrayBuffer | Uint8Array): string {
   let binary = "";
   for (const b of bytes) binary += String.fromCharCode(b);
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function base64UrlDecode(value: string): Uint8Array<ArrayBuffer> {
+  const binary = atob(value.replace(/-/g, "+").replace(/_/g, "/"));
+  const out = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
+  return out as Uint8Array<ArrayBuffer>;
 }
 
 function utf8ToBuffer(str: string): Uint8Array<ArrayBuffer> {
@@ -196,21 +410,86 @@ export async function signAssertion(
   );
 }
 
-const LOCAL_PREFIX = "local:";
+/** Every local identity on this device, by what it is filed under. */
+async function listLocalIdentityScopes(db: IDBDatabase): Promise<string[]> {
+  return (await idbKeys(db))
+    .filter((k) => k.startsWith(LOCAL_PREFIX))
+    .map((k) => k.slice(LOCAL_PREFIX.length));
+}
 
-/** Which hosts this device holds a local identity for. */
-export async function listLocalIdentityHosts(): Promise<string[]> {
+/**
+ * Whether this device already has a local identity for a server.
+ *
+ * Asked before an account offers to carry a previous identity over, so it has
+ * to mean "was actually joined as a guest" rather than "could produce a key
+ * for". Since GRYT-254 the seed can derive a key for anywhere, so the question
+ * is only ever about what is stored.
+ */
+export async function hasLocalIdentity(host: string): Promise<boolean> {
   const db = await openDB();
   try {
-    return (await idbKeys(db))
-      .filter((k) => k.startsWith(LOCAL_PREFIX))
-      .map((k) => k.slice(LOCAL_PREFIX.length));
+    const pair = await idbGet<StoredKeyPair>(db, storageKeyFor({ kind: "local", host }));
+    return Boolean(pair?.privateKey && pair?.publicKey);
   } finally {
     db.close();
   }
 }
 
+/**
+ * Addresses this device holds a local identity for, for showing someone.
+ *
+ * Reads the stored label rather than the key it is filed under, which since
+ * GRYT-257 names the server and is not meant for display. Entries written
+ * before that have no label and are filed under the address, so the key itself
+ * is the honest answer for them.
+ */
+export async function listLocalIdentityHosts(): Promise<string[]> {
+  const db = await openDB();
+  try {
+    const scopes = await listLocalIdentityScopes(db);
+    const hosts: string[] = [];
+    for (const scope of scopes) {
+      const pair = await idbGet<StoredKeyPair>(db, `${LOCAL_PREFIX}${scope}`);
+      hosts.push(pair?.host ?? scope);
+    }
+    return hosts;
+  } finally {
+    db.close();
+  }
+}
+
+export interface IdentityBackupEntry {
+  /**
+   * What the identity is filed under: a server lineage since GRYT-257, an
+   * address before it. Restored under the same name, so a backup taken from an
+   * older client keeps working and gets moved on the next join like any other
+   * address-filed identity.
+   */
+  scope: string;
+  /** Last address it was used at. Display only. */
+  host?: string;
+  privateJwk: JsonWebKey;
+  publicJwk: JsonWebKey;
+}
+
 export interface IdentityBackup {
+  type: "gryt-local-identity-backup";
+  version: 2;
+  exportedAt: string;
+  /**
+   * The seed, base64url (GRYT-255). Absent in files written before it existed,
+   * and in that case the identities listed are all there is.
+   *
+   * Carried alongside the keys rather than instead of them: the seed reproduces
+   * everything derived from it, and nothing else. Identities generated at random
+   * before GRYT-254 have to travel as themselves.
+   */
+  seed?: string;
+  identities: IdentityBackupEntry[];
+}
+
+/** Version 1, where `host` held what version 2 calls `scope`. Read, never written. */
+interface IdentityBackupV1 {
   type: "gryt-local-identity-backup";
   version: 1;
   exportedAt: string;
@@ -219,12 +498,6 @@ export interface IdentityBackup {
 
 export interface ExportResult {
   backup: IdentityBackup;
-  /**
-   * Hosts whose key could not be read. Keys made before local identities were
-   * extractable cannot be exported at all, and the only honest thing is to name
-   * them rather than hand over a backup that quietly omits some servers.
-   */
-  unexportable: string[];
 }
 
 /**
@@ -234,24 +507,30 @@ export interface ExportResult {
  * server listed in it, which is why the UI that calls this says so.
  */
 export async function exportLocalIdentities(): Promise<ExportResult> {
-  const hosts = await listLocalIdentityHosts();
   const db = await openDB();
-  const identities: IdentityBackup["identities"] = [];
-  const unexportable: string[] = [];
+  const identities: IdentityBackupEntry[] = [];
+  let seed: string | undefined;
 
   try {
-    for (const host of hosts) {
-      const pair = await idbGet<StoredKeyPair>(db, `${LOCAL_PREFIX}${host}`);
+    // Read rather than created. Exporting is not a reason to bring an identity
+    // into existence, and a backup of a seed nothing has used yet is a file that
+    // looks like a safety net and is not one.
+    const bytes = await readSeed(await idbGet<StoredSeed>(db, SEED_KEY));
+    if (bytes) seed = base64UrlEncode(bytes);
+
+    // Every key here is derived and extractable by construction, so a failure
+    // to read one is a bug rather than a case to report and step over. Left to
+    // throw: a backup that quietly omits a server is worse than no backup,
+    // because it gets trusted.
+    for (const scope of await listLocalIdentityScopes(db)) {
+      const pair = await idbGet<StoredKeyPair>(db, `${LOCAL_PREFIX}${scope}`);
       if (!pair?.privateKey || !pair?.publicKey) continue;
-      try {
-        identities.push({
-          host,
-          privateJwk: await crypto.subtle.exportKey("jwk", pair.privateKey),
-          publicJwk: await crypto.subtle.exportKey("jwk", pair.publicKey),
-        });
-      } catch {
-        unexportable.push(host);
-      }
+      identities.push({
+        scope,
+        host: pair.host,
+        privateJwk: await crypto.subtle.exportKey("jwk", pair.privateKey),
+        publicJwk: await crypto.subtle.exportKey("jwk", pair.publicKey),
+      });
     }
   } finally {
     db.close();
@@ -260,22 +539,71 @@ export async function exportLocalIdentities(): Promise<ExportResult> {
   return {
     backup: {
       type: "gryt-local-identity-backup",
-      version: 1,
+      version: 2,
       exportedAt: new Date().toISOString(),
+      seed,
       identities,
     },
-    unexportable,
   };
 }
 
-function isBackup(value: unknown): value is IdentityBackup {
+type AnyIdentityBackup = IdentityBackup | IdentityBackupV1;
+
+function isBackup(value: unknown): value is AnyIdentityBackup {
   if (!value || typeof value !== "object") return false;
-  const b = value as Partial<IdentityBackup>;
+  const b = value as Partial<AnyIdentityBackup>;
   return (
     b.type === "gryt-local-identity-backup" &&
-    b.version === 1 &&
+    (b.version === 1 || b.version === 2) &&
     Array.isArray(b.identities)
   );
+}
+
+/**
+ * Both versions as one shape.
+ *
+ * Version 1 filed everything under the address and called that field `host`,
+ * which is what version 2 calls `scope`. So an old backup restores under the
+ * address, exactly where it came from, and the next join to that server moves
+ * it like any other address-filed identity.
+ */
+function backupEntries(backup: AnyIdentityBackup): IdentityBackupEntry[] {
+  if (backup.version === 2) return backup.identities;
+  return backup.identities.map((e) => ({
+    scope: e.host,
+    host: e.host,
+    privateJwk: e.privateJwk,
+    publicJwk: e.publicJwk,
+  }));
+}
+
+/**
+ * Read a backup file into entries, or say it is not one.
+ *
+ * Shared with `device-delegation.ts`, which reads the same files for a
+ * different purpose. It had its own copy of this, and a second copy is how one
+ * of them ends up rejecting a version the other writes.
+ */
+export interface ParsedIdentityBackup {
+  /** Base64url, when the file carries one. */
+  seed?: string;
+  identities: IdentityBackupEntry[];
+}
+
+export function parseIdentityBackup(raw: string): ParsedIdentityBackup {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error("That file isn't a Gryt identity backup.");
+  }
+  if (!isBackup(parsed)) {
+    throw new Error("That file isn't a Gryt identity backup.");
+  }
+  return {
+    seed: parsed.version === 2 ? parsed.seed : undefined,
+    identities: backupEntries(parsed),
+  };
 }
 
 /**
@@ -286,22 +614,21 @@ function isBackup(value: unknown): value is IdentityBackup {
  * backup would hand you their identity and drop yours, so the UI asks first.
  */
 export async function importLocalIdentities(raw: string): Promise<string[]> {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    throw new Error("That file isn't a Gryt identity backup.");
-  }
-  if (!isBackup(parsed)) {
-    throw new Error("That file isn't a Gryt identity backup.");
-  }
+  const { seed, identities } = parseIdentityBackup(raw);
 
   const db = await openDB();
   const restored: string[] = [];
 
   try {
-    for (const entry of parsed.identities) {
-      if (!entry?.host || !entry.privateJwk || !entry.publicJwk) continue;
+    // The seed first, so every server the file did not list is derivable the
+    // moment this returns rather than only after the next join.
+    if (seed) {
+      const bytes = base64UrlDecode(seed);
+      if (bytes.length === SEED_BYTES) await writeSeed(db, bytes);
+    }
+
+    for (const entry of identities) {
+      if (!entry?.scope || !entry.privateJwk || !entry.publicJwk) continue;
 
       // Imported extractable, so a restored identity can be saved again. A
       // backup that could only be restored once would be a trap.
@@ -320,8 +647,12 @@ export async function importLocalIdentities(raw: string): Promise<string[]> {
         ["verify"],
       );
 
-      await idbPut(db, `${LOCAL_PREFIX}${entry.host}`, { privateKey, publicKey });
-      restored.push(entry.host);
+      await idbPut(db, `${LOCAL_PREFIX}${entry.scope}`, {
+        privateKey,
+        publicKey,
+        host: entry.host,
+      });
+      restored.push(entry.host ?? entry.scope);
     }
   } finally {
     db.close();
@@ -340,6 +671,50 @@ export async function importLocalIdentities(raw: string): Promise<string[]> {
     throw new Error("That backup contained no identities.");
   }
   return restored;
+}
+
+/**
+ * This device's identity as 24 words (GRYT-255).
+ *
+ * Creates the seed if there is not one yet, which is the right moment: somebody
+ * asking to back their identity up is asking for one to exist.
+ */
+export async function getIdentityWords(): Promise<string> {
+  const db = await openDB();
+  try {
+    return seedToWords(await getOrCreateSeed(db));
+  } finally {
+    db.close();
+  }
+}
+
+/**
+ * Become the identity a phrase describes.
+ *
+ * Every stored key is dropped, because every stored key came from the old seed
+ * and the new one will produce its own. Nothing is kept back: there is only one
+ * kind of local key now, and it is always reproducible from whichever seed is
+ * in place.
+ *
+ * The caller reloads afterwards. Clearing the cache is not enough on its own —
+ * anything that already read a key still holds it, and a stale key here is not
+ * a stale value, it is signing as the wrong person.
+ */
+export async function restoreIdentityFromWords(phrase: string): Promise<void> {
+  const seed = wordsToSeed(phrase);
+
+  const db = await openDB();
+  try {
+    await writeSeed(db, seed);
+
+    for (const scope of await listLocalIdentityScopes(db)) {
+      await idbDelete(db, `${LOCAL_PREFIX}${scope}`);
+    }
+  } finally {
+    db.close();
+  }
+
+  cachedKeyPairs.clear();
 }
 
 /**
