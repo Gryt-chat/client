@@ -110,57 +110,46 @@ export const MessageSkeleton = () => {
 const ChannelIcon = ({ type, size }: { type: "text" | "voice"; size: number }) =>
   type === "voice" ? <PiSpeakerHighFill size={size} /> : <PiChatCircleFill size={size} />;
 
-export const WelcomeMessage = ({ channelName, channelType = "text", onStart }: { channelName?: string; channelType?: "text" | "voice"; onStart?: () => void }) => (
-  <div className="flex flex-col" style={{ padding: "48px 24px", alignItems: "center", textAlign: "center" }}>
-    <div style={{
-        width: "120px",
-        height: "120px",
-        borderRadius: "50%",
-        background: "var(--gryt-neutral-4)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        marginBottom: "24px",
-        border: "3px solid var(--gryt-neutral-6)",
-        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-        color: "var(--gryt-neutral-9)",
-      }}>
-      <ChannelIcon type={channelType} size={48} />
+/* Hallmark · component: empty-chat-state · genre: playful · theme: Gryt UI
+ * interaction: the existing composer remains the single primary action
+ * pre-emit critique: P5 H5 E5 S5 R5 V5
+ */
+export const WelcomeMessage = ({ channelName, channelType = "text" }: { channelName?: string; channelType?: "text" | "voice" }) => (
+  <div className="flex w-full max-w-xl flex-col px-6 py-12 sm:px-8">
+    <div className="flex items-start gap-4 sm:items-center sm:gap-6">
+      <div
+        className="flex h-11 w-11 shrink-0 items-center justify-center border"
+        style={{
+          color: "var(--gryt-accent-9)",
+          background: "var(--gryt-accent-3)",
+          borderColor: "var(--gryt-neutral-7)",
+          borderRadius: "var(--gryt-radius-md)",
+        }}
+        aria-hidden="true"
+      >
+        <ChannelIcon type={channelType} size={22} />
+      </div>
+
+      <div className="min-w-0">
+        <h2
+          className="text-3xl font-bold leading-none tracking-tight"
+          style={{ color: "var(--gryt-neutral-12)", overflowWrap: "anywhere" }}
+        >
+          {channelType === "text" && "#"}
+          <EmojiText text={channelName || "channel"} /> is open.
+        </h2>
+        <p className="mt-2 text-lg text-gryt-muted" style={{ maxWidth: "45ch", lineHeight: 1.5 }}>
+          There&rsquo;s nothing to catch up on. Start wherever you like.
+        </p>
+      </div>
     </div>
 
-    <div className="flex items-center gap-2" style={{ marginBottom: "12px" }}>
-      <span className="text-3xl font-bold" style={{ color: "var(--gryt-neutral-12)", display: "inline-flex", alignItems: "center", gap: "8px" }}>
-        Welcome to <ChannelIcon type={channelType} size={24} /> <EmojiText text={channelName || "channel"} />!
-      </span>
-    </div>
-
-    <span className="text-lg text-gryt-muted" style={{ marginBottom: "24px", maxWidth: "500px", lineHeight: 1.5 }}>
-      This is the start of the{" "}
-      <span className="font-medium text-gryt-muted" style={{ display: "inline-flex", alignItems: "center", gap: "4px", verticalAlign: "middle" }}>
-        <ChannelIcon type={channelType} size={16} /> <EmojiText text={channelName || "channel"} />
-      </span>{" "}
-      channel. Start a conversation by typing a message below.
-    </span>
-
-    {/*
-      This looks like a button — border, fill, accent text, icon — so it has to
-      behave like one. It used to be an inert Flex: clicking did nothing and did
-      not focus the composer, so anything typed straight afterwards went nowhere
-      at all, with no focus to receive it.
-    */}
-    <button className="flex items-center gap-3" type="button" onClick={onStart} style={{
-        color: "var(--gryt-accent-9)",
-        background: "var(--gryt-accent-2)",
-        padding: "12px 20px",
-        borderRadius: "var(--gryt-radius-md)",
-        border: "1px solid var(--gryt-accent-6)",
-        cursor: onStart ? "pointer" : "default",
-        font: "inherit",
-      }}>
-        <span className="text-base">💬</span>
-        <span className="text-base text-gryt-secondary font-medium">
-          Type a message to get started
-        </span>
-      </button>
+    <div className="mt-6 h-px w-full bg-gryt-neutral-6" aria-hidden="true" />
+    <p
+      className="mt-4 text-xs text-gryt-muted sm:ml-16"
+      style={{ maxWidth: "45ch", fontFamily: "var(--code-font-family)" }}
+    >
+      The first message begins the history.
+    </p>
   </div>
 );

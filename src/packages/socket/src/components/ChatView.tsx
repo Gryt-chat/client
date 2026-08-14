@@ -291,12 +291,8 @@ export const ChatView = memo(({
               <MessageSkeleton />
             </div>
           ) : chatMessages.length === 0 ? (
-            <div className="flex grow flex-col justify-end" style={{ paddingBottom: "16px" }}>
-              <WelcomeMessage
-                channelName={channelName}
-                channelType={channelType}
-                onStart={() => editorRef.current?.focus()}
-              />
+            <div className="flex grow items-center justify-center" style={{ paddingBottom: "16px" }}>
+              <WelcomeMessage channelName={channelName} channelType={channelType} />
             </div>
           ) : showMessages ? (
             <div
