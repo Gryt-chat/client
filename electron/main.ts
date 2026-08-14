@@ -1,3 +1,4 @@
+import { spawn } from "child_process";
 import {
   app,
   BrowserWindow,
@@ -13,7 +14,7 @@ import {
   systemPreferences,
   Tray,
 } from "electron";
-import { autoUpdater, UpdateInfo } from "electron-updater";
+import { autoUpdater, UpdateDownloadedEvent, UpdateInfo } from "electron-updater";
 import {
   appendFileSync,
   createReadStream,
@@ -284,14 +285,6 @@ function readBoolConfig(key: string, defaultValue: boolean): boolean {
 // ── Auto-updater config ─────────────────────────────────────────────────
 
 /**
- * How long to give quitAndInstall before deciding it is not going to quit.
- *
- * A real quit tears the process down well inside this. It is only generous
- * enough that a slow machine mid-teardown is not mislabelled as deferred.
- */
-const QUIT_GRACE_MS = 4000;
-
-/**
  * How long to wait for the install to finish before giving up on it.
  *
  * Squirrel copies the whole bundle out of electron-updater's local proxy and
@@ -371,6 +364,55 @@ function markInstallPending(version: string): void {
 
 function clearPendingInstall(): void {
   writeConfig({ pendingInstall: null });
+}
+
+/**
+ * Start NSIS only after this Electron process is completely gone.
+ *
+ * electron-updater normally starts NSIS and then asks Electron to quit. That
+ * leaves a race where NSIS sees Gryt (or one of its helpers) during teardown
+ * and reports that Gryt cannot be closed. A detached PowerShell process lives
+ * outside the install directory, waits for this exact PID, and only then starts
+ * the verified installer electron-updater downloaded.
+ */
+function launchWindowsInstallerAfterExit(installerPath: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const systemRoot = process.env.SystemRoot ?? "C:\\Windows";
+    const powershell = join(
+      systemRoot,
+      "System32",
+      "WindowsPowerShell",
+      "v1.0",
+      "powershell.exe"
+    );
+    const command = [
+      "$parentId = [int]$args[0]",
+      "$installer = $args[1]",
+      "Wait-Process -Id $parentId -ErrorAction SilentlyContinue",
+      "Start-Process -FilePath $installer -ArgumentList '--updated','--force-run'",
+    ].join("; ");
+    const helper = spawn(
+      powershell,
+      [
+        "-NoLogo",
+        "-NoProfile",
+        "-NonInteractive",
+        "-WindowStyle",
+        "Hidden",
+        "-Command",
+        command,
+        String(process.pid),
+        installerPath,
+      ],
+      { detached: true, stdio: "ignore", windowsHide: true }
+    );
+
+    helper.once("error", reject);
+    helper.once("spawn", () => {
+      helper.unref();
+      resolve();
+    });
+  });
 }
 
 /**
@@ -557,9 +599,39 @@ function runSplashUpdateCheck(): Promise<void> {
       pendingUpdateVersion = info.version;
       sendToSplash("available", { version: info.version });
       holdOpen();
-      autoUpdater.downloadUpdate().catch((err) =>
-        onError(err instanceof Error ? err : undefined),
-      );
+      autoUpdater
+        .downloadUpdate()
+        .then(async (downloadedFiles) => {
+          // On macOS, downloadUpdate does not resolve until Squirrel has
+          // finished fetching the ZIP from electron-updater's local proxy.
+          // Installing from the earlier update-downloaded event tears that
+          // proxy down mid-transfer and simply reopens the old bundle.
+          markInstallPending(info.version);
+          sendToSplash("installing", { version: info.version });
+
+          if (process.platform === "win32") {
+            const installerPath = downloadedFiles[0];
+            if (!installerPath) {
+              throw new Error("The downloaded Windows installer path is missing");
+            }
+            await launchWindowsInstallerAfterExit(installerPath);
+            isQuitting = true;
+            app.quit();
+            return;
+          }
+
+          autoUpdater.quitAndInstall(false, true);
+
+          // Backstop only: unlike the old four-second forced quit, this does
+          // not interrupt Squirrel staging. If the platform updater still does
+          // not quit, keep the staged update and let the user enter Gryt.
+          setTimeout(() => {
+            updateDeferredVersion = info.version;
+            sendToSplash("deferred", { version: info.version });
+            setTimeout(done, 2500);
+          }, INSTALL_WAIT_MS);
+        })
+        .catch((err) => onError(err instanceof Error ? err : undefined));
     };
 
     const onNotAvailable = (info: UpdateInfo) => {
@@ -581,61 +653,8 @@ function runSplashUpdateCheck(): Promise<void> {
       });
     };
 
-    const onDownloaded = (info: UpdateInfo) => {
+    const onDownloaded = (info: UpdateDownloadedEvent) => {
       sendToSplash("downloaded", { version: info.version });
-      setTimeout(() => {
-        cleanup();
-        holdOpen();
-        // Let the event loop drain before quitting — improves reliability
-        // across platforms (NSIS on Windows, AppImage on Linux).
-        setImmediate(() => {
-          try {
-            // Recorded before the call, not after: quitAndInstall may take the
-            // process down immediately, and a marker written after it would
-            // never be written at all.
-            markInstallPending(info.version);
-            autoUpdater.quitAndInstall(false, true);
-
-            // quitAndInstall often returns without quitting, and the quit it
-            // is waiting for is never going to arrive on its own.
-            //
-            // Squirrel.Mac installs on quit, by design. ShipIt is spawned as
-            // an idle process the moment an update is staged and it sits there
-            // until this app exits, then swaps the bundle. Meanwhile
-            // electron-updater is waiting for Squirrel to report that it
-            // finished before it quits us. Both sides are waiting for the
-            // other, so nothing happens until a human quits the app by hand.
-            //
-            // That is the whole bug, and it is why waiting longer did not fix
-            // it: v1.4.0-beta.10 sat through a five minute wait and the quit
-            // still never came, with ShipIt idle the entire time.
-            //
-            // So we quit ourselves. autoInstallOnAppQuit is true, ShipIt is
-            // already queued against the staged bundle, and quitting is
-            // precisely the event both of them are blocked on.
-            setTimeout(() => {
-              if (settled) return;
-              sendToSplash("installing", { version: info.version });
-              updateDeferredVersion = info.version;
-              isQuitting = true;
-              app.quit();
-            }, QUIT_GRACE_MS);
-
-            // Backstop. If even our own quit does not take, let the user in
-            // rather than holding them on a splash screen. The update stays
-            // staged and installs whenever the app next exits.
-            setTimeout(() => {
-              sendToSplash("deferred", { version: info.version });
-              setTimeout(done, 2500);
-            }, INSTALL_WAIT_MS);
-          } catch {
-            // If quitAndInstall throws outright, show the main window rather
-            // than leaving a blank screen. The update stays downloaded and
-            // applies on quit.
-            done();
-          }
-        });
-      }, 1500);
     };
 
     const onError = (err?: Error) => {
