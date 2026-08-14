@@ -54,6 +54,12 @@ extraResources:
   # extracts it into its private app-data runtime on first launch.
   - from: build/embedded-server.tar.gz
     to: embedded-server.tar.gz
+  # Native files stay visible so electron-builder can sign them and Apple's
+  # notarizer can inspect them. They are overlaid onto the extracted runtime.
+  - from: build/embedded-native/
+    to: embedded-native/
+    filter:
+      - "**/*"
 
 # Releases are published to the gryt superproject, not to this repository —
 # release-client.yml lives there and builds the client from a pinned submodule

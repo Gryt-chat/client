@@ -1,7 +1,7 @@
 import { ChildProcess, fork, spawn } from "child_process";
 import { app, BrowserWindow } from "electron";
 import { existsSync, readFileSync } from "fs";
-import { chmod, mkdir, rename, rm, writeFile } from "fs/promises";
+import { chmod, cp, mkdir, rename, rm, writeFile } from "fs/promises";
 import { createServer } from "net";
 import { join } from "path";
 import { extract } from "tar";
@@ -283,6 +283,20 @@ export async function prepareEmbeddedServerRuntime(): Promise<void> {
       preservePaths: false,
       strict: true,
     });
+
+    // These files deliberately remain outside the archive so electron-builder
+    // can sign them and Apple's notarizer can inspect them. Restore their
+    // original relative paths after the data/JS portion has been extracted.
+    const nativeRoot = join(process.resourcesPath, "embedded-native");
+    for (const component of ["server", "worker", "sfu"]) {
+      const source = join(nativeRoot, component);
+      if (existsSync(source)) {
+        await cp(source, join(temporary, component), {
+          recursive: true,
+          force: true,
+        });
+      }
+    }
 
     const sfuName = process.platform === "win32" ? "gryt_sfu.exe" : "gryt_sfu";
     const sfuPath = join(
