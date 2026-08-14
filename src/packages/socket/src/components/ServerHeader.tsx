@@ -1,5 +1,5 @@
-import { Button, Chip, IconButton, Menu, Surface, Tooltip } from "@gryt/ui";
-import { PiPushPinFill } from "react-icons/pi";
+import { Chip, IconButton, Menu, Surface, Tooltip } from "@gryt/ui";
+import { PiDotsThreeVerticalBold, PiPushPinFill } from "react-icons/pi";
 
 export const ServerHeader = ({
   serverName,
@@ -47,8 +47,16 @@ export const ServerHeader = ({
           <Menu.Root>
             {/* render, not children: Menu.Trigger is a button already, and a
                 button inside a button is invalid HTML. */}
-            <Menu.Trigger render={<Button tone="neutral" size="xsmall" />}>
-              
+            <Menu.Trigger
+              render={
+                <IconButton
+                  tone="neutral"
+                  size="xsmall"
+                  aria-label="Server menu"
+                />
+              }
+            >
+              <PiDotsThreeVerticalBold size={14} />
             </Menu.Trigger>
             <Menu.Portal>
               <Menu.Positioner>
@@ -87,4 +95,4 @@ export const ServerHeader = ({
       </div>
     </Surface>
   );
-}; 
+};
