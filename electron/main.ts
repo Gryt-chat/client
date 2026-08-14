@@ -54,6 +54,7 @@ import {
   getEmbeddedServerLogs,
   isEmbeddedServerAvailable,
   isPortAvailable,
+  prepareEmbeddedServerRuntime,
   setAutoStart,
   startExistingServer,
   stopServer,
@@ -1617,6 +1618,13 @@ if (!gotSingleInstanceLock) {
   app
     .whenReady()
     .then(async () => {
+      try {
+        await prepareEmbeddedServerRuntime();
+        startupLog("Embedded server runtime ready");
+      } catch (error) {
+        startupLog(`Embedded server runtime extraction failed: ${error}`);
+      }
+
       ipcMain.handle("get-app-version", () => app.getVersion());
       // Same default as the updater uses, or the switch in settings would read
       // "off" on a beta build whose config has never been written.
