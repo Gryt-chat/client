@@ -515,7 +515,7 @@ export function ServerOverviewTab({
             >
               <AlertDialog.Portal>
                 <AlertDialog.Backdrop />
-                <AlertDialog.Popup className="max-w-105">
+                <AlertDialog.Popup>
                 <AlertDialog.Title>Clear server icon?</AlertDialog.Title>
                 <AlertDialog.Description>
                   This will remove the current server icon. You can upload a new one at any time.

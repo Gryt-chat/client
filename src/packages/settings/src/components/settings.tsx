@@ -314,10 +314,21 @@ export function Settings() {
     >
       <Dialog.Portal>
         <Dialog.Backdrop />
+        {/*
+          A width, not a ceiling. `max-w-225` did nothing here: the shared popup
+          sets an explicit width, and a max-width cannot widen anything — so the
+          only thing deciding the size was the inline `minWidth`, and settings
+          sat at exactly 600px with a nav column and a content column splitting
+          it between them.
+
+          `max-w` still caps it against small viewports, and the height stays
+          inline because it is a fixed frame the panes scroll inside rather than
+          something that should grow with content.
+        */}
         <Dialog.Popup
           data-gryt="settings"
-          className="max-w-225"
-          style={{ height: "700px", minWidth: "600px" }}
+          className="w-[60rem] max-w-[calc(100vw-3rem)]"
+          style={{ height: "700px" }}
         >
         <Dialog.Close style={{ position: "absolute", top: "8px", right: "8px" }}>
           <IconButton data-tour="settings-close">

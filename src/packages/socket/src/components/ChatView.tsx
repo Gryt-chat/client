@@ -385,7 +385,7 @@ export const ChatView = memo(({
       <AlertDialog.Root open={!!pendingDeleteMessage} onOpenChange={(open) => { if (!open) setPendingDeleteMessage(null); }}>
         <AlertDialog.Portal>
           <AlertDialog.Backdrop />
-          <AlertDialog.Popup className="max-w-105">
+          <AlertDialog.Popup>
           <AlertDialog.Title>Delete message?</AlertDialog.Title>
           <AlertDialog.Description>
             This will permanently delete this message. This action cannot be undone.

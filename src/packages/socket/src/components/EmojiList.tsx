@@ -167,7 +167,7 @@ export function EmojiList({
             </AlertDialog.Trigger>
             <AlertDialog.Portal>
               <AlertDialog.Backdrop />
-              <AlertDialog.Popup className="max-w-105">
+              <AlertDialog.Popup>
               <AlertDialog.Title>Delete all emojis?</AlertDialog.Title>
               <AlertDialog.Description>
                 This will permanently delete all {emojis.length} custom emoji{emojis.length !== 1 ? "s" : ""} from this server. This cannot be undone.

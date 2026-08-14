@@ -71,7 +71,7 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
     <Dialog.Root open={open} onOpenChange={(o) => { if (!o) handleClose(); else onOpenChange(o); }}>
       <Dialog.Portal>
         <Dialog.Backdrop />
-        <Dialog.Popup className="max-w-120">
+        <Dialog.Popup>
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <Dialog.Title style={{ margin: 0 }}>

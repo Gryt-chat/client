@@ -109,7 +109,7 @@ function BlockedRow({
         </Button>
         <AlertDialog.Portal>
           <AlertDialog.Backdrop />
-          <AlertDialog.Popup className="max-w-[460px]">
+          <AlertDialog.Popup>
           <AlertDialog.Title>Unblock {entry.host}?</AlertDialog.Title>
           <AlertDialog.Description>
             Gryt will forget the identity it expected here and trust whatever
@@ -173,7 +173,7 @@ function KnownRow({ pin, onForget }: { pin: ServerPin; onForget: (keyId: string)
         </Tooltip>
         <AlertDialog.Portal>
           <AlertDialog.Backdrop />
-          <AlertDialog.Popup className="max-w-110">
+          <AlertDialog.Popup>
           <AlertDialog.Title>Forget {pin.lastHost}?</AlertDialog.Title>
           <AlertDialog.Description>
             Gryt will stop recognising this server&apos;s identity. The next time

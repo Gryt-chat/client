@@ -170,7 +170,7 @@ function UpdateControls() {
       <AlertDialog.Root open={pendingSwitch !== null} onOpenChange={(open) => { if (!open) setPendingSwitch(null); }}>
         <AlertDialog.Portal>
           <AlertDialog.Backdrop />
-          <AlertDialog.Popup className="max-w-120">
+          <AlertDialog.Popup>
           <AlertDialog.Title>
             {switchingToBeta ? "Turn on beta releases?" : "Turn off beta releases?"}
           </AlertDialog.Title>

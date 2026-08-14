@@ -271,7 +271,7 @@ export function ServerUserReplaceTab({
               </AlertDialog.Trigger>
               <AlertDialog.Portal>
                 <AlertDialog.Backdrop />
-                <AlertDialog.Popup className="max-w-120">
+                <AlertDialog.Popup>
                 <AlertDialog.Title>Replace user identity?</AlertDialog.Title>
                 <AlertDialog.Description>
                   This will permanently re-bind{" "}

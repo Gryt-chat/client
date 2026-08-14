@@ -219,7 +219,7 @@ export function ReportsPanel({
       >
         <AlertDialog.Portal>
           <AlertDialog.Backdrop />
-          <AlertDialog.Popup className="max-w-112">
+          <AlertDialog.Popup>
           <AlertDialog.Title>
             {confirmAction?.action === "delete_all_and_ban"
               ? "Delete all messages & ban user?"

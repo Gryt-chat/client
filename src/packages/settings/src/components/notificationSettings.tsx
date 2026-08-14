@@ -75,7 +75,7 @@ export function NotificationSettings() {
         >
           <AlertDialog.Portal>
             <AlertDialog.Backdrop />
-            <AlertDialog.Popup className="max-w-112">
+            <AlertDialog.Popup>
             <AlertDialog.Title>{alertDialog.title}</AlertDialog.Title>
             <AlertDialog.Description>
               {alertDialog.message}

@@ -316,7 +316,7 @@ function HostedServerCard({
 
             <AlertDialog.Portal>
               <AlertDialog.Backdrop />
-              <AlertDialog.Popup className="max-w-[460px]">
+              <AlertDialog.Popup>
               <AlertDialog.Title>Delete {name}?</AlertDialog.Title>
               <AlertDialog.Description>
                 This deletes the server and everything on it — its messages, its

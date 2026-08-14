@@ -92,7 +92,7 @@ export const ServerConfirmDialogs = ({
     <AlertDialog.Root open={!!pendingDeleteItem} onOpenChange={(open) => { if (!open) cancelDelete(); }}>
       <AlertDialog.Portal>
         <AlertDialog.Backdrop />
-        <AlertDialog.Popup className="max-w-105">
+        <AlertDialog.Popup>
         <AlertDialog.Title>Delete {pendingDeleteItem?.kind === "channel" ? "channel" : "item"}?</AlertDialog.Title>
         <AlertDialog.Description>
           {pendingDeleteItem?.kind === "channel"
@@ -114,7 +114,7 @@ export const ServerConfirmDialogs = ({
     <AlertDialog.Root open={!!pendingDisconnectUser} onOpenChange={(open) => { if (!open) setPendingDisconnectUser(null); }}>
       <AlertDialog.Portal>
         <AlertDialog.Backdrop />
-        <AlertDialog.Popup className="max-w-105">
+        <AlertDialog.Popup>
         <AlertDialog.Title>Disconnect {pendingDisconnectUser?.nickname}?</AlertDialog.Title>
         <AlertDialog.Description>
           This will disconnect {pendingDisconnectUser?.nickname} from the voice channel.
@@ -134,7 +134,7 @@ export const ServerConfirmDialogs = ({
     <AlertDialog.Root open={!!pendingKickUser} onOpenChange={(open) => { if (!open) setPendingKickUser(null); }}>
       <AlertDialog.Portal>
         <AlertDialog.Backdrop />
-        <AlertDialog.Popup className="max-w-105">
+        <AlertDialog.Popup>
         <AlertDialog.Title>Kick {pendingKickUser?.nickname}?</AlertDialog.Title>
         <AlertDialog.Description>
           They will be removed from the server and can rejoin later.
@@ -163,7 +163,7 @@ export const ServerConfirmDialogs = ({
     <AlertDialog.Root open={!!pendingBanUser} onOpenChange={(open) => { if (!open) setPendingBanUser(null); }}>
       <AlertDialog.Portal>
         <AlertDialog.Backdrop />
-        <AlertDialog.Popup className="max-w-105">
+        <AlertDialog.Popup>
         <AlertDialog.Title>Ban {pendingBanUser?.nickname}?</AlertDialog.Title>
         <AlertDialog.Description>
           They will be removed and cannot rejoin until the ban lifts.

@@ -77,7 +77,7 @@ export function PushToTalkModal() {
     <Dialog.Root open={isOpen} onOpenChange={(open) => { if (!open) handleCancel(); }}>
       <Dialog.Portal>
         <Dialog.Backdrop />
-        <Dialog.Popup className="max-w-105">
+        <Dialog.Popup>
         <Dialog.Title>Set Push to Talk Key</Dialog.Title>
         <Dialog.Description>
           Push to Talk is active but no key is bound. Press any key or combination to use as your PTT key.
