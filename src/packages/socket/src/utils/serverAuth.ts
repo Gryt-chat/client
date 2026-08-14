@@ -147,6 +147,34 @@ function logDecision(host: string, decision: ServerProofDecision): void {
   }
 }
 
+/**
+ * A rough gap in words, because the exact figure is not the point.
+ *
+ * Somebody reading this needs to know whether a clock is a minute out or a day
+ * out — the first is a missing time sync, the second is usually a machine that
+ * came up without a battery-backed clock at all. Rounding to something sayable
+ * makes that difference obvious and a stray hundred milliseconds invisible.
+ */
+function describeGap(ms: number): string {
+  const seconds = Math.round(ms / 1000);
+  if (seconds < 90) return `${seconds} second${seconds === 1 ? "" : "s"}`;
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 90) return `${minutes} minute${minutes === 1 ? "" : "s"}`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 48) return `${hours} hour${hours === 1 ? "" : "s"}`;
+  const days = Math.round(hours / 24);
+  return `${days} day${days === 1 ? "" : "s"}`;
+}
+
+/** Where to send somebody who cannot act on the sentence alone. */
+export function serverProofHelpUrl(
+  decision: ServerProofDecision & { action: "block" },
+): string | null {
+  return decision.failure.reason === "expired"
+    ? "https://docs.gryt.chat/docs/guide/troubleshooting#server-clock-is-wrong"
+    : null;
+}
+
 /** What to show a user when a server is refused. */
 export function serverProofErrorMessage(
   decision: ServerProofDecision & { action: "block" },
@@ -189,8 +217,21 @@ export function serverProofErrorMessage(
     }
     case "nonce_mismatch":
       return "This server's identity proof answered a different request. Try again.";
-    case "expired":
-      return "This server's identity proof had expired. Check the clock on both machines.";
+    case "expired": {
+      // "Check the clock on both machines" asked the reader to inspect
+      // something they may not control, and made them work out which of the two
+      // was wrong. The client already knows: it compared the server's timestamp
+      // against its own to decide the proof had expired at all.
+      const skew = failure.skewMs;
+      if (skew === undefined) {
+        return "This server's identity proof had expired, which usually means its clock is wrong.";
+      }
+      const direction = skew > 0 ? "behind" : "ahead of";
+      return (
+        `This server's clock is about ${describeGap(Math.abs(skew))} ${direction} ` +
+        "yours, so its identity proof looked expired. If it is your server, turn on time sync."
+      );
+    }
     default:
       return "This server's identity proof could not be checked.";
   }

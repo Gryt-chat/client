@@ -61,7 +61,20 @@ export type ServerProofFailure =
   | { reason: "malformed"; detail: string }
   | { reason: "bad_signature"; detail: string }
   | { reason: "nonce_mismatch"; detail: string }
-  | { reason: "expired"; detail: string }
+  | {
+      reason: "expired";
+      detail: string;
+      /**
+       * How far the server's clock sits behind ours, in milliseconds, negative
+       * if it is ahead. Absent when the proof carried no `iat` to compare.
+       *
+       * Measured from `iat` rather than `exp` because it is the one instant both
+       * sides describe: the server says when it signed, and we know when we read
+       * it. The gap is the skew plus the network round trip, and a round trip is
+       * milliseconds against a window of a minute, so what survives is the skew.
+       */
+      skewMs?: number;
+    }
   | { reason: "key_mismatch"; detail: string; expectedKeyId: string; presentedKeyId: string }
   | { reason: "proof_withdrawn"; detail: string; expectedKeyId: string }
   | { reason: "blocked"; detail: string; keyId: string };
@@ -395,7 +408,7 @@ async function parseProof(proof: string): Promise<ParsedProof | ServerProofFailu
   }
 
   let header: { alg?: string; kid?: string; jwk?: JsonWebKey };
-  let payload: { nonce?: string; iss?: string; exp?: number; host?: string };
+  let payload: { nonce?: string; iss?: string; exp?: number; iat?: number; host?: string };
   try {
     header = JSON.parse(new TextDecoder().decode(base64UrlToBytes(parts[0])));
     payload = JSON.parse(new TextDecoder().decode(base64UrlToBytes(parts[1])));
@@ -433,7 +446,12 @@ async function parseProof(proof: string): Promise<ParsedProof | ServerProofFailu
   }
 
   if (typeof payload.exp === "number" && payload.exp * 1000 < Date.now()) {
-    return { reason: "expired", detail: "Proof has expired" };
+    return {
+      reason: "expired",
+      detail: "Proof has expired",
+      skewMs:
+        typeof payload.iat === "number" ? Date.now() - payload.iat * 1000 : undefined,
+    };
   }
 
   return {

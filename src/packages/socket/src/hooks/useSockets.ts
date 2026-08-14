@@ -18,7 +18,7 @@ import {
 
 import { MemberInfo } from "../components/MemberSidebar";
 import { Clients } from "../types/clients";
-import { guardSocket, serverProofErrorMessage } from "../utils/serverAuth";
+import { guardSocket, serverProofErrorMessage, serverProofHelpUrl } from "../utils/serverAuth";
 import { syncAvatarToHost } from "../utils/syncAvatarToHost";
 import { useSocketEvents } from "./useSocketEvents";
 
@@ -68,6 +68,9 @@ function useSocketsHook() {
   const [serverConnectionStatus, setServerConnectionStatus] = useState<Record<string, 'connected' | 'disconnected' | 'connecting' | 'reconnecting' | 'refused'>>({});
   // Why a server was refused, so the UI can say it rather than guessing.
   const [refusalReason, setRefusalReason] = useState<Record<string, string>>({});
+  // Kept beside the sentence rather than baked into it, so the card can render
+  // a real link and the toast can stay plain text.
+  const [refusalHelpUrl, setRefusalHelpUrl] = useState<Record<string, string>>({});
   const wasEverConnectedRef = useRef<Record<string, boolean>>({});
   const serverDetailsListRef = useRef(serverDetailsList);
 
@@ -221,6 +224,8 @@ function useSocketsHook() {
           // refused it on purpose sends them off debugging the wrong thing.
           setServerConnectionStatus(prev => ({ ...prev, [host]: 'refused' }));
           setRefusalReason(prev => ({ ...prev, [host]: serverProofErrorMessage(decision) }));
+          const helpUrl = serverProofHelpUrl(decision);
+          if (helpUrl) setRefusalHelpUrl(prev => ({ ...prev, [host]: helpUrl }));
           toast.error(serverProofErrorMessage(decision), { id: toastId, duration: 12000 });
         });
 
@@ -503,7 +508,7 @@ function useSocketsHook() {
     }
   };
 
-  return { sockets, serverDetailsList, clients, memberLists, serverProfiles, setServerProfiles, getChannelDetails, requestMemberList, failedServerDetails, serverConnectionStatus, refusalReason, reconnectServer, leaveServer, tokenRevision };
+  return { sockets, serverDetailsList, clients, memberLists, serverProfiles, setServerProfiles, getChannelDetails, requestMemberList, failedServerDetails, serverConnectionStatus, refusalReason, refusalHelpUrl, reconnectServer, leaveServer, tokenRevision };
 }
 
 export const useSockets = singletonHook(
@@ -519,6 +524,7 @@ export const useSockets = singletonHook(
     failedServerDetails: {},
     serverConnectionStatus: {},
     refusalReason: {},
+    refusalHelpUrl: {},
     reconnectServer: () => {},
     leaveServer: () => {},
     tokenRevision: 0,

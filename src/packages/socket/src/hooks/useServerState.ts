@@ -58,6 +58,7 @@ type UseServerStateResult = {
   hasTimedOut: boolean;
   currentConnectionStatus: ConnectionStatus;
   currentRefusalReason?: string;
+  currentRefusalHelpUrl?: string;
   reconnectServer: (host: string) => void;
 };
 
@@ -86,6 +87,7 @@ export function useServerState(): UseServerStateResult {
     failedServerDetails,
     serverConnectionStatus,
     refusalReason,
+    refusalHelpUrl,
     reconnectServer,
     requestMemberList,
     tokenRevision,
@@ -519,6 +521,7 @@ export function useServerState(): UseServerStateResult {
     hasTimedOut,
     currentConnectionStatus,
     currentRefusalReason: currentlyViewingServer ? refusalReason?.[currentlyViewingServer.host] : undefined,
+    currentRefusalHelpUrl: currentlyViewingServer ? refusalHelpUrl?.[currentlyViewingServer.host] : undefined,
     reconnectServer,
   };
 }

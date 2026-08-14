@@ -68,7 +68,7 @@ export const ServerView = () => {
     selectedChannelId, setSelectedChannelId,
     handleVoiceDisconnect, setPendingChannelId, currentChannelId,
     currentConnection, accessToken, activeConversationId, serverFailure, hasTimedOut,
-    currentConnectionStatus, currentRefusalReason, reconnectServer,
+    currentConnectionStatus, currentRefusalReason, currentRefusalHelpUrl, reconnectServer,
   } = useServerState();
 
   const sidebarEditor = useSidebarEditor({ currentlyViewingServer, currentConnection, accessToken, serverDetailsList });
@@ -250,6 +250,7 @@ export const ServerView = () => {
         serverFailure={serverFailure} hasTimedOut={hasTimedOut}
         connectionStatus={currentConnectionStatus}
         refusalReason={currentRefusalReason}
+        refusalHelpUrl={currentRefusalHelpUrl}
         onReconnect={() => reconnectServer(currentlyViewingServer.host)}
       />
     );

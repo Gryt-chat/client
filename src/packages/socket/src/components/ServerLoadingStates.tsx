@@ -7,6 +7,7 @@ interface ServerLoadingStatesProps {
   serverFailure?: { error: string; message?: string };
   hasTimedOut: boolean;
   refusalReason?: string;
+  refusalHelpUrl?: string;
   connectionStatus?: 'connected' | 'disconnected' | 'connecting' | 'reconnecting' | 'refused';
   onReconnect?: () => void;
 }
@@ -52,6 +53,7 @@ export const ServerLoadingStates = ({
   hasTimedOut,
   connectionStatus,
   refusalReason,
+  refusalHelpUrl,
   onReconnect,
 }: ServerLoadingStatesProps) => {
   if (serverFailure) {
@@ -134,6 +136,16 @@ export const ServerLoadingStates = ({
                 {refusalReason ??
                   "This server could not prove it is the one you joined before."}
               </span>
+              {refusalHelpUrl && (
+                <a
+                  href={refusalHelpUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sm underline text-gryt-muted hover:text-gryt-text"
+                >
+                  How to fix this
+                </a>
+              )}
             </div>
           </div>
         </div>
