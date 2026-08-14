@@ -190,7 +190,7 @@ function ProfileEditor({
           <AlertDialog.Root open={showRemoveConfirm} onOpenChange={(open) => { if (!open) setShowRemoveConfirm(false); }}>
             <AlertDialog.Portal>
               <AlertDialog.Backdrop />
-              <AlertDialog.Popup className="max-w-105">
+              <AlertDialog.Popup>
               <AlertDialog.Title>Remove avatar?</AlertDialog.Title>
               <AlertDialog.Description>
                 Your avatar will be removed{serverLabel ? ` from ${serverLabel}` : ""}. This action cannot be undone.

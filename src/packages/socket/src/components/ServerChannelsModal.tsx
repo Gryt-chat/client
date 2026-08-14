@@ -208,7 +208,7 @@ export function ServerChannelsModal() {
         <AlertDialog.Root open={!!pendingDeleteId} onOpenChange={(open) => { if (!open) setPendingDeleteId(null); }}>
           <AlertDialog.Portal>
             <AlertDialog.Backdrop />
-            <AlertDialog.Popup className="max-w-105">
+            <AlertDialog.Popup>
             <AlertDialog.Title>Delete channel?</AlertDialog.Title>
             <AlertDialog.Description>
               This will permanently delete &ldquo;{channels.find((c) => c.id === pendingDeleteId)?.name || "this channel"}&rdquo; and all associated data. This action cannot be undone.

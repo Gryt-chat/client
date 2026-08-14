@@ -133,7 +133,7 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
         </Tooltip>
         <AlertDialog.Portal>
           <AlertDialog.Backdrop />
-          <AlertDialog.Popup className="max-w-105">
+          <AlertDialog.Popup>
           <AlertDialog.Title>Remove passkey?</AlertDialog.Title>
           <AlertDialog.Description>
             This passkey will be removed from your account. You won&apos;t be able to
