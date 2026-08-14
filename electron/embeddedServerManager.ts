@@ -1,8 +1,10 @@
 import { ChildProcess, fork, spawn } from "child_process";
 import { app, BrowserWindow } from "electron";
 import { existsSync, readFileSync } from "fs";
+import { chmod, mkdir, rename, rm, writeFile } from "fs/promises";
 import { createServer } from "net";
 import { join } from "path";
+import { extract } from "tar";
 
 import {
   deleteServerFiles,
@@ -54,6 +56,7 @@ const instances = new Map<string, Instance>();
 let sfuProcess: ChildProcess | null = null;
 let sfuPort: number | null = null;
 let targetWindow: BrowserWindow | null = null;
+let extractedRuntimeRoot: string | null = null;
 
 function log(msg: string): void {
   console.log("[EmbeddedServer]", msg);
@@ -234,11 +237,81 @@ function setStatus(id: string, status: ServerStatus, error?: string): void {
   emitStatus();
 }
 
+function packagedRuntimeRoot(): string | null {
+  if (extractedRuntimeRoot && existsSync(extractedRuntimeRoot)) {
+    return extractedRuntimeRoot;
+  }
+
+  // Compatibility with releases before the runtime was archived.
+  const legacy = join(process.resourcesPath, "embedded-server");
+  return existsSync(legacy) ? legacy : null;
+}
+
+/**
+ * Materialise the signed embedded runtime outside the application bundle.
+ *
+ * Shipping its dependency tree loose made Squirrel.Mac traverse roughly
+ * 14,000 files while staging an update. Old Gryt clients force-quit four
+ * seconds after handing the ZIP to Squirrel, so a busy machine could die
+ * before ShipItState.plist was committed and relaunch the previous version.
+ * The archive is one signed resource; extraction happens after the new app is
+ * already installed and is cached per desktop version.
+ */
+export async function prepareEmbeddedServerRuntime(): Promise<void> {
+  if (!app.isPackaged) return;
+
+  const archive = join(process.resourcesPath, "embedded-server.tar.gz");
+  if (!existsSync(archive)) return;
+
+  const runtimeParent = join(app.getPath("userData"), "embedded-runtime");
+  const destination = join(runtimeParent, app.getVersion());
+  const readyMarker = join(destination, ".ready");
+  if (existsSync(readyMarker)) {
+    extractedRuntimeRoot = destination;
+    return;
+  }
+
+  const temporary = `${destination}.tmp-${process.pid}`;
+  await mkdir(runtimeParent, { recursive: true });
+  await rm(temporary, { recursive: true, force: true });
+  await mkdir(temporary, { recursive: true });
+
+  try {
+    await extract({
+      cwd: temporary,
+      file: archive,
+      preservePaths: false,
+      strict: true,
+    });
+
+    const sfuName = process.platform === "win32" ? "gryt_sfu.exe" : "gryt_sfu";
+    const sfuPath = join(
+      temporary,
+      "sfu",
+      process.platform === "win32" ? "win-x64" :
+        `${process.platform === "darwin" ? "mac" : "linux"}-${process.arch === "arm64" ? "arm64" : "x64"}`,
+      sfuName,
+    );
+    if (process.platform !== "win32" && existsSync(sfuPath)) {
+      await chmod(sfuPath, 0o755);
+    }
+
+    await writeFile(join(temporary, ".ready"), `${app.getVersion()}\n`, "utf8");
+    await rm(destination, { recursive: true, force: true });
+    await rename(temporary, destination);
+    extractedRuntimeRoot = destination;
+  } catch (error) {
+    await rm(temporary, { recursive: true, force: true });
+    throw error;
+  }
+}
+
 function getServerBundlePath(): string | null {
   const bundleName = "bundle.js";
-  const packaged = join(process.resourcesPath, "embedded-server", "server", bundleName);
+  const runtimeRoot = packagedRuntimeRoot();
+  const packaged = runtimeRoot ? join(runtimeRoot, "server", bundleName) : null;
   const dev = join(app.getAppPath(), "build", "embedded-server", "server", bundleName);
-  if (existsSync(packaged)) return packaged;
+  if (packaged && existsSync(packaged)) return packaged;
   if (existsSync(dev)) return dev;
   return null;
 }
@@ -251,9 +324,10 @@ function getServerBundlePath(): string | null {
  * latest-release number — so it looks permanently, wrongly out of date.
  */
 function readBundledVersions(): { server?: string; sfu?: string; worker?: string } {
-  const packaged = join(process.resourcesPath, "embedded-server", "versions.json");
+  const runtimeRoot = packagedRuntimeRoot();
+  const packaged = runtimeRoot ? join(runtimeRoot, "versions.json") : null;
   const dev = join(app.getAppPath(), "build", "embedded-server", "versions.json");
-  const path = existsSync(packaged) ? packaged : existsSync(dev) ? dev : null;
+  const path = packaged && existsSync(packaged) ? packaged : existsSync(dev) ? dev : null;
   if (!path) return {};
 
   try {
@@ -269,9 +343,10 @@ function readBundledVersions(): { server?: string; sfu?: string; worker?: string
 
 function getWorkerEntryPath(): string | null {
   const entry = join("worker", "dist", "index.js");
-  const packaged = join(process.resourcesPath, "embedded-server", entry);
+  const runtimeRoot = packagedRuntimeRoot();
+  const packaged = runtimeRoot ? join(runtimeRoot, entry) : null;
   const dev = join(app.getAppPath(), "build", "embedded-server", entry);
-  if (existsSync(packaged)) return packaged;
+  if (packaged && existsSync(packaged)) return packaged;
   if (existsSync(dev)) return dev;
   return null;
 }
@@ -279,12 +354,15 @@ function getWorkerEntryPath(): string | null {
 function getSfuBinaryPath(): string | null {
   const ext = process.platform === "win32" ? ".exe" : "";
   const name = `gryt_sfu${ext}`;
-  const packaged = join(process.resourcesPath, "embedded-server", "sfu", name);
   const ebOs = process.platform === "win32" ? "win" : process.platform === "darwin" ? "mac" : "linux";
   const ebArch = process.arch === "arm64" ? "arm64" : "x64";
+  const runtimeRoot = packagedRuntimeRoot();
+  const packaged = runtimeRoot ? join(runtimeRoot, "sfu", name) : null;
+  const archived = runtimeRoot ? join(runtimeRoot, "sfu", `${ebOs}-${ebArch}`, name) : null;
   const dev = join(app.getAppPath(), "build", "embedded-server", "sfu",
     `${ebOs}-${ebArch}`, name);
-  if (existsSync(packaged)) return packaged;
+  if (packaged && existsSync(packaged)) return packaged;
+  if (archived && existsSync(archived)) return archived;
   if (existsSync(dev)) return dev;
   return null;
 }

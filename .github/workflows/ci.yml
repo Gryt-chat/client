@@ -21,6 +21,7 @@ jobs:
           node-version: 24
           cache: yarn
       - run: yarn install --frozen-lockfile
+      - run: yarn test:updater-bridge
       # tsc -b and eslint with --max-warnings 0. This is the check that was
       # missing: client#115 merged with three TS6133 errors and main did not
       # compile until the next PR happened to supply the code that used them.

@@ -2,7 +2,7 @@ appId: com.gryt.chat
 # Fails the build if anything in extraResources is missing. electron-builder
 # skips a missing extraResource silently, which shipped v1.4.0-beta.5 with no
 # menu bar icon.
-beforeBuild: ./scripts/check-extra-resources.mjs
+beforeBuild: ./scripts/prepare-electron-build.mjs
 productName: Gryt Chat
 copyright: "Copyright © 2024-2026 Gryt Chat. All rights reserved."
 artifactName: "Gryt-Chat-${version}-${os}-${arch}.${ext}"
@@ -49,36 +49,11 @@ extraResources:
     to: native/
     filter:
       - "**/*"
-  # The versions of the three things actually bundled. It sits at the root of
-  # build/embedded-server rather than inside one of the directories below, so
-  # none of their entries carried it and it never shipped — which left the
-  # embedded server falling back to the hardcoded 1.0.0 in its own config.
-  - from: build/embedded-server/versions.json
-    to: embedded-server/versions.json
-  - from: build/embedded-server/server/
-    to: embedded-server/server/
-    filter:
-      - "**/*"
-  - from: build/embedded-server/server/node_modules/
-    to: embedded-server/server/node_modules/
-    filter:
-      - "**/*"
-  - from: build/embedded-server/sfu/${os}-${arch}/
-    to: embedded-server/sfu/
-    filter:
-      - "**/*"
-  # The worker is listed twice for the same reason the server is: electron
-  # builder does not descend into node_modules under a `from` directory, so the
-  # second entry is what actually carries sharp and its platform binary. With
-  # only the first, the worker ships with no dependencies and dies on require.
-  - from: build/embedded-server/worker/
-    to: embedded-server/worker/
-    filter:
-      - "**/*"
-  - from: build/embedded-server/worker/node_modules/
-    to: embedded-server/worker/node_modules/
-    filter:
-      - "**/*"
+  # Kept as one archive so Squirrel.Mac stages one signed resource instead of
+  # traversing roughly 14,000 server/worker dependency files. The client
+  # extracts it into its private app-data runtime on first launch.
+  - from: build/embedded-server.tar.gz
+    to: embedded-server.tar.gz
 
 # Releases are published to the gryt superproject, not to this repository —
 # release-client.yml lives there and builds the client from a pinned submodule
@@ -130,6 +105,11 @@ snap:
 
 mac:
   icon: build/icon.png
+  # Gryt's UI owns its translations. Keep the native Electron resources for
+  # English and Norwegian instead of shipping hundreds of unused .lproj trees.
+  electronLanguages:
+    - en
+    - nb
   target:
     - dmg
     - zip
