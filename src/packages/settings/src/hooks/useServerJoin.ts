@@ -5,6 +5,11 @@ import {
   getServerHttpBase,
   normalizeCode,
   normalizeHost,
+  otherScheme,
+  rememberScheme,
+  type Scheme,
+  schemeFor,
+  schemeOfUrl,
   setServerAccessToken,
   setServerRefreshToken,
 } from "@/common";
@@ -82,10 +87,39 @@ export async function fetchServerInfo(
   if (storedToken) headers.Authorization = `Bearer ${storedToken}`;
 
   try {
-    const res = await fetch(`${getServerHttpBase(normalizedHost)}/info`, {
-      signal: controller.signal,
-      headers,
-    });
+    // Plain is the default, so the first attempt at an unknown server is http.
+    // Except when there is a token to send: a bearer over plain http to a host
+    // that turns out to be public would leak it before the redirect that would
+    // have protected it, and a server we hold a token for has been reached
+    // before anyway.
+    const first: Scheme = storedToken
+      ? "https"
+      : schemeFor(normalizedHost);
+
+    let res: Response;
+    try {
+      res = await fetch(`${getServerHttpBase(normalizedHost, first)}/info`, {
+        signal: controller.signal,
+        headers,
+      });
+    } catch (reachErr) {
+      // Nothing answered. That says nothing about which scheme was wanted, so
+      // try the other rather than giving up. Only a transport failure retries:
+      // a server that replied with an error has been reached, and dialling it
+      // again differently would just be noise.
+      if (controller.signal.aborted) throw reachErr;
+      res = await fetch(
+        `${getServerHttpBase(normalizedHost, otherScheme(first))}/info`,
+        { signal: controller.signal, headers },
+      );
+    }
+
+    // Recorded from the reply rather than from what was asked for, because a
+    // proxy on port 80 answers a plain request with a redirect to https and
+    // `fetch` follows it. That succeeds while proving the opposite of what was
+    // guessed, and the WebSocket has no redirect to follow later.
+    const served = schemeOfUrl(res.url);
+    if (served) rememberScheme(normalizedHost, served);
 
     if (res.status === 404) return { kind: "private" };
     if (!res.ok) {
