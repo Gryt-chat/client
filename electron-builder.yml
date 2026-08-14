@@ -154,6 +154,7 @@ portable:
 nsis:
   oneClick: true
   perMachine: false
+  include: build/installer.nsh
   allowToChangeInstallationDirectory: false
   deleteAppDataOnUninstall: false
   displayLanguageSelector: false
