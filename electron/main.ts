@@ -57,6 +57,7 @@ import {
   startExistingServer,
   stopServer,
   suggestServerPort,
+  updateServerAdvertisedAddresses,
 } from "./embeddedServerManager";
 import {
   deleteGlobalValue,
@@ -1914,6 +1915,12 @@ if (!gotSingleInstanceLock) {
       );
 
       ipcMain.handle("embedded-server:status", () => getAllStates());
+
+      ipcMain.handle(
+        "embedded-server:update-advertised-addresses",
+        (_event, id: string, addresses: string[]) =>
+          updateServerAdvertisedAddresses(id, addresses),
+      );
 
       ipcMain.handle("embedded-server:logs", (_event, id?: string) =>
         getEmbeddedServerLogs(id)

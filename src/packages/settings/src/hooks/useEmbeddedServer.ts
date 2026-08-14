@@ -130,6 +130,30 @@ export function useEmbeddedServer() {
     [api, markBusy],
   );
 
+  const updateAdvertisedAddresses = useCallback(
+    async (id: string, addresses: string[]) => {
+      if (!api) return false;
+      markBusy(id, true);
+      try {
+        const updated = await api.updateEmbeddedServerAdvertisedAddresses(
+          id,
+          addresses,
+        );
+        if (!updated) return false;
+        setServers((current) =>
+          current.map((server) => (server.id === id ? updated : server)),
+        );
+        return true;
+      } catch (err) {
+        console.error("[EmbeddedServer] address update failed:", err);
+        return false;
+      } finally {
+        markBusy(id, false);
+      }
+    },
+    [api, markBusy],
+  );
+
   // Clearing a failure the user has read. Deliberately not stopServer: that
   // preserves the error status on purpose, so dismissing through it did nothing.
   const dismissError = useCallback(
@@ -211,6 +235,7 @@ export function useEmbeddedServer() {
     checkPort,
     startServer,
     stopServer,
+    updateAdvertisedAddresses,
     deleteServer,
     dismissError,
   };

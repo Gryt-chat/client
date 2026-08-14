@@ -9,6 +9,8 @@ type EmbeddedServerConfigShape = {
   sfuPort: number;
   lanDiscoverable: boolean;
   externalHost: string;
+  advertisedAddresses: string[];
+  customAdvertisedAddresses: string[];
 };
 
 type EmbeddedServerState = {
@@ -501,6 +503,17 @@ contextBridge.exposeInMainWorld("electronAPI", {
   /** Every server this machine has, running or not. */
   getEmbeddedServerStatus(): Promise<EmbeddedServerState[]> {
     return ipcRenderer.invoke("embedded-server:status");
+  },
+
+  updateEmbeddedServerAdvertisedAddresses(
+    id: string,
+    addresses: string[]
+  ): Promise<EmbeddedServerState | null> {
+    return ipcRenderer.invoke(
+      "embedded-server:update-advertised-addresses",
+      id,
+      addresses
+    );
   },
 
   onEmbeddedServerStatusChanged(
