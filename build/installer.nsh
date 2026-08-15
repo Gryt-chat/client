@@ -13,20 +13,17 @@
 !define GRYT_MIGRATION_REG_KEY "Software\Gryt Chat"
 !define GRYT_MIGRATION_REG_VALUE "LegacyNsisMigrationV1"
 
-Var grytMigrationBackup
-Var grytMigrationMarker
-
 !macro customInit
   ; Never keep the install directory as NSIS' working directory while we move it.
   SetOutPath "$TEMP"
 
   ; If this machine has already crossed the broken-installer boundary, normal
   ; electron-builder upgrades should run unchanged.
-  ReadRegDWORD $grytMigrationMarker HKCU \
+  ReadRegDWORD $R1 HKCU \
     "${GRYT_MIGRATION_REG_KEY}" \
     "${GRYT_MIGRATION_REG_VALUE}"
 
-  ${If} $grytMigrationMarker == 1
+  ${If} $R1 == 1
     Goto grytMigrationDone
   ${EndIf}
 
@@ -35,15 +32,15 @@ Var grytMigrationMarker
 
   DetailPrint "Preparing legacy Gryt installation for upgrade..."
 
-  StrCpy $grytMigrationBackup "$INSTDIR.old"
+  StrCpy $R0 "$INSTDIR.old"
 
   ; If a prior failed migration left an .old directory behind, preserve that
   ; backup rather than silently overwriting it.
-  IfFileExists "$grytMigrationBackup\*.*" 0 grytNoExistingBackup
+  IfFileExists "$R0\*.*" 0 grytNoExistingBackup
 
     ; Keep one older recovery copy.
     RMDir /r "$INSTDIR.old.previous"
-    Rename "$grytMigrationBackup" "$INSTDIR.old.previous"
+    Rename "$R0" "$INSTDIR.old.previous"
 
   grytNoExistingBackup:
 
@@ -54,7 +51,7 @@ Var grytMigrationMarker
   ; Moving instead of deleting means a failed new install still leaves the
   ; previous application files recoverable.
   ClearErrors
-  Rename "$INSTDIR" "$grytMigrationBackup"
+  Rename "$INSTDIR" "$R0"
 
   ${If} ${Errors}
     MessageBox MB_OK|MB_ICONSTOP \
