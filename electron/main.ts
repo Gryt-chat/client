@@ -1353,8 +1353,8 @@ function loadUiohook(): UiohookLib | null {
 
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    uiohookLib =
-      require("uiohook-napi") as UiohookLib;
+    const loaded = require("uiohook-napi") as UiohookLib;
+    uiohookLib = loaded;
   } catch (err) {
     startupLog(
       `uiohook unavailable: ${
