@@ -1,65 +1,91 @@
-# Older Gryt clients start the new NSIS installer before their Electron process
-# has fully exited. This code is compiled into the new installer, so it can
-# repair an update even though the client launching it is still old.
-#
-# electron-builder 26.8's fallback process lookup is a substring match. It can
-# therefore find the setup process itself ("Gryt Chat Setup ...") while looking
-# for "Gryt Chat.exe" and display a retry dialog that can never succeed. Keep
-# the macOS-proven builder, but backport electron-builder's exact tasklist +
-# anchored findstr lookup from its upstream fix.
-!include "getProcessInfo.nsh"
-Var pid
+; One-time migration for Gryt installations whose existing NSIS uninstaller
+; cannot complete an electron-builder upgrade.
+;
+; The broken uninstaller lives in the OLD installation, so changing the new
+; installer's process detection cannot fix it. Before electron-builder reaches
+; uninstallOldVersion, move the old application directory aside and remove its
+; stale uninstall registration. The new installer then sees a clean install.
+;
+; User data is NOT stored under $INSTDIR and is never touched here.
 
-!macro GRYT_FIND_PROCESS_EXACT _FILE _RETURN
-  nsExec::Exec `"$CmdPath" /C tasklist /FI "IMAGENAME eq ${_FILE}" /FO CSV /NH | "$SYSDIR\findstr.exe" /B /I /C:"\"${_FILE}\""`
-  Pop ${_RETURN}
+!include "LogicLib.nsh"
+
+!define GRYT_MIGRATION_REG_KEY "Software\Gryt Chat"
+!define GRYT_MIGRATION_REG_VALUE "LegacyNsisMigrationV1"
+
+Var grytMigrationBackup
+Var grytMigrationMarker
+
+!macro customInit
+  ; Never keep the install directory as NSIS' working directory while we move it.
+  SetOutPath "$TEMP"
+
+  ; If this machine has already crossed the broken-installer boundary, normal
+  ; electron-builder upgrades should run unchanged.
+  ReadRegDWORD $grytMigrationMarker HKCU \
+    "${GRYT_MIGRATION_REG_KEY}" \
+    "${GRYT_MIGRATION_REG_VALUE}"
+
+  ${If} $grytMigrationMarker == 1
+    Goto grytMigrationDone
+  ${EndIf}
+
+  ; Fresh machine: there is nothing to migrate.
+  IfFileExists "$INSTDIR\Uninstall Gryt Chat.exe" 0 grytMigrationDone
+
+  DetailPrint "Preparing legacy Gryt installation for upgrade..."
+
+  StrCpy $grytMigrationBackup "$INSTDIR.old"
+
+  ; If a prior failed migration left an .old directory behind, preserve that
+  ; backup rather than silently overwriting it.
+  IfFileExists "$grytMigrationBackup\*.*" 0 grytNoExistingBackup
+
+    ; Keep one older recovery copy.
+    RMDir /r "$INSTDIR.old.previous"
+    Rename "$grytMigrationBackup" "$INSTDIR.old.previous"
+
+  grytNoExistingBackup:
+
+  ; This is the important operation proven manually:
+  ;
+  ;   gryt-chat -> gryt-chat.old
+  ;
+  ; Moving instead of deleting means a failed new install still leaves the
+  ; previous application files recoverable.
+  ClearErrors
+  Rename "$INSTDIR" "$grytMigrationBackup"
+
+  ${If} ${Errors}
+    MessageBox MB_OK|MB_ICONSTOP \
+      "Gryt could not prepare the existing installation for upgrade.$\r$\n$\r$\nPlease make sure Gryt is completely closed and try again."
+    Abort
+  ${EndIf}
+
+  ; The poisoned old uninstaller must not be invoked after this point.
+  ;
+  ; Current Gryt registration.
+  DeleteRegKey HKCU \
+    "Software\Microsoft\Windows\CurrentVersion\Uninstall\6b194ad8-2c2d-5127-9a5d-67090636e2e2"
+
+  ; Very old Gryt/client registration seen on machines upgraded from the
+  ; original installer identity.
+  DeleteRegKey HKCU \
+    "Software\Microsoft\Windows\CurrentVersion\Uninstall\683825e5-efcf-57d3-b331-3f3d51300599"
+
+  DetailPrint "Legacy Gryt installation prepared."
+
+grytMigrationDone:
 !macroend
 
-!macro customCheckAppRunning
-  Sleep 5000
-  !insertmacro IS_POWERSHELL_AVAILABLE
 
-  ${GetProcessInfo} 0 $pid $1 $2 $3 $4
-  ${if} $3 != "${APP_EXECUTABLE_FILENAME}"
-    !insertmacro GRYT_FIND_PROCESS_EXACT "${APP_EXECUTABLE_FILENAME}" $R0
-    ${if} $R0 == 0
-      ${if} ${isUpdated}
-        Sleep 1000
-        Goto grytStopProcess
-      ${endIf}
-      MessageBox MB_OKCANCEL|MB_ICONEXCLAMATION "$(appRunning)" /SD IDOK IDOK grytStopProcess
-      Quit
-
-      grytStopProcess:
-      DetailPrint "$(appClosing)"
-      !insertmacro KILL_PROCESS "${APP_EXECUTABLE_FILENAME}" 0
-      Sleep 300
-      StrCpy $R1 0
-
-      grytWaitForExit:
-        IntOp $R1 $R1 + 1
-        !insertmacro GRYT_FIND_PROCESS_EXACT "${APP_EXECUTABLE_FILENAME}" $R0
-        ${if} $R0 == 0
-          Sleep 1000
-          !insertmacro KILL_PROCESS "${APP_EXECUTABLE_FILENAME}" 1
-          !insertmacro GRYT_FIND_PROCESS_EXACT "${APP_EXECUTABLE_FILENAME}" $R0
-          ${if} $R0 == 0
-            DetailPrint `Waiting for "${PRODUCT_NAME}" to close.`
-            Sleep 2000
-          ${else}
-            Goto grytNotRunning
-          ${endIf}
-        ${else}
-          Goto grytNotRunning
-        ${endIf}
-
-        ${if} $R1 > 1
-          MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "$(appCannotBeClosed)" /SD IDCANCEL IDRETRY grytWaitForExit
-          Quit
-        ${else}
-          Goto grytWaitForExit
-        ${endIf}
-      grytNotRunning:
-    ${endIf}
-  ${endIf}
+; Called during the successful new installation.
+;
+; Mark this machine as migrated so future versions go through electron-builder's
+; ordinary upgrade path rather than doing another clean-install migration.
+!macro customInstall
+  WriteRegDWORD HKCU \
+    "${GRYT_MIGRATION_REG_KEY}" \
+    "${GRYT_MIGRATION_REG_VALUE}" \
+    1
 !macroend

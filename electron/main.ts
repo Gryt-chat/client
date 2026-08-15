@@ -20,6 +20,7 @@ import {
   createReadStream,
   existsSync,
   readFileSync,
+  rmSync,
   statSync,
   writeFileSync,
 } from "fs";
@@ -111,11 +112,7 @@ function startupLog(msg: string): void {
 startupLog(
   `App starting (v${app.getVersion()}, ${process.platform} ${process.arch})`
 );
-// The launch arguments, because they decide which startup path runs and there
-// is otherwise no way to tell after the fact. --gryt-update in particular is
-// the whole contract between "Update now" and the splash doing the install: if
-// it does not survive the relaunch, the update silently does not happen, and
-// this line is the difference between knowing that and guessing.
+
 startupLog(`Launch args: ${process.argv.slice(1).join(" ") || "(none)"}`);
 
 /** Test a URL against an Electron URL-filter pattern (e.g. "https://*.foo.com/*"). */
@@ -130,25 +127,10 @@ const appIcon = app.isPackaged
   ? join(process.resourcesPath, "icon.png")
   : join(__dirname, "../build/icon.png");
 
-// A separate asset from the app icon, and it has to be. macOS template images
-// are alpha only, so handing it the opaque app icon painted the whole tile
-// black — which is exactly what the menu bar was showing. Built by
-// scripts/generate-tray-icon.mjs. The @2x file next to it is picked up by name.
 const trayIcon = app.isPackaged
   ? join(process.resourcesPath, "trayTemplate.png")
   : join(__dirname, "../build/trayTemplate.png");
 
-/**
- * The Windows and Linux tray, which unlike macOS shows the voice state.
- *
- * Colour assets rather than templates, because neither platform has a template
- * mechanism. Each is a filled disc with its glyph in the logo's ink — see
- * scripts/generate-tray-icon.mjs for why the disc is doing the work and why
- * the muted state is not a slash across the mark.
- *
- * macOS keeps the plain template: a template image is alpha only and cannot
- * carry these colours.
- */
 const stateIcon = (name: string) =>
   app.isPackaged
     ? join(process.resourcesPath, `${name}.png`)
@@ -156,14 +138,8 @@ const stateIcon = (name: string) =>
 
 const PROTOCOL = "gryt";
 const AUTO_START_ARG = "--gryt-autostart";
-/**
- * Set on the relaunch that "Update now" triggers.
- *
- * The splash update check is normally skipped for a hidden auto-start, and that
- * is the one launch which must not skip it — someone who starts Gryt minimised
- * with Windows would otherwise never get the update they just asked for.
- */
 const UPDATE_ARG = "--gryt-update";
+
 let pendingDeepLinkUrl: string | null = null;
 let splashWindow: BrowserWindow | null = null;
 let mainWindow: BrowserWindow | null = null;
@@ -171,25 +147,20 @@ let tray: Tray | null = null;
 let isQuitting = false;
 let closeToTray = true;
 
-/**
- * What the renderer last told us about voice.
- *
- * The main process has no other way to know any of this — mute and deafen live
- * in the renderer's settings hook, and the SFU connection is a renderer
- * concern. Everything the tray says about voice comes from `set-voice-state`.
- */
 type VoiceState = {
   inVoice: boolean;
   muted: boolean;
   deafened: boolean;
   serverName: string | null;
 };
+
 let voiceState: VoiceState = {
   inVoice: false,
   muted: false,
   deafened: false,
   serverName: null,
 };
+
 let isUserSignedIn = false;
 let pttDown = false;
 let uiohookRunning = false;
@@ -211,7 +182,9 @@ process.on("uncaughtException", (err) => {
 process.on("unhandledRejection", (reason) => {
   const msg =
     reason instanceof Error ? reason.stack ?? reason.message : String(reason);
+
   startupLog(`unhandledRejection: ${msg}`);
+
   if (!mainWindow) {
     const short = reason instanceof Error ? reason.message : String(reason);
     dialog.showErrorBox(
@@ -244,12 +217,14 @@ function handleDeepLink(url: string): void {
       const parsed = new URL(url);
       const host = parsed.searchParams.get("host") || "";
       const code = parsed.searchParams.get("code") || "";
+
       if (host && code) {
         mainWindow.webContents.send("deep-link-invite", { host, code });
       }
     } else {
       mainWindow.webContents.send("auth-callback", url);
     }
+
     if (!mainWindow.isVisible()) mainWindow.show();
     if (mainWindow.isMinimized()) mainWindow.restore();
     mainWindow.focus();
@@ -261,6 +236,7 @@ function handleDeepLink(url: string): void {
 // ── Persistent config (userData/gryt-config.json) ───────────────────────
 
 const configPath = join(app.getPath("userData"), "gryt-config.json");
+
 initUserStore(app.getPath("userData"));
 initGlobalStore(app.getPath("userData"));
 initAddonManager(app.getPath("userData"));
@@ -285,81 +261,56 @@ function readBoolConfig(key: string, defaultValue: boolean): boolean {
 
 // ── Auto-updater config ─────────────────────────────────────────────────
 
-/**
- * How long to wait for the install to finish before giving up on it.
- *
- * Squirrel copies the whole bundle out of electron-updater's local proxy and
- * unpacks it — 565 MB and about 14,500 files, measured at roughly 45 seconds,
- * and slower on a spinning disk or a busy machine. This is the backstop for
- * that, not the expected wait, so it is generous on purpose: reaching it means
- * something is wrong, and the cost of being too eager is dropping someone into
- * the old version while the install they asked for was still running.
- */
 const INSTALL_WAIT_MS = 5 * 60 * 1000;
 
-/** Set when an update is downloaded but could not be applied without a quit. */
 let updateDeferredVersion: string | null = null;
 
-/**
- * How long a queued install is assumed to still be in progress.
- *
- * ShipIt waits for this app to exit and then copies the whole bundle — 565 MB
- * and about 14,500 files, which measured at roughly 45 seconds. The window only
- * has to outlast that copy; it is not a promise that the install worked. If the
- * install fails, this expires and updating resumes on its own.
- */
 const PENDING_INSTALL_WINDOW_MS = 10 * 60 * 1000;
 
-type PendingInstall = { version: string; queuedAt: number };
+type PendingInstall = {
+  version: string;
+  queuedAt: number;
+};
 
-/**
- * The install we handed to Squirrel and have not seen the result of yet.
- *
- * This is on disk rather than in memory because the collision it prevents is
- * between two *processes*: the one that queued ShipIt and the one running after
- * it quit.
- */
 function readPendingInstall(): PendingInstall | null {
   const raw = readConfig().pendingInstall;
   if (!raw || typeof raw !== "object") return null;
+
   const { version, queuedAt } = raw as Partial<PendingInstall>;
-  if (typeof version !== "string" || typeof queuedAt !== "number") return null;
+
+  if (typeof version !== "string" || typeof queuedAt !== "number") {
+    return null;
+  }
+
   return { version, queuedAt };
 }
 
-/**
- * Whether an install is still in flight, and so whether starting an update
- * would break it.
- *
- * Starting a second update cycle is not merely wasteful — it destroys the first
- * one. electron-updater kicks Squirrel as soon as a download finishes, Squirrel
- * unpacks into a fresh cache directory and removes the previous one, and the
- * ShipIt already queued against that previous directory then fails part-way
- * through its copy with "no such file". The file it names is arbitrary, which
- * is what made this look like a corrupt build rather than a race.
- *
- * That is how updating v1.4.0-beta.7 over beta.6 failed repeatedly: each retry
- * deleted the staging directory of the attempt before it. Quitting and waiting
- * installed it first time.
- */
 function installIsPending(): boolean {
   const pending = readPendingInstall();
   if (!pending) return false;
-  // We are the version it was fetching, so it landed.
+
   if (pending.version === app.getVersion()) {
     clearPendingInstall();
     return false;
   }
+
   if (Date.now() - pending.queuedAt > PENDING_INSTALL_WINDOW_MS) {
     startupLog(`Update: pending install of ${pending.version} expired`);
     clearPendingInstall();
     return false;
   }
+
   return true;
 }
 
 function markInstallPending(version: string): void {
-  writeConfig({ pendingInstall: { version, queuedAt: Date.now() } });
+  writeConfig({
+    pendingInstall: {
+      version,
+      queuedAt: Date.now(),
+    },
+  });
+
   startupLog(`Update: queued install of ${version}`);
 }
 
@@ -368,17 +319,71 @@ function clearPendingInstall(): void {
 }
 
 /**
- * Start NSIS only after this Electron process is completely gone.
+ * Remove the rollback directory left behind by the one-time Windows NSIS
+ * migration.
  *
- * electron-updater normally starts NSIS and then asks Electron to quit. That
- * leaves a race where NSIS sees Gryt (or one of its helpers) during teardown
- * and reports that Gryt cannot be closed. A detached PowerShell process lives
- * outside the install directory, waits for this exact PID, and only then starts
- * the verified installer electron-updater downloaded.
+ * The migration installer deliberately renames:
+ *
+ *   gryt-chat -> gryt-chat.old
+ *
+ * instead of deleting the old installation. If the new installer fails,
+ * those files remain recoverable.
+ *
+ * Reaching this code in the new packaged Gryt process means the replacement
+ * installation itself has successfully started. At that point the rollback
+ * copy is no longer needed.
+ *
+ * User data lives under Electron's userData directory and is never touched.
+ */
+function cleanupLegacyWindowsInstallBackup(): void {
+  if (process.platform !== "win32" || !app.isPackaged) return;
+
+  const installDir = dirname(process.execPath);
+  const backupDir = `${installDir}.old`;
+  const previousBackupDir = `${installDir}.old.previous`;
+
+  try {
+    if (existsSync(backupDir)) {
+      startupLog(`Windows migration: removing rollback backup ${backupDir}`);
+      rmSync(backupDir, {
+        recursive: true,
+        force: true,
+      });
+    }
+
+    if (existsSync(previousBackupDir)) {
+      startupLog(
+        `Windows migration: removing previous rollback backup ${previousBackupDir}`
+      );
+      rmSync(previousBackupDir, {
+        recursive: true,
+        force: true,
+      });
+    }
+  } catch (err) {
+    startupLog(
+      `Windows migration cleanup failed: ${
+        err instanceof Error ? err.stack ?? err.message : String(err)
+      }`
+    );
+  }
+}
+
+/**
+ * Start NSIS only after every process belonging to the currently installed
+ * Gryt application has gone away.
+ *
+ * The detached helper runs from powershell.exe, outside $INSTDIR, so it
+ * survives Electron shutting down and can safely launch the downloaded
+ * installer afterwards.
+ *
+ * Waiting only for the Electron main PID is not enough: renderers, GPU
+ * processes, utility processes, or native Gryt helpers can outlive it briefly.
  */
 function launchWindowsInstallerAfterExit(installerPath: string): Promise<void> {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolvePromise, rejectPromise) => {
     const systemRoot = process.env.SystemRoot ?? "C:\\Windows";
+
     const powershell = join(
       systemRoot,
       "System32",
@@ -386,12 +391,50 @@ function launchWindowsInstallerAfterExit(installerPath: string): Promise<void> {
       "v1.0",
       "powershell.exe"
     );
+
+    const installDir = dirname(process.execPath);
+
     const command = [
       "$parentId = [int]$args[0]",
       "$installer = $args[1]",
+      "$installDir = $args[2]",
+
+      // First wait for Electron's main process.
       "Wait-Process -Id $parentId -ErrorAction SilentlyContinue",
+
+      // Then wait for every process whose executable belongs to this Gryt
+      // installation. Electron renderer/GPU/utility processes all use the same
+      // executable path and may disappear slightly after the main process.
+      "$deadline = (Get-Date).AddSeconds(20)",
+      "$running = @()",
+
+      "do {",
+      "  $running = @(Get-CimInstance Win32_Process | Where-Object {",
+      "    $_.ExecutablePath -and",
+      "    $_.ExecutablePath.StartsWith(",
+      "      $installDir,",
+      "      [System.StringComparison]::OrdinalIgnoreCase",
+      "    )",
+      "  })",
+
+      "  if ($running.Count -eq 0) { break }",
+      "  Start-Sleep -Milliseconds 250",
+      "} while ((Get-Date) -lt $deadline)",
+
+      // If something genuinely got stuck, terminate only processes whose
+      // executable lives under this Gryt installation.
+      "if ($running.Count -gt 0) {",
+      "  $running | ForEach-Object {",
+      "    Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue",
+      "  }",
+      "  Start-Sleep -Milliseconds 500",
+      "}",
+
+      // The installer contains the one-time legacy migration. --force-run
+      // ensures the newly installed Gryt starts again afterwards.
       "Start-Process -FilePath $installer -ArgumentList '--updated','--force-run'",
     ].join("; ");
+
     const helper = spawn(
       powershell,
       [
@@ -404,25 +447,24 @@ function launchWindowsInstallerAfterExit(installerPath: string): Promise<void> {
         command,
         String(process.pid),
         installerPath,
+        installDir,
       ],
-      { detached: true, stdio: "ignore", windowsHide: true }
+      {
+        detached: true,
+        stdio: "ignore",
+        windowsHide: true,
+      }
     );
 
-    helper.once("error", reject);
+    helper.once("error", rejectPromise);
+
     helper.once("spawn", () => {
       helper.unref();
-      resolve();
+      resolvePromise();
     });
   });
 }
 
-/**
- * electron-updater's own account of what it did.
- *
- * Diagnosing the beta.6 to beta.7 failure meant reading Squirrel's log, because
- * ours did not exist: without a logger electron-updater throws all of it away,
- * and the app's side of an update was invisible after the fact.
- */
 autoUpdater.logger = {
   info: (m: unknown) => startupLog(`Update: ${String(m)}`),
   warn: (m: unknown) => startupLog(`Update WARN: ${String(m)}`),
@@ -430,81 +472,64 @@ autoUpdater.logger = {
   debug: (m: unknown) => startupLog(`Update debug: ${String(m)}`),
 };
 
-// Running at all is the only confirmation an install worked, so the marker is
-// reconciled against the running version once, here. It has to sit below
-// configPath rather than beside the startup log at the top of the file —
-// readConfig would hit the temporal dead zone and throw before the app opened.
 installIsPending();
 
 autoUpdater.autoDownload = false;
-// Windows only. NSIS runs the installer while the app is still tearing down —
-// renderer, GPU helpers, and the two children this app spawns itself (the SFU
-// binary and the embedded server) — and waits on all of it. That is the whole
-// reason updating from inside the app crawled there while updating at launch
-// did not. The splash does it instead, on a process with none of that running.
-// See restartForUpdate.
-//
-// Left on everywhere else, because the problem is NSIS and turning it off costs
-// a working fallback. A downloaded update on macOS applied on quit and did not
-// apply any other way, which is not something to remove on a hunch: the mac
-// install is a zip swap with none of the tear-down NSIS does.
+
 autoUpdater.autoInstallOnAppQuit = process.platform !== "win32";
-/**
- * Whether this install is on the beta channel.
- *
- * Defaults to whether the build you are running is itself a prerelease, not to
- * false. That distinction is the whole fix: `betaChannel !== true` cannot tell
- * "the user turned beta off" apart from "this config has no betaChannel key",
- * and a fresh, reset or newly-written config is the second one. Reading it as
- * the first put a beta build on the stable channel, where the newest thing on
- * offer is an older version than the one running — and with allowDowngrade on
- * below, that is an available update.
- *
- * It is not theoretical. A packaged 1.4.0-beta.3 with a fresh user-data-dir
- * downloaded 1.3.1 and restarted into it, twice, unprompted.
- *
- * Someone who actually turns beta off writes `false` and still gets the
- * downgrade the switch promises.
- */
+
 function isOnBetaChannel(): boolean {
   return readBoolConfig("betaChannel", app.getVersion().includes("-"));
 }
 
 autoUpdater.allowPrerelease = isOnBetaChannel();
-// Leaving the beta channel is a downgrade — stable is an older version than the
-// beta you are running — and electron-updater refuses those by default, taking
-// allowDowngrade into account only when the channel differs. Without this,
-// turning beta off wrote the setting, restarted, found "no update available"
-// and left the user on the beta build permanently, while the confirmation
-// dialog had promised it would install the latest stable release.
+
 autoUpdater.allowDowngrade = true;
-autoUpdater.logger = console;
+
+// IMPORTANT:
+// Do not overwrite autoUpdater.logger with console here. The persistent
+// startup log above is what lets update failures survive process restarts.
+
 closeToTray = (readConfig().closeToTray ?? true) as boolean;
+
 const hardwareAcceleration = readBoolConfig("hardwareAcceleration", true);
+
 if (!hardwareAcceleration) {
   app.disableHardwareAcceleration();
 }
+
 let startWithWindows =
   process.platform === "win32"
     ? readBoolConfig("startWithWindows", true)
     : false;
+
 let startMinimizedOnLogin = readBoolConfig("startMinimizedOnLogin", false);
 
 function applyStartWithWindowsSetting(enabled: boolean) {
   if (process.platform !== "win32") return;
+
   try {
-    app.setLoginItemSettings({ openAtLogin: enabled, args: [AUTO_START_ARG] });
+    app.setLoginItemSettings({
+      openAtLogin: enabled,
+      args: [AUTO_START_ARG],
+    });
   } catch {
     // Best-effort: some environments (portable/dev) may not support this.
   }
 }
 
 function sendToSplash(status: string, info?: Record<string, unknown>) {
-  splashWindow?.webContents.send("update-status", { status, ...info });
+  splashWindow?.webContents.send("update-status", {
+    status,
+    ...info,
+  });
 }
 
 function sendToMain(status: string, info?: Record<string, unknown>) {
-  mainWindow?.webContents.send("update-status", { status, ...info });
+  mainWindow?.webContents.send("update-status", {
+    status,
+    ...info,
+  });
 }
 
 // ── Splash window ───────────────────────────────────────────────────────
@@ -540,10 +565,12 @@ function closeSplashAndShowMain(): void {
     splashWindow.close();
     splashWindow = null;
   }
+
   if (mainWindow) {
     mainWindow.setAlwaysOnTop(true);
     mainWindow.show();
     mainWindow.focus();
+
     setTimeout(() => {
       mainWindow?.setAlwaysOnTop(false);
     }, 1000);
@@ -551,42 +578,31 @@ function closeSplashAndShowMain(): void {
 }
 
 // ── Splash update flow ──────────────────────────────────────────────────
-// Returns a promise that resolves once we should show the main window.
 
 function runSplashUpdateCheck(): Promise<void> {
-  // An install we already queued may still be copying. Checking now would
-  // download again, and the fresh Squirrel staging directory would delete the
-  // one that install is reading from — see installIsPending. Doing nothing is
-  // what lets it finish.
   if (installIsPending()) {
     const pending = readPendingInstall();
+
     startupLog(
       `Update: skipping check, install of ${pending?.version} still pending`
     );
+
     return Promise.resolve();
   }
 
-  return new Promise((resolve) => {
+  return new Promise((resolvePromise) => {
     let settled = false;
+
     const done = () => {
       if (settled) return;
+
       settled = true;
-      // Detach here rather than at each exit. Every path used to have to
-      // remember, and the timeout path did not — so a check that took longer
-      // than the safety timeout left these listeners attached while
-      // initBackgroundUpdater added a second set a moment later, and every
-      // subsequent update event was handled twice.
       cleanup();
-      resolve();
+      resolvePromise();
     };
 
-    // Safety timeout on the *check* only. Once a download starts it is
-    // cancelled: this path is the only thing that installs an update now, the
-    // user is watching a progress bar, and abandoning a 100MB download after
-    // 15 seconds would drop them into the app with the update half-fetched and
-    // these listeners still attached alongside the ones initBackgroundUpdater
-    // adds a moment later.
     let timeout: NodeJS.Timeout | null = setTimeout(done, 15_000);
+
     const holdOpen = () => {
       if (timeout) {
         clearTimeout(timeout);
@@ -594,28 +610,39 @@ function runSplashUpdateCheck(): Promise<void> {
       }
     };
 
-    const onChecking = () => sendToSplash("checking");
+    const onChecking = () => {
+      sendToSplash("checking");
+    };
 
     const onAvailable = (info: UpdateInfo) => {
       pendingUpdateVersion = info.version;
-      sendToSplash("available", { version: info.version });
+
+      sendToSplash("available", {
+        version: info.version,
+      });
+
       holdOpen();
+
       autoUpdater
         .downloadUpdate()
         .then(async (downloadedFiles) => {
-          // On macOS, downloadUpdate does not resolve until Squirrel has
-          // finished fetching the ZIP from electron-updater's local proxy.
-          // Installing from the earlier update-downloaded event tears that
-          // proxy down mid-transfer and simply reopens the old bundle.
           markInstallPending(info.version);
-          sendToSplash("installing", { version: info.version });
+
+          sendToSplash("installing", {
+            version: info.version,
+          });
 
           if (process.platform === "win32") {
             const installerPath = downloadedFiles[0];
+
             if (!installerPath) {
-              throw new Error("The downloaded Windows installer path is missing");
+              throw new Error(
+                "The downloaded Windows installer path is missing"
+              );
             }
+
             await launchWindowsInstallerAfterExit(installerPath);
+
             isQuitting = true;
             app.quit();
             return;
@@ -623,20 +650,26 @@ function runSplashUpdateCheck(): Promise<void> {
 
           autoUpdater.quitAndInstall(false, true);
 
-          // Backstop only: unlike the old four-second forced quit, this does
-          // not interrupt Squirrel staging. If the platform updater still does
-          // not quit, keep the staged update and let the user enter Gryt.
           setTimeout(() => {
             updateDeferredVersion = info.version;
-            sendToSplash("deferred", { version: info.version });
+
+            sendToSplash("deferred", {
+              version: info.version,
+            });
+
             setTimeout(done, 2500);
           }, INSTALL_WAIT_MS);
         })
-        .catch((err) => onError(err instanceof Error ? err : undefined));
+        .catch((err) => {
+          onError(err instanceof Error ? err : undefined);
+        });
     };
 
     const onNotAvailable = (info: UpdateInfo) => {
-      sendToSplash("not-available", { version: info.version });
+      sendToSplash("not-available", {
+        version: info.version,
+      });
+
       setTimeout(done, 800);
     };
 
@@ -646,6 +679,7 @@ function runSplashUpdateCheck(): Promise<void> {
       total: number;
     }) => {
       holdOpen();
+
       sendToSplash("downloading", {
         version: pendingUpdateVersion,
         percent: Math.round(progress.percent),
@@ -655,28 +689,27 @@ function runSplashUpdateCheck(): Promise<void> {
     };
 
     const onDownloaded = (info: UpdateDownloadedEvent) => {
-      sendToSplash("downloaded", { version: info.version });
+      sendToSplash("downloaded", {
+        version: info.version,
+      });
     };
 
     const onError = (err?: Error) => {
-      // Raw, and before any of the branching below. The friendly text is lossy
-      // by design and the not-ready branch swallows the error entirely, so
-      // without this line a failed update on the way into the app leaves
-      // nothing to read afterwards — which is the exact hole this log exists
-      // to close.
       logUpdateFailure("Update failed", err);
 
-      // A release that is still uploading is not a failure to launch through.
-      // Flashing a red error on the way into the app, for something nobody can
-      // act on and which fixes itself, is worse than saying nothing.
       if (err && isReleaseNotReadyYet(err)) {
-        sendToSplash("not-available", { version: app.getVersion() });
+        sendToSplash("not-available", {
+          version: app.getVersion(),
+        });
+
         setTimeout(done, 600);
         return;
       }
+
       sendToSplash("error", {
         message: err ? friendlyUpdateError(err) : undefined,
       });
+
       holdOpen();
       setTimeout(done, 1200);
     };
@@ -705,28 +738,11 @@ function runSplashUpdateCheck(): Promise<void> {
   });
 }
 
-// ── Background update listeners (after main window is open) ─────────────
+// ── Background update listeners ─────────────────────────────────────────
 
-/**
- * Whether an update error means "there is nothing to install yet" rather than
- * "something is broken".
- *
- * A GitHub release becomes visible before its assets finish uploading, and the
- * release workflow publishes the channel yml alongside several hundred MB of
- * installers. A check landing inside that window gets a 404 for the file, or
- * finds no yml for the channel at all. Nothing is wrong, nothing is actionable,
- * and it fixes itself within a few minutes.
- *
- * Reported as "up to date", because that is what it means from where the user
- * is standing: there is no update they can install right now. A red error for a
- * condition nobody caused and nobody can act on just makes the app look broken
- * — which is exactly what it did while v1.4.0-beta.10 was uploading.
- *
- * Deliberately narrow. A network failure, a 403, or a checksum mismatch are all
- * real and still surface as errors.
- */
 function isReleaseNotReadyYet(err: Error): boolean {
   const msg = err.message;
+
   return (
     msg.includes("status 404") ||
     msg.includes("HttpError: 404") ||
@@ -739,7 +755,12 @@ function isReleaseNotReadyYet(err: Error): boolean {
 const UPDATE_OWNER = "Gryt-chat";
 const UPDATE_REPO = "gryt";
 
-type GhAsset = { name: string; size: number; browser_download_url: string };
+type GhAsset = {
+  name: string;
+  size: number;
+  browser_download_url: string;
+};
+
 type GhRelease = {
   tag_name: string;
   draft: boolean;
@@ -747,37 +768,37 @@ type GhRelease = {
   assets: GhAsset[];
 };
 
-/** The channel file electron-updater will ask for on this platform. */
 function channelYmlName(): string {
   if (process.platform === "darwin") return "latest-mac.yml";
   if (process.platform === "win32") return "latest.yml";
   return "latest-linux.yml";
 }
 
-async function fetchWithTimeout(url: string, ms = 8000): Promise<Response | null> {
+async function fetchWithTimeout(
+  url: string,
+  ms = 8000
+): Promise<Response | null> {
   try {
     const res = await fetch(url, {
       signal: AbortSignal.timeout(ms),
-      headers: { "User-Agent": `Gryt/${app.getVersion()}` },
+      headers: {
+        "User-Agent": `Gryt/${app.getVersion()}`,
+      },
     });
+
     return res.ok ? res : null;
   } catch {
     return null;
   }
 }
 
-/**
- * Whether this release can actually be installed from.
- *
- * Presence of the channel yml is not enough: it names the artifact, and the
- * whole failure this guards against is a release where the yml has uploaded and
- * the several-hundred-MB installer beside it has not. So the yml is read and
- * the file it points at is checked for in the same release.
- */
-async function releaseIsInstallable(release: GhRelease): Promise<boolean> {
+async function releaseIsInstallable(
+  release: GhRelease
+): Promise<boolean> {
   const yml = release.assets.find(
-    (a) => a.name === channelYmlName() && a.size > 0
+    (asset) => asset.name === channelYmlName() && asset.size > 0
   );
+
   if (!yml) return false;
 
   const res = await fetchWithTimeout(yml.browser_download_url);
@@ -786,58 +807,53 @@ async function releaseIsInstallable(release: GhRelease): Promise<boolean> {
   const named = (await res.text()).match(/^path:\s*(.+)$/m);
   if (!named) return false;
 
-  const file = named[1].trim().replace(/^["']|["']$/g, "");
-  return release.assets.some((a) => a.name === file && a.size > 0);
+  const file = named[1]
+    .trim()
+    .replace(/^["']|["']$/g, "");
+
+  return release.assets.some(
+    (asset) => asset.name === file && asset.size > 0
+  );
 }
 
-/**
- * Point the updater at the newest release that is actually complete.
- *
- * The GitHub provider always takes the newest release and gives up if its
- * assets are missing, so one bad or half-uploaded release blocks updates for
- * everyone until somebody fixes it. Walking back to the previous good release
- * means a failed publish costs people a version, not their ability to update.
- *
- * Best effort by design. If GitHub cannot be reached, or nothing looks
- * complete, the configured provider is left alone and behaviour is exactly what
- * it was.
- *
- * No version comparison here on purpose — electron-updater already refuses
- * anything that is not newer than what is running, so pinning to an older
- * release simply reports up to date.
- */
 async function pinFeedToNewestCompleteRelease(): Promise<void> {
   const res = await fetchWithTimeout(
     `https://api.github.com/repos/${UPDATE_OWNER}/${UPDATE_REPO}/releases?per_page=20`
   );
+
   if (!res) return;
 
   let releases: GhRelease[];
+
   try {
     releases = (await res.json()) as GhRelease[];
   } catch {
     return;
   }
+
   if (!Array.isArray(releases)) return;
 
   const current = app.getVersion();
   const wantPrerelease = isOnBetaChannel();
 
-  // Sorted here rather than trusted from the response. GitHub's releases
-  // endpoint is not newest-first: it returned beta.9, 8, 7, 6, 5 and only then
-  // beta.12. Taking the first installable entry therefore pinned the feed to
-  // beta.9 while beta.12 was running.
-  //
-  // And filtered to strictly newer than what is running, because pinning the
-  // feed to an older release does not merely do nothing — electron-updater
-  // installs it. That produced a loop: beta.12 pinned to beta.9 and installed
-  // it, beta.9 found beta.12 through the normal provider and installed that,
-  // and round it went. Shipped in v1.4.0-beta.11 and beta.12.
   const candidates = releases
-    .filter((r) => !r.draft && (wantPrerelease || !r.prerelease))
-    .map((r) => ({ release: r, version: (r.tag_name || "").replace(/^v/, "") }))
-    .filter(({ version }) => semver.valid(version) && semver.gt(version, current))
-    .sort((a, b) => semver.rcompare(a.version, b.version));
+    .filter(
+      (release) =>
+        !release.draft &&
+        (wantPrerelease || !release.prerelease)
+    )
+    .map((release) => ({
+      release,
+      version: (release.tag_name || "").replace(/^v/, ""),
+    }))
+    .filter(
+      ({ version }) =>
+        semver.valid(version) &&
+        semver.gt(version, current)
+    )
+    .sort((a, b) =>
+      semver.rcompare(a.version, b.version)
+    );
 
   for (const { release, version } of candidates) {
     if (await releaseIsInstallable(release)) {
@@ -845,44 +861,57 @@ async function pinFeedToNewestCompleteRelease(): Promise<void> {
         provider: "generic",
         url: `https://github.com/${UPDATE_OWNER}/${UPDATE_REPO}/releases/download/${release.tag_name}`,
       });
+
       startupLog(`Update: feed pinned to ${release.tag_name}`);
       return;
     }
-    startupLog(`Update: skipping ${version}, assets incomplete`);
+
+    startupLog(
+      `Update: skipping ${version}, assets incomplete`
+    );
   }
 }
 
-/**
- * One failure, one line.
- *
- * The same error arrives here up to three times: autoUpdater emits `error`,
- * `checkForUpdates` rejects with it, and the splash flow registers a second
- * listener on the same emitter while it runs. A single dropped connection wrote
- * three identical lines, which makes the log harder to read for no gain.
- *
- * Collapsed on the message rather than on the call site, because the duplicates
- * are the same failure seen from different places, and the first one to arrive
- * is as good as any. A genuine repeat later still gets its own line.
- */
-let lastUpdateFailure = { message: "", at: 0 };
+let lastUpdateFailure = {
+  message: "",
+  at: 0,
+};
 
-function logUpdateFailure(context: string, err?: Error): void {
-  const message = err ? err.stack || err.message : "unknown";
+function logUpdateFailure(
+  context: string,
+  err?: Error
+): void {
+  const message = err
+    ? err.stack || err.message
+    : "unknown";
+
   const now = Date.now();
 
-  if (message === lastUpdateFailure.message && now - lastUpdateFailure.at < 10_000) {
+  if (
+    message === lastUpdateFailure.message &&
+    now - lastUpdateFailure.at < 10_000
+  ) {
     return;
   }
 
-  lastUpdateFailure = { message, at: now };
+  lastUpdateFailure = {
+    message,
+    at: now,
+  };
+
   startupLog(`${context}: ${message}`);
 }
 
 function friendlyUpdateError(err: Error): string {
   const msg = err.message;
-  if (msg.includes("status 404") || msg.includes("HttpError: 404")) {
+
+  if (
+    msg.includes("status 404") ||
+    msg.includes("HttpError: 404")
+  ) {
     return "The update file was not found. A new release may not have all artifacts uploaded yet — try again in a few minutes.";
   }
+
   if (
     msg.includes("latest.yml") ||
     msg.includes("latest-linux.yml") ||
@@ -890,11 +919,7 @@ function friendlyUpdateError(err: Error): string {
   ) {
     return "No update available for this channel yet. The release may still be building — try again in a few minutes.";
   }
-  // Throttling, and only when GitHub actually says so: a 429, or a 403 whose
-  // body names the secondary rate limit. Kept narrow deliberately — see below.
-  //
-  // Ahead of the access-denied branch, which would otherwise catch the 403 and
-  // tell somebody their token had expired.
+
   if (
     msg.includes("HttpError: 429") ||
     msg.toLowerCase().includes("rate limit")
@@ -902,20 +927,6 @@ function friendlyUpdateError(err: Error): string {
     return "GitHub is rate limiting this machine, so the update could not be fetched. It clears on its own, so try again in a few minutes.";
   }
 
-  // The connection was torn down part-way through. This says nothing about why,
-  // and the message must not pretend otherwise.
-  //
-  // ERR_HTTP2_SERVER_REFUSED_STREAM was read as throttling once, and that was
-  // wrong. On a machine seeing it repeatedly: the GitHub rate limit had 40 of
-  // 60 remaining, plain curl to the same feed failed twice in ten with
-  // "connection died", and the host had seven tunnel interfaces with MTUs
-  // between 1000 and 2000 and more than one default route. A local path
-  // problem, not GitHub.
-  //
-  // This is the third wording of this error and the second cause it named
-  // wrongly — the first sent people to check a connection that was working.
-  // So it names the symptom and stops. The raw error goes to the startup log,
-  // which is where the real answer lives.
   if (
     msg.includes("ERR_HTTP2_SERVER_REFUSED_STREAM") ||
     msg.includes("ERR_HTTP2_PROTOCOL_ERROR") ||
@@ -925,6 +936,7 @@ function friendlyUpdateError(err: Error): string {
   ) {
     return "The update could not be fetched. The connection to GitHub closed before it finished. This is usually temporary, so try again in a few minutes.";
   }
+
   if (
     msg.includes("net::ERR_") ||
     msg.includes("ENOTFOUND") ||
@@ -932,77 +944,93 @@ function friendlyUpdateError(err: Error): string {
   ) {
     return "Could not reach the update server. Check your internet connection and try again.";
   }
-  if (msg.includes("HttpError: 403") || msg.includes("HttpError: 401")) {
+
+  if (
+    msg.includes("HttpError: 403") ||
+    msg.includes("HttpError: 401")
+  ) {
     return "Access denied while checking for updates. The release may be private or your token has expired.";
   }
+
   if (msg.includes("sha512 checksum mismatch")) {
     return "Downloaded update failed integrity check. Try checking for updates again.";
   }
+
   return msg;
 }
 
 let pendingUpdateVersion: string | undefined;
 
 function initBackgroundUpdater() {
-  autoUpdater.on("checking-for-update", () => sendToMain("checking"));
+  autoUpdater.on(
+    "checking-for-update",
+    () => sendToMain("checking")
+  );
+
   autoUpdater.on("update-available", (info) => {
     pendingUpdateVersion = info.version;
-    sendToMain("available", { version: info.version });
-    // Deliberately no download. A running app cannot install one any more, so
-    // fetching it here only spends the user's bandwidth on a file the splash
-    // will ask for again. It also used to mean anyone who simply closed Gryt
-    // after a background check got the heavy install on the way out, without
-    // ever clicking anything.
+
+    sendToMain("available", {
+      version: info.version,
+    });
   });
-  autoUpdater.on("update-not-available", (info) =>
-    sendToMain("not-available", { version: info.version })
-  );
-  autoUpdater.on("download-progress", (p) =>
+
+  autoUpdater.on("update-not-available", (info) => {
+    sendToMain("not-available", {
+      version: info.version,
+    });
+  });
+
+  autoUpdater.on("download-progress", (progress) => {
     sendToMain("downloading", {
       version: pendingUpdateVersion,
-      percent: Math.round(p.percent),
-      transferred: p.transferred,
-      total: p.total,
-    })
-  );
-  autoUpdater.on("update-downloaded", (info) =>
-    sendToMain("downloaded", { version: info.version })
-  );
+      percent: Math.round(progress.percent),
+      transferred: progress.transferred,
+      total: progress.total,
+    });
+  });
+
+  autoUpdater.on("update-downloaded", (info) => {
+    sendToMain("downloaded", {
+      version: info.version,
+    });
+  });
+
   autoUpdater.on("error", (err) => {
     logUpdateFailure("Update failed", err);
 
     if (isReleaseNotReadyYet(err)) {
-      sendToMain("not-available", { version: app.getVersion() });
+      sendToMain("not-available", {
+        version: app.getVersion(),
+      });
       return;
     }
-    sendToMain("error", { message: friendlyUpdateError(err) });
+
+    sendToMain("error", {
+      message: friendlyUpdateError(err),
+    });
   });
 }
 
-/**
- * Quit and come straight back, with the splash told to do an update.
- *
- * The installer's job is the same wherever it runs, but from here it would have
- * a loaded app to tear down around itself — renderer, GPU helpers, the SFU
- * binary, the embedded server — and on Windows it waits for all of it. The
- * relaunched process has none of that.
- *
- * AUTO_START_ARG is dropped deliberately: this relaunch is something the user
- * just asked for and is watching, so it must not come back hidden and skip the
- * splash that does the work.
- */
 function relaunchForUpdate(): void {
   isQuitting = true;
+
   const args = process.argv
     .slice(1)
-    .filter((a) => a !== AUTO_START_ARG && a !== UPDATE_ARG);
-  app.relaunch({ args: [...args, UPDATE_ARG] });
+    .filter(
+      (arg) =>
+        arg !== AUTO_START_ARG &&
+        arg !== UPDATE_ARG
+    );
+
+  app.relaunch({
+    args: [...args, UPDATE_ARG],
+  });
+
   app.quit();
 }
 
-// ── Local static server (production only) ────────────────────────────────
-// Serves the Vite-built dist/ folder over HTTP so iframe embeds (YouTube,
-// Twitch, etc.) see a real HTTP origin instead of file://.
+// ── Local static server ──────────────────────────────────────────────────
 
 const MIME_TYPES: Record<string, string> = {
   ".html": "text/html",
@@ -1037,24 +1065,41 @@ function startLocalServer(): Promise<string> {
     return new Promise((resolveUrl, reject) => {
       const server = createServer((req, res) => {
         const pathname = decodeURIComponent(
-          new URL(req.url ?? "/", "http://localhost").pathname
+          new URL(
+            req.url ?? "/",
+            "http://localhost"
+          ).pathname
         );
 
         if (pathname.startsWith("/addons/")) {
-          const addonFile = resolveAddonFilePath(pathname);
+          const addonFile =
+            resolveAddonFilePath(pathname);
+
           if (!addonFile) {
             res.writeHead(404);
             res.end();
             return;
           }
-          const ext = extname(addonFile).toLowerCase();
-          const contentType = MIME_TYPES[ext] ?? "application/octet-stream";
-          res.writeHead(200, { "Content-Type": contentType });
+
+          const ext =
+            extname(addonFile).toLowerCase();
+
+          const contentType =
+            MIME_TYPES[ext] ??
+            "application/octet-stream";
+
+          res.writeHead(200, {
+            "Content-Type": contentType,
+          });
+
           createReadStream(addonFile).pipe(res);
           return;
         }
 
-        const safePath = resolve(distDir, pathname.replace(/^\/+/, ""));
+        const safePath = resolve(
+          distDir,
+          pathname.replace(/^\/+/, "")
+        );
 
         if (!safePath.startsWith(distDir)) {
           res.writeHead(403);
@@ -1063,37 +1108,67 @@ function startLocalServer(): Promise<string> {
         }
 
         const filePath =
-          existsSync(safePath) && statSync(safePath).isFile()
+          existsSync(safePath) &&
+          statSync(safePath).isFile()
             ? safePath
             : indexPath;
-        const ext = extname(filePath).toLowerCase();
-        const contentType = MIME_TYPES[ext] ?? "application/octet-stream";
 
-        res.writeHead(200, { "Content-Type": contentType });
+        const ext =
+          extname(filePath).toLowerCase();
+
+        const contentType =
+          MIME_TYPES[ext] ??
+          "application/octet-stream";
+
+        res.writeHead(200, {
+          "Content-Type": contentType,
+        });
+
         createReadStream(filePath).pipe(res);
       });
 
-      server.listen(port, "127.0.0.1", () => {
-        const addr = server.address();
-        if (!addr || typeof addr === "string") {
-          reject(new Error("Failed to start local server"));
-          return;
+      server.listen(
+        port,
+        "127.0.0.1",
+        () => {
+          const addr = server.address();
+
+          if (
+            !addr ||
+            typeof addr === "string"
+          ) {
+            reject(
+              new Error(
+                "Failed to start local server"
+              )
+            );
+            return;
+          }
+
+          localServer = server;
+
+          resolveUrl(
+            `http://127.0.0.1:${addr.port}`
+          );
         }
-        localServer = server;
-        resolveUrl(`http://127.0.0.1:${addr.port}`);
-      });
+      );
 
       server.on("error", reject);
     });
   }
 
-  return tryListen(15738).catch((err: NodeJS.ErrnoException) => {
-    if (err.code === "EADDRINUSE") {
-      startupLog("Port 15738 in use, falling back to OS-assigned port");
-      return tryListen(0);
+  return tryListen(15738).catch(
+    (err: NodeJS.ErrnoException) => {
+      if (err.code === "EADDRINUSE") {
+        startupLog(
+          "Port 15738 in use, falling back to OS-assigned port"
+        );
+        return tryListen(0);
+      }
+
+      throw err;
     }
-    throw err;
-  });
+  );
 }
 
 // ── Main window ─────────────────────────────────────────────────────────
@@ -1105,61 +1180,90 @@ function createMainWindow(): BrowserWindow {
     minWidth: 300,
     minHeight: 300,
     show: false,
+
     titleBarStyle: "hidden",
+
     titleBarOverlay: {
       color: "#0d0f13",
       symbolColor: "#e0e0e6",
       height: 36,
     },
+
     icon: appIcon,
+
     backgroundColor: "#111318",
+
     webPreferences: {
-      preload: join(__dirname, "preload.cjs"),
+      preload: join(
+        __dirname,
+        "preload.cjs"
+      ),
       contextIsolation: true,
       nodeIntegration: false,
       backgroundThrottling: true,
     },
+
     autoHideMenuBar: true,
     title: "Gryt",
   });
 
   mainWindow.loadURL(
-    localServerUrl ?? process.env.VITE_DEV_SERVER_URL ?? "about:blank"
+    localServerUrl ??
+      process.env.VITE_DEV_SERVER_URL ??
+      "about:blank"
   );
 
   if (!startHiddenOnLaunch) {
-    // Safety: if splash flow hasn't shown us within 20s, show anyway
     setTimeout(() => {
-      if (mainWindow && !mainWindow.isVisible()) {
+      if (
+        mainWindow &&
+        !mainWindow.isVisible()
+      ) {
         closeSplashAndShowMain();
       }
     }, 20_000);
   }
 
-  mainWindow.webContents.on("before-input-event", (_event, input) => {
-    if (input.key === "F12" && input.type === "keyDown") {
-      mainWindow?.webContents.toggleDevTools();
+  mainWindow.webContents.on(
+    "before-input-event",
+    (_event, input) => {
+      if (
+        input.key === "F12" &&
+        input.type === "keyDown"
+      ) {
+        mainWindow?.webContents.toggleDevTools();
+      }
     }
-  });
+  );
 
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (url === "about:blank") {
+  mainWindow.webContents.setWindowOpenHandler(
+    ({ url }) => {
+      if (url === "about:blank") {
+        return {
+          action: "allow",
+          overrideBrowserWindowOptions: {
+            frame: false,
+            backgroundColor: "#111318",
+            minWidth: 320,
+            minHeight: 180,
+          },
+        };
+      }
+
+      shell.openExternal(url);
+
       return {
-        action: "allow",
-        overrideBrowserWindowOptions: {
-          frame: false,
-          backgroundColor: "#111318",
-          minWidth: 320,
-          minHeight: 180,
-        },
+        action: "deny",
       };
     }
-    shell.openExternal(url);
-    return { action: "deny" };
-  });
+  );
 
   mainWindow.on("close", (event) => {
-    if (!isQuitting && closeToTray && isUserSignedIn) {
+    if (
+      !isQuitting &&
+      closeToTray &&
+      isUserSignedIn
+    ) {
       event.preventDefault();
       mainWindow?.hide();
     }
@@ -1169,178 +1273,233 @@ function createMainWindow(): BrowserWindow {
     mainWindow = null;
   });
 
-  // Keeps the attached macOS menu's first item honest — without this it still
-  // reads "Show Gryt" while the window is up.
-  mainWindow.on("show", refreshTrayMenu);
-  mainWindow.on("hide", refreshTrayMenu);
+  mainWindow.on(
+    "show",
+    refreshTrayMenu
+  );
+
+  mainWindow.on(
+    "hide",
+    refreshTrayMenu
+  );
 
   mainWindow.on("focus", () => {
-    mainWindow?.webContents.send("window-focus-change", true);
+    mainWindow?.webContents.send(
+      "window-focus-change",
+      true
+    );
   });
 
   mainWindow.on("blur", () => {
-    mainWindow?.webContents.send("window-focus-change", false);
+    mainWindow?.webContents.send(
+      "window-focus-change",
+      false
+    );
   });
 
-  mainWindow.webContents.on("render-process-gone", (_event, details) => {
-    startupLog(
-      `Render process gone: ${details.reason} (exit code ${details.exitCode})`
-    );
-    if (details.reason !== "clean-exit") {
-      dialog
-        .showMessageBox({
-          type: "error",
-          title: "Gryt — Renderer Crashed",
-          message: "The app encountered an error and needs to restart.",
-          detail:
-            "If this keeps happening, try disabling hardware acceleration in Settings.",
-          buttons: ["Restart", "Quit"],
-        })
-        .then(({ response }) => {
-          if (response === 0) {
-            app.relaunch();
-          }
-          isQuitting = true;
-          app.quit();
-        });
+  mainWindow.webContents.on(
+    "render-process-gone",
+    (_event, details) => {
+      startupLog(
+        `Render process gone: ${details.reason} (exit code ${details.exitCode})`
+      );
+
+      if (
+        details.reason !== "clean-exit"
+      ) {
+        dialog
+          .showMessageBox({
+            type: "error",
+            title:
+              "Gryt — Renderer Crashed",
+            message:
+              "The app encountered an error and needs to restart.",
+            detail:
+              "If this keeps happening, try disabling hardware acceleration in Settings.",
+            buttons: [
+              "Restart",
+              "Quit",
+            ],
+          })
+          .then(({ response }) => {
+            if (response === 0) {
+              app.relaunch();
+            }
+
+            isQuitting = true;
+            app.quit();
+          });
+      }
     }
-  });
+  );
 
   return mainWindow;
 }
 
-// ── PTT helpers (uiohook – passive, does NOT consume key events) ────────
+// ── PTT helpers ─────────────────────────────────────────────────────────
 
-/**
- * uiohook-napi, loaded only once something actually needs it.
- *
- * It used to be a static import at the top of this file, which loads the native
- * addon during startup — before any of the gating below can run, and on macOS
- * that is enough to crash the client on launch when Accessibility is denied.
- * Nothing here is needed unless a push-to-talk key is set, so nothing here is
- * loaded until one is.
- */
-type UiohookLib = typeof import("uiohook-napi");
-let uiohookLib: UiohookLib | null | undefined;
+type UiohookLib =
+  typeof import("uiohook-napi");
+
+let uiohookLib:
+  | UiohookLib
+  | null
+  | undefined;
 
 function loadUiohook(): UiohookLib | null {
-  if (uiohookLib !== undefined) return uiohookLib;
+  if (uiohookLib !== undefined) {
+    return uiohookLib;
+  }
+
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    uiohookLib = require("uiohook-napi") as UiohookLib;
+    uiohookLib =
+      require("uiohook-napi") as UiohookLib;
   } catch (err) {
     startupLog(
-      `uiohook unavailable: ${err instanceof Error ? err.message : String(err)}`
+      `uiohook unavailable: ${
+        err instanceof Error
+          ? err.message
+          : String(err)
+      }`
     );
+
     uiohookLib = null;
   }
+
   return uiohookLib;
 }
 
-/**
- * Built on first use rather than at module scope, because reading UiohookKey is
- * itself enough to pull the addon in.
- */
-let domCodeToKeycode: Record<string, number> | null = null;
+let domCodeToKeycode:
+  | Record<string, number>
+  | null = null;
 
-function keycodeForDomCode(code: string): number | undefined {
+function keycodeForDomCode(
+  code: string
+): number | undefined {
   if (!domCodeToKeycode) {
     const lib = loadUiohook();
     if (!lib) return undefined;
-    const UiohookKey = lib.UiohookKey;
+
+    const UiohookKey =
+      lib.UiohookKey;
+
     domCodeToKeycode = {
-  KeyA: UiohookKey.A,
-  KeyB: UiohookKey.B,
-  KeyC: UiohookKey.C,
-  KeyD: UiohookKey.D,
-  KeyE: UiohookKey.E,
-  KeyF: UiohookKey.F,
-  KeyG: UiohookKey.G,
-  KeyH: UiohookKey.H,
-  KeyI: UiohookKey.I,
-  KeyJ: UiohookKey.J,
-  KeyK: UiohookKey.K,
-  KeyL: UiohookKey.L,
-  KeyM: UiohookKey.M,
-  KeyN: UiohookKey.N,
-  KeyO: UiohookKey.O,
-  KeyP: UiohookKey.P,
-  KeyQ: UiohookKey.Q,
-  KeyR: UiohookKey.R,
-  KeyS: UiohookKey.S,
-  KeyT: UiohookKey.T,
-  KeyU: UiohookKey.U,
-  KeyV: UiohookKey.V,
-  KeyW: UiohookKey.W,
-  KeyX: UiohookKey.X,
-  KeyY: UiohookKey.Y,
-  KeyZ: UiohookKey.Z,
-  Digit0: UiohookKey["0"],
-  Digit1: UiohookKey["1"],
-  Digit2: UiohookKey["2"],
-  Digit3: UiohookKey["3"],
-  Digit4: UiohookKey["4"],
-  Digit5: UiohookKey["5"],
-  Digit6: UiohookKey["6"],
-  Digit7: UiohookKey["7"],
-  Digit8: UiohookKey["8"],
-  Digit9: UiohookKey["9"],
-  Space: UiohookKey.Space,
-  Backspace: UiohookKey.Backspace,
-  Tab: UiohookKey.Tab,
-  Enter: UiohookKey.Enter,
-  CapsLock: UiohookKey.CapsLock,
-  Escape: UiohookKey.Escape,
-  Insert: UiohookKey.Insert,
-  Delete: UiohookKey.Delete,
-  Home: UiohookKey.Home,
-  End: UiohookKey.End,
-  PageUp: UiohookKey.PageUp,
-  PageDown: UiohookKey.PageDown,
-  ArrowUp: UiohookKey.ArrowUp,
-  ArrowDown: UiohookKey.ArrowDown,
-  ArrowLeft: UiohookKey.ArrowLeft,
-  ArrowRight: UiohookKey.ArrowRight,
-  F1: UiohookKey.F1,
-  F2: UiohookKey.F2,
-  F3: UiohookKey.F3,
-  F4: UiohookKey.F4,
-  F5: UiohookKey.F5,
-  F6: UiohookKey.F6,
-  F7: UiohookKey.F7,
-  F8: UiohookKey.F8,
-  F9: UiohookKey.F9,
-  F10: UiohookKey.F10,
-  F11: UiohookKey.F11,
-  F12: UiohookKey.F12,
-  Numpad0: UiohookKey.Numpad0,
-  Numpad1: UiohookKey.Numpad1,
-  Numpad2: UiohookKey.Numpad2,
-  Numpad3: UiohookKey.Numpad3,
-  Numpad4: UiohookKey.Numpad4,
-  Numpad5: UiohookKey.Numpad5,
-  Numpad6: UiohookKey.Numpad6,
-  Numpad7: UiohookKey.Numpad7,
-  Numpad8: UiohookKey.Numpad8,
-  Numpad9: UiohookKey.Numpad9,
-  NumpadMultiply: UiohookKey.NumpadMultiply,
-  NumpadAdd: UiohookKey.NumpadAdd,
-  NumpadSubtract: UiohookKey.NumpadSubtract,
-  NumpadDecimal: UiohookKey.NumpadDecimal,
-  NumpadDivide: UiohookKey.NumpadDivide,
-  Semicolon: UiohookKey.Semicolon,
-  Equal: UiohookKey.Equal,
-  Comma: UiohookKey.Comma,
-  Minus: UiohookKey.Minus,
-  Period: UiohookKey.Period,
-  Slash: UiohookKey.Slash,
-  Backquote: UiohookKey.Backquote,
-  BracketLeft: UiohookKey.BracketLeft,
-  Backslash: UiohookKey.Backslash,
-  BracketRight: UiohookKey.BracketRight,
-  Quote: UiohookKey.Quote,
-};
+      KeyA: UiohookKey.A,
+      KeyB: UiohookKey.B,
+      KeyC: UiohookKey.C,
+      KeyD: UiohookKey.D,
+      KeyE: UiohookKey.E,
+      KeyF: UiohookKey.F,
+      KeyG: UiohookKey.G,
+      KeyH: UiohookKey.H,
+      KeyI: UiohookKey.I,
+      KeyJ: UiohookKey.J,
+      KeyK: UiohookKey.K,
+      KeyL: UiohookKey.L,
+      KeyM: UiohookKey.M,
+      KeyN: UiohookKey.N,
+      KeyO: UiohookKey.O,
+      KeyP: UiohookKey.P,
+      KeyQ: UiohookKey.Q,
+      KeyR: UiohookKey.R,
+      KeyS: UiohookKey.S,
+      KeyT: UiohookKey.T,
+      KeyU: UiohookKey.U,
+      KeyV: UiohookKey.V,
+      KeyW: UiohookKey.W,
+      KeyX: UiohookKey.X,
+      KeyY: UiohookKey.Y,
+      KeyZ: UiohookKey.Z,
+
+      Digit0: UiohookKey["0"],
+      Digit1: UiohookKey["1"],
+      Digit2: UiohookKey["2"],
+      Digit3: UiohookKey["3"],
+      Digit4: UiohookKey["4"],
+      Digit5: UiohookKey["5"],
+      Digit6: UiohookKey["6"],
+      Digit7: UiohookKey["7"],
+      Digit8: UiohookKey["8"],
+      Digit9: UiohookKey["9"],
+
+      Space: UiohookKey.Space,
+      Backspace: UiohookKey.Backspace,
+      Tab: UiohookKey.Tab,
+      Enter: UiohookKey.Enter,
+      CapsLock: UiohookKey.CapsLock,
+      Escape: UiohookKey.Escape,
+      Insert: UiohookKey.Insert,
+      Delete: UiohookKey.Delete,
+      Home: UiohookKey.Home,
+      End: UiohookKey.End,
+      PageUp: UiohookKey.PageUp,
+      PageDown: UiohookKey.PageDown,
+      ArrowUp: UiohookKey.ArrowUp,
+      ArrowDown: UiohookKey.ArrowDown,
+      ArrowLeft: UiohookKey.ArrowLeft,
+      ArrowRight: UiohookKey.ArrowRight,
+
+      F1: UiohookKey.F1,
+      F2: UiohookKey.F2,
+      F3: UiohookKey.F3,
+      F4: UiohookKey.F4,
+      F5: UiohookKey.F5,
+      F6: UiohookKey.F6,
+      F7: UiohookKey.F7,
+      F8: UiohookKey.F8,
+      F9: UiohookKey.F9,
+      F10: UiohookKey.F10,
+      F11: UiohookKey.F11,
+      F12: UiohookKey.F12,
+
+      Numpad0: UiohookKey.Numpad0,
+      Numpad1: UiohookKey.Numpad1,
+      Numpad2: UiohookKey.Numpad2,
+      Numpad3: UiohookKey.Numpad3,
+      Numpad4: UiohookKey.Numpad4,
+      Numpad5: UiohookKey.Numpad5,
+      Numpad6: UiohookKey.Numpad6,
+      Numpad7: UiohookKey.Numpad7,
+      Numpad8: UiohookKey.Numpad8,
+      Numpad9: UiohookKey.Numpad9,
+
+      NumpadMultiply:
+        UiohookKey.NumpadMultiply,
+      NumpadAdd:
+        UiohookKey.NumpadAdd,
+      NumpadSubtract:
+        UiohookKey.NumpadSubtract,
+      NumpadDecimal:
+        UiohookKey.NumpadDecimal,
+      NumpadDivide:
+        UiohookKey.NumpadDivide,
+
+      Semicolon:
+        UiohookKey.Semicolon,
+      Equal:
+        UiohookKey.Equal,
+      Comma:
+        UiohookKey.Comma,
+      Minus:
+        UiohookKey.Minus,
+      Period:
+        UiohookKey.Period,
+      Slash:
+        UiohookKey.Slash,
+      Backquote:
+        UiohookKey.Backquote,
+      BracketLeft:
+        UiohookKey.BracketLeft,
+      Backslash:
+        UiohookKey.Backslash,
+      BracketRight:
+        UiohookKey.BracketRight,
+      Quote:
+        UiohookKey.Quote,
+    };
   }
+
   return domCodeToKeycode[code];
 }
 
@@ -1350,7 +1509,9 @@ let pttNeedsShift = false;
 let pttNeedsAlt = false;
 let pttNeedsMeta = false;
 
-function registerPttShortcut(pttKey: string): void {
+function registerPttShortcut(
+  pttKey: string
+): void {
   pttDown = false;
   pttKeycode = null;
   pttNeedsCtrl = false;
@@ -1361,18 +1522,28 @@ function registerPttShortcut(pttKey: string): void {
   if (!pttKey) return;
 
   const parts = pttKey.split("+");
-  const baseKey = parts[parts.length - 1];
-  const keycode = keycodeForDomCode(baseKey);
+  const baseKey =
+    parts[parts.length - 1];
+
+  const keycode =
+    keycodeForDomCode(baseKey);
+
   if (keycode == null) {
-    console.warn(`No uiohook mapping for PTT key "${baseKey}"`);
+    console.warn(
+      `No uiohook mapping for PTT key "${baseKey}"`
+    );
     return;
   }
 
   pttKeycode = keycode;
-  pttNeedsCtrl = parts.includes("Ctrl");
-  pttNeedsShift = parts.includes("Shift");
-  pttNeedsAlt = parts.includes("Alt");
-  pttNeedsMeta = parts.includes("Meta");
+  pttNeedsCtrl =
+    parts.includes("Ctrl");
+  pttNeedsShift =
+    parts.includes("Shift");
+  pttNeedsAlt =
+    parts.includes("Alt");
+  pttNeedsMeta =
+    parts.includes("Meta");
 }
 
 function ensureUiohook(): boolean {
@@ -1380,40 +1551,81 @@ function ensureUiohook(): boolean {
 
   const lib = loadUiohook();
   if (!lib) return false;
+
   const uIOhook = lib.uIOhook;
 
   if (process.platform === "darwin") {
-    const trusted = systemPreferences.isTrustedAccessibilityClient(false);
+    const trusted =
+      systemPreferences.isTrustedAccessibilityClient(
+        false
+      );
+
     if (!trusted) {
-      startupLog("macOS Accessibility not granted — skipping uiohook");
+      startupLog(
+        "macOS Accessibility not granted — skipping uiohook"
+      );
       return false;
     }
   }
 
-  uIOhook.on("keydown", (e) => {
+  uIOhook.on("keydown", (event) => {
     if (pttKeycode == null) return;
-    if (e.keycode !== pttKeycode) return;
-    if (e.ctrlKey !== pttNeedsCtrl) return;
-    if (e.shiftKey !== pttNeedsShift) return;
-    if (e.altKey !== pttNeedsAlt) return;
-    if (e.metaKey !== pttNeedsMeta) return;
+    if (event.keycode !== pttKeycode)
+      return;
+    if (
+      event.ctrlKey !==
+      pttNeedsCtrl
+    )
+      return;
+    if (
+      event.shiftKey !==
+      pttNeedsShift
+    )
+      return;
+    if (
+      event.altKey !==
+      pttNeedsAlt
+    )
+      return;
+    if (
+      event.metaKey !==
+      pttNeedsMeta
+    )
+      return;
 
     if (!pttDown) {
       pttDown = true;
-      mainWindow?.webContents.send("ptt-down");
+      mainWindow?.webContents.send(
+        "ptt-down"
+      );
     }
   });
 
-  uIOhook.on("keyup", (e) => {
-    if (!pttDown || pttKeycode == null) return;
-    if (e.keycode !== pttKeycode) return;
+  uIOhook.on("keyup", (event) => {
+    if (
+      !pttDown ||
+      pttKeycode == null
+    ) {
+      return;
+    }
+
+    if (
+      event.keycode !==
+      pttKeycode
+    ) {
+      return;
+    }
 
     pttDown = false;
-    mainWindow?.webContents.send("ptt-up");
+
+    mainWindow?.webContents.send(
+      "ptt-up"
+    );
   });
 
   uIOhook.start();
   uiohookRunning = true;
+
   return true;
 }
 
@@ -1422,56 +1634,72 @@ function ensureUiohook(): boolean {
 function buildTrayContextMenu(): Menu {
   return Menu.buildFromTemplate([
     {
-      // Says which way it goes rather than "Show/Hide". On macOS this menu is
-      // attached to the tray and is the primary way in, so an ambiguous label
-      // is the first thing a user reads.
-      label: mainWindow?.isVisible() ? "Hide Gryt" : "Show Gryt",
+      label: mainWindow?.isVisible()
+        ? "Hide Gryt"
+        : "Show Gryt",
       click: toggleMainWindow,
     },
-    // Voice, but only while there is a call to act on. Mute and deafen with no
-    // connection would be toggling something invisible.
+
     ...(voiceState.inVoice
       ? [
-          { type: "separator" } as const,
+          {
+            type: "separator",
+          } as const,
+
           {
             label: voiceState.serverName
               ? `Voice — ${voiceState.serverName}`
               : "Voice",
             enabled: false,
           } as const,
+
           {
             label: "Mute",
             type: "checkbox" as const,
-            checked: voiceState.muted,
-            // Deafened implies muted, and un-muting without un-deafening would
-            // leave you talking to people you cannot hear.
-            enabled: !voiceState.deafened,
-            click: () => sendVoiceCommand("toggle-mute"),
+            checked:
+              voiceState.muted,
+            enabled:
+              !voiceState.deafened,
+            click: () =>
+              sendVoiceCommand(
+                "toggle-mute"
+              ),
           },
+
           {
             label: "Deafen",
             type: "checkbox" as const,
-            checked: voiceState.deafened,
-            click: () => sendVoiceCommand("toggle-deafen"),
+            checked:
+              voiceState.deafened,
+            click: () =>
+              sendVoiceCommand(
+                "toggle-deafen"
+              ),
           },
-          { type: "separator" } as const,
+
+          {
+            type: "separator",
+          } as const,
         ]
       : []),
-    // Only while an update is sitting downloaded and unapplied. Quitting is
-    // what actually installs it, so the menu offers exactly that rather than
-    // making the user guess why the version never changed.
+
     ...(updateDeferredVersion
       ? [
           {
-            label: `Quit and install ${updateDeferredVersion}`,
+            label:
+              `Quit and install ${updateDeferredVersion}`,
             click: () => {
               isQuitting = true;
               app.quit();
             },
           } as const,
-          { type: "separator" } as const,
+
+          {
+            type: "separator",
+          } as const,
         ]
       : []),
+
     {
       label: "Check for Updates",
       click: () => {
@@ -1480,7 +1708,11 @@ function buildTrayContextMenu(): Menu {
         app.quit();
       },
     },
-    { type: "separator" },
+
+    {
+      type: "separator",
+    },
+
     {
       label: "Quit",
       click: () => {
@@ -1491,18 +1723,16 @@ function buildTrayContextMenu(): Menu {
   ]);
 }
 
-/**
- * Show the window if it is hidden, hide it if it is already in front.
- *
- * Hiding only when the window is actually focused matters: activating the tray
- * while another app is in front should bring Gryt forward, not dismiss it.
- */
 function toggleMainWindow(): void {
   if (!mainWindow) {
     createMainWindow();
     return;
   }
-  if (mainWindow.isVisible() && mainWindow.isFocused()) {
+
+  if (
+    mainWindow.isVisible() &&
+    mainWindow.isFocused()
+  ) {
     mainWindow.hide();
   } else {
     mainWindow.show();
@@ -1510,362 +1740,626 @@ function toggleMainWindow(): void {
   }
 }
 
-/**
- * The tray, wired the way each platform expects rather than one behaviour
- * everywhere.
- *
- * macOS treats this as a menu bar extra, and Apple's guidance is that one
- * reveals a menu when clicked — there is no left/right split, and a Mac user
- * does not expect a menu bar icon to hide a window. So the menu is attached and
- * either button opens it, with Show/Hide as its first item.
- *
- * Windows and Linux treat it as a notification area icon, where left-click is
- * the primary action and right-click opens the context menu. Attaching the menu
- * there would take the left-click away, so it is popped up on demand instead.
- */
 function createTray(): void {
-  // Not resized. Every one of these files is already 16px with a 32px @2x
-  // beside it, and resizing blurs the detail that makes them legible at all.
-  // The app icon used to be resized to 18px here, which is what made the
-  // Windows tray a smudge.
-  tray = new Tray(nativeImage.createFromPath(currentTrayIconPath()));
-  tray.setToolTip(trayTooltip());
+  tray = new Tray(
+    nativeImage.createFromPath(
+      currentTrayIconPath()
+    )
+  );
 
-  if (process.platform === "darwin") {
+  tray.setToolTip(
+    trayTooltip()
+  );
+
+  if (
+    process.platform === "darwin"
+  ) {
     refreshTrayMenu();
   } else {
-    tray.on("click", toggleMainWindow);
-    tray.on("right-click", () => {
-      tray?.popUpContextMenu(buildTrayContextMenu());
-    });
+    tray.on(
+      "click",
+      toggleMainWindow
+    );
+
+    tray.on(
+      "right-click",
+      () => {
+        tray?.popUpContextMenu(
+          buildTrayContextMenu()
+        );
+      }
+    );
   }
 }
 
-/**
- * macOS gets the template; everywhere else gets the state.
- *
- * Deafened wins over muted when both are true, which they usually are —
- * deafening mutes you as well, and the speaker-slash is the more complete
- * statement of what is happening.
- */
 function currentTrayIconPath(): string {
-  if (process.platform === "darwin") return trayIcon;
-  if (!voiceState.inVoice) return stateIcon("tray-idle");
-  if (voiceState.deafened) return stateIcon("tray-deafened");
-  if (voiceState.muted) return stateIcon("tray-muted");
+  if (
+    process.platform === "darwin"
+  ) {
+    return trayIcon;
+  }
+
+  if (!voiceState.inVoice) {
+    return stateIcon("tray-idle");
+  }
+
+  if (voiceState.deafened) {
+    return stateIcon(
+      "tray-deafened"
+    );
+  }
+
+  if (voiceState.muted) {
+    return stateIcon("tray-muted");
+  }
+
   return stateIcon("tray-live");
 }
 
 function trayTooltip(): string {
-  if (!voiceState.inVoice) return "Gryt";
-  const where = voiceState.serverName ? ` — ${voiceState.serverName}` : "";
-  if (voiceState.deafened) return `Gryt — deafened${where}`;
-  if (voiceState.muted) return `Gryt — muted${where}`;
+  if (!voiceState.inVoice) {
+    return "Gryt";
+  }
+
+  const where =
+    voiceState.serverName
+      ? ` — ${voiceState.serverName}`
+      : "";
+
+  if (voiceState.deafened) {
+    return `Gryt — deafened${where}`;
+  }
+
+  if (voiceState.muted) {
+    return `Gryt — muted${where}`;
+  }
+
   return `Gryt — in voice${where}`;
 }
 
-/**
- * Point the tray at whatever the state now says.
- *
- * The icon is set on every platform because the menu is not the only thing
- * that changes, but on macOS `currentTrayIconPath` returns the same template
- * every time, so it is a no-op there rather than a special case here.
- */
 function refreshTray(): void {
   if (!tray) return;
-  tray.setImage(nativeImage.createFromPath(currentTrayIconPath()));
-  tray.setToolTip(trayTooltip());
+
+  tray.setImage(
+    nativeImage.createFromPath(
+      currentTrayIconPath()
+    )
+  );
+
+  tray.setToolTip(
+    trayTooltip()
+  );
+
   refreshTrayMenu();
 }
 
-function sendVoiceCommand(command: "toggle-mute" | "toggle-deafen"): void {
-  mainWindow?.webContents.send("tray-voice-command", command);
+function sendVoiceCommand(
+  command:
+    | "toggle-mute"
+    | "toggle-deafen"
+): void {
+  mainWindow?.webContents.send(
+    "tray-voice-command",
+    command
+  );
 }
 
-/**
- * Rebuilds the attached menu so its first item still says the right thing.
- *
- * Only macOS keeps a menu attached; everywhere else it is built fresh each time
- * it is popped up, so there is nothing to refresh.
- */
 function refreshTrayMenu(): void {
-  if (process.platform !== "darwin") return;
-  tray?.setContextMenu(buildTrayContextMenu());
+  if (
+    process.platform !== "darwin"
+  ) {
+    return;
+  }
+
+  tray?.setContextMenu(
+    buildTrayContextMenu()
+  );
 }
 
 // ── App lifecycle ───────────────────────────────────────────────────────
 
-const gotSingleInstanceLock = app.requestSingleInstanceLock();
+const gotSingleInstanceLock =
+  app.requestSingleInstanceLock();
+
 if (!gotSingleInstanceLock) {
   app.quit();
 } else {
-  app.on("second-instance", (_event, argv) => {
-    const deepLink = argv.find((arg) => arg.startsWith(`${PROTOCOL}://`));
-    if (deepLink) {
-      handleDeepLink(deepLink);
-    } else if (mainWindow) {
-      if (!mainWindow.isVisible()) mainWindow.show();
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.focus();
-    }
-  });
+  app.on(
+    "second-instance",
+    (_event, argv) => {
+      const deepLink = argv.find(
+        (arg) =>
+          arg.startsWith(
+            `${PROTOCOL}://`
+          )
+      );
 
-  app.on("open-url", (event, url) => {
-    event.preventDefault();
-    handleDeepLink(url);
-  });
+      if (deepLink) {
+        handleDeepLink(deepLink);
+      } else if (mainWindow) {
+        if (
+          !mainWindow.isVisible()
+        ) {
+          mainWindow.show();
+        }
+
+        if (
+          mainWindow.isMinimized()
+        ) {
+          mainWindow.restore();
+        }
+
+        mainWindow.focus();
+      }
+    }
+  );
+
+  app.on(
+    "open-url",
+    (event, url) => {
+      event.preventDefault();
+      handleDeepLink(url);
+    }
+  );
 
   app
     .whenReady()
     .then(async () => {
       try {
         await prepareEmbeddedServerRuntime();
-        startupLog("Embedded server runtime ready");
+        startupLog(
+          "Embedded server runtime ready"
+        );
       } catch (error) {
-        startupLog(`Embedded server runtime extraction failed: ${error}`);
+        startupLog(
+          `Embedded server runtime extraction failed: ${error}`
+        );
       }
 
-      ipcMain.handle("get-app-version", () => app.getVersion());
-      // Same default as the updater uses, or the switch in settings would read
-      // "off" on a beta build whose config has never been written.
-      ipcMain.handle("get-beta-channel", () => isOnBetaChannel());
-      ipcMain.on("set-beta-channel", (_event, enabled: boolean) => {
-        writeConfig({ betaChannel: enabled });
-        autoUpdater.allowPrerelease = enabled;
-      });
+      ipcMain.handle(
+        "get-app-version",
+        () => app.getVersion()
+      );
 
-      ipcMain.on("switch-update-channel", (_event, enabled: boolean) => {
-        writeConfig({ betaChannel: enabled });
-        autoUpdater.allowPrerelease = enabled;
-        // Changing channel is an update request too — moving to beta means
-        // fetching a newer build, moving off it means the one you are on is no
-        // longer the right one. It used to relaunch bare, which reuses the
-        // current argv: for anyone started with --gryt-autostart that meant the
-        // relaunch skipped the splash and the channel switch quietly did
-        // nothing until the next manual launch.
-        relaunchForUpdate();
-      });
+      ipcMain.handle(
+        "get-beta-channel",
+        () => isOnBetaChannel()
+      );
 
-      ipcMain.handle("get-close-to-tray", () => closeToTray);
-      ipcMain.on("set-close-to-tray", (_event, enabled: boolean) => {
-        closeToTray = enabled;
-        writeConfig({ closeToTray: enabled });
-      });
+      ipcMain.on(
+        "set-beta-channel",
+        (_event, enabled: boolean) => {
+          writeConfig({
+            betaChannel: enabled,
+          });
 
-      ipcMain.on("set-signed-in", (_event, signedIn: boolean) => {
-        isUserSignedIn = signedIn;
-      });
+          autoUpdater.allowPrerelease =
+            enabled;
+        }
+      );
 
-      // The renderer publishes this whenever voice changes. Redrawing the tray
-      // on an unchanged state would repaint the icon on every settings write,
-      // so the comparison is worth the four lines.
-      ipcMain.on("set-voice-state", (_event, next: VoiceState) => {
-        const changed =
-          next.inVoice !== voiceState.inVoice ||
-          next.muted !== voiceState.muted ||
-          next.deafened !== voiceState.deafened ||
-          next.serverName !== voiceState.serverName;
-        if (!changed) return;
-        voiceState = next;
-        refreshTray();
-      });
+      ipcMain.on(
+        "switch-update-channel",
+        (_event, enabled: boolean) => {
+          writeConfig({
+            betaChannel: enabled,
+          });
+
+          autoUpdater.allowPrerelease =
+            enabled;
+
+          relaunchForUpdate();
+        }
+      );
+
+      ipcMain.handle(
+        "get-close-to-tray",
+        () => closeToTray
+      );
+
+      ipcMain.on(
+        "set-close-to-tray",
+        (_event, enabled: boolean) => {
+          closeToTray = enabled;
+
+          writeConfig({
+            closeToTray: enabled,
+          });
+        }
+      );
+
+      ipcMain.on(
+        "set-signed-in",
+        (_event, signedIn: boolean) => {
+          isUserSignedIn =
+            signedIn;
+        }
+      );
+
+      ipcMain.on(
+        "set-voice-state",
+        (_event, next: VoiceState) => {
+          const changed =
+            next.inVoice !==
+              voiceState.inVoice ||
+            next.muted !==
+              voiceState.muted ||
+            next.deafened !==
+              voiceState.deafened ||
+            next.serverName !==
+              voiceState.serverName;
+
+          if (!changed) return;
+
+          voiceState = next;
+
+          refreshTray();
+        }
+      );
 
       ipcMain.handle(
         "get-start-with-windows-supported",
-        () => process.platform === "win32"
+        () =>
+          process.platform ===
+          "win32"
       );
-      ipcMain.handle("get-start-with-windows", () => startWithWindows);
-      ipcMain.on("set-start-with-windows", (_event, enabled: boolean) => {
-        startWithWindows = !!enabled;
-        writeConfig({ startWithWindows });
-        applyStartWithWindowsSetting(startWithWindows);
-      });
+
+      ipcMain.handle(
+        "get-start-with-windows",
+        () => startWithWindows
+      );
+
+      ipcMain.on(
+        "set-start-with-windows",
+        (_event, enabled: boolean) => {
+          startWithWindows =
+            !!enabled;
+
+          writeConfig({
+            startWithWindows,
+          });
+
+          applyStartWithWindowsSetting(
+            startWithWindows
+          );
+        }
+      );
 
       ipcMain.handle(
         "get-start-minimized-on-login",
-        () => startMinimizedOnLogin
+        () =>
+          startMinimizedOnLogin
       );
-      ipcMain.on("set-start-minimized-on-login", (_event, enabled: boolean) => {
-        startMinimizedOnLogin = !!enabled;
-        writeConfig({ startMinimizedOnLogin });
-      });
 
-      ipcMain.handle("get-hardware-acceleration", () => hardwareAcceleration);
-      ipcMain.on("set-hardware-acceleration", (_event, enabled: boolean) => {
-        writeConfig({ hardwareAcceleration: enabled });
-        isQuitting = true;
-        app.relaunch();
-        app.quit();
-      });
+      ipcMain.on(
+        "set-start-minimized-on-login",
+        (_event, enabled: boolean) => {
+          startMinimizedOnLogin =
+            !!enabled;
 
-      // ── Per-user file store ───────────────────────────────────────────
-      ipcMain.handle("user-store:load", (_event, userId: string) =>
-        loadUser(userId)
+          writeConfig({
+            startMinimizedOnLogin,
+          });
+        }
       );
+
+      ipcMain.handle(
+        "get-hardware-acceleration",
+        () =>
+          hardwareAcceleration
+      );
+
+      ipcMain.on(
+        "set-hardware-acceleration",
+        (_event, enabled: boolean) => {
+          writeConfig({
+            hardwareAcceleration:
+              enabled,
+          });
+
+          isQuitting = true;
+          app.relaunch();
+          app.quit();
+        }
+      );
+
+      // ── Per-user file store ────────────────────────────────────────
+
+      ipcMain.handle(
+        "user-store:load",
+        (_event, userId: string) =>
+          loadUser(userId)
+      );
+
       ipcMain.on(
         "user-store:set",
-        (_event, userId: string, key: string, value: unknown) => {
-          patchUser(userId, key, value);
+        (
+          _event,
+          userId: string,
+          key: string,
+          value: unknown
+        ) => {
+          patchUser(
+            userId,
+            key,
+            value
+          );
         }
       );
+
       ipcMain.on(
         "user-store:save",
-        (_event, userId: string, data: Record<string, unknown>) => {
-          saveUser(userId, data);
+        (
+          _event,
+          userId: string,
+          data: Record<
+            string,
+            unknown
+          >
+        ) => {
+          saveUser(
+            userId,
+            data
+          );
         }
       );
 
-      // ── Global file store (backs localStorage) ───────────────────────
-      // ── Secrets at rest (GRYT-256) ──────────────────────────────
-      //
-      // `safeStorage` encrypts and decrypts; it does not store anything. The
-      // blob stays wherever the renderer already keeps it, and the OS holds the
-      // key — macOS Keychain, Windows DPAPI, libsecret or kwallet on Linux —
-      // tied to the login the user has already done. So the seed is protected
-      // at rest without a password prompt on every launch.
-      //
-      // Strings across IPC rather than Buffers: `encryptString` hands back a
-      // Buffer, and base64 is one obvious representation instead of relying on
-      // how the bridge happens to serialise binary today.
-      ipcMain.handle("secret:available", () => {
-        try {
-          return safeStorage.isEncryptionAvailable();
-        } catch {
-          // Linux without a keyring throws rather than returning false.
-          return false;
+      // ── Secrets at rest ────────────────────────────────────────────
+
+      ipcMain.handle(
+        "secret:available",
+        () => {
+          try {
+            return safeStorage.isEncryptionAvailable();
+          } catch {
+            return false;
+          }
         }
-      });
+      );
 
-      ipcMain.handle("secret:seal", (_event, plain: string) => {
-        return safeStorage.encryptString(plain).toString("base64");
-      });
+      ipcMain.handle(
+        "secret:seal",
+        (_event, plain: string) => {
+          return safeStorage
+            .encryptString(plain)
+            .toString("base64");
+        }
+      );
 
-      ipcMain.handle("secret:unseal", (_event, sealed: string) => {
-        return safeStorage.decryptString(Buffer.from(sealed, "base64"));
-      });
+      ipcMain.handle(
+        "secret:unseal",
+        (_event, sealed: string) => {
+          return safeStorage.decryptString(
+            Buffer.from(
+              sealed,
+              "base64"
+            )
+          );
+        }
+      );
 
-      ipcMain.handle("global-store:load", () => loadGlobalStore());
-      ipcMain.on("global-store:set", (_event, key: string, value: unknown) => {
-        setGlobalValue(key, value);
-      });
-      ipcMain.on("global-store:delete", (_event, key: string) => {
-        deleteGlobalValue(key);
-      });
+      ipcMain.handle(
+        "global-store:load",
+        () => loadGlobalStore()
+      );
+
+      ipcMain.on(
+        "global-store:set",
+        (
+          _event,
+          key: string,
+          value: unknown
+        ) => {
+          setGlobalValue(
+            key,
+            value
+          );
+        }
+      );
+
+      ipcMain.on(
+        "global-store:delete",
+        (_event, key: string) => {
+          deleteGlobalValue(key);
+        }
+      );
+
       ipcMain.on(
         "global-store:save",
-        (_event, data: Record<string, unknown>) => {
+        (
+          _event,
+          data: Record<
+            string,
+            unknown
+          >
+        ) => {
           saveGlobalStore(data);
         }
       );
 
-      // ── Addons ─────────────────────────────────────────────────────
-      ipcMain.handle("addons:list", () => getAddons());
+      // ── Addons ────────────────────────────────────────────────────
 
-      ipcMain.handle("addons:open-folder", () =>
-        shell.openPath(getAddonsDir())
+      ipcMain.handle(
+        "addons:list",
+        () => getAddons()
+      );
+
+      ipcMain.handle(
+        "addons:open-folder",
+        () =>
+          shell.openPath(
+            getAddonsDir()
+          )
       );
 
       ipcMain.handle(
         "addons:resolve-asset",
-        (_event, addonId: string, relativePath: string) => {
+        (
+          _event,
+          addonId: string,
+          relativePath: string
+        ) => {
           if (
             !addonId ||
             !relativePath ||
             addonId.includes("..") ||
-            relativePath.includes("..") ||
-            relativePath.startsWith("/") ||
-            relativePath.startsWith("\\")
+            relativePath.includes(
+              ".."
+            ) ||
+            relativePath.startsWith(
+              "/"
+            ) ||
+            relativePath.startsWith(
+              "\\"
+            )
           ) {
-            throw new Error("Invalid addon asset path");
+            throw new Error(
+              "Invalid addon asset path"
+            );
           }
 
-          const normalizedRelativePath = relativePath.replace(/\\/g, "/");
-          const normalizedPath = `/addons/${addonId}/${normalizedRelativePath}`;
-          const resolvedPath = resolveAddonFilePath(normalizedPath);
+          const normalizedRelativePath =
+            relativePath.replace(
+              /\\/g,
+              "/"
+            );
+
+          const normalizedPath =
+            `/addons/${addonId}/${normalizedRelativePath}`;
+
+          const resolvedPath =
+            resolveAddonFilePath(
+              normalizedPath
+            );
 
           if (
             !resolvedPath ||
-            !existsSync(resolvedPath) ||
-            !statSync(resolvedPath).isFile()
+            !existsSync(
+              resolvedPath
+            ) ||
+            !statSync(
+              resolvedPath
+            ).isFile()
           ) {
             throw new Error(
               `Addon asset not found: ${addonId}/${relativePath}`
             );
           }
 
-          if (process.env.VITE_DEV_SERVER_URL) {
-            const devBase = process.env.VITE_DEV_SERVER_URL.replace(/\/$/, "");
+          if (
+            process.env
+              .VITE_DEV_SERVER_URL
+          ) {
+            const devBase =
+              process.env.VITE_DEV_SERVER_URL.replace(
+                /\/$/,
+                ""
+              );
+
             return `${devBase}${normalizedPath}`;
           }
 
           if (!localServerUrl) {
-            throw new Error("Local addon asset server is not running");
+            throw new Error(
+              "Local addon asset server is not running"
+            );
           }
 
           return `${localServerUrl}${normalizedPath}`;
         }
       );
 
-      onAddonsChanged((addons) => {
-        mainWindow?.webContents.send("addons-changed", addons);
-      });
+      onAddonsChanged(
+        (addons) => {
+          mainWindow?.webContents.send(
+            "addons-changed",
+            addons
+          );
+        }
+      );
 
       watchAddons();
 
-      // Apply at startup (default enabled on Windows).
-      applyStartWithWindowsSetting(startWithWindows);
+      applyStartWithWindowsSetting(
+        startWithWindows
+      );
 
       const launchedFromAutoStart =
-        process.argv.includes(AUTO_START_ARG) ||
+        process.argv.includes(
+          AUTO_START_ARG
+        ) ||
         (() => {
           try {
-            return app.getLoginItemSettings().wasOpenedAtLogin === true;
+            return (
+              app.getLoginItemSettings()
+                .wasOpenedAtLogin ===
+              true
+            );
           } catch {
             return false;
           }
         })();
-      startHiddenOnLaunch = launchedFromAutoStart && startMinimizedOnLogin;
 
-      if (!process.env.VITE_DEV_SERVER_URL) {
-        localServerUrl = await startLocalServer();
-        startupLog(`Local server started: ${localServerUrl}`);
-      }
+      startHiddenOnLaunch =
+        launchedFromAutoStart &&
+        startMinimizedOnLogin;
 
-      try {
-        // Deliberately not started here. The push-to-talk key reaches the main
-        // process over ptt-set-key once the renderer mounts, so at this point
-        // there is no key to listen for and starting the hook would only load
-        // the native addon for nothing. ptt-set-key starts it when a key is set.
-        startupLog("uiohook deferred until a push-to-talk key is set");
-      } catch (err) {
+      if (
+        !process.env
+          .VITE_DEV_SERVER_URL
+      ) {
+        localServerUrl =
+          await startLocalServer();
+
         startupLog(
-          `uiohook failed (PTT disabled): ${
-            err instanceof Error ? err.message : String(err)
-          }`
+          `Local server started: ${localServerUrl}`
         );
       }
 
-      // ── Native audio capture IPC ──────────────────────────────────────
-      // Registered before createMainWindow to avoid a race: the renderer
-      // probes availability in a useEffect on mount, and if the handler
-      // isn't ready yet the invoke silently fails → nativeAvailable=false.
-      ipcMain.handle("native-audio-capture-available", () => {
-        return isNativeAudioCaptureAvailable();
-      });
+      startupLog(
+        "uiohook deferred until a push-to-talk key is set"
+      );
+
+      // ── Native audio capture IPC ──────────────────────────────────
+
       ipcMain.handle(
-        "start-native-audio-capture",
-        (_event, sourceId?: string) => {
-          if (!mainWindow) return false;
-          return startNativeAudioCapture(mainWindow, sourceId);
+        "native-audio-capture-available",
+        () => {
+          return isNativeAudioCaptureAvailable();
         }
       );
-      ipcMain.on("stop-native-audio-capture", () => {
-        stopNativeAudioCapture();
-      });
 
-      ipcMain.handle("native-screen-capture:available", () => {
-        return isNativeScreenCaptureAvailable();
-      });
+      ipcMain.handle(
+        "start-native-audio-capture",
+        (
+          _event,
+          sourceId?: string
+        ) => {
+          if (!mainWindow) {
+            return false;
+          }
+
+          return startNativeAudioCapture(
+            mainWindow,
+            sourceId
+          );
+        }
+      );
+
+      ipcMain.on(
+        "stop-native-audio-capture",
+        () => {
+          stopNativeAudioCapture();
+        }
+      );
+
+      ipcMain.handle(
+        "native-screen-capture:available",
+        () => {
+          return isNativeScreenCaptureAvailable();
+        }
+      );
+
       ipcMain.handle(
         "native-screen-capture:start",
         async (
@@ -1877,7 +2371,12 @@ if (!gotSingleInstanceLock) {
           bitrate?: number,
           codec?: string
         ) => {
-          if (!mainWindow) return { success: false };
+          if (!mainWindow) {
+            return {
+              success: false,
+            };
+          }
+
           return startNativeScreenCapture(
             mainWindow,
             monitorIndex,
@@ -1889,16 +2388,27 @@ if (!gotSingleInstanceLock) {
           );
         }
       );
-      ipcMain.on("native-screen-capture:stop", () => {
-        stopNativeScreenCapture();
-      });
 
-      // ── Embedded server ─────────────────────────────────────────────────
-      ipcMain.handle("embedded-server:available", () =>
-        isEmbeddedServerAvailable()
+      ipcMain.on(
+        "native-screen-capture:stop",
+        () => {
+          stopNativeScreenCapture();
+        }
       );
 
-      ipcMain.handle("embedded-server:info", () => getEmbeddedServerInfo());
+      // ── Embedded server ───────────────────────────────────────────
+
+      ipcMain.handle(
+        "embedded-server:available",
+        () =>
+          isEmbeddedServerAvailable()
+      );
+
+      ipcMain.handle(
+        "embedded-server:info",
+        () =>
+          getEmbeddedServerInfo()
+      );
 
       ipcMain.handle(
         "embedded-server:create",
@@ -1908,7 +2418,10 @@ if (!gotSingleInstanceLock) {
           lanDiscoverable: boolean,
           port?: number
         ) => {
-          if (!mainWindow) return null;
+          if (!mainWindow) {
+            return null;
+          }
+
           return createAndStartServer(
             mainWindow,
             serverName,
@@ -1918,100 +2431,195 @@ if (!gotSingleInstanceLock) {
         }
       );
 
-      ipcMain.handle("embedded-server:suggest-port", () => suggestServerPort());
-
-      ipcMain.handle("embedded-server:check-port", (_event, port: number) =>
-        isPortAvailable(port)
+      ipcMain.handle(
+        "embedded-server:suggest-port",
+        () => suggestServerPort()
       );
 
-      ipcMain.handle("embedded-server:start", async (_event, id: string) => {
-        if (!mainWindow) return null;
-        return startExistingServer(mainWindow, id);
-      });
-
-      ipcMain.handle("embedded-server:stop", (_event, id: string) =>
-        stopServer(id)
+      ipcMain.handle(
+        "embedded-server:check-port",
+        (_event, port: number) =>
+          isPortAvailable(port)
       );
 
-      ipcMain.handle("embedded-server:dismiss-error", (_event, id: string) =>
-        dismissEmbeddedServerError(id)
+      ipcMain.handle(
+        "embedded-server:start",
+        async (
+          _event,
+          id: string
+        ) => {
+          if (!mainWindow) {
+            return null;
+          }
+
+          return startExistingServer(
+            mainWindow,
+            id
+          );
+        }
       );
 
-      ipcMain.handle("embedded-server:delete", async (_event, id: string) =>
-        deleteServer(id)
+      ipcMain.handle(
+        "embedded-server:stop",
+        (_event, id: string) =>
+          stopServer(id)
       );
 
-      ipcMain.handle("embedded-server:status", () => getAllStates());
+      ipcMain.handle(
+        "embedded-server:dismiss-error",
+        (_event, id: string) =>
+          dismissEmbeddedServerError(
+            id
+          )
+      );
+
+      ipcMain.handle(
+        "embedded-server:delete",
+        async (
+          _event,
+          id: string
+        ) =>
+          deleteServer(id)
+      );
+
+      ipcMain.handle(
+        "embedded-server:status",
+        () => getAllStates()
+      );
 
       ipcMain.handle(
         "embedded-server:update-advertised-addresses",
-        (_event, id: string, addresses: string[]) =>
-          updateServerAdvertisedAddresses(id, addresses),
+        (
+          _event,
+          id: string,
+          addresses: string[]
+        ) =>
+          updateServerAdvertisedAddresses(
+            id,
+            addresses
+          )
       );
 
-      ipcMain.handle("embedded-server:logs", (_event, id?: string) =>
-        getEmbeddedServerLogs(id)
+      ipcMain.handle(
+        "embedded-server:logs",
+        (_event, id?: string) =>
+          getEmbeddedServerLogs(
+            id
+          )
       );
 
-      ipcMain.handle("embedded-server:clear-logs", (_event, id?: string) => {
-        clearEmbeddedServerLogs(id);
-      });
+      ipcMain.handle(
+        "embedded-server:clear-logs",
+        (_event, id?: string) => {
+          clearEmbeddedServerLogs(
+            id
+          );
+        }
+      );
 
-      ipcMain.handle("embedded-server:get-auto-start", (_event, id: string) =>
-        getAutoStart(id)
+      ipcMain.handle(
+        "embedded-server:get-auto-start",
+        (_event, id: string) =>
+          getAutoStart(id)
       );
 
       ipcMain.on(
         "embedded-server:set-auto-start",
-        (_event, id: string, enabled: boolean) => {
-          setAutoStart(id, enabled);
+        (
+          _event,
+          id: string,
+          enabled: boolean
+        ) => {
+          setAutoStart(
+            id,
+            enabled
+          );
         }
       );
 
       createMainWindow();
-      startupLog("Main window created");
-      createTray();
-      startupLog("Tray created");
+      startupLog(
+        "Main window created"
+      );
 
-      if (process.env.VITE_DEV_SERVER_URL) {
-        startupLog("Dev mode — skipping splash/update check");
+      createTray();
+      startupLog(
+        "Tray created"
+      );
+
+      if (
+        process.env
+          .VITE_DEV_SERVER_URL
+      ) {
+        startupLog(
+          "Dev mode — skipping splash/update check"
+        );
+
         mainWindow?.show();
-      } else if (startHiddenOnLaunch && !process.argv.includes(UPDATE_ARG)) {
-        startupLog("Starting hidden (auto-start)");
+      } else if (
+        startHiddenOnLaunch &&
+        !process.argv.includes(
+          UPDATE_ARG
+        )
+      ) {
+        startupLog(
+          "Starting hidden (auto-start)"
+        );
+
         initBackgroundUpdater();
+
         if (!installIsPending()) {
-          pinFeedToNewestCompleteRelease().finally(() => {
-            autoUpdater.checkForUpdates().catch(() => {});
-          });
+          pinFeedToNewestCompleteRelease().finally(
+            () => {
+              autoUpdater
+                .checkForUpdates()
+                .catch(() => {});
+            }
+          );
         }
       } else {
         try {
           createSplashWindow();
           await runSplashUpdateCheck();
-        } catch (_) {
-          // Ensure main window shows even if splash/updater fails
+        } catch {
+          // Ensure the main window still opens if the updater fails.
         }
+
         closeSplashAndShowMain();
-        startupLog("Main window shown");
+
+        startupLog(
+          "Main window shown"
+        );
+
         initBackgroundUpdater();
       }
 
-      // ── Embedded server auto-start ────────────────────────────────
+      /**
+       * If this process is the first healthy launch after the one-time Windows
+       * installer migration, remove the rollback copy of the old installation.
+       *
+       * This is intentionally after the startup/update branching above.
+       * A process which immediately quits to install another update never gets
+       * here, while a process which reaches its usable startup state does.
+       */
+      cleanupLegacyWindowsInstallBackup();
+
+      // ── Embedded server auto-start ─────────────────────────────────
+
       if (mainWindow) {
-        autoStartIfNeeded(mainWindow).catch((err) => {
-          startupLog(`Embedded server auto-start failed: ${err}`);
+        autoStartIfNeeded(
+          mainWindow
+        ).catch((err) => {
+          startupLog(
+            `Embedded server auto-start failed: ${err}`
+          );
         });
       }
 
-      // Background checks only report that an update exists. Downloading and
-      // installing happen on the next launch, from the splash — see
-      // restart-for-update.
+      // ── Embed origin fix ───────────────────────────────────────────
 
-      // ── Embed origin fix ────────────────────────────────────────────
-      // Third-party embed players (YouTube, Vimeo, Spotify, etc.) reject
-      // iframes whose parent is file://.  Spoof valid HTTP Referer/Origin
-      // so the embed players accept playback in packaged Electron.
-      const embedOriginMap: [string[], string][] = [
+      const embedOriginMap:
+        [string[], string][] = [
         [
           [
             "https://*.youtube.com/*",
@@ -2021,11 +2629,22 @@ if (!gotSingleInstanceLock) {
           ],
           "https://www.youtube-nocookie.com",
         ],
+
         [
-          ["https://*.vimeo.com/*", "https://*.vimeocdn.com/*"],
+          [
+            "https://*.vimeo.com/*",
+            "https://*.vimeocdn.com/*",
+          ],
           "https://player.vimeo.com",
         ],
-        [["https://clips.twitch.tv/*"], "https://clips.twitch.tv"],
+
+        [
+          [
+            "https://clips.twitch.tv/*",
+          ],
+          "https://clips.twitch.tv",
+        ],
+
         [
           [
             "https://*.twitch.tv/*",
@@ -2034,259 +2653,567 @@ if (!gotSingleInstanceLock) {
           ],
           "https://player.twitch.tv",
         ],
+
         [
-          ["https://*.spotify.com/*", "https://*.spotifycdn.com/*"],
+          [
+            "https://*.spotify.com/*",
+            "https://*.spotifycdn.com/*",
+          ],
           "https://open.spotify.com",
         ],
+
         [
-          ["https://*.tiktok.com/*", "https://*.tiktokcdn.com/*"],
+          [
+            "https://*.tiktok.com/*",
+            "https://*.tiktokcdn.com/*",
+          ],
           "https://www.tiktok.com",
         ],
+
         [
-          ["https://*.instagram.com/*", "https://*.cdninstagram.com/*"],
+          [
+            "https://*.instagram.com/*",
+            "https://*.cdninstagram.com/*",
+          ],
           "https://www.instagram.com",
         ],
+
         [
-          ["https://*.soundcloud.com/*", "https://*.sndcdn.com/*"],
+          [
+            "https://*.soundcloud.com/*",
+            "https://*.sndcdn.com/*",
+          ],
           "https://w.soundcloud.com",
         ],
       ];
-      const allEmbedPatterns = embedOriginMap.flatMap(([patterns]) => patterns);
+
+      const allEmbedPatterns =
+        embedOriginMap.flatMap(
+          ([patterns]) => patterns
+        );
+
       session.defaultSession.webRequest.onBeforeSendHeaders(
-        { urls: allEmbedPatterns },
-        (details, callback) => {
-          const existingOrigin = details.requestHeaders["Origin"];
-          if (existingOrigin && existingOrigin.startsWith("https://")) {
-            callback({ requestHeaders: details.requestHeaders });
+        {
+          urls: allEmbedPatterns,
+        },
+        (
+          details,
+          callback
+        ) => {
+          const existingOrigin =
+            details.requestHeaders[
+              "Origin"
+            ];
+
+          if (
+            existingOrigin &&
+            existingOrigin.startsWith(
+              "https://"
+            )
+          ) {
+            callback({
+              requestHeaders:
+                details.requestHeaders,
+            });
             return;
           }
-          for (const [patterns, origin] of embedOriginMap) {
-            if (patterns.some((p) => matchUrlPattern(p, details.url))) {
-              details.requestHeaders["Referer"] = origin + "/";
-              details.requestHeaders["Origin"] = origin;
+
+          for (
+            const [
+              patterns,
+              origin,
+            ] of embedOriginMap
+          ) {
+            if (
+              patterns.some(
+                (pattern) =>
+                  matchUrlPattern(
+                    pattern,
+                    details.url
+                  )
+              )
+            ) {
+              details.requestHeaders[
+                "Referer"
+              ] = origin + "/";
+
+              details.requestHeaders[
+                "Origin"
+              ] = origin;
+
               break;
             }
           }
-          callback({ requestHeaders: details.requestHeaders });
+
+          callback({
+            requestHeaders:
+              details.requestHeaders,
+          });
         }
       );
 
-      // Strip Content-Security-Policy from embed provider responses so
-      // frame-ancestors doesn't block embedding inside Electron.
       session.defaultSession.webRequest.onHeadersReceived(
-        { urls: allEmbedPatterns },
-        (details, callback) => {
-          const headers = { ...details.responseHeaders };
-          for (const key of Object.keys(headers)) {
-            if (key.toLowerCase() === "content-security-policy") {
+        {
+          urls: allEmbedPatterns,
+        },
+        (
+          details,
+          callback
+        ) => {
+          const headers = {
+            ...details.responseHeaders,
+          };
+
+          for (
+            const key of Object.keys(
+              headers
+            )
+          ) {
+            if (
+              key.toLowerCase() ===
+              "content-security-policy"
+            ) {
               delete headers[key];
             }
           }
-          callback({ responseHeaders: headers });
+
+          callback({
+            responseHeaders:
+              headers,
+          });
         }
       );
 
-      // ── Screen capture ────────────────────────────────────────────────
-      // Allow getDisplayMedia by providing a default handler.
-      // Our renderer uses a custom picker via get-desktop-sources instead.
+      // ── Screen capture ─────────────────────────────────────────────
+
       session.defaultSession.setDisplayMediaRequestHandler(
-        (_request, callback) => {
-          desktopCapturer.getSources({ types: ["screen"] }).then((sources) => {
-            callback({ video: sources[0], audio: "loopback" });
-          });
+        (
+          _request,
+          callback
+        ) => {
+          desktopCapturer
+            .getSources({
+              types: ["screen"],
+            })
+            .then(
+              (sources) => {
+                callback({
+                  video:
+                    sources[0],
+                  audio:
+                    "loopback",
+                });
+              }
+            );
         }
       );
 
-      ipcMain.handle("get-screen-capture-access", () => {
-        if (process.platform !== "darwin") return "granted";
-        return systemPreferences.getMediaAccessStatus("screen");
-      });
-
-      ipcMain.handle("get-desktop-sources", async () => {
-        const sources = await desktopCapturer.getSources({
-          types: ["screen", "window"],
-          thumbnailSize: { width: 320, height: 180 },
-        });
-        const displays = screen.getAllDisplays();
-        return sources.map((s) => {
-          const isScreen = s.id.startsWith("screen:");
-          let width: number | undefined;
-          let height: number | undefined;
-          if (isScreen) {
-            const displayIndex = parseInt(s.id.split(":")[1], 10);
-            const display = displays[displayIndex];
-            if (display) {
-              width = display.size.width * display.scaleFactor;
-              height = display.size.height * display.scaleFactor;
-            }
+      ipcMain.handle(
+        "get-screen-capture-access",
+        () => {
+          if (
+            process.platform !==
+            "darwin"
+          ) {
+            return "granted";
           }
-          return {
-            id: s.id,
-            name: s.name,
-            thumbnail: s.thumbnail.toDataURL(),
-            appIcon: s.appIcon ? s.appIcon.toDataURL() : "",
-            sourceType: isScreen ? ("screen" as const) : ("window" as const),
-            width,
-            height,
-          };
-        });
-      });
 
-      // ── Native audio capture ──────────────────────────────────────────
-      // (Handlers registered before createMainWindow — see above)
+          return systemPreferences.getMediaAccessStatus(
+            "screen"
+          );
+        }
+      );
 
-      // ── IPC handlers ──────────────────────────────────────────────────
+      ipcMain.handle(
+        "get-desktop-sources",
+        async () => {
+          const sources =
+            await desktopCapturer.getSources(
+              {
+                types: [
+                  "screen",
+                  "window",
+                ],
+                thumbnailSize: {
+                  width: 320,
+                  height: 180,
+                },
+              }
+            );
 
-      ipcMain.on("auth:open-external", (_event, url: string) => {
-        shell.openExternal(url);
-      });
+          const displays =
+            screen.getAllDisplays();
 
-      // Send any deep link URL that arrived before the renderer was ready
+          return sources.map(
+            (source) => {
+              const isScreen =
+                source.id.startsWith(
+                  "screen:"
+                );
+
+              let width:
+                | number
+                | undefined;
+
+              let height:
+                | number
+                | undefined;
+
+              if (isScreen) {
+                const displayIndex =
+                  parseInt(
+                    source.id.split(
+                      ":"
+                    )[1],
+                    10
+                  );
+
+                const display =
+                  displays[
+                    displayIndex
+                  ];
+
+                if (display) {
+                  width =
+                    display.size.width *
+                    display.scaleFactor;
+
+                  height =
+                    display.size.height *
+                    display.scaleFactor;
+                }
+              }
+
+              return {
+                id: source.id,
+                name: source.name,
+                thumbnail:
+                  source.thumbnail.toDataURL(),
+                appIcon:
+                  source.appIcon
+                    ? source.appIcon.toDataURL()
+                    : "",
+                sourceType:
+                  isScreen
+                    ? ("screen" as const)
+                    : ("window" as const),
+                width,
+                height,
+              };
+            }
+          );
+        }
+      );
+
+      // ── IPC handlers ───────────────────────────────────────────────
+
+      ipcMain.on(
+        "auth:open-external",
+        (_event, url: string) => {
+          shell.openExternal(url);
+        }
+      );
+
       if (pendingDeepLinkUrl) {
-        handleDeepLink(pendingDeepLinkUrl);
-        pendingDeepLinkUrl = null;
+        handleDeepLink(
+          pendingDeepLinkUrl
+        );
+
+        pendingDeepLinkUrl =
+          null;
       }
 
-      // ── LAN server discovery (mDNS) ────────────────────────────────
+      // ── LAN server discovery ──────────────────────────────────────
+
       if (mainWindow) {
-        const stopLanDiscovery = startLanDiscovery(mainWindow, startupLog);
-        app.on("before-quit", stopLanDiscovery);
+        const stopLanDiscovery =
+          startLanDiscovery(
+            mainWindow,
+            startupLog
+          );
 
-        // Discovery announces a server once, when it first appears. A renderer
-        // that mounts or reloads afterwards has nothing to react to, so it asks
-        // for the current list instead of waiting for an event that will not
-        // come.
-        ipcMain.handle("lan:get-servers", () => getDiscoveredLanServers());
-        ipcMain.on("lan:rescan", () => rescanLanServers());
+        app.on(
+          "before-quit",
+          stopLanDiscovery
+        );
+
+        ipcMain.handle(
+          "lan:get-servers",
+          () =>
+            getDiscoveredLanServers()
+        );
+
+        ipcMain.on(
+          "lan:rescan",
+          () =>
+            rescanLanServers()
+        );
       }
 
-      ipcMain.on("check-for-updates", () => {
-        // Report the install we already have rather than looking for another
-        // one. The check itself is harmless, but it ends with the settings
-        // panel offering "Restart and update", and taking that offer starts the
-        // second update cycle that destroys the first.
-        if (installIsPending()) {
-          sendToMain("pending", { version: readPendingInstall()?.version });
-          return;
-        }
-        pinFeedToNewestCompleteRelease().finally(() => {
-          autoUpdater.checkForUpdates().catch((err) => {
-            logUpdateFailure("Update check failed", err);
-
-            if (isReleaseNotReadyYet(err)) {
-              sendToMain("not-available", { version: app.getVersion() });
-              return;
-            }
-            sendToMain("error", { message: friendlyUpdateError(err) });
-          });
-        });
-      });
-
-      ipcMain.on("restart-for-update", () => {
-        if (installIsPending()) {
-          sendToMain("pending", { version: readPendingInstall()?.version });
-          return;
-        }
-        relaunchForUpdate();
-      });
-
-      ipcMain.on("ptt-set-key", (_event, pttKey: string) => {
-        registerPttShortcut(pttKey);
-        if (pttKey && !uiohookRunning) {
-          if (process.platform === "darwin") {
-            systemPreferences.isTrustedAccessibilityClient(true);
+      ipcMain.on(
+        "check-for-updates",
+        () => {
+          if (installIsPending()) {
+            sendToMain(
+              "pending",
+              {
+                version:
+                  readPendingInstall()
+                    ?.version,
+              }
+            );
+            return;
           }
-          try {
-            ensureUiohook();
-          } catch (err) {
-            console.warn(
-              `uiohook start failed: ${
-                err instanceof Error ? err.message : String(err)
-              }`
+
+          pinFeedToNewestCompleteRelease().finally(
+            () => {
+              autoUpdater
+                .checkForUpdates()
+                .catch((err) => {
+                  logUpdateFailure(
+                    "Update check failed",
+                    err
+                  );
+
+                  if (
+                    isReleaseNotReadyYet(
+                      err
+                    )
+                  ) {
+                    sendToMain(
+                      "not-available",
+                      {
+                        version:
+                          app.getVersion(),
+                      }
+                    );
+                    return;
+                  }
+
+                  sendToMain(
+                    "error",
+                    {
+                      message:
+                        friendlyUpdateError(
+                          err
+                        ),
+                    }
+                  );
+                });
+            }
+          );
+        }
+      );
+
+      ipcMain.on(
+        "restart-for-update",
+        () => {
+          if (installIsPending()) {
+            sendToMain(
+              "pending",
+              {
+                version:
+                  readPendingInstall()
+                    ?.version,
+              }
+            );
+            return;
+          }
+
+          relaunchForUpdate();
+        }
+      );
+
+      ipcMain.on(
+        "ptt-set-key",
+        (
+          _event,
+          pttKey: string
+        ) => {
+          registerPttShortcut(
+            pttKey
+          );
+
+          if (
+            pttKey &&
+            !uiohookRunning
+          ) {
+            if (
+              process.platform ===
+              "darwin"
+            ) {
+              systemPreferences.isTrustedAccessibilityClient(
+                true
+              );
+            }
+
+            try {
+              ensureUiohook();
+            } catch (err) {
+              console.warn(
+                `uiohook start failed: ${
+                  err instanceof Error
+                    ? err.message
+                    : String(err)
+                }`
+              );
+            }
+          }
+        }
+      );
+
+      ipcMain.on(
+        "set-badge-count",
+        (
+          _event,
+          count: number
+        ) => {
+          app.setBadgeCount(count);
+
+          if (mainWindow) {
+            mainWindow.flashFrame(
+              count > 0
             );
           }
         }
-      });
-
-      ipcMain.on("set-badge-count", (_event, count: number) => {
-        app.setBadgeCount(count);
-        if (mainWindow) {
-          mainWindow.flashFrame(count > 0);
-        }
-      });
+      );
 
       ipcMain.on(
         "toggle-always-on-top",
-        (event, pinned: boolean, windowTitle?: string) => {
-          let win: BrowserWindow | null = null;
+        (
+          event,
+          pinned: boolean,
+          windowTitle?: string
+        ) => {
+          let win:
+            | BrowserWindow
+            | null = null;
+
           if (windowTitle) {
             win =
               BrowserWindow.getAllWindows().find(
-                (w) => w.getTitle() === windowTitle
+                (window) =>
+                  window.getTitle() ===
+                  windowTitle
               ) ?? null;
           }
+
           if (!win) {
-            win = BrowserWindow.fromWebContents(event.sender);
+            win =
+              BrowserWindow.fromWebContents(
+                event.sender
+              );
           }
+
           if (win) {
-            win.setAlwaysOnTop(pinned, "floating");
+            win.setAlwaysOnTop(
+              pinned,
+              "floating"
+            );
           }
         }
       );
 
-      app.on("activate", () => {
-        if (mainWindow) {
-          if (!mainWindow.isVisible()) mainWindow.show();
-          mainWindow.focus();
-        } else {
-          const createdWindow = createMainWindow();
-          createdWindow.show();
+      app.on(
+        "activate",
+        () => {
+          if (mainWindow) {
+            if (
+              !mainWindow.isVisible()
+            ) {
+              mainWindow.show();
+            }
+
+            mainWindow.focus();
+          } else {
+            const createdWindow =
+              createMainWindow();
+
+            createdWindow.show();
+          }
         }
-      });
+      );
     })
     .catch((err: unknown) => {
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg =
+        err instanceof Error
+          ? err.message
+          : String(err);
+
       startupLog(
         `FATAL startup error: ${
-          err instanceof Error ? err.stack ?? err.message : msg
+          err instanceof Error
+            ? err.stack ??
+              err.message
+            : msg
         }`
       );
+
       dialog.showErrorBox(
         "Gryt — Failed to Start",
         `${msg}\n\nCheck gryt-startup.log in the app data folder for details.`
       );
+
       app.exit(1);
     });
 
-  app.on("child-process-gone", (_event, details) => {
-    startupLog(
-      `Child process gone: type=${details.type} reason=${details.reason}`
-    );
-    if (details.type === "GPU" && details.reason !== "clean-exit") {
+  app.on(
+    "child-process-gone",
+    (_event, details) => {
       startupLog(
-        "GPU process crashed — consider disabling hardware acceleration"
+        `Child process gone: type=${details.type} reason=${details.reason}`
       );
+
+      if (
+        details.type === "GPU" &&
+        details.reason !==
+          "clean-exit"
+      ) {
+        startupLog(
+          "GPU process crashed — consider disabling hardware acceleration"
+        );
+      }
     }
-  });
+  );
 
-  app.on("before-quit", () => {
-    isQuitting = true;
-  });
-
-  app.on("window-all-closed", () => {
-    if (process.platform !== "darwin") app.quit();
-  });
-
-  app.on("will-quit", () => {
-    console.log("[Main] will-quit: flushing stores and cleaning up");
-    flushUserStore();
-    flushGlobalStore();
-    if (uiohookRunning) {
-      uiohookLib?.uIOhook.stop();
-      uiohookRunning = false;
+  app.on(
+    "before-quit",
+    () => {
+      isQuitting = true;
     }
-    localServer?.close();
-    localServer = null;
-    cleanupOnQuit();
-  });
+  );
+
+  app.on(
+    "window-all-closed",
+    () => {
+      if (
+        process.platform !==
+        "darwin"
+      ) {
+        app.quit();
+      }
+    }
+  );
+
+  app.on(
+    "will-quit",
+    () => {
+      console.log(
+        "[Main] will-quit: flushing stores and cleaning up"
+      );
+
+      flushUserStore();
+      flushGlobalStore();
+
+      if (uiohookRunning) {
+        uiohookLib?.uIOhook.stop();
+        uiohookRunning = false;
+      }
+
+      localServer?.close();
+      localServer = null;
+
+      cleanupOnQuit();
+    }
+  );
 }

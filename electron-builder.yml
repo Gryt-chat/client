@@ -141,6 +141,7 @@ nsis:
   oneClick: true
   perMachine: false
   include: build/installer.nsh
+  runAfterFinish: true
   allowToChangeInstallationDirectory: false
   deleteAppDataOnUninstall: false
   displayLanguageSelector: false
