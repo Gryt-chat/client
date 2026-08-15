@@ -248,75 +248,84 @@ export function SecuritySettings() {
         Security
       </h2>
 
-      <LocalIdentitySection />
+      {!isSignedIn && <LocalIdentitySection />}
 
       {!isSignedIn ? null : (
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-5">
           <div className="flex flex-col gap-1">
-            <span className="font-medium text-sm">
-              Passkeys
-            </span>
-            <span className="text-xs">
-              Passkeys let you sign in without a password using your fingerprint,
-              face, or device PIN.
+            <span className="font-medium text-sm">Account identity</span>
+            <span className="text-xs text-gryt-muted">
+              When you sign in on another device, Gryt restores this identity
+              for you. There is no separate recovery key to save.
             </span>
           </div>
-          <Chip tone="neutral">
-            {credentials.length}
-          </Chip>
-        </div>
 
-        {loading && (
-          <div className="flex items-center justify-center py-8">
-            <Spinner size={24} />
-          </div>
-        )}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-1">
+                <span className="font-medium text-sm">Passkeys</span>
+                <span className="text-xs">
+                  Passkeys let you sign in without a password using your
+                  fingerprint, face, or device PIN.
+                </span>
+              </div>
+              <Chip tone="neutral">{credentials.length}</Chip>
+            </div>
 
-        {error && (
-          <div className="flex flex-col items-center gap-2 py-4">
-            <span className="text-sm">
-              {error}
-            </span>
-            <Button size="xsmall" onClick={loadCredentials}>
-              Retry
+            {loading && (
+              <div className="flex items-center justify-center py-8">
+                <Spinner size={24} />
+              </div>
+            )}
+
+            {error && (
+              <div className="flex flex-col items-center gap-2 py-4">
+                <span className="text-sm">{error}</span>
+                <Button size="xsmall" onClick={loadCredentials}>
+                  Retry
+                </Button>
+              </div>
+            )}
+
+            {!loading && !error && credentials.length === 0 && (
+              <div
+                className="flex flex-col items-center gap-2 py-8"
+                style={{
+                  borderRadius: "var(--gryt-radius-sm)",
+                  border: "1px dashed var(--gryt-neutral-a6)",
+                }}
+              >
+                <PiKeyFill
+                  size={32}
+                  style={{ color: "var(--gryt-neutral-a8)" }}
+                />
+                <span className="text-sm">No passkeys registered yet</span>
+              </div>
+            )}
+
+            {!loading &&
+              !error &&
+              credentials.map((cred) => (
+                <PasskeyRow
+                  key={cred.id}
+                  credential={cred}
+                  onDelete={handleDelete}
+                  onRename={handleRename}
+                  deleting={deletingId === cred.id}
+                />
+              ))}
+
+            <Button
+              size="small"
+              onClick={handleAdd}
+              disabled={adding}
+              style={{ alignSelf: "flex-start" }}
+            >
+              <PiPlus size={16} />
+              {adding ? "Redirecting..." : "Add passkey"}
             </Button>
           </div>
-        )}
-
-        {!loading && !error && credentials.length === 0 && (
-          <div className="flex flex-col items-center gap-2 py-8" style={{
-              borderRadius: "var(--gryt-radius-sm)",
-              border: "1px dashed var(--gryt-neutral-a6)",
-            }}>
-            <PiKeyFill size={32} style={{ color: "var(--gryt-neutral-a8)" }} />
-            <span className="text-sm">
-              No passkeys registered yet
-            </span>
-          </div>
-        )}
-
-        {!loading &&
-          !error &&
-          credentials.map((cred) => (
-            <PasskeyRow
-              key={cred.id}
-              credential={cred}
-              onDelete={handleDelete}
-              onRename={handleRename}
-              deleting={deletingId === cred.id}
-            />
-          ))}
-
-        <Button size="small"
-          onClick={handleAdd}
-          disabled={adding}
-          style={{ alignSelf: "flex-start" }}
-        >
-          <PiPlus size={16} />
-          {adding ? "Redirecting..." : "Add passkey"}
-        </Button>
-      </div>
+        </div>
       )}
     </SettingsContainer>
   );

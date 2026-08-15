@@ -149,7 +149,6 @@ html {
 
 /* Gryt light theme — gray background, white panels */
 .light, .light-theme {
-  --gryt-titlebar-bg: #e8eaef;
   --color-background: #eef0f4;
   --color-panel-solid: #ffffff;
   --color-panel-translucent: rgba(255, 255, 255, 0.88);
@@ -159,7 +158,6 @@ html {
 
 /* Gryt dark theme — matches the site/splash palette */
 .dark, .dark-theme {
-  --gryt-titlebar-bg: #0d0f13;
   --color-background: #111318;
   --color-panel-solid: #1a1d24;
   --color-panel-translucent: rgba(26, 29, 36, 0.85);
