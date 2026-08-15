@@ -40,8 +40,8 @@ export function settingAnchorId(title: string): string {
 export const SETTINGS_INDEX: SettingsIndexEntry[] = [
   { id: "updates", title: "Updates", description: "Check for updates and see your current version.", destination: "updates", section: "About", panel: true },
   { id: "profile", title: "Profile", description: "Your display name, avatar and identity.", destination: "you", section: "Profile", panel: true },
-  { id: "security", title: "Security", description: "Your keypair, sessions and account security.", destination: "you", section: "Security", panel: true },
-  { id: "server-identities", title: "Server identities", description: "Servers Gryt recognises by their identity key, and any it has blocked for answering with a different one. Unblock a server you rebuilt yourself.", destination: "you", section: "Server identities", panel: true },
+  { id: "security", title: "Security", description: "Your recovery key and account passkeys.", destination: "account", section: "Security", panel: true },
+  { id: "server-identities", title: "Server identities", description: "Servers Gryt recognises by their identity key, and any it has blocked for answering with a different one. Unblock a server you rebuilt yourself.", destination: "account", section: "Server identities", panel: true },
   { id: "my-servers", title: "My servers", description: "The server Gryt runs on this machine. Start it, stop it, read its logs, and choose whether it starts with the app.", destination: "my-servers", section: "My servers", panel: true },
   { id: "microphone-volume", title: "Microphone volume", description: "Your microphone input level (100% = unchanged, 200% = 2x boost)", destination: "sound-video", section: "Microphone" },
   { id: "test-microphone", title: "Test microphone", description: "Hear yourself through your speakers or headphones, to check what the processing is doing.", destination: "sound-video", section: "Microphone" },

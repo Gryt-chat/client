@@ -56,10 +56,6 @@ const DESTINATIONS = [
     content: (
       <>
         <ProfileSettings />
-        <PanelDivider />
-        <SecuritySettings />
-        <PanelDivider />
-        <ServerIdentitySettings />
       </>
     ),
   },
@@ -67,7 +63,15 @@ const DESTINATIONS = [
     value: "account",
     label: "Account",
     icon: PiUserCircleFill,
-    content: <AccountSettings />,
+    content: (
+      <>
+        <AccountSettings />
+        <PanelDivider />
+        <SecuritySettings />
+        <PanelDivider />
+        <ServerIdentitySettings />
+      </>
+    ),
   },
   // Electron only, because the embedded server is. In a browser this would be
   // a destination that can never have anything in it.
