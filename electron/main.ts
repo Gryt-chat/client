@@ -370,15 +370,23 @@ function cleanupLegacyWindowsInstallBackup(): void {
 }
 
 /**
- * Start NSIS only after every process belonging to the currently installed
- * Gryt application has gone away.
+ * Install a Windows update only after the current Gryt process tree has exited,
+ * then make sure the newly installed Gryt actually starts.
  *
- * The detached helper runs from powershell.exe, outside $INSTDIR, so it
- * survives Electron shutting down and can safely launch the downloaded
- * installer afterwards.
+ * electron-builder normally honours --force-run and launches the application
+ * after NSIS completes. In practice that handoff has proven unreliable on
+ * Windows for Gryt, particularly across the legacy-install migration.
  *
- * Waiting only for the Electron main PID is not enough: renderers, GPU
- * processes, utility processes, or native Gryt helpers can outlive it briefly.
+ * The detached PowerShell helper therefore owns the whole transition:
+ *
+ *   old Gryt exits
+ *       -> NSIS runs
+ *       -> wait for NSIS to finish
+ *       -> allow NSIS' --force-run launch a few seconds
+ *       -> if Gryt still is not running, launch the installed exe ourselves
+ *
+ * The helper lives outside $INSTDIR, so replacing the installation underneath
+ * it is safe.
  */
 function launchWindowsInstallerAfterExit(installerPath: string): Promise<void> {
   return new Promise((resolvePromise, rejectPromise) => {
@@ -393,23 +401,45 @@ function launchWindowsInstallerAfterExit(installerPath: string): Promise<void> {
     );
 
     const installDir = dirname(process.execPath);
+    const installedExe = join(installDir, "Gryt Chat.exe");
+
+    // The helper survives this Electron process, so write its own diagnostics
+    // into the same directory as gryt-startup.log.
+    const helperLog = join(
+      app.getPath("userData"),
+      "gryt-update-helper.log"
+    );
 
     const command = [
+      "$ErrorActionPreference = 'Stop'",
+
       "$parentId = [int]$args[0]",
       "$installer = $args[1]",
       "$installDir = $args[2]",
+      "$installedExe = $args[3]",
+      "$logPath = $args[4]",
 
-      // First wait for Electron's main process.
+      "function Write-GrytLog([string]$message) {",
+      "  try {",
+      "    $timestamp = (Get-Date).ToUniversalTime().ToString('o')",
+      "    Add-Content -LiteralPath $logPath -Value \"[$timestamp] $message\"",
+      "  } catch {}",
+      "}",
+
+      "Write-GrytLog \"Updater helper started. Installer: $installer\"",
+
+      // Wait for the Electron main process which spawned us.
       "Wait-Process -Id $parentId -ErrorAction SilentlyContinue",
 
-      // Then wait for every process whose executable belongs to this Gryt
-      // installation. Electron renderer/GPU/utility processes all use the same
-      // executable path and may disappear slightly after the main process.
+      "Write-GrytLog 'Parent Gryt process exited'",
+
+      // Electron renderer/GPU/utility processes can outlive the main PID for
+      // a moment. Wait for everything whose executable belongs to this install.
       "$deadline = (Get-Date).AddSeconds(20)",
       "$running = @()",
 
       "do {",
-      "  $running = @(Get-CimInstance Win32_Process | Where-Object {",
+      "  $running = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {",
       "    $_.ExecutablePath -and",
       "    $_.ExecutablePath.StartsWith(",
       "      $installDir,",
@@ -421,18 +451,73 @@ function launchWindowsInstallerAfterExit(installerPath: string): Promise<void> {
       "  Start-Sleep -Milliseconds 250",
       "} while ((Get-Date) -lt $deadline)",
 
-      // If something genuinely got stuck, terminate only processes whose
-      // executable lives under this Gryt installation.
+      // Last-resort cleanup, but scoped strictly to executables from Gryt's
+      // installation directory.
       "if ($running.Count -gt 0) {",
+      "  Write-GrytLog \"Forcing $($running.Count) remaining Gryt process(es) to exit\"",
       "  $running | ForEach-Object {",
       "    Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue",
       "  }",
       "  Start-Sleep -Milliseconds 500",
       "}",
 
-      // The installer contains the one-time legacy migration. --force-run
-      // ensures the newly installed Gryt starts again afterwards.
-      "Start-Process -FilePath $installer -ArgumentList '--updated','--force-run'",
+      "Write-GrytLog 'Starting NSIS installer'",
+
+      // Keep --force-run because electron-builder should launch Gryt itself.
+      // PassThru lets us wait for the real installer to finish and inspect its
+      // exit code instead of abandoning the handoff immediately.
+      "$setup = Start-Process `",
+      "  -FilePath $installer `",
+      "  -ArgumentList '--updated','--force-run' `",
+      "  -PassThru",
+
+      "$setup.WaitForExit()",
+      "$exitCode = $setup.ExitCode",
+
+      "Write-GrytLog \"NSIS exited with code $exitCode\"",
+
+      // Do not launch anything after a failed/cancelled installer.
+      "if ($exitCode -ne 0) {",
+      "  Write-GrytLog 'Installer did not succeed; not restarting Gryt'",
+      "  exit $exitCode",
+      "}",
+
+      // NSIS uses ExecShellAsUser to launch the new app. Give that normal path
+      // a short grace period before applying our fallback.
+      "$launchDeadline = (Get-Date).AddSeconds(8)",
+      "$newGrytRunning = $false",
+
+      "do {",
+      "  $newGrytRunning = @(",
+      "    Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |",
+      "    Where-Object {",
+      "      $_.ExecutablePath -and",
+      "      $_.ExecutablePath.Equals(",
+      "        $installedExe,",
+      "        [System.StringComparison]::OrdinalIgnoreCase",
+      "      )",
+      "    }",
+      "  ).Count -gt 0",
+
+      "  if ($newGrytRunning) { break }",
+      "  Start-Sleep -Milliseconds 500",
+      "} while ((Get-Date) -lt $launchDeadline)",
+
+      "if ($newGrytRunning) {",
+      "  Write-GrytLog 'Gryt was launched by NSIS'",
+      "  exit 0",
+      "}",
+
+      // The installer succeeded but its run-after-finish handoff did not.
+      // Launch the freshly installed executable ourselves.
+      "if (Test-Path -LiteralPath $installedExe) {",
+      "  Write-GrytLog \"NSIS did not relaunch Gryt; starting $installedExe directly\"",
+      "  Start-Process -FilePath $installedExe -ArgumentList '--updated'",
+      "  exit 0",
+      "}",
+
+      "Write-GrytLog \"Installer succeeded but installed executable is missing: $installedExe\"",
+      "exit 30",
     ].join("; ");
 
     const helper = spawn(
@@ -448,6 +533,8 @@ function launchWindowsInstallerAfterExit(installerPath: string): Promise<void> {
         String(process.pid),
         installerPath,
         installDir,
+        installedExe,
+        helperLog,
       ],
       {
         detached: true,
