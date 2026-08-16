@@ -54,11 +54,41 @@ const LOOKUP_DEBOUNCE_MS = 450;
  * link or a server address" tells somebody nothing about whether the thing on
  * their clipboard is one.
  */
-const INPUT_EXAMPLES = [
+const WEB_INPUT_EXAMPLES = [
   "gryt.chat/invite?host=…",
-  "gryt.chat",
+  "chat.example.com",
+  "localhost:5001",
+];
+
+const DESKTOP_INPUT_EXAMPLES = [
+  ...WEB_INPUT_EXAMPLES,
   "192.168.1.42:5001",
 ];
+
+function isIpv4Host(host: string): boolean {
+  const hostname = host.replace(/:\d+$/, "");
+
+  const parts = hostname.split(".");
+  if (parts.length !== 4) return false;
+
+  return parts.every((part) => {
+    if (!/^\d+$/.test(part)) return false;
+
+    const value = Number(part);
+    return value >= 0 && value <= 255;
+  });
+}
+
+function isLocalhostHost(host: string): boolean {
+  const hostname = host.replace(/:\d+$/, "").toLowerCase();
+
+  return (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "::1" ||
+    hostname === "[::1]"
+  );
+}
 
 export function AddNewServer({
   showAddServer,
@@ -67,6 +97,11 @@ export function AddNewServer({
   const { servers, switchToServer, setShowDiscovery, addServer } =
     useServerManagement();
   const { isElectron } = useLanDiscovery();
+
+  const inputExamples = isElectron
+    ? DESKTOP_INPUT_EXAMPLES
+    : WEB_INPUT_EXAMPLES;
+
   const { openSettings } = useSettings();
   const { isAvailable: embeddedServerAvailable, servers: hostedServers } =
     useEmbeddedServer();
@@ -94,6 +129,20 @@ export function AddNewServer({
   const [inviteInput, setInviteInput] = useState("");
   const parsed = useMemo(() => parseServerInput(inviteInput), [inviteInput]);
   const serverHost = parsed.host;
+
+  const webAddressError = useMemo(() => {
+    if (isElectron || !serverHost) return "";
+
+    // localhost is the browser's one useful exception: browsers allow local
+    // development/access without a publicly trusted HTTPS domain.
+    if (isLocalhostHost(serverHost)) return "";
+
+    if (isIpv4Host(serverHost)) {
+      return "The web client can only connect to servers over HTTPS. Use a domain with TLS, or use localhost on this machine.";
+    }
+
+    return "";
+  }, [isElectron, serverHost]);
 
   const [serverInfo, setServerInfo] = useState<FetchInfo | null>(null);
   /** Public info is switched off. A code can still get you in. */
@@ -160,7 +209,7 @@ export function AddNewServer({
     setAwaitingApproval(false);
     setJoinError("");
 
-    if (!serverHost) {
+    if (!serverHost || webAddressError) {
       setIsSearching(false);
       return;
     }
@@ -185,7 +234,7 @@ export function AddNewServer({
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [serverHost]);
+  }, [serverHost, webAddressError]);
 
   // Reopening starts from the top rather than from wherever the last visit
   // left off. Somebody who closed this halfway through joining one server is
@@ -201,7 +250,7 @@ export function AddNewServer({
   }, [manualCode]);
 
   async function handleJoin() {
-    if (!serverHost) return;
+    if (!serverHost || webAddressError) return;
     if (!serverInfo && !serverPrivate) return;
 
     setJoinError("");
@@ -246,6 +295,7 @@ export function AddNewServer({
     !isSearching &&
     !isJoining &&
     !awaitingApproval &&
+    !webAddressError &&
     (!!serverInfo || serverPrivate) &&
     (!inviteRequired || normalizeCode(inviteCode).length > 0);
 
@@ -306,7 +356,9 @@ export function AddNewServer({
                 {step === "host"
                   ? "It runs on this machine, and your friends connect to you."
                   : step === "join"
-                    ? "Paste the invite a friend sent you, or the address of a server you already know."
+                    ? isElectron
+                      ? "Paste the invite a friend sent you, or the address of a server you already know."
+                      : "Paste an invite, or enter the HTTPS address of a server you already know."
                     : "Start one of your own, or join somebody else's."}
               </Dialog.Description>
             </div>
@@ -415,7 +467,7 @@ export function AddNewServer({
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2" data-tour="join-address">
                   <span className="text-sm font-bold">
-                    Invite link{" "}
+                    Invite or server address{" "}
                     <span>
                       *
                     </span>
@@ -431,10 +483,10 @@ export function AddNewServer({
 
                   <div className="flex flex-col gap-1">
                     <span className="text-xs">
-                      Invites look like
+                      Examples
                     </span>
                     <div className="flex gap-1 flex-wrap">
-                      {INPUT_EXAMPLES.map((example) => (
+                      {inputExamples.map((example) => (
                         <Chip key={example}>
                           {example}
                         </Chip>
@@ -458,7 +510,7 @@ export function AddNewServer({
                         host={serverHost}
                         info={serverInfo}
                         loading={isSearching}
-                        error={lookupError}
+                        error={webAddressError || lookupError}
                         privateInfo={serverPrivate}
                         alreadyMember={alreadyMember}
                       />
