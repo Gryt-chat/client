@@ -75,6 +75,13 @@ export function ServerSettingsModal() {
     const handler = (event: CustomEvent<SetupRequiredDetail>) => {
       const h = event.detail?.host;
       if (!h) return;
+
+      // A server that is already configured must never force its settings modal
+      // open merely because the socket reconnected during app startup.
+      if (event.detail?.settings?.isConfigured === true) {
+        return;
+      }
+
       setHost(h);
       setInitialOverviewSettings({
         displayName: event.detail?.settings?.displayName,
@@ -83,8 +90,11 @@ export function ServerSettingsModal() {
       setTab("overview");
       setIsOpen(true);
     };
+
     window.addEventListener("server_setup_required", handler as EventListener);
-    return () => window.removeEventListener("server_setup_required", handler as EventListener);
+
+    return () =>
+      window.removeEventListener("server_setup_required", handler as EventListener);
   }, []);
 
   const isOwner = role === "owner";

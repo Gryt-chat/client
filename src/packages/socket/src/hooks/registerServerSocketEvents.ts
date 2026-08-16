@@ -183,11 +183,34 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     }));
   });
 
-  socket.on("server:setup_required", (payload: Record<string, unknown>) => {
-    window.dispatchEvent(new CustomEvent("server_setup_required", {
-      detail: { host, ...(payload || {}) }
-    }));
-  });
+  socket.on(
+    "server:setup_required",
+    (payload: {
+      serverId?: string;
+      settings?: {
+        displayName?: string;
+        description?: string;
+        iconUrl?: string | null;
+        isConfigured?: boolean;
+      };
+    }) => {
+      // Reconnect/startup should not reopen setup for an already configured
+      // server. Keep this guard even if the server is fixed as protection against
+      // older server versions.
+      if (payload?.settings?.isConfigured === true) {
+        return;
+      }
+
+      window.dispatchEvent(
+        new CustomEvent("server_setup_required", {
+          detail: {
+            host,
+            ...(payload || {}),
+          },
+        })
+      );
+    }
+  );
 
   socket.on("server:kicked", (data: { reason?: string; action?: "kick" | "ban" }) => {
     const serverName = serversRef.current[host]?.name || host;
