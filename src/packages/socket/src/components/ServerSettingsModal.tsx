@@ -11,7 +11,10 @@ import { ServerBansTab } from "./ServerBansTab";
 import { ServerEmojisTab } from "./ServerEmojisTab";
 import { ServerInvitesTab } from "./ServerInvitesTab";
 import { ServerJoinRequestsTab } from "./ServerJoinRequestsTab";
-import { type ServerOverviewInitialSettings,ServerOverviewTab } from "./ServerOverviewTab";
+import {
+  type ServerOverviewInitialSettings,
+  ServerOverviewTab,
+} from "./ServerOverviewTab";
 import { ServerRolesTab } from "./ServerRolesTab";
 import { ServerUserReplaceTab } from "./ServerUserReplaceTab";
 import { ServerWebhooksTab } from "./ServerWebhooksTab";
@@ -48,6 +51,8 @@ export function ServerSettingsModal() {
   const canManage = role === "owner" || role === "admin";
   const permissionKnown = role === "owner" || role === "admin" || role === "mod" || role === "member";
   const allowTabs = canManage || !permissionKnown;
+
+  const [popupElement, setPopupElement] = useState<HTMLDivElement | null>(null);
 
   function handleDialogChange(open: boolean) {
     setIsOpen(open);
@@ -118,6 +123,7 @@ export function ServerSettingsModal() {
           accessToken={accessToken}
           initialSettings={initialOverviewSettings}
           channels={host ? serverDetailsList[host]?.channels ?? [] : []}
+          portalContainer={popupElement}
         />
       ),
     },
@@ -168,7 +174,13 @@ export function ServerSettingsModal() {
       value: "webhooks",
       label: "Webhooks",
       icon: PiWebhooksLogoFill,
-      content: <ServerWebhooksTab host={host} channels={host ? serverDetailsList[host]?.channels ?? [] : []} />,
+      content: (
+        <ServerWebhooksTab
+          host={host}
+          channels={host ? serverDetailsList[host]?.channels ?? [] : []}
+          portalContainer={popupElement}
+        />
+      ),
     },
     ...(isOwner
       ? [
@@ -192,6 +204,7 @@ export function ServerSettingsModal() {
             description wrapped and the textarea was a slot. Both dimensions
             give way to the viewport before they clip. */}
         <Dialog.Popup
+          ref={setPopupElement}
           className="max-w-none"
           style={{
             width: "min(1040px, calc(100vw - 4rem))",
