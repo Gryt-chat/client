@@ -21,6 +21,7 @@ import { useServerManagement, useSockets } from "@/socket";
 import { useSFU } from "@/webRTC";
 import { MiniControls } from "@/webRTC/src/components/miniControls";
 
+import { useIdentityClaim } from "../hooks/useIdentityClaim";
 import { bugReportUrl } from "../lib/bugReport";
 
 
@@ -271,6 +272,7 @@ function ServerItem({
   switchToServer,
   setShowRemoveServer,
 }: ServerItemProps) {
+  const { canClaim, claim } = useIdentityClaim();
   const connectionStatus = serverConnectionStatus[host] || "disconnected";
   const isOffline = connectionStatus === "disconnected";
   const isConnecting = connectionStatus === "connecting";
@@ -369,6 +371,16 @@ function ServerItem({
                 {servers[host].name}
               </ContextMenu.GroupLabel>
             </ContextMenu.Group>
+            {canClaim(host) && (
+              /* For a seed restored onto a device that has never been to this
+                 server: nothing local knows there is a membership to claim, and
+                 the server cannot be asked without proving the link, which is
+                 the disclosure itself. Saying so by hand is the consent
+                 (GRYT-285). */
+              <ContextMenu.Item onClick={() => claim(host)}>
+                I&rsquo;ve used this server before
+              </ContextMenu.Item>
+            )}
             <ContextMenu.Item>Edit</ContextMenu.Item>
             <ContextMenu.Item>Share</ContextMenu.Item>
             <ContextMenu.Item>Add to new group</ContextMenu.Item>

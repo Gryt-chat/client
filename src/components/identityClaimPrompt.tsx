@@ -1,16 +1,10 @@
 import { Button, Dialog } from "@gryt/ui";
 import { useCallback, useEffect, useState } from "react";
 
-import {
-  getClaimDecision,
-  hasGuestScope,
-  identityScopeFor,
-  removeServerAccessToken,
-  removeServerRefreshToken,
-  setClaimDecision,
-  useAccount,
-} from "@/common";
-import { useServerManagement, useSockets } from "@/socket";
+import { getClaimDecision, hasGuestScope, identityScopeFor, useAccount } from "@/common";
+import { useServerManagement } from "@/socket";
+
+import { useIdentityClaim } from "../hooks/useIdentityClaim";
 
 /**
  * Asked about one server, when you are signed in and have been a guest here
@@ -42,7 +36,7 @@ import { useServerManagement, useSockets } from "@/socket";
 export function IdentityClaimPrompt() {
   const { isSignedIn } = useAccount();
   const { currentlyViewingServer } = useServerManagement();
-  const { reconnectServer } = useSockets();
+  const { claim, decline } = useIdentityClaim();
   const host = currentlyViewingServer?.host ?? null;
   const [asking, setAsking] = useState<string | null>(null);
 
@@ -59,17 +53,12 @@ export function IdentityClaimPrompt() {
   const answer = useCallback(
     (decision: "yes" | "no") => {
       if (!asking) return;
-      setClaimDecision(identityScopeFor(asking), decision);
+      const host = asking;
       setAsking(null);
-
-      if (decision !== "yes") return;
-      // The session on disk was issued to the account, and re-using it skips
-      // the challenge where the claim would be made.
-      removeServerAccessToken(asking);
-      removeServerRefreshToken(asking);
-      reconnectServer(asking);
+      if (decision === "yes") claim(host);
+      else decline(host);
     },
-    [asking, reconnectServer],
+    [asking, claim, decline],
   );
 
   return (
