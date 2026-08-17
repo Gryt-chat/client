@@ -159,8 +159,7 @@ export function MiniControls({
             <motion.div variants={buttonAnimations}>
               <IconButton tone="danger" size="xsmall"
                 onClick={() => {
-                  if (cameraEnabled) setCameraEnabled(false);
-                  if (screenShareActive) stopScreenShare();
+                  // Local capture is stopped inside disconnect(). GRYT-305.
                   void disconnect();
                 }}
               >

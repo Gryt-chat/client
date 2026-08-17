@@ -362,8 +362,8 @@ export function Controls({ onDisconnect }: ControlsProps) {
   }
 
   function handleDisconnect() {
-    if (cameraEnabled) setCameraEnabled(false);
-    if (screenShareActive) stopScreenShare();
+    // Camera and screen share are stopped inside disconnect(), so every way of
+    // leaving gets it rather than just the ones with a button. GRYT-305.
     disconnect(true, onDisconnect);
   }
 

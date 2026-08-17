@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
-import { useMicrophone, useSpeakers } from "@/audio";
+import { useCamera, useMicrophone, useScreenShare, useSpeakers } from "@/audio";
 import connectMp3 from "@/audio/src/assets/connect.mp3";
 import disconnectMp3 from "@/audio/src/assets/disconnect.mp3";
 import { singletonHook } from "@/common";
@@ -97,6 +97,19 @@ function useSfuHook(): SFUInterface {
   const microphoneBufferRef = useRef(microphoneBuffer);
   useEffect(() => { microphoneBufferRef.current = microphoneBuffer; }, [microphoneBuffer]);
   const { audioContext, remoteBusNode } = useSpeakers();
+
+  // Local capture, so leaving can switch it off wherever leaving was triggered
+  // from. Read through refs because `disconnect` should not be rebuilt every
+  // time the camera toggles.
+  const { cameraEnabled, setCameraEnabled } = useCamera();
+  const { screenShareActive, stopScreenShare } = useScreenShare();
+  const stopLocalCaptureRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    stopLocalCaptureRef.current = () => {
+      if (cameraEnabled) setCameraEnabled(false);
+      if (screenShareActive) stopScreenShare();
+    };
+  }, [cameraEnabled, setCameraEnabled, screenShareActive, stopScreenShare]);
 
   // Stable refs bundle for cleanup helpers
   const cleanupRefs: CleanupRefs = useMemo(() => ({
@@ -247,6 +260,15 @@ function useSfuHook(): SFUInterface {
       clearTimeout(reconnectTimerRef.current);
       reconnectTimerRef.current = null;
     }
+
+    // Before the cleanup below pulls the tracks, and here rather than in the
+    // buttons. Two of the four ways to leave stopped the camera and two did
+    // not: the leave buttons in controls and miniControls did, the global
+    // hotkey in App.tsx and the two server-initiated disconnects here did not.
+    // So leaving by hotkey left the camera light on and the local preview
+    // running, and rejoining found cameraEnabled still true. Duplicating it per
+    // call site is what let them drift apart. GRYT-305.
+    stopLocalCaptureRef.current();
 
     setConnectionState({
       state: SFUConnectionState.DISCONNECTED,
