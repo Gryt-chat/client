@@ -270,7 +270,9 @@ export function AddNewServer({
     if (outcome.kind === "approval_pending") {
       // Not a failure and not something to retry — the answer comes from a
       // person, so the dialog says so and stops offering the button that would
-      // just ask again.
+      // just ask again. The server is on the list at this point (GRYT-289), so
+      // the message can send them there rather than asking them to remember the
+      // address and come back.
       setAwaitingApproval(true);
       return;
     }
@@ -581,8 +583,9 @@ export function AddNewServer({
                       style={{ overflow: "hidden" }}
                     >
                       <Alert severity="info">
-                        Asked. Somebody who runs this server has to let you in
-                        — once they do, adding it again will work.
+                        Asked. Somebody who runs this server has to let you in.
+                        It is in your server list now, marked as waiting, and
+                        opens on its own once they do. You can close this.
                       </Alert>
                     </motion.div>
                   )}

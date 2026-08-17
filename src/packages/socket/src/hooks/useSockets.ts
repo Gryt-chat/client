@@ -322,6 +322,41 @@ function useSocketsHook() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [servers, identityReady]);
 
+  /* Ask again, on a timer, for servers waiting on a moderator (GRYT-289).
+     
+     Approving a request happens in the moderator's client and the server tells
+     nobody else: `server:joinRequest:decided` goes back to whoever clicked it,
+     and the person waiting is not connected as a member to be told. Without
+     this they would sit there until they thought to try joining again by hand,
+     which is the thing the task was raised about.
+     
+     A minute, because approval is a human action and the cost of being a minute
+     late is nothing. Each attempt is one `server:join`, which the server
+     answers from the join_requests row — approved lets them in and clears the
+     row, anything else replies approval_pending again and nothing changes. */
+  useEffect(() => {
+    const waiting = Object.keys(serversRef.current).filter(
+      (host) => serversRef.current[host]?.approvalRequestedAt,
+    );
+    if (waiting.length === 0) return;
+
+    const timer = setInterval(() => {
+      for (const host of waiting) {
+        // Cleared by `server:joined` the moment one of these works.
+        if (!serversRef.current[host]?.approvalRequestedAt) continue;
+        const socket = sockets[host];
+        if (!socket?.connected) continue;
+        socket.emit("server:join", {
+          nickname,
+          inviteCode: serversRef.current[host]?.token || undefined,
+        });
+      }
+    }, 60_000);
+
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sockets, servers, nickname]);
+
   // Retry server:join / server:details for sockets that are connected but
   // haven't received details yet.  Runs 3 s after each connection-status
   // change so we don't race the normal first-connect flow.
