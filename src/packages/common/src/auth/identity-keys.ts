@@ -68,7 +68,7 @@ export type IdentitySource =
  * behaviour, including its bug, because nothing else is available to fix it
  * with.
  */
-function identityScopeFor(host: string): string {
+export function identityScopeFor(host: string): string {
   const origin = getOriginKeyIdForHost(host);
   return origin ? `${SERVER_SCOPE_PREFIX}${origin}` : host;
 }

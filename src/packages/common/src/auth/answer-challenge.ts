@@ -8,8 +8,8 @@
  */
 
 import { getCertificateSub, getValidCertificate } from "./identity-certificate";
-import { hasLocalIdentity, signAssertion } from "./identity-keys";
-import { getMergeChoice } from "./identity-merge";
+import { mayClaim } from "./identity-claims";
+import { hasLocalIdentity, identityScopeFor, signAssertion } from "./identity-keys";
 import { getValidIdentityToken } from "./keycloak";
 import { getLocalIdentity, signIdentityLink } from "./local-identity";
 
@@ -83,10 +83,13 @@ export async function answerChallenge(
     // on a borrowed machine quietly takes over whatever the last person joined
     // as. Unanswered counts as no.
     let link: string | undefined;
-    if (getMergeChoice() !== "yes") {
+    // Per server, and only on an explicit yes (GRYT-285). Signing this tells
+    // the server the account and the guest are the same person, and nothing
+    // undoes that afterwards, so an unanswered server sends nothing.
+    if (!mayClaim(identityScopeFor(host))) {
       return { certificate, assertion, tier: "account", link: undefined };
     }
-    // Asked per-server rather than by matching an address, since GRYT-257 files
+    // Filed by scope rather than by matching an address, since GRYT-257 files
     // these under the server and a moved one would no longer match by name.
     if (await hasLocalIdentity(host).catch(() => false)) {
       link = await signIdentityLink(host, challenge.serverHost, challenge.nonce, sub)

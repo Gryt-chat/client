@@ -1,4 +1,3 @@
-import { getMergeChoice } from "@/common/src/auth/identity-merge";
 
 import { getElectronAPI, isElectron } from "../../../../lib/electron";
 import { getDeviceId, isDeviceId } from "./deviceId";
@@ -115,12 +114,36 @@ function persistUnder(userId: string, values: UserData): void {
  * Only fills keys the account does not have. An account that has been used
  * before keeps everything it already knows.
  */
+/**
+ * Whether this device has been claimed as the signed-in person's own.
+ *
+ * Reads the device-wide answer that GRYT-285 removed from the identity path.
+ * The two questions look alike and are not the same: whether a *membership* may
+ * be claimed is now asked per server, because the answer differs per server,
+ * while whether this *machine* is yours is one fact about the machine. Folding
+ * the second into the first would answer it by accident the first time somebody
+ * claimed anything.
+ *
+ * Read here rather than through a shared module because nothing else needs it,
+ * and re-exporting it invites the two to be confused again. It gets a prompt of
+ * its own when somebody decides what should ask it — until then this is
+ * unanswered for anyone who has not seen the old dialog, and unanswered means
+ * settings stay on the device, which is the safe direction.
+ */
+function deviceIsMine(): boolean {
+  try {
+    return localStorage.getItem("gryt_merge_local_identities") === "yes";
+  } catch {
+    return false;
+  }
+}
+
 async function carryDeviceSettingsOver(
   userId: string,
   data: UserData
 ): Promise<UserData> {
   if (isDeviceId(userId)) return data;
-  if (getMergeChoice() !== "yes") return data;
+  if (!deviceIsMine()) return data;
 
   const deviceId = getDeviceId();
   const guest = await readStoredData(deviceId);
