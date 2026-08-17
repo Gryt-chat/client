@@ -7,6 +7,7 @@ import { getElectronAPI } from "../../../../lib/electron";
 import { clearAllServerTokens } from "../utils/tokenStorage";
 import {
   hasGuestScope,
+  listGuestScopes,
   rememberGuestScope,
   rememberGuestScopes,
 } from "./guest-history";
@@ -226,7 +227,7 @@ async function readSeed(stored: StoredSeed | undefined): Promise<Uint8Array | nu
  * Kept in the same store as the keys, because it is the same kind of secret and
  * clearing site data should take it along with everything else it already
  * takes. It is not filed under `local:`, so it stays out of
- * `listLocalIdentityHosts` and out of the export that reads from it.
+ * the guest history and out of the export that reads from it.
  *
  * Deliberately not cleared by `clearIdentityKeys`, for the reason given there:
  * signing out of an account says nothing about the servers joined without one.
@@ -322,23 +323,29 @@ async function loadOrGenerateKeyPair(
         }
       : await crypto.subtle.generateKey(ALGO, false, ["sign", "verify"]);
 
-  // Written down even though a local key could be recalculated on demand. The
-  // entry is also the record that this host was actually joined, which is what
-  // `listLocalIdentityHosts` reports and what decides whether an account offers
-  // to carry a previous identity over. Derivation alone cannot answer that —
-  // it will happily produce a key for a server nobody has ever visited.
-  await idbPut(db, storageKey, stored);
+  // A derived key is not written down (GRYT-285). It is reproducible from the
+  // seed and the scope, so storing it puts a second copy of a private key on
+  // disk to save work that takes a millisecond, and the seed has to be kept
+  // safe either way. The in-memory cache below is the only copy this session
+  // needs.
+  //
+  // The account key is different and is still stored: it is generated at
+  // random, non-extractable, and nothing can reproduce it.
+  //
+  // The record of having been somewhere moves to the guest history, which is
+  // the reason it exists. It is written before the cache so a caller that
+  // derives and immediately asks `hasLocalIdentity` sees a consistent answer.
+  if (source.kind === "local") {
+    rememberGuestScope(identityScopeFor(source.host));
+  } else {
+    await idbPut(db, storageKey, stored);
+  }
   db.close();
-
-  // The separate, non-secret note of having been here (GRYT-285). Written at
-  // the same moment as the key so the two cannot disagree, and so the key can
-  // stop being the record later without losing anything.
-  if (source.kind === "local") rememberGuestScope(identityScopeFor(source.host));
 
   cachedKeyPairs.set(storageKey, stored);
   console.log(
     `[Identity] ${
-      source.kind === "local" ? "Derived" : "Generated"
+      source.kind === "local" ? "Derived" : "Generated and stored"
     } ECDSA P-256 keypair (${storageKey})`,
   );
   return stored;
@@ -464,6 +471,67 @@ export async function hasLocalIdentity(host: string): Promise<boolean> {
  * Reads rather than derives, deliberately: the point is what was used, and
  * derivation cannot tell that apart from what could be used.
  */
+/**
+ * Delete stored local keys the seed can reproduce (GRYT-285).
+ *
+ * Everything derived since GRYT-254 was also written to disk, which is a second
+ * copy of a private key kept to save a millisecond of arithmetic. Derivation is
+ * deterministic, so those copies are redundant and can go.
+ *
+ * Each is checked rather than assumed. A stored key is only removed when the
+ * seed reproduces the same public coordinates, which is what makes it certain
+ * the key is not lost by deleting it. Anything that does not match is left
+ * exactly where it is: on a device that joined servers before the seed existed
+ * those keys are random and the only copy in existence, and deleting one would
+ * take the membership with it.
+ *
+ * Runs after `backfillGuestHistory`, which is what preserves the record of
+ * having been on those servers once the keys are gone.
+ */
+export async function pruneReproducibleKeys(): Promise<void> {
+  try {
+    const db = await openDB();
+    try {
+      const seed = await readSeed(await idbGet<StoredSeed>(db, SEED_KEY));
+      if (!seed) return;
+
+      let removed = 0;
+      let kept = 0;
+      for (const scope of await listLocalIdentityScopes(db)) {
+        const pair = await idbGet<StoredKeyPair>(db, `${LOCAL_PREFIX}${scope}`);
+        if (!pair?.publicKey) continue;
+
+        const stored = await crypto.subtle.exportKey("jwk", pair.publicKey);
+        const derived = await crypto.subtle.exportKey(
+          "jwk",
+          (await deriveLocalKeyPair(seed, scope)).publicKey,
+        );
+
+        // The public coordinates. Two keys agreeing on both are the same key,
+        // and comparing the private half would mean exporting it for no gain.
+        if (stored.x === derived.x && stored.y === derived.y) {
+          await idbDelete(db, `${LOCAL_PREFIX}${scope}`);
+          removed++;
+        } else {
+          kept++;
+        }
+      }
+
+      if (removed || kept) {
+        console.log(
+          `[Identity] Pruned ${removed} reproducible local key(s); kept ${kept} the seed cannot derive`,
+        );
+      }
+    } finally {
+      db.close();
+    }
+  } catch (e) {
+    // Leaving the keys where they are costs disk and nothing else. The derived
+    // key is identical either way, so nobody is locked out by this failing.
+    console.warn("[Identity] Could not prune stored local keys:", e);
+  }
+}
+
 export async function backfillGuestHistory(): Promise<void> {
   try {
     const db = await openDB();
@@ -474,29 +542,6 @@ export async function backfillGuestHistory(): Promise<void> {
     }
   } catch (e) {
     console.warn("[Identity] Could not backfill guest history:", e);
-  }
-}
-
-/**
- * Addresses this device holds a local identity for, for showing someone.
- *
- * Reads the stored label rather than the key it is filed under, which since
- * GRYT-257 names the server and is not meant for display. Entries written
- * before that have no label and are filed under the address, so the key itself
- * is the honest answer for them.
- */
-export async function listLocalIdentityHosts(): Promise<string[]> {
-  const db = await openDB();
-  try {
-    const scopes = await listLocalIdentityScopes(db);
-    const hosts: string[] = [];
-    for (const scope of scopes) {
-      const pair = await idbGet<StoredKeyPair>(db, `${LOCAL_PREFIX}${scope}`);
-      hosts.push(pair?.host ?? scope);
-    }
-    return hosts;
-  } finally {
-    db.close();
   }
 }
 
@@ -543,10 +588,22 @@ export interface ExportResult {
 }
 
 /**
- * Read every local identity out for safekeeping.
+ * Write every local identity out for safekeeping.
  *
  * This is the file that is the person. Anyone holding it can be them on every
  * server listed in it, which is why the UI that calls this says so.
+ *
+ * The keys are derived here rather than read, since GRYT-285 stopped storing
+ * them. The file keeps exactly the shape it had: a seed plus one entry per
+ * server, each carrying the key that server knows. That is deliberate — a
+ * backup written today still restores on a client from before this change,
+ * which is not a property to give up on the one file people reach for after
+ * losing everything.
+ *
+ * Two sources, because two kinds of entry can exist. The guest history names
+ * the servers this device has been on, and their keys come from the seed. A
+ * stored `local:*` entry is a key that predates the seed and cannot be
+ * reproduced, so it is read as-is and takes precedence.
  */
 export async function exportLocalIdentities(): Promise<ExportResult> {
   const db = await openDB();
@@ -560,10 +617,10 @@ export async function exportLocalIdentities(): Promise<ExportResult> {
     const bytes = await readSeed(await idbGet<StoredSeed>(db, SEED_KEY));
     if (bytes) seed = base64UrlEncode(bytes);
 
-    // Every key here is derived and extractable by construction, so a failure
-    // to read one is a bug rather than a case to report and step over. Left to
-    // throw: a backup that quietly omits a server is worse than no backup,
-    // because it gets trusted.
+    const written = new Set<string>();
+
+    // Stored keys first. Anything still on disk is there because it could not
+    // be derived, so it is the only copy in existence.
     for (const scope of await listLocalIdentityScopes(db)) {
       const pair = await idbGet<StoredKeyPair>(db, `${LOCAL_PREFIX}${scope}`);
       if (!pair?.privateKey || !pair?.publicKey) continue;
@@ -573,6 +630,22 @@ export async function exportLocalIdentities(): Promise<ExportResult> {
         privateJwk: await crypto.subtle.exportKey("jwk", pair.privateKey),
         publicJwk: await crypto.subtle.exportKey("jwk", pair.publicKey),
       });
+      written.add(scope);
+    }
+
+    // Then everywhere the seed says this device has been. Left to throw rather
+    // than skipped: a backup that quietly omits a server is worse than no
+    // backup at all, because it gets trusted.
+    if (bytes) {
+      for (const scope of listGuestScopes()) {
+        if (written.has(scope)) continue;
+        const pair = await deriveLocalKeyPair(bytes, scope);
+        identities.push({
+          scope,
+          privateJwk: await crypto.subtle.exportKey("jwk", pair.privateKey),
+          publicJwk: await crypto.subtle.exportKey("jwk", pair.publicKey),
+        });
+      }
     }
   } finally {
     db.close();

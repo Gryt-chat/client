@@ -12,7 +12,7 @@ import {
   getIdentityWords,
   importLocalIdentities,
   isLockedBackup,
-  listLocalIdentityHosts,
+  listGuestScopes,
   restoreIdentityFromWords,
   unlockBackup,
 } from "@/common";
@@ -40,7 +40,7 @@ import {
 type Panel = "words" | "restore" | "unlock-file" | null;
 
 export function LocalIdentitySection() {
-  const [hosts, setHosts] = useState<string[]>([]);
+  const [hasIdentity, setHasIdentity] = useState(false);
   const [busy, setBusy] = useState(false);
   const [panel, setPanel] = useState<Panel>(null);
   const [words, setWords] = useState("");
@@ -50,10 +50,12 @@ export function LocalIdentitySection() {
   const [copied, setCopied] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
+  /* Whether this device has been a guest anywhere, rather than how many keys
+     are stored. Since GRYT-285 the keys are derived on demand and not written
+     down, so a count of them measured the wrong thing — and went stale the
+     moment somebody left a server. */
   const refresh = useCallback(() => {
-    listLocalIdentityHosts()
-      .then(setHosts)
-      .catch(() => setHosts([]));
+    setHasIdentity(listGuestScopes().length > 0);
   }, []);
 
   useEffect(refresh, [refresh]);
@@ -152,19 +154,20 @@ export function LocalIdentitySection() {
       <div className="flex flex-col gap-1">
         <span className="font-medium text-sm">Recovery key</span>
         <span className="text-xs text-gryt-muted">
-          {hosts.length > 0
-            ? `This device holds your identity for ${hosts.length} server${hosts.length === 1 ? "" : "s"}. Your recovery key restores that identity on another device.`
-            : "Gryt creates a local identity when you join a server without an account. Your recovery key lets you restore it on another device."}
+          Your recovery key is the identity you use on servers you join without
+          an account. It is one key for every server, and it is the only copy:
+          nothing on our side can bring it back.
         </span>
       </div>
 
-      {hosts.length > 0 && (
+      {hasIdentity && (
         <Alert severity="warning">
           <span className="inline-flex items-start gap-2">
             <PiWarningFill className="mt-0.5 shrink-0" size={15} />
-            If you lose this device or clear its data, you will lose this
-            identity. Store the recovery key in a password manager or another
-            safe place.
+            If you lose this device or clear its data without saving your
+            recovery key, you lose the roles, ownership and history attached to
+            every server you joined without an account. Keep it in a password
+            manager or somewhere else safe.
           </span>
         </Alert>
       )}
