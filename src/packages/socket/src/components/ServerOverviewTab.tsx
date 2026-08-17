@@ -51,7 +51,6 @@ export function ServerOverviewTab({
   accessToken,
   initialSettings,
   channels = [],
-  portalContainer,
 }: {
   host: string;
   socket?: {
@@ -63,7 +62,6 @@ export function ServerOverviewTab({
   accessToken: string | null;
   initialSettings?: ServerOverviewInitialSettings;
   channels?: Channel[];
-  portalContainer?: HTMLElement | null;
 }) {
   const { nickname } = useSettings();
 
@@ -624,7 +622,6 @@ export function ServerOverviewTab({
         <div className="flex gap-2 flex-wrap">
           <div style={{ flex: "1 1 180px" }}>
             <Select
-              portalContainer={portalContainer}
               value={profanityMode}
               onValueChange={(v) => {
                 const mode = v as ProfanityMode;
@@ -646,7 +643,6 @@ export function ServerOverviewTab({
           {profanityMode === "censor" && (
             <div style={{ flex: "1 1 180px" }}>
               <Select
-                portalContainer={portalContainer}
                 value={censorStyle}
                 onValueChange={(v) => {
                   const style = v as CensorStyle;
@@ -676,7 +672,6 @@ export function ServerOverviewTab({
           Choose which text channel receives system messages like &ldquo;user joined&rdquo; and &ldquo;user left&rdquo;.
         </span>
         <Select
-          portalContainer={portalContainer}
           className="max-w-80"
           value={systemChannelId ?? "__auto__"}
           onValueChange={(v) => {
@@ -702,7 +697,6 @@ export function ServerOverviewTab({
           make a new one, so lean on invites if that matters.
         </span>
         <Select
-          portalContainer={portalContainer}
           className="max-w-80"
           value={joinPolicy}
           onValueChange={(v) => {

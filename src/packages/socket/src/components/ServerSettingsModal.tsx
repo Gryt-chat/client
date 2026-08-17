@@ -52,7 +52,6 @@ export function ServerSettingsModal() {
   const permissionKnown = role === "owner" || role === "admin" || role === "mod" || role === "member";
   const allowTabs = canManage || !permissionKnown;
 
-  const [popupElement, setPopupElement] = useState<HTMLDivElement | null>(null);
 
   function handleDialogChange(open: boolean) {
     setIsOpen(open);
@@ -123,7 +122,6 @@ export function ServerSettingsModal() {
           accessToken={accessToken}
           initialSettings={initialOverviewSettings}
           channels={host ? serverDetailsList[host]?.channels ?? [] : []}
-          portalContainer={popupElement}
         />
       ),
     },
@@ -178,7 +176,6 @@ export function ServerSettingsModal() {
         <ServerWebhooksTab
           host={host}
           channels={host ? serverDetailsList[host]?.channels ?? [] : []}
-          portalContainer={popupElement}
         />
       ),
     },
@@ -204,7 +201,6 @@ export function ServerSettingsModal() {
             description wrapped and the textarea was a slot. Both dimensions
             give way to the viewport before they clip. */}
         <Dialog.Popup
-          ref={setPopupElement}
           className="max-w-none"
           style={{
             width: "min(1040px, calc(100vw - 4rem))",
