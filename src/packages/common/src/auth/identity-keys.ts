@@ -6,6 +6,11 @@
 import { getElectronAPI } from "../../../../lib/electron";
 import { clearAllServerTokens } from "../utils/tokenStorage";
 import {
+  hasGuestScope,
+  rememberGuestScope,
+  rememberGuestScopes,
+} from "./guest-history";
+import {
   deriveLocalKeyPair,
   generateSeed,
   SEED_BYTES,
@@ -325,6 +330,11 @@ async function loadOrGenerateKeyPair(
   await idbPut(db, storageKey, stored);
   db.close();
 
+  // The separate, non-secret note of having been here (GRYT-285). Written at
+  // the same moment as the key so the two cannot disagree, and so the key can
+  // stop being the record later without losing anything.
+  if (source.kind === "local") rememberGuestScope(identityScopeFor(source.host));
+
   cachedKeyPairs.set(storageKey, stored);
   console.log(
     `[Identity] ${
@@ -427,12 +437,43 @@ async function listLocalIdentityScopes(db: IDBDatabase): Promise<string[]> {
  * is only ever about what is stored.
  */
 export async function hasLocalIdentity(host: string): Promise<boolean> {
+  const scope = identityScopeFor(host);
+  if (hasGuestScope(scope)) return true;
+
+  // Falls back to the stored key for anyone who has not been through the
+  // backfill yet, so an upgrade cannot lose somebody the offer to carry an
+  // identity over between one release and the next.
   const db = await openDB();
   try {
     const pair = await idbGet<StoredKeyPair>(db, storageKeyFor({ kind: "local", host }));
-    return Boolean(pair?.privateKey && pair?.publicKey);
+    const held = Boolean(pair?.privateKey && pair?.publicKey);
+    if (held) rememberGuestScope(scope);
+    return held;
   } finally {
     db.close();
+  }
+}
+
+/**
+ * Teach the guest history what the stored keys already know (GRYT-285).
+ *
+ * One pass, on an install that predates the history. Every `local:*` entry is
+ * evidence of having been a guest somewhere, so the scopes move across and the
+ * keys stop being the only thing that remembers.
+ *
+ * Reads rather than derives, deliberately: the point is what was used, and
+ * derivation cannot tell that apart from what could be used.
+ */
+export async function backfillGuestHistory(): Promise<void> {
+  try {
+    const db = await openDB();
+    try {
+      rememberGuestScopes(await listLocalIdentityScopes(db));
+    } finally {
+      db.close();
+    }
+  } catch (e) {
+    console.warn("[Identity] Could not backfill guest history:", e);
   }
 }
 
@@ -672,6 +713,12 @@ export async function importLocalIdentities(raw: string): Promise<string[]> {
   // while a server session issued to the old identity is still on disk, because
   // holding one means the challenge is never asked for.
   discardServerSessions();
+
+  // A backup naming six servers is evidence of having been a guest on six
+  // servers, so the history learns them too (GRYT-285). The 24-word phrase
+  // brings nothing here, because a seed knows only how to derive keys and
+  // nothing about where they were used.
+  rememberGuestScopes(identities.map((e) => e.scope));
 
   if (restored.length === 0) {
     throw new Error("That backup contained no identities.");
