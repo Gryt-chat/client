@@ -4,6 +4,7 @@
  */
 
 import { getElectronAPI } from "../../../../lib/electron";
+import { clearAllServerTokens } from "../utils/tokenStorage";
 import {
   deriveLocalKeyPair,
   generateSeed,
@@ -667,6 +668,11 @@ export async function importLocalIdentities(raw: string): Promise<string[]> {
   // read a key holds it, and clearing the map cannot reach into those.
   cachedKeyPairs.clear();
 
+  // Same reason as the phrase path (GRYT-286). A restored key proves nothing
+  // while a server session issued to the old identity is still on disk, because
+  // holding one means the challenge is never asked for.
+  discardServerSessions();
+
   if (restored.length === 0) {
     throw new Error("That backup contained no identities.");
   }
@@ -715,6 +721,31 @@ export async function restoreIdentityFromWords(phrase: string): Promise<void> {
   }
 
   cachedKeyPairs.clear();
+  discardServerSessions();
+}
+
+/**
+ * Drop every server session this device holds (GRYT-286).
+ *
+ * A new seed is a new identity on every server, and the keys above are only
+ * half of what proves who you are. The other half is the access token each
+ * server issued, which is stored per host and carries the `grytUserId` it was
+ * minted for.
+ *
+ * That matters because a stored token skips the identity challenge entirely.
+ * `reconnectServer` re-uses it and asks for `server:details` rather than
+ * `server:join`, so the new key is never presented and the server keeps
+ * answering as whoever this device used to be. Reloading does not help: the
+ * tokens are in localStorage and outlive it, which is why restoring appeared to
+ * do nothing until you left the server and joined it again. Leaving is what
+ * removed them.
+ *
+ * Clearing them puts every server back on the join path, where the challenge is
+ * answered with the key derived from the seed that was just restored.
+ */
+function discardServerSessions(): void {
+  clearAllServerTokens();
+  console.log("[Identity] Dropped stored server sessions so the next join re-proves identity");
 }
 
 /**
