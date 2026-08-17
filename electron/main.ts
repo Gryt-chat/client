@@ -1260,6 +1260,16 @@ function startLocalServer(): Promise<string> {
 
 // ── Main window ─────────────────────────────────────────────────────────
 
+/**
+ * Height of the native window-controls strip on Windows and Linux.
+ *
+ * Has to match TITLEBAR_HEIGHT in src/components/titlebar.tsx, which is the
+ * strip the app draws its own back/forward buttons and title into. The two
+ * halves sit side by side, so a disagreement shows up as a step in the middle
+ * of the titlebar.
+ */
+const TITLEBAR_OVERLAY_HEIGHT = 36;
+
 function createMainWindow(): BrowserWindow {
   mainWindow = new BrowserWindow({
     width: 1600,
@@ -1270,10 +1280,18 @@ function createMainWindow(): BrowserWindow {
 
     titleBarStyle: "hidden",
 
+    // Only what the window opens with, before the renderer has read the
+    // theme and sent the real values (GRYT-288). These are the shipped dark
+    // palette's --gryt-neutral-1 and --gryt-neutral-12, so somebody on the
+    // default theme sees no change at all when the push arrives.
+    //
+    // The colour used to be #0d0f13, which is not a token and not what the
+    // titlebar beside it paints — so the strip was two shades of almost the
+    // same dark, with a seam down the middle.
     titleBarOverlay: {
-      color: "#0d0f13",
+      color: "#111318",
       symbolColor: "#e0e0e6",
-      height: 36,
+      height: TITLEBAR_OVERLAY_HEIGHT,
     },
 
     icon: appIcon,
@@ -2052,6 +2070,76 @@ if (!gotSingleInstanceLock) {
           writeConfig({
             closeToTray: enabled,
           });
+        }
+      );
+
+      /**
+       * Repaint the native window controls when the theme changes
+       * (GRYT-288).
+       *
+       * On Windows and Linux the minimise, maximise and close buttons are
+       * drawn by the OS into an overlay strip, not by us — so they are the
+       * one part of the window the stylesheet cannot reach. They were set
+       * once at construction and stayed that colour, which meant picking a
+       * light theme left three dark-theme buttons sitting in the corner of
+       * a light titlebar.
+       *
+       * The renderer sends resolved colours rather than a theme name,
+       * because it is the only side that can read what the variables
+       * currently evaluate to — an imported theme supplies its own.
+       *
+       * macOS is excluded: the traffic lights belong to the OS and follow
+       * the system appearance, and setTitleBarOverlay is not implemented
+       * there.
+       */
+      ipcMain.on(
+        "set-titlebar-overlay",
+        (
+          _event,
+          colors: {
+            color: string;
+            symbolColor: string;
+          }
+        ) => {
+          if (
+            process.platform ===
+            "darwin"
+          )
+            return;
+          if (
+            !mainWindow ||
+            mainWindow.isDestroyed()
+          )
+            return;
+
+          // Anything but a plain hex string is refused rather than passed
+          // on. Electron throws on a colour it cannot parse, and the value
+          // arrives from the renderer, where a theme could carry oklch or
+          // a colour name.
+          const isHex = (v: unknown) =>
+            typeof v === "string" &&
+            /^#[0-9a-f]{6}$/i.test(v);
+
+          if (
+            !isHex(colors?.color) ||
+            !isHex(colors?.symbolColor)
+          )
+            return;
+
+          try {
+            mainWindow.setTitleBarOverlay(
+              {
+                color: colors.color,
+                symbolColor:
+                  colors.symbolColor,
+                height:
+                  TITLEBAR_OVERLAY_HEIGHT,
+              }
+            );
+          } catch {
+            // Not every platform build implements it, and a titlebar that
+            // keeps its old colours is not a reason to take anything down.
+          }
         }
       );
 

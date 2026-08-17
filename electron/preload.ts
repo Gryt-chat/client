@@ -166,6 +166,17 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("set-badge-count", count);
   },
 
+  /**
+   * Repaint the native minimise/maximise/close buttons (GRYT-288).
+   *
+   * Colours rather than a theme name, because only the renderer can say what
+   * the theme variables currently evaluate to. Both must be `#rrggbb`; main
+   * refuses anything else.
+   */
+  setTitlebarOverlay(colors: { color: string; symbolColor: string }) {
+    ipcRenderer.send("set-titlebar-overlay", colors);
+  },
+
   toggleAlwaysOnTop(pinned: boolean, windowTitle?: string) {
     ipcRenderer.send("toggle-always-on-top", pinned, windowTitle);
   },

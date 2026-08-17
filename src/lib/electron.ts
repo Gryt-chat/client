@@ -125,6 +125,11 @@ export interface ElectronAPI {
   getHardwareAcceleration(): Promise<boolean>;
   setHardwareAcceleration(enabled: boolean): void;
   setBadgeCount(count: number): void;
+  /**
+   * Repaint the native window controls on Windows and Linux (GRYT-288).
+   * Both colours must be `#rrggbb`. Absent on builds older than 1.6.16.
+   */
+  setTitlebarOverlay?(colors: { color: string; symbolColor: string }): void;
   toggleAlwaysOnTop(pinned: boolean, windowTitle?: string): void;
   getScreenCaptureAccess(): Promise<
     "not-determined" | "granted" | "denied" | "restricted"
