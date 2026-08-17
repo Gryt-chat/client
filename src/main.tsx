@@ -9,6 +9,7 @@ import { Toaster } from "react-hot-toast";
 import { initPluginApi, updatePluginApiTheme, useAddonLoader } from "@/addons";
 import {
   backfillGuestHistory,
+  migrateLegacyMergeChoice,
   SingletonHooks,
   useCustomThemes,
   useTheme,
@@ -123,7 +124,7 @@ initPluginApi(__APP_VERSION__);
    (GRYT-285). Only does anything on an install that predates it, and failing is
    not worth blocking a render for — `hasLocalIdentity` heals each server on its
    own the first time it is asked. */
-void backfillGuestHistory();
+void backfillGuestHistory().then(migrateLegacyMergeChoice);
 
 initGlobalStorage().then(() => {
   ReactDOM.createRoot(document.getElementById("root")!).render(

@@ -32,7 +32,7 @@ import { useSFU } from "@/webRTC";
 
 import { AuthLoadingOverlay } from "./components/AuthLoadingOverlay";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import { IdentityMergePrompt } from "./components/identityMergePrompt";
+import { IdentityClaimPrompt } from "./components/identityClaimPrompt";
 import { LeaveServer } from "./components/leaveServer";
 import { MainApp } from "./components/mainApp";
 import { MicrophoneDebugOverlay } from "./components/microphoneDebugOverlay";
@@ -187,7 +187,7 @@ export function App() {
             onDismiss={handleDismissInvite}
             onGoToServer={handleGoToServer}
           />
-          <IdentityMergePrompt />
+          <IdentityClaimPrompt />
           <PushToTalkModal />
           <TrayVoiceState />
           <MicrophoneDebugOverlay isVisible={showDebugOverlay} />
