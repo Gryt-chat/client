@@ -18,6 +18,7 @@ import { App } from "./App.tsx";
 import { BrowserBanner } from "./components/browserBanner";
 import { Titlebar } from "./components/titlebar";
 import { initGlobalStorage } from "./lib/globalStorage";
+import { pushTitlebarOverlay } from "./lib/titlebarOverlay";
 
 // eslint-disable-next-line react-refresh/only-export-components
 function ThemedApp() {
@@ -66,6 +67,17 @@ function ThemedApp() {
         root.style.removeProperty(name);
       }
     };
+  }, [activeTheme, resolvedAppearance]);
+
+  /* The native minimise/maximise/close buttons on Windows and Linux, which
+     the stylesheet cannot reach — they are painted by the OS into an overlay
+     strip (GRYT-288).
+
+     After the two effects above rather than before, and deliberately so: this
+     reads what the variables evaluate to on the root element, and the effect
+     that puts an imported theme there runs in source order. */
+  useEffect(() => {
+    pushTitlebarOverlay();
   }, [activeTheme, resolvedAppearance]);
 
   useZoomShortcuts();
