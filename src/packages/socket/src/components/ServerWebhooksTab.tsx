@@ -23,11 +23,9 @@ type ChannelOption = {
 export function ServerWebhooksTab({
   host,
   channels,
-  portalContainer,
 }: {
   host: string;
   channels: ChannelOption[];
-  portalContainer?: HTMLElement | null;
 }) {
   const [webhooks, setWebhooks] = useState<WebhookItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -129,7 +127,6 @@ export function ServerWebhooksTab({
             apiBase={apiBase}
             authHeaders={authHeaders}
             textChannels={textChannels}
-            portalContainer={portalContainer}
             onDelete={deleteHook}
             onUpdate={(updated) =>
               setWebhooks((prev) =>
@@ -151,7 +148,6 @@ function WebhookCard({
   apiBase,
   authHeaders,
   textChannels,
-  portalContainer,
   onDelete,
   onUpdate,
 }: {
@@ -160,7 +156,6 @@ function WebhookCard({
   apiBase: string;
   authHeaders: () => Record<string, string>;
   textChannels: { id: string; name: string }[];
-  portalContainer?: HTMLElement | null;
   onDelete: (id: string) => void;
   onUpdate: (w: WebhookItem) => void;
 }) {
@@ -302,7 +297,6 @@ function WebhookCard({
             <div className="flex flex-col gap-1" style={{ minWidth: 160 }}>
               <span className="text-xs font-medium">Channel</span>
               <Select
-                portalContainer={portalContainer}
                 value={webhook.channel_id}
                 onValueChange={(v) => handleChannelChange(String(v))}
                 placeholder="Select channel"
