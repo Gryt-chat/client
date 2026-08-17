@@ -150,6 +150,19 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       setServerRefreshToken(host, joinInfo.refreshToken);
     }
 
+    // Somebody let them in (GRYT-289). The wait is the only thing this clears,
+    // and it is worth saying out loud: the request was made minutes or days
+    // ago, in a dialog that has long since closed, so an entry quietly going
+    // from grey to normal is a change nobody is watching for.
+    if (serversRef.current[host]?.approvalRequestedAt) {
+      const rest = { ...serversRef.current[host] };
+      delete rest.approvalRequestedAt;
+      const updated = { ...serversRef.current, [host]: rest };
+      serversRef.current = updated;
+      setServers(updated);
+      toast.success(`You were let in to ${rest.name || host}`, { duration: 8000 });
+    }
+
     setServerProfiles(prev => ({
       ...prev,
       [host]: {

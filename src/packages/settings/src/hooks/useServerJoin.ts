@@ -180,7 +180,7 @@ function describeJoinError(error: { error: string; message?: string }): JoinOutc
         ok: false,
         kind: "approval_pending",
         message:
-          "Asked. Somebody who runs this server has to let you in — once they do, adding it again will work.",
+          "Asked. Somebody who runs this server has to let you in. It is in your server list now and will open on its own once they do.",
       };
     case "invite_required":
       return {
@@ -297,7 +297,24 @@ export function useServerJoin() {
           note: note && note.trim().length > 0 ? note.trim() : undefined,
         });
 
-        if (!result.ok) return describeJoinError(result.error);
+        if (!result.ok) {
+          // A request that is with the moderators is not a failed join. The
+          // server goes on the list marked as waiting, so it is visible in the
+          // rail and rejoins itself once somebody approves it, rather than
+          // vanishing and needing to be added again from memory (GRYT-289).
+          if (result.error.error === "approval_pending") {
+            addServer(
+              {
+                name: info?.name || normalizedHost,
+                host: normalizedHost,
+                serverId: info?.serverId,
+                approvalRequestedAt: Date.now(),
+              },
+              false,
+            );
+          }
+          return describeJoinError(result.error);
+        }
 
         setServerAccessToken(normalizedHost, result.joinInfo.accessToken);
         if (result.joinInfo.refreshToken) {
@@ -309,6 +326,9 @@ export function useServerJoin() {
             name: info?.name || normalizedHost,
             host: normalizedHost,
             serverId: info?.serverId,
+            // Explicitly absent rather than left alone: getting in is what ends
+            // the wait, and a stale mark would keep the rail saying otherwise.
+            approvalRequestedAt: undefined,
           },
           true,
         );

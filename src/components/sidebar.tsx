@@ -278,6 +278,9 @@ function ServerItem({
   const isConnecting = connectionStatus === "connecting";
   const isReconnecting = connectionStatus === "reconnecting";
   const isUnavailable = isOffline && !isConnecting;
+  /* Waiting on a moderator (GRYT-289). Not a connection state: the server is
+     reachable and answering, it just has not let this person in yet. */
+  const awaitingApproval = Boolean(servers[host]?.approvalRequestedAt);
 
   return (
     <Reorder.Item
@@ -321,11 +324,13 @@ function ServerItem({
                         ? 1
                         : isUnavailable
                         ? 0.3
+                        : awaitingApproval
+                        ? 0.4
                         : isReconnecting
                         ? undefined
                         : 0.5,
                     filter:
-                      isUnavailable || isReconnecting
+                      isUnavailable || isReconnecting || awaitingApproval
                         ? "grayscale(100%)"
                         : "none",
                     animation: isReconnecting
@@ -407,7 +412,12 @@ function ServerItem({
                   • Connected to voice
                 </span>
               )}
-              {isUnavailable && (
+              {awaitingApproval && (
+                <span style={{ color: "var(--gryt-warning-9)", marginLeft: "8px" }}>
+                  • Requested access
+                </span>
+              )}
+              {isUnavailable && !awaitingApproval && (
                 <span style={{ color: "var(--gryt-danger-9)", marginLeft: "8px" }}>
                   • OFFLINE
                 </span>

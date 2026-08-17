@@ -58,6 +58,19 @@ export type Server = {
   name: string;
   token?: string;
   serverId?: string;
+  /**
+   * When a request to join was made, for a server that admits people by
+   * approval (GRYT-289).
+   *
+   * Present means the request is outstanding. It is set when the server answers
+   * a join with `approval_pending`, and cleared the moment a join succeeds,
+   * which is how the sidebar knows to stop showing the server as waiting.
+   *
+   * A timestamp rather than a flag so the entry can say how long it has been
+   * waiting, and so a request that has clearly gone stale is distinguishable
+   * from one made a minute ago.
+   */
+  approvalRequestedAt?: number;
 };
 
 export type Servers = {
