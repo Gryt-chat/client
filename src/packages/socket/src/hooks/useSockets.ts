@@ -354,7 +354,6 @@ function useSocketsHook() {
     }, 60_000);
 
     return () => clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sockets, servers, nickname]);
 
   // Retry server:join / server:details for sockets that are connected but
