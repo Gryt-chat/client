@@ -1,8 +1,11 @@
 import { Button, Surface, Switch, TextField } from "@gryt/ui";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { PiCopyFill, PiPlus } from "react-icons/pi";
 import type { Socket } from "socket.io-client";
+
+import { isLoopbackHost, pickShareableHost } from "@/common";
+import { useEmbeddedServer } from "@/settings/src/hooks/useEmbeddedServer";
 
 import { useSocketEvent } from "../hooks/useSocketEvent";
 
@@ -63,6 +66,20 @@ export function ServerInvitesTab({
   socket?: Socket;
   accessToken: string | null;
 }) {
+  const { servers: embeddedServers } = useEmbeddedServer();
+
+  /* The embedded server this host is, if it is one. Matched on the port it
+     answers on, since a locally hosted server is only ever reached over
+     loopback and the port is what tells two of them apart. */
+  const advertised = useMemo(() => {
+    if (!isLoopbackHost(host)) return null;
+    const port = Number(host.split(":").pop());
+    if (!Number.isFinite(port)) return null;
+    return (
+      embeddedServers.find((s) => s.config?.serverPort === port)?.config ?? null
+    );
+  }, [host, embeddedServers]);
+
   const [invites, setInvites] = useState<InviteItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -157,10 +174,29 @@ export function ServerInvitesTab({
   };
 
   const copy = async (code: string) => {
+    // A server started from the desktop app is connected to on 127.0.0.1, and
+    // putting that in a link tells whoever receives it to connect to their own
+    // machine (GRYT-135). Nothing errors — the address is valid, it is just the
+    // wrong computer — so the sender has no reason to suspect the link.
+    const shareable = pickShareableHost(host, advertised);
+
+    if (shareable.kind === "loopback-only") {
+      toast.error("This server has no address anyone else can reach.", { duration: 7000 });
+      toast(
+        "Add a public IP or hostname under Settings → My servers, then copy the invite again.",
+        { duration: 10000, icon: "ℹ️" },
+      );
+      return;
+    }
+
     try {
-      const url = `https://gryt.chat/invite?host=${encodeURIComponent(host)}&code=${encodeURIComponent(code)}`;
+      const url = `https://gryt.chat/invite?host=${encodeURIComponent(shareable.host)}&code=${encodeURIComponent(code)}`;
       await navigator.clipboard.writeText(url);
-      toast.success("Copied invite link");
+      toast.success(
+        shareable.host === host
+          ? "Copied invite link"
+          : `Copied invite link for ${shareable.host}`,
+      );
     } catch {
       toast.error("Failed to copy");
     }

@@ -28,6 +28,7 @@ export * from "./src/utils/betaBuild";
 export * from "./src/utils/imageCompress";
 export * from "./src/utils/invite";
 export * from "./src/utils/preLoginUrl";
+export * from "./src/utils/shareableHost";
 export * from "./src/utils/tokenStorage";
 export * from "./src/utils/url";
 
