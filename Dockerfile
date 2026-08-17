@@ -42,12 +42,27 @@ http {
 }
 NGINX
 
+# The runtime config nginx writes before it starts serving. Every key here has
+# to match what `getGrytConfig()` in src/config.ts reads off `__GRYT_CONFIG__`,
+# and every default has to match the fallback it uses when the key is absent —
+# otherwise setting nothing behaves differently depending on which of the two
+# is doing the defaulting.
+#
+# GRYT_IDENTITY_URL is here because leaving it out did not mean "use the
+# default", it meant "there is no way to change this". Somebody self-hosting
+# against their own Keycloak could set the issuer and got Gryt's certificate
+# authority regardless: their token went to id.gryt.chat, which validates
+# against its own configured issuer and rejects it with "no applicable key
+# found in the JWKS" — the symptom, not the cause. That is GRYT-156 again, and
+# the only way around it was the per-browser override in Settings, which is not
+# something an operator can set for their users.
 RUN printf '%s\n' \
   '#!/bin/sh' \
   'set -eu' \
   ': "${GRYT_OIDC_ISSUER:=https://auth.gryt.chat/realms/gryt}"' \
   ': "${GRYT_OIDC_REALM:=gryt}"' \
   ': "${GRYT_OIDC_CLIENT_ID:=gryt-web}"' \
+  ': "${GRYT_IDENTITY_URL:=https://id.gryt.chat}"' \
   ': "${GRYT_AUTH_API:=https://auth.gryt.chat}"' \
   ': "${GRYT_AUTH_CALLBACK_URL:=https://gryt.chat/auth/callback}"' \
   'cat > /usr/share/nginx/html/config.js <<EOF' \
@@ -55,6 +70,7 @@ RUN printf '%s\n' \
   '  GRYT_OIDC_ISSUER: "${GRYT_OIDC_ISSUER}",' \
   '  GRYT_OIDC_REALM: "${GRYT_OIDC_REALM}",' \
   '  GRYT_OIDC_CLIENT_ID: "${GRYT_OIDC_CLIENT_ID}",' \
+  '  GRYT_IDENTITY_URL: "${GRYT_IDENTITY_URL}",' \
   '  GRYT_AUTH_API: "${GRYT_AUTH_API}",' \
   '  GRYT_AUTH_CALLBACK_URL: "${GRYT_AUTH_CALLBACK_URL}",' \
   '};' \
