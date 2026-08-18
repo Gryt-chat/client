@@ -34,7 +34,7 @@ const EMPTY_AFTER_MS = 4000;
  */
 export function Discovery() {
   const { lanServers, rescan } = useLanDiscovery();
-  const { servers, setShowAddServer, markLanServersSeen, switchToServer, newLanServers } =
+  const { servers, setShowAddServer, markLanServersSeen, newLanServers } =
     useServerManagement();
   const { join, joiningHost } = useServerJoin();
 
@@ -118,6 +118,27 @@ export function Discovery() {
 
   const busy = connecting !== null || joiningHost !== null;
 
+  // Servers already in the rail are not discoveries.
+  //
+  // They used to be listed with a "Joined" chip and an Open button, which put
+  // the six servers running on this machine permanently at the top of the
+  // thing whose job is to show what is new. Opening a server you have already
+  // joined is what the rail is for. GRYT-290.
+  const isJoined = useCallback(
+    (server: LanServer) => {
+      const host = normalizeHost(lanServerAddr(server));
+      if (servers[host]) return true;
+      return (
+        !!server.serverId &&
+        Object.values(servers).some((s) => s.serverId === server.serverId)
+      );
+    },
+    [servers],
+  );
+
+  const undiscovered = lanServers.filter((s) => !isJoined(s));
+  const hiddenCount = lanServers.length - undiscovered.length;
+
   return (
     <div className="flex flex-col grow gap-4 p-6 overflow-auto">
       <div className="flex items-center gap-3">
@@ -150,7 +171,7 @@ export function Discovery() {
 
       <Divider />
 
-      {lanServers.length === 0 && !searchExpired && (
+      {undiscovered.length === 0 && !searchExpired && (
         <div className="flex items-center gap-2">
           <Spinner />
           <span className="text-gryt-muted">
@@ -159,10 +180,17 @@ export function Discovery() {
         </div>
       )}
 
-      {lanServers.length === 0 && searchExpired && (
+      {undiscovered.length === 0 && searchExpired && (
         <div className="flex flex-col gap-2 items-start">
+          {/* These conditions count what is left after the joined ones are
+              filtered out, not what was found. Keying them off lanServers
+              meant that once you had joined everything on the network the
+              grid was empty and no empty state qualified, so the pane just
+              went blank. */}
           <span className="text-gryt-muted">
-            No servers found on your network.
+            {hiddenCount > 0
+              ? `Nothing new on your network. ${hiddenCount} ${hiddenCount === 1 ? "server is" : "servers are"} already in your sidebar.`
+              : "No servers found on your network."}
           </span>
           <span className="text-gryt-muted">
             Still looking — one will appear here as soon as it starts. If you
@@ -186,20 +214,14 @@ export function Discovery() {
         className="grid gap-3"
         style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}
       >
-        {lanServers.map((server) => {
+        {undiscovered.map((server) => {
           const key = lanServerKey(server);
           const addr = lanServerAddr(server);
           const host = normalizeHost(addr);
 
-          const existingByHost = !!servers[host];
-          const existingById =
-            !!server.serverId &&
-            Object.values(servers).some((s) => s.serverId === server.serverId);
-          const isMember = existingByHost || existingById;
-
           const error = rowErrors[key];
           const isConnectingThis = connecting === key;
-          const isNew = newThisVisit.has(key) && !isMember;
+          const isNew = newThisVisit.has(key);
 
           return (
             <Surface key={key}>
@@ -239,29 +261,16 @@ export function Discovery() {
                   </div>
 
                   <div className="flex items-center gap-2 ml-auto shrink-0">
-                    {isMember ? (
-                      <>
-                        <Chip tone="success" label="Joined" />
-                        <Button tone="neutral" size="xsmall"
-                          onClick={() => switchToServer(host)}
-                        >
-                          Open
-                        </Button>
-                      </>
-                    ) : (
-                      <Button
-                        size="xsmall"
-                        disabled={busy || isConnectingThis}
-                        startIcon={
-                          isConnectingThis ? <Spinner /> : undefined
-                        }
-                        onClick={() => {
-                          void handleJoin(server);
-                        }}
-                      >
-                        {isConnectingThis ? "Joining" : "Join"}
-                      </Button>
-                    )}
+                    <Button
+                      size="xsmall"
+                      disabled={busy || isConnectingThis}
+                      startIcon={isConnectingThis ? <Spinner /> : undefined}
+                      onClick={() => {
+                        void handleJoin(server);
+                      }}
+                    >
+                      {isConnectingThis ? "Joining" : "Join"}
+                    </Button>
                   </div>
                 </div>
 

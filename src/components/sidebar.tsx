@@ -1,5 +1,6 @@
 import { Avatar, ContextMenu, IconButton, Menu, PreviewCard, Tooltip } from "@gryt/ui";
 import { Reorder } from "motion/react";
+import { useEffect, useState } from "react";
 import { PiBroadcastFill, PiBugFill, PiChatCircleDotsFill, PiGearFill, PiMicrophoneFill, PiPlus, PiSignInFill } from "react-icons/pi";
 
 import {
@@ -286,6 +287,14 @@ interface ServerItemProps {
   setShowRemoveServer: (host: string | null) => void;
 }
 
+/**
+ * How long a server with no connection status yet is given before it is called
+ * offline. Long enough to cover creating an embedded server and the socket
+ * being set up, short enough that a genuinely dead host does not sit there
+ * claiming to connect.
+ */
+const UNKNOWN_SETTLE_MS = 10_000;
+
 function ServerItem({
   host,
   servers,
@@ -299,7 +308,29 @@ function ServerItem({
   setShowRemoveServer,
 }: ServerItemProps) {
   const { canClaim, claim } = useIdentityClaim();
-  const connectionStatus = serverConnectionStatus[host] || "disconnected";
+  // No entry yet is not the same as down.
+  //
+  // A server added a moment ago — an embedded one you just created, most
+  // obviously — has no status until useSockets gets round to creating its
+  // socket and sets "connecting". Falling back to "disconnected" meant it
+  // rendered greyed out at 30% opacity with "• OFFLINE" beside it before
+  // anything had been attempted, so creating a server looked like it had
+  // failed. GRYT-290.
+  //
+  // So an unknown host reads as connecting, and only becomes offline once it
+  // has had SETTLE_MS to say otherwise. A server that really is down still
+  // gets there, just after showing that something was tried.
+  const rawStatus = serverConnectionStatus[host];
+  const [settleExpired, setSettleExpired] = useState(false);
+  useEffect(() => {
+    if (rawStatus) return;
+    setSettleExpired(false);
+    const timer = window.setTimeout(() => setSettleExpired(true), UNKNOWN_SETTLE_MS);
+    return () => window.clearTimeout(timer);
+  }, [rawStatus]);
+
+  const connectionStatus =
+    rawStatus ?? (settleExpired ? "disconnected" : "connecting");
   const isOffline = connectionStatus === "disconnected";
   const isConnecting = connectionStatus === "connecting";
   const isReconnecting = connectionStatus === "reconnecting";
