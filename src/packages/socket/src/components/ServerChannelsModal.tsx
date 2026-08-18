@@ -214,12 +214,16 @@ export function ServerChannelsModal() {
               This will permanently delete &ldquo;{channels.find((c) => c.id === pendingDeleteId)?.name || "this channel"}&rdquo; and all associated data. This action cannot be undone.
             </AlertDialog.Description>
             <div className="flex gap-3 mt-4 justify-end">
-              <AlertDialog.Close render={<span />}>
-                <Button tone="neutral" size="small">Cancel</Button>
-              </AlertDialog.Close>
-              <AlertDialog.Close render={<span />}>
-                <Button tone="danger" size="small" onClick={() => { if (pendingDeleteId) { del(pendingDeleteId); setPendingDeleteId(null); } }}>Delete</Button>
-              </AlertDialog.Close>
+              <AlertDialog.Close
+                render={
+                  <Button tone="neutral" size="small">Cancel</Button>
+                }
+              />
+              <AlertDialog.Close
+                render={
+                  <Button tone="danger" size="small" onClick={() => { if (pendingDeleteId) { del(pendingDeleteId); setPendingDeleteId(null); } }}>Delete</Button>
+                }
+              />
             </div>
           </AlertDialog.Popup>
           </AlertDialog.Portal>

@@ -117,21 +117,25 @@ function BlockedRow({
             Only do this if you know why the identity changed.
           </AlertDialog.Description>
           <div className="flex gap-3 mt-4 justify-end">
-            <AlertDialog.Close render={<span />}>
-              <Button tone="neutral" size="small">
-                Cancel
-              </Button>
-            </AlertDialog.Close>
-            <AlertDialog.Close render={<span />}>
-              <Button tone="danger" size="small"
-                onClick={() => {
-                  onUnblock(entry);
-                  setConfirm(false);
-                }}
-              >
-                Unblock
-              </Button>
-            </AlertDialog.Close>
+            <AlertDialog.Close
+              render={
+                <Button tone="neutral" size="small">
+                  Cancel
+                </Button>
+              }
+            />
+            <AlertDialog.Close
+              render={
+                <Button tone="danger" size="small"
+                  onClick={() => {
+                    onUnblock(entry);
+                    setConfirm(false);
+                  }}
+                >
+                  Unblock
+                </Button>
+              }
+            />
           </div>
         </AlertDialog.Popup>
         </AlertDialog.Portal>
@@ -181,21 +185,25 @@ function KnownRow({ pin, onForget }: { pin: ServerPin; onForget: (keyId: string)
             whatever answers will be trusted.
           </AlertDialog.Description>
           <div className="flex gap-3 mt-4 justify-end">
-            <AlertDialog.Close render={<span />}>
-              <Button tone="neutral" size="small">
-                Cancel
-              </Button>
-            </AlertDialog.Close>
-            <AlertDialog.Close render={<span />}>
-              <Button tone="danger" size="small"
-                onClick={() => {
-                  onForget(pin.keyId);
-                  setConfirm(false);
-                }}
-              >
-                Forget
-              </Button>
-            </AlertDialog.Close>
+            <AlertDialog.Close
+              render={
+                <Button tone="neutral" size="small">
+                  Cancel
+                </Button>
+              }
+            />
+            <AlertDialog.Close
+              render={
+                <Button tone="danger" size="small"
+                  onClick={() => {
+                    onForget(pin.keyId);
+                    setConfirm(false);
+                  }}
+                >
+                  Forget
+                </Button>
+              }
+            />
           </div>
         </AlertDialog.Popup>
         </AlertDialog.Portal>

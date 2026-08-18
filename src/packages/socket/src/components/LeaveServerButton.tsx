@@ -29,20 +29,24 @@ export const LeaveServerButton: React.FC<LeaveServerButtonProps> = ({
             Are you sure you want to leave {host}? You will lose access to all channels and messages.
           </AlertDialog.Description>
           <div className="flex gap-3 mt-4 justify-end">
-            <AlertDialog.Close render={<span />}>
-              <Button tone="neutral">Cancel</Button>
-            </AlertDialog.Close>
-            <AlertDialog.Close render={<span />}>
-              <Button
-                tone="danger"
-                onClick={() => {
-                  leaveServer(host);
-                  setShowConfirm(false);
-                }}
-              >
-                Leave
-              </Button>
-            </AlertDialog.Close>
+            <AlertDialog.Close
+              render={
+                <Button tone="neutral">Cancel</Button>
+              }
+            />
+            <AlertDialog.Close
+              render={
+                <Button
+                  tone="danger"
+                  onClick={() => {
+                    leaveServer(host);
+                    setShowConfirm(false);
+                  }}
+                >
+                  Leave
+                </Button>
+              }
+            />
           </div>
           </AlertDialog.Popup>
         </AlertDialog.Portal>

@@ -260,12 +260,16 @@ export const MessageEmbeds = memo(({
             This hides the embed for you. Edit the message to bring it back.
           </AlertDialog.Description>
           <div className="flex gap-3 mt-4 justify-end">
-            <AlertDialog.Close render={<span />}>
-              <Button tone="neutral" size="small">Cancel</Button>
-            </AlertDialog.Close>
-            <AlertDialog.Close render={<span />}>
-              <Button tone="danger" size="small" onClick={confirmDismiss}>Remove</Button>
-            </AlertDialog.Close>
+            <AlertDialog.Close
+              render={
+                <Button tone="neutral" size="small">Cancel</Button>
+              }
+            />
+            <AlertDialog.Close
+              render={
+                <Button tone="danger" size="small" onClick={confirmDismiss}>Remove</Button>
+              }
+            />
           </div>
         </AlertDialog.Popup>
         </AlertDialog.Portal>
