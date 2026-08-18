@@ -34,7 +34,7 @@ const EMPTY_AFTER_MS = 4000;
  */
 export function Discovery() {
   const { lanServers, rescan } = useLanDiscovery();
-  const { servers, setShowAddServer, markLanServersSeen, switchToServer } =
+  const { servers, setShowAddServer, markLanServersSeen, switchToServer, newLanServers } =
     useServerManagement();
   const { join, joiningHost } = useServerJoin();
 
@@ -51,6 +51,24 @@ export function Discovery() {
   // every render, so a dependency on the array itself would re-run this on
   // every render of the pane.
   const visibleKeys = lanServers.map(lanServerKey).join("|");
+
+  // Which of these were new when we got here.
+  //
+  // Read before the effect below marks them seen, and only ever added to, so a
+  // server keeps its mark for the rest of the visit. Deriving this from
+  // newLanServers during render instead would clear every mark the moment it
+  // appeared, since marking seen is what empties that list.
+  const newKeys = newLanServers.map(lanServerKey).join("|");
+  const [newThisVisit, setNewThisVisit] = useState<ReadonlySet<string>>(new Set());
+  useEffect(() => {
+    if (!newKeys) return;
+    setNewThisVisit((prev) => {
+      const next = new Set(prev);
+      for (const key of newKeys.split("|")) next.add(key);
+      return next.size === prev.size ? prev : next;
+    });
+  }, [newKeys]);
+
   useEffect(() => {
     if (!visibleKeys) return;
     markLanServersSeen(visibleKeys.split("|"));
@@ -158,7 +176,16 @@ export function Discovery() {
         </div>
       )}
 
-      <div className="flex flex-col gap-2">
+      {/* A grid, not a list.
+          
+          Every card used to be full width with the join button shoved right by
+          ml-auto, so on a wide screen it was a name, a few thousand pixels of
+          nothing, and a button. auto-fill with a minmax track means the column
+          count follows the window and the cards keep a sane width. */}
+      <div
+        className="grid gap-3"
+        style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}
+      >
         {lanServers.map((server) => {
           const key = lanServerKey(server);
           const addr = lanServerAddr(server);
@@ -172,6 +199,7 @@ export function Discovery() {
 
           const error = rowErrors[key];
           const isConnectingThis = connecting === key;
+          const isNew = newThisVisit.has(key) && !isMember;
 
           return (
             <Surface key={key}>
@@ -191,8 +219,12 @@ export function Discovery() {
                   />
 
                   <div className="flex flex-col" style={{ minWidth: 0 }}>
-                    <span className="font-bold truncate">
-                      {server.name}
+                    <span className="font-bold truncate flex items-center gap-2">
+                      <span className="truncate">{server.name}</span>
+                      {/* Only for this visit. Arriving here marks everything
+                          seen, so without the visit-scoped set above this would
+                          flash once and vanish before it was read. */}
+                      {isNew && <Chip tone="primary" label="New" />}
                     </span>
                     {/*
                       Address only. The version is deliberately not shown:
@@ -206,7 +238,7 @@ export function Discovery() {
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2 ml-auto">
+                  <div className="flex items-center gap-2 ml-auto shrink-0">
                     {isMember ? (
                       <>
                         <Chip tone="success" label="Joined" />

@@ -142,24 +142,50 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
           >
             <div className="relative">
               <IconButton tone="neutral" size="xsmall"
-                aria-label="Servers on your network"
+                // The badge is aria-hidden, so the count has to be said here
+                // or it is not announced at all.
+                aria-label={
+                  newLanServers.length > 0 && !showDiscovery
+                    ? `Servers on your network, ${newLanServers.length} new`
+                    : "Servers on your network"
+                }
                 onClick={() => setShowDiscovery(!showDiscovery)}
               >
                 <PiBroadcastFill size={16} />
               </IconButton>
 
-              {/* A dot, not a count. Six servers run on this machine alone, so
-                  a number here would sit permanently at six and stop meaning
-                  anything. This says "something turned up since you last
-                  looked", which is the only part worth interrupting for. */}
+              {/* A count, and it is a count of new ones.
+                  
+                  This was a dot, on the reasoning that a number would sit
+                  permanently at six because six servers run on this machine.
+                  That is true of a count of the network; it is not true of
+                  this one. newLanServers is pendingLanServers minus the ones
+                  already seen, so it holds only what has turned up since
+                  Discovery was last open and it empties when you look. */}
               {newLanServers.length > 0 && !showDiscovery && (
-                <div className="absolute" style={{ top: "-2px", right: "-2px", width: 10,
-                    height: 10,
-                    borderRadius: "50%",
+                <div
+                  className="absolute flex items-center justify-center"
+                  aria-hidden
+                  style={{
+                    top: "-4px",
+                    right: "-4px",
+                    minWidth: 16,
+                    height: 16,
+                    // Pill rather than a circle once it reaches two digits.
+                    padding: "0 4px",
+                    borderRadius: 8,
                     backgroundColor: "var(--gryt-accent-9)",
+                    color: "var(--gryt-on-accent)",
                     border: "2px solid var(--gryt-neutral-1)",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    lineHeight: 1,
                     zIndex: 1,
-                    pointerEvents: "none" }} />
+                    pointerEvents: "none",
+                  }}
+                >
+                  {newLanServers.length > 9 ? "9+" : newLanServers.length}
+                </div>
               )}
             </div>
           </Tooltip>
