@@ -114,7 +114,33 @@ export const ServerSidebar = ({
               updateAvailable={updateAvailable}
               onLeave={onLeave}
             />
-            <div style={{ flex: 1, width: "100%", minHeight: 0, display: "flex", flexDirection: "column", overflowY: "auto" }}>
+            {/*
+              Room for the rows to grow into.
+
+              Buttons scale to 1.03 on hover, and authoring only overflowY is
+              not the same as leaving the other axis alone: when one axis is not
+              visible, CSS computes the other from visible to auto. So this was
+              a horizontal scrollport too, and a 240px row grew 3.6px past each
+              edge and was cut off. The first row lost 0.5px off its top for the
+              same reason.
+
+              Padding, and no negative margin to claw the width back. The
+              obvious version of this fix bleeds outward with margin-inline and
+              a calc width, which keeps the rows at their old width, but the
+              motion.div above animates the sidebar open with overflow hidden,
+              so the bleed is clipped by the thing that makes that animation
+              work. The rows are 12px narrower now, sitting in a 6px gutter,
+              and that is the trade.
+            */}
+            <div style={{
+              flex: 1,
+              width: "100%",
+              minHeight: 0,
+              display: "flex",
+              flexDirection: "column",
+              overflowY: "auto",
+              padding: "2px 6px",
+            }}>
               <ChannelList
                 channels={channels}
                 items={sidebarItems}
