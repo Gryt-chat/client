@@ -521,16 +521,20 @@ export function ServerOverviewTab({
                   This will remove the current server icon. You can upload a new one at any time.
                 </AlertDialog.Description>
                 <div className="flex gap-3 mt-4 justify-end">
-                  <AlertDialog.Close render={<span />}>
-                    <Button size="small">Cancel</Button>
-                  </AlertDialog.Close>
-                  <AlertDialog.Close render={<span />}>
-                    <Button size="small"
-                      onClick={() => { clearIcon(); setShowClearIconConfirm(false); }}
-                    >
-                      Clear icon
-                    </Button>
-                  </AlertDialog.Close>
+                  <AlertDialog.Close
+                    render={
+                      <Button size="small">Cancel</Button>
+                    }
+                  />
+                  <AlertDialog.Close
+                    render={
+                      <Button size="small"
+                        onClick={() => { clearIcon(); setShowClearIconConfirm(false); }}
+                      >
+                        Clear icon
+                      </Button>
+                    }
+                  />
                 </div>
               </AlertDialog.Popup>
               </AlertDialog.Portal>

@@ -387,12 +387,16 @@ export const ChatView = memo(({
             This will permanently delete this message. This action cannot be undone.
           </AlertDialog.Description>
           <div className="flex gap-3 mt-4 justify-end">
-            <AlertDialog.Close render={<span />}>
-              <Button tone="neutral" size="small">Cancel</Button>
-            </AlertDialog.Close>
-            <AlertDialog.Close render={<span />}>
-              <Button tone="danger" size="small" onClick={confirmDelete}>Delete</Button>
-            </AlertDialog.Close>
+            <AlertDialog.Close
+              render={
+                <Button tone="neutral" size="small">Cancel</Button>
+              }
+            />
+            <AlertDialog.Close
+              render={
+                <Button tone="danger" size="small" onClick={confirmDelete}>Delete</Button>
+              }
+            />
           </div>
         </AlertDialog.Popup>
         </AlertDialog.Portal>

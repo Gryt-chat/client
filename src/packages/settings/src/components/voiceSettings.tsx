@@ -111,15 +111,17 @@ export function VoiceSettings() {
             </AlertDialog.Description>
 
             <div className="flex gap-3 mt-4 justify-end">
-              <AlertDialog.Close render={<span />}>
-                <Button tone="neutral" size="small"
-                  onClick={() =>
-                    setAlertDialog({ ...alertDialog, open: false })
-                  }
-                >
-                  OK
-                </Button>
-              </AlertDialog.Close>
+              <AlertDialog.Close
+                render={
+                  <Button tone="neutral" size="small"
+                    onClick={() =>
+                      setAlertDialog({ ...alertDialog, open: false })
+                    }
+                  >
+                    OK
+                  </Button>
+                }
+              />
             </div>
           </AlertDialog.Popup>
           </AlertDialog.Portal>

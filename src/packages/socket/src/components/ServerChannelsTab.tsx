@@ -287,14 +287,18 @@ export function ServerChannelsTab({
             This will permanently delete &ldquo;{pendingDeleteChannel?.name || "this channel"}&rdquo; and all associated data. This action cannot be undone.
           </AlertDialog.Description>
           <div className="flex gap-3 mt-4 justify-end">
-            <AlertDialog.Close render={<span />}>
-              <Button size="small">Cancel</Button>
-            </AlertDialog.Close>
-            <AlertDialog.Close render={<span />}>
-              <Button size="small" onClick={() => { if (pendingDeleteId) { del(pendingDeleteId); setPendingDeleteId(null); } }}>
-                Delete
-              </Button>
-            </AlertDialog.Close>
+            <AlertDialog.Close
+              render={
+                <Button size="small">Cancel</Button>
+              }
+            />
+            <AlertDialog.Close
+              render={
+                <Button size="small" onClick={() => { if (pendingDeleteId) { del(pendingDeleteId); setPendingDeleteId(null); } }}>
+                  Delete
+                </Button>
+              }
+            />
           </div>
         </AlertDialog.Popup>
         </AlertDialog.Portal>

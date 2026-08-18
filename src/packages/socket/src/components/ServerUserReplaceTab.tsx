@@ -279,16 +279,20 @@ export function ServerUserReplaceTab({
                   Keycloak account. The old account will lose access and any active sessions will be revoked.
                 </AlertDialog.Description>
                 <div className="flex gap-3 mt-4 justify-end">
-                  <AlertDialog.Close render={<span />}>
-                    <Button size="small">
-                      Cancel
-                    </Button>
-                  </AlertDialog.Close>
-                  <AlertDialog.Close render={<span />}>
-                    <Button size="small" onClick={handleReplace} disabled={submitting}>
-                      Confirm replace
-                    </Button>
-                  </AlertDialog.Close>
+                  <AlertDialog.Close
+                    render={
+                      <Button size="small">
+                        Cancel
+                      </Button>
+                    }
+                  />
+                  <AlertDialog.Close
+                    render={
+                      <Button size="small" onClick={handleReplace} disabled={submitting}>
+                        Confirm replace
+                      </Button>
+                    }
+                  />
                 </div>
               </AlertDialog.Popup>
               </AlertDialog.Portal>

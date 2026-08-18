@@ -140,21 +140,25 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
             use it to sign in anymore.
           </AlertDialog.Description>
           <div className="flex gap-3 mt-4 justify-end">
-            <AlertDialog.Close render={<span />}>
-              <Button size="small">
-                Cancel
-              </Button>
-            </AlertDialog.Close>
-            <AlertDialog.Close render={<span />}>
-              <Button size="small"
-                onClick={() => {
-                  onDelete(credential.id);
-                  setConfirmDelete(false);
-                }}
-              >
-                Remove
-              </Button>
-            </AlertDialog.Close>
+            <AlertDialog.Close
+              render={
+                <Button size="small">
+                  Cancel
+                </Button>
+              }
+            />
+            <AlertDialog.Close
+              render={
+                <Button size="small"
+                  onClick={() => {
+                    onDelete(credential.id);
+                    setConfirmDelete(false);
+                  }}
+                >
+                  Remove
+                </Button>
+              }
+            />
           </div>
         </AlertDialog.Popup>
         </AlertDialog.Portal>

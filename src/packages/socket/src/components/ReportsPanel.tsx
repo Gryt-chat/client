@@ -237,27 +237,31 @@ export function ReportsPanel({
             )}
           </AlertDialog.Description>
           <div className="flex gap-3 mt-4 justify-end">
-            <AlertDialog.Close render={<span />}>
-              <Button tone="neutral" size="small">
-                Cancel
-              </Button>
-            </AlertDialog.Close>
-            <AlertDialog.Close render={<span />}>
-              <Button tone="danger" size="small"
-                onClick={() => {
-                  if (!confirmAction) return;
-                  if (confirmAction.action === "delete_all_and_ban") {
-                    handleDeleteAllAndBan(confirmAction.report);
-                  } else {
-                    handleDelete(confirmAction.report);
-                  }
-                }}
-              >
-                {confirmAction?.action === "delete_all_and_ban"
-                  ? "Delete All & Ban"
-                  : "Delete Message"}
-              </Button>
-            </AlertDialog.Close>
+            <AlertDialog.Close
+              render={
+                <Button tone="neutral" size="small">
+                  Cancel
+                </Button>
+              }
+            />
+            <AlertDialog.Close
+              render={
+                <Button tone="danger" size="small"
+                  onClick={() => {
+                    if (!confirmAction) return;
+                    if (confirmAction.action === "delete_all_and_ban") {
+                      handleDeleteAllAndBan(confirmAction.report);
+                    } else {
+                      handleDelete(confirmAction.report);
+                    }
+                  }}
+                >
+                  {confirmAction?.action === "delete_all_and_ban"
+                    ? "Delete All & Ban"
+                    : "Delete Message"}
+                </Button>
+              }
+            />
           </div>
         </AlertDialog.Popup>
         </AlertDialog.Portal>

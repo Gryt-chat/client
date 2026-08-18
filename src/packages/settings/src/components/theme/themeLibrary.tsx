@@ -226,11 +226,13 @@ function ThemeRow({
                 copy.
               </AlertDialog.Description>
               <div className="mt-4 flex justify-end gap-3">
-                <AlertDialog.Close render={<span />}>
-                  <Button size="small" tone="neutral">
-                    Keep it
-                  </Button>
-                </AlertDialog.Close>
+                <AlertDialog.Close
+                  render={
+                    <Button size="small" tone="neutral">
+                      Keep it
+                    </Button>
+                  }
+                />
                 <Button
                   size="small"
                   tone="danger"

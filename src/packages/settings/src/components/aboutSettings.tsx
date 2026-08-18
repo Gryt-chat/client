@@ -180,16 +180,20 @@ function UpdateControls() {
               : "Gryt will close and reopen to install the latest stable version. That is older than the beta you are on now, so anything added since will be gone until it reaches stable."}
           </AlertDialog.Description>
           <div className="flex gap-3 mt-4 justify-end">
-            <AlertDialog.Close render={<span />}>
-              <Button tone="neutral" size="small">Cancel</Button>
-            </AlertDialog.Close>
-            <AlertDialog.Close render={<span />}>
-              <Button size="small"
-                onClick={confirmChannelSwitch}
-              >
-                {switchingToBeta ? "Turn on beta" : "Turn off beta"}
-              </Button>
-            </AlertDialog.Close>
+            <AlertDialog.Close
+              render={
+                <Button tone="neutral" size="small">Cancel</Button>
+              }
+            />
+            <AlertDialog.Close
+              render={
+                <Button size="small"
+                  onClick={confirmChannelSwitch}
+                >
+                  {switchingToBeta ? "Turn on beta" : "Turn off beta"}
+                </Button>
+              }
+            />
           </div>
         </AlertDialog.Popup>
         </AlertDialog.Portal>

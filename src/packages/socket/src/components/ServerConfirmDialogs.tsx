@@ -100,12 +100,16 @@ export const ServerConfirmDialogs = ({
             : "This will remove this item from the sidebar. This action cannot be undone."}
         </AlertDialog.Description>
         <div className="flex gap-3 mt-4 justify-end">
-          <AlertDialog.Close render={<span />}>
-            <Button size="small">Cancel</Button>
-          </AlertDialog.Close>
-          <AlertDialog.Close render={<span />}>
-            <Button size="small" onClick={confirmDelete}>Delete</Button>
-          </AlertDialog.Close>
+          <AlertDialog.Close
+            render={
+              <Button size="small">Cancel</Button>
+            }
+          />
+          <AlertDialog.Close
+            render={
+              <Button size="small" onClick={confirmDelete}>Delete</Button>
+            }
+          />
         </div>
       </AlertDialog.Popup>
       </AlertDialog.Portal>
@@ -120,12 +124,16 @@ export const ServerConfirmDialogs = ({
           This will disconnect {pendingDisconnectUser?.nickname} from the voice channel.
         </AlertDialog.Description>
         <div className="flex gap-3 mt-4 justify-end">
-          <AlertDialog.Close render={<span />}>
-            <Button size="small">Cancel</Button>
-          </AlertDialog.Close>
-          <AlertDialog.Close render={<span />}>
-            <Button size="small" onClick={() => { if (pendingDisconnectUser) { onDisconnectUser(pendingDisconnectUser.id); setPendingDisconnectUser(null); } }}>Disconnect</Button>
-          </AlertDialog.Close>
+          <AlertDialog.Close
+            render={
+              <Button size="small">Cancel</Button>
+            }
+          />
+          <AlertDialog.Close
+            render={
+              <Button size="small" onClick={() => { if (pendingDisconnectUser) { onDisconnectUser(pendingDisconnectUser.id); setPendingDisconnectUser(null); } }}>Disconnect</Button>
+            }
+          />
         </div>
       </AlertDialog.Popup>
       </AlertDialog.Portal>
@@ -149,12 +157,16 @@ export const ServerConfirmDialogs = ({
           />
         </div>
         <div className="flex gap-3 mt-4 justify-end">
-          <AlertDialog.Close render={<span />}>
-            <Button size="small">Cancel</Button>
-          </AlertDialog.Close>
-          <AlertDialog.Close render={<span />}>
-            <Button size="small" onClick={() => { if (pendingKickUser) { onKickUser(pendingKickUser.id, kickReason); setPendingKickUser(null); } }}>Kick</Button>
-          </AlertDialog.Close>
+          <AlertDialog.Close
+            render={
+              <Button size="small">Cancel</Button>
+            }
+          />
+          <AlertDialog.Close
+            render={
+              <Button size="small" onClick={() => { if (pendingKickUser) { onKickUser(pendingKickUser.id, kickReason); setPendingKickUser(null); } }}>Kick</Button>
+            }
+          />
         </div>
       </AlertDialog.Popup>
       </AlertDialog.Portal>
@@ -225,21 +237,25 @@ export const ServerConfirmDialogs = ({
           </div>
         )}
         <div className="flex gap-3 mt-4 justify-end">
-          <AlertDialog.Close render={<span />}>
-            <Button size="small">Cancel</Button>
-          </AlertDialog.Close>
-          <AlertDialog.Close render={<span />}>
-            <Button size="small"
-              onClick={() => {
-                if (!pendingBanUser) return;
-                const minutes = BAN_DURATIONS.find((d) => d.value === banDuration)?.minutes ?? null;
-                onBanUser(pendingBanUser.id, banReason, minutes, banDeleteContent, banRevokeInvite);
-                setPendingBanUser(null);
-              }}
-            >
-              Ban
-            </Button>
-          </AlertDialog.Close>
+          <AlertDialog.Close
+            render={
+              <Button size="small">Cancel</Button>
+            }
+          />
+          <AlertDialog.Close
+            render={
+              <Button size="small"
+                onClick={() => {
+                  if (!pendingBanUser) return;
+                  const minutes = BAN_DURATIONS.find((d) => d.value === banDuration)?.minutes ?? null;
+                  onBanUser(pendingBanUser.id, banReason, minutes, banDeleteContent, banRevokeInvite);
+                  setPendingBanUser(null);
+                }}
+              >
+                Ban
+              </Button>
+            }
+          />
         </div>
       </AlertDialog.Popup>
       </AlertDialog.Portal>

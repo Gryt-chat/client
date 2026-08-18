@@ -196,12 +196,16 @@ function ProfileEditor({
                 Your avatar will be removed{serverLabel ? ` from ${serverLabel}` : ""}. This action cannot be undone.
               </AlertDialog.Description>
               <div className="flex gap-3 mt-4 justify-end">
-                <AlertDialog.Close render={<span />}>
-                  <Button size="small">Cancel</Button>
-                </AlertDialog.Close>
-                <AlertDialog.Close render={<span />}>
-                  <Button size="small" onClick={() => { onRemoveAvatar(); setShowRemoveConfirm(false); }}>Remove</Button>
-                </AlertDialog.Close>
+                <AlertDialog.Close
+                  render={
+                    <Button size="small">Cancel</Button>
+                  }
+                />
+                <AlertDialog.Close
+                  render={
+                    <Button size="small" onClick={() => { onRemoveAvatar(); setShowRemoveConfirm(false); }}>Remove</Button>
+                  }
+                />
               </div>
             </AlertDialog.Popup>
             </AlertDialog.Portal>

@@ -361,11 +361,13 @@ function HostedServerCard({
               </div>
 
               <div className="flex gap-3 mt-4 justify-end">
-                <AlertDialog.Close render={<span />}>
-                  <Button size="small">
-                    Cancel
-                  </Button>
-                </AlertDialog.Close>
+                <AlertDialog.Close
+                  render={
+                    <Button size="small">
+                      Cancel
+                    </Button>
+                  }
+                />
                 <Button size="small"
                   disabled={typedName.trim() !== name}
                   onClick={() => {
