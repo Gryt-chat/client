@@ -1,5 +1,5 @@
 import { Chip, IconButton, Menu, Surface, Tooltip } from "@gryt/ui";
-import { PiDotsThreeVerticalBold, PiPushPinFill } from "react-icons/pi";
+import { PiDotsThreeVerticalBold, PiPushPinFill, PiPushPinSlashFill } from "react-icons/pi";
 
 export const ServerHeader = ({
   serverName,
@@ -39,7 +39,7 @@ export const ServerHeader = ({
                 onClick={onTogglePinned}
                 aria-label={pinned ? "Unpin sidebar" : "Pin sidebar"}
               >
-                <PiPushPinFill size={14} />
+                {pinned ? <PiPushPinFill size={14} /> : <PiPushPinSlashFill size={14} />}
               </IconButton>
             </Tooltip>
           )}
