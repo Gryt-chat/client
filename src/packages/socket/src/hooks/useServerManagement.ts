@@ -112,12 +112,13 @@ function useServerManagementHook(): ServerManagement {
   }, [lanServers, servers, dismissedLanServers]);
 
   /**
-   * What the badge on the rail is for.
+   * What the badge on the rail counts.
    *
-   * Deliberately not a count of what is on the network. Six servers run on this
-   * machine alone, so a count sits permanently at six and stops carrying any
-   * information at all. This is the ones that have turned up since Discovery
-   * was last open, which is the only thing worth interrupting somebody about.
+   * Not what is on the network: six servers run on this machine alone, and a
+   * count of those would sit permanently at six and carry no information. This
+   * is the ones that have turned up since Discovery was last open, which does
+   * empty when somebody looks, so it is worth showing as a number rather than
+   * a dot.
    */
   const newLanServers = useMemo(
     () => pendingLanServers.filter((s) => !seenLanServers.includes(lanServerKey(s))),
