@@ -402,6 +402,24 @@ function HostedServerCard({
             )}
             . Gryt adds usable addresses from this machine automatically.
           </span>
+          {/* Where the symptom is, next to the thing that causes it.
+              
+              A wrong address here does not look like a network fault, it looks
+              like broken audio: chat goes over the address people joined on and
+              keeps working, while media goes direct to whatever is advertised
+              here. Nothing else in the app connects those two facts. GRYT-297.
+              
+              The app deliberately does not claim these addresses work. It
+              cannot tell from in here — a machine behind NAT may or may not
+              reach its own public IP depending on the router, and neither
+              answer describes what somebody outside sees. */}
+          <span className="text-xs text-gryt-muted">
+            If people can chat but nobody can hear anyone, this is the first
+            thing to check: voice connects directly to these addresses, so an
+            address that is wrong, or a UDP port that is not forwarded, breaks
+            audio and nothing else. It can only be tested from outside your
+            network.
+          </span>
           <div className="flex gap-2 items-end">
             <label className="flex flex-col gap-1 flex-1">
               <span className="text-xs">Public IPs or hostnames</span>
