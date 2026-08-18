@@ -29,6 +29,44 @@ type IceCandidateStatsLike = RTCStats & {
   networkType?: string;
 };
 
+/**
+ * The addresses the server told us to send media to, when none of them worked.
+ *
+ * Remote ICE candidates are what ICE_ADVERTISE_IP and the SFU's port config
+ * actually produce on the wire, so if the connection never came up these are
+ * the addresses that could not be reached. Naming them turns "voice failed"
+ * into something a host can act on, which is the whole difficulty with this
+ * fault: signalling uses the address people joined on and keeps working, so
+ * the symptom looks like broken audio rather than a bad address. GRYT-297.
+ *
+ * Returns null when there is nothing useful to say, and the caller then leaves
+ * the existing generic message alone.
+ */
+export async function describeUnreachableRemote(
+  pc: RTCPeerConnection,
+): Promise<string | null> {
+  try {
+    const report = await pc.getStats();
+    const seen = new Set<string>();
+
+    report.forEach((stat) => {
+      if (stat.type !== "remote-candidate") return;
+      const c = stat as IceCandidateStatsLike;
+      const address = c.address ?? c.ip;
+      if (!address) return;
+      // relay candidates are a TURN server's address, not the host's, so they
+      // say nothing about whether the host forwarded anything.
+      if (c.candidateType === "relay") return;
+      seen.add(`${address}:${c.port ?? 0}/${(c.protocol ?? "udp").toUpperCase()}`);
+    });
+
+    if (seen.size === 0) return null;
+    return [...seen].sort().join(", ");
+  } catch {
+    return null;
+  }
+}
+
 async function dumpIceSelectedPair(pc: RTCPeerConnection, label: string) {
   try {
     const report = await pc.getStats();
@@ -492,6 +530,23 @@ export function setupPeerConnection(
               ? "Connection lost"
               : "WebRTC connection failed",
           }));
+
+          // Only when it never connected. A drop after a working call is a
+          // network event, not a misconfigured address, and blaming the
+          // address there would send a host chasing the wrong thing.
+          if (!wasConnected) {
+            describeUnreachableRemote(pc)
+              .then((addresses) => {
+                if (!addresses) return;
+                setConnectionState((prev) =>
+                  prev.state === SFUConnectionState.FAILED
+                    ? { ...prev, error: `No media path to ${addresses}` }
+                    : prev,
+                );
+              })
+              .catch(() => undefined);
+          }
+
           performCleanup?.(false).catch(() => undefined);
         }
         break;
