@@ -11,6 +11,7 @@ import { useVideoFraming } from "@/socket/src/hooks/useVideoFraming";
 import { useSFU } from "@/webRTC";
 
 import { isElectron } from "../../../../lib/electron";
+import { useVoiceSounds } from "../adapters/useVoiceSounds";
 import { voiceLog } from "../hooks/voiceLogger";
 import { attachEncodedTransform, type EncodedTransformHandle, isEncodedTransformSupported } from "../utils/encodedTransform";
 import { CameraPreviewModal } from "./CameraPreviewModal";
@@ -57,6 +58,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
     getPeerConnection,
     getScreenVideoSender,
   } = useSFU();
+  const { playDisconnect } = useVoiceSounds();
   const { cameraStream, cameraEnabled, setCameraEnabled } = useCamera();
   const { screenVideoStream, screenAudioStream, screenShareActive, nativeAudioActive, nativeScreenCaptureAvailable, nativeEncodedCodec, subscribeEncodedFrames, startScreenShare, stopScreenShare } = useScreenShare();
   const { sockets } = useSockets();
@@ -364,7 +366,8 @@ export function Controls({ onDisconnect }: ControlsProps) {
   function handleDisconnect() {
     // Camera and screen share are stopped inside disconnect(), so every way of
     // leaving gets it rather than just the ones with a button. GRYT-305.
-    disconnect(true, onDisconnect);
+    playDisconnect();
+    disconnect(onDisconnect);
   }
 
   return (
