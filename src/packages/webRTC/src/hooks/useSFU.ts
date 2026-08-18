@@ -620,7 +620,29 @@ function useSfuHook(): SFUInterface {
 
     if (reconnectAttemptsRef.current >= MAX_RECONNECT_ATTEMPTS) {
       console.warn("[Voice Recovery] Max reconnect attempts reached — giving up");
-      toast.error("Voice connection failed after multiple attempts. Please try again.", { id: "voice-reconnect" });
+
+      // Say which addresses failed, when we know them.
+      //
+      // setupPeerConnection puts the unreachable remote candidates in `error`
+      // when a connection never came up at all. Those are what the server's
+      // ICE_ADVERTISE_IP produced, so for a host this is the difference
+      // between "voice is broken" and "the address I advertise is wrong or its
+      // UDP port is closed". Chat carries on working throughout, which is why
+      // nobody suspects the address. GRYT-297.
+      // Through the ref, not the closure. The diagnosis is written
+      // asynchronously after the FAILED state lands, and this effect is keyed
+      // on state rather than error, so the captured value can be a retry old.
+      const failure = connectionStateRef.current.error;
+      const mediaPath = failure?.startsWith("No media path to ")
+        ? failure.slice("No media path to ".length)
+        : null;
+
+      toast.error(
+        mediaPath
+          ? `Voice failed: no media path to ${mediaPath}. If you host this server, check the advertised address and that its UDP port is forwarded.`
+          : "Voice connection failed after multiple attempts. Please try again.",
+        { id: "voice-reconnect", duration: mediaPath ? 12_000 : undefined },
+      );
       setConnectionState({
         state: SFUConnectionState.DISCONNECTED,
         roomId: null,
