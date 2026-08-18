@@ -83,6 +83,9 @@ export const MemberSidebarPanel = ({
       <div
         style={{
           width: sidebarWidthPx,
+          // See the note in ServerSidebar: this holds its width so the parent's
+          // overflow hidden clips it, rather than flex compressing it.
+          flexShrink: 0,
           height: "100%",
           display: "flex",
           justifyContent: "flex-end",

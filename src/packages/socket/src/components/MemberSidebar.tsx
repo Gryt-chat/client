@@ -1,5 +1,5 @@
 import { Avatar, IconButton, PreviewCard, Tooltip } from "@gryt/ui";
-import { PiPushPinFill } from "react-icons/pi";
+import { PiPushPinFill, PiPushPinSlashFill } from "react-icons/pi";
 
 import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 
@@ -200,7 +200,7 @@ export const MemberSidebar = ({
                   onClick={onTogglePinned}
                   aria-label={pinned ? "Unpin sidebar" : "Pin sidebar"}
                 >
-                  <PiPushPinFill size={14} />
+                  {pinned ? <PiPushPinFill size={14} /> : <PiPushPinSlashFill size={14} />}
                 </IconButton>
               </Tooltip>
             )}

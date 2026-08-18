@@ -96,6 +96,12 @@ export const ServerSidebar = ({
         aria-hidden={!sidebarOpen}
         style={{
           width: sidebarWidthPx,
+          // Hold this width while the parent animates to 0. Without it the
+          // flex default lets this shrink with its container, so closing the
+          // sidebar reflows and wraps everything on the way out instead of
+          // sliding it behind the edge. Measured: 240 -> 160 -> 104 as the
+          // container narrows, 104 being the min-content width of the text.
+          flexShrink: 0,
           height: "100%",
           display: "flex",
           pointerEvents: sidebarOpen ? "auto" : "none",
