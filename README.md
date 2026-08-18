@@ -1,8 +1,8 @@
 <div align="center">
   <img src="https://raw.githubusercontent.com/Gryt-chat/client/main/public/logo.svg" width="80" alt="Gryt logo" />
-  <h1>Gryt Web Client</h1>
-  <p>React web client for the <a href="https://github.com/Gryt-chat/gryt">Gryt</a> voice chat platform.<br />Built with TypeScript, Vite, and Radix UI.</p>
-  <p>A hosted version is available at <strong><a href="https://app.gryt.chat">app.gryt.chat</a></strong> — try Gryt without downloading anything.</p>
+  <h1>Gryt Client</h1>
+  <p>The Gryt client, for the web and the desktop: one React app, shipped as a browser build and as an Electron app.<br />Built with TypeScript, Vite and <a href="https://github.com/Gryt-chat/ui">@gryt/ui</a>.</p>
+  <p>Hosted at <strong><a href="https://app.gryt.chat">app.gryt.chat</a></strong>, or download the desktop app from <a href="https://github.com/Gryt-chat/gryt/releases/latest">Releases</a>.</p>
 </div>
 
 <br />
@@ -26,7 +26,7 @@ The entrypoint injects runtime configuration via environment variables:
 
 Browse tags at [ghcr.io/gryt-chat/client](https://github.com/Gryt-chat/client/pkgs/container/client).
 
-## Quick Start
+## Quick start
 
 ```bash
 yarn install
@@ -41,6 +41,16 @@ Open **http://localhost:3666**.
 yarn build
 yarn preview
 ```
+
+## Desktop
+
+The same source builds the Electron app. `electron/` holds the main process,
+which is where the tray, auto-updates, global shortcuts, native screen and audio
+capture, and the embedded server live. `electron-builder.yml` configures the
+AppImage, deb, snap, Windows and macOS builds.
+
+Releases are cut from the [main Gryt repository](https://github.com/Gryt-chat/gryt/releases/latest),
+not from here.
 
 ## Documentation
 
