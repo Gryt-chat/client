@@ -12,6 +12,7 @@ import { useServerSettings } from "@/settings/src/hooks/useServerSettings";
 import { Server, Servers } from "@/settings/src/types/server";
 
 import { type LanServer } from "../../../../lib/electron";
+import { useSockets } from "./useSockets";
 
 interface ServerManagement {
   servers: Servers;
@@ -70,6 +71,44 @@ function useServerManagementHook(): ServerManagement {
   } = useServerSettings();
 
   const { lanServers } = useLanDiscovery();
+  const { serverDetailsList } = useSockets();
+
+  // Write down a server's id once we are actually talking to it.
+  //
+  // addServer already refuses to add a server it recognises by id, so the
+  // second entry only appears when the id was unknown at the time — the /info
+  // fetch did not land, or it was typed in by address and never fetched. The
+  // id was then never learned at all, because nothing wrote it after the fact,
+  // so the dedupe could not fire on any later attempt either.
+  //
+  // The socket reports it on every connection, so take it from there. One
+  // server reached two ways — 127.0.0.1:port from My servers and
+  // <machine>.local:port from Discovery — stops being addable twice as soon as
+  // either address has been connected to once. GRYT-224.
+  useEffect(() => {
+    const learned: Record<string, string> = {};
+
+    for (const [host, details] of Object.entries(serverDetailsList)) {
+      const id = details?.server_info?.server_id;
+      if (!id) continue;
+      const stored = servers[host];
+      if (!stored || stored.serverId === id) continue;
+      learned[host] = id;
+    }
+
+    if (Object.keys(learned).length === 0) return;
+
+    // setServers takes a value, not an updater, so this writes the map built
+    // from the `servers` this effect ran against. It is guarded on `learned`
+    // being non-empty above and on the id differing, so a repeat render with
+    // the same data does not write again and cannot loop.
+    setServers({ ...servers, ...Object.fromEntries(
+      Object.entries(learned).map(([host, id]) => [
+        host,
+        { ...servers[host], serverId: id },
+      ]),
+    ) });
+  }, [serverDetailsList, servers, setServers]);
 
   const [showAddServer, setShowAddServer] = useState(false);
   const [showRemoveServer, setShowRemoveServer] = useState<string | null>(null);
