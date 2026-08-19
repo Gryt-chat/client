@@ -1,8 +1,8 @@
 import { Button, Chip, Divider, Select } from "@gryt/ui";
+import { CAMERA_FPS_OPTIONS, type CameraQuality, QUALITY_CONSTRAINTS, useCamera } from "@gryt/voice";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PiArrowsClockwiseFill } from "react-icons/pi";
 
-import { CAMERA_FPS_OPTIONS, type CameraQuality, QUALITY_CONSTRAINTS, useCamera } from "@/audio";
 import { useSettings } from "@/settings";
 
 import { SettingsContainer, ToggleSetting } from "./settingsComponents";

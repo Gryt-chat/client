@@ -1,11 +1,11 @@
-import { useCamera, useScreenShare } from "@/audio";
-import { useSFU } from "@/webRTC";
-
+import { useCamera, useScreenShare } from "@gryt/voice";
+import { useSFU } from "@gryt/voice";
 import {
   type InboundVideoStats,
   type OutboundVideoStats,
   useVideoStats,
-} from "../packages/webRTC/src/hooks/useVideoStats";
+} from "@gryt/voice";
+
 import { DebugOverlay } from "./debugOverlay";
 
 interface VideoDebugOverlayProps {

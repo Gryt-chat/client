@@ -1,6 +1,5 @@
+import { getVolumeDb, volumeToLevel } from "@gryt/voice";
 import { useEffect, useRef } from "react";
-
-import { getVolumeDb, volumeToLevel } from "@/audio";
 
 /** How much bigger than the avatar the halo gets at full volume. */
 const HALO_MAX_SCALE = 1.32;

@@ -1,10 +1,10 @@
 import { IconButton } from "@gryt/ui";
+import type { StreamSources } from "@gryt/voice";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useState } from "react";
 import { PiList, PiPhoneCallFill, PiUsersFill } from "react-icons/pi";
 
 import type { Channel, SidebarItem } from "@/settings/src/types/server";
-import type { StreamSources } from "@/webRTC/src/types/SFU";
 
 import type { PeerLatencyStats } from "../hooks/usePeerLatency";
 import type { Client } from "../types/clients";

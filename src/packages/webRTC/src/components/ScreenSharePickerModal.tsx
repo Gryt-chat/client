@@ -1,9 +1,9 @@
 import { Button, Checkbox, Chip, Dialog, IconButton, Select, Tooltip } from "@gryt/ui";
+import type { ScreenShareFps, ScreenShareQuality } from "@gryt/voice";
+import { estimateBitrate, EXPERIMENTAL_FPS_OPTIONS, STANDARD_FPS_OPTIONS } from "@gryt/voice";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PiCaretDownFill, PiCaretUpFill, PiMonitorFill, PiScreencastFill, PiSquaresFourFill, PiX } from "react-icons/pi";
 
-import type { ScreenShareFps, ScreenShareQuality } from "@/audio";
-import { estimateBitrate, EXPERIMENTAL_FPS_OPTIONS, STANDARD_FPS_OPTIONS } from "@/audio";
 import type { ScalabilityMode, ScreenShareCodec } from "@/settings";
 
 import { type DesktopSource, isElectron } from "../../../../lib/electron";

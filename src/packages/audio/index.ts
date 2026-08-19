@@ -1,14 +1,8 @@
-export * from "./src/components/visualizer";
-export * from "./src/hooks/useAudioContext";
-export * from "./src/hooks/useCamera";
-export * from "./src/hooks/useDeviceEnumeration";
-export * from "./src/hooks/useGlobalHotkeys";
-export * from "./src/hooks/useHandles";
-export * from "./src/hooks/useMicrophone";
-export * from "./src/hooks/useNativeScreenCapture";
-export * from "./src/hooks/useScreenShare";
-export * from "./src/hooks/useSpeakers";
-export type { LatencyBreakdown } from "./src/hooks/useVoiceLatency";
-export { useVoiceLatency } from "./src/hooks/useVoiceLatency";
-export * from "./src/utils/mediaDevices";
-export * from "./src/utils/speaking";
+/**
+ * What is left of the client's audio package.
+ *
+ * Everything else moved to `@gryt/voice` and call sites now import it from
+ * there directly. This is keyboard handling that writes mute and deafen, which
+ * has no audio graph in it and no equivalent on a phone, so it stayed.
+ */
+export { useGlobalHotkeys } from "./src/hooks/useGlobalHotkeys";

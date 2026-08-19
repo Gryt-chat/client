@@ -1,17 +1,18 @@
 import { IconButton, Tooltip } from "@gryt/ui";
+import { estimateBitrate, getIsBrowserSupported, type ScreenShareQuality, useCamera, useScreenShare } from "@gryt/voice";
+import { useSFU } from "@gryt/voice";
+import { voiceLog } from "@gryt/voice";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { PiScanSmileyFill } from "react-icons/pi";
 import { PiMicrophoneFill, PiMicrophoneSlashFill, PiMonitorArrowUpFill, PiPhoneDisconnectFill, PiScreencastFill, PiSpeakerHighFill, PiSpeakerSlashFill, PiVideoCameraFill, PiVideoCameraSlashFill } from "react-icons/pi";
 
-import { estimateBitrate, getIsBrowserSupported, type ScreenShareQuality,useCamera, useScreenShare } from "@/audio";
 import { useSettings } from "@/settings";
 import { useSockets } from "@/socket";
 import { useVideoFraming } from "@/socket/src/hooks/useVideoFraming";
-import { useSFU } from "@/webRTC";
 
 import { isElectron } from "../../../../lib/electron";
-import { voiceLog } from "../hooks/voiceLogger";
+import { useVoiceSounds } from "../adapters/useVoiceSounds";
 import { attachEncodedTransform, type EncodedTransformHandle, isEncodedTransformSupported } from "../utils/encodedTransform";
 import { CameraPreviewModal } from "./CameraPreviewModal";
 import { ScreenSharePickerModal } from "./ScreenSharePickerModal";
@@ -57,6 +58,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
     getPeerConnection,
     getScreenVideoSender,
   } = useSFU();
+  const { playDisconnect } = useVoiceSounds();
   const { cameraStream, cameraEnabled, setCameraEnabled } = useCamera();
   const { screenVideoStream, screenAudioStream, screenShareActive, nativeAudioActive, nativeScreenCaptureAvailable, nativeEncodedCodec, subscribeEncodedFrames, startScreenShare, stopScreenShare } = useScreenShare();
   const { sockets } = useSockets();
@@ -364,7 +366,8 @@ export function Controls({ onDisconnect }: ControlsProps) {
   function handleDisconnect() {
     // Camera and screen share are stopped inside disconnect(), so every way of
     // leaving gets it rather than just the ones with a button. GRYT-305.
-    disconnect(true, onDisconnect);
+    playDisconnect();
+    disconnect(onDisconnect);
   }
 
   return (

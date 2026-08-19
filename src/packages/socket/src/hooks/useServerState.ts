@@ -1,12 +1,12 @@
+import { isSpeaking, useMicrophone, useSpeakers } from "@gryt/voice";
+import { useSFU } from "@gryt/voice";
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
 
-import { isSpeaking, useMicrophone, useSpeakers } from "@/audio";
 import { getServerAccessToken, markChannelRead } from "@/common";
 import { sliderToOutputGain } from "@/lib/audioVolume";
 import { useSettings } from "@/settings";
-import { useSFU } from "@/webRTC";
 
 import { useServerManagement } from "./useServerManagement";
 import { VOICE_SIDEBAR_WIDTH } from "./useServerViewLayout";

@@ -1,12 +1,12 @@
 import { Button, ContextMenu, Tooltip } from "@gryt/ui";
+import type { StreamSources } from "@gryt/voice";
+import { useMicrophone } from "@gryt/voice";
 import { AnimatePresence, LayoutGroup, motion, Reorder } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PiChatCircleFill, PiGameControllerFill, PiGaugeFill, PiKeyboardFill, PiSpeakerHighFill } from "react-icons/pi";
 
-import { useMicrophone } from "@/audio";
 import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 import { Channel, SidebarItem } from "@/settings/src/types/server";
-import type { StreamSources } from "@/webRTC";
 
 import type { Client } from "../types/clients";
 import { ConnectedUser } from "./connectedUser";

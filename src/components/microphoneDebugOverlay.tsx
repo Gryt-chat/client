@@ -1,10 +1,10 @@
+import { useMicrophone, useVoiceLatency } from "@gryt/voice";
+import { useDeviceEnumeration } from "@gryt/voice";
 import { useEffect, useState } from "react";
 
-import { useMicrophone, useVoiceLatency } from "@/audio";
 import { useSettings } from "@/settings";
 import { useServerManagement,useSockets } from "@/socket";
 
-import { useDeviceEnumeration } from "../packages/audio/src/hooks/useDeviceEnumeration";
 import { DebugOverlay } from "./debugOverlay";
 
 interface MicrophoneDebugOverlayProps {

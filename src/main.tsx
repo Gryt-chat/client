@@ -16,6 +16,7 @@ import {
   useTheme,
   useZoomShortcuts,
 } from "@/common";
+import { VoiceProvider } from "@/webRTC";
 
 import { App } from "./App.tsx";
 import { BrowserBanner } from "./components/browserBanner";
@@ -135,7 +136,14 @@ initGlobalStorage().then(() => {
       {/* Runs every singleton hook body, once, inside this tree. Must sit above
           ThemedApp, which consumes several of them. */}
       <SingletonHooks />
-      <ThemedApp />
+      {/* Supplies @gryt/voice with the settings, the connection target and the
+          Electron host, and runs that package's singleton hooks — which are a
+          separate registry from the one above. Sits below <SingletonHooks />
+          because it reads useSockets and useServerManagement, which are the
+          client's own singletons. */}
+      <VoiceProvider>
+        <ThemedApp />
+      </VoiceProvider>
     </React.StrictMode>,
   );
 });

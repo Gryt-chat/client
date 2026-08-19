@@ -1,7 +1,6 @@
 import { Chip } from "@gryt/ui";
-
-import type { LatencyBreakdown } from "@/audio";
-import { useVoiceLatency } from "@/audio";
+import type { LatencyBreakdown } from "@gryt/voice";
+import { useVoiceLatency } from "@gryt/voice";
 
 function ms(value: number | null): string {
   if (value === null) return "—";

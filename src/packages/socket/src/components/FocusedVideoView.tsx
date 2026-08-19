@@ -1,9 +1,9 @@
 import { Slider } from "@gryt/ui";
+import type { StreamSources } from "@gryt/voice";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PiArrowLineLeftFill, PiArrowSquareOutFill, PiCornersInFill, PiCornersOutFill, PiSpeakerHighFill, PiSpeakerSlashFill } from "react-icons/pi";
 
 import { gainToSlider, sliderToGain } from "@/lib/audioVolume";
-import type { StreamSources } from "@/webRTC/src/types/SFU";
 
 const HIDE_DELAY_MS = 2500;
 

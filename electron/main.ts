@@ -2010,6 +2010,24 @@ if (!gotSingleInstanceLock) {
   app
     .whenReady()
     .then(async () => {
+      // macOS will not show the microphone or camera prompt for getUserMedia
+      // alone — an Electron app has to ask. Without this the renderer gets
+      // NotAllowedError forever and enumerateDevices returns nothing, which
+      // reads like broken audio rather than a missing permission.
+      //
+      // Safe to call every launch: once a decision is recorded, it resolves
+      // with that decision instead of prompting again.
+      if (process.platform === "darwin") {
+        for (const kind of ["microphone", "camera"] as const) {
+          try {
+            const granted = await systemPreferences.askForMediaAccess(kind);
+            startupLog(`${kind} access: ${granted ? "granted" : "denied"}`);
+          } catch (error) {
+            startupLog(`${kind} access request failed: ${error}`);
+          }
+        }
+      }
+
       try {
         await prepareEmbeddedServerRuntime();
         startupLog(

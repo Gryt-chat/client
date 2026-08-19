@@ -1,11 +1,11 @@
 import { Avatar, Tooltip } from "@gryt/ui";
+import type { StreamSources } from "@gryt/voice";
+import { useMicrophone } from "@gryt/voice";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { PiMicrophoneSlashFill, PiScreencastFill, PiSpeakerSlashFill, PiVideoCameraFill } from "react-icons/pi";
 
-import { useMicrophone } from "@/audio";
 import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
-import type { StreamSources } from "@/webRTC";
 
 import { toObjectPosition, useVideoFraming } from "../hooks/useVideoFraming";
 import type { Client } from "../types/clients";

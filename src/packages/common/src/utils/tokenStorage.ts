@@ -53,7 +53,6 @@ export function getStoredAccessToken(key: string): string | null {
   } else {
     result = readFrom(localStorage, key) ?? readFrom(sessionStorage, key);
   }
-  console.log("[TokenStorage] getStoredAccessToken:", key, "mode:", mode, "found:", result !== null, result ? `(${result.length} chars)` : "");
   return result;
 }
 
