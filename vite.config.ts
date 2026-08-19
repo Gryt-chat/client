@@ -47,6 +47,19 @@ const isElectron = !!process.env.ELECTRON;
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  optimizeDeps: {
+    // @gryt/voice constructs its RNNoise worker with
+    // new URL("./rnnoiseWorker.js", import.meta.url).
+    //
+    // Pre-bundling rewrites the package into node_modules/.vite/deps, and that
+    // URL then resolves relative to the bundle rather than to the package —
+    // where no worker file exists. The failure is quiet: "Failed to initialize
+    // RNNoise processor", and voice keeps working without noise suppression.
+    //
+    // Excluding it means Vite serves the package's own files, so import.meta.url
+    // points at dist/audio/processors/ where the worker actually is.
+    exclude: ["@gryt/voice"],
+  },
   plugins: [
     react(),
     tailwindcss(),
