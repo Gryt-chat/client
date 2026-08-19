@@ -1,5 +1,6 @@
 import { SFUConnectionState, useSFU } from "@gryt/voice";
 import { useEffect, useRef } from "react";
+import toast from "react-hot-toast";
 
 import { useServerManagement } from "@/socket";
 
@@ -18,7 +19,13 @@ import { useVoiceSounds } from "./useVoiceSounds";
  * consumes `useSFU`.
  */
 export function useVoiceLifecycle() {
-  const { connectionState, currentServerConnected, isConnected, disconnect } = useSFU();
+  const {
+    connectionError,
+    connectionState,
+    currentServerConnected,
+    isConnected,
+    disconnect,
+  } = useSFU();
   const { servers, currentlyViewingServer } = useServerManagement();
   const { playConnect } = useVoiceSounds();
 
@@ -32,6 +39,18 @@ export function useVoiceLifecycle() {
     if (nowConnected && !wasConnected.current) playConnect();
     wasConnected.current = nowConnected;
   }, [connectionState, playConnect]);
+
+  // Telling somebody the call dropped, which the engine deliberately does not do
+  // itself. It reports that it gave up; whether that is worth interrupting
+  // anybody is the app's call, and the answer here is yes — a call ending on its
+  // own with no explanation is worse than a toast.
+  useEffect(() => {
+    if (connectionError !== "reconnect-failed") return;
+    toast.error(
+      "Voice connection failed after multiple attempts. Please try again.",
+      { id: "voice-reconnect" },
+    );
+  }, [connectionError]);
 
   // Leaving a server while in one of its voice channels should end the call.
   // This reads the whole server map to notice the one we are on has gone, which
