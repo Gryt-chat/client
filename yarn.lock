@@ -552,10 +552,10 @@
     clsx "^2.1.1"
     tailwind-merge "^3.4.0"
 
-"@gryt/voice@0.1.0-beta.8":
-  version "0.1.0-beta.8"
-  resolved "https://registry.yarnpkg.com/@gryt/voice/-/voice-0.1.0-beta.8.tgz#6c0317c05512d6981457a904b8d440b96a0a70ee"
-  integrity sha512-LLzifMRi7xOWIuN9jfAlrqZg2I2n9dy6uqvER6Mg/UWrdAoJoZwaic4/NV5VIgBzp5GOUQS1USp9U9eMVgueTw==
+"@gryt/voice@0.1.0":
+  version "0.1.0"
+  resolved "https://registry.yarnpkg.com/@gryt/voice/-/voice-0.1.0.tgz#52647348ffd275efaf079f001904b92a47e99391"
+  integrity sha512-Q7SS393ndYKGP27kYWMM1wbnrdNTUm9XXZpm3ls3olsLT4r0DNBytKE5gqIVB56Nuv/i98+6W4v9+ylXK2XJ7w==
 
 "@humanwhocodes/config-array@^0.13.0":
   version "0.13.0"
