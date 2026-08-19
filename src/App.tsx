@@ -1,3 +1,4 @@
+import { useSFU } from "@gryt/voice";
 import { useCallback, useEffect, useState } from "react";
 
 import { useGlobalHotkeys } from "@/audio";
@@ -29,7 +30,6 @@ import {
   useServerManagement,
 } from "@/socket";
 import { useVoiceSounds } from "@/webRTC";
-import { useSFU } from "@/webRTC";
 
 import { AuthLoadingOverlay } from "./components/AuthLoadingOverlay";
 import { ErrorBoundary } from "./components/ErrorBoundary";

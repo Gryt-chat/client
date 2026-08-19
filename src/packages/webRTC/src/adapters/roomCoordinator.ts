@@ -3,7 +3,21 @@ import type { Socket } from "socket.io-client";
 
 import { handleRateLimitError } from "@/socket/src/utils/rateLimitHandler";
 
-import type { RoomAccessData } from "../hooks/sfuTypes";
+
+/**
+ * What the server sends back on `voice:room:granted`.
+ *
+ * Declared here rather than imported from the engine, because it is the shape of
+ * Gryt's socket payload rather than anything `@gryt/voice` knows about. The
+ * engine takes `RoomAccess`, which this is translated into below.
+ */
+interface RoomAccessData {
+  room_id: string;
+  join_token: unknown;
+  sfu_url: string;
+  sfu_urls?: string[];
+  timestamp: number;
+}
 
 /** How long to wait for the server to answer a room request. */
 const ACCESS_TIMEOUT_MS = 15_000;

@@ -1,13 +1,13 @@
 import { Alert, Divider, IconButton, Select, Slider, Tabs, Tooltip } from "@gryt/ui";
+import { useMicrophone, useScreenShare, useSpeakers } from "@gryt/voice";
+import { useSFU } from "@gryt/voice";
+import { voiceLog } from "@gryt/voice";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PiArrowsClockwiseFill, PiWarningFill } from "react-icons/pi";
 
-import { useMicrophone, useScreenShare, useSpeakers } from "@/audio";
 import { MAX_VOLUME_PERCENT } from "@/lib/audioVolume";
 import { setNotificationOutputDevice } from "@/lib/notificationSound";
 import { useSettings } from "@/settings";
-import { useSFU } from "@/webRTC";
-import { voiceLog } from "@/webRTC/src/hooks/voiceLogger";
 
 import { SettingGroup, SettingsContainer, SliderSetting, ToggleSetting } from "./settingsComponents";
 

@@ -23,10 +23,9 @@
  * poll below is the remote branch of that loop — same isSpeaking, same
  * threshold, same 100ms — so what the tiles read is arrived at the same way.
  */
+import type { StreamSources } from "@gryt/voice";
+import { isSpeaking, useSharedAudioContext } from "@gryt/voice";
 import { useEffect, useState } from "react";
-
-import { isSpeaking, useSharedAudioContext } from "@/audio";
-import type { StreamSources } from "@/webRTC";
 
 import {
   fakeAudioStreamId,

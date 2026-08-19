@@ -14,6 +14,8 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Button, IconButton, Tooltip } from "@gryt/ui";
+import type { StreamSources } from "@gryt/voice";
+import { useCamera as useLocalCamera, useMicrophone, useScreenShare as useLocalScreenShare, useVoiceLatency } from "@gryt/voice";
 import { AnimatePresence, motion } from "motion/react";
 import type { CSSProperties, ReactNode } from "react";
 import {
@@ -27,15 +29,8 @@ import {
 import toast from "react-hot-toast";
 import { PiArrowLineLeftFill, PiArrowLineRightFill, PiChatCircleFill, PiCornersInFill, PiCornersOutFill, PiMicrophoneSlashFill } from "react-icons/pi";
 
-import {
-  useCamera as useLocalCamera,
-  useMicrophone,
-  useScreenShare as useLocalScreenShare,
-  useVoiceLatency,
-} from "@/audio";
 import { useSettings } from "@/settings";
 import { Controls } from "@/webRTC";
-import type { StreamSources } from "@/webRTC/src/types/SFU";
 
 import type { PeerLatencyStats } from "../hooks/usePeerLatency";
 import { usePopoutStreams } from "../hooks/usePopoutStreams";

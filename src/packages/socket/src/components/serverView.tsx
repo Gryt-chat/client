@@ -1,10 +1,10 @@
+import { useSFU } from "@gryt/voice";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useUnreadTracker } from "@/common";
 import { useIsCompact, useIsMobile } from "@/mobile";
 import { useSettings } from "@/settings";
 import { SidebarItem } from "@/settings/src/types/server";
-import { useSFU } from "@/webRTC";
 
 import { useFakeChat } from "../dev/fakeChat";
 import { useFakeChatRunning } from "../dev/fakeChatController";

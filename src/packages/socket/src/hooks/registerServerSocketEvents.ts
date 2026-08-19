@@ -1,3 +1,4 @@
+import { warmSfuSelection } from "@gryt/voice";
 import { Dispatch, MutableRefObject, SetStateAction } from "react";
 import toast from "react-hot-toast";
 import { Socket } from "socket.io-client";
@@ -17,7 +18,6 @@ import {
   serverDetailsList,
   Servers,
 } from "@/settings/src/types/server";
-import { warmSfuSelection } from "@/webRTC/src/hooks/selectBestSfuUrl";
 
 import { MemberInfo } from "../components/MemberSidebar";
 import { Clients } from "../types/clients";

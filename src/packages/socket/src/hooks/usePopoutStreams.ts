@@ -1,7 +1,7 @@
+import type { StreamSources } from "@gryt/voice";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { gainToSlider, sliderToGain } from "@/lib/audioVolume";
-import type { StreamSources } from "@/webRTC/src/types/SFU";
 
 import type { PopoutHandle } from "../utils/popoutVideo";
 import { popoutStream } from "../utils/popoutVideo";

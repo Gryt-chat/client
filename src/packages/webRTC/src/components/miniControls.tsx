@@ -1,14 +1,14 @@
 import { IconButton } from "@gryt/ui";
+import { type ScreenShareQuality, useCamera, useScreenShare } from "@gryt/voice";
+import { useSFU } from "@gryt/voice";
 import { AnimatePresence, motion, Variants } from "motion/react";
 import { useCallback, useState } from "react";
 import toast from "react-hot-toast";
 import { PiMicrophoneFill, PiMicrophoneSlashFill, PiMonitorArrowUpFill, PiPhoneDisconnectFill, PiScreencastFill, PiSpeakerHighFill, PiSpeakerSlashFill, PiVideoCameraFill, PiVideoCameraSlashFill } from "react-icons/pi";
 
-import { type ScreenShareQuality,useCamera, useScreenShare } from "@/audio";
 import { useSettings } from "@/settings";
 import { useServerManagement } from "@/socket";
 
-import { useSFU } from "../hooks/useSFU";
 import { CameraPreviewModal } from "./CameraPreviewModal";
 import { ScreenSharePickerModal } from "./ScreenSharePickerModal";
 

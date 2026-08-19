@@ -1,4 +1,5 @@
 import { Avatar, ContextMenu, IconButton, Menu, PreviewCard, Tooltip } from "@gryt/ui";
+import { useSFU } from "@gryt/voice";
 import { Reorder } from "motion/react";
 import { useEffect, useState } from "react";
 import { PiBroadcastFill, PiBugFill, PiChatCircleDotsFill, PiGearFill, PiMicrophoneFill, PiPlus, PiSignInFill } from "react-icons/pi";
@@ -19,7 +20,6 @@ import {
   Servers,
 } from "@/settings/src/types/server";
 import { useServerManagement, useSockets } from "@/socket";
-import { useSFU } from "@/webRTC";
 import { MiniControls } from "@/webRTC/src/components/miniControls";
 
 import { useIdentityClaim } from "../hooks/useIdentityClaim";

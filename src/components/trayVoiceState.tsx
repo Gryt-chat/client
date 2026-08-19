@@ -1,8 +1,8 @@
+import { useSFU } from "@gryt/voice";
 import { useEffect } from "react";
 
 import { useSettings } from "@/settings";
 import { useSockets } from "@/socket";
-import { useSFU } from "@/webRTC";
 
 
 /**

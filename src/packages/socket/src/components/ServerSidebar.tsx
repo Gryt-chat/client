@@ -1,8 +1,8 @@
+import type { StreamSources } from "@gryt/voice";
 import { motion } from "motion/react";
 import { RefObject } from "react";
 
 import type { Channel, SidebarItem } from "@/settings/src/types/server";
-import type { StreamSources } from "@/webRTC";
 
 import type { Client } from "../types/clients";
 import { ChannelList } from "./ChannelList";

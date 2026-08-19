@@ -1,7 +1,7 @@
+import { useCamera } from "@gryt/voice";
+import { CENTRED, detectFraming, type Framing } from "@gryt/voice";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { useCamera } from "@/audio/src/hooks/useCamera";
-import { CENTRED, detectFraming, type Framing } from "@/audio/src/lib/faceFraming";
 import { singletonHook } from "@/common";
 import { useSettings } from "@/settings/src/hooks/useSettings";
 
