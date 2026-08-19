@@ -1,4 +1,4 @@
-import { Alert, Divider, IconButton, Select, Slider, Tabs, Tooltip } from "@gryt/ui";
+import { Alert, Divider, IconButton, Select, type SelectOption, Slider, Tabs, Tooltip } from "@gryt/ui";
 import { useMicrophone, useScreenShare, useSpeakers } from "@gryt/voice";
 import { useSFU } from "@gryt/voice";
 import { voiceLog } from "@gryt/voice";
@@ -40,6 +40,25 @@ const LEVEL_RELEASE = 0.1;
  * linear because an eased curve restarting every sample reads as stutter.
  */
 const LEVEL_TRANSITION = "60ms linear";
+
+/**
+ * Drops options that repeat an id already in the list.
+ *
+ * Select keys its items by `value`, and the platform hands us a device whose
+ * id is literally "default" alongside the real one — so the Default entry we
+ * add ourselves and the enumerated one collide, and React warns about two
+ * children with the same key on every render. The first one wins, which keeps
+ * our own plain "Default" label rather than the enumerated "Default - <device>".
+ */
+function dedupeByValue(options: SelectOption[]): SelectOption[] {
+  const seen = new Set<string>();
+  return options.filter((option) => {
+    const key = String(option.value);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
 
 export function AudioSettings() {
   const {
@@ -360,10 +379,15 @@ export function AudioSettings() {
           value={micID || ""}
           onValueChange={(v) => setMicID(String(v))}
           placeholder="Select microphone device"
-          options={devices.map((device) => ({
-            label: device.label || `Microphone ${device.deviceId.slice(0, 8)}`,
-            value: device.deviceId || `device-${device.label}`,
-          }))}
+          options={dedupeByValue(
+            devices.map((device, index) => ({
+              label: device.label || `Microphone ${device.deviceId.slice(0, 8)}`,
+              // Before the permission prompt is answered every device comes
+              // back with an empty id and an empty label, so falling back to
+              // the label would give them all the same key too.
+              value: device.deviceId || `microphone-${index}`,
+            })),
+          )}
         />
       </div>
 
@@ -380,13 +404,13 @@ export function AudioSettings() {
           value={outputDeviceID || "default"}
           onValueChange={(v) => handleOutputDeviceChange(String(v))}
           placeholder="Select output device"
-          options={[
+          options={dedupeByValue([
             { label: "Default", value: "default" },
-            ...outputDevices.map((device) => ({
+            ...outputDevices.map((device, index) => ({
               label: device.label || `Speaker ${device.deviceId.slice(0, 8)}`,
-              value: device.deviceId || `device-${device.label}`,
+              value: device.deviceId || `speaker-${index}`,
             })),
-          ]}
+          ])}
         />
       </div>
 

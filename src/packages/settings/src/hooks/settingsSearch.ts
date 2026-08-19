@@ -62,6 +62,10 @@ export const SETTINGS_INDEX: SettingsIndexEntry[] = [
   { id: "smiley-conversion", title: "Smiley conversion", description: "Turns typed smileys into emoji as you write them.", destination: "looks", section: "Chat" },
   { id: "blur-profanity", title: "Blur profanity", description: "Blurs profane words when the server has profanity filtering set to flag. Click a blurred word to reveal it.", destination: "looks", section: "Chat" },
   { id: "hotkeys", title: "Hotkeys", description: "Keyboard shortcuts, including your push-to-talk key.", destination: "behaviour", section: "Hotkeys", panel: true },
+  { id: "push-to-talk-key", title: "Push to Talk Key", description: "Hold this key to transmit your microphone. Only shown while input mode is push to talk.", destination: "behaviour", section: "Hotkeys" },
+  { id: "toggle-mute", title: "Toggle mute", description: "Toggle your microphone on or off.", destination: "behaviour", section: "Hotkeys" },
+  { id: "toggle-deafen", title: "Toggle deafen", description: "Mute all incoming audio and your microphone.", destination: "behaviour", section: "Hotkeys" },
+  { id: "disconnect", title: "Disconnect", description: "Disconnect from the current voice channel.", destination: "behaviour", section: "Hotkeys" },
   { id: "unread-message-badge", title: "Unread message badge", description: "Show an unread message count on the taskbar icon when the app is not focused.", destination: "behaviour", section: "Notifications" },
   { id: "start-with-windows", title: "Start with Windows", description: "Launches Gryt when you sign in to Windows.", destination: "behaviour", section: "Desktop" },
   { id: "start-minimized-on-login", title: "Start minimized on login", description: "Only applies when Gryt is launched automatically on sign-in. Manual launches will still show the window.", destination: "behaviour", section: "Desktop" },
@@ -69,6 +73,22 @@ export const SETTINGS_INDEX: SettingsIndexEntry[] = [
   { id: "hardware-acceleration", title: "Hardware acceleration", description: "Uses your GPU for rendering. Turn it off if you see visual glitches or high GPU usage. Changing this restarts Gryt.", destination: "behaviour", section: "Desktop" },
   { id: "esports-mode", title: "eSports mode", description: "Lowest possible latency. Disables all audio processing, enables push-to-talk, caps bitrate at 128kbps (studio quality), and optimizes Opus packetization (10ms frames).", destination: "sound-video", section: "Voice" },
   { id: "experimental-screen-share", title: "Experimental screen share", description: "Unlock high frame rate options (144, 165, 240 FPS) for screen sharing. These require significant bandwidth and may not work on all hardware.", destination: "sound-video", section: "Screen share" },
+  // Dev builds only, the same way the Developer destination itself is. Without
+  // the gate a release would offer search results for a panel that is not in
+  // the bundle.
+  ...(import.meta.env.DEV
+    ? ([
+        { id: "fake-participants", title: "Fake participants", description: "Invents people in the voice channel you are in and in the member list around it, so both can be seen at counts a single account cannot reach. They render through the real voice view and the real member list, so this proves layout and nothing about the socket path.", destination: "developer", section: "Developer" },
+        { id: "in-the-voice-channel-with-you", title: "In the voice channel with you", description: "How many invented people to put in the channel, on top of anyone actually there.", destination: "developer", section: "Developer" },
+        { id: "in-the-server-not-in-voice", title: "In the server, not in voice", description: "How many more to put in the member list, spread across online, AFK and offline.", destination: "developer", section: "Developer" },
+        { id: "how-many-are-muted", title: "How many are muted", description: "Of the people in voice. Muted and deafened ones stay silent — nothing talks that should not be able to.", destination: "developer", section: "Developer" },
+        { id: "one-is-deafened", title: "One is deafened", description: "Deafens the last one, and mutes them with it, since that is what deafening does here. The deafened badge is a different icon from the muted one.", destination: "developer", section: "Developer" },
+        { id: "they-talk", title: "They talk", description: "Everyone not muted takes turns talking, in bursts of a few seconds with longer gaps. Each one gets a real silent audio track, so the halo and the speaking ring are driven by a level the same way a real participant's are.", destination: "developer", section: "Developer" },
+        { id: "fake-screen-share", title: "Fake screen share", description: "Gives the first fake participant a share, backed by an animated canvas rather than a placeholder, so the tile takes the same path a real share does.", destination: "developer", section: "Developer" },
+        { id: "fake-chat", title: "Fake chat", description: "Posts messages from the invented people into the channel you are looking at — mentions, custom emoji, links with previews, code blocks, replies and a wall of text. Delivered through the same handler a real message arrives on. Nothing is sent to the server.", destination: "developer", section: "Developer" },
+        { id: "a-message-every", title: "A message every", description: "How often a fake message arrives, in seconds, while it is running.", destination: "developer", section: "Developer" }
+      ] satisfies SettingsIndexEntry[])
+    : []),
   { id: "addons", title: "Addons", description: "Extensions that add features to Gryt.", destination: "extensions", section: "Addons", panel: true },
   { id: "support-gryt", title: "Support Gryt", description: "Ways to support the project.", destination: "support", section: "Support", panel: true }
 ];
