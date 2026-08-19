@@ -4,6 +4,7 @@ import { type ReactNode,useMemo } from "react";
 import { useServerManagement, useSockets } from "@/socket";
 
 import { createRoomCoordinator } from "./roomCoordinator";
+import { useVoiceLifecycle } from "./useVoiceLifecycle";
 import { useVoiceConfigFromSettings } from "./voiceConfig";
 import { electronVoiceHost } from "./voiceHost";
 
@@ -18,6 +19,11 @@ import { electronVoiceHost } from "./voiceHost";
 setVoiceHost(electronVoiceHost);
 
 const NO_STUN: string[] = [];
+
+function VoiceLifecycle() {
+  useVoiceLifecycle();
+  return null;
+}
 
 export function VoiceProvider({ children }: { children?: ReactNode }) {
   const { currentlyViewingServer } = useServerManagement();
@@ -45,6 +51,11 @@ export function VoiceProvider({ children }: { children?: ReactNode }) {
           these are a second one. Without this the hooks return their initial
           values forever and voice silently does nothing. */}
       <VoiceSingletonHooks />
+      {/* Inside the provider, because it consumes useSFU. Runs the three
+          behaviours that were deliberately left out of the package: the connect
+          sound, ending a call when its server is removed, and the server hanging
+          up on us. */}
+      <VoiceLifecycle />
       {children}
     </VoiceConfigProvider>
   );
