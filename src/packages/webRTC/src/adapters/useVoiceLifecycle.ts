@@ -44,12 +44,39 @@ export function useVoiceLifecycle() {
   // itself. It reports that it gave up; whether that is worth interrupting
   // anybody is the app's call, and the answer here is yes — a call ending on its
   // own with no explanation is worse than a toast.
+  //
+  // Three different failures, and they want different words. The engine already
+  // tells them apart, and until GRYT-448 only the first was surfaced at all: a
+  // call that never connected in the first place left the person watching a
+  // spinner until they gave up on it themselves.
   useEffect(() => {
-    if (connectionError !== "reconnect-failed") return;
-    toast.error(
-      "Voice connection failed after multiple attempts. Please try again.",
-      { id: "voice-reconnect" },
-    );
+    if (!connectionError) return;
+
+    if (connectionError === "reconnect-failed") {
+      toast.error(
+        "Voice connection failed after multiple attempts. Please try again.",
+        { id: "voice-connection" },
+      );
+      return;
+    }
+
+    // Never connected. Gryt has no relay, on purpose, so a network that will
+    // not carry a direct path cannot carry a call — carrier-grade NAT on mobile
+    // data being the usual one. Naming that is the difference between a broken
+    // app and a known limitation, and it is the only guess here worth making:
+    // by this point ICE has tried every candidate it had.
+    if (connectionError === "WebRTC connection failed") {
+      toast.error(
+        "Could not reach the voice server. This network may not allow voice " +
+          "traffic through, which is common on mobile data.",
+        { id: "voice-connection", duration: 8000 },
+      );
+      return;
+    }
+
+    // Was connected and dropped, and the engine is not retrying. Anything else
+    // it reports lands here too rather than being swallowed.
+    toast.error(connectionError, { id: "voice-connection" });
   }, [connectionError]);
 
   // Leaving a server while in one of its voice channels should end the call.
