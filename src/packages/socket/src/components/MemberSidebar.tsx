@@ -4,6 +4,7 @@ import { PiPushPinFill, PiPushPinSlashFill } from "react-icons/pi";
 import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 
 import { UserStatus } from "../types/clients";
+import { BotTag } from "./BotTag";
 import { MemberIdentityCard } from "./MemberIdentityCard";
 import { UserContextMenu } from "./UserContextMenu";
 
@@ -21,7 +22,14 @@ export interface MemberInfo {
   lastSeen?: Date;
   createdAt?: string | Date;
   /** Whether there is a Gryt account behind this member, or only a device key. */
-  identityTier?: "account" | "local";
+  identityTier?: "account" | "local" | "bot";
+  /**
+   * Whether this member is a bot.
+   *
+   * The server derives it from the identity, so it cannot be spoofed by a name
+   * and cannot be shaken off by one either.
+   */
+  isBot?: boolean;
   /**
    * Server-scoped marker for the identity, stable across renames. Not the Gryt
    * user id — that one is the same on every server, and this deliberately is
@@ -147,6 +155,7 @@ const MemberItem = ({
                 }}>
                 {member.nickname}
               </span>
+              {member.isBot && <BotTag size="small" />}
             </div>
 
             <span className="text-xs" style={{ color: statusColor, lineHeight: 1.2 }}>

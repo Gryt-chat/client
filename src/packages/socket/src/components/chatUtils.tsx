@@ -38,6 +38,13 @@ export type ChatMessage = {
   failed?: boolean;
   nonce?: string;
   sender_nickname?: string;
+  /**
+   * Whether a bot wrote this.
+   *
+   * Derived by the server from the sender's identity, so it is neither
+   * something a bot can shake off nor something a person can acquire.
+   */
+  sender_is_bot?: boolean;
   sender_avatar_file_id?: string;
   profanity_matches?: ProfanityMatchRange[];
 };

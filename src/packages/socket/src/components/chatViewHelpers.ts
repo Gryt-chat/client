@@ -67,6 +67,7 @@ export function buildMessageMetadata(
       isFirstEdited,
       isSystem,
       isWebhook,
+      isBot: !isSystem && !isWebhook && m.sender_is_bot === true,
     };
   });
 }
