@@ -20,6 +20,7 @@ import {
   Servers,
 } from "@/settings/src/types/server";
 import { useServerManagement, useSockets } from "@/socket";
+import { ServerDoctor } from "@/socket/src/components/ServerDoctor";
 import { MiniControls } from "@/webRTC/src/components/miniControls";
 
 import { useIdentityClaim } from "../hooks/useIdentityClaim";
@@ -308,6 +309,7 @@ function ServerItem({
   setShowRemoveServer,
 }: ServerItemProps) {
   const { canClaim, claim } = useIdentityClaim();
+  const [doctorOpen, setDoctorOpen] = useState(false);
   // No entry yet is not the same as down.
   //
   // A server added a moment ago — an embedded one you just created, most
@@ -447,6 +449,14 @@ function ServerItem({
             <ContextMenu.Item>Share</ContextMenu.Item>
             <ContextMenu.Item>Add to new group</ContextMenu.Item>
             <ContextMenu.Separator />
+            {/* Offered whatever the connection state is, deliberately. A server
+                that will not connect at all is the case somebody most needs
+                this for, and hiding it there would leave them with nothing.
+                GRYT-483. */}
+            <ContextMenu.Item onClick={() => setDoctorOpen(true)}>
+              Doctor
+            </ContextMenu.Item>
+            <ContextMenu.Separator />
             <ContextMenu.Item
               onClick={() => {
                 setShowRemoveServer(host);
@@ -458,6 +468,20 @@ function ServerItem({
             </ContextMenu.Positioner>
           </ContextMenu.Portal>
         </ContextMenu.Root>
+        <ServerDoctor
+          host={host}
+          serverName={servers[host]?.name || host}
+          socketConnected={connectionStatus === "connected"}
+          sfuHosts={
+            serverDetailsList[host]?.sfu_hosts ??
+            (serverDetailsList[host]?.sfu_host
+              ? [serverDetailsList[host].sfu_host]
+              : [])
+          }
+          stunHosts={serverDetailsList[host]?.stun_hosts ?? []}
+          open={doctorOpen}
+          onOpenChange={setDoctorOpen}
+        />
         <PreviewCard.Portal>
           <PreviewCard.Positioner side="right" align="center">
             <PreviewCard.Popup>
