@@ -9,13 +9,17 @@ import {
   PiXCircleFill,
 } from "react-icons/pi";
 
+import { useSockets } from "../hooks/useSockets";
 import {
   type CheckResult,
   type CheckStatus,
+  type DoctorRoomGrant,
   initialChecks,
   runDoctor,
   summarise,
 } from "../lib/serverDoctor";
+
+const ROOM_GRANT_TIMEOUT_MS = 8000;
 
 /**
  * What is broken between here and one server, in the order the connection
@@ -114,15 +118,76 @@ export function ServerDoctor({
 }) {
   const [checks, setChecks] = useState<CheckResult[]>(initialChecks);
   const [running, setRunning] = useState(false);
+  const { sockets } = useSockets();
+  const socket = sockets[host];
+
+  /**
+   * Ask the server for a room with nobody in it.
+   *
+   * Resolves to the grant or rejects with the server's own words, which are
+   * worth keeping: "you do not have permission to join voice on this server"
+   * is a different problem from a server that cannot reach its own SFU, and
+   * both arrive here.
+   */
+  const requestDoctorRoom = useCallback(
+    () =>
+      new Promise<DoctorRoomGrant>((resolve, reject) => {
+        if (!socket) {
+          reject(new Error("no connection to this server"));
+          return;
+        }
+
+        const timer = setTimeout(() => {
+          socket.off("voice:doctor:granted", onGranted);
+          socket.off("voice:doctor:error", onError);
+          // An older server has no handler for this and will never answer, so
+          // silence has to be treated as an answer rather than hung on.
+          reject(new Error("the server did not answer, so it may be too old to have a Doctor"));
+        }, ROOM_GRANT_TIMEOUT_MS);
+
+        function done() {
+          clearTimeout(timer);
+          socket?.off("voice:doctor:granted", onGranted);
+          socket?.off("voice:doctor:error", onError);
+        }
+
+        function onGranted(grant: DoctorRoomGrant) {
+          done();
+          resolve(grant);
+        }
+
+        function onError(payload: { message?: string } | string) {
+          done();
+          reject(
+            new Error(
+              typeof payload === "string" ? payload : payload?.message ?? "refused",
+            ),
+          );
+        }
+
+        socket.once("voice:doctor:granted", onGranted);
+        socket.once("voice:doctor:error", onError);
+        socket.emit("voice:doctor:request");
+      }),
+    [socket],
+  );
 
   const run = useCallback(() => {
     setRunning(true);
     setChecks(initialChecks());
     void runDoctor(
-      { host, socketConnected, sfuHosts, stunHosts },
+      {
+        host,
+        socketConnected,
+        sfuHosts,
+        stunHosts,
+        // Only offered when the socket is up. Without one there is nobody to
+        // ask for a room, and the check says so rather than failing.
+        requestDoctorRoom: socketConnected ? requestDoctorRoom : undefined,
+      },
       setChecks,
     ).finally(() => setRunning(false));
-  }, [host, socketConnected, sfuHosts, stunHosts]);
+  }, [host, socketConnected, sfuHosts, stunHosts, requestDoctorRoom]);
 
   // Runs on open rather than behind a button. Somebody who chose "Doctor" has
   // already said what they want, and a modal that opens to an idle list and
@@ -180,8 +245,8 @@ export function ServerDoctor({
                   the server's media port and see who answers. Letting people
                   believe otherwise sends them to check the wrong thing. */}
               <span className="text-xs text-gryt-muted">
-                These run from this device. They cannot prove the server&rsquo;s
-                media port is open to everyone else.
+                These run from this device, into a room with nobody else in it.
+                A pass means voice works for you, not that it works for everyone.
               </span>
               <Button size="small" disabled={running} onClick={run}>
                 {running ? "Running…" : "Run again"}
