@@ -411,14 +411,25 @@ function launchWindowsInstallerAfterExit(installerPath: string): Promise<void> {
       "gryt-update-helper.log"
     );
 
-    const command = [
+    // Paths go into the script as literals rather than as arguments after
+    // -Command.
+    //
+    // PowerShell rebuilds those from the raw command line and splits them on
+    // spaces again, and the installed executable is always "Gryt Chat.exe".
+    // Measured on Windows 11: five values went in, six came out, so
+    // $installedExe was the path truncated at "…\Gryt" and $logPath was
+    // "Chat.exe" — a relative path, which is why gryt-update-helper.log never
+    // appeared where anyone looked for it.
+    const psLiteral = (value: string) => `'${value.replace(/'/g, "''")}'`;
+
+    const commandLines = [
       "$ErrorActionPreference = 'Stop'",
 
-      "$parentId = [int]$args[0]",
-      "$installer = $args[1]",
-      "$installDir = $args[2]",
-      "$installedExe = $args[3]",
-      "$logPath = $args[4]",
+      `$parentId = ${process.pid}`,
+      `$installer = ${psLiteral(installerPath)}`,
+      `$installDir = ${psLiteral(installDir)}`,
+      `$installedExe = ${psLiteral(installedExe)}`,
+      `$logPath = ${psLiteral(helperLog)}`,
 
       "function Write-GrytLog([string]$message) {",
       "  try {",
@@ -519,7 +530,20 @@ function launchWindowsInstallerAfterExit(installerPath: string): Promise<void> {
 
       "Write-GrytLog \"Installer succeeded but installed executable is missing: $installedExe\"",
       "exit 30",
-    ].join("; ");
+    ];
+
+    // Joined with newlines, not "; ".
+    //
+    // Some of these lines continue an expression onto the next one: the two
+    // Where-Object filters, and Start-Process with its backtick continuations.
+    // "; " puts a semicolon in the middle of those expressions, and a backtick
+    // right before one escapes the semicolon instead of continuing the line.
+    // PowerShell parses the whole -Command string before it runs any of it, so
+    // this failed as a unit: 17 parse errors on Windows 11 and not one line
+    // executed. No installer, no log, and Gryt came back up on the version it
+    // already had. The pending marker expired ten minutes later and the next
+    // check downloaded the same build again.
+    const script = commandLines.join("\n");
 
     const helper = spawn(
       powershell,
@@ -530,12 +554,7 @@ function launchWindowsInstallerAfterExit(installerPath: string): Promise<void> {
         "-WindowStyle",
         "Hidden",
         "-Command",
-        command,
-        String(process.pid),
-        installerPath,
-        installDir,
-        installedExe,
-        helperLog,
+        script,
       ],
       {
         detached: true,
