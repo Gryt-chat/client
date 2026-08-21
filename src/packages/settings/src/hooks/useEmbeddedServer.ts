@@ -154,6 +154,37 @@ export function useEmbeddedServer() {
     [api, markBusy],
   );
 
+  /**
+   * Change a server's ports.
+   *
+   * Returns the error text rather than a boolean, because every way this fails
+   * is something the person can act on — a port in use, a number out of range,
+   * the server still running — and "didn't work" would waste that.
+   */
+  const updatePorts = useCallback(
+    async (
+      id: string,
+      ports: { serverPort?: number; sfuPort?: number; mediaPort?: number },
+    ): Promise<string | null> => {
+      if (!api) return "Not available";
+      markBusy(id, true);
+      try {
+        const updated = await api.updateEmbeddedServerPorts(id, ports);
+        if (!updated) return "That server no longer exists";
+        setServers((current) =>
+          current.map((server) => (server.id === id ? updated : server)),
+        );
+        return null;
+      } catch (err) {
+        console.error("[EmbeddedServer] port update failed:", err);
+        return err instanceof Error ? err.message : "Could not change the ports";
+      } finally {
+        markBusy(id, false);
+      }
+    },
+    [api, markBusy],
+  );
+
   // Clearing a failure the user has read. Deliberately not stopServer: that
   // preserves the error status on purpose, so dismissing through it did nothing.
   const dismissError = useCallback(
@@ -236,6 +267,7 @@ export function useEmbeddedServer() {
     startServer,
     stopServer,
     updateAdvertisedAddresses,
+    updatePorts,
     deleteServer,
     dismissError,
   };

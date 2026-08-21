@@ -43,6 +43,7 @@ export function MyServersSettings() {
     startServer,
     stopServer,
     updateAdvertisedAddresses,
+    updatePorts,
     deleteServer,
     isBusy,
     dismissError,
@@ -112,6 +113,7 @@ export function MyServersSettings() {
                 onUpdateAdvertisedAddresses={(addresses) =>
                   updateAdvertisedAddresses(server.id, addresses)
                 }
+                onUpdatePorts={(ports) => updatePorts(server.id, ports)}
                 onDelete={() => {
                   // The rail entries go with it. Left behind they point at an
                   // address nothing answers on, and look like a server that is
@@ -187,6 +189,7 @@ function HostedServerCard({
   onStart,
   onStop,
   onUpdateAdvertisedAddresses,
+  onUpdatePorts,
   onDelete,
   onDismissError,
 }: {
@@ -198,6 +201,11 @@ function HostedServerCard({
   onStart: () => void;
   onStop: () => void;
   onUpdateAdvertisedAddresses: (addresses: string[]) => Promise<boolean>;
+  onUpdatePorts: (ports: {
+    serverPort?: number;
+    sfuPort?: number;
+    mediaPort?: number;
+  }) => Promise<string | null>;
   onDelete: () => void;
   onDismissError: () => void;
 }) {
@@ -212,6 +220,12 @@ function HostedServerCard({
   const [typedName, setTypedName] = useState("");
   const [customAddresses, setCustomAddresses] = useState("");
   const [addressSaveFailed, setAddressSaveFailed] = useState(false);
+  /** Which accordion sections are open, ports included. */
+  const [portsOpen, setPortsOpen] = useState<string[]>([]);
+  /** The fields, as typed. Empty until the panel is opened and seeded. */
+  const [portDraft, setPortDraft] = useState({ server: "", sfu: "", media: "" });
+  const [portError, setPortError] = useState<string | null>(null);
+  const [portsSaved, setPortsSaved] = useState(false);
 
   const isRunning = server.status === "running";
   const isStarting = server.status === "starting";
@@ -420,33 +434,6 @@ function HostedServerCard({
             audio and nothing else. It can only be tested from outside your
             network.
           </span>
-          {/* The ports, with their numbers, next to the sentence that says a
-              port not being forwarded is what breaks audio. That sentence has
-              been here a while and never said which port — which left the
-              reader knowing exactly what was wrong and not what to type into
-              their router. GRYT-459. */}
-          <div className="flex flex-col gap-1">
-            <span className="text-xs">
-              Ports to open on this machine, and forward on your router if
-              people are joining from outside your network:
-            </span>
-            <span className="text-xs text-gryt-muted">
-              <code className="font-mono text-xs">
-                TCP {server.config?.serverPort ?? "?"}
-              </code>{" "}
-              the server itself — chat, logins, joining.{" "}
-              <code className="font-mono text-xs">
-                TCP {server.config?.sfuPort ?? "?"}
-              </code>{" "}
-              voice signalling.{" "}
-              <code className="font-mono text-xs">
-                UDP {server.config?.mediaPort ?? "?"}
-              </code>{" "}
-              the voice and video themselves. The last one is the one people
-              miss: it is UDP rather than TCP, and everything else works
-              without it.
-            </span>
-          </div>
           <div className="flex gap-2 items-end">
             <label className="flex flex-col gap-1 flex-1">
               <span className="text-xs">Public IPs or hostnames</span>
@@ -491,6 +478,136 @@ function HostedServerCard({
             </Alert>
           )}
         </div>
+
+          {/* The ports, behind an accordion, and editable.
+              
+              The paragraph above has said for a while that a UDP port not
+              being forwarded is what breaks audio, without ever saying which
+              port — which told the reader exactly what was wrong and nothing
+              about what to type into a router. GRYT-459 put the numbers here.
+              
+              They are fields rather than text because the app no longer moves
+              a port when something else takes it. It refuses to start and says
+              so, and this is where that gets fixed. GRYT-469. */}
+          <Accordion
+            value={portsOpen}
+            onValueChange={(value: unknown) => {
+              const next = value as string[];
+              // Seed from the config on open rather than on every render, so
+              // typing is not overwritten by a status broadcast mid-edit.
+              if (next.includes("ports") && !portsOpen.includes("ports")) {
+                setPortDraft({
+                  server: String(server.config?.serverPort ?? ""),
+                  sfu: String(server.config?.sfuPort ?? ""),
+                  media: String(server.config?.mediaPort ?? ""),
+                });
+                setPortError(null);
+                setPortsSaved(false);
+              }
+              setPortsOpen(next);
+            }}
+          >
+            <Accordion.Item value="ports">
+              <Accordion.Trigger>Open these ports</Accordion.Trigger>
+              <Accordion.Panel>
+                <div className="flex flex-col gap-3 pt-2">
+                  <span className="text-xs text-gryt-muted">
+                    Open these on this machine, and forward them on your router
+                    as well if anyone is joining from outside your network. The
+                    UDP one is the one people miss: it is a different protocol
+                    from the other two, and everything except voice works
+                    without it.
+                  </span>
+
+                  <div className="flex gap-2 items-end">
+                    <label className="flex flex-col gap-1 flex-1">
+                      <span className="text-xs">TCP, the server</span>
+                      <TextField
+                        value={portDraft.server}
+                        inputMode="numeric"
+                        onChange={(event) => {
+                          setPortDraft((d) => ({ ...d, server: event.target.value }));
+                          setPortError(null);
+                          setPortsSaved(false);
+                        }}
+                        disabled={isRunning || isStarting || busy}
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1 flex-1">
+                      <span className="text-xs">TCP, voice signalling</span>
+                      <TextField
+                        value={portDraft.sfu}
+                        inputMode="numeric"
+                        onChange={(event) => {
+                          setPortDraft((d) => ({ ...d, sfu: event.target.value }));
+                          setPortError(null);
+                          setPortsSaved(false);
+                        }}
+                        disabled={isRunning || isStarting || busy}
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1 flex-1">
+                      <span className="text-xs">UDP, voice and video</span>
+                      <TextField
+                        value={portDraft.media}
+                        inputMode="numeric"
+                        onChange={(event) => {
+                          setPortDraft((d) => ({ ...d, media: event.target.value }));
+                          setPortError(null);
+                          setPortsSaved(false);
+                        }}
+                        disabled={isRunning || isStarting || busy}
+                      />
+                    </label>
+                    <Button
+                      size="small"
+                      disabled={isRunning || isStarting || busy}
+                      onClick={() => {
+                        const parsed = {
+                          serverPort: Number(portDraft.server),
+                          sfuPort: Number(portDraft.sfu),
+                          mediaPort: Number(portDraft.media),
+                        };
+                        void onUpdatePorts(parsed).then((error) => {
+                          setPortError(error);
+                          setPortsSaved(!error);
+                        });
+                      }}
+                    >
+                      Save
+                    </Button>
+                  </div>
+
+                  {/* Said here as well as under the addresses, because this
+                      panel is collapsed by default and somebody who opens it
+                      to change a port has not necessarily read that. */}
+                  {(isRunning || isStarting) && (
+                    <span className="text-xs text-gryt-muted">
+                      Stop the server before changing its ports.
+                    </span>
+                  )}
+
+                  {portError && (
+                    <Alert severity="info" role="alert">
+                      {portError}
+                    </Alert>
+                  )}
+
+                  {portsSaved && (
+                    <Alert severity="success" role="status">
+                      Saved. Remember to forward the new port, if you had
+                      forwarded the old one.
+                    </Alert>
+                  )}
+
+                  <span className="text-xs text-gryt-muted">
+                    Voice signalling is shared by every server this app hosts,
+                    so changing those two changes them for all of them.
+                  </span>
+                </div>
+              </Accordion.Panel>
+            </Accordion.Item>
+          </Accordion>
 
         {/* Behind an accordion, and genuinely unmounted when shut.
             EmbeddedServerLogs pulls the whole history and opens a live

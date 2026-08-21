@@ -213,6 +213,10 @@ export interface ElectronAPI {
     id: string,
     addresses: string[],
   ): Promise<EmbeddedServerState | null>;
+  updateEmbeddedServerPorts(
+    id: string,
+    ports: { serverPort?: number; sfuPort?: number; mediaPort?: number },
+  ): Promise<EmbeddedServerState | null>;
   onEmbeddedServerStatusChanged(
     callback: (states: EmbeddedServerState[]) => void
   ): () => void;
