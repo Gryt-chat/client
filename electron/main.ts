@@ -268,6 +268,12 @@ let updateDeferredVersion: string | null = null;
 
 const PENDING_INSTALL_WINDOW_MS = 10 * 60 * 1000;
 
+// The helper writes its first log line before it waits for anything, so this
+// only has to cover process start. Four seconds is generous for that and
+// still short enough that a user staring at the splash is not left there.
+const HELPER_START_TIMEOUT_MS = 4000;
+const HELPER_START_POLL_MS = 100;
+
 type PendingInstall = {
   version: string;
   queuedAt: number;
@@ -389,7 +395,16 @@ function cleanupLegacyWindowsInstallBackup(): void {
  * The helper lives outside $INSTDIR, so replacing the installation underneath
  * it is safe.
  */
-function launchWindowsInstallerAfterExit(installerPath: string): Promise<void> {
+/**
+ * Spawn the update helper and wait for it to prove it is alive.
+ *
+ * Resolves true once the helper has written to its log, false if it has not
+ * done so within HELPER_START_TIMEOUT_MS. The caller uses that to decide
+ * whether to quit into the handoff or fall back.
+ */
+function launchWindowsInstallerAfterExit(
+  installerPath: string
+): Promise<boolean> {
   return new Promise((resolvePromise, rejectPromise) => {
     const systemRoot = process.env.SystemRoot ?? "C:\\Windows";
 
@@ -411,14 +426,25 @@ function launchWindowsInstallerAfterExit(installerPath: string): Promise<void> {
       "gryt-update-helper.log"
     );
 
-    const command = [
+    // Paths go into the script as literals rather than as arguments after
+    // -Command.
+    //
+    // PowerShell rebuilds those from the raw command line and splits them on
+    // spaces again, and the installed executable is always "Gryt Chat.exe".
+    // Measured on Windows 11: five values went in, six came out, so
+    // $installedExe was the path truncated at "…\Gryt" and $logPath was
+    // "Chat.exe" — a relative path, which is why gryt-update-helper.log never
+    // appeared where anyone looked for it.
+    const psLiteral = (value: string) => `'${value.replace(/'/g, "''")}'`;
+
+    const commandLines = [
       "$ErrorActionPreference = 'Stop'",
 
-      "$parentId = [int]$args[0]",
-      "$installer = $args[1]",
-      "$installDir = $args[2]",
-      "$installedExe = $args[3]",
-      "$logPath = $args[4]",
+      `$parentId = ${process.pid}`,
+      `$installer = ${psLiteral(installerPath)}`,
+      `$installDir = ${psLiteral(installDir)}`,
+      `$installedExe = ${psLiteral(installedExe)}`,
+      `$logPath = ${psLiteral(helperLog)}`,
 
       "function Write-GrytLog([string]$message) {",
       "  try {",
@@ -519,7 +545,20 @@ function launchWindowsInstallerAfterExit(installerPath: string): Promise<void> {
 
       "Write-GrytLog \"Installer succeeded but installed executable is missing: $installedExe\"",
       "exit 30",
-    ].join("; ");
+    ];
+
+    // Joined with newlines, not "; ".
+    //
+    // Some of these lines continue an expression onto the next one: the two
+    // Where-Object filters, and Start-Process with its backtick continuations.
+    // "; " puts a semicolon in the middle of those expressions, and a backtick
+    // right before one escapes the semicolon instead of continuing the line.
+    // PowerShell parses the whole -Command string before it runs any of it, so
+    // this failed as a unit: 17 parse errors on Windows 11 and not one line
+    // executed. No installer, no log, and Gryt came back up on the version it
+    // already had. The pending marker expired ten minutes later and the next
+    // check downloaded the same build again.
+    const script = commandLines.join("\n");
 
     const helper = spawn(
       powershell,
@@ -530,12 +569,7 @@ function launchWindowsInstallerAfterExit(installerPath: string): Promise<void> {
         "-WindowStyle",
         "Hidden",
         "-Command",
-        command,
-        String(process.pid),
-        installerPath,
-        installDir,
-        installedExe,
-        helperLog,
+        script,
       ],
       {
         detached: true,
@@ -548,7 +582,35 @@ function launchWindowsInstallerAfterExit(installerPath: string): Promise<void> {
 
     helper.once("spawn", () => {
       helper.unref();
-      resolvePromise();
+
+      const spawnedAt = Date.now();
+      const deadline = spawnedAt + HELPER_START_TIMEOUT_MS;
+
+      const poll = () => {
+        let wrote = false;
+
+        try {
+          // mtime rather than existence: a previous update attempt leaves a
+          // log behind, and an old one must not read as this one starting.
+          wrote = statSync(helperLog).mtimeMs >= spawnedAt;
+        } catch {
+          wrote = false;
+        }
+
+        if (wrote) {
+          resolvePromise(true);
+          return;
+        }
+
+        if (Date.now() >= deadline) {
+          resolvePromise(false);
+          return;
+        }
+
+        setTimeout(poll, HELPER_START_POLL_MS);
+      };
+
+      poll();
     });
   });
 }
@@ -564,7 +626,16 @@ installIsPending();
 
 autoUpdater.autoDownload = false;
 
-autoUpdater.autoInstallOnAppQuit = process.platform !== "win32";
+// Windows is no longer the exception here.
+//
+// GRYT-67 turned this off because the old NSIS uninstaller could not complete
+// an electron-builder upgrade, and installing on quit walked straight into it.
+// installer.nsh moves that installation aside in customInit now, so the reason
+// is gone — and leaving it off meant the PowerShell helper was the only way a
+// Windows install could ever happen. When that helper failed to parse, there
+// was no second route, which is how v1.6.6 through v1.6.24 ended up unable to
+// update at all.
+autoUpdater.autoInstallOnAppQuit = true;
 
 function isOnBetaChannel(): boolean {
   return readBoolConfig("betaChannel", app.getVersion().includes("-"));
@@ -729,7 +800,23 @@ function runSplashUpdateCheck(): Promise<void> {
               );
             }
 
-            await launchWindowsInstallerAfterExit(installerPath);
+            const helperStarted =
+              await launchWindowsInstallerAfterExit(installerPath);
+
+            // spawn() succeeding only means powershell.exe started. It says
+            // nothing about whether the script ran, and for nine releases it
+            // did not: the script failed to parse, the process exited, and
+            // Gryt quit into no installer at all. The helper's first act is to
+            // write its log, so the log appearing is the one signal that the
+            // handoff is really under way.
+            if (!helperStarted) {
+              startupLog(
+                "Update: helper never wrote its log; falling back to quitAndInstall"
+              );
+
+              autoUpdater.quitAndInstall(false, true);
+              return;
+            }
 
             isQuitting = true;
             app.quit();
