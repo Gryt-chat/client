@@ -55,6 +55,7 @@ const instances = new Map<string, Instance>();
 
 let sfuProcess: ChildProcess | null = null;
 let sfuPort: number | null = null;
+let sfuMediaPort: number | null = null;
 let targetWindow: BrowserWindow | null = null;
 let extractedRuntimeRoot: string | null = null;
 
@@ -487,12 +488,22 @@ function spawnSfu(config: EmbeddedServerConfig): ChildProcess | null {
   if (!binary) return null;
   const envVars = parseEnvFile(config.configPath);
 
+  // Spelled out rather than inherited. The SFU reads a config.env relative to
+  // its working directory, and it is not started in the server's directory, so
+  // anything not named here is a line in that file the SFU never sees.
+  //
+  // ICE_UDP_MUX_PORT is the one that mattered: without it the SFU fell back to
+  // its own default, and before it had one, to ephemeral ports picked at
+  // random. Either way the port the host was told to open and the port media
+  // arrived on had no reason to agree. GRYT-459.
   const proc = spawn(binary, [], {
     env: {
       ...process.env,
       PORT: String(config.sfuPort),
       SFU_PORT: String(config.sfuPort),
+      ICE_UDP_MUX_PORT: String(config.mediaPort),
       ICE_ADVERTISE_IP: envVars.ICE_ADVERTISE_IP || "",
+      ...(envVars.STUN_SERVERS ? { STUN_SERVERS: envVars.STUN_SERVERS } : {}),
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -513,6 +524,7 @@ function spawnSfu(config: EmbeddedServerConfig): ChildProcess | null {
     log(`SFU exited with code ${code}`);
     sfuProcess = null;
     sfuPort = null;
+    sfuMediaPort = null;
 
     // The SFU is shared, so its death is everybody's. Any server still up is
     // now a server whose voice cannot work, and saying nothing would leave
@@ -542,7 +554,10 @@ function ensureSfu(config: EmbeddedServerConfig): number | null {
   if (!sfuProcess) return null;
 
   sfuPort = config.sfuPort;
-  log(`SFU started (pid=${sfuProcess.pid}, port=${sfuPort})`);
+  sfuMediaPort = config.mediaPort;
+  log(
+    `SFU started (pid=${sfuProcess.pid}, signalling=tcp/${sfuPort}, media=udp/${sfuMediaPort})`,
+  );
   return sfuPort;
 }
 
@@ -555,6 +570,7 @@ function releaseSfu(): void {
   killProcess(sfuProcess);
   sfuProcess = null;
   sfuPort = null;
+  sfuMediaPort = null;
 }
 
 function spawnServer(
@@ -770,7 +786,11 @@ export async function startExistingServer(
   // joins it rather than picking a free port and waiting for an SFU that is
   // never going to arrive there.
   try {
-    const moved = await ensurePortsAvailable(id, sfuPort ?? undefined);
+    const moved = await ensurePortsAvailable(
+      id,
+      sfuPort ?? undefined,
+      sfuMediaPort ?? undefined,
+    );
     for (const note of moved) log(`${id}: ${note}`);
   } catch (err) {
     log(`Port re-check failed: ${err instanceof Error ? err.message : err}`);
