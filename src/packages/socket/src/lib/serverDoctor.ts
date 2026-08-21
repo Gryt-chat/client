@@ -390,6 +390,45 @@ function checkMedia(stunHosts: string[]): Promise<CheckResult> {
 }
 
 /**
+ * The route media took, read from the stats of a connected peer connection.
+ *
+ * Found through the transport's `selectedCandidatePairId` rather than by
+ * looking for a pair flagged `nominated`. Nomination is the controlling
+ * agent's job, and here that is the SFU — Chrome reports `nominated: false` on
+ * every pair including the one it is using, so filtering on it finds nothing
+ * and this line silently degrades to "media flowed", which is the half of the
+ * sentence nobody needed.
+ *
+ * A succeeded pair is the fallback, for a browser that reports no transport.
+ */
+function describeSelectedPair(stats: RTCStatsReport): string {
+  const generic = "Connected to the voice server and media flowed.";
+
+  let selectedId: string | undefined;
+  let succeeded: RTCIceCandidatePairStats | undefined;
+
+  stats.forEach((report) => {
+    if (report.type === "transport" && report.selectedCandidatePairId) {
+      selectedId = report.selectedCandidatePairId as string;
+    }
+    if (report.type === "candidate-pair" && report.state === "succeeded") {
+      succeeded = report as RTCIceCandidatePairStats;
+    }
+  });
+
+  const pair =
+    (selectedId ? (stats.get(selectedId) as RTCIceCandidatePairStats | undefined) : undefined) ??
+    succeeded;
+  if (!pair) return generic;
+
+  const local = stats.get(pair.localCandidateId ?? "");
+  const remote = stats.get(pair.remoteCandidateId ?? "");
+  if (!local || !remote) return generic;
+
+  return `Connected. Media took ${local.candidateType} → ${remote.candidateType}, reaching the server at ${remote.address}:${remote.port} over ${String(remote.protocol ?? "udp").toUpperCase()}.`;
+}
+
+/**
  * What the server hands back for a throwaway test room.
  *
  * `join_token` is not a token. It is the whole join payload the SFU expects —
@@ -570,20 +609,12 @@ async function checkCall(
       void pc
         .getStats()
         .then((stats) => {
-          let detail = "Connected to the voice server and media flowed.";
-
-          stats.forEach((report) => {
-            if (report.type !== "candidate-pair" || !report.nominated || report.state !== "succeeded") {
-              return;
-            }
-            const local = stats.get(report.localCandidateId);
-            const remote = stats.get(report.remoteCandidateId);
-            if (!local || !remote) return;
-
-            detail = `Connected. Media took ${local.candidateType} → ${remote.candidateType}, reaching the server at ${remote.address}:${remote.port} over ${String(remote.protocol ?? "udp").toUpperCase()}.`;
+          finish({
+            id: "call",
+            label,
+            status: "pass",
+            detail: describeSelectedPair(stats),
           });
-
-          finish({ id: "call", label, status: "pass", detail });
         })
         .catch(() =>
           finish({
@@ -692,9 +723,14 @@ export async function runDoctor(
   }
 
   set("call", { status: "running" });
+
+  // The grant and the call are separate failures and used to share a message.
+  // A WebSocket this client could not construct was reported as the server
+  // refusing a room, which sends somebody to look at a server that did exactly
+  // what it was asked.
+  let grant: DoctorRoomGrant;
   try {
-    const grant = await input.requestDoctorRoom();
-    set("call", await checkCall(grant, input.stunHosts));
+    grant = await input.requestDoctorRoom();
   } catch (err) {
     set("call", {
       status: "fail",
@@ -703,6 +739,20 @@ export async function runDoctor(
           ? `The server would not open a test room: ${err.message}`
           : "The server would not open a test room.",
       help: HELP.sfu,
+    });
+    return results;
+  }
+
+  try {
+    set("call", await checkCall(grant, input.stunHosts));
+  } catch (err) {
+    set("call", {
+      status: "fail",
+      detail:
+        err instanceof Error
+          ? `The test call could not be started: ${err.message}`
+          : "The test call could not be started.",
+      help: HELP.media,
     });
   }
 
