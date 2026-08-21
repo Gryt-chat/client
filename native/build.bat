@@ -2,7 +2,15 @@
 setlocal
 
 set "SCRIPT_DIR=%~dp0"
-set "OUT_DIR=%SCRIPT_DIR%..\..\build\native"
+rem One .. , not two. This file sits at native\build.bat, one level below the
+rem client root, while native\audio-capture\build.sh is two and correctly uses
+rem ..\.., because the path was copied across without adjusting for the depth.
+rem Two took the helpers to packages\build\native, which nothing looks in.
+rem
+rem It went unnoticed because build\native\ used to be committed, so the
+rem beforeBuild guard found the tracked copies and electron-builder packaged
+rem those. GRYT-419 stopped tracking them and the next Windows release failed.
+set "OUT_DIR=%SCRIPT_DIR%..\build\native"
 
 if not exist "%OUT_DIR%" mkdir "%OUT_DIR%"
 
@@ -53,5 +61,16 @@ if %errorlevel% neq 0 (
 del screen-capture.exe 2>nul
 del main.obj 2>nul
 
-echo SUCCESS: All native binaries built and placed in build\native\
+rem Fail here rather than three steps later. cl.exe happily writes into
+rem whatever directory this script created, so a wrong OUT_DIR exits 0 and the
+rem release only falls over in electron-builder's beforeBuild guard, with an
+rem error that names the directory it wanted and not the one we wrote to.
+for %%f in ("%OUT_DIR%\audio-capture.exe" "%OUT_DIR%\screen-capture.exe") do (
+    if not exist "%%~f" (
+        echo BUILD FAILED: expected %%~f to exist
+        exit /b 1
+    )
+)
+
+echo SUCCESS: All native binaries built and placed in %OUT_DIR%
 endlocal
