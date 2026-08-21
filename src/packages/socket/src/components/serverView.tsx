@@ -21,6 +21,7 @@ import { useChannelSettings, useHandleChannelClick } from "../hooks/useChannelSe
 import { useChat } from "../hooks/useChat";
 import { useLatencyReporting } from "../hooks/useLatencyReporting";
 import { usePeerLatency } from "../hooks/usePeerLatency";
+import { useServerPermissions } from "../hooks/usePermissions";
 import { useServerManagement } from "../hooks/useServerManagement";
 import { useServerReports } from "../hooks/useServerReports";
 import { useServerState } from "../hooks/useServerState";
@@ -156,8 +157,11 @@ export const ServerView = () => {
     ? serverDetailsList[currentlyViewingServer.host]?.server_info?.role
     : undefined;
 
+  const viewerPermissions = useServerPermissions(currentlyViewingServer?.host || "");
+
   const { reportsOpen, setReportsOpen, pendingReportCount, memberListMap } = useServerReports({
-    currentConnection, accessToken, currentlyViewingServer, memberLists, serverRole: currentRole,
+    currentConnection, accessToken, currentlyViewingServer, memberLists,
+    canHandleReports: viewerPermissions.can("manage_reports"),
   });
 
   const viewingHost = currentlyViewingServer?.host;
@@ -261,7 +265,11 @@ export const ServerView = () => {
   const isServerUnreachable = currentConnectionStatus === "disconnected" || currentConnectionStatus === "reconnecting";
   const isVoiceOnThisServer = isConnected && currentServerConnected === host;
   const currentUserRole = serverDetails?.server_info?.role;
-  const canManage = currentUserRole === "owner" || currentUserRole === "admin";
+  // Two different questions that used to be one. Editing the sidebar is
+  // `manage_channels`; pulling somebody out of voice is voice moderation. A
+  // role built to do one and not the other could not say so before.
+  const canManage = viewerPermissions.can("manage_channels");
+  const canDisconnectFromVoice = viewerPermissions.can("mute_members");
   const hostChannels = serverDetails.channels || [];
 
   const { clients: hostClients, videoStreams: voiceVideoStreams } =
@@ -325,7 +333,7 @@ export const ServerView = () => {
             onMoveItem={handleMoveItem}
             onReorder={reorderSidebar}
             onAddItem={handleAddItem}
-            onDisconnectUser={canManage ? requestDisconnectUser : undefined}
+            onDisconnectUser={canDisconnectFromVoice ? requestDisconnectUser : undefined}
             currentUserRole={currentUserRole}
             adminActions={currentAdminActions}
             unreadChannelIds={unreadChannelIds}
@@ -346,7 +354,7 @@ export const ServerView = () => {
             isLoadingMessages={isLoadingMessages}
             restoreText={restoreText}
             clearRestoreText={clearRestoreText}
-            canDeleteAny={currentUserRole === "owner"}
+            canDeleteAny={viewerPermissions.can("manage_messages")}
             maxFileSize={serverDetails.server_info?.upload_max_bytes}
             onLoadOlder={fetchOlderMessages}
             isLoadingOlder={isLoadingOlder}
@@ -400,7 +408,7 @@ export const ServerView = () => {
               onMoveItem={handleMoveItem}
               onReorder={reorderSidebar}
               onAddItem={handleAddItem}
-              onDisconnectUser={canManage ? requestDisconnectUser : undefined}
+              onDisconnectUser={canDisconnectFromVoice ? requestDisconnectUser : undefined}
               currentUserRole={currentUserRole}
               adminActions={currentAdminActions}
               unreadChannelIds={unreadChannelIds}
@@ -429,7 +437,7 @@ export const ServerView = () => {
                 currentConnectionId={currentConnection?.id}
                 onDisconnect={handleVoiceDisconnect}
                 peerLatency={peerLatency}
-                onDisconnectUser={canManage ? requestDisconnectUser : undefined}
+                onDisconnectUser={canDisconnectFromVoice ? requestDisconnectUser : undefined}
                 currentUserRole={currentUserRole}
                 adminActions={currentAdminActions}
                 videoStreams={voiceVideoStreams}
@@ -466,7 +474,7 @@ export const ServerView = () => {
                   isVoiceChannelTextChat={isVoiceChannelTextChat}
                   restoreText={restoreText}
                   clearRestoreText={clearRestoreText}
-                  canDeleteAny={currentUserRole === "owner"}
+                  canDeleteAny={viewerPermissions.can("manage_messages")}
                   maxFileSize={serverDetails.server_info?.upload_max_bytes}
                   onLoadOlder={fetchOlderMessages}
                   isLoadingOlder={isLoadingOlder}

@@ -1,11 +1,13 @@
 import type { RefObject } from "react";
 import { useCallback, useState } from "react";
+import toast from "react-hot-toast";
 
 import { getServerAccessToken } from "@/common";
 
 import type { ChatEditorHandle } from "../components/ChatEditor";
 import type { ChatMessage } from "../components/chatUtils";
 import { recordReaction } from "../utils/recentReactions";
+import { useServerPermissions } from "./usePermissions";
 
 interface UseChatActionsParams {
   chatMessages: ChatMessage[];
@@ -38,10 +40,19 @@ export function useChatActions({
   const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
   const [pendingDeleteMessage, setPendingDeleteMessage] = useState<ChatMessage | null>(null);
 
+  const { can } = useServerPermissions(serverHost || "");
+
   const handleReaction = useCallback((reactionSrc: string, message: ChatMessage) => {
     if (!socketConnection || !currentUserId) return;
     const accessToken = getServerAccessToken(serverHost || "");
     if (!accessToken) return;
+    // Refused here as well as by the server. The picker is left in place rather
+    // than hidden — it is reached from three separate menus, and a control that
+    // says why is better than three that quietly disappear.
+    if (!can("add_reactions")) {
+      toast.error("You do not have permission to react here.");
+      return;
+    }
     recordReaction(reactionSrc, serverHost);
     (socketConnection as { emit: (event: string, data: unknown) => void }).emit("chat:react", {
       conversationId: message.conversation_id,
@@ -49,7 +60,7 @@ export function useChatActions({
       reactionSrc,
       accessToken,
     });
-  }, [socketConnection, currentUserId, serverHost]);
+  }, [socketConnection, currentUserId, serverHost, can]);
 
   const handleReply = useCallback((message: ChatMessage) => {
     setReplyingTo(message);

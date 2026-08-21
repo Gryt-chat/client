@@ -11,6 +11,7 @@ interface ChatEditorBarProps {
   editorRef: RefObject<ChatEditorHandle | null>;
   placeholder: string;
   disabled: boolean;
+  allowFiles?: boolean;
   maxFileSize?: number | null;
   memberList: { nickname: string; serverUserId: string; avatarUrl: string | null }[];
   getSenderName: (msg: ChatMessage) => string;
@@ -29,6 +30,7 @@ export function ChatEditorBar({
   editorRef,
   placeholder,
   disabled,
+  allowFiles,
   maxFileSize,
   memberList,
   getSenderName,
@@ -95,6 +97,7 @@ export function ChatEditorBar({
         ref={editorRef}
         placeholder={placeholder}
         disabled={disabled}
+        allowFiles={allowFiles}
         maxFileSize={maxFileSize}
         onSend={onSend}
         onArrowUpEmpty={onArrowUpEmpty}

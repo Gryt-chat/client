@@ -4,7 +4,8 @@ import { RefObject } from "react";
 import type { AdminActions, MemberInfo } from "./MemberSidebar";
 import { MemberSidebar } from "./MemberSidebar";
 
-type Role = "owner" | "admin" | "mod" | "member";
+/** A role id. The server defines its own; these only pass one along. */
+type Role = string;
 
 const SIDEBAR_SPRING = { type: "spring" as const, stiffness: 380, damping: 34 };
 

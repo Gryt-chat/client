@@ -1,12 +1,18 @@
-import { Button, Surface } from "@gryt/ui";
-import { useEffect, useState } from "react";
+import { Button, Select, Surface } from "@gryt/ui";
+import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
 
+import { useServerPermissions } from "../hooks/usePermissions";
 import { useSocketEvent } from "../hooks/useSocketEvent";
 import { useSockets } from "../hooks/useSockets";
 
-type Role = "owner" | "admin" | "mod" | "member";
+/**
+ * A role id. Was one of four names; a server defines its own now, so the list
+ * of what can be picked comes off `server:details` rather than out of this
+ * file.
+ */
+type Role = string;
 
 export function ServerRolesTab({
   host,
@@ -19,6 +25,18 @@ export function ServerRolesTab({
 }) {
   const { memberLists, requestMemberList } = useSockets();
   const members = host ? (memberLists[host] || []) : [];
+  const { roles: definitions } = useServerPermissions(host);
+
+  const roleOptions = useMemo(
+    () =>
+      definitions
+        // Ownership is a property of the server rather than a role to hand out,
+        // and the server refuses to assign it — so it is shown on the row of
+        // whoever holds it and never offered in the list.
+        .filter((r) => r.id !== "owner")
+        .map((r) => ({ label: r.name, value: r.id })),
+    [definitions],
+  );
 
   const [roles, setRoles] = useState<Record<string, Role>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -71,7 +89,8 @@ export function ServerRolesTab({
   return (
     <div className="flex flex-col gap-4">
       <span className="text-sm text-gryt-muted">
-        Owners can assign roles to members. Admins can manage invites/channels and view the audit log.
+        Who holds which role. What each role may do is on the Role editor tab. A role can
+        only be given to somebody you outrank, and only up to just below your own rank.
       </span>
 
       <div className="flex justify-end gap-2">
@@ -103,16 +122,17 @@ export function ServerRolesTab({
                     <span className="text-sm text-gryt-muted">
                       Role
                     </span>
-                    <select
-                      value={r}
-                      onChange={(e) => setRole(m.serverUserId, (e.target.value as Role) || "member")}
-                      disabled={submitting || r === "owner"}
-                    >
-                      <option value="owner">owner</option>
-                      <option value="admin">admin</option>
-                      <option value="mod">mod</option>
-                      <option value="member">member</option>
-                    </select>
+                    {r === "owner" ? (
+                      <span className="text-sm">Owner</span>
+                    ) : (
+                      <Select
+                        value={r}
+                        onValueChange={(v) => setRole(m.serverUserId, String(v))}
+                        options={roleOptions}
+                        size="small"
+                        disabled={submitting || roleOptions.length === 0}
+                      />
+                    )}
                   </div>
                 </div>
               </Surface>

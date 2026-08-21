@@ -16,7 +16,7 @@ export const ServerHeader = ({
   onLeave: () => void;
   onOpenSettings?: () => void;
   onOpenReports?: () => void;
-  role?: "owner" | "admin" | "mod" | "member";
+  role?: string;
   pendingReportCount?: number;
   updateAvailable?: boolean;
   pinned?: boolean;

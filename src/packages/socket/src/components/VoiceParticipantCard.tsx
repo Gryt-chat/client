@@ -20,7 +20,8 @@ import {
 } from "./speakingIndicator";
 import { UserContextMenu } from "./UserContextMenu";
 
-type Role = "owner" | "admin" | "mod" | "member";
+/** A role id. The server defines its own; these only pass one along. */
+type Role = string;
 
 export interface FocusedStreamInfo {
   itemId: string;
@@ -402,6 +403,7 @@ export function VoiceParticipantCard({
 
     return (
       <UserContextMenu
+        serverHost={serverHost}
         serverUserId={serverUserId}
         nickname={client.nickname}
         isSelf={isSelf}
@@ -757,6 +759,7 @@ export function VoiceParticipantCard({
 
   return (
     <UserContextMenu
+      serverHost={serverHost}
       serverUserId={serverUserId}
       nickname={client.nickname}
       isSelf={isSelf}

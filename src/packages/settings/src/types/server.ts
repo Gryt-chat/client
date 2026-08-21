@@ -38,7 +38,29 @@ export type serverDetails = {
     description?: string;
     icon_url?: string | null;
     is_owner?: boolean;
-    role?: "owner" | "admin" | "mod" | "member";
+    /**
+     * A role id. Used to be one of four names; a server defines its own now, so
+     * anything that wants to *show* a role looks it up in `roles` below and
+     * anything that wants to gate on one reads `permissions`.
+     */
+    role?: string;
+    /**
+     * What this client may do here, as the server sees it.
+     *
+     * Advisory. Every one of these is enforced server-side as well, and the UI
+     * uses them only to stop offering what would be refused — a client that
+     * ignores the list gets an error rather than an action.
+     */
+    permissions?: string[];
+    /** Every role this server has defined, for colouring and labelling people. */
+    roles?: {
+      id: string;
+      name: string;
+      color: string | null;
+      rank: number;
+      permissions: string[];
+      isSystem: boolean;
+    }[];
     max_members?: number;
     voice_enabled?: boolean;
     avatar_max_bytes?: number | null;

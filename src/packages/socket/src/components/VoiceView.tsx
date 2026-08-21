@@ -54,7 +54,8 @@ import { UserContextMenu } from "./UserContextMenu";
 import type { FocusedStreamInfo } from "./VoiceParticipantCard";
 import { VoiceParticipantCard } from "./VoiceParticipantCard";
 
-type Role = "owner" | "admin" | "mod" | "member";
+/** A role id. The server defines its own; this only passes one along. */
+type Role = string;
 
 // The panel's own chrome: the controls float over the bottom of the grid, and
 // a tile running full height would put a name behind the mute button.
@@ -1185,6 +1186,7 @@ export const VoiceView = ({
 
               return (
                 <UserContextMenu
+                  serverHost={serverHost}
                   serverUserId={focusServerUserId}
                   nickname={focusClient.nickname}
                   isSelf={focusIsSelf}

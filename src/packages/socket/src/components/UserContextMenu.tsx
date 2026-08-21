@@ -5,10 +5,24 @@ import { PiAtFill, PiCopyFill } from "react-icons/pi";
 
 import { useSettings } from "@/settings";
 
-type Role = "owner" | "admin" | "mod" | "member";
+import { useServerPermissions } from "../hooks/usePermissions";
+
+/** A role id. The server defines what they are; this only passes them around. */
+type Role = string;
 
 interface UserContextMenuProps {
   children: ReactNode;
+  /**
+   * Which server this menu belongs to, so the permissions and the role list
+   * can be looked up rather than assumed.
+   *
+   * Optional because two callers render this outside a server view. Without it
+   * the menu falls back to the built-in ladder, which is what it did before
+   * roles were editable — wrong for a custom role, and never wrong in the
+   * direction of offering something the server would refuse, since the built-in
+   * ranks are the highest any custom role can be given.
+   */
+  serverHost?: string;
   serverUserId?: string;
   nickname: string;
   isSelf?: boolean;
@@ -27,15 +41,22 @@ interface UserContextMenuProps {
   onPopoutVideo?: () => void;
 }
 
-const ROLE_RANK: Record<Role, number> = { owner: 4, admin: 3, mod: 2, member: 1 };
-
-function canTarget(actorRole?: Role, targetRole?: Role): boolean {
-  if (!actorRole || !targetRole) return false;
-  return ROLE_RANK[actorRole] > ROLE_RANK[targetRole];
-}
+/**
+ * The ranks the built-in roles ship with, for a server that has not told us
+ * otherwise — one that predates editable roles, or a menu rendered where the
+ * host is not known.
+ */
+const BUILT_IN_RANK: Record<string, number> = {
+  owner: 100,
+  admin: 80,
+  mod: 60,
+  member: 40,
+  guest: 10,
+};
 
 export function UserContextMenu({
   children,
+  serverHost,
   serverUserId,
   nickname,
   isSelf,
@@ -54,6 +75,7 @@ export function UserContextMenu({
   onPopoutVideo,
 }: UserContextMenuProps) {
   const { userVolumes, updateUserVolume, resetUserVolume, openSettings } = useSettings();
+  const { has, roles } = useServerPermissions(serverHost || "");
 
   const handleCopyId = () => {
     if (!serverUserId) return;
@@ -119,13 +141,29 @@ export function UserContextMenu({
 
   const volume = userVolumes[serverUserId] ?? 100;
   const showDisconnect = canDisconnect && isInVoice && onDisconnectFromVoice;
-  // Two floors, matching the server. Kick, mute and deafen are reversible and
-  // start at mod; ban is not, and stays at admin. `mod` used to be excluded
-  // from both by an isAdmin check that ignored the ROLE_RANK table right above
-  // it, which is why the role was assignable and did nothing.
-  const outranksTarget = canTarget(role, targetRole);
-  const canModerate = !!role && ROLE_RANK[role] >= ROLE_RANK.mod && outranksTarget;
-  const canBan = !!role && ROLE_RANK[role] >= ROLE_RANK.admin && outranksTarget;
+
+  const rankOf = (roleId?: string) =>
+    (roleId ? roles.find((r) => r.id === roleId)?.rank ?? BUILT_IN_RANK[roleId] : undefined) ?? -1;
+
+  // Rank decides who may be acted on; permissions decide what the action is.
+  // They used to be the same question asked of a four-rung ladder, which is why
+  // a role built to do exactly one of these things could not be expressed.
+  const outranksTarget = !!role && !!targetRole && rankOf(role) > rankOf(targetRole);
+  const canMute = has("mute_members") && outranksTarget;
+  const canKick = has("kick_members") && outranksTarget;
+  const canBan = has("ban_members") && outranksTarget;
+  const canAssignRoles = has("manage_roles") && outranksTarget;
+  const canModerate = canMute || canKick || canBan || canAssignRoles;
+
+  // Only roles this person could actually hand out. Offering one the server
+  // would refuse is offering a click that ends in a red toast.
+  const assignableRoles = roles
+    .filter((r) => r.id !== "owner" && r.rank < rankOf(role))
+    .sort((a, b) => b.rank - a.rank);
+
+  const targetRoleName = targetRole
+    ? roles.find((r) => r.id === targetRole)?.name ?? targetRole
+    : null;
 
   return (
     <ContextMenu.Root>
@@ -141,7 +179,7 @@ export function UserContextMenu({
         {targetRole && (
           // A subtitle rather than a second heading: one group, one label.
           <div className="px-3 pb-1">
-            <span className="text-xs text-gryt-muted" style={{ textTransform: "capitalize" }}>{targetRole}</span>
+            <span className="text-xs text-gryt-muted">{targetRoleName}</span>
           </div>
         )}
         <ContextMenu.Item onClick={handleMention}>
@@ -199,32 +237,31 @@ export function UserContextMenu({
           <>
             <ContextMenu.Separator />
 
-            {onServerMute && (
+            {canMute && onServerMute && (
               <ContextMenu.Item onClick={() => onServerMute(!isServerMuted)}>
                 {isServerMuted ? "Remove server mute" : "Server mute"}
               </ContextMenu.Item>
             )}
 
-            {onServerDeafen && (
+            {canMute && onServerDeafen && (
               <ContextMenu.Item onClick={() => onServerDeafen(!isServerDeafened)}>
                 {isServerDeafened ? "Remove server deafen" : "Server deafen"}
               </ContextMenu.Item>
             )}
 
-            {role === "owner" && onChangeRole && (
+            {canAssignRoles && onChangeRole && assignableRoles.length > 0 && (
               <ContextMenu.SubmenuRoot>
                 <ContextMenu.SubmenuTrigger>Change role</ContextMenu.SubmenuTrigger>
                 <ContextMenu.Portal>
                   <ContextMenu.Positioner>
                     <ContextMenu.Popup>
-                  {(["admin", "mod", "member"] as Role[]).map((r) => (
+                  {assignableRoles.map((r) => (
                     <ContextMenu.Item
-                      key={r}
-                      disabled={targetRole === r}
-                      onClick={() => onChangeRole(r)}
-                      style={{ textTransform: "capitalize" }}
+                      key={r.id}
+                      disabled={targetRole === r.id}
+                      onClick={() => onChangeRole(r.id)}
                     >
-                      {r}{targetRole === r ? " (current)" : ""}
+                      {r.name}{targetRole === r.id ? " (current)" : ""}
                     </ContextMenu.Item>
                   ))}
                 </ContextMenu.Popup>
@@ -235,7 +272,7 @@ export function UserContextMenu({
 
             <ContextMenu.Separator />
 
-            {onKick && (
+            {canKick && onKick && (
               <ContextMenu.Item className="text-gryt-danger" onClick={onKick}>
                 Kick from server
               </ContextMenu.Item>

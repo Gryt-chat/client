@@ -3,6 +3,8 @@ import toast from "react-hot-toast";
 
 import type { Channel } from "@/settings/src/types/server";
 
+import { useServerPermissions } from "./usePermissions";
+
 interface UseChannelSettingsParams {
   inputMode: string;
   rnnoiseEnabled: boolean;
@@ -97,10 +99,20 @@ function useHandleChannelClick({
   setSettingsTab, setShowSettings, setLastSelectedChannelForServer,
   connect, applyChannelSettings, setIsMuted, setIsDeafened,
 }: UseHandleChannelClickParams) {
+  const { can } = useServerPermissions(currentlyViewingServer?.host || "");
+
   return useCallback((channel: Channel) => {
     if (!currentlyViewingServer) return;
     switch (channel.type) {
       case "voice": {
+        // The server refuses this too. Stopping here as well is so the answer
+        // reads as "you are not allowed in" rather than as whatever the media
+        // stack says when the room grant never arrives.
+        if (!can("join_voice")) {
+          toast.error("You do not have permission to join voice on this server.");
+          return;
+        }
+
         const isAlreadyConnectedToThis =
           isConnected && currentServerConnected === currentlyViewingServer.host && currentChannelId === channel.id;
 
@@ -156,7 +168,7 @@ function useHandleChannelClick({
     showVoiceView, mediaAutoShownRef,
     setSelectedChannelId, setShowVoiceView, setPendingChannelId,
     setSettingsTab, setShowSettings, setLastSelectedChannelForServer,
-    connect, applyChannelSettings, setIsMuted, setIsDeafened,
+    connect, applyChannelSettings, setIsMuted, setIsDeafened, can,
   ]);
 }
 

@@ -14,7 +14,8 @@ import { EmojiText } from "./EmojiText";
 import type { AdminActions,MemberInfo } from "./MemberSidebar";
 import { SkeletonBase } from "./skeletons";
 
-type Role = "owner" | "admin" | "mod" | "member";
+/** A role id. The server defines its own; these only pass one along. */
+type Role = string;
 
 export const ChannelList = ({
   channels,
@@ -237,6 +238,7 @@ export const ChannelList = ({
                     (id) =>
                       clients[id].voiceChannelId === channelId && (
                         <ConnectedUser
+                          serverHost={serverHost}
                           isSpeaking={clientsSpeaking[id] || false}
                           avatarColor={
                             clients[id].serverUserId

@@ -17,7 +17,8 @@ import { MobileSheet } from "./MobileSheet";
 import { ServerHeader } from "./ServerHeader";
 import { VoiceView } from "./VoiceView";
 
-type Role = "owner" | "admin" | "mod" | "member";
+/** A role id. The server defines its own; these only pass one along. */
+type Role = string;
 
 interface MobileServerViewProps {
   serverName?: string;

@@ -7,7 +7,8 @@ import { UserStatus } from "../types/clients";
 import { MemberIdentityCard } from "./MemberIdentityCard";
 import { UserContextMenu } from "./UserContextMenu";
 
-type Role = "owner" | "admin" | "mod" | "member";
+/** A role id. The server defines its own; these only pass one along. */
+type Role = string;
 
 export interface MemberInfo {
   serverUserId: string;
@@ -98,6 +99,7 @@ const MemberItem = ({
 
   return (
     <UserContextMenu
+      serverHost={serverHost}
       serverUserId={member.serverUserId}
       nickname={member.nickname}
       isSelf={isSelf}

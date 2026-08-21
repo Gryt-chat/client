@@ -8,15 +8,22 @@ interface UseServerReportsParams {
   accessToken: string | null;
   currentlyViewingServer: { host: string } | null;
   memberLists: Record<string, MemberInfo[] | undefined>;
-  serverRole: "owner" | "admin" | "mod" | "member" | undefined;
+  /**
+   * Whether this member may work the reports queue.
+   *
+   * Was the role name, compared against owner-or-admin. The queue is gated on
+   * `manage_reports` now, so a role built to do nothing but handle reports gets
+   * the badge and the panel.
+   */
+  canHandleReports: boolean;
 }
 
 export function useServerReports({
-  currentConnection, accessToken, currentlyViewingServer, memberLists, serverRole,
+  currentConnection, accessToken, currentlyViewingServer, memberLists, canHandleReports,
 }: UseServerReportsParams) {
   const [reportsOpen, setReportsOpen] = useState(false);
   const [pendingReportCount, setPendingReportCount] = useState(0);
-  const isAdmin = serverRole === "owner" || serverRole === "admin";
+  const isAdmin = canHandleReports;
 
   useEffect(() => {
     if (!currentConnection) return;
