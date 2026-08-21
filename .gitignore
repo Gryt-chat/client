@@ -14,7 +14,17 @@ dist-ssr
 dist-electron
 release
 build/*
-!build/native/
+# `build/native/` is deliberately *not* excepted, unlike the icons below.
+#
+# It holds compiled helpers, and every build already makes them: the release
+# workflow runs `native/audio-capture/build.sh` on Linux and macOS and
+# `native\build.bat` on Windows, each on its own runner, and both scripts
+# `mkdir` this directory before writing into it. The committed copies were
+# overwritten on every release and shipped inside every macOS build for no
+# reason — a .dmg carried two Windows .exe files.
+#
+# The `beforeBuild` check needs the *directory* to exist, which the build
+# scripts see to. It does not need it to be in git.
 !build/icon.*
 !build/entitlements.mac.plist
 !build/installer.nsh
@@ -25,6 +35,9 @@ build/*
 !build/trayTemplate*.png
 !build/tray-*.png
 *.local
+
+# MSVC intermediates, which were committed next to the sources they came from.
+*.obj
 
 # Editor directories and files
 .vscode/*
