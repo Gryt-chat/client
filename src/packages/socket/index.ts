@@ -8,4 +8,5 @@ export * from "./src/utils/joinServerOnce";
 // Components
 export { DeviceSwitchModal } from "./src/components/DeviceSwitchModal";
 export { InviteAcceptModal } from "./src/components/InviteAcceptModal";
+export { ServerDoctor } from "./src/components/ServerDoctor";
 export { ServerSettingsModal } from "./src/components/ServerSettingsModal";
