@@ -1,4 +1,4 @@
-import { Button, IconButton, Surface } from "@gryt/ui";
+import { Button, IconButton, Surface, Switch } from "@gryt/ui";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { PiCopyBold, PiTrashBold } from "react-icons/pi";
@@ -45,6 +45,7 @@ export function ServerBotsTab({
   accessToken: string | null;
 }) {
   const [bots, setBots] = useState<BotEntry[] | null>(null);
+  const [policy, setPolicy] = useState<"request" | "disabled">("disabled");
   const [ticked, setTicked] = useState<Record<string, Set<string>>>({});
   const [busy, setBusy] = useState(false);
   const [issued, setIssued] = useState<{ nickname: string; token: string } | null>(null);
@@ -54,9 +55,13 @@ export function ServerBotsTab({
     socket.emit("server:bots:list", { accessToken });
   };
 
-  useSocketEvent<{ bots: BotEntry[] }>(socket, "server:bots", (payload) => {
+  useSocketEvent<{ bots: BotEntry[]; policy: "request" | "disabled" }>(
+    socket,
+    "server:bots",
+    (payload) => {
     const list = Array.isArray(payload?.bots) ? payload.bots : [];
     setBots(list);
+    setPolicy(payload?.policy === "request" ? "request" : "disabled");
     setBusy(false);
     // Everything a pending bot asked for starts ticked. The operator is being
     // asked to take things away, which is the direction that makes the shorter
@@ -70,7 +75,8 @@ export function ServerBotsTab({
       }
       return next;
     });
-  });
+    },
+  );
 
   useSocketEvent<{ claimToken: string; nickname: string }>(
     socket,
@@ -119,6 +125,26 @@ export function ServerBotsTab({
         give itself more. What it asked for is fixed the first time it turns up, so a bot
         that has been tampered with since cannot come back asking for the keys.
       </span>
+
+      <Surface>
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="flex flex-col" style={{ maxWidth: "34rem" }}>
+            <span className="text-sm font-bold">Let bots ask to join</span>
+            <span className="text-xs text-gryt-muted">
+              With this on, a bot that knows the address can leave a request here. It is
+              admitted by nothing — it waits until you answer. Turn it off and the only way
+              in is a token you hand out yourself.
+            </span>
+          </div>
+          <Switch
+            checked={policy === "request"}
+            disabled={busy}
+            onCheckedChange={(on: boolean) =>
+              emit("server:bots:policy:set", { policy: on ? "request" : "disabled" })
+            }
+          />
+        </div>
+      </Surface>
 
       {issued && (
         <Surface>
