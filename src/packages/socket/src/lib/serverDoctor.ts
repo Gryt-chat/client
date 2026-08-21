@@ -389,10 +389,24 @@ function checkMedia(stunHosts: string[]): Promise<CheckResult> {
   });
 }
 
-/** What the server hands back for a throwaway test room. */
+/**
+ * What the server hands back for a throwaway test room.
+ *
+ * `join_token` is not a token. It is the whole join payload the SFU expects —
+ * room, server, server password and the user's own token — and it goes across
+ * as the body of `client_join` unchanged. Sending anything else, including a
+ * tidier object built out of its parts, gets the connection refused, because
+ * the SFU validates the server id and password inside it.
+ */
 export interface DoctorRoomGrant {
   room_id: string;
-  join_token: string;
+  join_token: {
+    room_id: string;
+    server_id: string;
+    server_password: string;
+    user_token: string;
+    user_id: string;
+  };
   sfu_urls?: string[];
   sfu_url?: string;
 }
@@ -466,13 +480,12 @@ async function checkCall(
       });
 
     ws.onopen = () => {
+      // The grant's join_token verbatim. See DoctorRoomGrant: it is the
+      // payload, not a credential to wrap in one.
       ws.send(
         JSON.stringify({
           event: "client_join",
-          data: JSON.stringify({
-            room_id: grant.room_id,
-            join_token: grant.join_token,
-          }),
+          data: JSON.stringify(grant.join_token),
         }),
       );
     };
