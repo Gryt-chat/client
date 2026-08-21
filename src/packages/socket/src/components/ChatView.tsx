@@ -9,6 +9,7 @@ import { useSettings } from "@/settings";
 
 import { useChatActions } from "../hooks/useChatActions";
 import { useChatScroll } from "../hooks/useChatScroll";
+import { useServerPermissions } from "../hooks/usePermissions";
 import { useTypingIndicator } from "../hooks/useTypingIndicator";
 import { fetchCustomEmojis, getCustomEmojis, onCustomEmojisChange, setCustomEmojis } from "../utils/emojiData";
 import type { CustomEmojiEntry } from "../utils/remarkEmoji";
@@ -226,16 +227,24 @@ export const ChatView = memo(({
     setLightboxImage({ src, alt });
   }, []);
 
+  // What this server lets us do here. A read-only role still sees every
+  // message — the compose box is what goes away, with a line saying why rather
+  // than a box that swallows what you type and then errors.
+  const { can: mayHere } = useServerPermissions(serverHost || "");
+  const maySend = mayHere("send_messages");
+
   const editorPlaceholder =
     !canViewVoiceChannelText && isVoiceChannelTextChat
       ? "Text chat is not available in this voice channel"
-      : isRateLimited && rateLimitCountdown
-        ? `Please wait ${rateLimitCountdown} seconds...`
-        : channelName
-          ? `Message #${channelName}`
-          : "Chat with your friends!";
+      : !maySend
+        ? "You can read here, but not post."
+        : isRateLimited && rateLimitCountdown
+          ? `Please wait ${rateLimitCountdown} seconds...`
+          : channelName
+            ? `Message #${channelName}`
+            : "Chat with your friends!";
 
-  const editorDisabled = (!canViewVoiceChannelText && isVoiceChannelTextChat) || false;
+  const editorDisabled = (!canViewVoiceChannelText && isVoiceChannelTextChat) || !maySend;
 
   const showVoiceDisabled = !canViewVoiceChannelText && isVoiceChannelTextChat;
   const showMessages = !showVoiceDisabled && !isLoadingMessages && chatMessages.length > 0;
@@ -358,6 +367,7 @@ export const ChatView = memo(({
             editorRef={editorRef}
             placeholder={editorPlaceholder}
             disabled={editorDisabled}
+            allowFiles={mayHere("attach_files")}
             maxFileSize={maxFileSize}
             memberList={mentionMembers}
             getSenderName={getSenderName}

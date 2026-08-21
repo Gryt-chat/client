@@ -33,6 +33,15 @@ interface PendingFile {
 interface ChatEditorProps {
   placeholder?: string;
   disabled?: boolean;
+  /**
+   * Whether attaching is offered at all.
+   *
+   * Separate from `disabled`, because a role can be allowed to talk and not to
+   * upload — which is the shape a public server actually wants. Hiding the clip
+   * is the whole of the client's part; the server refuses the upload and the
+   * message either way.
+   */
+  allowFiles?: boolean;
   maxFileSize?: number | null;
   onSend: (markdown: string, files: File[]) => void;
   onArrowUpEmpty?: () => void;
@@ -228,7 +237,7 @@ function replaceEmojiQueryAtCursor(entry: EmojiEntry): void {
 }
 
 export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
-  ({ placeholder, disabled, maxFileSize, onSend, onArrowUpEmpty, onCancel, onTyping, onStopTyping, isEditing, memberList, serverHost }, ref) => {
+  ({ placeholder, disabled, allowFiles, maxFileSize, onSend, onArrowUpEmpty, onCancel, onTyping, onStopTyping, isEditing, memberList, serverHost }, ref) => {
     const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
     const pendingFilesRef = useRef<PendingFile[]>([]);
     pendingFilesRef.current = pendingFiles;
@@ -288,6 +297,12 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
     }, []);
 
     const addFiles = useCallback((files: FileList | File[]) => {
+      // Covers paste and drag-and-drop as well as the clip, which is why it is
+      // here rather than only on the button.
+      if (allowFiles === false) {
+        toast.error("You do not have permission to attach files here.");
+        return;
+      }
       for (const file of files) {
         if (maxFileSize && file.size > maxFileSize) {
           const limitMb = (maxFileSize / (1024 * 1024)).toFixed(0);
@@ -298,7 +313,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
         const id = `file-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         setPendingFiles((prev) => [...prev, { id, file, previewUrl }]);
       }
-    }, [maxFileSize]);
+    }, [maxFileSize, allowFiles]);
 
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -560,15 +575,17 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
           onClose={handleMentionAutocompleteClose}
         />
         <div className="chat-editor-input-row">
-          <button
-            className="chat-editor-attach-btn"
-            type="button"
-            aria-label="Attach file"
-            disabled={disabled}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <PiPaperclipFill size={20} />
-          </button>
+          {allowFiles !== false && (
+            <button
+              className="chat-editor-attach-btn"
+              type="button"
+              aria-label="Attach file"
+              disabled={disabled}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <PiPaperclipFill size={20} />
+            </button>
+          )}
           <input
             ref={fileInputRef}
             type="file"

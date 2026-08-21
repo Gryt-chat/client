@@ -1,9 +1,10 @@
 import { Chip, Dialog, IconButton, Spinner, Tabs } from "@gryt/ui";
-import { useEffect, useMemo, useState } from "react";
-import { PiArrowsLeftRightFill, PiGearFill, PiHandWavingFill, PiLinkFill, PiListChecksFill, PiProhibitFill, PiSmileyFill, PiUsersFill, PiWebhooksLogoFill, PiX } from "react-icons/pi";
+import { type ReactNode,useEffect, useMemo, useState } from "react";
+import { PiArrowsLeftRightFill, PiGearFill, PiHandWavingFill, PiLinkFill, PiListChecksFill, PiProhibitFill, PiShieldCheckFill, PiSmileyFill, PiUsersFill, PiWebhooksLogoFill, PiX } from "react-icons/pi";
 
 import { getServerAccessToken } from "@/common";
 
+import { useServerPermissions } from "../hooks/usePermissions";
 import { useSockets } from "../hooks/useSockets";
 import { useVersionStatus } from "../hooks/useVersionStatus";
 import { ServerAuditTab } from "./ServerAuditTab";
@@ -15,6 +16,7 @@ import {
   type ServerOverviewInitialSettings,
   ServerOverviewTab,
 } from "./ServerOverviewTab";
+import { ServerRoleEditorTab } from "./ServerRoleEditorTab";
 import { ServerRolesTab } from "./ServerRolesTab";
 import { ServerUserReplaceTab } from "./ServerUserReplaceTab";
 import { ServerWebhooksTab } from "./ServerWebhooksTab";
@@ -48,9 +50,26 @@ export function ServerSettingsModal() {
 
   const serverInfo = host ? serverDetailsList[host]?.server_info : undefined;
   const role = serverInfo?.role;
-  const canManage = role === "owner" || role === "admin";
-  const permissionKnown = role === "owner" || role === "admin" || role === "mod" || role === "member";
-  const allowTabs = canManage || !permissionKnown;
+  const { has: hasPermission, known: permissionKnown } = useServerPermissions(host);
+
+  // Every tab needs one permission, and the modal opens if any of them do. It
+  // used to be "owner or admin", which was the same question asked of a fixed
+  // ladder — and it means a role built to do exactly one of these things, which
+  // is the point of the editor, could not reach the screen it lives on.
+  const canManage =
+    !permissionKnown ||
+    [
+      "manage_server",
+      "create_invite",
+      "manage_invites",
+      "manage_join_requests",
+      "manage_roles",
+      "manage_emojis",
+      "ban_members",
+      "view_audit_log",
+      "manage_webhooks",
+    ].some((p) => hasPermission(p));
+  const allowTabs = canManage;
 
 
   function handleDialogChange(open: boolean) {
@@ -110,7 +129,14 @@ export function ServerSettingsModal() {
     isOpen && canManage,
   );
 
-  const TAB_CONFIG = [
+  const ALL_TABS: {
+    value: string;
+    label: string;
+    icon: typeof PiGearFill;
+    /** Any one of these is enough. Absent means everybody who got this far. */
+    needs?: string[];
+    content: ReactNode;
+  }[] = [
     {
       value: "overview",
       label: "Overview",
@@ -129,30 +155,42 @@ export function ServerSettingsModal() {
       value: "invites",
       label: "Invites",
       icon: PiLinkFill,
+      needs: ["create_invite", "manage_invites"],
       content: <ServerInvitesTab host={host} socket={socket} accessToken={accessToken} />,
     },
     {
       value: "requests",
       label: "Requests",
       icon: PiHandWavingFill,
+      needs: ["manage_join_requests"],
       content: <ServerJoinRequestsTab host={host} socket={socket} accessToken={accessToken} />,
     },
     {
       value: "roles",
-      label: "Roles",
+      label: "Members",
       icon: PiUsersFill,
+      needs: ["manage_roles"],
       content: <ServerRolesTab host={host} socket={socket} accessToken={accessToken} />,
+    },
+    {
+      value: "role-editor",
+      label: "Role editor",
+      icon: PiShieldCheckFill,
+      needs: ["manage_roles"],
+      content: <ServerRoleEditorTab host={host} socket={socket} accessToken={accessToken} />,
     },
     {
       value: "emojis",
       label: "Emojis",
       icon: PiSmileyFill,
+      needs: ["manage_emojis"],
       content: <ServerEmojisTab host={host} socket={socket} accessToken={accessToken} />,
     },
     {
       value: "bans",
       label: "Bans",
       icon: PiProhibitFill,
+      needs: ["ban_members"],
       content: (
         <ServerBansTab
           host={host}
@@ -166,12 +204,14 @@ export function ServerSettingsModal() {
       value: "audit",
       label: "Audit Log",
       icon: PiListChecksFill,
+      needs: ["view_audit_log"],
       content: <ServerAuditTab host={host} socket={socket} accessToken={accessToken} />,
     },
     {
       value: "webhooks",
       label: "Webhooks",
       icon: PiWebhooksLogoFill,
+      needs: ["manage_webhooks"],
       content: (
         <ServerWebhooksTab
           host={host}
@@ -182,7 +222,7 @@ export function ServerSettingsModal() {
     ...(isOwner
       ? [
           {
-            value: "replace-user" as const,
+            value: "replace-user",
             label: "Replace User",
             icon: PiArrowsLeftRightFill,
             content: <ServerUserReplaceTab host={host} socket={socket} accessToken={accessToken} />,
@@ -190,6 +230,13 @@ export function ServerSettingsModal() {
         ]
       : []),
   ];
+
+  // A tab whose events the server would refuse is not shown. Against a server
+  // that predates permissions nothing is filtered, because it sends no list and
+  // the old owner-or-admin gate above is what let this modal open at all.
+  const TAB_CONFIG = ALL_TABS.filter(
+    (t) => !permissionKnown || !t.needs || t.needs.some((p) => hasPermission(p)),
+  );
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={handleDialogChange}>

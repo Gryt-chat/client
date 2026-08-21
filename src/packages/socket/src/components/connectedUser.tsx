@@ -10,7 +10,8 @@ import {
 } from "./speakingIndicator";
 import { UserContextMenu } from "./UserContextMenu";
 
-type Role = "owner" | "admin" | "mod" | "member";
+/** A role id. The server defines its own; these only pass one along. */
+type Role = string;
 
 /** Radix Avatar size="1". The halo has to be told the box it grows from. */
 const SIDEBAR_AVATAR_PX = 24;
@@ -43,6 +44,7 @@ export function ConnectedUser({
   onServerMute,
   onServerDeafen,
   onChangeRole,
+  serverHost,
 }: {
   isSpeaking: boolean;
   /** Dominant colour of the avatar, so the ring matches the voice tile's. */
@@ -71,11 +73,13 @@ export function ConnectedUser({
   onServerMute?: (muted: boolean) => void;
   onServerDeafen?: (deafened: boolean) => void;
   onChangeRole?: (role: Role) => void;
+  serverHost?: string;
 }) {
   const hue = tileHue(nickname, avatarColor);
 
   return (
     <UserContextMenu
+      serverHost={serverHost}
       serverUserId={serverUserId}
       nickname={nickname}
       isSelf={isSelf}
