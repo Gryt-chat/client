@@ -14,6 +14,9 @@ type RoleDefinition = {
   rank: number;
   permissions: string[];
   isSystem: boolean;
+  /** Null on either half means that half is not being asked for. */
+  autoGrantAfterDays: number | null;
+  autoGrantAfterMessages: number | null;
   memberCount: number;
 };
 
@@ -138,6 +141,8 @@ export function ServerRoleEditorTab({
       draft.name !== selected.name ||
       draft.color !== selected.color ||
       draft.rank !== selected.rank ||
+      draft.autoGrantAfterDays !== selected.autoGrantAfterDays ||
+      draft.autoGrantAfterMessages !== selected.autoGrantAfterMessages ||
       draft.permissions.length !== selected.permissions.length ||
       draft.permissions.some((p) => !selected.permissions.includes(p))
     );
@@ -178,6 +183,8 @@ export function ServerRoleEditorTab({
       color: draft.color,
       rank: draft.rank,
       permissions: draft.permissions,
+      autoGrantAfterDays: draft.autoGrantAfterDays,
+      autoGrantAfterMessages: draft.autoGrantAfterMessages,
     });
     if (creating) setSelectedId(roleId);
   };
@@ -194,6 +201,8 @@ export function ServerRoleEditorTab({
       rank: 5,
       permissions: [],
       isSystem: false,
+      autoGrantAfterDays: null,
+      autoGrantAfterMessages: null,
       memberCount: 0,
     });
   };
@@ -262,7 +271,14 @@ export function ServerRoleEditorTab({
                 />
                 <span className="truncate">{role.name}</span>
               </span>
-              <span className="text-xs text-gryt-muted shrink-0">{role.memberCount}</span>
+              <span className="flex items-center gap-1 shrink-0">
+                {(role.autoGrantAfterDays !== null || role.autoGrantAfterMessages !== null) && (
+                  <span className="text-xs text-gryt-muted" title="Given out automatically">
+                    auto
+                  </span>
+                )}
+                <span className="text-xs text-gryt-muted">{role.memberCount}</span>
+              </span>
             </button>
           ))}
 
@@ -347,6 +363,65 @@ export function ServerRoleEditorTab({
                   />
                 </label>
               </div>
+
+              {!draft.isSystem && (
+                <div className="flex flex-col gap-2">
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold">Given out automatically</span>
+                    <span className="text-xs text-gryt-muted">
+                      Leave both blank and this role is only ever handed out by hand. Fill
+                      both in and somebody gets it once they have been here that long{" "}
+                      <em>and</em> posted that many messages — both, not either, because
+                      time on its own is something a patient stranger also has.
+                    </span>
+                  </div>
+
+                  <div className="flex gap-4 flex-wrap">
+                    <label className="flex items-center gap-2 text-sm">
+                      <span className="text-gryt-muted">After days</span>
+                      <input
+                        type="number"
+                        min={0}
+                        placeholder="—"
+                        value={draft.autoGrantAfterDays ?? ""}
+                        onChange={(e) =>
+                          setDraft({
+                            ...draft,
+                            autoGrantAfterDays: e.target.value ? Number(e.target.value) : null,
+                          })
+                        }
+                        className="w-20 bg-transparent border-b border-gryt-border outline-none"
+                      />
+                    </label>
+
+                    <label className="flex items-center gap-2 text-sm">
+                      <span className="text-gryt-muted">After messages</span>
+                      <input
+                        type="number"
+                        min={0}
+                        placeholder="—"
+                        value={draft.autoGrantAfterMessages ?? ""}
+                        onChange={(e) =>
+                          setDraft({
+                            ...draft,
+                            autoGrantAfterMessages: e.target.value
+                              ? Number(e.target.value)
+                              : null,
+                          })
+                        }
+                        className="w-20 bg-transparent border-b border-gryt-border outline-none"
+                      />
+                    </label>
+                  </div>
+
+                  <span className="text-xs text-gryt-muted">
+                    It only ever promotes. Nobody is moved down for going quiet, and
+                    anyone already holding a higher role is left where they are. Checked
+                    when somebody joins and after they post, so a role earned while they
+                    were away arrives the next time they turn up.
+                  </span>
+                </div>
+              )}
 
               {groups.map((group) => (
                 <div key={group.title} className="flex flex-col gap-2">
