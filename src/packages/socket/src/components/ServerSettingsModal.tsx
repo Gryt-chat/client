@@ -1,6 +1,6 @@
 import { Chip, Dialog, IconButton, Spinner, Tabs } from "@gryt/ui";
 import { type ReactNode,useEffect, useMemo, useState } from "react";
-import { PiArrowsLeftRightFill, PiGearFill, PiHandWavingFill, PiLinkFill, PiListChecksFill, PiProhibitFill, PiShieldCheckFill, PiSmileyFill, PiUsersFill, PiWebhooksLogoFill, PiX } from "react-icons/pi";
+import { PiArrowsLeftRightFill, PiGearFill, PiHandWavingFill, PiLinkFill, PiListChecksFill, PiProhibitFill, PiRobotFill, PiShieldCheckFill, PiSmileyFill, PiUsersFill, PiWebhooksLogoFill, PiX } from "react-icons/pi";
 
 import { getServerAccessToken } from "@/common";
 
@@ -9,6 +9,7 @@ import { useSockets } from "../hooks/useSockets";
 import { useVersionStatus } from "../hooks/useVersionStatus";
 import { ServerAuditTab } from "./ServerAuditTab";
 import { ServerBansTab } from "./ServerBansTab";
+import { ServerBotsTab } from "./ServerBotsTab";
 import { ServerEmojisTab } from "./ServerEmojisTab";
 import { ServerInvitesTab } from "./ServerInvitesTab";
 import { ServerJoinRequestsTab } from "./ServerJoinRequestsTab";
@@ -70,6 +71,7 @@ export function ServerSettingsModal() {
       "manage_webhooks",
       "manage_sidebar",
       "replace_identity",
+      "manage_bots",
     ].some((p) => hasPermission(p));
   const allowTabs = canManage;
 
@@ -208,6 +210,13 @@ export function ServerSettingsModal() {
       icon: PiListChecksFill,
       needs: ["view_audit_log"],
       content: <ServerAuditTab host={host} socket={socket} accessToken={accessToken} />,
+    },
+    {
+      value: "bots",
+      label: "Bots",
+      icon: PiRobotFill,
+      needs: ["manage_bots"],
+      content: <ServerBotsTab host={host} socket={socket} accessToken={accessToken} />,
     },
     {
       value: "webhooks",

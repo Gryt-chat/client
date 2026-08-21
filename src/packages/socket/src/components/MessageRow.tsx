@@ -6,6 +6,7 @@ import { getUploadsFileUrl } from "@/common";
 
 import { useServerPermissions } from "../hooks/usePermissions";
 import type { CustomEmojiEntry } from "../utils/remarkEmoji";
+import { BotTag } from "./BotTag";
 import { ChatMediaPlayer } from "./ChatMediaPlayer";
 import { MessageHoverToolbar } from "./ChatMessage";
 import type { AttachmentMeta, ChatMessage, Reaction } from "./chatUtils";
@@ -28,6 +29,8 @@ export interface MessageMeta {
   isFirstEdited: boolean;
   isSystem: boolean;
   isWebhook: boolean;
+  /** Whether a bot wrote it. Server-derived; see BotTag. */
+  isBot?: boolean;
 }
 
 interface MessageRowProps {
@@ -229,6 +232,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                 <span className="text-sm font-bold" style={{ color: meta.isSelf ? "var(--gryt-accent-11)" : "var(--gryt-neutral-12)" }}>
                   {meta.senderName}
                 </span>
+                {meta.isBot && <BotTag />}
                 {meta.isWebhook && (
                   <span style={{
                     display: "inline-flex",

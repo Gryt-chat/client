@@ -123,6 +123,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       { id: "view_audit_log", label: "View audit log", description: "Read what moderators and admins have done." },
       { id: "view_server_status", label: "See server status", description: "Whether this server is running a current build." },
       { id: "manage_roles", label: "Manage roles", description: "Edit roles and hand them out. The keys to the building." },
+      { id: "manage_bots", label: "Manage bots", description: "Answer bots at the door and decide what they may do." },
       { id: "manage_server", label: "Manage server", description: "Name, description, icon, limits, join policy." },
       { id: "replace_identity", label: "Replace an identity", description: "Hand an existing membership to a different account. The most dangerous thing here." },
     ],
