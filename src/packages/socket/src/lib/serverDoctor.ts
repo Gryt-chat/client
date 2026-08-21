@@ -16,7 +16,8 @@ export type CheckId =
   | "server-socket"
   | "sfu-http"
   | "sfu-ws"
-  | "media";
+  | "media"
+  | "call";
 
 export type CheckStatus = "pending" | "running" | "pass" | "fail" | "warn" | "skipped";
 
@@ -51,6 +52,7 @@ const HELP = {
 
 const PROBE_TIMEOUT_MS = 4000;
 const ICE_TIMEOUT_MS = 10000;
+const CALL_TIMEOUT_MS = 15000;
 
 /**
  * Whether this client is allowed to speak plain ws/http at all.
@@ -132,6 +134,7 @@ export function initialChecks(): CheckResult[] {
     { id: "sfu-http", label: "Voice signalling reachable", status: "pending" },
     { id: "sfu-ws", label: "Voice signalling accepts a connection", status: "pending" },
     { id: "media", label: "Voice and video path", status: "pending" },
+    { id: "call", label: "A real call to this server", status: "pending" },
   ];
 }
 
@@ -386,6 +389,201 @@ function checkMedia(stunHosts: string[]): Promise<CheckResult> {
   });
 }
 
+/** What the server hands back for a throwaway test room. */
+export interface DoctorRoomGrant {
+  room_id: string;
+  join_token: string;
+  sfu_urls?: string[];
+  sfu_url?: string;
+}
+
+/**
+ * Ask the SFU for a real connection, into a room with nobody else in it.
+ *
+ * The checks above prove the SFU is reachable and will talk. This proves media
+ * gets through, which is a different question and the one people actually have.
+ * A firewall that passes TCP 5005 and drops UDP 3478 looks perfect until here.
+ *
+ * The prize is `selectedPair`: the candidate types and addresses ICE settled
+ * on. "srflx over 26.196.88.218" is a complete answer to a support thread that
+ * would otherwise take an evening.
+ */
+async function checkCall(
+  grant: DoctorRoomGrant,
+  stunHosts: string[],
+): Promise<CheckResult> {
+  const label = "A real call to this server";
+
+  if (typeof RTCPeerConnection === "undefined") {
+    return { id: "call", label, status: "skipped", detail: "This client cannot test WebRTC." };
+  }
+
+  const url = sfuWsUrl(grant.sfu_urls?.[0] ?? grant.sfu_url ?? "");
+  const pc = new RTCPeerConnection({
+    iceServers: stunHosts.length > 0 ? [{ urls: stunHosts }] : [],
+  });
+  const ws = new WebSocket(url);
+
+  // Something to negotiate. A data channel rather than a microphone: this must
+  // not ask for a device, and a permission prompt in the middle of a
+  // diagnostic would be its own bug report.
+  pc.createDataChannel("gryt-doctor");
+
+  const cleanUp = () => {
+    pc.close();
+    if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) ws.close();
+  };
+
+  return new Promise<CheckResult>((resolve) => {
+    let settled = false;
+
+    const finish = (result: CheckResult) => {
+      if (settled) return;
+      settled = true;
+      cleanUp();
+      resolve(result);
+    };
+
+    const timer = setTimeout(
+      () =>
+        finish({
+          id: "call",
+          label,
+          status: "fail",
+          detail: `Negotiation started but never connected within ${CALL_TIMEOUT_MS / 1000}s. Signalling works and media does not, which almost always means the UDP port is closed or the network drops UDP.`,
+          help: HELP.media,
+        }),
+      CALL_TIMEOUT_MS,
+    );
+
+    ws.onerror = () =>
+      finish({
+        id: "call",
+        label,
+        status: "fail",
+        detail: `Could not open a connection to ${url}.`,
+        help: HELP.sfu,
+      });
+
+    ws.onopen = () => {
+      ws.send(
+        JSON.stringify({
+          event: "client_join",
+          data: JSON.stringify({
+            room_id: grant.room_id,
+            join_token: grant.join_token,
+          }),
+        }),
+      );
+    };
+
+    ws.onmessage = (event) => {
+      let message: { event?: string; data?: string };
+      try {
+        message = JSON.parse(String(event.data));
+      } catch {
+        return;
+      }
+
+      if (message.event === "error") {
+        finish({
+          id: "call",
+          label,
+          status: "fail",
+          detail: `The voice server refused the test room: ${message.data ?? "no reason given"}.`,
+          help: HELP.sfu,
+        });
+        return;
+      }
+
+      // Offer and candidates are the engine's protocol, not this one's, and
+      // repeating it here would be a second copy to keep in step. ICE state is
+      // enough for a yes or no, so the negotiation is left to the peer
+      // connection and only the outcome is read.
+      if (message.event === "offer" && message.data) {
+        void (async () => {
+          try {
+            await pc.setRemoteDescription(JSON.parse(message.data as string));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            ws.send(JSON.stringify({ event: "answer", data: JSON.stringify(answer) }));
+          } catch {
+            finish({
+              id: "call",
+              label,
+              status: "fail",
+              detail: "The voice server offered a connection this client could not answer.",
+              help: HELP.media,
+            });
+          }
+        })();
+      }
+
+      if (message.event === "candidate" && message.data) {
+        try {
+          void pc.addIceCandidate(JSON.parse(message.data as string));
+        } catch {
+          // A candidate that will not parse is not on its own a failure: ICE
+          // needs one working pair, not every pair.
+        }
+      }
+    };
+
+    pc.onicecandidate = (event) => {
+      if (!event.candidate || ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ event: "candidate", data: JSON.stringify(event.candidate) }));
+    };
+
+    pc.oniceconnectionstatechange = () => {
+      if (pc.iceConnectionState === "failed") {
+        clearTimeout(timer);
+        finish({
+          id: "call",
+          label,
+          status: "fail",
+          detail:
+            "ICE tried every path it had and none worked. Gryt has no relay, so a network that will not pass UDP cannot carry a call.",
+          help: HELP.media,
+        });
+        return;
+      }
+
+      if (pc.iceConnectionState !== "connected" && pc.iceConnectionState !== "completed") {
+        return;
+      }
+
+      clearTimeout(timer);
+
+      void pc
+        .getStats()
+        .then((stats) => {
+          let detail = "Connected to the voice server and media flowed.";
+
+          stats.forEach((report) => {
+            if (report.type !== "candidate-pair" || !report.nominated || report.state !== "succeeded") {
+              return;
+            }
+            const local = stats.get(report.localCandidateId);
+            const remote = stats.get(report.remoteCandidateId);
+            if (!local || !remote) return;
+
+            detail = `Connected. Media took ${local.candidateType} → ${remote.candidateType}, reaching the server at ${remote.address}:${remote.port} over ${String(remote.protocol ?? "udp").toUpperCase()}.`;
+          });
+
+          finish({ id: "call", label, status: "pass", detail });
+        })
+        .catch(() =>
+          finish({
+            id: "call",
+            label,
+            status: "pass",
+            detail: "Connected to the voice server and media flowed.",
+          }),
+        );
+    };
+  });
+}
+
 export interface DoctorInput {
   /** The address the person typed to add this server. */
   host: string;
@@ -393,6 +591,12 @@ export interface DoctorInput {
   socketConnected: boolean;
   sfuHosts: string[];
   stunHosts: string[];
+  /**
+   * Asks the server for a throwaway room, or null when the caller does not
+   * want a real call attempted. Left out, the Doctor stops at "the SFU is
+   * reachable" and says the last check was not run.
+   */
+  requestDoctorRoom?: () => Promise<DoctorRoomGrant>;
 }
 
 /**
@@ -455,7 +659,39 @@ export async function runDoctor(
   }
 
   set("media", { status: "running" });
-  set("media", await checkMedia(input.stunHosts));
+  const media = await checkMedia(input.stunHosts);
+  set("media", media);
+
+  if (!input.requestDoctorRoom) {
+    set("call", {
+      status: "skipped",
+      detail: "Not tested. This client cannot ask the server for a test room.",
+    });
+    return results;
+  }
+
+  if (!firstReachable) {
+    set("call", {
+      status: "skipped",
+      detail: "Not tested, because no voice address answered.",
+    });
+    return results;
+  }
+
+  set("call", { status: "running" });
+  try {
+    const grant = await input.requestDoctorRoom();
+    set("call", await checkCall(grant, input.stunHosts));
+  } catch (err) {
+    set("call", {
+      status: "fail",
+      detail:
+        err instanceof Error
+          ? `The server would not open a test room: ${err.message}`
+          : "The server would not open a test room.",
+      help: HELP.sfu,
+    });
+  }
 
   return results;
 }
