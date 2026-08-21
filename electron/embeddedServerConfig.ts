@@ -194,19 +194,31 @@ function existingMediaPort(): number | null {
 }
 
 /**
- * A free port to offer in the create form.
+ * A free TCP port, near the one asked for.
  *
- * Walks up from 5000 rather than asking the OS for any free port. The OS gives
- * back something like 54162, which is fine for a machine and unfriendly to show
- * a person — this is a number they may have to type into a router, and 5001
+ * Walks upward rather than asking the OS for any free port. The OS gives back
+ * something like 54162, which is fine for a machine and unfriendly to show a
+ * person — these are numbers somebody may have to type into a router, and 5001
  * beats 54162 for that. Falls back to whatever is free if the whole run is
  * taken, since a working port matters more than a tidy one.
+ *
+ * Used for every port a new server picks. It used to be the create form only,
+ * while the SFU port and the fallback for a taken server port went through
+ * findFreePortFrom, which tries the preferred number once and then takes an
+ * ephemeral one. A machine with something on 5005 — a dev SFU, most often —
+ * produced a server advertising ws://127.0.0.1:55590, and now that ports do
+ * not move afterwards that number is the server's for good. GRYT-469.
  */
-export async function suggestServerPort(preferred = 5000): Promise<number> {
-  for (let port = preferred; port < preferred + 50; port++) {
+async function findFriendlyPortFrom(preferred: number): Promise<number> {
+  for (let port = preferred; port < preferred + 50 && port <= 65535; port++) {
     if (await portIsFree(port)) return port;
   }
   return findFreePortFrom(0);
+}
+
+/** A free port to offer in the create form. */
+export async function suggestServerPort(preferred = 5000): Promise<number> {
+  return findFriendlyPortFrom(preferred);
 }
 
 /** Whether a port somebody typed can actually be bound. */
@@ -217,83 +229,80 @@ export function isPortAvailable(port: number): Promise<boolean> {
   return portIsFree(port);
 }
 
+/** A port the server needs and cannot have. */
+export interface PortConflict {
+  /** Which of the three, for the message and for the field to point at. */
+  role: "server" | "sfu" | "media";
+  port: number;
+  protocol: "TCP" | "UDP";
+}
+
 /**
- * Re-check the ports recorded in a config and move off any that are taken.
+ * Check the ports a config asks for, and report the ones it cannot have.
  *
- * Ports were previously chosen once, when the server was created, and reused
- * forever. Anything else claiming one in the meantime broke the server on every
- * subsequent start with no way to recover from the UI. On macOS that is not
- * hypothetical: AirPlay Receiver binds 5000, which is the preferred default.
+ * This used to move them. A port taken by something else was quietly swapped
+ * for a free one, on the reasoning that a server which cannot start and cannot
+ * be fixed from the UI is worse than a server on a different port. On macOS
+ * that was not hypothetical: AirPlay Receiver binds 5000.
  *
- * SFU_WS_HOST and SFU_PUBLIC_HOST embed the SFU port, so they move with it.
+ * The trade was wrong for anyone hosting for people outside their network,
+ * which is most of the reason to host at all. They forward 5000 on a router,
+ * something claims 5000 one morning, the app moves to 5001, and the server
+ * comes back up looking perfectly healthy while nobody outside can reach it.
+ * Since GRYT-459 the media port could drift the same way, which is worse
+ * again: chat keeps working and only voice dies. A number written into a
+ * router is a promise, and moving it silently breaks the promise in the one
+ * direction the person cannot see. GRYT-469.
  *
- * `pinnedSfuPort` and `pinnedMediaPort` are how a second server joins the SFU
- * the first one already started. There is one SFU per app, not one per server,
- * so a server starting into a running SFU must be pointed at it rather than
- * probing for ports of its own — the probes would succeed and it would sit
- * waiting for an SFU that nothing is going to start.
+ * So the ports are chosen once, at creation, and after that they are the
+ * server's. A conflict is reported and the server does not start, which is
+ * only a reasonable thing to do because the ports can now be changed in
+ * My servers. `updateServerPorts` is the other half of this and they should
+ * not be separated.
  *
- * This is also where a config written before the media port existed gets one.
- * Those configs never named a UDP port at all, so the SFU fell back to its own
- * default and the host had no way to know what to forward.
+ * `pinnedSfuPort` and `pinnedMediaPort` are the exception, and are not a move
+ * in this sense. There is one SFU per app rather than one per server, so a
+ * second server starting into a running SFU has to be pointed at the one that
+ * is up. Nothing is being relocated: the SFU is where it is, and the config
+ * catches up with it.
  */
-export async function ensurePortsAvailable(
+export async function checkPortsAvailable(
   id: string,
   pinnedSfuPort?: number,
   pinnedMediaPort?: number,
-): Promise<string[]> {
+): Promise<PortConflict[]> {
   const configPath = getConfigPathFor(id);
   if (!existsSync(configPath)) return [];
 
   let raw = readFileSync(configPath, "utf-8");
   const originalRaw = raw;
   const env = parseEnv(raw);
-  const notes: string[] = [];
 
   const serverPort = parseInt(env.PORT || "5000", 10);
   const sfuPort = parseInt(env.SFU_PORT || "5005", 10);
-  const mediaPort = parseInt(env.ICE_UDP_MUX_PORT || "", 10);
+  const rawMediaPort = parseInt(env.ICE_UDP_MUX_PORT || "", 10);
+  const mediaPort =
+    Number.isInteger(rawMediaPort) && rawMediaPort > 0
+      ? rawMediaPort
+      : DEFAULT_MEDIA_PORT;
 
-  const nextServerPort = await findFreePortFrom(serverPort);
-  if (nextServerPort !== serverPort) {
-    raw = raw.replace(/^PORT=.*$/m, `PORT=${nextServerPort}`);
-    raw = raw.replace(
-      /^EXTERNAL_HOST=.*$/m,
-      `EXTERNAL_HOST=http://127.0.0.1:${nextServerPort}`,
-    );
-    notes.push(`server port ${serverPort} was in use, moved to ${nextServerPort}`);
-  }
+  // Follow the SFU that is already running, and write that down so the file and
+  // the process agree. Only reached with a second server on this machine.
+  const nextSfuPort = pinnedSfuPort ?? sfuPort;
+  const nextMediaPort = pinnedMediaPort ?? mediaPort;
 
-  const nextSfuPort =
-    pinnedSfuPort ?? (await findFreePortFrom(sfuPort));
   if (nextSfuPort !== sfuPort) {
     raw = raw
       .replace(/^SFU_PORT=.*$/m, `SFU_PORT=${nextSfuPort}`)
       .replace(/^SFU_WS_HOST=.*$/m, `SFU_WS_HOST=ws://127.0.0.1:${nextSfuPort}`);
-    notes.push(
-      pinnedSfuPort
-        ? `pointed at the running SFU on ${nextSfuPort}`
-        : `SFU port ${sfuPort} was in use, moved to ${nextSfuPort}`,
-    );
   }
-
-  // A UDP port is not a TCP port, so this is checked with a UDP bind and moved
-  // on its own. It is also the one the host has to open by hand, so a move is
-  // worth saying out loud rather than logging quietly.
-  const nextMediaPort =
-    pinnedMediaPort ??
-    (await findFreeMediaPortFrom(
-      Number.isInteger(mediaPort) && mediaPort > 0 ? mediaPort : DEFAULT_MEDIA_PORT,
-    ));
   if (nextMediaPort !== mediaPort) {
     raw = setEnvValue(raw, "ICE_UDP_MUX_PORT", String(nextMediaPort));
-    notes.push(
-      !Number.isInteger(mediaPort) || mediaPort <= 0
-        ? `media is on UDP ${nextMediaPort} — open that port`
-        : pinnedMediaPort
-          ? `pointed at the running SFU's media port ${nextMediaPort}`
-          : `UDP ${mediaPort} was in use, media moved to ${nextMediaPort} — open that port instead`,
-    );
+  }
+  // Written unconditionally so a config from before the media port existed
+  // gains the line, and so the UI has a number to show for it.
+  if (!Number.isInteger(rawMediaPort) || rawMediaPort <= 0) {
+    raw = setEnvValue(raw, "ICE_UDP_MUX_PORT", String(nextMediaPort));
   }
 
   raw = withAdvertisedAddresses(raw, nextSfuPort);
@@ -301,11 +310,107 @@ export async function ensurePortsAvailable(
   if (raw !== originalRaw) {
     writeFileSync(configPath, raw, "utf-8");
   }
-  if (notes.length > 0) {
-    for (const n of notes) console.log(`[EmbeddedServerConfig] ${id}: ${n}`);
+
+  const conflicts: PortConflict[] = [];
+
+  if (!(await portIsFree(serverPort))) {
+    conflicts.push({ role: "server", port: serverPort, protocol: "TCP" });
   }
 
-  return notes;
+  // Only when this server is the one starting the SFU. When it is joining a
+  // running one the ports are held by that SFU, and probing them would report
+  // a conflict with ourselves.
+  if (pinnedSfuPort === undefined && !(await portIsFree(nextSfuPort))) {
+    conflicts.push({ role: "sfu", port: nextSfuPort, protocol: "TCP" });
+  }
+  if (pinnedMediaPort === undefined && !(await udpPortIsFree(nextMediaPort))) {
+    conflicts.push({ role: "media", port: nextMediaPort, protocol: "UDP" });
+  }
+
+  return conflicts;
+}
+
+/** How to say a set of conflicts to somebody who has to act on it. */
+export function describePortConflicts(conflicts: PortConflict[]): string {
+  const label = {
+    server: "the server",
+    sfu: "voice signalling",
+    media: "voice and video",
+  } as const;
+
+  const parts = conflicts.map(
+    (c) => `${c.protocol} ${c.port} (${label[c.role]})`,
+  );
+
+  const list =
+    parts.length === 1
+      ? parts[0]
+      : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+
+  return (
+    `Something else on this machine is using ${list}. ` +
+    `Close it, or change the port under Open these ports in My servers.`
+  );
+}
+
+/**
+ * Change the ports a server uses.
+ *
+ * The other half of not moving them automatically. Refused while the server is
+ * running, like the advertised addresses, because the running process holds
+ * the old ones.
+ *
+ * The SFU ports are shared by every server this app hosts, so changing them
+ * changes them for all of them. That is a property of there being one SFU, not
+ * a shortcut taken here.
+ */
+export async function updateServerPorts(
+  id: string,
+  ports: { serverPort?: number; sfuPort?: number; mediaPort?: number },
+): Promise<EmbeddedServerConfig | null> {
+  const configPath = getConfigPathFor(id);
+  if (!existsSync(configPath)) return null;
+
+  const current = loadConfig(id);
+  if (!current) return null;
+
+  const serverPort = ports.serverPort ?? current.serverPort;
+  const sfuPort = ports.sfuPort ?? current.sfuPort;
+  const mediaPort = ports.mediaPort ?? current.mediaPort;
+
+  for (const port of [serverPort, sfuPort, mediaPort]) {
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+      throw new Error("Ports must be whole numbers between 1 and 65535");
+    }
+  }
+
+  if (serverPort === sfuPort) {
+    throw new Error("The server and voice signalling cannot share a TCP port");
+  }
+
+  // The media port is UDP and the other two are TCP, so it may legitimately be
+  // the same number as either. Only the two TCP ports can actually collide.
+
+  if (serverPort !== current.serverPort && !(await portIsFree(serverPort))) {
+    throw new Error(`TCP ${serverPort} is already in use`);
+  }
+  if (sfuPort !== current.sfuPort && !(await portIsFree(sfuPort))) {
+    throw new Error(`TCP ${sfuPort} is already in use`);
+  }
+  if (mediaPort !== current.mediaPort && !(await udpPortIsFree(mediaPort))) {
+    throw new Error(`UDP ${mediaPort} is already in use`);
+  }
+
+  let raw = readFileSync(configPath, "utf-8");
+  raw = setEnvValue(raw, "PORT", String(serverPort));
+  raw = setEnvValue(raw, "EXTERNAL_HOST", `http://127.0.0.1:${serverPort}`);
+  raw = setEnvValue(raw, "SFU_PORT", String(sfuPort));
+  raw = setEnvValue(raw, "SFU_WS_HOST", `ws://127.0.0.1:${sfuPort}`);
+  raw = setEnvValue(raw, "ICE_UDP_MUX_PORT", String(mediaPort));
+  raw = withAdvertisedAddresses(raw, sfuPort);
+  writeFileSync(configPath, raw, "utf-8");
+
+  return loadConfig(id);
 }
 
 function parseIpv4(ip: string): number[] | null {
@@ -587,8 +692,8 @@ export async function generateConfig(
   const serverPort =
     requestedPort && (await isPortAvailable(requestedPort))
       ? requestedPort
-      : await findFreePortFrom(5000);
-  const sfuPort = existingSfuPort() ?? (await findFreePortFrom(5005));
+      : await findFriendlyPortFrom(5000);
+  const sfuPort = existingSfuPort() ?? (await findFriendlyPortFrom(5005));
   // One SFU per app, so a second server shares the first one's media port the
   // same way it shares its signalling port.
   const mediaPort = existingMediaPort() ?? (await findFreeMediaPortFrom(DEFAULT_MEDIA_PORT));

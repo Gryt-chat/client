@@ -529,6 +529,17 @@ contextBridge.exposeInMainWorld("electronAPI", {
     );
   },
 
+  updateEmbeddedServerPorts(
+    id: string,
+    ports: { serverPort?: number; sfuPort?: number; mediaPort?: number }
+  ): Promise<EmbeddedServerState | null> {
+    return ipcRenderer.invoke(
+      "embedded-server:update-ports",
+      id,
+      ports
+    );
+  },
+
   onEmbeddedServerStatusChanged(
     callback: (states: EmbeddedServerState[]) => void
   ) {

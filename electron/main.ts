@@ -61,6 +61,7 @@ import {
   stopServer,
   suggestServerPort,
   updateServerAdvertisedAddresses,
+  updateServerPortsFor,
 } from "./embeddedServerManager";
 import {
   deleteGlobalValue,
@@ -2690,6 +2691,19 @@ if (!gotSingleInstanceLock) {
           updateServerAdvertisedAddresses(
             id,
             addresses
+          )
+      );
+
+      ipcMain.handle(
+        "embedded-server:update-ports",
+        (
+          _event,
+          id: string,
+          ports: { serverPort?: number; sfuPort?: number; mediaPort?: number }
+        ) =>
+          updateServerPortsFor(
+            id,
+            ports
           )
       );
 

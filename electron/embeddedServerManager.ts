@@ -7,9 +7,10 @@ import { join } from "path";
 import { extract } from "tar";
 
 import {
+  checkPortsAvailable,
   deleteServerFiles,
+  describePortConflicts,
   type EmbeddedServerConfig,
-  ensurePortsAvailable,
   generateConfig,
   getLanIp,
   getServerDir,
@@ -20,6 +21,7 @@ import {
   loadConfig,
   suggestServerPort,
   updateCustomAdvertisedAddresses,
+  updateServerPorts,
 } from "./embeddedServerConfig";
 import { loadGlobalStore, setGlobalValue } from "./globalStore";
 
@@ -440,6 +442,32 @@ export function getEmbeddedServerState(id: string): EmbeddedServerState | null {
   };
 }
 
+/**
+ * Change a server's ports, and report the new state.
+ *
+ * Stopped only, like the advertised addresses: the running processes are
+ * holding the old ports, so changing the file under them would only take
+ * effect on a restart that then finds the numbers already in use.
+ */
+export async function updateServerPortsFor(
+  id: string,
+  ports: { serverPort?: number; sfuPort?: number; mediaPort?: number },
+): Promise<EmbeddedServerState | null> {
+  const current = getEmbeddedServerState(id);
+  if (!current) return null;
+  if (current.status === "running" || current.status === "starting") {
+    throw new Error("Stop the server before changing its ports");
+  }
+
+  const config = await updateServerPorts(id, ports);
+  if (!config) return null;
+
+  const inst = instances.get(id);
+  if (inst) inst.config = config;
+  emitStatus();
+  return getEmbeddedServerState(id);
+}
+
 export function updateServerAdvertisedAddresses(
   id: string,
   addresses: string[],
@@ -778,22 +806,52 @@ export async function startExistingServer(
     return stateOf(existing);
   }
 
-  // Ports were picked when the server was created and never re-checked. Move
-  // off any that have since been taken, before loading the config — otherwise
-  // the process just fails to bind and exits, every time, unrecoverably.
+  // Check the ports before loading the config, and refuse rather than move.
   //
-  // The SFU port is pinned when one is already running, so the second server
-  // joins it rather than picking a free port and waiting for an SFU that is
-  // never going to arrive there.
+  // These used to be relocated on a collision. A server whose port had been
+  // taken then came up on a different one and looked healthy, which is fine on
+  // one machine and quietly fatal for anyone who had forwarded the old number
+  // on a router. GRYT-469.
+  //
+  // The SFU ports are pinned when one is already running, so a second server
+  // joins it rather than probing ports the running SFU is holding and finding
+  // a conflict with itself.
   try {
-    const moved = await ensurePortsAvailable(
+    const conflicts = await checkPortsAvailable(
       id,
       sfuPort ?? undefined,
       sfuMediaPort ?? undefined,
     );
-    for (const note of moved) log(`${id}: ${note}`);
+
+    if (conflicts.length > 0) {
+      const message = describePortConflicts(conflicts);
+      log(`${id}: ${message}`);
+
+      // Recorded against the instance so the card shows it. Without this the
+      // server sits at "stopped" with nothing said, which is the dead end that
+      // moving the ports was introduced to avoid — the difference now is that
+      // the message names the port and the ports can be changed.
+      const conflicted = loadConfig(id);
+      if (!conflicted) return null;
+
+      if (!instances.has(id)) {
+        instances.set(id, {
+          config: conflicted,
+          server: null,
+          worker: null,
+          status: "error",
+          error: message,
+          watchdog: null,
+        });
+        emitStatus();
+      } else {
+        setStatus(id, "error", message);
+      }
+
+      return getEmbeddedServerState(id);
+    }
   } catch (err) {
-    log(`Port re-check failed: ${err instanceof Error ? err.message : err}`);
+    log(`Port check failed: ${err instanceof Error ? err.message : err}`);
   }
 
   const config = loadConfig(id);
