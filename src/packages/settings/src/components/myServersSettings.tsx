@@ -420,6 +420,33 @@ function HostedServerCard({
             audio and nothing else. It can only be tested from outside your
             network.
           </span>
+          {/* The ports, with their numbers, next to the sentence that says a
+              port not being forwarded is what breaks audio. That sentence has
+              been here a while and never said which port — which left the
+              reader knowing exactly what was wrong and not what to type into
+              their router. GRYT-459. */}
+          <div className="flex flex-col gap-1">
+            <span className="text-xs">
+              Ports to open on this machine, and forward on your router if
+              people are joining from outside your network:
+            </span>
+            <span className="text-xs text-gryt-muted">
+              <code className="font-mono text-xs">
+                TCP {server.config?.serverPort ?? "?"}
+              </code>{" "}
+              the server itself — chat, logins, joining.{" "}
+              <code className="font-mono text-xs">
+                TCP {server.config?.sfuPort ?? "?"}
+              </code>{" "}
+              voice signalling.{" "}
+              <code className="font-mono text-xs">
+                UDP {server.config?.mediaPort ?? "?"}
+              </code>{" "}
+              the voice and video themselves. The last one is the one people
+              miss: it is UDP rather than TCP, and everything else works
+              without it.
+            </span>
+          </div>
           <div className="flex gap-2 items-end">
             <label className="flex flex-col gap-1 flex-1">
               <span className="text-xs">Public IPs or hostnames</span>
@@ -457,6 +484,10 @@ function HostedServerCard({
           {addressSaveFailed && (
             <Alert severity="info" role="alert">
               Use IPv4 addresses or fully qualified hostnames without ports.
+              Not <code className="font-mono text-xs">0.0.0.0</code> or{" "}
+              <code className="font-mono text-xs">127.0.0.1</code> — those mean
+              &quot;this machine&quot; to whoever reads them, so a client sent
+              one looks for the server on its own computer.
             </Alert>
           )}
         </div>

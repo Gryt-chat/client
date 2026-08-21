@@ -1,4 +1,5 @@
 import { randomBytes } from "crypto";
+import { createSocket } from "dgram";
 import { app } from "electron";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { createServer } from "net";
@@ -11,6 +12,14 @@ export interface EmbeddedServerConfig {
   serverName: string;
   serverPort: number;
   sfuPort: number;
+  /**
+   * The one UDP port every participant's audio and video actually travels on.
+   *
+   * Separate from `sfuPort`, which only carries signalling over TCP, and the
+   * one people miss: chat and the join both work without it, so a server with
+   * this port shut looks healthy right up until somebody joins voice.
+   */
+  mediaPort: number;
   dataDir: string;
   configPath: string;
   jwtSecret: string;
@@ -131,21 +140,59 @@ async function findFreePortFrom(preferred: number): Promise<number> {
 }
 
 /**
- * Re-check the ports recorded in a config and move off any that are taken.
+ * Where media goes when nothing says otherwise, matching the SFU's own default
+ * and the number in every deployment guide.
  *
- * Ports were previously chosen once, when the server was created, and reused
- * forever. Anything else claiming one in the meantime broke the server on every
- * subsequent start with no way to recover from the UI. On macOS that is not
- * hypothetical: AirPlay Receiver binds 5000, which is the preferred default.
- *
- * SFU_WS_HOST and SFU_PUBLIC_HOST embed the SFU port, so they move with it.
- *
- * `pinnedSfuPort` is how a second server joins the SFU the first one already
- * started. There is one SFU per app, not one per server, so a server starting
- * into a running SFU must be pointed at it rather than probing for a port of
- * its own — the probe would succeed and it would sit waiting for an SFU that
- * nothing is going to start.
+ * 3478 is the IANA STUN port. It needs no privileged bind, and it is the UDP
+ * port a locked-down network is most likely to have opened already, because
+ * Microsoft Teams requires outbound 3478-3481 and Zoom uses it too.
  */
+export const DEFAULT_MEDIA_PORT = 3478;
+
+/** Whether a UDP port can be bound. TCP and UDP are separate sockets. */
+function udpPortIsFree(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const sock = createSocket({ type: "udp4", reuseAddr: false });
+    sock.once("error", () => {
+      sock.close(() => resolve(false));
+    });
+    sock.bind(port, "0.0.0.0", () => {
+      sock.close(() => resolve(true));
+    });
+  });
+}
+
+/**
+ * A free UDP port for media, starting from the one the guides name.
+ *
+ * Walks upward rather than asking the OS for anything free, for the same
+ * reason `suggestServerPort` does: this is a number somebody may have to type
+ * into a router, and 3479 beats 54162 for that. It also keeps the fallback
+ * near the documented port, so a host who forwarded 3478 and then hit a
+ * collision is one off rather than somewhere unrecognisable.
+ */
+async function findFreeMediaPortFrom(preferred: number): Promise<number> {
+  const start = preferred > 0 && preferred <= 65535 ? preferred : DEFAULT_MEDIA_PORT;
+
+  for (let port = start; port < start + 50 && port <= 65535; port++) {
+    if (await udpPortIsFree(port)) return port;
+  }
+
+  // Nothing in the run was free, which is unusual enough that keeping the
+  // documented port is better than picking a random one: the SFU will fail to
+  // bind and say so, rather than coming up on a port nobody has forwarded.
+  return start;
+}
+
+/** The media port the SFU already running on this machine is using, if any. */
+function existingMediaPort(): number | null {
+  for (const id of listServerIds()) {
+    const config = loadConfig(id);
+    if (config?.mediaPort) return config.mediaPort;
+  }
+  return null;
+}
+
 /**
  * A free port to offer in the create form.
  *
@@ -170,9 +217,30 @@ export function isPortAvailable(port: number): Promise<boolean> {
   return portIsFree(port);
 }
 
+/**
+ * Re-check the ports recorded in a config and move off any that are taken.
+ *
+ * Ports were previously chosen once, when the server was created, and reused
+ * forever. Anything else claiming one in the meantime broke the server on every
+ * subsequent start with no way to recover from the UI. On macOS that is not
+ * hypothetical: AirPlay Receiver binds 5000, which is the preferred default.
+ *
+ * SFU_WS_HOST and SFU_PUBLIC_HOST embed the SFU port, so they move with it.
+ *
+ * `pinnedSfuPort` and `pinnedMediaPort` are how a second server joins the SFU
+ * the first one already started. There is one SFU per app, not one per server,
+ * so a server starting into a running SFU must be pointed at it rather than
+ * probing for ports of its own — the probes would succeed and it would sit
+ * waiting for an SFU that nothing is going to start.
+ *
+ * This is also where a config written before the media port existed gets one.
+ * Those configs never named a UDP port at all, so the SFU fell back to its own
+ * default and the host had no way to know what to forward.
+ */
 export async function ensurePortsAvailable(
   id: string,
   pinnedSfuPort?: number,
+  pinnedMediaPort?: number,
 ): Promise<string[]> {
   const configPath = getConfigPathFor(id);
   if (!existsSync(configPath)) return [];
@@ -184,6 +252,7 @@ export async function ensurePortsAvailable(
 
   const serverPort = parseInt(env.PORT || "5000", 10);
   const sfuPort = parseInt(env.SFU_PORT || "5005", 10);
+  const mediaPort = parseInt(env.ICE_UDP_MUX_PORT || "", 10);
 
   const nextServerPort = await findFreePortFrom(serverPort);
   if (nextServerPort !== serverPort) {
@@ -205,6 +274,25 @@ export async function ensurePortsAvailable(
       pinnedSfuPort
         ? `pointed at the running SFU on ${nextSfuPort}`
         : `SFU port ${sfuPort} was in use, moved to ${nextSfuPort}`,
+    );
+  }
+
+  // A UDP port is not a TCP port, so this is checked with a UDP bind and moved
+  // on its own. It is also the one the host has to open by hand, so a move is
+  // worth saying out loud rather than logging quietly.
+  const nextMediaPort =
+    pinnedMediaPort ??
+    (await findFreeMediaPortFrom(
+      Number.isInteger(mediaPort) && mediaPort > 0 ? mediaPort : DEFAULT_MEDIA_PORT,
+    ));
+  if (nextMediaPort !== mediaPort) {
+    raw = setEnvValue(raw, "ICE_UDP_MUX_PORT", String(nextMediaPort));
+    notes.push(
+      !Number.isInteger(mediaPort) || mediaPort <= 0
+        ? `media is on UDP ${nextMediaPort} — open that port`
+        : pinnedMediaPort
+          ? `pointed at the running SFU's media port ${nextMediaPort}`
+          : `UDP ${mediaPort} was in use, media moved to ${nextMediaPort} — open that port instead`,
     );
   }
 
@@ -257,8 +345,42 @@ function isCgnatOrTailscaleIp(ip: string): boolean {
   return a === 100 && b >= 64 && b <= 127;
 }
 
+/**
+ * Whether anything can open a connection to this address.
+ *
+ * These get advertised as the place to send voice to, so an address that is
+ * merely well-formed is not enough — it has to be one a packet can be
+ * addressed to. `0.0.0.0` is the one people reach for, because it is what you
+ * write to *listen* on every interface, and it does the opposite here: it goes
+ * into ICE_ADVERTISE_IP as a candidate nobody can use, and into SFU_PUBLIC_HOST
+ * where the client pinging it resolves it to its own machine rather than the
+ * host's. Loopback fails the same way and looks even more reasonable.
+ */
+function isDialableIpv4(ip: string): boolean {
+  const parts = parseIpv4(ip);
+  if (!parts) return false;
+
+  const [a, b] = parts;
+
+  if (a === 0) return false; // "this network" — 0.0.0.0 and the rest of 0/8
+  if (a === 127) return false; // loopback: every machine's own, nobody else's
+  if (a === 169 && b === 254) return false; // link-local, from a DHCP that never answered
+  if (a >= 224) return false; // multicast, reserved, and 255.255.255.255
+
+  return true;
+}
+
+/**
+ * Interfaces whose addresses are never reachable from another machine.
+ *
+ * Windows names its virtual adapters for the product rather than the driver —
+ * "VMware Network Adapter VMnet8", "VirtualBox Host-Only Network" — so the
+ * `vmnet` and `vboxnet` entries, which are the Linux and macOS names, never
+ * matched there. A host with VMware installed advertised its 192.168.x VMnet
+ * address alongside the real one, and every client dutifully tried it.
+ */
 const VIRTUAL_INTERFACE =
-  /^(docker|br-|bridge|veth|virbr|vmnet|utun|tun|tap|tailscale|zt|wg|vboxnet|vethernet)/i;
+  /^(docker|br-|bridge|veth|virbr|vmnet|vmware|virtualbox|hyper-v|utun|tun|tap|tailscale|zt|wg|vboxnet|vethernet)/i;
 
 function getIpv4Candidates(): string[] {
   const ifaces = networkInterfaces();
@@ -270,6 +392,7 @@ function getIpv4Candidates(): string[] {
       if (
         iface.family === "IPv4" &&
         !iface.internal &&
+        isDialableIpv4(iface.address) &&
         !isCgnatOrTailscaleIp(iface.address)
       ) {
         candidates.push(iface.address);
@@ -314,7 +437,7 @@ function isHostname(value: string): boolean {
 }
 
 function validateCustomAddress(value: string): boolean {
-  return parseIpv4(value) !== null || isHostname(value);
+  return isDialableIpv4(value) || isHostname(value);
 }
 
 function setEnvValue(raw: string, key: string, value: string): string {
@@ -335,13 +458,18 @@ function customAddressesFrom(env: Record<string, string>): string[] {
     .map(extractHostFromHostPort)
     .filter((host) =>
       isHostname(host) ||
-      (parseIpv4(host) !== null && !isPrivateLanIp(host) && !isCgnatOrTailscaleIp(host)),
+      (isDialableIpv4(host) && !isPrivateLanIp(host) && !isCgnatOrTailscaleIp(host)),
     );
 }
 
 function withAdvertisedAddresses(raw: string, sfuPort: number): string {
   const env = parseEnv(raw);
-  const custom = customAddressesFrom(env);
+  // Filtered on the way out as well as on the way in, because a config written
+  // before `validateCustomAddress` refused these still has them on disk, and
+  // this runs on every load.
+  const custom = customAddressesFrom(env).filter(
+    (address) => isHostname(address) || isDialableIpv4(address),
+  );
   const effective = [...new Set([...getAdvertisedAddresses(), ...custom])];
   const fallback = effective.length > 0 ? effective : ["127.0.0.1"];
 
@@ -358,7 +486,7 @@ function withAdvertisedAddresses(raw: string, sfuPort: number): string {
   next = setEnvValue(
     next,
     "ICE_ADVERTISE_IP",
-    effective.filter((address) => parseIpv4(address) !== null).join(","),
+    effective.filter(isDialableIpv4).join(","),
   );
   return next;
 }
@@ -372,7 +500,10 @@ export function updateCustomAdvertisedAddresses(
 
   const custom = [...new Set(addresses.map((v) => v.trim()).filter(Boolean))];
   if (custom.some((value) => !validateCustomAddress(value))) {
-    throw new Error("Use IPv4 addresses or fully qualified hostnames without ports");
+    throw new Error(
+      "Use IPv4 addresses or fully qualified hostnames without ports, and an " +
+        "address other machines can reach — not 0.0.0.0 or a loopback address",
+    );
   }
 
   let raw = readFileSync(configPath, "utf-8");
@@ -458,6 +589,9 @@ export async function generateConfig(
       ? requestedPort
       : await findFreePortFrom(5000);
   const sfuPort = existingSfuPort() ?? (await findFreePortFrom(5005));
+  // One SFU per app, so a second server shares the first one's media port the
+  // same way it shares its signalling port.
+  const mediaPort = existingMediaPort() ?? (await findFreeMediaPortFrom(DEFAULT_MEDIA_PORT));
   const jwtSecret = randomBytes(32).toString("hex");
   const advertisedAddresses = getAdvertisedAddresses();
   const lanIp = advertisedAddresses[0] || "127.0.0.1";
@@ -481,6 +615,17 @@ export async function generateConfig(
       `JWT_SECRET=${jwtSecret}`,
       `SFU_PORT=${sfuPort}`,
       `SFU_WS_HOST=ws://127.0.0.1:${sfuPort}`,
+      // The port voice actually travels on, and the one that has to be opened
+      // by hand. SFU_PORT above only carries signalling, over TCP; this is UDP
+      // and it is separate, which is why a server can look completely healthy
+      // — people join, chat works — and still have silent voice channels.
+      //
+      // It was not written here at all until GRYT-459, and the SFU is spawned
+      // with an explicit environment rather than this file, so it never
+      // reached the SFU either. What that meant in practice was a media port
+      // nobody could name: pion picked ephemeral ports at random, so there was
+      // nothing to forward and no way to find out.
+      `ICE_UDP_MUX_PORT=${mediaPort}`,
       `EMBEDDED_SERVER_CUSTOM_ADDRESSES=`,
       `SFU_PUBLIC_HOST=${advertisedAddresses.map((address) => `${address}:${sfuPort}`).join(",") || `${lanIp}:${sfuPort}`}`,
       `ICE_ADVERTISE_IP=${advertisedAddresses.join(",")}`,
@@ -519,6 +664,7 @@ export async function generateConfig(
     serverName,
     serverPort,
     sfuPort,
+    mediaPort,
     dataDir,
     configPath,
     jwtSecret,
@@ -549,6 +695,10 @@ export function loadConfig(id: string): EmbeddedServerConfig | null {
     serverName: env.SERVER_NAME || "My Server",
     serverPort: parseInt(env.PORT || "5000", 10),
     sfuPort: parseInt(env.SFU_PORT || "5005", 10),
+    // Configs written before GRYT-459 have no line for this. They report the
+    // SFU's own default, which is what those servers are really using, so the
+    // UI can name a port rather than shrug.
+    mediaPort: parseInt(env.ICE_UDP_MUX_PORT || "", 10) || DEFAULT_MEDIA_PORT,
     dataDir: env.DATA_DIR || join(getServerDir(id), "data"),
     configPath,
     jwtSecret: env.JWT_SECRET || "",

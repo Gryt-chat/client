@@ -7,6 +7,8 @@ type EmbeddedServerConfigShape = {
   serverName: string;
   serverPort: number;
   sfuPort: number;
+  /** The UDP port voice travels on, which is not the same port as sfuPort. */
+  mediaPort: number;
   lanDiscoverable: boolean;
   externalHost: string;
   advertisedAddresses: string[];
