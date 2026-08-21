@@ -153,10 +153,6 @@ export const ServerView = () => {
     insertFromPalette(kind, effectiveSidebarItems.length);
   }, [insertFromPalette, effectiveSidebarItems]);
 
-  const currentRole = currentlyViewingServer
-    ? serverDetailsList[currentlyViewingServer.host]?.server_info?.role
-    : undefined;
-
   const viewerPermissions = useServerPermissions(currentlyViewingServer?.host || "");
 
   const { reportsOpen, setReportsOpen, pendingReportCount, memberListMap } = useServerReports({
@@ -188,24 +184,31 @@ export const ServerView = () => {
   });
 
   const currentAdminActions = useMemo(() => {
-    // Mods get the reversible actions; ban stays with admin and owner, and the
-    // menu applies the same two floors per item. Passing onBanUser as undefined
-    // rather than relying on the menu alone means a mod has no handler for it
-    // at all, not just no button.
-    const canModerate =
-      currentRole === "owner" || currentRole === "admin" || currentRole === "mod";
-    if (!canModerate) return undefined;
+    // One handler per permission, rather than one bundle per role name. This
+    // used to ask whether somebody was owner, admin or mod and hand over
+    // everything or nothing — so a role built to do exactly one of these got a
+    // context menu with none of them, whatever its permissions said. Passing a
+    // handler as undefined rather than relying on the menu alone means there is
+    // no way to reach an action the server would refuse.
+    const can = viewerPermissions.can;
+    const any =
+      can("disconnect_members") ||
+      can("kick_members") ||
+      can("ban_members") ||
+      can("mute_members") ||
+      can("deafen_members") ||
+      can("manage_roles");
+    if (!any) return undefined;
 
-    const canBan = currentRole === "owner" || currentRole === "admin";
     return {
-      onDisconnectUser: requestDisconnectUser,
-      onKickUser: requestKickUser,
-      onBanUser: canBan ? requestBanUser : undefined,
-      onServerMuteUser: handleServerMuteUser,
-      onServerDeafenUser: handleServerDeafenUser,
-      onChangeRole: currentRole === "owner" ? handleChangeRole : undefined,
+      onDisconnectUser: can("disconnect_members") ? requestDisconnectUser : undefined,
+      onKickUser: can("kick_members") ? requestKickUser : undefined,
+      onBanUser: can("ban_members") ? requestBanUser : undefined,
+      onServerMuteUser: can("mute_members") ? handleServerMuteUser : undefined,
+      onServerDeafenUser: can("deafen_members") ? handleServerDeafenUser : undefined,
+      onChangeRole: can("manage_roles") ? handleChangeRole : undefined,
     };
-  }, [currentRole, requestDisconnectUser, requestKickUser, requestBanUser, handleServerMuteUser, handleServerDeafenUser, handleChangeRole]);
+  }, [viewerPermissions, requestDisconnectUser, requestKickUser, requestBanUser, handleServerMuteUser, handleServerDeafenUser, handleChangeRole]);
 
   // Dev only, and above the early returns because the speech rig is a hook.
   // See fakeParticipants.ts.
@@ -269,7 +272,8 @@ export const ServerView = () => {
   // `manage_channels`; pulling somebody out of voice is voice moderation. A
   // role built to do one and not the other could not say so before.
   const canManage = viewerPermissions.can("manage_channels");
-  const canDisconnectFromVoice = viewerPermissions.can("mute_members");
+  const canDisconnectFromVoice = viewerPermissions.can("disconnect_members");
+  const canViewMembers = viewerPermissions.can("view_members");
   const hostChannels = serverDetails.channels || [];
 
   const { clients: hostClients, videoStreams: voiceVideoStreams } =
@@ -484,12 +488,15 @@ export const ServerView = () => {
               </div>
             </div>
             <MemberSidebarPanel
-              sidebarOpen={rightSidebarOpen && !voiceFocused}
+              // Closed for good, not just collapsed, when the role may not see
+              // who is here. The server stops sending the list as well, so an
+              // open panel would show whatever was last cached.
+              sidebarOpen={rightSidebarOpen && !voiceFocused && canViewMembers}
               sidebarWidthPx={SIDEBAR_WIDTH_PX}
               hoverPx={SIDEBAR_HOVER_PX}
               contentRef={rightSidebarContentRef}
               isUnreachableWhileConnected={isVoiceOnThisServer && isServerUnreachable}
-              onMouseEnter={voiceFocused ? undefined : openRightSidebar}
+              onMouseEnter={voiceFocused || !canViewMembers ? undefined : openRightSidebar}
               onMouseLeave={closeRightSidebar}
               members={hostMembers}
               currentConnectionId={currentConnection?.id}

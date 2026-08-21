@@ -7,6 +7,8 @@ import { GeneratedServerIcon, getServerAccessToken, getServerHttpBase } from "@/
 import { useSettings } from "@/settings";
 import type { Channel } from "@/settings/src/types/server";
 
+import { useServerPermissions } from "../hooks/usePermissions";
+
 type ProfanityMode = "off" | "flag" | "censor" | "block";
 
 /** Mirrors the server's `JoinPolicy`. `approval` exists there as room to grow. */
@@ -67,7 +69,16 @@ export function ServerOverviewTab({
 
   const MAX_ICON_SIZE_BYTES = 25 * 1024 * 1024;
 
-  const [isOwner, setIsOwner] = useState(false);
+  /**
+   * Whether this member may change any of this.
+   *
+   * Was `canEdit`, off the settings payload. `manage_server` is owner-only by
+   * default, so for a server nobody has touched the answer is the same — but an
+   * owner who grants it to a role should get a form that works, rather than one
+   * that looks read-only and would have been accepted.
+   */
+  const { can } = useServerPermissions(host);
+  const canEdit = can("manage_server");
   const [displayName, setDisplayName] = useState("");
   const [description, setDescription] = useState("");
   const [isUploadingIcon, setIsUploadingIcon] = useState(false);
@@ -141,7 +152,6 @@ export function ServerOverviewTab({
       if (!isServerSettingsPayload(payload)) return;
       const wasSaving = pendingSaveCountRef.current > 0;
 
-      setIsOwner(!!payload.isOwner);
       setIconUrl(payload.iconUrl || null);
 
       const toMbString = (bytes?: number | null) => {
@@ -251,7 +261,7 @@ export function ServerOverviewTab({
       toast.error("Missing access token. Try rejoining the server.");
       return false;
     }
-    if (!isOwner) {
+    if (!canEdit) {
       toast.error("Only the server owner can change settings.");
       return false;
     }
@@ -289,7 +299,7 @@ export function ServerOverviewTab({
       await ensureJoined();
       return;
     }
-    if (!isOwner) {
+    if (!canEdit) {
       toast.error("Only the server owner can change the icon.");
       return;
     }
@@ -351,7 +361,7 @@ export function ServerOverviewTab({
       await ensureJoined();
       return;
     }
-    if (!isOwner) {
+    if (!canEdit) {
       toast.error("Only the server owner can change the icon.");
       return;
     }
@@ -398,9 +408,9 @@ export function ServerOverviewTab({
   return (
     <div className="flex flex-col gap-4">
       <span className="text-sm">
-        {isOwner
+        {canEdit
           ? "Update the server display name and icon."
-          : "You can view settings, but only the owner can make changes."}
+          : "You can see these settings, but your role cannot change them."}
       </span>
 
       <div className="flex flex-col gap-2">
@@ -421,7 +431,7 @@ export function ServerOverviewTab({
           onChange={(e: ChangeEvent<HTMLInputElement>) => setDisplayName(e.target.value)}
           onBlur={() => saveIfChanged({ displayName: displayName.trim() })}
           placeholder="My Gryt Server"
-          disabled={!isOwner}
+          disabled={!canEdit}
         />
       </div>
 
@@ -436,7 +446,7 @@ export function ServerOverviewTab({
           onChange={(e) => setDescription(e.target.value)}
           onBlur={() => saveIfChanged({ description: description.trim() })}
           placeholder="A place to hang out"
-          disabled={!isOwner}
+          disabled={!canEdit}
           style={{ minHeight: 90 }}
         />
       </div>
@@ -455,12 +465,12 @@ export function ServerOverviewTab({
           }}>
           <button
             type="button"
-            disabled={!isOwner || iconBusy}
+            disabled={!canEdit || iconBusy}
             onClick={() => iconInputRef.current?.click()}
             aria-label="Change server icon"
             style={{
               all: "unset",
-              cursor: isOwner && !iconBusy ? "pointer" : "default",
+              cursor: canEdit && !iconBusy ? "pointer" : "default",
               borderRadius: 9999,
             }}
           >
@@ -471,7 +481,7 @@ export function ServerOverviewTab({
                 src={iconUrl ? `${getServerHttpBase(host)}/icon?v=${iconCacheBuster}` : undefined}
                 fallback={displayName || host ? <GeneratedServerIcon seed={displayName || host} /> : "S"}
               />
-              {isOwner && (
+              {canEdit && (
                 <div className="flex items-center justify-center" style={{
                     position: "absolute",
                     bottom: 0,
@@ -493,13 +503,13 @@ export function ServerOverviewTab({
               ? "Uploading..."
               : isClearingIcon
                 ? "Clearing..."
-                : isOwner
+                : canEdit
                   ? "Click to change icon"
                   : "Server icon"}
           </span>
         </div>
 
-        {isOwner && iconUrl ? (
+        {canEdit && iconUrl ? (
           <>
             <Button size="small"
               disabled={isUploadingIcon || isClearingIcon}
@@ -546,7 +556,7 @@ export function ServerOverviewTab({
           type="file"
           accept="image/png,image/jpeg,image/webp,image/gif,image/avif"
           style={{ display: "none" }}
-          disabled={!isOwner || isUploadingIcon || isClearingIcon}
+          disabled={!canEdit || isUploadingIcon || isClearingIcon}
           onChange={(e) => {
             const f = e.target.files?.[0];
             if (f) uploadIcon(f);
@@ -576,7 +586,7 @@ export function ServerOverviewTab({
             onChange={(e) => setAvatarMaxMb(e.target.value)}
             onBlur={() => saveIfChanged({ avatarMaxBytes: parseMbToBytes(avatarMaxMb) })}
             placeholder="e.g. 5"
-            disabled={!isOwner}
+            disabled={!canEdit}
           />
         </div>
 
@@ -593,7 +603,7 @@ export function ServerOverviewTab({
             onChange={(e) => setUploadMaxMb(e.target.value)}
             onBlur={() => saveIfChanged({ uploadMaxBytes: parseMbToBytes(uploadMaxMb) })}
             placeholder="e.g. 25"
-            disabled={!isOwner}
+            disabled={!canEdit}
           />
         </div>
 
@@ -610,7 +620,7 @@ export function ServerOverviewTab({
             onChange={(e) => setEmojiMaxMb(e.target.value)}
             onBlur={() => saveIfChanged({ emojiMaxBytes: parseMbToBytes(emojiMaxMb) })}
             placeholder="e.g. 5"
-            disabled={!isOwner}
+            disabled={!canEdit}
           />
         </div>
 
@@ -632,7 +642,7 @@ export function ServerOverviewTab({
                 setProfanityMode(mode);
                 saveIfChanged({ profanityMode: mode });
               }}
-              disabled={!isOwner}
+              disabled={!canEdit}
               options={[
                 { label: "Off — no filtering", value: "off" },
                 {
@@ -653,7 +663,7 @@ export function ServerOverviewTab({
                   setCensorStyle(style);
                   saveIfChanged({ profanityCensorStyle: style });
                 }}
-                disabled={!isOwner}
+                disabled={!canEdit}
                 placeholder="Replacement style"
                 options={[
                   { label: "Symbols — $#@!%&*", value: "grawlix" },
@@ -683,7 +693,7 @@ export function ServerOverviewTab({
             setSystemChannelId(id);
             saveIfChanged({ systemChannelId: id });
           }}
-          disabled={!isOwner}
+          disabled={!canEdit}
           options={[
             { label: "Auto (first text channel)", value: "__auto__" },
             ...textChannels.map((ch) => ({ label: `#${ch.name}`, value: ch.id })),
@@ -709,7 +719,7 @@ export function ServerOverviewTab({
             setJoinPolicy(next);
             if (!saveIfChanged({ joinPolicy: next })) setJoinPolicy(previous);
           }}
-          disabled={!isOwner}
+          disabled={!canEdit}
           options={[
             { label: "With an invite", value: "invite" },
             { label: "After you let them in", value: "request" },
@@ -738,7 +748,7 @@ export function ServerOverviewTab({
               setLanOpen(v);
               if (!saveIfChanged({ lanOpen: v })) setLanOpen(!v);
             }}
-            disabled={!isOwner}
+            disabled={!canEdit}
           />
           <span className="text-sm">Allow anyone on LAN to join</span>
         </div>
@@ -758,7 +768,7 @@ export function ServerOverviewTab({
               setDiscoverable(v);
               if (!saveIfChanged({ discoverable: v })) setDiscoverable(!v);
             }}
-            disabled={!isOwner}
+            disabled={!canEdit}
           />
           <span className="text-sm">Allow public server info</span>
         </div>

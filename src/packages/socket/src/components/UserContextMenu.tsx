@@ -150,10 +150,11 @@ export function UserContextMenu({
   // a role built to do exactly one of these things could not be expressed.
   const outranksTarget = !!role && !!targetRole && rankOf(role) > rankOf(targetRole);
   const canMute = has("mute_members") && outranksTarget;
+  const canDeafen = has("deafen_members") && outranksTarget;
   const canKick = has("kick_members") && outranksTarget;
   const canBan = has("ban_members") && outranksTarget;
   const canAssignRoles = has("manage_roles") && outranksTarget;
-  const canModerate = canMute || canKick || canBan || canAssignRoles;
+  const canModerate = canMute || canDeafen || canKick || canBan || canAssignRoles;
 
   // Only roles this person could actually hand out. Offering one the server
   // would refuse is offering a click that ends in a red toast.
@@ -243,7 +244,7 @@ export function UserContextMenu({
               </ContextMenu.Item>
             )}
 
-            {canMute && onServerDeafen && (
+            {canDeafen && onServerDeafen && (
               <ContextMenu.Item onClick={() => onServerDeafen(!isServerDeafened)}>
                 {isServerDeafened ? "Remove server deafen" : "Server deafen"}
               </ContextMenu.Item>

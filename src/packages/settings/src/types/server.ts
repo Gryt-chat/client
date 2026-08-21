@@ -52,6 +52,17 @@ export type serverDetails = {
      * ignores the list gets an error rather than an action.
      */
     permissions?: string[];
+    /**
+     * Every permission the *server* knows about, which is not the same list
+     * this build knows about.
+     *
+     * Without it an absence in `permissions` is ambiguous: it could be a
+     * denial, or it could be a permission this client has heard of and that
+     * server has not. Reading the second as a denial is how a client that
+     * learns about `read_messages` first blanks out every channel on a server
+     * that has not been upgraded yet.
+     */
+    permission_catalogue?: string[];
     /** Every role this server has defined, for colouring and labelling people. */
     roles?: {
       id: string;

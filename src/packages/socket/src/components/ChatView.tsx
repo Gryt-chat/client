@@ -232,10 +232,13 @@ export const ChatView = memo(({
   // than a box that swallows what you type and then errors.
   const { can: mayHere } = useServerPermissions(serverHost || "");
   const maySend = mayHere("send_messages");
+  const mayRead = mayHere("read_messages");
 
   const editorPlaceholder =
     !canViewVoiceChannelText && isVoiceChannelTextChat
       ? "Text chat is not available in this voice channel"
+      : !mayRead
+        ? "This channel is not readable with your role."
       : !maySend
         ? "You can read here, but not post."
         : isRateLimited && rateLimitCountdown
@@ -244,10 +247,10 @@ export const ChatView = memo(({
             ? `Message #${channelName}`
             : "Chat with your friends!";
 
-  const editorDisabled = (!canViewVoiceChannelText && isVoiceChannelTextChat) || !maySend;
+  const editorDisabled = (!canViewVoiceChannelText && isVoiceChannelTextChat) || !maySend || !mayRead;
 
   const showVoiceDisabled = !canViewVoiceChannelText && isVoiceChannelTextChat;
-  const showMessages = !showVoiceDisabled && !isLoadingMessages && chatMessages.length > 0;
+  const showMessages = mayRead && !showVoiceDisabled && !isLoadingMessages && chatMessages.length > 0;
 
   return (
     <>

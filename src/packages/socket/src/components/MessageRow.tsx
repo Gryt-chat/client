@@ -4,6 +4,7 @@ import { forwardRef, memo, useCallback, useRef, useState } from "react";
 
 import { getUploadsFileUrl } from "@/common";
 
+import { useServerPermissions } from "../hooks/usePermissions";
 import type { CustomEmojiEntry } from "../utils/remarkEmoji";
 import { ChatMediaPlayer } from "./ChatMediaPlayer";
 import { MessageHoverToolbar } from "./ChatMessage";
@@ -90,8 +91,15 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const pickerAnchorRef = useRef<HTMLElement | null>(null);
 
-  const canDelete = !!canDeleteAny || (!!currentUserId && m.sender_server_id === currentUserId);
-  const canEdit = !!currentUserId && m.sender_server_id === currentUserId && !!m.text;
+  const { can } = useServerPermissions(serverHost || "");
+  const isOwnMessage = !!currentUserId && m.sender_server_id === currentUserId;
+
+  // Editing and deleting your own message each have a permission now, so a role
+  // can be allowed to post and not to revise. `canDeleteAny` is the moderator
+  // side of the same question and is worked out where the server is known.
+  const canDelete = !!canDeleteAny || (isOwnMessage && can("delete_own_messages"));
+  const canEdit = isOwnMessage && !!m.text && can("edit_own_messages");
+  const canReport = can("report_messages");
 
   const bgColor = (isHovered || isReactionPickerOpen || isCtxMenuOpen)
     ? "var(--gryt-neutral-4)"
@@ -101,7 +109,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
     messageText: m.text,
     onReply: () => onReply(m),
     onEdit: canEdit ? () => onEdit(m) : undefined,
-    onReport: () => onReport(m),
+    onReport: canReport ? () => onReport(m) : undefined,
     onDelete: canDelete ? () => onDelete(m) : undefined,
     canEdit,
     canDelete,

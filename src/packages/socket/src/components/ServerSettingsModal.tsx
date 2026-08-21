@@ -49,7 +49,6 @@ export function ServerSettingsModal() {
   }, [host, tokenRevision]);
 
   const serverInfo = host ? serverDetailsList[host]?.server_info : undefined;
-  const role = serverInfo?.role;
   const { has: hasPermission, known: permissionKnown } = useServerPermissions(host);
 
   // Every tab needs one permission, and the modal opens if any of them do. It
@@ -66,8 +65,11 @@ export function ServerSettingsModal() {
       "manage_roles",
       "manage_emojis",
       "ban_members",
+      "view_bans",
       "view_audit_log",
       "manage_webhooks",
+      "manage_sidebar",
+      "replace_identity",
     ].some((p) => hasPermission(p));
   const allowTabs = canManage;
 
@@ -120,13 +122,13 @@ export function ServerSettingsModal() {
       window.removeEventListener("server_setup_required", handler as EventListener);
   }, []);
 
-  const isOwner = role === "owner";
-
   const { status: versionStatus, loading: versionLoading } = useVersionStatus(
     socket,
     host,
     accessToken,
-    isOpen && canManage,
+    // The server refuses this without the permission, so asking without it is
+    // an error toast on every open of the settings dialog.
+    isOpen && hasPermission("view_server_status"),
   );
 
   const ALL_TABS: {
@@ -190,7 +192,7 @@ export function ServerSettingsModal() {
       value: "bans",
       label: "Bans",
       icon: PiProhibitFill,
-      needs: ["ban_members"],
+      needs: ["view_bans", "ban_members"],
       content: (
         <ServerBansTab
           host={host}
@@ -219,16 +221,15 @@ export function ServerSettingsModal() {
         />
       ),
     },
-    ...(isOwner
-      ? [
-          {
-            value: "replace-user",
-            label: "Replace User",
-            icon: PiArrowsLeftRightFill,
-            content: <ServerUserReplaceTab host={host} socket={socket} accessToken={accessToken} />,
-          },
-        ]
-      : []),
+    {
+      value: "replace-user",
+      label: "Replace User",
+      icon: PiArrowsLeftRightFill,
+      // Was owner-only by role name. It has its own permission now, which the
+      // owner still holds alone unless somebody deliberately grants it.
+      needs: ["replace_identity"],
+      content: <ServerUserReplaceTab host={host} socket={socket} accessToken={accessToken} />,
+    },
   ];
 
   // A tab whose events the server would refuse is not shown. Against a server
@@ -354,7 +355,7 @@ export function ServerSettingsModal() {
             ) : (
               <div className="flex flex-col gap-3">
                 <span className="text-sm text-gryt-muted">
-                  Server settings are only available to server admins.
+                  Your role does not include any of the permissions these settings need.
                 </span>
               </div>
             )
