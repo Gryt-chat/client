@@ -20,10 +20,8 @@ export interface Submitted {
  * A failure worth telling somebody about, in words rather than a code.
  *
  * The split that matters is whose problem it is. Rate limited and too long are
- * things the reporter can act on; a bad app key or a refused signature are the
- * app's fault and there is nothing useful to say beyond that it did not send —
- * telling somebody their client's shared secret is wrong invites them to go
- * looking for it.
+ * things the reporter can act on; a refused signature is the app's fault and
+ * there is nothing useful to say beyond that it did not send.
  */
 export class SubmitError extends Error {
   constructor(
@@ -50,10 +48,6 @@ export async function submitReport(report: Report): Promise<Submitted> {
     "content-type": "application/json",
     "x-gryt-app": config.app,
   };
-  /* Left off rather than sent empty. The service treats a wrong key and a
-   * missing one the same way, but an empty header is a claim that this app has
-   * a key and it is "", which is not what is meant. */
-  if (config.appKey) headers["x-gryt-app-key"] = config.appKey;
   if (assertion) headers["x-gryt-identity"] = assertion;
 
   const controller = new AbortController();

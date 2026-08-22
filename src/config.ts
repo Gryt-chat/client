@@ -6,7 +6,6 @@ export type GrytRuntimeConfig = {
   GRYT_AUTH_API?: string;
   GRYT_AUTH_CALLBACK_URL?: string;
   GRYT_REPORTS_URL?: string;
-  GRYT_REPORTS_APP_KEY?: string;
 };
 
 const CUSTOM_AUTH_KEY = 'gryt_custom_auth';
@@ -169,7 +168,7 @@ export function getGrytConfig(): Required<GrytRuntimeConfig> {
   );
 
   /**
-   * Where bug reports and feedback go, and the key this build sends with them.
+   * Where bug reports and feedback go.
    *
    * Not something a self-hoster points elsewhere: `reports.gryt.chat` is Gryt
    * the product's inbox rather than part of a Gryt server, and nothing on a
@@ -177,22 +176,13 @@ export function getGrytConfig(): Required<GrytRuntimeConfig> {
    * wants a local one, and because the web container has no build step to bake
    * anything into.
    *
-   * The key is a shared secret shipped inside the app, which is friction rather
-   * than authentication — the service says so itself. Empty is a working state:
-   * the header is left off, which is what a service with no keys configured
-   * expects, and what a deployment that does have keys refuses. That is the
-   * right way round. See `src/lib/reports/config.ts`.
+   * There was a `GRYT_REPORTS_APP_KEY` beside this. GRYT-529 took it out at the
+   * service, so nothing reads the header any more.
    */
   const reportsUrl = configValue(
     win?.GRYT_REPORTS_URL,
     import.meta.env.VITE_GRYT_REPORTS_URL,
     'https://reports.gryt.chat',
-  );
-
-  const reportsAppKey = configValue(
-    win?.GRYT_REPORTS_APP_KEY,
-    import.meta.env.VITE_GRYT_REPORTS_APP_KEY,
-    '',
   );
 
   return {
@@ -203,7 +193,6 @@ export function getGrytConfig(): Required<GrytRuntimeConfig> {
     GRYT_AUTH_API: authApi,
     GRYT_AUTH_CALLBACK_URL: authCallbackUrl,
     GRYT_REPORTS_URL: reportsUrl,
-    GRYT_REPORTS_APP_KEY: reportsAppKey,
   };
 }
 

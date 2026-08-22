@@ -15,28 +15,23 @@ import { isElectron } from "../electron";
  * Not configurable. It names which build sent this, so a deployment setting it
  * would be a build lying about what it is.
  *
- * ## The key
+ * ## There is no key
  *
- * `X-Gryt-App-Key` is a shared secret shipped inside the app, and the service
- * is blunt that this is friction rather than authentication: anyone can pull it
- * out of a bundle or read one request in a proxy. What it buys is that a
- * scanner finding an open POST endpoint cannot fill the table overnight.
+ * There was an `X-Gryt-App-Key` here, a shared secret shipped inside the app.
+ * GRYT-529 took it out at the service: a key that ships inside a public app is
+ * not a secret, and the day it needs rotating is the day everybody who has not
+ * updated stops being able to report a bug.
  *
- * The thing that authenticates is the assertion in `assertion.ts`.
- *
- * Empty is a working state, not a broken one. The service allows unkeyed
- * submissions when it has no keys configured, which is how it runs on a laptop,
- * and the header is simply left off. Against a deployment that does have keys,
- * an empty one is refused — which is the right way round: a missing key should
- * fail against production and not against a dev box.
+ * What keeps the junk out is on the service side — a minimum gap between
+ * requests, counters per address and per install, the ban list, and a triage
+ * pass that bans whoever keeps sending noise. What identifies a reporter is the
+ * assertion in `assertion.ts`, which cannot be lifted out of a bundle.
  */
 
 export interface ReportsConfig {
   url: string;
   /** The `X-Gryt-App` id. Must match a key entry on the service. */
   app: "desktop" | "web";
-  /** Empty until a build or a container sets one. See above. */
-  appKey: string;
 }
 
 export function reportsConfig(): ReportsConfig {
@@ -44,6 +39,5 @@ export function reportsConfig(): ReportsConfig {
   return {
     url: config.GRYT_REPORTS_URL.replace(/\/+$/, ""),
     app: isElectron() ? "desktop" : "web",
-    appKey: config.GRYT_REPORTS_APP_KEY,
   };
 }
