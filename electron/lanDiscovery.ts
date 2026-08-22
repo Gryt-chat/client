@@ -157,6 +157,18 @@ function lookupService(
     const lines = buf.split("\n");
     buf = lines.pop() ?? "";
 
+    /* Every line in the chunk is read before anything is emitted.
+     *
+     * `dns-sd -L` prints the reachable line first and the TXT record on the
+     * line after it. This used to emit from inside the loop, the moment it had
+     * a host and a port — so the record was stored with `version` and
+     * `serverId` still null, and the `resolved.has(key)` guard below stopped
+     * the next line from ever correcting it. Every server discovered on macOS
+     * reported both as null, while the dgram path used on Windows and Linux
+     * read them properly. GRYT-527.
+     *
+     * A record whose TXT arrives in a later chunk still emits without it,
+     * which is what happened to every record before. */
     for (const line of lines) {
       const reachable = line.match(/can be reached at\s+(\S+?):(\d+)\s/);
       if (reachable) {
@@ -169,61 +181,60 @@ function lookupService(
 
       const txtServerId = line.match(/server_id=(\S+)/);
       if (txtServerId) serverId = txtServerId[1];
+    }
 
-      if (host && port !== null) {
-        const key = `${host}:${port}`;
+    if (!host || port === null) return;
 
-        const nameKey = instanceName.toLowerCase();
-        const existingKey = resolvedByName.get(nameKey);
+    const key = `${host}:${port}`;
 
-        if (existingKey) {
-          const existing = resolved.get(existingKey);
+    const nameKey = instanceName.toLowerCase();
+    const existingKey = resolvedByName.get(nameKey);
 
-          if (existing) {
-            const preferNew =
-              existing.host.startsWith("127.") && !host.startsWith("127.");
+    if (existingKey) {
+      const existing = resolved.get(existingKey);
 
-            if (!preferNew) {
-              lookup.kill();
-              return;
-            }
+      if (existing) {
+        const preferNew =
+          existing.host.startsWith("127.") && !host.startsWith("127.");
 
-            resolved.delete(existingKey);
-            resolvedByName.delete(nameKey);
-
-            emitRemoved(win, {
-              host: existing.host,
-              port: existing.port,
-              serverId: existing.serverId,
-            });
-          }
+        if (!preferNew) {
+          lookup.kill();
+          return;
         }
 
-        if (!resolved.has(key)) {
-          const server: LanServer = {
-            name: instanceName,
-            host,
-            port,
-            version,
-            serverId,
-          };
+        resolved.delete(existingKey);
+        resolvedByName.delete(nameKey);
 
-          resolved.set(key, server);
-          resolvedByName.set(nameKey, key);
-
-          emitDiscovered(win, server);
-
-          log(
-            `mDNS: discovered "${instanceName}" at ${host}:${port}${
-              serverId ? ` [${serverId}]` : ""
-            }`
-          );
-        }
-
-        lookup.kill();
-        return;
+        emitRemoved(win, {
+          host: existing.host,
+          port: existing.port,
+          serverId: existing.serverId,
+        });
       }
     }
+
+    if (!resolved.has(key)) {
+      const server: LanServer = {
+        name: instanceName,
+        host,
+        port,
+        version,
+        serverId,
+      };
+
+      resolved.set(key, server);
+      resolvedByName.set(nameKey, key);
+
+      emitDiscovered(win, server);
+
+      log(
+        `mDNS: discovered "${instanceName}" at ${host}:${port}${
+          serverId ? ` [${serverId}]` : ""
+        }`
+      );
+    }
+
+    lookup.kill();
   });
 
   lookup.on("error", (err) => {
