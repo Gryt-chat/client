@@ -1,4 +1,3 @@
-import { spawn } from "child_process";
 import {
   app,
   BrowserWindow,
@@ -268,11 +267,6 @@ let updateDeferredVersion: string | null = null;
 
 const PENDING_INSTALL_WINDOW_MS = 10 * 60 * 1000;
 
-// The helper writes its first log line before it waits for anything, so this
-// only has to cover process start. Four seconds is generous for that and
-// still short enough that a user staring at the splash is not left there.
-const HELPER_START_TIMEOUT_MS = 4000;
-const HELPER_START_POLL_MS = 100;
 
 type PendingInstall = {
   version: string;
@@ -374,245 +368,6 @@ function cleanupLegacyWindowsInstallBackup(): void {
       }`
     );
   }
-}
-
-/**
- * Install a Windows update only after the current Gryt process tree has exited,
- * then make sure the newly installed Gryt actually starts.
- *
- * electron-builder normally honours --force-run and launches the application
- * after NSIS completes. In practice that handoff has proven unreliable on
- * Windows for Gryt, particularly across the legacy-install migration.
- *
- * The detached PowerShell helper therefore owns the whole transition:
- *
- *   old Gryt exits
- *       -> NSIS runs
- *       -> wait for NSIS to finish
- *       -> allow NSIS' --force-run launch a few seconds
- *       -> if Gryt still is not running, launch the installed exe ourselves
- *
- * The helper lives outside $INSTDIR, so replacing the installation underneath
- * it is safe.
- */
-/**
- * Spawn the update helper and wait for it to prove it is alive.
- *
- * Resolves true once the helper has written to its log, false if it has not
- * done so within HELPER_START_TIMEOUT_MS. The caller uses that to decide
- * whether to quit into the handoff or fall back.
- */
-function launchWindowsInstallerAfterExit(
-  installerPath: string
-): Promise<boolean> {
-  return new Promise((resolvePromise, rejectPromise) => {
-    const systemRoot = process.env.SystemRoot ?? "C:\\Windows";
-
-    const powershell = join(
-      systemRoot,
-      "System32",
-      "WindowsPowerShell",
-      "v1.0",
-      "powershell.exe"
-    );
-
-    const installDir = dirname(process.execPath);
-    const installedExe = join(installDir, "Gryt Chat.exe");
-
-    // The helper survives this Electron process, so write its own diagnostics
-    // into the same directory as gryt-startup.log.
-    const helperLog = join(
-      app.getPath("userData"),
-      "gryt-update-helper.log"
-    );
-
-    // Paths go into the script as literals rather than as arguments after
-    // -Command.
-    //
-    // PowerShell rebuilds those from the raw command line and splits them on
-    // spaces again, and the installed executable is always "Gryt Chat.exe".
-    // Measured on Windows 11: five values went in, six came out, so
-    // $installedExe was the path truncated at "…\Gryt" and $logPath was
-    // "Chat.exe" — a relative path, which is why gryt-update-helper.log never
-    // appeared where anyone looked for it.
-    const psLiteral = (value: string) => `'${value.replace(/'/g, "''")}'`;
-
-    const commandLines = [
-      "$ErrorActionPreference = 'Stop'",
-
-      `$parentId = ${process.pid}`,
-      `$installer = ${psLiteral(installerPath)}`,
-      `$installDir = ${psLiteral(installDir)}`,
-      `$installedExe = ${psLiteral(installedExe)}`,
-      `$logPath = ${psLiteral(helperLog)}`,
-
-      "function Write-GrytLog([string]$message) {",
-      "  try {",
-      "    $timestamp = (Get-Date).ToUniversalTime().ToString('o')",
-      "    Add-Content -LiteralPath $logPath -Value \"[$timestamp] $message\"",
-      "  } catch {}",
-      "}",
-
-      "Write-GrytLog \"Updater helper started. Installer: $installer\"",
-
-      // Wait for the Electron main process which spawned us.
-      "Wait-Process -Id $parentId -ErrorAction SilentlyContinue",
-
-      "Write-GrytLog 'Parent Gryt process exited'",
-
-      // Electron renderer/GPU/utility processes can outlive the main PID for
-      // a moment. Wait for everything whose executable belongs to this install.
-      "$deadline = (Get-Date).AddSeconds(20)",
-      "$running = @()",
-
-      "do {",
-      "  $running = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {",
-      "    $_.ExecutablePath -and",
-      "    $_.ExecutablePath.StartsWith(",
-      "      $installDir,",
-      "      [System.StringComparison]::OrdinalIgnoreCase",
-      "    )",
-      "  })",
-
-      "  if ($running.Count -eq 0) { break }",
-      "  Start-Sleep -Milliseconds 250",
-      "} while ((Get-Date) -lt $deadline)",
-
-      // Last-resort cleanup, but scoped strictly to executables from Gryt's
-      // installation directory.
-      "if ($running.Count -gt 0) {",
-      "  Write-GrytLog \"Forcing $($running.Count) remaining Gryt process(es) to exit\"",
-      "  $running | ForEach-Object {",
-      "    Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue",
-      "  }",
-      "  Start-Sleep -Milliseconds 500",
-      "}",
-
-      "Write-GrytLog 'Starting NSIS installer'",
-
-      // Keep --force-run because electron-builder should launch Gryt itself.
-      // PassThru lets us wait for the real installer to finish and inspect its
-      // exit code instead of abandoning the handoff immediately.
-      "$setup = Start-Process `",
-      "  -FilePath $installer `",
-      "  -ArgumentList '--updated','--force-run' `",
-      "  -PassThru",
-
-      "$setup.WaitForExit()",
-      "$exitCode = $setup.ExitCode",
-
-      "Write-GrytLog \"NSIS exited with code $exitCode\"",
-
-      // Do not launch anything after a failed/cancelled installer.
-      "if ($exitCode -ne 0) {",
-      "  Write-GrytLog 'Installer did not succeed; not restarting Gryt'",
-      "  exit $exitCode",
-      "}",
-
-      // NSIS uses ExecShellAsUser to launch the new app. Give that normal path
-      // a short grace period before applying our fallback.
-      "$launchDeadline = (Get-Date).AddSeconds(8)",
-      "$newGrytRunning = $false",
-
-      "do {",
-      "  $newGrytRunning = @(",
-      "    Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |",
-      "    Where-Object {",
-      "      $_.ExecutablePath -and",
-      "      $_.ExecutablePath.Equals(",
-      "        $installedExe,",
-      "        [System.StringComparison]::OrdinalIgnoreCase",
-      "      )",
-      "    }",
-      "  ).Count -gt 0",
-
-      "  if ($newGrytRunning) { break }",
-      "  Start-Sleep -Milliseconds 500",
-      "} while ((Get-Date) -lt $launchDeadline)",
-
-      "if ($newGrytRunning) {",
-      "  Write-GrytLog 'Gryt was launched by NSIS'",
-      "  exit 0",
-      "}",
-
-      // The installer succeeded but its run-after-finish handoff did not.
-      // Launch the freshly installed executable ourselves.
-      "if (Test-Path -LiteralPath $installedExe) {",
-      "  Write-GrytLog \"NSIS did not relaunch Gryt; starting $installedExe directly\"",
-      "  Start-Process -FilePath $installedExe -ArgumentList '--updated'",
-      "  exit 0",
-      "}",
-
-      "Write-GrytLog \"Installer succeeded but installed executable is missing: $installedExe\"",
-      "exit 30",
-    ];
-
-    // Joined with newlines, not "; ".
-    //
-    // Some of these lines continue an expression onto the next one: the two
-    // Where-Object filters, and Start-Process with its backtick continuations.
-    // "; " puts a semicolon in the middle of those expressions, and a backtick
-    // right before one escapes the semicolon instead of continuing the line.
-    // PowerShell parses the whole -Command string before it runs any of it, so
-    // this failed as a unit: 17 parse errors on Windows 11 and not one line
-    // executed. No installer, no log, and Gryt came back up on the version it
-    // already had. The pending marker expired ten minutes later and the next
-    // check downloaded the same build again.
-    const script = commandLines.join("\n");
-
-    const helper = spawn(
-      powershell,
-      [
-        "-NoLogo",
-        "-NoProfile",
-        "-NonInteractive",
-        "-WindowStyle",
-        "Hidden",
-        "-Command",
-        script,
-      ],
-      {
-        detached: true,
-        stdio: "ignore",
-        windowsHide: true,
-      }
-    );
-
-    helper.once("error", rejectPromise);
-
-    helper.once("spawn", () => {
-      helper.unref();
-
-      const spawnedAt = Date.now();
-      const deadline = spawnedAt + HELPER_START_TIMEOUT_MS;
-
-      const poll = () => {
-        let wrote = false;
-
-        try {
-          // mtime rather than existence: a previous update attempt leaves a
-          // log behind, and an old one must not read as this one starting.
-          wrote = statSync(helperLog).mtimeMs >= spawnedAt;
-        } catch {
-          wrote = false;
-        }
-
-        if (wrote) {
-          resolvePromise(true);
-          return;
-        }
-
-        if (Date.now() >= deadline) {
-          resolvePromise(false);
-          return;
-        }
-
-        setTimeout(poll, HELPER_START_POLL_MS);
-      };
-
-      poll();
-    });
-  });
 }
 
 autoUpdater.logger = {
@@ -784,45 +539,25 @@ function runSplashUpdateCheck(): Promise<void> {
 
       autoUpdater
         .downloadUpdate()
-        .then(async (downloadedFiles) => {
+        .then(() => {
           markInstallPending(info.version);
 
           sendToSplash("installing", {
             version: info.version,
           });
 
-          if (process.platform === "win32") {
-            const installerPath = downloadedFiles[0];
-
-            if (!installerPath) {
-              throw new Error(
-                "The downloaded Windows installer path is missing"
-              );
-            }
-
-            const helperStarted =
-              await launchWindowsInstallerAfterExit(installerPath);
-
-            // spawn() succeeding only means powershell.exe started. It says
-            // nothing about whether the script ran, and for nine releases it
-            // did not: the script failed to parse, the process exited, and
-            // Gryt quit into no installer at all. The helper's first act is to
-            // write its log, so the log appearing is the one signal that the
-            // handoff is really under way.
-            if (!helperStarted) {
-              startupLog(
-                "Update: helper never wrote its log; falling back to quitAndInstall"
-              );
-
-              autoUpdater.quitAndInstall(false, true);
-              return;
-            }
-
-            isQuitting = true;
-            app.quit();
-            return;
-          }
-
+          // Windows used to branch here into a detached PowerShell helper that
+          // waited for this process to exit and then ran the installer itself.
+          // It never once worked. Through v1.6.24 the script could not parse,
+          // and once that was fixed the spawn still produced nothing:
+          // gryt-update-helper.log has never been written on any machine, in
+          // any version. Measured on 1.6.26, the four second wait for it to
+          // report in expired and the fallback below did the install.
+          //
+          // So the fallback is the whole thing now. quitAndInstall is what the
+          // code used before GRYT-67, it is what every other platform uses,
+          // and installer.nsh handles in customInit the broken uninstaller
+          // that made it look unsafe on Windows.
           autoUpdater.quitAndInstall(false, true);
 
           setTimeout(() => {

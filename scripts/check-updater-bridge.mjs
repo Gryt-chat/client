@@ -61,55 +61,28 @@ assert.match(builder, /electronLanguages:\r?\n\s+- en\r?\n\s+- nb/);
 
 // The Windows update handoff.
 //
-// The PowerShell helper is authored one line per array entry and joined.
-// Several of those lines continue an expression onto the next: the two
-// Where-Object filters, and Start-Process with its backtick continuations.
-// Joining with "; " put a semicolon inside those expressions and left the
-// backticks escaping it. PowerShell parses the whole -Command string before
-// it runs any of it, so the helper never started, the installer never ran,
-// and Windows sat on the version it had while re-downloading the new one.
+// There is no PowerShell helper any more. It was added to own the transition
+// from the old install to the new one, and it never ran once: through v1.6.24
+// the script could not parse, and after that was fixed the detached spawn
+// still produced nothing. gryt-update-helper.log was never written on any
+// machine in any version. quitAndInstall does the install on Windows, the way
+// it already did everywhere else.
 const main = readFileSync(
   new URL("../electron/main.ts", import.meta.url),
   "utf8",
 );
 
-assert.doesNotMatch(main, /\]\.join\("; "\)/);
+assert.doesNotMatch(main, /launchWindowsInstallerAfterExit/);
 
-assert.match(main, /const script = commandLines\.join\("\\n"\);/);
+assert.doesNotMatch(main, /WindowsPowerShell/);
 
-// The helper's paths are literals in the script. Passed after -Command
-// instead, PowerShell rebuilds them from the raw command line and splits
-// them on spaces — and the installed executable is always "Gryt Chat.exe".
-assert.match(main, /const psLiteral = .+replace\(\/'\/g, "''"\)/);
+// Install-on-quit is the second route, and the reason the helper's silence
+// went unnoticed for nine releases is that there was no second route.
+assert.match(main, /autoUpdater\.autoInstallOnAppQuit = true;/);
 
-assert.doesNotMatch(main, /\$logPath = \$args\[/);
+assert.doesNotMatch(main, /autoInstallOnAppQuit = process\.platform/);
 
-// Rebuild the helper body the way main.ts does, so a continuation line
-// added later is checked rather than assumed safe.
-const arrayStart = main.indexOf("const commandLines = [");
-const arrayEnd = main.indexOf("\n    ];", arrayStart);
-
-assert.ok(arrayStart !== -1 && arrayEnd > arrayStart);
-
-const helperLines = main
-  .slice(arrayStart, arrayEnd)
-  .split("\n")
-  .map((line) => line.trim().replace(/,$/, ""))
-  .filter((line) => line.startsWith('"'))
-  .map((line) => JSON.parse(line));
-
-assert.ok(
-  helperLines.length > 20,
-  `helper body looks truncated: ${helperLines.length} lines`,
-);
-
-// A backtick continues a line only when nothing follows it on that line.
-for (const line of helperLines) {
-  const tick = line.indexOf("`");
-
-  if (tick !== -1) {
-    assert.equal(tick, line.length - 1, `backtick must end its line: ${line}`);
-  }
-}
+// One quitAndInstall for every platform, no win32 branch around it.
+assert.equal(main.match(/autoUpdater\.quitAndInstall\(/g)?.length, 1);
 
 console.log("Updater bridge packaging checks passed");
