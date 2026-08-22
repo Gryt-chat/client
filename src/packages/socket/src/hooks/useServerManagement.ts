@@ -139,12 +139,19 @@ function useServerManagementHook(): ServerManagement {
       if (servers[normalized]) return false;
       if (dismissedLanServers.includes(key)) return false;
 
-      if (s.serverId) {
-        const existingById = Object.values(servers).some(
-          (server) => !!server.serverId && server.serverId === s.serverId
-        );
-        if (existingById) return false;
-      }
+      /* There used to be a second check here, hiding a found server whose
+       * `serverId` matched one already added. It compared two different fields
+       * that share a name: `s.serverId` is the mDNS TXT record's `server_id`,
+       * which is `SERVER_INSTANCE_ID || "default"` and is a per-host
+       * disambiguator, while a stored `serverId` is `/info`'s — a real
+       * per-install identity, or the socket's `<name>_<port>_<instance>`.
+       *
+       * So it never matched the thing it was written to match, and the only
+       * way it could fire was by accident: set `SERVER_INSTANCE_ID` on two
+       * machines to the same value and Discovery would hide the second one.
+       * The address check above is what actually deduplicates, and GRYT-224's
+       * id learning is what makes *that* work across two addresses for one
+       * server. GRYT-485. */
 
       return true;
     });
