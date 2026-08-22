@@ -321,6 +321,7 @@ export const VoiceView = ({
     showPeerLatency,
     cameraMirrored,
     voiceTileLayout,
+    voiceTwoPersonLayout,
     setShowSettings,
     setSettingsTab,
   } = useSettings();
@@ -702,8 +703,20 @@ export const VoiceView = ({
     [displayItems],
   );
 
+  /**
+   * Two people, one big and one in the corner.
+   *
+   * The default, because it is what a video call usually does and it gives the
+   * person you are talking to more pixels. Set to "equal" it falls through to
+   * the ordinary grid, which for two tiles stacks them in the sidebar and puts
+   * them side by side once there is width for it — the same aspect-ratio rule
+   * every other count goes through (GRYT-123).
+   */
   const isHeroPip =
-    !isFocused && screenItems.length === 0 && peopleItems.length === 2;
+    voiceTwoPersonLayout === "hero" &&
+    !isFocused &&
+    screenItems.length === 0 &&
+    peopleItems.length === 2;
 
   const availableHeight = Math.max(
     0,

@@ -8,7 +8,7 @@ import {
   useUserId,
 } from "@/common";
 
-import type { VoiceTileLayout } from "./settingsStorage";
+import type { VoiceTileLayout, VoiceTwoPersonLayout } from "./settingsStorage";
 import { type ScalabilityMode, type ScreenShareCodec, settingsInit, type VideoCodec } from "./settingsStorage";
 import { loadAudioFromCache, useAudioSettings } from "./useAudioSettings";
 import { getUserValue, loadForUser, setUserValue } from "./userStorage";
@@ -65,6 +65,8 @@ function useSettingsHook() {
   const [faceFramingEnabled, setFaceFramingEnabled] = useState(false);
   const [voiceTileLayout, setVoiceTileLayout] =
     useState<VoiceTileLayout>("meet");
+  const [voiceTwoPersonLayout, setVoiceTwoPersonLayout] =
+    useState<VoiceTwoPersonLayout>("hero");
   const [devFakeParticipants, setDevFakeParticipants] = useState(0);
   const [devFakeMembers, setDevFakeMembers] = useState(0);
   const [devFakeChatSeconds, setDevFakeChatSeconds] = useState(6);
@@ -123,6 +125,9 @@ function useSettingsHook() {
       setFaceFramingEnabled(getUserValue("faceFramingEnabled", false));
       setVoiceTileLayout(
         getUserValue<VoiceTileLayout>("voiceTileLayout", "meet"),
+      );
+      setVoiceTwoPersonLayout(
+        getUserValue<VoiceTwoPersonLayout>("voiceTwoPersonLayout", "hero"),
       );
       setDevFakeParticipants(getUserValue("devFakeParticipants", 0));
       setDevFakeMembers(getUserValue("devFakeMembers", 0));
@@ -320,6 +325,11 @@ function useSettingsHook() {
     setUserValue("voiceTileLayout", layout);
   }
 
+  function updateVoiceTwoPersonLayout(layout: VoiceTwoPersonLayout) {
+    setVoiceTwoPersonLayout(layout);
+    setUserValue("voiceTwoPersonLayout", layout);
+  }
+
   function updateCameraFlipped(flipped: boolean) {
     setCameraFlipped(flipped);
     setUserValue("cameraFlipped", flipped);
@@ -504,6 +514,8 @@ function useSettingsHook() {
     setFaceFramingEnabled: updateFaceFramingEnabled,
     voiceTileLayout,
     setVoiceTileLayout: updateVoiceTileLayout,
+    voiceTwoPersonLayout,
+    setVoiceTwoPersonLayout: updateVoiceTwoPersonLayout,
     devFakeParticipants,
     setDevFakeParticipants: updateDevFakeParticipants,
     devFakeMembers,

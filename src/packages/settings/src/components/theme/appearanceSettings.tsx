@@ -6,6 +6,7 @@ import { useSettings } from "@/settings";
 
 import { SettingGroup, SettingsContainer } from "../settingsComponents";
 import { TileLayoutPicker } from "../tileLayoutPicker";
+import { TwoPersonLayoutPicker } from "../twoPersonLayoutPicker";
 import { ThemeLibrary } from "./themeLibrary";
 
 /**
@@ -36,7 +37,12 @@ export function AppearanceSettings() {
     { value: "dark", label: "Dark" },
   ], []);
 
-  const { voiceTileLayout, setVoiceTileLayout } = useSettings();
+  const {
+    voiceTileLayout,
+    setVoiceTileLayout,
+    voiceTwoPersonLayout,
+    setVoiceTwoPersonLayout,
+  } = useSettings();
 
   return (
     <SettingsContainer>
@@ -133,6 +139,17 @@ export function AppearanceSettings() {
         <TileLayoutPicker value={voiceTileLayout} onChange={setVoiceTileLayout} />
 
 
+      </SettingGroup>
+
+      <SettingGroup
+        title="Two people"
+        description="With exactly two of you in a channel and nobody sharing a screen. One large and one small is what a video call usually does; same size is better when you are both doing something rather than talking to each other."
+      >
+        <TwoPersonLayoutPicker
+          value={voiceTwoPersonLayout}
+          onChange={setVoiceTwoPersonLayout}
+          rule={voiceTileLayout}
+        />
       </SettingGroup>
     </SettingsContainer>
   );
