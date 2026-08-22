@@ -1,4 +1,4 @@
-import { Avatar, Tooltip } from "@gryt/ui";
+import { Avatar, Chip, PreviewCard, Tooltip } from "@gryt/ui";
 import { AnimatePresence, motion } from "motion/react";
 import { forwardRef, memo, useCallback, useRef, useState } from "react";
 
@@ -18,6 +18,8 @@ import { ImageAttachment } from "./ImageAttachment";
 import { MessageEmbeds } from "./LinkEmbed";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { type MessageActions, MessageContextMenu } from "./MediaContextMenu";
+import { MemberIdentityCard } from "./MemberIdentityCard";
+import type { MemberInfo } from "./MemberSidebar";
 
 export interface MessageMeta {
   isFirstInGroup: boolean;
@@ -31,6 +33,21 @@ export interface MessageMeta {
   isWebhook: boolean;
   /** Whether a bot wrote it. Server-derived; see BotTag. */
   isBot?: boolean;
+  /**
+   * The member row behind the message, when the sender is still in the list.
+   *
+   * Absent for system messages, webhooks, and anyone who has since left — the
+   * message stays readable, it just has nothing to hover (GRYT-203).
+   */
+  sender?: MemberInfo;
+  /**
+   * Somebody else in this server is currently displaying the same name.
+   *
+   * The one case where a reader genuinely cannot tell who wrote a message from
+   * looking at it, which is what makes it worth marking in the flow rather
+   * than leaving to a hover.
+   */
+  nameIsAmbiguous?: boolean;
 }
 
 interface MessageRowProps {
@@ -48,7 +65,7 @@ interface MessageRowProps {
   currentUserNickname: string | undefined;
   canDeleteAny: boolean;
   chatMediaVolume: number;
-  memberList?: Record<string, { nickname: string; serverUserId: string; avatarFileId?: string | null; [key: string]: unknown }>;
+  memberList?: Record<string, MemberInfo>;
   setChatMediaVolume: (v: number) => void;
   onReaction: (src: string, msg: ChatMessage) => void;
   onReply: (msg: ChatMessage) => void;
@@ -221,17 +238,54 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
       ) : meta.isFirstInGroup ? (
         <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange} onReaction={(src) => onReaction(src, m)} serverHost={serverHost}>
           <div className="flex gap-3 items-start" style={{ width: "100%", marginTop: 12 }}>
-            <Avatar
-              size="large"
-              className="mt-0.5 h-[51px] w-[51px] shrink-0 text-lg"
-              fallback={meta.senderName[0]}
-              src={meta.avatarUrl}
-            />
+            {/* The same card the member sidebar shows, on the avatar in the
+                flow. A message is where an impersonation is most convincing
+                and least checkable, and where nobody is going to open the
+                member list to compare fingerprints (GRYT-203). */}
+            {meta.sender ? (
+              <PreviewCard.Root>
+                <PreviewCard.Trigger>
+                  <Avatar
+                    size="large"
+                    className="mt-0.5 h-[51px] w-[51px] shrink-0 text-lg"
+                    fallback={meta.senderName[0]}
+                    src={meta.avatarUrl}
+                  />
+                </PreviewCard.Trigger>
+                <PreviewCard.Portal>
+                  <PreviewCard.Positioner side="right" align="start">
+                    <PreviewCard.Popup>
+                      <MemberIdentityCard member={meta.sender} />
+                    </PreviewCard.Popup>
+                  </PreviewCard.Positioner>
+                </PreviewCard.Portal>
+              </PreviewCard.Root>
+            ) : (
+              <Avatar
+                size="large"
+                className="mt-0.5 h-[51px] w-[51px] shrink-0 text-lg"
+                fallback={meta.senderName[0]}
+                src={meta.avatarUrl}
+              />
+            )}
             <div className="flex flex-col" style={{ flex: 1, minWidth: 0 }}>
               <div className="flex items-baseline gap-2" style={{ marginBottom: 2 }}>
                 <span className="text-sm font-bold" style={{ color: meta.isSelf ? "var(--gryt-accent-11)" : "var(--gryt-neutral-12)" }}>
                   {meta.senderName}
                 </span>
+                {meta.nameIsAmbiguous && (
+                  /* Only when the name is genuinely not enough to go on —
+                     somebody else in this server is using it right now. Not a
+                     mark on people without an account: Gryt's whole position is
+                     that an account is optional, and badging every guest as
+                     suspect would argue the opposite on every message they
+                     write. The hover card says which they are. */
+                  <Tooltip title="Someone else here is using this name too. Hover the avatar to check who this is.">
+                    <Chip tone="warning">
+                      shared name
+                    </Chip>
+                  </Tooltip>
+                )}
                 {meta.isBot && <BotTag />}
                 {meta.isWebhook && (
                   <span style={{
@@ -413,7 +467,7 @@ function MessageContent({
   serverHost: string | undefined;
   currentUserId: string | undefined;
   currentUserNickname: string | undefined;
-  memberList?: Record<string, { nickname: string; serverUserId: string; avatarFileId?: string | null; [key: string]: unknown }>;
+  memberList?: Record<string, MemberInfo>;
   chatMediaVolume: number;
   setChatMediaVolume: (v: number) => void;
   replyPreviewText: string | null;
@@ -586,7 +640,7 @@ function ReactionBadges({
   reactions: Reaction[] | null | undefined;
   currentUserId: string | undefined;
   currentUserNickname: string | undefined;
-  memberList?: Record<string, { nickname: string; serverUserId: string; avatarFileId?: string | null; [key: string]: unknown }>;
+  memberList?: Record<string, MemberInfo>;
   onReaction: (src: string) => void;
   onOpenPicker: (anchorEl?: HTMLElement) => void;
 }) {

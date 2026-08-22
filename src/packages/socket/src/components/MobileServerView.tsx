@@ -68,7 +68,7 @@ interface MobileServerViewProps {
   channelType?: "text" | "voice";
   currentUserNickname?: string;
   socketConnection?: unknown;
-  memberList: Record<string, { nickname: string; serverUserId: string; avatarFileId?: string | null }>;
+  memberList: Record<string, MemberInfo>;
   isRateLimited?: boolean;
   rateLimitCountdown?: number;
   canViewVoiceChannelText?: boolean;
