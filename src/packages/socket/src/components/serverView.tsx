@@ -85,11 +85,19 @@ export const ServerView = () => {
   const {
     voiceFocused, setVoiceFocused, isMaximized, toggleMaximized,
     voiceContainerRef, voiceMaxWidth, shownVoiceWidth,
-    focusedChatWidth, focusedVoiceMaxWidth,
   } = useVoiceLayout({ setShowVoiceView });
 
   const [focusedChatHidden, setFocusedChatHidden] = useState(false);
   const toggleFocusedChat = useCallback(() => setFocusedChatHidden((v) => !v), []);
+
+  /**
+   * The chat is out of the way because somebody put it out of the way.
+   *
+   * The button lives on the focused view's control row, so this only means
+   * anything while a stream is focused — but it is a press either way, which
+   * is the whole difference between this and what focus used to do on its own.
+   */
+  const chatTakenOver = voiceFocused && focusedChatHidden;
 
   const {
     leftSidebarOpen, rightSidebarOpen,
@@ -377,12 +385,12 @@ export const ServerView = () => {
               transition: "opacity 0.3s ease",
             }}>
             <ServerSidebar
-              sidebarOpen={leftSidebarOpen && !voiceFocused}
+              sidebarOpen={leftSidebarOpen}
               sidebarWidthPx={SIDEBAR_WIDTH_PX}
               hoverPx={SIDEBAR_HOVER_PX}
               contentRef={leftSidebarContentRef}
               isUnreachableWhileConnected={isVoiceOnThisServer && isServerUnreachable}
-              onMouseEnter={voiceFocused ? undefined : openLeftSidebar}
+              onMouseEnter={openLeftSidebar}
               onMouseLeave={closeLeftSidebar}
               serverName={serverName}
               serverRole={currentUserRole}
@@ -421,15 +429,31 @@ export const ServerView = () => {
             <div className="flex grow" ref={voiceContainerRef} style={{ position: "relative", minWidth: 0 }}>
               <VoiceView
                 showVoiceView={showVoiceView && (!isCompact || voiceFocused)}
-                voiceWidth={voiceFocused
-                  ? (focusedChatHidden
+                /* Focusing a stream no longer changes this.
+                 *
+                 * It used to: focus expanded the panel to two thirds of the
+                 * row, shrank the chat to the other third and closed both
+                 * sidebars — which is not what focus means, and is why
+                 * clicking a tile was described as going fullscreen. Clicking
+                 * a tile now makes that stream the big one inside the panel
+                 * and leaves the app where it was (GRYT-110).
+                 *
+                 * Hiding the chat is still a thing you can do, from the button
+                 * next to the focused view's controls. That one is a press
+                 * rather than a side effect. */
+                voiceWidth={
+                  chatTakenOver
                     ? "100%"
-                    : (focusedVoiceMaxWidth > 0 ? `${focusedVoiceMaxWidth}px` : voiceWidth))
-                  : (voiceWidth === "0px" ? "0px" : (isMaximized ? "100%" : `${shownVoiceWidth}px`))}
+                    : voiceWidth === "0px"
+                      ? "0px"
+                      : isMaximized
+                        ? "100%"
+                        : `${shownVoiceWidth}px`
+                }
                 maxWidth={
-                  // Maximized hides the chat, so the width reserved for a
+                  // Both of these hide the chat, so the width reserved for a
                   // minimum chat column would otherwise cap the panel.
-                  isMaximized && !voiceFocused ? undefined : voiceMaxWidth
+                  isMaximized || chatTakenOver ? undefined : voiceMaxWidth
                 }
                 serverHost={host}
                 currentServerConnected={currentServerConnected}
@@ -453,8 +477,8 @@ export const ServerView = () => {
                 onToggleChat={toggleFocusedChat}
               />
               <div style={{
-                display: (voiceFocused && focusedChatHidden) || (!voiceFocused && isMaximized && showVoiceView && voiceWidth !== "0px") ? "none" : "flex",
-                flex: voiceFocused ? `0 0 ${focusedChatWidth}px` : 1,
+                display: chatTakenOver || (isMaximized && showVoiceView && voiceWidth !== "0px") ? "none" : "flex",
+                flex: 1,
                 minWidth: 0,
                 ...(isVoiceOnThisServer && isServerUnreachable && { opacity: 0.5, pointerEvents: "none" as const }),
                 transition: "opacity 0.3s ease",
@@ -491,12 +515,12 @@ export const ServerView = () => {
               // Closed for good, not just collapsed, when the role may not see
               // who is here. The server stops sending the list as well, so an
               // open panel would show whatever was last cached.
-              sidebarOpen={rightSidebarOpen && !voiceFocused && canViewMembers}
+              sidebarOpen={rightSidebarOpen && canViewMembers}
               sidebarWidthPx={SIDEBAR_WIDTH_PX}
               hoverPx={SIDEBAR_HOVER_PX}
               contentRef={rightSidebarContentRef}
               isUnreachableWhileConnected={isVoiceOnThisServer && isServerUnreachable}
-              onMouseEnter={voiceFocused || !canViewMembers ? undefined : openRightSidebar}
+              onMouseEnter={!canViewMembers ? undefined : openRightSidebar}
               onMouseLeave={closeRightSidebar}
               members={hostMembers}
               currentConnectionId={currentConnection?.id}

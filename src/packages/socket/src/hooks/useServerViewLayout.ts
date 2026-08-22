@@ -10,7 +10,6 @@ const SIDEBAR_CLOSE_DELAY = 1000;
 // below about 540 a tall narrow panel always prefers two.
 const VOICE_SIDEBAR_WIDTH = 600;
 const MIN_CHAT_WIDTH = 200;
-const FOCUSED_CHAT_RATIO = 1 / 3;
 
 interface UseMediaAutoShowParams {
   showVoiceView: boolean;
@@ -179,13 +178,6 @@ function useVoiceLayout({ setShowVoiceView }: UseVoiceLayoutParams) {
     ? Math.min(VOICE_SIDEBAR_WIDTH, voiceMaxWidth)
     : VOICE_SIDEBAR_WIDTH;
 
-  const focusedChatWidth = voiceContainerWidth > 0
-    ? Math.max(MIN_CHAT_WIDTH, Math.round(voiceContainerWidth * FOCUSED_CHAT_RATIO))
-    : MIN_CHAT_WIDTH;
-  const focusedVoiceMaxWidth = voiceContainerWidth > 0
-    ? Math.max(0, voiceContainerWidth - focusedChatWidth)
-    : 0;
-
   const toggleMaximized = useCallback(() => {
     // Maximizing while minimized would grow something invisible. Reading the
     // current value here rather than inside the updater keeps the updater
@@ -198,7 +190,6 @@ function useVoiceLayout({ setShowVoiceView }: UseVoiceLayoutParams) {
     voiceFocused, setVoiceFocused,
     isMaximized, toggleMaximized,
     voiceContainerRef, voiceMaxWidth, shownVoiceWidth,
-    focusedChatWidth, focusedVoiceMaxWidth,
   };
 }
 
