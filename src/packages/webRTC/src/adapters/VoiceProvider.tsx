@@ -1,6 +1,8 @@
+import type { VoiceConfigCallbacks } from "@gryt/voice";
 import { setVoiceHost,VoiceConfigProvider, VoiceSingletonHooks } from "@gryt/voice";
-import { type ReactNode,useMemo } from "react";
+import { type ReactNode,useMemo, useRef } from "react";
 
+import { useSettings } from "@/settings";
 import { useServerManagement, useSockets } from "@/socket";
 
 import { createRoomCoordinator } from "./roomCoordinator";
@@ -25,9 +27,47 @@ function VoiceLifecycle() {
   return null;
 }
 
+/**
+ * What the engine noticed, written down.
+ *
+ * The engine reports the device it actually opened when that is not the one it
+ * was asked for — either because nothing had been chosen, or because the chosen
+ * one is not there any more. Only the first of those is worth recording.
+ *
+ * Recording the second would mean unplugging a headset quietly replaces the
+ * stored choice with the built-in microphone, so plugging it back in does not
+ * return to it. Leaving the setting alone costs nothing: the device is still
+ * missing next time, and the engine falls back again. The camera is the same
+ * question with the same answer, so both are handled the same way here.
+ */
+function useDeviceCallbacks(): VoiceConfigCallbacks {
+  const settings = useSettings();
+
+  // Through a ref so the callbacks keep one identity for the life of the app.
+  // They are dependencies of the engine's device effects, and a new object on
+  // every settings change would reopen the microphone and the camera.
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+
+  return useMemo(
+    () => ({
+      onAudioDeviceChanged: (deviceId: string) => {
+        if (settingsRef.current.micID) return;
+        settingsRef.current.setMicID(deviceId);
+      },
+      onCameraDeviceChanged: (deviceId: string) => {
+        if (settingsRef.current.cameraID) return;
+        settingsRef.current.setCameraID(deviceId);
+      },
+    }),
+    [],
+  );
+}
+
 export function VoiceProvider({ children }: { children?: ReactNode }) {
   const { currentlyViewingServer } = useServerManagement();
   const { sockets, serverDetailsList } = useSockets();
+  const callbacks = useDeviceCallbacks();
 
   const host = currentlyViewingServer?.host;
   const details = host ? serverDetailsList[host] : undefined;
@@ -45,7 +85,7 @@ export function VoiceProvider({ children }: { children?: ReactNode }) {
   const config = useVoiceConfigFromSettings(stunHosts);
 
   return (
-    <VoiceConfigProvider config={config} target={target}>
+    <VoiceConfigProvider config={config} callbacks={callbacks} target={target}>
       {/* Runs the body of every singleton hook inside @gryt/voice, once. The
           client's own <SingletonHooks /> only knows about the client's registry;
           these are a second one. Without this the hooks return their initial
