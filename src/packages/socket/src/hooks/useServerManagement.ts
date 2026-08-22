@@ -3,6 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { singletonHook } from "@/common";
 import {
   forgetHost,
+  listHostExpectations,
+  listPins,
   normalizeHost,
   removeServerAccessToken,
   removeServerRefreshToken,
@@ -25,7 +27,18 @@ interface ServerManagement {
   /** Discovered, not joined, and not looked at yet. What the rail badge means. */
   newLanServers: LanServer[];
 
+  /**
+   * Addresses that turn out to be one server, keyed by its identity key.
+   *
+   * Only groups of two or more. A host not in any group has no duplicate.
+   */
+  duplicateHostGroups: Record<string, string[]>;
+  /** The other addresses this same server is also in the rail under. */
+  duplicatesOf: (host: string) => string[];
+
   addServer: (server: Server, focusNewServer?: boolean) => void;
+  /** Fold every other entry for this server into `keepHost`. */
+  mergeDuplicates: (keepHost: string) => void;
   removeServer: (host: string) => void;
   removeServers: (hosts: string[]) => void;
   switchToServer: (host: string) => void;
@@ -62,6 +75,7 @@ function useServerManagementHook(): ServerManagement {
     setCurrentlyViewingServer,
     lastSelectedChannels,
     setLastSelectedChannel,
+    forgetLastSelectedChannels,
     serverOrder,
     setServerOrder,
     dismissedLanServers,
@@ -294,6 +308,156 @@ function useServerManagementHook(): ServerManagement {
   );
 
   /**
+   * The pairs GRYT-224 stopped making but could not undo.
+   *
+   * Keyed on the server's identity key, not on `serverId`. GRYT-317 was
+   * written assuming `serverId` names a server, and it does not: the socket
+   * reports `<name>_<port>_<instance>` (`computeServerId` in the server's
+   * `utils/serverId.ts`), which exists to tell two servers on one host apart.
+   * Two people each running an unconfigured server both publish the same
+   * string, so grouping the rail on it would offer to merge two entries that
+   * are different servers — the same shape as GRYT-485, with a deletion on the
+   * end of it.
+   *
+   * The identity key does name a server. It is what the pin is for, and
+   * `originKeyId` carries it across rotations, so it survives the one event
+   * that would otherwise split a server in two.
+   *
+   * The cost is that this only sees addresses that have been connected to at
+   * least once, because that is when a pin is written. An entry typed in and
+   * never reached is not grouped with anything, which is the right answer
+   * anyway: nothing has established what is at that address.
+   */
+  const [hostIdentities, setHostIdentities] = useState<Record<string, string>>(
+    {},
+  );
+
+  // Pins are written when a connection is established, so serverDetailsList
+  // changing is the render this needs to re-read on. The comparison keeps the
+  // object identity stable when nothing moved, so the grouping below does not
+  // recompute on every connection event.
+  useEffect(() => {
+    const expectations = listHostExpectations();
+    const pins = listPins();
+
+    const next: Record<string, string> = {};
+    for (const [host, keyId] of Object.entries(expectations)) {
+      next[host] = pins[keyId]?.originKeyId ?? keyId;
+    }
+
+    setHostIdentities((prev) => {
+      const prevKeys = Object.keys(prev);
+      const unchanged =
+        prevKeys.length === Object.keys(next).length &&
+        prevKeys.every((host) => prev[host] === next[host]);
+      return unchanged ? prev : next;
+    });
+  }, [serverDetailsList]);
+
+  const duplicateHostGroups = useMemo(() => {
+    const byIdentity: Record<string, string[]> = {};
+
+    for (const host of orderedServerHosts) {
+      const identity = hostIdentities[host];
+      if (!identity) continue;
+      (byIdentity[identity] ??= []).push(host);
+    }
+
+    return Object.fromEntries(
+      Object.entries(byIdentity).filter(([, hosts]) => hosts.length > 1),
+    );
+  }, [orderedServerHosts, hostIdentities]);
+
+  const duplicatesOf = useCallback(
+    (host: string) =>
+      Object.values(duplicateHostGroups)
+        .find((hosts) => hosts.includes(host))
+        ?.filter((h) => h !== host) ?? [],
+    [duplicateHostGroups],
+  );
+
+  const mergeDuplicates = useCallback(
+    (keepHost: string) => {
+      const normalizedKeep = normalizeHost(keepHost);
+      const survivor = servers[normalizedKeep];
+      if (!survivor) return;
+
+      const dropped =
+        Object.values(duplicateHostGroups)
+          .find((hosts) => hosts.includes(normalizedKeep))
+          ?.filter((host) => host !== normalizedKeep) ?? [];
+      if (dropped.length === 0) return;
+
+      const inheritedToken =
+        typeof survivor.token === "string" && survivor.token.length > 0
+          ? survivor.token
+          : dropped
+              .map((host) => servers[host]?.token)
+              .find((token) => typeof token === "string" && token.length > 0);
+
+      const newServers = { ...servers };
+      for (const host of dropped) {
+        delete newServers[host];
+        removeServerAccessToken(host);
+        removeServerRefreshToken(host);
+        forgetHost(host);
+      }
+      newServers[normalizedKeep] = { ...survivor, token: inheritedToken };
+      setServers(newServers);
+
+      // The survivor takes the earliest place any of the group held, so a
+      // merge does not send the entry to the bottom of the rail.
+      const groupHosts = new Set([normalizedKeep, ...dropped]);
+      const firstIndex = serverOrder.findIndex((host) => groupHosts.has(host));
+      const remaining = serverOrder.filter((host) => !groupHosts.has(host));
+      if (firstIndex !== -1) {
+        const before = serverOrder
+          .slice(0, firstIndex)
+          .filter((host) => !groupHosts.has(host));
+        setServerOrder([
+          ...before,
+          normalizedKeep,
+          ...remaining.slice(before.length),
+        ]);
+      } else {
+        setServerOrder([...remaining, normalizedKeep]);
+      }
+
+      if (!lastSelectedChannels[normalizedKeep]) {
+        const inheritedChannel = dropped
+          .map((host) => lastSelectedChannels[host])
+          .find(Boolean);
+        if (inheritedChannel) {
+          setLastSelectedChannel(normalizedKeep, inheritedChannel);
+        }
+      }
+
+      forgetLastSelectedChannels(dropped);
+
+      // Merging the entry you are looking at should leave you looking at the
+      // same server, not at whatever happens to be first.
+      if (
+        currentlyViewingServer &&
+        dropped.includes(currentlyViewingServer.host)
+      ) {
+        setCurrentlyViewingServer(normalizedKeep);
+      }
+    },
+    [
+      servers,
+      setServers,
+      duplicateHostGroups,
+      serverOrder,
+      setServerOrder,
+      lastSelectedChannels,
+      setLastSelectedChannel,
+      forgetLastSelectedChannels,
+      currentlyViewingServer,
+      setCurrentlyViewingServer,
+    ],
+  );
+
+  /**
    * Leaving a server, and meaning it.
    *
    * This used to remove the sidebar entry and stop there, which left two things
@@ -453,7 +617,10 @@ function useServerManagementHook(): ServerManagement {
     pendingLanServers,
     newLanServers,
 
+    duplicateHostGroups,
+    duplicatesOf,
     addServer,
+    mergeDuplicates,
     removeServer,
     removeServers,
     switchToServer,
@@ -484,7 +651,10 @@ const init: ServerManagement = {
   pendingLanServers: [],
   newLanServers: [],
 
+  duplicateHostGroups: {},
+  duplicatesOf: () => [],
   addServer: () => {},
+  mergeDuplicates: () => {},
   removeServer: () => {},
   removeServers: () => {},
   switchToServer: () => {},
