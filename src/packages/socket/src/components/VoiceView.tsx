@@ -1200,14 +1200,16 @@ export const VoiceView = ({
       }}
       style={{
         overflow: "hidden",
+        // Focus used to get its own branch here — flexGrow: 1 and no cap — so
+        // the panel ate the row the moment a tile was clicked. The width now
+        // comes from `voiceWidth` alone, which the parent works out from the
+        // voice view's own state, and focus does not touch it (GRYT-110).
         ...(isFullscreen
           ? { height: "100%", maxWidth: "none" }
-          : isFocused && showVoiceView
-            ? { flexGrow: 1, minWidth: 0 }
-            : {
-                maxWidth:
-                  maxWidth && maxWidth > 0 ? `${maxWidth}px` : undefined,
-              }),
+          : {
+              maxWidth:
+                maxWidth && maxWidth > 0 ? `${maxWidth}px` : undefined,
+            }),
       }}
     >
       <div className="flex h-full w-full flex-col p-3" style={{
