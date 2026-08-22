@@ -12,6 +12,7 @@ import { mayClaim } from "./identity-claims";
 import { hasLocalIdentity, identityScopeFor, signAssertion } from "./identity-keys";
 import { getValidIdentityToken } from "./keycloak";
 import { getLocalIdentity, signIdentityLink } from "./local-identity";
+import { isSessionExpired } from "./session-expired";
 
 export interface ChallengeAnswer {
   certificate: string;
@@ -59,8 +60,16 @@ export async function answerChallenge(
   const accepts = (tier: ChallengeAnswer["tier"]) =>
     !challenge.identityTiers || challenge.identityTiers.includes(tier);
 
+  // A lapsed session is deliberately not caught. Everything else is: failing
+  // to read a token we never had is what a guest looks like, and guests join
+  // fine. A session that has ended is different — falling through to the local
+  // tier would answer as this device rather than as the account, and the server
+  // would see somebody it has never met (GRYT-10).
   const token = accepts("account")
-    ? await getValidIdentityToken().catch(() => undefined)
+    ? await getValidIdentityToken().catch((e) => {
+        if (isSessionExpired(e)) throw e;
+        return undefined;
+      })
     : undefined;
 
   if (token) {

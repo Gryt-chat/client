@@ -1,7 +1,7 @@
 import { useSFU } from "@gryt/voice";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { useUnreadTracker } from "@/common";
+import { useAccount, useUnreadTracker } from "@/common";
 import { useIsCompact, useIsMobile } from "@/mobile";
 import { useSettings } from "@/settings";
 import { SidebarItem } from "@/settings/src/types/server";
@@ -63,6 +63,7 @@ export const ServerView = () => {
   const { currentlyViewingServer, setShowRemoveServer, setLastSelectedChannelForServer } = useServerManagement();
   const { connect, currentServerConnected, isConnected, isConnecting, videoStreams, streamSources } = useSFU();
   const { serverDetailsList, clients, memberLists, serverProfiles } = useSockets();
+  const { login } = useAccount();
 
   const {
     clientsSpeaking, voiceWidth,
@@ -267,6 +268,7 @@ export const ServerView = () => {
         refusalReason={currentRefusalReason}
         refusalHelpUrl={currentRefusalHelpUrl}
         onReconnect={() => reconnectServer(currentlyViewingServer.host)}
+        onSignIn={() => void login()}
       />
     );
   }

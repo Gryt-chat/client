@@ -5,6 +5,7 @@ import { Socket } from "socket.io-client";
 import {
   answerChallenge,
   getServerRefreshToken,
+  isSessionExpired,
   markChannelUnread,
   removeServerAccessToken,
   removeServerRefreshToken,
@@ -221,6 +222,28 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
           console.error(`[Auth:Socket] Failed to answer challenge for ${host}:`, msg);
+
+          // Not answering ends the join, and the server has no reason to ask
+          // again — so this has to be said out loud. Logging it and returning
+          // left the socket connected with no data behind it, which the UI
+          // renders as a skeleton that never resolves, and only a reload got
+          // out of it (GRYT-10).
+          setFailedServerDetails(prev => ({
+            ...prev,
+            [host]: isSessionExpired(e)
+              ? {
+                  error: "session_expired",
+                  // The card's heading already says the session expired, so
+                  // this says what to do about it rather than repeating it.
+                  message: "Sign in again to reconnect to this server.",
+                  timestamp: Date.now(),
+                }
+              : {
+                  error: "identity_failed",
+                  message: `Could not prove who you are to this server: ${msg}`,
+                  timestamp: Date.now(),
+                },
+          }));
         }
       });
 

@@ -13,6 +13,7 @@ import {
   refreshTokens,
   storeTokens,
 } from './electron-auth';
+import { SessionExpiredError } from './session-expired';
 
 type KeycloakInitResult = {
   keycloak: Keycloak;
@@ -363,9 +364,18 @@ export async function getValidIdentityToken(minValiditySeconds: number = 30): Pr
     return undefined;
   }
   try {
+    // This is the refresh. updateToken resolves false when the token is still
+    // fresh enough and only rejects when it could not get a new one, so a
+    // rejection here means the session is genuinely over.
     await keycloak.updateToken(minValiditySeconds);
   } catch (e) {
-    console.warn("[Auth:KC] getValidIdentityToken: updateToken failed", e);
+    // Returning keycloak.token here used to hand the caller the expired token
+    // it had just failed to renew. Every request made with it came back 401,
+    // which reads like the far end is broken rather than like the session
+    // ending, and the one place that mattered — the identity certificate the
+    // join handshake needs — failed in a way nothing retried (GRYT-10).
+    console.warn("[Auth:KC] getValidIdentityToken: updateToken failed — session expired", e);
+    throw new SessionExpiredError();
   }
   const hasToken = !!keycloak.token;
   if (!hasToken) console.warn("[Auth:KC] getValidIdentityToken: no token after updateToken");
