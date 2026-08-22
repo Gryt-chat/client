@@ -144,9 +144,11 @@ interface UseVoiceLayoutParams {
 /**
  * The voice view's layout state.
  *
- * Three of GRYT-40's four states: minimized is `showVoiceView === false`,
- * shown is the fixed sidebar width, maximized fills the row and hides the
- * chat. Fullscreen is not here yet.
+ * GRYT-40's states, now that there are three of them: minimized is
+ * `showVoiceView === false`, shown is the fixed sidebar width, maximized fills
+ * the row and hides the chat. Fullscreen was the fourth and has been dropped
+ * (GRYT-110) — it hid everyone else, the controls and the rest of the app, and
+ * focusing a stream does the job it was there for without leaving Gryt.
  *
  * Neither state is persisted, so maximizing lasts as long as the view does.
  * Whether it should be remembered per channel, per server or globally is one

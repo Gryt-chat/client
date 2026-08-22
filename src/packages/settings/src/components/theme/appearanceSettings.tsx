@@ -134,7 +134,7 @@ export function AppearanceSettings() {
 
       <SettingGroup
         title="Tile layout"
-        description="How the voice grid arranges people once it is maximised or fullscreen. Both were measured against Google Meet; which you prefer is a matter of taste. The sidebar looks the same either way."
+        description="How the voice grid arranges people once it is maximised. Both were measured against Google Meet; which you prefer is a matter of taste. The sidebar looks the same either way."
       >
         <TileLayoutPicker value={voiceTileLayout} onChange={setVoiceTileLayout} />
 

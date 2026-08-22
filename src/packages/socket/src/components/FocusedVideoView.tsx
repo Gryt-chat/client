@@ -1,7 +1,7 @@
 import { Slider } from "@gryt/ui";
 import type { StreamSources } from "@gryt/voice";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { PiArrowLineLeftFill, PiArrowSquareOutFill, PiCornersInFill, PiCornersOutFill, PiSpeakerHighFill, PiSpeakerSlashFill } from "react-icons/pi";
+import { PiArrowLineLeftFill, PiArrowSquareOutFill, PiSpeakerHighFill, PiSpeakerSlashFill } from "react-icons/pi";
 
 import { gainToSlider, sliderToGain } from "@/lib/audioVolume";
 
@@ -40,7 +40,6 @@ export function FocusedVideoView({
   onPopout?: () => void;
 }) {
   const ref = useRef<HTMLVideoElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const [volume, setVolume] = useState(() => {
     if (audioStreamId && streamSources?.[audioStreamId]) {
       return gainToSlider(streamSources[audioStreamId].gain.gain.value, 200);
@@ -48,7 +47,6 @@ export function FocusedVideoView({
     return 100;
   });
   const [controlsVisible, setControlsVisible] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -56,23 +54,9 @@ export function FocusedVideoView({
   }, [stream]);
 
   useEffect(() => {
-    const onChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-    document.addEventListener("fullscreenchange", onChange);
-    return () => document.removeEventListener("fullscreenchange", onChange);
-  }, []);
-
-  const toggleFullscreen = useCallback(() => {
-    if (!containerRef.current) return;
-    if (document.fullscreenElement) {
-      document.exitFullscreen();
-    } else {
-      containerRef.current.requestFullscreen();
-    }
-  }, []);
-
-  useEffect(() => {
+    // The fullscreen check stays even though this view can no longer go
+    // fullscreen itself (GRYT-110): a video embed in chat still can, and
+    // Escape belongs to whatever is fullscreen first. A second press unfocuses.
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !document.fullscreenElement) onClose();
     };
@@ -138,14 +122,13 @@ export function FocusedVideoView({
   return (
     <div className="flex flex-col" style={{ flex: 1, minHeight: 0 }}>
       <div
-        ref={containerRef}
-        onClick={isFullscreen ? toggleFullscreen : onClose}
+        onClick={onClose}
         onMouseMove={showControls}
         onMouseLeave={hideControls}
         style={{
           flex: 1,
           position: "relative",
-          borderRadius: isFullscreen ? 0 : "var(--gryt-radius-md)",
+          borderRadius: "var(--gryt-radius-md)",
           overflow: "hidden",
           background: "#000",
           minHeight: 0,
@@ -227,15 +210,6 @@ export function FocusedVideoView({
               <PiArrowSquareOutFill size={16} />
             </button>
           )}
-
-          <button
-            type="button"
-            style={iconBtnStyle}
-            onClick={toggleFullscreen}
-            aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-          >
-            {isFullscreen ? <PiCornersInFill size={16} /> : <PiCornersOutFill size={16} />}
-          </button>
 
           <button
             type="button"

@@ -17,7 +17,7 @@
  * Rather than pick a winner, both are offered: "meet" copies the measurements,
  * "large" always takes the arrangement with the biggest tiles. At sidebar
  * proportions the two agree at every count, so the choice only shows up in the
- * maximised and fullscreen views.
+ * maximised view.
  */
 import type { VoiceTileLayout } from "@/settings";
 

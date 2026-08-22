@@ -27,7 +27,7 @@ import {
   useState,
 } from "react";
 import toast from "react-hot-toast";
-import { PiArrowLineLeftFill, PiArrowLineRightFill, PiChatCircleFill, PiCornersInFill, PiCornersOutFill, PiMicrophoneSlashFill, PiVideoCameraSlashFill } from "react-icons/pi";
+import { PiArrowLineLeftFill, PiArrowLineRightFill, PiChatCircleFill, PiMicrophoneSlashFill, PiVideoCameraSlashFill } from "react-icons/pi";
 
 import { useSettings } from "@/settings";
 import { Controls } from "@/webRTC";
@@ -488,37 +488,6 @@ export const VoiceView = ({
       },
     );
   }, [cameraError, retryCamera, setSettingsTab, setShowSettings]);
-
-  const panelRef = useRef<HTMLDivElement>(null);
-
-  /**
-   * Fullscreen is the maximised layout with a different container, so there is
-   * no separate layout code — the panel goes fullscreen and the grid's
-   * ResizeObserver picks up the new size on its own.
-   *
-   * State is read back from the document rather than tracked independently,
-   * because the browser can leave fullscreen without us: Escape, the window
-   * chrome, or another element taking it.
-   */
-  const [isFullscreen, setIsFullscreen] = useState(false);
-
-  useEffect(() => {
-    const sync = () =>
-      setIsFullscreen(document.fullscreenElement === panelRef.current);
-
-    document.addEventListener("fullscreenchange", sync);
-    return () => document.removeEventListener("fullscreenchange", sync);
-  }, []);
-
-  const toggleFullscreen = useCallback(() => {
-    if (document.fullscreenElement) {
-      void document.exitFullscreen();
-      return;
-    }
-    void panelRef.current?.requestFullscreen?.().catch((error) => {
-      console.warn("[VoiceView] fullscreen refused", error);
-    });
-  }, []);
 
   const gridRef = useRef<HTMLDivElement>(null);
   const [gridHeight, setGridHeight] = useState(0);
@@ -1185,29 +1154,22 @@ export const VoiceView = ({
   return (
     <motion.div
       data-gryt="voice-view"
-      ref={panelRef}
       transition={
         isDragging
           ? { duration: 0 }
           : { type: "spring", stiffness: 300, damping: 30 }
       }
       animate={{
-        // Fullscreen sizes the element itself, so an animated pixel width
-        // would fight the browser for it.
-        width: isFullscreen ? "100%" : showVoiceView ? voiceWidth : 0,
-        paddingRight:
-          isFullscreen || !showVoiceView || voiceWidth === "0px" ? 0 : 8,
+        width: showVoiceView ? voiceWidth : 0,
+        paddingRight: !showVoiceView || voiceWidth === "0px" ? 0 : 8,
       }}
       style={{
         overflow: "hidden",
-        ...(isFullscreen
-          ? { height: "100%", maxWidth: "none" }
-          : isFocused && showVoiceView
-            ? { flexGrow: 1, minWidth: 0 }
-            : {
-                maxWidth:
-                  maxWidth && maxWidth > 0 ? `${maxWidth}px` : undefined,
-              }),
+        ...(isFocused && showVoiceView
+          ? { flexGrow: 1, minWidth: 0 }
+          : {
+              maxWidth: maxWidth && maxWidth > 0 ? `${maxWidth}px` : undefined,
+            }),
       }}
     >
       <div className="flex h-full w-full flex-col p-3" style={{
@@ -1543,48 +1505,22 @@ export const VoiceView = ({
                         bottom: 12,
                         pointerEvents: "auto",
                       }}>
-                      <Tooltip
-                        title={isFullscreen ? "Leave fullscreen" : "Fullscreen"}
-                      >
+                      <Tooltip title={isMaximized ? "Restore" : "Maximize"}>
                         <IconButton tone="neutral" size="xsmall"
                           aria-label={
-                            isFullscreen
-                              ? "Leave fullscreen"
-                              : "Fullscreen voice view"
+                            isMaximized
+                              ? "Restore voice view"
+                              : "Maximize voice view"
                           }
-                          onClick={toggleFullscreen}
+                          onClick={onToggleMaximize}
                         >
-                          {isFullscreen ? (
-                            <PiCornersInFill size={18} />
+                          {isMaximized ? (
+                            <PiArrowLineLeftFill size={16} />
                           ) : (
-                            <PiCornersOutFill size={18} />
+                            <PiArrowLineRightFill size={16} />
                           )}
                         </IconButton>
                       </Tooltip>
-
-                      {/* Nothing to maximise into while the voice view already
-                          covers the screen, so the control goes rather than
-                          sitting there doing nothing. */}
-                      {!isFullscreen && (
-                        <Tooltip
-                          title={isMaximized ? "Restore" : "Maximize"}
-                        >
-                          <IconButton tone="neutral" size="xsmall"
-                            aria-label={
-                              isMaximized
-                                ? "Restore voice view"
-                                : "Maximize voice view"
-                            }
-                            onClick={onToggleMaximize}
-                          >
-                            {isMaximized ? (
-                              <PiArrowLineLeftFill size={16} />
-                            ) : (
-                              <PiArrowLineRightFill size={16} />
-                            )}
-                          </IconButton>
-                        </Tooltip>
-                      )}
                     </div>
                   )}
                 </motion.div>
