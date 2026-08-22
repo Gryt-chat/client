@@ -7,6 +7,19 @@ interface LanServer {
   host: string;
   port: number;
   version: string | null;
+  /**
+   * The TXT record's `server_id`, reported because it is what the wire carries.
+   *
+   * **Not an identity, despite the name.** The server publishes
+   * `SERVER_INSTANCE_ID || "default"`, which exists to tell two servers on one
+   * *host* apart — it is what keeps them from overwriting each other's avahi
+   * service file, GRYT-227 — and almost nobody sets it. Every server on a
+   * network that has not been told otherwise publishes `server_id=default`.
+   *
+   * It is also a different field from `/info`'s `serverId`, which is a real
+   * per-install identity. The two share a name and nothing else, so nothing
+   * should ever compare one against the other. GRYT-485.
+   */
   serverId: string | null;
 }
 
@@ -15,6 +28,27 @@ type CleanupFn = () => void;
 const MDNS_ADDR = "224.0.0.251";
 const MDNS_PORT = 5353;
 const QUERY_INTERVAL_MS = 15_000;
+
+/* ── Two records for one server ───────────────────────────────────────────
+ *
+ * Both browsers below merge on the **mDNS instance name**, and both of them
+ * used to merge on `server_id` instead. With almost every server publishing
+ * `server_id=default`, that collapsed every server on the network into one
+ * entry and emitted removals for the rest: five services advertise
+ * `_gryt._tcp` here and four publish the default, and the list showed one row.
+ * It reads as discovery finding nothing rather than as discovery hiding
+ * things, which is why it went unnoticed. GRYT-485.
+ *
+ * The instance name is the right key and the only one needed. It is unique on
+ * a network by mDNS's own rules — a second server calling itself "Gryt" is
+ * renamed by the responder rather than allowed to collide — so two records
+ * sharing one are the same server answering on two interfaces.
+ *
+ * That is the case the `127.` preference is for, and it is worth keeping: a
+ * server that resolved to loopback is genuinely less useful than the same one
+ * on a LAN address. It just has to be a comparison between two records for one
+ * name rather than for one id.
+ */
 
 //
 // macOS: native dns-sd CLI
@@ -26,7 +60,7 @@ function startDnsSdBrowse(
 ): CleanupFn {
   const procs: ChildProcess[] = [];
   const resolved = new Map<string, LanServer>();
-  const resolvedByServerId = new Map<string, string>();
+  const resolvedByName = new Map<string, string>();
 
   const browse = spawn("dns-sd", ["-B", "_gryt._tcp"], { stdio: "pipe" });
   procs.push(browse);
@@ -53,14 +87,7 @@ function startDnsSdBrowse(
       const instanceName = instanceNameRaw.trim();
 
       if (action === "Add") {
-        lookupService(
-          instanceName,
-          win,
-          log,
-          procs,
-          resolved,
-          resolvedByServerId
-        );
+        lookupService(instanceName, win, log, procs, resolved, resolvedByName);
         continue;
       }
 
@@ -78,10 +105,7 @@ function startDnsSdBrowse(
           const [key, server] = match;
 
           resolved.delete(key);
-
-          if (server.serverId !== null) {
-            resolvedByServerId.delete(server.serverId);
-          }
+          resolvedByName.delete(server.name.toLowerCase());
 
           emitRemoved(win, {
             host: server.host,
@@ -114,7 +138,7 @@ function lookupService(
   log: (msg: string) => void,
   procs: ChildProcess[],
   resolved: Map<string, LanServer>,
-  resolvedByServerId: Map<string, string>
+  resolvedByName: Map<string, string>
 ): void {
   const lookup = spawn("dns-sd", ["-L", instanceName, "_gryt._tcp"], {
     stdio: "pipe",
@@ -149,33 +173,29 @@ function lookupService(
       if (host && port !== null) {
         const key = `${host}:${port}`;
 
-        if (serverId) {
-          const existingKey = resolvedByServerId.get(serverId);
+        const nameKey = instanceName.toLowerCase();
+        const existingKey = resolvedByName.get(nameKey);
 
-          if (existingKey) {
-            const existing = resolved.get(existingKey);
+        if (existingKey) {
+          const existing = resolved.get(existingKey);
 
-            if (existing) {
-              const preferNew =
-                existing.host.startsWith("127.") && !host.startsWith("127.");
+          if (existing) {
+            const preferNew =
+              existing.host.startsWith("127.") && !host.startsWith("127.");
 
-              if (!preferNew) {
-                lookup.kill();
-                return;
-              }
-
-              resolved.delete(existingKey);
-
-              if (existing.serverId) {
-                resolvedByServerId.delete(existing.serverId);
-              }
-
-              emitRemoved(win, {
-                host: existing.host,
-                port: existing.port,
-                serverId: existing.serverId,
-              });
+            if (!preferNew) {
+              lookup.kill();
+              return;
             }
+
+            resolved.delete(existingKey);
+            resolvedByName.delete(nameKey);
+
+            emitRemoved(win, {
+              host: existing.host,
+              port: existing.port,
+              serverId: existing.serverId,
+            });
           }
         }
 
@@ -189,10 +209,7 @@ function lookupService(
           };
 
           resolved.set(key, server);
-
-          if (serverId) {
-            resolvedByServerId.set(serverId, key);
-          }
+          resolvedByName.set(nameKey, key);
 
           emitDiscovered(win, server);
 
@@ -374,7 +391,7 @@ function startDgramBrowse(
   log: (msg: string) => void
 ): CleanupFn {
   const discovered = new Map<string, LanServer>();
-  const discoveredByServerId = new Map<string, string>();
+  const discoveredByName = new Map<string, string>();
 
   let sock: DgramSocket | null = null;
   let timer: ReturnType<typeof setInterval> | null = null;
@@ -429,7 +446,7 @@ function startDgramBrowse(
           win,
           log,
           discovered,
-          discoveredByServerId
+          discoveredByName
         );
       } catch {
         // ignore malformed packets
@@ -464,7 +481,7 @@ function handleMdnsResponse(
   win: BrowserWindow,
   log: (msg: string) => void,
   discovered: Map<string, LanServer>,
-  discoveredByServerId: Map<string, string>
+  discoveredByName: Map<string, string>
 ): void {
   if (pkt.length < 12) return;
 
@@ -533,32 +550,28 @@ function handleMdnsResponse(
     const instanceName = ptr.replace(/\._gryt\._tcp\.local\.?$/i, "");
     const key = `${ip}:${srv.port}`;
 
-    if (serverId) {
-      const existingKey = discoveredByServerId.get(serverId);
+    const nameKey = instanceName.toLowerCase();
+    const existingKey = discoveredByName.get(nameKey);
 
-      if (existingKey) {
-        const existing = discovered.get(existingKey);
+    if (existingKey) {
+      const existing = discovered.get(existingKey);
 
-        if (existing) {
-          const preferNew =
-            existing.host.startsWith("127.") && !ip.startsWith("127.");
+      if (existing) {
+        const preferNew =
+          existing.host.startsWith("127.") && !ip.startsWith("127.");
 
-          if (!preferNew) {
-            continue;
-          }
-
-          discovered.delete(existingKey);
-
-          if (existing.serverId) {
-            discoveredByServerId.delete(existing.serverId);
-          }
-
-          emitRemoved(win, {
-            host: existing.host,
-            port: existing.port,
-            serverId: existing.serverId,
-          });
+        if (!preferNew) {
+          continue;
         }
+
+        discovered.delete(existingKey);
+        discoveredByName.delete(nameKey);
+
+        emitRemoved(win, {
+          host: existing.host,
+          port: existing.port,
+          serverId: existing.serverId,
+        });
       }
     }
 
@@ -572,10 +585,7 @@ function handleMdnsResponse(
       };
 
       discovered.set(key, server);
-
-      if (serverId) {
-        discoveredByServerId.set(serverId, key);
-      }
+      discoveredByName.set(nameKey, key);
 
       emitDiscovered(win, server);
 
