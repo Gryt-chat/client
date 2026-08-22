@@ -1,12 +1,14 @@
-import { Alert, Button, Dialog, Divider, TextField } from "@gryt/ui";
+import { Alert, Button, Checkbox, Dialog, Divider, TextField } from "@gryt/ui";
 import { useEffect, useMemo, useState } from "react";
 import { PiBugFill, PiChatCircleDotsFill, PiPaperPlaneRightFill } from "react-icons/pi";
 
 import { useDiagnostics } from "../lib/reports/diagnostics";
+import { recentLogs } from "../lib/reports/logs";
 import {
   buildReport,
   describeAttached,
   MESSAGE_MAX,
+  type Report,
   type ReportType,
 } from "../lib/reports/report";
 import { submitReport } from "../lib/reports/submit";
@@ -78,12 +80,28 @@ function ReportForm({ type, onDone }: { type: ReportType; onDone: () => void }) 
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
 
-  /* Built from the same function that builds what is posted, so the list of
-     what is attached cannot drift from what actually goes. */
-  const attached = useMemo(
-    () => describeAttached(buildReport(type, { message }, diagnostics)),
-    [type, message, diagnostics],
+  /**
+   * The log tail, captured the moment it is asked for rather than at send.
+   *
+   * Otherwise a line arriving between reading the payload and pressing send
+   * would mean the thing reviewed is not the thing posted, which is the one
+   * property this whole panel exists to provide.
+   */
+  const [logs, setLogs] = useState<string[] | null>(null);
+
+  /**
+   * One report object, previewed and posted.
+   *
+   * Building it twice would let the two disagree — `sessionUptimeSec` alone
+   * moves between renders — and somebody who read the payload would have sent
+   * a different one.
+   */
+  const report = useMemo(
+    () => buildReport(type, { message }, { ...diagnostics, logs: logs ?? undefined }),
+    [type, message, diagnostics, logs],
   );
+
+  const attached = useMemo(() => describeAttached(report), [report]);
 
   const copy = COPY[type];
   const empty = message.trim() === "";
@@ -92,7 +110,7 @@ function ReportForm({ type, onDone }: { type: ReportType; onDone: () => void }) 
     setSending(true);
     setError(null);
     try {
-      await submitReport(buildReport(type, { message }, diagnostics));
+      await submitReport(report);
       setSent(true);
     } catch (e) {
       /* Deliberately keeps the message in the box. Somebody who typed three
@@ -131,7 +149,12 @@ function ReportForm({ type, onDone }: { type: ReportType; onDone: () => void }) 
           }}
         />
 
-        <Attached lines={attached} />
+        <Attached
+          lines={attached}
+          report={report}
+          includeLogs={logs !== null}
+          onIncludeLogs={(on) => setLogs(on ? recentLogs() : null)}
+        />
 
         {error && <Alert severity="error">{error}</Alert>}
 
@@ -150,41 +173,78 @@ function ReportForm({ type, onDone }: { type: ReportType; onDone: () => void }) 
 }
 
 /**
- * What rides along, said out loud.
+ * Everything that goes with what they wrote, and the payload itself.
  *
  * Not a disclosure notice and not a consent gate. Somebody about to describe a
  * crash should be able to see, without leaving the dialog, that their build
  * number and the route they were on are going too.
  *
- * **Closed, with the sentence outside it.** Expanded, ten rows of diagnostics
- * sit between the message and the send button, which is a wall of numbers in
- * front of the one thing the form is for. Shut, the list is a line to open and
- * the claim that matters is still read without opening anything.
+ * **The list is a summary; the JSON is the thing.** A row saying "Log — last
+ * 40 lines" is a claim about the payload, and a claim is only worth what the
+ * reader can check. So the exact object that will be posted is one click away,
+ * and it is the same object — not a second one built for display.
+ *
+ * **The log tail is off unless asked for**, because it is the one field that
+ * can describe the person rather than the build: a failed connection writes
+ * the server's address, and a self-hosted server's address is often somebody's
+ * house.
  */
-function Attached({ lines }: { lines: { label: string; value: string }[] }) {
-  if (lines.length === 0) return null;
-
+function Attached({
+  lines,
+  report,
+  includeLogs,
+  onIncludeLogs,
+}: {
+  lines: { label: string; value: string }[];
+  report: Report;
+  includeLogs: boolean;
+  onIncludeLogs: (on: boolean) => void;
+}) {
   return (
     <div className="flex flex-col gap-2">
+      {lines.length > 0 && (
+        <details className="rounded-(--gryt-radius-lg) border border-gryt-neutral-6 px-3 py-2">
+          <summary className="cursor-pointer text-sm text-gryt-muted">
+            What gets sent with this
+          </summary>
+          <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+            {lines.map((line) => (
+              <div key={line.label} className="contents">
+                <dt className="text-gryt-muted">{line.label}</dt>
+                <dd style={{ fontFamily: "var(--code-font-family)" }}>{line.value}</dd>
+              </div>
+            ))}
+          </dl>
+        </details>
+      )}
+
       <details className="rounded-(--gryt-radius-lg) border border-gryt-neutral-6 px-3 py-2">
         <summary className="cursor-pointer text-sm text-gryt-muted">
-          What gets sent with this
+          Read the exact data
         </summary>
-        <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
-          {lines.map((line) => (
-            <div key={line.label} className="contents">
-              <dt className="text-gryt-muted">{line.label}</dt>
-              <dd style={{ fontFamily: "var(--code-font-family)" }}>{line.value}</dd>
-            </div>
-          ))}
-        </dl>
+        <pre
+          className="mt-2 max-h-64 overflow-auto text-xs leading-relaxed"
+          style={{ fontFamily: "var(--code-font-family)" }}
+        >
+          {JSON.stringify(report, null, 2)}
+        </pre>
       </details>
-      {/* Accurate rather than reassuring. A server's *version* does go, when
-          there is one — that is a number about the software, not about the
-          people on it, and claiming "nothing from your servers" while sending
-          it would be the kind of privacy line that is worth less than none. */}
+
+      <label className="flex cursor-pointer items-start gap-2 text-xs text-gryt-muted">
+        <Checkbox checked={includeLogs} onCheckedChange={onIncludeLogs} />
+        <span>
+          Include the app&rsquo;s recent log. It makes a bug far easier to find, and it
+          can contain personal information — a failed connection records the address of
+          the server, which for a self-hosted one is often a home address.
+        </span>
+      </label>
+
+      {/* Accurate rather than reassuring, and it has to change with the box. A
+          server's version is a number about software; its address is not. */}
       <span className="text-xs text-gryt-muted">
-        No messages, no names, and nothing about who you talk to.
+        {includeLogs
+          ? "No messages and no names. The log may name servers you connect to."
+          : "No messages, no names, and nothing about who you talk to."}
       </span>
     </div>
   );
