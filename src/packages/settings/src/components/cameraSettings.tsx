@@ -1,5 +1,5 @@
-import { Button, Chip, Divider, Select } from "@gryt/ui";
-import { CAMERA_FPS_OPTIONS, type CameraQuality, QUALITY_CONSTRAINTS, useCamera } from "@gryt/voice";
+import { Button, Chip, Divider, Select, Tooltip } from "@gryt/ui";
+import { CAMERA_FPS_OPTIONS, type CameraQuality, QUALITY_CONSTRAINTS, useCamera, useVideoStats } from "@gryt/voice";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PiArrowsClockwiseFill } from "react-icons/pi";
 
@@ -44,6 +44,26 @@ export function CameraSettings() {
   } = useSettings();
 
   const { cameraEnabled, cameraStream: globalStream, devices, getDevices } = useCamera();
+
+  /**
+   * What peers are actually receiving, when there is a call to receive it.
+   *
+   * The chip below used to read `track.getSettings()`, which is the raw camera
+   * track — before the encoder gets to it. What goes out is whatever survives
+   * the outbound sender: the constraints, the encoding caps, and any
+   * bandwidth- or CPU-driven downscaling the encoder does on its own. Those
+   * are routinely different numbers, so somebody checking their own preview to
+   * judge quality got a confident wrong answer (GRYT-31).
+   *
+   * `useVideoStats` already reads `outbound-rtp` for the debug overlay and
+   * polls once a second, which is also the rate the old chip refreshed at.
+   */
+  const { outbound } = useVideoStats(cameraEnabled);
+  const sent = outbound.find((o) => o.label === "camera") ?? null;
+  const sentRes =
+    sent?.frameWidth != null && sent?.frameHeight != null
+      ? { w: sent.frameWidth, h: sent.frameHeight }
+      : null;
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewStreamRef = useRef<MediaStream | null>(null);
@@ -186,6 +206,18 @@ export function CameraSettings() {
     }
   }, [maxCameraHeight, cameraQuality, setCameraQuality]);
 
+  const differs =
+    !!sentRes &&
+    !!actualRes &&
+    (sentRes.w !== actualRes.w || sentRes.h !== actualRes.h);
+
+  // "none" is the encoder saying it is not limited, which is not worth
+  // repeating back to anybody.
+  const limitedBy =
+    sent?.qualityLimitationReason && sent.qualityLimitationReason !== "none"
+      ? sent.qualityLimitationReason
+      : null;
+
   return (
     <SettingsContainer>
       <h2>Camera</h2>
@@ -214,20 +246,35 @@ export function CameraSettings() {
                     ? "scaleX(-1)" : undefined,
                 }}
               />
-              {actualRes && (
-                <Chip tone="neutral"
-                  style={{
-                    position: "absolute",
-                    top: 8,
-                    right: 8,
-                    background: "rgba(0,0,0,0.65)",
-                    backdropFilter: "blur(4px)",
-                    color: "#fff",
-                    fontVariantNumeric: "tabular-nums",
-                  }}
+              {(sentRes ?? actualRes) && (
+                <Tooltip
+                  title={
+                    sentRes
+                      ? differs
+                        ? `Being sent at ${sentRes.w}×${sentRes.h}. Your camera is producing ${actualRes?.w}×${actualRes?.h}${limitedBy ? `, and the encoder is limited by ${limitedBy}` : ""}.`
+                        : `Being sent at ${sentRes.w}×${sentRes.h}, which is what your camera is producing.`
+                      : "What your camera is producing. Join a voice channel to see what is actually being sent."
+                  }
                 >
-                  {actualRes.w}×{actualRes.h}
-                </Chip>
+                  <Chip tone="neutral"
+                    style={{
+                      position: "absolute",
+                      top: 8,
+                      right: 8,
+                      background: "rgba(0,0,0,0.65)",
+                      backdropFilter: "blur(4px)",
+                      // The tone prop cannot carry this: the inline background
+                      // overrides what a warning tone would paint, so the
+                      // difference has to be in the text.
+                      color: differs ? "var(--gryt-warning-9)" : "#fff",
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
+                    {sentRes
+                      ? `${sentRes.w}×${sentRes.h} sent`
+                      : `${actualRes?.w}×${actualRes?.h}`}
+                  </Chip>
+                </Tooltip>
               )}
             </div>
           ) : (
