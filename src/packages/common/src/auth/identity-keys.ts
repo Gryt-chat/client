@@ -385,8 +385,27 @@ export async function signJwt(
   source: IdentitySource = { kind: "account" },
 ): Promise<string> {
   const { privateKey } = await loadOrGenerateKeyPair(source);
+  return signJwtWithKey(payload, privateKey);
+}
 
-  const header = { alg: "ES256", typ: "JWT" };
+/**
+ * The same signature, over a key the caller already holds.
+ *
+ * Split out for the one thing `signJwt` cannot do: sign with a key that is not
+ * one of this device's identities, and put the public half in the protected
+ * header so a verifier that has never seen the key can check it — `jwk`, which
+ * is what `jose`'s `EmbeddedJWK` reads. A server join has no use for it,
+ * because the certificate carries the key separately.
+ *
+ * `alg` and `typ` are applied after `extraHeader`, so a caller cannot quietly
+ * downgrade the algorithm by passing one.
+ */
+export async function signJwtWithKey(
+  payload: Record<string, unknown>,
+  privateKey: CryptoKey,
+  extraHeader?: Record<string, unknown>,
+): Promise<string> {
+  const header = { ...extraHeader, alg: "ES256", typ: "JWT" };
   const encodedHeader = base64UrlEncode(utf8ToBuffer(JSON.stringify(header)));
   const encodedPayload = base64UrlEncode(utf8ToBuffer(JSON.stringify(payload)));
   const signingInput = `${encodedHeader}.${encodedPayload}`;
@@ -398,6 +417,46 @@ export async function signJwt(
   );
 
   return `${signingInput}.${base64UrlEncode(signature)}`;
+}
+
+/**
+ * A key from this device's seed for something that is not a Gryt server.
+ *
+ * The report service is the case this exists for. Signing a report with one of
+ * the per-server guest keys would tell that service which server the reporter
+ * uses — the same disclosure the one-key-per-server design spends its effort
+ * avoiding, pointed in a different direction. A scope of its own costs nothing
+ * and keeps the property.
+ *
+ * `scope` shares a namespace with `identityScopeFor`, which prefixes every
+ * server with `srv:`. Anything passed here has to stay clear of that prefix or
+ * it is a server's key under another name.
+ *
+ * Not stored, not cached, and not written to the guest history: it is
+ * reproducible from the seed in a millisecond, and the history is a record of
+ * servers joined rather than of keys derived. It does create the seed if there
+ * is not one yet, which is the same thing joining anywhere would do.
+ */
+export async function deriveScopedKeyPair(
+  scope: string,
+): Promise<{ privateKey: CryptoKey; publicJwk: JsonWebKey }> {
+  if (scope.startsWith(SERVER_SCOPE_PREFIX)) {
+    throw new Error(`"${scope}" is a server's scope, not a standalone one`);
+  }
+
+  const db = await openDB();
+  try {
+    const { privateKey, publicKey } = await deriveLocalKeyPair(
+      await getOrCreateSeed(db),
+      scope,
+    );
+    return {
+      privateKey,
+      publicJwk: await crypto.subtle.exportKey("jwk", publicKey),
+    };
+  } finally {
+    db.close();
+  }
 }
 
 /**

@@ -1,15 +1,15 @@
 import { AlertDialog, Button, Chip, Divider, Surface, Switch } from "@gryt/ui";
 import { useCallback, useEffect, useState } from "react";
 import { FaGithub } from "react-icons/fa";
-import { PiArrowsClockwiseFill, PiArrowSquareOutFill, PiChatCircleDotsFill, PiCheckCircleFill, PiClockClockwiseFill, PiDesktopFill, PiDownloadSimpleFill, PiXCircleFill } from "react-icons/pi";
+import { PiArrowsClockwiseFill, PiArrowSquareOutFill, PiBugFill, PiChatCircleDotsFill, PiCheckCircleFill, PiClockClockwiseFill, PiDesktopFill, PiDownloadSimpleFill, PiXCircleFill } from "react-icons/pi";
 
 import { Wordmark } from "@/common";
 
 import { getElectronAPI, isElectron, UpdateStatus } from "../../../../lib/electron";
+import { useReportForm } from "../../../../lib/reports/useReportForm";
 import { SettingsContainer } from "./settingsComponents";
 
 const GITHUB_URL = "https://github.com/Gryt-chat/gryt";
-const FEEDBACK_URL = "https://feedback.gryt.chat";
 const RELEASES_URL = `${GITHUB_URL}/releases/latest`;
 
 function UpdateControls() {
@@ -236,6 +236,8 @@ function DesktopAppCard() {
 }
 
 export function AboutSettings() {
+  const { open: openReport } = useReportForm();
+
   return (
     <SettingsContainer>
       <h2>About</h2>
@@ -272,14 +274,17 @@ export function AboutSettings() {
           <FaGithub size={16} />
           GitHub
         </Button>
-        <Button size="small"
-          tone="neutral"
-          render={
-            <a href={FEEDBACK_URL} target="_blank" rel="noopener noreferrer" />
-          }
-        >
+        {/* In the app rather than out to a browser. It used to open the Fider
+            board, which asks for a sign-in before it will take a sentence —
+            and Fider is for public feature requests people vote on, which is
+            not what most of what arrived there was. */}
+        <Button size="small" tone="neutral" onClick={() => openReport("feedback")}>
           <PiChatCircleDotsFill size={16} />
           Give feedback
+        </Button>
+        <Button size="small" tone="neutral" onClick={() => openReport("bug")}>
+          <PiBugFill size={16} />
+          Report a bug
         </Button>
       </div>
 

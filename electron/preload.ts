@@ -467,6 +467,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     hasExisting: boolean;
     lanIp: string;
     servers: EmbeddedServerState[];
+    bundled: { server?: string; sfu?: string; worker?: string };
   }> {
     return ipcRenderer.invoke("embedded-server:info");
   },

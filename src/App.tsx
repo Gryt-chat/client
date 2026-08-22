@@ -37,6 +37,7 @@ import { IdentityClaimPrompt } from "./components/identityClaimPrompt";
 import { LeaveServer } from "./components/leaveServer";
 import { MainApp } from "./components/mainApp";
 import { MicrophoneDebugOverlay } from "./components/microphoneDebugOverlay";
+import { ReportDialog } from "./components/reportDialog";
 import { TrayVoiceState } from "./components/trayVoiceState";
 import { VideoDebugOverlay } from "./components/videoDebugOverlay";
 import { Welcome } from "./components/welcome";
@@ -193,6 +194,7 @@ export function App() {
             onGoToServer={handleGoToServer}
           />
           <IdentityClaimPrompt />
+          <ReportDialog />
           <PushToTalkModal />
           <TrayVoiceState />
           <MicrophoneDebugOverlay isVisible={showDebugOverlay} />

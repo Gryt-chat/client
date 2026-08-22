@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import {
+  type EmbeddedServerInfo,
   type EmbeddedServerState,
   getElectronAPI,
 } from "../../../../lib/electron";
@@ -17,6 +18,8 @@ export function useEmbeddedServer() {
   const [servers, setServers] = useState<EmbeddedServerState[]>([]);
   const [available, setAvailable] = useState(false);
   const [lanIp, setLanIp] = useState("127.0.0.1");
+  /** What the bundle ships, which never changes while the app is running. */
+  const [bundled, setBundled] = useState<EmbeddedServerInfo["bundled"]>(undefined);
   /** Ids with a call in flight, so one server's spinner is not all of them. */
   const [busy, setBusy] = useState<Set<string>>(new Set());
   const [creating, setCreating] = useState(false);
@@ -53,6 +56,7 @@ export function useEmbeddedServer() {
         setAvailable(info.available);
         setLanIp(info.lanIp);
         setServers(info.servers);
+        setBundled(info.bundled);
         void refreshAutoStart(info.servers);
       })
       .catch(console.error);
@@ -257,6 +261,7 @@ export function useEmbeddedServer() {
     hasExistingServer: servers.length > 0,
     servers,
     lanIp,
+    bundled,
     creating,
     isBusy: (id: string) => busy.has(id),
     autoStart,

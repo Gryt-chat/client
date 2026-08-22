@@ -28,7 +28,7 @@ import { ServerStatusRing } from "@/socket/src/components/ServerStatusRing";
 import { MiniControls } from "@/webRTC/src/components/miniControls";
 
 import { useIdentityClaim } from "../hooks/useIdentityClaim";
-import { bugReportUrl } from "../lib/bugReport";
+import { useReportForm } from "../lib/reports/useReportForm";
 
 
 /**
@@ -66,6 +66,7 @@ interface SidebarProps {
 export function Sidebar({ setShowAddServer }: SidebarProps) {
   const { isSignedIn, login, logout } = useAccount();
   const { nickname, avatarDataUrl, setShowSettings } = useSettings();
+  const { open: openReport } = useReportForm();
 
   const {
     servers,
@@ -249,23 +250,18 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
               </div>
             </Menu.Item>
             <Menu.Separator />
-            <Menu.Item
-              onClick={() =>
-                window.open("https://feedback.gryt.chat", "_blank")
-              }
-            >
+            <Menu.Item onClick={() => openReport("feedback")}>
               <div className="flex items-center gap-1">
                 <PiChatCircleDotsFill size={14} />
                 Give feedback
               </div>
             </Menu.Item>
-            {/* Kept separate from feedback rather than folded into it. "Give
-                feedback" is a suggestion box; this is for when something is
-                broken, and it arrives as an issue carrying the version and
-                platform, which a free-text form does not. */}
-            <Menu.Item
-              onClick={() => window.open(bugReportUrl(), "_blank")}
-            >
+            {/* Kept separate from feedback rather than folded into it. Both
+                open the same form and the service stores them the same way
+                with a different label — but "Give feedback" is a suggestion box
+                and this is for when something is broken, and somebody who has
+                just lost a call should not have to decide which box that is. */}
+            <Menu.Item onClick={() => openReport("bug")}>
               <div className="flex items-center gap-1">
                 <PiBugFill size={14} />
                 Report a bug

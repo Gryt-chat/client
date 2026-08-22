@@ -4,6 +4,7 @@ import { useSettings } from "@/settings";
 import { useServerManagement } from "@/socket";
 import { ServerView } from "@/socket/src/components/serverView";
 
+import { useRememberPlace } from "../lib/reports/session";
 import { Discovery } from "./discovery";
 import { OnboardingTour } from "./onboarding/OnboardingTour";
 import { Sidebar } from "./sidebar";
@@ -11,6 +12,14 @@ import { Sidebar } from "./sidebar";
 export function MainApp() {
   const { servers, setShowAddServer, showDiscovery } = useServerManagement();
   const { showTour, dismissTour } = useSettings();
+
+  /* What a bug report calls "where you were". Recorded here rather than in the
+     report form, which would always answer "the report form", and not in
+     settings, which would always answer "About" — that is where the form is
+     opened from. */
+  useRememberPlace(
+    showDiscovery ? "discovery" : Object.keys(servers).length > 0 ? "server" : "empty",
+  );
 
   return (
     <div className="flex gap-4 p-4 overflow-hidden" style={{ position: "absolute", inset: 0 }}>
