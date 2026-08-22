@@ -1,5 +1,6 @@
 import { getGrytConfig } from "../../../../config";
 import { getElectronAPI } from "../../../../lib/electron";
+import { SessionExpiredError } from "./session-expired";
 
 const STORAGE_KEY = "gryt_electron_tokens";
 
@@ -412,8 +413,12 @@ export async function getValidElectronToken(): Promise<string | undefined> {
       const refreshed = await refreshTokens(tokens.refresh_token);
       return refreshed.access_token;
     } catch (e) {
-      console.error("[Auth:Electron] getValidElectronToken: refresh failed, returning undefined", e);
-      return undefined;
+      // Not undefined. Undefined means "no account", and answerChallenge reads
+      // it that way — it would answer as this device's local identity, so a
+      // signed-in person whose session lapsed would silently arrive as a
+      // stranger on servers they are already a member of (GRYT-10).
+      console.error("[Auth:Electron] getValidElectronToken: refresh failed — session expired", e);
+      throw new SessionExpiredError();
     }
   }
 

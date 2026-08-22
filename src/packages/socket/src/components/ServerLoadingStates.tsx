@@ -10,6 +10,7 @@ interface ServerLoadingStatesProps {
   refusalHelpUrl?: string;
   connectionStatus?: 'connected' | 'disconnected' | 'connecting' | 'reconnecting' | 'refused';
   onReconnect?: () => void;
+  onSignIn?: () => void;
 }
 
 const cardStyle: React.CSSProperties = {
@@ -55,7 +56,39 @@ export const ServerLoadingStates = ({
   refusalReason,
   refusalHelpUrl,
   onReconnect,
+  onSignIn,
 }: ServerLoadingStatesProps) => {
+  // The session ending is not a loading failure and Retry is the wrong verb for
+  // it — reloading asks the same expired session the same question. Signing in
+  // is the only thing that changes the answer, so that is the only button.
+  if (serverFailure?.error === "session_expired") {
+    return (
+      <div className="flex w-full h-full items-center justify-center p-4">
+        <div style={cardStyle}>
+          <div className="flex flex-col items-center gap-4">
+            <div style={iconWrapStyle("color-mix(in oklab, var(--gryt-warning-9) 7%, transparent)")}>
+              <PiClockFill size={26} color="var(--gryt-warning-9)" />
+            </div>
+            <div className="flex flex-col gap-2 items-center">
+              <span className="text-lg font-bold">
+                Your session has expired
+              </span>
+              <span className="text-sm text-gryt-muted" style={{ lineHeight: 1.5 }}>
+                {serverFailure.message ||
+                  "Sign in again to reconnect to this server."}
+              </span>
+            </div>
+            {onSignIn && (
+              <Button size="small" onClick={onSignIn} style={{ marginTop: 4 }}>
+                Sign in
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (serverFailure) {
     const wasRefused = REFUSALS.has(serverFailure.error);
     return (

@@ -9,6 +9,7 @@ export * from "./src/auth/identity-keys";
 export * from "./src/auth/keycloak";
 export * from "./src/auth/local-identity";
 export * from "./src/auth/server-pins";
+export * from "./src/auth/session-expired";
 export * from "./src/components/GeneratedServerIcon";
 export * from "./src/components/logo";
 export * from "./src/components/wordmark";
