@@ -40,6 +40,13 @@ interface LatencyDisplayStats {
   remoteAddress?: string | null;
 }
 
+/**
+ * How long a tile waits for its stream before it stops calling itself
+ * "connecting". Well past a slow negotiation — offer, answer, ICE and the first
+ * RTP on a poor link is a few seconds — and well short of forever.
+ */
+const VIDEO_PENDING_TIMEOUT_MS = 15_000;
+
 export function VideoCard({
   stream,
   nickname,
@@ -52,6 +59,7 @@ export function VideoCard({
   objectPosition,
   onClick,
   pendingLabel = "Connecting video…",
+  stalledLabel = "Video isn't coming through",
 }: {
   stream: MediaStream | null;
   nickname: string;
@@ -65,8 +73,25 @@ export function VideoCard({
   objectPosition?: string;
   onClick?: () => void;
   pendingLabel?: string;
+  /** Shown instead of `pendingLabel` once the stream is overdue. */
+  stalledLabel?: string;
 }) {
   const ref = useRef<HTMLVideoElement | null>(null);
+  const [isStalled, setIsStalled] = useState(false);
+
+  // A tile with no stream used to say "Connecting video…" for as long as the
+  // window stayed open. When the media genuinely never arrives — the SFU never
+  // learned about the track, the subscription never produced RTP — that reads
+  // as slow rather than broken, and there is nothing to act on. Say so instead.
+  useEffect(() => {
+    if (stream) {
+      setIsStalled(false);
+      return;
+    }
+
+    const timer = setTimeout(() => setIsStalled(true), VIDEO_PENDING_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [stream]);
 
   useEffect(() => {
     const video = ref.current;
@@ -141,14 +166,21 @@ export function VideoCard({
           }}
         />
       ) : (
-        <div className="flex items-center justify-center" style={{
+        <div className="flex items-center justify-center px-2" style={{
             width: "100%",
             height: "100%",
             color: "var(--gryt-neutral-10)",
             background: "var(--gryt-neutral-3)",
           }}>
-          <span className="text-xs text-gryt-muted">
-            {pendingLabel}
+          <span
+            className={`text-xs text-center ${isStalled ? "" : "text-gryt-muted"}`}
+            style={{
+              // Step 11, not the 9 the warning icons elsewhere use: 9 is the
+              // solid fill and it is barely legible as text on a light theme.
+              color: isStalled ? "var(--gryt-warning-11)" : undefined,
+            }}
+          >
+            {isStalled ? stalledLabel : pendingLabel}
           </span>
         </div>
       )}
@@ -465,6 +497,7 @@ export function VoiceParticipantCard({
           radius={tileRadius}
           objectFit="contain"
           pendingLabel="Connecting screen…"
+          stalledLabel="Screen isn't coming through"
           statusIcons={<PiScreencastFill size={10} color="var(--gryt-secondary-9)" />}
           onClick={
             screenStream
