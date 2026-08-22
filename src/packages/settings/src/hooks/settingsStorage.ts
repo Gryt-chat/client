@@ -11,6 +11,16 @@ import { AUDIO_DEFAULTS } from "./useAudioSettings";
  */
 export type VoiceTileLayout = "meet" | "large";
 
+/**
+ * What two people in a channel look like.
+ *
+ * "hero" is what a video call usually does and what Gryt has always done: one
+ * camera fills the panel, the other sits in the corner. "equal" gives them the
+ * same tile, which is better when you are both doing something rather than
+ * talking to each other.
+ */
+export type VoiceTwoPersonLayout = "hero" | "equal";
+
 export type VideoCodec = "auto" | "h264" | "vp9" | "av1";
 /** @deprecated Use VideoCodec instead */
 export type ScreenShareCodec = VideoCodec;
@@ -169,6 +179,8 @@ export interface Settings {
   setFaceFramingEnabled: (enabled: boolean) => void;
   voiceTileLayout: VoiceTileLayout;
   setVoiceTileLayout: (layout: VoiceTileLayout) => void;
+  voiceTwoPersonLayout: VoiceTwoPersonLayout;
+  setVoiceTwoPersonLayout: (layout: VoiceTwoPersonLayout) => void;
   devFakeParticipants: number;
   setDevFakeParticipants: (count: number) => void;
   devFakeMembers: number;
@@ -351,6 +363,8 @@ export const settingsInit: Settings = {
   setFaceFramingEnabled: noop,
   voiceTileLayout: "meet",
   setVoiceTileLayout: noop,
+  voiceTwoPersonLayout: "hero",
+  setVoiceTwoPersonLayout: noop,
   devFakeParticipants: 0,
   setDevFakeParticipants: noop,
   devFakeMembers: 0,
