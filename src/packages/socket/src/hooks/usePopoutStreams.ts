@@ -28,18 +28,32 @@ export function usePopoutStreams(
         return;
       }
 
+      // A handle whose window has already gone, but whose close has not been
+      // noticed yet, is retired here. Left in the map it would report the
+      // close later and take the entry we are about to create with it, leaving
+      // a window nothing can close (GRYT-108).
+      if (existing) {
+        handles.current.delete(itemId);
+        existing.close();
+      }
+
       const gainNode =
         audioStreamId && streamSourcesRef.current?.[audioStreamId]?.gain;
 
-      const handle = popoutStream(stream, title, {
-        onClose: () => {
-          handles.current.delete(itemId);
-          setPoppedOutItems((prev) => {
-            const next = new Set(prev);
-            next.delete(itemId);
-            return next;
-          });
-        },
+      let handle: PopoutHandle | null = null;
+
+      const forget = () => {
+        if (handles.current.get(itemId) !== handle) return;
+        handles.current.delete(itemId);
+        setPoppedOutItems((prev) => {
+          const next = new Set(prev);
+          next.delete(itemId);
+          return next;
+        });
+      };
+
+      handle = popoutStream(stream, title, {
+        onClose: forget,
         audio: gainNode
           ? {
               initialVolume: gainToSlider(gainNode.gain.value, 200),
