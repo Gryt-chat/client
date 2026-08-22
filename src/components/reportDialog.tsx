@@ -5,7 +5,6 @@ import { PiBugFill, PiChatCircleDotsFill, PiPaperPlaneRightFill } from "react-ic
 import { useDiagnostics } from "../lib/reports/diagnostics";
 import {
   buildReport,
-  CONTACT_MAX,
   describeAttached,
   MESSAGE_MAX,
   type ReportType,
@@ -48,19 +47,26 @@ export function ReportDialog() {
   );
 }
 
-const COPY: Record<ReportType, { title: string; description: string; placeholder: string }> = {
+/**
+ * The same words the mobile form uses, deliberately.
+ *
+ * Two clients asking for the same thing in different language reads as two
+ * features. Mobile's wording is the considered one (GRYT-530) — the bug
+ * prompt asks what you were doing, and the feedback prompt names the three
+ * things people actually write in.
+ */
+const COPY: Record<ReportType, { title: string; description: string; placeholder: string; send: string }> = {
   bug: {
     title: "Report a bug",
-    description:
-      "What happened, and what you were doing when it did. This goes straight to Sivert.",
-    placeholder:
-      "Voice cut out about a minute after joining, and the other person could still hear me…",
+    description: "What happened, and what you were doing when it did.",
+    placeholder: "The call dropped when I switched network…",
+    send: "Send report",
   },
   feedback: {
     title: "Give feedback",
-    description:
-      "Anything you want to say about Gryt. This goes straight to Sivert.",
-    placeholder: "The server list would be easier to read if…",
+    description: "Something missing, something in the way, something you liked.",
+    placeholder: "I wish I could…",
+    send: "Send feedback",
   },
 };
 
@@ -68,7 +74,6 @@ function ReportForm({ type, onDone }: { type: ReportType; onDone: () => void }) 
   const diagnostics = useDiagnostics();
 
   const [message, setMessage] = useState("");
-  const [contact, setContact] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
@@ -76,8 +81,8 @@ function ReportForm({ type, onDone }: { type: ReportType; onDone: () => void }) 
   /* Built from the same function that builds what is posted, so the list of
      what is attached cannot drift from what actually goes. */
   const attached = useMemo(
-    () => describeAttached(buildReport(type, { message, contact }, diagnostics)),
-    [type, message, contact, diagnostics],
+    () => describeAttached(buildReport(type, { message }, diagnostics)),
+    [type, message, diagnostics],
   );
 
   const copy = COPY[type];
@@ -87,7 +92,7 @@ function ReportForm({ type, onDone }: { type: ReportType; onDone: () => void }) 
     setSending(true);
     setError(null);
     try {
-      await submitReport(buildReport(type, { message, contact }, diagnostics));
+      await submitReport(buildReport(type, { message }, diagnostics));
       setSent(true);
     } catch (e) {
       /* Deliberately keeps the message in the box. Somebody who typed three
@@ -126,17 +131,6 @@ function ReportForm({ type, onDone }: { type: ReportType; onDone: () => void }) 
           }}
         />
 
-        {/* Optional and asked for rather than taken. The account has an email
-            on it, and reading that without asking would make every report a
-            signed one whether or not somebody wanted a reply. */}
-        <TextField
-          aria-label="How to reach you"
-          maxLength={CONTACT_MAX}
-          placeholder="Email or username, if you want a reply — optional"
-          value={contact}
-          onChange={(event) => setContact(event.target.value)}
-        />
-
         <Attached lines={attached} />
 
         {error && <Alert severity="error">{error}</Alert>}
@@ -147,7 +141,7 @@ function ReportForm({ type, onDone }: { type: ReportType; onDone: () => void }) 
           <Dialog.Close render={<Button tone="neutral" size="small">Cancel</Button>} />
           <Button size="small" disabled={empty || sending} onClick={() => void send()}>
             <PiPaperPlaneRightFill size={14} />
-            {sending ? "Sending…" : "Send"}
+            {sending ? "Sending…" : copy.send}
           </Button>
         </div>
       </div>
@@ -158,27 +152,41 @@ function ReportForm({ type, onDone }: { type: ReportType; onDone: () => void }) 
 /**
  * What rides along, said out loud.
  *
- * A form that quietly ships a route, a server version and a log tail is worse
- * than one that says so, and this is what makes "what is attached" answerable
- * without reading the source.
+ * Not a disclosure notice and not a consent gate. Somebody about to describe a
+ * crash should be able to see, without leaving the dialog, that their build
+ * number and the route they were on are going too.
+ *
+ * **Closed, with the sentence outside it.** Expanded, ten rows of diagnostics
+ * sit between the message and the send button, which is a wall of numbers in
+ * front of the one thing the form is for. Shut, the list is a line to open and
+ * the claim that matters is still read without opening anything.
  */
 function Attached({ lines }: { lines: { label: string; value: string }[] }) {
   if (lines.length === 0) return null;
 
   return (
-    <details className="rounded-(--gryt-radius-lg) border border-gryt-neutral-6 px-3 py-2">
-      <summary className="cursor-pointer text-sm text-gryt-muted">
-        Sent with this report ({lines.length})
-      </summary>
-      <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
-        {lines.map((line) => (
-          <div key={line.label} className="contents">
-            <dt className="text-gryt-muted">{line.label}</dt>
-            <dd style={{ fontFamily: "var(--code-font-family)" }}>{line.value}</dd>
-          </div>
-        ))}
-      </dl>
-    </details>
+    <div className="flex flex-col gap-2">
+      <details className="rounded-(--gryt-radius-lg) border border-gryt-neutral-6 px-3 py-2">
+        <summary className="cursor-pointer text-sm text-gryt-muted">
+          What gets sent with this
+        </summary>
+        <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+          {lines.map((line) => (
+            <div key={line.label} className="contents">
+              <dt className="text-gryt-muted">{line.label}</dt>
+              <dd style={{ fontFamily: "var(--code-font-family)" }}>{line.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </details>
+      {/* Accurate rather than reassuring. A server's *version* does go, when
+          there is one — that is a number about the software, not about the
+          people on it, and claiming "nothing from your servers" while sending
+          it would be the kind of privacy line that is worth less than none. */}
+      <span className="text-xs text-gryt-muted">
+        No messages, no names, and nothing about who you talk to.
+      </span>
+    </div>
   );
 }
 

@@ -8,9 +8,5 @@ window.__GRYT_CONFIG__ = {
   GRYT_AUTH_API: "https://auth.gryt.chat",
   GRYT_AUTH_CALLBACK_URL: "https://gryt.chat/auth/callback",
   GRYT_REPORTS_URL: "https://reports.gryt.chat",
-  // Empty here on purpose. This file is what the dev server serves, and a key
-  // in it would be a key in the repository for no gain — the container writes
-  // its own from the environment. See src/lib/reports/config.ts.
-  GRYT_REPORTS_APP_KEY: "",
 };
 

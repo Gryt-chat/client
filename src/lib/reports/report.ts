@@ -24,8 +24,6 @@ export interface Report {
   type: ReportType;
   message: string;
   title?: string;
-  /** Only if they offered it. Never read from the account without asking. */
-  contact?: string;
   app?: {
     version?: string;
     channel?: string;
@@ -102,7 +100,6 @@ export interface Diagnostics {
  */
 export const MESSAGE_MAX = 8000;
 export const TITLE_MAX = 120;
-export const CONTACT_MAX = 200;
 
 /** Trimmed, capped, and undefined rather than empty. */
 function text(value: string | null | undefined, max: number): string | undefined {
@@ -140,7 +137,7 @@ function count(value: number | null | undefined): number | undefined {
  */
 export function buildReport(
   type: ReportType,
-  input: { message: string; title?: string; contact?: string },
+  input: { message: string; title?: string },
   diagnostics: Diagnostics = {},
 ): Report {
   /* The embedded server is two fields on the wire rather than one, because
@@ -159,7 +156,6 @@ export function buildReport(
     // and the form is what stops it being empty.
     message: text(input.message, MESSAGE_MAX) ?? "",
     title: text(input.title, TITLE_MAX),
-    contact: text(input.contact, CONTACT_MAX),
     app: some({
       version: str(diagnostics.version),
       channel: str(diagnostics.channel),

@@ -66,7 +66,6 @@ RUN printf '%s\n' \
   ': "${GRYT_AUTH_API:=https://auth.gryt.chat}"' \
   ': "${GRYT_AUTH_CALLBACK_URL:=https://gryt.chat/auth/callback}"' \
   ': "${GRYT_REPORTS_URL:=https://reports.gryt.chat}"' \
-  ': "${GRYT_REPORTS_APP_KEY:=}"' \
   'cat > /usr/share/nginx/html/config.js <<EOF' \
   'window.__GRYT_CONFIG__ = {' \
   '  GRYT_OIDC_ISSUER: "${GRYT_OIDC_ISSUER}",' \
@@ -76,7 +75,6 @@ RUN printf '%s\n' \
   '  GRYT_AUTH_API: "${GRYT_AUTH_API}",' \
   '  GRYT_AUTH_CALLBACK_URL: "${GRYT_AUTH_CALLBACK_URL}",' \
   '  GRYT_REPORTS_URL: "${GRYT_REPORTS_URL}",' \
-  '  GRYT_REPORTS_APP_KEY: "${GRYT_REPORTS_APP_KEY}",' \
   '};' \
   'EOF' \
   > /docker-entrypoint.d/99-gryt-config.sh \
