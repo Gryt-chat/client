@@ -47,7 +47,7 @@ function canAttemptTokenHeal(host: string): boolean {
 
 export interface ServerEventContext {
   nickname: string;
-  userId: string | null;
+  userIdRef: MutableRefObject<string | null>;
   servers: Servers;
   serversRef: MutableRefObject<Servers>;
   lastInviteJoinAttemptRef: MutableRefObject<Record<string, string | undefined>>;
@@ -64,7 +64,7 @@ export interface ServerEventContext {
 }
 
 export function registerServerSocketEvents(socket: Socket, host: string, ctx: ServerEventContext) {
-  const { nickname, userId, servers, serversRef, lastInviteJoinAttemptRef, myVoiceStateByHostRef } = ctx;
+  const { nickname, userIdRef, servers, serversRef, lastInviteJoinAttemptRef, myVoiceStateByHostRef } = ctx;
   const { setServers, setNewServerInfo, setServerDetailsList, setFailedServerDetails } = ctx;
   const { setClients, setMemberLists, setServerProfiles, setIsServerMuted, setIsServerDeafened } = ctx;
 
@@ -177,6 +177,17 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     socket.emit("server:details");
     socket.emit("members:fetch");
 
+    // Read when the event fires, not when the handler was registered. These
+    // handlers are registered once per socket, and the socket is created as
+    // soon as Keycloak has initialised — while useUserId is still resolving
+    // the account's sub in an effect of its own. Capturing the value meant
+    // `userId` was usually still null here, so the sync was skipped and never
+    // tried again, because server:joined only fires once.
+    //
+    // The owner is the one this always caught: their membership is created by
+    // this very event, at the earliest moment the app can reach a server, so
+    // the race is not a race for them — it is a certainty (GRYT-12).
+    const userId = userIdRef.current;
     if (joinInfo.accessToken && userId) {
       syncAvatarToHost(host, joinInfo.accessToken, joinInfo.avatarFileId, socket, setServerProfiles, userId)
         .catch(() => {});

@@ -94,6 +94,14 @@ function useSocketsHook() {
   const currentlyViewingServerRef = useRef(currentlyViewingServer);
   useEffect(() => { currentlyViewingServerRef.current = currentlyViewingServer; }, [currentlyViewingServer]);
 
+  // Sockets are created as soon as Keycloak has initialised, and useUserId
+  // resolves the account's sub in an effect of its own — so a socket usually
+  // exists before there is a userId to go with it. Everything that needs one
+  // reads it from here when it runs, rather than from whatever it happened to
+  // be when the socket was made (GRYT-12).
+  const userIdRef = useRef(userId);
+  useEffect(() => { userIdRef.current = userId; }, [userId]);
+
   function getChannelDetails(host: string, channel: string) {
     return serverDetailsList[host]?.channels.find((c) => c.id === channel);
   }
@@ -155,11 +163,38 @@ function useSocketsHook() {
     return () => { cancelled = true; };
   }, []);
 
+  // Both places that sync an avatar run at a moment that can arrive before
+  // there is a userId: the join event, and the details fetch a second after a
+  // socket is made. Reading the ref stops them using a stale null, but it does
+  // not help when the answer is still genuinely not known — and for the owner
+  // it never is, because their join is the first thing that happens.
+  //
+  // So sync again when the userId does arrive. syncAvatarToHost compares the
+  // stored hash against what the host already has, so a host that is already in
+  // sync costs one hash and no upload (GRYT-12).
+  useEffect(() => {
+    if (!userId) return;
+
+    for (const host of Object.keys(sockets)) {
+      const accessToken = getServerAccessToken(host);
+      if (!accessToken) continue;
+
+      syncAvatarToHost(
+        host,
+        accessToken,
+        localStorage.getItem(`avatarFileId:${host}`),
+        sockets[host],
+        setServerProfiles,
+        userId,
+      ).catch(() => {});
+    }
+  }, [userId, sockets]);
+
   // Register all socket event handlers via the extracted hook
   useSocketEvents(sockets, {
     servers,
     nickname,
-    userId,
+    userIdRef,
     connectSoundEnabled,
     disconnectSoundEnabled,
     connectSoundFile,
@@ -279,8 +314,9 @@ function useSocketsHook() {
             socket.emit("server:details");
             socket.emit("members:fetch");
             const existingAvatarFileId = localStorage.getItem(`avatarFileId:${host}`);
-            if (userId) {
-              syncAvatarToHost(host, existingAccessToken, existingAvatarFileId, socket, setServerProfiles, userId)
+            const currentUserId = userIdRef.current;
+            if (currentUserId) {
+              syncAvatarToHost(host, existingAccessToken, existingAvatarFileId, socket, setServerProfiles, currentUserId)
                 .catch(() => {});
             }
           }, 1000);
