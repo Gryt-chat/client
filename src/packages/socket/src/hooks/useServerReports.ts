@@ -37,12 +37,20 @@ export function useServerReports({
     return () => { currentConnection.off("reports:list", onReportsList); };
   }, [currentConnection, isAdmin, accessToken]);
 
+  /**
+   * The member list, keyed by server user id, whole.
+   *
+   * This used to copy out three fields — nickname, serverUserId, avatarFileId —
+   * which is why none of GRYT-159's identity detail ever reached chat: it was
+   * dropped here, one layer above the components that needed it. Passing the
+   * member through costs nothing; it is the same objects, in a map.
+   */
   const memberListMap = useMemo(() => {
     const members = currentlyViewingServer ? memberLists[currentlyViewingServer.host] : undefined;
     if (!members) return {};
-    const map: Record<string, { nickname: string; serverUserId: string; avatarFileId?: string | null }> = {};
+    const map: Record<string, MemberInfo> = {};
     for (const member of members) {
-      map[member.serverUserId] = { nickname: member.nickname, serverUserId: member.serverUserId, avatarFileId: member.avatarFileId };
+      map[member.serverUserId] = member;
     }
     return map;
   }, [currentlyViewingServer, memberLists]);

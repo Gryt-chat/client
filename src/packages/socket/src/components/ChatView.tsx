@@ -20,6 +20,7 @@ import type { ChatMessage } from "./chatUtils";
 import { buildMessageMap, buildMessageMetadata, getReplyPreview } from "./chatViewHelpers";
 import { EmojiText } from "./EmojiText";
 import { ImageLightbox } from "./ImageLightbox";
+import type { MemberInfo } from "./MemberSidebar";
 import { MessageRow } from "./MessageRow";
 import { TypingIndicator } from "./TypingIndicator";
 
@@ -60,7 +61,7 @@ export const ChatView = memo(({
   currentUserNickname?: string;
   socketConnection?: unknown;
   serverHost?: string;
-  memberList?: Record<string, { nickname: string; serverUserId: string; avatarFileId?: string | null; [key: string]: unknown }>;
+  memberList?: Record<string, MemberInfo>;
   channelName?: string;
   channelType?: "text" | "voice";
   isRateLimited?: boolean;
@@ -217,8 +218,8 @@ export const ChatView = memo(({
 
   // ── Message metadata ──────────────────────────────────────────
   const messageMetadata = useMemo(
-    () => buildMessageMetadata(chatMessages, newMessageMarkerId, currentUserId, getSenderName, getSenderAvatarUrl),
-    [chatMessages, newMessageMarkerId, currentUserId, getSenderName, getSenderAvatarUrl],
+    () => buildMessageMetadata(chatMessages, newMessageMarkerId, currentUserId, getSenderName, getSenderAvatarUrl, memberList),
+    [chatMessages, newMessageMarkerId, currentUserId, getSenderName, getSenderAvatarUrl, memberList],
   );
 
   const messageMap = useMemo(() => buildMessageMap(chatMessages), [chatMessages]);

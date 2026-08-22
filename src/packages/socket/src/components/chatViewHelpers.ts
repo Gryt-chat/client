@@ -1,5 +1,6 @@
 import type { ChatMessage } from "./chatUtils";
 import { toDate } from "./chatUtils";
+import type { MemberInfo } from "./MemberSidebar";
 import type { MessageMeta } from "./MessageRow";
 
 export const GROUP_GAP_MS = 5 * 60 * 1000;
@@ -27,7 +28,26 @@ export function buildMessageMetadata(
   currentUserId: string | undefined,
   getSenderName: (msg: ChatMessage) => string,
   getSenderAvatarUrl: (msg: ChatMessage) => string | undefined,
+  memberList?: Record<string, MemberInfo>,
 ): MessageMeta[] {
+  /**
+   * Display names that more than one member is currently using.
+   *
+   * Built once per pass rather than per message: the member list is small, but
+   * this runs for every message in the channel and a scan inside the map would
+   * make it quadratic.
+   */
+  const ambiguousNames = new Set<string>();
+  if (memberList) {
+    const seen = new Set<string>();
+    for (const member of Object.values(memberList)) {
+      const name = member.nickname;
+      if (!name) continue;
+      if (seen.has(name)) ambiguousNames.add(name);
+      else seen.add(name);
+    }
+  }
+
   let lastDay: string | null = null;
   return chatMessages.map((m, i): MessageMeta => {
     const prev = i > 0 ? chatMessages[i - 1] : null;
@@ -57,6 +77,9 @@ export function buildMessageMetadata(
     const avatarUrl = isSystem ? undefined : getSenderAvatarUrl(m);
     const isFirstEdited = isFirstInGroup && !!m.edited_at;
 
+    const sender =
+      isSystem || isWebhook ? undefined : memberList?.[m.sender_server_id];
+
     return {
       isFirstInGroup,
       dayBreak: needsDayBreak ? d : null,
@@ -68,6 +91,8 @@ export function buildMessageMetadata(
       isSystem,
       isWebhook,
       isBot: !isSystem && !isWebhook && m.sender_is_bot === true,
+      sender,
+      nameIsAmbiguous: !!sender && ambiguousNames.has(senderName),
     };
   });
 }
