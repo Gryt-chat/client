@@ -166,18 +166,25 @@ export function VideoCard({
           }}
         />
       ) : (
+        // No background of its own: the tile underneath is #000 and stays that
+        // way in both themes, because it is a video surface and a video surface
+        // with no picture is black. The placeholder used to paint
+        // var(--gryt-neutral-3) over it, which on the light theme is #f7f8fb —
+        // and the participant's name below is hardcoded white, correct over
+        // video and invisible over that (GRYT-524).
+        //
+        // Everything in here is therefore light-on-dark and fixed, not themed.
         <div className="flex items-center justify-center px-2" style={{
             width: "100%",
             height: "100%",
-            color: "var(--gryt-neutral-10)",
-            background: "var(--gryt-neutral-3)",
           }}>
           <span
-            className={`text-xs text-center ${isStalled ? "" : "text-gryt-muted"}`}
+            className="text-xs text-center"
             style={{
-              // Step 11, not the 9 the warning icons elsewhere use: 9 is the
-              // solid fill and it is barely legible as text on a light theme.
-              color: isStalled ? "var(--gryt-warning-11)" : undefined,
+              // Warning 9 rather than 11: on black, 9 is the legible one. GRYT-32
+              // reached for 11 because the placeholder was light on a light theme,
+              // which it no longer is.
+              color: isStalled ? "var(--gryt-warning-9)" : "rgba(255, 255, 255, 0.6)",
             }}
           >
             {isStalled ? stalledLabel : pendingLabel}
