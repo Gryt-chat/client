@@ -6,7 +6,6 @@ import { useServerManagement, useSockets } from "@/socket";
 
 import { getElectronAPI, isElectron } from "../electron";
 import { installId } from "./installId";
-import { recentLogs } from "./logs";
 import type { Diagnostics } from "./report";
 import { lastPlace, sessionUptimeSec } from "./session";
 
@@ -79,7 +78,10 @@ export function useDiagnostics(): Diagnostics {
     embeddedServer: isElectron() ? running !== null : null,
     embeddedServerVersion: bundled?.server ?? null,
 
-    logs: recentLogs(),
+    /* No logs here. They are the one field that can carry something about the
+       person rather than about the build — a failed connection logs the server
+       address, and a self-hosted server's address is often somebody's house.
+       The form asks before attaching them; see `logs.ts`. */
   };
 }
 

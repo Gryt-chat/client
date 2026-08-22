@@ -12,12 +12,14 @@
  * `error` only: the client logs a great deal at `log` level, and a buffer full
  * of routine chatter pushes out the one line that mattered.
  *
- * ## What it does not keep
+ * ## Why a report does not attach these unless asked
  *
- * Nothing is redacted here, so nothing sensitive should be logged in the first
- * place — which is already true and is worth keeping true. The report form
- * shows how many lines are attached before it sends, and the lines themselves
- * go nowhere until somebody presses send.
+ * Nothing is redacted here, and the client does log things about the person
+ * rather than about the build: a failed connection writes the server's address,
+ * and a self-hosted Gryt server's address is frequently somebody's house.
+ *
+ * So the buffer exists, and the form asks before it travels. Off unless the
+ * reporter ticks the box, and the exact payload is theirs to read first.
  */
 
 const MAX_LINES = 300;
