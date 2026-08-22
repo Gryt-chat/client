@@ -17,6 +17,8 @@ interface ServerSettings {
   setCurrentlyViewingServer: (host: string | null) => void;
   lastSelectedChannels: Record<string, string>;
   setLastSelectedChannel: (host: string, channelId: string) => void;
+  /** Drop the remembered channel for addresses that are going away. */
+  forgetLastSelectedChannels: (hosts: string[]) => void;
   serverOrder: string[];
   setServerOrder: (order: string[]) => void;
   dismissedLanServers: string[];
@@ -95,6 +97,24 @@ function useServerSettingsHook(): ServerSettings {
     });
   }, []);
 
+  const forgetLastSelectedChannels = useCallback((hosts: string[]) => {
+    setLastSelectedChannelsRaw(prev => {
+      const next = { ...prev };
+      let changed = false;
+      for (const host of hosts) {
+        if (host in next) {
+          delete next[host];
+          changed = true;
+        }
+      }
+      if (!changed) return prev;
+      if (userIdRef.current) {
+        setUserValue("lastSelectedChannels", next);
+      }
+      return next;
+    });
+  }, []);
+
   const updateServerOrder = useCallback((order: string[]) => {
     setServerOrderRaw(order);
     if (userIdRef.current) {
@@ -165,6 +185,7 @@ function useServerSettingsHook(): ServerSettings {
     setCurrentlyViewingServer: updateCurrentlyViewingServer,
     lastSelectedChannels,
     setLastSelectedChannel: updateLastSelectedChannel,
+    forgetLastSelectedChannels,
     serverOrder,
     setServerOrder: updateServerOrder,
     dismissedLanServers,
@@ -182,6 +203,7 @@ const init: ServerSettings = {
   setCurrentlyViewingServer: () => {},
   lastSelectedChannels: {},
   setLastSelectedChannel: () => {},
+  forgetLastSelectedChannels: () => {},
   serverOrder: [],
   setServerOrder: () => {},
   dismissedLanServers: [],

@@ -1,4 +1,4 @@
-import { Avatar, ContextMenu, IconButton, Menu, PreviewCard, Tooltip } from "@gryt/ui";
+import { AlertDialog, Avatar, Button, ContextMenu, IconButton, Menu, PreviewCard, Tooltip } from "@gryt/ui";
 import { useSFU } from "@gryt/voice";
 import { Reorder } from "motion/react";
 import { useEffect, useState } from "react";
@@ -70,6 +70,8 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
     switchToServer,
     orderedServerHosts,
     reorderServers,
+    duplicatesOf,
+    mergeDuplicates,
     showDiscovery,
     setShowDiscovery,
     newLanServers,
@@ -123,6 +125,8 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
               serverHasUnread={serverHasUnread}
               switchToServer={switchToServer}
               setShowRemoveServer={setShowRemoveServer}
+              duplicateHosts={duplicatesOf(host)}
+              mergeDuplicates={mergeDuplicates}
             />
           ))}
         </Reorder.Group>
@@ -286,6 +290,9 @@ interface ServerItemProps {
   serverHasUnread: (host: string) => boolean;
   switchToServer: (host: string) => void;
   setShowRemoveServer: (host: string | null) => void;
+  /** Other addresses in the rail that are this same server (GRYT-317). */
+  duplicateHosts: string[];
+  mergeDuplicates: (keepHost: string) => void;
 }
 
 /**
@@ -307,9 +314,12 @@ function ServerItem({
   serverHasUnread,
   switchToServer,
   setShowRemoveServer,
+  duplicateHosts,
+  mergeDuplicates,
 }: ServerItemProps) {
   const { canClaim, claim } = useIdentityClaim();
   const [doctorOpen, setDoctorOpen] = useState(false);
+  const [mergeOpen, setMergeOpen] = useState(false);
   // No entry yet is not the same as down.
   //
   // A server added a moment ago — an embedded one you just created, most
@@ -456,6 +466,16 @@ function ServerItem({
             <ContextMenu.Item onClick={() => setDoctorOpen(true)}>
               Doctor
             </ContextMenu.Item>
+            {duplicateHosts.length > 0 && (
+              /* Offered, never done for you. Collapsing these deletes a rail
+                 entry, and silent is friendlier right up until it removes the
+                 one somebody actually uses. GRYT-317. */
+              <ContextMenu.Item onClick={() => setMergeOpen(true)}>
+                {duplicateHosts.length === 1
+                  ? "Merge with the other entry\u2026"
+                  : "Merge the other entries\u2026"}
+              </ContextMenu.Item>
+            )}
             <ContextMenu.Separator />
             <ContextMenu.Item
               onClick={() => {
@@ -468,6 +488,45 @@ function ServerItem({
             </ContextMenu.Positioner>
           </ContextMenu.Portal>
         </ContextMenu.Root>
+        <AlertDialog.Root open={mergeOpen} onOpenChange={setMergeOpen}>
+          <AlertDialog.Portal>
+            <AlertDialog.Backdrop />
+            <AlertDialog.Popup>
+              <AlertDialog.Title>Merge into {host}?</AlertDialog.Title>
+              <AlertDialog.Description>
+                {duplicateHosts.length === 1
+                  ? `${duplicateHosts[0]} is the same server as ${host}, reached at a different address.`
+                  : `${duplicateHosts.join(", ")} are the same server as ${host}, reached at different addresses.`}{" "}
+                Keeping {host} removes the{" "}
+                {duplicateHosts.length === 1 ? "other entry" : "other entries"} from
+                your list. You stay a member either way \u2014 this is your list, not
+                the server. Your place in the list and the channel you were last in
+                are kept.
+              </AlertDialog.Description>
+              <div className="flex gap-3 mt-4 justify-end">
+                <AlertDialog.Close
+                  render={
+                    <Button tone="neutral" size="small">
+                      Cancel
+                    </Button>
+                  }
+                />
+                <AlertDialog.Close
+                  render={
+                    <Button size="small"
+                      onClick={() => {
+                        mergeDuplicates(host);
+                        setMergeOpen(false);
+                      }}
+                    >
+                      Keep {host}
+                    </Button>
+                  }
+                />
+              </div>
+            </AlertDialog.Popup>
+          </AlertDialog.Portal>
+        </AlertDialog.Root>
         <ServerDoctor
           host={host}
           serverName={servers[host]?.name || host}
@@ -514,6 +573,15 @@ function ServerItem({
                 </span>
               )}
             </h2>
+            <span className="text-xs text-gryt-muted">{host}</span>
+            {duplicateHosts.length > 0 && (
+              /* Making the duplicate legible even for somebody who never
+                 merges it. Two entries with the same name and icon are
+                 otherwise indistinguishable on the rail. */
+              <div className="text-xs" style={{ color: "var(--gryt-warning-11)", marginTop: 4 }}>
+                Also in your list as {duplicateHosts.join(", ")}
+              </div>
+            )}
           </div>
         </PreviewCard.Popup>
           </PreviewCard.Positioner>
