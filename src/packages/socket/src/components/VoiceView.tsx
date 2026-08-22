@@ -27,7 +27,7 @@ import {
   useState,
 } from "react";
 import toast from "react-hot-toast";
-import { PiArrowLineLeftFill, PiArrowLineRightFill, PiChatCircleFill, PiCornersInFill, PiCornersOutFill, PiMicrophoneSlashFill } from "react-icons/pi";
+import { PiArrowLineLeftFill, PiArrowLineRightFill, PiChatCircleFill, PiCornersInFill, PiCornersOutFill, PiMicrophoneSlashFill, PiVideoCameraSlashFill } from "react-icons/pi";
 
 import { useSettings } from "@/settings";
 import { Controls } from "@/webRTC";
@@ -332,7 +332,11 @@ export const VoiceView = ({
     screenVideoStream: localScreenStream,
   } = useLocalScreenShare();
 
-  const { cameraStream: localCameraStream } = useLocalCamera();
+  const {
+    cameraStream: localCameraStream,
+    cameraError,
+    retryCamera,
+  } = useLocalCamera();
 
   const { microphoneBuffer, micUnavailable } = useMicrophone(false);
 
@@ -433,6 +437,57 @@ export const VoiceView = ({
       },
     );
   }, [rawInputSilent, setSettingsTab, setShowSettings]);
+
+  /**
+   * A camera that would not start used to say nothing at all.
+   *
+   * `cameraError` has always been set by the engine and read by nobody, so
+   * pressing the camera button on a device that refuses gave you a button that
+   * turned itself back off and no reason — which reads as the app ignoring you
+   * rather than as a failure. The microphone has said this since GRYT-120;
+   * this is the camera's version of the same toast (GRYT-16).
+   *
+   * Not gated on being in a voice channel, unlike the microphone one. This is
+   * the direct result of pressing a button, so it should answer wherever it
+   * was pressed — including the preview in settings.
+   */
+  useEffect(() => {
+    if (!cameraError) {
+      toast.dismiss("camera-unavailable");
+      return;
+    }
+
+    toast(
+      (t) => (
+        <div className="flex items-center gap-3">
+          <span className="text-sm">{cameraError}</span>
+          <Button tone="neutral" size="xsmall"
+            onClick={() => {
+              toast.dismiss(t.id);
+              retryCamera();
+            }}
+          >
+            Try again
+          </Button>
+          <Button tone="neutral" size="xsmall"
+            onClick={() => {
+              toast.dismiss(t.id);
+              setSettingsTab("sound-video");
+              setShowSettings(true);
+            }}
+          >
+            Open settings
+          </Button>
+        </div>
+      ),
+      {
+        // Same fixed-id reasoning as the microphone toasts above.
+        id: "camera-unavailable",
+        duration: 12000,
+        icon: <PiVideoCameraSlashFill size={18} />,
+      },
+    );
+  }, [cameraError, retryCamera, setSettingsTab, setShowSettings]);
 
   const panelRef = useRef<HTMLDivElement>(null);
 
