@@ -242,6 +242,54 @@ body {
   50% { opacity: 0.7; }
 }
 
+/* ── Server status ring (GRYT-314) ──────────────────────────────
+ *
+ * Two motions, because the two situations mean different things. A travelling
+ * arc says "working, no deadline". A depleting ring says "there is a budget
+ * and it is running out".
+ *
+ * Both animate `stroke-dashoffset` rather than a transform, which is the
+ * deliberate exception to the transform-and-opacity rule. Rotating the ring
+ * was the obvious cheaper version and it is wrong: the icon is a rounded
+ * square, so a rotated stroke tilts the silhouette away from the artwork it is
+ * drawn around instead of travelling along it. Moving the dash keeps the ring
+ * registered to the icon at every frame. It is one 2.5px stroke on a 38px box.
+ *
+ * `linear` throughout — a progress indicator that eases is lying about the
+ * rate.
+ */
+.gryt-server-ring rect {
+  animation: gryt-ring-sweep 1.6s linear infinite;
+}
+
+.gryt-server-ring[data-depleting] rect {
+  animation: gryt-ring-deplete var(--gryt-ring-duration, 10s) linear forwards;
+}
+
+@keyframes gryt-ring-sweep {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -100; }
+}
+
+@keyframes gryt-ring-deplete {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: 100; }
+}
+
+/* Functional motion keeps running under reduced motion — it is carrying
+ * information, not flourish. The travelling arc stops, because an endless loop
+ * is exactly what reduced motion is asking us not to do; the depleting ring
+ * keeps going, because its whole job is to show a clock running down and a
+ * frozen one would say the opposite. */
+@media (prefers-reduced-motion: reduce) {
+  .gryt-server-ring rect {
+    animation: none;
+  }
+  .gryt-server-ring[data-depleting] rect {
+    animation: gryt-ring-deplete var(--gryt-ring-duration, 10s) linear forwards;
+  }
+}
+
 /* ── Chat Editor ───────────────────────────────────────────── */
 
 .chat-editor-wrapper {
