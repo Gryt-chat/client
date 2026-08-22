@@ -1,18 +1,20 @@
 import { AlertDialog, Avatar, Button, ContextMenu, IconButton, Menu, PreviewCard, Tooltip } from "@gryt/ui";
 import { useSFU } from "@gryt/voice";
 import { Reorder } from "motion/react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PiBroadcastFill, PiBugFill, PiChatCircleDotsFill, PiGearFill, PiMicrophoneFill, PiPlus, PiSignInFill } from "react-icons/pi";
 
 import {
   GeneratedServerIcon,
   generatedServerIconUrl,
   getServerHttpBase,
+  normalizeHost,
   resolveAvatarSrc,
   useAccount,
   useUnreadTracker,
 } from "@/common";
 import { useSettings } from "@/settings";
+import { useEmbeddedServer } from "@/settings/src/hooks/useEmbeddedServer";
 import { useLanDiscovery } from "@/settings/src/hooks/useLanDiscovery";
 import {
   Server,
@@ -21,6 +23,8 @@ import {
 } from "@/settings/src/types/server";
 import { useServerManagement, useSockets } from "@/socket";
 import { ServerDoctor } from "@/socket/src/components/ServerDoctor";
+import type { ServerRingState } from "@/socket/src/components/ServerStatusRing";
+import { ServerStatusRing } from "@/socket/src/components/ServerStatusRing";
 import { MiniControls } from "@/webRTC/src/components/miniControls";
 
 import { useIdentityClaim } from "../hooks/useIdentityClaim";
@@ -78,6 +82,25 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
   } = useServerManagement();
   const { isElectron } = useLanDiscovery();
 
+  /**
+   * Which rail entries are servers this machine is running, and what the
+   * manager says they are doing.
+   *
+   * The connection status alone cannot tell "my server is booting" from "a
+   * stranger's server has not answered", and those are not the same thing to
+   * watch. The client already knows which servers are its own, so it says so
+   * (GRYT-314). Empty in a browser, where there is no embedded server at all.
+   */
+  const { servers: embeddedServers } = useEmbeddedServer();
+  const embeddedStatusByHost = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const server of embeddedServers) {
+      if (!server.serverUrl) continue;
+      map[normalizeHost(server.serverUrl.replace(/^https?:\/\//, ""))] = server.status;
+    }
+    return map;
+  }, [embeddedServers]);
+
   const { currentServerConnected, isConnected } = useSFU();
   const { serverConnectionStatus, serverProfiles, serverDetailsList } =
     useSockets();
@@ -127,6 +150,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
               setShowRemoveServer={setShowRemoveServer}
               duplicateHosts={duplicatesOf(host)}
               mergeDuplicates={mergeDuplicates}
+              embeddedStatus={embeddedStatusByHost[host]}
             />
           ))}
         </Reorder.Group>
@@ -293,6 +317,8 @@ interface ServerItemProps {
   /** Other addresses in the rail that are this same server (GRYT-317). */
   duplicateHosts: string[];
   mergeDuplicates: (keepHost: string) => void;
+  /** The embedded manager's status, when this rail entry is a server we run. */
+  embeddedStatus?: string;
 }
 
 /**
@@ -316,6 +342,7 @@ function ServerItem({
   setShowRemoveServer,
   duplicateHosts,
   mergeDuplicates,
+  embeddedStatus,
 }: ServerItemProps) {
   const { canClaim, claim } = useIdentityClaim();
   const [doctorOpen, setDoctorOpen] = useState(false);
@@ -347,6 +374,29 @@ function ServerItem({
   const isConnecting = connectionStatus === "connecting";
   const isReconnecting = connectionStatus === "reconnecting";
   const isUnavailable = isOffline && !isConnecting;
+
+  /**
+   * A server of ours that is still booting. Not a connection state — the
+   * socket has nothing to report yet either way — but it is the thing the
+   * person watching actually wants to know (GRYT-314).
+   */
+  const isStarting = embeddedStatus === "starting" && !isConnected;
+
+  /**
+   * Nothing has come back yet and the clock is running. This is the one
+   * waiting state with a deadline, so it is the one drawn as a deadline.
+   */
+  const isSettling = !rawStatus && !settleExpired && !isStarting;
+
+  const ringState: ServerRingState = isStarting
+    ? "starting"
+    : isSettling
+      ? "settling"
+      : isReconnecting
+        ? "reconnecting"
+        : isConnecting
+          ? "connecting"
+          : "none";
   /* Waiting on a moderator (GRYT-289). Not a connection state: the server is
      reachable and answering, it just has not let this person in yet. */
   const awaitingApproval = Boolean(servers[host]?.approvalRequestedAt);
@@ -388,8 +438,12 @@ function ServerItem({
                   }
                   fallback={<GeneratedServerIcon seed={servers[host]?.name || host} />}
                   style={{
+                    // A server you just created keeps its colour. Greying it
+                    // would say "something is wrong here", and nothing is —
+                    // it is doing exactly what you asked. The ring carries
+                    // that it is not ready yet (GRYT-314).
                     opacity:
-                      currentlyViewingServer?.host === host
+                      currentlyViewingServer?.host === host || isStarting
                         ? 1
                         : isUnavailable
                         ? 0.3
@@ -399,15 +453,18 @@ function ServerItem({
                         ? undefined
                         : 0.5,
                     filter:
-                      isUnavailable || isReconnecting || awaitingApproval
+                      !isStarting &&
+                      (isUnavailable || isReconnecting || awaitingApproval)
                         ? "grayscale(100%)"
                         : "none",
-                    animation: isReconnecting
-                      ? "pulse-reconnect 1.5s ease-in-out infinite"
-                      : "none",
+                    // The reconnect pulse is gone: it and the connecting state
+                    // looked the same from across the room, and a ring says
+                    // which is which without dimming the artwork.
                   }}
                   src={serverIconSrc(host, servers[host]?.name || "", serverDetailsList)}
                 />
+
+                <ServerStatusRing state={ringState} settleMs={UNKNOWN_SETTLE_MS} />
 
                 {isConnected && currentServerConnected === host && (
                   <div className="absolute" style={{ top: "-2px", right: "-2px", width: "16px",
@@ -559,17 +616,30 @@ function ServerItem({
               )}
               {isUnavailable && !awaitingApproval && (
                 <span style={{ color: "var(--gryt-danger-9)", marginLeft: "8px" }}>
-                  • OFFLINE
+                  • Offline
                 </span>
               )}
               {isReconnecting && (
                 <span style={{ color: "var(--gryt-warning-9)", marginLeft: "8px" }}>
-                  • Reconnecting...
+                  • Reconnecting
                 </span>
               )}
-              {isConnecting && (
+              {/* Named for what it is rather than for the state machine.
+                  "Starting your server" is the only one of these you caused,
+                  and it is the only one that is going to work. */}
+              {isStarting && (
+                <span style={{ color: "var(--gryt-accent-9)", marginLeft: "8px" }}>
+                  • Starting your server
+                </span>
+              )}
+              {isSettling && (
+                <span style={{ color: "var(--gryt-neutral-11)", marginLeft: "8px" }}>
+                  • No answer yet
+                </span>
+              )}
+              {isConnecting && !isSettling && !isStarting && (
                 <span style={{ color: "var(--gryt-warning-9)", marginLeft: "8px" }}>
-                  • Connecting...
+                  • Connecting
                 </span>
               )}
             </h2>
