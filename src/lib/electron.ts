@@ -91,6 +91,11 @@ export interface EmbeddedServerInfo {
   hasExisting: boolean;
   lanIp: string;
   servers: EmbeddedServerState[];
+  /**
+   * The server, SFU and worker versions this app ships, from the bundle's own
+   * versions.json. Absent on builds older than this field.
+   */
+  bundled?: { server?: string; sfu?: string; worker?: string };
 }
 
 export interface ElectronAPI {

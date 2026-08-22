@@ -22,6 +22,7 @@ import { App } from "./App.tsx";
 import { BrowserBanner } from "./components/browserBanner";
 import { Titlebar } from "./components/titlebar";
 import { initGlobalStorage } from "./lib/globalStorage";
+import { captureLogs } from "./lib/reports/logs";
 import { pushTitlebarOverlay } from "./lib/titlebarOverlay";
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -119,6 +120,10 @@ function ThemedApp() {
     </div>
   );
 }
+
+/* Before anything else runs, so a warning during startup is still in the
+   buffer when somebody files a report about it twenty minutes later. */
+captureLogs();
 
 initPluginApi(__APP_VERSION__);
 

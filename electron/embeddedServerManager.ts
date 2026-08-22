@@ -1029,12 +1029,17 @@ export function getEmbeddedServerInfo(): {
   hasExisting: boolean;
   lanIp: string;
   servers: EmbeddedServerState[];
+  bundled: { server?: string; sfu?: string; worker?: string };
 } {
   return {
     available: isEmbeddedServerAvailable(),
     hasExisting: hasExistingServer(),
     lanIp: getLanIp(),
     servers: getAllStates(),
+    // What this app ships, which is not what any server it is *connected* to
+    // is running. A bug report from somebody hosting their own server needs
+    // both, and the renderer has no other way to see this one.
+    bundled: readBundledVersions(),
   };
 }
 
