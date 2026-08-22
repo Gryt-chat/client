@@ -254,18 +254,31 @@ function setupPopupWindow(
   return video;
 }
 
+/**
+ * A popup that has been closed leaves its `<video>` behind as a detached
+ * element: still a live JS object, but with no window attached to its
+ * document. Writing into one of those takes the renderer down rather than
+ * throwing something catchable, so every write checks this first (GRYT-108).
+ */
+function isAttached(videoEl: HTMLVideoElement): boolean {
+  return videoEl.ownerDocument.defaultView !== null;
+}
+
 function addTrackEndedListeners(
-  videoEl: HTMLVideoElement,
   stream: MediaStream,
-  closePopup: () => void,
+  signal: AbortSignal,
+  onAllEnded: () => void,
 ) {
   for (const track of stream.getTracks()) {
-    track.addEventListener("ended", () => {
-      const current = videoEl.srcObject as MediaStream | null;
-      if (current && current.getTracks().every((t) => t.readyState === "ended")) {
-        closePopup();
-      }
-    });
+    track.addEventListener(
+      "ended",
+      () => {
+        if (stream.getTracks().every((t) => t.readyState === "ended")) {
+          onAllEnded();
+        }
+      },
+      { signal },
+    );
   }
 }
 
@@ -292,39 +305,64 @@ export function popoutStream(
     let open = true;
     let activeStream = stream;
 
+    // One controller per stream, so replacing the stream drops the listeners
+    // belonging to the old one instead of stacking a second set on top. The
+    // stale ones used to keep firing after the window had gone.
+    let trackListeners = new AbortController();
+
     const markClosed = () => {
       if (!open) return;
       open = false;
       clearInterval(checkInterval);
+      trackListeners.abort();
       onClose?.();
     };
 
-    const videoEl = setupPopupWindow(popup, stream, title, audio);
-    addTrackEndedListeners(videoEl, stream, () => {
-      popup.close();
+    const closePopup = () => {
       markClosed();
-    });
+      try {
+        popup.close();
+      } catch {
+        /* already closed */
+      }
+    };
+
+    const watchTracks = (watched: MediaStream) => {
+      trackListeners.abort();
+      trackListeners = new AbortController();
+      addTrackEndedListeners(watched, trackListeners.signal, () => {
+        if (!open || watched !== activeStream) return;
+        closePopup();
+      });
+    };
+
+    const videoEl = setupPopupWindow(popup, stream, title, audio);
+    watchTracks(stream);
 
     const checkInterval = setInterval(() => {
       if (popup.closed) markClosed();
     }, 500);
 
+    // The poll is a backstop. These fire the moment the window goes, which
+    // closes the gap where the handle still counts as live and a stream update
+    // can land in a document that no longer exists.
     popup.addEventListener("beforeunload", markClosed);
+    popup.addEventListener("pagehide", markClosed);
 
     return {
-      close: () => {
-        markClosed();
-        try { popup.close(); } catch { /* already closed */ }
-      },
-      isOpen: () => open && !popup.closed,
+      close: closePopup,
+      isOpen: () => open && !popup.closed && isAttached(videoEl),
       updateStream: (newStream: MediaStream) => {
+        if (!open || popup.closed) return;
+        if (!isAttached(videoEl)) {
+          markClosed();
+          return;
+        }
         if (newStream === activeStream) return;
+
         activeStream = newStream;
         videoEl.srcObject = newStream;
-        addTrackEndedListeners(videoEl, newStream, () => {
-          popup.close();
-          markClosed();
-        });
+        watchTracks(newStream);
       },
     };
   } catch (err) {
