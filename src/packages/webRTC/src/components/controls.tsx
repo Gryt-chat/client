@@ -151,30 +151,49 @@ export function Controls({ onDisconnect }: ControlsProps) {
             bitrate = Math.min(Math.round(bitrate * 1.5), 50_000_000);
           }
         }
-        if (getPeerConnection) {
-          const pc = getPeerConnection();
-          if (pc) {
-            const senders = pc.getSenders();
-            const screenSender = senders.find(s => s.track === videoTrack);
-            if (screenSender) {
-              const params = screenSender.getParameters();
-              params.degradationPreference = "maintain-framerate";
-              if (params.encodings && params.encodings.length > 0) {
-                const effectiveBitrate = bitrate ?? 50_000_000;
-                params.encodings[0].maxBitrate = effectiveBitrate;
-                params.encodings[0].maxFramerate = screenShareFps;
-                const isH264 = screenShareCodec === "h264" || (!screenShareCodec || screenShareCodec === "auto");
-                if (!isH264 && screenShareScalabilityMode !== "L1T1") {
-                  params.encodings[0].scalabilityMode = screenShareScalabilityMode;
-                }
-              }
-              const enc = params.encodings[0];
-              voiceLog.info("SCREEN", `setParameters: maxFramerate=${enc?.maxFramerate} maxBitrate=${enc?.maxBitrate} scalabilityMode=${enc?.scalabilityMode ?? "none"} degradationPreference=${params.degradationPreference}`);
-              screenSender.setParameters(params).catch((err: unknown) => {
-                voiceLog.warn("SCREEN", `setParameters failed: ${err}`);
-              });
+        /* Asked for by name, not looked up by track.
+         *
+         * This used to be `pc.getSenders().find(s => s.track === videoTrack)`,
+         * run immediately after addScreenVideoTrack. On the first share that
+         * works, because addTrack sets `sender.track` synchronously. On every
+         * share after it the engine takes the replaceTrack path, and
+         * replaceTrack does not set `sender.track` until its promise resolves
+         * — so the lookup found nothing and everything below was skipped in
+         * silence.
+         *
+         * Which is GRYT-13: stop, change the quality, start again, and the
+         * encodings still carry the *previous* quality's maxBitrate and
+         * maxFramerate. Going up a step leaves a cap far too small for the new
+         * frame size, and with maintain-framerate the encoder spends it on
+         * frame rate rather than picture — so participants get something
+         * unwatchable, or nothing.
+         *
+         * getScreenVideoSender is the engine's own ref, set synchronously by
+         * both the add and the replace path, and already used a few effects
+         * down for the encoded transform. */
+        const screenSender = getScreenVideoSender?.() ?? null;
+        if (screenSender) {
+          const params = screenSender.getParameters();
+          params.degradationPreference = "maintain-framerate";
+          if (params.encodings && params.encodings.length > 0) {
+            const effectiveBitrate = bitrate ?? 50_000_000;
+            params.encodings[0].maxBitrate = effectiveBitrate;
+            params.encodings[0].maxFramerate = screenShareFps;
+            const isH264 = screenShareCodec === "h264" || (!screenShareCodec || screenShareCodec === "auto");
+            if (!isH264 && screenShareScalabilityMode !== "L1T1") {
+              params.encodings[0].scalabilityMode = screenShareScalabilityMode;
             }
           }
+          const enc = params.encodings[0];
+          voiceLog.info("SCREEN", `setParameters: maxFramerate=${enc?.maxFramerate} maxBitrate=${enc?.maxBitrate} scalabilityMode=${enc?.scalabilityMode ?? "none"} degradationPreference=${params.degradationPreference}`);
+          screenSender.setParameters(params).catch((err: unknown) => {
+            voiceLog.warn("SCREEN", `setParameters failed: ${err}`);
+          });
+        } else {
+          // Worth a line rather than nothing: this is the state the bug used
+          // to sit in silently, and it is still reachable if the engine has
+          // no sender yet.
+          voiceLog.warn("SCREEN", "No screen video sender — encoding parameters not applied");
         }
       }
     } else if (prevScreenVideoRef.current) {
@@ -182,7 +201,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
       removeScreenVideoTrack();
       prevScreenVideoRef.current = null;
     }
-  }, [screenShareActive, screenVideoStream, isConnected, addScreenVideoTrack, removeScreenVideoTrack, screenShareQuality, screenShareFps, screenShareGamingMode, screenShareCodec, screenShareMaxBitrate, screenShareScalabilityMode, getPeerConnection]);
+  }, [screenShareActive, screenVideoStream, isConnected, addScreenVideoTrack, removeScreenVideoTrack, screenShareQuality, screenShareFps, screenShareGamingMode, screenShareCodec, screenShareMaxBitrate, screenShareScalabilityMode, getScreenVideoSender]);
 
   // Attach Encoded Transform when native H.264 encoding is active.
   // Injects pre-encoded H.264 NALs directly into the WebRTC pipeline,
