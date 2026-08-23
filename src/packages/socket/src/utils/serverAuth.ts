@@ -155,7 +155,7 @@ function logDecision(host: string, decision: ServerProofDecision): void {
  * came up without a battery-backed clock at all. Rounding to something sayable
  * makes that difference obvious and a stray hundred milliseconds invisible.
  */
-function describeGap(ms: number): string {
+export function describeGap(ms: number): string {
   const seconds = Math.round(ms / 1000);
   if (seconds < 90) return `${seconds} second${seconds === 1 ? "" : "s"}`;
   const minutes = Math.round(seconds / 60);

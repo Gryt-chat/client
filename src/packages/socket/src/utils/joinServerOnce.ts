@@ -3,7 +3,7 @@ import { io } from "socket.io-client";
 import { answerChallenge, clearIdentityCertificate, getServerWsBase } from "@/common";
 
 import { challengeHostMatches } from "./challengeHost";
-import { guardSocket, serverProofErrorMessage } from "./serverAuth";
+import { describeGap, guardSocket, serverProofErrorMessage } from "./serverAuth";
 
 export type JoinServerOnceRequest = {
   host: string;
@@ -36,6 +36,20 @@ export type JoinServerOnceError = {
   currentScore?: number;
   maxScore?: number;
   canReapply?: boolean;
+  /**
+   * Which half of the identity exchange the server refused.
+   *
+   * The server has always sent this and this type has never had a field for
+   * it, so it was read off the wire and dropped. That is why a clock an hour
+   * out was reported as the server trusting a different identity service: the
+   * only message left to show was the one written for the other cause.
+   */
+  reason?: "certificate_rejected" | "assertion_rejected" | "nonce_mismatch" | "unknown";
+  /**
+   * How far this machine's clock is from the server's, when that is what the
+   * server refused. Positive means we are behind it.
+   */
+  skewMs?: number;
 };
 
 export type JoinServerOnceResult =
@@ -102,6 +116,13 @@ export async function joinServerOnce(
     return first;
   }
 
+  // A clock is not something a certificate fixes, and the retry would sign the
+  // second assertion from the same wrong clock as the first. Answer now, with
+  // the number, rather than after a round trip that cannot change the outcome.
+  if (first.error.skewMs !== undefined) {
+    return { ok: false, error: clockSkewError(req.host, first.error.skewMs) };
+  }
+
   console.warn(
     `[JoinServer] ${req.host} rejected our identity — renewing the certificate and retrying once.`
   );
@@ -110,6 +131,10 @@ export async function joinServerOnce(
   const second = await attemptJoin(req, opts);
 
   if (!second.ok && second.error?.error === "identity_verification_failed") {
+    if (second.error.skewMs !== undefined) {
+      return { ok: false, error: clockSkewError(req.host, second.error.skewMs) };
+    }
+
     // A fresh certificate did not help, so this is not something the client can
     // repair. Say what was tried and what to do, rather than repeating advice
     // that has already failed twice.
@@ -117,6 +142,7 @@ export async function joinServerOnce(
       ok: false,
       error: {
         error: "identity_verification_failed",
+        reason: second.error.reason,
         message:
           `${req.host} would not accept your identity, and renewing it did not help. ` +
           `This usually means the server trusts a different identity service. ` +
@@ -127,6 +153,28 @@ export async function joinServerOnce(
   }
 
   return second;
+}
+
+/**
+ * The clock is wrong, and by how much.
+ *
+ * Worded from this machine's side, which is the one the reader can do something
+ * about. The mirror of `serverProofErrorMessage`'s "expired" case, which says
+ * the same thing about a server whose clock is off — see the note there about
+ * why naming the direction beats asking somebody to compare two clocks.
+ */
+function clockSkewError(host: string, skewMs: number): JoinServerOnceError {
+  const direction = skewMs > 0 ? "behind" : "ahead of";
+
+  return {
+    error: "identity_verification_failed",
+    reason: "assertion_rejected",
+    skewMs,
+    message:
+      `Your clock is about ${describeGap(Math.abs(skewMs))} ${direction} ` +
+      `${host}'s, so the proof this app signs to join had already expired when ` +
+      `it arrived. Turn on automatic time sync on this machine and try again.`,
+  };
 }
 
 async function attemptJoin(
