@@ -1,5 +1,5 @@
 import { Alert, Button, Checkbox, Dialog, Divider, TextField } from "@gryt/ui";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { PiBugFill, PiChatCircleDotsFill, PiPaperPlaneRightFill } from "react-icons/pi";
 
 import { useDiagnostics } from "../lib/reports/diagnostics";
@@ -250,23 +250,44 @@ function Attached({
   );
 }
 
+/**
+ * It waits.
+ *
+ * This used to close itself after 2.5 seconds, on the theory that somebody who
+ * has said their piece is finished with the dialog. What that actually does is
+ * flash a paragraph at somebody and take it away while they are reading it, and
+ * a confirmation nobody manages to read is the same as no confirmation.
+ *
+ * **The title is the words mobile's toast already uses.** Two clients saying
+ * "received" and "sent" for the same event reads as two different things
+ * happening. Mobile has no thank-you page at all — it closes the screen and
+ * raises a toast, which is deliberate and is staying that way — but where both
+ * do say something, they say it the same.
+ *
+ * Nothing here claims what happens next. It said the feedback was read by a
+ * person rather than counted as a vote, which is a promise this dialog is in no
+ * position to make and reassurance nobody asked for.
+ */
 function Sent({ type, onDone }: { type: ReportType; onDone: () => void }) {
-  /* Closes itself. Somebody who has said their piece is done with this dialog,
-     and leaving it open makes them dismiss a confirmation they did not ask
-     for — but not instantly, or the form looks like it failed to open. */
-  useEffect(() => {
-    const timer = setTimeout(onDone, 2500);
-    return () => clearTimeout(timer);
-  }, [onDone]);
+  const bug = type === "bug";
 
   return (
     <>
-      <Dialog.Title>Sent</Dialog.Title>
+      <Dialog.Title>{bug ? "Bug report received" : "Feedback received"}</Dialog.Title>
       <Dialog.Description>
-        {type === "bug"
-          ? "Thanks — that is in the inbox with everything the app knows about this run."
-          : "Thanks. That is read by a person, not a vote counter."}
+        {bug
+          ? "Thanks for your bug report, we greatly appreciate it."
+          : "Thanks for your feedback, we greatly appreciate it."}
       </Dialog.Description>
+
+      {/* Focused on mount so Enter closes it without reaching for the mouse,
+          which is the whole reason somebody is still looking at this. Esc and
+          the backdrop already close it through Dialog.Root. */}
+      <div className="mt-6 flex justify-end">
+        <Button size="small" autoFocus onClick={onDone}>
+          Done
+        </Button>
+      </div>
     </>
   );
 }
