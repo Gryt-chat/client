@@ -2,6 +2,12 @@ import { AddonManifest } from "@/addons";
 
 import type { HotkeyAction, HotkeyBindings } from "./hotkeys";
 
+/** One thing a screen share is taking audio from. */
+export interface AudioCaptureSource {
+  /** "system" for everything except Gryt, otherwise a window source id. */
+  id: string;
+}
+
 export interface UpdateStatus {
   status:
     | "checking"
@@ -153,6 +159,11 @@ export interface ElectronAPI {
   isNativeAudioCaptureAvailable(): Promise<boolean>;
   startNativeAudioCapture(sourceId?: string): Promise<boolean>;
   stopNativeAudioCapture(): void;
+  /** Whether audio can be taken from named applications. Windows only. */
+  isPerApplicationAudioSupported(): Promise<boolean>;
+  /** An empty list puts the share back on everything except Gryt. */
+  setAudioCaptureApplications(sourceIds: string[]): Promise<AudioCaptureSource[]>;
+  listAudioCaptureSources(): Promise<AudioCaptureSource[]>;
   onNativeAudioData(callback: (pcm: ArrayBuffer) => void): () => void;
   onNativeAudioStopped(callback: () => void): () => void;
   onNativeAudioDiagnostic(callback: (msg: string) => void): () => void;
