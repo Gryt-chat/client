@@ -4,7 +4,7 @@ import { useSFU } from "@gryt/voice";
 import { voiceLog } from "@gryt/voice";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { PiScanSmileyFill } from "react-icons/pi";
+import { PiScanSmileyFill, PiSlidersHorizontalFill } from "react-icons/pi";
 import { PiMicrophoneFill, PiMicrophoneSlashFill, PiMonitorArrowUpFill, PiPhoneDisconnectFill, PiScreencastFill, PiSpeakerHighFill, PiSpeakerSimpleHighFill, PiSpeakerSimpleSlashFill, PiSpeakerSlashFill, PiVideoCameraFill, PiVideoCameraSlashFill } from "react-icons/pi";
 
 import { useSettings } from "@/settings";
@@ -13,9 +13,11 @@ import { useVideoFraming } from "@/socket/src/hooks/useVideoFraming";
 
 import { isElectron } from "../../../../lib/electron";
 import { useScreenAudioMute } from "../adapters/useScreenAudioMute";
+import { useScreenAudioSources } from "../adapters/useScreenAudioSources";
 import { useVoiceSounds } from "../adapters/useVoiceSounds";
 import { attachEncodedTransform, type EncodedTransformHandle, isEncodedTransformSupported } from "../utils/encodedTransform";
 import { CameraPreviewModal } from "./CameraPreviewModal";
+import { ScreenAudioSourcesModal } from "./ScreenAudioSourcesModal";
 import { ScreenSharePickerModal } from "./ScreenSharePickerModal";
 
 interface ControlsProps {
@@ -63,6 +65,8 @@ export function Controls({ onDisconnect }: ControlsProps) {
   const { cameraStream, cameraEnabled, setCameraEnabled } = useCamera();
   const { screenVideoStream, screenAudioStream, screenShareActive, nativeAudioActive, nativeScreenCaptureAvailable, nativeEncodedCodec, subscribeEncodedFrames, startScreenShare, stopScreenShare } = useScreenShare();
   const { muted: screenAudioMuted, available: canMuteScreenAudio, setMuted: setScreenAudioMuted } = useScreenAudioMute();
+  const { supported: canPickAudioSources } = useScreenAudioSources();
+  const [showAudioSourcesModal, setShowAudioSourcesModal] = useState(false);
   const { sockets } = useSockets();
   const { recentre: recentreFace, detecting: detectingFace } = useVideoFraming();
   const {
@@ -469,6 +473,19 @@ export function Controls({ onDisconnect }: ControlsProps) {
             </Tooltip>
           )}
 
+          {/* Only where the OS can take audio per application, which is
+              Windows. Everywhere else the mute above is the whole story. */}
+          {canMuteScreenAudio && canPickAudioSources && (
+            <Tooltip title="Choose which apps you're sharing audio from">
+              <IconButton tone="neutral" size="xsmall"
+                aria-label="Choose which apps you're sharing audio from"
+                onClick={() => setShowAudioSourcesModal(true)}
+              >
+                <PiSlidersHorizontalFill size={16} />
+              </IconButton>
+            </Tooltip>
+          )}
+
           <IconButton tone="danger" size="xsmall" aria-label="Leave voice channel" onClick={handleDisconnect}>
             <PiPhoneDisconnectFill size={16} />
           </IconButton>
@@ -489,6 +506,11 @@ export function Controls({ onDisconnect }: ControlsProps) {
         flipped={cameraFlipped}
         onFlippedChange={setCameraFlipped}
         onStart={() => setCameraEnabled(true)}
+      />
+
+      <ScreenAudioSourcesModal
+        open={showAudioSourcesModal}
+        onOpenChange={setShowAudioSourcesModal}
       />
 
       <ScreenSharePickerModal

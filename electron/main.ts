@@ -40,8 +40,11 @@ import {
 } from "./addonManager";
 import {
   isNativeAudioCaptureAvailable,
+  listAudioCaptureSources,
+  setAudioCaptureApplications,
   startNativeAudioCapture,
   stopNativeAudioCapture,
+  supportsPerApplicationAudio,
 } from "./audioCaptureManager";
 import {
   autoStartIfNeeded,
@@ -2548,7 +2551,7 @@ if (!gotSingleInstanceLock) {
       }
 
       startupLog(
-        "uiohook deferred until a push-to-talk key is set"
+        "uiohook deferred until a hotkey is set"
       );
 
       // ── Native audio capture IPC ──────────────────────────────────
@@ -2581,6 +2584,38 @@ if (!gotSingleInstanceLock) {
         "stop-native-audio-capture",
         () => {
           stopNativeAudioCapture();
+        }
+      );
+
+      ipcMain.handle(
+        "per-application-audio-supported",
+        () => {
+          return supportsPerApplicationAudio();
+        }
+      );
+
+      // An empty list puts the share back on everything except Gryt.
+      ipcMain.handle(
+        "set-audio-capture-applications",
+        (
+          _event,
+          sourceIds: string[]
+        ) => {
+          if (!mainWindow) {
+            return [];
+          }
+
+          return setAudioCaptureApplications(
+            mainWindow,
+            Array.isArray(sourceIds) ? sourceIds : []
+          );
+        }
+      );
+
+      ipcMain.handle(
+        "list-audio-capture-sources",
+        () => {
+          return listAudioCaptureSources();
         }
       );
 

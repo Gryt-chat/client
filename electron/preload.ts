@@ -214,6 +214,18 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("stop-native-audio-capture");
   },
 
+  isPerApplicationAudioSupported(): Promise<boolean> {
+    return ipcRenderer.invoke("per-application-audio-supported");
+  },
+
+  setAudioCaptureApplications(sourceIds: string[]) {
+    return ipcRenderer.invoke("set-audio-capture-applications", sourceIds);
+  },
+
+  listAudioCaptureSources() {
+    return ipcRenderer.invoke("list-audio-capture-sources");
+  },
+
   onNativeAudioData(callback: (pcm: ArrayBuffer) => void) {
     const handler = (_event: Electron.IpcRendererEvent, data: ArrayBuffer) =>
       callback(data);

@@ -24,6 +24,8 @@ jobs:
       - run: yarn test:updater-bridge
       - run: yarn test:hotkeys
       - run: yarn test:screen-audio
+      - run: yarn test:audio-mixer
+      - run: yarn test:capture-set
       # tsc -b and eslint with --max-warnings 0. This is the check that was
       # missing: client#115 merged with three TS6133 errors and main did not
       # compile until the next PR happened to supply the code that used them.
@@ -32,3 +34,23 @@ jobs:
       # type-checking cannot, like an import that resolves for TypeScript and
       # not for the bundler.
       - run: yarn build
+
+  # The capture helpers are C++ and only compile on Windows, so until now a
+  # mistake in them surfaced during a release rather than on the PR that made
+  # it. This does not run them — process loopback needs real audio devices —
+  # it only proves they still build.
+  native:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the native capture helpers
+        shell: cmd
+        run: native\build.bat
+      - name: Check both binaries landed
+        shell: pwsh
+        run: |
+          foreach ($exe in "audio-capture.exe", "screen-capture.exe") {
+            $path = "build/native/$exe"
+            if (-not (Test-Path $path)) { throw "missing $path" }
+            Write-Host "$exe $((Get-Item $path).Length) bytes"
+          }
