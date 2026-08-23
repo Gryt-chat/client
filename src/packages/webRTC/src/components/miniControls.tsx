@@ -4,11 +4,12 @@ import { useSFU } from "@gryt/voice";
 import { AnimatePresence, motion, Variants } from "motion/react";
 import { useCallback, useState } from "react";
 import toast from "react-hot-toast";
-import { PiMicrophoneFill, PiMicrophoneSlashFill, PiMonitorArrowUpFill, PiPhoneDisconnectFill, PiScreencastFill, PiSpeakerHighFill, PiSpeakerSlashFill, PiVideoCameraFill, PiVideoCameraSlashFill } from "react-icons/pi";
+import { PiMicrophoneFill, PiMicrophoneSlashFill, PiMonitorArrowUpFill, PiPhoneDisconnectFill, PiScreencastFill, PiSpeakerHighFill, PiSpeakerSimpleHighFill, PiSpeakerSimpleSlashFill, PiSpeakerSlashFill, PiVideoCameraFill, PiVideoCameraSlashFill } from "react-icons/pi";
 
 import { useSettings } from "@/settings";
 import { useServerManagement } from "@/socket";
 
+import { useScreenAudioMute } from "../adapters/useScreenAudioMute";
 import { CameraPreviewModal } from "./CameraPreviewModal";
 import { ScreenSharePickerModal } from "./ScreenSharePickerModal";
 
@@ -53,6 +54,7 @@ export function MiniControls({
 
   const { cameraEnabled, setCameraEnabled } = useCamera();
   const { screenShareActive, nativeScreenCaptureAvailable, startScreenShare, stopScreenShare } = useScreenShare();
+  const { muted: screenAudioMuted, available: canMuteScreenAudio, setMuted: setScreenAudioMuted } = useScreenAudioMute();
   const {
     screenShareQuality, setScreenShareQuality,
     screenShareFps, setScreenShareFps,
@@ -155,6 +157,17 @@ export function MiniControls({
                 {screenShareActive ? <PiMonitorArrowUpFill size={iconSize} /> : <PiScreencastFill size={iconSize} />}
               </IconButton>
             </motion.div>
+
+            {canMuteScreenAudio && (
+              <motion.div variants={buttonAnimations}>
+                <IconButton tone="neutral" size="xsmall"
+                  aria-label={screenAudioMuted ? "Unmute the audio you're sharing" : "Mute the audio you're sharing"}
+                  onClick={() => setScreenAudioMuted(!screenAudioMuted)}
+                >
+                  {screenAudioMuted ? <PiSpeakerSimpleSlashFill size={iconSize} /> : <PiSpeakerSimpleHighFill size={iconSize} />}
+                </IconButton>
+              </motion.div>
+            )}
 
             <motion.div variants={buttonAnimations}>
               <IconButton tone="danger" size="xsmall"
