@@ -21,6 +21,7 @@ import { VoiceProvider } from "@/webRTC";
 import { App } from "./App.tsx";
 import { BrowserBanner } from "./components/browserBanner";
 import { Titlebar } from "./components/titlebar";
+import { UpdateAnnouncement } from "./components/updateAnnouncement";
 import { initGlobalStorage } from "./lib/globalStorage";
 import { captureLogs } from "./lib/reports/logs";
 import { pushTitlebarOverlay } from "./lib/titlebarOverlay";
@@ -106,6 +107,7 @@ function ThemedApp() {
       <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
         <App />
       </div>
+      <UpdateAnnouncement />
       <Toaster
         position="bottom-right"
         containerStyle={{ zIndex: "var(--gryt-z-toast)" }}

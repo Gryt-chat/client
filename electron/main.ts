@@ -6,6 +6,7 @@ import {
   ipcMain,
   Menu,
   nativeImage,
+  powerMonitor,
   safeStorage,
   screen,
   session,
@@ -871,6 +872,178 @@ function friendlyUpdateError(err: Error): string {
 
 let pendingUpdateVersion: string | undefined;
 
+/**
+ * How often a client that is already running looks for a release.
+ *
+ * Until GRYT-543 it never did. The three `checkForUpdates()` call sites are all
+ * launch-time or the button in settings, so an app left open never saw a
+ * release until it was restarted. Six went out on 2026-08-22 and a client open
+ * across all of them stayed on the version it started the day with — including
+ * through a privacy fix, which is not a thing to make somebody restart for.
+ *
+ * An hour is affordable because this check spends no GitHub API quota at all.
+ * See `newestReleaseWithoutApi`.
+ */
+const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000;
+
+/**
+ * The soonest two background checks may be, whatever asked for them.
+ *
+ * Waking from sleep is the other moment a machine has plausibly been away long
+ * enough for a release to have happened, and a laptop lid opens far more often
+ * than once an hour. Without a floor, ten lid-opens is ten checks.
+ */
+const UPDATE_CHECK_FLOOR_MS = 15 * 60 * 1000;
+
+let updateCheckTimer: NodeJS.Timeout | null = null;
+let lastUpdateCheckAt = 0;
+let updateIsDownloaded = false;
+
+/** The version already announced, so one release is toasted once per run. */
+let announcedVersion: string | null = null;
+
+/**
+ * Is there a newer release, answered without spending API quota.
+ *
+ * `pinFeedToNewestCompleteRelease` asks `api.github.com`, which is capped at 60
+ * an hour **per address** when unauthenticated. That is fine once per launch
+ * and wrong every hour: a LAN party is one address, and a hundred clients
+ * checking hourly is a hundred calls an hour against a ceiling of sixty — which
+ * breaks the check and takes out anything else on that network using the API.
+ *
+ * Conditional requests do not rescue it. GitHub documents 304s as free, but
+ * that is for authenticated calls; measured unauthenticated on 2026-08-23, a
+ * 304 still moved `x-ratelimit-remaining` from 54 to 53.
+ *
+ * So this reads `releases.atom` instead. It is served from the web host rather
+ * than the API, carries no rate-limit headers, and lists prereleases. Free at
+ * any number of clients.
+ *
+ * **The feed includes drafts** — v1.6.33 was in it while still unpublished — so
+ * the yml check below is not optional. A draft's assets are not downloadable,
+ * which is what rejects it.
+ *
+ * This deliberately does not pin the feed or download anything. Both of those
+ * happen at the next launch, on purpose, where the installer has an idle app to
+ * work with. All this does is notice.
+ */
+async function newestReleaseWithoutApi(): Promise<string | null> {
+  const res = await fetchWithTimeout(
+    `https://github.com/${UPDATE_OWNER}/${UPDATE_REPO}/releases.atom`
+  );
+
+  if (!res) return null;
+
+  let feed: string;
+  try {
+    feed = await res.text();
+  } catch {
+    return null;
+  }
+
+  /* The entry title is the release *name*, which is free text and on a draft is
+     not the tag. The link is the tag, always. */
+  const tags = [
+    ...feed.matchAll(/\/releases\/tag\/([^"'<>\s]+)/g),
+  ].map((match) => match[1]);
+
+  const current = app.getVersion();
+  const wantPrerelease = isOnBetaChannel();
+
+  const candidates = tags
+    .map((tag) => ({ tag, version: tag.replace(/^v/, "") }))
+    .filter(
+      ({ version }) =>
+        semver.valid(version) && semver.gt(version, current)
+    )
+    /* The beta channel ships 1.2.3-beta.N, so the version says whether it is a
+       prerelease and the feed does not have to. */
+    .filter(
+      ({ version }) =>
+        wantPrerelease || semver.prerelease(version) === null
+    )
+    .sort((a, b) => semver.rcompare(a.version, b.version));
+
+  for (const { tag, version } of candidates) {
+    const yml = await fetchWithTimeout(
+      `https://github.com/${UPDATE_OWNER}/${UPDATE_REPO}/releases/download/${tag}/${channelYmlName()}`
+    );
+
+    /* fetchWithTimeout returns null on any non-2xx, so a draft's 404 lands
+       here and the loop moves on to the release below it. */
+    if (yml) return version;
+  }
+
+  return null;
+}
+
+/**
+ * A check nobody asked for, so it stays quiet and gives up easily.
+ *
+ * It announces once per version per run. A failure is logged rather than shown:
+ * somebody who did not press anything should not get an error about it.
+ */
+function checkForUpdatesInBackground(reason: string): void {
+  /* Both mean the answer cannot change until this process restarts: one has an
+     installer waiting, the other has already downloaded what it found. */
+  if (updateIsDownloaded || installIsPending()) return;
+
+  if (Date.now() - lastUpdateCheckAt < UPDATE_CHECK_FLOOR_MS) return;
+  lastUpdateCheckAt = Date.now();
+
+  void newestReleaseWithoutApi()
+    .then((version) => {
+      if (!version || version === announcedVersion) return;
+
+      announcedVersion = version;
+      startupLog(
+        `Update: ${version} available (background check, ${reason})`
+      );
+
+      sendToMain("announced", {
+        version,
+        from: app.getVersion(),
+      });
+    })
+    .catch((err) => {
+      logUpdateFailure(
+        "Background update check failed",
+        err instanceof Error ? err : undefined
+      );
+    });
+}
+
+/**
+ * Start the repeating check. Called once, from `initBackgroundUpdater`.
+ *
+ * That is the one place both non-dev launch paths pass through — the splash
+ * path and the hidden auto-start path — and dev passes through neither, which
+ * is the behaviour the launch-time check already has.
+ */
+function startPeriodicUpdateChecks(): void {
+  if (updateCheckTimer) return;
+
+  /* Launch has just checked, or is about to. Seeding the clock here is what
+     stops a resume a minute later from checking again. */
+  lastUpdateCheckAt = Date.now();
+
+  updateCheckTimer = setInterval(
+    () => checkForUpdatesInBackground("interval"),
+    UPDATE_CHECK_INTERVAL_MS
+  );
+  updateCheckTimer.unref();
+
+  powerMonitor.on("resume", () =>
+    checkForUpdatesInBackground("resume")
+  );
+
+  app.on("before-quit", () => {
+    if (!updateCheckTimer) return;
+    clearInterval(updateCheckTimer);
+    updateCheckTimer = null;
+  });
+}
+
 function initBackgroundUpdater() {
   autoUpdater.on(
     "checking-for-update",
@@ -901,6 +1074,8 @@ function initBackgroundUpdater() {
   });
 
   autoUpdater.on("update-downloaded", (info) => {
+    updateIsDownloaded = true;
+
     sendToMain("downloaded", {
       version: info.version,
     });
@@ -920,6 +1095,8 @@ function initBackgroundUpdater() {
       message: friendlyUpdateError(err),
     });
   });
+
+  startPeriodicUpdateChecks();
 }
 
 function relaunchForUpdate(): void {

@@ -11,8 +11,14 @@ export interface UpdateStatus {
     // Checking again would start a second update cycle, which destroys the
     // first — so this is reported instead of a new check.
     | "pending"
+    // A background check found a release. Distinct from "available", which
+    // answers a check somebody asked for and is shown in Settings. This one
+    // nobody asked for, so it is what raises the toast.
+    | "announced"
     | "error";
   version?: string;
+  /** On "announced", the version being run right now. */
+  from?: string;
   percent?: number;
   message?: string;
 }
