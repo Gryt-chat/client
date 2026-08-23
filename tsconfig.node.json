@@ -12,5 +12,8 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["vite.config.ts", "electron/**/*.ts"]
+  // The hotkey grammar is shared with the renderer, which is why one src
+  // file is listed here. Both projects are noEmit, so compiling it twice costs
+  // nothing and keeps the main process from re-implementing the parsing.
+  "include": ["vite.config.ts", "electron/**/*.ts", "src/lib/hotkeys.ts"]
 }

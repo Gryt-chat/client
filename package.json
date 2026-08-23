@@ -22,6 +22,7 @@
     "typecheck": "tsc -b",
     "lint": "tsc -b && eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "test:updater-bridge": "node scripts/check-updater-bridge.mjs",
+    "test:hotkeys": "node scripts/check-hotkeys.mjs",
     "preview": "vite preview",
     "build:native": "node -e \"const{execSync:r}=require('child_process');if(process.platform==='win32'){r('native\\\\build.bat',{stdio:'inherit'})}else{r('bash native/audio-capture/build.sh',{stdio:'inherit'})}\"",
     "electron:dev": "npm run embedded-server:ensure && cross-env ELECTRON=1 vite --host",

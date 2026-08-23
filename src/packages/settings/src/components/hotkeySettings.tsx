@@ -3,39 +3,8 @@ import { useCallback, useEffect, useState } from "react";
 
 import { useSettings } from "@/settings";
 
+import { buildKeyCombo, buildMouseCombo, formatCombo } from "../../../../lib/hotkeys";
 import { SettingGroup, SettingsContainer } from "./settingsComponents";
-
-function formatKeyCombo(combo: string): string {
-  if (!combo) return "Not set";
-  return combo
-    .split("+")
-    .map((part) => {
-      switch (part) {
-        case "Space": return "Space";
-        case "Escape": return "Esc";
-        default:
-          if (part.startsWith("Key")) return part.slice(3);
-          if (part.startsWith("Digit")) return part.slice(5);
-          return part;
-      }
-    })
-    .join(" + ");
-}
-
-function buildKeyCombo(e: KeyboardEvent): string {
-  const parts: string[] = [];
-  if (e.ctrlKey) parts.push("Ctrl");
-  if (e.shiftKey) parts.push("Shift");
-  if (e.altKey) parts.push("Alt");
-  if (e.metaKey) parts.push("Meta");
-
-  const modifierCodes = ["ControlLeft", "ControlRight", "ShiftLeft", "ShiftRight", "AltLeft", "AltRight", "MetaLeft", "MetaRight"];
-  if (!modifierCodes.includes(e.code)) {
-    parts.push(e.code);
-  }
-
-  return parts.join("+");
-}
 
 function HotkeyCapture({
   label,
@@ -67,11 +36,29 @@ function HotkeyCapture({
     [onChange]
   );
 
+  // Left and right click are not bindable, so they fall through and keep
+  // working as clicks — including the click that starts the binding.
+  const handleMouseDown = useCallback(
+    (e: MouseEvent) => {
+      const combo = buildMouseCombo(e);
+      if (!combo) return;
+      e.preventDefault();
+      e.stopPropagation();
+      onChange(combo);
+      setListening(false);
+    },
+    [onChange]
+  );
+
   useEffect(() => {
     if (!listening) return;
     window.addEventListener("keydown", handleKeyDown, true);
-    return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [listening, handleKeyDown]);
+    window.addEventListener("mousedown", handleMouseDown, true);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown, true);
+      window.removeEventListener("mousedown", handleMouseDown, true);
+    };
+  }, [listening, handleKeyDown, handleMouseDown]);
 
   return (
     <SettingGroup title={label} description={description}>
@@ -80,7 +67,7 @@ function HotkeyCapture({
           color={listening ? "blue" : undefined}
           style={{ fontFamily: "var(--code-font-family)", minWidth: "80px", textAlign: "center" }}
         >
-          {listening ? "Press a key..." : formatKeyCombo(value)}
+          {listening ? "Press a key or button..." : formatCombo(value)}
         </Chip>
         <div className="flex gap-2">
           <Button size="xsmall"
@@ -121,14 +108,15 @@ export function HotkeySettings() {
       <div className="flex flex-col gap-2">
         <span className="text-base font-bold">Shortcuts</span>
         <span className="text-xs text-gryt-muted">
-          These shortcuts work globally when not typing in a text field. Press Escape to cancel binding.
+          Bind a key, or the middle or a side mouse button. In the desktop app they work while
+          Gryt is in the background. Press Escape to cancel binding.
         </span>
       </div>
 
       {inputMode === "push_to_talk" && (
         <HotkeyCapture
           label="Push to Talk Key"
-          description="Hold this key to transmit your microphone."
+          description="Hold this key or mouse button to transmit your microphone."
           value={pushToTalkKey}
           onChange={setPushToTalkKey}
         />

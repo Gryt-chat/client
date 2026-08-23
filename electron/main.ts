@@ -29,6 +29,7 @@ import { dirname, extname, join, resolve } from "path";
 import semver from "semver";
 import { fileURLToPath } from "url";
 
+import { parseCombo, type ParsedCombo } from "../src/lib/hotkeys";
 import {
   getAddons,
   getAddonsDir,
@@ -163,7 +164,6 @@ let voiceState: VoiceState = {
 };
 
 let isUserSignedIn = false;
-let pttDown = false;
 let uiohookRunning = false;
 let startHiddenOnLaunch = false;
 let localServer: Server | null = null;
@@ -1608,47 +1608,126 @@ function keycodeForDomCode(
   return domCodeToKeycode[code];
 }
 
-let pttKeycode: number | null = null;
-let pttNeedsCtrl = false;
-let pttNeedsShift = false;
-let pttNeedsAlt = false;
-let pttNeedsMeta = false;
+// ── Hotkey bindings ─────────────────────────────────────────────────────
 
-function registerPttShortcut(
-  pttKey: string
-): void {
-  pttDown = false;
-  pttKeycode = null;
-  pttNeedsCtrl = false;
-  pttNeedsShift = false;
-  pttNeedsAlt = false;
-  pttNeedsMeta = false;
+type HotkeyAction = "ptt" | "mute" | "deafen" | "disconnect";
 
-  if (!pttKey) return;
+interface HotkeyBinding {
+  /** uiohook keycode, or null when the binding is a mouse button. */
+  keycode: number | null;
+  /** Physical mouse button — 3 middle, 4 and 5 the side ones — or null for a key. */
+  mouseButton: number | null;
+  ctrl: boolean;
+  shift: boolean;
+  alt: boolean;
+  meta: boolean;
+}
 
-  const parts = pttKey.split("+");
-  const baseKey =
-    parts[parts.length - 1];
+const hotkeyBindings = new Map<HotkeyAction, HotkeyBinding>();
 
-  const keycode =
-    keycodeForDomCode(baseKey);
+/**
+ * Which bindings are currently held. Keeps key repeat from firing an action
+ * twice, and lets a release be matched after the modifiers were let go.
+ */
+const hotkeyHeld = new Set<HotkeyAction>();
 
-  if (keycode == null) {
-    console.warn(
-      `No uiohook mapping for PTT key "${baseKey}"`
-    );
-    return;
+function parseBinding(combo: string): HotkeyBinding | null {
+  const parsed = parseCombo(combo);
+  if (!parsed) return null;
+
+  // Mouse buttons are numbered physically in the combo grammar, which is how
+  // libuiohook reports them, so the number passes straight through.
+  if (parsed.code === null) {
+    return { keycode: null, mouseButton: parsed.mouseButton, ...modifiersOf(parsed) };
   }
 
-  pttKeycode = keycode;
-  pttNeedsCtrl =
-    parts.includes("Ctrl");
-  pttNeedsShift =
-    parts.includes("Shift");
-  pttNeedsAlt =
-    parts.includes("Alt");
-  pttNeedsMeta =
-    parts.includes("Meta");
+  const keycode = keycodeForDomCode(parsed.code);
+  if (keycode == null) {
+    console.warn(`No uiohook mapping for hotkey "${parsed.code}"`);
+    return null;
+  }
+
+  return { keycode, mouseButton: null, ...modifiersOf(parsed) };
+}
+
+function modifiersOf(parsed: ParsedCombo) {
+  return { ctrl: parsed.ctrl, shift: parsed.shift, alt: parsed.alt, meta: parsed.meta };
+}
+
+function registerHotkeys(bindings: Partial<Record<HotkeyAction, string>>): void {
+  hotkeyBindings.clear();
+  hotkeyHeld.clear();
+
+  for (const [action, combo] of Object.entries(bindings)) {
+    const parsed = parseBinding(combo ?? "");
+    if (parsed) hotkeyBindings.set(action as HotkeyAction, parsed);
+  }
+}
+
+interface HookModifiers {
+  ctrlKey: boolean;
+  shiftKey: boolean;
+  altKey: boolean;
+  metaKey: boolean;
+}
+
+function matchPress(
+  event: HookModifiers,
+  keycode: number | null,
+  mouseButton: number | null
+): HotkeyAction | null {
+  for (const [action, binding] of hotkeyBindings) {
+    if (binding.keycode !== keycode) continue;
+    if (binding.mouseButton !== mouseButton) continue;
+    if (binding.ctrl !== event.ctrlKey) continue;
+    if (binding.shift !== event.shiftKey) continue;
+    if (binding.alt !== event.altKey) continue;
+    if (binding.meta !== event.metaKey) continue;
+
+    return action;
+  }
+
+  return null;
+}
+
+/**
+ * A release ignores modifiers. Letting go of Shift before the key itself is
+ * normal, and a push-to-talk that only closed on an exact match would leave
+ * the microphone open.
+ */
+function matchRelease(
+  keycode: number | null,
+  mouseButton: number | null
+): HotkeyAction | null {
+  for (const action of hotkeyHeld) {
+    const binding = hotkeyBindings.get(action);
+    if (!binding) continue;
+    if (binding.keycode === keycode && binding.mouseButton === mouseButton) {
+      return action;
+    }
+  }
+
+  return null;
+}
+
+function onHotkeyPress(
+  keycode: number | null,
+  mouseButton: number | null,
+  event: HookModifiers
+): void {
+  const action = matchPress(event, keycode, mouseButton);
+  if (!action || hotkeyHeld.has(action)) return;
+
+  hotkeyHeld.add(action);
+  mainWindow?.webContents.send("hotkey-down", action);
+}
+
+function onHotkeyRelease(keycode: number | null, mouseButton: number | null): void {
+  const action = matchRelease(keycode, mouseButton);
+  if (!action) return;
+
+  hotkeyHeld.delete(action);
+  mainWindow?.webContents.send("hotkey-up", action);
 }
 
 function ensureUiohook(): boolean {
@@ -1660,72 +1739,31 @@ function ensureUiohook(): boolean {
   const uIOhook = lib.uIOhook;
 
   if (process.platform === "darwin") {
-    const trusted =
-      systemPreferences.isTrustedAccessibilityClient(
-        false
-      );
+    const trusted = systemPreferences.isTrustedAccessibilityClient(false);
 
     if (!trusted) {
-      startupLog(
-        "macOS Accessibility not granted — skipping uiohook"
-      );
+      startupLog("macOS Accessibility not granted — skipping uiohook");
       return false;
     }
   }
 
   uIOhook.on("keydown", (event) => {
-    if (pttKeycode == null) return;
-    if (event.keycode !== pttKeycode)
-      return;
-    if (
-      event.ctrlKey !==
-      pttNeedsCtrl
-    )
-      return;
-    if (
-      event.shiftKey !==
-      pttNeedsShift
-    )
-      return;
-    if (
-      event.altKey !==
-      pttNeedsAlt
-    )
-      return;
-    if (
-      event.metaKey !==
-      pttNeedsMeta
-    )
-      return;
-
-    if (!pttDown) {
-      pttDown = true;
-      mainWindow?.webContents.send(
-        "ptt-down"
-      );
-    }
+    onHotkeyPress(event.keycode, null, event);
   });
 
   uIOhook.on("keyup", (event) => {
-    if (
-      !pttDown ||
-      pttKeycode == null
-    ) {
-      return;
-    }
+    onHotkeyRelease(event.keycode, null);
+  });
 
-    if (
-      event.keycode !==
-      pttKeycode
-    ) {
-      return;
-    }
+  // uiohook listens without swallowing, so every click in the OS arrives here.
+  // Left and right click are not bindable (src/lib/hotkeys.ts), which keeps
+  // this from keying the microphone on ordinary clicking.
+  uIOhook.on("mousedown", (event) => {
+    onHotkeyPress(null, Number(event.button), event);
+  });
 
-    pttDown = false;
-
-    mainWindow?.webContents.send(
-      "ptt-up"
-    );
+  uIOhook.on("mouseup", (event) => {
+    onHotkeyRelease(null, Number(event.button));
   });
 
   uIOhook.start();
@@ -3230,40 +3268,36 @@ if (!gotSingleInstanceLock) {
         }
       );
 
-      ipcMain.on(
-        "ptt-set-key",
+      // Answers with whether global capture is actually running. The renderer
+      // falls back to its own window listeners when it is not — uiohook is
+      // missing on some Linux setups and needs Accessibility on macOS, and a
+      // hotkey that works only while Gryt is focused beats one that does
+      // nothing.
+      ipcMain.handle(
+        "hotkeys-set",
         (
           _event,
-          pttKey: string
-        ) => {
-          registerPttShortcut(
-            pttKey
-          );
+          bindings: Partial<Record<HotkeyAction, string>>
+        ): boolean => {
+          registerHotkeys(bindings);
 
-          if (
-            pttKey &&
-            !uiohookRunning
-          ) {
-            if (
-              process.platform ===
-              "darwin"
-            ) {
-              systemPreferences.isTrustedAccessibilityClient(
-                true
-              );
-            }
+          if (hotkeyBindings.size === 0) return uiohookRunning;
+          if (uiohookRunning) return true;
 
-            try {
-              ensureUiohook();
-            } catch (err) {
-              console.warn(
-                `uiohook start failed: ${
-                  err instanceof Error
-                    ? err.message
-                    : String(err)
-                }`
-              );
-            }
+          if (process.platform === "darwin") {
+            systemPreferences.isTrustedAccessibilityClient(true);
+          }
+
+          try {
+            return ensureUiohook();
+          } catch (err) {
+            console.warn(
+              `uiohook start failed: ${
+                err instanceof Error ? err.message : String(err)
+              }`
+            );
+
+            return false;
           }
         }
       );
