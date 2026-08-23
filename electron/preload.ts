@@ -1,7 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
 
-type Callback = () => void;
-
 type EmbeddedServerConfigShape = {
   id: string;
   serverName: string;
@@ -49,18 +47,21 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return ipcRenderer.invoke("get-app-version");
   },
 
-  onPttDown(callback: Callback) {
-    ipcRenderer.on("ptt-down", callback);
-    return () => ipcRenderer.removeListener("ptt-down", callback);
+  onHotkeyDown(callback: (action: string) => void) {
+    const listener = (_event: unknown, action: string) => callback(action);
+    ipcRenderer.on("hotkey-down", listener);
+    return () => ipcRenderer.removeListener("hotkey-down", listener);
   },
 
-  onPttUp(callback: Callback) {
-    ipcRenderer.on("ptt-up", callback);
-    return () => ipcRenderer.removeListener("ptt-up", callback);
+  onHotkeyUp(callback: (action: string) => void) {
+    const listener = (_event: unknown, action: string) => callback(action);
+    ipcRenderer.on("hotkey-up", listener);
+    return () => ipcRenderer.removeListener("hotkey-up", listener);
   },
 
-  setPttKey(pttKey: string) {
-    ipcRenderer.send("ptt-set-key", pttKey);
+  /** Resolves to whether the bindings are captured globally. */
+  setHotkeys(bindings: Record<string, string>): Promise<boolean> {
+    return ipcRenderer.invoke("hotkeys-set", bindings);
   },
 
   checkForUpdates() {

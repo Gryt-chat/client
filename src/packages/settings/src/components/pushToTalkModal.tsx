@@ -3,37 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { useSettings } from "@/settings";
 
-function formatKeyCombo(combo: string): string {
-  if (!combo) return "Not set";
-  return combo
-    .split("+")
-    .map((part) => {
-      switch (part) {
-        case "Space": return "Space";
-        case "Escape": return "Esc";
-        default:
-          if (part.startsWith("Key")) return part.slice(3);
-          if (part.startsWith("Digit")) return part.slice(5);
-          return part;
-      }
-    })
-    .join(" + ");
-}
-
-function buildKeyCombo(e: KeyboardEvent): string {
-  const parts: string[] = [];
-  if (e.ctrlKey) parts.push("Ctrl");
-  if (e.shiftKey) parts.push("Shift");
-  if (e.altKey) parts.push("Alt");
-  if (e.metaKey) parts.push("Meta");
-
-  const modifierCodes = ["ControlLeft", "ControlRight", "ShiftLeft", "ShiftRight", "AltLeft", "AltRight", "MetaLeft", "MetaRight"];
-  if (!modifierCodes.includes(e.code)) {
-    parts.push(e.code);
-  }
-
-  return parts.join("+");
-}
+import { buildKeyCombo, buildMouseCombo, formatCombo } from "../../../../lib/hotkeys";
 
 export function PushToTalkModal() {
   const { inputMode, setInputMode, pushToTalkKey, setPushToTalkKey } = useSettings();
@@ -56,11 +26,24 @@ export function PushToTalkModal() {
     [],
   );
 
+  // Left and right click stay clicks, so the Confirm button still works.
+  const handleMouseDown = useCallback((e: MouseEvent) => {
+    const combo = buildMouseCombo(e);
+    if (!combo) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setCaptured(combo);
+  }, []);
+
   useEffect(() => {
     if (!isOpen) return;
     window.addEventListener("keydown", handleKeyDown, true);
-    return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [isOpen, handleKeyDown]);
+    window.addEventListener("mousedown", handleMouseDown, true);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown, true);
+      window.removeEventListener("mousedown", handleMouseDown, true);
+    };
+  }, [isOpen, handleKeyDown, handleMouseDown]);
 
   const handleConfirm = () => {
     if (captured) {
@@ -78,9 +61,10 @@ export function PushToTalkModal() {
       <Dialog.Portal>
         <Dialog.Backdrop />
         <Dialog.Popup>
-        <Dialog.Title>Set Push to Talk Key</Dialog.Title>
+        <Dialog.Title>Bind push to talk</Dialog.Title>
         <Dialog.Description>
-          Push to Talk is active but no key is bound. Press any key or combination to use as your PTT key.
+          Push to talk is on, but nothing is bound to it yet. Press a key, or the middle or a
+          side mouse button.
         </Dialog.Description>
 
         <div className="flex flex-col gap-4 items-center py-4">
@@ -88,12 +72,12 @@ export function PushToTalkModal() {
             color={captured ? "green" : "blue"}
             style={{ fontFamily: "var(--code-font-family)", minWidth: "120px", textAlign: "center", padding: "8px 16px", fontSize: 16 }}
           >
-            {captured ? formatKeyCombo(captured) : "Press a key..."}
+            {captured ? formatCombo(captured) : "Press a key or button..."}
           </Chip>
 
           {captured && (
             <span className="text-xs text-gryt-muted">
-              Press a different key to change, or confirm below.
+              Press something else to change it, or confirm below.
             </span>
           )}
         </div>

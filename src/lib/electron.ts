@@ -1,5 +1,7 @@
 import { AddonManifest } from "@/addons";
 
+import type { HotkeyAction, HotkeyBindings } from "./hotkeys";
+
 export interface UpdateStatus {
   status:
     | "checking"
@@ -101,9 +103,9 @@ export interface EmbeddedServerInfo {
 export interface ElectronAPI {
   isElectron: true;
   getAppVersion(): Promise<string>;
-  onPttDown(callback: () => void): () => void;
-  onPttUp(callback: () => void): () => void;
-  setPttKey(pttKey: string): void;
+  onHotkeyDown(callback: (action: HotkeyAction) => void): () => void;
+  onHotkeyUp(callback: (action: HotkeyAction) => void): () => void;
+  setHotkeys(bindings: HotkeyBindings): Promise<boolean>;
   checkForUpdates(): void;
   /** Quit and come back, letting the splash download and install. */
   restartForUpdate(): void;
