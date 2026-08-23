@@ -5,13 +5,14 @@ import { voiceLog } from "@gryt/voice";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { PiScanSmileyFill } from "react-icons/pi";
-import { PiMicrophoneFill, PiMicrophoneSlashFill, PiMonitorArrowUpFill, PiPhoneDisconnectFill, PiScreencastFill, PiSpeakerHighFill, PiSpeakerSlashFill, PiVideoCameraFill, PiVideoCameraSlashFill } from "react-icons/pi";
+import { PiMicrophoneFill, PiMicrophoneSlashFill, PiMonitorArrowUpFill, PiPhoneDisconnectFill, PiScreencastFill, PiSpeakerHighFill, PiSpeakerSimpleHighFill, PiSpeakerSimpleSlashFill, PiSpeakerSlashFill, PiVideoCameraFill, PiVideoCameraSlashFill } from "react-icons/pi";
 
 import { useSettings } from "@/settings";
 import { useSockets } from "@/socket";
 import { useVideoFraming } from "@/socket/src/hooks/useVideoFraming";
 
 import { isElectron } from "../../../../lib/electron";
+import { useScreenAudioMute } from "../adapters/useScreenAudioMute";
 import { useVoiceSounds } from "../adapters/useVoiceSounds";
 import { attachEncodedTransform, type EncodedTransformHandle, isEncodedTransformSupported } from "../utils/encodedTransform";
 import { CameraPreviewModal } from "./CameraPreviewModal";
@@ -61,6 +62,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
   const { playDisconnect } = useVoiceSounds();
   const { cameraStream, cameraEnabled, setCameraEnabled } = useCamera();
   const { screenVideoStream, screenAudioStream, screenShareActive, nativeAudioActive, nativeScreenCaptureAvailable, nativeEncodedCodec, subscribeEncodedFrames, startScreenShare, stopScreenShare } = useScreenShare();
+  const { muted: screenAudioMuted, available: canMuteScreenAudio, setMuted: setScreenAudioMuted } = useScreenAudioMute();
   const { sockets } = useSockets();
   const { recentre: recentreFace, detecting: detectingFace } = useVideoFraming();
   const {
@@ -453,6 +455,19 @@ export function Controls({ onDisconnect }: ControlsProps) {
           >
             {screenShareActive ? <PiMonitorArrowUpFill size={16} /> : <PiScreencastFill size={16} />}
           </IconButton>
+
+          {/* Next to the share button because that is what it acts on, and
+              only while a share is actually carrying audio. */}
+          {canMuteScreenAudio && (
+            <Tooltip title={screenAudioMuted ? "Unmute the audio you're sharing" : "Mute the audio you're sharing"}>
+              <IconButton tone="neutral" size="xsmall"
+                aria-label={screenAudioMuted ? "Unmute the audio you're sharing" : "Mute the audio you're sharing"}
+                onClick={() => setScreenAudioMuted(!screenAudioMuted)}
+              >
+                {screenAudioMuted ? <PiSpeakerSimpleSlashFill size={16} /> : <PiSpeakerSimpleHighFill size={16} />}
+              </IconButton>
+            </Tooltip>
+          )}
 
           <IconButton tone="danger" size="xsmall" aria-label="Leave voice channel" onClick={handleDisconnect}>
             <PiPhoneDisconnectFill size={16} />

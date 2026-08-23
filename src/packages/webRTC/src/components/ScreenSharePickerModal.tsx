@@ -7,6 +7,7 @@ import { PiCaretDownFill, PiCaretUpFill, PiMonitorFill, PiScreencastFill, PiSqua
 import type { ScalabilityMode, ScreenShareCodec } from "@/settings";
 
 import { type DesktopSource, isElectron } from "../../../../lib/electron";
+import { audioScopeHint, currentPlatform } from "../../../../lib/screenShareAudio";
 
 interface ScreenSharePickerModalProps {
   open: boolean;
@@ -384,6 +385,10 @@ export function ScreenSharePickerModal({
               />
             </div>
           </div>
+
+          {includeAudio && (
+            <span className="text-xs text-gryt-muted">{audioScopeHint(currentPlatform(), selected)}</span>
+          )}
 
           <div className="flex flex-col gap-3">
             <Button tone="ghost" size="xsmall"
