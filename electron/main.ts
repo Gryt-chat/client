@@ -6,6 +6,7 @@ import {
   ipcMain,
   Menu,
   nativeImage,
+  powerMonitor,
   safeStorage,
   screen,
   session,
@@ -871,6 +872,97 @@ function friendlyUpdateError(err: Error): string {
 
 let pendingUpdateVersion: string | undefined;
 
+/**
+ * How often a client that is already running looks for a release.
+ *
+ * Until GRYT-543 it never did. The three `checkForUpdates()` call sites are all
+ * launch-time or the button in settings, so an app left open never saw a
+ * release until it was restarted. Six went out on 2026-08-22 and a client open
+ * across all of them stayed on the version it started the day with — including
+ * through a privacy fix, which is not a thing to make somebody restart for.
+ *
+ * **Four hours, because of GitHub's rate limit rather than because of taste.**
+ * Each check is one unauthenticated call to `api.github.com` in
+ * `pinFeedToNewestCompleteRelease` — the yml and the assets come off the
+ * downloads host, which is not rate limited the same way. Unauthenticated
+ * calls are capped at 60 an hour *per address*, so the number that matters is
+ * how many clients sit behind one NAT: at four hours each client spends a
+ * quarter of a call an hour, and it takes about 240 of them on one address
+ * before the cap is anywhere near.
+ */
+const UPDATE_CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000;
+
+/**
+ * The soonest two background checks may be, whatever asked for them.
+ *
+ * Waking from sleep is the other moment a machine has plausibly been away long
+ * enough for a release to have happened, and a laptop lid opens far more often
+ * than every four hours. Without a floor, ten lid-opens is ten calls.
+ */
+const UPDATE_CHECK_FLOOR_MS = 60 * 60 * 1000;
+
+let updateCheckTimer: NodeJS.Timeout | null = null;
+let lastUpdateCheckAt = 0;
+let updateIsDownloaded = false;
+
+/**
+ * A check nobody asked for, so it stays quiet and gives up easily.
+ *
+ * It sends the same renderer events as any other check — the settings pane
+ * shows what it finds — but a failure is logged rather than surfaced. Somebody
+ * who did not press anything should not get an error about it.
+ */
+function checkForUpdatesInBackground(reason: string): void {
+  /* Both mean the answer cannot change until this process restarts: one has an
+     installer waiting, the other has already downloaded what it found. */
+  if (updateIsDownloaded || installIsPending()) return;
+
+  if (Date.now() - lastUpdateCheckAt < UPDATE_CHECK_FLOOR_MS) return;
+  lastUpdateCheckAt = Date.now();
+
+  startupLog(`Update: background check (${reason})`);
+
+  void pinFeedToNewestCompleteRelease().finally(() => {
+    autoUpdater.checkForUpdates().catch((err) => {
+      logUpdateFailure(
+        "Background update check failed",
+        err instanceof Error ? err : undefined
+      );
+    });
+  });
+}
+
+/**
+ * Start the repeating check. Called once, from `initBackgroundUpdater`.
+ *
+ * That is the one place both non-dev launch paths pass through — the splash
+ * path and the hidden auto-start path — and dev passes through neither, which
+ * is the behaviour the launch-time check already has.
+ */
+function startPeriodicUpdateChecks(): void {
+  if (updateCheckTimer) return;
+
+  /* Launch has just checked, or is about to. Seeding the clock here is what
+     stops a resume a minute later from checking again. */
+  lastUpdateCheckAt = Date.now();
+
+  updateCheckTimer = setInterval(
+    () => checkForUpdatesInBackground("interval"),
+    UPDATE_CHECK_INTERVAL_MS
+  );
+  updateCheckTimer.unref();
+
+  powerMonitor.on("resume", () =>
+    checkForUpdatesInBackground("resume")
+  );
+
+  app.on("before-quit", () => {
+    if (!updateCheckTimer) return;
+    clearInterval(updateCheckTimer);
+    updateCheckTimer = null;
+  });
+}
+
 function initBackgroundUpdater() {
   autoUpdater.on(
     "checking-for-update",
@@ -901,6 +993,8 @@ function initBackgroundUpdater() {
   });
 
   autoUpdater.on("update-downloaded", (info) => {
+    updateIsDownloaded = true;
+
     sendToMain("downloaded", {
       version: info.version,
     });
@@ -920,6 +1014,8 @@ function initBackgroundUpdater() {
       message: friendlyUpdateError(err),
     });
   });
+
+  startPeriodicUpdateChecks();
 }
 
 function relaunchForUpdate(): void {
