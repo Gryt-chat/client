@@ -38,7 +38,6 @@
 
 import { Avatar, Style } from "@dicebear/core";
 import planetsDefinition from "@dicebear/styles/planets.json";
-
 import { avatarSeed, owlAvatarColour, owlAvatarSvg, TILE_HUES } from "@gryt/owl";
 
 // Constructed once. A Style parses and validates its definition, and the docs
