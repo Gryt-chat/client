@@ -1,0 +1,6 @@
+# Derived from the drawings beside them by scripts/owl-accessory.mjs. The
+# drawing is the source; these are one command away from it, and a stale copy
+# checked in next to a corrected drawing is worse than no copy.
+*.accessory.svg
+*.accessory.ts.txt
+*.preview.html

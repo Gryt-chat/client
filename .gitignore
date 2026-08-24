@@ -53,3 +53,10 @@ build/*
 
 # 12MB of MediaPipe WASM, copied from node_modules by scripts/copy-mediapipe.mjs
 public/mediapipe/
+
+# The bird to draw accessories on, written by scripts/owl-accessory.mjs --base.
+# Generated from the avatar code, so a committed copy is a copy that can go
+# stale — and a stale one is subtracted out of a drawing and leaves a second owl
+# behind. Run --base to get it.
+owl-base.svg
+owl-base-no-background.svg
