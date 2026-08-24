@@ -16,30 +16,25 @@ export type Seed = string | number;
 export type EarStyle = "none" | "tufts";
 
 /**
- * Expressions.
+ * A part of the bird itself, as opposed to something it is wearing.
  *
- * `blob` is the drawn eye. The rest are the painted expression sheet: arcs for
- * pleased, a heavy lid for unimpressed, a wedge for cross, one of each for a
- * wink.
+ * Named so that a drawing can say which of them it replaces. An expression
+ * brings its own eyes, so it hides the drawn ones rather than being painted
+ * over them — see `hides` on Accessory.
  */
-export type EyeStyle =
-  | "blob"
-  | "round"
-  | "oval"
-  | "wide"
-  | "happy"
-  | "wink"
-  | "sleepy"
-  | "angry"
-  | "bright"
-  | "ring";
+export type OwlPart = "earTufts" | "body" | "wings" | "face" | "eyes" | "beak";
 
 /**
  * Where an accessory is worn. One per slot, drawn independently, so a hat and a
  * pair of glasses and a scarf are three separate rolls and can all turn up at
  * once.
+ *
+ * `expression` is a slot like the others rather than a special case, because it
+ * behaves like one: it is a drawing, it is chosen by weight, and an owl can
+ * come up without one. Coming up without one is not a face with no eyes — it is
+ * the eyes the bird is drawn with.
  */
-export type AccessorySlot = "eyes" | "head" | "neck" | "body";
+export type AccessorySlot = "expression" | "eyewear" | "head" | "neck" | "body";
 
 /**
  * Where an accessory sits in the stack.
@@ -101,7 +96,6 @@ export interface OwlOptions {
   scheme?: PaletteScheme;
 
   ears?: EarStyle;
-  eyes?: EyeStyle;
 
   /**
    * What it is wearing, by accessory name, per slot.
@@ -128,7 +122,6 @@ export interface ResolvedOwl {
   scheme: PaletteScheme;
   palette: OwlPalette;
   ears: EarStyle;
-  eyes: EyeStyle;
   /** The accessory chosen in each slot, by name. Absent means nothing. */
   wearing: Partial<Record<AccessorySlot, string>>;
   background: string | null;

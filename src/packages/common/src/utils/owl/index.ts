@@ -44,9 +44,9 @@ import type {
   AccessoryLayer,
   AccessorySlot,
   EarStyle,
-  EyeStyle,
   OwlOptions,
   OwlPalette,
+  OwlPart,
   ResolvedOwl,
   Seed,
 } from "./types";
@@ -65,24 +65,20 @@ export {
 } from "./accessories";
 
 export const EAR_STYLES: EarStyle[] = ["none", "tufts"];
-export const EYE_STYLES: EyeStyle[] = [
-  "blob", "round", "oval", "wide", "happy", "wink", "sleepy", "angry", "bright", "ring",
-];
-export const ACCESSORY_SLOTS: AccessorySlot[] = ["eyes", "head", "neck", "body"];
 
 /**
- * How often each part turns up.
+ * The order slots are drawn in, and the order they are chosen in.
  *
- * The expressions are near enough uniform, with the drawn eye ahead of the rest
- * because it is the owl people should mostly see. `tufts` beats `none` for the
- * same reason — the drawn owl has them.
+ * Fixed, and it has to stay fixed: change it and everyone who owns two things
+ * that exclude each other swaps one for the other.
  */
+export const ACCESSORY_SLOTS: AccessorySlot[] = [
+  "expression", "eyewear", "head", "neck", "body",
+];
+
+/** `tufts` beats `none` because the drawn owl has them. */
 const EAR_WEIGHTS: readonly (readonly [EarStyle, number])[] = [
   ["tufts", 68], ["none", 32],
-];
-const EYE_WEIGHTS: readonly (readonly [EyeStyle, number])[] = [
-  ["blob", 26], ["round", 13], ["happy", 12], ["oval", 10], ["wide", 9],
-  ["sleepy", 8], ["angry", 8], ["bright", 6], ["wink", 5], ["ring", 3],
 ];
 
 /**
@@ -157,7 +153,6 @@ export function resolveOwl(seed: Seed, options: OwlOptions = {}): ResolvedOwl {
     scheme,
     palette,
     ears: options.ears ?? pickWeighted(s, "ears", EAR_WEIGHTS),
-    eyes: options.eyes ?? pickWeighted(s, "eyes", EYE_WEIGHTS),
     wearing: chooseAccessories(s, options.wearing),
     background,
     cornerRadius: Math.min(1, Math.max(0, options.cornerRadius ?? 0)),
@@ -223,16 +218,24 @@ export function owlAvatarSvg(seed: Seed, options: OwlOptions = {}): string {
   // and it applies to the bird's own parts as well as to the coat.
   const p = repaint(c.palette, worn);
 
+  // A drawing that brings its own version of a part says so, and the bird's own
+  // is then not drawn at all. Painting it out instead would be wrong twice: the
+  // eyes and the beak share a colour, and a plate-coloured shape is only
+  // invisible where the plate is what happens to be behind it.
+  const hidden = new Set<OwlPart>();
+  for (const accessory of worn) for (const part of accessory.hides ?? []) hidden.add(part);
+  const draw = (part: OwlPart, markup: string) => (hidden.has(part) ? "" : markup);
+
   const parts =
     renderAccessories(worn, p, "behind") +
-    renderEars(m, c.ears, p.body) +
-    renderBody(m, p.body) +
-    renderWings(m, p.wing) +
+    draw("earTufts", renderEars(m, c.ears, p.body)) +
+    draw("body", renderBody(m, p.body)) +
+    draw("wings", renderWings(m, p.wing)) +
     renderAccessories(worn, p, "underFace") +
-    renderFace(m, p.face) +
+    draw("face", renderFace(m, p.face)) +
     renderAccessories(worn, p, "overFace") +
-    renderEyes(m, c.eyes, p) +
-    renderBeak(m, p.accent) +
+    draw("eyes", renderEyes(m, p)) +
+    draw("beak", renderBeak(m, p.accent)) +
     renderAccessories(worn, p, "overEyes") +
     renderAccessories(worn, p, "overAll");
 
@@ -260,6 +263,32 @@ export function owlAvatarSvg(seed: Seed, options: OwlOptions = {}): string {
   }
 
   return `${open}${field}${parts}</svg>`;
+}
+
+/**
+ * The bird's own paths, each tagged with the part that drew it.
+ *
+ * For tooling rather than for drawing. The accessory extractor has to know that
+ * a repainted path is an eye and not the beak, and it cannot tell from the
+ * colour — both are `accent`. Rendering each part separately is the only answer
+ * that stays true when the parts are reordered or repainted.
+ */
+export function owlPartPaths(options: OwlOptions = {}): { part: OwlPart; d: string }[] {
+  const c = resolveOwl("parts", options);
+  const m = OWL;
+  const p = c.palette;
+
+  const shapes = (part: OwlPart, markup: string) =>
+    [...markup.matchAll(/\bd="([^"]*)"/g)].map((match) => ({ part, d: match[1]! }));
+
+  return [
+    ...shapes("earTufts", renderEars(m, c.ears, p.body)),
+    ...shapes("body", renderBody(m, p.body)),
+    ...shapes("wings", renderWings(m, p.wing)),
+    ...shapes("face", renderFace(m, p.face)),
+    ...shapes("eyes", renderEyes(m, p)),
+    ...shapes("beak", renderBeak(m, p.accent)),
+  ];
 }
 
 /** The same owl as a data URI, for an `<img src>`. */

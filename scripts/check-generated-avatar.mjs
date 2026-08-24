@@ -51,7 +51,7 @@ async function load(entry) {
 const { avatarSeed } = await load("src/packages/common/src/utils/avatarSeed.ts");
 const {
   ACCESSORIES,
-  EYE_STYLES,
+  ACCESSORY_SLOTS,
   EAR_STYLES,
   owlAvatarColour,
   owlAvatarSvg,
@@ -147,10 +147,6 @@ for (const accessory of ACCESSORIES) {
   assert.ok(!svg.includes("undefined"), `${accessory.name} draws with an undefined value`);
 }
 
-for (const eyes of EYE_STYLES) {
-  const svg = owlAvatarSvg("x", { eyes });
-  assert.ok(svg.length > 500, `${eyes} eyes drew almost nothing`);
-}
 for (const ears of EAR_STYLES) {
   const svg = owlAvatarSvg("x", { ears });
   assert.ok(svg.length > 500, `${ears} ears drew almost nothing`);
@@ -173,7 +169,7 @@ for (const accessory of ACCESSORIES) {
 }
 
 /* And null empties a slot rather than re-rolling it. */
-for (const slot of ["eyes", "head", "neck", "body"]) {
+for (const slot of ACCESSORY_SLOTS) {
   const owl = resolveOwl("x", { wearing: { [slot]: null } });
   assert.equal(owl.wearing[slot], undefined, `${slot} was not emptied`);
 }
@@ -197,6 +193,17 @@ for (const accessory of ACCESSORIES) {
       assert.ok(p.strokeWidth > 0, `${accessory.name} strokes at width ${p.strokeWidth}`);
     }
   }
+  /*
+   * A drawing that hides a part has to bring a replacement. One that hides the
+   * eyes and draws nothing leaves a blank face, and the extractor would have
+   * been perfectly happy about it.
+   */
+  if (accessory.hides?.length) {
+    assert.ok(
+      accessory.paths.length > 0,
+      `${accessory.name} hides ${accessory.hides.join(", ")} and draws nothing in their place`,
+    );
+  }
   for (const [part, source] of Object.entries(accessory.recolour ?? {})) {
     assert.ok(roles.includes(part), `${accessory.name} repaints "${part}", which is not a part`);
     assert.ok(roles.includes(source), `${accessory.name} repaints to "${source}", which is not a colour`);
@@ -218,7 +225,7 @@ for (const accessory of ACCESSORIES) {
 for (const accessory of ACCESSORIES) {
   assert.equal(
     owlAvatarColour("x", { wearing: { [accessory.slot]: accessory.name } }),
-    owlAvatarColour("x", { wearing: { eyes: null, head: null, neck: null, body: null } }),
+    owlAvatarColour("x", { wearing: Object.fromEntries(ACCESSORY_SLOTS.map((s) => [s, null])) }),
     `wearing ${accessory.name} changed the tile colour`,
   );
 }

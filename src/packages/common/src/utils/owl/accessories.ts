@@ -40,7 +40,13 @@
  */
 
 import { GENERATED_ACCESSORIES } from "./accessories.generated";
-import type { AccessoryLayer, AccessorySlot, OwlPalette, PaletteSlot } from "./types";
+import type {
+  AccessoryLayer,
+  AccessorySlot,
+  OwlPalette,
+  OwlPart,
+  PaletteSlot,
+} from "./types";
 
 export interface AccessoryPath {
   /** Path data on the owl's own 1024 x 1024 frame, verbatim. */
@@ -92,6 +98,16 @@ export interface Accessory {
    * on all thirty palettes.
    */
   recolour?: Readonly<Partial<Record<PaletteSlot, PaletteSlot>>>;
+  /**
+   * Parts of the bird this replaces, which are then not drawn at all.
+   *
+   * An expression brings its own eyes. In the drawing that reads as the eyes
+   * being painted the same colour as the face plate, but painting them out is
+   * not the same as leaving them out: the eyes and the beak are both drawn in
+   * `accent`, so a repaint would take the beak with them, and a plate-coloured
+   * disc is wrong anywhere the plate is not what is behind it.
+   */
+  hides?: readonly OwlPart[];
   /** Drawn in order, back to front. Keep the design file's own order. */
   paths: readonly AccessoryPath[];
 }
@@ -106,7 +122,10 @@ export interface Accessory {
  * little more common rather than making every owl wear one.
  */
 export const EMPTY_WEIGHT: Record<AccessorySlot, number> = {
-  eyes: 44,
+  // Empty here is not a face with no eyes — it is the eyes the bird is drawn
+  // with, which is the one every other expression is a departure from.
+  expression: 46,
+  eyewear: 90,
   head: 60,
   neck: 48,
   body: 70,

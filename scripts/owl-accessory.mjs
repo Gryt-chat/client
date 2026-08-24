@@ -94,12 +94,11 @@ const owl = await load("src/packages/common/src/utils/owl/index.ts");
  * stopped being bare and every drawing failed to match. It is emptied here so
  * the base cannot depend on what has been added since.
  */
-const BARE = { eyes: null, head: null, neck: null, body: null };
+const BARE = { expression: null, eyewear: null, head: null, neck: null, body: null };
 const BASE = {
   palette: "teal",
   scheme: "day",
   ears: "tufts",
-  eyes: "blob",
   size: 1024,
   wearing: BARE,
 };
@@ -114,7 +113,13 @@ const BASE = {
  * A garment goes on top of everything, collar included. It is drawn over the
  * bird rather than tucked behind it, which is what a coat does.
  */
-const DEFAULT_LAYER = { eyes: "overEyes", head: "overAll", neck: "overAll", body: "overAll" };
+const DEFAULT_LAYER = {
+  expression: "overFace",
+  eyewear: "overEyes",
+  head: "overAll",
+  neck: "overAll",
+  body: "overAll",
+};
 
 function header() {
   return (
@@ -299,6 +304,15 @@ const roleOf = new Map(
     ROLES[parseInt(p.fill.slice(1), 16) - 1],
   ]),
 );
+
+/**
+ * Which part of the bird each of its paths belongs to.
+ *
+ * Colour cannot answer this — the eyes and the beak are both `accent` — and it
+ * is the difference between "this drawing replaces the eyes" and "this drawing
+ * paints the beak away too".
+ */
+const partOf = new Map(owl.owlPartPaths(BASE).map((p) => [shapeKey(p.d), p.part]));
 const realPalette = owl.owlPalette(BASE.palette, BASE.scheme);
 const roleByColour = new Map(
   Object.entries(realPalette).map(([role, hex]) => [hex.toLowerCase(), role]),
@@ -342,6 +356,7 @@ function extract(svg, label, opts) {
 
   const seen = new Set();
   const recolour = {};
+  const hides = new Set();
   const unplaceable = new Set();
   const notes = [];
 
@@ -356,14 +371,26 @@ function extract(svg, label, opts) {
     if (!baseFills.has(key)) return true;
     seen.add(key);
 
-    // The shape is the bird's but the colour is not: a repaint, and it belongs
-    // to whatever is being worn rather than to the bird.
+    // The shape is the bird's but the colour is not. Two different intentions
+    // wear that disguise, and telling them apart needs to know which part it is.
     if (p.fill !== baseFills.get(key)) {
-      const part = roleOf.get(key);
+      const part = partOf.get(key);
+
+      // An expression brings its own eyes, and paints the drawn ones out to say
+      // so. Recorded as "do not draw them" rather than as a repaint: the eyes
+      // and the beak share a colour, so repainting the role would take the beak
+      // with it, and a plate-coloured disc is only invisible where the plate is
+      // what is behind it.
+      if (part === "eyes") {
+        hides.add("eyes");
+        return false;
+      }
+
+      const role = roleOf.get(key);
       const to = roleByColour.get(p.fill);
-      if (!part) unplaceable.add(`${p.fill} — could not tell which part that is`);
+      if (!role) unplaceable.add(`${p.fill} — could not tell which part that is`);
       else if (!to) unplaceable.add(`${p.fill} — not one of the base owl's colours`);
-      else recolour[part] = to;
+      else recolour[role] = to;
     }
     return false;
   });
@@ -376,7 +403,7 @@ function extract(svg, label, opts) {
     );
   }
   for (const f of unplaceable) notes.push(`repainted in a colour this cannot place: ${f}`);
-  if (kept.length === 0 && Object.keys(recolour).length === 0) {
+  if (kept.length === 0 && Object.keys(recolour).length === 0 && hides.size === 0) {
     throw new Error(`${label}: nothing left after subtracting the bird`);
   }
 
@@ -406,6 +433,9 @@ function extract(svg, label, opts) {
     (opts.excludes.length
       ? `    excludes: [${opts.excludes.map((e) => `"${e}"`).join(", ")}],\n`
       : "") +
+    (hides.size
+      ? `    hides: [${[...hides].map((h) => `"${h}"`).join(", ")}],\n`
+      : "") +
     (repaints.length
       ? `    recolour: { ${repaints.map(([k, v]) => `${k}: "${v}"`).join(", ")} },\n`
       : "") +
@@ -433,6 +463,7 @@ function extract(svg, label, opts) {
     `${(after / 1000).toFixed(1).padStart(5)}kB` +
     (before > after ? ` -${String(Math.round((100 * (before - after)) / before)).padStart(2)}%` : "     ") +
     `  ${opts.slot}/${layer}` +
+    (hides.size ? `  hides ${[...hides].join(" ")}` : "") +
     (repaints.length ? `  repaints ${repaints.map(([k, v]) => `${k}->${v}`).join(" ")}` : "") +
     (guessed.length
       ? `\n${pad}guessed: ${guessed.map((h) => `${h}->${roles.get(h)}`).join(" ")}`
