@@ -53,3 +53,4 @@ build/*
 
 # 12MB of MediaPipe WASM, copied from node_modules by scripts/copy-mediapipe.mjs
 public/mediapipe/
+
