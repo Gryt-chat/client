@@ -6,13 +6,19 @@
  * list is an S — where a generated character is distinguishable at a glance and
  * stays the same every time you see that person.
  *
- * People get an owl, from `./owl`. That is Gryt's own generator, drawn for Gryt,
- * and it replaced DiceBear's Moods here. Moods was fine and cost nothing, but it
- * is a face generator: every avatar was a different creature, so a member list
- * looked like a sticker sheet rather than like one product. The owl is one drawn
- * character — the body, the wings, the face plate and the beak never vary — and
- * what changes is the colour, the expression, the ear tufts and whatever it
- * happens to be wearing.
+ * People get an owl, from `@gryt/owl`. That is Gryt's own generator, drawn for
+ * Gryt, and it replaced DiceBear's Moods here. Moods was fine and cost nothing,
+ * but it is a face generator: every avatar was a different creature, so a member
+ * list looked like a sticker sheet rather than like one product. The owl is one
+ * drawn character — the body, the wings, the face plate and the beak never vary
+ * — and what changes is the colour, the expression, the ear tufts and whatever
+ * it happens to be wearing.
+ *
+ * The generator lived in this repository first, under `src/utils/owl/`, with the
+ * drawings and the extractor beside it. It is a package now because the mobile
+ * app needs the same owls: two apps drawing one person as two different people
+ * is the failure the whole arrangement exists to prevent, and a copied directory
+ * is how that starts. Adding an accessory happens in the `ui` repository now.
  *
  * Servers still get DiceBear's Planets. A server is not a person and should not
  * be drawn as one, which is why it was a different style to begin with; nothing
@@ -33,16 +39,16 @@
 import { Avatar, Style } from "@dicebear/core";
 import planetsDefinition from "@dicebear/styles/planets.json";
 
-import { avatarSeed } from "./avatarSeed";
-import { owlAvatarColour, owlAvatarSvg, TILE_HUES } from "./owl";
+import { avatarSeed, owlAvatarColour, owlAvatarSvg, TILE_HUES } from "@gryt/owl";
 
 // Constructed once. A Style parses and validates its definition, and the docs
 // are explicit that it is meant to be reused across avatars rather than rebuilt
 // per render.
 const planets = new Style(planetsDefinition);
 
-// Re-exported rather than defined here: two apps have to agree on the seed
-// rule exactly, so it lives on its own in avatarSeed.ts.
+// Re-exported so the rest of the app keeps importing it from `@/common`. Two
+// apps have to agree on the seed rule exactly, which is why it ships with the
+// generator rather than being written out again on each side.
 export { avatarSeed };
 export { TILE_HUES };
 
