@@ -1308,6 +1308,10 @@ function createMainWindow(): BrowserWindow {
       ),
       contextIsolation: true,
       nodeIntegration: false,
+      // The idle default, and only the idle default — a call turns it off,
+      // see setRendererThrottling. Left on here because the app spends most of
+      // its life in the tray doing nothing, and throttling a renderer that is
+      // doing nothing is the behaviour worth having.
       backgroundThrottling: true,
     },
 
@@ -1963,6 +1967,37 @@ function trayTooltip(): string {
   return `Gryt — in voice${where}`;
 }
 
+/**
+ * Chromium throttles a hidden window's timers. That is right for a chat client
+ * sitting in the tray and wrong for one that is in a call.
+ *
+ * Minimise the window and the renderer's timers slow down; leave it hidden for
+ * about five minutes and Chromium's intensive throttling takes over and they
+ * fire roughly once a minute. Two things in the voice engine ride on a 15s
+ * `setInterval` and both matter:
+ *
+ *   - the keep-alive that keeps the SFU WebSocket looking alive to whatever is
+ *     between us and it, and
+ *   - the check that notices the socket is no longer OPEN, which is what starts
+ *     a reconnect.
+ *
+ * At one tick a minute the first is barely a keep-alive and the second means a
+ * dropped call can go unnoticed for most of a minute. Audio itself is fine
+ * either way — WebRTC runs below the renderer's timers and does not care — so
+ * the failure is quiet: the call stays up, the socket does not, and nothing
+ * looks wrong until the reconnect that should have happened does not.
+ *
+ * Off for the duration of a call, back on when it ends. Not off permanently:
+ * the app starts hidden for a lot of people and spends most of its life in the
+ * tray, and a renderer that is doing nothing should be throttled.
+ */
+function setRendererThrottling(allowed: boolean): void {
+  const contents = mainWindow?.webContents;
+  if (!contents || contents.isDestroyed()) return;
+
+  contents.setBackgroundThrottling(allowed);
+}
+
 function refreshTray(): void {
   if (!tray) return;
 
@@ -2225,7 +2260,17 @@ if (!gotSingleInstanceLock) {
 
           if (!changed) return;
 
+          const joinedOrLeftVoice =
+            next.inVoice !==
+            voiceState.inVoice;
+
           voiceState = next;
+
+          if (joinedOrLeftVoice) {
+            setRendererThrottling(
+              !next.inVoice
+            );
+          }
 
           refreshTray();
         }
