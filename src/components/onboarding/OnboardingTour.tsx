@@ -60,20 +60,27 @@ interface Rect {
  * real pointer events, which is why the menu now actually opens and the tour
  * can stop pretending.
  */
+/**
+ * Presses a control for real, with a click and nothing else.
+ *
+ * It used to send pointerdown, pointerup and then click, on the reasoning that
+ * this is what a mouse does. Against Base UI it is what a mouse does and then
+ * some: the menu opens on pointerdown and the click that follows toggles it
+ * straight back shut, so the tour pressed the avatar, no menu appeared, the
+ * next hop found nothing, and the step timed out and skipped ahead. It looked
+ * like the tour losing its place from step two onwards.
+ *
+ * Measured against the real trigger and a real Menu.Item: pointer events alone
+ * open the menu but never run an item's onClick; a click alone does both. So a
+ * click alone is the whole press. The visible press is the cursor's own
+ * animation and does not depend on these events.
+ *
+ * This was fallout from moving the library off Radix, which did open from the
+ * pointer pair.
+ */
 function pressControl(target: string): void {
   const node = document.querySelector<HTMLElement>(`[data-tour="${target}"]`);
   if (!node) return;
-  const base = {
-    bubbles: true,
-    cancelable: true,
-    composed: true,
-    pointerId: 1,
-    pointerType: "mouse",
-    isPrimary: true,
-    button: 0
-  } as const;
-  node.dispatchEvent(new PointerEvent("pointerdown", { ...base, buttons: 1 }));
-  node.dispatchEvent(new PointerEvent("pointerup", { ...base, buttons: 0 }));
   node.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
 }
 
@@ -216,7 +223,13 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
       //    the avatar opens its menu, then Settings inside it opens the panel.
       for (const anchor of step.via ?? []) {
         const at = readRect(anchor);
-        if (!at) continue;
+        if (!at) {
+          // Skipping quietly is what made the Base UI press bug look like the
+          // tour losing its place: the hop vanished, the step timed out waiting
+          // for a panel nothing had opened, and it moved on two steps later.
+          console.warn(`[tour] no control for "${anchor}" — skipping this hop`);
+          continue;
+        }
         setCursor({ x: at.left + at.width / 2, y: at.top + at.height / 2 });
         await sleep(pause(TRAVEL_MS));
         if (cancelled) return;
