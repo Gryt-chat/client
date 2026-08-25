@@ -48,6 +48,31 @@ function ThemedApp() {
     root.style.colorScheme = resolvedAppearance;
   }, [resolvedAppearance]);
 
+  /* The scale, on the root for the same reason the appearance class is.
+     
+     It used to sit on .gryt-app below, which is the element wrapping the
+     titlebar, the app and the toaster — and nothing else. Base UI portals
+     every dialog, menu, popover, tooltip and drawer to document.body, so a
+     portal node is a sibling of .gryt-app rather than a descendant of it, and
+     zoom inherits down the tree. The slider and Ctrl+plus scaled the sidebar,
+     the chat and the member list, and did not touch the owl designer,
+     settings, the emoji picker, any menu or any tooltip. Turned up for a big
+     screen, the app came apart into two sizes.
+
+     --chat-font-size moves with it: EmojiAutocomplete and MentionAutocomplete
+     read it and are popovers, so they had been falling back to 16px whatever
+     the reader had chosen.
+
+     zoom on the root is safe for the backdrop, which is the thing to check —
+     a `fixed inset-0` element under a zoomed ancestor could have covered the
+     wrong box. Measured at 1440x900: the backdrop is 1440x900 at zoom 1, 1.5
+     and 0.75, and the popup scales. */
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.zoom = String(uiScale);
+    root.style.setProperty("--chat-font-size", `${chatFontSize}px`);
+  }, [uiScale, chatFontSize]);
+
   /* An imported theme, painted onto the same element for the same reason: the
      variables have to be somewhere every overlay can read them, and overlays
      portal to document.body.
@@ -94,14 +119,10 @@ function ThemedApp() {
     /* The <Theme> that used to sit here was Radix's, and it existed to define
        --gray-*, --accent-* and --radius-*. Those come from @gryt/ui's
        stylesheet now, which is imported once at the top of this file, so what
-       is left is the layout and the zoom it was also carrying. */
-    <div
-      className="gryt-app flex min-h-0 flex-1 flex-col"
-      style={{
-        zoom: uiScale,
-        "--chat-font-size": `${chatFontSize}px`,
-      } as React.CSSProperties}
-    >
+       is left is the layout. The zoom and the chat font size it was also
+       carrying moved to the root element above, where the overlays can see
+       them. */
+    <div className="gryt-app flex min-h-0 flex-1 flex-col">
       <Titlebar />
       <BrowserBanner />
       <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
