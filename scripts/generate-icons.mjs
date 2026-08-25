@@ -4,7 +4,17 @@ import sharp from "sharp";
 import pngToIco from "png-to-ico";
 
 const rootDir = process.cwd();
-const sourceSvg = path.join(rootDir, "public", "logo.svg");
+/*
+ * logo-square.svg, not logo.svg.
+ *
+ * A launcher applies its own mask — a squircle on macOS, a rounded rect on
+ * Android, whatever the theme says on Linux — so it wants the full frame.
+ * Hand it the round mark and macOS draws a disc floating inside the squircle,
+ * with the corners of the ground missing.
+ *
+ * This is the only reason the square artboard still exists as a file.
+ */
+const sourceSvg = path.join(rootDir, "public", "logo-square.svg");
 const buildDir = path.join(rootDir, "build");
 const sizesDir = path.join(buildDir, "icon-sizes");
 

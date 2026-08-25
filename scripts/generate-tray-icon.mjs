@@ -192,7 +192,7 @@ function disc(fill, inner) {
 /*
  * The rounded mark, read off disk rather than rebuilt here.
  *
- * public/logo-round.svg is the same drawing as the square logo with a circular
+ * public/logo.svg is the same drawing as public/logo-square.svg with a circular
  * clip, and for the idle state that is exactly what is wanted — the app's own
  * mark, in its own colours, in the shape a tray icon should be.
  *
@@ -202,7 +202,7 @@ function disc(fill, inner) {
  * and is still hand-built.
  */
 const ROUND_MARK = readFileSync(
-  join(__dirname, "..", "public", "logo-round.svg"),
+  join(__dirname, "..", "public", "logo.svg"),
   "utf8",
 );
 
