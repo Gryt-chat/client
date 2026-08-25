@@ -65,7 +65,7 @@ function MemberDropdownItem({
         size="small"
         className="h-6 w-6 text-[10px]"
         fallback={member.nickname[0]}
-        src={resolveAvatarSrc(member.avatarFileId ? getUploadsFileUrl(host, member.avatarFileId, { thumb: true }) : undefined, member.nickname)}
+        src={resolveAvatarSrc(member.avatarFileId ? getUploadsFileUrl(host, member.avatarFileId, { thumb: true }) : undefined, member.nickname, member.avatarWorn)}
         style={{ flexShrink: 0 }}
       />
       <div className="flex flex-col" style={{ flex: 1, minWidth: 0 }}>
@@ -117,7 +117,7 @@ function MemberCombobox({
             size="small"
             className="h-6 w-6 text-[10px]"
             fallback={selectedMember.nickname[0]}
-            src={resolveAvatarSrc(selectedMember.avatarFileId ? getUploadsFileUrl(host, selectedMember.avatarFileId, { thumb: true }) : undefined, selectedMember.nickname)}
+            src={resolveAvatarSrc(selectedMember.avatarFileId ? getUploadsFileUrl(host, selectedMember.avatarFileId, { thumb: true }) : undefined, selectedMember.nickname, selectedMember.avatarWorn)}
             style={{ flexShrink: 0 }}
           />
         )}

@@ -5,6 +5,8 @@ export interface TypingUser {
   serverUserId: string;
   nickname: string;
   avatarFileId: string | null;
+  /** Optional: a server older than the field does not send one. */
+  avatarWorn?: string | null;
 }
 
 interface TypingEntry extends TypingUser {
@@ -15,6 +17,7 @@ interface TypingEventPayload {
   serverUserId: string;
   nickname: string;
   avatarFileId: string | null;
+  avatarWorn?: string | null;
   conversationId: string;
 }
 
@@ -43,7 +46,7 @@ export function useTypingIndicator(
     if (entry) {
       clearTimeout(entry.timeout);
       entries.delete(serverUserId);
-      setTypingUsers(Array.from(entries.values()).map(({ serverUserId: id, nickname, avatarFileId }) => ({ serverUserId: id, nickname, avatarFileId })));
+      setTypingUsers(Array.from(entries.values()).map(({ serverUserId: id, nickname, avatarFileId, avatarWorn }) => ({ serverUserId: id, nickname, avatarFileId, avatarWorn })));
     }
   }, []);
 
@@ -62,10 +65,11 @@ export function useTypingIndicator(
         serverUserId: payload.serverUserId,
         nickname: payload.nickname,
         avatarFileId: payload.avatarFileId,
+        avatarWorn: payload.avatarWorn ?? null,
         timeout,
       });
 
-      setTypingUsers(Array.from(entries.values()).map(({ serverUserId, nickname, avatarFileId }) => ({ serverUserId, nickname, avatarFileId })));
+      setTypingUsers(Array.from(entries.values()).map(({ serverUserId, nickname, avatarFileId, avatarWorn }) => ({ serverUserId, nickname, avatarFileId, avatarWorn })));
     };
 
     const handleStopTyping = (payload: StopTypingEventPayload) => {

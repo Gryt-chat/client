@@ -191,12 +191,17 @@ export const ChatView = memo(({
   const getSenderAvatarUrl = useCallback((msg: ChatMessage): string | undefined => {
     const fileId = memberList?.[msg.sender_server_id]?.avatarFileId || msg.sender_avatar_file_id;
     const uploaded = fileId && serverHost ? getUploadsFileUrl(serverHost, fileId) : undefined;
+    // Only from the member list, never off the message. A message carries the
+    // avatar its sender had when it was sent, which is right for somebody who
+    // has since left; a look is drawn live, so an old string would redress
+    // them in whatever they were wearing that afternoon.
+    const worn = memberList?.[msg.sender_server_id]?.avatarWorn;
     // Seeded on the same id the member list uses, so the face beside a message
     // is the face in the sidebar. Webhooks are excluded for the same reason
     // server icons are: a generated face is wrong for something that is not a
     // person, and their sender id is "webhook:<id>" rather than a member's.
     if (msg.sender_server_id?.startsWith("webhook:")) return uploaded;
-    return resolveAvatarSrc(uploaded, getSenderName(msg));
+    return resolveAvatarSrc(uploaded, getSenderName(msg), worn);
   }, [memberList, serverHost, getSenderName]);
 
   const mentionMembers = useMemo(() => {
@@ -207,6 +212,7 @@ export const ChatView = memo(({
       avatarUrl: resolveAvatarSrc(
         m.avatarFileId && serverHost ? getUploadsFileUrl(serverHost, m.avatarFileId, { thumb: true }) : undefined,
         m.nickname,
+        m.avatarWorn,
       ) ?? null,
     }));
   }, [memberList, serverHost]);

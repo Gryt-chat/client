@@ -3,7 +3,7 @@ import { useCallback,useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { PiArrowsClockwiseFill, PiCameraFill, PiCheck, PiCopyFill } from "react-icons/pi";
 
-import { compressStaticAvatarToLimit, getAvatarHash, getServerAccessToken, getServerHttpBase, getStoredAvatar, getUploadsFileUrl, resolveAvatarSrc, useUserId } from "@/common";
+import { compressStaticAvatarToLimit, getAvatarHash, getServerAccessToken, getServerHttpBase, getStoredAvatar, getStoredWorn, getUploadsFileUrl, resolveAvatarSrc, setStoredWorn, useUserId } from "@/common";
 import { useSettings } from "@/settings";
 import { useServerManagement, useSockets } from "@/socket";
 
@@ -88,6 +88,8 @@ interface ProfileEditorProps {
    *  "Remove avatar" still keys off whether one was actually uploaded — a
    *  generated face is not something there is anything to remove. */
   generatedAvatarUrl?: string;
+  /** The designed look, if there is one. Outranks `avatarUrl` — see `resolveAvatarSrc`. */
+  worn?: string | null;
   initial: string;
   uploading: boolean;
   removing: boolean;
@@ -104,6 +106,7 @@ function ProfileEditor({
   nickname,
   avatarUrl,
   generatedAvatarUrl,
+  worn,
   initial,
   uploading,
   removing,
@@ -119,7 +122,10 @@ function ProfileEditor({
   // Drawn from what is in the box, not from what is saved. The nickname is the
   // seed, so typing a new one is the only way to see what you are about to look
   // like — and finding that out after saving is a worse way to choose a name.
-  const previewSrc = avatarUrl || resolveAvatarSrc(undefined, draft) || generatedAvatarUrl;
+  //
+  // A designed look is drawn on the draft name too. The look and the seed are
+  // separate — the hat stays on when you rename, and the bird under it changes.
+  const previewSrc = resolveAvatarSrc(avatarUrl, draft, worn) || generatedAvatarUrl;
 
   useEffect(() => {
     setDraft(nickname);
@@ -278,7 +284,18 @@ export function ProfileSettings() {
     }, defaultMax);
   };
 
-  const processAndUpload = async (file: File, hosts: string[]) => {
+  /*
+   * `worn` is the look the picture was rendered from, or null when this is a
+   * photograph somebody picked.
+   *
+   * Both paths upload a PNG — the editor renders one so that a client too old
+   * to know about the string still shows the right owl, and so the server has
+   * something to take a dominant colour from for voice tiles. So the upload on
+   * its own cannot say which of the two happened, and the string has to be
+   * passed down and sent explicitly. Null is not "leave it alone": it is what
+   * clears a designed look when somebody goes back to a photograph.
+   */
+  const processAndUpload = async (file: File, hosts: string[], worn: string | null) => {
     const minAvatarMaxBytes = getAvatarMaxBytes(hosts);
 
     if (file.size > 25 * 1024 * 1024) {
@@ -305,6 +322,7 @@ export function ProfileSettings() {
     try {
       if (hosts.length === 0) {
         await setAvatarFile(uploadFile);
+        setStoredWorn(worn);
         toast("Avatar updated locally (no servers connected).");
         return;
       }
@@ -340,15 +358,22 @@ export function ProfileSettings() {
               ...prev[host],
               avatarFileId: r.value.avatarFileId!,
               avatarUrl: getUploadsFileUrl(host, r.value.avatarFileId!),
+              avatarWorn: worn,
             },
           }));
         }
+        // Sent whether or not the upload returned a file id, and sent as an
+        // explicit null for a photograph. A member who had a designed owl and
+        // has just picked a picture needs the old string cleared; leaving it
+        // would keep drawing the owl over the picture they chose.
+        sockets[host]?.emit("profile:update", { avatarWorn: worn });
         sockets[host]?.emit("avatar:updated");
         sockets[host]?.emit("members:fetch");
       });
 
       if (anySuccess) {
         await setAvatarFile(uploadFile);
+        setStoredWorn(worn);
       }
 
       if (failed.length > 0) {
@@ -403,8 +428,13 @@ export function ProfileSettings() {
             ...prev[host],
             avatarFileId: null,
             avatarUrl: null,
+            avatarWorn: null,
           },
         }));
+        // Removing an avatar means going back to the owl the nickname draws.
+        // A designed look left behind would survive the removal and keep being
+        // drawn, which is not what "remove" says.
+        sockets[host]?.emit("profile:update", { avatarWorn: null });
         sockets[host]?.emit("avatar:updated");
         sockets[host]?.emit("members:fetch");
       });
@@ -452,7 +482,8 @@ export function ProfileSettings() {
 
     const action = pendingActionRef.current;
     const hosts = action.host ? [action.host] : serverHosts;
-    await processAndUpload(file, hosts);
+    // A picture somebody picked, so any designed look is being replaced.
+    await processAndUpload(file, hosts, null);
     e.target.value = "";
   };
 
@@ -472,11 +503,11 @@ export function ProfileSettings() {
   const [choosingFor, setChoosingFor] = useState<string | null | undefined>(undefined);
   const [designingFor, setDesigningFor] = useState<string | null | undefined>(undefined);
 
-  const handleUseOwl = async (png: Blob, host: string | null) => {
+  const handleUseOwl = async (png: Blob, worn: string, host: string | null) => {
     setDesigningFor(undefined);
     setChoosingFor(undefined);
     const file = new File([png], "avatar.png", { type: "image/png" });
-    await processAndUpload(file, host ? [host] : serverHosts);
+    await processAndUpload(file, host ? [host] : serverHosts, worn);
   };
 
   const handleSyncToAll = async () => {
@@ -486,11 +517,16 @@ export function ProfileSettings() {
     try {
       const hosts = connectedHosts;
 
+      // The look goes with the nickname and the picture, because "sync to all"
+      // means this profile everywhere. Sent even when it is null — a server
+      // still holding a look this account has since dropped is exactly the
+      // disagreement the button exists to settle.
+      const worn = getStoredWorn();
       hosts.forEach(host => {
-        sockets[host]?.emit("profile:update", { nickname });
+        sockets[host]?.emit("profile:update", { nickname, avatarWorn: worn });
         setServerProfiles(prev => ({
           ...prev,
-          [host]: { ...prev[host], nickname },
+          [host]: { ...prev[host], nickname, avatarWorn: worn },
         }));
       });
 
@@ -580,6 +616,11 @@ export function ProfileSettings() {
 
   const allServerAvatarUrl = avatarDataUrl;
 
+  // Re-read rather than held in state, because every path that changes it
+  // already re-renders this screen: saving a design, uploading a picture and
+  // removing one all set `uploading` or `removing` on the way through.
+  const storedWorn = getStoredWorn();
+
   return (
     <SettingsContainer>
       <h2 className="text-lg">
@@ -611,6 +652,7 @@ export function ProfileSettings() {
             nickname={nickname}
             avatarUrl={allServerAvatarUrl}
             generatedAvatarUrl={resolveAvatarSrc(undefined, nickname)}
+            worn={storedWorn}
             initial={initial}
             uploading={uploading}
             removing={removing}
@@ -645,6 +687,7 @@ export function ProfileSettings() {
               nickname={serverNickname}
               avatarUrl={serverAvatarUrl}
               generatedAvatarUrl={resolveAvatarSrc(undefined, serverNickname)}
+              worn={profile?.avatarWorn ?? storedWorn}
               initial={serverInitial}
               uploading={uploading}
               removing={removing}
@@ -702,7 +745,7 @@ export function ProfileSettings() {
         onOpenChange={(next) => {
           if (!next) setDesigningFor(undefined);
         }}
-        onSave={(png) => void handleUseOwl(png, designingFor ?? null)}
+        onSave={(png, worn) => void handleUseOwl(png, worn, designingFor ?? null)}
         open={designingFor !== undefined}
         saving={uploading}
       />

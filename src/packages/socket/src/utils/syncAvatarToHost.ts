@@ -3,7 +3,8 @@ import { Socket } from "socket.io-client";
 
 import { getAvatarHash, getServerHttpBase, getStoredAvatar, getUploadsFileUrl } from "@/common";
 
-type ServerProfile = { nickname: string; avatarFileId: string | null; avatarUrl: string | null };
+import type { ServerProfile } from "../types/clients";
+
 
 function extForMime(mime: string): string {
   switch ((mime || "").toLowerCase()) {

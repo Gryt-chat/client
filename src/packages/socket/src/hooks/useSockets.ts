@@ -17,7 +17,7 @@ import {
 } from "@/settings/src/types/server";
 
 import { MemberInfo } from "../components/MemberSidebar";
-import { Clients } from "../types/clients";
+import { Clients, ServerProfile } from "../types/clients";
 import { guardSocket, serverProofErrorMessage, serverProofHelpUrl } from "../utils/serverAuth";
 import { syncAvatarToHost } from "../utils/syncAvatarToHost";
 import { useSocketEvents } from "./useSocketEvents";
@@ -64,7 +64,7 @@ function useSocketsHook() {
   const [failedServerDetails, setFailedServerDetails] = useState<Record<string, { error: string; message: string; timestamp: number }>>({});
   const [clients, setClients] = useState<{ [host: string]: Clients }>({});
   const [memberLists, setMemberLists] = useState<{ [host: string]: MemberInfo[] }>({});
-  const [serverProfiles, setServerProfiles] = useState<Record<string, { nickname: string; avatarFileId: string | null; avatarUrl: string | null }>>({});
+  const [serverProfiles, setServerProfiles] = useState<Record<string, ServerProfile>>({});
   const [serverConnectionStatus, setServerConnectionStatus] = useState<Record<string, 'connected' | 'disconnected' | 'connecting' | 'reconnecting' | 'refused'>>({});
   // Why a server was refused, so the UI can say it rather than guessing.
   const [refusalReason, setRefusalReason] = useState<Record<string, string>>({});

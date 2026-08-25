@@ -17,6 +17,13 @@ export interface MemberInfo {
   avatarFileId?: string | null;
   /** Dominant colour of the avatar as #rrggbb. Null until it has been computed. */
   avatarColor?: string | null;
+  /**
+   * What their owl is wearing, if they designed one — the string `@gryt/owl`
+   * encodes. Drawn here rather than fetched, so it stays sharp at any size and
+   * follows a palette change. Outranks `avatarFileId`; see `resolveAvatarSrc`
+   * for why both are set at once.
+   */
+  avatarWorn?: string | null;
   role?: Role;
   status: UserStatus;
   lastSeen?: Date;
@@ -138,7 +145,7 @@ const MemberItem = ({
           <Avatar
             size="small"
             fallback={member.nickname[0]}
-            src={resolveAvatarSrc(member.avatarFileId ? getUploadsFileUrl(serverHost, member.avatarFileId, { thumb: true }) : undefined, member.nickname)}
+            src={resolveAvatarSrc(member.avatarFileId ? getUploadsFileUrl(serverHost, member.avatarFileId, { thumb: true }) : undefined, member.nickname, member.avatarWorn)}
             style={{
               backgroundColor: member.color,
               opacity: isOffline ? 0.4 : 1,

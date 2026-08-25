@@ -116,6 +116,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
   const displayAvatarUrl = resolveAvatarSrc(
     activeProfile?.avatarUrl || avatarDataUrl,
     displayNickname,
+    activeProfile?.avatarWorn,
   );
   return (
     <div className="flex flex-col h-full gap-4 items-center justify-between" data-gryt="sidebar">
