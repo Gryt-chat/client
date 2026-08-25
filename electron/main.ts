@@ -14,7 +14,8 @@ import {
   systemPreferences,
   Tray,
 } from "electron";
-import { autoUpdater, UpdateDownloadedEvent, UpdateInfo } from "electron-updater";
+import { autoUpdater as defaultAutoUpdater, NsisUpdater, UpdateDownloadedEvent, UpdateInfo } from "electron-updater";
+import { DownloadedUpdateHelper } from "electron-updater/out/DownloadedUpdateHelper";
 import {
   appendFileSync,
   createReadStream,
@@ -373,6 +374,34 @@ function cleanupLegacyWindowsInstallBackup(): void {
     );
   }
 }
+
+/**
+ * Where the downloaded installer waits between the download and the install.
+ *
+ * electron-updater stages it in `%LOCALAPPDATA%\<app>-updater\pending` and
+ * writes the file's checksum into an `update-info.json` beside it. At install
+ * time it reads that back and re-verifies. If the two disagree it decides the
+ * download is corrupt, discards it, and downloads again on the next check.
+ *
+ * That directory is not ours. Antivirus quarantines things in it, disk cleaners
+ * empty it, and a download interrupted by a crash leaves a partial file that
+ * fails the same check. Every one of those produces the symptom Gryt has had on
+ * Windows for months: it downloads every release and installs none of them,
+ * because the install step never sees a file it trusts.
+ *
+ * `sessionData` is inside the app's own data tree, where nothing else has a
+ * reason to be. Borrowed from AFFiNE, whose entire Windows updater is this.
+ *
+ * Windows only — this is the NSIS staging path, and macOS and Linux do not use
+ * it.
+ */
+class WindowsUpdater extends NsisUpdater {
+  protected override downloadedUpdateHelper: DownloadedUpdateHelper =
+    new DownloadedUpdateHelper(app.getPath("sessionData"));
+}
+
+const autoUpdater =
+  process.platform === "win32" ? new WindowsUpdater() : defaultAutoUpdater;
 
 autoUpdater.logger = {
   info: (m: unknown) => startupLog(`Update: ${String(m)}`),
