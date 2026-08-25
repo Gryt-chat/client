@@ -93,14 +93,14 @@ function LogoIcon({ size = 48, beta = false }: { size?: number; beta?: boolean }
       </g>
       <defs>
         <clipPath id="logo-clip">
-          {/* Round, and `public/logo-round.svg` is the same rect with the same
-              rx on it.
+          {/* Round, and `public/logo.svg` is the same rect with the same rx
+              on it.
 
-              The square artboard in `public/logo.svg` is the one the app icon
-              and the READMEs want — a launcher applies its own mask and a
-              README wants the full frame. In the app the mark sits among
-              rounded surfaces at 48px, and a full-bleed dark square reads as a
-              missing image rather than as a logo. */}
+              The square artboard lives in `public/logo-square.svg` and has one
+              consumer, `scripts/generate-icons.mjs`, because a launcher
+              applies its own mask and wants the full frame. Everywhere a
+              person looks at the mark — the READMEs, both favicons, the tray,
+              this component — it is round. */}
           <rect width="1024" height="1024" rx="512" fill="white" />
         </clipPath>
       </defs>
