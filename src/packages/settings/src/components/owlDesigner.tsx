@@ -251,12 +251,19 @@ export function OwlDesignerDialog({
     [seed, look],
   );
 
-  /* A thumbnail is the whole owl wearing the one thing, so what you see in the
-     grid is what you get rather than a cropped hat floating on its own. */
+  /*
+   * A thumbnail is your owl with the one thing swapped in, rather than a bare
+   * bird wearing it alone. Seeing a hat on the face you already chose is the
+   * thing being decided; seeing it on a stranger is a different question.
+   *
+   * The cost is that a hat sits in every expression thumbnail, which is fine
+   * and is arguably the point — if it hides the eyes, that is worth knowing
+   * before choosing rather than after.
+   */
   const thumb = useCallback(
     (over: Partial<WornLook>) =>
       owlAvatarDataUri(seed, {
-        ...wornToOptions({ ...look, ...over, wearing: { ...BARE, ...over.wearing } }),
+        ...wornToOptions({ ...look, ...over, wearing: { ...look.wearing, ...over.wearing } }),
         size: 128,
       }),
     [seed, look],
@@ -338,17 +345,27 @@ export function OwlDesignerDialog({
 
               <div
                 ref={gridRef}
-                className="grid max-h-[22rem] grid-cols-[repeat(auto-fill,minmax(4.25rem,1fr))] gap-2 overflow-y-auto"
+                className="-mx-1.5 grid max-h-[22rem] grid-cols-[repeat(auto-fill,minmax(4.25rem,1fr))] gap-2 overflow-y-auto p-1.5"
               >
                 {activeSlot && (
                   <button
                     type="button"
                     onClick={() => wear(activeSlot, null)}
-                    className={`flex aspect-square cursor-pointer flex-col items-center justify-center rounded-(--gryt-radius-md) border text-[0.65rem] transition-colors ${
-                      look.wearing[activeSlot]
-                        ? "border-dashed border-gryt-border text-gryt-muted hover:bg-gryt-surface-hover"
-                        : "border-gryt-accent bg-gryt-surface-raised text-gryt-text"
-                    }`}
+                    className={
+                      "flex aspect-square cursor-pointer flex-col items-center justify-center "
+                      + "rounded-(--gryt-radius-md) text-[0.65rem] "
+                      + "transition-[scale,outline-color,background-color] "
+                      + "duration-(--gryt-dur-spring) ease-spring "
+                      + "motion-safe:hover:scale-[1.03] motion-safe:active:scale-[0.96] "
+                      + "focus-visible:outline-2 focus-visible:outline-offset-2 "
+                      + "focus-visible:outline-gryt-accent-light "
+                      + (look.wearing[activeSlot]
+                        ? "outline outline-1 outline-dashed outline-gryt-border text-gryt-muted "
+                          + "hover:bg-gryt-surface-hover"
+                        : "outline outline-[3px] outline-offset-[-1.5px] outline-gryt-accent "
+                          + "bg-gryt-surface-raised text-gryt-text motion-safe:scale-[1.04] "
+                          + "motion-safe:hover:scale-[1.06]")
+                    }
                   >
                     Nothing
                   </button>
@@ -363,9 +380,19 @@ export function OwlDesignerDialog({
                           type="button"
                           onClick={() => wear(activeSlot, a.name)}
                           aria-label={optionLabel(a.name)}
-                          className={`cursor-pointer overflow-hidden rounded-(--gryt-radius-md) border transition-colors ${
-                            on ? "border-gryt-accent bg-gryt-surface-raised" : "border-transparent hover:bg-gryt-surface-hover"
-                          }`}
+                          className={
+                            "cursor-pointer overflow-hidden rounded-(--gryt-radius-md) "
+                            + "transition-[scale,outline-color,background-color] "
+                            + "duration-(--gryt-dur-spring) ease-spring "
+                            + "motion-safe:hover:scale-[1.03] motion-safe:active:scale-[0.96] "
+                            + "focus-visible:outline-2 focus-visible:outline-offset-2 "
+                            + "focus-visible:outline-gryt-accent-light "
+                            + (on
+                              ? "outline outline-[3px] outline-offset-[-1.5px] outline-gryt-accent "
+                                + "bg-gryt-surface-raised motion-safe:scale-[1.04] "
+                                + "motion-safe:hover:scale-[1.06]"
+                              : "outline outline-0 outline-transparent hover:bg-gryt-surface-hover")
+                          }
                         >
                           <img
                             alt=""
@@ -386,9 +413,19 @@ export function OwlDesignerDialog({
                           type="button"
                           onClick={() => setLook((now) => ({ ...now, palette: name }))}
                           aria-label={name}
-                          className={`cursor-pointer overflow-hidden rounded-(--gryt-radius-md) border transition-colors ${
-                            on ? "border-gryt-accent bg-gryt-surface-raised" : "border-transparent hover:bg-gryt-surface-hover"
-                          }`}
+                          className={
+                            "cursor-pointer overflow-hidden rounded-(--gryt-radius-md) "
+                            + "transition-[scale,outline-color,background-color] "
+                            + "duration-(--gryt-dur-spring) ease-spring "
+                            + "motion-safe:hover:scale-[1.03] motion-safe:active:scale-[0.96] "
+                            + "focus-visible:outline-2 focus-visible:outline-offset-2 "
+                            + "focus-visible:outline-gryt-accent-light "
+                            + (on
+                              ? "outline outline-[3px] outline-offset-[-1.5px] outline-gryt-accent "
+                                + "bg-gryt-surface-raised motion-safe:scale-[1.04] "
+                                + "motion-safe:hover:scale-[1.06]"
+                              : "outline outline-0 outline-transparent hover:bg-gryt-surface-hover")
+                          }
                         >
                           <img
                             alt=""
@@ -437,7 +474,7 @@ export function OwlDesignerDialog({
                   <span className="text-[0.65rem] font-semibold tracking-wider text-gryt-muted uppercase">
                     Worn before
                   </span>
-                  <div className="flex gap-2 overflow-x-auto pb-1">
+                  <div className="-mx-1.5 flex gap-2 overflow-x-auto p-1.5">
                     {wardrobe.map((entry) => {
                       const past = decodeWorn(entry.worn);
                       if (!past) return null;
@@ -447,9 +484,16 @@ export function OwlDesignerDialog({
                             type="button"
                             onClick={() => setLook(past)}
                             aria-label="Wear this again"
-                            className={`block cursor-pointer overflow-hidden rounded-(--gryt-radius-md) border transition-colors ${
-                              entry.worn === worn ? "border-gryt-accent" : "border-gryt-border hover:border-gryt-accent"
-                            }`}
+                            className={
+                              "block cursor-pointer overflow-hidden rounded-(--gryt-radius-md) "
+                              + "transition-[scale,outline-color] duration-(--gryt-dur-spring) ease-spring "
+                              + "motion-safe:hover:scale-[1.03] motion-safe:active:scale-[0.96] "
+                              + "focus-visible:outline-2 focus-visible:outline-offset-2 "
+                              + "focus-visible:outline-gryt-accent-light "
+                              + (entry.worn === worn
+                                ? "outline outline-[3px] outline-offset-[-1.5px] outline-gryt-accent"
+                                : "outline outline-1 outline-gryt-border hover:outline-gryt-accent")
+                            }
                           >
                             <img
                               alt=""
