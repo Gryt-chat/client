@@ -474,6 +474,7 @@ export function ProfileSettings() {
 
   const handleUseOwl = async (png: Blob, host: string | null) => {
     setDesigningFor(undefined);
+    setChoosingFor(undefined);
     const file = new File([png], "avatar.png", { type: "image/png" });
     await processAndUpload(file, host ? [host] : serverHosts);
   };

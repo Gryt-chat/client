@@ -39,7 +39,6 @@ import {
   PiEyesFill,
   PiHoodieFill,
   PiPaletteFill,
-  PiPencilSimpleFill,
   PiShuffleBold,
   PiTrashFill,
 } from "react-icons/pi";
@@ -181,18 +180,14 @@ export function AvatarChoiceDialog({
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
-              onClick={() => {
-                onOpenChange(false);
-                onDesign();
-              }}
-              className="flex cursor-pointer flex-col items-center gap-3 rounded-(--gryt-radius-lg) border border-gryt-border bg-gryt-surface p-4 text-center transition-colors hover:bg-gryt-surface-hover"
+              onClick={onDesign}
+              className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-(--gryt-radius-lg) border border-gryt-border bg-gryt-surface p-5 text-center transition-colors hover:bg-gryt-surface-hover"
             >
               <img alt="" className="size-16 rounded-full" src={preview} />
               <span className="text-sm font-semibold text-gryt-text">Design your owl</span>
               <span className="text-xs text-gryt-muted">
                 Its colours, its expression, and what it is wearing.
               </span>
-              <PiPencilSimpleFill aria-hidden size={16} />
             </button>
 
             <button
@@ -201,14 +196,13 @@ export function AvatarChoiceDialog({
                 onOpenChange(false);
                 onUpload();
               }}
-              className="flex cursor-pointer flex-col items-center gap-3 rounded-(--gryt-radius-lg) border border-gryt-border bg-gryt-surface p-4 text-center transition-colors hover:bg-gryt-surface-hover"
+              className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-(--gryt-radius-lg) border border-gryt-border bg-gryt-surface p-5 text-center transition-colors hover:bg-gryt-surface-hover"
             >
               <span className="flex size-16 items-center justify-center rounded-full bg-gryt-surface-raised">
                 <PiCameraFill aria-hidden size={24} />
               </span>
               <span className="text-sm font-semibold text-gryt-text">Upload a picture</span>
               <span className="text-xs text-gryt-muted">PNG, JPG, WebP or GIF.</span>
-              <PiCameraFill aria-hidden className="opacity-0" size={16} />
             </button>
           </div>
         </Dialog.Popup>
