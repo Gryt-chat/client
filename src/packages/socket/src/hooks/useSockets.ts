@@ -6,7 +6,7 @@ import connectMp3 from "@/audio/src/assets/connect.mp3";
 import disconnectMp3 from "@/audio/src/assets/disconnect.mp3";
 import messageSoundMp3 from "@/audio/src/assets/universfield-computer-mouse-click-02-383961.mp3";
 import { singletonHook } from "@/common";
-import { getServerAccessToken, getServerRefreshToken, getServerWsBase, removeServerAccessToken, removeServerRefreshToken, useUnreadBadge, useUserId } from "@/common";
+import { ensureSchemeKnown, getServerAccessToken, getServerRefreshToken, getServerWsBase, removeServerAccessToken, removeServerRefreshToken, useUnreadBadge, useUserId } from "@/common";
 import { initKeycloak } from "@/common/src/auth/keycloak";
 import { useSettings } from "@/settings";
 import { useServerSettings } from "@/settings/src/hooks/useServerSettings";
@@ -306,6 +306,20 @@ function useSocketsHook() {
           toast.error(`Could not reconnect to ${serverName}`, { id: toastId });
         });
 
+        // Find out whether this host is http or https before anything fetches
+        // from it. Only the add-server flow ever recorded that, so a server
+        // already in the list still had the default — and on the desktop app
+        // the default is plain http, which a proxied deployment answers with a
+        // redirect that a preflighted request is not allowed to follow.
+        //
+        // The socket does not wait for it. The WebSocket URL is chosen from
+        // the same remembered scheme, but a proxy that redirects plain http
+        // will often still take a plain WebSocket upgrade, so holding every
+        // connection back for a round trip would cost startup time to fix
+        // something that mostly is not broken. It settles within the second
+        // the avatar sync below already waits.
+        const schemeKnown = ensureSchemeKnown(host).catch(() => undefined);
+
         // Initial join / details fetch
         const existingAccessToken = getServerAccessToken(host);
         
@@ -316,7 +330,8 @@ function useSocketsHook() {
             const existingAvatarFileId = localStorage.getItem(`avatarFileId:${host}`);
             const currentUserId = userIdRef.current;
             if (currentUserId) {
-              syncAvatarToHost(host, existingAccessToken, existingAvatarFileId, socket, setServerProfiles, currentUserId)
+              schemeKnown
+                .then(() => syncAvatarToHost(host, existingAccessToken, existingAvatarFileId, socket, setServerProfiles, currentUserId))
                 .catch(() => {});
             }
           }, 1000);
