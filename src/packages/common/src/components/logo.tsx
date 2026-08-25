@@ -1,5 +1,10 @@
 
-import { BETA_ACCENT, useIsBetaBuild } from "../utils/betaBuild";
+import {
+  BETA_ACCENT,
+  BETA_ACCENT_DEEP,
+  BETA_ACCENT_SOFT,
+  useIsBetaBuild,
+} from "../utils/betaBuild";
 import { BetaTag } from "./wordmark";
 
 /*
@@ -21,6 +26,11 @@ import { BetaTag } from "./wordmark";
  */
 function LogoIcon({ size = 48, beta = false }: { size?: number; beta?: boolean }) {
   const body = beta ? BETA_ACCENT : "#A495E3";
+  // The bird is three tones — the face above the body, the wings below it —
+  // and all three have to move together. Tinting the body alone gave a beta
+  // build an amber owl with a violet face and violet wings.
+  const face = beta ? BETA_ACCENT_SOFT : "#B5A8E6";
+  const wing = beta ? BETA_ACCENT_DEEP : "#7C6EC3";
 
   return (
     <svg
@@ -39,7 +49,7 @@ function LogoIcon({ size = 48, beta = false }: { size?: number; beta?: boolean }
         />
         <path
           d="M644.863 353C728.718 353 797.231 400.641 801.761 483.172H802C802 484.836 801.984 486.498 801.956 488.16C801.985 489.397 802 490.638 802 491.882C802 500.32 801.331 508.603 800.045 516.68C796.951 543.102 790.208 569.026 779.963 593.702C765.414 628.744 744.09 660.584 717.207 687.404C690.325 714.224 658.411 735.499 623.287 750.014C588.163 764.529 550.518 772 512.5 772C474.482 772 436.837 764.529 401.713 750.014C366.589 735.499 334.675 714.224 307.793 687.404C280.91 660.584 259.586 628.744 245.037 593.702C234.792 569.026 228.048 543.103 224.955 516.681C223.668 508.604 223 500.321 223 491.882C223 490.638 223.015 489.397 223.044 488.16C223.015 486.498 223 484.836 223 483.172H223.239C227.769 400.641 296.282 353 380.137 353C435.721 353 509.197 384.119 512.5 384.119C515.803 384.119 589.279 353 644.863 353Z"
-          fill="#B5A8E6"
+          fill={face}
         />
         <path
           d="M637.617 445.204C665.591 435.093 696.445 449.712 706.342 477.765C716.239 505.817 701.39 536.563 673.265 546.251C645.44 555.834 615.095 541.175 605.303 513.42C595.511 485.664 609.94 455.207 637.617 445.204Z"
@@ -74,18 +84,24 @@ function LogoIcon({ size = 48, beta = false }: { size?: number; beta?: boolean }
         />
         <path
           d="M906.96 674.972C980.417 846.97 995.414 1003.44 928.605 1184.1C909.953 1234.53 867.051 1304.74 824.992 1339.24C737.388 1214.12 737.93 956.855 814.166 829.785C845.783 777.085 880.299 731.645 906.96 674.972Z"
-          fill="#7C6EC3"
+          fill={wing}
         />
         <path
           d="M117.45 677.728C148.478 736.742 188.64 787.208 219.025 842.528C286.593 965.554 281.984 1131.04 239.787 1261.69C231.441 1286.49 220.568 1319.3 203.048 1339.89C155.686 1305.18 114.107 1232 94.36 1178.04C30.9054 1004.63 43.665 843.414 117.45 677.728Z"
-          fill="#7C6EC3"
+          fill={wing}
         />
       </g>
       <defs>
         <clipPath id="logo-clip">
-          {/* Square. The previous mark carried its own disc as an rx on this
-              rect; this one is drawn to the edges of its frame. */}
-          <rect width="1024" height="1024" fill="white" />
+          {/* Round, and `public/logo-round.svg` is the same rect with the same
+              rx on it.
+
+              The square artboard in `public/logo.svg` is the one the app icon
+              and the READMEs want — a launcher applies its own mask and a
+              README wants the full frame. In the app the mark sits among
+              rounded surfaces at 48px, and a full-bleed dark square reads as a
+              missing image rather than as a logo. */}
+          <rect width="1024" height="1024" rx="512" fill="white" />
         </clipPath>
       </defs>
     </svg>

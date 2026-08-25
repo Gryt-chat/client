@@ -10,6 +10,22 @@
 export const BETA_ACCENT = "#f2a33c";
 
 /**
+ * The other two steps the mark is drawn in: the face above the body, the wings
+ * below it.
+ *
+ * The bird is three tones, not one. Tinting only the body left a beta build
+ * wearing an amber owl with a violet face and violet wings, which reads as
+ * three colours arguing rather than as one owl in another colour.
+ *
+ * Both are the same ratio off the amber that #B5A8E6 and #7C6EC3 are off
+ * #A495E3, so the bird keeps its own modelling. Kept in step by hand with
+ * --owl-face and --owl-wing in electron/splash.html, which cannot import from
+ * here.
+ */
+export const BETA_ACCENT_SOFT = "#ffc46b";
+export const BETA_ACCENT_DEEP = "#b77834";
+
+/**
  * Is the build that is currently running a beta?
  *
  * The version decides, not the channel preference. Someone can be subscribed to
