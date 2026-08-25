@@ -19,7 +19,7 @@
  * and commit the PNGs — same arrangement as the site's share cards.
  */
 import sharp from "sharp";
-import { writeFileSync } from "fs";
+import { readFileSync, writeFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -32,24 +32,44 @@ import {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const buildDir = join(__dirname, "..", "build");
 
-// The disc. Centred on the face rather than on the logo, and sized so the eyes
-// and beak sit inside it with a margin — the logo's own circle is centred lower
-// and would push the features off-centre once the head is gone.
-const SOLID = `<circle cx="256" cy="196" r="118"/>`;
+/*
+ * The tray owl, on the logo's own 1024 frame.
+ *
+ * Re-derived for the 2026 mark. The previous numbers were measured off the old
+ * logo — a dark bird on a violet disc — and none of them survived it: the eyes
+ * moved from y196 to y495 on a frame twice the size.
+ *
+ * Measured rather than eyeballed, by rendering the logo and reading getBBox:
+ *
+ *     left eye   (369.5, 495.5)  r 53.5
+ *     right eye  (655.8, 495.6)  r 53.6
+ *     beak        x 479.8-545.6, y 573.2-678.9
+ *
+ * The disc is centred at (512, 545) rather than on the face's own centre
+ * (512, 562), and r=230 clears the outermost feature — the right eye's far
+ * edge, 203px out — by about 26px. Centring on the face proper drops the eyes
+ * too high in the circle once the head is gone.
+ */
+const SOLID = `<circle cx="512" cy="545" r="230"/>`;
 
-// Punched out: beak and both eyes.
+/*
+ * Punched out: both eyes and the beak, as the mark's own paths rather than
+ * circles approximating them. They are already the right shape and already in
+ * this coordinate space, and a hand-fitted circle is one more thing to re-fit
+ * the next time the bird is redrawn.
+ */
 const HOLES = `
-  <path d="M258.736 232.014C258.214 234.003 255.389 234.003 254.867 232.014L247.045 202.207C246.712 200.939 247.669 199.7 248.98 199.7L264.624 199.7C265.935 199.7 266.891 200.939 266.558 202.207L258.736 232.014Z"/>
-  <path d="M203.08 162C216.959 162 221.986 169.702 222.773 173.951C223.299 177.67 223.246 186.062 218.835 189.887C213.321 194.667 195.473 200.325 190.476 185.106C186.814 173.951 188.375 169.171 188.113 169.171C190.476 163.631 195.256 162 203.08 162Z"/>
-  <path d="M308.124 160.851C294.151 160.851 289.09 168.637 288.297 172.932C287.768 176.691 287.821 185.174 292.262 189.04C297.814 193.873 315.782 199.592 320.813 184.208C324.5 172.932 322.928 168.1 323.192 168.1C320.813 162.5 316 160.851 308.124 160.851Z"/>
+  <path d="M637.617 445.204C665.591 435.093 696.445 449.712 706.342 477.765C716.239 505.817 701.39 536.563 673.265 546.251C645.44 555.834 615.095 541.175 605.303 513.42C595.511 485.664 609.94 455.207 637.617 445.204Z"/>
+  <path d="M351.43 445.189C379.259 435.201 409.911 449.686 419.866 477.529C429.817 505.372 415.293 536.009 387.442 545.929C359.639 555.83 329.07 541.337 319.137 513.545C309.2 485.75 323.652 455.159 351.43 445.189Z"/>
+  <path d="M512.359 573.191C508.812 573.17 516.378 573.212 512.359 573.191C572.603 573.544 536.569 640.612 516.085 676.829C514.504 679.626 510.416 679.514 508.945 676.658C490.115 640.101 452.322 573.191 512.359 573.191Z"/>
 `;
 
-const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   <mask id="owl">
     <g fill="#fff">${SOLID}</g>
     <g fill="#000">${HOLES}</g>
   </mask>
-  <rect width="512" height="512" fill="#000" mask="url(#owl)"/>
+  <rect width="1024" height="1024" fill="#000" mask="url(#owl)"/>
 </svg>`;
 
 /**
@@ -114,26 +134,34 @@ await render(48, "trayTemplate@3x.png");
 // disabled" rather than "your microphone is off". It works in the app only
 // because the slash there is drawn on a microphone.
 
-const PURPLE = "#968FF8"; // straight from public/logo.svg
-const INK = "#1A1D24"; // the logo's dark, and the most legible glyph colour
-                       // on every disc — 6.09:1 on the purple where white is 2.77:1
+const PURPLE = "#A495E3"; // the bird, straight from public/logo.svg
+const INK = "#2E2D5F"; // the mark's ground, and the most legible glyph colour
+                       // on every disc — 4.82:1 on the purple where white is 2.63:1
 const GREEN = "#34B075";
 const ROSE = "#F2555A";
 
 // Colours are matched on *visibility*, not brightness. Worst case against a
 // Windows 11 light taskbar, a Windows 11 dark one, a GNOME dark panel and a
-// KDE light one: purple 2.41, green 2.40, rose 2.94 — so no state looks
+// KDE light one: purple 2.30, green 2.42, rose 2.96 — so no state looks
 // conspicuously fainter than its neighbours. The obvious "live" green,
 // #3DD68C, measures 1.63:1 on a light taskbar and the disc washes out.
+//
+// Re-measured for the 2026 mark. Its violet is a shade lighter than the old
+// one, which costs the idle disc 0.11 against a KDE light panel — the three
+// stay within 0.66 of each other, which is what the matching is for.
 
 const R = 250;
 const C = 256;
 
 // The owl's features rescaled onto the full-size disc. They are authored
-// against the r=118 disc above, so they need moving before they can sit on
-// this one.
-const K = R / 118;
-const OWL_ON_DISC = `<g transform="translate(${C} ${C}) scale(${K}) translate(-256 -196)">${HOLES}</g>`;
+// against the r=230 disc above, centred on (512, 545), so they need moving and
+// rescaling before they can sit on this one.
+//
+// Both numbers come off SOLID rather than being tuned here. When they did not,
+// the idle disc came out blank: the features were still being re-centred on
+// (256, 196) from the previous mark and landed clean outside the circle.
+const K = R / 230;
+const OWL_ON_DISC = `<g transform="translate(${C} ${C}) scale(${K}) translate(-512 -545)">${HOLES}</g>`;
 
 /**
  * The inner markup of a react-icons glyph, scaled onto the disc.
@@ -161,10 +189,27 @@ function disc(fill, inner) {
 </svg>`;
 }
 
+/*
+ * The rounded mark, read off disk rather than rebuilt here.
+ *
+ * public/logo-round.svg is the same drawing as the square logo with a circular
+ * clip, and for the idle state that is exactly what is wanted — the app's own
+ * mark, in its own colours, in the shape a tray icon should be.
+ *
+ * This is the one state that can be the real mark. macOS cannot have it: a
+ * *Template.png is read for its alpha only and painted black, so a full-colour
+ * logo arrives as a solid disc. That is why the silhouette above still exists
+ * and is still hand-built.
+ */
+const ROUND_MARK = readFileSync(
+  join(__dirname, "..", "public", "logo-round.svg"),
+  "utf8",
+);
+
 const states = {
   // Not in voice. The mark itself, so the tray still identifies the app when
   // there is no call to report on.
-  "tray-idle": disc(PURPLE, OWL_ON_DISC),
+  "tray-idle": ROUND_MARK,
   // In voice with the microphone open. Not driven by voice activity — that
   // would flip the icon several times a second through one sentence.
   "tray-live": disc(GREEN, glyph(PiMicrophoneFill, 0.56)),
