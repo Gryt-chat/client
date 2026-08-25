@@ -30,7 +30,7 @@ import {
   type WornLook,
   wornToOptions,
 } from "@gryt/owl";
-import { Avatar, Button, Dialog, Tooltip } from "@gryt/ui";
+import { Button, Dialog, Tabs, Tooltip } from "@gryt/ui";
 import { type ReactElement,useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   PiBaseballCapFill,
@@ -145,6 +145,117 @@ async function renderToPng(seed: string, look: WornLook, size = 512): Promise<Bl
   });
 }
 
+/**
+ * The preview owl, cross-faded rather than swapped.
+ *
+ * Changing an `<img>`'s src tears the old picture down, decodes the new one and
+ * puts it up, and the gap between those is a frame of nothing. Every equip
+ * flashed.
+ *
+ * So each look is a layer of its own, stacked, and the new one fades in over
+ * the old. Two rules make it never blank:
+ *
+ *   - a layer does not start fading until its own image has decoded, so there
+ *     is always a finished picture underneath the one arriving;
+ *   - the layers below are only dropped once the top one is fully opaque.
+ *
+ * Clicking quickly is fine. Several layers can be in flight, they fade on their
+ * own timers, and whichever finishes last wins — there is no queue to get out of
+ * order and nothing to cancel.
+ */
+function CrossfadeOwl({ src, className }: { src?: string; className?: string }) {
+  // Newest last. Each entry is one rendered look.
+  const [layers, setLayers] = useState<{ src: string; id: number }[]>([]);
+  const nextId = useRef(0);
+
+  useEffect(() => {
+    if (!src) return;
+    setLayers((prev) => {
+      // Re-selecting what is already shown should do nothing at all, rather
+      // than fade the same picture over itself.
+      if (prev.length > 0 && prev[prev.length - 1].src === src) return prev;
+      return [...prev, { src, id: nextId.current++ }];
+    });
+  }, [src]);
+
+  const settle = useCallback((id: number) => {
+    // Everything below the settled layer has been covered, so it can go. Keeping
+    // them would stack a few hundred KB of data URIs over a long session.
+    setLayers((prev) => {
+      const i = prev.findIndex((l) => l.id === id);
+      return i <= 0 ? prev : prev.slice(i);
+    });
+  }, []);
+
+  return (
+    <div className={`relative ${className ?? ""}`}>
+      {layers.map((layer, i) => (
+        <OwlLayer
+          key={layer.id}
+          // The first one has nothing to fade over, so it is simply there. A
+          // fade on open would read as the dialog loading.
+          immediate={i === 0}
+          onSettled={() => settle(layer.id)}
+          src={layer.src}
+        />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Button's interaction, borrowed for the rail's tabs.
+ *
+ * @gryt/ui's Tab animates its colour and nothing else. Until it grows a press
+ * of its own this keeps the rail feeling like the rest of the dialog — the same
+ * numbers Button and the option tiles use, so the three do not disagree.
+ */
+const TAB_PRESS =
+  "transition-[scale,color,background-color] duration-(--gryt-dur-spring) ease-spring "
+  + "motion-safe:hover:scale-[1.03] motion-safe:active:scale-[0.96] motion-reduce:transition-none";
+
+const FADE_MS = 250;
+
+function OwlLayer({
+  src,
+  immediate,
+  onSettled,
+}: {
+  src: string;
+  immediate: boolean;
+  onSettled: () => void;
+}) {
+  const [shown, setShown] = useState(immediate);
+
+  const reveal = useCallback(() => {
+    if (immediate) return;
+    // Two frames, not one. A single rAF can land in the same style flush as the
+    // mount, and the browser then has no starting value to animate from — the
+    // layer snaps in and the flash is back.
+    requestAnimationFrame(() => requestAnimationFrame(() => setShown(true)));
+  }, [immediate]);
+
+  useEffect(() => {
+    if (!shown) return;
+    const t = setTimeout(onSettled, immediate ? 0 : FADE_MS);
+    return () => clearTimeout(t);
+  }, [shown, immediate, onSettled]);
+
+  return (
+    <img
+      alt=""
+      // decode="sync" so onLoad means it is ready to paint, not merely fetched.
+      className="absolute inset-0 h-full w-full rounded-full object-contain motion-reduce:transition-none"
+      onLoad={reveal}
+      src={src}
+      style={{
+        opacity: shown ? 1 : 0,
+        transition: `opacity ${FADE_MS}ms ease-out`,
+      }}
+    />
+  );
+}
+
 /* --- the choice, when you click your avatar ------------------------------ */
 
 export function AvatarChoiceDialog({
@@ -169,7 +280,22 @@ export function AvatarChoiceDialog({
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Backdrop />
+        {/*
+          `forceRender`, and it is load-bearing rather than tidying.
+
+          Base UI drops a dialog's backdrop when that dialog is nested inside
+          another one — `enabled: forceRender || !nested` in DialogBackdrop. The
+          whole settings panel is a Dialog (settings.tsx), and this renders
+          inside it, so both of these count as nested and shipped with no
+          backdrop at all.
+
+          That cost two things, not one. Nothing dimmed behind the dialog, and
+          it could not be dismissed by clicking away: Base UI only treats an
+          outside press as a dismissal when the click landed on *that dialog's
+          own* backdrop, so with no backdrop there was nothing to land on and
+          the only way out was Save.
+        */}
+        <Dialog.Backdrop forceRender />
         <Dialog.Popup className="w-[30rem] max-w-[calc(100vw-2rem)]">
           <Dialog.Title>Your avatar</Dialog.Title>
           <Dialog.Description className="mt-2 mb-4">
@@ -279,54 +405,67 @@ export function OwlDesignerDialog({
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Backdrop />
-        <Dialog.Popup className="w-[54rem] max-w-[calc(100vw-2rem)] p-0">
+        {/* See the note on the chooser's backdrop above. */}
+        <Dialog.Backdrop forceRender />
+        {/*
+          overflow-hidden, because p-0 lets the rail paint its own background
+          right up to the edge. Dialog.Popup has the radius and the border, but
+          nothing was clipping the children to it, so a square rail painted over
+          two rounded corners and the dialog looked like it had none.
+        */}
+        <Dialog.Popup className="w-[54rem] max-w-[calc(100vw-2rem)] overflow-hidden p-0">
           <div className="flex flex-col md:flex-row">
-            {/* rail */}
-            <div className="flex shrink-0 flex-row gap-1 overflow-x-auto border-b border-gryt-border bg-gryt-surface p-3 md:w-48 md:flex-col md:border-r md:border-b-0">
-              {SLOTS.map(({ slot, label, Icon }) => {
-                const on = pane === slot;
-                const chosen = Boolean(look.wearing[slot]);
-                return (
-                  <button
-                    key={slot}
-                    type="button"
-                    onClick={() => setPane(slot)}
-                    className={`flex shrink-0 cursor-pointer items-center gap-2.5 rounded-(--gryt-radius-md) px-3 py-2 text-sm font-semibold whitespace-nowrap transition-colors ${
-                      on
-                        ? "bg-gryt-accent text-gryt-on-accent"
-                        : chosen
-                          ? "text-gryt-text hover:bg-gryt-surface-hover"
-                          : "text-gryt-muted hover:bg-gryt-surface-hover"
-                    }`}
-                  >
-                    <Icon size={18} />
-                    <span>{label}</span>
-                    {chosen && !on && (
-                      <span className="size-1.5 rounded-full bg-gryt-accent" aria-hidden />
-                    )}
-                    <span className="ml-auto pl-2 font-mono text-[0.65rem] opacity-70">
-                      {accessoriesIn(slot).length}
-                    </span>
-                  </button>
-                );
-              })}
-              <button
-                type="button"
-                onClick={() => setPane(COLOUR)}
-                className={`flex shrink-0 cursor-pointer items-center gap-2.5 rounded-(--gryt-radius-md) px-3 py-2 text-sm font-semibold whitespace-nowrap transition-colors ${
-                  pane === COLOUR
-                    ? "bg-gryt-accent text-gryt-on-accent"
-                    : "text-gryt-text hover:bg-gryt-surface-hover"
-                }`}
-              >
-                <PiPaletteFill size={18} />
-                <span>Colour</span>
-                <span className="ml-auto pl-2 font-mono text-[0.65rem] opacity-70">
-                  {PALETTE_NAMES.length}
-                </span>
-              </button>
-            </div>
+            {/*
+              Gryt UI's vertical Tabs, not a row of buttons.
+
+              This was hand-rolled, and the two things that gave it away were
+              the two things Tabs brings: nothing slid between panes because
+              there was no Indicator, and nothing grew or shrank under the
+              cursor because the buttons only animated their colour. The grid of
+              owls immediately below does have the spring, which is what made
+              the rail feel dead next to it.
+
+              The scale classes are passed per tab rather than lived with,
+              because @gryt/ui's Tab has no press feedback of its own yet.
+              Matching Button exactly: 1.03 on hover, 0.96 on press, on the
+              spring duration and curve.
+            */}
+            <Tabs
+              className="shrink-0 border-b border-gryt-border bg-gryt-surface md:w-48 md:border-r md:border-b-0"
+              onValueChange={(value) => setPane(String(value) as typeof pane)}
+              orientation="vertical"
+              value={pane}
+            >
+              <Tabs.List aria-label="What to change" className="gap-1 p-3">
+                {SLOTS.map(({ slot, label, Icon }) => {
+                  const chosen = Boolean(look.wearing[slot]);
+                  return (
+                    <Tabs.Tab
+                      className={TAB_PRESS}
+                      key={slot}
+                      value={slot}
+                    >
+                      <Icon size={18} />
+                      <span>{label}</span>
+                      {chosen && pane !== slot && (
+                        <span className="size-1.5 rounded-full bg-gryt-accent" aria-hidden />
+                      )}
+                      <span className="ml-auto pl-2 font-mono text-[0.65rem] opacity-70">
+                        {accessoriesIn(slot).length}
+                      </span>
+                    </Tabs.Tab>
+                  );
+                })}
+                <Tabs.Tab className={TAB_PRESS} value={COLOUR}>
+                  <PiPaletteFill size={18} />
+                  <span>Colour</span>
+                  <span className="ml-auto pl-2 font-mono text-[0.65rem] opacity-70">
+                    {PALETTE_NAMES.length}
+                  </span>
+                </Tabs.Tab>
+                <Tabs.Indicator />
+              </Tabs.List>
+            </Tabs>
 
             {/* grid */}
             <div className="flex min-w-0 flex-1 flex-col gap-3 p-4">
@@ -513,7 +652,7 @@ export function OwlDesignerDialog({
 
             {/* the owl */}
             <div className="flex shrink-0 flex-col items-center gap-3 border-t border-gryt-border bg-gryt-surface p-4 md:w-56 md:border-t-0 md:border-l">
-              <Avatar className="h-40 w-40" size="large" src={preview} />
+              <CrossfadeOwl className="h-40 w-40" src={preview} />
               <span className="text-xs text-gryt-muted">{nickname}</span>
               <div className="mt-auto flex w-full flex-col gap-2">
                 <button
