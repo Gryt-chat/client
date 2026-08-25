@@ -1,6 +1,13 @@
-import { Chip } from "@gryt/ui";
+import { Avatar, Button, Chip, Collapsible } from "@gryt/ui";
+import { useState } from "react";
+import toast from "react-hot-toast";
+import { PiCaretDownBold, PiCopySimpleBold } from "react-icons/pi";
 
+import { resolveAvatarSrc } from "@/common";
+
+import { BotTag } from "./BotTag";
 import type { MemberInfo } from "./MemberSidebar";
+import { statusConfig } from "./memberStatus";
 
 /**
  * What a member list can say about somebody beyond their chosen name.
@@ -9,6 +16,15 @@ import type { MemberInfo } from "./MemberSidebar";
  * claim rather than a fact. These are the parts of that claim nobody can pick:
  * when the account first joined *this* server, whether there is an account
  * behind it at all, and a marker that stays the same across renames.
+ *
+ * Presence first, identity on demand. Hovering somebody mid-call is nearly
+ * always a question about where they are rather than an audit, so the ring, the
+ * name and the status answer it without a click and everything that proves who
+ * they are sits in a drawer underneath.
+ *
+ * The exception is a member with no account, where the question on hover really
+ * is identity. There the fingerprint comes out of the drawer and stays on the
+ * face of the card.
  */
 
 function formatJoined(value?: string | Date): string | null {
@@ -22,9 +38,9 @@ function formatJoined(value?: string | Date): string | null {
   });
 }
 
-const TIER_LABEL: Record<string, { label: string; color: "gray" | "amber" }> = {
-  account: { label: "Gryt account", color: "gray" },
-  local: { label: "No account", color: "amber" },
+const TIER_LABEL: Record<string, { label: string; amber: boolean }> = {
+  account: { label: "Gryt account", amber: false },
+  local: { label: "No account", amber: true },
 };
 
 /**
@@ -63,78 +79,189 @@ function describeRenames(count?: number, at?: string | null): string | null {
   })}`;
 }
 
-export function MemberIdentityCard({ member }: { member: MemberInfo }) {
+/**
+ * Grouped in fours, and never shortened.
+ *
+ * A local identity is a keypair its holder makes, so a few characters could be
+ * ground out to match somebody worth impersonating — the server keys the
+ * fingerprint so that cannot be done offline, and the full value is what makes
+ * comparing it mean anything. Four authoritative-looking characters would be
+ * worse than none: they invite a comparison that does not hold.
+ *
+ * The groups are for reading it aloud, which is how two people actually check
+ * one against the other.
+ */
+function Fingerprint({ value }: { value: string }) {
+  return (
+    <code
+      className="block rounded-(--gryt-radius-sm) border border-gryt-border bg-gryt-bg px-2 py-1.5 font-mono text-xs text-gryt-text"
+      style={{ wordSpacing: "0.35em", overflowWrap: "anywhere", userSelect: "all" }}
+    >
+      {value.replace(/(.{4})(?=.)/g, "$1 ")}
+    </code>
+  );
+}
+
+function Fact({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <>
+      <dt className="text-xs text-gryt-muted">{label}</dt>
+      <dd className="m-0 text-right text-sm text-gryt-text">{children}</dd>
+    </>
+  );
+}
+
+export function MemberIdentityCard({
+  member,
+  voiceChannelName,
+}: {
+  member: MemberInfo;
+  /**
+   * Optional, because neither caller has channels in reach: the sidebar and the
+   * message list both pass a member and nothing else. Without it the status
+   * reads "In Voice" rather than "In Voice · General", which is the part that
+   * mattered anyway.
+   */
+  voiceChannelName?: string;
+}) {
   const joined = formatJoined(member.createdAt);
   const tier = member.identityTier ? TIER_LABEL[member.identityTier] : undefined;
   const renames = describeRenames(
     member.nicknameChangeCount,
     member.nicknameChangedAt,
   );
+  const status = statusConfig[member.status];
+  const offline = member.status === "offline";
+
+  /*
+   * Only a designed owl can be copied. Copying somebody's uploaded photograph
+   * would be impersonation, on the one card that exists to help people tell
+   * each other apart.
+   */
+  const worn = member.avatarWorn;
+
+  /*
+   * The whole fingerprint on the face of the card when there is no account
+   * behind the name, in the drawer when there is. This is the one place the
+   * card stops being presence-first, and it is the case where the question on
+   * hover really is "is this who I think it is".
+   */
+  const [open, setOpen] = useState(false);
+
+  const identityIsTheQuestion = member.identityTier === "local";
+  const fingerprint = member.identityFingerprint;
+
+  const caution = (
+    <span className="text-xs leading-snug text-gryt-muted">
+      Names are not unique. Check the fingerprint if it matters.
+    </span>
+  );
 
   return (
-    <div className="flex flex-col gap-2" style={{ maxWidth: 260 }}>
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-sm font-bold">
-          {member.nickname}
+    <div className="flex flex-col gap-3" style={{ width: 260 }}>
+      <div className="flex min-w-0 items-center gap-2.5">
+        {/*
+          The ring is the presence rather than a dot beside it, so it reads
+          before you have finished looking at the name. Offline gets no ring at
+          all instead of a grey one — an absent person should be quiet, not
+          marked.
+        */}
+        <span
+          className="shrink-0 rounded-(--gryt-radius-full) p-[3px]"
+          style={{ background: offline ? "transparent" : status.color }}
+        >
+          <Avatar
+            alt=""
+            fallback={member.nickname[0]}
+            src={resolveAvatarSrc(undefined, member.nickname, member.avatarWorn)}
+          />
         </span>
-        {member.role && member.role !== "member" && (
-          <Chip tone="neutral">
-            {member.role}
-          </Chip>
-        )}
+
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span
+            className="flex items-center gap-1.5 text-base font-bold"
+            style={{ overflowWrap: "anywhere" }}
+          >
+            {member.nickname}
+            {member.isBot && <BotTag size="small" />}
+          </span>
+          <span className="text-xs" style={{ color: status.color }}>
+            {status.label}
+            {member.status === "in_voice" && voiceChannelName && (
+              <span className="text-gryt-muted"> · {voiceChannelName}</span>
+            )}
+          </span>
+        </div>
       </div>
 
-      <dl className="m-0 flex flex-col gap-3">
-        {tier && (
-          <div className="flex flex-col gap-0.5">
-            <dt className="text-xs text-gryt-muted">Identity</dt>
-            <dd className="m-0 text-sm text-gryt-text">
-              <Chip tone="neutral" color={tier.color}>
-                {tier.label}
-              </Chip>
-            </dd>
-          </div>
-        )}
+      {((member.role && member.role !== "member") || tier?.amber) && (
+        <div className="flex flex-wrap gap-1.5">
+          {member.role && member.role !== "member" && (
+            <Chip tone="primary">{member.role}</Chip>
+          )}
+          {/*
+            Amber marks "no account" and nothing else. Spend it anywhere
+            decorative and it stops meaning anything.
+          */}
+          {tier?.amber && <Chip tone="warning">{tier.label}</Chip>}
+        </div>
+      )}
 
-        {joined && (
-          <div className="flex flex-col gap-0.5">
-            <dt className="text-xs text-gryt-muted">Joined</dt>
-            <dd className="m-0 text-sm text-gryt-text">{joined}</dd>
-          </div>
-        )}
+      {worn && (
+        <Button
+          onClick={() => {
+            void navigator.clipboard
+              .writeText(worn)
+              .then(() => toast.success("Avatar code copied"))
+              .catch(() => toast.error("Could not copy"));
+          }}
+          size="small"
+          startIcon={<PiCopySimpleBold size={14} />}
+        >
+          Copy avatar
+        </Button>
+      )}
 
-        {renames && (
-          <div className="flex flex-col gap-0.5">
-            <dt className="text-xs text-gryt-muted">Name</dt>
-            <dd className="m-0 text-sm text-gryt-text">{renames}</dd>
-          </div>
-        )}
+      {identityIsTheQuestion && fingerprint && (
+        <div className="flex flex-col gap-1.5">
+          <span className="text-xs text-gryt-muted">Fingerprint</span>
+          <Fingerprint value={fingerprint} />
+          {caution}
+        </div>
+      )}
 
-        {member.identityFingerprint && (
-          <div className="flex flex-col gap-0.5">
-            <dt className="text-xs text-gryt-muted">Fingerprint</dt>
-            <dd className="m-0 text-sm text-gryt-text">
-              {/*
-                Shown whole rather than shortened. A local identity is a keypair
-                its holder makes, so a few characters could be ground out to
-                match somebody worth impersonating — the server keys the
-                fingerprint so that cannot be done offline, and the full value
-                is what makes comparing it mean anything.
-              */}
-              <code
-                className="font-mono text-xs text-gryt-muted"
-                style={{ overflowWrap: "anywhere", userSelect: "all" }}
-              >
-                {member.identityFingerprint}
-              </code>
-            </dd>
+      <Collapsible.Root onOpenChange={setOpen} open={open}>
+        <Collapsible.Trigger className="cursor-pointer border-t border-gryt-border !px-0 pt-2.5 text-xs font-semibold text-gryt-muted hover:!bg-transparent hover:text-gryt-text">
+          Who they are
+          {/*
+            Turned from state rather than a data-attribute variant. Base UI does
+            put data-panel-open on the trigger, but the Tailwind variant for it
+            compiled to nothing here and a caret that silently never turns is
+            exactly the kind of thing that ships.
+          */}
+          <PiCaretDownBold
+            className="transition-transform"
+            size={10}
+            style={{ transform: open ? "rotate(180deg)" : undefined }}
+          />
+        </Collapsible.Trigger>
+        <Collapsible.Panel>
+          <div className="flex flex-col gap-2.5 pt-2.5">
+            <dl className="m-0 grid grid-cols-[auto_1fr] items-baseline gap-x-3.5 gap-y-1.5">
+              {tier && <Fact label="Account">{tier.label}</Fact>}
+              {joined && <Fact label="Joined">{joined}</Fact>}
+              {renames && <Fact label="Name">{renames}</Fact>}
+            </dl>
+            {!identityIsTheQuestion && fingerprint && (
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs text-gryt-muted">Fingerprint</span>
+                <Fingerprint value={fingerprint} />
+              </div>
+            )}
+            {!identityIsTheQuestion && caution}
           </div>
-        )}
-      </dl>
-
-      <span className="text-xs text-gryt-muted">
-        Names are not unique. Check the fingerprint if it matters.
-      </span>
+        </Collapsible.Panel>
+      </Collapsible.Root>
     </div>
   );
 }

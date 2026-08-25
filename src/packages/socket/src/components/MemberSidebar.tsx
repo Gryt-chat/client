@@ -6,6 +6,7 @@ import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 import { UserStatus } from "../types/clients";
 import { BotTag } from "./BotTag";
 import { MemberIdentityCard } from "./MemberIdentityCard";
+import { statusConfig, statusPriority } from "./memberStatus";
 import { UserContextMenu } from "./UserContextMenu";
 
 /** A role id. The server defines its own; these only pass one along. */
@@ -81,19 +82,6 @@ interface MemberSidebarProps {
   onTogglePinned?: () => void;
 }
 
-const statusConfig: Record<UserStatus, { label: string; color: string }> = {
-  in_voice: { label: "In Voice", color: "var(--gryt-accent-9)" },
-  online: { label: "Online", color: "var(--gryt-success-9)" },
-  afk: { label: "AFK", color: "var(--gryt-warning-9)" },
-  offline: { label: "Offline", color: "var(--gryt-neutral-9)" },
-};
-
-const statusPriority: Record<UserStatus, number> = {
-  in_voice: 0,
-  online: 1,
-  afk: 2,
-  offline: 3,
-};
 
 const MemberItem = ({
   member,
