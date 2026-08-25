@@ -231,11 +231,13 @@ export const TILE_RADIUS = 16;
 function MutedBadge({
   hueId,
   hueAvatarColor,
+  hueAvatarOwl,
   deafened,
   tileHeight,
 }: {
   hueId?: string;
   hueAvatarColor?: string | null;
+  hueAvatarOwl?: { nickname?: string | null; worn?: string | null };
   deafened: boolean;
   tileHeight: number;
 }) {
@@ -250,7 +252,7 @@ function MutedBadge({
         height: size,
         borderRadius: "50%",
         background: hueId
-          ? `hsl(${tileHue(hueId, hueAvatarColor)} 45% 26%)`
+          ? `hsl(${tileHue(hueId, hueAvatarColor, hueAvatarOwl)} 45% 26%)`
           : "rgba(0, 0, 0, 0.6)",
         pointerEvents: "none",
       }}>
@@ -582,7 +584,10 @@ export function VoiceParticipantCard({
 
   // The nickname, because that is what the avatar is drawn from — a tile tinted
   // from anything else is a colour that matches nothing on it.
-  const hue = tileHue(client.nickname, memberInfo?.avatarColor);
+  const hue = tileHue(client.nickname, memberInfo?.avatarColor, {
+    nickname: client.nickname,
+    worn: memberInfo?.avatarWorn,
+  });
 
   const speakingAnalyser = isSelf
     ? microphoneBuffer.finalAnalyser
@@ -621,6 +626,7 @@ export function VoiceParticipantCard({
               background: tileGradient(
                 client.serverUserId || client.nickname,
                 memberInfo?.avatarColor,
+                { nickname: client.nickname, worn: memberInfo?.avatarWorn },
               ),
               // No stroke on the tile. Meet puts the whole speaking treatment
               // on the avatar — a ring plus the halo behind it — and leaves the
@@ -716,6 +722,7 @@ export function VoiceParticipantCard({
         <MutedBadge
           hueId={client.nickname}
           hueAvatarColor={memberInfo?.avatarColor}
+          hueAvatarOwl={{ nickname: client.nickname, worn: memberInfo?.avatarWorn }}
           deafened={!!client.isDeafened}
           tileHeight={tileHeight}
         />

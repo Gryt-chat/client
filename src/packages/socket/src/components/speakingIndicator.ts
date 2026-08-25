@@ -86,18 +86,39 @@ export function hueFromAvatarColor(hex: string | null | undefined): number | nul
 }
 
 /**
- * A person's hue: their avatar's colour where there is one, and the generated
- * avatar's own background where there is not.
+ * A person's hue, in the same order of precedence `resolveAvatarSrc` picks the
+ * picture: the owl they designed, then a picture they uploaded, then the owl
+ * their name draws, then the id hash.
  *
- * The generated case matters more than it looks. The tint exists to make a
- * tile recognisably that person's, and a generated avatar is what most people
- * have — falling straight through to the id hash put a violet face on a green
- * tile and made the tinting look arbitrary, which is the one thing it must not
- * look like. hueFromId stays as the last resort, for a caller that has no seed
- * to generate from.
+ * The designed owl has to come first, and it did not. Saving a design uploads a
+ * PNG as well — that is what an old client shows — so anybody with a designed
+ * owl also has an `avatarFileId`, and therefore a server-computed
+ * `dominant_color` sampled off that raster. Reading it first meant the tile was
+ * tinted by whatever the sampler happened to land on, which for an owl is the
+ * large pale face rather than the hood: a red owl on a yellow tile, wrong in a
+ * way nothing downstream could correct.
+ *
+ * `owl` is a nickname and a worn string rather than reusing `id`, because the
+ * two are not interchangeable. `id` is the hash seed and callers pass a
+ * serverUserId for it; `generatedAvatarColor` needs the nickname the avatar
+ * renderer actually drew from.
+ *
+ * The generated case still matters. The tint exists to make a tile recognisably
+ * that person's, and a generated avatar is what most people have — falling
+ * straight through to the id hash put a violet face on a green tile and made the
+ * tinting look arbitrary, which is the one thing it must not look like.
+ * hueFromId stays as the last resort, for a caller that has no seed to generate
+ * from.
  */
-export function tileHue(id: string, avatarColor?: string | null): number {
+export function tileHue(
+  id: string,
+  avatarColor?: string | null,
+  owl?: { nickname?: string | null; worn?: string | null },
+): number {
   return (
+    (owl?.worn
+      ? hueFromAvatarColor(generatedAvatarColor(owl.nickname ?? "", owl.worn))
+      : null) ??
     hueFromAvatarColor(avatarColor) ??
     hueFromAvatarColor(generatedAvatarColor(id)) ??
     hueFromId(id)
@@ -109,8 +130,12 @@ export function tileHue(id: string, avatarColor?: string | null): number {
  * the same hue rather than a flat fill — flat reads as a coloured rectangle,
  * the falloff reads as a tile with someone in it.
  */
-export function tileGradient(id: string, avatarColor?: string | null): string {
-  const h = tileHue(id, avatarColor);
+export function tileGradient(
+  id: string,
+  avatarColor?: string | null,
+  owl?: { nickname?: string | null; worn?: string | null },
+): string {
+  const h = tileHue(id, avatarColor, owl);
   return `radial-gradient(circle at 50% 42%, hsl(${h} 48% 42%), hsl(${h} 55% 20%) 75%)`;
 }
 

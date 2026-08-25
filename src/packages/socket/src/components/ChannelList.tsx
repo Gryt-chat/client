@@ -248,6 +248,11 @@ export const ChannelList = ({
                               ? memberByServerUserId.get(clients[id].serverUserId)?.avatarColor
                               : undefined
                           }
+                          avatarWorn={
+                            clients[id].serverUserId
+                              ? wornByServerUserId.get(clients[id].serverUserId)
+                              : undefined
+                          }
                           speakingAnalyser={
                             id === currentConnectionId
                               ? microphoneBuffer.finalAnalyser
