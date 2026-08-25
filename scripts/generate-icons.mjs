@@ -7,12 +7,15 @@ const rootDir = process.cwd();
 /*
  * logo-square.svg, not logo.svg.
  *
- * A launcher applies its own mask — a squircle on macOS, a rounded rect on
- * Android, whatever the theme says on Linux — so it wants the full frame.
- * Hand it the round mark and macOS draws a disc floating inside the squircle,
- * with the corners of the ground missing.
+ * The full frame, because these outputs are either masked by the platform or
+ * shaped here. It is the only reason the square artboard still exists.
  *
- * This is the only reason the square artboard still exists as a file.
+ * An earlier version of this comment said "a launcher applies its own mask — a
+ * squircle on macOS", and that is wrong. iOS masks, and so does an Android
+ * adaptive icon. macOS, Windows and most Linux desktops do not: a macOS icon
+ * looks like a squircle because the designer drew one, not because the Dock
+ * cut it. Gryt shipped a hard-edged square sitting among everything else's
+ * rounded rectangles until GRYT-616.
  */
 const sourceSvg = path.join(rootDir, "public", "logo-square.svg");
 const buildDir = path.join(rootDir, "build");
@@ -62,6 +65,48 @@ await sharp(sourceSvg)
 const icoBuffer = await pngToIco(pngFiles);
 await fs.writeFile(path.join(buildDir, "icon.ico"), icoBuffer);
 
+/*
+ * The macOS icon, which is a different shape from the other two.
+ *
+ * Apple's since Big Sur, on a 1024 canvas: a rounded rectangle 824 across,
+ * centred, so 100px of transparent margin every side, corner radius 185.4.
+ * Not a circle — the round mark is as wrong here as the square one, just
+ * differently. The margin is not padding to taste; the Dock sizes every icon
+ * against that 824 box, so a full-bleed square also reads too big next to its
+ * neighbours, on top of having corners.
+ *
+ * Derived rather than drawn, so there is no fourth file to keep in step.
+ */
+const MAC_CANVAS = 1024;
+const MAC_SHAPE = 824;
+const MAC_RADIUS = 185.4;
+const macInset = Math.round((MAC_CANVAS - MAC_SHAPE) / 2);
+
+const macMask = Buffer.from(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="${MAC_SHAPE}" height="${MAC_SHAPE}">` +
+    `<rect width="${MAC_SHAPE}" height="${MAC_SHAPE}" rx="${MAC_RADIUS}" ry="${MAC_RADIUS}" fill="#fff"/>` +
+    `</svg>`,
+);
+
+const macShape = await sharp(sourceSvg)
+  .resize(MAC_SHAPE, MAC_SHAPE, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
+  .composite([{ input: macMask, blend: "dest-in" }])
+  .png()
+  .toBuffer();
+
+await sharp({
+  create: {
+    width: MAC_CANVAS,
+    height: MAC_CANVAS,
+    channels: 4,
+    background: { r: 0, g: 0, b: 0, alpha: 0 },
+  },
+})
+  .composite([{ input: macShape, left: macInset, top: macInset }])
+  .png()
+  .toFile(path.join(buildDir, "icon-macos.png"));
+
 console.log("Generated:");
 console.log(`- ${path.relative(rootDir, path.join(buildDir, "icon.png"))}`);
 console.log(`- ${path.relative(rootDir, path.join(buildDir, "icon.ico"))}`);
+console.log(`- ${path.relative(rootDir, path.join(buildDir, "icon-macos.png"))}`);

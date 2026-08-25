@@ -110,7 +110,10 @@ snap:
     - network-bind
 
 mac:
-  icon: build/icon.png
+  # Not build/icon.png. That one is the full-bleed square, which is right for
+  # Windows and for anything the platform masks itself; the Dock masks nothing,
+  # so it wants Apple's rounded rectangle with its margin. See generate-icons.
+  icon: build/icon-macos.png
   # Gryt's UI owns its translations. Keep the native Electron resources for
   # English and Norwegian instead of shipping hundreds of unused .lproj trees.
   electronLanguages:
