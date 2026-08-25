@@ -107,6 +107,82 @@ export function getServerHttpBase(host: string, scheme?: Scheme): string {
   return `${scheme ?? schemeFor(host)}://${host}`;
 }
 
+// ── Learning one ────────────────────────────────────────────────────────
+
+/** How long to wait for `/info` before deciding nothing answered. */
+const PROBE_TIMEOUT_MS = 8000;
+
+const probesInFlight = new Map<string, Promise<Scheme>>();
+
+/**
+ * Find out which scheme a host actually answers on, once, and remember it.
+ *
+ * Adding a server records this already, from the `/info` call the join flow
+ * makes. Nothing else did, so a server that has been in the list since before
+ * that code — or was added on another machine and arrived through the profile
+ * sync — never learned anything, and kept the default forever.
+ *
+ * On the desktop app the default is plain http, and a deployment behind a
+ * proxy answers plain http with a redirect to https. `fetch` follows one on a
+ * simple GET, so this finds out; a request the browser preflights does not get
+ * that far, because a preflight may not be redirected. It fails as a CORS
+ * error naming the redirect, with no status and nothing to retry against — so
+ * avatar upload, link previews and emoji import were all dead against those
+ * hosts, permanently and without a way back.
+ *
+ * Deliberately unauthenticated. The `Authorization` header is what makes a
+ * request preflighted in the first place, and the reply's status does not
+ * matter here — a private server answers 404 and that is a perfectly good
+ * answer. All this reads is which scheme was on the other end of it.
+ */
+export async function ensureSchemeKnown(host: string): Promise<Scheme> {
+  const known = getRememberedScheme(host);
+  if (known) return known;
+  if (!canDialPlain()) return "https";
+
+  const existing = probesInFlight.get(host);
+  if (existing) return existing;
+
+  const probe = (async (): Promise<Scheme> => {
+    const first = schemeFor(host);
+
+    const attempt = async (scheme: Scheme): Promise<Response> => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
+      try {
+        return await fetch(`${getServerHttpBase(host, scheme)}/info`, {
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timer);
+      }
+    };
+
+    let res: Response;
+    try {
+      res = await attempt(first);
+    } catch {
+      // Nothing answered, which says nothing about which scheme was wanted.
+      try {
+        res = await attempt(otherScheme(first));
+      } catch {
+        // Host is unreachable either way. Leave it unrecorded so the next
+        // startup tries again rather than pinning a guess made offline.
+        return first;
+      }
+    }
+
+    const served = schemeOfUrl(res.url) ?? first;
+    rememberScheme(host, served);
+    return served;
+  })().finally(() => {
+    probesInFlight.delete(host);
+  });
+
+  probesInFlight.set(host, probe);
+  return probe;
+}
+
 export function getServerWsBase(host: string): string {
   return `${schemeFor(host) === "https" ? "wss" : "ws"}://${host}`;
 }
