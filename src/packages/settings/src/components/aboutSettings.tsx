@@ -10,7 +10,21 @@ import { useReportForm } from "../../../../lib/reports/useReportForm";
 import { SettingsContainer } from "./settingsComponents";
 
 const GITHUB_URL = "https://github.com/Gryt-chat/gryt";
-const RELEASES_URL = `${GITHUB_URL}/releases/latest`;
+
+/*
+ * "Get the desktop app" sent people to GitHub Releases, which is release notes
+ * above a collapsed Assets list of a dozen files across three platforms. The
+ * reader of that card has not asked for a file — they have asked for the app,
+ * and the card has just told them it is available for their platform.
+ *
+ * /download resolves the build for them and starts it. No ?os= here, unlike
+ * the server's reminder, because this card only renders in the browser build
+ * and the user agent is the right answer.
+ *
+ * That was the last caller of the releases URL, so it is gone. Nothing else in
+ * this panel wanted the release notes; the version number does not link out.
+ */
+const DOWNLOAD_URL = "https://gryt.chat/download";
 
 function UpdateControls() {
   const [status, setStatus] = useState<UpdateStatus | null>(null);
@@ -222,7 +236,7 @@ function DesktopAppCard() {
           </span>
           <Button size="small"
             render={
-              <a href={RELEASES_URL} target="_blank" rel="noopener noreferrer" />
+              <a href={DOWNLOAD_URL} target="_blank" rel="noopener noreferrer" />
             }
           >
             <PiDownloadSimpleFill size={16} />
