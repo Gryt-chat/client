@@ -16,6 +16,7 @@
  */
 
 import {
+  ACCESSORIES,
   accessoriesIn,
   type AccessorySlot,
   avatarSeed,
@@ -30,11 +31,13 @@ import {
   type WornLook,
   wornToOptions,
 } from "@gryt/owl";
-import { Button, Dialog, Tabs, Tooltip } from "@gryt/ui";
+import { Button, Dialog, Menu, Tabs, Tooltip } from "@gryt/ui";
 import { type ReactElement,useCallback, useEffect, useMemo, useRef, useState } from "react";
+import toast from "react-hot-toast";
 import {
   PiBaseballCapFill,
   PiCameraFill,
+  PiDownloadSimpleBold,
   PiEyeglassesFill,
   PiEyesFill,
   PiHoodieFill,
@@ -43,6 +46,14 @@ import {
   PiTrashFill,
 } from "react-icons/pi";
 
+import {
+  EXPORT_FORMATS,
+  exportFilename,
+  type ExportFormat,
+  renderOwl,
+  saveBlob,
+} from "./owlExport";
+import { markCosmeticSeen, readNewCosmetics } from "./owlSeen";
 import { forgetLook, readWardrobe, rememberLook, type WardrobeEntry } from "./owlWardrobe";
 
 /**
@@ -256,6 +267,70 @@ function OwlLayer({
   );
 }
 
+/**
+ * Writing the owl out as a file.
+ *
+ * A menu rather than four buttons, because three of the four are the same
+ * picture flattened and only one of them is a decision most people need to
+ * think about. SVG is first: it is what the generator produces, it is a few
+ * kilobytes, and it has no resolution to be wrong about.
+ */
+function SaveAs({
+  seed,
+  look,
+  nickname,
+}: {
+  seed: string;
+  look: WornLook;
+  nickname: string;
+}) {
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const save = useCallback(
+    async (format: ExportFormat) => {
+      if (!seed) return;
+      setBusy(format.id);
+      try {
+        const blob = await renderOwl(seed, look, format);
+        saveBlob(blob, exportFilename(nickname, format));
+      } catch (err) {
+        // A browser that cannot encode the format hands back null rather than
+        // throwing, and renderOwl turns that into an error worth showing —
+        // saving nothing silently is the outcome to avoid.
+        toast.error(err instanceof Error ? err.message : "Could not save the owl");
+      } finally {
+        setBusy(null);
+      }
+    },
+    [seed, look, nickname],
+  );
+
+  return (
+    <Menu.Root>
+      <Menu.Trigger
+        render={
+          <Button disabled={busy !== null} size="small" tone="neutral" />
+        }
+      >
+        <PiDownloadSimpleBold size={15} />
+        {busy ? "Saving..." : "Save as"}
+      </Menu.Trigger>
+      <Menu.Portal>
+        <Menu.Positioner align="end" side="top" sideOffset={6}>
+          <Menu.Popup>
+            {EXPORT_FORMATS.map((format) => (
+              <Menu.Item key={format.id} onClick={() => void save(format)}>
+                <span className="font-medium">{format.label}</span>
+                <span className="ml-auto pl-4 text-xs text-gryt-muted">{format.hint}</span>
+              </Menu.Item>
+            ))}
+          </Menu.Popup>
+        </Menu.Positioner>
+      </Menu.Portal>
+    </Menu.Root>
+  );
+}
+
 /* --- the choice, when you click your avatar ------------------------------ */
 
 export function AvatarChoiceDialog({
@@ -356,14 +431,21 @@ export function OwlDesignerDialog({
   const [look, setLook] = useState<WornLook>(startingLook);
   const [pane, setPane] = useState<Pane>("expression");
   const [wardrobe, setWardrobe] = useState<WardrobeEntry[]>([]);
+  const [fresh, setFresh] = useState<ReadonlySet<string>>(() => new Set());
   const gridRef = useRef<HTMLDivElement>(null);
+
+  // Every cosmetic this build knows, which is what "new" is measured against.
+  const allNames = useMemo(() => ACCESSORIES.map((a) => a.name), []);
 
   useEffect(() => {
     if (!open) return;
     setLook(startingLook());
     setPane("expression");
     setWardrobe(readWardrobe());
-  }, [open]);
+    // Read on open rather than on mount: the dialog outlives a session, and
+    // cosmetics can arrive in an update between two openings of it.
+    setFresh(readNewCosmetics(allNames));
+  }, [open, allNames]);
 
   const worn = useMemo(() => encodeWorn(look), [look]);
   const preview = useMemo(
@@ -389,9 +471,15 @@ export function OwlDesignerDialog({
     [seed, look],
   );
 
-  const wear = useCallback((slot: AccessorySlot, name: string | null) => {
-    setLook((now) => ({ ...now, wearing: { ...now.wearing, [slot]: name } }));
-  }, []);
+  const wear = useCallback(
+    (slot: AccessorySlot, name: string | null) => {
+      setLook((now) => ({ ...now, wearing: { ...now.wearing, [slot]: name } }));
+      // Putting a thing on is the moment you have actually looked at it, and
+      // the moment the dot has done its job. Hovering or scrolling past is not.
+      if (name) setFresh(markCosmeticSeen(name, allNames));
+    },
+    [allNames],
+  );
 
   const handleSave = useCallback(async () => {
     setWardrobe(rememberLook(worn));
@@ -439,6 +527,7 @@ export function OwlDesignerDialog({
               <Tabs.List aria-label="What to change" className="gap-1 p-3">
                 {SLOTS.map(({ slot, label, Icon }) => {
                   const chosen = Boolean(look.wearing[slot]);
+                  const newHere = accessoriesIn(slot).filter((a) => fresh.has(a.name)).length;
                   return (
                     <Tabs.Tab
                       className={TAB_PRESS}
@@ -450,9 +539,24 @@ export function OwlDesignerDialog({
                       {chosen && pane !== slot && (
                         <span className="size-1.5 rounded-full bg-gryt-accent" aria-hidden />
                       )}
-                      <span className="ml-auto pl-2 font-mono text-[0.65rem] opacity-70">
-                        {accessoriesIn(slot).length}
-                      </span>
+                      {/*
+                        The count rather than a bare dot. "3 new hats" is worth
+                        opening a pane for and "something changed in here" is
+                        not, and the number costs the same space the total
+                        already takes.
+                      */}
+                      {newHere > 0 ? (
+                        <span
+                          className="ml-auto rounded-full bg-gryt-accent px-1.5 font-mono text-[0.65rem] text-gryt-on-accent"
+                          title={`${newHere} new`}
+                        >
+                          +{newHere}
+                        </span>
+                      ) : (
+                        <span className="ml-auto pl-2 font-mono text-[0.65rem] opacity-70">
+                          {accessoriesIn(slot).length}
+                        </span>
+                      )}
                     </Tabs.Tab>
                   );
                 })}
@@ -507,32 +611,47 @@ export function OwlDesignerDialog({
                 {activeSlot &&
                   options.map((a) => {
                     const on = look.wearing[activeSlot] === a.name;
+                    const isNew = fresh.has(a.name);
                     return (
-                      <Tooltip key={a.name} title={optionLabel(a.name)}>
-                        <button
-                          type="button"
-                          onClick={() => wear(activeSlot, a.name)}
-                          aria-label={optionLabel(a.name)}
-                          className={
-                            "cursor-pointer overflow-hidden rounded-(--gryt-radius-md) "
-                            + "transition-[scale,outline-color,background-color] "
-                            + "duration-(--gryt-dur-spring) ease-spring "
-                            + "motion-safe:hover:scale-[1.03] motion-safe:active:scale-[0.96] "
-                            + "focus-visible:outline-2 focus-visible:outline-offset-2 "
-                            + "focus-visible:outline-gryt-accent-light "
-                            + (on
-                              ? "outline outline-[3px] outline-offset-[-1.5px] outline-gryt-accent "
-                                + "bg-gryt-surface-raised motion-safe:scale-[1.04] "
-                                + "motion-safe:hover:scale-[1.06]"
-                              : "outline outline-0 outline-transparent hover:bg-gryt-surface-hover")
-                          }
-                        >
-                          <img
-                            alt=""
-                            className="block aspect-square w-full"
-                            src={thumb({ wearing: { [activeSlot]: a.name } })}
-                          />
-                        </button>
+                      <Tooltip key={a.name} title={isNew ? `${optionLabel(a.name)} — new` : optionLabel(a.name)}>
+                        {/*
+                          The dot hangs off the tile rather than sitting inside
+                          it. The tiles scale on hover and press, and anything
+                          inside scales with them — a badge that grows when you
+                          reach for it reads as a second thing moving.
+                        */}
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => wear(activeSlot, a.name)}
+                            aria-label={optionLabel(a.name)}
+                            className={
+                              "block w-full cursor-pointer overflow-hidden rounded-(--gryt-radius-md) "
+                              + "transition-[scale,outline-color,background-color] "
+                              + "duration-(--gryt-dur-spring) ease-spring "
+                              + "motion-safe:hover:scale-[1.03] motion-safe:active:scale-[0.96] "
+                              + "focus-visible:outline-2 focus-visible:outline-offset-2 "
+                              + "focus-visible:outline-gryt-accent-light "
+                              + (on
+                                ? "outline outline-[3px] outline-offset-[-1.5px] outline-gryt-accent "
+                                  + "bg-gryt-surface-raised motion-safe:scale-[1.04] "
+                                  + "motion-safe:hover:scale-[1.06]"
+                                : "outline outline-0 outline-transparent hover:bg-gryt-surface-hover")
+                            }
+                          >
+                            <img
+                              alt=""
+                              className="block aspect-square w-full"
+                              src={thumb({ wearing: { [activeSlot]: a.name } })}
+                            />
+                          </button>
+                          {isNew && (
+                            <span
+                              aria-hidden
+                              className="pointer-events-none absolute -top-0.5 -right-0.5 size-2.5 rounded-full bg-gryt-accent ring-2 ring-gryt-surface"
+                            />
+                          )}
+                        </div>
                       </Tooltip>
                     );
                   })}
@@ -666,6 +785,7 @@ export function OwlDesignerDialog({
                 <Button disabled={saving} onClick={() => void handleSave()} size="small">
                   {saving ? "Saving..." : "Use this owl"}
                 </Button>
+                <SaveAs look={look} nickname={nickname} seed={seed} />
                 <Button
                   disabled={saving}
                   onClick={() => onOpenChange(false)}
