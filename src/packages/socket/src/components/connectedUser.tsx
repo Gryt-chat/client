@@ -22,6 +22,7 @@ const SIDEBAR_RING = 2;
 export function ConnectedUser({
   isSpeaking,
   avatarColor,
+  avatarWorn,
   speakingAnalyser,
   isMuted,
   isDeafened,
@@ -49,6 +50,8 @@ export function ConnectedUser({
   isSpeaking: boolean;
   /** Dominant colour of the avatar, so the ring matches the voice tile's. */
   avatarColor?: string | null;
+  /** Their owl's design, which beats the sampled colour above. See tileHue. */
+  avatarWorn?: string | null;
   /** The same analyser the tile's halo reads. */
   speakingAnalyser?: AnalyserNode;
   isMuted: boolean;
@@ -75,7 +78,7 @@ export function ConnectedUser({
   onChangeRole?: (role: Role) => void;
   serverHost?: string;
 }) {
-  const hue = tileHue(nickname, avatarColor);
+  const hue = tileHue(nickname, avatarColor, { nickname, worn: avatarWorn });
 
   return (
     <UserContextMenu
