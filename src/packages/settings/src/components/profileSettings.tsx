@@ -7,6 +7,7 @@ import { compressStaticAvatarToLimit, getAvatarHash, getServerAccessToken, getSe
 import { useSettings } from "@/settings";
 import { useServerManagement, useSockets } from "@/socket";
 
+import { AvatarChoiceDialog, OwlDesignerDialog } from "./owlDesigner";
 import { SettingsContainer } from "./settingsComponents";
 
 function extForMime(mime: string): string {
@@ -460,6 +461,23 @@ export function ProfileSettings() {
     fileInputRef.current?.click();
   };
 
+  /*
+   * Clicking the avatar used to open a file picker. It asks first now, because
+   * a picture is no longer the only kind of avatar there is.
+   *
+   * The host is remembered across both dialogs: this screen edits either the
+   * account's avatar or one server's, and which one is decided by whichever
+   * avatar was clicked.
+   */
+  const [choosingFor, setChoosingFor] = useState<string | null | undefined>(undefined);
+  const [designingFor, setDesigningFor] = useState<string | null | undefined>(undefined);
+
+  const handleUseOwl = async (png: Blob, host: string | null) => {
+    setDesigningFor(undefined);
+    const file = new File([png], "avatar.png", { type: "image/png" });
+    await processAndUpload(file, host ? [host] : serverHosts);
+  };
+
   const handleSyncToAll = async () => {
     if (syncing || connectedHosts.length === 0) return;
     setSyncing(true);
@@ -596,7 +614,7 @@ export function ProfileSettings() {
             uploading={uploading}
             removing={removing}
             onSaveNickname={(name) => handleSaveNickname(name, serverHosts)}
-            onPickAvatar={() => triggerFilePick(null)}
+            onPickAvatar={() => setChoosingFor(null)}
             onRemoveAvatar={() => handleRemoveAvatar(serverHosts)}
             serverLabel={serverHosts.length > 0 ? "Changes apply to all servers" : undefined}
           />
@@ -630,7 +648,7 @@ export function ProfileSettings() {
               uploading={uploading}
               removing={removing}
               onSaveNickname={(name) => handleSaveNickname(name, [host])}
-              onPickAvatar={() => triggerFilePick(host)}
+              onPickAvatar={() => setChoosingFor(host)}
               onRemoveAvatar={() => handleRemoveAvatar([host])}
               serverLabel={serverName}
               scopedToServer={serverName}
@@ -666,6 +684,26 @@ export function ProfileSettings() {
         accept="image/png,image/jpeg,image/webp,image/gif"
         style={{ display: "none" }}
         onChange={handleFileChange}
+      />
+
+      <AvatarChoiceDialog
+        nickname={nickname}
+        onDesign={() => setDesigningFor(choosingFor)}
+        onOpenChange={(next) => {
+          if (!next) setChoosingFor(undefined);
+        }}
+        onUpload={() => triggerFilePick(choosingFor ?? null)}
+        open={choosingFor !== undefined}
+      />
+
+      <OwlDesignerDialog
+        nickname={nickname}
+        onOpenChange={(next) => {
+          if (!next) setDesigningFor(undefined);
+        }}
+        onSave={(png) => void handleUseOwl(png, designingFor ?? null)}
+        open={designingFor !== undefined}
+        saving={uploading}
       />
     </SettingsContainer>
   );
