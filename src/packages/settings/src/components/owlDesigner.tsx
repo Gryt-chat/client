@@ -501,7 +501,16 @@ export function OwlDesignerDialog({
           nothing was clipping the children to it, so a square rail painted over
           two rounded corners and the dialog looked like it had none.
         */}
-        <Dialog.Popup className="w-[54rem] max-w-[calc(100vw-2rem)] overflow-hidden p-0">
+        {/*
+          Wider than it was. The accessory grid below is auto-fill, so width
+          buys columns rather than whitespace, and this is a two-pane dialog
+          with a rail that does not grow — 54rem left the grid at four columns
+          on a screen with room for six.
+
+          Still capped against the viewport, and still in rem, so it moves with
+          the scale on the root element rather than fighting it.
+        */}
+        <Dialog.Popup className="w-[64rem] max-w-[calc(100vw-2rem)] overflow-hidden p-0">
           <div className="flex flex-col md:flex-row">
             {/*
               Gryt UI's vertical Tabs, not a row of buttons.
@@ -582,7 +591,13 @@ export function OwlDesignerDialog({
 
               <div
                 ref={gridRef}
-                className="-mx-1.5 grid max-h-[22rem] grid-cols-[repeat(auto-fill,minmax(4.25rem,1fr))] gap-2 overflow-y-auto p-1.5"
+                /*
+                  The height follows the window instead of being 22rem always.
+                  A tall screen shows more rows; a short one shows fewer rather
+                  than pushing the dialog past the bottom of the viewport, which
+                  the fixed value did below about 700px.
+                */
+                className="-mx-1.5 grid max-h-[min(30rem,calc(100dvh-18rem))] grid-cols-[repeat(auto-fill,minmax(4.25rem,1fr))] gap-2 overflow-y-auto p-1.5"
               >
                 {activeSlot && (
                   <button
