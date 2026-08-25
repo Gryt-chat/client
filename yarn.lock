@@ -542,23 +542,23 @@
   resolved "https://registry.yarnpkg.com/@floating-ui/utils/-/utils-0.2.12.tgz#afefe785949f16ac4cdd1e695935a321572dd56a"
   integrity sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==
 
-"@gryt/owl@^0.1.0":
-  version "0.1.0"
-  resolved "https://registry.yarnpkg.com/@gryt/owl/-/owl-0.1.0.tgz#26e6a493d21a4ee4fa93d24091dfdb19e2a959b1"
-  integrity sha512-7RZn4HLEE28++vp+5UQ60Yhx1jP7ZacmR/hWyIsW8eaZIbYsAz0j1UolKSp/anjZVDRzboG2e7BPS0YaT4Bpkw==
+"@gryt/owl@^0.2.0":
+  version "0.2.0"
+  resolved "https://registry.yarnpkg.com/@gryt/owl/-/owl-0.2.0.tgz#23f1934675ab1e9c48f2658712aeda4fc142fccb"
+  integrity sha512-cTLwjhln8TkDI7RVjPIPvO7Wqv/JCmu31eD1xbJJ9s9Upl7XnS79QfLw/A/yr8iFAoaLG+ScIv5LcZer94tl9A==
 
 "@gryt/theme@^0.6.0":
   version "0.6.0"
   resolved "https://registry.yarnpkg.com/@gryt/theme/-/theme-0.6.0.tgz#cd874d27d1daf425a30e694bb15c61572e987578"
   integrity sha512-VugKgDb2XKk0AzmpfjWU3JO0laTeYQZzUv+Jjcby0V5pwfm4ps12dvG2EfN/l7hvJzj7BzyZhjxENn4iph1YRQ==
 
-"@gryt/ui@^0.19.0":
-  version "0.19.0"
-  resolved "https://registry.yarnpkg.com/@gryt/ui/-/ui-0.19.0.tgz#3816022f27c6d08e89f9b84876f52ffbf5f7aa64"
-  integrity sha512-zuCssnbyZcgcNzaecfBSTh1obYzhecqpOl0vsu0DPrQZi2yQvp4yD5dtVHinSSjaQYNZMa4s12DCWO/Z+yhD7Q==
+"@gryt/ui@^0.20.0":
+  version "0.20.0"
+  resolved "https://registry.yarnpkg.com/@gryt/ui/-/ui-0.20.0.tgz#a87bab57cfd62bb12ccbc384a21e8de8f249f571"
+  integrity sha512-PSzs4s7fJbpsi6oGfo8ouW9Ocw33EElUKrg4QKynqEDJkl7QJHd4J5jmfgI1Gxklo7E/BO2qPEUUk9m0d8cY8g==
   dependencies:
     "@base-ui/react" "^1.7.0"
-    "@gryt/owl" "^0.1.0"
+    "@gryt/owl" "^0.2.0"
     "@gryt/theme" "^0.6.0"
     "@phosphor-icons/react" "^2.1.10"
     clsx "^2.1.1"
