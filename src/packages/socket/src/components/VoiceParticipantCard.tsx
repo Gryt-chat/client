@@ -649,6 +649,7 @@ export function VoiceParticipantCard({
                 getUploadsFileUrl(serverHost, avatarFileId)
               : undefined,
             client.nickname,
+            memberInfo?.avatarWorn,
           )}
           style={{
             ...speakingRingStyle(hue, isSpeaking),

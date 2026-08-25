@@ -38,7 +38,7 @@ export function TypingIndicator({ typingUsers, serverHost }: TypingIndicatorProp
                 size="small"
                 className="h-4 w-4 shrink-0 text-[9px]"
                 fallback={first.nickname[0]}
-                src={resolveAvatarSrc(first.avatarFileId && serverHost ? getUploadsFileUrl(serverHost, first.avatarFileId, { thumb: true }) : undefined, first.nickname)}
+                src={resolveAvatarSrc(first.avatarFileId && serverHost ? getUploadsFileUrl(serverHost, first.avatarFileId, { thumb: true }) : undefined, first.nickname, first.avatarWorn)}
               />
             )}
             <span className="text-xs" style={{ color: "var(--gryt-neutral-11)", fontSize: 13 }}>

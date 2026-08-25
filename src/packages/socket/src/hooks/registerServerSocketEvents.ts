@@ -6,6 +6,7 @@ import { Socket } from "socket.io-client";
 import {
   getServerAccessToken,
   getServerRefreshToken,
+  getStoredWorn,
   getUploadsFileUrl,
   removeServerAccessToken,
   removeServerRefreshToken,
@@ -20,7 +21,7 @@ import {
 } from "@/settings/src/types/server";
 
 import { MemberInfo } from "../components/MemberSidebar";
-import { Clients } from "../types/clients";
+import { Clients, ServerProfile } from "../types/clients";
 import { fetchCustomEmojis, setCustomEmojis } from "../utils/emojiData";
 import { handleRateLimitError } from "../utils/rateLimitHandler";
 import { syncAvatarToHost } from "../utils/syncAvatarToHost";
@@ -58,7 +59,7 @@ export interface ServerEventContext {
   setFailedServerDetails: Dispatch<SetStateAction<Record<string, { error: string; message: string; timestamp: number }>>>;
   setClients: Dispatch<SetStateAction<{ [host: string]: Clients }>>;
   setMemberLists: Dispatch<SetStateAction<{ [host: string]: MemberInfo[] }>>;
-  setServerProfiles: Dispatch<SetStateAction<Record<string, { nickname: string; avatarFileId: string | null; avatarUrl: string | null }>>>;
+  setServerProfiles: Dispatch<SetStateAction<Record<string, ServerProfile>>>;
   setIsServerMuted: (value: boolean) => void;
   setIsServerDeafened: (value: boolean) => void;
 }
@@ -144,7 +145,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     });
   });
 
-  socket.on("server:joined", (joinInfo: { accessToken: string; refreshToken?: string; nickname: string; avatarFileId?: string | null }) => {
+  socket.on("server:joined", (joinInfo: { accessToken: string; refreshToken?: string; nickname: string; avatarFileId?: string | null; avatarWorn?: string | null }) => {
     setServerAccessToken(host, joinInfo.accessToken);
     if (joinInfo.refreshToken) {
       setServerRefreshToken(host, joinInfo.refreshToken);
@@ -171,8 +172,24 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
         avatarUrl: joinInfo.avatarFileId
           ? getUploadsFileUrl(host, joinInfo.avatarFileId)
           : null,
+        // Undefined from a server older than the field, which reads as no
+        // designed look — and that is what such a server has.
+        avatarWorn: joinInfo.avatarWorn ?? null,
       },
     }));
+
+    // Seed a server that has never heard of this account's look.
+    //
+    // Only when this device has one and the server has none. The look is
+    // per-server once it is set — somebody can be a pirate in one place and
+    // plain everywhere else — so pushing it on every reconnect would undo a
+    // per-server choice every time the socket dropped. `server:joined` fires on
+    // reconnects too, which is why the condition is about what the server
+    // already holds rather than about this being a first join.
+    const storedWorn = getStoredWorn();
+    if (storedWorn && !joinInfo.avatarWorn) {
+      socket.emit("profile:update", { avatarWorn: storedWorn });
+    }
 
     socket.emit("server:details");
     socket.emit("members:fetch");
@@ -194,7 +211,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     }
   });
 
-  socket.on("profile:updated", (data: { nickname: string; avatarFileId: string | null }) => {
+  socket.on("profile:updated", (data: { nickname: string; avatarFileId: string | null; avatarWorn?: string | null }) => {
     setServerProfiles(prev => ({
       ...prev,
       [host]: {
@@ -203,6 +220,11 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
         avatarUrl: data.avatarFileId
           ? getUploadsFileUrl(host, data.avatarFileId)
           : null,
+        // Optional on the wire, because a server older than the field does not
+        // send it. Undefined there reads as null here — no designed look — and
+        // the uploaded PNG the editor saved is what shows instead, which is
+        // exactly what that server has.
+        avatarWorn: data.avatarWorn ?? null,
       },
     }));
   });
@@ -510,7 +532,8 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       const existing = prev[host];
       if (
         existing?.nickname === me.nickname &&
-        existing?.avatarFileId === (me.avatarFileId ?? null)
+        existing?.avatarFileId === (me.avatarFileId ?? null) &&
+        existing?.avatarWorn === (me.avatarWorn ?? null)
       ) {
         return prev;
       }
@@ -523,6 +546,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
           avatarUrl: me.avatarFileId
             ? getUploadsFileUrl(host, me.avatarFileId)
             : null,
+          avatarWorn: me.avatarWorn ?? null,
         },
       };
     });

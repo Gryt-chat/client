@@ -77,6 +77,9 @@ export const ChannelList = ({
   const avatarByServerUserId = new Map<string, string | null | undefined>(
     (members || []).map((m) => [m.serverUserId, m.avatarFileId])
   );
+  const wornByServerUserId = new Map<string, string | null | undefined>(
+    (members || []).map((m) => [m.serverUserId, m.avatarWorn])
+  );
   const effectiveItems: SidebarItem[] =
     items && items.length > 0
       ? items
@@ -261,6 +264,7 @@ export const ChannelList = ({
                               ? getUploadsFileUrl(serverHost, avatarByServerUserId.get(clients[id].serverUserId) as string, { thumb: true })
                               : undefined,
                             clients[id].nickname,
+                            clients[id].serverUserId ? wornByServerUserId.get(clients[id].serverUserId) : undefined,
                           )}
                           serverUserId={clients[id].serverUserId}
                           isSelf={id === currentConnectionId}

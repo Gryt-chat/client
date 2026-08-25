@@ -19,7 +19,7 @@ import {
 } from "@/settings/src/types/server";
 
 import { MemberInfo } from "../components/MemberSidebar";
-import { Clients } from "../types/clients";
+import { Clients, ServerProfile } from "../types/clients";
 import { challengeHostMatches } from "../utils/challengeHost";
 import { registerServerSocketEvents } from "./registerServerSocketEvents";
 
@@ -50,7 +50,7 @@ export interface SocketEventDeps {
   setFailedServerDetails: Dispatch<SetStateAction<Record<string, { error: string; message: string; timestamp: number }>>>;
   setClients: Dispatch<SetStateAction<{ [host: string]: Clients }>>;
   setMemberLists: Dispatch<SetStateAction<{ [host: string]: MemberInfo[] }>>;
-  setServerProfiles: Dispatch<SetStateAction<Record<string, { nickname: string; avatarFileId: string | null; avatarUrl: string | null }>>>;
+  setServerProfiles: Dispatch<SetStateAction<Record<string, ServerProfile>>>;
   setIsServerMuted: (value: boolean) => void;
   setIsServerDeafened: (value: boolean) => void;
   onTokenRefreshed: () => void;

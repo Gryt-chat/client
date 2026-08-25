@@ -26,6 +26,7 @@
     "test:screen-audio": "node scripts/check-screen-audio.mjs",
     "test:audio-mixer": "node scripts/check-audio-mixer.mjs",
     "test:capture-set": "node scripts/check-capture-set.mjs",
+    "test:avatar-precedence": "node scripts/check-avatar-precedence.mjs",
     "preview": "vite preview",
     "build:native": "node -e \"const{execSync:r}=require('child_process');if(process.platform==='win32'){r('native\\\\build.bat',{stdio:'inherit'})}else{r('bash native/audio-capture/build.sh',{stdio:'inherit'})}\"",
     "electron:dev": "npm run embedded-server:ensure && cross-env ELECTRON=1 vite --host",

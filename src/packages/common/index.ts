@@ -32,6 +32,7 @@ export * from "./src/utils/preLoginUrl";
 export * from "./src/utils/shareableHost";
 export * from "./src/utils/tokenStorage";
 export * from "./src/utils/url";
+export * from "./src/utils/wornStore";
 
 // Legacy API (deprecated by Keycloak but still present)
 export * from "./src/api/auth";
