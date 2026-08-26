@@ -18,7 +18,11 @@ export function isMacOS(): boolean {
   return window.electronAPI?.platform === "darwin";
 }
 
-const SQUARE: WindowState = { maximized: false, fullScreen: false };
+const SQUARE: WindowState = {
+  maximized: false,
+  fullScreen: false,
+  flush: false,
+};
 
 /**
  * Whether the window is currently at an edge of the screen.
@@ -71,7 +75,7 @@ export function useWindowFocused(): boolean {
  * document.body, so anything lower is invisible to half the app.
  */
 export function useWindowFrame(): void {
-  const { maximized, fullScreen } = useWindowState();
+  const { flush } = useWindowState();
   const focused = useWindowFocused();
   const framed = isElectron();
 
@@ -82,11 +86,13 @@ export function useWindowFrame(): void {
       return;
     }
 
-    // Square at an edge of the screen: there is nothing behind the window
-    // there to fill a curve, so a rounded corner is a notch.
+    /* Square only while the window is genuinely covering its display: there
+       is nothing behind it there to fill a curve, so a rounded corner would
+       be a notch. Everywhere else — snapped to a half, resized by hand,
+       dragged out of a maximised state — it stays round. */
     root.setAttribute(
       "data-gryt-frame",
-      maximized || fullScreen ? "flush" : "floating"
+      flush ? "flush" : "floating"
     );
     root.toggleAttribute("data-gryt-window-blurred", !focused);
 
@@ -94,5 +100,5 @@ export function useWindowFrame(): void {
       root.removeAttribute("data-gryt-frame");
       root.removeAttribute("data-gryt-window-blurred");
     };
-  }, [framed, maximized, fullScreen, focused]);
+  }, [framed, flush, focused]);
 }

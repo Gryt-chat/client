@@ -1130,6 +1130,7 @@ function startLocalServer(): Promise<string> {
 function readWindowState(): {
   maximized: boolean;
   fullScreen: boolean;
+  flush: boolean;
 } {
   if (
     !mainWindow ||
@@ -1138,13 +1139,56 @@ function readWindowState(): {
     return {
       maximized: false,
       fullScreen: false,
+      flush: false,
     };
 
+  const maximized =
+    mainWindow.isMaximized();
+  const fullScreen =
+    mainWindow.isFullScreen();
+
   return {
-    maximized: mainWindow.isMaximized(),
-    fullScreen:
-      mainWindow.isFullScreen(),
+    maximized,
+    fullScreen,
+    flush:
+      fullScreen || fillsWorkArea(),
   };
+}
+
+/**
+ * Whether the window is actually covering its display, rather than merely
+ * having been maximised at some point.
+ *
+ * isMaximized is not the same question. Drag a maximised window off the top of
+ * the screen and macOS un-zooms it without emitting unmaximize, so the corners
+ * stayed square on a window that was no longer filling anything. Snapping made
+ * it worse: a half-screen window is not maximised and never was, and it should
+ * be round.
+ *
+ * So the frame asks about geometry instead. A pixel of slack each way absorbs
+ * the rounding between a display's work area and the bounds Electron reports
+ * back for a window put in it.
+ */
+function fillsWorkArea(): boolean {
+  if (
+    !mainWindow ||
+    mainWindow.isDestroyed()
+  )
+    return false;
+
+  const b = mainWindow.getBounds();
+  const { workArea } =
+    screen.getDisplayMatching(b);
+  const slack = 1;
+
+  return (
+    b.x <= workArea.x + slack &&
+    b.y <= workArea.y + slack &&
+    b.x + b.width >=
+      workArea.x + workArea.width - slack &&
+    b.y + b.height >=
+      workArea.y + workArea.height - slack
+  );
 }
 
 /**
@@ -1268,10 +1312,17 @@ function snapWindow(zone: SnapZone): void {
   mainWindow.setBounds(next, true);
 }
 
+let lastWindowState = "";
+
 function sendWindowState(): void {
+  const next = readWindowState();
+  const key = JSON.stringify(next);
+  if (key === lastWindowState) return;
+  lastWindowState = key;
+
   mainWindow?.webContents.send(
     "window-state-change",
-    readWindowState()
+    next
   );
 }
 
@@ -1297,7 +1348,22 @@ function createMainWindow(): BrowserWindow {
     // the radius, the hairline border and the buttons. macOS still shadows a
     // transparent window along its alpha, so the drop shadow survives there;
     // Windows does not shadow one at all, which is GRYT-628.
-    frame: false,
+    //
+    // macOS keeps a titlebar rather than losing the frame outright, and it is
+    // worth being clear about why, because "hidden" sounds like the weaker
+    // option. A -webkit-app-region: drag element hands mousedown to the OS
+    // drag loop, so no click or dblclick is ever generated for it — a
+    // double-click handler on the titlebar cannot fire, whatever it is
+    // attached to. Double-click to zoom therefore has to come from AppKit,
+    // and AppKit only offers it to a window that has a titlebar. Keeping one
+    // and hiding it buys that back, along with drag and edge tiling, and
+    // costs nothing: transparent already stops the native traffic lights
+    // being drawn, which is measured rather than assumed — of four windows
+    // differing only in these options, the lights appear on the opaque one
+    // and on none of the transparent ones.
+    ...(process.platform === "darwin"
+      ? { titleBarStyle: "hidden" as const }
+      : { frame: false }),
     roundedCorners: false,
     transparent: true,
 
@@ -1402,8 +1468,25 @@ function createMainWindow(): BrowserWindow {
     refreshTrayMenu
   );
 
-  // Every transition that changes the frame's shape. Not "resize": a drag
-  // fires it continuously and not one of those frames changes the answer.
+  if (process.platform === "darwin") {
+    // Transparency already stops these being drawn. Saying so explicitly means
+    // the drawn ones stay the only set if that ever stops being true.
+    try {
+      mainWindow.setWindowButtonVisibility(
+        false
+      );
+    } catch {
+      // Not implemented off macOS, and a visible native button is not a
+      // reason to fail starting up.
+    }
+  }
+
+  // resize and move are in here because the answer is geometric now: dragging
+  // a maximised window off the top of the screen un-zooms it without emitting
+  // unmaximize, and the corners have to come back. sendWindowState only emits
+  // on an actual change, so a drag does not flood the channel.
+  mainWindow.on("resize", sendWindowState);
+  mainWindow.on("move", sendWindowState);
   mainWindow.on(
     "maximize",
     sendWindowState

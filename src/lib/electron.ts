@@ -53,6 +53,12 @@ export type SnapZone =
 export interface WindowState {
   maximized: boolean;
   fullScreen: boolean;
+  /**
+   * Whether the window is actually covering its display right now — which is
+   * a different question from having been maximised, and the one the corners
+   * care about.
+   */
+  flush: boolean;
 }
 
 export interface DesktopSource {

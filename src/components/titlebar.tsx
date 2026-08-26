@@ -45,8 +45,13 @@ export function Titlebar() {
   return (
     <div
       data-gryt="titlebar"
-      /* What the OS does with a double-click on its own titlebar. There is no
-         OS titlebar any more, so it has to be done here. */
+      /* A fallback, and honestly a thin one. An element with
+         -webkit-app-region: drag hands mousedown to the OS drag loop, so no
+         click or dblclick is generated for it and this will not fire on
+         macOS. Double-click to zoom comes from AppKit instead, which is why
+         the window keeps a hidden titlebar rather than losing the frame
+         outright — see createMainWindow. Windows gets the same for free by
+         answering HTCAPTION. Left in for any platform that does deliver it. */
       onDoubleClick={() => window.electronAPI?.toggleMaximizeWindow()}
       style={{
         height: TITLEBAR_HEIGHT,
