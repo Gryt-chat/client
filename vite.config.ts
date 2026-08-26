@@ -104,22 +104,6 @@ export default defineConfig({
                 },
               },
             },
-            {
-              entry: "electron/splash-preload.ts",
-              vite: {
-                build: {
-                  outDir: "dist-electron",
-                  lib: {
-                    entry: "electron/splash-preload.ts",
-                    formats: ["cjs"],
-                    // Same race as preload above — keep the formats apart.
-                    fileName: (format) =>
-                      format === "cjs" ? "[name].cjs" : "[name].mjs",
-                  },
-                  rollupOptions: { external: ["electron"] },
-                },
-              },
-            },
           ]),
           renderer(),
         ]

@@ -14,7 +14,6 @@ directories:
 files:
   - dist/**/*
   - dist-electron/**/*
-  - electron/splash.html
 
 extraResources:
   - from: build/icon.png
