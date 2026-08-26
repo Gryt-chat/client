@@ -203,6 +203,79 @@ body {
   height: 100dvh;
 }
 
+/* ── The window frame ─────────────────────────────────────────────────
+ *
+ * On the desktop the window is frameless and transparent, so the rounded
+ * corner and the hairline border around the app are drawn here rather than by
+ * the OS (GRYT-626). No OS hands its own radius out — macOS 26 rounds at
+ * 16px, Windows 11 at 8 through DWM, Windows 10 not at all — so this is the
+ * only way the three can agree.
+ *
+ * 16px is measured off a macOS 26 window rather than picked: rendered against
+ * the desktop and compared pixel row by pixel row, a native corner tracks a
+ * 16px circular arc within a pixel from the fourth row down. It is not a
+ * squircle, which was the first guess; `corner-shape: squircle` at the same
+ * radius is visibly tighter.
+ *
+ * Three things about this are load-bearing.
+ *
+ * `position: fixed` rather than the 100dvw/100dvh above, because viewport
+ * units do not divide by the root `zoom`. Measured in a 500x400 window: body
+ * is 500x400 at zoom 1 and 750x600 at 1.5, while a fixed inset-0 box is
+ * 500x400 at every zoom. A frame that grew with the UI scale would put its
+ * bottom edge outside the window.
+ *
+ * The radius and the border divide by --gryt-ui-scale for the same reason
+ * from the other side: everything under the zoom is drawn at uiScale times
+ * its CSS size, and the window is not. This is the mismatch GRYT-609
+ * describes between TITLEBAR_HEIGHT and the old overlay strip.
+ *
+ * `contain: paint` is what actually clips the corners. Every dialog, menu and
+ * tooltip portals to document.body and most of them are `fixed inset-0`, and
+ * a fixed element ignores an ancestor's overflow unless that ancestor is a
+ * containing block for it. Without this the frame is round until the first
+ * modal opens and then square underneath it.
+ */
+:root {
+  --gryt-window-radius: 16px;
+  --gryt-window-border: var(--gryt-neutral-a6);
+}
+
+html[data-gryt-frame] {
+  /* The app's background moves to the frame, which is the element with the
+     corners. Left here it would paint them square from underneath. */
+  background: transparent;
+}
+
+html[data-gryt-frame] body {
+  position: fixed;
+  inset: 0;
+  width: auto;
+  height: auto;
+  background: var(--gryt-bg);
+  contain: paint;
+  border-radius: calc(
+    var(--gryt-window-radius) / var(--gryt-ui-scale, 1)
+  );
+  /* inset box-shadow rather than a border, so the frame costs no layout. */
+  box-shadow: inset 0 0 0
+    calc(1px / var(--gryt-ui-scale, 1)) var(--gryt-window-border);
+}
+
+/* Maximised or full screen. There is nothing behind the window at the edge of
+   the screen to fill a curve, so a rounded corner is a notch with the desktop
+   showing through it. */
+html[data-gryt-frame="flush"] body {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* Dimmer while the window is in the background, which is what macOS does to
+   its own hairline. */
+html[data-gryt-frame][data-gryt-window-blurred] {
+  --gryt-window-border: var(--gryt-neutral-a3);
+}
+
 #root {
   height: 100%;
   width: 100%;

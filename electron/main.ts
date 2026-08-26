@@ -1120,14 +1120,39 @@ function startLocalServer(): Promise<string> {
 // ── Main window ─────────────────────────────────────────────────────────
 
 /**
- * Height of the native window-controls strip on Windows and Linux.
+ * What the renderer needs in order to draw the frame.
  *
- * Has to match TITLEBAR_HEIGHT in src/components/titlebar.tsx, which is the
- * strip the app draws its own back/forward buttons and title into. The two
- * halves sit side by side, so a disagreement shows up as a step in the middle
- * of the titlebar.
+ * The corners have to square off while maximised or full screen. A rounded
+ * window at the edge of the screen leaves four notches with the desktop
+ * showing through them, because there is nothing behind the window to fill
+ * the curve.
  */
-const TITLEBAR_OVERLAY_HEIGHT = 36;
+function readWindowState(): {
+  maximized: boolean;
+  fullScreen: boolean;
+} {
+  if (
+    !mainWindow ||
+    mainWindow.isDestroyed()
+  )
+    return {
+      maximized: false,
+      fullScreen: false,
+    };
+
+  return {
+    maximized: mainWindow.isMaximized(),
+    fullScreen:
+      mainWindow.isFullScreen(),
+  };
+}
+
+function sendWindowState(): void {
+  mainWindow?.webContents.send(
+    "window-state-change",
+    readWindowState()
+  );
+}
 
 function createMainWindow(): BrowserWindow {
   mainWindow = new BrowserWindow({
@@ -1137,25 +1162,30 @@ function createMainWindow(): BrowserWindow {
     minHeight: 300,
     show: false,
 
-    titleBarStyle: "hidden",
-
-    // Only what the window opens with, before the renderer has read the
-    // theme and sent the real values (GRYT-288). These are the shipped dark
-    // palette's --gryt-neutral-1 and --gryt-neutral-12, so somebody on the
-    // default theme sees no change at all when the push arrives.
+    // The frame is ours on every platform (GRYT-626).
     //
-    // The colour used to be #0d0f13, which is not a token and not what the
-    // titlebar beside it paints — so the strip was two shades of almost the
-    // same dark, with a seam down the middle.
-    titleBarOverlay: {
-      color: "#111318",
-      symbolColor: "#e0e0e6",
-      height: TITLEBAR_OVERLAY_HEIGHT,
-    },
+    // A window's corner radius belongs to whoever draws the frame, and no OS
+    // hands the number out: macOS 26 rounds at 16px, Windows 11 at 8 through
+    // DWM, Windows 10 not at all. Electron's roundedCorners is a boolean and
+    // DwmSetWindowAttribute takes ROUND, ROUNDSMALL or DONOTROUND, so there
+    // is nothing to set the three to. They can only agree by none of them
+    // doing it.
+    //
+    // roundedCorners: false stops macOS and Windows 11 clipping, transparent
+    // lets the pixels outside our own curve fall away, and the renderer draws
+    // the radius, the hairline border and the buttons. macOS still shadows a
+    // transparent window along its alpha, so the drop shadow survives there;
+    // Windows does not shadow one at all, which is GRYT-628.
+    frame: false,
+    roundedCorners: false,
+    transparent: true,
 
     icon: appIcon,
 
-    backgroundColor: "#111318",
+    // A transparent window cannot have an opaque backdrop, and a colour here
+    // would square off the corners it sits behind. The app's background is
+    // painted by the frame in the renderer instead.
+    backgroundColor: "#00000000",
 
     webPreferences: {
       preload: join(
@@ -1249,6 +1279,29 @@ function createMainWindow(): BrowserWindow {
   mainWindow.on(
     "hide",
     refreshTrayMenu
+  );
+
+  // Every transition that changes the frame's shape. Not "resize": a drag
+  // fires it continuously and not one of those frames changes the answer.
+  mainWindow.on(
+    "maximize",
+    sendWindowState
+  );
+  mainWindow.on(
+    "unmaximize",
+    sendWindowState
+  );
+  mainWindow.on(
+    "restore",
+    sendWindowState
+  );
+  mainWindow.on(
+    "enter-full-screen",
+    sendWindowState
+  );
+  mainWindow.on(
+    "leave-full-screen",
+    sendWindowState
   );
 
   mainWindow.on("focus", () => {
@@ -2017,74 +2070,82 @@ if (!gotSingleInstanceLock) {
         }
       );
 
-      /**
-       * Repaint the native window controls when the theme changes
-       * (GRYT-288).
-       *
-       * On Windows and Linux the minimise, maximise and close buttons are
-       * drawn by the OS into an overlay strip, not by us — so they are the
-       * one part of the window the stylesheet cannot reach. They were set
-       * once at construction and stayed that colour, which meant picking a
-       * light theme left three dark-theme buttons sitting in the corner of
-       * a light titlebar.
-       *
-       * The renderer sends resolved colours rather than a theme name,
-       * because it is the only side that can read what the variables
-       * currently evaluate to — an imported theme supplies its own.
-       *
-       * macOS is excluded: the traffic lights belong to the OS and follow
-       * the system appearance, and setTitleBarOverlay is not implemented
-       * there.
-       */
+      // ── Window controls (GRYT-626) ───────────────────────────────
+      //
+      // The frame is drawn by the renderer on every platform now, so the
+      // buttons in it are ordinary DOM and the window actions behind them
+      // have to be reachable from there. The actions stay native — this is
+      // Electron's own minimise, maximise and close — and closing still runs
+      // the close-to-tray handler on mainWindow rather than going around it.
+
       ipcMain.on(
-        "set-titlebar-overlay",
-        (
-          _event,
-          colors: {
-            color: string;
-            symbolColor: string;
-          }
-        ) => {
+        "window-minimize",
+        () => {
           if (
-            process.platform ===
-            "darwin"
+            !mainWindow ||
+            mainWindow.isDestroyed()
           )
             return;
+          mainWindow.minimize();
+        }
+      );
+
+      ipcMain.on(
+        "window-toggle-maximize",
+        () => {
           if (
             !mainWindow ||
             mainWindow.isDestroyed()
           )
             return;
 
-          // Anything but a plain hex string is refused rather than passed
-          // on. Electron throws on a colour it cannot parse, and the value
-          // arrives from the renderer, where a theme could carry oklch or
-          // a colour name.
-          const isHex = (v: unknown) =>
-            typeof v === "string" &&
-            /^#[0-9a-f]{6}$/i.test(v);
-
+          // Full screen is checked first. On macOS this button is the green
+          // one, and unmaximise on a full-screen window does nothing at all,
+          // so the click would be swallowed.
           if (
-            !isHex(colors?.color) ||
-            !isHex(colors?.symbolColor)
+            mainWindow.isFullScreen()
+          ) {
+            mainWindow.setFullScreen(
+              false
+            );
+            return;
+          }
+
+          if (mainWindow.isMaximized())
+            mainWindow.unmaximize();
+          else mainWindow.maximize();
+        }
+      );
+
+      ipcMain.on(
+        "window-toggle-fullscreen",
+        () => {
+          if (
+            !mainWindow ||
+            mainWindow.isDestroyed()
           )
             return;
-
-          try {
-            mainWindow.setTitleBarOverlay(
-              {
-                color: colors.color,
-                symbolColor:
-                  colors.symbolColor,
-                height:
-                  TITLEBAR_OVERLAY_HEIGHT,
-              }
-            );
-          } catch {
-            // Not every platform build implements it, and a titlebar that
-            // keeps its old colours is not a reason to take anything down.
-          }
+          mainWindow.setFullScreen(
+            !mainWindow.isFullScreen()
+          );
         }
+      );
+
+      ipcMain.on(
+        "window-close",
+        () => {
+          if (
+            !mainWindow ||
+            mainWindow.isDestroyed()
+          )
+            return;
+          mainWindow.close();
+        }
+      );
+
+      ipcMain.handle(
+        "window-get-state",
+        () => readWindowState()
       );
 
       ipcMain.on(

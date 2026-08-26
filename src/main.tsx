@@ -24,7 +24,7 @@ import { Titlebar } from "./components/titlebar";
 import { UpdateAnnouncement } from "./components/updateAnnouncement";
 import { initGlobalStorage } from "./lib/globalStorage";
 import { captureLogs } from "./lib/reports/logs";
-import { pushTitlebarOverlay } from "./lib/titlebarOverlay";
+import { useWindowFrame } from "./lib/windowFrame";
 
 // eslint-disable-next-line react-refresh/only-export-components
 function ThemedApp() {
@@ -71,6 +71,14 @@ function ThemedApp() {
     const root = document.documentElement;
     root.style.zoom = String(uiScale);
     root.style.setProperty("--chat-font-size", `${chatFontSize}px`);
+
+    /* The window frame divides by this (GRYT-626). Everything under the zoom
+       is drawn at uiScale times its CSS size, which is right for the app and
+       wrong for the frame: the window does not get bigger when the text does,
+       so a 16px radius at 150% would be a 24px curve on a corner that is
+       still 16px. This is the same mismatch GRYT-609 describes between
+       TITLEBAR_HEIGHT and the overlay strip. */
+    root.style.setProperty("--gryt-ui-scale", String(uiScale));
   }, [uiScale, chatFontSize]);
 
   /* An imported theme, painted onto the same element for the same reason: the
@@ -100,17 +108,7 @@ function ThemedApp() {
     };
   }, [activeTheme, resolvedAppearance]);
 
-  /* The native minimise/maximise/close buttons on Windows and Linux, which
-     the stylesheet cannot reach — they are painted by the OS into an overlay
-     strip (GRYT-288).
-
-     After the two effects above rather than before, and deliberately so: this
-     reads what the variables evaluate to on the root element, and the effect
-     that puts an imported theme there runs in source order. */
-  useEffect(() => {
-    pushTitlebarOverlay();
-  }, [activeTheme, resolvedAppearance]);
-
+  useWindowFrame();
   useZoomShortcuts();
   useAddonLoader();
   updatePluginApiTheme({ appearance: resolvedAppearance, accentColor });

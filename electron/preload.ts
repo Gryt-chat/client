@@ -170,14 +170,51 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
 
   /**
-   * Repaint the native minimise/maximise/close buttons (GRYT-288).
-   *
-   * Colours rather than a theme name, because only the renderer can say what
-   * the theme variables currently evaluate to. Both must be `#rrggbb`; main
-   * refuses anything else.
+   * Which OS this is, so the renderer can put the window buttons where that
+   * OS puts them — left on macOS, right everywhere else (GRYT-626).
    */
-  setTitlebarOverlay(colors: { color: string; symbolColor: string }) {
-    ipcRenderer.send("set-titlebar-overlay", colors);
+  platform: process.platform,
+
+  /* The window actions the drawn frame stands in for. Native underneath:
+     these are Electron's own, and close still runs the close-to-tray
+     handler rather than going around it. */
+  minimizeWindow() {
+    ipcRenderer.send("window-minimize");
+  },
+
+  /** Restores from full screen first, where unmaximise would do nothing. */
+  toggleMaximizeWindow() {
+    ipcRenderer.send("window-toggle-maximize");
+  },
+
+  toggleFullScreenWindow() {
+    ipcRenderer.send("window-toggle-fullscreen");
+  },
+
+  closeWindow() {
+    ipcRenderer.send("window-close");
+  },
+
+  getWindowState(): Promise<{
+    maximized: boolean;
+    fullScreen: boolean;
+  }> {
+    return ipcRenderer.invoke("window-get-state");
+  },
+
+  onWindowStateChange(
+    callback: (state: {
+      maximized: boolean;
+      fullScreen: boolean;
+    }) => void
+  ) {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      state: { maximized: boolean; fullScreen: boolean }
+    ) => callback(state);
+    ipcRenderer.on("window-state-change", handler);
+    return () =>
+      ipcRenderer.removeListener("window-state-change", handler);
   },
 
   toggleAlwaysOnTop(pinned: boolean, windowTitle?: string) {

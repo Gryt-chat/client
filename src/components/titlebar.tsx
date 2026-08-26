@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { PiCaretLeftFill, PiCaretRightFill } from "react-icons/pi";
 
 import { isElectron } from "../lib/electron";
+import { isMacOS } from "../lib/windowFrame";
+import { WindowControls } from "./windowControls";
 
 export const TITLEBAR_HEIGHT = 36;
 
@@ -30,9 +32,19 @@ export function Titlebar() {
 
   if (!isElectron()) return null;
 
+  /* macOS puts the window buttons on the left and closes first; Windows and
+     Linux put them on the right and close last. The buttons themselves are
+     the same drawing on all three (GRYT-626) — only the side and the order
+     follow the platform, because those are what people reach for without
+     looking. */
+  const mac = isMacOS();
+
   return (
     <div
       data-gryt="titlebar"
+      /* What the OS does with a double-click on its own titlebar. There is no
+         OS titlebar any more, so it has to be done here. */
+      onDoubleClick={() => window.electronAPI?.toggleMaximizeWindow()}
       style={{
         height: TITLEBAR_HEIGHT,
         appRegion: "drag",
@@ -53,6 +65,10 @@ export function Titlebar() {
         alignItems: "center",
       } as React.CSSProperties}
     >
+      {mac && (
+        <WindowControls order={["close", "minimize", "maximize"]} />
+      )}
+
       {/* Back / Forward */}
       <div
         style={{
@@ -95,6 +111,12 @@ export function Titlebar() {
           gryt.chat
         </span>
       </div>
+
+      <div style={{ flex: 1 }} />
+
+      {!mac && (
+        <WindowControls order={["minimize", "maximize", "close"]} />
+      )}
     </div>
   );
 }

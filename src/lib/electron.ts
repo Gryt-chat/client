@@ -31,6 +31,18 @@ export interface UpdateStatus {
   message?: string;
 }
 
+/**
+ * Whether the frame the renderer draws should be rounded (GRYT-626).
+ *
+ * Both of these square it off: at the edge of the screen there is nothing
+ * behind the window to fill a curve, so a rounded corner is a notch with the
+ * desktop showing through it.
+ */
+export interface WindowState {
+  maximized: boolean;
+  fullScreen: boolean;
+}
+
 export interface DesktopSource {
   id: string;
   name: string;
@@ -146,11 +158,14 @@ export interface ElectronAPI {
   getHardwareAcceleration(): Promise<boolean>;
   setHardwareAcceleration(enabled: boolean): void;
   setBadgeCount(count: number): void;
-  /**
-   * Repaint the native window controls on Windows and Linux (GRYT-288).
-   * Both colours must be `#rrggbb`. Absent on builds older than 1.6.16.
-   */
-  setTitlebarOverlay?(colors: { color: string; symbolColor: string }): void;
+  /** `process.platform` from the main process (GRYT-626). */
+  platform: string;
+  minimizeWindow(): void;
+  toggleMaximizeWindow(): void;
+  toggleFullScreenWindow(): void;
+  closeWindow(): void;
+  getWindowState(): Promise<WindowState>;
+  onWindowStateChange(callback: (state: WindowState) => void): () => void;
   toggleAlwaysOnTop(pinned: boolean, windowTitle?: string): void;
   getScreenCaptureAccess(): Promise<
     "not-determined" | "granted" | "denied" | "restricted"
