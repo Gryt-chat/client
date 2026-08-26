@@ -76,6 +76,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("download-update");
   },
 
+  /** Ask the main process to re-send whatever update state it is holding. */
+  replayUpdateStatus() {
+    ipcRenderer.send("replay-update-status");
+  },
+
   getAutoUpdate(): Promise<boolean> {
     return ipcRenderer.invoke("get-auto-update");
   },

@@ -23,6 +23,9 @@ export interface UpdateStatus {
     // answers a check somebody asked for and is shown in Settings. This one
     // nobody asked for, so it is what raises the toast.
     | "announced"
+    // A check somebody pressed found nothing. Only ever sent for a forced
+    // check, because it is an answer to a question rather than news.
+    | "up-to-date"
     | "error";
   version?: string;
   /** On "announced", the version being run right now. */
@@ -35,6 +38,13 @@ export interface UpdateStatus {
    * download.
    */
   autoDownload?: boolean;
+  /**
+   * On "announced", that this was asked for rather than discovered.
+   *
+   * A dismissed toast stays dismissed for news. Pressing Check for Updates, or
+   * reloading the window, is a later ask and redraws it.
+   */
+  reannounce?: boolean;
   percent?: number;
   message?: string;
 }
@@ -131,6 +141,8 @@ export interface ElectronAPI {
   restartForUpdate(): void;
   /** Fetch the announced release now. No-op while one is already downloading. */
   downloadUpdate(): void;
+  /** Ask the main process to re-send whatever update state it is holding. */
+  replayUpdateStatus(): void;
   getAutoUpdate(): Promise<boolean>;
   setAutoUpdate(enabled: boolean): void;
   getBetaChannel(): Promise<boolean>;

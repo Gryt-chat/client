@@ -147,6 +147,44 @@ assert.equal(
 
 assert.match(main, /const FEED_SUPPORTS_MULTI_RANGE = false;/);
 
+// The repeating check must be able to fire (GRYT-633).
+//
+// Both the timer and the floor go through checkForUpdatesInBackground, so a
+// floor at or above the interval has the timer cancelling its own every other
+// tick. A 15 minute floor against a 10 minute interval did exactly that.
+const interval = main.match(/const UPDATE_CHECK_INTERVAL_MS = (\d+) \* 60 \* 1000;/);
+const floor = main.match(/const UPDATE_CHECK_FLOOR_MS = (\d+) \* 60 \* 1000;/);
+
+assert.ok(interval && floor, "the update check interval and floor are gone");
+
+assert.ok(
+  Number(floor[1]) < Number(interval[1]),
+  `the ${floor[1]}m floor is not below the ${interval[1]}m interval, so the timer cancels itself`,
+);
+
+// A check somebody pressed a button for skips the floor and answers either way.
+// Sharing the floor with the launch check made the tray item a no-op for the
+// first fifteen minutes of every run, with no feedback at all.
+assert.match(main, /checkForUpdatesInBackground\("tray", true\)/);
+
+assert.match(bodyOf("checkForUpdatesInBackground"), /if \(force\) announceDownloaded/);
+
+assert.match(bodyOf("checkForUpdatesInBackground"), /sendToMain\("up-to-date"/);
+
+// Coming back to the window is a check.
+assert.match(main, /checkForUpdatesInBackground\("focus"\)/);
+
+// A finished download raises the toast whatever started it. Tying it to the
+// initiator meant a download started from Settings announced nowhere once the
+// user navigated away from that panel.
+assert.match(
+  main,
+  /autoUpdater\.on\("update-downloaded"[\s\S]{0,900}sendToMain\("announced"/,
+);
+
+// The renderer can ask for what it missed, so a reload does not lose the toast.
+assert.match(main, /ipcMain\.on\(\s*"replay-update-status"/);
+
 // The off switch reads from config, so it survives a restart.
 assert.match(main, /readBoolConfig\("autoUpdate", true\)/);
 

@@ -801,19 +801,33 @@ let pendingUpdateVersion: string | undefined;
  * across all of them stayed on the version it started the day with — including
  * through a privacy fix, which is not a thing to make somebody restart for.
  *
- * An hour is affordable because this check spends no GitHub API quota at all.
- * See `newestReleaseWithoutApi`.
+ * Affordable at any interval because this check spends no GitHub API quota at
+ * all. See `newestReleaseWithoutApi`.
+ *
+ * It was an hour until GRYT-633, and an hour is long enough to miss a release
+ * entirely while looking straight at the app. 1.6.48-beta.1 published fifteen
+ * minutes after a client started; that client's next look was due forty-five
+ * minutes later, so the person waiting for it gave up and installed from
+ * Settings, and concluded the toast had been removed.
  */
-const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000;
+const UPDATE_CHECK_INTERVAL_MS = 10 * 60 * 1000;
 
 /**
  * The soonest two background checks may be, whatever asked for them.
  *
- * Waking from sleep is the other moment a machine has plausibly been away long
- * enough for a release to have happened, and a laptop lid opens far more often
- * than once an hour. Without a floor, ten lid-opens is ten checks.
+ * Waking from sleep and focusing the window are both moments a machine has
+ * plausibly been away long enough for a release to have happened, and both
+ * happen far more often than a release does. Without a floor, ten lid-opens or
+ * ten alt-tabs is ten checks.
+ *
+ * **Has to stay below `UPDATE_CHECK_INTERVAL_MS`.** The repeating timer goes
+ * through the same floor, so a floor at or above the interval would have the
+ * timer cancelling its own every other tick — which is what a 15 minute floor
+ * did to a 10 minute interval before this was written down.
+ *
+ * A check somebody pressed a button for skips this entirely. See `force`.
  */
-const UPDATE_CHECK_FLOOR_MS = 15 * 60 * 1000;
+const UPDATE_CHECK_FLOOR_MS = 5 * 60 * 1000;
 
 /* How long after the window appears to go looking for a release.
    Launch used to do this before showing anything, which is what made starting
@@ -935,25 +949,85 @@ async function newestReleaseWithoutApi(): Promise<ReleaseRef | null> {
  * So the probe now hands its tag to `startBackgroundDownload`, and the
  * announcement moves to the point where a download is actually running.
  */
-function checkForUpdatesInBackground(reason: string): void {
+/**
+ * Put the toast back on screen for a version, whatever state it is in.
+ *
+ * Used by a check somebody pressed a button for, and by the renderer asking
+ * what it missed after a reload. `reannounce` tells the renderer this was
+ * asked for, so it redraws even over a toast that had been dismissed — a
+ * dismissal means "not now", and pressing Check for Updates is a later now.
+ */
+function announceDownloaded(version?: string): void {
+  if (!version) return;
+
+  announcedVersion = version;
+
+  sendToMain("announced", {
+    version,
+    from: app.getVersion(),
+    autoDownload: true,
+    reannounce: true,
+  });
+
+  /* Two messages rather than a field on the first: the renderer already turns
+     `downloaded` into the restart prompt, and a state the toast can reach only
+     one way is a state that cannot drift. */
+  if (updateIsDownloaded) {
+    sendToMain("downloaded", { version });
+  }
+}
+
+function checkForUpdatesInBackground(
+  reason: string,
+  force = false
+): void {
   /* Already downloaded, so the answer cannot change until this restarts.
      Element hit the same thing on macOS and guards it the same way: re-checking
      while Squirrel is holding a staged update wedges the install
      (element-web#12433). */
-  if (updateIsDownloaded) return;
+  if (updateIsDownloaded) {
+    if (force) announceDownloaded(pendingUpdateVersion);
+    return;
+  }
 
   /* A download is already running. A release published while one is in flight
      would otherwise start a second `checkForUpdates` over the top of it, and
      electron-updater has one download slot. The next tick picks the newer one
      up once this has finished or failed. */
-  if (pendingRelease) return;
+  if (pendingRelease) {
+    if (force) {
+      sendToMain("downloading", {
+        version: pendingRelease.version,
+      });
+    }
+    return;
+  }
 
-  if (Date.now() - lastUpdateCheckAt < UPDATE_CHECK_FLOOR_MS) return;
+  /* A check somebody pressed a button for goes through regardless. The tray
+     item used to share this floor with the launch check, which set it ten
+     seconds after startup — so for the first fifteen minutes of every run,
+     pressing Check for Updates did nothing and said nothing (GRYT-633). */
+  if (!force && Date.now() - lastUpdateCheckAt < UPDATE_CHECK_FLOOR_MS) return;
+
   lastUpdateCheckAt = Date.now();
 
   void newestReleaseWithoutApi()
     .then((release) => {
-      if (!release || release.version === announcedVersion) return;
+      if (!release) {
+        /* Somebody asked, so say so. Silence is the same shape as a broken
+           button. */
+        if (force) {
+          sendToMain("up-to-date", {
+            version: app.getVersion(),
+          });
+        }
+        return;
+      }
+
+      if (release.version === announcedVersion) {
+        if (force) announceDownloaded(release.version);
+        return;
+      }
 
       startupLog(
         `Update: ${release.version} available (background check, ${reason})`
@@ -1137,6 +1211,25 @@ function initBackgroundUpdater(launchAlreadyChecked: boolean) {
     updateIsDownloaded = true;
     pendingRelease = null;
     announceDownload = false;
+
+    /* Announced here as well as at `update-available`, because the toast has to
+       stop depending on what started the download.
+     *
+     * GRYT-625 raised it only for downloads nobody asked for, reasoning that
+       somebody who pressed Check for Updates is already being shown the answer.
+       That holds while they are looking at Settings and stops the moment they
+       navigate away — the download finishes into an empty screen and there is
+       nothing anywhere saying a restart would help. The rule is now: a finished
+       download that has not been announced gets announced. */
+    if (info.version !== announcedVersion) {
+      announcedVersion = info.version;
+
+      sendToMain("announced", {
+        version: info.version,
+        from: app.getVersion(),
+        autoDownload: true,
+      });
+    }
 
     sendToMain("downloaded", {
       version: info.version,
@@ -1544,6 +1637,12 @@ function createMainWindow(): BrowserWindow {
       "window-focus-change",
       true
     );
+
+    /* Coming back to the window is the moment somebody is most likely to act on
+       a release, and the cheapest signal that they are here. The floor keeps
+       alt-tabbing free: at most one check every five minutes however often this
+       fires. */
+    checkForUpdatesInBackground("focus");
   });
 
   mainWindow.on("blur", () => {
@@ -1993,7 +2092,9 @@ function buildTrayContextMenu(): Menu {
     {
       label: "Check for Updates",
       click: () => {
-        checkForUpdatesInBackground("tray");
+        /* Forced: somebody pressed this, so it skips the floor and answers
+           either way. */
+        checkForUpdatesInBackground("tray", true);
       },
     },
 
@@ -3520,6 +3621,32 @@ if (!gotSingleInstanceLock) {
       ipcMain.on(
         "download-update",
         () => downloadAnnouncedRelease()
+      );
+
+      /* What the renderer missed.
+       *
+       * The toast is React state and the announcement is a one-shot message, so
+       * a reload cleared the toast and nothing ever sent it again —
+       * `announcedVersion` had already been set, so not even the next check
+       * would (GRYT-633). The renderer asks for this on mount instead of being
+       * told once and having to keep it. */
+      ipcMain.on(
+        "replay-update-status",
+        () => {
+          if (updateIsDownloaded) {
+            announceDownloaded(pendingUpdateVersion);
+            return;
+          }
+
+          if (pendingRelease) {
+            announceDownloaded(pendingRelease.version);
+            return;
+          }
+
+          if (announcedVersion) {
+            announceDownloaded(announcedVersion);
+          }
+        }
       );
 
       ipcMain.on(

@@ -162,19 +162,27 @@ export function UpdateAnnouncement() {
       );
     };
 
-    return api.onUpdateStatus((status) => {
+    const unsubscribe = api.onUpdateStatus((status) => {
+      if (status.status === "up-to-date") {
+        /* Only ever arrives for a check somebody pressed. Short, because it is
+           an answer rather than news, and there is nothing to act on. */
+        toast("Gryt is up to date", { duration: 4000, id: "update-none" });
+        return;
+      }
+
       if (status.status === "announced") {
         if (!status.version) return;
 
         const id = `update-${status.version}`;
 
-        /* Same release as the toast already up. The one case worth redrawing is
-           a download that failed and is being retried by the hourly check —
-           otherwise this is the announcement arriving twice. */
-        if (shown.current?.id === id) {
+        /* Same release as the toast already up. Redrawn for a retry of a failed
+           download, and for anything the user asked for — pressing Check for
+           Updates or reloading the window. Otherwise this is the announcement
+           arriving twice. */
+        if (shown.current?.id === id && !status.reannounce) {
           if (shown.current.dismissed) return;
           if (shown.current.phase !== "failed") return;
-        } else if (shown.current) {
+        } else if (shown.current && shown.current.id !== id) {
           toast.dismiss(shown.current.id);
         }
 
@@ -212,6 +220,15 @@ export function UpdateAnnouncement() {
           break;
       }
     });
+
+    /* The toast is state in this component, and the announcement was a message
+       sent once. A reload therefore lost it for good: the main process had
+       already recorded the version as announced, so nothing would send it again
+       until the app restarted (GRYT-633). Asking on mount covers the reload and
+       costs one message on a normal start, where there is nothing to replay. */
+    api.replayUpdateStatus();
+
+    return unsubscribe;
   }, []);
 
   return null;
