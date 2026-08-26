@@ -33,9 +33,12 @@ export type WindowControl = "minimize" | "maximize" | "close";
 export function WindowControls({
   order,
   focused,
+  pushRight,
 }: {
   order: WindowControl[];
   focused: boolean;
+  /** Sit against the right edge without a spacer element in the way. */
+  pushRight?: boolean;
 }) {
   const { maximized, fullScreen } = useWindowState();
   const snap = useSnapMenu();
@@ -60,6 +63,7 @@ export function WindowControls({
         display: "flex",
         position: "relative",
         alignSelf: "stretch",
+        marginLeft: pushRight ? "auto" : undefined,
         appRegion: "no-drag",
         WebkitAppRegion: "no-drag",
       } as React.CSSProperties}

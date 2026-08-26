@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
-import { PiCaretLeftFill, PiCaretRightFill } from "react-icons/pi";
+import { useEffect } from "react";
 
 import { isElectron } from "../lib/electron";
 import { isMacOS, useWindowFocused } from "../lib/windowFrame";
@@ -9,23 +8,7 @@ import { WindowControls } from "./windowControls";
 export const TITLEBAR_HEIGHT = 36;
 
 export function Titlebar() {
-  const [canGoBack, setCanGoBack] = useState(false);
-  const [canGoForward, setCanGoForward] = useState(false);
-
-  useEffect(() => {
-    const update = () => {
-      setCanGoBack(window.history.length > 1 && window.history.state !== null);
-      setCanGoForward(false);
-    };
-    window.addEventListener("popstate", update);
-    update();
-    return () => window.removeEventListener("popstate", update);
-  }, []);
-
   const focused = useWindowFocused();
-
-  const goBack = useCallback(() => window.history.back(), []);
-  const goForward = useCallback(() => window.history.forward(), []);
 
   useEffect(() => {
     if (isElectron()) {
@@ -45,14 +28,18 @@ export function Titlebar() {
   return (
     <div
       data-gryt="titlebar"
-      /* A fallback, and honestly a thin one. An element with
-         -webkit-app-region: drag hands mousedown to the OS drag loop, so no
-         click or dblclick is generated for it and this will not fire on
-         macOS. Double-click to zoom comes from AppKit instead, which is why
-         the window keeps a hidden titlebar rather than losing the frame
-         outright — see createMainWindow. Windows gets the same for free by
-         answering HTCAPTION. Left in for any platform that does deliver it. */
-      onDoubleClick={() => window.electronAPI?.toggleMaximizeWindow()}
+      /* Only when the titlebar itself was hit, never a child of it.
+         Electron's draggable regions "ignore all pointer events", and that
+         applies to children overlapping the region rather than to the region
+         itself — so the drag element gets the dblclick and anything sitting
+         on top of it silently gets nothing. A flex spacer used to cover this
+         strip, which is why double-clicking did nothing at all: every real
+         click landed on the spacer and was swallowed. Synthetic clicks bubble
+         and so appeared to work, which is what made it hard to see. */
+      onDoubleClick={(event) => {
+        if (event.currentTarget !== event.target) return;
+        window.electronAPI?.titlebarDoubleClick();
+      }}
       style={{
         height: TITLEBAR_HEIGHT,
         appRegion: "drag",
@@ -74,25 +61,6 @@ export function Titlebar() {
       } as React.CSSProperties}
     >
       {mac && <MacWindowControls />}
-
-      {/* Back / Forward */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 2,
-          appRegion: "no-drag",
-          WebkitAppRegion: "no-drag",
-          paddingLeft: 10,
-        } as React.CSSProperties}
-      >
-        <NavButton onClick={goBack} disabled={!canGoBack} label="Go back">
-          <PiCaretLeftFill size={18} />
-        </NavButton>
-        <NavButton onClick={goForward} disabled={!canGoForward} label="Go forward">
-          <PiCaretRightFill size={18} />
-        </NavButton>
-      </div>
 
       {/* Centered title */}
       <div
@@ -118,56 +86,13 @@ export function Titlebar() {
         </span>
       </div>
 
-      <div style={{ flex: 1 }} />
-
       {!mac && (
         <WindowControls
           order={["minimize", "maximize", "close"]}
           focused={focused}
+          pushRight
         />
       )}
     </div>
-  );
-}
-
-function NavButton({
-  onClick,
-  disabled,
-  label,
-  children,
-}: {
-  onClick: () => void;
-  disabled: boolean;
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={label}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: 28,
-        height: 24,
-        border: "none",
-        borderRadius: "var(--gryt-radius-sm)",
-        background: "transparent",
-        color: disabled ? "var(--gryt-neutral-a5)" : "var(--gryt-neutral-a11)",
-        cursor: disabled ? "default" : "pointer",
-        transition: "background 0.1s, color 0.1s",
-        opacity: disabled ? 0.4 : 1,
-      }}
-      onMouseEnter={(e) => {
-        if (!disabled) e.currentTarget.style.background = "var(--gryt-neutral-a3)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = "transparent";
-      }}
-    >
-      {children}
-    </button>
   );
 }

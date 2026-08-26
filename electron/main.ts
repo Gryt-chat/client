@@ -1181,6 +1181,7 @@ function fillsWorkArea(): boolean {
     screen.getDisplayMatching(b);
   const slack = 1;
 
+
   return (
     b.x <= workArea.x + slack &&
     b.y <= workArea.y + slack &&
@@ -2318,6 +2319,48 @@ if (!gotSingleInstanceLock) {
           if (mainWindow.isMaximized())
             mainWindow.unmaximize();
           else mainWindow.maximize();
+        }
+      );
+
+      /* A double-click on the titlebar, which on macOS is not ours to define:
+         the system preference says whether it zooms, minimises or does
+         nothing, and an app that ignores it is the one behaving oddly.
+         Everywhere else it maximises, which is what those platforms do. */
+      ipcMain.on(
+        "window-titlebar-double-click",
+        () => {
+          if (
+            !mainWindow ||
+            mainWindow.isDestroyed()
+          )
+            return;
+
+          if (
+            process.platform !== "darwin"
+          ) {
+            if (mainWindow.isMaximized())
+              mainWindow.unmaximize();
+            else mainWindow.maximize();
+            return;
+          }
+
+          const action =
+            systemPreferences.getUserDefault(
+              "AppleActionOnDoubleClick",
+              "string"
+            );
+
+          if (action === "Minimize") {
+            mainWindow.minimize();
+            return;
+          }
+
+          // "None" is a real setting and means exactly that.
+          if (action === "Maximize") {
+            if (mainWindow.isMaximized())
+              mainWindow.unmaximize();
+            else mainWindow.maximize();
+          }
         }
       );
 

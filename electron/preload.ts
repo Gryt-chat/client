@@ -187,6 +187,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("window-toggle-maximize");
   },
 
+  titlebarDoubleClick() {
+    ipcRenderer.send("window-titlebar-double-click");
+  },
+
   toggleFullScreenWindow() {
     ipcRenderer.send("window-toggle-fullscreen");
   },

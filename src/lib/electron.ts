@@ -180,6 +180,7 @@ export interface ElectronAPI {
   platform: string;
   minimizeWindow(): void;
   toggleMaximizeWindow(): void;
+  titlebarDoubleClick(): void;
   toggleFullScreenWindow(): void;
   closeWindow(): void;
   snapWindow(zone: SnapZone): void;
