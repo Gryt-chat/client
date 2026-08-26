@@ -23,6 +23,52 @@ const sizesDir = path.join(buildDir, "icon-sizes");
 
 const sizes = [16, 24, 32, 48, 64, 128, 256];
 
+/*
+ * The corner radius Windows and Linux get, on the 1024 artboard.
+ *
+ * 373 is read off the mark Sivert drew the rounded tile with: its straight
+ * top edge runs x373 to x651, so the radius is what is left either side. That
+ * is 36% of the width — much rounder than Apple's 22%, and deliberately so.
+ *
+ * His drawing paints the corners #414558 rather than leaving them out, which
+ * is right on a Figma canvas and wrong in a file: an icon's corners have to be
+ * transparent or the taskbar shows four grey notches where the rounding should
+ * be. So the shape is taken and the fill is not.
+ *
+ * macOS does not use this. It gets its own shape below, and it does not get
+ * this one because Apple's corner is a different curve at a different size.
+ */
+const CORNER = 373;
+
+const ROUNDED_MASK = Buffer.from(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024">` +
+    `<rect width="1024" height="1024" rx="${CORNER}" ry="${CORNER}" fill="#fff"/>` +
+    `</svg>`,
+);
+
+/*
+ * The square artboard with its corners taken off.
+ *
+ * `dest-in` keeps the source only where the mask is opaque, so the corners end
+ * up genuinely transparent rather than filled with a colour that happens to
+ * match whatever was behind them when the drawing was exported.
+ */
+async function roundedSource(size) {
+  const flat = await sharp(sourceSvg)
+    .resize(1024, 1024, {
+      fit: "contain",
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    })
+    .composite([{ input: ROUNDED_MASK, blend: "dest-in" }])
+    .png()
+    .toBuffer();
+
+  return sharp(flat).resize(size, size, {
+    fit: "contain",
+    background: { r: 0, g: 0, b: 0, alpha: 0 },
+  });
+}
+
 async function fileExists(filePath) {
   try {
     await fs.access(filePath);
@@ -43,22 +89,12 @@ const pngFiles = [];
 for (const size of sizes) {
   const output = path.join(sizesDir, `icon-${size}.png`);
 
-  await sharp(sourceSvg)
-    .resize(size, size, {
-      fit: "contain",
-      background: { r: 0, g: 0, b: 0, alpha: 0 },
-    })
-    .png()
-    .toFile(output);
+  await (await roundedSource(size)).png().toFile(output);
 
   pngFiles.push(output);
 }
 
-await sharp(sourceSvg)
-  .resize(1024, 1024, {
-    fit: "contain",
-    background: { r: 0, g: 0, b: 0, alpha: 0 },
-  })
+await (await roundedSource(1024))
   .png()
   .toFile(path.join(buildDir, "icon.png"));
 

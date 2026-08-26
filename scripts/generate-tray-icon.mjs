@@ -7,13 +7,32 @@
  * square. Every pixel is opaque, so every pixel got painted, and the menu bar
  * showed a solid black tile.
  *
- * So the shape has to carry the meaning: a filled disc with the eyes and beak
- * cut out of it. The holes are the whole design — they are what stops it being
- * the black tile it was, and they keep the round mark the app icon already uses
- * rather than inventing a second silhouette for the menu bar.
+ * So the shape has to carry the meaning: the bird's outline with its face
+ * cut out and the eyes and beak drawn back inside the hole. That is the app
+ * icon's own construction — dark body, light face, dark features — with
+ * "light" meaning absent, which is the only thing a template image can say.
  *
- * A version using the owl's head outline was tried first. It is more literally
- * an owl, and at 16px it read as a lump with two dents.
+ * Four styles were built and looked at before this one, at both sizes, painted
+ * black on a light bar and white on a dark one the way macOS does:
+ *
+ *   - a plain disc with the features punched out. What this replaces. Legible,
+ *     and not identifiably an owl.
+ *   - the head outline. Tried once before and rejected then too: at 16px it
+ *     read as a lump with two dents.
+ *   - the body filled, features punched. The features are small against the
+ *     whole bird and close up at 1x.
+ *   - the body as a stroked outline, at two weights. The cleanest of them and
+ *     the most like everything else in a menu bar, which is also the argument
+ *     against it.
+ *
+ * Cutting the face wins because the face is the biggest shape in the mark, so
+ * the silhouette gets an inside at any size, and because it is the drawing
+ * rather than an interpretation of it.
+ *
+ * The full body was tried too, unclipped to y1434. The menu bar fixes an
+ * icon's height and takes whatever width follows, so an unclipped bird comes
+ * out narrow and its face shrinks to specks. The square-clipped mark is wider
+ * for the same height, which is what keeps the features readable.
  *
  * Geometry is lifted from public/logo.svg. Run by hand, `yarn generate:tray`,
  * and commit the PNGs — same arrangement as the site's share cards.
@@ -50,13 +69,18 @@ const buildDir = join(__dirname, "..", "build");
  * edge, 203px out — by about 26px. Centring on the face proper drops the eyes
  * too high in the circle once the head is gone.
  */
-const SOLID = `<circle cx="512" cy="545" r="230"/>`;
+const SOLID = `<path d="M117.45 677.727C120.743 664.113 120.36 602.152 119.637 587.363C108.168 353.556 283.596 184.2 515.449 191.21C628.229 194.622 718.768 215.015 802.396 299.432C910.784 408.844 908.561 532.939 906.96 674.973C980.416 846.971 995.413 1003.44 928.604 1184.1C909.952 1234.53 867.051 1304.75 824.991 1339.24C790.453 1359.89 755.156 1380.9 714.224 1385.74C709.786 1397.93 708.22 1406.2 698.584 1414.62C671.044 1416.11 672.356 1412.41 650.517 1432.58C636.333 1434.54 635.588 1434.81 621.437 1424.16C619.727 1422.87 618.028 1421.55 616.348 1420.22C586.972 1422.33 583.755 1428.57 567.16 1401.62L461.79 1401.57C430.607 1447.05 435.866 1402.27 392.078 1431.99C375.144 1433.23 354.006 1420.75 337.187 1415.75C321.629 1411.12 319.352 1403.15 312.868 1388.28C259.874 1377.86 241.992 1355.86 203.048 1339.89C155.686 1305.18 114.107 1232 94.36 1178.04C30.9054 1004.63 43.665 843.414 117.45 677.727Z"/>`;
 
 /*
- * Punched out: both eyes and the beak, as the mark's own paths rather than
- * circles approximating them. They are already the right shape and already in
- * this coordinate space, and a hand-fitted circle is one more thing to re-fit
- * the next time the bird is redrawn.
+ * The face plate, punched out of the body, and the features drawn back inside
+ * it. The mark's own paths rather than shapes approximating them: they are
+ * already right and already in this coordinate space, and a hand-fitted circle
+ * is one more thing to re-fit the next time the bird is redrawn.
+ */
+const FACE = `<path d="M644.863 353C728.718 353 797.231 400.641 801.761 483.172H802C802 484.836 801.984 486.498 801.956 488.16C801.985 489.397 802 490.638 802 491.882C802 500.32 801.331 508.603 800.045 516.68C796.951 543.102 790.208 569.026 779.963 593.702C765.414 628.744 744.09 660.584 717.207 687.404C690.325 714.224 658.411 735.499 623.287 750.014C588.163 764.529 550.518 772 512.5 772C474.482 772 436.837 764.529 401.713 750.014C366.589 735.499 334.675 714.224 307.793 687.404C280.91 660.584 259.586 628.744 245.037 593.702C234.792 569.026 228.048 543.103 224.955 516.681C223.668 508.604 223 500.321 223 491.882C223 490.638 223.015 489.397 223.044 488.16C223.015 486.498 223 484.836 223 483.172H223.239C227.769 400.641 296.282 353 380.137 353C435.721 353 509.197 384.119 512.5 384.119C515.803 384.119 589.279 353 644.863 353Z"/>`;
+
+/*
+ * Eyes and beak, filled, sitting in the hole the face leaves.
  */
 const HOLES = `
   <path d="M637.617 445.204C665.591 435.093 696.445 449.712 706.342 477.765C716.239 505.817 701.39 536.563 673.265 546.251C645.44 555.834 615.095 541.175 605.303 513.42C595.511 485.664 609.94 455.207 637.617 445.204Z"/>
@@ -64,12 +88,22 @@ const HOLES = `
   <path d="M512.359 573.191C508.812 573.17 516.378 573.212 512.359 573.191C572.603 573.544 536.569 640.612 516.085 676.829C514.504 679.626 510.416 679.514 508.945 676.658C490.115 640.101 452.322 573.191 512.359 573.191Z"/>
 `;
 
+/*
+ * Body, less the face, plus the features back inside it.
+ *
+ * The same three tones the app icon is built from — dark body, light face,
+ * dark eyes and beak — with "light" meaning absent rather than a colour, which
+ * is all a template image can say. That is what makes this read as the mark
+ * rather than as a bird-shaped blob: the face is the biggest shape in it, and
+ * cutting it is what gives the silhouette an inside.
+ */
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   <mask id="owl">
     <g fill="#fff">${SOLID}</g>
-    <g fill="#000">${HOLES}</g>
+    <g fill="#000">${FACE}</g>
   </mask>
   <rect width="1024" height="1024" fill="#000" mask="url(#owl)"/>
+  <g fill="#000">${HOLES}</g>
 </svg>`;
 
 /**
@@ -153,16 +187,6 @@ const ROSE = "#F2555A";
 const R = 250;
 const C = 256;
 
-// The owl's features rescaled onto the full-size disc. They are authored
-// against the r=230 disc above, centred on (512, 545), so they need moving and
-// rescaling before they can sit on this one.
-//
-// Both numbers come off SOLID rather than being tuned here. When they did not,
-// the idle disc came out blank: the features were still being re-centred on
-// (256, 196) from the previous mark and landed clean outside the circle.
-const K = R / 230;
-const OWL_ON_DISC = `<g transform="translate(${C} ${C}) scale(${K}) translate(-512 -545)">${HOLES}</g>`;
-
 /**
  * The inner markup of a react-icons glyph, scaled onto the disc.
  *
@@ -190,26 +214,45 @@ function disc(fill, inner) {
 }
 
 /*
- * The rounded mark, read off disk rather than rebuilt here.
+ * The bird alone, read off disk rather than rebuilt here.
  *
- * public/logo.svg is the same drawing as public/logo-square.svg with a circular
- * clip, and for the idle state that is exactly what is wanted — the app's own
- * mark, in its own colours, in the shape a tray icon should be.
+ * public/logo.svg is the mark on its ground: a #2E2D5F plate with the owl on
+ * top. The plate is what makes it an app icon, and it is the wrong half here —
+ * a tray icon sits on somebody's taskbar, not on a tile, and the plate reads
+ * as a sticker stuck over it.
+ *
+ * So the ground comes off and the owl is what is left. Stripped rather than
+ * kept as a second file, because two drawings of one bird drift and this one
+ * already went wrong that way once (the site's share cards carried the owl's
+ * path data inline and served the old bird for a month after it changed).
  *
  * This is the one state that can be the real mark. macOS cannot have it: a
  * *Template.png is read for its alpha only and painted black, so a full-colour
- * logo arrives as a solid disc. That is why the silhouette above still exists
+ * logo arrives as a solid shape. That is why the silhouette above still exists
  * and is still hand-built.
  */
-const ROUND_MARK = readFileSync(
+const GROUND = /<rect[^>]*fill="#2E2D5F"[^>]*\/>/;
+
+const MARK_SOURCE = readFileSync(
   join(__dirname, "..", "public", "logo.svg"),
   "utf8",
 );
 
+if (!GROUND.test(MARK_SOURCE)) {
+  throw new Error(
+    "public/logo.svg has no #2E2D5F ground rect to strip. It was redrawn, and " +
+      "the tray icon needs looking at rather than silently shipping the plate.",
+  );
+}
+
+const MARK = MARK_SOURCE.replace(GROUND, "");
+
 const states = {
-  // Not in voice. The mark itself, so the tray still identifies the app when
-  // there is no call to report on.
-  "tray-idle": ROUND_MARK,
+  // Not in voice. The bird itself, so the tray still identifies the app when
+  // there is no call to report on. The three below keep their discs: they are
+  // reporting a state, and mass survives a taskbar at contrast a thin shape
+  // does not.
+  "tray-idle": MARK,
   // In voice with the microphone open. Not driven by voice activity — that
   // would flip the icon several times a second through one sentence.
   "tray-live": disc(GREEN, glyph(PiMicrophoneFill, 0.56)),
