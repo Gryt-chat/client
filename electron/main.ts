@@ -14,7 +14,8 @@ import {
   systemPreferences,
   Tray,
 } from "electron";
-import { autoUpdater, UpdateDownloadedEvent, UpdateInfo } from "electron-updater";
+import { autoUpdater as defaultAutoUpdater, NsisUpdater, UpdateDownloadedEvent, UpdateInfo } from "electron-updater";
+import { DownloadedUpdateHelper } from "electron-updater/out/DownloadedUpdateHelper";
 import {
   appendFileSync,
   createReadStream,
@@ -265,7 +266,14 @@ function readBoolConfig(key: string, defaultValue: boolean): boolean {
 
 // ── Auto-updater config ─────────────────────────────────────────────────
 
-const INSTALL_WAIT_MS = 5 * 60 * 1000;
+/* How long to sit on the splash after handing off to the installer before
+   deciding it did not take and opening Gryt anyway.
+
+   Five minutes, until it was measured. `quitAndInstall` either ends this
+   process within seconds or it has failed, so the only thing the other four
+   and a half minutes ever bought was a longer stare at a splash screen after
+   an update that was not going to happen. */
+const INSTALL_WAIT_MS = 45 * 1000;
 
 let updateDeferredVersion: string | null = null;
 
@@ -373,6 +381,34 @@ function cleanupLegacyWindowsInstallBackup(): void {
     );
   }
 }
+
+/**
+ * Where the downloaded installer waits between the download and the install.
+ *
+ * electron-updater stages it in `%LOCALAPPDATA%\<app>-updater\pending` and
+ * writes the file's checksum into an `update-info.json` beside it. At install
+ * time it reads that back and re-verifies. If the two disagree it decides the
+ * download is corrupt, discards it, and downloads again on the next check.
+ *
+ * That directory is not ours. Antivirus quarantines things in it, disk cleaners
+ * empty it, and a download interrupted by a crash leaves a partial file that
+ * fails the same check. Every one of those produces the symptom Gryt has had on
+ * Windows for months: it downloads every release and installs none of them,
+ * because the install step never sees a file it trusts.
+ *
+ * `sessionData` is inside the app's own data tree, where nothing else has a
+ * reason to be. Borrowed from AFFiNE, whose entire Windows updater is this.
+ *
+ * Windows only — this is the NSIS staging path, and macOS and Linux do not use
+ * it.
+ */
+class WindowsUpdater extends NsisUpdater {
+  protected override downloadedUpdateHelper: DownloadedUpdateHelper =
+    new DownloadedUpdateHelper(app.getPath("sessionData"));
+}
+
+const autoUpdater =
+  process.platform === "win32" ? new WindowsUpdater() : defaultAutoUpdater;
 
 autoUpdater.logger = {
   info: (m: unknown) => startupLog(`Update: ${String(m)}`),
@@ -898,6 +934,11 @@ const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000;
  */
 const UPDATE_CHECK_FLOOR_MS = 15 * 60 * 1000;
 
+/* How long after the window appears to go looking for a release.
+   Launch used to do this before showing anything, which is what made starting
+   Gryt on Windows take minutes. */
+const LAUNCH_UPDATE_CHECK_DELAY_MS = 10 * 1000;
+
 let updateCheckTimer: NodeJS.Timeout | null = null;
 let lastUpdateCheckAt = 0;
 let updateIsDownloaded = false;
@@ -1023,12 +1064,15 @@ function checkForUpdatesInBackground(reason: string): void {
  * path and the hidden auto-start path — and dev passes through neither, which
  * is the behaviour the launch-time check already has.
  */
-function startPeriodicUpdateChecks(): void {
+function startPeriodicUpdateChecks(launchAlreadyChecked: boolean): void {
   if (updateCheckTimer) return;
 
-  /* Launch has just checked, or is about to. Seeding the clock here is what
-     stops a resume a minute later from checking again. */
-  lastUpdateCheckAt = Date.now();
+  /* Only when launch really did check. Seeding the clock stops a resume a
+     minute later from checking again — but the ordinary launch path does not
+     check any more, and seeding there would make the floor in
+     `checkForUpdatesInBackground` swallow the launch check that replaces it,
+     leaving the first look an hour away. */
+  if (launchAlreadyChecked) lastUpdateCheckAt = Date.now();
 
   updateCheckTimer = setInterval(
     () => checkForUpdatesInBackground("interval"),
@@ -1047,7 +1091,7 @@ function startPeriodicUpdateChecks(): void {
   });
 }
 
-function initBackgroundUpdater() {
+function initBackgroundUpdater(launchAlreadyChecked: boolean) {
   autoUpdater.on(
     "checking-for-update",
     () => sendToMain("checking")
@@ -1099,7 +1143,7 @@ function initBackgroundUpdater() {
     });
   });
 
-  startPeriodicUpdateChecks();
+  startPeriodicUpdateChecks(launchAlreadyChecked);
 }
 
 function relaunchForUpdate(): void {
@@ -2890,7 +2934,7 @@ if (!gotSingleInstanceLock) {
           "Starting hidden (auto-start)"
         );
 
-        initBackgroundUpdater();
+        initBackgroundUpdater(true);
 
         if (!installIsPending()) {
           pinFeedToNewestCompleteRelease().finally(
@@ -2901,7 +2945,26 @@ if (!gotSingleInstanceLock) {
             }
           );
         }
-      } else {
+      } else if (
+        process.argv.includes(
+          UPDATE_ARG
+        )
+      ) {
+        /* Somebody pressed "restart and update now". The splash is the right
+           place for that: they asked for it, they are waiting for it, and it is
+           the only screen that can show a download running.
+
+           This used to be the ordinary launch path too, which is why installing
+           Gryt on Windows took minutes. Every start went through a GitHub API
+           call, and a start that found a newer release downloaded the whole
+           installer here before it would open the window — with the 15 second
+           guard cleared by the first progress event, so nothing bounded it
+           except INSTALL_WAIT_MS. Someone installing an older build waited out
+           an entire update to reach a login screen. */
+        startupLog(
+          "Update relaunch — running the update on the splash"
+        );
+
         try {
           createSplashWindow();
           await runSplashUpdateCheck();
@@ -2915,7 +2978,47 @@ if (!gotSingleInstanceLock) {
           "Main window shown"
         );
 
-        initBackgroundUpdater();
+        initBackgroundUpdater(true);
+      } else {
+        /* Ordinary launch. Open the window, then look for updates behind it.
+
+           Nothing is lost by not checking here: `initBackgroundUpdater` starts
+           the periodic check, an announcement raises the toast in
+           updateAnnouncement.tsx, and taking it relaunches into the branch
+           above. The difference is only that Gryt is usable while all of that
+           happens. */
+
+        /* Waited for rather than shown immediately. An empty frame that fills
+           in a second later is not fast, it just moves the wait somewhere more
+           visible — and until now the update check was incidentally giving the
+           renderer this time. The 20 second fallback in createMainWindow covers
+           a load that never finishes. */
+        if (
+          mainWindow &&
+          !mainWindow.webContents.isLoading()
+        ) {
+          closeSplashAndShowMain();
+        } else {
+          mainWindow?.webContents.once(
+            "did-stop-loading",
+            () => closeSplashAndShowMain()
+          );
+        }
+
+        startupLog(
+          "Main window shown"
+        );
+
+        initBackgroundUpdater(false);
+
+        /* Late enough to be out of the way of everything else starting, early
+           enough that somebody who opens Gryt, reads a message and closes it
+           still hears about a release. The periodic timer alone would not look
+           for an hour. */
+        setTimeout(
+          () => checkForUpdatesInBackground("launch"),
+          LAUNCH_UPDATE_CHECK_DELAY_MS
+        );
       }
 
       /**
