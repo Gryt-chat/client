@@ -598,9 +598,48 @@ function runSplashUpdateCheck(): Promise<void> {
           // code used before GRYT-67, it is what every other platform uses,
           // and installer.nsh handles in customInit the broken uninstaller
           // that made it look unsafe on Windows.
+
+          /*
+           * Say we are quitting before asking to quit.
+           *
+           * `quitAndInstall` does not go through `before-quit`, so nothing else
+           * sets this — and the main window's close handler reads it:
+           *
+           *     if (!isQuitting && closeToTray && isUserSignedIn) {
+           *       event.preventDefault();
+           *       mainWindow?.hide();
+           *     }
+           *
+           * With `isQuitting` false, a window that is up cancels the quit and
+           * hides instead. On Windows the NSIS installer ends the process
+           * anyway, so it does not show. On macOS Squirrel cannot swap the
+           * bundle while the process lives: the app appears to install, comes
+           * back on the old version, and only finishes once it is force quit.
+           *
+           * Every other quit in this file sets this first — relaunchForUpdate,
+           * the crash dialog, the tray, the menu. This one did not, and it is
+           * the one that most needs to.
+           *
+           * Four of the five Electron apps whose updaters I read do the same
+           * thing immediately before this call, each with a comment: Signal
+           * (`markRestarting` in ts/updater/macos.main.ts), Bitwarden ("Quit
+           * and install have a different window logic, setting `isQuitting`
+           * just to be safe"), Element ("quitAndInstall does not fire the
+           * before-quit event, so we need to set the flag here"), and Standard
+           * Notes, which removes the close listeners outright because
+           * "index.js prevents close event on some platforms".
+           */
+          isQuitting = true;
+
           autoUpdater.quitAndInstall(false, true);
 
           setTimeout(() => {
+            /* Reaching here means the install did not take: the process is
+               still alive INSTALL_WAIT_MS after handing off. Put `isQuitting`
+               back, or close-to-tray is dead for the rest of the session and
+               the window closes for real the next time somebody hits the X. */
+            isQuitting = false;
+
             updateDeferredVersion = info.version;
 
             sendToSplash("deferred", {
