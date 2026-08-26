@@ -262,6 +262,35 @@ html[data-gryt-frame] body {
     calc(1px / var(--gryt-ui-scale, 1)) var(--gryt-window-border);
 }
 
+/* macOS reveals the glyphs in all three traffic lights whenever the pointer is
+   over the group, not over one of them — so the rule hangs off the group.
+   Measured at white 17% over the titlebar for the inactive fill; translucent
+   rather than flat so a light theme darkens instead, which is what macOS does
+   there too. */
+:root {
+  --gryt-traffic-light-inactive: rgba(255, 255, 255, 0.17);
+}
+
+html.light {
+  --gryt-traffic-light-inactive: rgba(0, 0, 0, 0.2);
+}
+
+.gryt-traffic-light-glyph {
+  opacity: 0;
+}
+
+[data-gryt="mac-window-controls"]:hover .gryt-traffic-light-glyph {
+  opacity: 1;
+}
+
+/* Nothing to reveal while the window is in the background — macOS leaves the
+   lights blank until the window is the one being used. */
+html[data-gryt-window-blurred]
+  [data-gryt="mac-window-controls"]:hover
+  .gryt-traffic-light-glyph {
+  opacity: 0;
+}
+
 /* Maximised or full screen. There is nothing behind the window at the edge of
    the screen to fill a curve, so a rounded corner is a notch with the desktop
    showing through it. */

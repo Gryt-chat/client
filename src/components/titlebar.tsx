@@ -3,6 +3,7 @@ import { PiCaretLeftFill, PiCaretRightFill } from "react-icons/pi";
 
 import { isElectron } from "../lib/electron";
 import { isMacOS } from "../lib/windowFrame";
+import { MacWindowControls } from "./macWindowControls";
 import { WindowControls } from "./windowControls";
 
 export const TITLEBAR_HEIGHT = 36;
@@ -32,11 +33,11 @@ export function Titlebar() {
 
   if (!isElectron()) return null;
 
-  /* macOS puts the window buttons on the left and closes first; Windows and
-     Linux put them on the right and close last. The buttons themselves are
-     the same drawing on all three (GRYT-626) — only the side and the order
-     follow the platform, because those are what people reach for without
-     looking. */
+  /* Each platform gets its own window buttons, not one drawing moved around
+     (GRYT-626). macOS gets traffic lights on the left, measured off a real
+     window; Windows and Linux get caption buttons on the right. Those are two
+     different visual languages and people navigate both by muscle memory, so
+     matching each is worth more than matching them to each other. */
   const mac = isMacOS();
 
   return (
@@ -65,9 +66,7 @@ export function Titlebar() {
         alignItems: "center",
       } as React.CSSProperties}
     >
-      {mac && (
-        <WindowControls order={["close", "minimize", "maximize"]} />
-      )}
+      {mac && <MacWindowControls />}
 
       {/* Back / Forward */}
       <div
