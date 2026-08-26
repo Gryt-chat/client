@@ -1,4 +1,8 @@
+import { useEffect } from "react";
+
+import { useSnapMenu } from "../lib/snapMenu";
 import { useWindowFocused, useWindowState } from "../lib/windowFrame";
+import { SnapMenu } from "./snapMenu";
 
 /**
  * The macOS traffic lights, drawn (GRYT-626).
@@ -47,6 +51,21 @@ const ORDER: Light[] = ["close", "minimize", "zoom"];
 export function MacWindowControls() {
   const focused = useWindowFocused();
   const { fullScreen } = useWindowState();
+  const snap = useSnapMenu();
+
+  /* The window going to the background takes the menu with it, the same way
+     every OS menu closes when you click away from its window.
+
+     On snap.closeNow rather than on snap, and that is the whole point: snap
+     changes identity the moment the menu opens, so depending on it re-runs
+     this and shuts the menu again in the same breath. Closing has to happen
+     on the transition out of focus, not for as long as focus is elsewhere —
+     hovering a background window's buttons is allowed, and Windows shows
+     Snap Layouts there too. */
+  const { closeNow } = snap;
+  useEffect(() => {
+    if (!focused) closeNow();
+  }, [focused, closeNow]);
 
   return (
     <div
@@ -68,8 +87,19 @@ export function MacWindowControls() {
           centre={FIRST_CENTRE + i * SPACING}
           focused={focused}
           fullScreen={fullScreen}
+          snap={light === "zoom" ? snap : undefined}
         />
       ))}
+
+      {snap.open && (
+        <SnapMenu
+          align="left"
+          autoFocus={snap.openedByKeyboard}
+          onMouseEnter={snap.openNow}
+          onMouseLeave={snap.closeAfterGrace}
+          onDismiss={() => snap.closeNow()}
+        />
+      )}
     </div>
   );
 }
@@ -79,11 +109,14 @@ function TrafficLight({
   centre,
   focused,
   fullScreen,
+  snap,
 }: {
   light: Light;
   centre: number;
   focused: boolean;
   fullScreen: boolean;
+  /** Only the green one carries the snap menu. */
+  snap?: ReturnType<typeof useSnapMenu>;
 }) {
   const api = window.electronAPI;
 
@@ -102,6 +135,17 @@ function TrafficLight({
   return (
     <button
       onClick={onClick}
+      onMouseEnter={snap?.openAfterDwell}
+      onMouseLeave={snap?.closeAfterGrace}
+      onKeyDown={
+        snap &&
+        ((event: React.KeyboardEvent) => {
+          if (event.key === "ArrowDown") {
+            event.preventDefault();
+            snap.openByKeyboard();
+          }
+        })
+      }
       aria-label={
         light === "close"
           ? "Close"

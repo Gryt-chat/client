@@ -38,6 +38,18 @@ export interface UpdateStatus {
  * behind the window to fill a curve, so a rounded corner is a notch with the
  * desktop showing through it.
  */
+/** A fraction of the display the window can be put in (GRYT-626). */
+export type SnapZone =
+  | "fill"
+  | "left"
+  | "right"
+  | "top"
+  | "bottom"
+  | "top-left"
+  | "top-right"
+  | "bottom-left"
+  | "bottom-right";
+
 export interface WindowState {
   maximized: boolean;
   fullScreen: boolean;
@@ -164,6 +176,7 @@ export interface ElectronAPI {
   toggleMaximizeWindow(): void;
   toggleFullScreenWindow(): void;
   closeWindow(): void;
+  snapWindow(zone: SnapZone): void;
   getWindowState(): Promise<WindowState>;
   onWindowStateChange(callback: (state: WindowState) => void): () => void;
   toggleAlwaysOnTop(pinned: boolean, windowTitle?: string): void;

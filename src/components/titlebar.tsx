@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { PiCaretLeftFill, PiCaretRightFill } from "react-icons/pi";
 
 import { isElectron } from "../lib/electron";
-import { isMacOS } from "../lib/windowFrame";
+import { isMacOS, useWindowFocused } from "../lib/windowFrame";
 import { MacWindowControls } from "./macWindowControls";
 import { WindowControls } from "./windowControls";
 
@@ -21,6 +21,8 @@ export function Titlebar() {
     update();
     return () => window.removeEventListener("popstate", update);
   }, []);
+
+  const focused = useWindowFocused();
 
   const goBack = useCallback(() => window.history.back(), []);
   const goForward = useCallback(() => window.history.forward(), []);
@@ -114,7 +116,10 @@ export function Titlebar() {
       <div style={{ flex: 1 }} />
 
       {!mac && (
-        <WindowControls order={["minimize", "maximize", "close"]} />
+        <WindowControls
+          order={["minimize", "maximize", "close"]}
+          focused={focused}
+        />
       )}
     </div>
   );

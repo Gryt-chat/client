@@ -1,4 +1,8 @@
+import { useEffect } from "react";
+
+import { useSnapMenu } from "../lib/snapMenu";
 import { useWindowState } from "../lib/windowFrame";
+import { SnapMenu } from "./snapMenu";
 
 /**
  * Minimise, maximise and close, drawn rather than asked for (GRYT-626).
@@ -26,13 +30,35 @@ const CLOSE_HOVER = "#e81123";
 
 export type WindowControl = "minimize" | "maximize" | "close";
 
-export function WindowControls({ order }: { order: WindowControl[] }) {
+export function WindowControls({
+  order,
+  focused,
+}: {
+  order: WindowControl[];
+  focused: boolean;
+}) {
   const { maximized, fullScreen } = useWindowState();
+  const snap = useSnapMenu();
+
+  /* The window going to the background takes the menu with it, the same way
+     every OS menu closes when you click away from its window.
+
+     On snap.closeNow rather than on snap, and that is the whole point: snap
+     changes identity the moment the menu opens, so depending on it re-runs
+     this and shuts the menu again in the same breath. Closing has to happen
+     on the transition out of focus, not for as long as focus is elsewhere —
+     hovering a background window's buttons is allowed, and Windows shows
+     Snap Layouts there too. */
+  const { closeNow } = snap;
+  useEffect(() => {
+    if (!focused) closeNow();
+  }, [focused, closeNow]);
 
   return (
     <div
       style={{
         display: "flex",
+        position: "relative",
         alignSelf: "stretch",
         appRegion: "no-drag",
         WebkitAppRegion: "no-drag",
@@ -64,6 +90,17 @@ export function WindowControls({ order }: { order: WindowControl[] }) {
                 ? window.electronAPI?.toggleFullScreenWindow()
                 : window.electronAPI?.toggleMaximizeWindow()
             }
+            /* Dwelling here opens the snap menu, which is where Windows 11
+               puts Snap Layouts. Ours is drawn rather than native, so it is
+               the same gesture on Linux too. */
+            onMouseEnter={snap.openAfterDwell}
+            onMouseLeave={snap.closeAfterGrace}
+            onKeyDown={(event) => {
+              if (event.key === "ArrowDown") {
+                event.preventDefault();
+                snap.openByKeyboard();
+              }
+            }}
           >
             {maximized || fullScreen ? (
               <>
@@ -85,6 +122,16 @@ export function WindowControls({ order }: { order: WindowControl[] }) {
           </ControlButton>
         )
       )}
+
+      {snap.open && (
+        <SnapMenu
+          align="right"
+          autoFocus={snap.openedByKeyboard}
+          onMouseEnter={snap.openNow}
+          onMouseLeave={snap.closeAfterGrace}
+          onDismiss={snap.closeNow}
+        />
+      )}
     </div>
   );
 }
@@ -93,16 +140,23 @@ function ControlButton({
   label,
   hover,
   onClick,
+  onMouseEnter,
+  onMouseLeave,
+  onKeyDown,
   children,
 }: {
   label: string;
   hover?: string;
   onClick: (event: React.MouseEvent) => void;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
+  onKeyDown?: (event: React.KeyboardEvent) => void;
   children: React.ReactNode;
 }) {
   return (
     <button
       onClick={onClick}
+      onKeyDown={onKeyDown}
       aria-label={label}
       title={label}
       style={{
@@ -123,10 +177,12 @@ function ControlButton({
         e.currentTarget.style.background =
           hover ?? "var(--gryt-neutral-a3)";
         if (hover) e.currentTarget.style.color = "#fff";
+        onMouseEnter?.();
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.background = "transparent";
         e.currentTarget.style.color = "var(--gryt-neutral-a11)";
+        onMouseLeave?.();
       }}
     >
       <svg

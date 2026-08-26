@@ -195,6 +195,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("window-close");
   },
 
+  /** Put the window in a fraction of the display it is on (GRYT-626). */
+  snapWindow(zone: string) {
+    ipcRenderer.send("window-snap", zone);
+  },
+
   getWindowState(): Promise<{
     maximized: boolean;
     fullScreen: boolean;

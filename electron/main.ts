@@ -1147,6 +1147,127 @@ function readWindowState(): {
   };
 }
 
+/**
+ * Put the window in a fraction of the display it is currently on.
+ *
+ * Our own, on every platform (GRYT-626). Neither OS gives this away with the
+ * frame drawn by us: the Windows 11 Snap Layouts flyout hangs off a native
+ * caption button through WM_NCHITTEST, and the macOS tiling menu hangs off the
+ * native zoom button with no hook at all. Rather than chase two different
+ * native mechanisms, one of which cannot be chased, the zones are computed
+ * here and the same menu opens on all three platforms.
+ *
+ * workArea rather than bounds, so the dock, the menu bar and the taskbar keep
+ * their space. getDisplayMatching rather than the primary display, so snapping
+ * lands on the screen the window is already on.
+ *
+ * There is no unsnap. A snapped window is an ordinary window at new bounds —
+ * the same as Magnet or macOS tiling — so getting out of it is dragging or
+ * resizing, not a mode to leave.
+ */
+type SnapZone =
+  | "fill"
+  | "left"
+  | "right"
+  | "top"
+  | "bottom"
+  | "top-left"
+  | "top-right"
+  | "bottom-left"
+  | "bottom-right";
+
+function snapWindow(zone: SnapZone): void {
+  if (
+    !mainWindow ||
+    mainWindow.isDestroyed()
+  )
+    return;
+
+  // Full screen has to be left before bounds mean anything, and a maximised
+  // window ignores setBounds until it is restored.
+  if (mainWindow.isFullScreen())
+    mainWindow.setFullScreen(false);
+
+  // Fill is the native maximise rather than bounds covering the work area.
+  // It is a real maximised state, so the restore button knows what to undo
+  // and the frame squares its corners off the existing maximize event.
+  if (zone === "fill") {
+    if (!mainWindow.isMaximized())
+      mainWindow.maximize();
+    return;
+  }
+
+  if (mainWindow.isMaximized())
+    mainWindow.unmaximize();
+
+  const { workArea } =
+    screen.getDisplayMatching(
+      mainWindow.getBounds()
+    );
+  const { x, y, width, height } =
+    workArea;
+
+  // Rounded once and subtracted, so two halves always add back up to the
+  // whole on an odd number of pixels rather than leaving a seam.
+  const halfW = Math.round(width / 2);
+  const halfH = Math.round(height / 2);
+  const right = x + halfW;
+  const lower = y + halfH;
+  const restW = width - halfW;
+  const restH = height - halfH;
+
+  const zones: Record<
+    Exclude<SnapZone, "fill">,
+    Electron.Rectangle
+  > = {
+    left: { x, y, width: halfW, height },
+    right: {
+      x: right,
+      y,
+      width: restW,
+      height,
+    },
+    top: { x, y, width, height: halfH },
+    bottom: {
+      x,
+      y: lower,
+      width,
+      height: restH,
+    },
+    "top-left": {
+      x,
+      y,
+      width: halfW,
+      height: halfH,
+    },
+    "top-right": {
+      x: right,
+      y,
+      width: restW,
+      height: halfH,
+    },
+    "bottom-left": {
+      x,
+      y: lower,
+      width: halfW,
+      height: restH,
+    },
+    "bottom-right": {
+      x: right,
+      y: lower,
+      width: restW,
+      height: restH,
+    },
+  };
+
+  const next = zones[zone];
+  if (!next) return;
+
+  // Electron clamps to minWidth/minHeight on its own, so a quarter of a small
+  // display comes back oversized rather than unusable.
+  mainWindow.setBounds(next, true);
+}
+
 function sendWindowState(): void {
   mainWindow?.webContents.send(
     "window-state-change",
@@ -2140,6 +2261,13 @@ if (!gotSingleInstanceLock) {
           )
             return;
           mainWindow.close();
+        }
+      );
+
+      ipcMain.on(
+        "window-snap",
+        (_event, zone: SnapZone) => {
+          snapWindow(zone);
         }
       );
 

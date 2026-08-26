@@ -262,6 +262,105 @@ html[data-gryt-frame] body {
     calc(1px / var(--gryt-ui-scale, 1)) var(--gryt-window-border);
 }
 
+/* ── Window snap menu ─────────────────────────────────────────────────
+ *
+ * Chrome, not app UI (GRYT-626). It borrows the window frame's own hairline
+ * rather than the app's card language, so the menu reads as drawn by whoever
+ * drew the window — which, since this change, it is.
+ *
+ * Each tile is a miniature screen and each region inside it is the shape the
+ * window will take. No labels: the diagram is the label, which is also nine
+ * fewer strings to translate.
+ */
+:root {
+  --gryt-snap-menu-width: 216px;
+  --gryt-snap-tile-aspect: 16 / 10;
+  --gryt-snap-tile-bezel: var(--gryt-neutral-a5);
+  --gryt-snap-menu-shadow: 0 10px 30px -8px rgb(0 0 0 / 0.55);
+  --gryt-snap-region-rest: var(--gryt-neutral-a4);
+  --gryt-snap-region-hover: var(--gryt-accent-9);
+  --gryt-snap-region-active: var(--gryt-accent-10);
+}
+
+.gryt-snap-menu {
+  position: absolute;
+  top: 100%;
+  margin-top: 5px;
+  width: var(--gryt-snap-menu-width);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  /* Comfortably more than the 2px between regions. At 6px the two gaps read
+     as one grid and the four screens stopped looking like four screens. */
+  gap: 10px;
+  padding: 9px;
+  border-radius: var(--gryt-radius-lg);
+  background: var(--gryt-neutral-2);
+  /* The frame's hairline, on purpose — see the comment above. */
+  box-shadow:
+    inset 0 0 0 1px var(--gryt-window-border),
+    var(--gryt-snap-menu-shadow);
+  cursor: default;
+  animation: gryt-snap-menu-in var(--gryt-dur-fast) ease-out;
+}
+
+@keyframes gryt-snap-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+}
+
+/* One tile is one screen. The bezel is what says so — without it a tile with
+   one region and a tile with four are the same weight, and the whole diagram
+   collapses into an undifferentiated grid of blocks. */
+.gryt-snap-tile {
+  display: grid;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 5px;
+  box-shadow: inset 0 0 0 1px var(--gryt-snap-tile-bezel);
+  aspect-ratio: var(--gryt-snap-tile-aspect);
+}
+
+.gryt-snap-region {
+  border: none;
+  padding: 0;
+  border-radius: 2px;
+  background: var(--gryt-snap-region-rest);
+  cursor: default;
+  transition: background var(--gryt-dur-fast) ease-out;
+}
+
+.gryt-snap-region:hover {
+  background: var(--gryt-snap-region-hover);
+}
+
+.gryt-snap-region:active {
+  background: var(--gryt-snap-region-active);
+}
+
+.gryt-snap-region:focus-visible {
+  /* Never animated: a focus ring that fades in reads as lag. */
+  outline: 2px solid var(--gryt-accent-8);
+  outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gryt-snap-menu {
+    animation-name: gryt-snap-menu-fade;
+  }
+
+  .gryt-snap-region {
+    transition-duration: 1ms;
+  }
+}
+
+@keyframes gryt-snap-menu-fade {
+  from {
+    opacity: 0;
+  }
+}
+
 /* macOS reveals the glyphs in all three traffic lights whenever the pointer is
    over the group, not over one of them — so the rule hangs off the group.
    Measured at white 17% over the titlebar for the inactive fill; translucent
