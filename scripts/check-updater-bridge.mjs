@@ -134,6 +134,19 @@ assert.match(
   /startBackgroundDownload\(release, \{ bypassRollout: true \}\)/,
 );
 
+// Every pinned feed asks for one range at a time (GRYT-630).
+//
+// GitHubProvider turns multi-range off because GitHub's asset host answers it
+// with a 501. Pinning the feed puts the updater on the generic provider, which
+// turns it back on for any URL that is not s3.amazonaws.com — so a pin without
+// this flag downloads the whole app instead of the 38% that changed.
+assert.equal(
+  main.match(/setFeedURL\(/g)?.length,
+  main.match(/useMultipleRangeRequest: FEED_SUPPORTS_MULTI_RANGE/g)?.length,
+);
+
+assert.match(main, /const FEED_SUPPORTS_MULTI_RANGE = false;/);
+
 // The off switch reads from config, so it survives a restart.
 assert.match(main, /readBoolConfig\("autoUpdate", true\)/);
 

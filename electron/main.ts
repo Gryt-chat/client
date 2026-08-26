@@ -617,6 +617,35 @@ async function releaseIsInstallable(
   );
 }
 
+/**
+ * Feed options shared by every place that pins the updater at one release.
+ *
+ * `useMultipleRangeRequest: false` is the whole differential download.
+ *
+ * A differential download asks for the blocks that changed. electron-updater
+ * can do that as one request carrying many ranges, or as a sequence of single
+ * range requests, and it decides from the provider: `GitHubProvider` sets
+ * `isUseMultipleRangeRequest: false` outright because GitHub's asset host does
+ * not support the multi-range form (providers/GitHubProvider.js). Pinning the
+ * feed puts us on `generic` instead, and generic turns it *on* for any URL that
+ * is not s3.amazonaws.com (providerFactory.js, isUrlProbablySupportMultiRange-
+ * Requests). So pinning opted us into the one request shape GitHub refuses:
+ *
+ *   Range: bytes=0-1023           -> 206
+ *   Range: bytes=0-1023,2048-3071 -> 501
+ *
+ * which surfaced as `Cannot download differentially, fallback to full download:
+ * HttpError: 501` and 198 MB downloaded where 84 MB would have done.
+ *
+ * Off, the sequential path is used, every request is a single range, and GitHub
+ * answers all of them. Slower per byte than one multi-range request and far
+ * faster than downloading the whole app.
+ *
+ * This belongs with the URL rather than set once at startup: it is a fact about
+ * the host being pointed at, and it has to move if the feed ever does.
+ */
+const FEED_SUPPORTS_MULTI_RANGE = false;
+
 async function pinFeedToNewestCompleteRelease(): Promise<void> {
   const res = await fetchWithTimeout(
     `https://api.github.com/repos/${UPDATE_OWNER}/${UPDATE_REPO}/releases?per_page=20`
@@ -661,6 +690,7 @@ async function pinFeedToNewestCompleteRelease(): Promise<void> {
       autoUpdater.setFeedURL({
         provider: "generic",
         url: `https://github.com/${UPDATE_OWNER}/${UPDATE_REPO}/releases/download/${release.tag_name}`,
+        useMultipleRangeRequest: FEED_SUPPORTS_MULTI_RANGE,
       });
 
       startupLog(`Update: feed pinned to ${release.tag_name}`);
@@ -979,6 +1009,7 @@ function startBackgroundDownload(
   autoUpdater.setFeedURL({
     provider: "generic",
     url: releaseDownloadBase(release.tag),
+    useMultipleRangeRequest: FEED_SUPPORTS_MULTI_RANGE,
   });
 
   autoUpdater.autoDownload = true;
