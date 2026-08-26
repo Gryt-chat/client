@@ -1,5 +1,9 @@
 
-import { BETA_ACCENT, useIsBetaBuild } from "../utils/betaBuild";
+import {
+  BETA_ACCENT,
+  BETA_ACCENT_SOFT,
+  useIsBetaBuild,
+} from "../utils/betaBuild";
 
 /** The tag itself, for the rare place that has its own wordmark markup. */
 export function BetaTag() {
@@ -11,7 +15,11 @@ export function BetaTag() {
         fontWeight: 700,
         letterSpacing: "0.1em",
         textTransform: "uppercase",
-        color: "#12111a",
+        /* The mark's own pairing: the face colour on the body colour, 5.6:1.
+           This was a near-black on the old amber, which measured 8.99:1 and
+           would have measured 2.2:1 once the accent went from a light amber to
+           a dark plum — a tag nobody can read, and nothing would have said so. */
+        color: BETA_ACCENT_SOFT,
         background: BETA_ACCENT,
         padding: "2px 5px",
         borderRadius: 4,
