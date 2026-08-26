@@ -365,6 +365,10 @@ autoUpdater.logger = {
  *
  * A user-initiated check turns it off for the length of that check, so
  * "Check for Updates" reports what it found instead of silently fetching it.
+ *
+ * This is the library's own flag, and it only decides what a check the library
+ * ran does next. Whether the background check runs one of those at all is
+ * `autoUpdateEnabled` below.
  */
 autoUpdater.autoDownload = true;
 
@@ -378,6 +382,18 @@ autoUpdater.autoDownload = true;
 // was no second route, which is how v1.6.6 through v1.6.24 ended up unable to
 // update at all.
 autoUpdater.autoInstallOnAppQuit = true;
+
+/**
+ * Whether Gryt fetches a release on its own.
+ *
+ * Off, nothing is downloaded until somebody presses the button in the toast:
+ * the background check still runs and still says a release exists, because
+ * being told is not the part anyone objects to. Installing a downloaded update
+ * on quit stays on either way — off, the only way an update is on disk at all
+ * is that somebody asked for it, and asking again on the way out would be
+ * asking twice.
+ */
+let autoUpdateEnabled = readBoolConfig("autoUpdate", true);
 
 /*
  * The library's own staged-rollout check, kept so it can be put back.
@@ -492,13 +508,15 @@ function channelYmlName(): string {
 
 async function fetchWithTimeout(
   url: string,
-  ms = 8000
+  ms = 8000,
+  headers: Record<string, string> = {}
 ): Promise<Response | null> {
   try {
     const res = await fetch(url, {
       signal: AbortSignal.timeout(ms),
       headers: {
         "User-Agent": `Gryt/${app.getVersion()}`,
+        ...headers,
       },
     });
 
@@ -506,6 +524,77 @@ async function fetchWithTimeout(
   } catch {
     return null;
   }
+}
+
+/** A release the updater could be pointed at. */
+type ReleaseRef = {
+  tag: string;
+  version: string;
+};
+
+function releaseDownloadBase(tag: string): string {
+  return `https://github.com/${UPDATE_OWNER}/${UPDATE_REPO}/releases/download/${tag}`;
+}
+
+/**
+ * The installer this platform would download, read out of the channel yml.
+ *
+ * `path:` is the file name electron-updater will ask for. Nothing else in the
+ * yml names it, and the name is not derivable from the version — the mac zip,
+ * the NSIS exe and the AppImage are spelled three different ways.
+ */
+function installerFileName(yml: string): string | null {
+  const named = yml.match(/^path:\s*(.+)$/m);
+  if (!named) return null;
+
+  return named[1]
+    .trim()
+    .replace(/^["']|["']$/g, "");
+}
+
+/**
+ * Is this release's installer actually on the asset host yet.
+ *
+ * Release Client uploads from three runners over several minutes, so a release
+ * whose yml is up and whose zip is not is a real state and not a rare one.
+ * Pointing the updater at that gets a 404 mid-download.
+ *
+ * `releaseIsInstallable` answers the same question through `api.github.com`,
+ * which the background check cannot spend (see `newestReleaseWithoutApi`).
+ * This asks the asset host for one byte instead: free, and it proves the exact
+ * URL the updater is about to use rather than an entry in a listing.
+ */
+async function releaseAssetsReady(tag: string): Promise<boolean> {
+  const base = releaseDownloadBase(tag);
+
+  const ymlRes = await fetchWithTimeout(
+    `${base}/${channelYmlName()}`
+  );
+
+  if (!ymlRes) return false;
+
+  let file: string | null;
+  try {
+    file = installerFileName(await ymlRes.text());
+  } catch {
+    return false;
+  }
+
+  if (!file) return false;
+
+  const asset = await fetchWithTimeout(
+    `${base}/${encodeURIComponent(file)}`,
+    8000,
+    { Range: "bytes=0-0" }
+  );
+
+  if (!asset) return false;
+
+  /* One byte was the whole question. Without this the response body stays open
+     and the socket sits there until the timeout. */
+  void asset.body?.cancel();
+
+  return true;
 }
 
 async function releaseIsInstallable(
@@ -520,12 +609,8 @@ async function releaseIsInstallable(
   const res = await fetchWithTimeout(yml.browser_download_url);
   if (!res) return false;
 
-  const named = (await res.text()).match(/^path:\s*(.+)$/m);
-  if (!named) return false;
-
-  const file = named[1]
-    .trim()
-    .replace(/^["']|["']$/g, "");
+  const file = installerFileName(await res.text());
+  if (!file) return false;
 
   return release.assets.some(
     (asset) => asset.name === file && asset.size > 0
@@ -713,6 +798,19 @@ let updateIsDownloaded = false;
 let announcedVersion: string | null = null;
 
 /**
+ * The release a download is running for, and nothing else.
+ *
+ * Set only by `startBackgroundDownload` and `downloadAnnouncedRelease`, so the
+ * update events can tell a download nobody asked for from a check somebody
+ * pressed a button for. Settings shows its own answer; only the first needs a
+ * toast.
+ */
+let pendingRelease: ReleaseRef | null = null;
+
+/** Whether `pendingRelease` should raise a toast when it starts downloading. */
+let announceDownload = false;
+
+/**
  * Is there a newer release, answered without spending API quota.
  *
  * `pinFeedToNewestCompleteRelease` asks `api.github.com`, which is capped at 60
@@ -730,14 +828,14 @@ let announcedVersion: string | null = null;
  * any number of clients.
  *
  * **The feed includes drafts** — v1.6.33 was in it while still unpublished — so
- * the yml check below is not optional. A draft's assets are not downloadable,
- * which is what rejects it.
+ * the asset check below is not optional. A draft's assets are not
+ * downloadable, which is what rejects it.
  *
- * This deliberately does not pin the feed or download anything. Both of those
- * happen at the next launch, on purpose, where the installer has an idle app to
- * work with. All this does is notice.
+ * The tag comes back with the version because the caller pins the feed to it.
+ * `pinFeedToNewestCompleteRelease` is the same answer through the API, and the
+ * background check cannot afford that call.
  */
-async function newestReleaseWithoutApi(): Promise<string | null> {
+async function newestReleaseWithoutApi(): Promise<ReleaseRef | null> {
   const res = await fetchWithTimeout(
     `https://github.com/${UPDATE_OWNER}/${UPDATE_REPO}/releases.atom`
   );
@@ -775,13 +873,15 @@ async function newestReleaseWithoutApi(): Promise<string | null> {
     .sort((a, b) => semver.rcompare(a.version, b.version));
 
   for (const { tag, version } of candidates) {
-    const yml = await fetchWithTimeout(
-      `https://github.com/${UPDATE_OWNER}/${UPDATE_REPO}/releases/download/${tag}/${channelYmlName()}`
-    );
-
     /* fetchWithTimeout returns null on any non-2xx, so a draft's 404 lands
        here and the loop moves on to the release below it. */
-    if (yml) return version;
+    if (await releaseAssetsReady(tag)) {
+      return { tag, version };
+    }
+
+    startupLog(
+      `Update: skipping ${version}, assets incomplete`
+    );
   }
 
   return null;
@@ -792,6 +892,18 @@ async function newestReleaseWithoutApi(): Promise<string | null> {
  *
  * It announces once per version per run. A failure is logged rather than shown:
  * somebody who did not press anything should not get an error about it.
+ *
+ * **Finding a release is not the end of this.** Until GRYT-625 it was: this
+ * announced a version and stopped, and nothing downstream ever fetched
+ * anything. `autoDownload` is a flag on a check the library runs, and the
+ * library ran no check here — so the toast offered to restart into an update
+ * that was not on disk, `restart-for-update` found `updateIsDownloaded` false
+ * and did nothing, and the release installed on some later launch that
+ * happened to take the settings path. Before GRYT-622 the splash did the
+ * download when somebody pressed restart, which is what hid this.
+ *
+ * So the probe now hands its tag to `startBackgroundDownload`, and the
+ * announcement moves to the point where a download is actually running.
  */
 function checkForUpdatesInBackground(reason: string): void {
   /* Already downloaded, so the answer cannot change until this restarts.
@@ -800,26 +912,88 @@ function checkForUpdatesInBackground(reason: string): void {
      (element-web#12433). */
   if (updateIsDownloaded) return;
 
+  /* A download is already running. A release published while one is in flight
+     would otherwise start a second `checkForUpdates` over the top of it, and
+     electron-updater has one download slot. The next tick picks the newer one
+     up once this has finished or failed. */
+  if (pendingRelease) return;
+
   if (Date.now() - lastUpdateCheckAt < UPDATE_CHECK_FLOOR_MS) return;
   lastUpdateCheckAt = Date.now();
 
   void newestReleaseWithoutApi()
-    .then((version) => {
-      if (!version || version === announcedVersion) return;
+    .then((release) => {
+      if (!release || release.version === announcedVersion) return;
 
-      announcedVersion = version;
       startupLog(
-        `Update: ${version} available (background check, ${reason})`
+        `Update: ${release.version} available (background check, ${reason})`
       );
 
-      sendToMain("announced", {
-        version,
-        from: app.getVersion(),
-      });
+      if (!autoUpdateEnabled) {
+        /* Told, not fetched. The toast's button calls `download-update`, which
+           is this same release with the rollout bypassed, because by then
+           somebody has asked for it. */
+        announcedVersion = release.version;
+
+        sendToMain("announced", {
+          version: release.version,
+          from: app.getVersion(),
+          autoDownload: false,
+        });
+
+        return;
+      }
+
+      startBackgroundDownload(release, { announce: true });
     })
     .catch((err) => {
       logUpdateFailure(
         "Background update check failed",
+        err instanceof Error ? err : undefined
+      );
+    });
+}
+
+/**
+ * Point the updater at one release and let it download.
+ *
+ * The feed is pinned to the exact tag the probe verified rather than left on
+ * the provider's own idea of latest, for the reason
+ * `pinFeedToNewestCompleteRelease` exists: a release is published across
+ * several minutes and the provider will happily hand back one that is halfway
+ * up. The difference here is that the tag came from `releases.atom` and a
+ * one-byte range request, so it costs no API quota.
+ *
+ * `announce` is what decides whether the download raises a toast. Only the
+ * automatic path sets it: a download somebody pressed a button for is already
+ * on a screen that shows it, and a second copy in the corner is telling them
+ * what they are looking at.
+ */
+function startBackgroundDownload(
+  release: ReleaseRef,
+  { bypassRollout = false, announce = false } = {}
+): void {
+  pendingRelease = release;
+  announceDownload = announce;
+
+  autoUpdater.setFeedURL({
+    provider: "generic",
+    url: releaseDownloadBase(release.tag),
+  });
+
+  autoUpdater.autoDownload = true;
+  autoUpdater.isUserWithinRollout = bypassRollout
+    ? () => true
+    : defaultRolloutCheck;
+
+  autoUpdater
+    .checkForUpdates()
+    .catch((err) => {
+      pendingRelease = null;
+      announceDownload = false;
+
+      logUpdateFailure(
+        "Background update download failed",
         err instanceof Error ? err : undefined
       );
     });
@@ -888,10 +1062,30 @@ function initBackgroundUpdater(launchAlreadyChecked: boolean) {
       version: info.version,
     });
 
+    /* The moment the toast is honest: the rollout slice let this machine
+       through, the assets are there, and `autoDownload` is about to fetch. A
+       release announced before this point is one that might still turn out not
+       to be coming. */
+    if (announceDownload && info.version !== announcedVersion) {
+      announcedVersion = info.version;
+
+      sendToMain("announced", {
+        version: info.version,
+        from: app.getVersion(),
+        autoDownload: true,
+      });
+    }
+
     resumeAutoDownload();
   });
 
   autoUpdater.on("update-not-available", (info) => {
+    /* A background download that ends here was held back by the rollout slice
+       — the probe found the release, so it exists. Nothing is said: this is
+       the one case where being quiet is the whole point of staging. */
+    pendingRelease = null;
+    announceDownload = false;
+
     sendToMain("not-available", {
       version: info.version,
     });
@@ -910,6 +1104,8 @@ function initBackgroundUpdater(launchAlreadyChecked: boolean) {
 
   autoUpdater.on("update-downloaded", (info) => {
     updateIsDownloaded = true;
+    pendingRelease = null;
+    announceDownload = false;
 
     sendToMain("downloaded", {
       version: info.version,
@@ -917,6 +1113,14 @@ function initBackgroundUpdater(launchAlreadyChecked: boolean) {
   });
 
   autoUpdater.on("error", (err) => {
+    /* Let the next hourly check try this release again. Without it one dropped
+       connection means no further attempt until Gryt restarts, because the
+       probe skips a version it has already announced. */
+    if (pendingRelease && announceDownload) announcedVersion = null;
+
+    pendingRelease = null;
+    announceDownload = false;
+
     resumeAutoDownload();
 
     logUpdateFailure("Update failed", err);
@@ -952,6 +1156,59 @@ function initBackgroundUpdater(launchAlreadyChecked: boolean) {
 function installDownloadedUpdate(): void {
   isQuitting = true;
   autoUpdater.quitAndInstall(true, true);
+}
+
+/**
+ * Fetch the release the toast is currently showing, because somebody pressed
+ * the button on it.
+ *
+ * This is the automatic download's other half: with automatic updates off, the
+ * background check announces and stops, and this is what the announcement's
+ * button reaches. The rollout slice is bypassed for the same reason the
+ * Settings check bypasses it — somebody who goes looking should get it.
+ *
+ * Re-probing rather than trusting a tag from the renderer: the announcement may
+ * have been sitting on screen for hours, and a newer release since then is the
+ * one to fetch.
+ */
+function downloadAnnouncedRelease(): void {
+  if (updateIsDownloaded) {
+    sendToMain("downloaded", {
+      version: pendingUpdateVersion,
+    });
+    return;
+  }
+
+  if (pendingRelease) {
+    sendToMain("downloading", {
+      version: pendingRelease.version,
+    });
+    return;
+  }
+
+  void newestReleaseWithoutApi()
+    .then((release) => {
+      if (!release) {
+        sendToMain("not-available", {
+          version: app.getVersion(),
+        });
+        return;
+      }
+
+      startBackgroundDownload(release, { bypassRollout: true });
+    })
+    .catch((err) => {
+      logUpdateFailure(
+        "Update download failed",
+        err instanceof Error ? err : undefined
+      );
+
+      sendToMain("error", {
+        message: friendlyUpdateError(
+          err instanceof Error ? err : new Error(String(err))
+        ),
+      });
+    });
 }
 
 /**
@@ -1998,6 +2255,33 @@ if (!gotSingleInstanceLock) {
             enabled;
 
           relaunchApp();
+        }
+      );
+
+      ipcMain.handle(
+        "get-auto-update",
+        () => autoUpdateEnabled
+      );
+
+      ipcMain.on(
+        "set-auto-update",
+        (_event, enabled: boolean) => {
+          autoUpdateEnabled = enabled;
+
+          writeConfig({
+            autoUpdate: enabled,
+          });
+
+          /* Turning it back on should not mean waiting up to an hour for the
+             next tick. Turning it off cancels nothing that is already running
+             — electron-updater has no cancel that leaves a usable cache, and
+             the bytes are half down. */
+          if (enabled) {
+            lastUpdateCheckAt = 0;
+            announcedVersion = null;
+
+            checkForUpdatesInBackground("setting");
+          }
         }
       );
 
@@ -3203,6 +3487,11 @@ if (!gotSingleInstanceLock) {
       );
 
       ipcMain.on(
+        "download-update",
+        () => downloadAnnouncedRelease()
+      );
+
+      ipcMain.on(
         "restart-for-update",
         () => {
           if (updateIsDownloaded) {
@@ -3210,12 +3499,13 @@ if (!gotSingleInstanceLock) {
             return;
           }
 
-          /* Asked for before the download finished. Say so rather than
-             restarting into nothing: `update-downloaded` raises the prompt
-             again the moment it lands. */
-          sendToMain("downloading", {
-            version: pendingUpdateVersion,
-          });
+          /* Asked for before there is anything to install. Start the
+             download rather than restarting into nothing — with automatic
+             updates off there is no other way this ever begins, and
+             `update-downloaded` raises the prompt again the moment it lands.
+             `downloadAnnouncedRelease` reports the progress if one is already
+             running. */
+          downloadAnnouncedRelease();
         }
       );
 

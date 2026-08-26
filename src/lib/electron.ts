@@ -27,6 +27,14 @@ export interface UpdateStatus {
   version?: string;
   /** On "announced", the version being run right now. */
   from?: string;
+  /**
+   * On "announced", whether Gryt is fetching this release on its own.
+   *
+   * False when automatic updates are off, which is the whole difference the
+   * toast shows: a progress bar it can only watch, or a button that starts the
+   * download.
+   */
+  autoDownload?: boolean;
   percent?: number;
   message?: string;
 }
@@ -121,6 +129,10 @@ export interface ElectronAPI {
   checkForUpdates(): void;
   /** Quit and come back, letting the splash download and install. */
   restartForUpdate(): void;
+  /** Fetch the announced release now. No-op while one is already downloading. */
+  downloadUpdate(): void;
+  getAutoUpdate(): Promise<boolean>;
+  setAutoUpdate(enabled: boolean): void;
   getBetaChannel(): Promise<boolean>;
   setBetaChannel(enabled: boolean): void;
   switchUpdateChannel(enabled: boolean): void;

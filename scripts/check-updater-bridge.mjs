@@ -85,4 +85,58 @@ assert.doesNotMatch(main, /autoInstallOnAppQuit = process\.platform/);
 // One quitAndInstall for every platform, no win32 branch around it.
 assert.equal(main.match(/autoUpdater\.quitAndInstall\(/g)?.length, 1);
 
+// The background check has to reach a real check, not just say a release
+// exists (GRYT-625).
+//
+// It used to probe releases.atom, send "announced" and stop. `autoDownload`
+// only decides what a check the library ran does next, and the library ran no
+// check here — so nothing was ever fetched in the background, the toast
+// offered a restart into an update that was not on disk, and restart-for-update
+// found nothing to install. The splash covered this until GRYT-622 deleted it.
+function bodyOf(name) {
+  const start = main.indexOf(`function ${name}(`);
+  assert.notEqual(start, -1, `${name} is gone`);
+
+  // Every one of these is a top-level declaration, so the first line that is a
+  // lone closing brace ends it.
+  const end = main.indexOf("\n}\n", start);
+  assert.notEqual(end, -1, `${name} has no end`);
+
+  return main.slice(start, end);
+}
+
+const backgroundCheck = bodyOf("checkForUpdatesInBackground");
+
+assert.match(backgroundCheck, /startBackgroundDownload\(/);
+
+assert.match(
+  bodyOf("startBackgroundDownload"),
+  /autoUpdater\s*\.checkForUpdates\(\)/,
+);
+
+// Announcing is the update-available handler's job, because that is the first
+// moment the release is known to be coming: the rollout slice has let this
+// machine through and the download is starting. Announcing from the probe is
+// what made the toast promise something that never arrived.
+assert.doesNotMatch(backgroundCheck, /autoDownload: true/);
+
+assert.match(
+  main,
+  /autoUpdater\.on\("update-available"[\s\S]{0,600}sendToMain\("announced"/,
+);
+
+// Asking for an update before one has been fetched starts the fetch. With
+// automatic updates off this is the only thing that ever does.
+assert.match(main, /ipcMain\.on\(\s*"download-update"/);
+
+assert.match(
+  bodyOf("downloadAnnouncedRelease"),
+  /startBackgroundDownload\(release, \{ bypassRollout: true \}\)/,
+);
+
+// The off switch reads from config, so it survives a restart.
+assert.match(main, /readBoolConfig\("autoUpdate", true\)/);
+
+assert.match(backgroundCheck, /if \(!autoUpdateEnabled\)/);
+
 console.log("Updater bridge packaging checks passed");

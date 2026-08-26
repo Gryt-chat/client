@@ -72,6 +72,18 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("restart-for-update");
   },
 
+  downloadUpdate() {
+    ipcRenderer.send("download-update");
+  },
+
+  getAutoUpdate(): Promise<boolean> {
+    return ipcRenderer.invoke("get-auto-update");
+  },
+
+  setAutoUpdate(enabled: boolean) {
+    ipcRenderer.send("set-auto-update", enabled);
+  },
+
   getBetaChannel(): Promise<boolean> {
     return ipcRenderer.invoke("get-beta-channel");
   },
