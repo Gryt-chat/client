@@ -14,7 +14,7 @@ import {
   systemPreferences,
   Tray,
 } from "electron";
-import { autoUpdater as defaultAutoUpdater, NsisUpdater, UpdateDownloadedEvent, UpdateInfo } from "electron-updater";
+import { autoUpdater as defaultAutoUpdater, NsisUpdater } from "electron-updater";
 import { DownloadedUpdateHelper } from "electron-updater/out/DownloadedUpdateHelper";
 import {
   appendFileSync,
@@ -144,10 +144,13 @@ const stateIcon = (name: string) =>
 
 const PROTOCOL = "gryt";
 const AUTO_START_ARG = "--gryt-autostart";
-const UPDATE_ARG = "--gryt-update";
+/* Nothing sets this any more. It survives so the argument an older build
+   relaunches with is recognised and ignored rather than carried forward: a
+   1.6.x client takes "restart and update now" by relaunching with
+   --gryt-update, and the binary that starts next is this one. */
+const LEGACY_UPDATE_ARG = "--gryt-update";
 
 let pendingDeepLinkUrl: string | null = null;
-let splashWindow: BrowserWindow | null = null;
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuitting = false;
@@ -266,71 +269,6 @@ function readBoolConfig(key: string, defaultValue: boolean): boolean {
 
 // ── Auto-updater config ─────────────────────────────────────────────────
 
-/* How long to sit on the splash after handing off to the installer before
-   deciding it did not take and opening Gryt anyway.
-
-   Five minutes, until it was measured. `quitAndInstall` either ends this
-   process within seconds or it has failed, so the only thing the other four
-   and a half minutes ever bought was a longer stare at a splash screen after
-   an update that was not going to happen. */
-const INSTALL_WAIT_MS = 45 * 1000;
-
-let updateDeferredVersion: string | null = null;
-
-const PENDING_INSTALL_WINDOW_MS = 10 * 60 * 1000;
-
-
-type PendingInstall = {
-  version: string;
-  queuedAt: number;
-};
-
-function readPendingInstall(): PendingInstall | null {
-  const raw = readConfig().pendingInstall;
-  if (!raw || typeof raw !== "object") return null;
-
-  const { version, queuedAt } = raw as Partial<PendingInstall>;
-
-  if (typeof version !== "string" || typeof queuedAt !== "number") {
-    return null;
-  }
-
-  return { version, queuedAt };
-}
-
-function installIsPending(): boolean {
-  const pending = readPendingInstall();
-  if (!pending) return false;
-
-  if (pending.version === app.getVersion()) {
-    clearPendingInstall();
-    return false;
-  }
-
-  if (Date.now() - pending.queuedAt > PENDING_INSTALL_WINDOW_MS) {
-    startupLog(`Update: pending install of ${pending.version} expired`);
-    clearPendingInstall();
-    return false;
-  }
-
-  return true;
-}
-
-function markInstallPending(version: string): void {
-  writeConfig({
-    pendingInstall: {
-      version,
-      queuedAt: Date.now(),
-    },
-  });
-
-  startupLog(`Update: queued install of ${version}`);
-}
-
-function clearPendingInstall(): void {
-  writeConfig({ pendingInstall: null });
-}
-
 /**
  * Remove the rollback directory left behind by the one-time Windows NSIS
  * migration.
@@ -417,9 +355,18 @@ autoUpdater.logger = {
   debug: (m: unknown) => startupLog(`Update debug: ${String(m)}`),
 };
 
-installIsPending();
-
-autoUpdater.autoDownload = false;
+/*
+ * Download in the background, the way Bitwarden does.
+ *
+ * `autoDownload` off meant nothing was fetched until somebody pressed a
+ * button, and then they waited for the whole installer while a splash screen
+ * counted at them. On means the bytes are already down by the time anyone is
+ * told there is an update, and taking it is a restart rather than a download.
+ *
+ * A user-initiated check turns it off for the length of that check, so
+ * "Check for Updates" reports what it found instead of silently fetching it.
+ */
+autoUpdater.autoDownload = true;
 
 // Windows is no longer the exception here.
 //
@@ -472,258 +419,23 @@ function applyStartWithWindowsSetting(enabled: boolean) {
   }
 }
 
-function sendToSplash(status: string, info?: Record<string, unknown>) {
-  splashWindow?.webContents.send("update-status", {
-    status,
-    ...info,
-  });
+/* Raised to the front once, then allowed to behave like a window again. */
+function showMain(): void {
+  if (!mainWindow) return;
+
+  mainWindow.setAlwaysOnTop(true);
+  mainWindow.show();
+  mainWindow.focus();
+
+  setTimeout(() => {
+    mainWindow?.setAlwaysOnTop(false);
+  }, 1000);
 }
 
 function sendToMain(status: string, info?: Record<string, unknown>) {
   mainWindow?.webContents.send("update-status", {
     status,
     ...info,
-  });
-}
-
-// ── Splash window ───────────────────────────────────────────────────────
-
-function createSplashWindow(): void {
-  splashWindow = new BrowserWindow({
-    width: 420,
-    height: 320,
-    frame: false,
-    resizable: false,
-    center: true,
-    alwaysOnTop: true,
-    skipTaskbar: false,
-    icon: appIcon,
-    backgroundColor: "#111318",
-    webPreferences: {
-      preload: join(__dirname, "splash-preload.cjs"),
-      contextIsolation: true,
-      nodeIntegration: false,
-    },
-    title: "Gryt — Updating",
-  });
-
-  splashWindow.loadFile(join(__dirname, "../electron/splash.html"));
-
-  splashWindow.on("closed", () => {
-    splashWindow = null;
-  });
-}
-
-function closeSplashAndShowMain(): void {
-  if (splashWindow) {
-    splashWindow.close();
-    splashWindow = null;
-  }
-
-  if (mainWindow) {
-    mainWindow.setAlwaysOnTop(true);
-    mainWindow.show();
-    mainWindow.focus();
-
-    setTimeout(() => {
-      mainWindow?.setAlwaysOnTop(false);
-    }, 1000);
-  }
-}
-
-// ── Splash update flow ──────────────────────────────────────────────────
-
-function runSplashUpdateCheck(): Promise<void> {
-  if (installIsPending()) {
-    const pending = readPendingInstall();
-
-    startupLog(
-      `Update: skipping check, install of ${pending?.version} still pending`
-    );
-
-    return Promise.resolve();
-  }
-
-  return new Promise((resolvePromise) => {
-    let settled = false;
-
-    const done = () => {
-      if (settled) return;
-
-      settled = true;
-      cleanup();
-      resolvePromise();
-    };
-
-    let timeout: NodeJS.Timeout | null = setTimeout(done, 15_000);
-
-    const holdOpen = () => {
-      if (timeout) {
-        clearTimeout(timeout);
-        timeout = null;
-      }
-    };
-
-    const onChecking = () => {
-      sendToSplash("checking");
-    };
-
-    const onAvailable = (info: UpdateInfo) => {
-      pendingUpdateVersion = info.version;
-
-      sendToSplash("available", {
-        version: info.version,
-      });
-
-      holdOpen();
-
-      autoUpdater
-        .downloadUpdate()
-        .then(() => {
-          markInstallPending(info.version);
-
-          sendToSplash("installing", {
-            version: info.version,
-          });
-
-          // Windows used to branch here into a detached PowerShell helper that
-          // waited for this process to exit and then ran the installer itself.
-          // It never once worked. Through v1.6.24 the script could not parse,
-          // and once that was fixed the spawn still produced nothing:
-          // gryt-update-helper.log has never been written on any machine, in
-          // any version. Measured on 1.6.26, the four second wait for it to
-          // report in expired and the fallback below did the install.
-          //
-          // So the fallback is the whole thing now. quitAndInstall is what the
-          // code used before GRYT-67, it is what every other platform uses,
-          // and installer.nsh handles in customInit the broken uninstaller
-          // that made it look unsafe on Windows.
-
-          /*
-           * Say we are quitting before asking to quit.
-           *
-           * `quitAndInstall` does not go through `before-quit`, so nothing else
-           * sets this — and the main window's close handler reads it:
-           *
-           *     if (!isQuitting && closeToTray && isUserSignedIn) {
-           *       event.preventDefault();
-           *       mainWindow?.hide();
-           *     }
-           *
-           * With `isQuitting` false, a window that is up cancels the quit and
-           * hides instead. On Windows the NSIS installer ends the process
-           * anyway, so it does not show. On macOS Squirrel cannot swap the
-           * bundle while the process lives: the app appears to install, comes
-           * back on the old version, and only finishes once it is force quit.
-           *
-           * Every other quit in this file sets this first — relaunchForUpdate,
-           * the crash dialog, the tray, the menu. This one did not, and it is
-           * the one that most needs to.
-           *
-           * Four of the five Electron apps whose updaters I read do the same
-           * thing immediately before this call, each with a comment: Signal
-           * (`markRestarting` in ts/updater/macos.main.ts), Bitwarden ("Quit
-           * and install have a different window logic, setting `isQuitting`
-           * just to be safe"), Element ("quitAndInstall does not fire the
-           * before-quit event, so we need to set the flag here"), and Standard
-           * Notes, which removes the close listeners outright because
-           * "index.js prevents close event on some platforms".
-           */
-          isQuitting = true;
-
-          autoUpdater.quitAndInstall(false, true);
-
-          setTimeout(() => {
-            /* Reaching here means the install did not take: the process is
-               still alive INSTALL_WAIT_MS after handing off. Put `isQuitting`
-               back, or close-to-tray is dead for the rest of the session and
-               the window closes for real the next time somebody hits the X. */
-            isQuitting = false;
-
-            updateDeferredVersion = info.version;
-
-            sendToSplash("deferred", {
-              version: info.version,
-            });
-
-            setTimeout(done, 2500);
-          }, INSTALL_WAIT_MS);
-        })
-        .catch((err) => {
-          onError(err instanceof Error ? err : undefined);
-        });
-    };
-
-    const onNotAvailable = (info: UpdateInfo) => {
-      sendToSplash("not-available", {
-        version: info.version,
-      });
-
-      setTimeout(done, 800);
-    };
-
-    const onProgress = (progress: {
-      percent: number;
-      transferred: number;
-      total: number;
-    }) => {
-      holdOpen();
-
-      sendToSplash("downloading", {
-        version: pendingUpdateVersion,
-        percent: Math.round(progress.percent),
-        transferred: progress.transferred,
-        total: progress.total,
-      });
-    };
-
-    const onDownloaded = (info: UpdateDownloadedEvent) => {
-      sendToSplash("downloaded", {
-        version: info.version,
-      });
-    };
-
-    const onError = (err?: Error) => {
-      logUpdateFailure("Update failed", err);
-
-      if (err && isReleaseNotReadyYet(err)) {
-        sendToSplash("not-available", {
-          version: app.getVersion(),
-        });
-
-        setTimeout(done, 600);
-        return;
-      }
-
-      sendToSplash("error", {
-        message: err ? friendlyUpdateError(err) : undefined,
-      });
-
-      holdOpen();
-      setTimeout(done, 1200);
-    };
-
-    function cleanup() {
-      autoUpdater.off("checking-for-update", onChecking);
-      autoUpdater.off("update-available", onAvailable);
-      autoUpdater.off("update-not-available", onNotAvailable);
-      autoUpdater.off("download-progress", onProgress);
-      autoUpdater.off("update-downloaded", onDownloaded);
-      autoUpdater.off("error", onError);
-    }
-
-    autoUpdater.on("checking-for-update", onChecking);
-    autoUpdater.on("update-available", onAvailable);
-    autoUpdater.on("update-not-available", onNotAvailable);
-    autoUpdater.on("download-progress", onProgress);
-    autoUpdater.on("update-downloaded", onDownloaded);
-    autoUpdater.on("error", onError);
-
-    pinFeedToNewestCompleteRelease().finally(() => {
-      autoUpdater.checkForUpdates().catch((err) => {
-        onError(err instanceof Error ? err : undefined);
-      });
-    });
   });
 }
 
@@ -1067,9 +779,11 @@ async function newestReleaseWithoutApi(): Promise<string | null> {
  * somebody who did not press anything should not get an error about it.
  */
 function checkForUpdatesInBackground(reason: string): void {
-  /* Both mean the answer cannot change until this process restarts: one has an
-     installer waiting, the other has already downloaded what it found. */
-  if (updateIsDownloaded || installIsPending()) return;
+  /* Already downloaded, so the answer cannot change until this restarts.
+     Element hit the same thing on macOS and guards it the same way: re-checking
+     while Squirrel is holding a staged update wedges the install
+     (element-web#12433). */
+  if (updateIsDownloaded) return;
 
   if (Date.now() - lastUpdateCheckAt < UPDATE_CHECK_FLOOR_MS) return;
   lastUpdateCheckAt = Date.now();
@@ -1099,9 +813,9 @@ function checkForUpdatesInBackground(reason: string): void {
 /**
  * Start the repeating check. Called once, from `initBackgroundUpdater`.
  *
- * That is the one place both non-dev launch paths pass through — the splash
- * path and the hidden auto-start path — and dev passes through neither, which
- * is the behaviour the launch-time check already has.
+ * That is the one place both non-dev launch paths pass through — the ordinary
+ * one and the hidden auto-start one — and dev passes through neither, which is
+ * the behaviour the launch-time check already has.
  */
 function startPeriodicUpdateChecks(launchAlreadyChecked: boolean): void {
   if (updateCheckTimer) return;
@@ -1130,6 +844,17 @@ function startPeriodicUpdateChecks(launchAlreadyChecked: boolean): void {
   });
 }
 
+/**
+ * Put background downloading back after a check somebody asked for.
+ *
+ * `check-for-updates` turns it off so the answer is reported rather than
+ * silently fetched. Every path out of a check comes through one of the three
+ * events below, including the failing ones, so it cannot stay off.
+ */
+function resumeAutoDownload(): void {
+  autoUpdater.autoDownload = true;
+}
+
 function initBackgroundUpdater(launchAlreadyChecked: boolean) {
   autoUpdater.on(
     "checking-for-update",
@@ -1142,12 +867,16 @@ function initBackgroundUpdater(launchAlreadyChecked: boolean) {
     sendToMain("available", {
       version: info.version,
     });
+
+    resumeAutoDownload();
   });
 
   autoUpdater.on("update-not-available", (info) => {
     sendToMain("not-available", {
       version: info.version,
     });
+
+    resumeAutoDownload();
   });
 
   autoUpdater.on("download-progress", (progress) => {
@@ -1168,6 +897,8 @@ function initBackgroundUpdater(launchAlreadyChecked: boolean) {
   });
 
   autoUpdater.on("error", (err) => {
+    resumeAutoDownload();
+
     logUpdateFailure("Update failed", err);
 
     if (isReleaseNotReadyYet(err)) {
@@ -1185,19 +916,41 @@ function initBackgroundUpdater(launchAlreadyChecked: boolean) {
   startPeriodicUpdateChecks(launchAlreadyChecked);
 }
 
-function relaunchForUpdate(): void {
+/**
+ * Install what has been downloaded, by quitting into it.
+ *
+ * This is Bitwarden's shape (apps/desktop/src/main/updater.main.ts): set the
+ * quit flag, then hand off. There is no relaunch into a second process and no
+ * splash — the bytes are already on disk by the time this is reachable,
+ * because `autoDownload` fetched them while Gryt was running.
+ *
+ * The flag first, because `quitAndInstall` does not go through `before-quit`
+ * and the main window's close handler reads it. Without it a window that is up
+ * cancels the quit and hides, and on macOS Squirrel cannot swap the bundle
+ * while the process lives (GRYT-621).
+ */
+function installDownloadedUpdate(): void {
+  isQuitting = true;
+  autoUpdater.quitAndInstall(true, true);
+}
+
+/**
+ * Restart Gryt as it is, carrying nothing over.
+ *
+ * Not an update path. Switching release channel needs a fresh process to pick
+ * the new feed up, and that is all this does.
+ */
+function relaunchApp(): void {
   isQuitting = true;
 
-  const args = process.argv
-    .slice(1)
-    .filter(
-      (arg) =>
-        arg !== AUTO_START_ARG &&
-        arg !== UPDATE_ARG
-    );
-
   app.relaunch({
-    args: [...args, UPDATE_ARG],
+    args: process.argv
+      .slice(1)
+      .filter(
+        (arg) =>
+          arg !== AUTO_START_ARG &&
+          arg !== LEGACY_UPDATE_ARG
+      ),
   });
 
   app.quit();
@@ -1414,7 +1167,7 @@ function createMainWindow(): BrowserWindow {
         mainWindow &&
         !mainWindow.isVisible()
       ) {
-        closeSplashAndShowMain();
+        showMain();
       }
     }, 20_000);
   }
@@ -1916,15 +1669,11 @@ function buildTrayContextMenu(): Menu {
         ]
       : []),
 
-    ...(updateDeferredVersion
+    ...(updateIsDownloaded
       ? [
           {
-            label:
-              `Quit and install ${updateDeferredVersion}`,
-            click: () => {
-              isQuitting = true;
-              app.quit();
-            },
+            label: `Restart and install ${pendingUpdateVersion ?? "update"}`,
+            click: installDownloadedUpdate,
           } as const,
 
           {
@@ -1936,9 +1685,7 @@ function buildTrayContextMenu(): Menu {
     {
       label: "Check for Updates",
       click: () => {
-        isQuitting = true;
-        app.relaunch();
-        app.quit();
+        checkForUpdatesInBackground("tray");
       },
     },
 
@@ -2230,7 +1977,7 @@ if (!gotSingleInstanceLock) {
           autoUpdater.allowPrerelease =
             enabled;
 
-          relaunchForUpdate();
+          relaunchApp();
         }
       );
 
@@ -2959,73 +2706,33 @@ if (!gotSingleInstanceLock) {
           .VITE_DEV_SERVER_URL
       ) {
         startupLog(
-          "Dev mode — skipping splash/update check"
+          "Dev mode — skipping the update check"
         );
 
         mainWindow?.show();
-      } else if (
-        startHiddenOnLaunch &&
-        !process.argv.includes(
-          UPDATE_ARG
-        )
-      ) {
+      } else if (startHiddenOnLaunch) {
         startupLog(
           "Starting hidden (auto-start)"
         );
 
         initBackgroundUpdater(true);
 
-        if (!installIsPending()) {
-          pinFeedToNewestCompleteRelease().finally(
-            () => {
-              autoUpdater
-                .checkForUpdates()
-                .catch(() => {});
-            }
-          );
-        }
-      } else if (
-        process.argv.includes(
-          UPDATE_ARG
-        )
-      ) {
-        /* Somebody pressed "restart and update now". The splash is the right
-           place for that: they asked for it, they are waiting for it, and it is
-           the only screen that can show a download running.
-
-           This used to be the ordinary launch path too, which is why installing
-           Gryt on Windows took minutes. Every start went through a GitHub API
-           call, and a start that found a newer release downloaded the whole
-           installer here before it would open the window — with the 15 second
-           guard cleared by the first progress event, so nothing bounded it
-           except INSTALL_WAIT_MS. Someone installing an older build waited out
-           an entire update to reach a login screen. */
-        startupLog(
-          "Update relaunch — running the update on the splash"
+        pinFeedToNewestCompleteRelease().finally(
+          () => {
+            autoUpdater
+              .checkForUpdates()
+              .catch(() => {});
+          }
         );
-
-        try {
-          createSplashWindow();
-          await runSplashUpdateCheck();
-        } catch {
-          // Ensure the main window still opens if the updater fails.
-        }
-
-        closeSplashAndShowMain();
-
-        startupLog(
-          "Main window shown"
-        );
-
-        initBackgroundUpdater(true);
       } else {
-        /* Ordinary launch. Open the window, then look for updates behind it.
+        /* Every launch, now that there is only one. Open the window and look
+           for updates behind it.
 
-           Nothing is lost by not checking here: `initBackgroundUpdater` starts
-           the periodic check, an announcement raises the toast in
-           updateAnnouncement.tsx, and taking it relaunches into the branch
-           above. The difference is only that Gryt is usable while all of that
-           happens. */
+           An update downloads while Gryt is running and installs on restart,
+           so nothing about starting the app waits on the network. There used to
+           be a second path here that relaunched into a splash and downloaded
+           before showing anything, which is why installing an older build on
+           Windows took minutes to reach a login screen. */
 
         /* Waited for rather than shown immediately. An empty frame that fills
            in a second later is not fast, it just moves the wait somewhere more
@@ -3036,11 +2743,11 @@ if (!gotSingleInstanceLock) {
           mainWindow &&
           !mainWindow.webContents.isLoading()
         ) {
-          closeSplashAndShowMain();
+          showMain();
         } else {
           mainWindow?.webContents.once(
             "did-stop-loading",
-            () => closeSplashAndShowMain()
+            () => showMain()
           );
         }
 
@@ -3419,17 +3126,18 @@ if (!gotSingleInstanceLock) {
       ipcMain.on(
         "check-for-updates",
         () => {
-          if (installIsPending()) {
-            sendToMain(
-              "pending",
-              {
-                version:
-                  readPendingInstall()
-                    ?.version,
-              }
-            );
+          if (updateIsDownloaded) {
+            sendToMain("downloaded", {
+              version: pendingUpdateVersion,
+            });
             return;
           }
+
+          /* Somebody asked, so report rather than fetch. Bitwarden does the
+             same: `autoDownload` off for the length of a check with feedback,
+             back on in `reset()`. Restored on the first event either way, so a
+             failed check cannot leave background downloads off. */
+          autoUpdater.autoDownload = false;
 
           pinFeedToNewestCompleteRelease().finally(
             () => {
@@ -3474,19 +3182,17 @@ if (!gotSingleInstanceLock) {
       ipcMain.on(
         "restart-for-update",
         () => {
-          if (installIsPending()) {
-            sendToMain(
-              "pending",
-              {
-                version:
-                  readPendingInstall()
-                    ?.version,
-              }
-            );
+          if (updateIsDownloaded) {
+            installDownloadedUpdate();
             return;
           }
 
-          relaunchForUpdate();
+          /* Asked for before the download finished. Say so rather than
+             restarting into nothing: `update-downloaded` raises the prompt
+             again the moment it lands. */
+          sendToMain("downloading", {
+            version: pendingUpdateVersion,
+          });
         }
       );
 
