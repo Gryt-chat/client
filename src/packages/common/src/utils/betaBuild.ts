@@ -1,29 +1,42 @@
 /**
- * The amber a beta build wears.
+ * The rose a beta build wears.
  *
  * Deliberately far from the brand violet rather than a tint of it — the point
  * is that you can tell which build you are looking at without reading anything.
- * Kept in step by hand with the same value in electron/splash.html, which
- * cannot import from here.
+ *
+ * Was an amber, #f2a33c, and it read as yellow rather than as a colour anybody
+ * chose. This palette is drawn rather than derived: a rose ground with a plum
+ * bird on it.
  */
 
-export const BETA_ACCENT = "#f2a33c";
+export const BETA_ACCENT = "#753A4B";
 
 /**
  * The other two steps the mark is drawn in: the face above the body, the wings
  * below it.
  *
  * The bird is three tones, not one. Tinting only the body left a beta build
- * wearing an amber owl with a violet face and violet wings, which reads as
+ * wearing a tinted owl with a violet face and violet wings, which reads as
  * three colours arguing rather than as one owl in another colour.
  *
- * Both are the same ratio off the amber that #B5A8E6 and #7C6EC3 are off
- * #A495E3, so the bird keeps its own modelling. Kept in step by hand with
- * --owl-face and --owl-wing in electron/splash.html, which cannot import from
- * here.
+ * The deep tone doubles as the ink: the eyes, the beak and the wink are drawn
+ * in it. On the stable mark those are the ground's own colour, which works
+ * because the ground is dark. It is not here, so they need a colour of their
+ * own or they vanish into a light rose.
  */
-export const BETA_ACCENT_SOFT = "#ffc46b";
-export const BETA_ACCENT_DEEP = "#b77834";
+export const BETA_ACCENT_SOFT = "#EECAB9";
+export const BETA_ACCENT_DEEP = "#5F2F41";
+
+/**
+ * The ground a beta build's mark sits on.
+ *
+ * The stable mark keeps a dark ground and lets the bird carry the colour, and
+ * the note in logo.tsx said tinting the ground "would only darken a dark
+ * square". That holds for a darker tint and not for this one: the rose is
+ * lighter than the bird, so figure and ground swap over and the whole tile
+ * changes rather than one shape in it.
+ */
+export const BETA_GROUND = "#CE7072";
 
 /**
  * Is the build that is currently running a beta?

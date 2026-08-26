@@ -3,6 +3,7 @@ import {
   BETA_ACCENT,
   BETA_ACCENT_DEEP,
   BETA_ACCENT_SOFT,
+  BETA_GROUND,
   useIsBetaBuild,
 } from "../utils/betaBuild";
 import { BetaTag } from "./wordmark";
@@ -22,10 +23,21 @@ import { BetaTag } from "./wordmark";
  * The 2026 mark inverted figure and ground. The old one was a dark bird on a
  * violet disc, so tinting the *background* was what made a beta build look like
  * one. Here the ground is dark and the bird carries the colour, so the tint
- * moved to the bird — tinting the ground now would only darken a dark square.
+ * moved to the bird.
+ *
+ * That note used to end "tinting the ground now would only darken a dark
+ * square", and it was right about a darker tint. The beta rose is *lighter*
+ * than the bird on it, so figure and ground swap back over and the whole tile
+ * changes rather than one shape inside it. Both move now.
  */
 function LogoIcon({ size = 48, beta = false }: { size?: number; beta?: boolean }) {
   const body = beta ? BETA_ACCENT : "#A495E3";
+  const ground = beta ? BETA_GROUND : "#2E2D5F";
+  /* The eyes, the beak and the wink. On the stable mark they are the ground's
+     own colour, which is why they were written as a literal — the ground is
+     dark and so are they. The beta ground is a light rose, so they need the
+     deep tone instead or they disappear into it. */
+  const ink = beta ? BETA_ACCENT_DEEP : "#2E2D5F";
   // The bird is three tones — the face above the body, the wings below it —
   // and all three have to move together. Tinting the body alone gave a beta
   // build an amber owl with a violet face and violet wings.
@@ -42,7 +54,7 @@ function LogoIcon({ size = 48, beta = false }: { size?: number; beta?: boolean }
       aria-hidden="true"
     >
       <g clipPath="url(#logo-clip)">
-        <rect width="1024" height="1024" fill="#2E2D5F" />
+        <rect width="1024" height="1024" fill={ground} />
         <path
           d="M117.45 677.727C120.743 664.113 120.36 602.152 119.637 587.363C108.168 353.556 283.596 184.2 515.449 191.21C628.229 194.622 718.768 215.015 802.396 299.432C910.784 408.844 908.561 532.939 906.96 674.973C980.416 846.971 995.413 1003.44 928.604 1184.1C909.952 1234.53 867.051 1304.75 824.991 1339.24C790.453 1359.89 755.156 1380.9 714.224 1385.74C709.786 1397.93 708.22 1406.2 698.584 1414.62C671.044 1416.11 672.356 1412.41 650.517 1432.58C636.333 1434.54 635.588 1434.81 621.437 1424.16C619.727 1422.87 618.028 1421.55 616.348 1420.22C586.972 1422.33 583.755 1428.57 567.16 1401.62L461.79 1401.57C430.607 1447.05 435.866 1402.27 392.078 1431.99C375.144 1433.23 354.006 1420.75 337.187 1415.75C321.629 1411.12 319.352 1403.15 312.868 1388.28C259.874 1377.86 241.992 1355.86 203.048 1339.89C155.686 1305.18 114.107 1232 94.36 1178.04C30.9054 1004.63 43.665 843.414 117.45 677.727Z"
           fill={body}
@@ -53,21 +65,21 @@ function LogoIcon({ size = 48, beta = false }: { size?: number; beta?: boolean }
         />
         <path
           d="M637.617 445.204C665.591 435.093 696.445 449.712 706.342 477.765C716.239 505.817 701.39 536.563 673.265 546.251C645.44 555.834 615.095 541.175 605.303 513.42C595.511 485.664 609.94 455.207 637.617 445.204Z"
-          fill="#2E2D5F"
+          fill={ink}
         />
         {/*
           The owl winks on a beta build. Nobody who is not looking for it will
           notice; everyone who ships betas will.
 
           The eye is replaced rather than drawn over. It is painted in the
-          ground's own colour, so a stroke laid on top of it would be one dark
-          shape on another and read as nothing at all — which is what the
-          previous mark could get away with, its eyes being the light part.
+          same ink as the other features, so a stroke laid on top of it would
+          be one shape on another and read as nothing at all — which is what
+          the previous mark could get away with, its eyes being the light part.
         */}
         {beta ? (
           <path
             d="M322 484 Q369.5 536 417 484"
-            stroke="#2E2D5F"
+            stroke={ink}
             strokeWidth="22"
             strokeLinecap="round"
             fill="none"
@@ -75,12 +87,12 @@ function LogoIcon({ size = 48, beta = false }: { size?: number; beta?: boolean }
         ) : (
           <path
             d="M351.43 445.189C379.259 435.201 409.911 449.686 419.866 477.529C429.817 505.372 415.293 536.009 387.442 545.929C359.639 555.83 329.07 541.337 319.137 513.545C309.2 485.75 323.652 455.159 351.43 445.189Z"
-            fill="#2E2D5F"
+            fill={ink}
           />
         )}
         <path
           d="M512.359 573.191C508.812 573.17 516.378 573.212 512.359 573.191C572.603 573.544 536.569 640.612 516.085 676.829C514.504 679.626 510.416 679.514 508.945 676.658C490.115 640.101 452.322 573.191 512.359 573.191Z"
-          fill="#2E2D5F"
+          fill={ink}
         />
         <path
           d="M906.96 674.972C980.417 846.97 995.414 1003.44 928.605 1184.1C909.953 1234.53 867.051 1304.74 824.992 1339.24C737.388 1214.12 737.93 956.855 814.166 829.785C845.783 777.085 880.299 731.645 906.96 674.972Z"
