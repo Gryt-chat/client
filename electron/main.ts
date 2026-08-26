@@ -379,6 +379,21 @@ autoUpdater.autoDownload = true;
 // update at all.
 autoUpdater.autoInstallOnAppQuit = true;
 
+/*
+ * The library's own staged-rollout check, kept so it can be put back.
+ *
+ * electron-updater compares `stagingPercentage` in the release yml against a
+ * stable per-machine id, so a release can be handed to a fraction of people
+ * first. Whatever a release does not set, this returns true for, which is why
+ * holding on to it costs nothing while no release stages.
+ *
+ * Bitwarden's shape, apps/desktop/src/main/updater.main.ts: keep the original,
+ * swap in an always-true one for a check somebody asked for, put it back
+ * afterwards. Somebody who goes looking for an update should get it rather than
+ * be told there is none because their id fell outside this release's slice.
+ */
+const defaultRolloutCheck = autoUpdater.isUserWithinRollout;
+
 function isOnBetaChannel(): boolean {
   return readBoolConfig("betaChannel", app.getVersion().includes("-"));
 }
@@ -845,14 +860,19 @@ function startPeriodicUpdateChecks(launchAlreadyChecked: boolean): void {
 }
 
 /**
- * Put background downloading back after a check somebody asked for.
+ * Undo what a check somebody asked for changed.
  *
- * `check-for-updates` turns it off so the answer is reported rather than
- * silently fetched. Every path out of a check comes through one of the three
- * events below, including the failing ones, so it cannot stay off.
+ * `check-for-updates` turns background downloading off so the answer is
+ * reported rather than silently fetched, and bypasses the rollout slice so the
+ * person asking is not told there is nothing. Every path out of a check comes
+ * through one of the three events below, including the failing ones, so
+ * neither can stay that way.
+ *
+ * Bitwarden's `reset()`.
  */
 function resumeAutoDownload(): void {
   autoUpdater.autoDownload = true;
+  autoUpdater.isUserWithinRollout = defaultRolloutCheck;
 }
 
 function initBackgroundUpdater(launchAlreadyChecked: boolean) {
@@ -3133,11 +3153,14 @@ if (!gotSingleInstanceLock) {
             return;
           }
 
-          /* Somebody asked, so report rather than fetch. Bitwarden does the
-             same: `autoDownload` off for the length of a check with feedback,
-             back on in `reset()`. Restored on the first event either way, so a
-             failed check cannot leave background downloads off. */
+          /* Somebody asked, so report rather than fetch, and let them past
+             this release's rollout slice. Bitwarden does both together:
+             `autoDownload` off and `isUserWithinRollout` forced true for the
+             length of a check with feedback, both restored in `reset()`.
+             Restored on the first event either way, so a failed check cannot
+             leave background downloads off or the rollout bypassed. */
           autoUpdater.autoDownload = false;
+          autoUpdater.isUserWithinRollout = () => true;
 
           pinFeedToNewestCompleteRelease().finally(
             () => {
