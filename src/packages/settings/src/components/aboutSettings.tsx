@@ -30,6 +30,7 @@ function UpdateControls() {
   const [status, setStatus] = useState<UpdateStatus | null>(null);
   const [appVersion, setAppVersion] = useState<string>("…");
   const [betaChannel, setBetaChannel] = useState(false);
+  const [autoUpdate, setAutoUpdate] = useState(true);
   const [pendingSwitch, setPendingSwitch] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -38,7 +39,13 @@ function UpdateControls() {
 
     api.getAppVersion().then(setAppVersion);
     api.getBetaChannel().then(setBetaChannel);
+    api.getAutoUpdate().then(setAutoUpdate);
     return api.onUpdateStatus(setStatus);
+  }, []);
+
+  const handleAutoUpdateToggle = useCallback((enabled: boolean) => {
+    setAutoUpdate(enabled);
+    getElectronAPI()?.setAutoUpdate(enabled);
   }, []);
 
   const handleCheckForUpdates = useCallback(() => {
@@ -118,6 +125,18 @@ function UpdateControls() {
           <span className="font-medium">Running</span>
           <Chip tone="neutral">v{appVersion}</Chip>
           {betaChannel && <Chip tone="warning" label="Beta" />}
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-1">
+            <span className="font-medium">Automatic updates</span>
+            <span className="text-gryt-muted">
+              {autoUpdate
+                ? "Gryt downloads new versions in the background and installs them when you quit."
+                : "Gryt tells you about a new version and waits for you to start it."}
+            </span>
+          </div>
+          <Switch checked={autoUpdate} onCheckedChange={handleAutoUpdateToggle} />
         </div>
 
         <div className="flex items-center justify-between">
