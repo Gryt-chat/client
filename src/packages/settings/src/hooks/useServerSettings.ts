@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { singletonHook } from "@/common";
 import { useUserId } from "@/common";
 
+import { orderServerHosts } from "../serverOrder";
 import { Server, Servers } from "../types/server";
 import {
   getUserValue,
@@ -158,16 +159,29 @@ function useServerSettingsHook(): ServerSettings {
     });
   }, []);
 
+  /**
+   * Open whatever is at the top of the rail (GRYT-642).
+   *
+   * This used to take `Object.keys(servers)[0]`, which is the order servers
+   * were added in. Dragging one to the top of the rail therefore changed where
+   * it appeared and not what opened, and the only way to make a server open
+   * first was to remove the others and add them again in the order you wanted.
+   *
+   * `pendingFocusServer` in useServerManagement runs after this and still wins,
+   * so a deep link opens what it names rather than the top of the rail.
+   */
   useEffect(() => {
-    const serverKeys = Object.keys(servers);
-    if (serverKeys.length > 0 && !hasAutoFocused.current) {
-      const server = servers[serverKeys[0]];
-      if (server) {
-        setCurrentlyViewingServer(server);
-        hasAutoFocused.current = true;
-      }
-    }
-  }, [servers]);
+    if (hasAutoFocused.current) return;
+
+    const [topHost] = orderServerHosts(servers, serverOrder);
+    if (!topHost) return;
+
+    const server = servers[topHost];
+    if (!server) return;
+
+    setCurrentlyViewingServer(server);
+    hasAutoFocused.current = true;
+  }, [servers, serverOrder]);
 
   useEffect(() => {
     if (!currentlyViewingServer) return;

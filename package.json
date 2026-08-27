@@ -29,6 +29,7 @@
     "test:avatar-precedence": "node scripts/check-avatar-precedence.mjs",
     "test:owl-export": "node scripts/check-owl-export.mjs",
     "test:owl-seen": "node scripts/check-owl-seen.mjs",
+    "test:server-order": "node scripts/check-server-order.mjs",
     "preview": "vite preview",
     "build:native": "node -e \"const{execSync:r}=require('child_process');if(process.platform==='win32'){r('native\\\\build.bat',{stdio:'inherit'})}else{r('bash native/audio-capture/build.sh',{stdio:'inherit'})}\"",
     "electron:dev": "npm run embedded-server:ensure && cross-env ELECTRON=1 vite --host",
