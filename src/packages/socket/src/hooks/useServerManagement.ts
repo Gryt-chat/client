@@ -11,6 +11,7 @@ import {
 } from "@/common";
 import { useLanDiscovery } from "@/settings/src/hooks/useLanDiscovery";
 import { useServerSettings } from "@/settings/src/hooks/useServerSettings";
+import { orderServerHosts } from "@/settings/src/serverOrder";
 import { Server, Servers } from "@/settings/src/types/server";
 
 import { type LanServer } from "../../../../lib/electron";
@@ -185,20 +186,12 @@ function useServerManagementHook(): ServerManagement {
     [pendingLanServers, seenLanServers],
   );
 
-  const orderedServerHosts = useMemo(() => {
-    const allHosts = Object.keys(servers);
-    const ordered: string[] = [];
-
-    for (const host of serverOrder) {
-      if (allHosts.includes(host)) ordered.push(host);
-    }
-
-    for (const host of allHosts) {
-      if (!ordered.includes(host)) ordered.push(host);
-    }
-
-    return ordered;
-  }, [servers, serverOrder]);
+  /* Shared with the launch focus in useServerSettings, which opens the first
+     of these. See orderServerHosts. */
+  const orderedServerHosts = useMemo(
+    () => orderServerHosts(servers, serverOrder),
+    [servers, serverOrder]
+  );
 
   const reorderServers = useCallback(
     (orderedHosts: string[]) => {
