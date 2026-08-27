@@ -244,13 +244,21 @@ export const ServerView = () => {
     () => fakeChatSendersFrom(fakeParticipantOptions),
     [fakeParticipantOptions],
   );
+
+  /* All of them, not just the first. The fixture reacts with these and sends
+     them on their own, and one emoji used for everything looks like a stuck
+     key rather than like a server with its own emoji. */
+  const fakeChatEmojiNames = useMemo(
+    () => getCustomEmojis().map((e) => e.name),
+    [],
+  );
   useFakeChat({
     running: fakeChatRunning,
     connection: currentConnection,
     conversationId: activeConversationId,
     senders: fakeChatSenders,
     selfNickname: nickname,
-    emojiName: getCustomEmojis()[0]?.name ?? null,
+    emojiNames: fakeChatEmojiNames,
     everySeconds: devFakeChatSeconds,
   });
 

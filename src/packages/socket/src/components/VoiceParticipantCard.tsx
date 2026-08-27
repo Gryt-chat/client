@@ -17,6 +17,7 @@ import {
   speakingRingStyle,
   tileGradient,
   tileHue,
+  tileTint,
 } from "./speakingIndicator";
 import { UserContextMenu } from "./UserContextMenu";
 
@@ -252,7 +253,14 @@ function MutedBadge({
         height: size,
         borderRadius: "50%",
         background: hueId
-          ? `hsl(${tileHue(hueId, hueAvatarColor, hueAvatarOwl)} 45% 26%)`
+          ? (() => {
+              /* The badge sits on the tile, so it takes the tile's colour a
+                 step darker rather than a fixed lightness of its own — which
+                 on a dark owl used to come out lighter than the tile it was
+                 on. */
+              const { hue, sat, light } = tileTint(hueId, hueAvatarColor, hueAvatarOwl);
+              return `hsl(${hue} ${Math.round(Math.min(100, sat - 3))}% ${Math.round(light * 0.62)}%)`;
+            })()
           : "rgba(0, 0, 0, 0.6)",
         pointerEvents: "none",
       }}>

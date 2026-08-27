@@ -32,58 +32,15 @@ export function hueFromId(id: string): number {
   return TILE_HUES[Math.abs(hash) % TILE_HUES.length];
 }
 
-/**
- * The palette entry nearest the avatar's own colour.
- *
- * Snapped rather than used directly, for the same reason hueFromId picks from a
- * list: the tile is drawn at a fixed lightness and saturation, and an arbitrary
- * hue put through those lands in the olive band often enough to look broken.
- * Snapping keeps the person's colour recognisable while every tile stays a
- * colour the panel was designed around.
- *
- * Returns null rather than a hue for anything the snap would misrepresent — a
- * malformed value, or a grey avatar, whose hue is whatever rounding noise it
- * happens to carry. The caller falls back to the id hash, which is what every
- * tile looked like before this existed.
- */
-export function hueFromAvatarColor(hex: string | null | undefined): number | null {
-  if (!hex) return null;
+import {
+  hueFromAvatarColor,
+  maxLightForWhiteText,
+  type TileTint,
+  tintFromAvatarColor,
+} from "./tileColor";
 
-  const match = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
-  if (!match) return null;
-
-  const int = parseInt(match[1], 16);
-  const r = ((int >> 16) & 255) / 255;
-  const g = ((int >> 8) & 255) / 255;
-  const b = (int & 255) / 255;
-
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const delta = max - min;
-
-  // Near-grey. Below this the hue is noise, and snapping it would hand someone
-  // a saturated tile that has nothing to do with their avatar.
-  if (delta < 0.08) return null;
-
-  let hue: number;
-  if (max === r) hue = ((g - b) / delta) % 6;
-  else if (max === g) hue = (b - r) / delta + 2;
-  else hue = (r - g) / delta + 4;
-
-  hue = (hue * 60 + 360) % 360;
-
-  let nearest = TILE_HUES[0];
-  let best = Infinity;
-  for (const candidate of TILE_HUES) {
-    // Around the wheel, so 350 and 24 are 34 apart rather than 326.
-    const diff = Math.abs(((candidate - hue + 540) % 360) - 180);
-    if (diff < best) {
-      best = diff;
-      nearest = candidate;
-    }
-  }
-  return nearest;
-}
+export type { TileTint };
+export { hueFromAvatarColor, tintFromAvatarColor };
 
 /**
  * A person's hue, in the same order of precedence `resolveAvatarSrc` picks the
@@ -110,19 +67,34 @@ export function hueFromAvatarColor(hex: string | null | undefined): number | nul
  * hueFromId stays as the last resort, for a caller that has no seed to generate
  * from.
  */
+export function tileTint(
+  id: string,
+  avatarColor?: string | null,
+  owl?: { nickname?: string | null; worn?: string | null },
+): TileTint {
+  const fromAvatar =
+    (owl?.worn
+      ? tintFromAvatarColor(generatedAvatarColor(owl.nickname ?? "", owl.worn))
+      : null) ??
+    tintFromAvatarColor(avatarColor) ??
+    tintFromAvatarColor(generatedAvatarColor(id));
+
+  if (fromAvatar) return fromAvatar;
+
+  /* No colour to respect — a grey avatar, or a caller with nothing to generate
+     from. The palette is the right answer here, and these are the numbers every
+     tile used before any of this. */
+  const hue = hueFromId(id);
+  return { hue, sat: 48, light: Math.min(42, maxLightForWhiteText(hue, 48)) };
+}
+
+/** The hue alone, for the speaking ring and anything else that only needs it. */
 export function tileHue(
   id: string,
   avatarColor?: string | null,
   owl?: { nickname?: string | null; worn?: string | null },
 ): number {
-  return (
-    (owl?.worn
-      ? hueFromAvatarColor(generatedAvatarColor(owl.nickname ?? "", owl.worn))
-      : null) ??
-    hueFromAvatarColor(avatarColor) ??
-    hueFromAvatarColor(generatedAvatarColor(id)) ??
-    hueFromId(id)
-  );
+  return tileTint(id, avatarColor, owl).hue;
 }
 
 /**
@@ -135,8 +107,15 @@ export function tileGradient(
   avatarColor?: string | null,
   owl?: { nickname?: string | null; worn?: string | null },
 ): string {
-  const h = tileHue(id, avatarColor, owl);
-  return `radial-gradient(circle at 50% 42%, hsl(${h} 48% 42%), hsl(${h} 55% 20%) 75%)`;
+  const { hue, sat, light } = tileTint(id, avatarColor, owl);
+
+  /* The edge keeps its old relationship to the centre — a little more
+     saturated, about half as light — so the falloff still reads as a tile with
+     someone in it rather than a flat rectangle. */
+  const edgeSat = Math.min(100, sat + 7);
+  const edgeLight = Math.round(light * 0.48);
+
+  return `radial-gradient(circle at 50% 42%, hsl(${hue} ${Math.round(sat)}% ${Math.round(light)}%), hsl(${hue} ${Math.round(edgeSat)}% ${edgeLight}%) 75%)`;
 }
 
 /**
