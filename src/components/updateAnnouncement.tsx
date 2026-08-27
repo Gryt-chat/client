@@ -4,7 +4,7 @@ import toast from "react-hot-toast";
 import { getElectronAPI } from "../lib/electron";
 
 /** What the toast is showing about the release it named. */
-type Phase = "waiting" | "downloading" | "ready" | "failed";
+type Phase = "waiting" | "downloading" | "ready" | "installing" | "failed";
 
 type Shown = {
   id: string;
@@ -154,7 +154,16 @@ export function UpdateAnnouncement() {
                 marginTop: "0.3rem",
               }}
             >
-              <Subtitle shown={next} />
+              <Subtitle
+                shown={next}
+                onInstall={() => {
+                  /* Redrawn before the handoff, not after: `restartForUpdate`
+                     sets the quit flag and hands straight to the installer, so
+                     anything queued behind it never paints. */
+                  render({ ...next, phase: "installing" });
+                  getElectronAPI()?.restartForUpdate();
+                }}
+              />
             </span>
           </span>
         ),
@@ -275,7 +284,13 @@ function ProgressBar({ percent }: { percent?: number }) {
   );
 }
 
-function Subtitle({ shown }: { shown: Shown }) {
+function Subtitle({
+  shown,
+  onInstall,
+}: {
+  shown: Shown;
+  onInstall: () => void;
+}) {
   switch (shown.phase) {
     case "waiting":
       return (
@@ -296,11 +311,22 @@ function Subtitle({ shown }: { shown: Shown }) {
       return (
         <>
           {"Installs when you quit · "}
-          <Action onClick={() => getElectronAPI()?.restartForUpdate()}>
+          <Action onClick={onInstall}>
             restart and update now
           </Action>
         </>
       );
+
+    /* The window is about to go, and on the way back the installer runs before
+       anything is drawn. That gap reads as Gryt having closed and failed to
+       reopen, and somebody who reads it that way opens it again, which is the
+       one thing that makes it worse (GRYT-646).
+     *
+     * Nothing can be shown during the gap, because nothing is running. This is
+       the moment before it: the press gets an answer, and the window closing
+       becomes the expected next thing. */
+    case "installing":
+      return <>Installing… Gryt will restart on its own.</>;
 
     case "failed":
       return (

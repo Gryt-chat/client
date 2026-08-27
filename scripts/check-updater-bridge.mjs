@@ -185,6 +185,24 @@ assert.match(
 // The renderer can ask for what it missed, so a reload does not lose the toast.
 assert.match(main, /ipcMain\.on\(\s*"replay-update-status"/);
 
+// Pressing the restart says so before the window goes (GRYT-646).
+//
+// restartForUpdate sets the quit flag and hands straight to the installer, so
+// the toast has to be redrawn before that call, not after — anything queued
+// behind it never paints, and the press then looks like it did nothing.
+const toast = readFileSync(
+  new URL("../src/components/updateAnnouncement.tsx", import.meta.url),
+  "utf8",
+);
+
+assert.match(toast, /case "installing":/);
+
+assert.match(
+  toast,
+  /render\(\{ \.\.\.next, phase: "installing" \}\);\s*\n\s*getElectronAPI\(\)\?\.restartForUpdate\(\);/,
+  "the toast must redraw before handing off to the installer",
+);
+
 // The off switch reads from config, so it survives a restart.
 assert.match(main, /readBoolConfig\("autoUpdate", true\)/);
 

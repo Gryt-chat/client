@@ -113,7 +113,14 @@ function useSocketsHook() {
     }
   }, [sockets]);
 
+  /* The last self-state we told a server about, readable from a socket handler
+     that was wired once and would otherwise close over whatever these were at
+     the time (GRYT-644). */
+  const voiceSelfStateRef = useRef({ isMuted, isDeafened, isAFK });
+
   useEffect(() => {
+    voiceSelfStateRef.current = { isMuted, isDeafened, isAFK };
+
     Object.keys(sockets).forEach((host) => {
       sockets[host]?.emit("voice:state:update", {
         isMuted,
@@ -291,11 +298,37 @@ function useSocketsHook() {
           toast.loading(`Reconnecting to ${serverName}...`, { id: toastId });
         });
 
+        /* The server restored a voice state it stashed when this socket
+           dropped, and it restored the mute, deafen and AFK flags with it.
+           Those are ours to decide, and the copy it just put back is only as
+           new as the moment the connection broke.
+         *
+         * Nothing corrected it before GRYT-644. The emit above runs from an
+         * effect keyed on the three flags and the sockets map, and a reconnect
+         * moves none of them: the flags are whatever they already were, and
+         * socket.io reuses the same Socket instance, so even its identity
+         * holds. So the server's copy stood, and somebody who had unmuted
+         * during the drop — or before it, if the stash predated that — showed
+         * as muted to the room while still being heard.
+         *
+         * Sent here rather than on `connect` because the stash is applied
+         * during `session:restore`, and this event is the server saying it has
+         * finished doing that. Sending earlier would race it and lose. */
+        socket.on("voice:state:restored", () => {
+          socket.emit("voice:state:update", voiceSelfStateRef.current);
+        });
+
         socket.io.on("reconnect", () => {
           setServerConnectionStatus(prev => ({ ...prev, [host]: 'connected' }));
           toast.success(`Reconnected to ${serverName}`, { id: toastId });
           socket.emit("server:details");
           socket.emit("members:fetch");
+          /* Also unconditionally, for the reconnect where there was no stash to
+             restore — one that outlived the grace window, or landed on a
+             restarted server. `voice:state:restored` never arrives in that
+             case, and the member list would otherwise show the server's
+             defaults rather than what this client is actually doing. */
+          socket.emit("voice:state:update", voiceSelfStateRef.current);
           window.dispatchEvent(new CustomEvent("server_socket_reconnected", {
             detail: { host },
           }));
