@@ -31,33 +31,42 @@ import type { Client, UserStatus } from "../types/clients";
 const FAKE_PREFIX = "fake-";
 
 /**
- * Enough names for a call and a member list without either borrowing from the
- * other. The people in voice take the front of this list and the rest of the
- * server takes the back, so a name never appears twice on screen.
+ * Ordered so the first eighteen owls are eighteen different colours.
+ *
+ * The generator gives six of these names a colour another one already has —
+ * Astrid and Frøya are both `#da986c` — and the voice grid takes the front of
+ * this list. Two people in one call with the same bird, on tiles tinted from
+ * that bird, reads as the tinting being broken rather than as a coincidence.
+ * The duplicates are still here, at the back, where the member list reaches
+ * them and nothing sits them side by side.
+ *
+ * check-fake-participants asserts it, because the order looks arbitrary and
+ * would not survive somebody tidying it alphabetically.
  */
 const NAMES = [
   "Astrid",
   "Bjørn",
   "Dagny",
   "Eirik",
-  "Frøya",
   "Guro",
   "Håkon",
   "Ingrid",
   "Jostein",
   "Kari",
   "Liv",
-  "Magnus",
   "Nils",
   "Odd",
   "Ragnhild",
-  "Sigrid",
   "Torbjørn",
   "Solveig",
   "Vidar",
   "Øystein",
-  "Marit",
   "Sindre",
+  // From here on, each shares a colour with somebody above.
+  "Frøya",
+  "Magnus",
+  "Sigrid",
+  "Marit",
   "Tuva",
   "Leif",
 ];
