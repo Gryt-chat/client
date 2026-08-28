@@ -657,6 +657,16 @@ body {
   overflow: hidden;
 }
 
+/* An attachment the server could not read dimensions for. Without this the
+   wrapper is fit-content around an image that has not arrived, so it is zero
+   tall, the skeleton inside it has nothing to fill, and the row jumps when the
+   file lands. Dropped the moment the image loads, so the real picture is never
+   held to a guessed box. */
+.chat-attachment-image-wrapper[data-unsized] {
+  width: min(320px, 100%);
+  aspect-ratio: 4 / 3;
+}
+
 .chat-attachment-image {
   display: block;
   max-width: 100%;

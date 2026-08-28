@@ -22,8 +22,21 @@ export const ImageAttachment = memo(({
 
   const hasDimensions = width && height;
 
+  /*
+   * Without dimensions there is nothing to reserve, and the wrapper is
+   * `width: fit-content` with no height — so it takes up nothing until the file
+   * arrives and then jumps to full size, shoving everything below it down. The
+   * skeleton is `position: absolute; inset: 0`, so in that state it is invisible
+   * too: a zero-height box has nothing to fill.
+   *
+   * `data-unsized` gives it a placeholder box to sit in until the image loads,
+   * and the attribute drops off once it has, so the real picture is never
+   * boxed by a guess. The server derives width and height on upload and only
+   * misses when it cannot read them, so this is the uncommon path.
+   */
   return (
     <div className="chat-attachment-image-wrapper"
+      data-unsized={!hasDimensions && !loaded ? "" : undefined}
       style={hasDimensions ? {
         aspectRatio: `${width} / ${height}`,
         "--img-w": `${width}px`,

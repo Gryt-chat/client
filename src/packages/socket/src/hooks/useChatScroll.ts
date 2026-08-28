@@ -129,6 +129,56 @@ export function useChatScroll(
     forceScrollToBottomRef.current = false;
   }, [chatMessages, scrollToBottom]);
 
+  /**
+   * Hold the bottom while the content is still settling.
+   *
+   * Opening a channel scrolls to the bottom once, in the effect above. Anything
+   * that grows the list after that frame leaves the reader stranded partway up,
+   * and two things reliably do:
+   *
+   * **Images.** An attachment without stored dimensions gets no `aspect-ratio`,
+   * so its wrapper is `width: fit-content` with no height until the file
+   * arrives. It occupies nothing, then jumps to its full size.
+   *
+   * **`content-visibility: auto`.** Every message row carries it with
+   * `contain-intrinsic-size: auto 60px`, so off-screen messages are 60px tall
+   * until the browser actually renders them. A message with an image in it is
+   * several hundred. This one fires even when every image has correct
+   * dimensions, which is why fixing the images alone would not have been
+   * enough.
+   *
+   * So the fix watches the rows rather than the images: any row changing height
+   * re-pins, whatever caused it.
+   *
+   * Two things keep this from fighting anybody. It does nothing unless the
+   * reader is already at the bottom — scrolling up sets `isAtBottomRef` false
+   * and this goes quiet. And it only writes when the position has actually
+   * drifted, which is what stops it looping: pinning realises more rows under
+   * `content-visibility`, those resize, the observer fires again, and without
+   * the drift check it would write every time round.
+   *
+   * `scrollTop` is set in the observer callback rather than inside a
+   * `requestAnimationFrame`. ResizeObserver already runs after layout and
+   * before paint, and rAF is throttled to nothing in a window that is not being
+   * painted — which is exactly the case when somebody opens Gryt, tabs away,
+   * and comes back to a channel that loaded while they were gone.
+   */
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+
+    const observer = new ResizeObserver(() => {
+      if (!isAtBottomRef.current) return;
+      const drift = el.scrollHeight - el.scrollTop - el.clientHeight;
+      if (drift > 1) el.scrollTop = el.scrollHeight;
+    });
+
+    for (const row of el.querySelectorAll<HTMLElement>("[data-message-id]")) {
+      observer.observe(row);
+    }
+    return () => observer.disconnect();
+  }, [chatMessages]);
+
   useEffect(() => {
     let savedScrollTop = 0;
     const onFullscreenChange = () => {
