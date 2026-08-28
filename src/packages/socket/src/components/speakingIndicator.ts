@@ -102,12 +102,17 @@ export function tileHue(
  * the same hue rather than a flat fill — flat reads as a coloured rectangle,
  * the falloff reads as a tile with someone in it.
  */
-export function tileGradient(
-  id: string,
-  avatarColor?: string | null,
-  owl?: { nickname?: string | null; worn?: string | null },
-): string {
-  const { hue, sat, light } = tileTint(id, avatarColor, owl);
+/**
+ * The gradient for a tint that has already been worked out.
+ *
+ * Exists so a caller that needs the tile, the badge and the ring can derive all
+ * three from one `tileTint` rather than calling it once per use. Three calls
+ * meant three chances to pass a different id, and VoiceParticipantCard took
+ * two of them — the tile was tinted from `serverUserId` while the avatar beside
+ * it was drawn from the nickname, so every fake participant's tile was the
+ * colour of an owl belonging to somebody called `fake-0` (GRYT-648).
+ */
+export function tileGradientFrom({ hue, sat, light }: TileTint): string {
 
   /* The edge keeps its old relationship to the centre — a little more
      saturated, about half as light — so the falloff still reads as a tile with
@@ -116,6 +121,14 @@ export function tileGradient(
   const edgeLight = Math.round(light * 0.48);
 
   return `radial-gradient(circle at 50% 42%, hsl(${hue} ${Math.round(sat)}% ${Math.round(light)}%), hsl(${hue} ${Math.round(edgeSat)}% ${edgeLight}%) 75%)`;
+}
+
+export function tileGradient(
+  id: string,
+  avatarColor?: string | null,
+  owl?: { nickname?: string | null; worn?: string | null },
+): string {
+  return tileGradientFrom(tileTint(id, avatarColor, owl));
 }
 
 /**
