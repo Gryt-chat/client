@@ -15,14 +15,74 @@ import {
   rmSync,
   writeFileSync,
 } from "fs";
-import { dirname, join } from "path";
+import { dirname, join, resolve, sep } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CLIENT_DIR = join(__dirname, "..");
-const SERVER_DIR = join(CLIENT_DIR, "..", "server");
-const SFU_DIR = join(CLIENT_DIR, "..", "sfu");
-const WORKER_DIR = join(CLIENT_DIR, "..", "image-worker");
+
+/**
+ * The superproject this checkout belongs to, or null if it does not.
+ *
+ * A git worktree's `.git` is a file rather than a directory, and for a
+ * submodule's worktree it points back through the superproject:
+ *
+ *   gitdir: /Users/sivert/dev/gryt/.git/modules/client/worktrees/GRYT-123
+ *
+ * so everything before `/.git/` is the superproject root. A plain checkout has
+ * `.git` as a directory and gets null, which is right — it has no superproject
+ * and the sibling lookup below is the answer there.
+ */
+function superprojectRoot() {
+  try {
+    const pointer = readFileSync(join(CLIENT_DIR, ".git"), "utf8").trim();
+    const named = /^gitdir:\s*(.+)$/.exec(pointer);
+    if (!named) return null;
+
+    /* Resolved against the checkout first. A submodule in a normal clone writes
+       this relative — `gitdir: ../../.git/modules/client` — and slicing that
+       raw yields `../..`, which is a working directory away from meaning
+       anything. A worktree writes it absolute. Both end up absolute here. */
+    const gitDir = resolve(CLIENT_DIR, named[1]);
+
+    const marker = `${sep}.git${sep}`;
+    const index = gitDir.indexOf(marker);
+    return index === -1 ? null : gitDir.slice(0, index);
+  } catch {
+    // `.git` is a directory, or unreadable. Either way there is nothing to read.
+    return null;
+  }
+}
+
+/**
+ * Where a sibling package actually is.
+ *
+ * Beside the client in a normal checkout — `packages/client` next to
+ * `packages/server`. In a worktree it is not: `.claude/worktrees/GRYT-123` has
+ * no siblings, and this used to resolve to `.claude/worktrees/server` and fail
+ * as `spawnSync /bin/sh ENOENT`, which names a shell rather than the missing
+ * directory (GRYT-650). CLAUDE.md tells everybody to work in worktrees, so that
+ * was the normal case failing, not an edge one.
+ *
+ * Falls back to the sibling path when neither exists, so the error names the
+ * place somebody would look first.
+ */
+function packageDir(name) {
+  const sibling = join(CLIENT_DIR, "..", name);
+  if (existsSync(sibling)) return sibling;
+
+  const root = superprojectRoot();
+  if (root) {
+    const inSuperproject = join(root, "packages", name);
+    if (existsSync(inSuperproject)) return inSuperproject;
+  }
+
+  return sibling;
+}
+
+const SERVER_DIR = packageDir("server");
+const SFU_DIR = packageDir("sfu");
+const WORKER_DIR = packageDir("image-worker");
 const OUTDIR = join(CLIENT_DIR, "build", "embedded-server");
 
 /**
@@ -117,6 +177,17 @@ const goArch = arch === "arm64" ? "arm64" : "amd64";
 const sfuExt = platform === "win32" ? ".exe" : "";
 
 function run(command, options = {}) {
+  /* A cwd that is not there makes execSync report `spawnSync /bin/sh ENOENT`,
+     which reads as a missing shell and sends people looking at their PATH. Say
+     which directory instead — before GRYT-650 this was the entire symptom of a
+     worktree that could not find the other packages. */
+  if (options.cwd && !existsSync(options.cwd)) {
+    throw new Error(
+      `Cannot run \`${command}\`: ${options.cwd} does not exist.\n` +
+        `Expected it beside the client, or under packages/ in the superproject.`,
+    );
+  }
+
   execSync(command, {
     stdio: "inherit",
     ...options,

@@ -32,6 +32,7 @@ jobs:
       - run: yarn test:server-order
       - run: yarn test:tile-contrast
       - run: yarn test:fake-participants
+      - run: yarn test:embedded-server-paths
       - run: yarn test:voice-state
       # tsc -b and eslint with --max-warnings 0. This is the check that was
       # missing: client#115 merged with three TS6133 errors and main did not
