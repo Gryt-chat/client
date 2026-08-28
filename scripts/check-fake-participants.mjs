@@ -62,4 +62,33 @@ for (const [what, pattern] of [
 // the same beat is the tell.
 assert.doesNotMatch(chat, /setInterval/, "the fake chat is back on a fixed interval");
 
+const card = readFileSync(
+  new URL("../src/packages/socket/src/components/VoiceParticipantCard.tsx", import.meta.url),
+  "utf8",
+);
+
+/**
+ * The tile, the badge and the ring all come from one tint (GRYT-648).
+ *
+ * They used to be three separate calls, and two of them disagreed: the avatar
+ * and the ring were drawn from the nickname while the tile passed
+ * `serverUserId`, which for a fake participant is `fake-0`. So the tile was the
+ * colour of an owl belonging to somebody who does not exist, sitting behind the
+ * owl of somebody who does — and every one of these checks passed, because the
+ * colour maths was right and only the seed was wrong.
+ */
+assert.match(
+  card,
+  /const tint = tileTint\(client\.nickname,/,
+  "the card must derive one tint, from the nickname the avatar is drawn from",
+);
+
+assert.doesNotMatch(
+  card,
+  /tileGradient\(\s*client\.serverUserId/,
+  "the tile is being tinted from the user id again, not from the avatar",
+);
+
+assert.match(card, /background: tileGradientFrom\(tint\)/);
+
 console.log(`Fake participant checks passed — ${GRID} distinct colours, ${names.length} names`);

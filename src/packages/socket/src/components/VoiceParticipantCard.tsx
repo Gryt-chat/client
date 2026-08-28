@@ -15,8 +15,7 @@ import { SpeakingHalo } from "./SpeakingHalo";
 import {
   SPEAKING_RING,
   speakingRingStyle,
-  tileGradient,
-  tileHue,
+  tileGradientFrom,
   tileTint,
 } from "./speakingIndicator";
 import { UserContextMenu } from "./UserContextMenu";
@@ -590,12 +589,19 @@ export function VoiceParticipantCard({
 
   const avatarPx = avatarSizeForHeight(tileHeight);
 
-  // The nickname, because that is what the avatar is drawn from — a tile tinted
-  // from anything else is a colour that matches nothing on it.
-  const hue = tileHue(client.nickname, memberInfo?.avatarColor, {
+  /* Worked out once and used for the tile, the badge and the ring.
+   *
+   * The nickname, because that is what the avatar is drawn from — a tile tinted
+   * from anything else is a colour that matches nothing on it. That was already
+   * written here and the tile below still passed `serverUserId`, which for a
+   * fake participant is `fake-0`: the tile came out as the colour of an owl
+   * belonging to a person who does not exist, next to the owl of one who does.
+   * One value now, so the three cannot disagree again. */
+  const tint = tileTint(client.nickname, memberInfo?.avatarColor, {
     nickname: client.nickname,
     worn: memberInfo?.avatarWorn,
   });
+  const hue = tint.hue;
 
   const speakingAnalyser = isSelf
     ? microphoneBuffer.finalAnalyser
@@ -631,11 +637,7 @@ export function VoiceParticipantCard({
               height: "100%",
               borderRadius: tileRadius,
               overflow: "hidden",
-              background: tileGradient(
-                client.serverUserId || client.nickname,
-                memberInfo?.avatarColor,
-                { nickname: client.nickname, worn: memberInfo?.avatarWorn },
-              ),
+              background: tileGradientFrom(tint),
               // No stroke on the tile. Meet puts the whole speaking treatment
               // on the avatar — a ring plus the halo behind it — and leaves the
               // tile alone, so the card edge stays quiet however many people
