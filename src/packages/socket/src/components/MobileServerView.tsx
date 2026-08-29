@@ -1,8 +1,7 @@
 import { IconButton } from "@gryt/ui";
 import type { StreamSources } from "@gryt/voice";
-import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useState } from "react";
-import { PiList, PiPhoneCallFill, PiUsersFill } from "react-icons/pi";
+import { PiList, PiUsersFill } from "react-icons/pi";
 
 import type { Channel, SidebarItem } from "@/settings/src/types/server";
 
@@ -16,7 +15,7 @@ import type { AdminActions, MemberInfo } from "./MemberSidebar";
 import { MemberSidebar } from "./MemberSidebar";
 import { MobileSheet } from "./MobileSheet";
 import { ServerHeader } from "./ServerHeader";
-import { VoiceView } from "./VoiceView";
+import { VoiceSheetButton } from "./VoiceSheetButton";
 
 /** A role id. The server defines its own; these only pass one along. */
 type Role = string;
@@ -104,7 +103,6 @@ export const MobileServerView = (props: MobileServerViewProps) => {
   const { onChannelClick } = props;
   const [channelsOpen, setChannelsOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
-  const [voiceOpen, setVoiceOpen] = useState(false);
 
   const handleChannelClick = useCallback(
     (channel: Channel) => {
@@ -192,35 +190,6 @@ export const MobileServerView = (props: MobileServerViewProps) => {
         />
       </div>
 
-      {/* Floating voice button */}
-      <AnimatePresence>
-        {props.isConnectedToVoiceOnThisServer && (
-          <motion.div
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 400, damping: 24 }}
-            style={{
-              position: "fixed",
-              bottom: 80,
-              right: 16,
-              zIndex: "var(--gryt-z-sheet)",
-            }}
-          >
-            <IconButton size="large"
-              onClick={() => setVoiceOpen(true)}
-              style={{
-                width: 56,
-                height: 56,
-                boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
-              }}
-            >
-              <PiPhoneCallFill size={26} />
-            </IconButton>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Channels sheet (left) */}
       <MobileSheet open={channelsOpen} onClose={() => setChannelsOpen(false)} side="left">
         <div className="flex flex-col" style={{ height: "100%", overflow: "hidden" }}>
@@ -286,31 +255,25 @@ export const MobileServerView = (props: MobileServerViewProps) => {
         </div>
       </MobileSheet>
 
-      {/* Voice sheet (bottom) */}
-      <MobileSheet open={voiceOpen} onClose={() => setVoiceOpen(false)} side="bottom">
-        <div style={{ flex: 1, overflow: "auto", padding: 12 }}>
-          <VoiceView
-            showVoiceView
-            voiceWidth="100%"
-            serverHost={props.serverHost}
-            currentServerConnected={props.currentServerConnected}
-            currentChannelId={props.currentChannelId}
-            clientsForHost={props.clientsForHost}
-            members={props.members}
-            clientsSpeaking={props.clientsSpeaking}
-            isConnecting={props.isConnecting}
-            currentConnectionId={props.currentConnectionId}
-            isCall={props.isCall}
-            onDisconnect={props.onVoiceDisconnect}
-            peerLatency={props.peerLatency}
-            onDisconnectUser={props.canManage ? props.onDisconnectUser : undefined}
-            currentUserRole={props.currentUserRole}
-            adminActions={props.adminActions}
-            videoStreams={props.videoStreams}
-            streamSources={props.streamSources}
-          />
-        </div>
-      </MobileSheet>
+      <VoiceSheetButton
+        connected={props.isConnectedToVoiceOnThisServer}
+        serverHost={props.serverHost}
+        currentServerConnected={props.currentServerConnected}
+        currentChannelId={props.currentChannelId}
+        clientsForHost={props.clientsForHost}
+        members={props.members}
+        clientsSpeaking={props.clientsSpeaking}
+        isConnecting={props.isConnecting}
+        currentConnectionId={props.currentConnectionId}
+        isCall={props.isCall}
+        onDisconnect={props.onVoiceDisconnect}
+        peerLatency={props.peerLatency}
+        onDisconnectUser={props.canManage ? props.onDisconnectUser : undefined}
+        currentUserRole={props.currentUserRole}
+        adminActions={props.adminActions}
+        videoStreams={props.videoStreams}
+        streamSources={props.streamSources}
+      />
     </div>
   );
 };

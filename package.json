@@ -38,6 +38,7 @@
     "test:tile-contrast": "node scripts/check-tile-contrast.mjs",
     "test:fake-participants": "node scripts/check-fake-participants.mjs",
     "test:narrow-layout": "node scripts/check-narrow-layout.mjs",
+    "test:call-controls": "node scripts/check-call-controls.mjs",
     "test:embedded-server-paths": "node scripts/check-embedded-server-paths.mjs",
     "preview": "vite preview",
     "build:native": "node -e \"const{execSync:r}=require('child_process');if(process.platform==='win32'){r('native\\\\build.bat',{stdio:'inherit'})}else{r('bash native/audio-capture/build.sh',{stdio:'inherit'})}\"",
