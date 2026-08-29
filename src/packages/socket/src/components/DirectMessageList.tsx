@@ -1,6 +1,6 @@
 import { Avatar, Button, ContextMenu } from "@gryt/ui";
 
-import { GeneratedServerIcon, getUploadsFileUrl, resolveAvatarSrc } from "@/common";
+import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 
 import { conversationTitle, type DirectConversation } from "../hooks/useDirectMessages";
 import { EmojiText } from "./EmojiText";
@@ -86,10 +86,15 @@ export const DirectMessageList = ({
                 {conversation.kind === "group" ? (
                   <Avatar
                     size="small"
-                    /* Seeded on the name, so renaming a group redraws it. The
-                       generator behind this is the one server icons use — when
-                       that changes, groups follow without a change here. */
-                    fallback={<GeneratedServerIcon seed={conversationTitle(conversation)} />}
+                    /* Seeded on the name, so renaming a group redraws it, and
+                       the same seed the mobile app hands `eggAvatarSvg` — one
+                       group has to be one picture wherever it is opened.
+
+                       A rounded square rather than the circle `Avatar` draws by
+                       default: a circle is a person here and in the sidebar,
+                       and a group is not one. */
+                    className="rounded-(--gryt-radius-md)"
+                    eggSeed={conversationTitle(conversation)}
                     src={
                       conversation.icon_file_id
                         ? getUploadsFileUrl(serverHost, conversation.icon_file_id, { thumb: true })
