@@ -6,7 +6,7 @@
 import { getElectronAPI } from "../../../../lib/electron";
 import { clearAllServerTokens } from "../utils/tokenStorage";
 import { signDmKeyBinding } from "./dm-key-binding";
-import { deriveDmKeyPair } from "./dm-keys";
+import { deriveDmKeyPair, type DmKeyPair } from "./dm-keys";
 import {
   hasGuestScope,
   listGuestScopes,
@@ -500,6 +500,29 @@ export async function dmKeyBindingFor(
  * else under your own id is this server rewriting it (GRYT-727). That is the
  * one check a single person can run with nobody else involved.
  */
+/**
+ * This device's DM keypair for one server, private half included (GRYT-729).
+ *
+ * The private half has to leave this module, because sealing and opening happen
+ * where the messages are and X25519 is not in WebCrypto — there is no
+ * non-extractable handle to pass instead of the bytes. So this is the one
+ * accessor that hands out key material, and the rule for it is the rule in
+ * `dm-keys.ts`: it goes to `sealMessage` and `openMessage` and nowhere else. It
+ * is never sent, never stored anywhere but the seed it came from, and never
+ * logged.
+ *
+ * The seed itself stays in here. That is the difference between handing out one
+ * server's key and handing out every key this person will ever have.
+ */
+export async function ownDmKeyPair(host: string): Promise<DmKeyPair> {
+  const db = await openDB();
+  try {
+    return deriveDmKeyPair(await getOrCreateSeed(db), identityScopeFor(host));
+  } finally {
+    db.close();
+  }
+}
+
 export async function ownDmPublicKey(host: string): Promise<Uint8Array> {
   const db = await openDB();
   try {

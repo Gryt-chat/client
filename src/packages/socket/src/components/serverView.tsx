@@ -166,8 +166,43 @@ export const ServerView = () => {
     ? clients[currentlyViewingServer.host]?.[currentConnection.id]?.serverUserId
     : undefined;
 
+  /*
+   * Ahead of `useChat`, which needs the conversation's members to know whether
+   * the next message can be encrypted (GRYT-729). Both are unconditional hook
+   * calls, so the order between them is free.
+   */
   const {
-    chatMessages, canSend, sendChat, editMessage, isLoadingMessages,
+    conversations: directConversations,
+    openDm,
+    setHidden: setDmHidden,
+    createGroup,
+    updateGroup,
+    addToGroup,
+    leaveGroup,
+  } = useDirectMessages({
+    socket: currentConnection,
+    accessToken,
+    isConnected: currentConnectionStatus === "connected",
+  });
+
+  /** So a refusal can name the person rather than printing a member id. */
+  const memberNames = useMemo(() => {
+    const names: Record<string, string> = {};
+    for (const member of memberLists[currentlyViewingServer?.host || ""] ?? []) {
+      names[member.serverUserId] = member.nickname;
+    }
+    return names;
+  }, [memberLists, currentlyViewingServer?.host]);
+
+  const conversationMembers = useMemo(
+    () =>
+      directConversations.find((c) => c.conversation_id === activeConversationId)
+        ?.members ?? null,
+    [directConversations, activeConversationId],
+  );
+
+  const {
+    chatMessages, sealing, canSend, sendChat, editMessage, isLoadingMessages,
     isRateLimited, rateLimitCountdown, isVoiceChannelTextChat,
     canViewVoiceChannelText, activeChannelName, activeChannelType,
     restoreText, clearRestoreText, fetchOlderMessages, isLoadingOlder, hasOlderMessages,
@@ -175,6 +210,7 @@ export const ServerView = () => {
     currentConnection, activeConversationId, currentlyViewingServer,
     currentChannelId, isConnected, serverDetailsList, nickname,
     currentUserId: currentServerUserId,
+    conversationMembers,
   });
 
   const handleEditItem = useCallback((item: SidebarItem) => {
@@ -217,19 +253,6 @@ export const ServerView = () => {
     return () => window.removeEventListener("server_update_status", handler);
   }, [viewingHost]);
 
-  const {
-    conversations: directConversations,
-    openDm,
-    setHidden: setDmHidden,
-    createGroup,
-    updateGroup,
-    addToGroup,
-    leaveGroup,
-  } = useDirectMessages({
-    socket: currentConnection,
-    accessToken,
-    isConnected: currentConnectionStatus === "connected",
-  });
 
   const {
     incoming: incomingCall,
@@ -600,6 +623,8 @@ export const ServerView = () => {
       <ChatView
         chatMessages={chatMessages}
         conversationKey={activeConversationId}
+        sealing={activeDm ? sealing : undefined}
+        memberNames={memberNames}
         canSend={canSend}
         sendChat={sendChat}
         editMessage={editMessage}
@@ -717,6 +742,8 @@ export const ServerView = () => {
             adminActions={currentAdminActions}
             unreadChannelIds={unreadChannelIds}
             chatMessages={chatMessages}
+            sealing={activeDm ? sealing : undefined}
+            memberNames={memberNames}
             canSend={canSend}
             sendChat={sendChat}
             editMessage={editMessage}

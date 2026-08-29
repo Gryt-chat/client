@@ -3,6 +3,7 @@ import type { StreamSources } from "@gryt/voice";
 import { useCallback, useState } from "react";
 import { PiList, PiUsersFill } from "react-icons/pi";
 
+import type { SealDecision } from "@/common";
 import type { Channel, SidebarItem } from "@/settings/src/types/server";
 
 import type { DirectConversation } from "../hooks/useDirectMessages";
@@ -66,6 +67,10 @@ interface MobileServerViewProps {
 
   // ChatView
   chatMessages: ChatMessage[];
+  /** Whether the next message will be encrypted (GRYT-729). */
+  sealing?: SealDecision;
+  /** Member id to nickname, so a refusal names the person. */
+  memberNames?: Record<string, string>;
   canSend: boolean;
   sendChat: (text: string, files: File[], replyToMessageId?: string) => void;
   editMessage?: (messageId: string, conversationId: string, newText: string) => void;
@@ -161,6 +166,8 @@ export const MobileServerView = (props: MobileServerViewProps) => {
       >
         <ChatView
           chatMessages={props.chatMessages}
+          sealing={props.sealing}
+          memberNames={props.memberNames}
           conversationKey={props.selectedChannelId ?? undefined}
           canSend={props.canSend}
           sendChat={props.sendChat}

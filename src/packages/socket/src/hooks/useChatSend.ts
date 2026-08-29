@@ -37,6 +37,15 @@ interface UseChatSendParams {
   isConnected: boolean;
   nickname: string;
   currentUserId?: string;
+  /**
+   * Seal a message for this conversation, or answer null for "send it as text"
+   * (GRYT-729).
+   *
+   * Passed in rather than worked out here, because whether a conversation can
+   * be sealed depends on every member's key and the composer has to be able to
+   * draw the same answer this uses.
+   */
+  seal: (plaintext: string) => Promise<string | null>;
 }
 
 interface UseChatSendReturn {
@@ -63,6 +72,7 @@ export function useChatSend({
   isConnected,
   nickname,
   currentUserId,
+  seal,
 }: UseChatSendParams): UseChatSendReturn {
   const retryQueueRef = useRef<Map<string, RetryEntry>>(new Map());
 
@@ -133,13 +143,30 @@ export function useChatSend({
     const payload: Record<string, unknown> = {
       conversationId: activeConversationId,
       accessToken,
-      text: messageText,
     };
     if (attachments && attachments.length > 0) payload.attachments = attachments;
     if (replyToMessageId) payload.replyToMessageId = replyToMessageId;
     if (nonce) payload.nonce = nonce;
-    currentConnection!.emit("chat:send", payload);
-  }, [activeConversationId, currentConnection]);
+
+    /*
+     * Sealed or in the clear, never both — the server refuses a payload
+     * carrying each, because whichever half it kept the other was already
+     * written down (GRYT-729).
+     *
+     * A failure to seal sends nothing rather than falling back. Somebody typing
+     * into a conversation the composer says is encrypted must not have it go out
+     * in the open because a derivation threw.
+     */
+    void seal(messageText)
+      .then((sealed) => {
+        if (sealed) payload.sealed = sealed;
+        else payload.text = messageText;
+        currentConnection!.emit("chat:send", payload);
+      })
+      .catch(() => {
+        markLatestPendingFailed();
+      });
+  }, [activeConversationId, currentConnection, seal, markLatestPendingFailed]);
 
   const canSendRef = useRef(canSend);
   canSendRef.current = canSend;

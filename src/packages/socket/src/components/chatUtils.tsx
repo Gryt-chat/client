@@ -47,6 +47,27 @@ export type ChatMessage = {
   sender_is_bot?: boolean;
   sender_avatar_file_id?: string;
   profanity_matches?: ProfanityMatchRange[];
+  /**
+   * The sealed envelope, when this message was encrypted (GRYT-729).
+   *
+   * Straight off the wire and never rendered. `text` is null while it is
+   * unopened, and {@link sealedState} says which of the three that is: still
+   * being opened, opened into `text`, or unreadable.
+   */
+  sealed?: string | null;
+  /**
+   * Where an encrypted message got to.
+   *
+   * `opening` is the moment between arriving and being read, and it is drawn
+   * rather than left blank — a bubble with nothing in it looks like somebody
+   * sent nothing.
+   *
+   * `locked` is having no wrapped key: a message sent before you joined the
+   * conversation, which is ordinary and permanent. `broken` is a key that is
+   * there and does not open, which is not ordinary and should not read like an
+   * empty message.
+   */
+  sealedState?: "opening" | "open" | "locked" | "broken";
 };
 
 // eslint-disable-next-line react-refresh/only-export-components

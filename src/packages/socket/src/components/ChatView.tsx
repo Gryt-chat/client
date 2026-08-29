@@ -4,6 +4,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PiChatCircleFill, PiCloudArrowUpFill, PiSpeakerHighFill } from "react-icons/pi";
 import { Socket } from "socket.io-client";
 
+import type { SealDecision } from "@/common";
 import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 import { useSettings } from "@/settings";
 
@@ -41,6 +42,8 @@ export const ChatView = memo(({
   channelName,
   channelType,
   conversationKind = "channel",
+  sealing,
+  memberNames,
   serverName,
   headerAction,
   flush,
@@ -71,6 +74,13 @@ export const ChatView = memo(({
   channelType?: "text" | "voice";
   /** A direct message reads differently: no `#`, and its own empty state. */
   conversationKind?: "channel" | "dm";
+  /**
+   * Whether the next message will be encrypted (GRYT-729). Absent on a channel,
+   * which is never encrypted and needs no note saying so.
+   */
+  sealing?: SealDecision;
+  /** Member id to nickname, so a refusal can name the person rather than an id. */
+  memberNames?: Record<string, string>;
   serverName?: string;
   /**
    * Put at the right-hand end of the header.
@@ -401,6 +411,35 @@ export const ChatView = memo(({
               </AnimatePresence>
             </div>
           ) : null}
+
+          {/*
+            Whether the next message goes out encrypted, and who is stopping it
+            (GRYT-729). Above the composer rather than in the header, so it is
+            in the same glance as the box being typed into.
+
+            Drawn only when it is *not* encrypted. A conversation that seals is
+            the ordinary case once everybody has updated, and a permanent badge
+            saying so becomes furniture nobody reads — which is the state where
+            it going missing means nothing to anybody.
+          */}
+          {sealing?.kind === "plaintext" && sealing.blockedBy.length > 0 && (
+            <div
+              aria-live="polite"
+              className="mb-1.5 px-1 text-xs leading-snug text-gryt-muted"
+            >
+              Not encrypted:{" "}
+              {sealing.blockedBy
+                .map((blocked) => {
+                  const who =
+                    memberNames?.[blocked.memberId] ?? "somebody in this conversation";
+                  if (blocked.reason === "changed") return `${who}'s key changed`;
+                  if (blocked.reason === "unusable") return `${who}'s key did not check out`;
+                  return `${who} has not published a key`;
+                })
+                .join(", ")}
+              .
+            </div>
+          )}
 
           <TypingIndicator typingUsers={typingUsers} serverHost={serverHost} />
           <ChatEditorBar
