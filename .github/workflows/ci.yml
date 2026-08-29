@@ -33,6 +33,7 @@ jobs:
       - run: yarn test:member-keys
       - run: yarn test:member-key-wording
       - run: yarn test:conversation-encryption
+      - run: yarn test:comparison-code
       - run: yarn test:message-keys
       - run: yarn test:owl-export
       - run: yarn test:owl-seen

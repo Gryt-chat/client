@@ -1,5 +1,6 @@
 export * from "./src/auth/account-api";
 export * from "./src/auth/answer-challenge";
+export * from "./src/auth/comparison-code";
 export * from "./src/auth/conversation-encryption";
 export * from "./src/auth/device-delegation";
 export * from "./src/auth/dm-key-binding";
@@ -9,6 +10,7 @@ export * from "./src/auth/identity-backup-lock";
 export * from "./src/auth/identity-certificate";
 export * from "./src/auth/identity-claims";
 export * from "./src/auth/identity-keys";
+export * from "./src/auth/identity-source";
 export * from "./src/auth/keycloak";
 export * from "./src/auth/local-identity";
 export * from "./src/auth/member-keys";

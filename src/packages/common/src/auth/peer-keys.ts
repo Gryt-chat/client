@@ -47,6 +47,15 @@ export interface PeerPin {
   dmPublicKey: string;
   firstSeenAt: number;
   lastSeenAt: number;
+  /**
+   * When these exact keys were compared out of band (GRYT-730).
+   *
+   * Absent until two people have read the code to each other. Not carried
+   * across a change — `pinPeerKey` drops it whenever either half moves, because
+   * a comparison is about the specific keys that were compared and keeping it
+   * would turn the one honest claim here into the lie it exists to prevent.
+   */
+  comparedAt?: number;
 }
 
 export type PeerKeyDecision =
@@ -148,6 +157,10 @@ export function pinPeerKey(
   const key = pinKey(scope, memberId);
   const existing = pins[key];
 
+  const sameKeys =
+    existing?.thumbprint === verified.identityThumbprint &&
+    existing?.dmPublicKey === base64Url(verified.dmPublicKey);
+
   const pin: PeerPin = {
     thumbprint: verified.identityThumbprint,
     dmPublicKey: base64Url(verified.dmPublicKey),
@@ -155,11 +168,47 @@ export function pinPeerKey(
     // person was first seen rather than to when they last changed devices.
     firstSeenAt: existing?.firstSeenAt ?? now,
     lastSeenAt: now,
+    // Dropped the moment either key moves. Somebody who compared a code last
+    // year and whose peer has since arrived with a new key has verified
+    // nothing, and a card still saying "verified" would be worse than one that
+    // never said it.
+    comparedAt: sameKeys ? existing?.comparedAt : undefined,
   };
 
   pins[key] = pin;
   writeAll(pins);
   return pin;
+}
+
+/**
+ * Record that these keys were read out and matched (GRYT-730).
+ *
+ * Takes the keys it is marking rather than just the member, and refuses if they
+ * are not the ones pinned. Between somebody reading a code aloud and pressing
+ * the button, a member list can land and change the pin — marking blind would
+ * put "verified" against keys nobody ever compared.
+ */
+export function markPeerCompared(
+  scope: IdentityScope,
+  memberId: string,
+  keys: { thumbprint: string; dmPublicKey: string },
+  now = Date.now(),
+): boolean {
+  const pins = readAll();
+  const key = pinKey(scope, memberId);
+  const pin = pins[key];
+
+  if (
+    !pin ||
+    pin.thumbprint !== keys.thumbprint ||
+    pin.dmPublicKey !== keys.dmPublicKey
+  ) {
+    return false;
+  }
+
+  pins[key] = { ...pin, comparedAt: now };
+  writeAll(pins);
+  return true;
 }
 
 /** Forget one, which is what accepting a change amounts to before re-pinning. */

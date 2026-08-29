@@ -1,9 +1,15 @@
 import { Avatar, Button, Chip, Collapsible } from "@gryt/ui";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { PiCaretDownBold, PiCopySimpleBold } from "react-icons/pi";
 
-import { resolveAvatarSrc } from "@/common";
+import {
+  comparisonCode,
+  identityScopeFor,
+  markPeerCompared,
+  ownComparisonSide,
+  resolveAvatarSrc,
+} from "@/common";
 
 import { useSockets } from "../hooks/useSockets";
 import { describeChange, describePin } from "../utils/memberKeyWording";
@@ -141,9 +147,43 @@ export function MemberIdentityCard({
   voiceChannelName?: string;
 }) {
   const { memberKeyStates } = useSockets();
+  // Only to redraw after marking one; the pin itself is the record.
+  const [, setCompared] = useState(false);
+  const [ownKeys, setOwnKeys] = useState<{ thumbprint: string; dmPublicKey: string } | null>(null);
   const keyState = serverHost
     ? memberKeyStates[serverHost]?.[member.serverUserId]
     : undefined;
+
+  /*
+   * Our own half of the code. Both sides go into it, so this card cannot draw
+   * one until it knows what we published here — which is a derivation, not a
+   * fetch, so it lands almost immediately.
+   */
+  useEffect(() => {
+    if (!serverHost) {
+      setOwnKeys(null);
+      return;
+    }
+    let live = true;
+    void ownComparisonSide(serverHost)
+      .then((side) => {
+        if (live) setOwnKeys(side);
+      })
+      .catch(() => {
+        if (live) setOwnKeys(null);
+      });
+    return () => {
+      live = false;
+    };
+  }, [serverHost]);
+
+  const code =
+    ownKeys && keyState?.decision.kind === "known"
+      ? comparisonCode(ownKeys, {
+          thumbprint: keyState.decision.pin.thumbprint,
+          dmPublicKey: keyState.decision.pin.dmPublicKey,
+        })
+      : null;
 
   const joined = formatJoined(member.createdAt);
   const tier = member.identityTier ? TIER_LABEL[member.identityTier] : undefined;
@@ -279,7 +319,9 @@ export function MemberIdentityCard({
               {renames && <Fact label="Name">{renames}</Fact>}
               {keyState?.decision.kind === "known" && (
                 <Fact label="Message key">
-                  {describePin(keyState.decision.pin.firstSeenAt)}
+                  {keyState.decision.pin.comparedAt
+                    ? "Compared and matched"
+                    : describePin(keyState.decision.pin.firstSeenAt)}
                 </Fact>
               )}
               {keyState?.decision.kind === "first" && (
@@ -318,6 +360,70 @@ export function MemberIdentityCard({
                   like. Ask them somewhere other than here before treating
                   messages as private.
                 </span>
+              </div>
+            )}
+            {code && keyState?.decision.kind === "known" && (
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs text-gryt-muted">
+                  {/*
+                    "Read this to them" rather than "verify". Nothing here is
+                    verified by looking at it — the check happens somewhere this
+                    server is not, and the wording has to point at that rather
+                    than imply the card did it.
+                  */}
+                  Read this to them, somewhere other than Gryt
+                </span>
+                <code
+                  className="select-all rounded p-2 text-center text-xs leading-relaxed tracking-wider"
+                  style={{ background: "var(--gryt-neutral-4)", color: "var(--gryt-text)" }}
+                >
+                  {code}
+                </code>
+                <span className="text-xs leading-snug text-gryt-muted">
+                  If they read back the same numbers, nobody is in the middle.
+                  It does not say who they are — only that you both hold the
+                  keys you think you do.
+                </span>
+                {keyState.decision.pin.comparedAt ? (
+                  <span className="text-xs text-gryt-muted">
+                    Compared on{" "}
+                    {new Date(keyState.decision.pin.comparedAt).toLocaleDateString(
+                      undefined,
+                      { year: "numeric", month: "short", day: "numeric" },
+                    )}
+                    .
+                  </span>
+                ) : (
+                  <Button
+                    tone="neutral"
+                    size="xsmall"
+                    onClick={() => {
+                      if (
+                        !serverHost ||
+                        keyState.decision.kind !== "known" ||
+                        !markPeerCompared(
+                          identityScopeFor(serverHost),
+                          member.serverUserId,
+                          {
+                            thumbprint: keyState.decision.pin.thumbprint,
+                            dmPublicKey: keyState.decision.pin.dmPublicKey,
+                          },
+                        )
+                      ) {
+                        // Refused because the pin moved between reading the code
+                        // out and pressing this. Rare, and the honest answer is
+                        // to say the code is stale rather than to record a
+                        // comparison of keys nobody compared.
+                        toast.error("Their key changed while you were checking. Read the new code.");
+                        return;
+                      }
+                      setCompared(true);
+                      toast.success("Marked as compared.");
+                    }}
+                  >
+                    They read back the same
+                  </Button>
+                )}
               </div>
             )}
             {!identityIsTheQuestion && fingerprint && (
