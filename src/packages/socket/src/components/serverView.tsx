@@ -1,8 +1,9 @@
 import { Button } from "@gryt/ui";
 import { useSFU } from "@gryt/voice";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import toast from "react-hot-toast";
 
-import { useAccount, useUnreadTracker } from "@/common";
+import { getUploadsFileUrl, useAccount, useUnreadTracker } from "@/common";
 import { useIsCompact, useIsMobile } from "@/mobile";
 import { useSettings } from "@/settings";
 import { SidebarItem } from "@/settings/src/types/server";
@@ -18,6 +19,7 @@ import {
 } from "../dev/fakeParticipants";
 import { useFakeSpeech } from "../dev/fakeSpeech";
 import { useAdminActions } from "../hooks/useAdminActions";
+import { useCalls } from "../hooks/useCalls";
 import { useChannelSettings, useHandleChannelClick } from "../hooks/useChannelSettings";
 import { useChat } from "../hooks/useChat";
 import { conversationTitle, type DirectConversation,useDirectMessages } from "../hooks/useDirectMessages";
@@ -35,6 +37,7 @@ import { getCustomEmojis } from "../utils/emojiData";
 import { ChatView } from "./ChatView";
 import { ConnectionBanner } from "./ConnectionBanner";
 import { GroupDialog } from "./GroupDialog";
+import { IncomingCallCard } from "./IncomingCallCard";
 import { MemberSidebarPanel } from "./MemberSidebarPanel";
 import { MobileServerView } from "./MobileServerView";
 import { ReportsPanel } from "./ReportsPanel";
@@ -201,6 +204,19 @@ export const ServerView = () => {
     isConnected: currentConnectionStatus === "connected",
   });
 
+  const {
+    incoming: incomingCall,
+    outgoing: outgoingCall,
+    ring: ringConversation,
+    decline: declineCall,
+    cancel: cancelCall,
+    accept: acceptCall,
+  } = useCalls({
+    socket: currentConnection,
+    accessToken,
+    isConnected: currentConnectionStatus === "connected",
+  });
+
   /**
    * Open a DM and read it.
    *
@@ -238,6 +254,28 @@ export const ServerView = () => {
     pendingDmTargetRef.current = targetServerUserId;
     handleOpenDm(targetServerUserId);
   }, [handleOpenDm]);
+
+  /**
+   * Take a call.
+   *
+   * Answering is joining the conversation's voice room, and nothing else — the
+   * server ends the ring when the join lands rather than on a message of its
+   * own. `connect` takes the room id opaquely, so a conversation id goes
+   * through the same path a channel does.
+   *
+   * The conversation is opened for reading too. Somebody who just answered is
+   * looking at that conversation whatever else was on screen.
+   */
+  const handleAcceptCall = useCallback(() => {
+    const call = acceptCall();
+    if (!call) return;
+    setSelectedDmId(call.conversation_id);
+    setShowVoiceView(true);
+    connect(call.conversation_id).catch((error) => {
+      console.error("Could not join the call:", error);
+      toast.error(error instanceof Error ? error.message : "Could not join the call");
+    });
+  }, [acceptCall, connect, setSelectedDmId, setShowVoiceView]);
 
   const handleSelectDm = useCallback((conversation: { conversation_id: string }) => {
     setSelectedDmId(conversation.conversation_id);
@@ -287,6 +325,55 @@ export const ServerView = () => {
     setSelectedDmId(null);
     handleChannelClick(channel);
   }, [handleChannelClick, setSelectedDmId]);
+
+  /**
+   * The caller's picture, from the member list.
+   *
+   * A ring carries a nickname and nothing else, deliberately — the member list
+   * is where a person's appearance lives and duplicating it into the ring would
+   * be a second copy to go stale. A caller who is not in the list draws their
+   * owl from the nickname, which is what `resolveAvatarSrc` does anyway.
+   */
+  const caller = incomingCall ? memberListMap[incomingCall.from.server_user_id] : undefined;
+  const callerAvatarUrl =
+    caller?.avatarFileId && viewingHost
+      ? getUploadsFileUrl(viewingHost, caller.avatarFileId, { thumb: true })
+      : undefined;
+  const callerAvatarWorn = caller?.avatarWorn ?? null;
+
+  /**
+   * What sits in the conversation header: call, and start a group.
+   *
+   * Built once and used by both layouts. The two used to carry a copy of the
+   * same button each, which is how one of them ends up a version behind.
+   *
+   * Calling is offered whether or not a call is already going. Joining one in
+   * progress and starting one are the same act — the room is the room — and the
+   * server refuses a second ring while the first is going, so pressing it
+   * during a ring says so rather than doing something surprising.
+   */
+  const dmHeaderActions = useMemo(() => {
+    if (!activeDm || !viewerPermissions.can("send_direct_messages")) return undefined;
+    const conversationId = activeDm.conversation_id;
+    const ringing = outgoingCall?.conversation_id === conversationId;
+
+    return (
+      <div className="flex items-center gap-1">
+        <Button
+          size="small"
+          tone={ringing ? "primary" : "ghost"}
+          onClick={() => (ringing ? cancelCall(conversationId) : ringConversation(conversationId))}
+        >
+          {ringing ? "Cancel" : "Call"}
+        </Button>
+        {activeDm.kind === "dm" ? (
+          <Button size="small" tone="ghost" onClick={() => setGroupDialog([activeDm.other.server_user_id])}>
+            New group
+          </Button>
+        ) : null}
+      </div>
+    );
+  }, [activeDm, viewerPermissions, outgoingCall, cancelCall, ringConversation, setGroupDialog]);
 
   const currentAdminActions = useMemo(() => {
     // One handler per permission, rather than one bundle per role name. This
@@ -388,10 +475,7 @@ export const ServerView = () => {
   const canManage = viewerPermissions.can("manage_channels");
   const canDisconnectFromVoice = viewerPermissions.can("disconnect_members");
   const canViewMembers = viewerPermissions.can("view_members");
-  // Same gate the server puts on `dm:group:create`. An existing
-  // conversation stays readable when the permission goes away — only
-  // starting a new one is refused.
-  const canStartDm = viewerPermissions.can("send_direct_messages");
+
   const hostChannels = serverDetails.channels || [];
 
   const { clients: hostClients, videoStreams: voiceVideoStreams } =
@@ -472,13 +556,7 @@ export const ServerView = () => {
             channelName={activeDm ? conversationTitle(activeDm) : activeChannelName}
             channelType={activeChannelType}
             conversationKind={activeDm ? "dm" : "channel"}
-            headerAction={
-              activeDm && activeDm.kind === "dm" && canStartDm ? (
-                <Button size="small" tone="ghost" onClick={() => setGroupDialog([activeDm.other.server_user_id])}>
-                  New group
-                </Button>
-              ) : undefined
-            }
+            headerAction={dmHeaderActions}
             currentUserNickname={serverNickname}
             socketConnection={currentConnection}
             memberList={memberListMap}
@@ -621,13 +699,7 @@ export const ServerView = () => {
                   channelName={activeDm ? conversationTitle(activeDm) : activeChannelName}
                   channelType={activeChannelType}
                   conversationKind={activeDm ? "dm" : "channel"}
-                  headerAction={
-                    activeDm && activeDm.kind === "dm" && canStartDm ? (
-                      <Button size="small" tone="ghost" onClick={() => setGroupDialog([activeDm.other.server_user_id])}>
-                        New group
-                      </Button>
-                    ) : undefined
-                  }
+                  headerAction={dmHeaderActions}
                   serverName={serverName}
                   currentUserNickname={serverNickname}
                   socketConnection={currentConnection}
@@ -673,6 +745,27 @@ export const ServerView = () => {
           </div>
         )}
       </div>
+
+      {incomingCall ? (
+        <IncomingCallCard
+          call={incomingCall}
+          title={
+            // The conversation's own name when it is known, which for a group
+            // is the group rather than the one person ringing. Falls back to
+            // the caller: a call can arrive before `dm:list` has caught up with
+            // a conversation that was only just made.
+            directConversations.find((c) => c.conversation_id === incomingCall.conversation_id)
+              ? conversationTitle(
+                  directConversations.find((c) => c.conversation_id === incomingCall.conversation_id)!,
+                )
+              : incomingCall.from.nickname
+          }
+          avatarUrl={callerAvatarUrl}
+          avatarWorn={callerAvatarWorn}
+          onAccept={handleAcceptCall}
+          onDecline={() => declineCall(incomingCall.conversation_id)}
+        />
+      ) : null}
 
       <GroupDialog
         open={groupDialog !== null}
