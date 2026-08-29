@@ -62,6 +62,8 @@ interface MobileServerViewProps {
   selectedDmId?: string | null;
   onSelectDm?: (conversation: DirectConversation) => void;
   onHideDm?: (conversation: DirectConversation) => void;
+  /** Open the settings for a group. Absent means no group management. */
+  onManageGroup?: (conversation: DirectConversation) => void;
 
   // ChatView
   chatMessages: ChatMessage[];
@@ -72,6 +74,7 @@ interface MobileServerViewProps {
   channelName?: string;
   channelType?: "text" | "voice";
   conversationKind?: "channel" | "dm";
+  headerAction?: React.ReactNode;
   currentUserNickname?: string;
   socketConnection?: unknown;
   memberList: Record<string, MemberInfo>;
@@ -167,6 +170,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
           channelName={props.channelName}
           channelType={props.channelType}
           conversationKind={props.conversationKind}
+          headerAction={props.headerAction}
           serverName={props.serverName}
           currentUserNickname={props.currentUserNickname}
           socketConnection={props.socketConnection}
@@ -260,6 +264,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
               selectedDmId={props.selectedDmId}
               onSelectDm={props.onSelectDm}
               onHideDm={props.onHideDm}
+              onManageGroup={props.onManageGroup}
             />
           </div>
         </div>

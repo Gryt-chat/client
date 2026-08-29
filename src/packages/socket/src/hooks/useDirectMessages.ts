@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
 
@@ -16,17 +16,44 @@ import type { Socket } from "socket.io-client";
  * for the identifier that exists to not be handed out.
  */
 
+export interface ConversationParticipant {
+  server_user_id: string;
+  nickname: string;
+  avatar_file_id: string | null;
+  /** The owl look, so a row draws the same avatar the member list does. */
+  avatar_worn: string | null;
+}
+
 export interface DirectConversation {
   conversation_id: string;
+  /** Two people, or more than two. Groups live in their own section. */
+  kind: "dm" | "group";
+  /** What a group was named. Null means read it off `members`. */
+  name: string | null;
+  /** An upload. Null means draw one from the name. */
+  icon_file_id: string | null;
   created_at: string;
   last_message_at: string | null;
-  other: {
-    server_user_id: string;
-    nickname: string;
-    avatar_file_id: string | null;
-    /** The owl look, so a DM row draws the same avatar the member list does. */
-    avatar_worn: string | null;
-  };
+  /** Everybody but you. */
+  members: ConversationParticipant[];
+  /** The first of `members`. Kept for one-to-ones, where it is the whole story. */
+  other: ConversationParticipant;
+}
+
+/**
+ * What to call a conversation on screen.
+ *
+ * A one-to-one is the other person. A named group is its name. An unnamed
+ * group is who is in it — built here rather than stored, so it follows a
+ * rename instead of going stale, and so an empty-ish group still says
+ * something rather than nothing.
+ */
+export function conversationTitle(conversation: DirectConversation): string {
+  if (conversation.kind === "dm") return conversation.other.nickname;
+  if (conversation.name) return conversation.name;
+  const names = conversation.members.map((m) => m.nickname);
+  if (names.length <= 2) return names.join(" and ");
+  return `${names.slice(0, 2).join(", ")} and ${names.length - 2} more`;
 }
 
 interface DmErrorPayload {
@@ -42,7 +69,12 @@ interface UseDirectMessagesParams {
 }
 
 interface UseDirectMessagesResult {
+  /** Everything, both kinds. Most callers want one of the two below. */
   conversations: DirectConversation[];
+  /** The one-to-ones. */
+  directMessages: DirectConversation[];
+  /** The groups, which get their own section rather than sharing one. */
+  groups: DirectConversation[];
   /** Open one, or bring the existing one forward. Resolves when the server answers. */
   openDm: (targetServerUserId: string) => void;
   /**
@@ -53,6 +85,20 @@ interface UseDirectMessagesResult {
    * sidebar rather than stopping somebody talking to you.
    */
   setHidden: (conversationId: string, hidden: boolean) => void;
+  /**
+   * Start a group with these people, optionally named.
+   *
+   * Never converts a one-to-one. The pair conversation those people already
+   * had stays exactly as it is — what two people said should not become
+   * readable by a third because somebody made a group.
+   */
+  createGroup: (memberIds: string[], name?: string, iconFileId?: string | null) => void;
+  /** Change a group's name, its picture, or both. `null` means the drawn one. */
+  updateGroup: (conversationId: string, changes: { name?: string | null; iconFileId?: string | null }) => void;
+  /** Put somebody into a group. Anybody in it may. */
+  addToGroup: (conversationId: string, targetServerUserId: string) => void;
+  /** Leave for good. Not hiding — nothing brings this one back. */
+  leaveGroup: (conversationId: string) => void;
   /** Whether the server will take a new one at all. */
   dmsDisabled: boolean;
 }
@@ -93,6 +139,12 @@ export function useDirectMessages({
       );
     };
 
+    /* Left for good, so it goes without waiting for a fresh list. */
+    const onLeft = (payload: { conversation_id?: string }) => {
+      if (!payload?.conversation_id) return;
+      setConversations((prev) => prev.filter((c) => c.conversation_id !== payload.conversation_id));
+    };
+
     const onError = (payload: DmErrorPayload) => {
       if (payload?.error === "dms_disabled") {
         setDmsDisabled(true);
@@ -106,6 +158,7 @@ export function useDirectMessages({
     socket.on("dm:list", onList);
     socket.on("dm:opened", onOpened);
     socket.on("dm:hidden", onHidden);
+    socket.on("dm:left", onLeft);
     socket.on("dm:error", onError);
     socket.emit("dm:list", { accessToken });
 
@@ -113,6 +166,7 @@ export function useDirectMessages({
       socket.off("dm:list", onList);
       socket.off("dm:opened", onOpened);
       socket.off("dm:hidden", onHidden);
+      socket.off("dm:left", onLeft);
       socket.off("dm:error", onError);
     };
   }, [socket, accessToken, isConnected]);
@@ -140,7 +194,52 @@ export function useDirectMessages({
     [socket, accessToken],
   );
 
-  return { conversations, openDm, setHidden, dmsDisabled };
+  const emit = useCallback(
+    (event: string, payload: Record<string, unknown>) => {
+      if (!socket || !accessToken) return;
+      socket.emit(event, { accessToken, ...payload });
+    },
+    [socket, accessToken],
+  );
+
+  const createGroup = useCallback(
+    (memberIds: string[], name?: string, iconFileId?: string | null) =>
+      emit("dm:group:create", { memberIds, name, iconFileId: iconFileId ?? undefined }),
+    [emit],
+  );
+  const updateGroup = useCallback(
+    (conversationId: string, changes: { name?: string | null; iconFileId?: string | null }) =>
+      emit("dm:group:update", { conversationId, ...changes }),
+    [emit],
+  );
+  const addToGroup = useCallback(
+    (conversationId: string, targetServerUserId: string) =>
+      emit("dm:group:add", { conversationId, targetServerUserId }),
+    [emit],
+  );
+  const leaveGroup = useCallback(
+    (conversationId: string) => emit("dm:group:leave", { conversationId }),
+    [emit],
+  );
+
+  const directMessages = useMemo(
+    () => conversations.filter((c) => c.kind !== "group"),
+    [conversations],
+  );
+  const groups = useMemo(() => conversations.filter((c) => c.kind === "group"), [conversations]);
+
+  return {
+    conversations,
+    directMessages,
+    groups,
+    openDm,
+    setHidden,
+    createGroup,
+    updateGroup,
+    addToGroup,
+    leaveGroup,
+    dmsDisabled,
+  };
 }
 
 /**

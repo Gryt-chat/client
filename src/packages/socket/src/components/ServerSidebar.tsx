@@ -60,6 +60,8 @@ interface ServerSidebarProps {
   selectedDmId?: string | null;
   onSelectDm?: (conversation: DirectConversation) => void;
   onHideDm?: (conversation: DirectConversation) => void;
+  /** Open the settings for a group. Absent means no group management. */
+  onManageGroup?: (conversation: DirectConversation) => void;
 }
 
 export const ServerSidebar = ({
@@ -74,7 +76,7 @@ export const ServerSidebar = ({
   onChannelClick, clientsSpeaking, streamSources,
   canManage, onEditItem, onDeleteItem, onMoveItem, onReorder, onAddItem,
   onDisconnectUser, currentUserRole, adminActions, unreadChannelIds,
-  directConversations, selectedDmId, onSelectDm, onHideDm,
+  directConversations, selectedDmId, onSelectDm, onHideDm, onManageGroup,
 }: ServerSidebarProps) => (
   <div
     role="navigation"
@@ -184,6 +186,7 @@ export const ServerSidebar = ({
                 selectedDmId={selectedDmId}
                 onSelectDm={onSelectDm}
                 onHideDm={onHideDm}
+                onManageGroup={onManageGroup}
               />
             </div>
           </div>

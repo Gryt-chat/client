@@ -41,6 +41,7 @@ export const ChatView = memo(({
   channelType,
   conversationKind = "channel",
   serverName,
+  headerAction,
   isRateLimited,
   rateLimitCountdown,
   canViewVoiceChannelText,
@@ -69,6 +70,14 @@ export const ChatView = memo(({
   /** A direct message reads differently: no `#`, and its own empty state. */
   conversationKind?: "channel" | "dm";
   serverName?: string;
+  /**
+   * Put at the right-hand end of the header.
+   *
+   * A slot rather than a named button, because what belongs there depends on
+   * what is open and this component does not need to know: the DM view puts
+   * "start a group" here, and a channel puts nothing.
+   */
+  headerAction?: React.ReactNode;
   isRateLimited?: boolean;
   rateLimitCountdown?: number;
   canViewVoiceChannelText?: boolean;
@@ -295,6 +304,7 @@ export const ChatView = memo(({
               <span className="text-lg font-bold" style={{ color: "var(--gryt-neutral-12)" }}>
                 <EmojiText text={channelName} />
               </span>
+              {headerAction && <div style={{ marginLeft: "auto" }}>{headerAction}</div>}
             </div>
           )}
 
