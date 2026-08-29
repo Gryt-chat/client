@@ -60,6 +60,7 @@
     "test:member-key-wording": "node scripts/check-member-key-wording.mjs",
     "test:conversation-encryption": "node scripts/check-conversation-encryption.mjs",
     "test:comparison-code": "node scripts/check-comparison-code.mjs",
+    "test:crypto-vectors": "node scripts/check-crypto-vectors.mjs",
     "test:message-keys": "node scripts/check-message-keys.mjs"
   },
   "dependencies": {
@@ -72,6 +73,7 @@
     "@gryt/ui": "^0.24.0",
     "@gryt/voice": "0.4.3",
     "@mediapipe/tasks-vision": "^1.0.1",
+    "@noble/ciphers": "^2",
     "@noble/curves": "^2.3.0",
     "@noble/hashes": "^2.3.0",
     "@scure/bip39": "^2.3.0",
