@@ -12,8 +12,10 @@ import {
   rememberGuestScopes,
 } from "./guest-history";
 import {
+  asIdentityScope,
   deriveLocalKeyPair,
   generateSeed,
+  type IdentityScope,
   SEED_BYTES,
   seedToWords,
   wordsToSeed,
@@ -69,9 +71,17 @@ export type IdentitySource =
  * behaviour, including its bug, because nothing else is available to fix it
  * with.
  */
-export function identityScopeFor(host: string): string {
+/*
+ * Re-exported here because this is where a consumer looks for them —
+ * `identityScopeFor` lives in this file and `identity-seed.ts` is not in the
+ * `@/common` barrel. The type is declared over there so `dm-keys.ts` can use it
+ * without importing the module that owns the database.
+ */
+export { asIdentityScope, type IdentityScope };
+
+export function identityScopeFor(host: string): IdentityScope {
   const origin = getOriginKeyIdForHost(host);
-  return origin ? `${SERVER_SCOPE_PREFIX}${origin}` : host;
+  return asIdentityScope(origin ? `${SERVER_SCOPE_PREFIX}${origin}` : host);
 }
 
 function storageKeyFor(source: IdentitySource): string {
@@ -438,7 +448,7 @@ export async function signJwtWithKey(
  * is not one yet, which is the same thing joining anywhere would do.
  */
 export async function deriveScopedKeyPair(
-  scope: string,
+  scope: IdentityScope,
 ): Promise<{ privateKey: CryptoKey; publicJwk: JsonWebKey }> {
   if (scope.startsWith(SERVER_SCOPE_PREFIX)) {
     throw new Error(`"${scope}" is a server's scope, not a standalone one`);
@@ -488,10 +498,14 @@ export async function signAssertion(
 }
 
 /** Every local identity on this device, by what it is filed under. */
-async function listLocalIdentityScopes(db: IDBDatabase): Promise<string[]> {
+async function listLocalIdentityScopes(
+  db: IDBDatabase,
+): Promise<IdentityScope[]> {
+  // Written through storageKeyFor, which builds them from identityScopeFor, so
+  // what comes back out is what went in.
   return (await idbKeys(db))
     .filter((k) => k.startsWith(LOCAL_PREFIX))
-    .map((k) => k.slice(LOCAL_PREFIX.length));
+    .map((k) => asIdentityScope(k.slice(LOCAL_PREFIX.length)));
 }
 
 /**

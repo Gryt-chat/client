@@ -1,4 +1,4 @@
-import { deriveScopedKeyPair, jwkThumbprint, signJwtWithKey } from "@/common";
+import { asIdentityScope, deriveScopedKeyPair, jwkThumbprint, signJwtWithKey } from "@/common";
 
 /**
  * Proving a report came from a real Gryt install, without saying which one.
@@ -33,8 +33,13 @@ import { deriveScopedKeyPair, jwkThumbprint, signJwtWithKey } from "@/common";
  * expires in five minutes, and its `jti` is accepted once.
  */
 
-/** The scope this service's key is derived under, and its audience. */
-export const REPORTS_SCOPE = "gryt:reports";
+/**
+ * The scope this service's key is derived under, and its audience.
+ *
+ * A scope of its own rather than a server's, which is what `deriveScopedKeyPair`
+ * refuses a `srv:` prefix for.
+ */
+export const REPORTS_SCOPE = asIdentityScope("gryt:reports");
 
 /**
  * Comfortably inside the service's five minutes, without being so tight that a

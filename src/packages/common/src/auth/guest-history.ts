@@ -36,6 +36,8 @@
  * profile has talked to, which is also plainly visible from the server list.
  */
 
+import { asIdentityScope, type IdentityScope } from "./identity-seed";
+
 const STORAGE_KEY = "gryt_guest_history";
 
 function read(): Set<string> {
@@ -76,8 +78,10 @@ export function hasGuestScope(scope: string): boolean {
 }
 
 /** Every scope this device has been a guest under. */
-export function listGuestScopes(): string[] {
-  return [...read()];
+export function listGuestScopes(): IdentityScope[] {
+  // Everything in here arrived through rememberGuestScope, which is only ever
+  // called with identityScopeFor's result.
+  return [...read()].map(asIdentityScope);
 }
 
 /** Drop one, for a server being left. */
