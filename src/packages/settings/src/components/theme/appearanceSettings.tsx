@@ -1,4 +1,4 @@
-import { Button, Radio, RadioGroup, Slider } from "@gryt/ui";
+import { Button, Radio, RadioGroup, Slider, Switch } from "@gryt/ui";
 import { grytDraft } from "@gryt/ui";
 import { PencilSimple } from "@phosphor-icons/react";
 import { useMemo } from "react";
@@ -44,6 +44,8 @@ export function AppearanceSettings() {
     setVoiceTileLayout,
     voiceTwoPersonLayout,
     setVoiceTwoPersonLayout,
+    googleFontsEnabled,
+    setGoogleFontsEnabled,
   } = useSettings();
 
   const { activeTheme } = useCustomThemes();
@@ -97,6 +99,22 @@ export function AppearanceSettings() {
             underneath.
           </p>
         </div>
+      </SettingGroup>
+
+      {/* Under Theme, because it is a thing about themes rather than about
+          privacy in general — somebody arrives here having picked a font in
+          the editor and been told it will not load. */}
+      <SettingGroup
+        title="Typefaces from Google"
+        description="A theme can name any typeface. Turning this on lets Gryt fetch the ones that are not already on this machine from fonts.google.com, which means Google sees your address and that you are running Gryt. Off, a theme that names one of those falls back to a face you already have."
+      >
+        <label className="flex cursor-pointer items-center gap-3 text-sm">
+          <Switch
+            checked={googleFontsEnabled}
+            onCheckedChange={setGoogleFontsEnabled}
+          />
+          Enable Google Fonts
+        </label>
       </SettingGroup>
 
       <div className="flex flex-col gap-2">

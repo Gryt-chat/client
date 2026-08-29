@@ -146,7 +146,13 @@ export interface Settings {
   setDisconnectHotkey: (value: string) => void;
 
   showPeerLatency: boolean;
+  /* Whether a theme may fetch a typeface from Google. Per machine, not part
+     of the theme: a theme says which face it wants, this says whether this
+     install will go and get one. In the theme it would let a shared link turn
+     on network access for whoever opened it. */
+  googleFontsEnabled: boolean;
   setShowPeerLatency: (value: boolean) => void;
+  setGoogleFontsEnabled: (value: boolean) => void;
 
   notificationBadgeEnabled: boolean;
   setNotificationBadgeEnabled: (value: boolean) => void;
@@ -330,7 +336,9 @@ export const settingsInit: Settings = {
   setDisconnectHotkey: noop,
 
   showPeerLatency: true,
+  googleFontsEnabled: false,
   setShowPeerLatency: noop,
+  setGoogleFontsEnabled: noop,
 
   notificationBadgeEnabled: AUDIO_DEFAULTS.notificationBadgeEnabled,
   setNotificationBadgeEnabled: noop,

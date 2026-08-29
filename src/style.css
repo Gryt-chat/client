@@ -168,14 +168,31 @@
 html {
   background: var(--gryt-bg);
   color: var(--gryt-text);
-  font-family: "Atkinson Hyperlegible Next", ui-sans-serif, system-ui, sans-serif;
+  /* Through the theme's variable first, then the face that ships with the app.
+     Stated here as well as in @gryt/ui's stylesheet, and this one wins because
+     it is a plain declaration on html rather than a Tailwind token — so a
+     theme that named a typeface set a variable nothing read and the app stayed
+     on Atkinson. That is the third file this has caught out; the docs site had
+     it twice. If a font stops following the theme, this is the shape to look
+     for: a face written down somewhere that does not fall through. */
+  font-family: var(
+    --gryt-font-body,
+    "Atkinson Hyperlegible Next",
+    ui-sans-serif,
+    system-ui,
+    sans-serif
+  );
 }
 
 /* Two things the .radix-themes wrapper used to carry and the app still wants.
    Everything else in that block — the cursor variables, the scaling — was
    Radix's own plumbing and went with it. */
 :root {
-  --code-font-family: "Atkinson Hyperlegible Mono", monospace;
+  --code-font-family: var(
+    --gryt-font-mono,
+    "Atkinson Hyperlegible Mono",
+    monospace
+  );
 }
 
 /* Gryt light theme — gray background, white panels */
