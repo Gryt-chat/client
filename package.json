@@ -51,7 +51,8 @@
     "electron:preview:full": "npm run build:native && npm run build:embedded-server && cross-env ELECTRON=1 vite build && electron .",
     "icons:generate": "node scripts/generate-icons.mjs && node scripts/generate-tray-icon.mjs",
     "generate:tray": "node scripts/generate-tray-icon.mjs",
-    "test:dm-keys": "node scripts/check-dm-keys.mjs"
+    "test:dm-keys": "node scripts/check-dm-keys.mjs",
+    "test:message-keys": "node scripts/check-message-keys.mjs"
   },
   "dependencies": {
     "@dicebear/core": "^10",
