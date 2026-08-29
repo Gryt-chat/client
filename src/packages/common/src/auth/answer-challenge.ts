@@ -9,6 +9,7 @@
 
 import { getCertificateSub, getValidCertificate } from "./identity-certificate";
 import { mayClaim } from "./identity-claims";
+import type { IdentitySource } from "./identity-keys";
 import { hasLocalIdentity, identityScopeFor, signAssertion } from "./identity-keys";
 import { getValidIdentityToken } from "./keycloak";
 import { getLocalIdentity, signIdentityLink } from "./local-identity";
@@ -49,6 +50,30 @@ export interface ChallengeAnswer {
  * server sends no list, and then we fall back to preferring the account — which
  * is what every server accepted before the tiers existed.
  */
+/**
+ * Which identity this device last joined a given server with (GRYT-727).
+ *
+ * Recorded rather than worked out again, because the two would drift. The
+ * choice below turns on whether a Keycloak token could be read at that moment,
+ * and asking a second time later can answer differently — a session that has
+ * since lapsed, a sign-in that has since happened. A DM key binding signed with
+ * the other key still verifies and still pins, it just stops being a statement
+ * about the key this server actually challenged.
+ *
+ * In memory only, and per host. Lost on reload, which is correct: after a
+ * reload nothing has joined anything yet, and the next join records it again.
+ */
+const identitySourceByHost = new Map<string, IdentitySource>();
+
+function rememberIdentitySource(host: string, source: IdentitySource): void {
+  identitySourceByHost.set(host, source);
+}
+
+/** Null before this device has answered a challenge for that server. */
+export function identitySourceUsedFor(host: string): IdentitySource | null {
+  return identitySourceByHost.get(host) ?? null;
+}
+
 export async function answerChallenge(
   host: string,
   challenge: {
@@ -73,6 +98,7 @@ export async function answerChallenge(
     : undefined;
 
   if (token) {
+    rememberIdentitySource(host, { kind: "account" });
     const certificate = await getValidCertificate();
     const sub = getCertificateSub() || "";
     const assertion = await signAssertion(
@@ -117,12 +143,15 @@ export async function answerChallenge(
     throw new Error("This server requires a Gryt account to join.");
   }
 
+  const source: IdentitySource = { kind: "local", host };
+  rememberIdentitySource(host, source);
+
   const { sub, certificate } = await getLocalIdentity(host);
   const assertion = await signAssertion(
     sub,
     challenge.serverHost,
     challenge.nonce,
-    { kind: "local", host },
+    source,
   );
   return { certificate, assertion, tier: "local" };
 }

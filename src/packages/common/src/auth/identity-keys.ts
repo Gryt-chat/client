@@ -5,6 +5,8 @@
 
 import { getElectronAPI } from "../../../../lib/electron";
 import { clearAllServerTokens } from "../utils/tokenStorage";
+import { signDmKeyBinding } from "./dm-key-binding";
+import { deriveDmKeyPair } from "./dm-keys";
 import {
   hasGuestScope,
   listGuestScopes,
@@ -447,6 +449,67 @@ export async function signJwtWithKey(
  * servers joined rather than of keys derived. It does create the seed if there
  * is not one yet, which is the same thing joining anywhere would do.
  */
+/**
+ * The binding this device would publish for one server (GRYT-727).
+ *
+ * Assembled here rather than by a caller because it needs two things that never
+ * leave this module: the seed, and the identity private key. Everything else
+ * about it is in `dm-key-binding.ts`.
+ *
+ * `source` has to be the identity this device actually joined with. The DM key
+ * itself does not depend on it — that comes from the seed and the scope either
+ * way — but the signature does, and the whole value of the binding is that the
+ * key which signed it is the key the server challenged on the way in. Signing
+ * with the other one still verifies and still pins; it just stops being a
+ * statement the server has already vouched for, which is the part that makes a
+ * forged one contradict the server's own proof.
+ *
+ * Returns null when there is no seed and no identity, which is a device that
+ * has not joined anything. Nothing to publish, and not an error.
+ */
+export async function dmKeyBindingFor(
+  host: string,
+  source: IdentitySource,
+): Promise<string | null> {
+  const scope = identityScopeFor(host);
+
+  const db = await openDB();
+  let seed: Uint8Array;
+  try {
+    seed = await getOrCreateSeed(db);
+  } finally {
+    db.close();
+  }
+
+  const { privateKey } = await loadOrGenerateKeyPair(source);
+  const identityPublicJwk = await getPublicKeyJwk(source);
+  const { publicKey } = deriveDmKeyPair(seed, scope);
+
+  return signDmKeyBinding({
+    dmPublicKey: publicKey,
+    scope,
+    identityPrivateKey: privateKey,
+    identityPublicJwk,
+  });
+}
+
+/**
+ * The DM public key this device uses on one server, for checking your own row.
+ *
+ * You know what your key here should be, so a member list showing something
+ * else under your own id is this server rewriting it (GRYT-727). That is the
+ * one check a single person can run with nobody else involved.
+ */
+export async function ownDmPublicKey(host: string): Promise<Uint8Array> {
+  const db = await openDB();
+  try {
+    return deriveDmKeyPair(await getOrCreateSeed(db), identityScopeFor(host))
+      .publicKey;
+  } finally {
+    db.close();
+  }
+}
+
 export async function deriveScopedKeyPair(
   scope: IdentityScope,
 ): Promise<{ privateKey: CryptoKey; publicJwk: JsonWebKey }> {
