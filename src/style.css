@@ -1316,3 +1316,75 @@ body {
   line-height: 1.45;
   color: var(--gryt-neutral-11);
 }
+
+/* ── Folded messages ────────────────────────────────────────────────────────
+   A tall message is folded to about twelve lines with a control to open it.
+   The height, not the character count, is what decides — see CollapsibleText.
+
+   The server refuses anything past 4,000 characters, so this is not a defence
+   against a big message; it is about how much room one is allowed to take
+   before you have to scroll past it.
+*/
+.message-fold {
+  position: relative;
+}
+
+/* The clip lives on an inline style rather than here, because the same element
+   is measured — a class that sets max-height would make scrollHeight and the
+   cap the same number and the message would never look like it overflowed. */
+.message-fold-inner {
+  min-width: 0;
+}
+
+.message-fold-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  /* Sits above the toggle rather than behind it, so the last line goes under
+     the fade instead of colliding with the control. */
+  bottom: 1.6rem;
+  height: 3rem;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--gryt-neutral-1));
+}
+
+.message-fold-toggle {
+  display: block;
+  margin-top: 2px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--gryt-accent-11);
+  transition: color 0.15s ease;
+}
+
+.message-fold-toggle:hover {
+  color: var(--gryt-accent-12);
+  text-decoration: underline;
+}
+
+.message-fold-toggle:focus-visible {
+  outline: 2px solid var(--gryt-accent-8);
+  outline-offset: 2px;
+  border-radius: var(--gryt-radius-sm);
+}
+
+/* The characters left, once there are few enough to care about. Absent until
+   500 from the cap, so it is a warning rather than a permanent gauge. */
+.chat-editor-counter {
+  align-self: center;
+  padding: 0 6px;
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--gryt-neutral-11);
+  user-select: none;
+}
+
+.chat-editor-counter[data-over="true"] {
+  color: var(--gryt-danger-11);
+  font-weight: 600;
+}
