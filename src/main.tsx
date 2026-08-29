@@ -18,6 +18,7 @@ import {
   useZoomShortcuts,
 } from "@/common";
 import { ThemeEditorPanel } from "@/settings";
+import { useSettings } from "@/settings";
 import { VoiceProvider } from "@/webRTC";
 
 import { App } from "./App.tsx";
@@ -25,6 +26,7 @@ import { BrowserBanner } from "./components/browserBanner";
 import { Titlebar } from "./components/titlebar";
 import { UpdateAnnouncement } from "./components/updateAnnouncement";
 import { initGlobalStorage } from "./lib/globalStorage";
+import { syncGoogleFonts } from "./lib/googleFonts";
 import { captureLogs } from "./lib/reports/logs";
 import { pushTitlebarOverlay } from "./lib/titlebarOverlay";
 
@@ -42,6 +44,7 @@ function ThemedApp() {
      variables, the native titlebar strip and the plugin API all follow it
      without knowing an editor exists. */
   const { draft: draftTheme } = useThemeEditor();
+  const { googleFontsEnabled } = useSettings();
   const shownTheme = draftTheme ?? activeTheme;
 
   /* Radix's <Theme appearance> put .light or .dark on its own wrapper, and the
@@ -107,6 +110,20 @@ function ThemedApp() {
       }
     };
   }, [shownTheme, resolvedAppearance]);
+
+  /* A face the theme names and this machine has agreed to fetch.
+     
+     Keyed on the fonts rather than the whole theme, so dragging a colour
+     slider does not re-ask Google for the same family on every frame. Nothing
+     happens at all unless the setting is on and the theme names something that
+     is not already here. */
+  const wanted = shownTheme?.fonts;
+  useEffect(() => {
+    syncGoogleFonts(
+      wanted === null || wanted === undefined ? [] : Object.values(wanted),
+      googleFontsEnabled,
+    );
+  }, [wanted, googleFontsEnabled]);
 
   /* The native minimise/maximise/close buttons on Windows and Linux, which
      the stylesheet cannot reach — they are painted by the OS into an overlay

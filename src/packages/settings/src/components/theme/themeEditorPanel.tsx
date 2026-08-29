@@ -4,6 +4,7 @@ import { ArrowCounterClockwise, Link as LinkIcon, X } from "@phosphor-icons/reac
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useCustomThemes, useTheme, useThemeEditor } from "@/common";
+import { useSettings } from "@/settings";
 
 /**
  * The theme editor, floating over the running app.
@@ -65,6 +66,7 @@ export function ThemeEditorPanel() {
     useThemeEditor();
   const { saveTheme } = useCustomThemes();
   const { resolvedAppearance, setAppearancePreference } = useTheme();
+  const { googleFontsEnabled } = useSettings();
 
   const [position, setPosition] = useState<Position>(readPosition);
   const [copied, setCopied] = useState(false);
@@ -183,6 +185,7 @@ export function ThemeEditorPanel() {
             setAppearancePreference(next)
           }
           onChange={setDraft}
+          remoteFontsAllowed={googleFontsEnabled}
           value={draft}
         />
       </div>

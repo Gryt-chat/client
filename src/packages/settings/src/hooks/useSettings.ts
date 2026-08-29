@@ -54,6 +54,11 @@ function useSettingsHook() {
   const [showVideoDebugOverlay, setShowVideoDebugOverlay] = useState(false);
   const [nickname, setNickname] = useState("Unknown");
   const [showPeerLatency, setShowPeerLatency] = useState(true);
+  /* Whether a theme may fetch a typeface from Google.
+     Off, and the default is the decision. A toggle that starts on is not
+     consent, it is a setting somebody has to find out about and go and turn
+     off — which is the arrangement the toggle exists to avoid. */
+  const [googleFontsEnabled, setGoogleFontsEnabled] = useState(false);
   const [chatMediaVolume, setChatMediaVolume] = useState(50);
   const [blurProfanity, setBlurProfanityState] = useState(true);
   const [smileyConversion, setSmileyConversionState] = useState(true);
@@ -115,6 +120,7 @@ function useSettingsHook() {
       setShowDebugOverlay(getUserValue("showDebugOverlay", false));
       setShowVideoDebugOverlay(getUserValue("showVideoDebugOverlay", false));
       setShowPeerLatency(getUserValue("showPeerLatency", true));
+      setGoogleFontsEnabled(getUserValue("googleFontsEnabled", false));
       setChatMediaVolume(getUserValue("chatMediaVolume", 50));
       setBlurProfanityState(getUserValue("blurProfanity", true));
       setSmileyConversionState(getUserValue("smileyConversion", true));
@@ -243,6 +249,11 @@ function useSettingsHook() {
   function updateShowPeerLatency(value: boolean) {
     setShowPeerLatency(value);
     setUserValue("showPeerLatency", value);
+  }
+
+  function updateGoogleFontsEnabled(value: boolean) {
+    setGoogleFontsEnabled(value);
+    setUserValue("googleFontsEnabled", value);
   }
 
   function updateChatMediaVolume(volume: number) {
@@ -495,6 +506,8 @@ function useSettingsHook() {
     showVideoDebugOverlay,
     setShowVideoDebugOverlay: updateShowVideoDebugOverlay,
     showPeerLatency,
+    googleFontsEnabled,
+    setGoogleFontsEnabled: updateGoogleFontsEnabled,
     setShowPeerLatency: updateShowPeerLatency,
     chatMediaVolume,
     setChatMediaVolume: updateChatMediaVolume,
