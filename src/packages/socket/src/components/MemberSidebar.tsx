@@ -45,6 +45,15 @@ export interface MemberInfo {
    */
   identityFingerprint?: string;
   /**
+   * What this member says their DM public key is, signed by the identity key
+   * they joined with (GRYT-720). Verified and pinned client-side; the server
+   * carries it and has never read it.
+   *
+   * Absent for anybody who has published none, and for every server too old to
+   * carry the column. No binding means no encrypted messages with them.
+   */
+  dmKeyBinding?: string | null;
+  /**
    * How many times this member has renamed themselves here, and when they last
    * did. The old names are deliberately not sent.
    */

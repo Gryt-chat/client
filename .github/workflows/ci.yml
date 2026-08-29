@@ -30,6 +30,7 @@ jobs:
       - run: yarn test:dm-keys
       - run: yarn test:dm-key-binding
       - run: yarn test:peer-keys
+      - run: yarn test:member-keys
       - run: yarn test:message-keys
       - run: yarn test:owl-export
       - run: yarn test:owl-seen

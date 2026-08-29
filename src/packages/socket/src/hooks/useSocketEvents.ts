@@ -2,6 +2,7 @@ import { Dispatch, MutableRefObject, SetStateAction, useEffect, useRef } from "r
 import toast from "react-hot-toast";
 import { Socket } from "socket.io-client";
 
+import type { MemberKeyState } from "@/common";
 import {
   answerChallenge,
   getServerRefreshToken,
@@ -50,6 +51,9 @@ export interface SocketEventDeps {
   setFailedServerDetails: Dispatch<SetStateAction<Record<string, { error: string; message: string; timestamp: number }>>>;
   setClients: Dispatch<SetStateAction<{ [host: string]: Clients }>>;
   setMemberLists: Dispatch<SetStateAction<{ [host: string]: MemberInfo[] }>>;
+  setMemberKeyStates: Dispatch<
+    SetStateAction<{ [host: string]: Record<string, MemberKeyState> }>
+  >;
   setServerProfiles: Dispatch<SetStateAction<Record<string, ServerProfile>>>;
   setIsServerMuted: (value: boolean) => void;
   setIsServerDeafened: (value: boolean) => void;
@@ -85,6 +89,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
     setFailedServerDetails,
     setClients,
     setMemberLists,
+    setMemberKeyStates,
     setServerProfiles,
     setIsServerMuted,
     setIsServerDeafened,
@@ -368,6 +373,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
         setFailedServerDetails,
         setClients,
         setMemberLists,
+        setMemberKeyStates,
         setServerProfiles,
         setIsServerMuted,
         setIsServerDeafened,

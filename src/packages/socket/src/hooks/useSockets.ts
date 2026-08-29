@@ -5,6 +5,7 @@ import { io, Socket } from "socket.io-client";
 import connectMp3 from "@/audio/src/assets/connect.mp3";
 import disconnectMp3 from "@/audio/src/assets/disconnect.mp3";
 import messageSoundMp3 from "@/audio/src/assets/universfield-computer-mouse-click-02-383961.mp3";
+import type { MemberKeyState } from "@/common";
 import { singletonHook } from "@/common";
 import { ensureSchemeKnown, getServerAccessToken, getServerRefreshToken, getServerWsBase, removeServerAccessToken, removeServerRefreshToken, useUnreadBadge, useUserId } from "@/common";
 import { initKeycloak } from "@/common/src/auth/keycloak";
@@ -64,6 +65,16 @@ function useSocketsHook() {
   const [failedServerDetails, setFailedServerDetails] = useState<Record<string, { error: string; message: string; timestamp: number }>>({});
   const [clients, setClients] = useState<{ [host: string]: Clients }>({});
   const [memberLists, setMemberLists] = useState<{ [host: string]: MemberInfo[] }>({});
+  /**
+   * What to do about each member's published DM key, by host and member id.
+   *
+   * Beside the member list rather than inside it, because they are refreshed on
+   * different clocks: the list arrives from the server and this is worked out
+   * locally against pins, asynchronously, after it lands.
+   */
+  const [memberKeyStates, setMemberKeyStates] = useState<{
+    [host: string]: Record<string, MemberKeyState>;
+  }>({});
   const [serverProfiles, setServerProfiles] = useState<Record<string, ServerProfile>>({});
   const [serverConnectionStatus, setServerConnectionStatus] = useState<Record<string, 'connected' | 'disconnected' | 'connecting' | 'reconnecting' | 'refused'>>({});
   // Why a server was refused, so the UI can say it rather than guessing.
@@ -223,6 +234,7 @@ function useSocketsHook() {
     setFailedServerDetails,
     setClients,
     setMemberLists,
+    setMemberKeyStates,
     setServerProfiles,
     setIsServerMuted,
     setIsServerDeafened,
@@ -626,7 +638,7 @@ function useSocketsHook() {
     }
   };
 
-  return { sockets, serverDetailsList, clients, memberLists, serverProfiles, setServerProfiles, getChannelDetails, requestMemberList, failedServerDetails, serverConnectionStatus, refusalReason, refusalHelpUrl, reconnectServer, leaveServer, tokenRevision };
+  return { sockets, serverDetailsList, clients, memberLists, memberKeyStates, serverProfiles, setServerProfiles, getChannelDetails, requestMemberList, failedServerDetails, serverConnectionStatus, refusalReason, refusalHelpUrl, reconnectServer, leaveServer, tokenRevision };
 }
 
 export const useSockets = singletonHook(
@@ -635,6 +647,7 @@ export const useSockets = singletonHook(
     serverDetailsList: {},
     clients: {},
     memberLists: {},
+    memberKeyStates: {},
     serverProfiles: {},
     setServerProfiles: () => {},
     getChannelDetails: () => undefined,

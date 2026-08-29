@@ -14,6 +14,12 @@ import {
   setServerRefreshToken,
 } from "@/common";
 import {
+  evaluateMemberKeys,
+  identityScopeFor,
+  type MemberKeyState,
+  ownDmPublicKey,
+} from "@/common";
+import {
   Server,
   serverDetails,
   serverDetailsList,
@@ -27,6 +33,7 @@ import {
   rememberCallMembers,
 } from "../lib/callMembers";
 import { Clients, ServerProfile } from "../types/clients";
+import { publishDmKey } from "../utils/dmKeys";
 import { fetchCustomEmojis, setCustomEmojis } from "../utils/emojiData";
 import { handleRateLimitError } from "../utils/rateLimitHandler";
 import { syncAvatarToHost } from "../utils/syncAvatarToHost";
@@ -64,6 +71,10 @@ export interface ServerEventContext {
   setFailedServerDetails: Dispatch<SetStateAction<Record<string, { error: string; message: string; timestamp: number }>>>;
   setClients: Dispatch<SetStateAction<{ [host: string]: Clients }>>;
   setMemberLists: Dispatch<SetStateAction<{ [host: string]: MemberInfo[] }>>;
+  /** What to do about each member's DM key here, by member id (GRYT-727). */
+  setMemberKeyStates: Dispatch<
+    SetStateAction<{ [host: string]: Record<string, MemberKeyState> }>
+  >;
   setServerProfiles: Dispatch<SetStateAction<Record<string, ServerProfile>>>;
   setIsServerMuted: (value: boolean) => void;
   setIsServerDeafened: (value: boolean) => void;
@@ -83,7 +94,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
 
   const { nickname, userIdRef, servers, serversRef, lastInviteJoinAttemptRef, myVoiceStateByHostRef } = ctx;
   const { setServers, setNewServerInfo, setServerDetailsList, setFailedServerDetails } = ctx;
-  const { setClients, setMemberLists, setServerProfiles, setIsServerMuted, setIsServerDeafened } = ctx;
+  const { setClients, setMemberLists, setMemberKeyStates, setServerProfiles, setIsServerMuted, setIsServerDeafened } = ctx;
 
   socket.on("server:info", (data: { name?: string }) => {
     const current = serversRef.current[host];
@@ -163,6 +174,11 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
 
   socket.on("server:joined", (joinInfo: { accessToken: string; refreshToken?: string; nickname: string; avatarFileId?: string | null; avatarWorn?: string | null }) => {
     setServerAccessToken(host, joinInfo.accessToken);
+
+    // Say what key to encrypt to us here (GRYT-727). Not awaited: nothing else
+    // in this handler depends on it, and a key that never arrives means no
+    // encrypted messages rather than a join that failed.
+    void publishDmKey(socket, host);
     if (joinInfo.refreshToken) {
       setServerRefreshToken(host, joinInfo.refreshToken);
     }
@@ -549,6 +565,25 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       color: "var(--gryt-neutral-6)"
     }));
     setMemberLists((old) => ({ ...old, [host]: membersWithGrayColor }));
+
+    // Pin whoever is new, and notice whoever changed (GRYT-727). Separate from
+    // the list above so a slow evaluation never holds up drawing the sidebar —
+    // a key decision changes what can be encrypted, not who is online.
+    const myId = myServerUserIdByHost.get(host) ?? null;
+    void (myId ? ownDmPublicKey(host).catch(() => null) : Promise.resolve(null))
+      .then((ownKey) =>
+        evaluateMemberKeys({
+          scope: identityScopeFor(host),
+          ownKey,
+          members: data,
+          myServerUserId: myId,
+        }),
+      )
+      .then((states) => setMemberKeyStates((old) => ({ ...old, [host]: states })))
+      .catch(() => {
+        // Storage that will not read, most likely. Leaving the previous states
+        // alone is right: dropping them would make every peer look new.
+      });
 
     // Record what this server actually holds for us.
     //
