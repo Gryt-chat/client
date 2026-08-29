@@ -211,8 +211,12 @@ export const ServerView = () => {
    * conversation opened empty.
    */
   const handleOpenDm = useCallback((targetServerUserId: string) => {
+    /* One-to-ones only. `other` is the first member, so on a group it names
+       somebody arbitrary — matching one here would open a group in answer to
+       "message this person", putting a private message in front of everybody
+       else in it. */
     const existing = directConversations.find(
-      (c) => c.other.server_user_id === targetServerUserId,
+      (c) => c.kind !== "group" && c.other.server_user_id === targetServerUserId,
     );
     if (existing) {
       setSelectedDmId(existing.conversation_id);
@@ -228,7 +232,9 @@ export const ServerView = () => {
   useEffect(() => {
     const target = pendingDmTargetRef.current;
     if (!target) return;
-    const match = directConversations.find((c) => c.other.server_user_id === target);
+    const match = directConversations.find(
+      (c) => c.kind !== "group" && c.other.server_user_id === target,
+    );
     if (!match) return;
     pendingDmTargetRef.current = null;
     setSelectedDmId(match.conversation_id);
