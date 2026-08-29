@@ -548,9 +548,9 @@
   integrity sha512-2T+YiP8ds8Z3dfkNd2GgaCQyknp0OPmxwC6yAwMsmRG8blGlakd7bdaEoeuUYnlXNgWt+Ssc5ZAE2r/4pMSqaA==
 
 "@gryt/theme@^0.9.0":
-  version "0.9.0"
-  resolved "https://registry.yarnpkg.com/@gryt/theme/-/theme-0.9.0.tgz#60966c2cd9e912b256a8214e36fdac733babd541"
-  integrity sha512-umFFR3zYqwswSSEX11FG4Meqwq2L+u0bY+XaQuX7kQhOlTIBwTpprrjXF1+DI4r8+dwOoiyx6F/6rhYIQgkucg==
+  version "0.9.1"
+  resolved "https://registry.yarnpkg.com/@gryt/theme/-/theme-0.9.1.tgz#5af05dbe871bdb8bb8b34ad847e95f075fcc7888"
+  integrity sha512-/0R9Q06asYWhIJmZdpqeLqm3sJMCTiZPepaSJNldUO7Y0Lsd85iymCk8pxY9/XkalBk+Ei8IND7kqJh+JO1xPw==
 
 "@gryt/ui@^0.24.0":
   version "0.24.0"
