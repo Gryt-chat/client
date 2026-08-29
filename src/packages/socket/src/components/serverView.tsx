@@ -1,5 +1,5 @@
 import { useSFU } from "@gryt/voice";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useAccount, useUnreadTracker } from "@/common";
 import { useIsCompact, useIsMobile } from "@/mobile";
@@ -19,6 +19,7 @@ import { useFakeSpeech } from "../dev/fakeSpeech";
 import { useAdminActions } from "../hooks/useAdminActions";
 import { useChannelSettings, useHandleChannelClick } from "../hooks/useChannelSettings";
 import { useChat } from "../hooks/useChat";
+import { useDirectMessages } from "../hooks/useDirectMessages";
 import { useLatencyReporting } from "../hooks/useLatencyReporting";
 import { usePeerLatency } from "../hooks/usePeerLatency";
 import { useServerPermissions } from "../hooks/usePermissions";
@@ -68,6 +69,7 @@ export const ServerView = () => {
   const {
     clientsSpeaking, voiceWidth,
     selectedChannelId, setSelectedChannelId,
+    selectedDmId, setSelectedDmId,
     handleVoiceDisconnect, setPendingChannelId, currentChannelId,
     currentConnection, accessToken, activeConversationId, serverFailure, hasTimedOut,
     currentConnectionStatus, currentRefusalReason, currentRefusalHelpUrl, reconnectServer,
@@ -183,6 +185,64 @@ export const ServerView = () => {
     return () => window.removeEventListener("server_update_status", handler);
   }, [viewingHost]);
 
+  const { conversations: directConversations, openDm } = useDirectMessages({
+    socket: currentConnection,
+    accessToken,
+    isConnected: currentConnectionStatus === "connected",
+  });
+
+  /**
+   * Open a DM and read it.
+   *
+   * The server answers `dm:opened` whether it made one or found the existing
+   * one, so this waits for that rather than guessing the id — the id is
+   * derivable, but deriving it here would mean the client owning a rule the
+   * server also owns, and the two drifting is a bug nobody would see until a
+   * conversation opened empty.
+   */
+  const handleOpenDm = useCallback((targetServerUserId: string) => {
+    const existing = directConversations.find(
+      (c) => c.other.server_user_id === targetServerUserId,
+    );
+    if (existing) {
+      setSelectedDmId(existing.conversation_id);
+      return;
+    }
+    openDm(targetServerUserId);
+  }, [directConversations, openDm, setSelectedDmId]);
+
+  // A conversation opened from the member list is one somebody asked for, so it
+  // is opened for reading too. One that arrives because the other person
+  // started it is not — that would yank the view out from under them.
+  const pendingDmTargetRef = useRef<string | null>(null);
+  useEffect(() => {
+    const target = pendingDmTargetRef.current;
+    if (!target) return;
+    const match = directConversations.find((c) => c.other.server_user_id === target);
+    if (!match) return;
+    pendingDmTargetRef.current = null;
+    setSelectedDmId(match.conversation_id);
+  }, [directConversations, setSelectedDmId]);
+
+  const requestOpenDm = useCallback((targetServerUserId: string) => {
+    pendingDmTargetRef.current = targetServerUserId;
+    handleOpenDm(targetServerUserId);
+  }, [handleOpenDm]);
+
+  const handleSelectDm = useCallback((conversation: { conversation_id: string }) => {
+    setSelectedDmId(conversation.conversation_id);
+  }, [setSelectedDmId]);
+
+  // The conversation being read, when it is a DM rather than a channel. The
+  // chat header and the empty state both need the other person's name, and
+  // `useChat` only knows how to look up channels.
+  const activeDm = useMemo(
+    () => (selectedDmId
+      ? directConversations.find((c) => c.conversation_id === selectedDmId)
+      : undefined),
+    [selectedDmId, directConversations],
+  );
+
   const handleChannelClick = useHandleChannelClick({
     currentlyViewingServer, isConnected, currentServerConnected,
     currentChannelId, selectedChannelId, isConnecting,
@@ -191,6 +251,14 @@ export const ServerView = () => {
     setSettingsTab, setShowSettings, setLastSelectedChannelForServer,
     connect, applyChannelSettings, setIsMuted, setIsDeafened,
   });
+
+  // Picking a channel closes whatever DM was open. Without this the DM would
+  // stay the active conversation and the channel would look selected while
+  // showing somebody else's messages.
+  const handleChannelClickAndCloseDm = useCallback((channel: Parameters<typeof handleChannelClick>[0]) => {
+    setSelectedDmId(null);
+    handleChannelClick(channel);
+  }, [handleChannelClick, setSelectedDmId]);
 
   const currentAdminActions = useMemo(() => {
     // One handler per permission, rather than one bundle per role name. This
@@ -347,7 +415,10 @@ export const ServerView = () => {
             isConnecting={isConnecting}
             currentConnectionId={currentConnection?.id}
             selectedChannelId={selectedChannelId}
-            onChannelClick={handleChannelClick}
+            onChannelClick={handleChannelClickAndCloseDm}
+            directConversations={directConversations}
+            selectedDmId={selectedDmId}
+            onSelectDm={handleSelectDm}
             clientsSpeaking={voiceClientsSpeaking}
             canManage={canManage}
             onEditItem={handleEditItem}
@@ -364,8 +435,9 @@ export const ServerView = () => {
             sendChat={sendChat}
             editMessage={editMessage}
             currentUserId={currentServerUserId}
-            channelName={activeChannelName}
+            channelName={activeDm ? activeDm.other.nickname : activeChannelName}
             channelType={activeChannelType}
+            conversationKind={activeDm ? "dm" : "channel"}
             currentUserNickname={serverNickname}
             socketConnection={currentConnection}
             memberList={memberListMap}
@@ -422,7 +494,10 @@ export const ServerView = () => {
               isConnecting={isConnecting}
               currentConnectionId={currentConnection?.id}
               selectedChannelId={selectedChannelId}
-              onChannelClick={handleChannelClick}
+              onChannelClick={handleChannelClickAndCloseDm}
+            directConversations={directConversations}
+            selectedDmId={selectedDmId}
+            onSelectDm={handleSelectDm}
               clientsSpeaking={voiceClientsSpeaking}
               canManage={canManage}
               onEditItem={handleEditItem}
@@ -500,8 +575,10 @@ export const ServerView = () => {
                   sendChat={sendChat}
                   editMessage={editMessage}
                   currentUserId={currentServerUserId}
-                  channelName={activeChannelName}
+                  channelName={activeDm ? activeDm.other.nickname : activeChannelName}
                   channelType={activeChannelType}
+                  conversationKind={activeDm ? "dm" : "channel"}
+                  serverName={serverName}
                   currentUserNickname={serverNickname}
                   socketConnection={currentConnection}
                   serverHost={host}
@@ -539,6 +616,7 @@ export const ServerView = () => {
               currentServerConnected={currentServerConnected}
               serverHost={host}
               adminActions={currentAdminActions}
+              onOpenDm={requestOpenDm}
               pinned={pinMembersSidebar}
               onTogglePinned={() => setPinMembersSidebar(!pinMembersSidebar)}
             />

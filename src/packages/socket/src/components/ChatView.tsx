@@ -39,6 +39,8 @@ export const ChatView = memo(({
   memberList,
   channelName,
   channelType,
+  conversationKind = "channel",
+  serverName,
   isRateLimited,
   rateLimitCountdown,
   canViewVoiceChannelText,
@@ -64,6 +66,9 @@ export const ChatView = memo(({
   memberList?: Record<string, MemberInfo>;
   channelName?: string;
   channelType?: "text" | "voice";
+  /** A direct message reads differently: no `#`, and its own empty state. */
+  conversationKind?: "channel" | "dm";
+  serverName?: string;
   isRateLimited?: boolean;
   rateLimitCountdown?: number;
   canViewVoiceChannelText?: boolean;
@@ -251,7 +256,9 @@ export const ChatView = memo(({
         : isRateLimited && rateLimitCountdown
           ? `Please wait ${rateLimitCountdown} seconds...`
           : channelName
-            ? `Message #${channelName}`
+            ? conversationKind === "dm"
+              ? `Message ${channelName}`
+              : `Message #${channelName}`
             : "Chat with your friends!";
 
   const editorDisabled = (!canViewVoiceChannelText && isVoiceChannelTextChat) || !maySend || !mayRead;
@@ -284,7 +291,7 @@ export const ChatView = memo(({
         <div className="flex h-full w-full flex-col p-3">
           {channelName && (
             <div className="flex items-center gap-2" style={{ marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid var(--gryt-neutral-6)" }}>
-              {channelType === "voice" ? <PiSpeakerHighFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : <PiChatCircleFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} />}
+              {channelType === "voice" && conversationKind === "channel" ? <PiSpeakerHighFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : <PiChatCircleFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} />}
               <span className="text-lg font-bold" style={{ color: "var(--gryt-neutral-12)" }}>
                 <EmojiText text={channelName} />
               </span>
@@ -311,7 +318,7 @@ export const ChatView = memo(({
             </div>
           ) : chatMessages.length === 0 ? (
             <div className="flex grow items-center justify-center" style={{ paddingBottom: "16px" }}>
-              <WelcomeMessage channelName={channelName} channelType={channelType} />
+              <WelcomeMessage channelName={channelName} channelType={channelType} conversationKind={conversationKind} serverName={serverName} />
             </div>
           ) : showMessages ? (
             <div

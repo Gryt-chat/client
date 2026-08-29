@@ -114,7 +114,17 @@ const ChannelIcon = ({ type, size }: { type: "text" | "voice"; size: number }) =
  * interaction: the existing composer remains the single primary action
  * pre-emit critique: P5 H5 E5 S5 R5 V5
  */
-export const WelcomeMessage = ({ channelName, channelType = "text" }: { channelName?: string; channelType?: "text" | "voice" }) => (
+export const WelcomeMessage = ({
+  channelName,
+  channelType = "text",
+  conversationKind = "channel",
+  serverName,
+}: {
+  channelName?: string;
+  channelType?: "text" | "voice";
+  conversationKind?: "channel" | "dm";
+  serverName?: string;
+}) => (
   <div className="flex w-full max-w-xl flex-col px-6 py-12 sm:px-8">
     <div className="flex items-start gap-4 sm:items-center sm:gap-6">
       <div
@@ -127,7 +137,7 @@ export const WelcomeMessage = ({ channelName, channelType = "text" }: { channelN
         }}
         aria-hidden="true"
       >
-        <ChannelIcon type={channelType} size={22} />
+        {conversationKind === "dm" ? <PiChatCircleFill size={22} /> : <ChannelIcon type={channelType} size={22} />}
       </div>
 
       <div className="min-w-0">
@@ -135,11 +145,21 @@ export const WelcomeMessage = ({ channelName, channelType = "text" }: { channelN
           className="text-3xl font-bold leading-none tracking-tight"
           style={{ color: "var(--gryt-neutral-12)", overflowWrap: "anywhere" }}
         >
-          {channelType === "text" && "#"}
-          <EmojiText text={channelName || "channel"} /> is open.
+          {conversationKind === "dm" ? (
+            <>
+              You and <EmojiText text={channelName || "them"} />.
+            </>
+          ) : (
+            <>
+              {channelType === "text" && "#"}
+              <EmojiText text={channelName || "channel"} /> is open.
+            </>
+          )}
         </h2>
         <p className="mt-2 text-lg text-gryt-muted" style={{ maxWidth: "45ch", lineHeight: 1.5 }}>
-          There&rsquo;s nothing to catch up on. Start wherever you like.
+          {conversationKind === "dm"
+            ? "Only the two of you can read this. Whoever runs the server can too."
+            : "There\u2019s nothing to catch up on. Start wherever you like."}
         </p>
       </div>
     </div>
@@ -149,7 +169,9 @@ export const WelcomeMessage = ({ channelName, channelType = "text" }: { channelN
       className="mt-4 text-xs text-gryt-muted sm:ml-16"
       style={{ maxWidth: "45ch", fontFamily: "var(--code-font-family)" }}
     >
-      The first message begins the history.
+      {conversationKind === "dm"
+        ? `This conversation is on ${serverName || "this server"}. Messaging them on another server starts a separate one.`
+        : "The first message begins the history."}
     </p>
   </div>
 );

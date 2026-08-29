@@ -48,6 +48,16 @@ type UseServerStateResult = {
   setVoiceWidth: Dispatch<SetStateAction<string>>;
   selectedChannelId: string | null;
   setSelectedChannelId: Dispatch<SetStateAction<string | null>>;
+  /**
+   * The direct message being read, if one is.
+   *
+   * Kept apart from `selectedChannelId` rather than folded into it. The effect
+   * below puts the selection back on a real channel whenever it is not one, so
+   * that a deleted channel does not leave the view pointing at nothing — a DM
+   * id stored there would be bounced out by that on the next render.
+   */
+  selectedDmId: string | null;
+  setSelectedDmId: Dispatch<SetStateAction<string | null>>;
   handleVoiceDisconnect: () => void;
   setPendingChannelId: Dispatch<SetStateAction<string | null>>;
   currentChannelId: string;
@@ -123,6 +133,7 @@ export function useServerState(): UseServerStateResult {
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(
     null
   );
+  const [selectedDmId, setSelectedDmId] = useState<string | null>(null);
 
   const shouldAccessMic = useMemo(
     () => isConnecting || isConnected,
@@ -154,7 +165,10 @@ export function useServerState(): UseServerStateResult {
     currentServerConnected
   );
 
-  const activeConversationId = selectedChannelId || currentChannelId || "";
+  // A DM wins while one is open. The channel selection is left where it was
+  // underneath, so closing the DM returns to the channel you were reading
+  // rather than to whichever one happens to sort first.
+  const activeConversationId = selectedDmId || selectedChannelId || currentChannelId || "";
 
   useEffect(() => {
     const host = currentlyViewingServer?.host;
@@ -245,10 +259,10 @@ export function useServerState(): UseServerStateResult {
   ]);
 
   useEffect(() => {
-    if (currentlyViewingServer && selectedChannelId) {
-      markChannelRead(currentlyViewingServer.host, selectedChannelId);
-    }
-  }, [currentlyViewingServer, selectedChannelId]);
+    if (!currentlyViewingServer) return;
+    const opened = selectedDmId || selectedChannelId;
+    if (opened) markChannelRead(currentlyViewingServer.host, opened);
+  }, [currentlyViewingServer, selectedChannelId, selectedDmId]);
 
   useEffect(() => {
     if (!currentlyViewingServer || !selectedChannelId) return;
@@ -258,6 +272,13 @@ export function useServerState(): UseServerStateResult {
     const fallback = channels.find((c) => c.type === "text") || channels[0];
     setSelectedChannelId(fallback?.id ?? null);
   }, [currentlyViewingServer, serverDetailsList, selectedChannelId]);
+
+  // Conversations belong to the server they were opened on, so switching
+  // servers closes the one being read. Without this the id would survive the
+  // switch and be asked for on a server that has never heard of it.
+  useEffect(() => {
+    setSelectedDmId(null);
+  }, [currentlyViewingServer?.host]);
 
   useEffect(() => {
     // Only ever the fixed sidebar width or closed — the panel is no longer
@@ -511,6 +532,8 @@ export function useServerState(): UseServerStateResult {
     setVoiceWidth,
     selectedChannelId,
     setSelectedChannelId,
+    selectedDmId,
+    setSelectedDmId,
     handleVoiceDisconnect,
     setPendingChannelId,
     currentChannelId,

@@ -78,6 +78,13 @@ interface MemberSidebarProps {
   currentServerConnected: string | null;
   serverHost: string;
   adminActions?: AdminActions;
+  /**
+   * Open a direct message with a member of this server.
+   *
+   * Not part of `adminActions`: anybody may message anybody here, and the
+   * server decides whether they may rather than the menu guessing.
+   */
+  onOpenDm?: (targetServerUserId: string) => void;
   pinned?: boolean;
   onTogglePinned?: () => void;
 }
@@ -89,12 +96,14 @@ const MemberItem = ({
   currentUserRole,
   serverHost,
   adminActions,
+  onOpenDm,
 }: {
   member: MemberInfo;
   currentServerUserId?: string;
   currentUserRole?: Role;
   serverHost: string;
   adminActions?: AdminActions;
+  onOpenDm?: (targetServerUserId: string) => void;
 }) => {
   const isSelf = member.serverUserId === currentServerUserId;
   const { label: statusLabel, color: statusColor } = statusConfig[member.status];
@@ -118,6 +127,7 @@ const MemberItem = ({
       onServerMute={adminActions?.onServerMuteUser ? (muted) => adminActions.onServerMuteUser!(member.serverUserId, muted) : undefined}
       onServerDeafen={adminActions?.onServerDeafenUser ? (deafened) => adminActions.onServerDeafenUser!(member.serverUserId, deafened) : undefined}
       onChangeRole={adminActions?.onChangeRole ? (role) => adminActions.onChangeRole!(member.serverUserId, role) : undefined}
+      onOpenDm={onOpenDm && !isSelf ? () => onOpenDm(member.serverUserId) : undefined}
     >
       <PreviewCard.Root>
         <PreviewCard.Trigger>
@@ -178,6 +188,7 @@ export const MemberSidebar = ({
   currentUserRole,
   serverHost,
   adminActions,
+  onOpenDm,
   pinned,
   onTogglePinned,
 }: MemberSidebarProps) => {
@@ -222,6 +233,7 @@ export const MemberSidebar = ({
               currentUserRole={currentUserRole}
               serverHost={serverHost}
               adminActions={adminActions}
+              onOpenDm={onOpenDm}
             />
           ))}
         </div>
