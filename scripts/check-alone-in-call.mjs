@@ -70,3 +70,61 @@ assert.equal(
 console.log(
   `alone-in-call: quiet for ${ALONE_SECONDS - WARN_SECONDS}s, counts ${WARN_SECONDS} down to 0, ends on 0, never goes negative`,
 );
+
+/* ── The SFU's number, when it sent one (GRYT-715) ───────────────────────── */
+
+/**
+ * `ALONE_SECONDS` is now the fallback rather than the timeout. An SFU that
+ * carries GRYT-715 sends its own in `room_joined`, and an operator who raised
+ * `SFU_CALL_ALONE_TIMEOUT` used to get a client that hung up early on a call
+ * the SFU was still keeping.
+ */
+const FIVE_MINUTES = 300;
+
+assert.equal(
+  callCountdown(FIVE_MINUTES - WARN_SECONDS - 1, FIVE_MINUTES).secondsLeft,
+  null,
+  "the window opens relative to the SFU's timeout, not to the fallback",
+);
+assert.equal(
+  callCountdown(FIVE_MINUTES - WARN_SECONDS, FIVE_MINUTES).secondsLeft,
+  WARN_SECONDS,
+  `a five-minute SFU has to open its notice at ${WARN_SECONDS}s left`,
+);
+assert.deepEqual(
+  callCountdown(FIVE_MINUTES, FIVE_MINUTES),
+  { secondsLeft: 0, ended: true },
+  "and end on its own zero",
+);
+assert.equal(
+  callCountdown(ALONE_SECONDS, FIVE_MINUTES).ended,
+  false,
+  "two minutes into a five-minute timeout the call is not over — this is the operator who raised it",
+);
+
+/* ── And when the operator turned the sweep off ──────────────────────────── */
+
+/**
+ * `SFU_CALL_ALONE_TIMEOUT=0`. Nothing is counting on the other end, so nothing
+ * counts here. A client that hung up after two minutes anyway ended a call the
+ * SFU was happy to keep, for a reason nobody watching could see.
+ */
+for (const alone of [0, WARN_SECONDS, ALONE_SECONDS, ALONE_SECONDS * 10]) {
+  assert.deepEqual(
+    callCountdown(alone, 0),
+    { secondsLeft: null, ended: false },
+    `with the sweep off, ${alone}s alone must say nothing and end nothing`,
+  );
+}
+
+/* ── An SFU that said nothing falls back ─────────────────────────────────── */
+
+assert.deepEqual(
+  callCountdown(ALONE_SECONDS),
+  callCountdown(ALONE_SECONDS, ALONE_SECONDS),
+  "no timeout given has to behave exactly like the fallback given explicitly",
+);
+
+console.log(
+  `alone-in-call: the SFU's timeout drives it when it sends one, 0 turns it off, and ${ALONE_SECONDS} is the fallback`,
+);
