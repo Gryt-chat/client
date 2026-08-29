@@ -1,9 +1,11 @@
 import { MutableRefObject, useCallback, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 
+import { ServerErrorToast, serverIconSrc } from "@/common";
 import type { Channel } from "@/settings/src/types/server";
 
 import { useServerPermissions } from "./usePermissions";
+import { useSockets } from "./useSockets";
 
 interface UseChannelSettingsParams {
   inputMode: string;
@@ -100,6 +102,7 @@ function useHandleChannelClick({
   connect, applyChannelSettings, setIsMuted, setIsDeafened,
 }: UseHandleChannelClickParams) {
   const { can } = useServerPermissions(currentlyViewingServer?.host || "");
+  const { serverDetailsList } = useSockets();
 
   return useCallback((channel: Channel) => {
     if (!currentlyViewingServer) return;
@@ -109,7 +112,17 @@ function useHandleChannelClick({
         // reads as "you are not allowed in" rather than as whatever the media
         // stack says when the room grant never arrives.
         if (!can("join_voice")) {
-          toast.error("You do not have permission to join voice on this server.");
+          const host = currentlyViewingServer.host;
+          const name = currentlyViewingServer.name || host;
+          toast.error(
+            <ServerErrorToast
+                iconSrc={serverIconSrc(host, name, serverDetailsList)}
+                seed={name}
+                serverName={name}
+                channelName={channel.name}
+                message="You do not have permission to join voice here."
+              />,
+          );
           return;
         }
 
@@ -142,16 +155,33 @@ function useHandleChannelClick({
         setIsDeafened(false);
         connect(channel.id, channel.eSportsMode, channel.maxBitrate).catch((error) => {
           console.error("SFU connection failed:", error);
+
+          // The microphone one is about this device rather than about the
+          // server, so it stays a plain string and sends you where the fix is.
           if (error instanceof Error && error.message.includes("Microphone not available")) {
             setPendingChannelId(channel.id);
             setSettingsTab("audio");
             setShowSettings(true);
             toast.error("No microphone selected. Please choose a device in Settings → Audio.");
-          } else if (error instanceof Error) {
-            toast.error(error.message);
-          } else {
-            toast.error("Failed to connect to voice channel");
+            return;
           }
+
+          // Everything else is about a channel on a server, and saying which is
+          // the difference between a report somebody can act on and "voice
+          // broke". See ServerErrorToast.
+          const host = currentlyViewingServer.host;
+          const name = currentlyViewingServer.name || host;
+          toast.error(
+            <ServerErrorToast
+                iconSrc={serverIconSrc(host, name, serverDetailsList)}
+                seed={name}
+                serverName={name}
+                channelName={channel.name}
+                message={
+                  error instanceof Error ? error.message : "Could not join this voice channel."
+                }
+              />,
+          );
         });
         break;
       }
@@ -168,7 +198,7 @@ function useHandleChannelClick({
     showVoiceView, mediaAutoShownRef,
     setSelectedChannelId, setShowVoiceView, setPendingChannelId,
     setSettingsTab, setShowSettings, setLastSelectedChannelForServer,
-    connect, applyChannelSettings, setIsMuted, setIsDeafened, can,
+    connect, applyChannelSettings, setIsMuted, setIsDeafened, can, serverDetailsList,
   ]);
 }
 

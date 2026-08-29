@@ -6,10 +6,9 @@ import { PiBroadcastFill, PiBugFill, PiChatCircleDotsFill, PiGearFill, PiMicroph
 
 import {
   GeneratedServerIcon,
-  generatedServerIconUrl,
-  getServerHttpBase,
   normalizeHost,
   resolveAvatarSrc,
+  serverIconSrc,
   useAccount,
   useUnreadTracker,
 } from "@/common";
@@ -30,34 +29,6 @@ import { MiniControls } from "@/webRTC/src/components/miniControls";
 import { useIdentityClaim } from "../hooks/useIdentityClaim";
 import { useReportForm } from "../lib/reports/useReportForm";
 
-
-/**
- * Where to point a server's icon.
- *
- * Three cases, and the middle one is the reason this is a function. Once the
- * server has told us it has no icon, asking for one anyway means the browser
- * can answer from cache — and clearing an icon then leaves the old one on
- * screen until that entry expires, which reads as the server still serving it.
- * Knowing there is none, we draw the generated one and make no request at all.
- *
- * Before details arrive we do not know either way, so we ask and let the
- * Avatar's fallback handle a 404.
- */
-function serverIconSrc(
-  host: string,
-  name: string,
-  serverDetailsList: ServerDetailsListType,
-): string {
-  const info = serverDetailsList[host]?.server_info;
-  if (info?.icon_url) {
-    return `${getServerHttpBase(host)}/icon?v=${encodeURIComponent(info.icon_url)}`;
-  }
-  // The server's own name first: it is the one the server reports, so a rename
-  // reaches the rail as soon as details refresh. The locally stored name is
-  // what we had before it answered.
-  if (info) return generatedServerIconUrl(info.name || name || host);
-  return `${getServerHttpBase(host)}/icon`;
-}
 
 interface SidebarProps {
   setShowAddServer: (show: boolean) => void;

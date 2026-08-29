@@ -12,6 +12,7 @@ export * from "./src/auth/server-pins";
 export * from "./src/auth/session-expired";
 export * from "./src/components/GeneratedServerIcon";
 export * from "./src/components/logo";
+export * from "./src/components/ServerErrorToast";
 export * from "./src/components/wordmark";
 export * from "./src/hooks/singletonHook";
 export * from "./src/hooks/SingletonHooks";
