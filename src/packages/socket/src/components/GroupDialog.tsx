@@ -3,7 +3,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
 import {
-  GeneratedServerIcon,
   getServerAccessToken,
   getServerHttpBase,
   getUploadsFileUrl,
@@ -179,8 +178,8 @@ export const GroupDialog = ({
             <div className="flex flex-col items-center gap-1">
               <Avatar
                 size="large"
-                className="h-20 w-20 text-2xl"
-                fallback={<GeneratedServerIcon seed={previewSeed} />}
+                className="h-20 w-20 rounded-(--gryt-radius-md) text-2xl"
+                eggSeed={previewSeed}
                 src={shownIcon ? getUploadsFileUrl(serverHost, shownIcon, { thumb: true }) : undefined}
               />
 

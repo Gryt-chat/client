@@ -1,6 +1,6 @@
 import { Avatar, Button, ContextMenu } from "@gryt/ui";
 
-import { GeneratedServerIcon, getUploadsFileUrl, resolveAvatarSrc } from "@/common";
+import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 
 import { conversationTitle, type DirectConversation } from "../hooks/useDirectMessages";
 import { EmojiText } from "./EmojiText";
@@ -86,10 +86,11 @@ export const DirectMessageList = ({
                 {conversation.kind === "group" ? (
                   <Avatar
                     size="small"
-                    /* Seeded on the name, so renaming a group redraws it. The
-                       generator behind this is the one server icons use — when
-                       that changes, groups follow without a change here. */
-                    fallback={<GeneratedServerIcon seed={conversationTitle(conversation)} />}
+                    className="rounded-(--gryt-radius-md)"
+                    /* Eggs, seeded on the name, so renaming a group redraws it.
+                       A square corner rather than a circle because a circle is
+                       a person everywhere else in this list. */
+                    eggSeed={conversationTitle(conversation)}
                     src={
                       conversation.icon_file_id
                         ? getUploadsFileUrl(serverHost, conversation.icon_file_id, { thumb: true })
