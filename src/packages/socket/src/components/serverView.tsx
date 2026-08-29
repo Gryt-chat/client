@@ -17,6 +17,7 @@ import {
   withFakeMembers,
   withFakeParticipants,
 } from "../dev/fakeParticipants";
+import { readFakeCallOptions, useFakeCallEvents } from "../dev/fakeServerEvents";
 import { useFakeSpeech } from "../dev/fakeSpeech";
 import { useAdminActions } from "../hooks/useAdminActions";
 import { useCalls } from "../hooks/useCalls";
@@ -52,6 +53,14 @@ import { VoiceView } from "./VoiceView";
 const fakeParticipantOptionsFromUrl = readFakeParticipantOptions(
   window.location.search,
 );
+
+/**
+ * The call fixtures, which start before the socket handler rather than after
+ * it. `?fakering=1` rings the open conversation; `?fakepeer=1` puts somebody
+ * in the call; `?fakepeer=1&fakecallmembers=0` reproduces the bug where a call
+ * drew nobody. See `dev/fakeServerEvents.ts`.
+ */
+const fakeCallOptionsFromUrl = readFakeCallOptions(window.location.search);
 
 export const ServerView = () => {
   const isMobile = useIsMobile();
@@ -266,6 +275,8 @@ export const ServerView = () => {
    * The conversation is opened for reading too. Somebody who just answered is
    * looking at that conversation whatever else was on screen.
    */
+  useFakeCallEvents(currentConnection, selectedDmId, fakeCallOptionsFromUrl);
+
   const handleAcceptCall = useCallback(() => {
     const call = acceptCall();
     if (!call) return;

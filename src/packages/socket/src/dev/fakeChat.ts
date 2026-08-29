@@ -32,11 +32,7 @@
 import { useEffect, useRef } from "react";
 
 import type { ChatMessage } from "../components/chatUtils";
-
-/** Enough of a socket to deliver to, without depending on socket.io's types. */
-interface ListenerSource {
-  listeners: (event: string) => Array<(...args: unknown[]) => void>;
-}
+import { deliverServerEvent, type ListenerSource } from "./fakeServerEvents";
 
 export interface FakeChatSender {
   serverUserId: string;
@@ -204,15 +200,7 @@ export function useFakeChat({
     let sent: ChatMessage[] = [];
 
     const deliver = (event: string, message: ChatMessage) => {
-      const listeners = latest.current.connection?.listeners(event) ?? [];
-      for (const listener of listeners) {
-        try {
-          listener(message);
-        } catch {
-          // A listener that throws is the app's problem to show, not this
-          // fixture's to swallow the rest of the batch over.
-        }
-      }
+      deliverServerEvent(latest.current.connection, event, message);
     };
 
     /** Returns what was said, so the next gap can be sized from it. */
