@@ -41,6 +41,7 @@
     "test:narrow-layout": "node scripts/check-narrow-layout.mjs",
     "test:call-controls": "node scripts/check-call-controls.mjs",
     "test:embedded-server-paths": "node scripts/check-embedded-server-paths.mjs",
+    "test:embedded-version": "node scripts/check-embedded-version.mjs",
     "preview": "vite preview",
     "build:native": "node -e \"const{execSync:r}=require('child_process');if(process.platform==='win32'){r('native\\\\build.bat',{stdio:'inherit'})}else{r('bash native/audio-capture/build.sh',{stdio:'inherit'})}\"",
     "electron:dev": "npm run embedded-server:ensure && cross-env ELECTRON=1 vite --host",

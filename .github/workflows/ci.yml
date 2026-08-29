@@ -37,6 +37,7 @@ jobs:
       - run: yarn test:narrow-layout
       - run: yarn test:call-controls
       - run: yarn test:embedded-server-paths
+      - run: yarn test:embedded-version
       - run: yarn test:voice-state
       - run: yarn test:media-state
       - run: yarn test:calls
