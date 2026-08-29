@@ -438,7 +438,6 @@ export const ServerView = () => {
             channelName={activeDm ? activeDm.other.nickname : activeChannelName}
             channelType={activeChannelType}
             conversationKind={activeDm ? "dm" : "channel"}
-            serverName={serverName}
             currentUserNickname={serverNickname}
             socketConnection={currentConnection}
             memberList={memberListMap}
