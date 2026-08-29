@@ -388,6 +388,10 @@ export const ServerView = () => {
   const canManage = viewerPermissions.can("manage_channels");
   const canDisconnectFromVoice = viewerPermissions.can("disconnect_members");
   const canViewMembers = viewerPermissions.can("view_members");
+  // Same gate the server puts on `dm:group:create`. An existing
+  // conversation stays readable when the permission goes away — only
+  // starting a new one is refused.
+  const canStartDm = viewerPermissions.can("send_direct_messages");
   const hostChannels = serverDetails.channels || [];
 
   const { clients: hostClients, videoStreams: voiceVideoStreams } =
@@ -469,7 +473,7 @@ export const ServerView = () => {
             channelType={activeChannelType}
             conversationKind={activeDm ? "dm" : "channel"}
             headerAction={
-              activeDm && activeDm.kind === "dm" ? (
+              activeDm && activeDm.kind === "dm" && canStartDm ? (
                 <Button size="small" tone="ghost" onClick={() => setGroupDialog([activeDm.other.server_user_id])}>
                   New group
                 </Button>
@@ -618,7 +622,7 @@ export const ServerView = () => {
                   channelType={activeChannelType}
                   conversationKind={activeDm ? "dm" : "channel"}
                   headerAction={
-                    activeDm && activeDm.kind === "dm" ? (
+                    activeDm && activeDm.kind === "dm" && canStartDm ? (
                       <Button size="small" tone="ghost" onClick={() => setGroupDialog([activeDm.other.server_user_id])}>
                         New group
                       </Button>
