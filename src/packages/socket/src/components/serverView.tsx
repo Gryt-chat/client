@@ -362,11 +362,21 @@ export const ServerView = () => {
    * progress and starting one are the same act — the room is the room — and the
    * server refuses a second ring while the first is going, so pressing it
    * during a ring says so rather than doing something surprising.
+   *
+   * Offered at all only with `start_calls` (GRYT-712), which a server owner can
+   * take off a role to say who may place a call. It is not the permission for
+   * answering one — that is `join_voice` — so somebody without this still gets
+   * rung and can still pick up. The button is what goes.
+   *
+   * `can` reads a permission its server has never heard of as held rather than
+   * withheld, so this does not take the button away on a server older than the
+   * permission.
    */
   const dmHeaderActions = useMemo(() => {
     if (!activeDm || !viewerPermissions.can("send_direct_messages")) return undefined;
     const conversationId = activeDm.conversation_id;
     const ringing = outgoingCall?.conversation_id === conversationId;
+    const mayCall = viewerPermissions.can("start_calls");
 
     /**
      * Ringing and joining are one act.
@@ -396,13 +406,15 @@ export const ServerView = () => {
 
     return (
       <div className="flex items-center gap-1">
-        <Button
-          size="small"
-          tone={ringing ? "primary" : "ghost"}
-          onClick={() => (ringing ? stopCall() : startCall())}
-        >
-          {ringing ? "Cancel" : "Call"}
-        </Button>
+        {mayCall ? (
+          <Button
+            size="small"
+            tone={ringing ? "primary" : "ghost"}
+            onClick={() => (ringing ? stopCall() : startCall())}
+          >
+            {ringing ? "Cancel" : "Call"}
+          </Button>
+        ) : null}
         {activeDm.kind === "dm" ? (
           <Button size="small" tone="ghost" onClick={() => setGroupDialog([activeDm.other.server_user_id])}>
             New group

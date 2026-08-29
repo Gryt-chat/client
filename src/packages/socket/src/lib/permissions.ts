@@ -71,6 +71,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       { id: "delete_own_messages", label: "Delete own messages", description: "Take back something they posted." },
       { id: "attach_files", label: "Attach files", description: "Upload images and files with a message." },
       { id: "add_reactions", label: "Add reactions", description: "React to somebody else's message." },
+      { id: "send_direct_messages", label: "Send direct messages", description: "Open a conversation with another member, and post in one. Reading one they are already in is not gated on this." },
       { id: "report_messages", label: "Report messages", description: "Put a message in front of the moderators." },
       { id: "use_link_previews", label: "See link previews", description: "Have links in the channel unfurled. Off means plain links." },
     ],
@@ -83,6 +84,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       { id: "speak", label: "Speak", description: "Be unmuted once in. Without it, they can listen." },
       { id: "share_video", label: "Share video", description: "Turn a camera on." },
       { id: "share_screen", label: "Share screen", description: "Start a screen share." },
+      { id: "start_calls", label: "Start calls", description: "Ring somebody in a direct message. Answering one is Join voice, so a role without this can still be called." },
     ],
   },
   {
