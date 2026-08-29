@@ -25,6 +25,7 @@ import { useChannelSettings, useHandleChannelClick } from "../hooks/useChannelSe
 import { useChat } from "../hooks/useChat";
 import { conversationTitle, type DirectConversation,useDirectMessages } from "../hooks/useDirectMessages";
 import { useLatencyReporting } from "../hooks/useLatencyReporting";
+import { useIsTinyWindow, useRoomForMemberList, useRoomForVoicePanel } from "../hooks/useNarrowWindow";
 import { usePeerLatency } from "../hooks/usePeerLatency";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { useServerManagement } from "../hooks/useServerManagement";
@@ -65,6 +66,7 @@ const fakeCallOptionsFromUrl = readFakeCallOptions(window.location.search);
 export const ServerView = () => {
   const isMobile = useIsMobile();
   const isCompact = useIsCompact();
+  const isTiny = useIsTinyWindow();
   const {
     showVoiceView, setShowVoiceView, nickname, setShowSettings, setSettingsTab,
     inputMode, setInputMode, rnnoiseEnabled, setRnnoiseEnabled,
@@ -116,15 +118,30 @@ export const ServerView = () => {
    */
   const chatTakenOver = voiceFocused && focusedChatHidden;
 
+  /*
+   * What the voice panel is actually taking out of the row, which is what the
+   * member list has to be measured against.
+   *
+   * Zero in three cases, and all three matter: no call, the panel minimized,
+   * and the panel maximized — the last one hides the chat entirely, so the
+   * member list is not competing with anything.
+   */
+  const drawnVoicePanelWidth =
+    showVoiceView && voiceWidth !== "0px" && !isMaximized && !chatTakenOver
+      ? shownVoiceWidth
+      : 0;
+  const roomForMembers = useRoomForMemberList(drawnVoicePanelWidth);
+  const roomForVoice = useRoomForVoicePanel();
+
   const {
     leftSidebarOpen, rightSidebarOpen,
     leftSidebarContentRef, rightSidebarContentRef,
     openLeftSidebar, closeLeftSidebar, openRightSidebar, closeRightSidebar,
-  } = useSidebarHover({ pinChannelsSidebar, pinMembersSidebar, isDraggingResize: false, isCompact });
+  } = useSidebarHover({ pinChannelsSidebar, pinMembersSidebar, isDraggingResize: false, isCompact, roomForMembers });
 
   const serverClients = currentlyViewingServer ? clients[currentlyViewingServer.host] : undefined;
   const { mediaAutoShownRef } = useMediaAutoShow({
-    showVoiceView, setShowVoiceView, isCompact, isConnected,
+    showVoiceView, setShowVoiceView, isCompact, roomForVoice, isConnected,
     currentChannelId, serverClients,
   });
 
@@ -571,13 +588,71 @@ export const ServerView = () => {
     window.dispatchEvent(new CustomEvent("server_settings_open", { detail: { host } }));
   };
 
+  /**
+   * The conversation, as one element used by two layouts.
+   *
+   * The tiny window renders this and nothing else, and it has to be the same
+   * chat with the same thirty props — a second copy is a second copy to keep in
+   * step, and the mobile layout already shows what that costs.
+   */
+  const chatView = (
+      <ChatView
+        chatMessages={chatMessages}
+        conversationKey={activeConversationId}
+        canSend={canSend}
+        sendChat={sendChat}
+        editMessage={editMessage}
+        currentUserId={currentServerUserId}
+        channelName={activeDm ? conversationTitle(activeDm) : activeChannelName}
+        channelType={activeChannelType}
+        conversationKind={activeDm ? "dm" : "channel"}
+        headerAction={dmHeaderActions}
+        flush={isTiny}
+        serverName={serverName}
+        currentUserNickname={serverNickname}
+        socketConnection={currentConnection}
+        serverHost={host}
+        memberList={memberListMap}
+        isRateLimited={isRateLimited}
+        rateLimitCountdown={rateLimitCountdown}
+        canViewVoiceChannelText={canViewVoiceChannelText}
+        isVoiceChannelTextChat={isVoiceChannelTextChat}
+        restoreText={restoreText}
+        clearRestoreText={clearRestoreText}
+        canDeleteAny={viewerPermissions.can("manage_messages")}
+        maxFileSize={serverDetails.server_info?.upload_max_bytes}
+        onLoadOlder={fetchOlderMessages}
+        isLoadingOlder={isLoadingOlder}
+        hasOlderMessages={hasOlderMessages}
+        {...(isLoadingMessages !== undefined && { isLoadingMessages })}
+      />
+  );
+
   return (
     <>
       <div className="flex w-full h-full gap-4 flex-col" data-gryt="server-view">
         {isServerUnreachable && (
           <ConnectionBanner connectionStatus={currentConnectionStatus} onReconnect={() => reconnectServer(host)} />
         )}
-        {isMobile ? (
+        {isTiny ? (
+          /*
+           * One channel, and nothing else.
+           *
+           * No rail, no channel list, no member list, no voice panel and no
+           * page padding — `MainApp` drops those when the window is this size.
+           * What is left is the conversation you were already in, filling the
+           * window.
+           *
+           * There is deliberately no way to change channel from here. The way
+           * out is to make the window bigger, which is also the only gesture
+           * that makes sense for a window somebody shrank on purpose to watch
+           * one channel. `useIsTinyWindow` is gated on a fine pointer so a
+           * phone never reaches this, where that would be a dead end.
+           */
+          <div className="flex" style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+            {chatView}
+          </div>
+        ) : isMobile ? (
           <MobileServerView
             serverName={serverName}
             serverRole={currentUserRole}
@@ -759,35 +834,7 @@ export const ServerView = () => {
                 ...(isVoiceOnThisServer && isServerUnreachable && { opacity: 0.5, pointerEvents: "none" as const }),
                 transition: "opacity 0.3s ease",
               }}>
-                <ChatView
-                  chatMessages={chatMessages}
-                  conversationKey={activeConversationId}
-                  canSend={canSend}
-                  sendChat={sendChat}
-                  editMessage={editMessage}
-                  currentUserId={currentServerUserId}
-                  channelName={activeDm ? conversationTitle(activeDm) : activeChannelName}
-                  channelType={activeChannelType}
-                  conversationKind={activeDm ? "dm" : "channel"}
-                  headerAction={dmHeaderActions}
-                  serverName={serverName}
-                  currentUserNickname={serverNickname}
-                  socketConnection={currentConnection}
-                  serverHost={host}
-                  memberList={memberListMap}
-                  isRateLimited={isRateLimited}
-                  rateLimitCountdown={rateLimitCountdown}
-                  canViewVoiceChannelText={canViewVoiceChannelText}
-                  isVoiceChannelTextChat={isVoiceChannelTextChat}
-                  restoreText={restoreText}
-                  clearRestoreText={clearRestoreText}
-                  canDeleteAny={viewerPermissions.can("manage_messages")}
-                  maxFileSize={serverDetails.server_info?.upload_max_bytes}
-                  onLoadOlder={fetchOlderMessages}
-                  isLoadingOlder={isLoadingOlder}
-                  hasOlderMessages={hasOlderMessages}
-                  {...(isLoadingMessages !== undefined && { isLoadingMessages })}
-                />
+                {chatView}
               </div>
             </div>
             <MemberSidebarPanel

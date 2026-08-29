@@ -15,25 +15,40 @@ interface UseMediaAutoShowParams {
   showVoiceView: boolean;
   setShowVoiceView: (v: boolean) => void;
   isCompact: boolean;
+  /** Whether the window can hold the panel beside a channel list and a chat. */
+  roomForVoice: boolean;
   isConnected: boolean;
   currentChannelId: string;
   serverClients: Record<string, { voiceChannelId?: string; screenShareEnabled?: boolean; cameraEnabled?: boolean }> | undefined;
 }
 
 function useMediaAutoShow({
-  showVoiceView, setShowVoiceView, isCompact, isConnected,
+  showVoiceView, setShowVoiceView, isCompact, roomForVoice, isConnected,
   currentChannelId, serverClients,
 }: UseMediaAutoShowParams) {
+  /*
+   * The panel gets out of the way when the window cannot hold it, and comes
+   * back when it can.
+   *
+   * `isCompact` alone was not enough. It is 1024, and the row needs 1136 for a
+   * rail, a channel list, the 600px panel and a chat at its 200px minimum —
+   * so between those two the panel stayed at 600, the chat was squeezed under
+   * its own minimum (measured at 118px in a 1030px window) and the row ran
+   * past the right edge of the window. The clamp inside `useVoiceLayout`
+   * cannot catch that: it measures a container that has already grown to hold
+   * the panel.
+   */
+  const tooNarrow = isCompact || !roomForVoice;
   const compactAutoHiddenRef = useRef(false);
   useEffect(() => {
-    if (isCompact && showVoiceView) {
+    if (tooNarrow && showVoiceView) {
       compactAutoHiddenRef.current = true;
       setShowVoiceView(false);
-    } else if (!isCompact && compactAutoHiddenRef.current) {
+    } else if (!tooNarrow && compactAutoHiddenRef.current) {
       compactAutoHiddenRef.current = false;
       setShowVoiceView(true);
     }
-  }, [isCompact, setShowVoiceView, showVoiceView]);
+  }, [tooNarrow, setShowVoiceView, showVoiceView]);
 
   const mediaAutoShownRef = useRef(false);
   const prevAnyMediaActiveRef = useRef(false);
@@ -74,9 +89,14 @@ interface UseSidebarHoverParams {
   pinMembersSidebar: boolean;
   isDraggingResize: boolean;
   isCompact: boolean;
+  /**
+   * Whether the row can pay for the member list, which depends on the voice
+   * panel and not only on the window. See `lib/narrowLayout.ts`.
+   */
+  roomForMembers: boolean;
 }
 
-function useSidebarHover({ pinChannelsSidebar, pinMembersSidebar, isDraggingResize, isCompact }: UseSidebarHoverParams) {
+function useSidebarHover({ pinChannelsSidebar, pinMembersSidebar, isDraggingResize, isCompact, roomForMembers }: UseSidebarHoverParams) {
   const [hoverLeftSidebar, setHoverLeftSidebar] = useState(false);
   const [hoverRightSidebar, setHoverRightSidebar] = useState(false);
   const leftCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -86,7 +106,17 @@ function useSidebarHover({ pinChannelsSidebar, pinMembersSidebar, isDraggingResi
   const rightSidebarContentRef = useRef<HTMLDivElement>(null);
 
   const leftSidebarOpen = (!isCompact && pinChannelsSidebar) || hoverLeftSidebar;
-  const rightSidebarOpen = (!isCompact && pinMembersSidebar) || hoverRightSidebar;
+
+  /*
+   * Hovering is gated too, not just the pin.
+   *
+   * The left sidebar can be opened at any width because the chat gives way for
+   * it — `minWidth: 0` and it shrinks. The member panel is `flexShrink: 0` and
+   * sits after a voice panel that is a fixed 600, so when the row cannot pay
+   * for it, opening it on hover puts it through the right edge of the window
+   * exactly the way pinning it did. Same rule for both ways of opening it.
+   */
+  const rightSidebarOpen = roomForMembers && (pinMembersSidebar || hoverRightSidebar);
 
   const openLeftSidebar = useCallback(() => {
     if (leftCloseTimer.current) { clearTimeout(leftCloseTimer.current); leftCloseTimer.current = null; }
