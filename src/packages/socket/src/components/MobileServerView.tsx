@@ -61,6 +61,7 @@ interface MobileServerViewProps {
   directConversations?: DirectConversation[];
   selectedDmId?: string | null;
   onSelectDm?: (conversation: DirectConversation) => void;
+  onHideDm?: (conversation: DirectConversation) => void;
 
   // ChatView
   chatMessages: ChatMessage[];
@@ -258,6 +259,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
               directConversations={props.directConversations}
               selectedDmId={props.selectedDmId}
               onSelectDm={props.onSelectDm}
+              onHideDm={props.onHideDm}
             />
           </div>
         </div>

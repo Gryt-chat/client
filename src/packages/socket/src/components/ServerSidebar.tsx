@@ -59,6 +59,7 @@ interface ServerSidebarProps {
   directConversations?: DirectConversation[];
   selectedDmId?: string | null;
   onSelectDm?: (conversation: DirectConversation) => void;
+  onHideDm?: (conversation: DirectConversation) => void;
 }
 
 export const ServerSidebar = ({
@@ -73,7 +74,7 @@ export const ServerSidebar = ({
   onChannelClick, clientsSpeaking, streamSources,
   canManage, onEditItem, onDeleteItem, onMoveItem, onReorder, onAddItem,
   onDisconnectUser, currentUserRole, adminActions, unreadChannelIds,
-  directConversations, selectedDmId, onSelectDm,
+  directConversations, selectedDmId, onSelectDm, onHideDm,
 }: ServerSidebarProps) => (
   <div
     role="navigation"
@@ -182,6 +183,7 @@ export const ServerSidebar = ({
                 directConversations={directConversations}
                 selectedDmId={selectedDmId}
                 onSelectDm={onSelectDm}
+                onHideDm={onHideDm}
               />
             </div>
           </div>
