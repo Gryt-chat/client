@@ -37,6 +37,7 @@ jobs:
       - run: yarn test:call-controls
       - run: yarn test:embedded-server-paths
       - run: yarn test:voice-state
+      - run: yarn test:media-state
       - run: yarn test:calls
       - run: yarn test:call-members
       - run: yarn test:alone-in-call
