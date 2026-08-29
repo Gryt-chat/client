@@ -483,12 +483,27 @@ export const ChannelList = ({
 
   return (
     <ContextMenu.Root>
-      <ContextMenu.Trigger>
-        <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: "100%" }}>
-          {draggableList}
-          {directMessages}
-          <div style={{ flex: 1 }} />
-        </div>
+      {/* `render`, so the trigger *is* the full-height column rather than an
+          unstyled wrapper around one. Base UI's ContextMenu.Trigger draws a
+          plain div with no styles of its own, which broke the height chain: the
+          sidebar's scroller is a flex column, the trigger sat between it and
+          the sized child, and `min-height: 100%` on that child resolved against
+          the trigger's auto height rather than the scroller's. Measured in a
+          400px scroller holding 80px of channels, every element came out 80px
+          — so a right-click below the last channel landed on the scroller and
+          nothing opened, while aiming at the gap between two channels worked.
+          That is why this read as fussy rather than broken. */}
+      <ContextMenu.Trigger
+        render={
+          <div style={{ display: "flex", flexDirection: "column", minHeight: "100%" }} />
+        }
+      >
+        {draggableList}
+        {directMessages}
+        {/* Takes the leftover space, so the empty area below the last channel
+            belongs to the trigger. The column is otherwise only as tall as its
+            content even when the trigger is not. */}
+        <div style={{ flex: 1 }} />
       </ContextMenu.Trigger>
       <ContextMenu.Portal>
         <ContextMenu.Positioner>

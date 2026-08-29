@@ -4,6 +4,7 @@ import { PiDotsThreeVerticalBold, PiPushPinFill, PiPushPinSlashFill } from "reac
 export const ServerHeader = ({
   serverName,
   onLeave,
+  onCreateChannel,
   onOpenSettings,
   onOpenReports,
   role,
@@ -14,6 +15,7 @@ export const ServerHeader = ({
 }: {
   serverName?: string;
   onLeave: () => void;
+  onCreateChannel?: () => void;
   onOpenSettings?: () => void;
   onOpenReports?: () => void;
   role?: string;
@@ -61,6 +63,15 @@ export const ServerHeader = ({
             <Menu.Portal>
               <Menu.Positioner>
                 <Menu.Popup>
+              {/* First, because it is the thing people come to this menu for.
+                  It is also the only way in that does not require knowing the
+                  channel list takes a right-click. */}
+              {canManage && onCreateChannel && (
+                <Menu.Item onClick={onCreateChannel}>Create channel</Menu.Item>
+              )}
+              {canManage && onCreateChannel && (onOpenSettings || onOpenReports) && (
+                <Menu.Separator />
+              )}
               {canManage && onOpenSettings && (
                 <Menu.Item onClick={onOpenSettings}>
                   <div className="flex items-center gap-2">
