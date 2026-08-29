@@ -3,6 +3,7 @@ import { Button } from "@gryt/ui";
 import { useSettings } from "@/settings";
 import { useServerManagement } from "@/socket";
 import { ServerView } from "@/socket/src/components/serverView";
+import { useIsTinyWindow } from "@/socket/src/hooks/useNarrowWindow";
 
 import { useRememberPlace } from "../lib/reports/session";
 import { Discovery } from "./discovery";
@@ -13,6 +14,16 @@ export function MainApp() {
   const { servers, setShowAddServer, showDiscovery } = useServerManagement();
   const { showTour, dismissTour } = useSettings();
 
+  /*
+   * A window this small is one channel, so the shell around it goes.
+   *
+   * The rail and the 16px of page padding are most of what is left to give at
+   * 300px wide — the padding alone is a tenth of the window, and the rail is
+   * another tenth for a list of servers you cannot act on when there is no
+   * channel list to go with it. `ServerView` drops the rest.
+   */
+  const isTiny = useIsTinyWindow();
+
   /* What a bug report calls "where you were". Recorded here rather than in the
      report form, which would always answer "the report form", and not in
      settings, which would always answer "About" — that is where the form is
@@ -22,8 +33,11 @@ export function MainApp() {
   );
 
   return (
-    <div className="flex gap-4 p-4 overflow-hidden" style={{ position: "absolute", inset: 0 }}>
-      <Sidebar setShowAddServer={setShowAddServer} />
+    <div
+      className={isTiny ? "flex overflow-hidden" : "flex gap-4 p-4 overflow-hidden"}
+      style={{ position: "absolute", inset: 0 }}
+    >
+      {!isTiny && <Sidebar setShowAddServer={setShowAddServer} />}
 
       {showDiscovery ? (
         <Discovery />

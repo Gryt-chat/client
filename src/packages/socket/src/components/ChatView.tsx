@@ -43,6 +43,7 @@ export const ChatView = memo(({
   conversationKind = "channel",
   serverName,
   headerAction,
+  flush,
   isRateLimited,
   rateLimitCountdown,
   canViewVoiceChannelText,
@@ -79,6 +80,14 @@ export const ChatView = memo(({
    * "start a group" here, and a channel puts nothing.
    */
   headerAction?: React.ReactNode;
+  /**
+   * Drawn flush to the window rather than as a card.
+   *
+   * The tiny window has no rail, no sidebars and no page padding, so the
+   * conversation is the window — and a rounded corner against the window's own
+   * corner reads as something clipped rather than as a panel.
+   */
+  flush?: boolean;
   isRateLimited?: boolean;
   rateLimitCountdown?: number;
   canViewVoiceChannelText?: boolean;
@@ -287,7 +296,7 @@ export const ChatView = memo(({
       */}
       <div className="grow overflow-hidden" role="main" aria-label="Conversation" data-gryt="chat-view" style={{ minWidth: 0,
           background: "var(--gryt-neutral-3)",
-          borderRadius: "var(--gryt-radius-lg)",
+          borderRadius: flush ? 0 : "var(--gryt-radius-lg)",
           position: "relative",
         }} onDragEnter={handleViewDragEnter} onDragLeave={handleViewDragLeave} onDragOver={handleViewDragOver} onDrop={handleViewDrop}>
         {isDragOver && (
