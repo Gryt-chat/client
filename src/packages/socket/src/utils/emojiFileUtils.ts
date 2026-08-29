@@ -1,12 +1,16 @@
 import { unzipSync } from "fflate";
 
 export const EMOJI_NAME_RE = /^[A-Za-z0-9_]{2,32}$/;
-const IMAGE_MIME_RE = /^image\/(png|jpeg|webp|gif|svg\+xml|avif)$/i;
-export const IMAGE_EXT_RE = /\.(png|jpe?g|webp|gif|svg|avif)$/i;
+// SVG is deliberately absent from all four of these. The server refuses it —
+// an SVG is a document, it can carry a script, and Gryt served them back inline
+// from its own origin until that was fixed. Offering it here only meant picking
+// a file and being told no after the upload.
+const IMAGE_MIME_RE = /^image\/(png|jpeg|webp|gif|avif)$/i;
+export const IMAGE_EXT_RE = /\.(png|jpe?g|webp|gif|avif)$/i;
 const ZIP_TYPES = new Set(["application/zip", "application/x-zip-compressed", "application/x-zip"]);
 export const DEFAULT_MAX_EMOJI_BYTES = 5 * 1024 * 1024;
 export const IMAGE_MIME_ACCEPT =
-  "image/png,image/jpeg,image/webp,image/gif,image/svg+xml,image/avif,.svg,.avif,.zip,application/zip";
+  "image/png,image/jpeg,image/webp,image/gif,image/avif,.avif,.zip,application/zip";
 
 export type EmojiItem = { name: string; file_id: string };
 
@@ -35,7 +39,6 @@ function extToMime(ext: string): string {
   if (lower === "png") return "image/png";
   if (lower === "webp") return "image/webp";
   if (lower === "gif") return "image/gif";
-  if (lower === "svg") return "image/svg+xml";
   if (lower === "avif") return "image/avif";
   return "application/octet-stream";
 }
