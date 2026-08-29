@@ -547,19 +547,19 @@
   resolved "https://registry.yarnpkg.com/@gryt/owl/-/owl-0.6.0.tgz#7efa4a1c28884e71cdac3316c9db01dc5c21c08e"
   integrity sha512-2T+YiP8ds8Z3dfkNd2GgaCQyknp0OPmxwC6yAwMsmRG8blGlakd7bdaEoeuUYnlXNgWt+Ssc5ZAE2r/4pMSqaA==
 
-"@gryt/theme@^0.7.0":
-  version "0.7.0"
-  resolved "https://registry.yarnpkg.com/@gryt/theme/-/theme-0.7.0.tgz#732e5186926a013c9f5b150f30670be2891108ef"
-  integrity sha512-b+DANFKylJYO3ux7nyKjwbU0fUxSH0Kwmyn0Y6CAefzfBqmVS+UnSvsmQCfxSAerj0R7Ms3/GH7fTylo01UEGA==
+"@gryt/theme@^0.8.0":
+  version "0.8.0"
+  resolved "https://registry.yarnpkg.com/@gryt/theme/-/theme-0.8.0.tgz#7625da7188adce46f7e0e16fa50cc6851996cbee"
+  integrity sha512-HCv8Y/RNlT8M8Jdfi1O4iowjcSM4FZVmBX20W5cedk9YA41YnVoAaK4H2C2Uo1l5jnAFuZA/9vQFahquhfOt7w==
 
-"@gryt/ui@^0.22.0":
-  version "0.22.0"
-  resolved "https://registry.yarnpkg.com/@gryt/ui/-/ui-0.22.0.tgz#539e3f8a5ddd73b9a71a581730f8e618b88c6fea"
-  integrity sha512-7BQ4DitMqziYBvqs7nlLU2IqNgMNo7BEWa81lV41lyN2pXlp9NrzaTZw5qyKyOvrSmwAAvjICvr2dFxirUH7Aw==
+"@gryt/ui@^0.23.0":
+  version "0.23.0"
+  resolved "https://registry.yarnpkg.com/@gryt/ui/-/ui-0.23.0.tgz#c263c4c781abb42f5fede036b5f457263c5dce19"
+  integrity sha512-4wbO40CpmybP/XrjTpuqyoNw3xpwSoVugSSfoNPx4O+RHz26m9i/Bu3IFhMSDo/sJKZs4teKpaDnktZ8M94LDA==
   dependencies:
     "@base-ui/react" "^1.7.0"
     "@gryt/owl" "^0.6.0"
-    "@gryt/theme" "^0.7.0"
+    "@gryt/theme" "^0.8.0"
     "@phosphor-icons/react" "^2.1.10"
     clsx "^2.1.1"
     tailwind-merge "^3.4.0"

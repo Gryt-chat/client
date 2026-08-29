@@ -1,7 +1,9 @@
-import { Radio, RadioGroup, Slider } from "@gryt/ui";
+import { Button, Radio, RadioGroup, Slider } from "@gryt/ui";
+import { grytDraft } from "@gryt/ui";
+import { PencilSimple } from "@phosphor-icons/react";
 import { useMemo } from "react";
 
-import { useTheme } from "@/common";
+import { useCustomThemes, useTheme, useThemeEditor } from "@/common";
 import { useSettings } from "@/settings";
 
 import { SettingGroup, SettingsContainer } from "../settingsComponents";
@@ -44,6 +46,9 @@ export function AppearanceSettings() {
     setVoiceTwoPersonLayout,
   } = useSettings();
 
+  const { activeTheme } = useCustomThemes();
+  const { openEditor } = useThemeEditor();
+
   return (
     <SettingsContainer>
       <h2 className="text-lg">Appearance</h2>
@@ -67,12 +72,31 @@ export function AppearanceSettings() {
       {/* Where the accent, gray and radius dropdowns used to be. Those set
           Radix Themes' props, and one of them could change one thing. A theme
           is the whole palette — every anchor, both appearances, the corner
-          radius — built on ui.gryt.chat and carried here as a link. */}
+          radius. */}
       <SettingGroup
         title="Theme"
-        description="Build one on ui.gryt.chat, press Copy link, and paste it here. A theme is a couple of dozen hex values, so a link is the whole thing."
+        description="Pick one, or open the editor and change it while you use the app. A theme is a couple of dozen hex values, so a link is the whole thing — paste one somebody sent you, or send yours."
       >
         <ThemeLibrary />
+        {/* Opens on whatever is being worn, so the first thing the editor
+            shows is the app as it is rather than a palette nobody chose. With
+            nothing custom applied that is the library's own, which is what
+            grytDraft is. */}
+        <div className="pt-2">
+          <Button
+            onClick={() => openEditor(activeTheme ?? grytDraft)}
+            size="small"
+            tone="neutral"
+          >
+            <PencilSimple aria-hidden="true" size={15} />
+            Open editor
+          </Button>
+          <p className="m-0 pt-2 text-xs text-gryt-muted">
+            The editor floats over Gryt and follows every change as you make
+            it. Drag it out of the way to see what a colour does to the part
+            underneath.
+          </p>
+        </div>
       </SettingGroup>
 
       <div className="flex flex-col gap-2">

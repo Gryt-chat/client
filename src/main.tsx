@@ -14,8 +14,10 @@ import {
   SingletonHooks,
   useCustomThemes,
   useTheme,
+  useThemeEditor,
   useZoomShortcuts,
 } from "@/common";
+import { ThemeEditorPanel } from "@/settings";
 import { VoiceProvider } from "@/webRTC";
 
 import { App } from "./App.tsx";
@@ -35,6 +37,12 @@ function ThemedApp() {
     chatFontSize,
   } = useTheme();
   const { activeTheme } = useCustomThemes();
+  /* While the editor is open the app wears the draft instead of the saved
+     theme. It goes through the same `activeTheme` path below, so the CSS
+     variables, the native titlebar strip and the plugin API all follow it
+     without knowing an editor exists. */
+  const { draft: draftTheme } = useThemeEditor();
+  const shownTheme = draftTheme ?? activeTheme;
 
   /* Radix's <Theme appearance> put .light or .dark on its own wrapper, and the
      app's light and dark blocks in style.css hang off those classes. With the
@@ -83,10 +91,10 @@ function ThemedApp() {
      old light accent behind, on an element nothing else ever cleans. */
   useEffect(() => {
     const root = document.documentElement;
-    if (activeTheme === null) return;
+    if (shownTheme === null) return;
 
     const variables = createGrytTheme(
-      grytThemeToOptions(activeTheme, resolvedAppearance),
+      grytThemeToOptions(shownTheme, resolvedAppearance),
     ) as Record<string, string>;
 
     for (const [name, value] of Object.entries(variables)) {
@@ -98,7 +106,7 @@ function ThemedApp() {
         root.style.removeProperty(name);
       }
     };
-  }, [activeTheme, resolvedAppearance]);
+  }, [shownTheme, resolvedAppearance]);
 
   /* The native minimise/maximise/close buttons on Windows and Linux, which
      the stylesheet cannot reach — they are painted by the OS into an overlay
@@ -109,7 +117,7 @@ function ThemedApp() {
      that puts an imported theme there runs in source order. */
   useEffect(() => {
     pushTitlebarOverlay();
-  }, [activeTheme, resolvedAppearance]);
+  }, [shownTheme, resolvedAppearance]);
 
   useZoomShortcuts();
   useAddonLoader();
@@ -129,6 +137,11 @@ function ThemedApp() {
         <App />
       </div>
       <UpdateAnnouncement />
+      {/* Inside .gryt-app so it scales with the rest, and last so it sits over
+          it. Not portalled: it is part of the app, not an overlay above it —
+          a menu or a dialog opened while it is up should still come out on
+          top, because whoever opened one is looking at that and not at this. */}
+      <ThemeEditorPanel />
       <Toaster
         position="bottom-right"
         containerStyle={{ zIndex: "var(--gryt-z-toast)" }}
