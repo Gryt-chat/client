@@ -4,6 +4,7 @@ import { RefObject } from "react";
 
 import type { Channel, SidebarItem } from "@/settings/src/types/server";
 
+import type { DirectConversation } from "../hooks/useDirectMessages";
 import type { Client } from "../types/clients";
 import { ChannelList } from "./ChannelList";
 import type { AdminActions, MemberInfo } from "./MemberSidebar";
@@ -55,6 +56,9 @@ interface ServerSidebarProps {
   currentUserRole: Role | undefined;
   adminActions: AdminActions | undefined;
   unreadChannelIds?: Set<string>;
+  directConversations?: DirectConversation[];
+  selectedDmId?: string | null;
+  onSelectDm?: (conversation: DirectConversation) => void;
 }
 
 export const ServerSidebar = ({
@@ -69,6 +73,7 @@ export const ServerSidebar = ({
   onChannelClick, clientsSpeaking, streamSources,
   canManage, onEditItem, onDeleteItem, onMoveItem, onReorder, onAddItem,
   onDisconnectUser, currentUserRole, adminActions, unreadChannelIds,
+  directConversations, selectedDmId, onSelectDm,
 }: ServerSidebarProps) => (
   <div
     role="navigation"
@@ -173,6 +178,9 @@ export const ServerSidebar = ({
                 currentUserRole={currentUserRole}
                 adminActions={adminActions}
                 unreadChannelIds={unreadChannelIds}
+                directConversations={directConversations}
+                selectedDmId={selectedDmId}
+                onSelectDm={onSelectDm}
               />
             </div>
           </div>

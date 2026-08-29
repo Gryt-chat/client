@@ -24,6 +24,7 @@ interface MemberSidebarPanelProps {
   currentServerConnected: string | null;
   serverHost: string;
   adminActions: AdminActions | undefined;
+  onOpenDm?: (targetServerUserId: string) => void;
   pinned: boolean;
   onTogglePinned: () => void;
 }
@@ -35,7 +36,7 @@ export const MemberSidebarPanel = ({
   members, currentConnectionId, currentServerUserId,
   currentUserRole,
   currentServerConnected, serverHost,
-  adminActions, pinned, onTogglePinned,
+  adminActions, onOpenDm, pinned, onTogglePinned,
 }: MemberSidebarPanelProps) => (
   <div
     onMouseLeave={onMouseLeave}
@@ -109,6 +110,7 @@ export const MemberSidebarPanel = ({
             currentServerConnected={currentServerConnected}
             serverHost={serverHost}
             adminActions={adminActions}
+            onOpenDm={onOpenDm}
             pinned={pinned}
             onTogglePinned={onTogglePinned}
           />

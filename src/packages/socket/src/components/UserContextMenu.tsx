@@ -1,7 +1,7 @@
 import { ContextMenu, Slider } from "@gryt/ui";
 import { ReactNode } from "react";
 import toast from "react-hot-toast";
-import { PiAtFill, PiCopyFill } from "react-icons/pi";
+import { PiAtFill, PiChatCircleFill, PiCopyFill } from "react-icons/pi";
 
 import { useSettings } from "@/settings";
 
@@ -39,6 +39,14 @@ interface UserContextMenuProps {
   onServerDeafen?: (deafened: boolean) => void;
   onChangeRole?: (role: Role) => void;
   onPopoutVideo?: () => void;
+  /**
+   * Open a direct message with this person, on this server.
+   *
+   * Absent when the menu is rendered outside a server view, and on a server
+   * old enough not to have the events. The item is left out rather than
+   * shown and refused.
+   */
+  onOpenDm?: () => void;
 }
 
 /**
@@ -73,6 +81,7 @@ export function UserContextMenu({
   onServerDeafen,
   onChangeRole,
   onPopoutVideo,
+  onOpenDm,
 }: UserContextMenuProps) {
   const { userVolumes, updateUserVolume, resetUserVolume, openSettings } = useSettings();
   const { has, roles } = useServerPermissions(serverHost || "");
@@ -182,6 +191,13 @@ export function UserContextMenu({
           <div className="px-3 pb-1">
             <span className="text-xs text-gryt-muted">{targetRoleName}</span>
           </div>
+        )}
+        {onOpenDm && (
+          <ContextMenu.Item onClick={onOpenDm}>
+            <div className="flex items-center gap-2">
+              <PiChatCircleFill size={14} /> Message
+            </div>
+          </ContextMenu.Item>
         )}
         <ContextMenu.Item onClick={handleMention}>
           <div className="flex items-center gap-2">

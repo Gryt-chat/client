@@ -6,6 +6,7 @@ import { PiList, PiPhoneCallFill, PiUsersFill } from "react-icons/pi";
 
 import type { Channel, SidebarItem } from "@/settings/src/types/server";
 
+import type { DirectConversation } from "../hooks/useDirectMessages";
 import type { PeerLatencyStats } from "../hooks/usePeerLatency";
 import type { Client } from "../types/clients";
 import { ChannelList } from "./ChannelList";
@@ -57,6 +58,9 @@ interface MobileServerViewProps {
   currentUserRole?: Role;
   adminActions?: AdminActions;
   unreadChannelIds?: Set<string>;
+  directConversations?: DirectConversation[];
+  selectedDmId?: string | null;
+  onSelectDm?: (conversation: DirectConversation) => void;
 
   // ChatView
   chatMessages: ChatMessage[];
@@ -248,6 +252,9 @@ export const MobileServerView = (props: MobileServerViewProps) => {
               currentUserRole={props.currentUserRole}
               adminActions={props.adminActions}
               unreadChannelIds={props.unreadChannelIds}
+              directConversations={props.directConversations}
+              selectedDmId={props.selectedDmId}
+              onSelectDm={props.onSelectDm}
             />
           </div>
         </div>

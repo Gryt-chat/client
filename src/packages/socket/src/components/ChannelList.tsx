@@ -8,8 +8,10 @@ import { PiChatCircleFill, PiGameControllerFill, PiGaugeFill, PiKeyboardFill, Pi
 import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 import { Channel, SidebarItem } from "@/settings/src/types/server";
 
+import type { DirectConversation } from "../hooks/useDirectMessages";
 import type { Client } from "../types/clients";
 import { ConnectedUser } from "./connectedUser";
+import { DirectMessageList } from "./DirectMessageList";
 import { EmojiText } from "./EmojiText";
 import type { AdminActions,MemberInfo } from "./MemberSidebar";
 import { SkeletonBase } from "./skeletons";
@@ -41,6 +43,9 @@ export const ChannelList = ({
   currentUserRole,
   adminActions,
   unreadChannelIds,
+  directConversations,
+  selectedDmId,
+  onSelectDm,
 }: {
   channels: Channel[];
   items?: SidebarItem[];
@@ -66,6 +71,9 @@ export const ChannelList = ({
   currentUserRole?: Role;
   adminActions?: AdminActions;
   unreadChannelIds?: Set<string>;
+  directConversations?: DirectConversation[];
+  selectedDmId?: string | null;
+  onSelectDm?: (conversation: DirectConversation) => void;
 }) => {
   // The same analyser source the voice tile uses, so the row's ring and the
   // tile's agree. false takes no handle; useMicrophone is a singleton.
@@ -379,6 +387,24 @@ export const ChannelList = ({
 
   const displayItems = canManage ? localItems : effectiveItems;
 
+  /**
+   * Below the channels, and outside the reorder group above.
+   *
+   * The channel list is draggable for anyone who can manage the server, and
+   * these are not part of that order — they are not sidebar items, an operator
+   * does not arrange them, and dropping a channel into the middle of somebody's
+   * conversations is not a thing to offer.
+   */
+  const directMessages = onSelectDm ? (
+    <DirectMessageList
+      conversations={directConversations ?? []}
+      serverHost={serverHost}
+      selectedConversationId={selectedDmId ?? null}
+      unreadConversationIds={unreadChannelIds}
+      onSelect={onSelectDm}
+    />
+  ) : null;
+
   const staticList = (
     <LayoutGroup id={serverHost}>
       <div className="flex flex-col gap-3 items-center w-full">
@@ -405,7 +431,14 @@ export const ChannelList = ({
     </LayoutGroup>
   );
 
-  if (!canManage) return staticList;
+  if (!canManage) {
+    return (
+      <>
+        {staticList}
+        {directMessages}
+      </>
+    );
+  }
 
   const draggableList = (
     <Reorder.Group
@@ -453,6 +486,7 @@ export const ChannelList = ({
       <ContextMenu.Trigger>
         <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: "100%" }}>
           {draggableList}
+          {directMessages}
           <div style={{ flex: 1 }} />
         </div>
       </ContextMenu.Trigger>
