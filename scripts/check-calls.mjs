@@ -52,6 +52,24 @@ assert.match(
   "answering has to join the conversation's room through the ordinary voice path",
 );
 
+/* ── Ringing and joining are one act ─────────────────────────────────────── */
+
+// The caller has to be in the room from the moment it rings. Without this the
+// person answering joins a room with nobody in it: the ring says somebody wants
+// to talk to you, you say yes, and there is silence. Shipped that way once —
+// the button rang and did not connect.
+const start = view.slice(view.indexOf("const startCall"), view.indexOf("const stopCall"));
+assert.match(
+  start,
+  /ringConversation\(conversationId\)/,
+  "starting a call has to ring",
+);
+assert.match(
+  start,
+  /connect\(conversationId\)/,
+  "starting a call has to join the room too, or answering it finds nobody there",
+);
+
 /* ── Every ring ends, and ending it clears both sides ────────────────────── */
 
 // `call:withdrawn` is the server's one way of saying a ring stopped, whichever
@@ -89,4 +107,6 @@ assert.equal(
   "the call card is a card, not a dialog — it must not take the app away while it rings",
 );
 
-console.log("calls: answering is joining, every ring clears both sides, the card cannot be dismissed");
+console.log(
+  "calls: ringing joins the room, answering is joining, every ring clears both sides, the card cannot be dismissed",
+);
