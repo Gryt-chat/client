@@ -4,6 +4,7 @@ import { Socket } from "socket.io-client";
 import useSound from "use-sound";
 
 import messageSoundMp3 from "@/audio/src/assets/universfield-computer-mouse-click-02-383961.mp3";
+import type { SealDecision } from "@/common";
 import { getServerAccessToken, markChannelUnread, useUnreadBadge } from "@/common";
 import { useSettings } from "@/settings";
 import { serverDetailsList as ServerDetailsList } from "@/settings/src/types/server";
@@ -21,6 +22,7 @@ import {
   shouldFetchHistory,
 } from "./chatEventHandlers";
 import { useChatSend } from "./useChatSend";
+import { useConversationSealing } from "./useConversationSealing";
 
 interface UseChatParams {
   currentConnection: Socket | null;
@@ -31,10 +33,16 @@ interface UseChatParams {
   serverDetailsList: ServerDetailsList;
   nickname: string;
   currentUserId?: string;
+  /**
+   * Everybody in this conversation apart from you, or null for a channel
+   * (GRYT-729). Only a conversation can be encrypted.
+   */
+  conversationMembers?: { server_user_id: string }[] | null;
 }
 
 interface UseChatReturn {
   chatMessages: ChatMessage[];
+  sealing: SealDecision;
   canSend: boolean;
   sendChat: (text: string, files: File[], replyToMessageId?: string) => void;
   editMessage: (messageId: string, conversationId: string, newText: string) => void;
@@ -61,6 +69,7 @@ export function useChat({
   serverDetailsList,
   nickname,
   currentUserId,
+  conversationMembers,
 }: UseChatParams): UseChatReturn {
   const serverHost = currentlyViewingServer?.host || "";
   const { incrementUnread } = useUnreadBadge();
@@ -130,7 +139,15 @@ export function useChat({
                   canSendToVoiceChannel &&
                   !isRateLimited;
 
+  const sealing = useConversationSealing({
+    serverHost,
+    conversationId: activeConversationId,
+    myServerUserId: currentUserId,
+    members: conversationMembers ?? null,
+  });
+
   const { sendChat, editMessage, retryQueueRef, performRetry, markLatestPendingFailed } = useChatSend({
+    seal: sealing.seal,
     currentConnection,
     activeConversationId,
     serverHost,
@@ -147,6 +164,56 @@ export function useChat({
     nickname,
     currentUserId,
   });
+
+  /*
+   * Open whatever arrived sealed (GRYT-729).
+   *
+   * Here rather than in `onNew` and `onHistory` separately, because both put
+   * messages into the same state and opening is asynchronous — doing it at
+   * arrival would mean two copies of the same logic, each racing the other's
+   * `setChatMessages`.
+   *
+   * Every message is opened once. `sealedState` is set to `opening` before the
+   * work starts, so a second pass over the same list does not start it again.
+   */
+  useEffect(() => {
+    const pending = chatMessages.filter((m) => m.sealed && !m.sealedState);
+    if (pending.length === 0) return;
+
+    const ids = new Set(pending.map((m) => m.message_id));
+    setChatMessages((prev) =>
+      prev.map((m) => (ids.has(m.message_id) ? { ...m, sealedState: "opening" } : m)),
+    );
+
+    let live = true;
+    void Promise.all(
+      pending.map(async (message) => {
+        try {
+          const text = await sealing.open(message.sealed!);
+          // Null is no wrapped key for us: a message from before we joined the
+          // conversation. Permanent, ordinary, and not an error.
+          return { id: message.message_id, text, state: text === null ? "locked" : "open" } as const;
+        } catch {
+          // A key that is there and does not open. Tampering, or the wrong
+          // conversation. Drawn as broken rather than as an empty message.
+          return { id: message.message_id, text: null, state: "broken" } as const;
+        }
+      }),
+    ).then((opened) => {
+      if (!live) return;
+      const byId = new Map(opened.map((o) => [o.id, o]));
+      setChatMessages((prev) =>
+        prev.map((m) => {
+          const result = byId.get(m.message_id);
+          return result ? { ...m, text: result.text, sealedState: result.state } : m;
+        }),
+      );
+    });
+
+    return () => {
+      live = false;
+    };
+  }, [chatMessages, sealing, setChatMessages]);
 
   // Handle chat errors (including rate limiting)
   useEffect(() => {
@@ -419,6 +486,12 @@ export function useChat({
 
   return {
     chatMessages,
+    /**
+     * Whether the next message will be encrypted, and who is stopping it
+     * (GRYT-729). A composer that does not draw this sends in the clear
+     * without saying so.
+     */
+    sealing: sealing.decision,
     canSend,
     sendChat,
     editMessage,
