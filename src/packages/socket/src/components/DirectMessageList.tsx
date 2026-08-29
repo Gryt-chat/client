@@ -1,8 +1,10 @@
 import { Avatar, Button, ContextMenu } from "@gryt/ui";
+import { useMemo } from "react";
 
 import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 
 import { conversationTitle, type DirectConversation } from "../hooks/useDirectMessages";
+import { useSockets } from "../hooks/useSockets";
 import { EmojiText } from "./EmojiText";
 
 /**
@@ -18,6 +20,32 @@ import { EmojiText } from "./EmojiText";
  * name and a picture of its own, and mixing the two would put a row you can
  * rename next to one you cannot.
  */
+/**
+ * Which of these conversations has a call going on in it.
+ *
+ * Read off `clients` rather than held separately, because it is already there.
+ * The server sends `voice:call:members` to everybody in the conversation — not
+ * only to the people in the call — and the socket handler writes the
+ * conversation id back onto those clients' `voiceChannelId`. So "is there a
+ * call in here" is "is anybody's room this conversation", which is the same
+ * question the voice view asks.
+ *
+ * Nothing extra arrives for a server that predates calling: no event, no ids
+ * written back, an empty set, and no dot.
+ */
+function useConversationsInCall(serverHost: string): Set<string> {
+  const { clients } = useSockets();
+  const onThisServer = clients[serverHost];
+
+  return useMemo(() => {
+    const busy = new Set<string>();
+    for (const client of Object.values(onThisServer ?? {})) {
+      if (client.hasJoinedChannel && client.voiceChannelId) busy.add(client.voiceChannelId);
+    }
+    return busy;
+  }, [onThisServer]);
+}
+
 export const DirectMessageList = ({
   conversations,
   serverHost,
@@ -40,6 +68,8 @@ export const DirectMessageList = ({
   /** Open a group's settings. Only passed for the groups section. */
   onManage?: (conversation: DirectConversation) => void;
 }) => {
+  const inCall = useConversationsInCall(serverHost);
+
   // No heading over an empty list. Somebody who has never opened a DM does not
   // need a section telling them so.
   if (conversations.length === 0) return null;
@@ -121,6 +151,18 @@ export const DirectMessageList = ({
               >
                 <EmojiText text={conversationTitle(conversation)} />
               </span>
+              {/* A dot rather than a word, because the row is already tight and
+                  the name is the part somebody is reading. Titled rather than
+                  labelled only for sighted readers — a dot with no name is not
+                  a state anybody can act on. */}
+              {inCall.has(conversation.conversation_id) ? (
+                <span
+                  role="img"
+                  aria-label="A call is happening here"
+                  title="A call is happening here"
+                  className="size-2 shrink-0 rounded-(--gryt-radius-full) bg-gryt-accent"
+                />
+              ) : null}
             </Button>
           </div>
           </ContextMenu.Trigger>
