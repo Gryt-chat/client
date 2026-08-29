@@ -18,6 +18,7 @@ import { ChatEditorBar } from "./ChatEditorBar";
 import { MessageSkeleton, WelcomeMessage } from "./ChatMessage";
 import type { ChatMessage } from "./chatUtils";
 import { buildMessageMap, buildMessageMetadata, getReplyPreview } from "./chatViewHelpers";
+import { DirectMessagePrivacyNotice } from "./DirectMessagePrivacyNotice";
 import { EmojiText } from "./EmojiText";
 import { ImageLightbox } from "./ImageLightbox";
 import type { MemberInfo } from "./MemberSidebar";
@@ -307,6 +308,11 @@ export const ChatView = memo(({
               {headerAction && <div style={{ marginLeft: "auto" }}>{headerAction}</div>}
             </div>
           )}
+
+          {/* Above the messages rather than under the header, so it is the
+              first thing read on the way down to the composer, and so it
+              scrolls with a long conversation instead of sitting over it. */}
+          {conversationKind === "dm" && <DirectMessagePrivacyNotice />}
 
           {isVoiceChannelTextChat && !canViewVoiceChannelText && (
             <div className="flex items-center justify-center" style={{ padding: "24px", textAlign: "center" }}>
