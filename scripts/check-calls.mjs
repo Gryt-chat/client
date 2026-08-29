@@ -70,6 +70,28 @@ assert.match(
   "starting a call has to join the room too, or answering it finds nobody there",
 );
 
+/* ── Starting a call is a permission; answering one is not ───────────────── */
+
+// `start_calls` exists so a server owner can say who may place a call without
+// saying anything about who may take one (GRYT-712). Gating the card as well
+// would leave somebody unable to answer a call placed to them, and the person
+// who placed it looking at a phone nobody picks up.
+assert.match(
+  view,
+  /viewerPermissions\.can\("start_calls"\)/,
+  "the call button has to be gated on start_calls, or the server refuses a ring the client offered",
+);
+assert.equal(
+  /start_calls/.test(card),
+  false,
+  "answering must not need start_calls — that permission is about placing a call, not taking one",
+);
+assert.equal(
+  /start_calls/.test(hook),
+  false,
+  "useCalls must not gate on start_calls; the server is what refuses a ring",
+);
+
 /* ── Every ring ends, and ending it clears both sides ────────────────────── */
 
 // `call:withdrawn` is the server's one way of saying a ring stopped, whichever
@@ -108,5 +130,5 @@ assert.equal(
 );
 
 console.log(
-  "calls: ringing joins the room, answering is joining, every ring clears both sides, the card cannot be dismissed",
+  "calls: ringing joins the room, answering is joining, starting one needs start_calls and answering does not, every ring clears both sides, the card cannot be dismissed",
 );
