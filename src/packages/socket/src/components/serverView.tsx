@@ -320,6 +320,25 @@ export const ServerView = () => {
     [selectedDmId, directConversations],
   );
 
+  /**
+   * Whether the room this client is connected to is a call rather than a
+   * channel — which decides whether being the only one in it ends it
+   * (GRYT-711).
+   *
+   * A lookup in the conversation list, not a test on the id. Both are `dm_`
+   * and a hash, and `conversations.ts` says outright that a channel can be
+   * named to look like one; the list is the answer rather than an
+   * approximation of it. It is also the list this client is already holding.
+   *
+   * `currentChannelId` is the room actually joined, not the one on screen, so
+   * this stays right while somebody reads a channel during a call.
+   */
+  const connectedToACall = useMemo(
+    () => Boolean(currentChannelId)
+      && directConversations.some((c) => c.conversation_id === currentChannelId),
+    [currentChannelId, directConversations],
+  );
+
   const handleChannelClick = useHandleChannelClick({
     currentlyViewingServer, isConnected, currentServerConnected,
     currentChannelId, selectedChannelId, isConnecting,
@@ -623,6 +642,7 @@ export const ServerView = () => {
             hasOlderMessages={hasOlderMessages}
             voiceWidth={voiceWidth}
             clientsForHost={hostClients}
+            isCall={connectedToACall}
             onVoiceDisconnect={handleVoiceDisconnect}
             peerLatency={peerLatency}
             videoStreams={voiceVideoStreams}
@@ -718,6 +738,7 @@ export const ServerView = () => {
                 clientsSpeaking={voiceClientsSpeaking}
                 isConnecting={isConnecting}
                 currentConnectionId={currentConnection?.id}
+                isCall={connectedToACall}
                 onDisconnect={handleVoiceDisconnect}
                 peerLatency={peerLatency}
                 onDisconnectUser={canDisconnectFromVoice ? requestDisconnectUser : undefined}
