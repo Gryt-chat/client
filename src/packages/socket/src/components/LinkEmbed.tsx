@@ -25,6 +25,7 @@ import {
   isEmbedDismissed,
   type LinkPreviewData,
   previewCache,
+  previewRefused,
 } from "./embedUtils";
 import { SkeletonBase } from "./skeletons/SkeletonBase";
 
@@ -76,7 +77,7 @@ const LinkPreviewCard = memo(({
   onDismiss: () => void;
 }) => {
   const [data, setData] = useState<LinkPreviewData | null>(() => previewCache.get(url) ?? null);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState(() => previewRefused.has(url));
   const [imageFailed, setImageFailed] = useState(false);
 
   useEffect(() => {
@@ -85,6 +86,9 @@ const LinkPreviewCard = memo(({
 
   useEffect(() => {
     if (data) return;
+    // Asked before and refused. Nothing about the answer can have changed.
+    if (previewRefused.has(url)) { setFailed(true); return; }
+
     let cancelled = false;
     const accessToken = getServerAccessToken(serverHost);
     if (!accessToken) { setFailed(true); return; }
@@ -94,7 +98,14 @@ const LinkPreviewCard = memo(({
       headers: { Authorization: `Bearer ${accessToken}` },
     })
       .then((res) => {
-        if (!res.ok) throw new Error("fetch failed");
+        if (!res.ok) {
+          /* 4xx is the server's verdict on this URL and will not change: it is
+             private, malformed, or not something it will fetch. 5xx and a
+             dropped connection are worth another go when the card next mounts,
+             so they are not remembered. */
+          if (res.status >= 400 && res.status < 500) previewRefused.add(url);
+          throw new Error(`link preview refused: ${res.status}`);
+        }
         return res.json();
       })
       .then((d: LinkPreviewData) => {
