@@ -9,7 +9,8 @@
  * everything is a badge on nothing, and it teaches somebody to ignore the dot
  * before it has ever meant anything.
  *
- * Node 24 strips the types on import. localStorage is stubbed because that is
+ * The code under test ships in @gryt/ui as of GRYT-641; this checks the copy
+ * the client actually installs. localStorage is stubbed because that is
  * the only browser API the module touches.
  */
 
@@ -23,9 +24,7 @@ globalThis.localStorage = {
   clear: () => store.clear(),
 };
 
-const { readNewCosmetics, markCosmeticSeen, markAllCosmeticsSeen } = await import(
-  "../src/packages/settings/src/components/owlSeen.ts"
-);
+const { readNewCosmetics, markCosmeticSeen, markAllCosmeticsSeen } = await import("@gryt/ui");
 
 const shipped = ["hat-winter", "glasses-round", "eyes-happy"];
 
