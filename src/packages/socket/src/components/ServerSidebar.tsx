@@ -120,6 +120,7 @@ export const ServerSidebar = ({
               role={serverRole}
               pinned={pinned}
               onTogglePinned={onTogglePinned}
+              onCreateChannel={() => onAddItem("channel:text")}
               onOpenSettings={onOpenSettings}
               onOpenReports={onOpenReports}
               pendingReportCount={pendingReportCount}
