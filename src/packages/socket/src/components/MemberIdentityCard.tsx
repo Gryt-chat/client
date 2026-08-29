@@ -158,7 +158,12 @@ export function MemberIdentityCard({
   );
 
   return (
-    <div className="flex flex-col gap-3" style={{ width: 260 }}>
+    /* Full width of whatever it is dropped into, not a number of its own.
+       This was 260px inside a popup that is `w-64` with `p-4` — 256 less 32 of
+       padding, so 224 — and every row wider than that ran out past the card's
+       edge. A card that sets its own width has to know the padding of a
+       container it cannot see. */
+    <div className="flex w-full min-w-0 flex-col gap-3">
       <div className="flex min-w-0 items-center gap-2.5">
         {/*
           The ring is the presence rather than a dot beside it, so it reads
