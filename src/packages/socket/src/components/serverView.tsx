@@ -185,7 +185,7 @@ export const ServerView = () => {
     return () => window.removeEventListener("server_update_status", handler);
   }, [viewingHost]);
 
-  const { conversations: directConversations, openDm } = useDirectMessages({
+  const { conversations: directConversations, openDm, setHidden: setDmHidden } = useDirectMessages({
     socket: currentConnection,
     accessToken,
     isConnected: currentConnectionStatus === "connected",
@@ -232,6 +232,15 @@ export const ServerView = () => {
   const handleSelectDm = useCallback((conversation: { conversation_id: string }) => {
     setSelectedDmId(conversation.conversation_id);
   }, [setSelectedDmId]);
+
+  /* Hiding the one you are reading leaves the view pointing at a conversation
+     that is no longer in the list, so the selection goes back to the channels.
+     The conversation is still readable — re-open it from the member list — but
+     staying in it would be a screen with no way back to itself. */
+  const handleHideDm = useCallback((conversation: { conversation_id: string }) => {
+    setSelectedDmId((current) => (current === conversation.conversation_id ? null : current));
+    setDmHidden(conversation.conversation_id, true);
+  }, [setDmHidden, setSelectedDmId]);
 
   // The conversation being read, when it is a DM rather than a channel. The
   // chat header and the empty state both need the other person's name, and
@@ -419,6 +428,7 @@ export const ServerView = () => {
             directConversations={directConversations}
             selectedDmId={selectedDmId}
             onSelectDm={handleSelectDm}
+            onHideDm={handleHideDm}
             clientsSpeaking={voiceClientsSpeaking}
             canManage={canManage}
             onEditItem={handleEditItem}
@@ -498,6 +508,7 @@ export const ServerView = () => {
             directConversations={directConversations}
             selectedDmId={selectedDmId}
             onSelectDm={handleSelectDm}
+            onHideDm={handleHideDm}
               clientsSpeaking={voiceClientsSpeaking}
               canManage={canManage}
               onEditItem={handleEditItem}

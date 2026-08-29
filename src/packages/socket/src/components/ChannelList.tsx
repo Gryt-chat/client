@@ -46,6 +46,7 @@ export const ChannelList = ({
   directConversations,
   selectedDmId,
   onSelectDm,
+  onHideDm,
 }: {
   channels: Channel[];
   items?: SidebarItem[];
@@ -74,6 +75,7 @@ export const ChannelList = ({
   directConversations?: DirectConversation[];
   selectedDmId?: string | null;
   onSelectDm?: (conversation: DirectConversation) => void;
+  onHideDm?: (conversation: DirectConversation) => void;
 }) => {
   // The same analyser source the voice tile uses, so the row's ring and the
   // tile's agree. false takes no handle; useMicrophone is a singleton.
@@ -402,6 +404,7 @@ export const ChannelList = ({
       selectedConversationId={selectedDmId ?? null}
       unreadConversationIds={unreadChannelIds}
       onSelect={onSelectDm}
+      onHide={onHideDm}
     />
   ) : null;
 

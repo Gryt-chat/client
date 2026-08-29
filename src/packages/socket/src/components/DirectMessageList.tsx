@@ -1,4 +1,4 @@
-import { Avatar, Button } from "@gryt/ui";
+import { Avatar, Button, ContextMenu } from "@gryt/ui";
 
 import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 
@@ -18,6 +18,7 @@ export const DirectMessageList = ({
   serverHost,
   selectedConversationId,
   unreadConversationIds,
+  onHide,
   onSelect,
 }: {
   conversations: DirectConversation[];
@@ -25,6 +26,8 @@ export const DirectMessageList = ({
   selectedConversationId: string | null;
   unreadConversationIds?: Set<string>;
   onSelect: (conversation: DirectConversation) => void;
+  /** Take it out of this person's own list. Absent on a server without it. */
+  onHide?: (conversation: DirectConversation) => void;
 }) => {
   // No heading over an empty list. Somebody who has never opened a DM does not
   // need a section telling them so.
@@ -44,10 +47,9 @@ export const DirectMessageList = ({
         const isUnread = !isSelected && !!unreadConversationIds?.has(conversation.conversation_id);
 
         return (
-          <div
-            key={conversation.conversation_id}
-            className="flex flex-col items-start w-full relative"
-          >
+          <ContextMenu.Root key={conversation.conversation_id}>
+          <ContextMenu.Trigger>
+          <div className="flex flex-col items-start w-full relative">
             {isUnread && (
               <div
                 className="absolute"
@@ -90,6 +92,35 @@ export const DirectMessageList = ({
               </span>
             </Button>
           </div>
+          </ContextMenu.Trigger>
+          <ContextMenu.Portal>
+            <ContextMenu.Positioner>
+              <ContextMenu.Popup className="min-w-55">
+                <ContextMenu.Group>
+                  <ContextMenu.GroupLabel style={{ fontWeight: "bold" }}>
+                    {conversation.other.nickname}
+                  </ContextMenu.GroupLabel>
+                </ContextMenu.Group>
+                {onHide && (
+                  <>
+                    <ContextMenu.Separator />
+                    <ContextMenu.Item onClick={() => onHide(conversation)}>
+                      <div className="flex flex-col">
+                        <span>Hide this conversation</span>
+                        {/* Says what it does not do. "Hide" on its own reads as
+                            a soft delete to enough people that the second line
+                            earns its space. */}
+                        <span className="text-xs text-gryt-muted">
+                          Keeps the messages. Comes back if they write.
+                        </span>
+                      </div>
+                    </ContextMenu.Item>
+                  </>
+                )}
+              </ContextMenu.Popup>
+            </ContextMenu.Positioner>
+          </ContextMenu.Portal>
+          </ContextMenu.Root>
         );
       })}
     </div>

@@ -45,6 +45,14 @@ interface UseDirectMessagesResult {
   conversations: DirectConversation[];
   /** Open one, or bring the existing one forward. Resolves when the server answers. */
   openDm: (targetServerUserId: string) => void;
+  /**
+   * Take a conversation out of your own list, or put it back.
+   *
+   * Yours alone — the other person's list does not change and they are not
+   * told. A message arriving brings it back, which is why this tidies a
+   * sidebar rather than stopping somebody talking to you.
+   */
+  setHidden: (conversationId: string, hidden: boolean) => void;
   /** Whether the server will take a new one at all. */
   dmsDisabled: boolean;
 }
@@ -75,6 +83,16 @@ export function useDirectMessages({
       });
     };
 
+    /* The server's answer, which is also what another device hears. Dropping
+       the row on the click would look right here and leave it on the phone
+       until something else refreshed the list. */
+    const onHidden = (payload: { conversation_id?: string; hidden?: boolean }) => {
+      if (!payload?.conversation_id || payload.hidden !== true) return;
+      setConversations((prev) =>
+        prev.filter((c) => c.conversation_id !== payload.conversation_id),
+      );
+    };
+
     const onError = (payload: DmErrorPayload) => {
       if (payload?.error === "dms_disabled") {
         setDmsDisabled(true);
@@ -87,12 +105,14 @@ export function useDirectMessages({
 
     socket.on("dm:list", onList);
     socket.on("dm:opened", onOpened);
+    socket.on("dm:hidden", onHidden);
     socket.on("dm:error", onError);
     socket.emit("dm:list", { accessToken });
 
     return () => {
       socket.off("dm:list", onList);
       socket.off("dm:opened", onOpened);
+      socket.off("dm:hidden", onHidden);
       socket.off("dm:error", onError);
     };
   }, [socket, accessToken, isConnected]);
@@ -112,7 +132,15 @@ export function useDirectMessages({
     [socket, accessToken],
   );
 
-  return { conversations, openDm, dmsDisabled };
+  const setHidden = useCallback(
+    (conversationId: string, hidden: boolean) => {
+      if (!socket || !accessToken) return;
+      socket.emit("dm:setHidden", { accessToken, conversationId, hidden });
+    },
+    [socket, accessToken],
+  );
+
+  return { conversations, openDm, setHidden, dmsDisabled };
 }
 
 /**
