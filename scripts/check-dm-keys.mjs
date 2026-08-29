@@ -33,8 +33,14 @@ const hex = (bytes) => Buffer.from(bytes).toString("hex");
 const SEED_A = Uint8Array.from({ length: 32 }, (_, i) => (i * 7 + 3) % 251);
 const SEED_B = Uint8Array.from({ length: 32 }, (_, i) => (i * 11 + 29) % 241);
 
-const HOST = "chat.example.invalid";
-const OTHER_HOST = "other.example.invalid";
+/*
+ * Scopes, not addresses (GRYT-719). `identityScopeFor` gives the server's
+ * lineage id, so the key survives the server moving. The type checker enforces
+ * that at the call site; this file is JavaScript and only cares that the
+ * derivation is keyed on whatever it is handed.
+ */
+const HOST = "srv:one";
+const OTHER_HOST = "srv:two";
 
 /* ── deterministic, which is what makes the recovery phrase work ────────── */
 

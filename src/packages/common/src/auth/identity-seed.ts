@@ -34,6 +34,45 @@ import { wordlist } from "@scure/bip39/wordlists/english.js";
 export const SEED_BYTES = 32;
 
 /**
+ * What a per-server key is derived under, and why it is not a plain string.
+ *
+ * `identityScopeFor` in `identity-keys.ts` turns an address into this: the
+ * server's lineage id where the server proved one, and the address only when it
+ * proved nothing. GRYT-257 is the reason — an address changes when a port is
+ * taken or a router hands out a new lease, and a key derived from the address
+ * makes the client arrive at a server it already knows as a stranger.
+ *
+ * A branded string rather than a comment, because `derive(seed, host)` and
+ * `derive(seed, scope)` are the same call to a type checker and the difference
+ * only shows up when somebody's server moves. It is still a `string` as far as
+ * assignment out of here goes, so nothing that stores or compares one has to
+ * change.
+ *
+ * Declared here rather than beside `identityScopeFor`, so `dm-keys.ts` can use
+ * it without importing the module that owns the database — and so this file
+ * keeps having no dependencies of its own.
+ */
+export type IdentityScope = string & { readonly __identityScope: unique symbol };
+
+/**
+ * Say that a string is a scope.
+ *
+ * The brand has to be mintable somewhere or nothing could ever call these
+ * functions. Keeping it to one named function means every scope in the codebase
+ * is somewhere a person wrote down that they meant one — `identityScopeFor`,
+ * the reports service's own scope, and reading scopes back out of storage that
+ * were written through those.
+ *
+ * It checks nothing, and cannot: `identityScopeFor` legitimately returns a bare
+ * address for a server that offered no proof, so "looks like a host" is not a
+ * signal. What it buys is that `deriveDmKeyPair(seed, host)` does not compile,
+ * which is the mistake worth catching.
+ */
+export function asIdentityScope(value: string): IdentityScope {
+  return value as IdentityScope;
+}
+
+/**
  * Domain separator mixed into every derivation, and the reason it carries a
  * version.
  *
@@ -153,8 +192,8 @@ export function wordsToSeed(phrase: string): Uint8Array<ArrayBuffer> {
 /**
  * The keypair this seed gives for one server.
  *
- * Deterministic: the same seed and host always produce the same key, on any
- * device, whether or not that host has ever been seen before.
+ * Deterministic: the same seed and scope always produce the same key, on any
+ * device, whether or not that server has ever been seen before.
  *
  * Done with a curve library rather than WebCrypto because WebCrypto cannot do
  * it. It will generate a keypair for you and it will import one you already
@@ -167,11 +206,11 @@ export function wordsToSeed(phrase: string): Uint8Array<ArrayBuffer> {
  */
 export async function deriveLocalKeyPair(
   seed: Uint8Array,
-  host: string,
+  scope: IdentityScope,
 ): Promise<{ privateKey: CryptoKey; publicKey: CryptoKey }> {
   assertUsableSeed(seed);
 
-  const okm = hkdf(sha256, seed, utf8(DERIVATION_SALT), utf8(host), OKM_BYTES);
+  const okm = hkdf(sha256, seed, utf8(DERIVATION_SALT), utf8(scope), OKM_BYTES);
   const scalar = mapHashToField(okm, p256.Point.Fn.ORDER);
 
   // Uncompressed, so the coordinates can be sliced straight out: a 0x04 tag,

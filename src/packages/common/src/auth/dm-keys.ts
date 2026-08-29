@@ -20,10 +20,20 @@
  *
  * ## One key per server, like the identity key
  *
- * `identity-seed.ts` derives a separate key for each host so that two servers
+ * `identity-seed.ts` derives a separate key for each server so that two of them
  * cannot tell they are talking to the same person. That property is worth
  * exactly as much here, and would be undone by a single DM key shared across
- * servers — so the host goes into the derivation the same way.
+ * servers — so the same scope goes into the derivation.
+ *
+ * **The scope, not the address (GRYT-719).** `identityScopeFor` gives the
+ * server's lineage id, and only falls back to the address for a server that
+ * proved nothing. Deriving from the address instead would give a server on a
+ * LAN address and a tunnel two DM keys, and would change the key whenever a
+ * port is taken or a lease moves. For the identity key that bug meant arriving
+ * as a stranger, which GRYT-257 fixed and which is at least visible. Here it
+ * would mean every message ever encrypted to the old key is unreadable, with
+ * nothing logged. `IdentityScope` is branded so the wrong string does not
+ * typecheck.
  *
  * The consequence is that a conversation is bound to the server it happens on,
  * which is what `useDirectMessages.ts` and `conversations.ts` already say about
@@ -42,6 +52,15 @@
 import { x25519 } from "@noble/curves/ed25519.js";
 import { hkdf } from "@noble/hashes/hkdf.js";
 import { sha256 } from "@noble/hashes/sha2.js";
+
+/*
+ * Type-only, so it erases before anything tries to resolve it.
+ * `check-dm-keys.mjs` runs this file through Node's type stripping, which does
+ * no extension inference, and a value import from a sibling would need a `.ts`
+ * on it — the one in `message-keys.ts` explains that. A type never reaches the
+ * loader at all.
+ */
+import type { IdentityScope } from "./identity-seed";
 
 /**
  * Domain separator, and why it is not the identity one.
@@ -105,23 +124,27 @@ export interface DmKeyPair {
 /**
  * The DM keypair this seed gives for one server.
  *
- * Deterministic: the same seed and host give the same keypair on any device,
+ * Deterministic: the same seed and scope give the same keypair on any device,
  * which is what makes the recovery phrase enough to read old conversations
- * again.
+ * again — and, because the scope outlives an address change, what makes them
+ * still readable after the server moves.
  *
  * Raw bytes rather than a `CryptoKey`, because WebCrypto's X25519 support is
  * younger than the browsers Gryt runs on and the agreement below is done by the
  * curve library anyway. There is nothing to gain from importing a key into an
  * API that is not going to perform the operation.
  */
-export function deriveDmKeyPair(seed: Uint8Array, host: string): DmKeyPair {
+export function deriveDmKeyPair(
+  seed: Uint8Array,
+  scope: IdentityScope,
+): DmKeyPair {
   assertUsableSeed(seed);
 
   const privateKey = hkdf(
     sha256,
     seed,
     utf8(DERIVATION_SALT),
-    utf8(host),
+    utf8(scope),
     SECRET_BYTES,
   );
 
@@ -129,8 +152,11 @@ export function deriveDmKeyPair(seed: Uint8Array, host: string): DmKeyPair {
 }
 
 /** The public half alone, for the cases that should not touch the private one. */
-export function dmPublicKey(seed: Uint8Array, host: string): Uint8Array {
-  return deriveDmKeyPair(seed, host).publicKey;
+export function dmPublicKey(
+  seed: Uint8Array,
+  scope: IdentityScope,
+): Uint8Array {
+  return deriveDmKeyPair(seed, scope).publicKey;
 }
 
 /**
