@@ -84,7 +84,7 @@ export function UserContextMenu({
   onOpenDm,
 }: UserContextMenuProps) {
   const { userVolumes, updateUserVolume, resetUserVolume, openSettings } = useSettings();
-  const { has, roles } = useServerPermissions(serverHost || "");
+  const { has, can, roles } = useServerPermissions(serverHost || "");
 
   const handleCopyId = () => {
     if (!serverUserId) return;
@@ -192,7 +192,12 @@ export function UserContextMenu({
             <span className="text-xs text-gryt-muted">{targetRoleName}</span>
           </div>
         )}
-        {onOpenDm && (
+        {/* `can` rather than `has`: a server from before `send_direct_messages`
+            existed does not list it anywhere, and asking `has` there hides the
+            item on every server where DMs work perfectly well. `can` answers
+            true for a permission the server has never heard of, so only a
+            server that knows the permission and withheld it loses the item. */}
+        {onOpenDm && can("send_direct_messages") && (
           <ContextMenu.Item onClick={onOpenDm}>
             <div className="flex items-center gap-2">
               <PiChatCircleFill size={14} /> Message
