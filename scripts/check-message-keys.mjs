@@ -104,7 +104,7 @@ const seal = (plaintext, recipients = group, sender = alice, conversation = CONV
       memberId: bob.id,
       recipientKeys: mallory.keys,
     }),
-    /operation-specific reason|OperationError|decrypt/i,
+    /invalid tag|operation-specific reason|OperationError|decrypt/i,
     "mallory opened bob's wrapped key",
   );
 }

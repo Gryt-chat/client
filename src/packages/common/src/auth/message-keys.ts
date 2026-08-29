@@ -51,6 +51,8 @@
  * `tsc` both resolve the explicit extension, and `allowImportingTsExtensions` is
  * already on in `tsconfig.app.json`.
  */
+import { gcm } from "@noble/ciphers/aes.js";
+
 import { type DmKeyPair, dmSharedSecret } from "./dm-keys.ts";
 
 const IV_BYTES = 12;
@@ -110,14 +112,21 @@ function randomBytes(length: number): Uint8Array<ArrayBuffer> {
   return bytes as Uint8Array<ArrayBuffer>;
 }
 
-function aesKey(raw: Uint8Array, usage: KeyUsage[]): Promise<CryptoKey> {
-  return crypto.subtle.importKey(
-    "raw",
-    raw as Uint8Array<ArrayBuffer>,
-    { name: "AES-GCM" },
-    false,
-    usage,
-  );
+/**
+ * AES-256-GCM, from a library rather than from the platform (GRYT-733).
+ *
+ * `crypto.subtle` is not on React Native, and this file has to run there
+ * unchanged — two implementations of one envelope is a pair of clients that
+ * send each other messages nobody can read, with the sender looking at the text
+ * they typed either way.
+ *
+ * The bytes are the same. A twelve-byte nonce, a sixteen-byte tag appended to
+ * the ciphertext, additional data authenticated and not encrypted: that is what
+ * WebCrypto produced and what this produces, so everything sealed before this
+ * change still opens.
+ */
+function aesGcm(key: Uint8Array, iv: Uint8Array, aad: Uint8Array) {
+  return gcm(key as Uint8Array<ArrayBuffer>, iv as Uint8Array<ArrayBuffer>, aad as Uint8Array<ArrayBuffer>);
 }
 
 /**
@@ -197,14 +206,8 @@ export async function sealMessage({
   const contentKey = randomBytes(CONTENT_KEY_BYTES);
   const iv = randomBytes(IV_BYTES);
 
-  const body = await crypto.subtle.encrypt(
-    {
-      name: "AES-GCM",
-      iv,
-      additionalData: bodyContext(conversationId, sender),
-    },
-    await aesKey(contentKey, ["encrypt"]),
-    new TextEncoder().encode(plaintext),
+  const body = aesGcm(contentKey, iv, bodyContext(conversationId, sender)).encrypt(
+    new TextEncoder().encode(plaintext) as Uint8Array<ArrayBuffer>,
   );
 
   const keys: Record<string, WrappedKey> = {};
@@ -215,18 +218,14 @@ export async function sealMessage({
       conversationId,
     );
     const wrapIv = randomBytes(IV_BYTES);
-    const wrapped = await crypto.subtle.encrypt(
-      {
-        name: "AES-GCM",
-        iv: wrapIv,
-        additionalData: wrapContext(conversationId, sender, recipient.memberId),
-      },
-      await aesKey(secret, ["encrypt"]),
-      contentKey as Uint8Array<ArrayBuffer>,
-    );
+    const wrapped = aesGcm(
+      secret,
+      wrapIv,
+      wrapContext(conversationId, sender, recipient.memberId),
+    ).encrypt(contentKey);
     keys[recipient.memberId] = {
       iv: base64Url(wrapIv),
-      key: base64Url(new Uint8Array(wrapped)),
+      key: base64Url(wrapped),
     };
   }
 
@@ -235,7 +234,7 @@ export async function sealMessage({
     version: 1,
     sender,
     iv: base64Url(iv),
-    body: base64Url(new Uint8Array(body)),
+    body: base64Url(body),
     keys,
   };
 }
@@ -278,25 +277,17 @@ export async function openMessage({
     conversationId,
   );
 
-  const contentKey = await crypto.subtle.decrypt(
-    {
-      name: "AES-GCM",
-      iv: fromBase64Url(mine.iv),
-      additionalData: wrapContext(conversationId, sealed.sender, memberId),
-    },
-    await aesKey(secret, ["decrypt"]),
-    fromBase64Url(mine.key),
-  );
+  const contentKey = aesGcm(
+    secret,
+    fromBase64Url(mine.iv),
+    wrapContext(conversationId, sealed.sender, memberId),
+  ).decrypt(fromBase64Url(mine.key));
 
-  const plain = await crypto.subtle.decrypt(
-    {
-      name: "AES-GCM",
-      iv: fromBase64Url(sealed.iv),
-      additionalData: bodyContext(conversationId, sealed.sender),
-    },
-    await aesKey(new Uint8Array(contentKey), ["decrypt"]),
-    fromBase64Url(sealed.body),
-  );
+  const plain = aesGcm(
+    contentKey,
+    fromBase64Url(sealed.iv),
+    bodyContext(conversationId, sealed.sender),
+  ).decrypt(fromBase64Url(sealed.body));
 
   return new TextDecoder().decode(plain);
 }

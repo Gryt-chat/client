@@ -42,6 +42,9 @@
  * carries the same one for the same reason; `dm-keys.ts` does not, because its
  * import from here is type-only and erases.
  */
+import { p256 } from "@noble/curves/nist.js";
+import { sha256 } from "@noble/hashes/sha2.js";
+
 import { asIdentityScope, type IdentityScope } from "./identity-seed.ts";
 import { jwkThumbprint } from "./server-pins.ts";
 
@@ -84,6 +87,33 @@ function fromBase64Url(value: string): Uint8Array<ArrayBuffer> {
   return out as Uint8Array<ArrayBuffer>;
 }
 
+/**
+ * A JWK's public point as the uncompressed bytes the curve library takes.
+ *
+ * `0x04`, then x, then y — the same layout `identity-seed.ts` slices apart when
+ * it builds a JWK from a derived key, put back together.
+ */
+function jwkToPoint(jwk: Record<string, unknown>): Uint8Array<ArrayBuffer> {
+  if (jwk.kty !== "EC" || jwk.crv !== "P-256") {
+    throw new Error("A DM key binding is signed with a P-256 key.");
+  }
+  if (typeof jwk.x !== "string" || typeof jwk.y !== "string") {
+    throw new Error("That DM key binding's key has no coordinates.");
+  }
+
+  const x = fromBase64Url(jwk.x);
+  const y = fromBase64Url(jwk.y);
+  if (x.length !== 32 || y.length !== 32) {
+    throw new Error("A P-256 coordinate is 32 bytes.");
+  }
+
+  const point = new Uint8Array(65);
+  point[0] = 0x04;
+  point.set(x, 1);
+  point.set(y, 33);
+  return point as Uint8Array<ArrayBuffer>;
+}
+
 function utf8(value: string): Uint8Array<ArrayBuffer> {
   return new TextEncoder().encode(value) as Uint8Array<ArrayBuffer>;
 }
@@ -107,7 +137,16 @@ export async function signDmKeyBinding({
 }: {
   dmPublicKey: Uint8Array;
   scope: IdentityScope;
-  identityPrivateKey: CryptoKey;
+  /**
+   * A `CryptoKey`, or a function that signs bytes with the identity key.
+   *
+   * Two shapes because the two clients hold the key differently: the desktop
+   * has a WebCrypto handle, and React Native has raw bytes and a curve library
+   * (GRYT-733). Verifying is pure and shared — every client does it for every
+   * peer — while signing happens once, with your own key, and is the one place
+   * the platforms genuinely differ.
+   */
+  identityPrivateKey: CryptoKey | ((bytes: Uint8Array) => Promise<Uint8Array>);
   /** Rides in the header, so a verifier that has never seen it can check. */
   identityPublicJwk: JsonWebKey;
   now?: number;
@@ -128,13 +167,19 @@ export async function signDmKeyBinding({
     utf8(JSON.stringify(payload)),
   )}`;
 
-  const signature = await crypto.subtle.sign(
-    { name: "ECDSA", hash: "SHA-256" },
-    identityPrivateKey,
-    utf8(signingInput),
-  );
+  const bytes = utf8(signingInput);
+  const signature =
+    typeof identityPrivateKey === "function"
+      ? await identityPrivateKey(bytes)
+      : new Uint8Array(
+          await crypto.subtle.sign(
+            { name: "ECDSA", hash: "SHA-256" },
+            identityPrivateKey,
+            bytes,
+          ),
+        );
 
-  return `${signingInput}.${base64Url(new Uint8Array(signature))}`;
+  return `${signingInput}.${base64Url(signature)}`;
 }
 
 /**
@@ -194,19 +239,40 @@ export async function verifyDmKeyBinding(
     throw new Error("That DM key binding is missing a key or a time.");
   }
 
-  const verifyKey = await crypto.subtle.importKey(
-    "jwk",
-    jwk as JsonWebKey,
-    { name: "ECDSA", namedCurve: "P-256" },
-    false,
-    ["verify"],
-  );
+  /*
+   * Verified with the curve library rather than the platform (GRYT-733).
+   *
+   * `crypto.subtle` is not on React Native and this file has to run there
+   * unchanged. The signature is the same either way: ES256 is P-256 over a
+   * SHA-256 digest with a raw sixty-four byte `r || s`, which is what WebCrypto
+   * emits and what `p256.verify` takes.
+   */
+  const publicKey = jwkToPoint(jwk as Record<string, unknown>);
+  const signature = fromBase64Url(parts[2]);
+  if (signature.length !== 64) {
+    throw new Error("A DM key binding's signature is 64 bytes.");
+  }
 
-  const ok = await crypto.subtle.verify(
-    { name: "ECDSA", hash: "SHA-256" },
-    verifyKey,
-    fromBase64Url(parts[2]),
-    utf8(`${parts[0]}.${parts[1]}`),
+  /*
+   * `lowS: false`, and this is not a relaxation.
+   *
+   * ECDSA has two valid signatures for every message — `s` and `order - s` —
+   * and noble refuses the high one by default, because for a blockchain a
+   * signature that can be rewritten while staying valid is a transaction that
+   * can be replayed under a second id. Nothing here is identified by its
+   * signature.
+   *
+   * WebCrypto does not normalise, JOSE does not require it, and roughly half of
+   * all ES256 signatures come out high. Leaving the default on would have
+   * rejected about half of every client's bindings, at random, with the message
+   * that the signature did not check out — and the other half would have worked
+   * perfectly, which is the shape of bug that survives a lot of testing.
+   */
+  const ok = p256.verify(
+    signature,
+    sha256(utf8(`${parts[0]}.${parts[1]}`)),
+    publicKey,
+    { prehash: false, lowS: false },
   );
   if (!ok) {
     throw new Error("That DM key binding's signature does not check out.");

@@ -128,7 +128,7 @@ const encode = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
   );
 
   await assert.rejects(verifyDmKeyBinding(`${h}.${p}.`, SCOPE),
-    /does not check out|three parts/, "an empty signature passed");
+    /does not check out|three parts|64 bytes/, "an empty signature passed");
 }
 
 /* ── the JWT mistakes, which are the ones with names ────────────────────── */
