@@ -1,6 +1,7 @@
 export * from "./src/auth/account-api";
 export * from "./src/auth/answer-challenge";
 export * from "./src/auth/device-delegation";
+export * from "./src/auth/dm-key-binding";
 export * from "./src/auth/guest-history";
 export * from "./src/auth/identity-backup-lock";
 export * from "./src/auth/identity-certificate";
