@@ -15,7 +15,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Button, IconButton, Tooltip } from "@gryt/ui";
 import type { StreamSources } from "@gryt/voice";
-import { useCamera as useLocalCamera, useMicrophone, useScreenShare as useLocalScreenShare, useVoiceLatency } from "@gryt/voice";
+import { useCamera as useLocalCamera, useMicrophone, useScreenShare as useLocalScreenShare, useSFU, useVoiceLatency } from "@gryt/voice";
 import { AnimatePresence, motion } from "motion/react";
 import type { CSSProperties, ReactNode } from "react";
 import {
@@ -581,11 +581,30 @@ export const VoiceView = ({
    * Not while connecting, when the only tile is your own placeholder.
    */
   const aloneInCall = Boolean(isCall) && !isConnecting && visibleClients.length === 1;
-  const { secondsLeft } = useAloneInCall({
+
+  /**
+   * The SFU's own timeout, so the countdown is its clock rather than a copy of
+   * its default (GRYT-715). Undefined against an SFU older than that, and the
+   * hook falls back.
+   */
+  const { callAloneTimeoutSeconds, stillHere } = useSFU();
+
+  const { secondsLeft, stay } = useAloneInCall({
     inACall: Boolean(isCall),
     alone: aloneInCall,
+    aloneSeconds: callAloneTimeoutSeconds,
     onEnd: () => onDisconnect?.(),
   });
+
+  /**
+   * Both clocks, because there are two and they do not talk to each other.
+   * `stillHere` restarts the SFU's; `stay` restarts the one drawing this
+   * countdown. Missing either leaves a button that looks like it worked.
+   */
+  const stayInCall = useCallback(() => {
+    stillHere?.();
+    stay();
+  }, [stillHere, stay]);
 
   const fallbackCameraStreamIdByClientId = useMemo(() => {
     const result: Record<string, string> = {};
@@ -1246,13 +1265,18 @@ export const VoiceView = ({
         {secondsLeft === null ? null : (
           <div
             aria-live="polite"
-            className="mb-2 rounded px-3 py-2 text-xs"
+            className="mb-2 flex items-center justify-between gap-3 rounded px-3 py-2 text-xs"
             style={{
               background: "var(--gryt-neutral-4)",
               color: "var(--gryt-neutral-11)",
             }}
           >
-            You&rsquo;re the only one here. Ending the call in {secondsLeft}s.
+            <span>
+              You&rsquo;re the only one here. Ending the call in {secondsLeft}s.
+            </span>
+            <Button tone="neutral" size="xsmall" onClick={stayInCall}>
+              Stay in the call
+            </Button>
           </div>
         )}
         <div
