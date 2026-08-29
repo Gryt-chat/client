@@ -39,6 +39,8 @@
 import { Avatar, Style } from "@dicebear/core";
 import planetsDefinition from "@dicebear/styles/planets.json";
 
+import { getServerHttpBase } from "./url";
+
 // Constructed once. A Style parses and validates its definition, and the docs
 // are explicit that it is meant to be reused across avatars rather than rebuilt
 // per render.
@@ -81,6 +83,39 @@ export function generatedServerIconUrl(seed: string): string {
   const url = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
   cache.set(key, url);
   return url;
+}
+
+/**
+ * Where to point a server's icon, given what its details say.
+ *
+ * Three cases, and the middle one is the reason this is a function. Once the
+ * server has told us it has no icon, asking for one anyway means the browser
+ * can answer from cache — and clearing an icon then leaves the old one on
+ * screen until that entry expires, which reads as the server still serving it.
+ * Knowing there is none, we draw the generated one and make no request at all.
+ *
+ * Before details arrive we do not know either way, so we ask and let the
+ * Avatar's fallback handle a 404.
+ *
+ * Lives here rather than in the sidebar that used to own it, because the rail
+ * is no longer the only place a server is drawn: an error toast names the
+ * server it is about, and two functions deciding that separately is how one of
+ * them ends up asking for an icon that is known not to exist.
+ */
+export function serverIconSrc(
+  host: string,
+  name: string,
+  serverDetailsList: Record<string, { server_info?: { icon_url?: string | null; name?: string } | undefined } | undefined>,
+): string {
+  const info = serverDetailsList[host]?.server_info;
+  if (info?.icon_url) {
+    return `${getServerHttpBase(host)}/icon?v=${encodeURIComponent(info.icon_url)}`;
+  }
+  // The server's own name first: it is the one the server reports, so a rename
+  // reaches the rail as soon as details refresh. The locally stored name is
+  // what we had before it answered.
+  if (info) return generatedServerIconUrl(info.name || name || host);
+  return `${getServerHttpBase(host)}/icon`;
 }
 
 /** A server's own icon if it has one, otherwise one generated from its name. */

@@ -1226,3 +1226,93 @@ body {
     max-height: 480px;
   }
 }
+
+/* ── Server error toast ─────────────────────────────────────────────────────
+   An error toast that says which server it is about, and which channel.
+
+   Classes rather than inline styles, because that is what the rest of this
+   sheet is and because a toast has to read at a glance: the weights and the
+   two greys below are the whole design, and they are easier to keep honest in
+   one place than spread across a JSX tree.
+
+   react-hot-toast already draws its own error mark to the left of this, so
+   there is no second red thing here. The only colour is the server's own icon.
+*/
+.server-toast {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  /* Bounded here rather than left to the toast: main.tsx gives the Toaster a
+     `style`, which react-hot-toast merges over its own defaults — including the
+     max-width that keeps a toast on screen. Without a cap, a long server name
+     pushes the toast past the edge of the window instead of ellipsising. */
+  max-width: min(20rem, 68vw);
+}
+
+.server-toast-icon {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  overflow: hidden;
+  /* The rail's corner, from the theme, so the icon in a toast is the same
+     object as the icon you clicked. */
+  border-radius: var(--gryt-radius-md);
+  background: var(--gryt-neutral-3);
+  /* Inset rather than a border, so the 32px box stays 32px and lines up with
+     the first line of text rather than sitting a pixel low. */
+  box-shadow: inset 0 0 0 1px var(--gryt-neutral-6);
+}
+
+.server-toast-icon img,
+.server-toast-icon > div {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.server-toast-body {
+  /* Without this the flex child refuses to shrink and the ellipsis never
+     triggers, however narrow the toast gets. */
+  min-width: 0;
+}
+
+.server-toast-where {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  min-width: 0;
+}
+
+.server-toast-server {
+  font-weight: 600;
+  color: var(--gryt-neutral-12);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The channel gives way first. Which server it is narrows the problem more
+   than which channel, so the name keeps the room when there is not enough. */
+.server-toast-channel {
+  flex-shrink: 0;
+  max-width: 45%;
+  color: var(--gryt-neutral-11);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.server-toast-channel::before {
+  content: "#";
+  color: var(--gryt-neutral-9);
+}
+
+.server-toast-message {
+  margin-top: 3px;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--gryt-neutral-11);
+}
