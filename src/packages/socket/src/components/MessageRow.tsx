@@ -256,7 +256,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                 <PreviewCard.Portal>
                   <PreviewCard.Positioner side="right" align="start">
                     <PreviewCard.Popup>
-                      <MemberIdentityCard member={meta.sender} />
+                      <MemberIdentityCard member={meta.sender} serverHost={serverHost} />
                     </PreviewCard.Popup>
                   </PreviewCard.Positioner>
                 </PreviewCard.Portal>

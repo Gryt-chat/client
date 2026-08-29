@@ -579,7 +579,27 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
           myServerUserId: myId,
         }),
       )
-      .then((states) => setMemberKeyStates((old) => ({ ...old, [host]: states })))
+      .then((states) => {
+        setMemberKeyStates((old) => ({ ...old, [host]: states }));
+
+        /*
+         * This server is showing other members a key you did not publish
+         * (GRYT-727). Not a fact about one person — a fact about the server —
+         * so it does not belong in a card somebody may never open.
+         *
+         * `duration: Infinity` and a stable id: it stays until dismissed, and
+         * every later member list lands on the same toast rather than stacking
+         * a new one. A warning about a server that is lying should not be
+         * something you can miss by looking away.
+         */
+        const myId = myServerUserIdByHost.get(host);
+        if (myId && states[myId]?.ownKeyRewritten) {
+          toast.error(
+            `${serversRef.current[host]?.name || host} is showing a message key that is not yours. Treat direct messages here as readable by the server until you know why.`,
+            { id: `dm-key-rewritten-${host}`, duration: Infinity },
+          );
+        }
+      })
       .catch(() => {
         // Storage that will not read, most likely. Leaving the previous states
         // alone is right: dropping them would make every peer look new.
