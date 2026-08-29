@@ -53,6 +53,7 @@
     "icons:generate": "node scripts/generate-icons.mjs && node scripts/generate-tray-icon.mjs",
     "generate:tray": "node scripts/generate-tray-icon.mjs",
     "test:dm-keys": "node scripts/check-dm-keys.mjs",
+    "test:dm-key-binding": "node scripts/check-dm-key-binding.mjs",
     "test:message-keys": "node scripts/check-message-keys.mjs"
   },
   "dependencies": {
