@@ -32,6 +32,7 @@ import { PiArrowLineLeftFill, PiArrowLineRightFill, PiChatCircleFill, PiCornersI
 import { useSettings } from "@/settings";
 import { Controls } from "@/webRTC";
 
+import { useAloneInCall } from "../hooks/useAloneInCall";
 import type { PeerLatencyStats } from "../hooks/usePeerLatency";
 import { usePopoutStreams } from "../hooks/usePopoutStreams";
 import {
@@ -278,6 +279,7 @@ export const VoiceView = ({
   clientsSpeaking,
   isConnecting,
   currentConnectionId,
+  isCall,
   onDisconnect,
   peerLatency,
   onDisconnectUser,
@@ -303,6 +305,14 @@ export const VoiceView = ({
   clientsSpeaking: Record<string, boolean>;
   isConnecting: boolean;
   currentConnectionId?: string;
+  /**
+   * This room is a call rather than a voice channel.
+   *
+   * Decided by the parent, which holds the conversation list, so it is a
+   * lookup rather than a guess at the shape of the id. Only a call is ended
+   * for having one person left in it — see `useAloneInCall`.
+   */
+  isCall?: boolean;
   onDisconnect?: () => void;
   peerLatency?: Record<string, PeerLatencyStats>;
   onDisconnectUser?: (targetServerUserId: string) => void;
@@ -559,6 +569,23 @@ export const VoiceView = ({
     isConnecting,
     currentChannelId,
   ]);
+
+  /**
+   * The other person hung up and nobody is left but you.
+   *
+   * Counting `visibleClients` rather than working it out again, because the
+   * two would drift: this has to mean the same thing as "the panel is drawing
+   * one tile", and the tile is what somebody is looking at when it says the
+   * call is ending.
+   *
+   * Not while connecting, when the only tile is your own placeholder.
+   */
+  const aloneInCall = Boolean(isCall) && !isConnecting && visibleClients.length === 1;
+  const { secondsLeft } = useAloneInCall({
+    inACall: Boolean(isCall),
+    alone: aloneInCall,
+    onEnd: () => onDisconnect?.(),
+  });
 
   const fallbackCameraStreamIdByClientId = useMemo(() => {
     const result: Record<string, string> = {};
@@ -1216,6 +1243,18 @@ export const VoiceView = ({
           background: "var(--gryt-neutral-3)",
           borderRadius: "var(--gryt-radius-lg)",
         }}>
+        {secondsLeft === null ? null : (
+          <div
+            aria-live="polite"
+            className="mb-2 rounded px-3 py-2 text-xs"
+            style={{
+              background: "var(--gryt-neutral-4)",
+              color: "var(--gryt-neutral-11)",
+            }}
+          >
+            You&rsquo;re the only one here. Ending the call in {secondsLeft}s.
+          </div>
+        )}
         <div
           ref={gridRef}
           style={{

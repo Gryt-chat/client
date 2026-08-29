@@ -93,6 +93,7 @@ interface MobileServerViewProps {
   // VoiceView
   voiceWidth: string;
   clientsForHost: Record<string, Client>;
+  isCall?: boolean;
   onVoiceDisconnect?: () => void;
   peerLatency?: Record<string, PeerLatencyStats>;
   videoStreams?: Record<string, MediaStream>;
@@ -299,6 +300,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
             clientsSpeaking={props.clientsSpeaking}
             isConnecting={props.isConnecting}
             currentConnectionId={props.currentConnectionId}
+            isCall={props.isCall}
             onDisconnect={props.onVoiceDisconnect}
             peerLatency={props.peerLatency}
             onDisconnectUser={props.canManage ? props.onDisconnectUser : undefined}

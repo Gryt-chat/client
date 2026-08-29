@@ -33,6 +33,7 @@
     "test:voice-state": "node scripts/check-voice-state-reassert.mjs",
     "test:calls": "node scripts/check-calls.mjs",
     "test:call-members": "node scripts/check-call-members.mjs",
+    "test:alone-in-call": "node scripts/check-alone-in-call.mjs",
     "test:fake-server-events": "node scripts/check-fake-server-events.mjs",
     "test:tile-contrast": "node scripts/check-tile-contrast.mjs",
     "test:fake-participants": "node scripts/check-fake-participants.mjs",
