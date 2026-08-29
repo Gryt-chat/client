@@ -28,6 +28,7 @@ jobs:
       - run: yarn test:capture-set
       - run: yarn test:avatar-precedence
       - run: yarn test:dm-keys
+      - run: yarn test:message-keys
       - run: yarn test:owl-export
       - run: yarn test:owl-seen
       - run: yarn test:server-order
