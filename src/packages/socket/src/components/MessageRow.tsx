@@ -11,6 +11,7 @@ import { ChatMediaPlayer } from "./ChatMediaPlayer";
 import { MessageHoverToolbar } from "./ChatMessage";
 import type { AttachmentMeta, ChatMessage, Reaction } from "./chatUtils";
 import { DateSeparator, MessageTimestamp, NewMessagesDivider, toDate } from "./chatUtils";
+import { CollapsibleText } from "./CollapsibleText";
 import { EmojiPicker } from "./EmojiPicker";
 import { EmojiText } from "./EmojiText";
 import { FileCard } from "./FileCard";
@@ -540,17 +541,22 @@ function MessageContent({
         transition={{ duration: 0.2 }}
         style={{ wordBreak: "break-word" }}
       >
-        <MarkdownRenderer
-          content={m.text}
-          customEmojis={customEmojiList}
-          memberNicknames={memberNicknames}
-          mentionMembersById={memberList}
-          serverHost={serverHost}
-          profanityMatches={m.profanity_matches}
-          blurProfanity={blurProfanity}
-          smileyConversion={smileyConversion}
-          disabledSmileys={disabledSmileys}
-        />
+        {/* Only the text folds. Attachments and embeds below carry their own
+            sizing, and folding them too would hide an image behind a control
+            that says "show full message". */}
+        <CollapsibleText>
+          <MarkdownRenderer
+            content={m.text}
+            customEmojis={customEmojiList}
+            memberNicknames={memberNicknames}
+            mentionMembersById={memberList}
+            serverHost={serverHost}
+            profanityMatches={m.profanity_matches}
+            blurProfanity={blurProfanity}
+            smileyConversion={smileyConversion}
+            disabledSmileys={disabledSmileys}
+          />
+        </CollapsibleText>
         {m.edited_at && !isFirstInGroup && (
           <Tooltip title={`Edited ${new Date(m.edited_at).toLocaleString()}`}>
             <span style={{ fontSize: 10, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gryt-neutral-8)" }}>

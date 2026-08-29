@@ -15,6 +15,21 @@ import { EmojiAutocomplete } from "./EmojiAutocomplete";
 import { EmojiPicker } from "./EmojiPicker";
 import { MentionAutocomplete, type MentionMember } from "./MentionAutocomplete";
 
+/**
+ * The server's cap, mirrored so the counter and the send button can see it.
+ *
+ * Two copies of a number is how they drift, and there is no shared package
+ * between the client and the server to hold one — they are separate
+ * repositories that meet over a socket. The server is the one that enforces it
+ * (`utils/messageLimits.ts`); if this drifts low the composer nags early, and
+ * if it drifts high the send is refused with `message_too_long`. Neither loses
+ * anybody's text.
+ */
+const MESSAGE_MAX_LENGTH = 4000;
+
+/** Show the counter this far from the cap, not before. */
+const COUNTER_VISIBLE_FROM = MESSAGE_MAX_LENGTH - 500;
+
 export interface ChatEditorHandle {
   clear: () => void;
   focus: () => void;
@@ -275,6 +290,8 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
       setShowAutocomplete(eq !== null);
     }, []);
 
+    const [length, setLength] = useState(0);
+
     const handleSend = useCallback(() => {
       const el = editorRef.current;
       if (!el) return;
@@ -283,6 +300,10 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
       const files = pendingFilesRef.current.map((p) => p.file);
 
       if (!text && files.length === 0) return;
+      // The server refuses this too. Stopping here as well means the message
+      // stays in the box, where it can be edited down, instead of being sent
+      // and bounced with the text already cleared.
+      if (text.length > MESSAGE_MAX_LENGTH) return;
 
       onSendRef.current(text, files);
       el.textContent = "";
@@ -381,8 +402,9 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
     const handleInput = useCallback(() => {
       if (editorRef.current) autoResize(editorRef.current);
       updateAutocompleteQueries();
-      const hasContent = editorRef.current ? serializeContentEditable(editorRef.current).trim().length > 0 : false;
-      if (hasContent) {
+      const body = editorRef.current ? serializeContentEditable(editorRef.current).trim() : "";
+      setLength(body.length);
+      if (body.length > 0) {
         onTypingRef.current?.();
       } else {
         onStopTypingRef.current?.();
@@ -627,6 +649,17 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
             onInput={handleInput}
             onClick={updateAutocompleteQueries}
           />
+          {length >= COUNTER_VISIBLE_FROM && (
+            <span
+              className="chat-editor-counter"
+              data-over={length > MESSAGE_MAX_LENGTH ? "true" : undefined}
+              /* Polite: it updates on every keystroke near the cap, and an
+                 assertive live region would interrupt the typing it counts. */
+              aria-live="polite"
+            >
+              {(MESSAGE_MAX_LENGTH - length).toLocaleString("en")}
+            </span>
+          )}
           <button
             className="chat-editor-send-btn"
             type="button"

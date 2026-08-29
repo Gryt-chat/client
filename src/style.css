@@ -1316,3 +1316,111 @@ body {
   line-height: 1.45;
   color: var(--gryt-neutral-11);
 }
+
+/* ── Folded messages ────────────────────────────────────────────────────────
+   A tall message is folded to about twelve lines with a control to open it.
+   The height, not the character count, is what decides — see CollapsibleText.
+
+   The server refuses anything past 4,000 characters, so this is not a defence
+   against a big message; it is about how much room one is allowed to take
+   before you have to scroll past it.
+*/
+.message-fold {
+  position: relative;
+}
+
+/* The clip lives on an inline style rather than here, because the same element
+   is measured — a class that sets max-height would make scrollHeight and the
+   cap the same number and the message would never look like it overflowed. */
+.message-fold-inner {
+  min-width: 0;
+}
+
+.message-fold-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  /* Sits above the toggle rather than behind it, so the last line goes under
+     the fade instead of colliding with the control. */
+  bottom: 1.6rem;
+  height: 3rem;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--gryt-neutral-1));
+}
+
+/* Hallmark · component: expand-control · genre: atmospheric · theme: Gryt (project tokens)
+ * states: default · hover · focus-visible · active
+ *   disabled/loading/error/success do not apply — the control toggles a clip on
+ *   content that is already in the DOM. It cannot fail, cannot wait, and is
+ *   never unavailable, so styling those four would be inventing states.
+ * contrast: label neutral-11 on neutral-3 at rest, neutral-12 on hover
+ */
+.message-fold-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  padding: 3px 9px 3px 8px;
+  border: 0;
+  border-radius: var(--gryt-radius-sm);
+  background: var(--gryt-neutral-3);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 500;
+  /* Neutral at rest, not accent. An accent-coloured control sitting under a
+     message reads as a link inside it, competing with the real links and
+     mentions in the text. This is chrome — it should be findable and quiet. */
+  color: var(--gryt-neutral-11);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.message-fold-toggle:hover {
+  background: var(--gryt-neutral-4);
+  color: var(--gryt-neutral-12);
+}
+
+.message-fold-toggle:active {
+  background: var(--gryt-neutral-5);
+}
+
+.message-fold-toggle:focus-visible {
+  outline: 2px solid var(--gryt-accent-8);
+  outline-offset: 2px;
+}
+
+/* The count is the point of the control — "there is more" is already obvious
+   from the fade above it, and how much more is what decides whether to click. */
+.message-fold-count {
+  color: var(--gryt-neutral-12);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The mark is drawn either way up rather than rotated — see Chevron in
+   CollapsibleText.tsx for why. Nothing here animates, so there is nothing for
+   prefers-reduced-motion to switch off beyond the colour transitions above. */
+.message-fold-chevron {
+  flex-shrink: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .message-fold-toggle {
+    transition: none;
+  }
+}
+
+/* The characters left, once there are few enough to care about. Absent until
+   500 from the cap, so it is a warning rather than a permanent gauge. */
+.chat-editor-counter {
+  align-self: center;
+  padding: 0 6px;
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--gryt-neutral-11);
+  user-select: none;
+}
+
+.chat-editor-counter[data-over="true"] {
+  color: var(--gryt-danger-11);
+  font-weight: 600;
+}
