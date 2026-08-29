@@ -312,15 +312,23 @@ export function Controls({ onDisconnect }: ControlsProps) {
     return () => clearTimeout(timer);
   }, [screenShareActive, screenVideoStream, getPeerConnection]);
 
+  /* The last camera and screen payloads this client sent, readable from a
+     listener that was wired once and would otherwise close over whatever they
+     were at the time (GRYT-644 hit the same thing with mute). */
+  const lastCameraStateRef = useRef<{ enabled: boolean; streamId: string } | null>(null);
+  const lastScreenStateRef = useRef<{ enabled: boolean; videoStreamId: string; audioStreamId: string } | null>(null);
+
   // Emit camera state to server
   useEffect(() => {
     if (!isConnected || !currentServerConnected) return;
     const socket = sockets[currentServerConnected];
+    const payload = {
+      enabled: cameraEnabled,
+      streamId: cameraStream?.id || "",
+    };
+    lastCameraStateRef.current = payload;
     if (socket) {
-      socket.emit("voice:camera:state", {
-        enabled: cameraEnabled,
-        streamId: cameraStream?.id || "",
-      });
+      socket.emit("voice:camera:state", payload);
     }
   }, [cameraEnabled, cameraStream, isConnected, currentServerConnected, sockets]);
 
@@ -334,6 +342,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
         videoStreamId: (screenShareActive && webrtcScreenVideoStreamId.current) || screenVideoStream?.id || "",
         audioStreamId: (screenShareActive && webrtcScreenAudioStreamId.current) || screenAudioStream?.id || "",
       };
+      lastScreenStateRef.current = payload;
       voiceLog.info("SCREEN", `controls: emitting voice:screen:state`, payload);
       if (screenShareActive && !payload.audioStreamId) {
         voiceLog.info("SCREEN", `controls: WARNING – screen share active but audioStreamId is empty (no audio captured)`);
@@ -341,6 +350,56 @@ export function Controls({ onDisconnect }: ControlsProps) {
       socket.emit("voice:screen:state", payload);
     }
   }, [screenShareActive, screenVideoStream, screenAudioStream, isConnected, currentServerConnected, sockets]);
+
+  /* Say the camera and the screen share are still on, after a reconnect that
+     did not move either (GRYT-612).
+   *
+   * `clientsInfo` on the server is keyed by socket id, so a reconnect hands
+   * this client a fresh entry with `cameraEnabled` and `screenShareEnabled`
+   * back at their defaults. The two effects above are what would correct that,
+   * and neither re-runs: a reconnect changes none of their dependencies —
+   * socket.io reuses the same Socket instance, so even `sockets` holds — and
+   * the media itself never stopped, because the signalling socket is not the
+   * media path. So the room saw a camera that was still sending as off.
+   *
+   * Sent on `voice:room:granted` rather than on the reconnect itself. Both
+   * handlers here are permission-gated, and a socket that has just reconnected
+   * has no cached permissions until `session:restore` finishes — so sending on
+   * the reconnect loses the race and the server answers `forbidden`, which is
+   * the one error the client does not retry. Measured against a local server:
+   *
+   *     RECV  voice:camera:state  { enabled: true, streamId: fbe93a87… }
+   *     EMIT  voice:room:error    forbidden, permission: share_video
+   *
+   * The grant is the server saying this socket is admitted and back in the
+   * channel — it cannot be issued without `join_voice` — so by then the
+   * permissions these two need are cached. `refusedAsUnidentified` on the
+   * server fences the same race for the room request itself, and the client's
+   * re-announce backs off until it lands; this waits for that to happen rather
+   * than racing alongside it.
+   *
+   * One-shot, and armed only by a reconnect: a first join emits both states
+   * from the effects above anyway. */
+  useEffect(() => {
+    if (!currentServerConnected) return;
+    const host = currentServerConnected;
+    const onReconnected = (event: Event) => {
+      const detail = (event as CustomEvent<{ host?: string }>).detail;
+      if (detail?.host && detail.host !== host) return;
+      const socket = sockets[host];
+      if (!socket) return;
+      socket.once("voice:room:granted", () => {
+        if (lastCameraStateRef.current) {
+          socket.emit("voice:camera:state", lastCameraStateRef.current);
+        }
+        if (lastScreenStateRef.current) {
+          socket.emit("voice:screen:state", lastScreenStateRef.current);
+        }
+      });
+    };
+    window.addEventListener("server_socket_reconnected", onReconnected);
+    return () => window.removeEventListener("server_socket_reconnected", onReconnected);
+  }, [currentServerConnected, sockets]);
 
   // Stop camera and screen share on disconnect; reset the saved WebRTC stream
   // IDs so the next voice session creates fresh sender transceivers.
