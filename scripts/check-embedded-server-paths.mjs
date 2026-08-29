@@ -65,15 +65,45 @@ function packageDir(dir, name) {
   return sibling;
 }
 
-// Whichever of the two this checkout is, all three have to resolve to somewhere
-// that exists. This is the property the build actually needs.
-for (const name of ["server", "sfu", "image-worker"]) {
-  const found = packageDir(clientDir, name);
-  assert.ok(
-    existsSync(found),
-    `${name} resolved to ${found}, which does not exist — ` +
-      `the embedded server cannot be built from ${clientDir}`,
-  );
+/*
+ * Whether this checkout has the other packages anywhere at all.
+ *
+ * Two of the three places the client gets checked out do: `packages/client` in
+ * the superproject, where they are siblings, and `.claude/worktrees/<name>`,
+ * where the superproject is one `.git` pointer away. The third does not — this
+ * repository's own CI clones the client alone into
+ * `/home/runner/work/client/client`, with no siblings and no superproject,
+ * because nothing there builds an embedded server.
+ *
+ * That third case is why this is a branch rather than a straight assertion. The
+ * loop below used to run unconditionally and asserted that all three packages
+ * exist on this machine, which is a fact about the checkout rather than about
+ * the resolution rule — so it failed every CI run from the day it was added
+ * (GRYT-650) and took main red with it.
+ */
+const attached =
+  existsSync(join(clientDir, "..", "server")) || superprojectRoot(clientDir) !== null;
+
+if (attached) {
+  // Whichever of the two this checkout is, all three have to resolve to
+  // somewhere that exists. This is the property the build actually needs, and
+  // it is only meaningful where the packages could be found.
+  for (const name of ["server", "sfu", "image-worker"]) {
+    const found = packageDir(clientDir, name);
+    assert.ok(
+      existsSync(found),
+      `${name} resolved to ${found}, which does not exist — ` +
+        `the embedded server cannot be built from ${clientDir}`,
+    );
+  }
+} else {
+  // A checkout on its own. Nothing to resolve to, so the rule that matters is
+  // the fallback: name the sibling path, so whoever hits this looks where they
+  // would have looked anyway. Same property the /tmp case below asserts, held
+  // here against the real checkout.
+  for (const name of ["server", "sfu", "image-worker"]) {
+    assert.equal(packageDir(clientDir, name), join(clientDir, "..", name));
+  }
 }
 
 // Nothing to go on: no siblings and no superproject. It falls back to the
@@ -84,4 +114,9 @@ assert.equal(
   join("/tmp/gryt-not-a-checkout", "..", "server"),
 );
 
-console.log(`Embedded server path checks passed — resolved from ${clientDir}`);
+console.log(
+  attached
+    ? `Embedded server path checks passed — resolved from ${clientDir}`
+    : `Embedded server path checks passed — ${clientDir} is a standalone checkout, ` +
+        `so the fallback was checked rather than the packages`,
+);
