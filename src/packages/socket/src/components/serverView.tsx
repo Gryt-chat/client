@@ -1,3 +1,4 @@
+import { Button } from "@gryt/ui";
 import { useSFU } from "@gryt/voice";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -19,7 +20,7 @@ import { useFakeSpeech } from "../dev/fakeSpeech";
 import { useAdminActions } from "../hooks/useAdminActions";
 import { useChannelSettings, useHandleChannelClick } from "../hooks/useChannelSettings";
 import { useChat } from "../hooks/useChat";
-import { useDirectMessages } from "../hooks/useDirectMessages";
+import { conversationTitle, type DirectConversation,useDirectMessages } from "../hooks/useDirectMessages";
 import { useLatencyReporting } from "../hooks/useLatencyReporting";
 import { usePeerLatency } from "../hooks/usePeerLatency";
 import { useServerPermissions } from "../hooks/usePermissions";
@@ -33,6 +34,7 @@ import { getUpdateAvailable } from "../hooks/useVersionStatus";
 import { getCustomEmojis } from "../utils/emojiData";
 import { ChatView } from "./ChatView";
 import { ConnectionBanner } from "./ConnectionBanner";
+import { GroupDialog } from "./GroupDialog";
 import { MemberSidebarPanel } from "./MemberSidebarPanel";
 import { MobileServerView } from "./MobileServerView";
 import { ReportsPanel } from "./ReportsPanel";
@@ -185,7 +187,15 @@ export const ServerView = () => {
     return () => window.removeEventListener("server_update_status", handler);
   }, [viewingHost]);
 
-  const { conversations: directConversations, openDm, setHidden: setDmHidden } = useDirectMessages({
+  const {
+    conversations: directConversations,
+    openDm,
+    setHidden: setDmHidden,
+    createGroup,
+    updateGroup,
+    addToGroup,
+    leaveGroup,
+  } = useDirectMessages({
     socket: currentConnection,
     accessToken,
     isConnected: currentConnectionStatus === "connected",
@@ -245,6 +255,15 @@ export const ServerView = () => {
   // The conversation being read, when it is a DM rather than a channel. The
   // chat header and the empty state both need the other person's name, and
   // `useChat` only knows how to look up channels.
+  /**
+   * The group dialog, and what it is for.
+   *
+   * `null` is closed. A conversation means managing that one; an array of
+   * ids means starting a new group with those people ticked — which is how
+   * the button on a direct message hands over who you were talking to.
+   */
+  const [groupDialog, setGroupDialog] = useState<DirectConversation | string[] | null>(null);
+
   const activeDm = useMemo(
     () => (selectedDmId
       ? directConversations.find((c) => c.conversation_id === selectedDmId)
@@ -429,6 +448,7 @@ export const ServerView = () => {
             selectedDmId={selectedDmId}
             onSelectDm={handleSelectDm}
             onHideDm={handleHideDm}
+            onManageGroup={setGroupDialog}
             clientsSpeaking={voiceClientsSpeaking}
             canManage={canManage}
             onEditItem={handleEditItem}
@@ -445,9 +465,16 @@ export const ServerView = () => {
             sendChat={sendChat}
             editMessage={editMessage}
             currentUserId={currentServerUserId}
-            channelName={activeDm ? activeDm.other.nickname : activeChannelName}
+            channelName={activeDm ? conversationTitle(activeDm) : activeChannelName}
             channelType={activeChannelType}
             conversationKind={activeDm ? "dm" : "channel"}
+            headerAction={
+              activeDm && activeDm.kind === "dm" ? (
+                <Button size="small" tone="ghost" onClick={() => setGroupDialog([activeDm.other.server_user_id])}>
+                  New group
+                </Button>
+              ) : undefined
+            }
             currentUserNickname={serverNickname}
             socketConnection={currentConnection}
             memberList={memberListMap}
@@ -509,6 +536,7 @@ export const ServerView = () => {
             selectedDmId={selectedDmId}
             onSelectDm={handleSelectDm}
             onHideDm={handleHideDm}
+            onManageGroup={setGroupDialog}
               clientsSpeaking={voiceClientsSpeaking}
               canManage={canManage}
               onEditItem={handleEditItem}
@@ -586,9 +614,16 @@ export const ServerView = () => {
                   sendChat={sendChat}
                   editMessage={editMessage}
                   currentUserId={currentServerUserId}
-                  channelName={activeDm ? activeDm.other.nickname : activeChannelName}
+                  channelName={activeDm ? conversationTitle(activeDm) : activeChannelName}
                   channelType={activeChannelType}
                   conversationKind={activeDm ? "dm" : "channel"}
+                  headerAction={
+                    activeDm && activeDm.kind === "dm" ? (
+                      <Button size="small" tone="ghost" onClick={() => setGroupDialog([activeDm.other.server_user_id])}>
+                        New group
+                      </Button>
+                    ) : undefined
+                  }
                   serverName={serverName}
                   currentUserNickname={serverNickname}
                   socketConnection={currentConnection}
@@ -634,6 +669,23 @@ export const ServerView = () => {
           </div>
         )}
       </div>
+
+      <GroupDialog
+        open={groupDialog !== null}
+        onOpenChange={(next) => { if (!next) setGroupDialog(null); }}
+        members={hostMembers ?? []}
+        serverHost={host}
+        currentServerUserId={currentServerUserId}
+        existing={Array.isArray(groupDialog) ? undefined : (groupDialog ?? undefined)}
+        initialMemberIds={Array.isArray(groupDialog) ? groupDialog : []}
+        onCreate={createGroup}
+        onUpdate={updateGroup}
+        onAdd={addToGroup}
+        onLeave={(id) => {
+          setSelectedDmId((current) => (current === id ? null : current));
+          leaveGroup(id);
+        }}
+      />
 
       <SidebarEditDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} editor={sidebarEditor} />
 

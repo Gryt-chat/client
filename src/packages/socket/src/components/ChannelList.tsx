@@ -47,6 +47,7 @@ export const ChannelList = ({
   selectedDmId,
   onSelectDm,
   onHideDm,
+  onManageGroup,
 }: {
   channels: Channel[];
   items?: SidebarItem[];
@@ -76,6 +77,8 @@ export const ChannelList = ({
   selectedDmId?: string | null;
   onSelectDm?: (conversation: DirectConversation) => void;
   onHideDm?: (conversation: DirectConversation) => void;
+  /** Open the settings for a group. Absent means no group management. */
+  onManageGroup?: (conversation: DirectConversation) => void;
 }) => {
   // The same analyser source the voice tile uses, so the row's ring and the
   // tile's agree. false takes no handle; useMicrophone is a singleton.
@@ -398,14 +401,27 @@ export const ChannelList = ({
    * conversations is not a thing to offer.
    */
   const directMessages = onSelectDm ? (
-    <DirectMessageList
-      conversations={directConversations ?? []}
-      serverHost={serverHost}
-      selectedConversationId={selectedDmId ?? null}
-      unreadConversationIds={unreadChannelIds}
-      onSelect={onSelectDm}
-      onHide={onHideDm}
-    />
+    <>
+      <DirectMessageList
+        title="Direct messages"
+        conversations={(directConversations ?? []).filter((c) => c.kind !== "group")}
+        serverHost={serverHost}
+        selectedConversationId={selectedDmId ?? null}
+        unreadConversationIds={unreadChannelIds}
+        onSelect={onSelectDm}
+        onHide={onHideDm}
+      />
+      <DirectMessageList
+        title="Groups"
+        onManage={onManageGroup}
+        conversations={(directConversations ?? []).filter((c) => c.kind === "group")}
+        serverHost={serverHost}
+        selectedConversationId={selectedDmId ?? null}
+        unreadConversationIds={unreadChannelIds}
+        onSelect={onSelectDm}
+        onHide={onHideDm}
+      />
+    </>
   ) : null;
 
   const staticList = (

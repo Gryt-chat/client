@@ -1,33 +1,44 @@
 import { Avatar, Button, ContextMenu } from "@gryt/ui";
 
-import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
+import { GeneratedServerIcon, getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 
-import type { DirectConversation } from "../hooks/useDirectMessages";
+import { conversationTitle, type DirectConversation } from "../hooks/useDirectMessages";
 import { EmojiText } from "./EmojiText";
 
 /**
- * The direct messages open on this server, under the channel list.
+ * Conversations on this server, under the channel list — one section per kind.
  *
  * Under the channels rather than above the server rail, and that placement is
  * the whole point: these conversations belong to this server. The same person
  * on another server is a different conversation with different history, so a
  * list that sat outside the server would be claiming something untrue.
+ *
+ * Direct messages and groups get a section each rather than sharing one. They
+ * behave the same and are drawn the same; what differs is that a group has a
+ * name and a picture of its own, and mixing the two would put a row you can
+ * rename next to one you cannot.
  */
 export const DirectMessageList = ({
   conversations,
   serverHost,
+  title,
   selectedConversationId,
   unreadConversationIds,
   onHide,
+  onManage,
   onSelect,
 }: {
   conversations: DirectConversation[];
+  /** The heading over the section. */
+  title: string;
   serverHost: string;
   selectedConversationId: string | null;
   unreadConversationIds?: Set<string>;
   onSelect: (conversation: DirectConversation) => void;
   /** Take it out of this person's own list. Absent on a server without it. */
   onHide?: (conversation: DirectConversation) => void;
+  /** Open a group's settings. Only passed for the groups section. */
+  onManage?: (conversation: DirectConversation) => void;
 }) => {
   // No heading over an empty list. Somebody who has never opened a DM does not
   // need a section telling them so.
@@ -39,7 +50,7 @@ export const DirectMessageList = ({
         className="text-xs text-gryt-muted"
         style={{ padding: "0 4px", marginTop: 8 }}
       >
-        Direct messages
+        {title}
       </span>
 
       {conversations.map((conversation) => {
@@ -72,23 +83,38 @@ export const DirectMessageList = ({
               onClick={() => onSelect(conversation)}
             >
               <div className="flex items-center" style={{ flexShrink: 0 }}>
-                <Avatar
-                  size="small"
-                  fallback={conversation.other.nickname[0]}
-                  src={resolveAvatarSrc(
-                    conversation.other.avatar_file_id
-                      ? getUploadsFileUrl(serverHost, conversation.other.avatar_file_id, { thumb: true })
-                      : undefined,
-                    conversation.other.nickname,
-                    conversation.other.avatar_worn,
-                  )}
-                />
+                {conversation.kind === "group" ? (
+                  <Avatar
+                    size="small"
+                    /* Seeded on the name, so renaming a group redraws it. The
+                       generator behind this is the one server icons use — when
+                       that changes, groups follow without a change here. */
+                    fallback={<GeneratedServerIcon seed={conversationTitle(conversation)} />}
+                    src={
+                      conversation.icon_file_id
+                        ? getUploadsFileUrl(serverHost, conversation.icon_file_id, { thumb: true })
+                        : undefined
+                    }
+                  />
+                ) : (
+                  <Avatar
+                    size="small"
+                    fallback={conversation.other.nickname[0]}
+                    src={resolveAvatarSrc(
+                      conversation.other.avatar_file_id
+                        ? getUploadsFileUrl(serverHost, conversation.other.avatar_file_id, { thumb: true })
+                        : undefined,
+                      conversation.other.nickname,
+                      conversation.other.avatar_worn,
+                    )}
+                  />
+                )}
               </div>
               <span
                 className="truncate"
                 style={{ flex: 1, minWidth: 0, textAlign: "left", display: "block" }}
               >
-                <EmojiText text={conversation.other.nickname} />
+                <EmojiText text={conversationTitle(conversation)} />
               </span>
             </Button>
           </div>
@@ -98,9 +124,17 @@ export const DirectMessageList = ({
               <ContextMenu.Popup className="min-w-55">
                 <ContextMenu.Group>
                   <ContextMenu.GroupLabel style={{ fontWeight: "bold" }}>
-                    {conversation.other.nickname}
+                    {conversationTitle(conversation)}
                   </ContextMenu.GroupLabel>
                 </ContextMenu.Group>
+                {onManage && (
+                  <>
+                    <ContextMenu.Separator />
+                    <ContextMenu.Item onClick={() => onManage(conversation)}>
+                      Group settings
+                    </ContextMenu.Item>
+                  </>
+                )}
                 {onHide && (
                   <>
                     <ContextMenu.Separator />
