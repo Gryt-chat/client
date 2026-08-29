@@ -1348,29 +1348,65 @@ body {
   background: linear-gradient(to bottom, transparent, var(--gryt-neutral-1));
 }
 
+/* Hallmark · component: expand-control · genre: atmospheric · theme: Gryt (project tokens)
+ * states: default · hover · focus-visible · active
+ *   disabled/loading/error/success do not apply — the control toggles a clip on
+ *   content that is already in the DOM. It cannot fail, cannot wait, and is
+ *   never unavailable, so styling those four would be inventing states.
+ * contrast: label neutral-11 on neutral-3 at rest, neutral-12 on hover
+ */
 .message-fold-toggle {
-  display: block;
-  margin-top: 2px;
-  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  padding: 3px 9px 3px 8px;
   border: 0;
-  background: none;
+  border-radius: var(--gryt-radius-sm);
+  background: var(--gryt-neutral-3);
   cursor: pointer;
   font: inherit;
   font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--gryt-accent-11);
-  transition: color 0.15s ease;
+  font-weight: 500;
+  /* Neutral at rest, not accent. An accent-coloured control sitting under a
+     message reads as a link inside it, competing with the real links and
+     mentions in the text. This is chrome — it should be findable and quiet. */
+  color: var(--gryt-neutral-11);
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .message-fold-toggle:hover {
-  color: var(--gryt-accent-12);
-  text-decoration: underline;
+  background: var(--gryt-neutral-4);
+  color: var(--gryt-neutral-12);
+}
+
+.message-fold-toggle:active {
+  background: var(--gryt-neutral-5);
 }
 
 .message-fold-toggle:focus-visible {
   outline: 2px solid var(--gryt-accent-8);
   outline-offset: 2px;
-  border-radius: var(--gryt-radius-sm);
+}
+
+/* The count is the point of the control — "there is more" is already obvious
+   from the fade above it, and how much more is what decides whether to click. */
+.message-fold-count {
+  color: var(--gryt-neutral-12);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The mark is drawn either way up rather than rotated — see Chevron in
+   CollapsibleText.tsx for why. Nothing here animates, so there is nothing for
+   prefers-reduced-motion to switch off beyond the colour transitions above. */
+.message-fold-chevron {
+  flex-shrink: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .message-fold-toggle {
+    transition: none;
+  }
 }
 
 /* The characters left, once there are few enough to care about. Absent until
