@@ -57,6 +57,7 @@
     "test:dm-key-binding": "node scripts/check-dm-key-binding.mjs",
     "test:peer-keys": "node scripts/check-peer-keys.mjs",
     "test:member-keys": "node scripts/check-member-keys.mjs",
+    "test:member-key-wording": "node scripts/check-member-key-wording.mjs",
     "test:message-keys": "node scripts/check-message-keys.mjs"
   },
   "dependencies": {

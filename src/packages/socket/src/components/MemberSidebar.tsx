@@ -182,7 +182,7 @@ const MemberItem = ({
         <PreviewCard.Portal>
           <PreviewCard.Positioner side="left" align="start">
             <PreviewCard.Popup>
-          <MemberIdentityCard member={member} />
+          <MemberIdentityCard member={member} serverHost={serverHost} />
         </PreviewCard.Popup>
           </PreviewCard.Positioner>
         </PreviewCard.Portal>

@@ -5,6 +5,8 @@ import { PiCaretDownBold, PiCopySimpleBold } from "react-icons/pi";
 
 import { resolveAvatarSrc } from "@/common";
 
+import { useSockets } from "../hooks/useSockets";
+import { describeChange, describePin } from "../utils/memberKeyWording";
 import { BotTag } from "./BotTag";
 import type { MemberInfo } from "./MemberSidebar";
 import { statusConfig } from "./memberStatus";
@@ -113,9 +115,23 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
 
 export function MemberIdentityCard({
   member,
+  serverHost,
   voiceChannelName,
 }: {
   member: MemberInfo;
+  /**
+   * Which server this member is being shown on, so their key state can be
+   * looked up (GRYT-728).
+   *
+   * Read from the hook here rather than passed down, because both callers —
+   * the sidebar and a message row — would otherwise have to thread it through
+   * components that have no other use for it, and one of them forgetting is a
+   * card that quietly stops mentioning a changed key.
+   *
+   * Optional, and without it the key section is simply absent. Same as a server
+   * too old to carry bindings at all.
+   */
+  serverHost?: string;
   /**
    * Optional, because neither caller has channels in reach: the sidebar and the
    * message list both pass a member and nothing else. Without it the status
@@ -124,6 +140,11 @@ export function MemberIdentityCard({
    */
   voiceChannelName?: string;
 }) {
+  const { memberKeyStates } = useSockets();
+  const keyState = serverHost
+    ? memberKeyStates[serverHost]?.[member.serverUserId]
+    : undefined;
+
   const joined = formatJoined(member.createdAt);
   const tier = member.identityTier ? TIER_LABEL[member.identityTier] : undefined;
   const renames = describeRenames(
@@ -256,7 +277,49 @@ export function MemberIdentityCard({
               {tier && <Fact label="Account">{tier.label}</Fact>}
               {joined && <Fact label="Joined">{joined}</Fact>}
               {renames && <Fact label="Name">{renames}</Fact>}
+              {keyState?.decision.kind === "known" && (
+                <Fact label="Message key">
+                  {describePin(keyState.decision.pin.firstSeenAt)}
+                </Fact>
+              )}
+              {keyState?.decision.kind === "first" && (
+                <Fact label="Message key">Seen for the first time</Fact>
+              )}
             </dl>
+            {keyState?.decision.kind === "changed" && (
+              /*
+               * Inside the drawer with the rest of the identity facts, and
+               * deliberately not a toast. A toast for this would be gone before
+               * the person it concerns said anything, and there would be nothing
+               * to go back to.
+               */
+              <div
+                className="flex flex-col gap-1.5 rounded p-2.5 text-xs leading-snug"
+                style={{
+                  background: "var(--gryt-amber-3, var(--gryt-neutral-4))",
+                  color: "var(--gryt-text)",
+                }}
+              >
+                <span className="font-semibold">Their key changed</span>
+                <span className="text-gryt-muted">
+                  {describeChange(
+                    keyState.decision.changedIdentity,
+                    keyState.decision.changedKey,
+                  )}
+                </span>
+                <span className="text-gryt-muted">
+                  {/*
+                    Both causes, neither picked. Saying "they probably got a new
+                    device" would be a guess this client cannot make, and it is
+                    the reassuring one of the two.
+                  */}
+                  That happens when somebody restores their identity on another
+                  device. It is also what a server substituting a key looks
+                  like. Ask them somewhere other than here before treating
+                  messages as private.
+                </span>
+              </div>
+            )}
             {!identityIsTheQuestion && fingerprint && (
               <div className="flex flex-col gap-1.5">
                 <span className="text-xs text-gryt-muted">Fingerprint</span>
