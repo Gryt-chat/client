@@ -35,6 +35,7 @@ jobs:
       - run: yarn test:embedded-server-paths
       - run: yarn test:voice-state
       - run: yarn test:calls
+      - run: yarn test:call-members
       # tsc -b and eslint with --max-warnings 0. This is the check that was
       # missing: client#115 merged with three TS6133 errors and main did not
       # compile until the next PR happened to supply the code that used them.
