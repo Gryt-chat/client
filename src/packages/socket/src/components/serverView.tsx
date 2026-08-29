@@ -357,12 +357,38 @@ export const ServerView = () => {
     const conversationId = activeDm.conversation_id;
     const ringing = outgoingCall?.conversation_id === conversationId;
 
+    /**
+     * Ringing and joining are one act.
+     *
+     * The caller is in the room from the moment it rings. Without that,
+     * answering joins a room with nobody in it — the ring says somebody wants
+     * to talk to you, you say yes, and there is silence, because the person who
+     * rang never went in.
+     *
+     * Giving up leaves it again. Cancel is only offered while nobody has
+     * answered, so at that point the room holds the caller and no one else.
+     */
+    const startCall = () => {
+      ringConversation(conversationId);
+      setShowVoiceView(true);
+      connect(conversationId).catch((error) => {
+        console.error("Could not start the call:", error);
+        toast.error(error instanceof Error ? error.message : "Could not start the call");
+        cancelCall(conversationId);
+      });
+    };
+
+    const stopCall = () => {
+      cancelCall(conversationId);
+      handleVoiceDisconnect();
+    };
+
     return (
       <div className="flex items-center gap-1">
         <Button
           size="small"
           tone={ringing ? "primary" : "ghost"}
-          onClick={() => (ringing ? cancelCall(conversationId) : ringConversation(conversationId))}
+          onClick={() => (ringing ? stopCall() : startCall())}
         >
           {ringing ? "Cancel" : "Call"}
         </Button>
@@ -373,7 +399,7 @@ export const ServerView = () => {
         ) : null}
       </div>
     );
-  }, [activeDm, viewerPermissions, outgoingCall, cancelCall, ringConversation, setGroupDialog]);
+  }, [activeDm, viewerPermissions, outgoingCall, cancelCall, ringConversation, setGroupDialog, connect, setShowVoiceView, handleVoiceDisconnect]);
 
   const currentAdminActions = useMemo(() => {
     // One handler per permission, rather than one bundle per role name. This
