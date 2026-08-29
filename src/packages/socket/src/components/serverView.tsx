@@ -47,6 +47,7 @@ import { ServerConfirmDialogs } from "./ServerConfirmDialogs";
 import { ServerLoadingStates } from "./ServerLoadingStates";
 import { ServerSidebar } from "./ServerSidebar";
 import { SidebarEditDialog } from "./SidebarEditDialog";
+import { VoiceSheetButton } from "./VoiceSheetButton";
 import { VoiceView } from "./VoiceView";
 
 // Parsed once at module load. The query string overrides the Developer panel
@@ -648,9 +649,33 @@ export const ServerView = () => {
            * that makes sense for a window somebody shrank on purpose to watch
            * one channel. `useIsTinyWindow` is gated on a fine pointer so a
            * phone never reaches this, where that would be a dead end.
+           *
+           * A call is the one thing that does not wait for a bigger window.
+           * The voice panel is gone at this width, so the floating button the
+           * phone layout already uses comes with it — otherwise the microphone
+           * stays open with nothing on screen to close it.
            */
           <div className="flex" style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
             {chatView}
+            <VoiceSheetButton
+              connected={isVoiceOnThisServer}
+              serverHost={host}
+              currentServerConnected={currentServerConnected}
+              currentChannelId={currentChannelId}
+              clientsForHost={hostClients}
+              members={hostMembers}
+              clientsSpeaking={voiceClientsSpeaking}
+              isConnecting={isConnecting}
+              currentConnectionId={currentConnection?.id}
+              isCall={connectedToACall}
+              onDisconnect={handleVoiceDisconnect}
+              peerLatency={peerLatency}
+              onDisconnectUser={canDisconnectFromVoice ? requestDisconnectUser : undefined}
+              currentUserRole={currentUserRole}
+              adminActions={currentAdminActions}
+              videoStreams={voiceVideoStreams}
+              streamSources={voiceStreamSources}
+            />
           </div>
         ) : isMobile ? (
           <MobileServerView

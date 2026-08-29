@@ -33,6 +33,7 @@ jobs:
       - run: yarn test:tile-contrast
       - run: yarn test:fake-participants
       - run: yarn test:narrow-layout
+      - run: yarn test:call-controls
       - run: yarn test:embedded-server-paths
       - run: yarn test:voice-state
       - run: yarn test:calls
