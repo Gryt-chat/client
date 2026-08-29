@@ -32,6 +32,7 @@
     "test:server-order": "node scripts/check-server-order.mjs",
     "test:voice-state": "node scripts/check-voice-state-reassert.mjs",
     "test:calls": "node scripts/check-calls.mjs",
+    "test:call-members": "node scripts/check-call-members.mjs",
     "test:tile-contrast": "node scripts/check-tile-contrast.mjs",
     "test:fake-participants": "node scripts/check-fake-participants.mjs",
     "test:embedded-server-paths": "node scripts/check-embedded-server-paths.mjs",

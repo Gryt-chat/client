@@ -21,6 +21,11 @@ import {
 } from "@/settings/src/types/server";
 
 import { MemberInfo } from "../components/MemberSidebar";
+import {
+  applyCallMemberships,
+  type CallMemberships,
+  rememberCallMembers,
+} from "../lib/callMembers";
 import { Clients, ServerProfile } from "../types/clients";
 import { fetchCustomEmojis, setCustomEmojis } from "../utils/emojiData";
 import { handleRateLimitError } from "../utils/rateLimitHandler";
@@ -65,6 +70,17 @@ export interface ServerEventContext {
 }
 
 export function registerServerSocketEvents(socket: Socket, host: string, ctx: ServerEventContext) {
+  /**
+   * Who is in each call on this server, as last heard.
+   *
+   * Held here rather than in state because nothing renders it directly — it is
+   * only ever used to put the conversation id back onto `clients`, which is
+   * what everything downstream already groups by. And it has to be remembered
+   * rather than applied once: the next `server:clients` arrives with the id
+   * blanked out again, so this is re-applied on every one of them.
+   */
+  let callMemberships: CallMemberships = {};
+
   const { nickname, userIdRef, servers, serversRef, lastInviteJoinAttemptRef, myVoiceStateByHostRef } = ctx;
   const { setServers, setNewServerInfo, setServerDetailsList, setFailedServerDetails } = ctx;
   const { setClients, setMemberLists, setServerProfiles, setIsServerMuted, setIsServerDeafened } = ctx;
@@ -471,6 +487,30 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     }
   });
 
+  /**
+   * The people in a call, which the server tells only the call.
+   *
+   * Sent into that call's own socket.io room and nowhere else, so receiving it
+   * is the proof of being allowed to know. See `lib/callMembers.ts` for why the
+   * id is missing in the first place.
+   */
+  socket.on(
+    "voice:call:members",
+    (payload: { conversation_id?: string; server_user_ids?: string[] }) => {
+      if (!payload?.conversation_id || !Array.isArray(payload.server_user_ids)) return;
+      callMemberships = rememberCallMembers(
+        callMemberships,
+        payload.conversation_id,
+        payload.server_user_ids,
+      );
+      setClients((old) => {
+        const patched = applyCallMemberships(old[host] ?? {}, callMemberships);
+        if (patched === old[host]) return old;
+        return { ...old, [host]: patched };
+      });
+    },
+  );
+
   socket.on("server:clients", (data: Clients) => {
     setClients((old) => {
       const prev = old[host] ?? {};
@@ -486,7 +526,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
           );
         }
       }
-      return { ...old, [host]: data };
+      return { ...old, [host]: applyCallMemberships(data, callMemberships) };
     });
 
     const myEntry = socket.id ? data[socket.id] : undefined;
