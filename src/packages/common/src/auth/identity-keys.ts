@@ -22,6 +22,8 @@ import {
   seedToWords,
   wordsToSeed,
 } from "./identity-seed";
+import { identitySourceUsedFor } from "./identity-source";
+import { jwkThumbprint } from "./server-pins";
 import { getOriginKeyIdForHost } from "./server-pins";
 
 const DB_NAME = "gryt_identity_keys";
@@ -521,6 +523,32 @@ export async function ownDmKeyPair(host: string): Promise<DmKeyPair> {
   } finally {
     db.close();
   }
+}
+
+/**
+ * This device's own half of a comparison code, for one server (GRYT-730).
+ *
+ * Both people's keys go into the code, so a card cannot draw one without
+ * knowing what we published here. The thumbprint is of the identity key that
+ * joined — the same one that signs the binding other people verify — so the two
+ * sides are made of the same four things.
+ *
+ * Public halves only. Nothing here is secret and the code is meant to be read
+ * out loud.
+ */
+export async function ownComparisonSide(
+  host: string,
+): Promise<{ thumbprint: string; dmPublicKey: string }> {
+  const source = identitySourceUsedFor(host) ?? { kind: "local" as const, host };
+  const [publicJwk, dm] = await Promise.all([
+    getPublicKeyJwk(source),
+    ownDmPublicKey(host),
+  ]);
+
+  return {
+    thumbprint: await jwkThumbprint(publicJwk),
+    dmPublicKey: base64UrlEncode(dm),
+  };
 }
 
 export async function ownDmPublicKey(host: string): Promise<Uint8Array> {

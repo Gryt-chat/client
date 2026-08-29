@@ -59,6 +59,7 @@
     "test:member-keys": "node scripts/check-member-keys.mjs",
     "test:member-key-wording": "node scripts/check-member-key-wording.mjs",
     "test:conversation-encryption": "node scripts/check-conversation-encryption.mjs",
+    "test:comparison-code": "node scripts/check-comparison-code.mjs",
     "test:message-keys": "node scripts/check-message-keys.mjs"
   },
   "dependencies": {
