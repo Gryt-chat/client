@@ -30,6 +30,7 @@ jobs:
       - run: yarn test:peer-keys
       - run: yarn test:dm-key-published
       - run: yarn test:sealed-text
+      - run: yarn test:sealed-send
       - run: yarn test:member-key-wording
       - run: yarn test:owl-export
       - run: yarn test:owl-seen

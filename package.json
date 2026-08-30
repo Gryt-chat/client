@@ -56,7 +56,8 @@
     "test:peer-keys": "node scripts/check-peer-keys.mjs",
     "test:member-key-wording": "node scripts/check-member-key-wording.mjs",
     "test:dm-key-published": "node scripts/check-dm-key-published.mjs",
-    "test:sealed-text": "node scripts/check-sealed-text.mjs"
+    "test:sealed-text": "node scripts/check-sealed-text.mjs",
+    "test:sealed-send": "node scripts/check-sealed-send.mjs"
   },
   "dependencies": {
     "@dicebear/core": "^10",
