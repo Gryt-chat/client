@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   decideSealing,
   type DmKeyPair,
+  type OpenedMessage,
   openForConversation,
   ownDmKeyPair,
   type SealDecision,
@@ -35,8 +36,13 @@ export interface ConversationSealing {
    * Null means there is no wrapped key for us — somebody who joined after it
    * was sent. Throws when a key is there and does not open, which is tampering
    * or the wrong conversation rather than an ordinary absence.
+   *
+   * `attachments` is the file keys the message carried, by file id, and is
+   * empty for the messages that have none. Nothing draws it yet — the upload
+   * path still sends files in the clear — but it is what comes back, so it is
+   * not hidden behind a second call somebody has to remember to make.
    */
-  open: (sealed: string) => Promise<string | null>;
+  open: (sealed: string) => Promise<OpenedMessage | null>;
 }
 
 export function useConversationSealing({

@@ -189,10 +189,15 @@ export function useChat({
     void Promise.all(
       pending.map(async (message) => {
         try {
-          const text = await sealing.open(message.sealed!);
+          // `{ text, attachments }` since attachments could be sealed. Only the
+          // text is drawn here; the files are still uploaded in the clear, and
+          // the key that would open them is sitting in `opened.attachments`
+          // waiting for the upload path to catch up.
+          const opened = await sealing.open(message.sealed!);
           // Null is no wrapped key for us: a message from before we joined the
           // conversation. Permanent, ordinary, and not an error.
-          return { id: message.message_id, text, state: text === null ? "locked" : "open" } as const;
+          const text = opened?.text ?? null;
+          return { id: message.message_id, text, state: opened === null ? "locked" : "open" } as const;
         } catch {
           // A key that is there and does not open. Tampering, or the wrong
           // conversation. Drawn as broken rather than as an empty message.

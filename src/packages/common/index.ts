@@ -7,6 +7,7 @@
 // below with the store spelled out. Two star exports of one name is ambiguous,
 // and TypeScript drops the name rather than complaining — every call site would
 // stop compiling with nothing saying why.
+export * from "@gryt/crypto/attachments";
 export * from "@gryt/crypto/comparison-code";
 export * from "@gryt/crypto/conversation-encryption";
 export * from "@gryt/crypto/dm-key-binding";
