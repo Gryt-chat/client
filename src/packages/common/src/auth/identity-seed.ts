@@ -19,6 +19,7 @@
  * checked on its own.
  */
 
+import type { IdentityScope } from "@gryt/crypto";
 import { mapHashToField } from "@noble/curves/abstract/modular.js";
 import { p256 } from "@noble/curves/nist.js";
 import { hkdf } from "@noble/hashes/hkdf.js";
@@ -42,35 +43,13 @@ export const SEED_BYTES = 32;
  * taken or a router hands out a new lease, and a key derived from the address
  * makes the client arrive at a server it already knows as a stranger.
  *
- * A branded string rather than a comment, because `derive(seed, host)` and
- * `derive(seed, scope)` are the same call to a type checker and the difference
- * only shows up when somebody's server moves. It is still a `string` as far as
- * assignment out of here goes, so nothing that stores or compares one has to
- * change.
- *
- * Declared here rather than beside `identityScopeFor`, so `dm-keys.ts` can use
- * it without importing the module that owns the database — and so this file
- * keeps having no dependencies of its own.
+ * The brand lives in `@gryt/crypto` rather than here, and this file re-exports
+ * it so nothing that already imports it from `@/common` has to change. It has
+ * to be one declaration: a `unique symbol` brand declared twice produces two
+ * types that do not assign to each other, so a second copy in the client would
+ * make every scope the client mints unusable by the package's own functions.
  */
-export type IdentityScope = string & { readonly __identityScope: unique symbol };
-
-/**
- * Say that a string is a scope.
- *
- * The brand has to be mintable somewhere or nothing could ever call these
- * functions. Keeping it to one named function means every scope in the codebase
- * is somewhere a person wrote down that they meant one — `identityScopeFor`,
- * the reports service's own scope, and reading scopes back out of storage that
- * were written through those.
- *
- * It checks nothing, and cannot: `identityScopeFor` legitimately returns a bare
- * address for a server that offered no proof, so "looks like a host" is not a
- * signal. What it buys is that `deriveDmKeyPair(seed, host)` does not compile,
- * which is the mistake worth catching.
- */
-export function asIdentityScope(value: string): IdentityScope {
-  return value as IdentityScope;
-}
+export { asIdentityScope, type IdentityScope } from "@gryt/crypto";
 
 /**
  * Domain separator mixed into every derivation, and the reason it carries a

@@ -1,10 +1,24 @@
+// Message encryption is one implementation shared with the mobile app
+// (GRYT-732). These were files in `src/auth` until the package existed, and are
+// re-exported one for one so nothing in the client had to change its imports.
+//
+// Taken by subpath rather than as `export * from "@gryt/crypto"`, because the
+// package's own `peer-keys` exports the same names as `./src/auth/peer-keys`
+// below with the store spelled out. Two star exports of one name is ambiguous,
+// and TypeScript drops the name rather than complaining — every call site would
+// stop compiling with nothing saying why.
+export * from "@gryt/crypto/comparison-code";
+export * from "@gryt/crypto/conversation-encryption";
+export * from "@gryt/crypto/dm-key-binding";
+export * from "@gryt/crypto/dm-keys";
+export * from "@gryt/crypto/member-keys";
+export * from "@gryt/crypto/message-keys";
+// Not `@gryt/crypto/thumbprint`. `server-pins.ts` has exported `jwkThumbprint`
+// since GRYT-51 and is the copy the client's server pinning calls.
+
 export * from "./src/auth/account-api";
 export * from "./src/auth/answer-challenge";
-export * from "./src/auth/comparison-code";
-export * from "./src/auth/conversation-encryption";
 export * from "./src/auth/device-delegation";
-export * from "./src/auth/dm-key-binding";
-export * from "./src/auth/dm-keys";
 export * from "./src/auth/guest-history";
 export * from "./src/auth/identity-backup-lock";
 export * from "./src/auth/identity-certificate";
@@ -13,7 +27,6 @@ export * from "./src/auth/identity-keys";
 export * from "./src/auth/identity-source";
 export * from "./src/auth/keycloak";
 export * from "./src/auth/local-identity";
-export * from "./src/auth/member-keys";
 export * from "./src/auth/peer-keys";
 export * from "./src/auth/server-pins";
 export * from "./src/auth/session-expired";

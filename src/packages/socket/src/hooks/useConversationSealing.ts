@@ -17,8 +17,8 @@ import { useSockets } from "./useSockets";
  * Pulls together the three things that decide it — who is in the conversation,
  * what this client made of each of their keys, and this device's own keypair —
  * and hands back a decision plus the two operations. Everything with a rule in
- * it lives in `conversation-encryption.ts`; this is the part that has to be a
- * hook because the inputs are React state.
+ * it lives in `conversation-encryption` in `@gryt/crypto`; this is the part that
+ * has to be a hook because the inputs are React state.
  */
 
 export interface ConversationSealing {
