@@ -35,6 +35,7 @@ import {
 import { Clients, ServerProfile } from "../types/clients";
 import { publishDmKey } from "../utils/dmKeys";
 import { fetchCustomEmojis, setCustomEmojis } from "../utils/emojiData";
+import { firstTimeOnThisSocket } from "../utils/publishedOnce";
 import { handleRateLimitError } from "../utils/rateLimitHandler";
 import { syncAvatarToHost } from "../utils/syncAvatarToHost";
 
@@ -50,6 +51,21 @@ const tokenHealLastAttempt = new Map<string, number>();
  * server's value instead of quietly falling back to the local one.
  */
 const myServerUserIdByHost = new Map<string, string>();
+
+/**
+ * What `firstTimeOnThisSocket` is asked about below (GRYT-758).
+ *
+ * `publishDmKey` used to run only from `server:joined`, and the server emits
+ * that from one place: the `server:verify` handler. A client that already holds
+ * a token never goes near it — `useSockets` sends `session:restore` on connect
+ * instead — so everybody who was already a member of a server published no key
+ * at all, and encrypted DMs were on for new members only. Nothing errored, and
+ * the composer correctly reported that the other side had published nothing.
+ *
+ * `server:details` is the one signal both routes produce, and it is already
+ * what this client treats as the restore having landed.
+ */
+const DM_KEY = "dm-key";
 
 function canAttemptTokenHeal(host: string): boolean {
   const last = tokenHealLastAttempt.get(host) ?? 0;
@@ -155,6 +171,11 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
 
     setServerDetailsList((old) => ({ ...old, [host]: data }));
 
+    // Say what key to encrypt to us here (GRYT-727, GRYT-758). Not awaited:
+    // nothing else depends on it, and a key that never arrives means no
+    // encrypted messages rather than a connection that failed.
+    if (firstTimeOnThisSocket(socket, DM_KEY)) void publishDmKey(socket, host);
+
     if (data.sfu_hosts?.length) {
       warmSfuSelection(host, data.sfu_hosts);
     }
@@ -178,7 +199,12 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     // Say what key to encrypt to us here (GRYT-727). Not awaited: nothing else
     // in this handler depends on it, and a key that never arrives means no
     // encrypted messages rather than a join that failed.
-    void publishDmKey(socket, host);
+    //
+    // Kept alongside the `server:details` publish rather than replaced by it. A
+    // first join produces both, and this one is the earlier of the two — the
+    // key is on the server before the first member list goes out rather than
+    // after it, so nobody sees the new member appear without one.
+    if (firstTimeOnThisSocket(socket, DM_KEY)) void publishDmKey(socket, host);
     if (joinInfo.refreshToken) {
       setServerRefreshToken(host, joinInfo.refreshToken);
     }

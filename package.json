@@ -61,7 +61,9 @@
     "test:conversation-encryption": "node scripts/check-conversation-encryption.mjs",
     "test:comparison-code": "node scripts/check-comparison-code.mjs",
     "test:crypto-vectors": "node scripts/check-crypto-vectors.mjs",
-    "test:message-keys": "node scripts/check-message-keys.mjs"
+    "test:message-keys": "node scripts/check-message-keys.mjs",
+    "test:dm-key-published": "node scripts/check-dm-key-published.mjs",
+    "test:sealed-text": "node scripts/check-sealed-text.mjs"
   },
   "dependencies": {
     "@dicebear/core": "^10",
