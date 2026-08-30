@@ -76,6 +76,16 @@ export function useChatSend({
 }: UseChatSendParams): UseChatSendReturn {
   const retryQueueRef = useRef<Map<string, RetryEntry>>(new Map());
 
+  /**
+   * A ref because `markLatestPendingFailed` is declared below this and
+   * `performRetry` needs it (GRYT-765).
+   *
+   * Reordering the two would work and would put `performRetry` after everything
+   * it reads, which is a bigger diff in a file where the order is already
+   * load-bearing for the other callbacks.
+   */
+  const markLatestPendingFailedRef = useRef<() => void>(() => {});
+
   const performRetry = useCallback(() => {
     const queue = retryQueueRef.current;
     let target: { pendingId: string; entry: RetryEntry } | null = null;
@@ -93,13 +103,35 @@ export function useChatSend({
     const payload: Record<string, unknown> = {
       conversationId: target.entry.conversationId,
       accessToken: target.entry.accessToken,
-      text: target.entry.text,
       nonce: target.entry.nonce,
     };
     if (target.entry.attachments?.length) payload.attachments = target.entry.attachments;
     if (target.entry.replyToMessageId) payload.replyToMessageId = target.entry.replyToMessageId;
-    currentConnection.emit("chat:send", payload);
-  }, [currentConnection, currentlyViewingServer?.host]);
+
+    /*
+     * Sealed, exactly as the first attempt was (GRYT-765).
+     *
+     * This used to put `text` straight on the payload and emit. So a message
+     * the composer said was encrypted went to the server in the clear the
+     * moment it was retried — and nothing looked different, because the row was
+     * already on screen and the retry succeeded. Being rate-limited while
+     * sending a direct message was enough to reach it.
+     *
+     * A failure to seal sends nothing, for the reason `sendMessageWithToken`
+     * gives: falling back to plaintext because a derivation threw is the one
+     * outcome nobody would notice and nobody would want.
+     */
+    const text = target.entry.text;
+    void seal(text)
+      .then((sealed) => {
+        if (sealed) payload.sealed = sealed;
+        else payload.text = text;
+        currentConnection.emit("chat:send", payload);
+      })
+      .catch(() => {
+        markLatestPendingFailedRef.current();
+      });
+  }, [currentConnection, currentlyViewingServer?.host, seal]);
 
   const markLatestPendingFailed = useCallback(() => {
     const queue = retryQueueRef.current;
@@ -167,6 +199,8 @@ export function useChatSend({
         markLatestPendingFailed();
       });
   }, [activeConversationId, currentConnection, seal, markLatestPendingFailed]);
+
+  markLatestPendingFailedRef.current = markLatestPendingFailed;
 
   const canSendRef = useRef(canSend);
   canSendRef.current = canSend;
