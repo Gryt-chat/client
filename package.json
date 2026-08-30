@@ -2,7 +2,7 @@
   "name": "gryt-chat",
   "private": true,
   "version": "1.7.0-beta.1",
-  "description": "Gryt Chat — real-time voice chat desktop client",
+  "description": "Gryt Chat \u2014 real-time voice chat desktop client",
   "author": {
     "name": "Gryt Chat",
     "email": "sivert@gryt.chat",
@@ -70,7 +70,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@gryt/owl": "^0.6.0",
-    "@gryt/ui": "^0.24.0",
+    "@gryt/ui": "^0.25.0",
     "@gryt/voice": "0.4.3",
     "@mediapipe/tasks-vision": "^1.0.1",
     "@noble/ciphers": "^2",

@@ -8,7 +8,8 @@
  * `scripts/check-owl-export-raster.mjs` — this one is the part that can run in
  * CI on every push without a browser download.
  *
- * Node 24 strips the types on import.
+ * The code under test ships in @gryt/ui as of GRYT-641, so this checks the
+ * copy the client actually installs rather than a file in this repository.
  */
 
 import assert from "node:assert/strict";
@@ -20,7 +21,7 @@ import {
   EXPORT_SIZE,
   exportFilename,
   renderOwl,
-} from "../src/packages/settings/src/components/owlExport.ts";
+} from "@gryt/ui";
 
 const look = decodeWorn(
   encodeWorn({ palette: "teal", scheme: "day", ears: "tufts", wearing: {} }),

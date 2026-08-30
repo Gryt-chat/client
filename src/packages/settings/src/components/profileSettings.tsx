@@ -1,4 +1,5 @@
 import { AlertDialog, Avatar, Button, IconButton, Tabs, TextField, Tooltip } from "@gryt/ui";
+import { AvatarChoiceDialog, OwlDesignerDialog } from "@gryt/ui";
 import { useCallback,useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { PiArrowsClockwiseFill, PiCameraFill, PiCheck, PiCopyFill } from "react-icons/pi";
@@ -7,7 +8,6 @@ import { compressStaticAvatarToLimit, getAvatarHash, getServerAccessToken, getSe
 import { useSettings } from "@/settings";
 import { useServerManagement, useSockets } from "@/socket";
 
-import { AvatarChoiceDialog, OwlDesignerDialog } from "./owlDesigner";
 import { SettingsContainer } from "./settingsComponents";
 
 function extForMime(mime: string): string {
