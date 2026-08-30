@@ -6,6 +6,7 @@ import { getUploadsFileUrl } from "@/common";
 
 import { useServerPermissions } from "../hooks/usePermissions";
 import type { CustomEmojiEntry } from "../utils/remarkEmoji";
+import { sealedPlaceholder } from "../utils/sealedText";
 import { BotTag } from "./BotTag";
 import { ChatMediaPlayer } from "./ChatMediaPlayer";
 import { MessageHoverToolbar } from "./ChatMessage";
@@ -484,6 +485,7 @@ function MessageContent({
   onOpenReactionPicker: (anchorEl?: HTMLElement) => void;
 }) {
   const hasReactions = !!(m.reactions && m.reactions.length > 0);
+  const sealedNote = sealedPlaceholder(m);
   return (
     <motion.div
       animate={{ marginBottom: hasReactions ? 30 : 0, background: bgColor }}
@@ -544,19 +546,30 @@ function MessageContent({
         {/* Only the text folds. Attachments and embeds below carry their own
             sizing, and folding them too would hide an image behind a control
             that says "show full message". */}
-        <CollapsibleText>
-          <MarkdownRenderer
-            content={m.text}
-            customEmojis={customEmojiList}
-            memberNicknames={memberNicknames}
-            mentionMembersById={memberList}
-            serverHost={serverHost}
-            profanityMatches={m.profanity_matches}
-            blurProfanity={blurProfanity}
-            smileyConversion={smileyConversion}
-            disabledSmileys={disabledSmileys}
-          />
-        </CollapsibleText>
+        {sealedNote ? (
+          /* An envelope this client has not opened has no words to draw, and
+             three of the four states never will (GRYT-729). Plain rather than
+             through the markdown renderer: this is the client talking, not
+             something anybody wrote, so it must not be parsed, linkified or
+             turned into an embed. */
+          <span style={{ color: "var(--gryt-neutral-8)", fontStyle: "italic" }}>
+            {sealedNote}
+          </span>
+        ) : (
+          <CollapsibleText>
+            <MarkdownRenderer
+              content={m.text}
+              customEmojis={customEmojiList}
+              memberNicknames={memberNicknames}
+              mentionMembersById={memberList}
+              serverHost={serverHost}
+              profanityMatches={m.profanity_matches}
+              blurProfanity={blurProfanity}
+              smileyConversion={smileyConversion}
+              disabledSmileys={disabledSmileys}
+            />
+          </CollapsibleText>
+        )}
         {m.edited_at && !isFirstInGroup && (
           <Tooltip title={`Edited ${new Date(m.edited_at).toLocaleString()}`}>
             <span style={{ fontSize: 10, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gryt-neutral-8)" }}>

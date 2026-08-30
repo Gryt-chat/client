@@ -30,6 +30,8 @@ jobs:
       - run: yarn test:dm-keys
       - run: yarn test:dm-key-binding
       - run: yarn test:peer-keys
+      - run: yarn test:dm-key-published
+      - run: yarn test:sealed-text
       - run: yarn test:member-keys
       - run: yarn test:member-key-wording
       - run: yarn test:conversation-encryption
