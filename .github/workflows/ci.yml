@@ -31,6 +31,7 @@ jobs:
       - run: yarn test:dm-key-published
       - run: yarn test:sealed-text
       - run: yarn test:sealed-send
+      - run: yarn test:sealed-attachments
       - run: yarn test:member-key-wording
       - run: yarn test:owl-export
       - run: yarn test:owl-seen

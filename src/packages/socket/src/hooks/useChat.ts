@@ -5,11 +5,15 @@ import useSound from "use-sound";
 
 import messageSoundMp3 from "@/audio/src/assets/universfield-computer-mouse-click-02-383961.mp3";
 import type { SealDecision } from "@/common";
-import { getServerAccessToken, markChannelUnread, useUnreadBadge } from "@/common";
+import { getServerAccessToken, getUploadsFileUrl, markChannelUnread, useUnreadBadge } from "@/common";
 import { useSettings } from "@/settings";
 import { serverDetailsList as ServerDetailsList } from "@/settings/src/types/server";
 
 import type { ChatMessage } from "../components/chatUtils";
+import {
+  fetchSealedAttachment,
+  sealedAttachmentMeta,
+} from "../utils/sealedAttachments";
 import {
   ChatErrorPayload,
   handleChatErrorEvent,
@@ -146,8 +150,12 @@ export function useChat({
     members: conversationMembers ?? null,
   });
 
+  /** Blob URLs made for decrypted attachments, revoked on unmount. */
+  const objectUrlsRef = useRef<Set<string>>(new Set());
+
   const { sendChat, editMessage, retryQueueRef, performRetry, markLatestPendingFailed } = useChatSend({
     seal: sealing.seal,
+    sealFile: sealing.sealFile,
     currentConnection,
     activeConversationId,
     serverHost,
@@ -189,19 +197,72 @@ export function useChat({
     void Promise.all(
       pending.map(async (message) => {
         try {
-          // `{ text, attachments }` since attachments could be sealed. Only the
-          // text is drawn here; the files are still uploaded in the clear, and
-          // the key that would open them is sitting in `opened.attachments`
-          // waiting for the upload path to catch up.
           const opened = await sealing.open(message.sealed!);
           // Null is no wrapped key for us: a message from before we joined the
           // conversation. Permanent, ordinary, and not an error.
-          const text = opened?.text ?? null;
-          return { id: message.message_id, text, state: opened === null ? "locked" : "open" } as const;
+          if (!opened) {
+            return { id: message.message_id, text: null, state: "locked", enriched: null } as const;
+          }
+
+          /*
+           * The files, decrypted, in the shape the row already draws
+           * (GRYT-761).
+           *
+           * Fetched here rather than in the row, because the key only exists
+           * once the message has opened and a component that fetched on render
+           * would do it again on every re-render. One failed attachment does
+           * not fail the message: `allSettled`, and the ones that opened are
+           * drawn.
+           */
+          const fileIds = message.attachments ?? [];
+          const settled = await Promise.allSettled(
+            fileIds.map(async (fileId) => {
+              const key = opened.attachments[fileId];
+              // No key for this one means it went up in the clear, which is
+              // every attachment sent before this shipped. The server's own
+              // metadata already describes it.
+              if (!key) return null;
+
+              const blob = await fetchSealedAttachment({
+                url: getUploadsFileUrl(serverHost, fileId),
+                key,
+                openFile: sealing.openFile,
+              });
+              const objectUrl = URL.createObjectURL(blob);
+              objectUrlsRef.current.add(objectUrl);
+              return sealedAttachmentMeta(fileId, key, objectUrl);
+            }),
+          );
+
+          const enriched = fileIds.map((fileId, i) => {
+            const result = settled[i];
+            if (result.status === "fulfilled" && result.value) return result.value;
+            // Either it was never sealed, or it would not open. Fall back to
+            // what the server says, which for a sealed file is an unnamed
+            // octet-stream — visibly broken rather than invisibly absent.
+            return (
+              message.enriched_attachments?.[i] ?? {
+                file_id: fileId,
+                mime: null,
+                size: null,
+                original_name: null,
+                width: null,
+                height: null,
+                has_thumbnail: false,
+              }
+            );
+          });
+
+          return {
+            id: message.message_id,
+            text: opened.text,
+            state: "open",
+            enriched: enriched.length > 0 ? enriched : null,
+          } as const;
         } catch {
           // A key that is there and does not open. Tampering, or the wrong
           // conversation. Drawn as broken rather than as an empty message.
-          return { id: message.message_id, text: null, state: "broken" } as const;
+          return { id: message.message_id, text: null, state: "broken", enriched: null } as const;
         }
       }),
     ).then((opened) => {
@@ -210,7 +271,13 @@ export function useChat({
       setChatMessages((prev) =>
         prev.map((m) => {
           const result = byId.get(m.message_id);
-          return result ? { ...m, text: result.text, sealedState: result.state } : m;
+          if (!result) return m;
+          return {
+            ...m,
+            text: result.text,
+            sealedState: result.state,
+            ...(result.enriched ? { enriched_attachments: result.enriched } : null),
+          };
         }),
       );
     });
@@ -218,7 +285,23 @@ export function useChat({
     return () => {
       live = false;
     };
-  }, [chatMessages, sealing, setChatMessages]);
+  }, [chatMessages, sealing, setChatMessages, serverHost]);
+
+  /**
+   * Every blob URL made for a decrypted attachment, so they can be let go.
+   *
+   * A blob URL pins its bytes for the lifetime of the document. Scrolling a
+   * conversation full of photographs and never revoking them is a leak that
+   * grows with the history, and on the desktop app the document is the whole
+   * session.
+   */
+  useEffect(() => {
+    const urls = objectUrlsRef.current;
+    return () => {
+      for (const url of urls) URL.revokeObjectURL(url);
+      urls.clear();
+    };
+  }, []);
 
   // Handle chat errors (including rate limiting)
   useEffect(() => {

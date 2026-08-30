@@ -542,10 +542,10 @@
   resolved "https://registry.yarnpkg.com/@floating-ui/utils/-/utils-0.2.12.tgz#afefe785949f16ac4cdd1e695935a321572dd56a"
   integrity sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==
 
-"@gryt/crypto@^0.1.0":
-  version "0.1.0"
-  resolved "https://registry.yarnpkg.com/@gryt/crypto/-/crypto-0.1.0.tgz#7643e1a196a25698f4b99a7443185eff225926e1"
-  integrity sha512-1dUUFrMLSSQfQwdxUfj045U5Rah864NGqgHn5tlnBZvlWaTOe/NDngwQTj8BUfCQ9BZXAoQfCI3hjMtJOFzLYA==
+"@gryt/crypto@^0.2.0":
+  version "0.2.0"
+  resolved "https://registry.yarnpkg.com/@gryt/crypto/-/crypto-0.2.0.tgz#967135a19d6b13d936dd8e8638849980511e7b1b"
+  integrity sha512-wqT2ywj+m3bnC1IlZ2pk/E9plysT7ON0kKn73CkB+rSmdwXKM2+CrDygKUs0fj3pptcd8DfQCHcfF78M21Bfvg==
   dependencies:
     "@noble/ciphers" "^2"
     "@noble/curves" "^2.3.0"

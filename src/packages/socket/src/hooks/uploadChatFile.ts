@@ -1,20 +1,67 @@
-import { getServerAccessToken, getServerHttpBase } from "@/common";
+import { getServerAccessToken, getServerHttpBase, type SealedAttachmentKey } from "@/common";
 
 import type { ImageDimensions } from "../utils/imageUtils";
 
+/** What an upload came back as, and how to read it again if it was sealed. */
+export interface UploadedFile {
+  fileId: string;
+  /** Absent when the file went up as itself. */
+  meta?: SealedAttachmentKey;
+}
+
+/**
+ * Encrypt a file, if this conversation is being encrypted, and upload it.
+ *
+ * The seal happens here rather than in the caller so there is one place where
+ * bytes go to the server, and so the `sealed=1` field and the encryption cannot
+ * come apart — a file encrypted and uploaded without the flag would be
+ * validated as an image and refused, and one flagged without being encrypted
+ * would be stored opaque and served as a download for no reason.
+ *
+ * `seal` returning null is the ordinary case: a channel, or a conversation
+ * somebody in it is holding up. The file goes as itself, which is what happened
+ * before any of this existed.
+ */
 export async function uploadChatFile(
   file: File,
   serverHost: string,
   dimensions?: ImageDimensions | null,
-): Promise<string> {
+  seal?: (
+    bytes: Uint8Array,
+    about?: { name?: string; mime?: string; width?: number; height?: number },
+  ) => { ciphertext: Uint8Array; meta: SealedAttachmentKey } | null,
+): Promise<UploadedFile> {
   const accessToken = getServerAccessToken(serverHost);
   if (!accessToken) throw new Error("Not authenticated with this server");
   const base = getServerHttpBase(serverHost);
+
+  const sealed = seal
+    ? seal(new Uint8Array(await file.arrayBuffer()), {
+        name: file.name,
+        mime: file.type || undefined,
+        width: dimensions?.width,
+        height: dimensions?.height,
+      })
+    : null;
+
   const form = new FormData();
-  form.append("file", file);
-  if (dimensions) {
-    form.append("width", String(dimensions.width));
-    form.append("height", String(dimensions.height));
+
+  if (sealed) {
+    // Everything the picker knew about this file is inside `sealed.meta` now,
+    // and none of it goes on the wire: no name, no type, no dimensions. The
+    // server records a length and a time, which is what it can see anyway.
+    form.append(
+      "file",
+      new Blob([sealed.ciphertext as BlobPart], { type: "application/octet-stream" }),
+      "sealed.bin",
+    );
+    form.append("sealed", "1");
+  } else {
+    form.append("file", file);
+    if (dimensions) {
+      form.append("width", String(dimensions.width));
+      form.append("height", String(dimensions.height));
+    }
   }
   const resp = await fetch(`${base}/api/uploads`, {
     method: "POST",
@@ -33,5 +80,5 @@ export async function uploadChatFile(
     throw new Error(msg);
   }
   const data = await resp.json();
-  return data.fileId as string;
+  return { fileId: data.fileId as string, ...(sealed ? { meta: sealed.meta } : null) };
 }

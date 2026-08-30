@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { Socket } from "socket.io-client";
 import { v4 as uuidv4 } from "uuid";
 
+import type { SealedAttachmentKey } from "@/common";
 import { getServerAccessToken, getServerRefreshToken } from "@/common";
 
 import type { AttachmentMeta, ChatMessage } from "../components/chatUtils";
@@ -17,6 +18,15 @@ export interface RetryEntry {
   conversationId: string;
   text: string;
   attachments: string[] | null;
+  /**
+   * The file keys, by the id the server gave each upload (GRYT-761).
+   *
+   * Carried on the retry entry so a resend seals the same message with the same
+   * files. Without it a retry would send a message whose `attachments` name
+   * uploads nobody has the key to, which draws as a broken file rather than as
+   * a failed send.
+   */
+  attachmentKeys?: Record<string, SealedAttachmentKey> | null;
   replyToMessageId?: string;
   timeoutId?: ReturnType<typeof setTimeout>;
 }
@@ -45,7 +55,21 @@ interface UseChatSendParams {
    * be sealed depends on every member's key and the composer has to be able to
    * draw the same answer this uses.
    */
-  seal: (plaintext: string) => Promise<string | null>;
+  seal: (
+    plaintext: string,
+    attachments?: Record<string, SealedAttachmentKey>,
+  ) => Promise<string | null>;
+  /**
+   * Encrypt one file, or answer null for "send it as it is" (GRYT-761).
+   *
+   * Same reasoning as `seal`, and the two have to agree: a file encrypted for a
+   * message that then goes out as plaintext is an upload nobody can open,
+   * sitting in the operator's storage forever.
+   */
+  sealFile: (
+    bytes: Uint8Array,
+    about?: { name?: string; mime?: string; width?: number; height?: number },
+  ) => { ciphertext: Uint8Array; meta: SealedAttachmentKey } | null;
 }
 
 interface UseChatSendReturn {
@@ -73,6 +97,7 @@ export function useChatSend({
   nickname,
   currentUserId,
   seal,
+  sealFile,
 }: UseChatSendParams): UseChatSendReturn {
   const retryQueueRef = useRef<Map<string, RetryEntry>>(new Map());
 
@@ -122,7 +147,10 @@ export function useChatSend({
      * outcome nobody would notice and nobody would want.
      */
     const text = target.entry.text;
-    void seal(text)
+    // With the same file keys, so a resend does not produce a message whose
+    // `attachments` name uploads nobody holds the key to — which draws as a
+    // broken file rather than as a failed send (GRYT-761).
+    void seal(text, target.entry.attachmentKeys ?? undefined)
       .then((sealed) => {
         if (sealed) payload.sealed = sealed;
         else payload.text = text;
@@ -171,6 +199,7 @@ export function useChatSend({
     attachments: string[] | null,
     replyToMessageId?: string,
     nonce?: string,
+    attachmentKeys?: Record<string, SealedAttachmentKey> | null,
   ) => {
     const payload: Record<string, unknown> = {
       conversationId: activeConversationId,
@@ -189,7 +218,7 @@ export function useChatSend({
      * into a conversation the composer says is encrypted must not have it go out
      * in the open because a derivation threw.
      */
-    void seal(messageText)
+    void seal(messageText, attachmentKeys ?? undefined)
       .then((sealed) => {
         if (sealed) payload.sealed = sealed;
         else payload.text = messageText;
@@ -315,15 +344,26 @@ export function useChatSend({
       if (!accessToken) return;
 
       let fileIds: string[] | null = null;
+      let attachmentKeys: Record<string, SealedAttachmentKey> | null = null;
       if (files.length > 0) {
         try {
-          fileIds = await Promise.all(
+          const uploaded = await Promise.all(
             files.map((f, i) => {
               const dim = localEnriched?.[i];
               const dimensions = dim?.width && dim?.height ? { width: dim.width, height: dim.height } : null;
-              return uploadChatFile(f, serverHost, dimensions);
+              return uploadChatFile(f, serverHost, dimensions, sealFile);
             }),
           );
+
+          fileIds = uploaded.map((u) => u.fileId);
+
+          // Keyed by the id the server assigned, which is only known now. The
+          // bytes were bound to a value the package chose — see
+          // `sealAttachment` — so nothing had to be agreed before the upload.
+          const keyed = uploaded.filter((u) => u.meta);
+          attachmentKeys = keyed.length
+            ? Object.fromEntries(keyed.map((u) => [u.fileId, u.meta!]))
+            : null;
         } catch (err) {
           const msg = err instanceof Error && err.message ? err.message : "Failed to upload file(s)";
           toast.error(msg);
@@ -341,14 +381,19 @@ export function useChatSend({
           conversationId: activeConversationId,
           text: finalText,
           attachments: fileIds,
+          attachmentKeys,
           replyToMessageId,
         });
-        sendMessageWithToken(accessToken, finalText, fileIds, replyToMessageId, nonce);
+        sendMessageWithToken(accessToken, finalText, fileIds, replyToMessageId, nonce, attachmentKeys);
       }
     };
 
     doSend();
-  }, [currentConnection, currentlyViewingServer?.host, activeConversationId, serverHost, cacheKeyFor, sendMessageWithToken, setChatMessages, setMessageCache]);
+    // `sealFile` is in here rather than behind a ref, unlike `canSend` and the
+    // others above. It closes over the sealing decision, and a stale one is not
+    // a stale flag — a conversation that has just become sealable would hand
+    // back null and the file would go up in the clear (GRYT-761).
+  }, [currentConnection, currentlyViewingServer?.host, activeConversationId, serverHost, cacheKeyFor, sealFile, sendMessageWithToken, setChatMessages, setMessageCache]);
 
   const editMessage = useCallback((messageId: string, conversationId: string, newText: string) => {
     const text = newText.trim();
