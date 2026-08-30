@@ -3,10 +3,14 @@
  * identity authentication. The private key never leaves the client.
  */
 
+import {
+  deriveDmKeyPair,
+  type DmKeyPair,
+  signDmKeyBinding,
+} from "@gryt/crypto";
+
 import { getElectronAPI } from "../../../../lib/electron";
 import { clearAllServerTokens } from "../utils/tokenStorage";
-import { signDmKeyBinding } from "./dm-key-binding";
-import { deriveDmKeyPair, type DmKeyPair } from "./dm-keys";
 import {
   hasGuestScope,
   listGuestScopes,

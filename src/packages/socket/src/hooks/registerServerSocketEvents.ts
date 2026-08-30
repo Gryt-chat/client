@@ -16,6 +16,7 @@ import {
 import {
   evaluateMemberKeys,
   identityScopeFor,
+  localPeerPinStore,
   type MemberKeyState,
   ownDmPublicKey,
 } from "@/common";
@@ -599,6 +600,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     void (myId ? ownDmPublicKey(host).catch(() => null) : Promise.resolve(null))
       .then((ownKey) =>
         evaluateMemberKeys({
+          store: localPeerPinStore,
           scope: identityScopeFor(host),
           ownKey,
           members: data,

@@ -7,7 +7,8 @@ import {
  * Publishing this device's DM key (GRYT-727).
  *
  * The one part of this that needs a socket. Deciding what to do about everybody
- * else's keys is `member-keys.ts` in `common/auth`, where a check can reach it.
+ * else's keys is `member-keys` in `@gryt/crypto`, where a check can reach it
+ * and where the mobile app runs the same one.
  */
 
 /**

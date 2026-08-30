@@ -1,271 +1,107 @@
 /**
- * Trust-on-first-use pinning of the people you talk to (GRYT-726).
+ * Where this client keeps the people it has pinned (GRYT-726, GRYT-732).
  *
- * `dm-key-binding.ts` can check that a DM key and an identity key were chosen
- * by the same person. It cannot say who that person is, and nothing in band
- * can — so what makes a binding worth anything is that the same one keeps
- * arriving. This is the module that remembers.
+ * The deciding is in `@gryt/crypto`, which does not know what storage is. This
+ * is the half that does: a `localStorage` store and the same functions with it
+ * already supplied, so every call site in the client reads the way it did
+ * before the package existed.
  *
- * `server-pins.ts` does exactly this for servers and has since GRYT-51. Same
- * three moves: record on first sight, notice a change, refuse it. The shapes are
- * deliberately similar and the storage is deliberately separate, because a
- * server key and a person's key answer different questions, and one being
- * forgotten should not take the other with it.
- *
- * ## Refusing is the feature
- *
- * A client that quietly encrypts to a new key once the old one stops matching
- * has thrown away the only protection this design has. There is no automatic
- * re-pin here at all. A change is reported and stays reported until somebody
- * decides, because the two reasons for one — a person restored a different seed,
- * or a server substituted a key — look identical from here, and only one of them
- * is the person's own doing.
- *
- * ## Both halves are compared, not just the identity
- *
- * An account holder's identity key is generated once and kept; their DM key is
- * derived from the seed. Somebody who restores a different seed therefore keeps
- * the same identity key and arrives with a different DM key, and comparing only
- * the thumbprint would wave that through. Comparing only the DM key misses the
- * reverse. Both, or the check has a hole in whichever direction is left out.
- *
- * This module decides. It does not fetch, encrypt, or draw anything.
+ * Mobile writes its own eight lines against the same interface. That is the
+ * only difference between the two clients on this — a phone has no
+ * `localStorage`, and everything above the store is one implementation now
+ * rather than two that agree until they do not.
  */
 
 import {
+  evaluatePeerKey as evaluate,
+  forgetPeerPin as forget,
+  forgetPeerPinsForScope as forgetScope,
+  getPeerPin as get,
+  type IdentityScope,
+  listPeerPins as list,
+  markPeerCompared as markCompared,
+  PEER_PINS_KEY,
+  type PeerPin,
+  type PeerPinStore,
+  pinPeerKey as pin,
   type VerifiedDmKeyBinding,
-  verifyDmKeyBinding,
-} from "./dm-key-binding.ts";
-import type { IdentityScope } from "./identity-seed";
+} from "@gryt/crypto";
 
-const PINS_KEY = "peerDmKeyPins";
-
-export interface PeerPin {
-  /** The identity key that signed the binding, as a JWK thumbprint. */
-  thumbprint: string;
-  /** The DM public key it vouched for, base64url. */
-  dmPublicKey: string;
-  firstSeenAt: number;
-  lastSeenAt: number;
-  /**
-   * When these exact keys were compared out of band (GRYT-730).
-   *
-   * Absent until two people have read the code to each other. Not carried
-   * across a change — `pinPeerKey` drops it whenever either half moves, because
-   * a comparison is about the specific keys that were compared and keeping it
-   * would turn the one honest claim here into the lie it exists to prevent.
-   */
-  comparedAt?: number;
-}
-
-export type PeerKeyDecision =
-  /** They have published nothing. Nothing to encrypt to, and nothing wrong. */
-  | { kind: "none" }
-  /**
-   * Something arrived and did not check out — a signature that fails, a binding
-   * signed for another server, a shape that is not one at all.
-   *
-   * Not the same as a changed key. This is a server sending something broken
-   * rather than something plausible, and it never becomes a pin.
-   */
-  | { kind: "unusable"; reason: string }
-  /** Nobody pinned yet. The caller pins this and carries on. */
-  | { kind: "first"; verified: VerifiedDmKeyBinding }
-  /** The same person and the same keys as last time. */
-  | { kind: "known"; verified: VerifiedDmKeyBinding; pin: PeerPin }
-  /**
-   * Different from what was pinned. Refuse, say so, and let somebody decide.
-   *
-   * `changedIdentity` and `changedKey` are separate because they mean different
-   * things to a person: a new identity key is somebody arriving as a different
-   * account, and a new DM key under the same identity is usually a restored
-   * seed.
-   */
-  | {
-      kind: "changed";
-      pin: PeerPin;
-      verified: VerifiedDmKeyBinding;
-      changedIdentity: boolean;
-      changedKey: boolean;
-    };
-
-function base64Url(bytes: Uint8Array): string {
-  let binary = "";
-  for (const b of bytes) binary += String.fromCharCode(b);
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
+export type { PeerKeyDecision, PeerPin, PeerPinStore } from "@gryt/crypto";
 
 /**
- * One pin per server and member.
+ * Reads and writes swallow their errors, which is deliberate on both sides.
  *
- * A `server_user_id` is already per-server, so the scope is redundant for
- * uniqueness. It is in the key anyway so that forgetting a server forgets the
- * people on it, and so nothing rests on ids from two servers never colliding.
+ * An unreadable store is not the same as no pins, and returning an empty map
+ * here makes every peer read as `first` and get re-pinned — the exact swap this
+ * module exists to refuse. There is no better answer available and no way to
+ * tell the two apart from in here, so it takes the same trade `server-pins.ts`
+ * has taken since GRYT-51.
+ *
+ * A failed write loses the memory of a decision rather than the decision, which
+ * has already been returned by the time this runs.
  */
-function pinKey(scope: IdentityScope, memberId: string): string {
-  return `${scope} ${memberId}`;
-}
-
-function readAll(): Record<string, PeerPin> {
-  try {
-    const raw = localStorage.getItem(PINS_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch {
-    // Unreadable storage is not the same as no pins, and an empty map here
-    // means every peer reads as "first" and gets re-pinned. That is the wrong
-    // answer and there is no better one available — the same trade
-    // `server-pins.ts` makes, for the same reason.
-    return {};
-  }
-}
-
-function writeAll(pins: Record<string, PeerPin>): void {
-  try {
-    localStorage.setItem(PINS_KEY, JSON.stringify(pins));
-  } catch {
-    // Full or blocked. The decision has already been made and returned; this
-    // loses the memory of it rather than the answer.
-  }
-}
+export const localPeerPinStore: PeerPinStore = {
+  read() {
+    try {
+      const raw = localStorage.getItem(PEER_PINS_KEY);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      return {};
+    }
+  },
+  write(pins) {
+    try {
+      localStorage.setItem(PEER_PINS_KEY, JSON.stringify(pins));
+    } catch {
+      // Full or blocked.
+    }
+  },
+};
 
 export function listPeerPins(): Record<string, PeerPin> {
-  return readAll();
+  return list(localPeerPinStore);
 }
 
 export function getPeerPin(
   scope: IdentityScope,
   memberId: string,
 ): PeerPin | null {
-  return readAll()[pinKey(scope, memberId)] ?? null;
+  return get(localPeerPinStore, scope, memberId);
 }
 
-/**
- * Record what this member's keys are, from here on.
- *
- * Called on a `first` decision, and on a `changed` one only after somebody has
- * said to. Nothing calls it on `changed` by itself, which is the whole point.
- */
 export function pinPeerKey(
   scope: IdentityScope,
   memberId: string,
   verified: VerifiedDmKeyBinding,
   now = Date.now(),
 ): PeerPin {
-  const pins = readAll();
-  const key = pinKey(scope, memberId);
-  const existing = pins[key];
-
-  const sameKeys =
-    existing?.thumbprint === verified.identityThumbprint &&
-    existing?.dmPublicKey === base64Url(verified.dmPublicKey);
-
-  const pin: PeerPin = {
-    thumbprint: verified.identityThumbprint,
-    dmPublicKey: base64Url(verified.dmPublicKey),
-    // Kept across a deliberate re-pin, so "known since" stays true to when this
-    // person was first seen rather than to when they last changed devices.
-    firstSeenAt: existing?.firstSeenAt ?? now,
-    lastSeenAt: now,
-    // Dropped the moment either key moves. Somebody who compared a code last
-    // year and whose peer has since arrived with a new key has verified
-    // nothing, and a card still saying "verified" would be worse than one that
-    // never said it.
-    comparedAt: sameKeys ? existing?.comparedAt : undefined,
-  };
-
-  pins[key] = pin;
-  writeAll(pins);
-  return pin;
+  return pin(localPeerPinStore, scope, memberId, verified, now);
 }
 
-/**
- * Record that these keys were read out and matched (GRYT-730).
- *
- * Takes the keys it is marking rather than just the member, and refuses if they
- * are not the ones pinned. Between somebody reading a code aloud and pressing
- * the button, a member list can land and change the pin — marking blind would
- * put "verified" against keys nobody ever compared.
- */
 export function markPeerCompared(
   scope: IdentityScope,
   memberId: string,
   keys: { thumbprint: string; dmPublicKey: string },
   now = Date.now(),
 ): boolean {
-  const pins = readAll();
-  const key = pinKey(scope, memberId);
-  const pin = pins[key];
-
-  if (
-    !pin ||
-    pin.thumbprint !== keys.thumbprint ||
-    pin.dmPublicKey !== keys.dmPublicKey
-  ) {
-    return false;
-  }
-
-  pins[key] = { ...pin, comparedAt: now };
-  writeAll(pins);
-  return true;
+  return markCompared(localPeerPinStore, scope, memberId, keys, now);
 }
 
-/** Forget one, which is what accepting a change amounts to before re-pinning. */
 export function forgetPeerPin(scope: IdentityScope, memberId: string): void {
-  const pins = readAll();
-  delete pins[pinKey(scope, memberId)];
-  writeAll(pins);
+  forget(localPeerPinStore, scope, memberId);
 }
 
-/** Forget everybody on one server, for a server being left. */
 export function forgetPeerPinsForScope(scope: IdentityScope): void {
-  const pins = readAll();
-  const prefix = `${scope} `;
-  for (const key of Object.keys(pins)) {
-    if (key.startsWith(prefix)) delete pins[key];
-  }
-  writeAll(pins);
+  forgetScope(localPeerPinStore, scope);
 }
 
-/**
- * What to do about the binding this member list carried.
- *
- * Decides and returns. Nothing is written here, including on `first` — the same
- * evaluation runs on every member list, and a function that pinned as a side
- * effect would make `first` mean "since the last render".
- */
-export async function evaluatePeerKey({
-  scope,
-  memberId,
-  binding,
-}: {
+export function evaluatePeerKey(args: {
   scope: IdentityScope;
   memberId: string;
-  /** Straight off the member list. Null when they have published nothing. */
   binding: string | null | undefined;
-}): Promise<PeerKeyDecision> {
-  if (!binding) return { kind: "none" };
-
-  let verified: VerifiedDmKeyBinding;
-  try {
-    verified = await verifyDmKeyBinding(binding, scope);
-  } catch (error) {
-    return {
-      kind: "unusable",
-      reason: error instanceof Error ? error.message : String(error),
-    };
-  }
-
-  const pin = getPeerPin(scope, memberId);
-  if (!pin) return { kind: "first", verified };
-
-  const changedIdentity = pin.thumbprint !== verified.identityThumbprint;
-  const changedKey = pin.dmPublicKey !== base64Url(verified.dmPublicKey);
-
-  if (changedIdentity || changedKey) {
-    return { kind: "changed", pin, verified, changedIdentity, changedKey };
-  }
-
-  return { kind: "known", verified, pin };
+}) {
+  return evaluate({ store: localPeerPinStore, ...args });
 }

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   decideSealing,
   type DmKeyPair,
+  type OpenedMessage,
   openForConversation,
   ownDmKeyPair,
   type SealDecision,
@@ -17,8 +18,8 @@ import { useSockets } from "./useSockets";
  * Pulls together the three things that decide it — who is in the conversation,
  * what this client made of each of their keys, and this device's own keypair —
  * and hands back a decision plus the two operations. Everything with a rule in
- * it lives in `conversation-encryption.ts`; this is the part that has to be a
- * hook because the inputs are React state.
+ * it lives in `conversation-encryption` in `@gryt/crypto`; this is the part that
+ * has to be a hook because the inputs are React state.
  */
 
 export interface ConversationSealing {
@@ -35,8 +36,13 @@ export interface ConversationSealing {
    * Null means there is no wrapped key for us — somebody who joined after it
    * was sent. Throws when a key is there and does not open, which is tampering
    * or the wrong conversation rather than an ordinary absence.
+   *
+   * `attachments` is the file keys the message carried, by file id, and is
+   * empty for the messages that have none. Nothing draws it yet — the upload
+   * path still sends files in the clear — but it is what comes back, so it is
+   * not hidden behind a second call somebody has to remember to make.
    */
-  open: (sealed: string) => Promise<string | null>;
+  open: (sealed: string) => Promise<OpenedMessage | null>;
 }
 
 export function useConversationSealing({
