@@ -473,10 +473,7 @@ export async function signJwtWithKey(
  * Returns null when there is no seed and no identity, which is a device that
  * has not joined anything. Nothing to publish, and not an error.
  */
-export async function dmKeyBindingFor(
-  host: string,
-  source: IdentitySource,
-): Promise<string | null> {
+export async function dmKeyBindingFor(host: string): Promise<string | null> {
   const scope = identityScopeFor(host);
 
   const db = await openDB();
@@ -487,14 +484,43 @@ export async function dmKeyBindingFor(
     db.close();
   }
 
-  const { privateKey } = await loadOrGenerateKeyPair(source);
-  const identityPublicJwk = await getPublicKeyJwk(source);
+  /*
+   * Signed with the key derived from the seed, whichever identity joined this
+   * server (GRYT-759).
+   *
+   * It used to sign with the key that joined, which for a guest is this same
+   * derivation and for an account is `crypto.subtle.generateKey` — random,
+   * non-extractable, and different on every device.
+   *
+   * A peer pins two things: the DM key, and the thumbprint of whatever vouched
+   * for it. The DM key comes from the seed, so every device agrees on it. The
+   * account key did not, so two devices signed into one account published two
+   * bindings for the same key, whichever spoke last was what the server held,
+   * and every peer watched the thumbprint flip back and forth. From their side
+   * that is indistinguishable from a server substituting a key, which is
+   * exactly what it is supposed to look like — so the client correctly refused
+   * to encrypt, and an account holder with a laptop and a phone had the feature
+   * quietly switched off.
+   *
+   * Nothing is weakened by the change. A binding is trust on first use:
+   * `verifyDmKeyBinding` checks it signed itself and named this scope, and
+   * nothing anywhere ties it to the identity the server knows you by. What a
+   * peer pins is the thumbprint that keeps arriving, so the only property that
+   * matters is that it keeps arriving — which is what the seed buys and the
+   * account key cannot.
+   *
+   * It also makes the desktop and the phone agree. Mobile has signed with this
+   * derivation since GRYT-732, so an account holder with both was flipping
+   * across platforms as well as across devices.
+   */
+  const identity = await deriveLocalKeyPair(seed, scope);
+  const identityPublicJwk = await crypto.subtle.exportKey("jwk", identity.publicKey);
   const { publicKey } = deriveDmKeyPair(seed, scope);
 
   return signDmKeyBinding({
     dmPublicKey: publicKey,
     scope,
-    identityPrivateKey: privateKey,
+    identityPrivateKey: identity.privateKey,
     identityPublicJwk,
   });
 }

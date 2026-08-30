@@ -43,6 +43,49 @@ import { firstTimeOnThisSocket } from "../src/packages/socket/src/utils/publishe
   assert.equal(firstTimeOnThisSocket(a, "dm-key"), false);
 }
 
+/* ── and publishDmKey actually publishes ─────────────────────────────────── */
+
+{
+  /*
+   * The half this check missed the first time (GRYT-759).
+   *
+   * It asserted that both handlers *call* `publishDmKey`, which they did, and
+   * stopped there. `publishDmKey` then returned early unless
+   * `identitySourceUsedFor(host)` had something — an in-memory map filled by
+   * answering a challenge. A returning member restores a session instead of
+   * answering one, so the map was empty and nothing was published: the event
+   * was fixed and the guard behind it was not.
+   *
+   * Asserting a call reaches a function is not the same as asserting the
+   * function does the thing. This reads the function.
+   */
+  const publisherFile = readFileSync(
+    new URL("../src/packages/socket/src/utils/dmKeys.ts", import.meta.url),
+    "utf8",
+  );
+
+  // Comments stripped, because the file explains at length why the guard below
+  // is gone — and naming a thing in prose is not the same as calling it.
+  const publisher = publisherFile
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "");
+
+  assert.match(publisher, /socket\.emit\("dm:key:publish"/,
+    "publishDmKey does not publish anything");
+
+  assert.doesNotMatch(publisher, /identitySourceUsedFor/,
+    "publishDmKey asks which identity joined again. That map is empty after a reload, so a returning member publishes nothing — which is the bug GRYT-758 was supposed to close.");
+
+  // Any early return before the emit is a member who silently publishes
+  // nothing, and every one of those has looked reasonable so far.
+  const beforeEmit = publisher.slice(
+    publisher.indexOf("export async function publishDmKey"),
+    publisher.indexOf('socket.emit("dm:key:publish"'),
+  );
+  assert.doesNotMatch(beforeEmit, /^\s*if \(![a-zA-Z]+\) return;/m,
+    "publishDmKey returns early on something. If that is deliberate, say which members it drops and why.");
+}
+
 /* ── both routes into a server publish ───────────────────────────────────── */
 
 const source = readFileSync(
@@ -80,5 +123,5 @@ for (const event of ["server:joined", "server:details"]) {
 }
 
 console.log(
-  "dm key: published on a first join and on a restore, once per socket either way",
+  "dm key: published on a first join and on a restore, once per socket, and publishDmKey drops nobody",
 );
