@@ -4,7 +4,7 @@ import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
 
-import { getServerAccessToken, markChannelRead } from "@/common";
+import { getServerAccessToken } from "@/common";
 import { sliderToOutputGain } from "@/lib/audioVolume";
 import { useSettings } from "@/settings";
 
@@ -257,12 +257,6 @@ export function useServerState(): UseServerStateResult {
     selectedChannelId,
     getLastSelectedChannel,
   ]);
-
-  useEffect(() => {
-    if (!currentlyViewingServer) return;
-    const opened = selectedDmId || selectedChannelId;
-    if (opened) markChannelRead(currentlyViewingServer.host, opened);
-  }, [currentlyViewingServer, selectedChannelId, selectedDmId]);
 
   useEffect(() => {
     if (!currentlyViewingServer || !selectedChannelId) return;

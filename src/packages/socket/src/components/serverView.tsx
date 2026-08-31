@@ -3,7 +3,7 @@ import { useSFU } from "@gryt/voice";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
-import { getUploadsFileUrl, useAccount, useUnreadTracker } from "@/common";
+import { getUploadsFileUrl, markChannelRead, useAccount, useUnreadTracker } from "@/common";
 import { useIsCompact, useIsMobile } from "@/mobile";
 import { useSettings } from "@/settings";
 import { SidebarItem } from "@/settings/src/types/server";
@@ -127,6 +127,34 @@ export const ServerView = () => {
    * and the panel maximized — the last one hides the chat entirely, so the
    * member list is not competing with anything.
    */
+  /*
+   * Whether the chat pane is drawn at all. The same condition the pane itself
+   * uses further down, named here because three other things need to ask it.
+   */
+  const chatPaneHidden =
+    chatTakenOver || (isMaximized && showVoiceView && voiceWidth !== "0px");
+
+  /*
+   * What the person is actually looking at, which is not the same as what was
+   * last clicked. A direct message takes over the pane, and a maximized call
+   * hides it outright, so in both cases the channel underneath is off screen.
+   *
+   * Everything that means "the thing you have open" reads this rather than
+   * selectedChannelId: the highlight in the sidebar, the unread dot it
+   * suppresses, and marking a conversation read. They were disagreeing —
+   * a channel stayed lit and kept being marked read while a DM or a maximized
+   * call was covering it, so it claimed you were reading something you could
+   * not see.
+   */
+  const visibleChannelId = chatPaneHidden || selectedDmId ? null : selectedChannelId;
+  const visibleDmId = chatPaneHidden ? null : selectedDmId;
+
+  useEffect(() => {
+    if (!currentlyViewingServer) return;
+    const opened = visibleDmId || visibleChannelId;
+    if (opened) markChannelRead(currentlyViewingServer.host, opened);
+  }, [currentlyViewingServer, visibleChannelId, visibleDmId]);
+
   const drawnVoicePanelWidth =
     showVoiceView && voiceWidth !== "0px" && !isMaximized && !chatTakenOver
       ? shownVoiceWidth
@@ -723,10 +751,10 @@ export const ServerView = () => {
             showVoiceView={showVoiceView}
             isConnecting={isConnecting}
             currentConnectionId={currentConnection?.id}
-            selectedChannelId={selectedChannelId}
+            selectedChannelId={visibleChannelId}
             onChannelClick={handleChannelClickAndCloseDm}
             directConversations={directConversations}
-            selectedDmId={selectedDmId}
+            selectedDmId={visibleDmId}
             onSelectDm={handleSelectDm}
             onHideDm={handleHideDm}
             onManageGroup={setGroupDialog}
@@ -808,10 +836,10 @@ export const ServerView = () => {
               showVoiceView={showVoiceView}
               isConnecting={isConnecting}
               currentConnectionId={currentConnection?.id}
-              selectedChannelId={selectedChannelId}
+              selectedChannelId={visibleChannelId}
               onChannelClick={handleChannelClickAndCloseDm}
             directConversations={directConversations}
-            selectedDmId={selectedDmId}
+            selectedDmId={visibleDmId}
             onSelectDm={handleSelectDm}
             onHideDm={handleHideDm}
             onManageGroup={setGroupDialog}
@@ -880,7 +908,7 @@ export const ServerView = () => {
                 onToggleChat={toggleFocusedChat}
               />
               <div style={{
-                display: chatTakenOver || (isMaximized && showVoiceView && voiceWidth !== "0px") ? "none" : "flex",
+                display: chatPaneHidden ? "none" : "flex",
                 flex: 1,
                 minWidth: 0,
                 ...(isVoiceOnThisServer && isServerUnreachable && { opacity: 0.5, pointerEvents: "none" as const }),
