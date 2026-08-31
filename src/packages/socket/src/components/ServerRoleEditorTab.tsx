@@ -1,11 +1,11 @@
-import { Button, IconButton, Select, Surface, Switch } from "@gryt/ui";
-import { useEffect, useMemo, useState } from "react";
+import { Button, IconButton, Select, Surface } from "@gryt/ui";
+import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { PiPlusBold, PiTrashBold } from "react-icons/pi";
 import type { Socket } from "socket.io-client";
 
 import { useSocketEvent } from "../hooks/useSocketEvent";
-import { groupPermissions } from "../lib/permissions";
+import { type GridRole,RolePermissionGrid } from "./RolePermissionGrid";
 
 type RoleDefinition = {
   id: string;
@@ -47,6 +47,17 @@ function slugify(name: string): string {
 const NEW_ROLE = "__new__";
 
 /**
+ * Roles the grid draws but will not let you edit.
+ *
+ * `owner` is the only one. The server refuses to save it — it is the role that
+ * can hand the server to somebody else — so an editable column would be a
+ * column whose every change came back rejected. Shown rather than hidden,
+ * because "what can the owner do" is a question with an answer and leaving the
+ * column out would make the grid look like it was missing a role.
+ */
+const READ_ONLY_ROLES = new Set(["owner"]);
+
+/**
  * The role editor.
  *
  * Two decisions live on this screen. What each role may do, which is the list
@@ -73,6 +84,27 @@ export function ServerRoleEditorTab({
   const [draft, setDraft] = useState<RoleDefinition | null>(null);
   const [saving, setSaving] = useState(false);
 
+  /**
+   * Permission edits for every role, keyed by role id.
+   *
+   * The grid edits all of them at once, and the save event takes one role and
+   * its whole permission list — so a matrix that changed three roles is three
+   * saves. `draft` above is still the *settings* of the one selected role: its
+   * name, colour, rank and auto-grant, none of which the grid touches.
+   *
+   * Seeded from the server's answer and reset by it, so somebody else saving
+   * while this is open replaces what is here rather than merging into it.
+   */
+  const [permDrafts, setPermDrafts] = useState<Record<string, string[]>>({});
+
+  /**
+   * How many saves are still outstanding.
+   *
+   * A ref rather than state: the socket handler that decrements it is
+   * registered once, so it would close over the first value forever.
+   */
+  const pendingSaves = useRef(0);
+
   const refresh = () => {
     if (!socket?.connected) return;
     if (!accessToken) return;
@@ -83,6 +115,9 @@ export function ServerRoleEditorTab({
     if (!payload?.roles) return;
     setState(payload);
     setSaving(false);
+    setPermDrafts(
+      Object.fromEntries(payload.roles.map((r) => [r.id, [...r.permissions]])),
+    );
     setSelectedId((current) => {
       if (current && payload.roles.some((r) => r.id === current)) return current;
       // Prefer something editable. Landing on the owner role — the one thing
@@ -96,7 +131,13 @@ export function ServerRoleEditorTab({
   // fresh list — two people can have this screen open, so ask again rather than
   // patching the copy in this tab.
   useSocketEvent(socket, "server:roles:definition:updated", () => {
-    toast.success("Role saved.");
+    // The grid can change several roles at once and each one is its own save,
+    // so a toast per reply would stack four of them for one press of Save.
+    if (pendingSaves.current > 0) {
+      pendingSaves.current -= 1;
+      if (pendingSaves.current > 0) return;
+    }
+    toast.success("Saved.");
     refresh();
   });
   useSocketEvent<{ roleId: string; reassignTo: string; moved: number }>(
@@ -142,15 +183,42 @@ export function ServerRoleEditorTab({
       draft.color !== selected.color ||
       draft.rank !== selected.rank ||
       draft.autoGrantAfterDays !== selected.autoGrantAfterDays ||
-      draft.autoGrantAfterMessages !== selected.autoGrantAfterMessages ||
-      draft.permissions.length !== selected.permissions.length ||
-      draft.permissions.some((p) => !selected.permissions.includes(p))
+      draft.autoGrantAfterMessages !== selected.autoGrantAfterMessages
     );
   }, [draft, selected, creating]);
 
-  const groups = useMemo(
-    () => groupPermissions(state?.permissions ?? []),
-    [state?.permissions],
+  /**
+   * Which roles have had their permissions changed in the grid.
+   *
+   * Compared against the server's copy rather than a snapshot, so toggling a
+   * permission on and back off again leaves the role clean and out of the save.
+   */
+  const changedRoles = useMemo(() => {
+    if (!state) return [];
+    return state.roles.filter((role) => {
+      const next = permDrafts[role.id];
+      if (!next) return false;
+      const before = new Set(role.permissions);
+      return next.length !== role.permissions.length || next.some((p) => !before.has(p));
+    });
+  }, [state, permDrafts]);
+
+  const anythingToSave = dirty || changedRoles.length > 0;
+
+  /**
+   * The roles as the grid sees them: the server's list, with this tab's
+   * unsaved permission edits laid over the top.
+   */
+  const gridRoles: GridRole[] = useMemo(
+    () =>
+      (state?.roles ?? []).map((role) => ({
+        id: role.id,
+        name: role.name,
+        color: role.color,
+        rank: role.rank,
+        permissions: permDrafts[role.id] ?? role.permissions,
+      })),
+    [state?.roles, permDrafts],
   );
 
   const roleOptions = useMemo(
@@ -170,23 +238,58 @@ export function ServerRoleEditorTab({
   };
 
   const save = () => {
-    if (!draft) return;
-    const roleId = creating ? slugify(draft.name) : draft.id;
-    if (!roleId) return toast.error("Give the role a name first.");
-    if (creating && state?.roles.some((r) => r.id === roleId)) {
-      return toast.error(`There is already a role called "${draft.name}".`);
+    if (!state) return;
+
+    // The settings half: the one role the form is pointed at. A role being
+    // created only exists here, so it is always in this list.
+    const settingsSave = draft && (dirty || creating) ? draft : null;
+    if (settingsSave) {
+      const roleId = creating ? slugify(settingsSave.name) : settingsSave.id;
+      if (!roleId) return toast.error("Give the role a name first.");
+      if (creating && state.roles.some((r) => r.id === roleId)) {
+        return toast.error(`There is already a role called "${settingsSave.name}".`);
+      }
     }
+
+    // The grid half: every other role whose permissions moved. The role the
+    // form is on is saved once, by the settings branch, with its grid edits
+    // folded in — saving it twice would race two writes against one row.
+    const settingsRoleId = settingsSave
+      ? creating
+        ? slugify(settingsSave.name)
+        : settingsSave.id
+      : null;
+    const gridOnly = changedRoles.filter((r) => r.id !== settingsRoleId);
+
+    if (!settingsSave && gridOnly.length === 0) return;
+
     setSaving(true);
-    emit("server:roles:definitions:save", {
-      roleId,
-      name: draft.name,
-      color: draft.color,
-      rank: draft.rank,
-      permissions: draft.permissions,
-      autoGrantAfterDays: draft.autoGrantAfterDays,
-      autoGrantAfterMessages: draft.autoGrantAfterMessages,
-    });
-    if (creating) setSelectedId(roleId);
+    pendingSaves.current = (settingsSave ? 1 : 0) + gridOnly.length;
+
+    if (settingsSave && settingsRoleId) {
+      emit("server:roles:definitions:save", {
+        roleId: settingsRoleId,
+        name: settingsSave.name,
+        color: settingsSave.color,
+        rank: settingsSave.rank,
+        permissions: permDrafts[settingsRoleId] ?? settingsSave.permissions,
+        autoGrantAfterDays: settingsSave.autoGrantAfterDays,
+        autoGrantAfterMessages: settingsSave.autoGrantAfterMessages,
+      });
+      if (creating) setSelectedId(settingsRoleId);
+    }
+
+    for (const role of gridOnly) {
+      emit("server:roles:definitions:save", {
+        roleId: role.id,
+        name: role.name,
+        color: role.color,
+        rank: role.rank,
+        permissions: permDrafts[role.id] ?? role.permissions,
+        autoGrantAfterDays: role.autoGrantAfterDays,
+        autoGrantAfterMessages: role.autoGrantAfterMessages,
+      });
+    }
   };
 
   const createRole = () => {
@@ -220,17 +323,25 @@ export function ServerRoleEditorTab({
     });
   };
 
-  const togglePermission = (permission: string, on: boolean) => {
-    setDraft((d) =>
-      d
-        ? {
-            ...d,
-            permissions: on
-              ? [...d.permissions, permission]
-              : d.permissions.filter((p) => p !== permission),
-          }
-        : d,
-    );
+  const togglePermission = (roleId: string, permission: string, on: boolean) => {
+    setPermDrafts((drafts) => {
+      const current = drafts[roleId] ?? [];
+      return {
+        ...drafts,
+        [roleId]: on
+          ? current.includes(permission)
+            ? current
+            : [...current, permission]
+          : current.filter((p) => p !== permission),
+      };
+    });
+  };
+
+  /** Throw away every grid edit, and the settings form's, in one go. */
+  const resetAll = () => {
+    if (!state) return;
+    setPermDrafts(Object.fromEntries(state.roles.map((r) => [r.id, [...r.permissions]])));
+    setDraft(selected ? { ...selected, permissions: [...selected.permissions] } : null);
   };
 
   if (!state) {
@@ -423,40 +534,23 @@ export function ServerRoleEditorTab({
                 </div>
               )}
 
-              {groups.map((group) => (
-                <div key={group.title} className="flex flex-col gap-2">
-                  <div className="flex flex-col">
-                    <span className="text-sm font-bold">{group.title}</span>
-                    <span className="text-xs text-gryt-muted">{group.description}</span>
-                  </div>
-
-                  {group.permissions.map((permission) => (
-                    <div key={permission.id} className="flex items-start justify-between gap-3">
-                      <div className="flex flex-col">
-                        <span className="text-sm">{permission.label}</span>
-                        {permission.description && (
-                          <span className="text-xs text-gryt-muted">{permission.description}</span>
-                        )}
-                      </div>
-                      <Switch
-                        checked={draft.permissions.includes(permission.id)}
-                        onCheckedChange={(on: boolean) => togglePermission(permission.id, on)}
-                      />
-                    </div>
-                  ))}
-                </div>
-              ))}
-
-              <div className="flex justify-end gap-2">
+              <div className="flex items-center justify-end gap-2">
+                {changedRoles.length > 0 && (
+                  <span className="text-xs text-gryt-muted mr-auto">
+                    {changedRoles.length === 1
+                      ? `Unsaved changes to ${changedRoles[0].name}.`
+                      : `Unsaved changes to ${changedRoles.length} roles.`}
+                  </span>
+                )}
                 <Button
                   tone="neutral"
                   size="small"
-                  onClick={() => setDraft(selected ? { ...selected, permissions: [...selected.permissions] } : null)}
-                  disabled={!dirty || saving}
+                  onClick={resetAll}
+                  disabled={!anythingToSave || saving}
                 >
                   Reset
                 </Button>
-                <Button size="small" onClick={save} disabled={!dirty || saving}>
+                <Button size="small" onClick={save} disabled={!anythingToSave || saving}>
                   Save
                 </Button>
               </div>
@@ -464,6 +558,26 @@ export function ServerRoleEditorTab({
           )}
         </Surface>
       </div>
+
+      <Surface>
+        <div className="flex flex-col gap-3 min-w-0">
+          <div className="flex flex-col">
+            <span className="text-sm font-bold">What each role may do</span>
+            <span className="text-xs text-gryt-muted">
+              Every role at once. A column is a role, a row is a permission, and rank
+              orders the columns. On a narrow window this becomes one role at a time,
+              each showing what it adds to the rank below it.
+            </span>
+          </div>
+
+          <RolePermissionGrid
+            roles={gridRoles}
+            catalogue={state.permissions}
+            onToggle={togglePermission}
+            readOnlyRoleIds={READ_ONLY_ROLES}
+          />
+        </div>
+      </Surface>
 
       <Surface>
         <div className="flex flex-col gap-3">
