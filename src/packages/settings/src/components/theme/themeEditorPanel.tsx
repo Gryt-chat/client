@@ -138,7 +138,7 @@ export function ThemeEditorPanel() {
 
   return (
     <div
-      className="fixed z-50 flex flex-col overflow-hidden rounded-(--gryt-radius-lg) border border-gryt-border bg-gryt-surface shadow-2xl"
+      className="fixed z-(--gryt-z-panel) flex flex-col overflow-hidden rounded-(--gryt-radius-lg) border border-gryt-border bg-gryt-surface shadow-2xl"
       style={{
         left: position.x,
         top: position.y,

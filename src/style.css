@@ -59,6 +59,12 @@
   --gryt-z-popover: 10; /* autocompletes, emoji picker, anchored menus */
   --gryt-z-sheet: 20; /* mobile server view and sheet */
   --gryt-z-modal: 30; /* @gryt/ui Dialog and Drawer */
+  /* A panel the app floats over a dialog and leaves open — the theme editor.
+     Wedged between the two rungs above because it has to be on both sides of
+     them: over the settings dialog it opens from, and under the dropdowns
+     inside itself. It carried a bare z-50 until GRYT-785, which is the
+     lightbox rung, so every Select in it opened behind it. */
+  --gryt-z-panel: 32;
   --gryt-z-menu: 35; /* @gryt/ui popups, which open from any of the above */
   --gryt-z-tour: 40; /* onboarding coach marks */
   --gryt-z-lightbox: 50; /* image lightbox and its controls */
