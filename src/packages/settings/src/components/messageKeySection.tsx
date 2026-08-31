@@ -172,7 +172,7 @@ export function MessageKeySection() {
             autoComplete="new-password"
             value={secret}
             onChange={(e) => setSecret(e.target.value)}
-            helperText="At least 12 characters. Best not to reuse your account password."
+            helperText="Anything you will remember. Longer is harder to crack, and this is worth protecting."
           />
           <TextField
             type="password"
