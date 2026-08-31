@@ -39,6 +39,7 @@
     "test:tile-contrast": "node scripts/check-tile-contrast.mjs",
     "test:fake-participants": "node scripts/check-fake-participants.mjs",
     "test:narrow-layout": "node scripts/check-narrow-layout.mjs",
+    "test:permission-grid": "node scripts/check-permission-grid.mjs",
     "test:call-controls": "node scripts/check-call-controls.mjs",
     "test:embedded-server-paths": "node scripts/check-embedded-server-paths.mjs",
     "test:embedded-version": "node scripts/check-embedded-version.mjs",
