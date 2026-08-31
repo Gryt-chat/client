@@ -97,6 +97,18 @@ export interface ServerEventContext {
   setIsServerDeafened: (value: boolean) => void;
 }
 
+/**
+ * How long a key mismatch has to persist before it is worth telling somebody.
+ *
+ * Long enough that our own publish, and the member list the server broadcasts
+ * after it, have both landed. Short enough that a genuine mismatch is not
+ * hidden for any length of time.
+ */
+const DM_KEY_WARNING_DELAY_MS = 5000;
+
+/** Pending warnings, per host, so a resolution can cancel one before it shows. */
+const dmKeyWarningTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
 export function registerServerSocketEvents(socket: Socket, host: string, ctx: ServerEventContext) {
   /**
    * Who is in each call on this server, as last heard.
@@ -611,21 +623,49 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
         setMemberKeyStates((old) => ({ ...old, [host]: states }));
 
         /*
-         * This server is showing other members a key you did not publish
-         * (GRYT-727). Not a fact about one person — a fact about the server —
-         * so it does not belong in a card somebody may never open.
+         * This server is showing a message key you did not publish (GRYT-727).
+         * A fact about the server rather than about one person, so it belongs
+         * here and not in a card somebody may never open.
          *
-         * `duration: Infinity` and a stable id: it stays until dismissed, and
-         * every later member list lands on the same toast rather than stacking
-         * a new one. A warning about a server that is lying should not be
-         * something you can miss by looking away.
+         * Held back before it is shown, and taken away when it stops being
+         * true. Both matter, and neither used to happen (GRYT-784):
+         *
+         *   - We publish our own key on join, so the first member list of a
+         *     session routinely arrives before that lands and every join
+         *     flashed the warning.
+         *   - `duration: Infinity` with no dismiss meant that flash stayed on
+         *     screen for the rest of the session, long after the key agreed.
+         *
+         * The delay is the whole fix for the first: a real mismatch is still
+         * there seconds later, a race is not. Note this is not only about
+         * timing — signing in on a second device derives a different key and
+         * genuinely does mismatch, which is why the wording names that first.
          */
         const myId = myServerUserIdByHost.get(host);
+        const toastId = `dm-key-rewritten-${host}`;
+        const pending = dmKeyWarningTimers.get(host);
+
         if (myId && states[myId]?.ownKeyRewritten) {
-          toast.error(
-            `${serversRef.current[host]?.name || host} is showing a message key that is not yours. Treat direct messages here as readable by the server until you know why.`,
-            { id: `dm-key-rewritten-${host}`, duration: Infinity },
-          );
+          if (pending === undefined) {
+            dmKeyWarningTimers.set(
+              host,
+              setTimeout(() => {
+                dmKeyWarningTimers.delete(host);
+                toast.error(
+                  `${serversRef.current[host]?.name || host} has a message key this device did not publish. ` +
+                    `That usually means you signed in on another device — restore your recovery phrase in Settings so both use the same key. ` +
+                    `If you have not, treat direct messages here as readable by the server.`,
+                  { id: toastId, duration: Infinity },
+                );
+              }, DM_KEY_WARNING_DELAY_MS),
+            );
+          }
+        } else {
+          if (pending !== undefined) {
+            clearTimeout(pending);
+            dmKeyWarningTimers.delete(host);
+          }
+          toast.dismiss(toastId);
         }
       })
       .catch(() => {
