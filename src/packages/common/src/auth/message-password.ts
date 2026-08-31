@@ -11,13 +11,22 @@
 /**
  * How short a message password may be.
  *
- * Not a strength meter, and not a policy anybody asked for. The blob this
- * protects sits in a database and in every backup of it, so it is the one place
- * where a four-character password is not the holder's problem alone — an
- * operator with the database can attack it offline, in parallel, with nothing
- * watching. Twelve is the same floor the account password already has.
+ * Four, which is barely a floor at all, and that is the intention. How much
+ * security somebody wants on their own messages is theirs to decide — a person
+ * who wants a short password on a device only they touch is not making a
+ * mistake, they are making a trade.
+ *
+ * There is a reason to be uneasy about it, recorded here rather than enforced:
+ * the sealed blob lives in Keycloak's database and in every backup of it, so it
+ * is attackable offline, in parallel, with no rate limit and nothing watching.
+ * That is a worse position than a password guarded by a login form, and a short
+ * one will not survive it.
+ *
+ * So the number is not a security control. It only catches a slip — an empty
+ * box, or a stray keystroke — and the honest protection is the 24-word phrase,
+ * which is what somebody who wants this to hold should use.
  */
-export const MIN_MESSAGE_PASSWORD = 12;
+export const MIN_MESSAGE_PASSWORD = 4;
 
 export function describePasswordProblem(secret: string): string | null {
   if (secret.length === 0) return "Choose a password.";
