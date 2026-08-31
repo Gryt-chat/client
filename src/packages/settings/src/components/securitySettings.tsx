@@ -13,6 +13,7 @@ import {
 } from "@/common";
 
 import { LocalIdentitySection } from "./localIdentitySection";
+import { MessageKeySection } from "./messageKeySection";
 import { SettingsContainer } from "./settingsComponents";
 
 const PASSKEY_TYPE = "webauthn-passwordless";
@@ -259,10 +260,13 @@ export function SecuritySettings() {
           <div className="flex flex-col gap-1">
             <span className="font-medium text-sm">Account identity</span>
             <span className="text-xs text-gryt-muted">
-              When you sign in on another device, Gryt restores this identity
-              for you. There is no separate recovery key to save.
+              Signing in on another device brings your account and your servers
+              with you. Your messages are a separate key, and they need the
+              message password below.
             </span>
           </div>
+
+          <MessageKeySection />
 
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
