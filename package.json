@@ -24,6 +24,7 @@
     "test:updater-bridge": "node scripts/check-updater-bridge.mjs",
     "test:identity-vault": "node scripts/check-identity-vault.mjs",
     "test:message-vault": "node scripts/check-message-vault.mjs",
+    "test:message-key": "node scripts/check-message-key.mjs",
     "test:hotkeys": "node scripts/check-hotkeys.mjs",
     "test:screen-audio": "node scripts/check-screen-audio.mjs",
     "test:audio-mixer": "node scripts/check-audio-mixer.mjs",
