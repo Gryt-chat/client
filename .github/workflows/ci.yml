@@ -23,6 +23,7 @@ jobs:
       - run: yarn install --frozen-lockfile
       - run: yarn test:updater-bridge
       - run: yarn test:identity-vault
+      - run: yarn test:message-vault
       - run: yarn test:hotkeys
       - run: yarn test:screen-audio
       - run: yarn test:audio-mixer

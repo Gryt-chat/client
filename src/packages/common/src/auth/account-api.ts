@@ -45,6 +45,35 @@ async function accountFetch(
   return res;
 }
 
+/**
+ * The account as Keycloak represents it, with whatever attributes the realm's
+ * user profile declares.
+ *
+ * Separate from `AccountProfile`, which is the shape the settings panel shows a
+ * person. This one is the wire format, and it exists so `message-vault` can
+ * read an attribute and write it back without this module having to know what
+ * the attribute means.
+ */
+export async function getAccountRepresentation(): Promise<Record<string, unknown>> {
+  const res = await accountFetch("/");
+  return (await res.json()) as Record<string, unknown>;
+}
+
+/**
+ * Replace the account representation.
+ *
+ * Replace, not patch — Keycloak takes the whole object, so anything left out is
+ * a request to unset it. Callers read first and send back what they were given
+ * with their one change applied.
+ */
+export async function putAccountRepresentation(account: Record<string, unknown>): Promise<void> {
+  await accountFetch("/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(account),
+  });
+}
+
 export interface AccountProfile {
   sub?: string;
   email?: string;
