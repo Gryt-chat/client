@@ -22,6 +22,7 @@
     "typecheck": "tsc -b",
     "lint": "tsc -b && eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "test:updater-bridge": "node scripts/check-updater-bridge.mjs",
+    "test:identity-vault": "node scripts/check-identity-vault.mjs",
     "test:hotkeys": "node scripts/check-hotkeys.mjs",
     "test:screen-audio": "node scripts/check-screen-audio.mjs",
     "test:audio-mixer": "node scripts/check-audio-mixer.mjs",

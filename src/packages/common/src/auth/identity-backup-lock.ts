@@ -10,9 +10,13 @@
  * paste them into is a password manager, which is already the encryption.
  */
 
-const PBKDF2_ITERATIONS = 600_000;
-const SALT_BYTES = 16;
-const IV_BYTES = 12;
+import {
+  base64Url,
+  deriveWrappingKey,
+  freshNonces,
+  fromBase64Url,
+  PBKDF2_ITERATIONS,
+} from "./passphrase-crypto.ts";
 
 export const LOCKED_BACKUP_TYPE = "gryt-local-identity-backup-locked";
 
@@ -24,52 +28,6 @@ interface LockedBackup {
   salt: string;
   iv: string;
   data: string;
-}
-
-function base64Url(bytes: Uint8Array): string {
-  let binary = "";
-  for (const b of bytes) binary += String.fromCharCode(b);
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function fromBase64Url(value: string): Uint8Array<ArrayBuffer> {
-  const padded = value.replace(/-/g, "+").replace(/_/g, "/");
-  const binary = atob(padded);
-  const out = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
-  return out as Uint8Array<ArrayBuffer>;
-}
-
-/**
- * PBKDF2 rather than Argon2, which would resist a cracking rig better.
- *
- * The trade bought is a dependency: PBKDF2 is in WebCrypto already, and this
- * ships in a client where the alternative is another package on the critical
- * path of somebody's identity. 600k iterations of SHA-256 is the current OWASP
- * figure, and the file is one a user chose to protect rather than one an
- * attacker is expected to hold. `iterations` is recorded in the file so raising
- * it later does not strand backups written today.
- */
-async function deriveWrappingKey(
-  passphrase: string,
-  salt: Uint8Array<ArrayBuffer>,
-  iterations: number,
-): Promise<CryptoKey> {
-  const material = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(passphrase) as Uint8Array<ArrayBuffer>,
-    "PBKDF2",
-    false,
-    ["deriveKey"],
-  );
-
-  return crypto.subtle.deriveKey(
-    { name: "PBKDF2", salt, iterations, hash: "SHA-256" },
-    material,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["encrypt", "decrypt"],
-  );
 }
 
 /** Whether a file is locked, so the UI knows to ask for the passphrase. */
@@ -84,12 +42,9 @@ export function isLockedBackup(raw: string): boolean {
 export async function lockBackup(json: string, passphrase: string): Promise<string> {
   if (!passphrase) throw new Error("Choose a password for the backup file.");
 
-  const salt = new Uint8Array(SALT_BYTES);
-  crypto.getRandomValues(salt);
-  const iv = new Uint8Array(IV_BYTES);
-  crypto.getRandomValues(iv);
+  const { salt, iv } = freshNonces();
 
-  const key = await deriveWrappingKey(passphrase, salt as Uint8Array<ArrayBuffer>, PBKDF2_ITERATIONS);
+  const key = await deriveWrappingKey(passphrase, salt, PBKDF2_ITERATIONS);
   const data = await crypto.subtle.encrypt(
     { name: "AES-GCM", iv },
     key,
