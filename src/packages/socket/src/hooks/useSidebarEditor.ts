@@ -1,9 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { Socket } from "socket.io-client";
 import { v4 as uuidv4 } from "uuid";
 
 import { getServerAccessToken } from "@/common";
+import {
+  type ChannelRule,
+  EVERYONE_VALUE,
+  scopeChoiceFromValue,
+  scopeChoiceValue,
+  scopeOptions,
+  scopeSetPayload,
+} from "@/settings/src/channelPermissionRules";
 import { Channel, serverDetailsList as ServerDetailsList,SidebarItem } from "@/settings/src/types/server";
 
 interface UseSidebarEditorParams {
@@ -31,6 +39,16 @@ export function useSidebarEditor({
   const [sheetMaxBitrate, setSheetMaxBitrate] = useState("");
   const [sheetEsportsMode, setSheetEsportsMode] = useState(false);
   const [sheetTextInVoice, setSheetTextInVoice] = useState(false);
+  // Which scope the channel is on: "everyone", a template id, or "custom".
+  const [sheetScopeChoice, setSheetScopeChoice] = useState(EVERYONE_VALUE);
+  // The matrix, only meaningful while the choice is "custom". Kept while the
+  // dropdown is on a template so switching back does not lose what was drawn.
+  const [sheetScopeRules, setSheetScopeRules] = useState<ChannelRule[]>([]);
+  const [scopeLoading, setScopeLoading] = useState(false);
+  const [permissionTemplates, setPermissionTemplates] = useState<
+    { id: string; name: string | null; isSystem: boolean; rules: ChannelRule[] }[]
+  >([]);
+  const [channelPermissions, setChannelPermissions] = useState<string[]>([]);
   const [sheetSpacerHeight, setSheetSpacerHeight] = useState("16");
   const [sheetSeparatorLabel, setSheetSeparatorLabel] = useState("");
 
@@ -77,12 +95,136 @@ export function useSidebarEditor({
       setSheetMaxBitrate(ch?.maxBitrate ? String(ch.maxBitrate) : "");
       setSheetEsportsMode(ch?.eSportsMode || false);
       setSheetTextInVoice(ch?.textInVoice || false);
+      // The scope and its rules do not ride along on server:details, because a
+      // member who can see the channel is not necessarily allowed to read who
+      // else can. They are fetched when the editor opens instead.
+      setSheetScopeChoice(EVERYONE_VALUE);
+      setSheetScopeRules([]);
     } else if (selectedSidebarItem.kind === "spacer") {
       setSheetSpacerHeight(String(selectedSidebarItem.spacerHeight ?? 16));
     } else if (selectedSidebarItem.kind === "separator") {
       setSheetSeparatorLabel(String(selectedSidebarItem.label ?? ""));
     }
   }, [channelById, selectedSidebarItem]);
+
+  /**
+   * The choices for the visibility gate, as "everyone" plus one per role.
+   *
+   * The stored value is a rank, not a role id, so several roles at the same
+   * rank collapse into one choice — which is correct, because picking either
+   * would store the same number and mean the same thing. Showing both would
+   * offer a distinction the gate cannot keep.
+   *
+   * Sorted low to high so the list runs from "most people" to "fewest", which
+   * is the direction somebody narrowing a channel is thinking in.
+   */
+  const scopeChoiceOptions = useMemo(
+    () => scopeOptions(permissionTemplates.map((t) => ({ id: t.id, name: t.name }))),
+    [permissionTemplates],
+  );
+
+  /** Role id to name, for the sentence under the dropdown and the matrix rows. */
+  const scopeRoles = useMemo(() => {
+    if (!currentlyViewingServer) return [];
+    return serverDetailsList[currentlyViewingServer.host]?.server_info?.roles ?? [];
+  }, [currentlyViewingServer, serverDetailsList]);
+
+  /**
+   * Ask the server for the templates and for this channel's own rules.
+   *
+   * Runs when the dialog opens on a channel rather than on every render of the
+   * sidebar. Neither answer rides along on `server:details`: being allowed to
+   * see a channel is not the same as being allowed to read which roles cannot,
+   * and putting the matrix in the payload every member receives would hand that
+   * out to all of them.
+   */
+  // The item is read through a ref rather than depended on. `selectedSidebarItem`
+  // is a fresh object whenever `serverDetailsList` changes identity, and this
+  // effect emits on every run — so depending on it made each reply re-run the
+  // effect, which emitted again. React caught that as "Maximum update depth
+  // exceeded" the moment the dialog opened. The deps below are all primitives.
+  const selectedItemRef = useRef(selectedSidebarItem);
+  selectedItemRef.current = selectedSidebarItem;
+
+  const editingChannelId =
+    selectedSidebarItem?.kind === "channel"
+      ? selectedSidebarItem.channelId ?? selectedSidebarItem.id
+      : null;
+
+  useEffect(() => {
+    if (!editDialogOpen) return;
+    if (!editingChannelId) return;
+    if (!currentlyViewingServer || !currentConnection?.connected) return;
+
+    const accessToken = getFreshAccessToken();
+    if (!accessToken) return;
+
+    const channelId = editingChannelId;
+    let cancelled = false;
+    setScopeLoading(true);
+
+    const onTemplates = (payload: {
+      permissions?: string[];
+      templates?: { id: string; name: string | null; isSystem: boolean; rules: ChannelRule[] }[];
+    }) => {
+      if (cancelled) return;
+      setPermissionTemplates(payload?.templates ?? []);
+      if (payload?.permissions?.length) setChannelPermissions(payload.permissions);
+    };
+
+    const onScope = (payload: {
+      channelId?: string;
+      scopeId?: string | null;
+      isTemplate?: boolean;
+      permissions?: string[];
+      rules?: ChannelRule[];
+    }) => {
+      // The reply names the channel it is about. Without this check, opening
+      // one channel and quickly opening another paints the first one's rules
+      // into the second one's dialog — and then saves them.
+      if (cancelled || payload?.channelId !== channelId) return;
+      setSheetScopeChoice(scopeChoiceValue(payload.scopeId ?? null, Boolean(payload.isTemplate)));
+      setSheetScopeRules(payload.rules ?? []);
+      if (payload.permissions?.length) setChannelPermissions(payload.permissions);
+      setScopeLoading(false);
+    };
+
+    currentConnection.on("server:permissions:templates", onTemplates);
+    currentConnection.on("server:channels:scope", onScope);
+    currentConnection.emit("server:permissions:templates:list", { accessToken });
+    currentConnection.emit("server:channels:scope:get", { accessToken, channelId });
+
+    return () => {
+      cancelled = true;
+      currentConnection.off("server:permissions:templates", onTemplates);
+      currentConnection.off("server:channels:scope", onScope);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editDialogOpen, editingChannelId, currentlyViewingServer?.host, currentConnection]);
+
+  /**
+   * Send the channel's scope choice.
+   *
+   * Separate from `saveSelectedSidebarItem` on purpose. That one renames and
+   * retunes the channel, and a rename must never be able to change who can see
+   * it — the server refuses to take a scope on `server:channels:upsert` for the
+   * same reason.
+   */
+  const saveChannelScope = useCallback(() => {
+    const item = selectedItemRef.current;
+    if (!currentlyViewingServer || item?.kind !== "channel") return;
+    if (!currentConnection?.connected) return toast.error("Not connected to the server yet.");
+    const accessToken = getFreshAccessToken();
+    if (!accessToken) return toast.error("Join the server first.");
+
+    const channelId = item.channelId ?? item.id;
+    currentConnection.emit("server:channels:scope:set", {
+      accessToken,
+      channelId,
+      ...scopeSetPayload(scopeChoiceFromValue(sheetScopeChoice), sheetScopeRules),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentlyViewingServer, currentConnection, sheetScopeChoice, sheetScopeRules]);
 
   const closeEditDialog = useCallback(() => {
     setEditDialogOpen(false);
@@ -259,6 +401,11 @@ export function useSidebarEditor({
         maxBitrate: !isNaN(parsedBitrate) && parsedBitrate > 0 ? parsedBitrate : null,
         eSportsMode: sheetEsportsMode,
         textInVoice: sheetTextInVoice,
+        // Always sent, including as null. The server treats an *absent*
+        // viewMinRank as "leave it alone", which is what stops an older client
+        // reopening a hidden channel by saving an unrelated setting. This
+        // client knows about the field, so leaving it out here would make
+        // clearing a gate impossible.
       });
       return;
     }
@@ -328,6 +475,16 @@ export function useSidebarEditor({
     setSheetEsportsMode,
     sheetTextInVoice,
     setSheetTextInVoice,
+    sheetScopeChoice,
+    setSheetScopeChoice,
+    sheetScopeRules,
+    setSheetScopeRules,
+    scopeChoiceOptions,
+    scopeRoles,
+    channelPermissions,
+    permissionTemplates,
+    scopeLoading,
+    saveChannelScope,
     sheetSpacerHeight,
     setSheetSpacerHeight,
     sheetSeparatorLabel,

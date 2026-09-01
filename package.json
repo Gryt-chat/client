@@ -63,7 +63,8 @@
     "test:dm-key-published": "node scripts/check-dm-key-published.mjs",
     "test:sealed-text": "node scripts/check-sealed-text.mjs",
     "test:sealed-send": "node scripts/check-sealed-send.mjs",
-    "test:sealed-attachments": "node scripts/check-sealed-attachments.mjs"
+    "test:sealed-attachments": "node scripts/check-sealed-attachments.mjs",
+    "test:channel-permissions": "node scripts/check-channel-permissions.mjs"
   },
   "dependencies": {
     "@dicebear/core": "^10",

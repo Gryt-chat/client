@@ -8,6 +8,17 @@ export type Channel = {
   maxBitrate?: number | null;
   eSportsMode?: boolean;
   textInVoice?: boolean;
+  /**
+   * Which permission scope decides what each role may do here, or null when the
+   * channel has no opinion and every role gets what its server-wide definition
+   * gives it.
+   *
+   * A channel somebody may not read is not in this array at all — the server
+   * leaves it out of `server:details` rather than sending it with a flag. So
+   * nothing reads this to decide whether to draw a channel. It is here for the
+   * editor, and only ever seen by somebody already allowed to see the channel.
+   */
+  permissionScopeId?: string | null;
 };
 
 export type SidebarItemKind = "channel" | "separator" | "spacer";

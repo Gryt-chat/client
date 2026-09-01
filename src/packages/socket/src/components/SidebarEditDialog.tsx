@@ -1,8 +1,16 @@
 import { Dialog, IconButton, Select, Switch, TextField } from "@gryt/ui";
-import { useCallback, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { PiX } from "react-icons/pi";
 
+import {
+  type ChannelRule,
+  CUSTOM_VALUE,
+  describeRules,
+  EVERYONE_VALUE,
+} from "@/settings/src/channelPermissionRules";
 import type { SidebarItem } from "@/settings/src/types/server";
+
+import { ChannelPermissionMatrix } from "./ChannelPermissionMatrix";
 
 export interface SidebarEditorFields {
   selectedSidebarItem: SidebarItem | null;
@@ -20,6 +28,15 @@ export interface SidebarEditorFields {
   setSheetEsportsMode: (v: boolean) => void;
   sheetTextInVoice: boolean;
   setSheetTextInVoice: (v: boolean) => void;
+  sheetScopeChoice: string;
+  setSheetScopeChoice: (v: string) => void;
+  sheetScopeRules: ChannelRule[];
+  setSheetScopeRules: (v: ChannelRule[]) => void;
+  scopeChoiceOptions: { label: string; value: string }[];
+  scopeRoles: { id: string; name: string; rank: number; permissions: string[] }[];
+  channelPermissions: string[];
+  scopeLoading: boolean;
+  saveChannelScope: () => void;
   sheetSpacerHeight: string;
   setSheetSpacerHeight: (v: string) => void;
   sheetSeparatorLabel: string;
@@ -44,6 +61,9 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
     sheetMaxBitrate, setSheetMaxBitrate,
     sheetEsportsMode, setSheetEsportsMode,
     sheetTextInVoice, setSheetTextInVoice,
+    sheetScopeChoice, setSheetScopeChoice,
+    sheetScopeRules, setSheetScopeRules,
+    scopeChoiceOptions, scopeRoles, channelPermissions, scopeLoading, saveChannelScope,
     sheetSpacerHeight, setSheetSpacerHeight,
     sheetSeparatorLabel, setSheetSeparatorLabel,
     closeEditDialog, saveSelectedSidebarItem,
@@ -64,7 +84,31 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
     saveRef.current();
   }, []);
 
-  const handleClose = () => { flushSave(); closeEditDialog(); };
+  // The scope has its own save because it has its own event. Same debounce
+  // shape as the channel fields, so a matrix that somebody clicks four times
+  // sends once.
+  const scopeSaveRef = useRef(saveChannelScope);
+  scopeSaveRef.current = saveChannelScope;
+  const scopeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const debouncedScopeSave = useCallback(() => {
+    if (scopeTimerRef.current) clearTimeout(scopeTimerRef.current);
+    scopeTimerRef.current = setTimeout(() => { scopeTimerRef.current = null; scopeSaveRef.current(); }, 600);
+  }, []);
+
+  const flushScopeSave = useCallback(() => {
+    if (scopeTimerRef.current) clearTimeout(scopeTimerRef.current);
+    scopeTimerRef.current = null;
+    scopeSaveRef.current();
+  }, []);
+
+  /** Role id to name, for the sentence under the dropdown. */
+  const roleNames = useMemo(
+    () => new Map(scopeRoles.map((r) => [r.id, r.name])),
+    [scopeRoles],
+  );
+
+  const handleClose = () => { flushSave(); flushScopeSave(); closeEditDialog(); };
   const handleKeyEnter = (e: React.KeyboardEvent) => { if (e.key === "Enter") handleClose(); };
 
   return (
@@ -99,6 +143,41 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Voice channel</span>
                 <Switch checked={sheetChannelIsVoice} onCheckedChange={(v) => { setSheetChannelIsVoice(v); debouncedSave(); }} />
+              </div>
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-medium">Who can use this channel</span>
+                {/* Everyone, a shared template, or this channel's own rules.
+                    A template is edited in server settings and applies to every
+                    channel on it, which is the point — the dropdown only picks
+                    one here. */}
+                <Select
+                  value={sheetScopeChoice || EVERYONE_VALUE}
+                  disabled={scopeLoading}
+                  onValueChange={(v) => {
+                    setSheetScopeChoice(String(v));
+                    scopeSaveRef.current();
+                  }}
+                  options={scopeChoiceOptions}
+                />
+                <span className="text-xs">
+                  {sheetScopeChoice === EVERYONE_VALUE
+                    ? "Everyone on the server can see and use this channel."
+                    : sheetScopeChoice === CUSTOM_VALUE
+                      ? describeRules(sheetScopeRules, roleNames)
+                      : "Follows a template. Change it in server settings and every channel using it changes with it."}
+                </span>
+                {sheetScopeChoice === CUSTOM_VALUE && (
+                  <ChannelPermissionMatrix
+                    roles={scopeRoles}
+                    permissions={channelPermissions}
+                    rules={sheetScopeRules}
+                    disabled={scopeLoading}
+                    onChange={(next) => {
+                      setSheetScopeRules(next);
+                      debouncedScopeSave();
+                    }}
+                  />
+                )}
               </div>
               {sheetChannelIsVoice && (
                 <>
