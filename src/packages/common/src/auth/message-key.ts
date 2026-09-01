@@ -12,7 +12,7 @@
  * have meant a second way into the same store for no gain.
  */
 
-import { listGuestScopes } from "./guest-history";
+import { guestScopeRisk } from "./guest-history.ts";
 import { getIdentityWords, restoreIdentityFromWords } from "./identity-keys";
 import { generateSeed, seedToWords } from "./identity-seed";
 import { openSeed, type SealedVault,sealSeed } from "./identity-vault.ts";
@@ -45,7 +45,7 @@ export async function adoptSealedIdentity(
 }
 
 /**
- * How many guest identities a reset would destroy.
+ * What a reset would destroy on servers joined without an account.
  *
  * A signed-in account signs with a key the Gryt CA certified, generated on its
  * own and not from the seed — so replacing the seed costs that account nothing
@@ -56,15 +56,36 @@ export async function adoptSealedIdentity(
  * `identity-keys` puts it plainly next to the derivation: it "destroys every
  * server this identity was known on — the roles, the ownership, the history —
  * permanently, silently, and with no way back". The word doing the work is
- * silently. This is what stops it being silent.
+ * silently, and this is what stops it being silent.
+ *
+ * ## Why this returns two things
+ *
+ * It used to return a count, with -1 meaning "could not tell". That second case
+ * could never happen: `listGuestScopes` catches its own errors and answers with
+ * an empty list, so an unreadable store came back as a confident zero and the
+ * warning disappeared entirely. The guard was there; the callee had already
+ * swallowed the thing it was guarding against.
+ *
+ * `certain` is false in two situations, and the second is the one that will
+ * actually happen to somebody:
+ *
+ * - The store could not be read. Private mode, disabled site data, a quota
+ *   error, or a value somebody has overwritten with nonsense.
+ * - This device's history is empty. Empty is *usually* honest, but a device
+ *   that was set up by restoring a 24-word phrase has no history and may still
+ *   have guest identities — `guest-history` says so itself: a phrase "brings
+ *   nothing, because a phrase is a seed and a seed knows nothing about where it
+ *   has been". That is exactly the person reaching for a reset, so zero is not
+ *   a promise worth making.
  */
-export function guestIdentitiesAtRisk(): number {
+export function guestIdentitiesAtRisk(): { count: number; certain: boolean } {
   try {
-    return listGuestScopes().length;
+    return guestScopeRisk();
   } catch {
-    // Unknown rather than none. The caller warns in general terms instead of
-    // promising a number it could not read.
-    return -1;
+    // Belt and braces. `guestScopeRisk` handles the failures it knows about and
+    // reports them as uncertain; anything it did not expect lands here and is
+    // reported the same way, never as a confident zero.
+    return { count: 0, certain: false };
   }
 }
 

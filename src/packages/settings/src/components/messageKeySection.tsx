@@ -129,7 +129,7 @@ export function MessageKeySection() {
     }
   }, [secret, confirm, confirmReset, close]);
 
-  const guestsAtRisk = guestIdentitiesAtRisk();
+  const guests = guestIdentitiesAtRisk();
 
   return (
     <div className="flex flex-col gap-3">
@@ -182,22 +182,33 @@ export function MessageKeySection() {
                 Nobody can undo it, including us. That is the same property that
                 stops us reading your messages in the first place.
               </span>
-              {guestsAtRisk > 0 && (
+              {/* Three cases, and the third is the one that matters. A count
+                  of zero used to print nothing at all, so somebody whose
+                  history could not be read — or who set this device up from a
+                  24-word phrase, which carries no history — was told nothing
+                  about the guest servers they were about to lose. */}
+              {guests.certain ? (
                 <span>
                   <strong>
-                    It also replaces your identity on {guestsAtRisk} server
-                    {guestsAtRisk === 1 ? "" : "s"} you joined without an
+                    It also replaces your identity on {guests.count} server
+                    {guests.count === 1 ? "" : "s"} you joined without an
                     account.
                   </strong>{" "}
                   You would arrive there as a stranger, and any roles or
                   ownership you had are gone with no way back. Save your 24 words
                   first if you want to keep them.
                 </span>
-              )}
-              {guestsAtRisk === -1 && (
+              ) : (
                 <span>
-                  It may also replace your identity on servers you joined without
-                  an account, which would lose any roles you had there.
+                  <strong>
+                    It also replaces your identity on any server you joined
+                    without an account.
+                  </strong>{" "}
+                  This device has no record of those, which does not mean there
+                  are none &mdash; a device set up from a 24-word phrase never
+                  has one. You would arrive at any such server as a stranger,
+                  and any roles or ownership there are gone with no way back.
+                  Save your 24 words first if you want to keep them.
                 </span>
               )}
             </div>
