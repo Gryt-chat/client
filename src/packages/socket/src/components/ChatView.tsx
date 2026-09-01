@@ -23,6 +23,7 @@ import { DirectMessagePrivacyNotice } from "./DirectMessagePrivacyNotice";
 import { EmojiText } from "./EmojiText";
 import { ImageLightbox } from "./ImageLightbox";
 import type { MemberInfo } from "./MemberSidebar";
+import { MessageKeyPrompt } from "./MessageKeyPrompt";
 import { MessageRow } from "./MessageRow";
 import { TypingIndicator } from "./TypingIndicator";
 
@@ -332,6 +333,7 @@ export const ChatView = memo(({
               first thing read on the way down to the composer, and so it
               scrolls with a long conversation instead of sitting over it. */}
           {conversationKind === "dm" && <DirectMessagePrivacyNotice />}
+          {conversationKind === "dm" && <MessageKeyPrompt />}
 
           {isVoiceChannelTextChat && !canViewVoiceChannelText && (
             <div className="flex items-center justify-center" style={{ padding: "24px", textAlign: "center" }}>

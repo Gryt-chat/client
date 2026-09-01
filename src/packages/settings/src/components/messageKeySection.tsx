@@ -5,7 +5,9 @@ import toast from "react-hot-toast";
 import {
   adoptSealedIdentity,
   describePasswordProblem,
+  getAccountProfile,
   readSealedVault,
+  rememberMessageKeyHere,
   sealCurrentIdentity,
   type SealedVault,
   writeSealedVault,
@@ -60,6 +62,10 @@ export function MessageKeySection() {
     try {
       const sealed = await sealCurrentIdentity(secret, "password");
       await writeSealedVault(sealed);
+      // This device sealed it, so it plainly has the key. Without this the DM
+      // prompt would offer to fetch a copy of what it just sent.
+      const sub = await getAccountProfile().then((p) => p.sub).catch(() => null);
+      if (sub) rememberMessageKeyHere(sub);
       setVault(sealed);
       close();
       toast.success("Message password set.");
@@ -84,6 +90,8 @@ export function MessageKeySection() {
     setBusy(true);
     try {
       await adoptSealedIdentity(vault, secret);
+      const sub = await getAccountProfile().then((p) => p.sub).catch(() => null);
+      if (sub) rememberMessageKeyHere(sub);
       close();
       toast.success("This device now uses your message key. Reload to see your conversations.");
     } catch (e) {
