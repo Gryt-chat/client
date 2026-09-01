@@ -6,8 +6,10 @@ import {
   adoptSealedIdentity,
   describePasswordProblem,
   getAccountProfile,
+  guestIdentitiesAtRisk,
   readSealedVault,
   rememberMessageKeyHere,
+  resetMessageIdentity,
   sealCurrentIdentity,
   type SealedVault,
   writeSealedVault,
@@ -32,7 +34,8 @@ import {
  */
 export function MessageKeySection() {
   const [vault, setVault] = useState<SealedVault | null | undefined>(undefined);
-  const [open, setOpen] = useState<"set" | "use" | null>(null);
+  const [open, setOpen] = useState<"set" | "use" | "reset" | null>(null);
+  const [confirmReset, setConfirmReset] = useState("");
   const [secret, setSecret] = useState("");
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
@@ -51,6 +54,7 @@ export function MessageKeySection() {
     setOpen(null);
     setSecret("");
     setConfirm("");
+    setConfirmReset("");
   }, []);
 
   const save = useCallback(async () => {
@@ -101,6 +105,32 @@ export function MessageKeySection() {
     }
   }, [vault, secret, close]);
 
+  const reset = useCallback(async () => {
+    const problem = describePasswordProblem(secret);
+    if (problem) return toast.error(problem);
+    if (secret !== confirm) return toast.error("The two passwords do not match.");
+    if (confirmReset.trim().toLowerCase() !== "start again") {
+      return toast.error('Type "start again" to confirm.');
+    }
+
+    setBusy(true);
+    try {
+      const sealed = await resetMessageIdentity(secret);
+      await writeSealedVault(sealed);
+      const sub = await getAccountProfile().then((p) => p.sub).catch(() => null);
+      if (sub) rememberMessageKeyHere(sub);
+      setVault(sealed);
+      close();
+      toast.success("New message key set. Older conversations stay unreadable.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not reset the message key.");
+    } finally {
+      setBusy(false);
+    }
+  }, [secret, confirm, confirmReset, close]);
+
+  const guests = guestIdentitiesAtRisk();
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
@@ -124,6 +154,9 @@ export function MessageKeySection() {
           <Button tone="neutral" size="small" onClick={() => setOpen("set")}>
             Change it
           </Button>
+          <Button tone="ghost" size="small" onClick={() => setOpen("reset")}>
+            Forgotten it?
+          </Button>
         </div>
       )}
 
@@ -136,6 +169,79 @@ export function MessageKeySection() {
           <Button size="small" onClick={() => setOpen("set")}>
             Set a message password
           </Button>
+        </div>
+      )}
+
+      {open === "reset" && (
+        <div className="flex flex-col gap-3">
+          <Alert severity="error">
+            <div className="flex flex-col gap-2">
+              <span>
+                This makes a new message key. Everything already sealed with the
+                old one stays unreadable &mdash; on this device and every other.
+                Nobody can undo it, including us. That is the same property that
+                stops us reading your messages in the first place.
+              </span>
+              {/* Three cases, and the third is the one that matters. A count
+                  of zero used to print nothing at all, so somebody whose
+                  history could not be read — or who set this device up from a
+                  24-word phrase, which carries no history — was told nothing
+                  about the guest servers they were about to lose. */}
+              {guests.certain ? (
+                <span>
+                  <strong>
+                    It also replaces your identity on {guests.count} server
+                    {guests.count === 1 ? "" : "s"} you joined without an
+                    account.
+                  </strong>{" "}
+                  You would arrive there as a stranger, and any roles or
+                  ownership you had are gone with no way back. Save your 24 words
+                  first if you want to keep them.
+                </span>
+              ) : (
+                <span>
+                  <strong>
+                    It also replaces your identity on any server you joined
+                    without an account.
+                  </strong>{" "}
+                  This device has no record of those, which does not mean there
+                  are none &mdash; a device set up from a 24-word phrase never
+                  has one. You would arrive at any such server as a stranger,
+                  and any roles or ownership there are gone with no way back.
+                  Save your 24 words first if you want to keep them.
+                </span>
+              )}
+            </div>
+          </Alert>
+
+          <TextField
+            label="Type &ldquo;start again&rdquo; to confirm"
+            value={confirmReset}
+            onChange={(e) => setConfirmReset(e.target.value)}
+          />
+          <TextField
+            type="password"
+            label="New message password"
+            autoComplete="new-password"
+            value={secret}
+            onChange={(e) => setSecret(e.target.value)}
+          />
+          <TextField
+            type="password"
+            label="Again"
+            autoComplete="new-password"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+          />
+
+          <div className="flex gap-2">
+            <Button tone="danger" size="small" onClick={reset} disabled={busy}>
+              {busy ? "Working\u2026" : "Start again"}
+            </Button>
+            <Button tone="neutral" size="small" onClick={close} disabled={busy}>
+              Cancel
+            </Button>
+          </div>
         </div>
       )}
 

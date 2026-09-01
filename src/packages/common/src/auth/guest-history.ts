@@ -36,7 +36,7 @@
  * profile has talked to, which is also plainly visible from the server list.
  */
 
-import { asIdentityScope, type IdentityScope } from "./identity-seed";
+import { asIdentityScope, type IdentityScope } from "./identity-seed.ts";
 
 const STORAGE_KEY = "gryt_guest_history";
 
@@ -82,6 +82,37 @@ export function listGuestScopes(): IdentityScope[] {
   // Everything in here arrived through rememberGuestScope, which is only ever
   // called with identityScopeFor's result.
   return [...read()].map(asIdentityScope);
+}
+
+/**
+ * How many guest identities are at stake, and whether that number is worth
+ * printing.
+ *
+ * Lives here rather than beside the reset because this is the only thing it
+ * depends on, and putting it here is what lets a check exercise it — importing
+ * the reset module pulls in `identity-keys` and an IndexedDB it has no business
+ * opening to answer a question about localStorage.
+ *
+ * `certain` is simply whether anything is on record, and the two ways it can be
+ * false are worth telling apart in your head even though the answer is the same:
+ *
+ * - `read` returned nothing because the store could not be read — private mode,
+ *   disabled site data, a quota error, a value overwritten with nonsense. It
+ *   swallows all of those and answers empty, deliberately, because every other
+ *   caller is offering a claim and the cost of being wrong there is small.
+ * - The history really is empty. Usually honest, but a device set up by
+ *   restoring a 24-word phrase has no history and may still have guest
+ *   identities — a phrase brings nothing, because a seed knows nothing about
+ *   where it has been. That is exactly the person reaching for a reset.
+ *
+ * So a count of zero is never a promise, and the warning says so instead of
+ * disappearing. It used to disappear: the caller had a branch for "could not
+ * tell" that could not fire, because `read` had already turned the failure into
+ * an empty list.
+ */
+export function guestScopeRisk(): { count: number; certain: boolean } {
+  const scopes = read();
+  return { count: scopes.size, certain: scopes.size > 0 };
 }
 
 /** Drop one, for a server being left. */
