@@ -32,6 +32,7 @@ export * from "./src/auth/local-identity";
 export * from "./src/auth/message-key";
 export * from "./src/auth/message-vault";
 export * from "./src/auth/message-vault-account";
+export * from "./src/auth/message-vault-adoption";
 export * from "./src/auth/peer-keys";
 export * from "./src/auth/server-pins";
 export * from "./src/auth/session-expired";
