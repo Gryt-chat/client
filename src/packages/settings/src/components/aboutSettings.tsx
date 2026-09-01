@@ -11,6 +11,12 @@ import { SettingsContainer } from "./settingsComponents";
 
 const GITHUB_URL = "https://github.com/Gryt-chat/gryt";
 
+/* Both stores want these reachable from inside the app rather than only from
+   the listing, and the desktop build has no listing to fall back on at all.
+   GRYT-829. */
+const TERMS_URL = "https://gryt.chat/terms";
+const PRIVACY_URL = "https://gryt.chat/privacy";
+
 /*
  * "Get the desktop app" sent people to GitHub Releases, which is release notes
  * above a collapsed Assets list of a dozen files across three platforms. The
@@ -293,6 +299,28 @@ export function AboutSettings() {
             rel="noopener noreferrer"
           >
             AGPL-3.0-or-later
+          </a>
+        </span>
+        {/* Beside the licence rather than as buttons below. These are the same
+            kind of thing — the terms you are already under — and neither is
+            something somebody came to this panel to do. */}
+        <span className="text-gryt-muted">
+          <a
+            className="text-gryt-accent underline-offset-2 hover:underline"
+            href={TERMS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Terms of use
+          </a>
+          {" · "}
+          <a
+            className="text-gryt-accent underline-offset-2 hover:underline"
+            href={PRIVACY_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Privacy policy
           </a>
         </span>
       </div>
