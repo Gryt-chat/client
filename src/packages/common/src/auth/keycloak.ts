@@ -6,8 +6,8 @@ import { consumePreLoginUrl } from '../utils/preLoginUrl';
 import {
   electronLogin,
   electronLogout,
-  electronPasskeySetup,
   electronRegister,
+  electronRequiredAction,
   getStoredTokens,
   getValidElectronToken,
   refreshTokens,
@@ -310,20 +310,81 @@ export async function startRegister(redirectUri?: string): Promise<void> {
   });
 }
 
-export async function startPasskeySetup(redirectUri?: string): Promise<void> {
+/**
+ * Hand somebody to Keycloak to do one thing to their own account, then bring
+ * them back where they were.
+ *
+ * The alias is a required action registered and enabled on the realm. It runs
+ * on the login pages, which are Gryt's own theme — so account management never
+ * sends anybody to the stock Keycloak console, which is PatternFly and looks
+ * nothing like the rest of this.
+ *
+ * **A disabled action fails quietly.** Keycloak ignores a `kc_action` it does
+ * not recognise and simply completes the login, so the button appears to do
+ * nothing at all rather than reporting an error. If one of these looks dead,
+ * check the realm's required actions before looking at this file.
+ */
+export async function startRequiredAction(
+  action: string,
+  redirectUri?: string,
+): Promise<void> {
   if (isElectron()) {
-    await electronPasskeySetup();
+    await electronRequiredAction(action);
     resetKeycloakInit();
     await initKeycloak();
     return;
   }
 
   const { keycloak } = await initKeycloak();
-  const target = redirectUri || window.location.href;
   await keycloak.login({
-    action: 'webauthn-register-passwordless',
-    redirectUri: target,
+    action,
+    redirectUri: redirectUri || window.location.href,
   });
+}
+
+export async function startPasskeySetup(redirectUri?: string): Promise<void> {
+  return startRequiredAction('webauthn-register-passwordless', redirectUri);
+}
+
+/** Change the password. Enabled on the realm as UPDATE_PASSWORD. */
+export async function startPasswordChange(redirectUri?: string): Promise<void> {
+  return startRequiredAction('UPDATE_PASSWORD', redirectUri);
+}
+
+/**
+ * Change the address on the account.
+ *
+ * The realm sets `registrationEmailAsUsername`, so this changes what somebody
+ * signs in with, and Keycloak re-verifies the new address before it takes
+ * effect. Needs the `update-email` feature flag as well as the required action.
+ */
+export async function startEmailChange(redirectUri?: string): Promise<void> {
+  return startRequiredAction('UPDATE_EMAIL', redirectUri);
+}
+
+/** Set up one-time recovery codes. Needs the `recovery-codes` feature flag. */
+export async function startRecoveryCodesSetup(redirectUri?: string): Promise<void> {
+  return startRequiredAction('CONFIGURE_RECOVERY_AUTHN_CODES', redirectUri);
+}
+
+/** Set up an authenticator app. Enabled on the realm as CONFIGURE_TOTP. */
+export async function startTotpSetup(redirectUri?: string): Promise<void> {
+  return startRequiredAction('CONFIGURE_TOTP', redirectUri);
+}
+
+/**
+ * Delete the account, permanently.
+ *
+ * Keycloak asks for confirmation on its own page before doing anything, and
+ * that page is styled here (auth#19). Because this arrives as an
+ * application-initiated action it also offers a way back, which it would not if
+ * somebody reached it any other way.
+ *
+ * This deletes the gryt.chat account. It does not delete anything on servers
+ * other people run — those hold their own copy of what was said.
+ */
+export async function startAccountDeletion(redirectUri?: string): Promise<void> {
+  return startRequiredAction('delete_account', redirectUri);
 }
 
 export async function doLogout(): Promise<void> {

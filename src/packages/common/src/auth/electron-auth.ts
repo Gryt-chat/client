@@ -321,7 +321,24 @@ export async function electronLogin(): Promise<ElectronTokens> {
   });
 }
 
-export async function electronPasskeySetup(): Promise<ElectronTokens> {
+/**
+ * Send somebody out to Keycloak to perform one required action, and come back
+ * with fresh tokens.
+ *
+ * `kc_action` is Keycloak's application-initiated action mechanism: the alias
+ * of a required action that is registered and enabled on the realm. It runs on
+ * the *login* pages, which are Gryt's own theme, so nobody meets the stock
+ * account console on the way.
+ *
+ * The realm has to have the action enabled or Keycloak ignores the parameter
+ * and just logs the person in, which looks like the button doing nothing.
+ * `UPDATE_EMAIL` and `CONFIGURE_RECOVERY_AUTHN_CODES` additionally need their
+ * feature flags in KC_FEATURES — see auth#20.
+ *
+ * This was three copies of the same forty lines before, one per action, and a
+ * fourth was about to be written.
+ */
+export async function electronRequiredAction(action: string): Promise<ElectronTokens> {
   const api = getElectronAPI();
   if (!api) throw new Error("Not running in Electron");
 
@@ -339,12 +356,17 @@ export async function electronPasskeySetup(): Promise<ElectronTokens> {
   authUrl.searchParams.set("state", state);
   authUrl.searchParams.set("code_challenge", codeChallenge);
   authUrl.searchParams.set("code_challenge_method", "S256");
-  authUrl.searchParams.set("kc_action", "webauthn-register-passwordless");
+  authUrl.searchParams.set("kc_action", action);
 
   return new Promise<ElectronTokens>((resolve, reject) => {
     pendingLogin = { codeVerifier, state, resolve, reject };
     api.openExternal(authUrl.toString());
   });
+}
+
+/** Kept for its callers; the action alias is the only thing that varied. */
+export async function electronPasskeySetup(): Promise<ElectronTokens> {
+  return electronRequiredAction("webauthn-register-passwordless");
 }
 
 export async function electronRegister(): Promise<ElectronTokens> {

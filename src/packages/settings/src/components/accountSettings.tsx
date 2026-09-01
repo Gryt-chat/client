@@ -7,6 +7,10 @@ import {
   type AccountProfile,
   getAccountProfile,
   resetKeycloakInit,
+  startAccountDeletion,
+  startEmailChange,
+  startPasswordChange,
+  startRecoveryCodesSetup,
   useAccount,
 } from "@/common";
 
@@ -187,6 +191,27 @@ export function AccountSettings() {
             anything you own moved to this account the next time you connected.
           </span>
 
+          {/* Each of these hands off to auth.gryt.chat and comes back here.
+              They run on the login pages, which are Gryt's own theme, so
+              nobody lands in Keycloak's stock account console. */}
+          <div className="flex flex-col gap-2">
+            <span className="font-medium text-sm">Manage your account</span>
+            <span className="text-xs">
+              These open auth.gryt.chat and bring you back when you are done.
+            </span>
+            <div className="flex flex-wrap gap-2">
+              <Button size="small" onClick={() => void startPasswordChange()}>
+                Change password
+              </Button>
+              <Button size="small" onClick={() => void startEmailChange()}>
+                Change email
+              </Button>
+              <Button size="small" onClick={() => void startRecoveryCodesSetup()}>
+                Recovery codes
+              </Button>
+            </div>
+          </div>
+
           <Button size="small"
             style={{ alignSelf: "flex-start" }}
             onClick={() => void logout()}
@@ -194,6 +219,27 @@ export function AccountSettings() {
             <PiSignOutFill size={16} />
             Sign out
           </Button>
+
+          {/* Last, and on its own. Keycloak asks for confirmation on a page of
+              its own before anything happens, so there is no second dialog
+              here — one that only repeated the next screen would train people
+              to click through both. */}
+          <div className="flex flex-col gap-2">
+            <span className="font-medium text-sm">Delete your account</span>
+            <span className="text-xs">
+              Permanent, and it cannot be undone. It removes your Gryt account.
+              Messages you sent live on the servers that received them, and
+              deleting this does not reach them.
+            </span>
+            <Button
+              size="small"
+              tone="neutral"
+              style={{ alignSelf: "flex-start" }}
+              onClick={() => void startAccountDeletion()}
+            >
+              Delete account
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="flex flex-col gap-3">
