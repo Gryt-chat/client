@@ -94,6 +94,8 @@ interface MemberSidebarProps {
    * server decides whether they may rather than the menu guessing.
    */
   onOpenDm?: (targetServerUserId: string) => void;
+  onToggleBlock?: (targetServerUserId: string) => void;
+  isBlocked?: (serverUserId: string) => boolean;
   pinned?: boolean;
   onTogglePinned?: () => void;
 }
@@ -106,6 +108,8 @@ const MemberItem = ({
   serverHost,
   adminActions,
   onOpenDm,
+  onToggleBlock,
+  isBlocked,
 }: {
   member: MemberInfo;
   currentServerUserId?: string;
@@ -113,6 +117,8 @@ const MemberItem = ({
   serverHost: string;
   adminActions?: AdminActions;
   onOpenDm?: (targetServerUserId: string) => void;
+  onToggleBlock?: (targetServerUserId: string) => void;
+  isBlocked?: (serverUserId: string) => boolean;
 }) => {
   const isSelf = member.serverUserId === currentServerUserId;
   const { label: statusLabel, color: statusColor } = statusConfig[member.status];
@@ -137,6 +143,12 @@ const MemberItem = ({
       onServerDeafen={adminActions?.onServerDeafenUser ? (deafened) => adminActions.onServerDeafenUser!(member.serverUserId, deafened) : undefined}
       onChangeRole={adminActions?.onChangeRole ? (role) => adminActions.onChangeRole!(member.serverUserId, role) : undefined}
       onOpenDm={onOpenDm && !isSelf ? () => onOpenDm(member.serverUserId) : undefined}
+      /* Not on your own row: the server refuses blocking yourself, so the item
+         would be one that always fails. */
+      onToggleBlock={
+        onToggleBlock && !isSelf ? () => onToggleBlock(member.serverUserId) : undefined
+      }
+      isBlocked={isBlocked?.(member.serverUserId) ?? false}
     >
       <PreviewCard.Root>
         <PreviewCard.Trigger>
@@ -198,6 +210,8 @@ export const MemberSidebar = ({
   serverHost,
   adminActions,
   onOpenDm,
+  onToggleBlock,
+  isBlocked,
   pinned,
   onTogglePinned,
 }: MemberSidebarProps) => {
@@ -243,6 +257,8 @@ export const MemberSidebar = ({
               serverHost={serverHost}
               adminActions={adminActions}
               onOpenDm={onOpenDm}
+              onToggleBlock={onToggleBlock}
+              isBlocked={isBlocked}
             />
           ))}
         </div>

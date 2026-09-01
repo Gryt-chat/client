@@ -1,7 +1,7 @@
 import { ContextMenu, Slider } from "@gryt/ui";
 import { ReactNode } from "react";
 import toast from "react-hot-toast";
-import { PiAtFill, PiChatCircleFill, PiCopyFill } from "react-icons/pi";
+import { PiAtFill, PiChatCircleFill, PiCopyFill, PiProhibitFill } from "react-icons/pi";
 
 import { useSettings } from "@/settings";
 
@@ -47,6 +47,18 @@ interface UserContextMenuProps {
    * shown and refused.
    */
   onOpenDm?: () => void;
+  /**
+   * Stop hearing from this person, or start again.
+   *
+   * Deliberately outside the moderator section below. Blocking needs no
+   * permission and has to work against somebody who outranks you, which is the
+   * whole difference between it and a kick.
+   *
+   * Absent when the menu is rendered outside a server view, and on a server old
+   * enough not to have the events.
+   */
+  onToggleBlock?: () => void;
+  isBlocked?: boolean;
 }
 
 /**
@@ -82,6 +94,8 @@ export function UserContextMenu({
   onChangeRole,
   onPopoutVideo,
   onOpenDm,
+  onToggleBlock,
+  isBlocked,
 }: UserContextMenuProps) {
   const { userVolumes, updateUserVolume, resetUserVolume, openSettings } = useSettings();
   const { has, can, roles } = useServerPermissions(serverHost || "");
@@ -214,6 +228,23 @@ export function UserContextMenu({
             <PiCopyFill size={14} /> Copy ID
           </div>
         </ContextMenu.Item>
+        {/* Above the volume slider and well above the moderator section, which
+            is where it belongs on both counts: it is something anybody can do
+            to anybody, and it is not a moderator act however much it looks like
+            one. No permission is asked for, because a block that needed a role
+            would not work for the person who needs it most.
+
+            Unblocking is not in the danger colour. It only ever gives back. */}
+        {onToggleBlock && (
+          <ContextMenu.Item
+            className={isBlocked ? undefined : "text-gryt-danger"}
+            onClick={onToggleBlock}
+          >
+            <div className="flex items-center gap-2">
+              <PiProhibitFill size={14} /> {isBlocked ? "Unblock" : "Block"}
+            </div>
+          </ContextMenu.Item>
+        )}
         <ContextMenu.Separator />
         <div className="flex flex-col gap-2 px-2 py-1" onPointerDown={(e) => e.stopPropagation()}>
           <div className="flex items-center justify-between">
