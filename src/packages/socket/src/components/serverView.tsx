@@ -20,6 +20,7 @@ import {
 import { readFakeCallOptions, useFakeCallEvents } from "../dev/fakeServerEvents";
 import { useFakeSpeech } from "../dev/fakeSpeech";
 import { useAdminActions } from "../hooks/useAdminActions";
+import { useBlocks } from "../hooks/useBlocks";
 import { useCalls } from "../hooks/useCalls";
 import { useChannelSettings, useHandleChannelClick } from "../hooks/useChannelSettings";
 import { useChat } from "../hooks/useChat";
@@ -208,6 +209,12 @@ export const ServerView = () => {
     addToGroup,
     leaveGroup,
   } = useDirectMessages({
+    socket: currentConnection,
+    accessToken,
+    isConnected: currentConnectionStatus === "connected",
+  });
+
+  const { isBlocked, block, unblock } = useBlocks({
     socket: currentConnection,
     accessToken,
     isConnected: currentConnectionStatus === "connected",
@@ -936,6 +943,10 @@ export const ServerView = () => {
               serverHost={host}
               adminActions={currentAdminActions}
               onOpenDm={requestOpenDm}
+              isBlocked={isBlocked}
+              onToggleBlock={(targetServerUserId) =>
+                (isBlocked(targetServerUserId) ? unblock : block)(targetServerUserId)
+              }
               pinned={pinMembersSidebar}
               onTogglePinned={() => setPinMembersSidebar(!pinMembersSidebar)}
             />
