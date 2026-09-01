@@ -17,6 +17,7 @@ import {
   type ServerOverviewInitialSettings,
   ServerOverviewTab,
 } from "./ServerOverviewTab";
+import { ServerPermissionTemplatesTab } from "./ServerPermissionTemplatesTab";
 import { ServerRoleEditorTab } from "./ServerRoleEditorTab";
 import { ServerRolesTab } from "./ServerRolesTab";
 import { ServerUserReplaceTab } from "./ServerUserReplaceTab";
@@ -182,6 +183,13 @@ export function ServerSettingsModal() {
       icon: PiShieldCheckFill,
       needs: ["manage_roles"],
       content: <ServerRoleEditorTab host={host} socket={socket} accessToken={accessToken} />,
+    },
+    {
+      value: "permission-templates",
+      label: "Channel permissions",
+      icon: PiShieldCheckFill,
+      needs: ["manage_roles"],
+      content: <ServerPermissionTemplatesTab host={host} socket={socket} accessToken={accessToken} />,
     },
     {
       value: "emojis",
