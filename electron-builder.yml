@@ -208,10 +208,23 @@ win:
 # all, which electron-builder filled in as `CN=ms`. That built and could not be
 # installed by anyone.
 #
-# The reservation is "Gryt" rather than "Gryt Chat" because the older EXE or MSI
-# product still holds that name and Partner Center would not delete it. It does
-# not show anywhere: `publisherDisplayName` below is what the listing uses, and
-# an additional name can be reserved later and published under instead.
+# `identityName` is built from the first name reserved, which was "Gryt" — the
+# older EXE or MSI product was holding "Gryt Chat" at the time and would not let
+# go of it. That product is gone now and "Gryt Chat" is reserved here too, so
+# both names belong to this product and the identity keeps the prefix it was
+# minted with. It is not renameable and does not need to be: nobody sees it.
+#
+# What people do see is `Package/Properties/DisplayName`, which electron-builder
+# takes from `productName` — "Gryt Chat". That one is not free text. It has to be
+# a name reserved for this product, and uploading before "Gryt Chat" was reserved
+# was rejected:
+#
+#     This package's manifest (Package/Properties/DisplayName) uses a display
+#     name that you have not reserved: Gryt Chat
+#
+# So changing `productName` means reserving the new name in Partner Center first.
+# `publisherDisplayName` below is a different field again — the developer's name,
+# free text, and unrelated to any reservation.
 appx:
   # `GrytChat.Gryt`, not `GrytChat`. The Store namespaces the reserved name under
   # the publisher's own prefix, and the prefix is not optional.
