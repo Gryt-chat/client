@@ -1,12 +1,15 @@
 import { Avatar, IconButton, PreviewCard, Tooltip } from "@gryt/ui";
+import { useMemo } from "react";
 import { PiPushPinFill, PiPushPinSlashFill } from "react-icons/pi";
 
-import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
+import { getUploadsFileUrl, resolveAvatarSrc, useTheme } from "@/common";
 
+import { useServerPermissions } from "../hooks/usePermissions";
 import { UserStatus } from "../types/clients";
 import { BotTag } from "./BotTag";
+import { groupMembersByRole, readableRoleColor } from "./memberGroups";
 import { MemberIdentityCard } from "./MemberIdentityCard";
-import { statusConfig, statusPriority } from "./memberStatus";
+import { statusConfig } from "./memberStatus";
 import { UserContextMenu } from "./UserContextMenu";
 
 /** A role id. The server defines its own; these only pass one along. */
@@ -105,6 +108,7 @@ interface MemberSidebarProps {
 
 const MemberItem = ({
   member,
+  roleColor,
   currentServerUserId,
   currentUserRole,
   serverHost,
@@ -115,6 +119,8 @@ const MemberItem = ({
   onReport,
 }: {
   member: MemberInfo;
+  /** Already pulled into a readable band — see `readableRoleColor`. */
+  roleColor?: string;
   currentServerUserId?: string;
   currentUserRole?: Role;
   serverHost: string;
@@ -127,6 +133,7 @@ const MemberItem = ({
   const isSelf = member.serverUserId === currentServerUserId;
   const { label: statusLabel, color: statusColor } = statusConfig[member.status];
   const isOffline = member.status === "offline";
+  const showStatusLine = member.status === "in_voice" || member.status === "afk";
 
   return (
     <UserContextMenu
@@ -183,20 +190,37 @@ const MemberItem = ({
 
           <div className="flex flex-col" style={{ flex: 1, minWidth: 0, gap: "1px" }}>
             <div className="flex items-center gap-1">
+              {/* The role's colour, or the ordinary text colour when the role
+                  has none. Offline keeps its role colour and is dimmed rather
+                  than greyed, so a name in the Offline group still reads as
+                  that role's without competing with the people who are here.
+
+                  0.7 rather than the 0.4 the avatar uses: composited over the
+                  row it lands at 3.0–4.2:1 depending on hue, against 2.71:1
+                  for the flat grey this replaced. Dimmer than the names above
+                  it, and more legible than what shipped. */}
               <span className="text-sm" style={{
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
-                  color: isOffline ? statusColor : undefined,
+                  color: roleColor,
+                  opacity: isOffline ? 0.7 : 1,
                 }}>
                 {member.nickname}
               </span>
               {member.isBot && <BotTag size="small" />}
             </div>
 
-            <span className="text-xs" style={{ color: statusColor, lineHeight: 1.2 }}>
-              {statusLabel}
-            </span>
+            {/* Only when it says something. Every row used to carry a status
+                line, which under a heading of people who are all here meant a
+                column of the word "Online", and inside the Offline group meant
+                the word "Offline" under every name. In Voice and AFK are the
+                two that are worth a line. */}
+            {showStatusLine && (
+              <span className="text-xs" style={{ color: statusColor, lineHeight: 1.2 }}>
+                {statusLabel}
+              </span>
+            )}
           </div>
         </div>
           </div>
@@ -226,11 +250,25 @@ export const MemberSidebar = ({
   pinned,
   onTogglePinned,
 }: MemberSidebarProps) => {
-  const sortedMembers = [...members].sort((a, b) => {
-    const priorityDiff = statusPriority[a.status] - statusPriority[b.status];
-    if (priorityDiff !== 0) return priorityDiff;
-    return a.nickname.localeCompare(b.nickname);
-  });
+  const { roles } = useServerPermissions(serverHost);
+  const { resolvedAppearance } = useTheme();
+
+  const groups = useMemo(() => groupMembersByRole(members, roles), [members, roles]);
+
+  /**
+   * The colour each role's names are drawn in, worked out once for the list
+   * rather than per row.
+   *
+   * Keyed by role id and not by group, because the Offline group holds people
+   * from every role and each of them keeps their own colour.
+   */
+  const roleColors = useMemo(() => {
+    const map = new Map<string, string | undefined>();
+    for (const role of roles) {
+      map.set(role.id, readableRoleColor(role.color, resolvedAppearance));
+    }
+    return map;
+  }, [roles, resolvedAppearance]);
 
   return (
     <div role="complementary" aria-label="Members" style={{ width: "240px",
@@ -258,20 +296,53 @@ export const MemberSidebar = ({
           </div>
         </div>
 
-        <div className="flex flex-col gap-2" style={{ overflow: "auto", flex: 1 }}>
-          {sortedMembers.map((member) => (
-            <MemberItem
-              key={member.serverUserId}
-              member={member}
-              currentServerUserId={currentServerUserId}
-              currentUserRole={currentUserRole}
-              serverHost={serverHost}
-              adminActions={adminActions}
-              onOpenDm={onOpenDm}
-              onToggleBlock={onToggleBlock}
-              isBlocked={isBlocked}
-              onReport={onReport}
-            />
+        <div className="flex flex-col" style={{ overflow: "auto", flex: 1 }}>
+          {groups.map((group, index) => (
+            <section
+              key={group.key}
+              aria-labelledby={`members-${group.key}`}
+              /* Space above each heading rather than between every row, so the
+                 grouping is what the eye picks up. The first one sits flush
+                 under the panel title, which is a heading already. */
+              className={index === 0 ? "" : "mt-4"}
+            >
+              {/* Sticky, because the whole point of a heading here is knowing
+                  whose names you are looking at, and a list of thirty scrolls
+                  the answer away. The background is the rail's own, so rows
+                  pass underneath rather than through. */}
+              <h3
+                id={`members-${group.key}`}
+                className="text-xs font-bold uppercase tracking-wide text-gryt-muted"
+                style={{
+                  position: "sticky",
+                  top: 0,
+                  zIndex: 1,
+                  background: "var(--gryt-neutral-3)",
+                  padding: "2px 4px 6px",
+                  margin: 0,
+                }}
+              >
+                {group.title} — {group.members.length}
+              </h3>
+
+              <div className="flex flex-col gap-1">
+                {group.members.map((member) => (
+                  <MemberItem
+                    key={member.serverUserId}
+                    member={member}
+                    roleColor={member.role ? roleColors.get(member.role) : undefined}
+                    currentServerUserId={currentServerUserId}
+                    currentUserRole={currentUserRole}
+                    serverHost={serverHost}
+                    adminActions={adminActions}
+                    onOpenDm={onOpenDm}
+                    onToggleBlock={onToggleBlock}
+                    isBlocked={isBlocked}
+                    onReport={onReport}
+                  />
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       </div>
