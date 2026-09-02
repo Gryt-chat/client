@@ -356,17 +356,26 @@ function PermissionMatrix({
                     return (
                       <td
                         key={role.id}
-                        className={`text-center px-1 py-1.5 ${
+                        className={`px-1 py-1.5 ${
                           highlighted.has(role.id) ? "bg-gryt-accent/10" : ""
                         }`}
                       >
-                        <Checkbox
-                          checked={held[role.id]?.has(permission.id) ?? false}
-                          disabled={locked}
-                          tone={DESTRUCTIVE.has(permission.id) ? "danger" : undefined}
-                          onCheckedChange={(on: boolean) => onToggle(role.id, permission.id, on)}
-                          aria-label={`${permission.label} for ${role.name}`}
-                        />
+                        {/* A flex row rather than `text-center` on the cell.
+                            The checkbox is a block with its own width, so text
+                            alignment never moved it: every box sat 24px left of
+                            the column it belongs to while the header above it
+                            was centred, which is what made the grid look out
+                            of true. Measured, not guessed — cell centre 933,
+                            box centre 909, in every column. */}
+                        <div className="flex justify-center">
+                          <Checkbox
+                            checked={held[role.id]?.has(permission.id) ?? false}
+                            disabled={locked}
+                            tone={DESTRUCTIVE.has(permission.id) ? "danger" : undefined}
+                            onCheckedChange={(on: boolean) => onToggle(role.id, permission.id, on)}
+                            aria-label={`${permission.label} for ${role.name}`}
+                          />
+                        </div>
                       </td>
                     );
                   })}

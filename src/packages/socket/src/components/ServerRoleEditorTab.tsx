@@ -115,9 +115,15 @@ export function ServerRoleEditorTab({
     if (!payload?.roles) return;
     setState(payload);
     setSaving(false);
-    setPermDrafts(
-      Object.fromEntries(payload.roles.map((r) => [r.id, [...r.permissions]])),
-    );
+    // Not while a write is still in the air. Ticking two boxes quickly sends
+    // two saves, and the list that comes back for the first does not know
+    // about the second yet — adopting it would un-tick the box that was just
+    // ticked until the second reply landed.
+    if (pendingSaves.current === 0) {
+      setPermDrafts(
+        Object.fromEntries(payload.roles.map((r) => [r.id, [...r.permissions]])),
+      );
+    }
     setSelectedId((current) => {
       if (current && payload.roles.some((r) => r.id === current)) return current;
       // Prefer something editable. Landing on the owner role — the one thing
@@ -131,13 +137,12 @@ export function ServerRoleEditorTab({
   // fresh list — two people can have this screen open, so ask again rather than
   // patching the copy in this tab.
   useSocketEvent(socket, "server:roles:definition:updated", () => {
-    // The grid can change several roles at once and each one is its own save,
-    // so a toast per reply would stack four of them for one press of Save.
-    if (pendingSaves.current > 0) {
-      pendingSaves.current -= 1;
-      if (pendingSaves.current > 0) return;
-    }
-    toast.success("Saved.");
+    // No toast. Every edit here is its own save now, so one per reply would be
+    // a stack of them for a row of ticks — and a toast confirming a write is
+    // the wrong thing to spend a person's attention on anyway. The tick that
+    // stayed ticked is the confirmation.
+    if (pendingSaves.current > 0) pendingSaves.current -= 1;
+    if (pendingSaves.current > 0) return;
     refresh();
   });
   useSocketEvent<{ roleId: string; reassignTo: string; moved: number }>(
@@ -188,24 +193,6 @@ export function ServerRoleEditorTab({
   }, [draft, selected, creating]);
 
   /**
-   * Which roles have had their permissions changed in the grid.
-   *
-   * Compared against the server's copy rather than a snapshot, so toggling a
-   * permission on and back off again leaves the role clean and out of the save.
-   */
-  const changedRoles = useMemo(() => {
-    if (!state) return [];
-    return state.roles.filter((role) => {
-      const next = permDrafts[role.id];
-      if (!next) return false;
-      const before = new Set(role.permissions);
-      return next.length !== role.permissions.length || next.some((p) => !before.has(p));
-    });
-  }, [state, permDrafts]);
-
-  const anythingToSave = dirty || changedRoles.length > 0;
-
-  /**
    * The roles as the grid sees them: the server's list, with this tab's
    * unsaved permission edits laid over the top.
    */
@@ -237,60 +224,72 @@ export function ServerRoleEditorTab({
     socket.emit(event, { accessToken, ...payload });
   };
 
-  const save = () => {
-    if (!state) return;
-
-    // The settings half: the one role the form is pointed at. A role being
-    // created only exists here, so it is always in this list.
-    const settingsSave = draft && (dirty || creating) ? draft : null;
-    if (settingsSave) {
-      const roleId = creating ? slugify(settingsSave.name) : settingsSave.id;
-      if (!roleId) return toast.error("Give the role a name first.");
-      if (creating && state.roles.some((r) => r.id === roleId)) {
-        return toast.error(`There is already a role called "${settingsSave.name}".`);
-      }
-    }
-
-    // The grid half: every other role whose permissions moved. The role the
-    // form is on is saved once, by the settings branch, with its grid edits
-    // folded in — saving it twice would race two writes against one row.
-    const settingsRoleId = settingsSave
-      ? creating
-        ? slugify(settingsSave.name)
-        : settingsSave.id
-      : null;
-    const gridOnly = changedRoles.filter((r) => r.id !== settingsRoleId);
-
-    if (!settingsSave && gridOnly.length === 0) return;
-
+  /**
+   * Write one role, whole.
+   *
+   * The server's save event takes a role and everything about it, so every
+   * commit below goes through here rather than each caller assembling the same
+   * seven fields. `permissions` comes from the drafts because the grid may have
+   * moved them since the server last spoke.
+   */
+  const saveRole = (role: RoleDefinition, roleId: string, permissions?: string[]) => {
+    pendingSaves.current += 1;
     setSaving(true);
-    pendingSaves.current = (settingsSave ? 1 : 0) + gridOnly.length;
-
-    if (settingsSave && settingsRoleId) {
-      emit("server:roles:definitions:save", {
-        roleId: settingsRoleId,
-        name: settingsSave.name,
-        color: settingsSave.color,
-        rank: settingsSave.rank,
-        permissions: permDrafts[settingsRoleId] ?? settingsSave.permissions,
-        autoGrantAfterDays: settingsSave.autoGrantAfterDays,
-        autoGrantAfterMessages: settingsSave.autoGrantAfterMessages,
-      });
-      if (creating) setSelectedId(settingsRoleId);
-    }
-
-    for (const role of gridOnly) {
-      emit("server:roles:definitions:save", {
-        roleId: role.id,
-        name: role.name,
-        color: role.color,
-        rank: role.rank,
-        permissions: permDrafts[role.id] ?? role.permissions,
-        autoGrantAfterDays: role.autoGrantAfterDays,
-        autoGrantAfterMessages: role.autoGrantAfterMessages,
-      });
-    }
+    emit("server:roles:definitions:save", {
+      roleId,
+      name: role.name,
+      color: role.color,
+      rank: role.rank,
+      permissions: permissions ?? permDrafts[roleId] ?? role.permissions,
+      autoGrantAfterDays: role.autoGrantAfterDays,
+      autoGrantAfterMessages: role.autoGrantAfterMessages,
+    });
   };
+
+  /**
+   * Commit the settings form, on the way out of whichever field was being
+   * edited.
+   *
+   * Every other settings screen in Gryt saves on focus loss; this one had a
+   * Save button, at the far end of a panel you have to scroll, and a batch of
+   * role edits went in the bin because of it. Nothing here needs a confirmation
+   * — these are all one-field changes with a visible result, and the audit log
+   * has the rest.
+   *
+   * A role being created is the one thing that cannot commit on every blur: its
+   * id comes from its name, so there is nothing to write until the name is
+   * there. It saves the moment there is one.
+   */
+  const commitSettings = () => {
+    if (!state || !draft) return;
+    if (!dirty && !creating) return;
+
+    const roleId = creating ? slugify(draft.name) : draft.id;
+    if (!roleId) return;
+
+    if (creating) {
+      if (state.roles.some((r) => r.id === roleId)) {
+        toast.error(`There is already a role called "${draft.name}".`);
+        return;
+      }
+      setSelectedId(roleId);
+    }
+
+    saveRole(draft, roleId);
+  };
+
+  /**
+   * The other way out of a field: closing the dialog.
+   *
+   * Blur covers moving between fields and clicking another role. It does not
+   * cover Escape, or the X, because the input is unmounted rather than left —
+   * and losing an edit to closing the window is the same lost edit that the
+   * Save button used to cause. A ref, because the effect has to run on unmount
+   * only and would otherwise close over the first render's draft.
+   */
+  const commitRef = useRef(commitSettings);
+  commitRef.current = commitSettings;
+  useEffect(() => () => commitRef.current(), []);
 
   const createRole = () => {
     // Held locally until it is saved, so the id can come from the name. Empty
@@ -323,7 +322,24 @@ export function ServerRoleEditorTab({
     });
   };
 
+  /**
+   * A tick in the grid is a save, on the spot.
+   *
+   * The draft is still kept, because it is what the grid draws from and the
+   * server's answer is a round trip away — without it the box a moment ago
+   * un-ticks itself and then re-ticks when the reply lands.
+   */
   const togglePermission = (roleId: string, permission: string, on: boolean) => {
+    const role = state?.roles.find((r) => r.id === roleId);
+    const current = permDrafts[roleId] ?? role?.permissions ?? [];
+    const next = on
+      ? current.includes(permission)
+        ? current
+        : [...current, permission]
+      : current.filter((p) => p !== permission);
+
+    if (role) saveRole(role, roleId, next);
+
     setPermDrafts((drafts) => {
       const current = drafts[roleId] ?? [];
       return {
@@ -335,13 +351,6 @@ export function ServerRoleEditorTab({
           : current.filter((p) => p !== permission),
       };
     });
-  };
-
-  /** Throw away every grid edit, and the settings form's, in one go. */
-  const resetAll = () => {
-    if (!state) return;
-    setPermDrafts(Object.fromEntries(state.roles.map((r) => [r.id, [...r.permissions]])));
-    setDraft(selected ? { ...selected, permissions: [...selected.permissions] } : null);
   };
 
   if (!state) {
@@ -424,6 +433,7 @@ export function ServerRoleEditorTab({
                     placeholder="Name this role"
                     autoFocus={creating}
                     onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+                    onBlur={commitSettings}
                     className="bg-transparent text-base font-bold outline-none border-b border-gryt-border"
                   />
                   <span className="text-xs text-gryt-muted">
@@ -454,6 +464,7 @@ export function ServerRoleEditorTab({
                     type="color"
                     value={draft.color || "#888888"}
                     onChange={(e) => setDraft({ ...draft, color: e.target.value })}
+                    onBlur={commitSettings}
                   />
                   {draft.color && (
                     <Button tone="ghost" size="xsmall" onClick={() => setDraft({ ...draft, color: null })}>
@@ -470,6 +481,7 @@ export function ServerRoleEditorTab({
                     max={99}
                     value={draft.rank}
                     onChange={(e) => setDraft({ ...draft, rank: Number(e.target.value) })}
+                    onBlur={commitSettings}
                     className="w-16 bg-transparent border-b border-gryt-border outline-none"
                   />
                 </label>
@@ -501,6 +513,7 @@ export function ServerRoleEditorTab({
                             autoGrantAfterDays: e.target.value ? Number(e.target.value) : null,
                           })
                         }
+                        onBlur={commitSettings}
                         className="w-20 bg-transparent border-b border-gryt-border outline-none"
                       />
                     </label>
@@ -520,6 +533,7 @@ export function ServerRoleEditorTab({
                               : null,
                           })
                         }
+                        onBlur={commitSettings}
                         className="w-20 bg-transparent border-b border-gryt-border outline-none"
                       />
                     </label>
@@ -534,26 +548,11 @@ export function ServerRoleEditorTab({
                 </div>
               )}
 
-              <div className="flex items-center justify-end gap-2">
-                {changedRoles.length > 0 && (
-                  <span className="text-xs text-gryt-muted mr-auto">
-                    {changedRoles.length === 1
-                      ? `Unsaved changes to ${changedRoles[0].name}.`
-                      : `Unsaved changes to ${changedRoles.length} roles.`}
-                  </span>
-                )}
-                <Button
-                  tone="neutral"
-                  size="small"
-                  onClick={resetAll}
-                  disabled={!anythingToSave || saving}
-                >
-                  Reset
-                </Button>
-                <Button size="small" onClick={save} disabled={!anythingToSave || saving}>
-                  Save
-                </Button>
-              </div>
+              {creating && !slugify(draft.name) && (
+                <span className="text-xs text-gryt-muted">
+                  Give it a name and it is saved.
+                </span>
+              )}
             </div>
           )}
         </Surface>
