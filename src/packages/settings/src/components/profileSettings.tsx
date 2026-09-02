@@ -510,6 +510,64 @@ export function ProfileSettings() {
     await processAndUpload(file, host ? [host] : serverHosts, worn);
   };
 
+  /**
+   * Take one server's avatar and use it everywhere.
+   *
+   * The button next door syncs the account's profile outward. This is the
+   * other direction, and it is the one people actually ask for: the owl you
+   * designed on one server, or the picture you uploaded there, is the one you
+   * want — and until now the only way to get it onto the others was to design
+   * or upload it again on each.
+   *
+   * Owls and pictures are the same job here, which is worth saying because it
+   * looks like it should be two. A designed owl is stored as an uploaded PNG
+   * plus the string that draws it, so both cases are "fetch the bytes this
+   * server already has, and carry the worn string with them". Re-rendering the
+   * owl would be a second implementation of something that is already a file.
+   *
+   * The nickname is deliberately left alone. It is per-server for a reason —
+   * people are called different things in different places — and quietly
+   * renaming somebody on five servers is not what "use this avatar" asked for.
+   */
+  const handleSyncFromServer = async (sourceHost: string) => {
+    if (syncing || uploading || removing) return;
+    if (connectedHosts.length === 0) return;
+
+    const profile = serverProfiles[sourceHost];
+    const worn = profile?.avatarWorn ?? null;
+    const source = profile?.avatarUrl;
+
+    if (!source) {
+      toast.error("Nothing to copy: this server has no avatar of its own yet.");
+      return;
+    }
+
+    setSyncing(true);
+    try {
+      const response = await fetch(source);
+      if (!response.ok) {
+        throw new Error(`the server answered ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const file = new File([blob], `avatar.${extForMime(blob.type)}`, {
+        type: blob.type || "image/png",
+      });
+
+      // Including the server it came from. Re-uploading there is a few hundred
+      // milliseconds and it keeps one path rather than two, which is worth
+      // more than the round trip — and it settles the case where that server's
+      // copy is the one that is out of date with its own worn string.
+      await processAndUpload(file, connectedHosts, worn);
+    } catch (error) {
+      toast.error(
+        `Could not copy that avatar: ${error instanceof Error ? error.message : "unknown error"}`,
+      );
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const handleSyncToAll = async () => {
     if (syncing || connectedHosts.length === 0) return;
     setSyncing(true);
@@ -682,21 +740,48 @@ export function ProfileSettings() {
           const serverInitial = serverNickname?.[0]?.toUpperCase() || "?";
           const serverName = serverDetailsList?.[host]?.server_info?.name || servers[host]?.name || host;
 
+          /* Offered only when there is somewhere for it to go and something
+             to send. `avatarUrl` is null on a server you have never given an
+             avatar of its own, and the button would copy the account default
+             onto itself. */
+          const canCopyOutward =
+            connectedHosts.length > 1 && Boolean(profile?.avatarUrl);
+
           return (
-            <ProfileEditor
-              nickname={serverNickname}
-              avatarUrl={serverAvatarUrl}
-              generatedAvatarUrl={resolveAvatarSrc(undefined, serverNickname)}
-              worn={profile?.avatarWorn ?? storedWorn}
-              initial={serverInitial}
-              uploading={uploading}
-              removing={removing}
-              onSaveNickname={(name) => handleSaveNickname(name, [host])}
-              onPickAvatar={() => setChoosingFor(host)}
-              onRemoveAvatar={() => handleRemoveAvatar([host])}
-              serverLabel={serverName}
-              scopedToServer={serverName}
-            />
+            <>
+              <ProfileEditor
+                nickname={serverNickname}
+                avatarUrl={serverAvatarUrl}
+                generatedAvatarUrl={resolveAvatarSrc(undefined, serverNickname)}
+                worn={profile?.avatarWorn ?? storedWorn}
+                initial={serverInitial}
+                uploading={uploading}
+                removing={removing}
+                onSaveNickname={(name) => handleSaveNickname(name, [host])}
+                onPickAvatar={() => setChoosingFor(host)}
+                onRemoveAvatar={() => handleRemoveAvatar([host])}
+                serverLabel={serverName}
+                scopedToServer={serverName}
+              />
+              {canCopyOutward && (
+                <div className="flex flex-col items-center gap-1" style={{ paddingTop: 4 }}>
+                  <Button
+                    size="small"
+                    disabled={syncing || uploading || removing}
+                    onClick={() => void handleSyncFromServer(host)}
+                  >
+                    <PiArrowsClockwiseFill
+                      size={16}
+                      style={syncing ? { animation: "spin 1s linear infinite" } : undefined}
+                    />
+                    {syncing ? "Copying..." : "Use this avatar everywhere"}
+                  </Button>
+                  <span className="text-xs text-gryt-muted">
+                    Your name on each server stays as it is.
+                  </span>
+                </div>
+              )}
+            </>
           );
         })()
       )}
