@@ -46,6 +46,29 @@ const HEADER_BYTES = 4096;
  * @param {string} path
  * @returns {Promise<{ signed: boolean, offset: number, size: number }>}
  */
+/**
+ * Whether this file is a Windows binary at all.
+ *
+ * Extensions are not the answer. `.node` is a Node addon on every platform, and
+ * a package that ships prebuilds — `uiohook-napi` does — carries the Linux and
+ * macOS ones into a Windows build alongside the Windows one. Those are ELF and
+ * Mach-O, and handing one to a signing tool, or to the reader below, is a
+ * failed release rather than an unsigned file.
+ *
+ * @param {string} path
+ * @returns {Promise<boolean>}
+ */
+export async function isPortableExecutable(path) {
+  const handle = await open(path, "r");
+  try {
+    const buffer = Buffer.alloc(2);
+    const { bytesRead } = await handle.read(buffer, 0, 2, 0);
+    return bytesRead === 2 && buffer[0] === 0x4d && buffer[1] === 0x5a;
+  } finally {
+    await handle.close();
+  }
+}
+
 export async function readCertificateTable(path) {
   const handle = await open(path, "r");
   try {

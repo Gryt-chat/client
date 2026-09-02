@@ -64,6 +64,22 @@ module.exports = async function signWindows(configuration) {
 
   if (!SIGNABLE.test(file)) return;
 
+  // A .node that is not a Windows binary. `uiohook-napi` ships prebuilds for
+  // every platform it supports, so a Windows build contains
+  // `prebuilds/linux-x64/node.napi.node` and `prebuilds/darwin-arm64/...` next
+  // to the one it actually loads. `signExts` matches on extension and cannot
+  // tell them apart, so without this the first ELF reaches the reader below,
+  // which throws "Not a PE file: no MZ signature" and takes the release with
+  // it — which is what happened to v1.9.4 on 2026-09-02.
+  //
+  // Skipped rather than failed: these files are not Windows binaries, so
+  // Smart App Control will never look at them, and there is nothing to sign.
+  const { isPortableExecutable } = await signature;
+  if (!(await isPortableExecutable(file))) {
+    console.log(`  • skipped ${file} (not a Windows binary)`);
+    return;
+  }
+
   const tool = (process.env.GRYT_WIN_SIGN_TOOL || "").trim();
 
   if (tool) {
