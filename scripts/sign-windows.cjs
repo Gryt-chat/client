@@ -127,3 +127,6 @@ function parseArgs(raw, file) {
 }
 
 module.exports.parseArgs = parseArgs;
+// Exported so the check can compare it against electron-builder's signExts
+// rather than restating the list and letting the two drift.
+module.exports.SIGNABLE = SIGNABLE;

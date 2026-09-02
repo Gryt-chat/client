@@ -136,6 +136,26 @@ win:
   legalTrademarks: "Gryt Chat is a trademark of Gryt Chat"
   requestedExecutionLevel: asInvoker
   signtoolOptions:
+    # Every PE file, not only the .exe.
+    #
+    # Store policy 10.2.9 is explicit: "The binary and all of its Portable
+    # Executable (PE) files must be digitally signed". Smart App Control cares
+    # about the installer, but the Store review reads the whole tree.
+    #
+    # Without this electron-builder signs .exe and nothing else.
+    # `shouldSignFile` in winPackager falls back to `file.endsWith(".exe")` when
+    # signExts is unset, so Electron's own ffmpeg.dll, libEGL.dll and the rest,
+    # plus every native .node, would ship unsigned inside a signed installer.
+    # The comment on `build/embedded-native/` above says those files are kept
+    # visible "so electron-builder can sign them", which has been true on macOS
+    # and quietly false here.
+    #
+    # .exe stays in the list rather than relying on the fallback, because the
+    # fallback only applies while signExts is empty.
+    signExts:
+      - .exe
+      - .dll
+      - .node
     # One pass, not two. electron-builder calls the sign hook once per hash and
     # defaults to ['sha1', 'sha256'], so without this the signing tool runs
     # twice over every artefact. SHA-1 code signing has been dead for years and

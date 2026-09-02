@@ -92,6 +92,7 @@ import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
 const signWindows = require("./sign-windows.cjs");
+const SIGNABLE_IN_HOOK = signWindows.SIGNABLE;
 
 const dir = mkdtempSync(join(tmpdir(), "gryt-sign-"));
 const unsigned = join(dir, "Gryt.exe");
@@ -130,5 +131,36 @@ await signWindows({ path: notCode });
 
 delete process.env.GRYT_WIN_SIGN_TOOL;
 delete process.env.GRYT_WIN_SIGN_ARGS;
+
+// --- the config and the hook have to agree about what a PE file is ---
+
+// Store policy 10.2.9 wants every PE file signed, not just the installer.
+// electron-builder decides which files to hand the hook from `signExts`, and
+// the hook decides which of those to actually sign. If those two lists drift,
+// something ships unsigned inside a signed installer and the only symptom is a
+// failed Store review weeks later. So they are compared here.
+{
+  const yaml = require("js-yaml");
+  const { readFileSync } = await import("node:fs");
+  const config = yaml.load(readFileSync(new URL("../electron-builder.yml", import.meta.url), "utf8"));
+  const signExts = config?.win?.signtoolOptions?.signExts;
+
+  assert.ok(Array.isArray(signExts), "win.signtoolOptions.signExts must be set");
+
+  // Without these, electron-builder falls back to signing only .exe and
+  // Electron's own DLLs and every native .node go out unsigned.
+  for (const ext of [".exe", ".dll", ".node"]) {
+    assert.ok(signExts.includes(ext), `signExts is missing ${ext}`);
+  }
+
+  // Everything electron-builder is told to hand over must be something the
+  // hook will actually sign, or it silently passes through.
+  for (const ext of signExts) {
+    assert.ok(
+      SIGNABLE_IN_HOOK.test(`file${ext}`),
+      `sign-windows.cjs would skip ${ext}, which signExts asks for`,
+    );
+  }
+}
 
 console.log("sign-windows: ok");
