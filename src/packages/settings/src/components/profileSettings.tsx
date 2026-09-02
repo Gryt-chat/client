@@ -20,6 +20,45 @@ function extForMime(mime: string): string {
   }
 }
 
+/**
+ * What another server gave us, in a format this one will accept.
+ *
+ * A server stores whatever its image worker produced rather than what was
+ * uploaded — ours re-encodes to AVIF — and the upload endpoint does not accept
+ * everything it emits. Copying an avatar between servers therefore has to
+ * decode and re-encode rather than pass the bytes along: `avatar.bin` with an
+ * `image/avif` body comes back 400 invalid_file, which is what the first
+ * version of this did.
+ *
+ * Animated formats are passed through untouched. A canvas keeps the first
+ * frame and throws the animation away, and somebody who uploaded a moving
+ * avatar picked it on purpose.
+ */
+async function asUploadableAvatar(blob: Blob): Promise<File> {
+  const type = (blob.type || "").toLowerCase();
+
+  if (type === "image/gif" || type === "image/webp") {
+    return new File([blob], `avatar.${extForMime(type)}`, { type });
+  }
+
+  const bitmap = await createImageBitmap(blob);
+  const canvas = document.createElement("canvas");
+  canvas.width = bitmap.width;
+  canvas.height = bitmap.height;
+
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("no canvas context to read that avatar with");
+  context.drawImage(bitmap, 0, 0);
+  bitmap.close();
+
+  const png = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, "image/png"),
+  );
+  if (!png) throw new Error("could not re-encode that avatar");
+
+  return new File([png], "avatar.png", { type: "image/png" });
+}
+
 async function uploadAvatarToHost(host: string, file: Blob): Promise<{ avatarFileId?: string; processing?: boolean }> {
   const token = getServerAccessToken(host);
   if (!token) throw new Error("Not authenticated with this server. Try reconnecting.");
@@ -549,10 +588,7 @@ export function ProfileSettings() {
         throw new Error(`the server answered ${response.status}`);
       }
 
-      const blob = await response.blob();
-      const file = new File([blob], `avatar.${extForMime(blob.type)}`, {
-        type: blob.type || "image/png",
-      });
+      const file = await asUploadableAvatar(await response.blob());
 
       // Including the server it came from. Re-uploading there is a few hundred
       // milliseconds and it keeps one path rather than two, which is worth
