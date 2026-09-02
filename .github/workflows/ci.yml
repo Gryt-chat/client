@@ -41,6 +41,7 @@ jobs:
       - run: yarn test:owl-export
       - run: yarn test:owl-seen
       - run: yarn test:windows-signature
+      - run: yarn test:builder-config
       - run: yarn test:server-order
       - run: yarn test:tile-contrast
       - run: yarn test:fake-participants

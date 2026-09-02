@@ -143,9 +143,15 @@ delete process.env.GRYT_WIN_SIGN_ARGS;
   const yaml = require("js-yaml");
   const { readFileSync } = await import("node:fs");
   const config = yaml.load(readFileSync(new URL("../electron-builder.yml", import.meta.url), "utf8"));
-  const signExts = config?.win?.signtoolOptions?.signExts;
+  // On `win`, not on `win.signtoolOptions`. This check asserted the nested path
+  // when it was written, which is why it passed while the config was wrong: a
+  // check built from the same misunderstanding as the code confirms the
+  // misunderstanding. check-builder-config.mjs is the answer to that, because
+  // the schema it validates against comes from electron-builder rather than
+  // from whoever wrote this.
+  const signExts = config?.win?.signExts;
 
-  assert.ok(Array.isArray(signExts), "win.signtoolOptions.signExts must be set");
+  assert.ok(Array.isArray(signExts), "win.signExts must be set");
 
   // Without these, electron-builder falls back to signing only .exe and
   // Electron's own DLLs and every native .node go out unsigned.
