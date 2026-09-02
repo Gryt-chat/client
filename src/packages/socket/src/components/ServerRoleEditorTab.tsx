@@ -1,3 +1,17 @@
+import {
+  closestCenter,
+  DndContext,
+  type DragEndEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Button, IconButton, Select, Surface } from "@gryt/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
@@ -6,6 +20,7 @@ import type { Socket } from "socket.io-client";
 
 import { useSocketEvent } from "../hooks/useSocketEvent";
 import { nextUnusedPreset,ROLE_COLOR_PRESETS } from "./roleColorPresets";
+import { byRank, OWNER_ROLE, ranksAfterMove } from "./roleOrder";
 import { type GridRole,RolePermissionGrid } from "./RolePermissionGrid";
 
 type RoleDefinition = {
@@ -57,6 +72,44 @@ const NEW_ROLE = "__new__";
  * column out would make the grid look like it was missing a role.
  */
 const READ_ONLY_ROLES = new Set(["owner"]);
+
+/**
+ * One row of the role list, draggable.
+ *
+ * The handle is the whole row. A role list is short and the rows are already
+ * one tap target each, so a separate grip would be a second thing to hit in a
+ * 220px column — and dnd-kit's pointer sensor only starts a drag after 5px of
+ * movement, so a click still selects.
+ */
+function SortableRole({
+  id,
+  disabled,
+  children,
+}: {
+  id: string;
+  disabled: boolean;
+  children: React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id, disabled });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Translate.toString(transform),
+        transition,
+        opacity: isDragging ? 0.85 : 1,
+        zIndex: isDragging ? 10 : undefined,
+        cursor: disabled ? "default" : isDragging ? "grabbing" : "grab",
+      }}
+      {...attributes}
+      {...listeners}
+    >
+      {children}
+    </div>
+  );
+}
 
 /**
  * Ten swatches, a picker and a Clear.
@@ -307,6 +360,18 @@ export function ServerRoleEditorTab({
     [state?.roles, permDrafts],
   );
 
+  /**
+   * The list, highest rank first.
+   *
+   * Sorted here rather than trusted from the server, because this is now the
+   * thing an operator arranges directly: a list that came back in a different
+   * order than it was dropped in would read as the drag having failed.
+   */
+  const orderedRoles = useMemo(
+    () => byRank(state?.roles ?? []) as EditorState["roles"],
+    [state?.roles],
+  );
+
   const roleOptions = useMemo(
     () =>
       (state?.roles ?? [])
@@ -406,6 +471,35 @@ export function ServerRoleEditorTab({
   commitRef.current = commitSettings;
   useEffect(() => () => commitRef.current(), []);
 
+  const dragSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  );
+
+  /**
+   * Dropping a role somewhere writes the order back as ranks.
+   *
+   * Rank is still what the server compares — kicks, bans and role changes all
+   * refuse against an equal or higher one, and the joining defaults are checked
+   * against it — so this does not remove the concept. It removes the *number*
+   * from the screen: what an operator arranges is a list, and the numbers are
+   * derived from where things ended up.
+   *
+   * Spaced by ten rather than numbered 1, 2, 3. Rank is a shared scale, and
+   * leaving room between neighbours means a role added later, or one moved by
+   * somebody else while this was open, does not need every other row rewritten
+   * to fit. Owner keeps 100 and never moves: the server refuses to save it, so
+   * a row that could be dragged would be a row whose drop came back rejected.
+   */
+  const handleReorder = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!state || !over) return;
+
+    for (const role of ranksAfterMove(state.roles, String(active.id), String(over.id))) {
+      const full = state.roles.find((r) => r.id === role.id);
+      if (full) saveRole({ ...full, rank: role.rank }, role.id);
+    }
+  };
+
   const createRole = () => {
     // Held locally until it is saved, so the id can come from the name. Empty
     // and at the bottom: a new role that arrived with permissions already
@@ -488,10 +582,21 @@ export function ServerRoleEditorTab({
 
       <div className="flex gap-4 items-start flex-wrap">
         <div className="flex flex-col gap-2" style={{ minWidth: 220, flex: "0 0 220px" }}>
-          {state.roles.map((role) => (
+          <DndContext
+            sensors={dragSensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleReorder}
+          >
+            <SortableContext
+              items={orderedRoles.map((r) => r.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="flex flex-col gap-2">
+                {orderedRoles.map((role) => (
+                  <SortableRole key={role.id} id={role.id} disabled={role.id === OWNER_ROLE}>
             <button
-              key={role.id}
               type="button"
+              style={{ width: "100%" }}
               onClick={() => setSelectedId(role.id)}
               className={`flex items-center justify-between gap-2 rounded-(--gryt-radius-md) px-3 py-2 text-left text-sm ${
                 role.id === selectedId ? "bg-gryt-surface-raised" : "hover:bg-gryt-surface-raised"
@@ -519,7 +624,11 @@ export function ServerRoleEditorTab({
                 <span className="text-xs text-gryt-muted">{role.memberCount}</span>
               </span>
             </button>
-          ))}
+                  </SortableRole>
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
 
           {creating && (
             <div className="flex items-center gap-2 rounded-(--gryt-radius-md) bg-gryt-surface-raised px-3 py-2 text-sm">
@@ -585,20 +694,6 @@ export function ServerRoleEditorTab({
                 />
               </div>
 
-              <div className="flex items-center gap-4 flex-wrap">
-                <label className="flex items-center gap-2 text-sm">
-                  <span className="text-gryt-muted">Rank</span>
-                  <input
-                    type="number"
-                    min={0}
-                    max={99}
-                    value={draft.rank}
-                    onChange={(e) => setDraft({ ...draft, rank: Number(e.target.value) })}
-                    onBlur={() => commitSettings()}
-                    className="w-16 bg-transparent border-b border-gryt-border outline-none"
-                  />
-                </label>
-              </div>
 
               {!draft.isSystem && (
                 <div className="flex flex-col gap-2">
