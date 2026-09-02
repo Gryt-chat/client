@@ -9,21 +9,31 @@ interface UseServerReportsParams {
   currentlyViewingServer: { host: string } | null;
   memberLists: Record<string, MemberInfo[] | undefined>;
   /**
-   * Whether this member may work the reports queue.
+   * Whether this member may *read* the reports queue.
    *
-   * Was the role name, compared against owner-or-admin. The queue is gated on
-   * `manage_reports` now, so a role built to do nothing but handle reports gets
-   * the badge and the panel.
+   * `view_reports`, not `manage_reports`. Those are two permissions — one
+   * reads the queue, the other acts on what is in it — and the server gates
+   * `reports:list` on the first (`socket/handlers/reports.ts`, and
+   * `permissionGates.test.ts` asserts the pairing). This asked on the second,
+   * so the two disagreed about who may ask.
+   *
+   * That mismatch was loud in one direction and silent in the other. A member
+   * holding `manage_reports` without `view_reports` emitted and was refused,
+   * and the refusal arrived as an error toast naming an internal permission
+   * string — for a request nobody made, moments after joining. A member with
+   * `view_reports` and not `manage_reports` was allowed to read the queue and
+   * never asked, so their badge stayed empty. GRYT-844.
+   *
+   * Acting on a report stays gated on `manage_reports`, inside the panel.
    */
-  canHandleReports: boolean;
+  canViewReports: boolean;
 }
 
 export function useServerReports({
-  currentConnection, accessToken, currentlyViewingServer, memberLists, canHandleReports,
+  currentConnection, accessToken, currentlyViewingServer, memberLists, canViewReports,
 }: UseServerReportsParams) {
   const [reportsOpen, setReportsOpen] = useState(false);
   const [pendingReportCount, setPendingReportCount] = useState(0);
-  const isAdmin = canHandleReports;
 
   useEffect(() => {
     if (!currentConnection) return;
@@ -37,11 +47,11 @@ export function useServerReports({
       setPendingReportCount((payload.reports?.length ?? 0) + (payload.userReports?.length ?? 0));
     };
     currentConnection.on("reports:list", onReportsList);
-    if (isAdmin && accessToken) {
+    if (canViewReports && accessToken) {
       currentConnection.emit("reports:list", { accessToken });
     }
     return () => { currentConnection.off("reports:list", onReportsList); };
-  }, [currentConnection, isAdmin, accessToken]);
+  }, [currentConnection, canViewReports, accessToken]);
 
   /**
    * The member list, keyed by server user id, whole.

@@ -279,7 +279,7 @@ export const ServerView = () => {
 
   const { reportsOpen, setReportsOpen, pendingReportCount, memberListMap } = useServerReports({
     currentConnection, accessToken, currentlyViewingServer, memberLists,
-    canHandleReports: viewerPermissions.can("manage_reports"),
+    canViewReports: viewerPermissions.can("view_reports"),
   });
 
   const viewingHost = currentlyViewingServer?.host;
