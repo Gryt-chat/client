@@ -1,7 +1,7 @@
 import { ContextMenu, Slider } from "@gryt/ui";
 import { ReactNode } from "react";
 import toast from "react-hot-toast";
-import { PiAtFill, PiChatCircleFill, PiCopyFill, PiProhibitFill } from "react-icons/pi";
+import { PiAtFill, PiChatCircleFill, PiCopyFill, PiFlagFill, PiProhibitFill } from "react-icons/pi";
 
 import { useSettings } from "@/settings";
 
@@ -59,6 +59,19 @@ interface UserContextMenuProps {
    */
   onToggleBlock?: () => void;
   isBlocked?: boolean;
+  /**
+   * Put this person in front of the moderators.
+   *
+   * Beside Block rather than in the moderator section, for the same reason:
+   * reporting somebody who outranks you is the report that matters most, so it
+   * cannot live among the actions that check rank. What it does check is
+   * `report_messages`, which is the same permission reporting a message asks
+   * for — see the item below.
+   *
+   * Absent when the menu is rendered outside a server view, and on a server old
+   * enough not to have the event.
+   */
+  onReport?: () => void;
 }
 
 /**
@@ -96,6 +109,7 @@ export function UserContextMenu({
   onOpenDm,
   onToggleBlock,
   isBlocked,
+  onReport,
 }: UserContextMenuProps) {
   const { userVolumes, updateUserVolume, resetUserVolume, openSettings } = useSettings();
   const { has, can, roles } = useServerPermissions(serverHost || "");
@@ -242,6 +256,17 @@ export function UserContextMenu({
           >
             <div className="flex items-center gap-2">
               <PiProhibitFill size={14} /> {isBlocked ? "Unblock" : "Block"}
+            </div>
+          </ContextMenu.Item>
+        )}
+        {/* Beside Block, and gated the same way reporting a message is. Left
+            out rather than shown and refused when the role does not have it —
+            an item that is always there and always says no teaches people to
+            stop pressing it. */}
+        {onReport && has("report_messages") && (
+          <ContextMenu.Item className="text-gryt-danger" onClick={onReport}>
+            <div className="flex items-center gap-2">
+              <PiFlagFill size={14} /> Report
             </div>
           </ContextMenu.Item>
         )}

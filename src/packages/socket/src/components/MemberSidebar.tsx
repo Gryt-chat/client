@@ -96,6 +96,8 @@ interface MemberSidebarProps {
   onOpenDm?: (targetServerUserId: string) => void;
   onToggleBlock?: (targetServerUserId: string) => void;
   isBlocked?: (serverUserId: string) => boolean;
+  /** Opens the report dialog. The nickname comes along so the dialog can name them. */
+  onReport?: (target: { serverUserId: string; nickname: string }) => void;
   pinned?: boolean;
   onTogglePinned?: () => void;
 }
@@ -110,6 +112,7 @@ const MemberItem = ({
   onOpenDm,
   onToggleBlock,
   isBlocked,
+  onReport,
 }: {
   member: MemberInfo;
   currentServerUserId?: string;
@@ -119,6 +122,7 @@ const MemberItem = ({
   onOpenDm?: (targetServerUserId: string) => void;
   onToggleBlock?: (targetServerUserId: string) => void;
   isBlocked?: (serverUserId: string) => boolean;
+  onReport?: (target: { serverUserId: string; nickname: string }) => void;
 }) => {
   const isSelf = member.serverUserId === currentServerUserId;
   const { label: statusLabel, color: statusColor } = statusConfig[member.status];
@@ -149,6 +153,12 @@ const MemberItem = ({
         onToggleBlock && !isSelf ? () => onToggleBlock(member.serverUserId) : undefined
       }
       isBlocked={isBlocked?.(member.serverUserId) ?? false}
+      /* Not on your own row either, for the same reason. */
+      onReport={
+        onReport && !isSelf
+          ? () => onReport({ serverUserId: member.serverUserId, nickname: member.nickname })
+          : undefined
+      }
     >
       <PreviewCard.Root>
         <PreviewCard.Trigger>
@@ -212,6 +222,7 @@ export const MemberSidebar = ({
   onOpenDm,
   onToggleBlock,
   isBlocked,
+  onReport,
   pinned,
   onTogglePinned,
 }: MemberSidebarProps) => {
@@ -259,6 +270,7 @@ export const MemberSidebar = ({
               onOpenDm={onOpenDm}
               onToggleBlock={onToggleBlock}
               isBlocked={isBlocked}
+              onReport={onReport}
             />
           ))}
         </div>

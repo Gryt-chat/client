@@ -29,6 +29,7 @@ import { useLatencyReporting } from "../hooks/useLatencyReporting";
 import { useIsTinyWindow, useRoomForMemberList, useRoomForVoicePanel } from "../hooks/useNarrowWindow";
 import { usePeerLatency } from "../hooks/usePeerLatency";
 import { useServerPermissions } from "../hooks/usePermissions";
+import { useReportUser } from "../hooks/useReportUser";
 import { useServerManagement } from "../hooks/useServerManagement";
 import { useServerReports } from "../hooks/useServerReports";
 import { useServerState } from "../hooks/useServerState";
@@ -44,6 +45,7 @@ import { IncomingCallCard } from "./IncomingCallCard";
 import { MemberSidebarPanel } from "./MemberSidebarPanel";
 import { MobileServerView } from "./MobileServerView";
 import { ReportsPanel } from "./ReportsPanel";
+import { ReportUserDialog } from "./ReportUserDialog";
 import { ServerConfirmDialogs } from "./ServerConfirmDialogs";
 import { ServerLoadingStates } from "./ServerLoadingStates";
 import { ServerSidebar } from "./ServerSidebar";
@@ -219,6 +221,12 @@ export const ServerView = () => {
     accessToken,
     isConnected: currentConnectionStatus === "connected",
   });
+
+  const { reportUser } = useReportUser({ socket: currentConnection, accessToken });
+  const [reportTarget, setReportTarget] = useState<{
+    serverUserId: string;
+    nickname: string;
+  } | null>(null);
 
   /** So a refusal can name the person rather than printing a member id. */
   const memberNames = useMemo(() => {
@@ -947,6 +955,7 @@ export const ServerView = () => {
               onToggleBlock={(targetServerUserId) =>
                 (isBlocked(targetServerUserId) ? unblock : block)(targetServerUserId)
               }
+              onReport={setReportTarget}
               pinned={pinMembersSidebar}
               onTogglePinned={() => setPinMembersSidebar(!pinMembersSidebar)}
             />
@@ -993,6 +1002,20 @@ export const ServerView = () => {
       />
 
       <SidebarEditDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} editor={sidebarEditor} />
+
+      <ReportUserDialog
+        target={reportTarget}
+        onClose={() => setReportTarget(null)}
+        isBlocked={isBlocked}
+        onSubmit={({ serverUserId, reason, alsoBlock }) => {
+          reportUser({ serverUserId, reason });
+          /* Blocking is the reporter's own act and needs no moderator, so it
+             does not wait on the report landing. On a server too old for
+             `user:report` the block still works, which is the better half of
+             the two to keep. */
+          if (alsoBlock) block(serverUserId);
+        }}
+      />
 
       <ServerConfirmDialogs
         pendingDeleteItem={pendingDeleteItem}

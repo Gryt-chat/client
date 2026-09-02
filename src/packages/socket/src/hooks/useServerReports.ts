@@ -27,8 +27,14 @@ export function useServerReports({
 
   useEffect(() => {
     if (!currentConnection) return;
-    const onReportsList = (payload: { reports: Array<unknown> }) => {
-      setPendingReportCount(payload.reports?.length ?? 0);
+    /* Both halves of the queue in one number. The badge answers "is there
+       anything waiting", and splitting it would mean two badges on one
+       button. `userReports` is absent on a server that predates them. */
+    const onReportsList = (payload: {
+      reports: Array<unknown>;
+      userReports?: Array<unknown>;
+    }) => {
+      setPendingReportCount((payload.reports?.length ?? 0) + (payload.userReports?.length ?? 0));
     };
     currentConnection.on("reports:list", onReportsList);
     if (isAdmin && accessToken) {
