@@ -156,9 +156,30 @@ function parseArgs(raw, file) {
  * is shared: `isPortableExecutable` says no to a zip, `readCertificateTable`
  * throws on one, and Windows does not treat a missing package signature the
  * way it treats a missing Authenticode signature. An unsigned .exe runs unless
- * Smart App Control stops it. An unsigned .appx does not install at all — the
- * installer refuses it outright, and the only way in is
- * `Add-AppxPackage -AllowUnsigned` with Developer Mode turned on.
+ * Smart App Control stops it. An unsigned .appx does not install at all, and
+ * for this app there is no way around that.
+ *
+ * `Add-AppxPackage -AllowUnsigned` is not one, which is worth writing down
+ * because it looks like one. Tried against the real package on 2026-09-02,
+ * on Windows 11 with Developer Mode already on:
+ *
+ *   Publisher='CN=ms'
+ *     0x80073D2B ... its publisher is not in the unsigned namespace
+ *
+ *   Publisher='CN=Gryt Chat, OID.2.25.3117293689...=1'
+ *     0x80073D2B ... an unsigned package cannot include Executable activations
+ *
+ * The second one is the wall. Putting the publisher in the unsigned namespace
+ * gets past the first check and straight into a rule that no amount of manifest
+ * editing moves: `-AllowUnsigned` does not deploy a package that activates an
+ * executable, and Gryt's manifest activates `app\Gryt Chat.exe` as a
+ * `Windows.FullTrustApplication`. That is the whole point of packaging an
+ * Electron app, so the flag can never apply to this one.
+ *
+ * Which leaves two routes, and both need a certificate. Microsoft signs what it
+ * distributes through the Store, so a Store build needs an identity from
+ * Partner Center rather than a bought certificate. Anything downloaded from
+ * gryt.chat needs the certificate GRYT-848 is about.
  *
  * It reached here before this existed and fell straight through the extension
  * test at the top, so electron-builder logged "signing with signtool.exe" over
@@ -197,10 +218,10 @@ async function signPackage(file) {
   }
 
   console.warn(
-    `  ⚠ ${file} is unsigned and will not install. Windows refuses an ` +
-      "unsigned MSIX outright — Add-AppxPackage -AllowUnsigned with Developer " +
-      "Mode is the only way in. Set GRYT_WIN_SIGN_TOOL once a certificate " +
-      "exists. See GRYT-848.",
+    `  ⚠ ${file} is unsigned, so nobody can install it. Windows refuses an ` +
+      "unsigned MSIX outright, and -AllowUnsigned does not apply to a package " +
+      "that activates an executable. Set GRYT_WIN_SIGN_TOOL once a certificate " +
+      "exists, or submit through the Store, which signs it. See GRYT-848.",
   );
 }
 
