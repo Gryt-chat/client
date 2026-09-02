@@ -199,15 +199,30 @@ win:
 
 # The MSIX package.
 #
-# `publisher` is deliberately absent. It has to be the exact certificate subject
-# Microsoft assigns, it is only used for a Store submission, and electron-builder
-# ignores it for a test build. Filling it in with a guess produces a package that
-# builds and cannot be installed.
+# These three are not ours to choose. The Store assigns them when a name is
+# reserved in Partner Center, they have to match the reservation exactly, and a
+# package whose identity does not match is rejected on submission. Read off
+# Product identity for the "Gryt" product (Store ID 9PKPT1C2M95Q) on 2026-09-02.
+#
+# They were guesses until then — `identityName: GrytChat` with no publisher at
+# all, which electron-builder filled in as `CN=ms`. That built and could not be
+# installed by anyone.
+#
+# The reservation is "Gryt" rather than "Gryt Chat" because the older EXE or MSI
+# product still holds that name and Partner Center would not delete it. It does
+# not show anywhere: `publisherDisplayName` below is what the listing uses, and
+# an additional name can be reserved later and published under instead.
 appx:
-  # Reverse-DNS like appId, but Identity.Name has its own rules and is what the
-  # Store reserves, so it is written out rather than derived.
-  identityName: GrytChat
+  # `GrytChat.Gryt`, not `GrytChat`. The Store namespaces the reserved name under
+  # the publisher's own prefix, and the prefix is not optional.
+  identityName: GrytChat.Gryt
+  # Application.Id, which is scoped inside the package and is ours. Left as it
+  # was so the AUMID does not move.
   applicationId: GrytChat
+  # The certificate subject Microsoft signs Store packages with. Nothing to buy:
+  # the Store signs what it distributes, which is why this route does not need
+  # GRYT-848's certificate. A package hosted on gryt.chat still does.
+  publisher: CN=AC05108C-74B5-4CF1-B408-D776FC9E7A9C
   publisherDisplayName: "Gryt Chat"
   # The tile background, behind assets/Square150x150Logo.png and the wide tile.
   #
