@@ -1,4 +1,3 @@
-import "@gryt/ui/styles.css";
 import "./style.css";
 
 import { createGrytTheme, grytThemeToOptions } from "@gryt/ui";

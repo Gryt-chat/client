@@ -13,6 +13,21 @@
 
 @source "./**/*.{ts,tsx}";
 
+/* @gryt/ui's markup, scanned here instead of importing its prebuilt CSS.
+ *
+ * The library ships a full Tailwind utilities layer, and main.tsx used to
+ * import it alongside this app's own. Two utilities layers means two copies of
+ * every base utility, and the second copy wins: `.flex-col` from the library
+ * landed after `.md\:flex-row` from here, so the owl designer stayed a column
+ * at any width while `md:w-48`, which had no competing rule, applied — a
+ * 192px rail on top of a full-width grid, which is exactly what it looked
+ * like. Measured in the built bundle: `.flex-col` twice in @layer utilities,
+ * the variant rule between them.
+ *
+ * One pass over both sets of sources gives one layer, in Tailwind's own
+ * order, where a variant beats the base utility it is meant to. */
+@source "../node_modules/@gryt/ui/dist";
+
 /* The tokens come from the library now, not a copy of them. @gryt/ui ships
    theme.css unprocessed for exactly this — importing dist/styles.css would give
    us the resolved :root variables, which Tailwind cannot read back as theme
