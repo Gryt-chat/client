@@ -32,6 +32,7 @@ jobs:
       - run: yarn test:audio-mixer
       - run: yarn test:capture-set
       - run: yarn test:avatar-precedence
+      - run: yarn test:mention-tracker
       - run: yarn test:peer-keys
       - run: yarn test:dm-key-published
       - run: yarn test:sealed-text

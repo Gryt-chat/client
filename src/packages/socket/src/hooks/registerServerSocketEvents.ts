@@ -4,12 +4,14 @@ import toast from "react-hot-toast";
 import { Socket } from "socket.io-client";
 
 import {
+  addMention,
   getServerAccessToken,
   getServerRefreshToken,
   getStoredWorn,
   getUploadsFileUrl,
   removeServerAccessToken,
   removeServerRefreshToken,
+  setMentionCounts,
   setServerAccessToken,
   setServerRefreshToken,
 } from "@/common";
@@ -141,6 +143,22 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     });
   });
 
+  /*
+   * Where you have been named and have not read it.
+   *
+   * The server answers the whole list rather than a count, and answers on the
+   * same event name for both the question and a "these are read now" — so this
+   * one handler covers both, and two windows belonging to the same person
+   * cannot end up disagreeing about what is left.
+   */
+  socket.on("mentions:list", (payload: { counts?: Record<string, number> }) => {
+    setMentionCounts(host, payload?.counts ?? {});
+  });
+
+  socket.on("mention:new", (payload: { conversationId?: string }) => {
+    if (payload?.conversationId) addMention(host, payload.conversationId);
+  });
+
   socket.on("server:details", (data: serverDetails) => {
     if (data.error === "join_required") {
       const existingAccessToken = getServerAccessToken(host);
@@ -264,6 +282,10 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
 
     socket.emit("server:details");
     socket.emit("members:fetch");
+    // What was said to you while you were away. Asked on every join rather than
+    // only the first, because being away is exactly when it accumulates — and
+    // because it is also how a mention read on a phone stops showing here.
+    socket.emit("mentions:list");
 
     // Read when the event fires, not when the handler was registered. These
     // handlers are registered once per socket, and the socket is created as
