@@ -264,12 +264,19 @@ export function ServerSettingsModal() {
             dialog to its content, and a 200px rail beside a column of fields
             settles near the 600px minimum — narrow enough that a one-line
             description wrapped and the textarea was a slot. Both dimensions
-            give way to the viewport before they clip. */}
+            give way to the viewport before they clip.
+
+            1040x700 was chosen for a column of fields and then inherited by
+            the role editor, which is a table of every role against every
+            permission. Measured on a 1600x1000 screen: 2222px of content in a
+            618px window, with 280px of desktop going spare on either side.
+            The widest thing in here decides the size, so these are its
+            numbers now. */}
         <Dialog.Popup
           className="max-w-none"
           style={{
-            width: "min(1040px, calc(100vw - 4rem))",
-            height: "min(700px, calc(100vh - 4rem))",
+            width: "min(1320px, calc(100vw - 4rem))",
+            height: "min(860px, calc(100vh - 4rem))",
           }}
         >
         <Dialog.Close
