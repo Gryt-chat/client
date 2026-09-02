@@ -94,7 +94,6 @@
     "keycloak-js": "^26.2.3",
     "motion": "^12.34.2",
     "react": "^19",
-    "react-canvas-confetti": "^2.0.7",
     "react-dom": "^19",
     "react-hot-toast": "^2.6.0",
     "react-icons": "^5.5.0",
