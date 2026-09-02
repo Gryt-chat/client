@@ -141,6 +141,18 @@ win:
     # distributes through the Store; one hosted on gryt.chat needs the same
     # certificate the .exe does. See GRYT-848 for that, and GRYT-850 for this.
     #
+    # Until one of those exists, what this target produces cannot be installed
+    # by anybody. Not by double-clicking it, and not with
+    # `Add-AppxPackage -AllowUnsigned` either: that flag refuses any package
+    # activating an executable, which is every packaged Electron app. Tried
+    # against the real thing on 2026-09-02, on a machine with Developer Mode
+    # already on. The HRESULTs are written out in sign-windows.cjs.
+    #
+    # It is built anyway, because the artefact is what a Store submission
+    # uploads and a target nobody builds is a target that rots. This one shipped
+    # in v1.9.5 with electron-builder's sample tiles in it, because until then
+    # nothing had ever looked inside the package it was producing.
+    #
     # Only builds on Windows — the target shells out to makeappx.exe from the
     # Windows SDK — so it appears in the release build and nowhere else.
     - appx
@@ -219,8 +231,12 @@ appx:
   # easily missed: without it "Discoverable on LAN" and finding a server on the
   # local network stop working, and they fail quietly rather than erroring.
   #
-  # Unverified. Nothing here has been installed yet, and this is the first thing
-  # to check when it is.
+  # Unverified, and not verifiable yet. An install was attempted on 2026-09-02
+  # and Windows refused the package before it got as far as reading these,
+  # because it is unsigned. So this list is still guesswork, and it is the first
+  # thing to check once a certificate or a Store submission makes an install
+  # possible. The manifest that comes out is worth reading in the meantime —
+  # `unzip -p <pkg> AppxManifest.xml` shows what these turned into.
   capabilities:
     - runFullTrust
     - internetClientServer
