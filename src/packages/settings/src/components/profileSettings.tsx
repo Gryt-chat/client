@@ -334,6 +334,24 @@ export function ProfileSettings() {
    * passed down and sent explicitly. Null is not "leave it alone": it is what
    * clears a designed look when somebody goes back to a photograph.
    */
+  /**
+   * Whether this server lets us put a picture on it.
+   *
+   * The same rule `useServerPermissions` uses, applied per host because a
+   * profile change goes to several at once and they will not agree: an older
+   * server has never heard of `upload_avatar_image`, and a server that has
+   * simply not granted it is a no. Both look like an absence in the list, so
+   * the catalogue is what separates them — and a server that does not know the
+   * permission cannot be withholding it.
+   */
+  const mayUploadPicture = (host: string): boolean => {
+    const info = serverDetailsList[host]?.server_info;
+    const catalogue = info?.permission_catalogue;
+    if (Array.isArray(catalogue) && !catalogue.includes("upload_avatar_image")) return true;
+    if (!Array.isArray(info?.permissions)) return true;
+    return info.permissions.includes("upload_avatar_image");
+  };
+
   const processAndUpload = async (file: File, hosts: string[], worn: string | null) => {
     const minAvatarMaxBytes = getAvatarMaxBytes(hosts);
 
@@ -356,6 +374,43 @@ export function ProfileSettings() {
         uploadFile = file;
       }
     }
+
+    /*
+     * An owl does not need the upload to have happened.
+     *
+     * It is a string on the profile and every client draws it, so on a server
+     * that does not allow pictures the owl still arrives — only the PNG that
+     * usually accompanies it is skipped. Sending the string anyway is what
+     * makes `upload_avatar_image` a restriction on files rather than on
+     * having an avatar at all.
+     *
+     * A picture has nothing to fall back on, so those hosts are reported
+     * instead of quietly doing nothing.
+     */
+    const permitted = hosts.filter(mayUploadPicture);
+    const refused = hosts.filter((h) => !permitted.includes(h));
+
+    if (refused.length > 0) {
+      if (worn) {
+        refused.forEach((host) => {
+          sockets[host]?.emit("profile:update", { avatarWorn: worn });
+          sockets[host]?.emit("members:fetch");
+          setServerProfiles((prev) => ({
+            ...prev,
+            [host]: { ...prev[host], avatarWorn: worn },
+          }));
+        });
+      } else if (permitted.length === 0) {
+        toast.error(
+          hosts.length === 1
+            ? "This server does not let you upload a picture. Designing an owl still works."
+            : "None of these servers let you upload a picture. Designing an owl still works.",
+        );
+        return;
+      }
+    }
+
+    hosts = permitted;
 
     setUploading(true);
     try {
@@ -857,7 +912,23 @@ export function ProfileSettings() {
         onOpenChange={(next) => {
           if (!next) setChoosingFor(undefined);
         }}
-        onUpload={() => triggerFilePick(choosingFor ?? null)}
+        /* Said rather than hidden. Hiding it would need a prop on
+           `AvatarChoiceDialog` and a @gryt/ui release, and "the option is gone"
+           reads as a broken build where "you cannot do this here, and here is
+           what still works" reads as a rule. */
+        onUpload={() => {
+          const target = choosingFor ?? null;
+          const hosts = target ? [target] : serverHosts;
+          if (hosts.length > 0 && !hosts.some(mayUploadPicture)) {
+            toast.error(
+              hosts.length === 1
+                ? "This server does not let you upload a picture. Designing an owl still works."
+                : "None of your servers let you upload a picture. Designing an owl still works.",
+            );
+            return;
+          }
+          triggerFilePick(target);
+        }}
         open={choosingFor !== undefined}
       />
 
