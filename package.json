@@ -34,6 +34,7 @@
     "test:avatar-precedence": "node scripts/check-avatar-precedence.mjs",
     "test:owl-export": "node scripts/check-owl-export.mjs",
     "test:owl-seen": "node scripts/check-owl-seen.mjs",
+    "test:windows-signature": "node scripts/check-windows-signature.mjs",
     "test:server-order": "node scripts/check-server-order.mjs",
     "test:voice-state": "node scripts/check-voice-state-reassert.mjs",
     "test:media-state": "node scripts/check-media-state-reassert.mjs",

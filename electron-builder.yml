@@ -135,6 +135,19 @@ win:
     - portable
   legalTrademarks: "Gryt Chat is a trademark of Gryt Chat"
   requestedExecutionLevel: asInvoker
+  signtoolOptions:
+    # One pass, not two. electron-builder calls the sign hook once per hash and
+    # defaults to ['sha1', 'sha256'], so without this the signing tool runs
+    # twice over every artefact. SHA-1 code signing has been dead for years and
+    # no CA will issue for it, so the first pass would be work for nothing.
+    signingHashAlgorithms:
+      - sha256
+    # Runs whether or not a certificate is configured, which is the point while
+    # there is not one: with a custom sign hook set, electron-builder calls it
+    # instead of skipping signing silently, so the build can say out loud that
+    # what it just produced will be blocked by Smart App Control. See the file
+    # and GRYT-848.
+    sign: scripts/sign-windows.cjs
 
 portable:
   artifactName: "Gryt-Chat-${version}-${os}-${arch}-portable.${ext}"
