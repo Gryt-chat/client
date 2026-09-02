@@ -6,6 +6,7 @@ import {
   PiCaretRightBold,
   PiHouseFill,
   PiInfoFill,
+  PiUsersThreeFill,
   PiWarningFill,
   PiX,
 } from "react-icons/pi";
@@ -21,6 +22,10 @@ import { SkeletonBase } from "../../../socket/src/components/skeletons";
 import { useServerManagement } from "../../../socket/src/hooks/useServerManagement";
 import { useEmbeddedServer } from "../hooks/useEmbeddedServer";
 import { useLanDiscovery } from "../hooks/useLanDiscovery";
+import {
+  type OfficialServer,
+  useOfficialServer,
+} from "../hooks/useOfficialServer";
 import {
   type FetchInfo,
   fetchServerInfo,
@@ -114,6 +119,16 @@ export function AddNewServer({
    */
   const hasOwnServer = hostedServers.length > 0;
   const { join, joiningHost } = useServerJoin();
+
+  /**
+   * The server we run, offered here so that an install with no invite in its
+   * clipboard has somewhere to go.
+   *
+   * Probed only while the dialog is open, and only shown once it has answered —
+   * an offer that fails is worse than no offer, and this is the first thing a
+   * new install sees.
+   */
+  const officialServer = useOfficialServer(showAddServer);
 
   /**
    * Which errand this dialog is on. Null means the choice has not been made.
@@ -291,6 +306,23 @@ export function AddNewServer({
     openSettings("my-servers");
   }
 
+  /**
+   * Fills the field rather than joining outright.
+   *
+   * Everything the join needs — the preview, the account chip, the approval
+   * this server's `request` policy leads to — already hangs off the address in
+   * that field. Putting the address there is the whole change; the rest of the
+   * dialog does what it does for any other server, and the person still gets to
+   * read who they are joining before they press the button.
+   */
+  function pickOfficialServer(host: string) {
+    setMode("join");
+    setInviteInput(host);
+  }
+
+  /** Hidden once you are on it. It is a suggestion, not a shortcut. */
+  const showOfficial = !!officialServer && !servers[officialServer.host];
+
   const canJoin =
     !!serverHost &&
     !alreadyMember &&
@@ -426,6 +458,13 @@ export function AddNewServer({
                   </span>
                 )}
 
+                {showOfficial && officialServer && (
+                  <OfficialServerCard
+                    server={officialServer}
+                    onPick={() => pickOfficialServer(officialServer.host)}
+                  />
+                )}
+
                 {/* The other half of the dialog, and deliberately not a second
                     card of equal weight. Most people arriving here have an
                     invite in their clipboard, but "create" is the thing this
@@ -496,6 +535,21 @@ export function AddNewServer({
                     </div>
                   </div>
                 </div>
+
+                {/* Only while the field is empty. Once there is an address in
+                    it the preview below answers the same question about a
+                    server the person actually chose, and two cards saying
+                    different things is one too many.
+
+                    This is the only place a browser sees the offer at all: the
+                    step above it is skipped when there is no embedded server to
+                    create with. */}
+                {showOfficial && officialServer && serverHost.length === 0 && (
+                  <OfficialServerCard
+                    server={officialServer}
+                    onPick={() => pickOfficialServer(officialServer.host)}
+                  />
+                )}
 
                 {/* The preview, and it stays a preview. There used to be a
                     details card between pasting and joining, which is a whole
@@ -711,6 +765,65 @@ interface ServerPreviewProps {
  * to get through. Everything the old card carried that this drops — the
  * description, the join policy — is on the other side of the join anyway.
  */
+/**
+ * The server we run, as a row you can press.
+ *
+ * Shaped like the create card above it on purpose. Both are ways into Gryt for
+ * somebody who has nothing yet, and the old answer for that person was an empty
+ * field and a format hint.
+ */
+function OfficialServerCard({
+  server,
+  onPick,
+}: {
+  server: OfficialServer;
+  onPick: () => void;
+}) {
+  const { host, info } = server;
+
+  return (
+    <button
+      type="button"
+      className="rounded-(--gryt-radius-lg) border border-gryt-border bg-gryt-surface text-gryt-text w-full cursor-pointer p-4 text-left"
+      onClick={onPick}
+    >
+      <div className="flex items-center gap-3">
+        <div
+          className="flex items-center justify-center"
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: "var(--gryt-radius-md)",
+            background: "var(--gryt-accent-a3)",
+            color: "var(--gryt-accent-11)",
+            flexShrink: 0,
+          }}
+        >
+          <PiUsersThreeFill size={18} />
+        </div>
+
+        <div className="flex flex-col gap-0" style={{ minWidth: 0 }}>
+          <span className="text-base font-bold">
+            {info?.name || "The Gryt server"}
+          </span>
+          {/* The member count when the server gave one, and the address when it
+              did not. Both say the same thing — this is a real place — and one
+              of them is a number we did not make up. */}
+          <span className="text-sm truncate">
+            {info
+              ? `We run this one. ${info.members} ${info.members === "1" ? "member" : "members"}.`
+              : `We run this one. ${host}`}
+          </span>
+        </div>
+
+        <div className="flex ml-auto" style={{ color: "var(--gryt-neutral-9)" }}>
+          <PiCaretRightBold size={14} />
+        </div>
+      </div>
+    </button>
+  );
+}
+
 function ServerPreview({
   host,
   info,
