@@ -122,6 +122,30 @@ await assert.rejects(() => signWindows({ path: unsigned }), /exited 1/);
 process.env.GRYT_WIN_SIGN_TOOL = "gryt-no-such-signing-tool";
 await assert.rejects(() => signWindows({ path: unsigned }), /could not run/);
 
+// A .node that is not a Windows binary. This is what broke the v1.9.4 release:
+// `uiohook-napi` ships prebuilds for every platform, so a Windows build carries
+// `prebuilds/linux-x64/node.napi.node` next to the one it loads. `signExts`
+// matches on extension, the ELF reached the reader, and "Not a PE file: no MZ
+// signature" took the release down after three retries.
+//
+// Skipped, not signed and not fatal: it is not a Windows binary, so Smart App
+// Control will never look at it and there is nothing to sign.
+//
+// No signing tool configured, which is the state every release has been in so
+// far — so a regression walks the same path the release did and throws the
+// same "no MZ signature" here instead of an hour into a build.
+const elfNode = join(dir, "node.napi.node");
+writeFileSync(elfNode, Buffer.from([0x7f, 0x45, 0x4c, 0x46, ...Array(60).fill(0)]));
+delete process.env.GRYT_WIN_SIGN_TOOL;
+await signWindows({ path: elfNode });
+
+// The Windows one in the same folder still goes through, so the skip above is
+// about the bytes rather than about the extension.
+const peNode = join(dir, "win.napi.node");
+writeFileSync(peNode, header());
+delete process.env.GRYT_WIN_SIGN_TOOL;
+await signWindows({ path: peNode });
+
 // Files that are not code are left alone. Handing a .yml to a signing tool is
 // how a build breaks for a reason nobody enjoys finding.
 const notCode = join(dir, "latest.yml");
