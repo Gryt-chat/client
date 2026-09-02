@@ -26,6 +26,7 @@ interface MemberSidebarPanelProps {
   adminActions: AdminActions | undefined;
   onOpenDm?: (targetServerUserId: string) => void;
   onToggleBlock?: (targetServerUserId: string) => void;
+  onReport?: (target: { serverUserId: string; nickname: string }) => void;
   isBlocked?: (serverUserId: string) => boolean;
   pinned: boolean;
   onTogglePinned: () => void;
@@ -38,7 +39,7 @@ export const MemberSidebarPanel = ({
   members, currentConnectionId, currentServerUserId,
   currentUserRole,
   currentServerConnected, serverHost,
-  adminActions, onOpenDm, onToggleBlock, isBlocked, pinned, onTogglePinned,
+  adminActions, onOpenDm, onToggleBlock, isBlocked, onReport, pinned, onTogglePinned,
 }: MemberSidebarPanelProps) => (
   <div
     // Named the way the other panels are, so a layout check can measure it.
@@ -119,6 +120,7 @@ export const MemberSidebarPanel = ({
             adminActions={adminActions}
             onOpenDm={onOpenDm}
             onToggleBlock={onToggleBlock}
+            onReport={onReport}
             isBlocked={isBlocked}
             pinned={pinned}
             onTogglePinned={onTogglePinned}
