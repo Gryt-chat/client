@@ -133,6 +133,17 @@ win:
   target:
     - nsis
     - portable
+    # MSIX, alongside the installers rather than instead of them. It installs
+    # and uninstalls cleanly because Windows owns the process rather than a
+    # script, and it is the format Microsoft is moving to.
+    #
+    # It does not avoid buying a certificate. Microsoft signs MSIX packages it
+    # distributes through the Store; one hosted on gryt.chat needs the same
+    # certificate the .exe does. See GRYT-848 for that, and GRYT-850 for this.
+    #
+    # Only builds on Windows — the target shells out to makeappx.exe from the
+    # Windows SDK — so it appears in the release build and nowhere else.
+    - appx
   legalTrademarks: "Gryt Chat is a trademark of Gryt Chat"
   requestedExecutionLevel: asInvoker
   signtoolOptions:
@@ -168,6 +179,41 @@ win:
     # what it just produced will be blocked by Smart App Control. See the file
     # and GRYT-848.
     sign: scripts/sign-windows.cjs
+
+# The MSIX package.
+#
+# `publisher` is deliberately absent. It has to be the exact certificate subject
+# Microsoft assigns, it is only used for a Store submission, and electron-builder
+# ignores it for a test build. Filling it in with a guess produces a package that
+# builds and cannot be installed.
+appx:
+  # Reverse-DNS like appId, but Identity.Name has its own rules and is what the
+  # Store reserves, so it is written out rather than derived.
+  identityName: GrytChat
+  applicationId: GrytChat
+  publisherDisplayName: "Gryt Chat"
+  # Matching electronLanguages above. The first is the default.
+  languages:
+    - en-US
+    - nb-NO
+  # runFullTrust is added whether or not it is listed, and is what lets a
+  # packaged Electron app behave like an ordinary Win32 program: spawn the
+  # embedded server, write to its own userData, open sockets.
+  #
+  # The rest are not decoration. A packaged app appears in Windows privacy
+  # settings under the capabilities it declares, so an undeclared camera is a
+  # camera the user cannot grant. privateNetworkClientServer is the one most
+  # easily missed: without it "Discoverable on LAN" and finding a server on the
+  # local network stop working, and they fail quietly rather than erroring.
+  #
+  # Unverified. Nothing here has been installed yet, and this is the first thing
+  # to check when it is.
+  capabilities:
+    - runFullTrust
+    - internetClientServer
+    - privateNetworkClientServer
+    - webcam
+    - microphone
 
 portable:
   artifactName: "Gryt-Chat-${version}-${os}-${arch}-portable.${ext}"
