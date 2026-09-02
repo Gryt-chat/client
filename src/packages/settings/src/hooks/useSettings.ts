@@ -4,6 +4,7 @@ import { singletonHook } from "@/common";
 import {
   clearStoredAvatar,
   getStoredAvatar,
+  pickRandomName,
   setStoredAvatar,
   useUserId,
 } from "@/common";
@@ -114,7 +115,19 @@ function useSettingsHook() {
 
       applyAudioRef.current(loadAudioFromCache());
 
-      setNickname(getUserValue("nickname", "Unknown"));
+      /**
+       * An install that has never been named gets one now, and keeps it.
+       *
+       * The old answer was "Unknown", which went out as the nickname on every
+       * join — so strangers arrived on other people's servers called Unknown,
+       * and since the generated avatar is seeded on the name, all of them had
+       * the same face. Written back rather than picked per load, because that
+       * face would otherwise change every launch. GRYT-846.
+       */
+      const stored = getUserValue<string>("nickname", "");
+      const name = stored || pickRandomName();
+      if (!stored) setUserValue("nickname", name);
+      setNickname(name);
       setHasSeenWelcome(getUserValue("hasSeenWelcome", false));
       setShowAdvanced(getUserValue("showAdvanced", false));
       setShowDebugOverlay(getUserValue("showDebugOverlay", false));
