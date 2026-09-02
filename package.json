@@ -78,7 +78,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@gryt/crypto": "^0.2.0",
     "@gryt/owl": "^0.6.0",
-    "@gryt/ui": "^0.25.0",
+    "@gryt/ui": "^0.25.1",
     "@gryt/voice": "0.4.4",
     "@mediapipe/tasks-vision": "^1.0.1",
     "@noble/ciphers": "^2",
