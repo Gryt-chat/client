@@ -5,6 +5,7 @@ import { PiPlusBold, PiTrashBold } from "react-icons/pi";
 import type { Socket } from "socket.io-client";
 
 import { useSocketEvent } from "../hooks/useSocketEvent";
+import { nextUnusedPreset,ROLE_COLOR_PRESETS } from "./roleColorPresets";
 import { type GridRole,RolePermissionGrid } from "./RolePermissionGrid";
 
 type RoleDefinition = {
@@ -56,6 +57,104 @@ const NEW_ROLE = "__new__";
  * column out would make the grid look like it was missing a role.
  */
 const READ_ONLY_ROLES = new Set(["owner"]);
+
+/**
+ * Ten swatches, a picker and a Clear.
+ *
+ * The picker used to be the whole control, which meant every role started
+ * grey and the ones that got a colour got whatever the OS colour wheel was
+ * pointing at. Swatches first, because the answer is nearly always "one that
+ * looks like the others" — and these ten are one family by construction, so
+ * any of them does.
+ *
+ * The selected swatch is marked with a ring rather than a tick. A tick has to
+ * be drawn in some colour, and there is no colour that reads on all ten.
+ */
+function RoleColorField({
+  value,
+  onChange,
+  onCommit,
+}: {
+  value: string | null;
+  onChange: (color: string | null) => void;
+  /** Takes the colour rather than reading it back — see `commitSettings`. */
+  onCommit: (color: string | null) => void;
+}) {
+  const selected = value?.toLowerCase() ?? null;
+  const isPreset = ROLE_COLOR_PRESETS.some((p) => p.value.toLowerCase() === selected);
+
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      {ROLE_COLOR_PRESETS.map((preset) => {
+        const active = preset.value.toLowerCase() === selected;
+        return (
+          <button
+            key={preset.value}
+            type="button"
+            aria-label={preset.name}
+            aria-pressed={active}
+            title={preset.name}
+            onClick={() => {
+              // Committed on the press rather than on blur: a swatch is a
+              // decision the moment it is pressed, and pressing one and
+              // closing the panel should not be the case that loses it.
+              onChange(preset.value);
+              onCommit(preset.value);
+            }}
+            className="cursor-pointer rounded-full border-0 p-0"
+            style={{
+              width: 22,
+              height: 22,
+              background: preset.value,
+              outline: active ? "2px solid var(--gryt-text)" : "none",
+              outlineOffset: 2,
+            }}
+          />
+        );
+      })}
+
+      {/* The picker keeps its place for anybody matching a brand colour, and
+          wears whatever is currently set so a custom colour is visible as a
+          swatch of its own rather than only as a value. */}
+      <label
+        className="flex items-center gap-1 text-xs text-gryt-muted cursor-pointer"
+        title="Any other colour"
+      >
+        <input
+          type="color"
+          value={value || "#888888"}
+          onChange={(e) => onChange(e.target.value)}
+          onBlur={(e) => onCommit(e.target.value)}
+          aria-label="Any other colour"
+          style={{
+            width: 22,
+            height: 22,
+            padding: 0,
+            border: 0,
+            background: "none",
+            cursor: "pointer",
+            outline: value && !isPreset ? "2px solid var(--gryt-text)" : "none",
+            outlineOffset: 2,
+          }}
+        />
+        Custom
+      </label>
+
+      {value && (
+        <Button
+          tone="ghost"
+          size="xsmall"
+          onClick={() => {
+            onChange(null);
+            onCommit(null);
+          }}
+        >
+          Clear
+        </Button>
+      )}
+    </div>
+  );
+}
 
 /**
  * The role editor.
@@ -260,22 +359,38 @@ export function ServerRoleEditorTab({
    * id comes from its name, so there is nothing to write until the name is
    * there. It saves the moment there is one.
    */
-  const commitSettings = () => {
+  const commitSettings = (patch?: Partial<RoleDefinition>) => {
     if (!state || !draft) return;
-    if (!dirty && !creating) return;
 
-    const roleId = creating ? slugify(draft.name) : draft.id;
+    /*
+     * The patch, and why it has to be here.
+     *
+     * A field that commits on blur has already told React about its change by
+     * the time focus leaves it, so `draft` is current. A swatch does both in
+     * one press — set the colour, then save — and `setDraft` has not landed
+     * yet when the save runs. Reading `draft` there gives the colour from
+     * before the press, `dirty` comes back false, and the write never happens:
+     * the ring moved and the database did not. So the caller hands over what
+     * it just set.
+     */
+    const next = patch ? { ...draft, ...patch } : draft;
+    const changed = patch
+      ? true
+      : dirty;
+    if (!changed && !creating) return;
+
+    const roleId = creating ? slugify(next.name) : next.id;
     if (!roleId) return;
 
     if (creating) {
       if (state.roles.some((r) => r.id === roleId)) {
-        toast.error(`There is already a role called "${draft.name}".`);
+        toast.error(`There is already a role called "${next.name}".`);
         return;
       }
       setSelectedId(roleId);
     }
 
-    saveRole(draft, roleId);
+    saveRole(next, roleId);
   };
 
   /**
@@ -299,7 +414,11 @@ export function ServerRoleEditorTab({
     setDraft({
       id: NEW_ROLE,
       name: "",
-      color: null,
+      // A colour rather than none. A role with no colour draws its members'
+      // names in the ordinary text colour, which is the same as every other
+      // role that never got one — so the list stops telling them apart at
+      // exactly the point somebody has bothered to make a second role.
+      color: nextUnusedPreset((state?.roles ?? []).map((r) => r.color)),
       rank: 5,
       permissions: [],
       isSystem: false,
@@ -433,7 +552,7 @@ export function ServerRoleEditorTab({
                     placeholder="Name this role"
                     autoFocus={creating}
                     onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-                    onBlur={commitSettings}
+                    onBlur={() => commitSettings()}
                     className="bg-transparent text-base font-bold outline-none border-b border-gryt-border"
                   />
                   <span className="text-xs text-gryt-muted">
@@ -457,22 +576,16 @@ export function ServerRoleEditorTab({
                 )}
               </div>
 
-              <div className="flex items-center gap-4 flex-wrap">
-                <label className="flex items-center gap-2 text-sm">
-                  <span className="text-gryt-muted">Colour</span>
-                  <input
-                    type="color"
-                    value={draft.color || "#888888"}
-                    onChange={(e) => setDraft({ ...draft, color: e.target.value })}
-                    onBlur={commitSettings}
-                  />
-                  {draft.color && (
-                    <Button tone="ghost" size="xsmall" onClick={() => setDraft({ ...draft, color: null })}>
-                      Clear
-                    </Button>
-                  )}
-                </label>
+              <div className="flex flex-col gap-2">
+                <span className="text-gryt-muted text-sm">Colour</span>
+                <RoleColorField
+                  value={draft.color}
+                  onChange={(color) => setDraft({ ...draft, color })}
+                  onCommit={(color) => commitSettings({ color })}
+                />
+              </div>
 
+              <div className="flex items-center gap-4 flex-wrap">
                 <label className="flex items-center gap-2 text-sm">
                   <span className="text-gryt-muted">Rank</span>
                   <input
@@ -481,7 +594,7 @@ export function ServerRoleEditorTab({
                     max={99}
                     value={draft.rank}
                     onChange={(e) => setDraft({ ...draft, rank: Number(e.target.value) })}
-                    onBlur={commitSettings}
+                    onBlur={() => commitSettings()}
                     className="w-16 bg-transparent border-b border-gryt-border outline-none"
                   />
                 </label>
@@ -513,7 +626,7 @@ export function ServerRoleEditorTab({
                             autoGrantAfterDays: e.target.value ? Number(e.target.value) : null,
                           })
                         }
-                        onBlur={commitSettings}
+                        onBlur={() => commitSettings()}
                         className="w-20 bg-transparent border-b border-gryt-border outline-none"
                       />
                     </label>
@@ -533,7 +646,7 @@ export function ServerRoleEditorTab({
                               : null,
                           })
                         }
-                        onBlur={commitSettings}
+                        onBlur={() => commitSettings()}
                         className="w-20 bg-transparent border-b border-gryt-border outline-none"
                       />
                     </label>
@@ -548,10 +661,28 @@ export function ServerRoleEditorTab({
                 </div>
               )}
 
-              {creating && !slugify(draft.name) && (
-                <span className="text-xs text-gryt-muted">
-                  Give it a name and it is saved.
-                </span>
+              {/* Creating keeps a button, and only creating.
+                  Editing an existing role commits as you go, because every
+                  field there is a change to something that already exists. A
+                  new role is not that: it does not exist until it is made, its
+                  id is minted from the name and cannot be changed afterwards,
+                  and "it saved itself while I was still deciding what to call
+                  it" is a worse surprise than one press. */}
+              {creating && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="small"
+                    disabled={!slugify(draft.name) || saving}
+                    onClick={() => commitSettings()}
+                  >
+                    Create role
+                  </Button>
+                  <span className="text-xs text-gryt-muted">
+                    {slugify(draft.name)
+                      ? "Everything after this saves as you edit it."
+                      : "Give it a name first."}
+                  </span>
+                </div>
               )}
             </div>
           )}
