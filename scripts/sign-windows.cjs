@@ -59,8 +59,15 @@ const signature = import("./windows-signature.mjs");
  *  reason nobody enjoys tracking down. */
 const SIGNABLE = /\.(exe|dll|msi|node)$/i;
 
+/** The MSIX package. Signed the same way and verified differently — it is a
+ *  zip with an AppxSignature.p7x member, not a PE file with a certificate
+ *  table, so it cannot go down the path below. */
+const PACKAGE = /\.(appx|msix)$/i;
+
 module.exports = async function signWindows(configuration) {
   const file = configuration.path;
+
+  if (PACKAGE.test(file)) return signPackage(file);
 
   if (!SIGNABLE.test(file)) return;
 
@@ -142,7 +149,63 @@ function parseArgs(raw, file) {
   return parsed.map((a) => a.split("{file}").join(file));
 }
 
+/**
+ * The .appx, which is the same job with a different way of checking.
+ *
+ * Split out rather than folded into the branch above, because almost nothing
+ * is shared: `isPortableExecutable` says no to a zip, `readCertificateTable`
+ * throws on one, and Windows does not treat a missing package signature the
+ * way it treats a missing Authenticode signature. An unsigned .exe runs unless
+ * Smart App Control stops it. An unsigned .appx does not install at all — the
+ * installer refuses it outright, and the only way in is
+ * `Add-AppxPackage -AllowUnsigned` with Developer Mode turned on.
+ *
+ * It reached here before this existed and fell straight through the extension
+ * test at the top, so electron-builder logged "signing with signtool.exe" over
+ * the package and the hook returned without doing or saying anything. Every PE
+ * file in the build warns that it is unsigned; the package, which is the one
+ * that cannot be installed without a signature, was the only artefact that
+ * said nothing.
+ */
+async function signPackage(file) {
+  const tool = (process.env.GRYT_WIN_SIGN_TOOL || "").trim();
+
+  if (tool) {
+    const args = parseArgs(process.env.GRYT_WIN_SIGN_ARGS, file);
+    const result = spawnSync(tool, args, { stdio: "inherit" });
+
+    if (result.error) {
+      throw new Error(`Windows signing: could not run ${tool}: ${result.error.message}`);
+    }
+    if (result.status !== 0) {
+      throw new Error(`Windows signing: ${tool} exited ${result.status}`);
+    }
+  }
+
+  const { hasAppxSignature } = await signature;
+
+  if (await hasAppxSignature(file)) {
+    console.log(`  • signed ${file} (AppxSignature.p7x present)`);
+    return;
+  }
+
+  if (tool) {
+    throw new Error(
+      `Windows signing: ${tool} exited 0 but ${file} has no AppxSignature.p7x. ` +
+        "Nothing was signed. Check the CA credentials in the environment.",
+    );
+  }
+
+  console.warn(
+    `  ⚠ ${file} is unsigned and will not install. Windows refuses an ` +
+      "unsigned MSIX outright — Add-AppxPackage -AllowUnsigned with Developer " +
+      "Mode is the only way in. Set GRYT_WIN_SIGN_TOOL once a certificate " +
+      "exists. See GRYT-848.",
+  );
+}
+
 module.exports.parseArgs = parseArgs;
 // Exported so the check can compare it against electron-builder's signExts
 // rather than restating the list and letting the two drift.
 module.exports.SIGNABLE = SIGNABLE;
+module.exports.PACKAGE = PACKAGE;

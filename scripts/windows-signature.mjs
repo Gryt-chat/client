@@ -126,3 +126,102 @@ export function parseCertificateTable(header) {
   // way round, is not a signature and should not read as one.
   return { signed: offset > 0 && size > 0, offset, size };
 }
+
+/*
+ * Whether an MSIX package carries a signature.
+ *
+ * A .appx or .msix is a zip, not a PE file, so the reader above says nothing
+ * useful about one. signtool signs it by writing an AppxSignature.p7x member
+ * into the package, and Windows looks for exactly that: no member, no
+ * signature, and the installer refuses the package outright rather than
+ * warning about it the way it does for an unsigned .exe.
+ *
+ * The zip is walked rather than searched for the name as a substring. A member
+ * called `app\AppxSignature.p7x` — inside the payload, where the app's own
+ * files live — would match a substring search and is not a package signature.
+ */
+
+/** End of central directory record, and the most it can be preceded by. */
+const EOCD_SIGNATURE = 0x06054b50;
+const ZIP64_LOCATOR_SIGNATURE = 0x07064b50;
+const CENTRAL_FILE_SIGNATURE = 0x02014b50;
+
+/** 22 bytes of record plus the 65535-byte comment it is allowed to carry. */
+const EOCD_SEARCH_BYTES = 22 + 0xffff;
+
+/** The name signtool writes, at the package root. */
+const APPX_SIGNATURE_MEMBER = "AppxSignature.p7x";
+
+/**
+ * @param {string} path
+ * @returns {Promise<boolean>}
+ */
+export async function hasAppxSignature(path) {
+  const handle = await open(path, "r");
+  try {
+    const { size } = await handle.stat();
+    const tailLength = Math.min(size, EOCD_SEARCH_BYTES);
+    const tail = Buffer.alloc(tailLength);
+    await handle.read(tail, 0, tailLength, size - tailLength);
+
+    // Backwards, because the comment is allowed to contain anything — including
+    // the bytes of another end-of-central-directory record.
+    let eocd = -1;
+    for (let i = tail.length - 22; i >= 0; i--) {
+      if (tail.readUInt32LE(i) === EOCD_SIGNATURE) {
+        eocd = i;
+        break;
+      }
+    }
+    if (eocd === -1) {
+      throw new Error(`Not a zip: no end of central directory in ${path}`);
+    }
+
+    let directorySize = tail.readUInt32LE(eocd + 12);
+    let directoryOffset = tail.readUInt32LE(eocd + 16);
+
+    // Both fields saturate at 0xffffffff and move into the zip64 record when
+    // the package outgrows them. An MSIX with the embedded server in it is a
+    // quarter of a gigabyte, so this is closer than it looks.
+    if (directorySize === 0xffffffff || directoryOffset === 0xffffffff) {
+      let locator = -1;
+      for (let i = eocd - 20; i >= 0; i--) {
+        if (tail.readUInt32LE(i) === ZIP64_LOCATOR_SIGNATURE) {
+          locator = i;
+          break;
+        }
+      }
+      if (locator === -1) {
+        throw new Error(`Not a zip: the central directory needs zip64 and ${path} has none`);
+      }
+
+      const zip64Offset = Number(tail.readBigUInt64LE(locator + 8));
+      const zip64 = Buffer.alloc(56);
+      await handle.read(zip64, 0, 56, zip64Offset);
+      directorySize = Number(zip64.readBigUInt64LE(40));
+      directoryOffset = Number(zip64.readBigUInt64LE(48));
+    }
+
+    const directory = Buffer.alloc(directorySize);
+    await handle.read(directory, 0, directorySize, directoryOffset);
+
+    // Record by record, so the name is read from where the name actually is.
+    let at = 0;
+    while (at + 46 <= directory.length) {
+      if (directory.readUInt32LE(at) !== CENTRAL_FILE_SIGNATURE) break;
+
+      const nameLength = directory.readUInt16LE(at + 28);
+      const extraLength = directory.readUInt16LE(at + 30);
+      const commentLength = directory.readUInt16LE(at + 32);
+      const name = directory.toString("latin1", at + 46, at + 46 + nameLength);
+
+      if (name === APPX_SIGNATURE_MEMBER) return true;
+
+      at += 46 + nameLength + extraLength + commentLength;
+    }
+
+    return false;
+  } finally {
+    await handle.close();
+  }
+}

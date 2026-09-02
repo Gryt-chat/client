@@ -37,6 +37,15 @@ build/*
 # them ignored shipped a release with no menu bar icon at all.
 !build/trayTemplate*.png
 !build/tray-*.png
+
+# build/appx/, the MSIX tiles. Tracked for the same reason as the icons, and
+# with a sharper edge: electron-builder does not skip a missing tile the way it
+# skips a missing extraResource. It reaches into its own vendor cache and
+# packages winCodeSign's SampleAppx placeholders instead, and the build says
+# nothing. v1.9.5 shipped with those — the Start menu tile was a blank white
+# square on a package that said Gryt Chat everywhere else.
+!build/appx/
+!build/appx/*.png
 *.local
 
 # MSVC intermediates, which were committed next to the sources they came from.

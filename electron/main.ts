@@ -348,6 +348,27 @@ class WindowsUpdater extends NsisUpdater {
 const autoUpdater =
   process.platform === "win32" ? new WindowsUpdater() : defaultAutoUpdater;
 
+/**
+ * Whether this copy of Gryt was installed from the MSIX package.
+ *
+ * Electron sets `process.windowsStore` when the app runs from an .appx or
+ * .msix. Nothing else in the build can tell the two apart: `app.isPackaged` is
+ * true for the NSIS install as well, and both run the same `Gryt Chat.exe` out
+ * of the same tree.
+ *
+ * It matters because the updater above is an NSIS updater and it does not know
+ * it is inside a package. Left alone it finds the next release, downloads the
+ * 180MB .exe, and runs the installer on quit — which does not update the
+ * package. It installs a *second*, unpackaged Gryt beside it, and the MSIX one
+ * stays on the version it was installed at forever. Two entries in the Start
+ * menu, one of them permanently stale, and nothing anywhere saying so.
+ *
+ * Windows owns updates for a packaged app: the Store pushes them, or an
+ * .appinstaller file does. Neither route comes through here, so the mechanism
+ * is switched off rather than made quieter. GRYT-850.
+ */
+const updatesAreManagedByWindows = process.windowsStore === true;
+
 autoUpdater.logger = {
   info: (m: unknown) => startupLog(`Update: ${String(m)}`),
   warn: (m: unknown) => startupLog(`Update WARN: ${String(m)}`),
@@ -381,7 +402,7 @@ autoUpdater.autoDownload = true;
 // Windows install could ever happen. When that helper failed to parse, there
 // was no second route, which is how v1.6.6 through v1.6.24 ended up unable to
 // update at all.
-autoUpdater.autoInstallOnAppQuit = true;
+autoUpdater.autoInstallOnAppQuit = !updatesAreManagedByWindows;
 
 /**
  * Whether Gryt fetches a release on its own.
@@ -981,6 +1002,15 @@ function checkForUpdatesInBackground(
   reason: string,
   force = false
 ): void {
+  /* Packaged as MSIX, where there is nothing useful this could do. Logged
+     rather than dropped silently, because a check that reports nothing is the
+     same shape as a broken one, and this is the line somebody will go looking
+     for. See `updatesAreManagedByWindows`. */
+  if (updatesAreManagedByWindows) {
+    startupLog(`Update: skipped (${reason}) — installed from the MSIX package`);
+    return;
+  }
+
   /* Already downloaded, so the answer cannot change until this restarts.
      Element hit the same thing on macOS and guards it the same way: re-checking
      while Squirrel is holding a staged update wedges the install
@@ -1079,6 +1109,13 @@ function startBackgroundDownload(
 ): void {
   pendingRelease = release;
   announceDownload = announce;
+
+  if (updatesAreManagedByWindows) {
+    startupLog("Update: not downloading — installed from the MSIX package");
+    pendingRelease = null;
+    announceDownload = false;
+    return;
+  }
 
   autoUpdater.setFeedURL({
     provider: "generic",
@@ -3153,13 +3190,15 @@ if (!gotSingleInstanceLock) {
 
         initBackgroundUpdater(true);
 
-        pinFeedToNewestCompleteRelease().finally(
-          () => {
-            autoUpdater
-              .checkForUpdates()
-              .catch(() => {});
-          }
-        );
+        if (!updatesAreManagedByWindows) {
+          pinFeedToNewestCompleteRelease().finally(
+            () => {
+              autoUpdater
+                .checkForUpdates()
+                .catch(() => {});
+            }
+          );
+        }
       } else {
         /* Every launch, now that there is only one. Open the window and look
            for updates behind it.

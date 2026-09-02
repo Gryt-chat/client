@@ -197,6 +197,14 @@ appx:
   identityName: GrytChat
   applicationId: GrytChat
   publisherDisplayName: "Gryt Chat"
+  # The tile background, behind assets/Square150x150Logo.png and the wide tile.
+  #
+  # #2E2D5F is the artboard's own fill, read off public/logo-square.svg, so the
+  # logo's rounded corners land on the colour they were cut out of and the tile
+  # reads as one square rather than as a rounded badge on a grey card.
+  # electron-builder's default is #464646, which is neither Gryt's colour nor
+  # anything else's.
+  backgroundColor: "#2E2D5F"
   # Matching electronLanguages above. The first is the default.
   languages:
     - en-US
