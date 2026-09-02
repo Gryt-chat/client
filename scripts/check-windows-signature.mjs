@@ -193,4 +193,90 @@ delete process.env.GRYT_WIN_SIGN_ARGS;
   }
 }
 
+// --- the MSIX package, which is a zip and not a PE file ---
+
+/**
+ * A zip holding one stored, empty member, built by hand.
+ *
+ * `hasAppxSignature` only ever reads the central directory, so the members
+ * themselves can be empty and the CRCs can be zero. What it has to get right
+ * is the record layout, which is the part a real zip library would hide.
+ */
+function zipWith(name) {
+  const nameBytes = Buffer.from(name, "latin1");
+
+  const local = Buffer.alloc(30 + nameBytes.length);
+  local.writeUInt32LE(0x04034b50, 0);
+  local.writeUInt16LE(nameBytes.length, 26);
+  nameBytes.copy(local, 30);
+
+  const central = Buffer.alloc(46 + nameBytes.length);
+  central.writeUInt32LE(0x02014b50, 0);
+  central.writeUInt16LE(nameBytes.length, 28);
+  nameBytes.copy(central, 46);
+
+  const eocd = Buffer.alloc(22);
+  eocd.writeUInt32LE(0x06054b50, 0);
+  eocd.writeUInt16LE(1, 8);
+  eocd.writeUInt16LE(1, 10);
+  eocd.writeUInt32LE(central.length, 12);
+  eocd.writeUInt32LE(local.length, 16);
+
+  return Buffer.concat([local, central, eocd]);
+}
+
+const { hasAppxSignature } = await import("./windows-signature.mjs");
+
+const signedPackage = join(dir, "signed.appx");
+writeFileSync(signedPackage, zipWith("AppxSignature.p7x"));
+assert.equal(await hasAppxSignature(signedPackage), true);
+
+const unsignedPackage = join(dir, "unsigned.appx");
+writeFileSync(unsignedPackage, zipWith("AppxManifest.xml"));
+assert.equal(await hasAppxSignature(unsignedPackage), false);
+
+// The reason the central directory is walked rather than searched. A member of
+// the payload with that name is a file the app happens to ship, not a package
+// signature, and a substring search over the bytes cannot tell the two apart.
+const decoyPackage = join(dir, "decoy.appx");
+writeFileSync(decoyPackage, zipWith(String.raw`app\AppxSignature.p7x`));
+assert.equal(await hasAppxSignature(decoyPackage), false);
+
+// The hook has to route .appx away from the PE reader. Before it did, the
+// package fell through the extension test and the hook returned silently —
+// electron-builder said "signing with signtool.exe" and nothing was signed or
+// reported.
+delete process.env.GRYT_WIN_SIGN_TOOL;
+await signWindows({ path: unsignedPackage });
+await signWindows({ path: signedPackage });
+
+// A tool that exits 0 having signed nothing fails the build here too. This is
+// the one that matters most: an unsigned .appx does not install at all.
+process.env.GRYT_WIN_SIGN_TOOL = "true";
+process.env.GRYT_WIN_SIGN_ARGS = '["{file}"]';
+await assert.rejects(
+  () => signWindows({ path: unsignedPackage }),
+  /exited 0 but .* has no AppxSignature\.p7x/,
+);
+
+delete process.env.GRYT_WIN_SIGN_TOOL;
+delete process.env.GRYT_WIN_SIGN_ARGS;
+
+// appx is a target in electron-builder.yml, so the hook must claim it. If the
+// target were dropped this assertion is the thing that says the hook branch is
+// now dead code.
+{
+  const yaml = require("js-yaml");
+  const { readFileSync } = await import("node:fs");
+  const config = yaml.load(readFileSync(new URL("../electron-builder.yml", import.meta.url), "utf8"));
+  const targets = config?.win?.target ?? [];
+
+  if (targets.includes("appx")) {
+    assert.ok(
+      signWindows.PACKAGE.test("Gryt-Chat-1.0.0-win-x64.appx"),
+      "win.target builds appx but sign-windows.cjs would not sign it",
+    );
+  }
+}
+
 console.log("sign-windows: ok");

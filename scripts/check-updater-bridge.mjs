@@ -78,7 +78,25 @@ assert.doesNotMatch(main, /WindowsPowerShell/);
 
 // Install-on-quit is the second route, and the reason the helper's silence
 // went unnoticed for nine releases is that there was no second route.
-assert.match(main, /autoUpdater\.autoInstallOnAppQuit = true;/);
+//
+// Off in one place only: the MSIX package, where running the NSIS installer
+// does not update anything. It installs an unpackaged second copy beside the
+// packaged one and leaves the packaged one behind forever. Every other Windows
+// install still takes this route.
+//
+// Pinned to `process.windowsStore` rather than to any expression, so widening
+// the condition back out to "Windows" — which is what GRYT-67 did and what the
+// next assertion has always forbidden — cannot slip through as a rewrite of
+// this one.
+assert.match(
+  main,
+  /autoUpdater\.autoInstallOnAppQuit = !updatesAreManagedByWindows;/,
+);
+
+assert.match(
+  main,
+  /const updatesAreManagedByWindows = process\.windowsStore === true;/,
+);
 
 assert.doesNotMatch(main, /autoInstallOnAppQuit = process\.platform/);
 

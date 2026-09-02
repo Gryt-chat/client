@@ -146,3 +146,73 @@ console.log("Generated:");
 console.log(`- ${path.relative(rootDir, path.join(buildDir, "icon.png"))}`);
 console.log(`- ${path.relative(rootDir, path.join(buildDir, "icon.ico"))}`);
 console.log(`- ${path.relative(rootDir, path.join(buildDir, "icon-macos.png"))}`);
+
+/*
+ * The MSIX tiles.
+ *
+ * electron-builder does not fail when these are missing. It reaches into its
+ * own vendor cache and packages winCodeSign's SampleAppx images instead, which
+ * is how Gryt-Chat-1.9.5-win-x64.appx shipped with tile art that is
+ * byte-identical to electron-builder's placeholder — a blank white square in
+ * the Start menu, on a package that otherwise says Gryt Chat everywhere.
+ *
+ * Four names, and they have to be spelled exactly like this: AppxTarget
+ * decides whether a user asset replaces a vendor one by matching the part
+ * before the first dot, so Square150x150Logo.png replaces the sample and
+ * square150x150.png silently does not.
+ *
+ * No `.scale-` or `.targetsize-` variants on purpose. Providing any one of
+ * those switches electron-builder into running makepri.exe over the whole
+ * asset set, which is a second SDK tool in the release path for tiles nobody
+ * has looked at yet. Windows scales these four itself in the meantime.
+ */
+const appxDir = path.join(buildDir, "appx");
+await fs.mkdir(appxDir, { recursive: true });
+
+/*
+ * Square, full-bleed, same rounded shape as icon.ico.
+ *
+ * The 150 tile sits on appx.backgroundColor, which electron-builder.yml sets
+ * to the artboard's own #2E2D5F — so its rounded corners land on the same
+ * colour they were cut out of and the tile reads as a plain square. The 44 and
+ * the 50 are drawn against whatever the taskbar and the installer dialog are
+ * using, and there the transparent corners are the point.
+ */
+const appxSquares = {
+  "StoreLogo.png": 50,
+  "Square44x44Logo.png": 44,
+  "Square150x150Logo.png": 150,
+};
+
+for (const [name, size] of Object.entries(appxSquares)) {
+  await (await roundedSource(size)).png().toFile(path.join(appxDir, name));
+}
+
+/*
+ * The wide tile is the one that cannot be a resize.
+ *
+ * 310x150 is not the artboard's aspect ratio, and `fit: "contain"` would letter
+ * box it into something that no longer lines up with the square tile beside it.
+ * So the square is drawn at the tile's height and centred on a transparent
+ * canvas, and Windows fills the rest with backgroundColor.
+ */
+const WIDE_WIDTH = 310;
+const WIDE_HEIGHT = 150;
+
+const wideSquare = await (await roundedSource(WIDE_HEIGHT)).png().toBuffer();
+
+await sharp({
+  create: {
+    width: WIDE_WIDTH,
+    height: WIDE_HEIGHT,
+    channels: 4,
+    background: { r: 0, g: 0, b: 0, alpha: 0 },
+  },
+})
+  .composite([{ input: wideSquare, left: Math.round((WIDE_WIDTH - WIDE_HEIGHT) / 2), top: 0 }])
+  .png()
+  .toFile(path.join(appxDir, "Wide310x150Logo.png"));
+
+for (const name of [...Object.keys(appxSquares), "Wide310x150Logo.png"]) {
+  console.log(`- ${path.relative(rootDir, path.join(appxDir, name))}`);
+}
