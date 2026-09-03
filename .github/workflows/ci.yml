@@ -45,6 +45,7 @@ jobs:
       - run: yarn test:builder-config
       - run: yarn test:server-order
       - run: yarn test:tile-contrast
+      - run: yarn test:embed-cards
       - run: yarn test:fake-participants
       - run: yarn test:narrow-layout
       - run: yarn test:permission-grid
