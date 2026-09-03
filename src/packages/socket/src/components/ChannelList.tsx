@@ -308,7 +308,7 @@ export const ChannelList = ({
                           onBan={adminActions?.onBanUser && clients[id].serverUserId ? () => adminActions.onBanUser!(clients[id].serverUserId!) : undefined}
                           onServerMute={adminActions?.onServerMuteUser && clients[id].serverUserId ? (muted: boolean) => adminActions.onServerMuteUser!(clients[id].serverUserId!, muted) : undefined}
                           onServerDeafen={adminActions?.onServerDeafenUser && clients[id].serverUserId ? (deafened: boolean) => adminActions.onServerDeafenUser!(clients[id].serverUserId!, deafened) : undefined}
-                          onChangeRole={adminActions?.onChangeRole && clients[id].serverUserId ? (role: Role) => adminActions.onChangeRole!(clients[id].serverUserId!, role) : undefined}
+                          onToggleRole={adminActions?.onToggleRole && clients[id].serverUserId ? (role: Role, hold: boolean) => adminActions.onToggleRole!(clients[id].serverUserId!, role, hold) : undefined}
                           key={id}
                         />
                       )

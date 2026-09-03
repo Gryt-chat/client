@@ -28,7 +28,21 @@ export interface MemberInfo {
    * for why both are set at once.
    */
   avatarWorn?: string | null;
+  /**
+   * The role their name is coloured by: the highest ranked one they hold.
+   *
+   * Still a single id, and still what every list groups and colours by. A
+   * member can hold several since GRYT-748, and `roles` below is all of them.
+   */
   role?: Role;
+  /**
+   * Everything they hold, highest ranked first, with `role` at the front.
+   *
+   * Optional because a server from before GRYT-748 does not send it. Absent is
+   * not the same as empty: absent means the server has no opinion, and the
+   * places that draw the extra roles fall back to `role` alone.
+   */
+  roles?: Role[];
   status: UserStatus;
   lastSeen?: Date;
   createdAt?: string | Date;
@@ -79,7 +93,7 @@ export interface AdminActions {
   onBanUser?: (targetServerUserId: string) => void;
   onServerMuteUser?: (targetServerUserId: string, muted: boolean) => void;
   onServerDeafenUser?: (targetServerUserId: string, deafened: boolean) => void;
-  onChangeRole?: (targetServerUserId: string, role: Role) => void;
+  onToggleRole?: (targetServerUserId: string, role: Role, hold: boolean) => void;
 }
 
 interface MemberSidebarProps {
@@ -152,7 +166,8 @@ const MemberItem = ({
       onBan={adminActions?.onBanUser ? () => adminActions.onBanUser!(member.serverUserId) : undefined}
       onServerMute={adminActions?.onServerMuteUser ? (muted) => adminActions.onServerMuteUser!(member.serverUserId, muted) : undefined}
       onServerDeafen={adminActions?.onServerDeafenUser ? (deafened) => adminActions.onServerDeafenUser!(member.serverUserId, deafened) : undefined}
-      onChangeRole={adminActions?.onChangeRole ? (role) => adminActions.onChangeRole!(member.serverUserId, role) : undefined}
+      onToggleRole={adminActions?.onToggleRole ? (role, hold) => adminActions.onToggleRole!(member.serverUserId, role, hold) : undefined}
+      targetRoles={member.roles}
       onOpenDm={onOpenDm && !isSelf ? () => onOpenDm(member.serverUserId) : undefined}
       /* Not on your own row: the server refuses blocking yourself, so the item
          would be one that always fails. */

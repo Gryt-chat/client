@@ -487,9 +487,9 @@ export function VoiceParticipantCard({
                 adminActions.onServerDeafenUser!(serverUserId, deafened)
             : undefined
         }
-        onChangeRole={
-          adminActions?.onChangeRole && serverUserId
-            ? (role) => adminActions.onChangeRole!(serverUserId, role)
+        onToggleRole={
+          adminActions?.onToggleRole && serverUserId
+            ? (role, hold) => adminActions.onToggleRole!(serverUserId, role, hold)
             : undefined
         }
         onPopoutVideo={
@@ -853,9 +853,9 @@ export function VoiceParticipantCard({
               adminActions.onServerDeafenUser!(serverUserId, deafened)
           : undefined
       }
-      onChangeRole={
-        adminActions?.onChangeRole && serverUserId
-          ? (role) => adminActions.onChangeRole!(serverUserId, role)
+      onToggleRole={
+        adminActions?.onToggleRole && serverUserId
+          ? (role, hold) => adminActions.onToggleRole!(serverUserId, role, hold)
           : undefined
       }
       onPopoutVideo={

@@ -1362,10 +1362,10 @@ export const VoiceView = ({
                           )
                       : undefined
                   }
-                  onChangeRole={
-                    adminActions?.onChangeRole && focusServerUserId
-                      ? (role) =>
-                          adminActions.onChangeRole!(focusServerUserId, role)
+                  onToggleRole={
+                    adminActions?.onToggleRole && focusServerUserId
+                      ? (role, hold) =>
+                          adminActions.onToggleRole!(focusServerUserId, role, hold)
                       : undefined
                   }
                   onPopoutVideo={handleFocusedPopout}

@@ -133,8 +133,17 @@ export function useAdminActions({
     void send("server:deafen", { targetServerUserId, deafened });
   }, [send]);
 
-  const handleChangeRole = useCallback((targetServerUserId: string, role: string) => {
-    void send("server:roles:set", { serverUserId: targetServerUserId, role });
+  /**
+   * Give one role or take it away, leaving the rest.
+   *
+   * Was `handleChangeRole`, which sent `server:roles:set` — replace everything
+   * they hold with this one. That is still what the server does with `set`, and
+   * still the right thing for a demotion, but it is the wrong default now that
+   * roles stack: an operator giving somebody a second role would have silently
+   * taken away the first.
+   */
+  const handleToggleRole = useCallback((targetServerUserId: string, role: string, hold: boolean) => {
+    void send(hold ? "server:roles:add" : "server:roles:remove", { serverUserId: targetServerUserId, role });
   }, [send]);
 
   const lookupNickname = useCallback((serverUserId: string) => {
@@ -159,7 +168,7 @@ export function useAdminActions({
     pendingKickUser, setPendingKickUser,
     pendingBanUser, setPendingBanUser,
     handleDisconnectUser, handleKickUser, handleBanUser, handleUnbanUser, fetchMemberInvite,
-    handleServerMuteUser, handleServerDeafenUser, handleChangeRole,
+    handleServerMuteUser, handleServerDeafenUser, handleToggleRole,
     requestDisconnectUser, requestKickUser, requestBanUser,
   };
 }

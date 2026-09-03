@@ -44,7 +44,8 @@ export function ConnectedUser({
   onBan,
   onServerMute,
   onServerDeafen,
-  onChangeRole,
+  onToggleRole,
+  targetRoles,
   serverHost,
 }: {
   isSpeaking: boolean;
@@ -75,7 +76,8 @@ export function ConnectedUser({
   onBan?: () => void;
   onServerMute?: (muted: boolean) => void;
   onServerDeafen?: (deafened: boolean) => void;
-  onChangeRole?: (role: Role) => void;
+  onToggleRole?: (role: Role, hold: boolean) => void;
+  targetRoles?: Role[];
   serverHost?: string;
 }) {
   const hue = tileHue(nickname, avatarColor, { nickname, worn: avatarWorn });
@@ -97,7 +99,8 @@ export function ConnectedUser({
       onBan={onBan}
       onServerMute={onServerMute}
       onServerDeafen={onServerDeafen}
-      onChangeRole={onChangeRole}
+      onToggleRole={onToggleRole}
+      targetRoles={targetRoles}
     >
     <motion.div
       initial={{ opacity: 0, height: 0 }}

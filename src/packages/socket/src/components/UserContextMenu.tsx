@@ -1,7 +1,7 @@
 import { ContextMenu, Slider } from "@gryt/ui";
 import { ReactNode } from "react";
 import toast from "react-hot-toast";
-import { PiAtFill, PiChatCircleFill, PiCopyFill, PiFlagFill, PiProhibitFill } from "react-icons/pi";
+import { PiAtFill, PiChatCircleFill, PiCheckBold, PiCopyFill, PiFlagFill, PiProhibitFill } from "react-icons/pi";
 
 import { useSettings } from "@/settings";
 
@@ -30,14 +30,27 @@ interface UserContextMenuProps {
   isInVoice?: boolean;
   onDisconnectFromVoice?: () => void;
   role?: Role;
+  /** The role their name is drawn in: the highest ranked they hold. */
   targetRole?: Role;
+  /**
+   * Everything they hold. Absent on a server from before more than one was
+   * representable, which is why the menu falls back to `targetRole`.
+   */
+  targetRoles?: Role[];
   isServerMuted?: boolean;
   isServerDeafened?: boolean;
   onKick?: () => void;
   onBan?: () => void;
   onServerMute?: (muted: boolean) => void;
   onServerDeafen?: (deafened: boolean) => void;
-  onChangeRole?: (role: Role) => void;
+  /**
+   * Give this role or take it away, `hold` saying which.
+   *
+   * Replaced `onChangeRole`, which set the one role somebody had. Roles stack
+   * now, so "make them a moderator" and "stop them being an admin" are two
+   * different things and the menu has to be able to say which.
+   */
+  onToggleRole?: (role: Role, hold: boolean) => void;
   onPopoutVideo?: () => void;
   /**
    * Open a direct message with this person, on this server.
@@ -98,13 +111,14 @@ export function UserContextMenu({
   onDisconnectFromVoice,
   role,
   targetRole,
+  targetRoles,
   isServerMuted,
   isServerDeafened,
   onKick,
   onBan,
   onServerMute,
   onServerDeafen,
-  onChangeRole,
+  onToggleRole,
   onPopoutVideo,
   onOpenDm,
   onToggleBlock,
@@ -199,9 +213,18 @@ export function UserContextMenu({
     .filter((r) => r.id !== "owner" && r.rank < rankOf(role))
     .sort((a, b) => b.rank - a.rank);
 
-  const targetRoleName = targetRole
-    ? roles.find((r) => r.id === targetRole)?.name ?? targetRole
-    : null;
+  const nameOfRole = (id: string) => roles.find((r) => r.id === id)?.name ?? id;
+
+  /*
+   * Everything they hold, or the one role a server too old to say sends.
+   *
+   * The subtitle lists all of them, which is the only place outside settings
+   * that says a member is two things — the sidebar groups and colours by the
+   * highest ranked one, and drawing every role beside every name in a 240px
+   * column would cost more than it tells anyone.
+   */
+  const heldRoles = targetRoles ?? (targetRole ? [targetRole] : []);
+  const targetRoleName = heldRoles.length > 0 ? heldRoles.map(nameOfRole).join(", ") : null;
 
   return (
     <ContextMenu.Root>
@@ -327,21 +350,38 @@ export function UserContextMenu({
               </ContextMenu.Item>
             )}
 
-            {canAssignRoles && onChangeRole && assignableRoles.length > 0 && (
+            {/* Toggles rather than a list of one-of-four. Picking a role a
+                member already holds used to be disabled and say "(current)",
+                which was the whole vocabulary a single-role server had; now it
+                takes the role away again.
+
+                One toggle per open — `closeOnClick={false}` does not survive a
+                submenu, and the root closes with it. Handing somebody several
+                roles at once is what the Members tab in settings is for. */}
+            {canAssignRoles && onToggleRole && assignableRoles.length > 0 && (
               <ContextMenu.SubmenuRoot>
-                <ContextMenu.SubmenuTrigger>Change role</ContextMenu.SubmenuTrigger>
+                <ContextMenu.SubmenuTrigger>Roles</ContextMenu.SubmenuTrigger>
                 <ContextMenu.Portal>
                   <ContextMenu.Positioner>
                     <ContextMenu.Popup>
-                  {assignableRoles.map((r) => (
-                    <ContextMenu.Item
-                      key={r.id}
-                      disabled={targetRole === r.id}
-                      onClick={() => onChangeRole(r.id)}
-                    >
-                      {r.name}{targetRole === r.id ? " (current)" : ""}
-                    </ContextMenu.Item>
-                  ))}
+                  {assignableRoles.map((r) => {
+                    const holds = heldRoles.includes(r.id);
+                    return (
+                      <ContextMenu.Item
+                        key={r.id}
+                        onClick={() => onToggleRole(r.id, !holds)}
+                      >
+                        <span className="flex items-center gap-2">
+                          {/* A fixed-width slot, so the names line up whether
+                              or not there is a tick beside them. */}
+                          <span style={{ width: 14, display: "inline-block" }}>
+                            {holds ? <PiCheckBold size={12} /> : null}
+                          </span>
+                          {r.name}
+                        </span>
+                      </ContextMenu.Item>
+                    );
+                  })}
                 </ContextMenu.Popup>
                   </ContextMenu.Positioner>
                 </ContextMenu.Portal>

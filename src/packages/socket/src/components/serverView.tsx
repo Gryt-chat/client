@@ -188,7 +188,7 @@ export const ServerView = () => {
     pendingKickUser, setPendingKickUser,
     pendingBanUser, setPendingBanUser,
     handleDisconnectUser, handleKickUser, handleBanUser, fetchMemberInvite,
-    handleServerMuteUser, handleServerDeafenUser, handleChangeRole,
+    handleServerMuteUser, handleServerDeafenUser, handleToggleRole,
     requestDisconnectUser, requestKickUser, requestBanUser,
   } = useAdminActions({ currentConnection, currentlyViewingServer, accessToken, memberLists });
 
@@ -573,9 +573,9 @@ export const ServerView = () => {
       onBanUser: can("ban_members") ? requestBanUser : undefined,
       onServerMuteUser: can("mute_members") ? handleServerMuteUser : undefined,
       onServerDeafenUser: can("deafen_members") ? handleServerDeafenUser : undefined,
-      onChangeRole: can("manage_roles") ? handleChangeRole : undefined,
+      onToggleRole: can("manage_roles") ? handleToggleRole : undefined,
     };
-  }, [viewerPermissions, requestDisconnectUser, requestKickUser, requestBanUser, handleServerMuteUser, handleServerDeafenUser, handleChangeRole]);
+  }, [viewerPermissions, requestDisconnectUser, requestKickUser, requestBanUser, handleServerMuteUser, handleServerDeafenUser, handleToggleRole]);
 
   // Dev only, and above the early returns because the speech rig is a hook.
   // See fakeParticipants.ts.
