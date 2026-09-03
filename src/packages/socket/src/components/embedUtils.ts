@@ -66,7 +66,12 @@ export function getLinkCardLayout(data: LinkPreviewData): LinkCardLayout {
  */
 export function describePreviewFailure(status: number | null | undefined): string | null {
   if (status == null) return null;
-  if (status === 401 || status === 403) return "Private or sign-in only";
+  if (status === 401) return "Sign-in only";
+  /* Not "private": a 403 is as often a site refusing our fetcher as it is a
+     page somebody is not allowed to see. Stack Overflow answers 403 to the
+     preview fetch and 200 to a browser. A private GitHub repository, the case
+     that prompted all of this, answers 404 and is covered below. */
+  if (status === 403) return "The site would not let us look";
   if (status === 404 || status === 410) return "Page not found";
   if (status === 429) return "The site is rate limiting us";
   return null;

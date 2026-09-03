@@ -86,7 +86,10 @@ assert.equal(
 
 // ── What a failure is worth saying ──────────────────────────
 
-assert.equal(describePreviewFailure(403), "Private or sign-in only");
+assert.equal(describePreviewFailure(401), "Sign-in only");
+// A 403 is as often a site refusing our fetcher as a page you may not see.
+// Stack Overflow answers 403 to the preview fetch and 200 to a browser.
+assert.equal(describePreviewFailure(403), "The site would not let us look");
 assert.equal(describePreviewFailure(404), "Page not found");
 assert.equal(describePreviewFailure(429), "The site is rate limiting us");
 assert.equal(describePreviewFailure(200), null, "a page that answered fine has no failure to report");
