@@ -22,6 +22,8 @@ export type JoinServerOnceRequest = {
 
 export type JoinServerOnceSuccess = {
   accessToken: string;
+  /** Reads uploads on this server, and nothing else. GRYT-740. */
+  fileToken?: string;
   refreshToken?: string;
   nickname: string;
   avatarFileId?: string | null;

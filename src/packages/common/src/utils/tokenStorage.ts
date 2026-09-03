@@ -92,6 +92,26 @@ export function removeServerAccessToken(host: string): void {
   removeStoredAccessToken(`accessToken_${host}`);
 }
 
+// ── File tokens ───────────────────────────────────────────────────
+//
+// Reads uploads on one server and nothing else, and it travels in the query
+// string of an `<img src>` because an image element cannot send a header. Kept
+// apart from the access token for exactly that reason: this one ends up in URLs,
+// in logs and in anything somebody pastes, and what leaks should be the weaker
+// of the two. See GRYT-740.
+
+export function getServerFileToken(host: string): string | null {
+  return getStoredAccessToken(`fileToken_${host}`);
+}
+
+export function setServerFileToken(host: string, token: string): void {
+  setStoredAccessToken(`fileToken_${host}`, token);
+}
+
+export function removeServerFileToken(host: string): void {
+  removeStoredAccessToken(`fileToken_${host}`);
+}
+
 // ── Refresh tokens ────────────────────────────────────────────────
 
 export function getServerRefreshToken(host: string): string | null {
