@@ -542,6 +542,11 @@
   resolved "https://registry.yarnpkg.com/@floating-ui/utils/-/utils-0.2.12.tgz#afefe785949f16ac4cdd1e695935a321572dd56a"
   integrity sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==
 
+"@gryt/core@^0.1.0":
+  version "0.1.0"
+  resolved "https://registry.yarnpkg.com/@gryt/core/-/core-0.1.0.tgz#f546ba21fdcc4994f8cd8951d1a30f24b22ad926"
+  integrity sha512-hNuRPwSjN5WODSHO1oPc2ClLJ+OId7QQn0NOyKhcPWfLRdoZF9VPJX+9l+1NomagMrt5ZgNaY/7ZuBC8+TATDw==
+
 "@gryt/crypto@^0.2.0":
   version "0.2.0"
   resolved "https://registry.yarnpkg.com/@gryt/crypto/-/crypto-0.2.0.tgz#967135a19d6b13d936dd8e8638849980511e7b1b"

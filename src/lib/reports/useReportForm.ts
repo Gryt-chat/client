@@ -1,8 +1,7 @@
+import type { ReportType } from "@gryt/core";
 import { useCallback, useState } from "react";
 
 import { singletonHook } from "@/common";
-
-import type { ReportType } from "./report";
 
 /**
  * Whether the report form is open, and which of the two it opened as.

@@ -1,9 +1,16 @@
+import {
+  getAccentColor,
+  getCardSubtitle,
+  getLinkProvider,
+  getProviderDetail,
+  hostnameOf,
+} from "@gryt/core";
 import { memo, useEffect, useMemo, useState } from "react";
 import { PiLinkSimpleBold } from "react-icons/pi";
 
 import { getServerAccessToken, getServerHttpBase, useTheme } from "@/common";
 
-import { getAccentColor, getEmbedProvider, getProviderDetail } from "./embedProviders";
+import { PROVIDER_ICONS } from "./embedProviderIcons";
 import { DismissButton } from "./EmbedRenderers";
 import {
   describePreviewFailure,
@@ -13,14 +20,6 @@ import {
   previewRefused,
 } from "./embedUtils";
 import { SkeletonBase } from "./skeletons/SkeletonBase";
-
-function hostnameOf(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return url;
-  }
-}
 
 /**
  * The line above the title: a logo where we have one, the site's own favicon
@@ -35,15 +34,16 @@ const CardSite = memo(({
   siteName: string | null;
   favicon: string | null;
 }) => {
-  const provider = getEmbedProvider(url);
+  const provider = getLinkProvider(url);
+  const Icon = provider ? PROVIDER_ICONS[provider.id] : undefined;
   const [faviconFailed, setFaviconFailed] = useState(false);
 
   useEffect(() => setFaviconFailed(false), [favicon]);
 
   return (
     <div className="link-embed-card-site">
-      {provider ? (
-        <provider.Icon className="link-embed-card-brand" aria-hidden />
+      {Icon ? (
+        <Icon className="link-embed-card-brand" aria-hidden />
       ) : favicon && !faviconFailed ? (
         <img
           src={favicon}
@@ -170,7 +170,7 @@ export const LinkPreviewCard = memo(({
   if (failed) return null;
   if (!data) return <LinkPreviewSkeleton url={url} onDismiss={onDismiss} />;
 
-  const provider = getEmbedProvider(url);
+  const provider = getLinkProvider(url);
   const providerDetail = getProviderDetail(url);
   const failure = describePreviewFailure(data.status);
   const layout = getLinkCardLayout(data);
@@ -182,13 +182,7 @@ export const LinkPreviewCard = memo(({
 
   const title = data.title || providerDetail;
 
-  /* The path detail is a subtitle only when it says something the title does
-     not. Wikipedia titles its WebRTC page "WebRTC", and the detail read out of
-     `/wiki/WebRTC` is "WebRTC", so showing both printed the word twice. */
-  const subtitle =
-    providerDetail && data.title && !data.title.toLowerCase().includes(providerDetail.toLowerCase())
-      ? providerDetail
-      : null;
+  const subtitle = getCardSubtitle(data.title, providerDetail);
 
   const showImage = Boolean(data.image) && !imageFailed && layout !== "text" && layout !== "bare";
 

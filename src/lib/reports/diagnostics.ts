@@ -1,3 +1,4 @@
+import type { Diagnostics } from "@gryt/core";
 import { useSFU } from "@gryt/voice";
 import { useEffect, useState } from "react";
 
@@ -6,7 +7,6 @@ import { useServerManagement, useSockets } from "@/socket";
 
 import { getElectronAPI, isElectron } from "../electron";
 import { installId } from "./installId";
-import type { Diagnostics } from "./report";
 import { lastPlace, sessionUptimeSec } from "./session";
 
 /**

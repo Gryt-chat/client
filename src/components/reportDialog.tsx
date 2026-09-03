@@ -1,16 +1,16 @@
-import { Alert, Button, Checkbox, Dialog, Divider, TextField } from "@gryt/ui";
-import { useMemo, useState } from "react";
-import { PiBugFill, PiChatCircleDotsFill, PiPaperPlaneRightFill } from "react-icons/pi";
-
-import { useDiagnostics } from "../lib/reports/diagnostics";
-import { recentLogs } from "../lib/reports/logs";
 import {
   buildReport,
   describeAttached,
   MESSAGE_MAX,
   type Report,
   type ReportType,
-} from "../lib/reports/report";
+} from "@gryt/core";
+import { Alert, Button, Checkbox, Dialog, Divider, TextField } from "@gryt/ui";
+import { useMemo, useState } from "react";
+import { PiBugFill, PiChatCircleDotsFill, PiPaperPlaneRightFill } from "react-icons/pi";
+
+import { useDiagnostics } from "../lib/reports/diagnostics";
+import { recentLogs } from "../lib/reports/logs";
 import { submitReport } from "../lib/reports/submit";
 import { useReportForm } from "../lib/reports/useReportForm";
 
