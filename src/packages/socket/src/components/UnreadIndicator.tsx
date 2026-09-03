@@ -35,18 +35,11 @@ export function UnreadIndicator({
           // quieter than "something happened here". A step 4 pill measured 1.35:1
           // against the sidebar — the number floated and the pill was invisible.
           backgroundColor: "var(--gryt-accent-9)",
-          /*
-           * Black or white on that fill, whichever the fill is not.
-           *
-           * There is no on-accent token in the scale, and the accent is the
-           * person's own choice, so neither colour is safe to hardcode: white
-           * on a yellow accent is unreadable and black on a navy one is. The
-           * multiplication is the standard trick for a branchless decision in
-           * CSS — anything above the lightness threshold clamps to 0 and
-           * anything below it to 1 — and chroma 0 keeps the result neutral
-           * rather than a tinted grey. Measured at 7.6:1 on the default accent.
-           */
-          color: "oklch(from var(--gryt-accent-9) clamp(0, (0.62 - l) * 1000, 1) 0 h)",
+          // The theme's own answer to what reads on the accent, which is what
+          // the server rail already writes its own badge in. This computed the
+          // same thing from the accent's lightness for a while, which was a
+          // clever way of not knowing the token was there.
+          color: "var(--gryt-on-accent)",
           fontSize: 10,
           fontWeight: 700,
           lineHeight: 1,
