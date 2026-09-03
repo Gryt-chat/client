@@ -25,6 +25,13 @@ interface UseServerReportsParams {
    * never asked, so their badge stayed empty. GRYT-844.
    *
    * Acting on a report stays gated on `manage_reports`, inside the panel.
+   *
+   * Pass `has("view_reports")`, not `can("view_reports")`. GRYT-844 corrected
+   * which permission this asks about and left the timing alone, so the same
+   * toast came back for a second reason: `can` answers true until the server
+   * says no, `server:details` has not arrived the first time this runs, and a
+   * guest emitted anyway. `has` waits for the grant. GRYT-874, and the caller
+   * carries the longer note.
    */
   canViewReports: boolean;
 }

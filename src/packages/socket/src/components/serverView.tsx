@@ -302,7 +302,26 @@ export const ServerView = () => {
 
   const { reportsOpen, setReportsOpen, pendingReportCount, memberListMap } = useServerReports({
     currentConnection, accessToken, currentlyViewingServer, memberLists,
-    canViewReports: viewerPermissions.can("view_reports"),
+    /* `has`, not `can`, and this is the one place that difference matters.
+     *
+     * `can` answers true while the server has not said otherwise, which is
+     * right for deciding whether to offer a button: the worst case is a button
+     * that comes back refused. This is not that. It drives an automatic
+     * `reports:list` on join, and `server:details` has not arrived yet at that
+     * moment, so `can` said yes to everybody — guests included. The refusal
+     * came back as a toast reading "You do not have permission to do that
+     * (view_reports)", as the first thing a new member saw, for a request they
+     * never made.
+     *
+     * GRYT-844 fixed which permission this asks about. It did not fix asking
+     * before the answer exists. `has` is false until the server actually grants
+     * it, which is what an unprompted background request should wait for.
+     *
+     * The cost is a server too old to send a permission list at all: nobody
+     * there gets the badge count now. That server also cannot tell us who may
+     * read the queue, so asking on their behalf was a guess that produced an
+     * error toast about a third of the time. GRYT-874. */
+    canViewReports: viewerPermissions.has("view_reports"),
   });
 
   const viewingHost = currentlyViewingServer?.host;
