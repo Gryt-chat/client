@@ -45,8 +45,20 @@ export function useSidebarEditor({
   // dropdown is on a template so switching back does not lose what was drawn.
   const [sheetScopeRules, setSheetScopeRules] = useState<ChannelRule[]>([]);
   const [scopeLoading, setScopeLoading] = useState(false);
+  /*
+   * What this channel could be pointed at, by name.
+   *
+   * Off `server:channels:scope`, which needs the same `manage_channels` as
+   * opening this dialog. It used to come from `server:permissions:templates`,
+   * which needs `manage_roles` — so a moderator who may arrange channels and
+   * not set policy had the list refused and was offered Everyone and Custom
+   * with no way to learn that any template existed.
+   *
+   * Names and ids only. What a template decides is still `manage_roles`, and
+   * the templates tab is still where it is read.
+   */
   const [permissionTemplates, setPermissionTemplates] = useState<
-    { id: string; name: string | null; isSystem: boolean; rules: ChannelRule[] }[]
+    { id: string; name: string | null; isSystem: boolean }[]
   >([]);
   const [channelPermissions, setChannelPermissions] = useState<string[]>([]);
   const [sheetSpacerHeight, setSheetSpacerHeight] = useState("16");
@@ -163,21 +175,13 @@ export function useSidebarEditor({
     let cancelled = false;
     setScopeLoading(true);
 
-    const onTemplates = (payload: {
-      permissions?: string[];
-      templates?: { id: string; name: string | null; isSystem: boolean; rules: ChannelRule[] }[];
-    }) => {
-      if (cancelled) return;
-      setPermissionTemplates(payload?.templates ?? []);
-      if (payload?.permissions?.length) setChannelPermissions(payload.permissions);
-    };
-
     const onScope = (payload: {
       channelId?: string;
       scopeId?: string | null;
       isTemplate?: boolean;
       permissions?: string[];
       rules?: ChannelRule[];
+      templates?: { id: string; name: string | null; isSystem: boolean }[];
     }) => {
       // The reply names the channel it is about. Without this check, opening
       // one channel and quickly opening another paints the first one's rules
@@ -185,18 +189,18 @@ export function useSidebarEditor({
       if (cancelled || payload?.channelId !== channelId) return;
       setSheetScopeChoice(scopeChoiceValue(payload.scopeId ?? null, Boolean(payload.isTemplate)));
       setSheetScopeRules(payload.rules ?? []);
+      // Absent from a server too old to send it, which leaves the dropdown as
+      // it was before: Everyone and Custom.
+      setPermissionTemplates(payload.templates ?? []);
       if (payload.permissions?.length) setChannelPermissions(payload.permissions);
       setScopeLoading(false);
     };
 
-    currentConnection.on("server:permissions:templates", onTemplates);
     currentConnection.on("server:channels:scope", onScope);
-    currentConnection.emit("server:permissions:templates:list", { accessToken });
     currentConnection.emit("server:channels:scope:get", { accessToken, channelId });
 
     return () => {
       cancelled = true;
-      currentConnection.off("server:permissions:templates", onTemplates);
       currentConnection.off("server:channels:scope", onScope);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
