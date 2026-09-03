@@ -107,11 +107,7 @@ export function useSidebarEditor({
       setSheetMaxBitrate(ch?.maxBitrate ? String(ch.maxBitrate) : "");
       setSheetEsportsMode(ch?.eSportsMode || false);
       setSheetTextInVoice(ch?.textInVoice || false);
-      // The scope and its rules do not ride along on server:details, because a
-      // member who can see the channel is not necessarily allowed to read who
-      // else can. They are fetched when the editor opens instead.
-      setSheetScopeChoice(EVERYONE_VALUE);
-      setSheetScopeRules([]);
+      // The scope and its rules are not reset here. See the effect below.
     } else if (selectedSidebarItem.kind === "spacer") {
       setSheetSpacerHeight(String(selectedSidebarItem.spacerHeight ?? 16));
     } else if (selectedSidebarItem.kind === "separator") {
@@ -162,6 +158,25 @@ export function useSidebarEditor({
     selectedSidebarItem?.kind === "channel"
       ? selectedSidebarItem.channelId ?? selectedSidebarItem.id
       : null;
+
+  /*
+   * Clear the scope when a different channel is opened, and only then.
+   *
+   * The scope and its rules do not ride along on `server:details`, because a
+   * member who can see a channel is not necessarily allowed to read who else
+   * can. They are fetched when the editor opens, by the effect below.
+   *
+   * This used to sit in the effect above, which depends on
+   * `selectedSidebarItem` — a fresh object every time `serverDetailsList`
+   * changes identity. Saving a scope makes the server broadcast
+   * `server:details`, so the save reset the dropdown to Everyone a moment
+   * after setting it, and the setting looked like it had not taken (GRYT-892).
+   * The channel id is a string, so it only changes when the channel does.
+   */
+  useEffect(() => {
+    setSheetScopeChoice(EVERYONE_VALUE);
+    setSheetScopeRules([]);
+  }, [editingChannelId]);
 
   useEffect(() => {
     if (!editDialogOpen) return;
@@ -214,7 +229,23 @@ export function useSidebarEditor({
    * it — the server refuses to take a scope on `server:channels:upsert` for the
    * same reason.
    */
-  const saveChannelScope = useCallback(() => {
+  /*
+   * `choice` and `rules` are arguments rather than only state because a caller
+   * that changes one of them and saves in the same tick cannot wait for the
+   * state to arrive.
+   *
+   * This function is held in a ref that is reassigned during render, so calling
+   * it from an event handler runs the closure the *last* render built — with
+   * the value the control had before it was changed. The dropdown did that, and
+   * since the previous value is almost always `everyone`, every attempt to
+   * restrict a channel sent "clear the scope", stored it, and echoed back a
+   * dropdown reading Everyone (GRYT-892).
+   *
+   * Passing the value through the call is what makes that impossible rather
+   * than unlikely. The debounced callers still pass nothing and read state,
+   * which is correct for them: 600ms later the render has happened.
+   */
+  const saveChannelScope = useCallback((choice?: string, rules?: ChannelRule[]) => {
     const item = selectedItemRef.current;
     if (!currentlyViewingServer || item?.kind !== "channel") return;
     if (!currentConnection?.connected) return toast.error("Not connected to the server yet.");
@@ -225,7 +256,10 @@ export function useSidebarEditor({
     currentConnection.emit("server:channels:scope:set", {
       accessToken,
       channelId,
-      ...scopeSetPayload(scopeChoiceFromValue(sheetScopeChoice), sheetScopeRules),
+      ...scopeSetPayload(
+        scopeChoiceFromValue(choice ?? sheetScopeChoice),
+        rules ?? sheetScopeRules,
+      ),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentlyViewingServer, currentConnection, sheetScopeChoice, sheetScopeRules]);
