@@ -11,6 +11,7 @@ import {
   removeServerAccessToken,
   removeServerRefreshToken,
   setServerAccessToken,
+  setServerFileToken,
 } from "@/common";
 import { playNotificationSound, preloadNotificationSound } from "@/lib/notificationSound";
 import {
@@ -254,8 +255,12 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
 
       // ---- Token lifecycle ----
 
-      socket.on("token:refreshed", (refreshInfo: { accessToken: string }) => {
+      socket.on("token:refreshed", (refreshInfo: { accessToken: string; fileToken?: string }) => {
         setServerAccessToken(host, refreshInfo.accessToken);
+        // Re-stored with the access token. A file token lasts hours rather than
+        // minutes, so a session that keeps refreshing never reaches the point
+        // where its pictures start failing.
+        if (refreshInfo.fileToken) setServerFileToken(host, refreshInfo.fileToken);
         onTokenRefreshedRef.current();
 
         setServerDetailsList(prev => {

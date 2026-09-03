@@ -10,6 +10,7 @@ import {
   type PendingInvite,
   readPendingInvite,
   setServerAccessToken,
+  setServerFileToken,
   setServerRefreshToken,
   useAccount,
   writePendingInvite,
@@ -137,6 +138,7 @@ export function App() {
       }
 
       setServerAccessToken(host, result.joinInfo.accessToken);
+      if (result.joinInfo.fileToken) setServerFileToken(host, result.joinInfo.fileToken);
       if (result.joinInfo.refreshToken) setServerRefreshToken(host, result.joinInfo.refreshToken);
 
       addServer({ host, name: host }, true);

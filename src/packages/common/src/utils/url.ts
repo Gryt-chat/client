@@ -17,6 +17,8 @@
 
 const SCHEME_KEY = "serverSchemeOverrides";
 
+import { getServerFileToken } from "./tokenStorage";
+
 export type Scheme = "http" | "https";
 
 function readOverrides(): Record<string, Scheme> {
@@ -187,12 +189,29 @@ export function getServerWsBase(host: string): string {
   return `${schemeFor(host) === "https" ? "wss" : "ws"}://${host}`;
 }
 
+/**
+ * The URL for a stored file, carrying the token that is allowed to read it.
+ *
+ * The token is in the query string rather than a header because most of these
+ * become `<img src>` — avatars in the member list, pictures in the chat, a
+ * group's icon — and an image element has no way to send one. Everything that
+ * builds one of these URLs goes through here, which is why adding the
+ * credential was a change to one function rather than to twenty call sites.
+ *
+ * A missing token still returns a URL. The server answers 401 and the picture
+ * fails, which is the same thing that happens to a token that expired, and is
+ * better than a call site having to decide what to render instead.
+ */
 export function getUploadsFileUrl(
   host: string,
   fileId: string,
   opts?: { thumb?: boolean }
 ): string {
   const base = getServerHttpBase(host);
-  const q = opts?.thumb ? "?thumb=1" : "";
-  return `${base}/api/uploads/files/${fileId}${q}`;
+  const params = new URLSearchParams();
+  if (opts?.thumb) params.set("thumb", "1");
+  const token = getServerFileToken(host);
+  if (token) params.set("t", token);
+  const q = params.toString();
+  return `${base}/api/uploads/files/${fileId}${q ? `?${q}` : ""}`;
 }

@@ -10,9 +10,11 @@ import {
   getStoredWorn,
   getUploadsFileUrl,
   removeServerAccessToken,
+  removeServerFileToken,
   removeServerRefreshToken,
   setMentionCounts,
   setServerAccessToken,
+  setServerFileToken,
   setServerRefreshToken,
 } from "@/common";
 import {
@@ -224,8 +226,11 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     });
   });
 
-  socket.on("server:joined", (joinInfo: { accessToken: string; refreshToken?: string; nickname: string; avatarFileId?: string | null; avatarWorn?: string | null }) => {
+  socket.on("server:joined", (joinInfo: { accessToken: string; fileToken?: string; refreshToken?: string; nickname: string; avatarFileId?: string | null; avatarWorn?: string | null }) => {
     setServerAccessToken(host, joinInfo.accessToken);
+    // Before anything renders. Every avatar and every picture reaches for this,
+    // so storing it late means a screen of broken images on the first join.
+    if (joinInfo.fileToken) setServerFileToken(host, joinInfo.fileToken);
 
     // Say what key to encrypt to us here (GRYT-727). Not awaited: nothing else
     // in this handler depends on it, and a key that never arrives means no
@@ -359,6 +364,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     // kicked client mint a new access token and walk straight back in — the
     // handler immediately below this one has always removed both.
     removeServerAccessToken(host);
+    removeServerFileToken(host);
     removeServerRefreshToken(host);
 
     window.dispatchEvent(new CustomEvent("server_voice_disconnect", {
