@@ -45,6 +45,7 @@
     "test:alone-in-call": "node scripts/check-alone-in-call.mjs",
     "test:fake-server-events": "node scripts/check-fake-server-events.mjs",
     "test:tile-contrast": "node scripts/check-tile-contrast.mjs",
+    "test:embed-cards": "node scripts/check-embed-cards.mjs",
     "test:fake-participants": "node scripts/check-fake-participants.mjs",
     "test:narrow-layout": "node scripts/check-narrow-layout.mjs",
     "test:permission-grid": "node scripts/check-permission-grid.mjs",

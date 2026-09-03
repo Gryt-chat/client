@@ -13,6 +13,63 @@ export interface LinkPreviewData {
   imageHeight: number | null;
   siteName: string | null;
   favicon: string | null;
+  /* Everything below arrives from a server new enough to send it. An older
+     server answers without these fields, so each is optional here and the card
+     is written to look right when they are all missing. */
+  imageAlt?: string | null;
+  /** The colour the page declares for itself, used when we know no brand. */
+  themeColor?: string | null;
+  /** `og:type`: "article", "video.other", "music.song". */
+  type?: string | null;
+  author?: string | null;
+  publishedAt?: string | null;
+  oembedUrl?: string | null;
+  /** What the page answered with, so a 404 can say so rather than guess. */
+  status?: number | null;
+}
+
+/**
+ * How much of a card a preview can fill.
+ *
+ * A wide image wants to sit under the text at full width. A small or square
+ * one wants to be a thumbnail beside it. No image wants no space set aside for
+ * a picture at all. Drawing all three the same way is what produced a hostname
+ * next to an empty grey rectangle.
+ */
+export type LinkCardLayout = "large" | "thumbnail" | "text" | "bare";
+
+/** Wide enough, and landscape enough, to be a header rather than a thumbnail. */
+const LARGE_IMAGE_MIN_WIDTH = 400;
+const LARGE_IMAGE_MIN_ASPECT = 1.2;
+
+export function getLinkCardLayout(data: LinkPreviewData): LinkCardLayout {
+  const hasText = Boolean(data.title || data.description);
+  if (!data.image) return hasText ? "text" : "bare";
+
+  const w = data.imageWidth;
+  const h = data.imageHeight;
+  /* Unknown dimensions count as large. A site that sets og:image and says
+     nothing about its size has almost always set a share card, and the ones
+     that have not lose less by being drawn big than a real share card loses by
+     being shrunk into a corner. */
+  if (!w || !h) return "large";
+  if (w >= LARGE_IMAGE_MIN_WIDTH && w / h >= LARGE_IMAGE_MIN_ASPECT) return "large";
+  return hasText ? "thumbnail" : "large";
+}
+
+/**
+ * Why a page gave us nothing, in words worth showing somebody.
+ *
+ * Only for statuses that mean something to a reader. A 500 is the site's
+ * problem and saying so helps nobody, so it returns null and the card falls
+ * back to showing the link on its own.
+ */
+export function describePreviewFailure(status: number | null | undefined): string | null {
+  if (status == null) return null;
+  if (status === 401 || status === 403) return "Private or sign-in only";
+  if (status === 404 || status === 410) return "Page not found";
+  if (status === 429) return "The site is rate limiting us";
+  return null;
 }
 
 function safeParseUrl(url: string): URL | null {

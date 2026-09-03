@@ -964,10 +964,13 @@ body {
   background: var(--gryt-neutral-3);
 }
 
+/* The site's own colour where there is one to use, and the app's accent
+   otherwise. LinkPreviewCard sets --link-embed-accent from the brand it knows
+   or the theme-color the page declared. */
 .link-embed-card-accent {
   width: 4px;
   flex-shrink: 0;
-  background: var(--gryt-accent-9);
+  background: var(--link-embed-accent, var(--gryt-accent-9));
 }
 
 .link-embed-card-inner {
@@ -977,11 +980,67 @@ body {
   min-width: 0;
 }
 
+/* Text and thumbnail sit side by side; a large image goes underneath both. */
+.link-embed-card-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
 .link-embed-card-body {
   padding: 10px 14px;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* A square or portrait image beside the text rather than under it. Cropping it
+   to a square keeps a column of cards aligned when the images are not. */
+.link-embed-card-thumb {
+  width: 80px;
+  height: 80px;
+  flex-shrink: 0;
+  margin: 10px 14px 10px 0;
+  border-radius: var(--gryt-radius-sm);
+  overflow: hidden;
+  background: var(--gryt-neutral-3);
+}
+
+.link-embed-card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Read out of the path rather than the page: `owner/repo`, `r/programming`.
+   It is the title when the page gave us none, and a subtitle when it did. */
+.link-embed-card-detail {
+  font-size: 12.5px;
+  color: var(--gryt-neutral-11);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.link-embed-card-failure {
+  font-size: 12.5px;
+  color: var(--gryt-neutral-10);
+  font-style: italic;
+}
+
+/* No picture, so no room set aside for one. The card is as tall as its words. */
+.link-embed-card-text .link-embed-card-inner,
+.link-embed-card-bare .link-embed-card-inner {
+  min-height: 0;
+}
+
+.link-embed-card-bare .link-embed-card-body {
+  padding: 8px 14px;
 }
 
 .link-embed-card-site {
@@ -995,6 +1054,16 @@ body {
   height: 16px;
   border-radius: 2px;
   flex-shrink: 0;
+}
+
+/* A real logo, tinted to the site's colour, for the sites we know by name. It
+   replaces the favicon rather than sitting next to it: a 16px .ico scaled up
+   is the blurry thing this is here to avoid. */
+.link-embed-card-brand {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  color: var(--link-embed-accent, var(--gryt-neutral-9));
 }
 
 .link-embed-card-hostname {
@@ -1043,11 +1112,9 @@ body {
   display: block;
 }
 
-.link-embed-card-image-placeholder {
-  width: 100%;
-  height: 100%;
-  background: var(--gryt-neutral-3);
-}
+/* There was a .link-embed-card-image-placeholder here: a grey rectangle drawn
+   at the picture's size whenever a page had no picture. The card now picks a
+   layout without one instead, so nothing needs a stand-in. */
 
 /* ── Media Players ────────────────────────────────────────── */
 
