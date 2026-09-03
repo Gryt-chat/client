@@ -725,21 +725,18 @@ export const ServerView = () => {
    * step, and the mobile layout already shows what that costs.
    */
   const chatView = (
-    /* A column that fills, not a fragment.
-       Both places that render this drop it straight into a `display: flex`
-       row, so a fragment hands that row two children and the chat stops being
-       the thing that grows — it collapses to its content width and the
-       messages render one character per line. */
-    <div className="flex flex-col" style={{ flex: 1, minWidth: 0, minHeight: 0 }}>
-      {/* Below the channel header and above the messages, so it is inside the
-          server's area rather than in the app's own chrome. Anything painted
-          in Gryt's chrome should only ever be Gryt, and this is somebody
-          else's machine talking (GRYT-896). */}
-      <ServerNoticePanel
-        host={currentlyViewingServer?.host}
-        serverName={currentlyViewingServer?.name || currentlyViewingServer?.host || "this server"}
-      />
       <ChatView
+        /* Under the channel header, not above it. Above the header is app
+           chrome, and this is somebody else's machine talking — putting it
+           there would undo the reason it is attributed at all (GRYT-896). */
+        underHeader={
+          <ServerNoticePanel
+            host={currentlyViewingServer?.host}
+            serverName={
+              currentlyViewingServer?.name || currentlyViewingServer?.host || "this server"
+            }
+          />
+        }
         chatMessages={visibleChatMessages}
         conversationKey={activeConversationId}
         sealing={activeDm ? sealing : undefined}
@@ -772,7 +769,6 @@ export const ServerView = () => {
         hasOlderMessages={hasOlderMessages}
         {...(isLoadingMessages !== undefined && { isLoadingMessages })}
       />
-    </div>
   );
 
   return (

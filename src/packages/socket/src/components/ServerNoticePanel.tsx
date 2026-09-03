@@ -70,13 +70,16 @@ export function ServerNoticePanel({
       className="flex items-start gap-3 rounded-(--gryt-radius-md) px-4 py-3 mx-3 mt-2"
       style={{
         border: "1px solid var(--gryt-border)",
-        borderLeft: "3px solid var(--gryt-warning-11, var(--gryt-danger-11))",
-        background: "var(--gryt-neutral-3)",
+        borderLeft: "3px solid var(--gryt-warning-11)",
+        /* The warning tint, not the plain surface. A notice on `neutral-3`
+           reads as another panel; the point of this one is that it is the one
+           thing on the screen asking for something. */
+        background: "var(--gryt-warning-3)",
       }}
     >
       <span
         className="shrink-0"
-        style={{ color: "var(--gryt-warning-11, var(--gryt-danger-11))", marginTop: 2 }}
+        style={{ color: "var(--gryt-warning-11)", marginTop: 2 }}
       >
         <PiWarningFill size={16} />
       </span>

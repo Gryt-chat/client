@@ -48,6 +48,7 @@ export const ChatView = memo(({
   memberNames,
   serverName,
   headerAction,
+  underHeader,
   flush,
   isRateLimited,
   rateLimitCountdown,
@@ -101,6 +102,13 @@ export const ChatView = memo(({
    * "start a group" here, and a channel puts nothing.
    */
   headerAction?: React.ReactNode;
+  /**
+   * Rendered directly under the channel header.
+   *
+   * A slot rather than the panel itself, because ChatView does not know about
+   * servers — it is the same component for a DM.
+   */
+  underHeader?: React.ReactNode;
   /**
    * Drawn flush to the window rather than as a card.
    *
@@ -340,6 +348,8 @@ export const ChatView = memo(({
               {headerAction && <div style={{ marginLeft: "auto" }}>{headerAction}</div>}
             </div>
           )}
+
+          {underHeader}
 
           {/* Above the messages rather than under the header, so it is the
               first thing read on the way down to the composer, and so it
