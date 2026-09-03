@@ -59,7 +59,10 @@ export * from "./src/utils/betaBuild";
 export * from "./src/utils/imageCompress";
 export * from "./src/utils/invite";
 export * from "./src/utils/preLoginUrl";
-export * from "./src/utils/randomName";
+/* The name pool moved to @gryt/core: the phone had the same 152 words and
+   both files said to keep the other in step by hand. Re-exported from here
+   so the consumers that import it from `@/common` do not all have to move. */
+export { NAME_POOL, pickRandomName } from "@gryt/core";
 export * from "./src/utils/shareableHost";
 export * from "./src/utils/tokenStorage";
 export * from "./src/utils/url";
