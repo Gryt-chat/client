@@ -46,6 +46,8 @@ export function AppearanceSettings() {
     setVoiceTwoPersonLayout,
     googleFontsEnabled,
     setGoogleFontsEnabled,
+    officialServerHidden,
+    setOfficialServerHidden,
   } = useSettings();
 
   const { activeTheme } = useCustomThemes();
@@ -99,6 +101,25 @@ export function AppearanceSettings() {
             underneath.
           </p>
         </div>
+      </SettingGroup>
+
+      {/* The only way back once somebody presses "Hide forever" in the
+          add-server dialog. That control removes the row completely rather than
+          leaving a smaller one behind — a suggestion you have declined should
+          stop being on screen — so the undo has to live somewhere it can be
+          found on purpose, and a preference about what the UI offers belongs
+          with the rest of them. */}
+      <SettingGroup
+        title="The server we run"
+        description="Gryt runs one server itself, and the dialog for adding a server offers it when you have nothing to paste. Turning this off hides that row for good on this device."
+      >
+        <label className="flex cursor-pointer items-center gap-3 text-sm">
+          <Switch
+            checked={!officialServerHidden}
+            onCheckedChange={(on) => setOfficialServerHidden(!on)}
+          />
+          Offer it when adding a server
+        </label>
       </SettingGroup>
 
       {/* Under Theme, because it is a thing about themes rather than about

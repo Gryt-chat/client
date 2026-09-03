@@ -3,7 +3,6 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import {
   PiCaretRightBold,
-  PiEyeSlashFill,
   PiHouseFill,
   PiInfoFill,
   PiLinkSimpleBold,
@@ -346,19 +345,6 @@ export function AddNewServer({
   const showOfficial =
     !!officialServer && !servers[officialServer.host] && !officialServerHidden;
 
-  /**
-   * The line that stands in for the row once it is hidden.
-   *
-   * Kept rather than removing every trace, because a card that disappears with
-   * no way back is a trap. It is one quiet line against a tinted card, so the
-   * thing they asked to stop seeing has stopped being a thing they see.
-   *
-   * Not shown when they are already on that server: they did not hide it to
-   * get rid of a server they use, and the row would not be there anyway.
-   */
-  const showHiddenNote =
-    officialServerHidden && !!officialServer && !servers[officialServer.host];
-
   /* Cycles only while the field is empty and only while the dialog is open. */
   const [exampleIndex, setExampleIndex] = useState(0);
   useEffect(() => {
@@ -520,10 +506,6 @@ export function AddNewServer({
                   </>
                 )}
 
-                {showHiddenNote && (
-                  <HiddenOfficialNote onRestore={() => setOfficialServerHidden(false)} />
-                )}
-
                 {/* Only once there is something to manage. Creating and
                     managing are different jobs and this dialog is for the
                     first, but somebody who already hosts one and came here
@@ -595,10 +577,6 @@ export function AddNewServer({
                     onPick={() => pickOfficialServer(officialServer.host)}
                     onHide={() => setOfficialServerHidden(true)}
                   />
-                )}
-
-                {showHiddenNote && serverHost.length === 0 && (
-                  <HiddenOfficialNote onRestore={() => setOfficialServerHidden(false)} />
                 )}
 
                 {/* The preview, and it stays a preview. There used to be a
@@ -921,39 +899,6 @@ function OfficialServerOffer({
         </button>
       </div>
       <OfficialServerCard server={server} onPick={onPick} />
-    </div>
-  );
-}
-
-/**
- * What is left once somebody hides the offer.
- *
- * Removing every trace would be a trap: this row is the only place the address
- * appears, and somebody who hid it by accident would have nothing to press. One
- * quiet line against a tinted card is small enough that the thing they asked to
- * stop seeing has stopped being a thing they see.
- */
-function HiddenOfficialNote({ onRestore }: { onRestore: () => void }) {
-  return (
-    <div
-      className="flex items-center gap-2 rounded-(--gryt-radius-md) px-3 py-2 text-xs"
-      style={{
-        color: "var(--gryt-neutral-11)",
-        border: "1px dashed var(--gryt-border)",
-      }}
-    >
-      <PiEyeSlashFill size={13} style={{ flexShrink: 0 }} />
-      <span>
-        The Gryt server is hidden.{" "}
-        <button
-          type="button"
-          onClick={onRestore}
-          className="cursor-pointer appearance-none border-0 bg-transparent p-0 underline"
-          style={{ color: "var(--gryt-accent-11)" }}
-        >
-          Show it again
-        </button>
-      </span>
     </div>
   );
 }
