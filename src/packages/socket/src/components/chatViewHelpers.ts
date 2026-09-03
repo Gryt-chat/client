@@ -73,6 +73,15 @@ export function buildMessageMetadata(
     // every other participant saw — you read "Sivert" while the server, and so
     // everybody else, had "Unknown". Hiding that made it look like a display
     // quirk rather than the profile desync it was (GRYT-58).
+    /* Which arrow the event row draws. Read off the text the server posts
+       rather than a field, because the server sends these as ordinary message
+       rows and adding a column for two verbs is not worth a migration. An
+       unrecognised system message falls back to the "in" arrow, which is the
+       right guess for anything that is not a departure. */
+    const systemEvent: "joined" | "left" | undefined = isSystem
+      ? (/\bleft the server\b/.test(m.text ?? "") ? "left" : "joined")
+      : undefined;
+
     const senderName = isSystem ? "System" : getSenderName(m);
     const avatarUrl = isSystem ? undefined : getSenderAvatarUrl(m);
     const isFirstEdited = isFirstInGroup && !!m.edited_at;
@@ -89,6 +98,7 @@ export function buildMessageMetadata(
       isSelf,
       isFirstEdited,
       isSystem,
+      systemEvent,
       isWebhook,
       isBot: !isSystem && !isWebhook && m.sender_is_bot === true,
       sender,

@@ -22,6 +22,7 @@ jobs:
           cache: yarn
       - run: yarn install --frozen-lockfile
       - run: yarn test:updater-bridge
+      - run: yarn test:server-notice
       - run: yarn test:identity-vault
       - run: yarn test:message-vault
       - run: yarn test:message-key

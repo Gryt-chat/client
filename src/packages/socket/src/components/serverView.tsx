@@ -48,6 +48,7 @@ import { ReportsPanel } from "./ReportsPanel";
 import { ReportUserDialog } from "./ReportUserDialog";
 import { ServerConfirmDialogs } from "./ServerConfirmDialogs";
 import { ServerLoadingStates } from "./ServerLoadingStates";
+import { ServerNoticePanel } from "./ServerNoticePanel";
 import { ServerSidebar } from "./ServerSidebar";
 import { SidebarEditDialog } from "./SidebarEditDialog";
 import { VoiceSheetButton } from "./VoiceSheetButton";
@@ -724,6 +725,20 @@ export const ServerView = () => {
    * step, and the mobile layout already shows what that costs.
    */
   const chatView = (
+    /* A column that fills, not a fragment.
+       Both places that render this drop it straight into a `display: flex`
+       row, so a fragment hands that row two children and the chat stops being
+       the thing that grows — it collapses to its content width and the
+       messages render one character per line. */
+    <div className="flex flex-col" style={{ flex: 1, minWidth: 0, minHeight: 0 }}>
+      {/* Below the channel header and above the messages, so it is inside the
+          server's area rather than in the app's own chrome. Anything painted
+          in Gryt's chrome should only ever be Gryt, and this is somebody
+          else's machine talking (GRYT-896). */}
+      <ServerNoticePanel
+        host={currentlyViewingServer?.host}
+        serverName={currentlyViewingServer?.name || currentlyViewingServer?.host || "this server"}
+      />
       <ChatView
         chatMessages={visibleChatMessages}
         conversationKey={activeConversationId}
@@ -757,6 +772,7 @@ export const ServerView = () => {
         hasOlderMessages={hasOlderMessages}
         {...(isLoadingMessages !== undefined && { isLoadingMessages })}
       />
+    </div>
   );
 
   return (

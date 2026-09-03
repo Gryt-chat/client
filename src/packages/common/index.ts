@@ -45,6 +45,7 @@ export * from "./src/hooks/SingletonHooks";
 export * from "./src/hooks/useAccount";
 export * from "./src/hooks/useCustomThemes";
 export * from "./src/hooks/useMentionTracker";
+export * from "./src/hooks/useServerNotice";
 export * from "./src/hooks/useTheme";
 export * from "./src/hooks/useThemeEditor";
 export * from "./src/hooks/useUnreadBadge";

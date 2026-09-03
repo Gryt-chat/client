@@ -1,6 +1,7 @@
 import { Avatar, Chip, PreviewCard, Tooltip } from "@gryt/ui";
 import { AnimatePresence, motion } from "motion/react";
 import { forwardRef, memo, useCallback, useRef, useState } from "react";
+import { PiSignInBold, PiSignOutBold } from "react-icons/pi";
 
 import { getUploadsFileUrl } from "@/common";
 
@@ -32,6 +33,8 @@ export interface MessageMeta {
   isSelf: boolean;
   isFirstEdited: boolean;
   isSystem: boolean;
+  /** Which way the arrow points on a system event row. */
+  systemEvent?: "joined" | "left";
   isWebhook: boolean;
   /** Whether a bot wrote it. Server-derived; see BotTag. */
   isBot?: boolean;
@@ -177,66 +180,59 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
       {meta.dayBreak && <DateSeparator date={meta.dayBreak} />}
 
       {meta.isSystem ? (
-        <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange} onReaction={(src) => onReaction(src, m)} serverHost={serverHost}>
-        <motion.div
-          animate={{ marginBottom: m.reactions?.length ? 30 : 0, background: bgColor }}
-          transition={{ type: "spring", stiffness: 500, damping: 30 }}
-          style={{
-            borderRadius: "var(--gryt-radius-md)",
-            margin: "12px -6px 0",
-          }}
+        /* An event, not a message (GRYT-896).
+
+           It used to render in a full message slot: the word "System" where a
+           nickname goes, in the same weight and size, a 51px avatar column held
+           empty so the absence read as a missing avatar rather than a different
+           kind of thing, a timestamp line of its own — and reactions and a
+           hover toolbar, so you could react to somebody joining.
+
+           One quiet row now. The avatar column carries a small arrow instead of
+           standing empty, so the space is doing something and the row is
+           unmistakably not somebody talking. No name line: there is no author.
+           The time trails the text.
+
+           The left edge every message shares stays where it is. A centred rule
+           would say "not a message" more loudly and break that edge, and a
+           channel where people come and go is exactly where a run of rules
+           chops the conversation into fragments. */
+        <div
+          className="flex gap-3 items-baseline"
+          ref={rowRef}
+          data-message-id={m.message_id}
+          style={{ width: "100%", padding: "3px 6px", marginTop: 4 }}
         >
-            <div className="flex gap-3 items-start" ref={rowRef} data-message-id={m.message_id} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave} style={{
-                width: "100%",
-                padding: "2px 6px",
-                cursor: "default",
-                position: "relative",
-              }}>
-              <AnimatePresence>
-                {showToolbar && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9, y: 4 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.9, y: 4 }}
-                    transition={{ type: "spring", stiffness: 500, damping: 25 }}
-                    style={{ position: "absolute", top: -16, right: 8, zIndex: 10 }}
-                  >
-                    <MessageHoverToolbar
-                      onReply={() => onReply(m)}
-                      canDelete={canDelete}
-                      onDelete={canDelete ? () => onDelete(m) : undefined}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-              <div style={{ flexShrink: 0, width: 51 }} />
-              <div className="flex flex-col" style={{ flex: 1, minWidth: 0, position: "relative" }}>
-                <div className="flex items-baseline gap-2" style={{ marginBottom: 2 }}>
-                  <span className="text-sm font-bold" style={{ color: "var(--gryt-neutral-9)" }}>
-                    System
-                  </span>
-                  <MessageTimestamp date={toDate(m.created_at)} />
-                </div>
-                <span className="text-sm" style={{ wordBreak: "break-word" }}>
-                  <MarkdownRenderer
-                    content={m.text}
-                    memberNicknames={memberNicknames}
-                    mentionMembersById={memberList}
-                    serverHost={serverHost}
-                  />
-                </span>
-                <ReactionBadges
-                  reactions={m.reactions}
-                  currentUserId={currentUserId}
-                  currentUserNickname={currentUserNickname}
-                  memberList={memberList}
-                  onReaction={(src) => onReaction(src, m)}
-                  onOpenPicker={handleOpenReactionPicker}
-                />
-              </div>
-            </div>
-          </motion.div>
-        </MessageContextMenu>
+          <span
+            className="flex shrink-0 justify-center"
+            style={{ width: 51, color: "var(--gryt-neutral-9)", position: "relative", top: 2 }}
+            aria-hidden="true"
+          >
+            {meta.systemEvent === "left" ? <PiSignOutBold size={13} /> : <PiSignInBold size={13} />}
+          </span>
+
+          {/* A row rather than a span, because MarkdownRenderer emits a block
+              and the time would otherwise drop to a line of its own — which is
+              a second line for four words, and the thing this treatment exists
+              to stop. Baseline-aligned so the small time sits on the text's
+              baseline rather than the box's. */}
+          <span
+            className="flex flex-wrap items-baseline gap-2 text-sm"
+            style={{ flex: 1, minWidth: 0, color: "var(--gryt-neutral-11)", wordBreak: "break-word" }}
+          >
+            <span style={{ minWidth: 0 }}>
+              <MarkdownRenderer
+                content={m.text}
+                memberNicknames={memberNicknames}
+                mentionMembersById={memberList}
+                serverHost={serverHost}
+              />
+            </span>
+            <span className="text-xs" style={{ opacity: 0.75 }}>
+              <MessageTimestamp date={toDate(m.created_at)} />
+            </span>
+          </span>
+        </div>
       ) : meta.isFirstInGroup ? (
         <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange} onReaction={(src) => onReaction(src, m)} serverHost={serverHost}>
           <div className="flex gap-3 items-start" style={{ width: "100%", marginTop: 12 }}>
