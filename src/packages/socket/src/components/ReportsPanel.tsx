@@ -1,7 +1,7 @@
 import { AlertDialog, Button, Chip, Dialog, IconButton, ScrollArea, Spinner, Tooltip } from "@gryt/ui";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { PiBootFill, PiCheck, PiProhibitFill, PiTrashFill, PiWarningFill } from "react-icons/pi";
+import { PiBootFill, PiCheck, PiProhibitFill, PiTrashFill, PiWarningCircle, PiWarningFill } from "react-icons/pi";
 import type { Socket } from "socket.io-client";
 
 import { getServerAccessToken, getUploadsFileUrl } from "@/common";
@@ -65,6 +65,21 @@ export function ReportsPanel({
   const [reports, setReports] = useState<AggregatedReport[]>([]);
   const [userReports, setUserReports] = useState<AggregatedUserReport[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  /**
+   * Why the queue is not here, when it is not here.
+   *
+   * The spinner used to be the only state between asking and answering, and it
+   * was cleared in exactly one place — the reply. A server that had stopped, a
+   * socket part-way through reconnecting, or a refusal arriving as
+   * `server:error` all left it turning, and a moderator cannot tell that apart
+   * from a queue that is still loading.
+   */
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  /* The handlers below outlive the render they were attached in, so they ask a
+     ref rather than a closure over `isLoading` from whenever that was. */
+  const loadingRef = useRef(false);
+  loadingRef.current = isLoading;
   const [confirmAction, setConfirmAction] = useState<{
     report: AggregatedReport;
     action: "delete" | "delete_all_and_ban";
@@ -80,9 +95,23 @@ export function ReportsPanel({
   const { has } = useServerPermissions(serverHost || "");
 
   const fetchReports = useCallback(() => {
-    if (!socket || !serverHost) return;
+    setLoadError(null);
+
+    /* Said rather than shown as an empty queue. There is nothing to wait for
+       here — no socket, or no token — so starting a spinner would be waiting
+       for a reply nobody asked for. */
+    if (!socket || !socket.connected || !serverHost) {
+      setIsLoading(false);
+      setLoadError("Not connected to this server.");
+      return;
+    }
     const accessToken = getServerAccessToken(serverHost);
-    if (!accessToken) return;
+    if (!accessToken) {
+      setIsLoading(false);
+      setLoadError("Join this server again to see its reports.");
+      return;
+    }
+
     setIsLoading(true);
     socket.emit("reports:list", { accessToken });
   }, [socket, serverHost]);
@@ -100,6 +129,26 @@ export function ReportsPanel({
          out either way. */
       setUserReports(payload.userReports || []);
       setIsLoading(false);
+      setLoadError(null);
+    };
+
+    /*
+     * A refusal, or the socket going away, ends the wait.
+     *
+     * `server:error` is the server's one error channel, so this only listens
+     * while something is actually being waited for — otherwise an unrelated
+     * failure elsewhere in the app would put a message in this panel.
+     */
+    const onServerError = (payload?: { message?: string }) => {
+      if (!loadingRef.current) return;
+      setIsLoading(false);
+      setLoadError(payload?.message || "Couldn't load the reports.");
+    };
+
+    const onDisconnect = () => {
+      if (!loadingRef.current) return;
+      setIsLoading(false);
+      setLoadError("Lost the connection to this server.");
     };
 
     const onResolved = (payload: { messageId: string; action: string; deletedCount?: number }) => {
@@ -139,11 +188,15 @@ export function ReportsPanel({
     socket.on("reports:list", onReportsList);
     socket.on("reports:resolved", onResolved);
     socket.on("reports:user_resolved", onUserResolved);
+    socket.on("server:error", onServerError);
+    socket.on("disconnect", onDisconnect);
 
     return () => {
       socket.off("reports:list", onReportsList);
       socket.off("reports:resolved", onResolved);
       socket.off("reports:user_resolved", onUserResolved);
+      socket.off("server:error", onServerError);
+      socket.off("disconnect", onDisconnect);
     };
   }, [socket]);
 
@@ -241,6 +294,17 @@ export function ReportsPanel({
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Spinner size={24} />
+            </div>
+          ) : loadError ? (
+            /* Not the empty state. An empty queue is good news and this is
+               not news at all — it is the panel admitting it does not know,
+               which is the one thing the spinner could never say. */
+            <div className="flex flex-col items-center justify-center py-12 gap-3">
+              <PiWarningCircle size={32} style={{ color: "var(--gryt-warning-9)" }} />
+              <span className="text-base text-gryt-muted">{loadError}</span>
+              <Button tone="neutral" size="small" onClick={fetchReports}>
+                Try again
+              </Button>
             </div>
           ) : reports.length === 0 && userReports.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 gap-2">
