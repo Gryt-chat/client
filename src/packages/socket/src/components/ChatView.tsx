@@ -33,6 +33,7 @@ export const ChatView = memo(({
   chatMessages,
   conversationKey,
   canSend,
+  canSendHere,
   sendChat,
   editMessage,
   currentUserId,
@@ -64,6 +65,15 @@ export const ChatView = memo(({
   chatMessages: ChatMessage[];
   conversationKey?: string;
   canSend: boolean;
+  /**
+   * Whether the open channel allows posting, as the server resolved it.
+   *
+   * Separate from the server-wide permission below, because a channel scope can
+   * take `send_messages` away from a role that holds it everywhere else — and
+   * the rules that say so are only readable with `manage_channels`, so the
+   * client cannot work it out. Absent means the server is too old to say.
+   */
+  canSendHere?: boolean;
   sendChat: (text: string, files: File[], replyToMessageId?: string) => void;
   editMessage?: (messageId: string, conversationId: string, newText: string) => void;
   currentUserId?: string;
@@ -273,7 +283,9 @@ export const ChatView = memo(({
   // message — the compose box is what goes away, with a line saying why rather
   // than a box that swallows what you type and then errors.
   const { can: mayHere } = useServerPermissions(serverHost || "");
-  const maySend = mayHere("send_messages");
+  // Both have to say yes: the role has to allow posting at all, and this
+  // channel has to be one of the ones it allows it in.
+  const maySend = mayHere("send_messages") && canSendHere !== false;
   const mayRead = mayHere("read_messages");
 
   const editorPlaceholder =

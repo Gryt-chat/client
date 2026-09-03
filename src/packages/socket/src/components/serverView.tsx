@@ -268,7 +268,7 @@ export const ServerView = () => {
   );
 
   const {
-    chatMessages, sealing, canSend, sendChat, editMessage, isLoadingMessages,
+    chatMessages, sealing, canSend, canSendHere, sendChat, editMessage, isLoadingMessages,
     isRateLimited, rateLimitCountdown, isVoiceChannelTextChat,
     canViewVoiceChannelText, activeChannelName, activeChannelType,
     restoreText, clearRestoreText, fetchOlderMessages, isLoadingOlder, hasOlderMessages,
@@ -712,6 +712,7 @@ export const ServerView = () => {
         sealing={activeDm ? sealing : undefined}
         memberNames={memberNames}
         canSend={canSend}
+        canSendHere={canSendHere}
         sendChat={sendChat}
         editMessage={editMessage}
         currentUserId={currentServerUserId}
@@ -832,6 +833,7 @@ export const ServerView = () => {
             sealing={activeDm ? sealing : undefined}
             memberNames={memberNames}
             canSend={canSend}
+            canSendHere={canSendHere}
             sendChat={sendChat}
             editMessage={editMessage}
             currentUserId={currentServerUserId}

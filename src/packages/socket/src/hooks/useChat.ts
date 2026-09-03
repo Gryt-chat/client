@@ -48,6 +48,8 @@ interface UseChatReturn {
   chatMessages: ChatMessage[];
   sealing: SealDecision;
   canSend: boolean;
+  /** Whether the open channel allows posting at all, before anything else. */
+  canSendHere: boolean;
   sendChat: (text: string, files: File[], replyToMessageId?: string) => void;
   editMessage: (messageId: string, conversationId: string, newText: string) => void;
   isLoadingMessages: boolean;
@@ -125,6 +127,12 @@ export function useChat({
     ? serverDetailsList[currentlyViewingServer.host]?.channels?.find((c) => c.id === currentChannelId)
     : undefined;
   const textInVoiceEnabled = activeVoiceChannel?.textInVoice === true;
+  const activeChannel = useMemo(() => {
+    if (!currentlyViewingServer) return undefined;
+    const channels = serverDetailsList[currentlyViewingServer.host]?.channels || [];
+    return channels.find((c) => c.id === activeConversationId);
+  }, [currentlyViewingServer, serverDetailsList, activeConversationId]);
+
   const canSendToVoiceChannel = !isVoiceChannelTextChat || (isConnected && textInVoiceEnabled);
   const canViewVoiceChannelText = !isVoiceChannelTextChat || (isConnected && textInVoiceEnabled);
 
@@ -137,10 +145,22 @@ export function useChat({
    * "No account needed", and then the composer took what they typed, cleared
    * it, and sent nothing.
    */
+  /*
+   * Whether this channel is one they may post in, as the server resolved it.
+   *
+   * Server-wide `send_messages` is not the whole answer: a channel scope can
+   * take it away or hand it out, and those rules are only readable with
+   * `manage_channels`. So the server says, and `undefined` means it is too old
+   * to have an opinion — which has to read as yes, or every channel on an older
+   * server would look locked.
+   */
+  const canSendHere = activeChannel?.canSend !== false;
+
   const canSend = !!currentConnection &&
                   !!activeConversationId &&
                   !!getServerAccessToken(currentlyViewingServer?.host || "") &&
                   canSendToVoiceChannel &&
+                  canSendHere &&
                   !isRateLimited;
 
   const sealing = useConversationSealing({
@@ -352,12 +372,6 @@ export function useChat({
   useEffect(() => {
     setRestoreText(null);
   }, [activeConversationId]);
-
-  const activeChannel = useMemo(() => {
-    if (!currentlyViewingServer) return undefined;
-    const channels = serverDetailsList[currentlyViewingServer.host]?.channels || [];
-    return channels.find((c) => c.id === activeConversationId);
-  }, [currentlyViewingServer, serverDetailsList, activeConversationId]);
 
   const activeChannelName = activeChannel?.name || "";
   const activeChannelType: "text" | "voice" = activeChannel?.type || "text";
@@ -581,6 +595,7 @@ export function useChat({
      */
     sealing: sealing.decision,
     canSend,
+    canSendHere,
     sendChat,
     editMessage,
     isLoadingMessages,
