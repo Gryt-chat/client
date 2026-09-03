@@ -31,6 +31,19 @@ export type Channel = {
    * would look read-only.
    */
   canSend?: boolean;
+  /**
+   * Whether this member may enter this voice channel, resolved by the server.
+   *
+   * Visibility and entry are different questions: a voice channel is visible to
+   * anybody who may read it, and `join_voice` decides who gets in. So a room
+   * can be visible and shut, which the permissions have always allowed and
+   * nothing drew — the row looked open and the refusal came out of the media
+   * stack.
+   *
+   * Absent from an older server, and absent reads as yes for the same reason
+   * `canSend` does.
+   */
+  canJoin?: boolean;
 };
 
 export type SidebarItemKind = "channel" | "separator" | "spacer";
