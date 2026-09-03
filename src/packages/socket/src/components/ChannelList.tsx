@@ -3,7 +3,7 @@ import type { StreamSources } from "@gryt/voice";
 import { useMicrophone } from "@gryt/voice";
 import { AnimatePresence, LayoutGroup, motion, Reorder } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { PiChatCircleFill, PiGameControllerFill, PiGaugeFill, PiKeyboardFill, PiSpeakerHighFill } from "react-icons/pi";
+import { PiChatCircleFill, PiGameControllerFill, PiGaugeFill, PiKeyboardFill, PiLockSimpleFill, PiSpeakerHighFill } from "react-icons/pi";
 
 import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 import { Channel, SidebarItem } from "@/settings/src/types/server";
@@ -168,6 +168,11 @@ export const ChannelList = ({
     // than by having it open — so if one is still counted, it has not been
     // cleared yet and hiding it would lose it.
     const mentions = channel ? mentionCounts?.get(channel.id) ?? 0 : 0;
+    /* A voice room they may see and may not enter. Visibility is
+       `read_messages` and entry is `join_voice`, so this state has always been
+       expressible — the row simply never said so, and the refusal arrived from
+       the media stack after the press. */
+    const locked = channel?.type === "voice" && channel.canJoin === false;
 
     return (
       <div className="flex flex-col items-start w-full relative">
@@ -182,13 +187,23 @@ export const ChannelList = ({
             width: "100%",
             justifyContent: "start",
             overflow: "hidden",
+            // Dimmed rather than disabled. The row is still worth pressing —
+            // it says why — and a disabled button says nothing and cannot be
+            // asked.
+            opacity: locked ? 0.55 : undefined,
           }}
+          title={locked ? "You cannot join this voice channel." : undefined}
           onClick={() => {
             if (channel) onChannelClick(channel);
           }}
         >
           <div className="flex items-center" style={{ flexShrink: 0 }}>
-            {channel?.type === "voice" ? <PiSpeakerHighFill size={16} /> : <PiChatCircleFill size={16} />}
+            {/* The lock replaces the speaker rather than sitting beside it.
+                Two glyphs on a row this narrow read as two things, and there
+                is only one thing to say: this room is not for you. */}
+            {locked
+              ? <PiLockSimpleFill size={16} />
+              : channel?.type === "voice" ? <PiSpeakerHighFill size={16} /> : <PiChatCircleFill size={16} />}
           </div>
           <span className="truncate" style={{ flex: 1, minWidth: 0, textAlign: "left", display: "block" }}>
             <EmojiText text={channel?.name || "(missing channel)"} />

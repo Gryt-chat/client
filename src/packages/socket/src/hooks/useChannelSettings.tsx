@@ -111,7 +111,12 @@ function useHandleChannelClick({
         // The server refuses this too. Stopping here as well is so the answer
         // reads as "you are not allowed in" rather than as whatever the media
         // stack says when the room grant never arrives.
-        if (!can("join_voice")) {
+        //
+        // Both answers, because they can differ: `can` is the role's
+        // server-wide permission and `canJoin` is this room's, and a scope that
+        // shuts one door is invisible to the first. Absent means the server is
+        // too old to say, which reads as allowed.
+        if (!can("join_voice") || channel.canJoin === false) {
           const host = currentlyViewingServer.host;
           const name = currentlyViewingServer.name || host;
           toast.error(
