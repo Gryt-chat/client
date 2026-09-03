@@ -279,6 +279,24 @@ export const ServerView = () => {
     conversationMembers,
   });
 
+  /**
+   * What is on screen, with anybody blocked taken out.
+   *
+   * The server already refuses to deliver a blocked person's new messages and
+   * leaves them out of history, so this is only about the messages that were
+   * already drawn when Block was pressed. Those stayed until something
+   * refetched — which is the one moment somebody most wants them gone, and the
+   * only part of the block that was not immediate.
+   *
+   * Filtered here rather than inside `useChat` because it is a view decision:
+   * the store still holds them, and unblocking puts them back without asking
+   * the server for anything.
+   */
+  const visibleChatMessages = useMemo(
+    () => chatMessages.filter((m) => !isBlocked(m.sender_server_id)),
+    [chatMessages, isBlocked],
+  );
+
   const handleEditItem = useCallback((item: SidebarItem) => {
     setSelectedSidebarItemId(item.id);
     setEditDialogOpen(true);
@@ -707,7 +725,7 @@ export const ServerView = () => {
    */
   const chatView = (
       <ChatView
-        chatMessages={chatMessages}
+        chatMessages={visibleChatMessages}
         conversationKey={activeConversationId}
         sealing={activeDm ? sealing : undefined}
         memberNames={memberNames}
@@ -829,7 +847,7 @@ export const ServerView = () => {
             adminActions={currentAdminActions}
             unreadChannelIds={unreadChannelIds}
             mentionCounts={mentionCounts}
-            chatMessages={chatMessages}
+            chatMessages={visibleChatMessages}
             sealing={activeDm ? sealing : undefined}
             memberNames={memberNames}
             canSend={canSend}
