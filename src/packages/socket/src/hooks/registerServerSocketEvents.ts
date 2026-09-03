@@ -15,6 +15,7 @@ import {
   setMentionCounts,
   setServerAccessToken,
   setServerFileToken,
+  setServerNotice,
   setServerRefreshToken,
 } from "@/common";
 import {
@@ -355,6 +356,18 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       );
     }
   );
+
+  /* Something the server needs this one person to see (GRYT-896).
+
+     The payload is a kind plus values — never text. Everything that reaches the
+     screen ships in `ServerNoticePanel`, so there is no arrangement of bytes a
+     server can send that puts a sentence, or a link, in front of somebody.
+     `setServerNotice` re-checks the shape rather than trusting it: the server
+     validating its own output guards against a bug in the server, and this
+     guards against the server, which is somebody else's machine. */
+  socket.on("server:notice", (payload: unknown) => {
+    setServerNotice(host, payload);
+  });
 
   socket.on("server:kicked", (data: { reason?: string; action?: "kick" | "ban" }) => {
     const serverName = serversRef.current[host]?.name || host;

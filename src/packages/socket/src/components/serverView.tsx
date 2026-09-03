@@ -48,6 +48,7 @@ import { ReportsPanel } from "./ReportsPanel";
 import { ReportUserDialog } from "./ReportUserDialog";
 import { ServerConfirmDialogs } from "./ServerConfirmDialogs";
 import { ServerLoadingStates } from "./ServerLoadingStates";
+import { ServerNoticePanel } from "./ServerNoticePanel";
 import { ServerSidebar } from "./ServerSidebar";
 import { SidebarEditDialog } from "./SidebarEditDialog";
 import { VoiceSheetButton } from "./VoiceSheetButton";
@@ -725,6 +726,17 @@ export const ServerView = () => {
    */
   const chatView = (
       <ChatView
+        /* Under the channel header, not above it. Above the header is app
+           chrome, and this is somebody else's machine talking — putting it
+           there would undo the reason it is attributed at all (GRYT-896). */
+        underHeader={
+          <ServerNoticePanel
+            host={currentlyViewingServer?.host}
+            serverName={
+              currentlyViewingServer?.name || currentlyViewingServer?.host || "this server"
+            }
+          />
+        }
         chatMessages={visibleChatMessages}
         conversationKey={activeConversationId}
         sealing={activeDm ? sealing : undefined}
