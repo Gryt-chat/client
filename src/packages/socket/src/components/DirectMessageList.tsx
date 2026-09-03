@@ -6,6 +6,7 @@ import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 import { conversationTitle, type DirectConversation } from "../hooks/useDirectMessages";
 import { useSockets } from "../hooks/useSockets";
 import { EmojiText } from "./EmojiText";
+import { UnreadIndicator } from "./UnreadIndicator";
 
 /**
  * Conversations on this server, under the channel list — one section per kind.
@@ -52,6 +53,7 @@ export const DirectMessageList = ({
   title,
   selectedConversationId,
   unreadConversationIds,
+  mentionCounts,
   onHide,
   onManage,
   onSelect,
@@ -62,6 +64,8 @@ export const DirectMessageList = ({
   serverHost: string;
   selectedConversationId: string | null;
   unreadConversationIds?: Set<string>;
+  /** Unseen mentions per conversation id. Absent means none. */
+  mentionCounts?: Map<string, number>;
   onSelect: (conversation: DirectConversation) => void;
   /** Take it out of this person's own list. Absent on a server without it. */
   onHide?: (conversation: DirectConversation) => void;
@@ -86,26 +90,13 @@ export const DirectMessageList = ({
       {conversations.map((conversation) => {
         const isSelected = conversation.conversation_id === selectedConversationId;
         const isUnread = !isSelected && !!unreadConversationIds?.has(conversation.conversation_id);
+        const mentions = mentionCounts?.get(conversation.conversation_id) ?? 0;
 
         return (
           <ContextMenu.Root key={conversation.conversation_id}>
           <ContextMenu.Trigger>
           <div className="flex flex-col items-start w-full relative">
-            {isUnread && (
-              <div
-                className="absolute"
-                style={{
-                  top: "-2px",
-                  right: "-2px",
-                  width: 8,
-                  height: 8,
-                  borderRadius: "50%",
-                  backgroundColor: "var(--gryt-accent-9)",
-                  zIndex: 1,
-                  pointerEvents: "none",
-                }}
-              />
-            )}
+            <UnreadIndicator unread={isUnread} mentions={mentions} />
             <Button
               size="small"
               tone={isSelected ? "primary" : "ghost"}

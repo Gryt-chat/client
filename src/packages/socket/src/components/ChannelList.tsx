@@ -15,6 +15,7 @@ import { DirectMessageList } from "./DirectMessageList";
 import { EmojiText } from "./EmojiText";
 import type { AdminActions,MemberInfo } from "./MemberSidebar";
 import { SkeletonBase } from "./skeletons";
+import { UnreadIndicator } from "./UnreadIndicator";
 
 /** A role id. The server defines its own; these only pass one along. */
 type Role = string;
@@ -43,6 +44,7 @@ export const ChannelList = ({
   currentUserRole,
   adminActions,
   unreadChannelIds,
+  mentionCounts,
   directConversations,
   selectedDmId,
   onSelectDm,
@@ -73,6 +75,8 @@ export const ChannelList = ({
   currentUserRole?: Role;
   adminActions?: AdminActions;
   unreadChannelIds?: Set<string>;
+  /** Unseen mentions per conversation id. Absent means none. */
+  mentionCounts?: Map<string, number>;
   directConversations?: DirectConversation[];
   selectedDmId?: string | null;
   onSelectDm?: (conversation: DirectConversation) => void;
@@ -159,17 +163,15 @@ export const ChannelList = ({
     const channel = channelById.get(channelId);
     const hasIndicators = channel?.type === "voice" && (channel?.eSportsMode || channel?.requirePushToTalk || channel?.disableRnnoise || channel?.maxBitrate);
     const isUnread = !!channel && channel.id !== selectedChannelId && !!unreadChannelIds?.has(channel.id);
+    // Shown even for the channel you have open. Unread is suppressed there
+    // because you are reading it, and a mention is cleared by reading rather
+    // than by having it open — so if one is still counted, it has not been
+    // cleared yet and hiding it would lose it.
+    const mentions = channel ? mentionCounts?.get(channel.id) ?? 0 : 0;
 
     return (
       <div className="flex flex-col items-start w-full relative">
-        {isUnread && (
-          <div className="absolute" style={{ top: "-2px", right: "-2px", width: 8,
-              height: 8,
-              borderRadius: "50%",
-              backgroundColor: "var(--gryt-accent-9)",
-              zIndex: 1,
-              pointerEvents: "none" }} />
-        )}
+        <UnreadIndicator unread={isUnread} mentions={mentions} />
         {/* Ghost unless it is the one you are in. Every row was a plain
             <Button>, which is the filled accent one, so the whole list read as
             selected and the channel you were actually in was invisible —
@@ -408,6 +410,7 @@ export const ChannelList = ({
         serverHost={serverHost}
         selectedConversationId={selectedDmId ?? null}
         unreadConversationIds={unreadChannelIds}
+        mentionCounts={mentionCounts}
         onSelect={onSelectDm}
         onHide={onHideDm}
       />
@@ -418,6 +421,7 @@ export const ChannelList = ({
         serverHost={serverHost}
         selectedConversationId={selectedDmId ?? null}
         unreadConversationIds={unreadChannelIds}
+        mentionCounts={mentionCounts}
         onSelect={onSelectDm}
         onHide={onHideDm}
       />

@@ -58,6 +58,7 @@ interface MobileServerViewProps {
   currentUserRole?: Role;
   adminActions?: AdminActions;
   unreadChannelIds?: Set<string>;
+  mentionCounts?: Map<string, number>;
   directConversations?: DirectConversation[];
   selectedDmId?: string | null;
   onSelectDm?: (conversation: DirectConversation) => void;
@@ -237,6 +238,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
               currentUserRole={props.currentUserRole}
               adminActions={props.adminActions}
               unreadChannelIds={props.unreadChannelIds}
+              mentionCounts={props.mentionCounts}
               directConversations={props.directConversations}
               selectedDmId={props.selectedDmId}
               onSelectDm={props.onSelectDm}

@@ -3,7 +3,7 @@ import { useSFU } from "@gryt/voice";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
-import { getUploadsFileUrl, markChannelRead, useAccount, useUnreadTracker } from "@/common";
+import { clearMentions, getUploadsFileUrl, markChannelRead, useAccount, useMentionTracker, useUnreadTracker } from "@/common";
 import { useIsCompact, useIsMobile } from "@/mobile";
 import { useSettings } from "@/settings";
 import { SidebarItem } from "@/settings/src/types/server";
@@ -158,6 +158,7 @@ export const ServerView = () => {
     if (opened) markChannelRead(currentlyViewingServer.host, opened);
   }, [currentlyViewingServer, visibleChannelId, visibleDmId]);
 
+
   const drawnVoicePanelWidth =
     showVoiceView && voiceWidth !== "0px" && !isMaximized && !chatTakenOver
       ? shownVoiceWidth
@@ -192,6 +193,28 @@ export const ServerView = () => {
   } = useAdminActions({ currentConnection, currentlyViewingServer, accessToken, memberLists });
 
   const { getUnreadChannels } = useUnreadTracker();
+  const { conversationMentionCount, getMentionCounts } = useMentionTracker();
+  /*
+   * Reading a conversation clears the mentions in it.
+   *
+   * Separate from the effect above rather than folded into it, because it also
+   * has to fire for a mention that lands while the conversation is already
+   * open — `mentionCount` changes then, and the conversation does not. Cleared
+   * here as well as on the server so the badge goes when they look at it rather
+   * than when the reply comes back.
+   */
+  const openConversationMentions = currentlyViewingServer
+    ? conversationMentionCount(currentlyViewingServer.host, visibleDmId || visibleChannelId || "")
+    : 0;
+
+  useEffect(() => {
+    if (!currentlyViewingServer || openConversationMentions === 0) return;
+    const opened = visibleDmId || visibleChannelId;
+    if (!opened) return;
+
+    clearMentions(currentlyViewingServer.host, opened);
+    currentConnection?.emit("mentions:seen", { conversationId: opened });
+  }, [currentlyViewingServer, currentConnection, openConversationMentions, visibleChannelId, visibleDmId]);
 
   const currentServerUserId = currentlyViewingServer && currentConnection?.id
     ? clients[currentlyViewingServer.host]?.[currentConnection.id]?.serverUserId
@@ -618,6 +641,7 @@ export const ServerView = () => {
 
   const host = currentlyViewingServer.host;
   const unreadChannelIds = getUnreadChannels(host);
+  const mentionCounts = getMentionCounts(host);
   const isServerUnreachable = currentConnectionStatus === "disconnected" || currentConnectionStatus === "reconnecting";
   const isVoiceOnThisServer = isConnected && currentServerConnected === host;
   const currentUserRole = serverDetails?.server_info?.role;
@@ -784,6 +808,7 @@ export const ServerView = () => {
             currentUserRole={currentUserRole}
             adminActions={currentAdminActions}
             unreadChannelIds={unreadChannelIds}
+            mentionCounts={mentionCounts}
             chatMessages={chatMessages}
             sealing={activeDm ? sealing : undefined}
             memberNames={memberNames}
@@ -869,6 +894,7 @@ export const ServerView = () => {
               currentUserRole={currentUserRole}
               adminActions={currentAdminActions}
               unreadChannelIds={unreadChannelIds}
+              mentionCounts={mentionCounts}
               streamSources={voiceStreamSources}
             />
             <div className="flex grow" ref={voiceContainerRef} style={{ position: "relative", minWidth: 0 }}>
