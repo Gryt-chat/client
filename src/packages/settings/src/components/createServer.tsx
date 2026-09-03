@@ -114,53 +114,71 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
 
   return (
     <div className="flex flex-col gap-4">
-      {/* The icon leads, and it is already theirs before they have finished
-          naming it. Seeded on the name rather than the address, because a
-          server being created has no address yet and every new one drew the
-          same planet until it started. */}
-      <div className="flex flex-col items-center gap-1">
-        {/* 80px, which is past the library's large — this is the preview of
-            the icon you are about to make, so it is the subject of the step
-            rather than a marker beside something else. */}
-        <Avatar
-          size="large"
-          className="h-20 w-20 text-2xl"
-          fallback={<GeneratedServerIcon seed={serverName || "My Server"} />}
-        />
-        <span className="text-xs">
-          Generated from the name
-        </span>
+      {/* The icon sits beside the name it is drawn from rather than centred
+          above it. It is a preview, so watching it change while you type is
+          the point — and at 80px in the middle it pushed the rest of the form
+          out of view to show something that is not the subject of the step.
+
+          Seeded on the name rather than the address, because a server being
+          created has no address yet and every new one drew the same planet
+          until it started.
+
+          No caption underneath: it changes as you type, which says it. */}
+      <div className="flex flex-col gap-1">
+        <span className="text-sm font-bold">Name</span>
+        <div className="flex items-end gap-3">
+          <Avatar
+            size="medium"
+            className="rounded-(--gryt-radius-md) shrink-0"
+            fallback={<GeneratedServerIcon seed={serverName || "My Server"} />}
+          />
+          <TextField
+            autoFocus
+            className="flex-1"
+            placeholder="My Server"
+            value={serverName}
+            onChange={(e) => setServerName(e.target.value)}
+            disabled={creating}
+            maxLength={64}
+          />
+        </div>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <span className="text-sm font-bold">
-          Server name{" "}
-          <span>
-            *
-          </span>
-        </span>
-        <TextField
-          autoFocus
-          placeholder="My Server"
-          value={serverName}
-          onChange={(e) => setServerName(e.target.value)}
-          disabled={creating}
-          maxLength={64}
-        />
-      </div>
+      {/* A port is four characters, so the field is short and its status sits
+          beside it on the same line — a status about a value belongs next to
+          the value rather than up beside the label. Tabular digits so the
+          number does not jiggle while it is typed.
 
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-bold">
-            Port
-          </span>
+          "Available" rather than "Free": on a product surface Free reads as a
+          price, and nothing here costs money. */}
+      <div className="flex flex-col gap-1">
+        <span className="text-sm font-bold">Port</span>
+        <div className="flex items-center gap-3">
+          {/* The width goes on a wrapper, not on TextField: the class lands on
+              the input and its wrapper stays full-width, which pushed the
+              status a quarter of the dialog away from the value it is about. */}
+          <div className="w-28 shrink-0">
+          <TextField
+            inputMode="numeric"
+            className="tabular-nums"
+            placeholder="5000"
+            value={port}
+            onChange={(e) => {
+              touched.current = true;
+              setPort(e.target.value.replace(/[^0-9]/g, ""));
+            }}
+            disabled={creating}
+            maxLength={5}
+          />
+          </div>
           {portState === "free" && (
-            <div className="flex items-center gap-1" style={{ color: "var(--gryt-success-11)" }}>
-              <PiCheckCircleFill size={12} />
-              <span className="text-xs">
-                {touched.current ? "Available" : "Picked for you"}
-              </span>
-            </div>
+            <span
+              className="inline-flex items-center gap-1 text-xs"
+              style={{ color: "var(--gryt-success-11)" }}
+            >
+              <PiCheckCircleFill size={13} />
+              Available
+            </span>
           )}
           {portState === "taken" && (
             <span className="text-xs" style={{ color: "var(--gryt-danger-11)" }}>
@@ -173,22 +191,11 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
             </span>
           )}
           {portState === "loading" && (
-            <span className="text-xs">
+            <span className="text-xs" style={{ color: "var(--gryt-neutral-11)" }}>
               Checking&hellip;
             </span>
           )}
         </div>
-        <TextField
-          inputMode="numeric"
-          placeholder="5000"
-          value={port}
-          onChange={(e) => {
-            touched.current = true;
-            setPort(e.target.value.replace(/[^0-9]/g, ""));
-          }}
-          disabled={creating}
-          maxLength={5}
-        />
       </div>
 
       {/* The one setting that survived the trim. It is not cosmetic: it decides

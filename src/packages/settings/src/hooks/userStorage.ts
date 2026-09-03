@@ -380,6 +380,7 @@ export const SETTINGS_KEYS = [
   "screenShareMaxBitrate",
   "screenShareScalabilityMode",
   "userVolumes",
+  "officialServerHidden",
   "pinChannelsSidebar",
   "pinMembersSidebar",
   "afkTimeoutMinutes",
