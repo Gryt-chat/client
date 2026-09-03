@@ -73,6 +73,7 @@ interface MobileServerViewProps {
   /** Member id to nickname, so a refusal names the person. */
   memberNames?: Record<string, string>;
   canSend: boolean;
+  canSendHere?: boolean;
   sendChat: (text: string, files: File[], replyToMessageId?: string) => void;
   editMessage?: (messageId: string, conversationId: string, newText: string) => void;
   currentUserId?: string;
@@ -171,6 +172,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
           memberNames={props.memberNames}
           conversationKey={props.selectedChannelId ?? undefined}
           canSend={props.canSend}
+          canSendHere={props.canSendHere}
           sendChat={props.sendChat}
           editMessage={props.editMessage}
           currentUserId={props.currentUserId}

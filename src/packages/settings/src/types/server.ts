@@ -19,6 +19,18 @@ export type Channel = {
    * editor, and only ever seen by somebody already allowed to see the channel.
    */
   permissionScopeId?: string | null;
+  /**
+   * Whether this member may post here, resolved by the server for them.
+   *
+   * The scope rules that decide it are only readable with `manage_channels`, so
+   * a client cannot work this out — which is why a read-only channel used to
+   * draw an ordinary composer and refuse whatever was typed into it.
+   *
+   * Absent from a server too old to send it, and absent is not false: an
+   * unknown answer has to mean "try", or every channel on an older server
+   * would look read-only.
+   */
+  canSend?: boolean;
 };
 
 export type SidebarItemKind = "channel" | "separator" | "spacer";
