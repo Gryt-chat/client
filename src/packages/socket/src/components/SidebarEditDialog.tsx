@@ -36,7 +36,7 @@ export interface SidebarEditorFields {
   scopeRoles: { id: string; name: string; rank: number; permissions: string[] }[];
   channelPermissions: string[];
   scopeLoading: boolean;
-  saveChannelScope: () => void;
+  saveChannelScope: (choice?: string, rules?: ChannelRule[]) => void;
   sheetSpacerHeight: string;
   setSheetSpacerHeight: (v: string) => void;
   sheetSeparatorLabel: string;
@@ -91,9 +91,15 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
   scopeSaveRef.current = saveChannelScope;
   const scopeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const debouncedScopeSave = useCallback(() => {
+  /* `rules` is threaded through the timer for the same reason the dropdown
+     passes its choice: the matrix is only safe today because 600ms is long
+     enough for a render, which is a timing argument rather than a guarantee. */
+  const debouncedScopeSave = useCallback((rules?: ChannelRule[]) => {
     if (scopeTimerRef.current) clearTimeout(scopeTimerRef.current);
-    scopeTimerRef.current = setTimeout(() => { scopeTimerRef.current = null; scopeSaveRef.current(); }, 600);
+    scopeTimerRef.current = setTimeout(() => {
+      scopeTimerRef.current = null;
+      scopeSaveRef.current(undefined, rules);
+    }, 600);
   }, []);
 
   const flushScopeSave = useCallback(() => {
@@ -154,8 +160,17 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
                   value={sheetScopeChoice || EVERYONE_VALUE}
                   disabled={scopeLoading}
                   onValueChange={(v) => {
-                    setSheetScopeChoice(String(v));
-                    scopeSaveRef.current();
+                    /* Base UI hands back null when a Select clears, and
+                       `String(null)` is the truthy string "null" — which the
+                       server reads as a scope id it does not have. The role
+                       editor shipped that once already. */
+                    if (v === null || v === undefined) return;
+                    const next = String(v);
+                    setSheetScopeChoice(next);
+                    /* The new value goes with the call. `scopeSaveRef.current`
+                       is the closure the last render built, so a save in this
+                       tick that reads state sends the choice being replaced. */
+                    scopeSaveRef.current(next);
                   }}
                   options={scopeChoiceOptions}
                 />
@@ -174,7 +189,7 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
                     disabled={scopeLoading}
                     onChange={(next) => {
                       setSheetScopeRules(next);
-                      debouncedScopeSave();
+                      debouncedScopeSave(next);
                     }}
                   />
                 )}

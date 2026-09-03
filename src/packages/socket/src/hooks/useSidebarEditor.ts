@@ -214,7 +214,23 @@ export function useSidebarEditor({
    * it — the server refuses to take a scope on `server:channels:upsert` for the
    * same reason.
    */
-  const saveChannelScope = useCallback(() => {
+  /*
+   * `choice` and `rules` are arguments rather than only state because a caller
+   * that changes one of them and saves in the same tick cannot wait for the
+   * state to arrive.
+   *
+   * This function is held in a ref that is reassigned during render, so calling
+   * it from an event handler runs the closure the *last* render built — with
+   * the value the control had before it was changed. The dropdown did that, and
+   * since the previous value is almost always `everyone`, every attempt to
+   * restrict a channel sent "clear the scope", stored it, and echoed back a
+   * dropdown reading Everyone (GRYT-892).
+   *
+   * Passing the value through the call is what makes that impossible rather
+   * than unlikely. The debounced callers still pass nothing and read state,
+   * which is correct for them: 600ms later the render has happened.
+   */
+  const saveChannelScope = useCallback((choice?: string, rules?: ChannelRule[]) => {
     const item = selectedItemRef.current;
     if (!currentlyViewingServer || item?.kind !== "channel") return;
     if (!currentConnection?.connected) return toast.error("Not connected to the server yet.");
@@ -225,7 +241,10 @@ export function useSidebarEditor({
     currentConnection.emit("server:channels:scope:set", {
       accessToken,
       channelId,
-      ...scopeSetPayload(scopeChoiceFromValue(sheetScopeChoice), sheetScopeRules),
+      ...scopeSetPayload(
+        scopeChoiceFromValue(choice ?? sheetScopeChoice),
+        rules ?? sheetScopeRules,
+      ),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentlyViewingServer, currentConnection, sheetScopeChoice, sheetScopeRules]);
