@@ -7,6 +7,38 @@ productName: Gryt Chat
 copyright: "Copyright © 2024-2026 Gryt Chat. All rights reserved."
 artifactName: "Gryt-Chat-${version}-${os}-${arch}.${ext}"
 
+# Gryt's UI owns its translations. Keep the native Electron resources for
+# English and Norwegian and drop the rest.
+#
+# Top level, not under `mac`. It sat under `mac` from the day it was written,
+# and the comment there said "instead of shipping hundreds of unused .lproj
+# trees" — which is what it did, on macOS, and nowhere else. Windows and Linux
+# kept all 55 of Chromium's locale files: 46MB of `locales/*.pak` in a build
+# whose own UI ships two languages.
+#
+# electron-builder prunes both. `removeUnusedLanguagesIfNeeded` picks the
+# directory and the extension per platform — `.lproj` under Resources on macOS,
+# `locales/*.pak` everywhere else — and then reads `electronLanguages` off the
+# platform options *or* the root. Only the root reaches all three.
+#
+# For scale: this is about 44MB, where dropping the embedded server entirely
+# would save 72MB of a 643MB unpacked build.
+#
+# Both spellings of English, because the two platforms name the files
+# differently and the match is on the whole name. macOS has `en.lproj`; Windows
+# and Linux have `en-US.pak` and `en-GB.pak`. Listing only `en` — which is what
+# the `mac` block had, correctly, for years — prunes English off Windows
+# entirely and leaves a build shipping Norwegian and nothing else. That is what
+# the first attempt at this did, and `ls locales` said `nb.pak` and stopped.
+#
+# A name that matches nothing on a platform costs nothing there, so the union
+# is safe in both directions.
+electronLanguages:
+  - en
+  - en-US
+  - en-GB
+  - nb
+
 directories:
   buildResources: build
   output: release
@@ -113,11 +145,6 @@ mac:
   # Windows and for anything the platform masks itself; the Dock masks nothing,
   # so it wants Apple's rounded rectangle with its margin. See generate-icons.
   icon: build/icon-macos.png
-  # Gryt's UI owns its translations. Keep the native Electron resources for
-  # English and Norwegian instead of shipping hundreds of unused .lproj trees.
-  electronLanguages:
-    - en
-    - nb
   target:
     - dmg
     - zip
