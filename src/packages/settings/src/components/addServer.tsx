@@ -4,8 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import {
   PiBroadcastFill,
   PiCaretRightBold,
+  PiEyeSlashFill,
   PiHouseFill,
   PiInfoFill,
+  PiLinkSimpleBold,
   PiUsersThreeFill,
   PiWarningFill,
   PiX,
@@ -107,7 +109,8 @@ export function AddNewServer({
     ? DESKTOP_INPUT_EXAMPLES
     : WEB_INPUT_EXAMPLES;
 
-  const { openSettings } = useSettings();
+  const { openSettings, officialServerHidden, setOfficialServerHidden } =
+    useSettings();
   const { isAvailable: embeddedServerAvailable, servers: hostedServers } =
     useEmbeddedServer();
   /**
@@ -321,7 +324,28 @@ export function AddNewServer({
   }
 
   /** Hidden once you are on it. It is a suggestion, not a shortcut. */
-  const showOfficial = !!officialServer && !servers[officialServer.host];
+  /**
+   * Whether to offer the server we run.
+   *
+   * Three things have to be true: it answered, they are not already on it, and
+   * they have not hidden it. The last is a per-device preference — see
+   * `officialServerHidden` in settings.
+   */
+  const showOfficial =
+    !!officialServer && !servers[officialServer.host] && !officialServerHidden;
+
+  /**
+   * The line that stands in for the row once it is hidden.
+   *
+   * Kept rather than removing every trace, because a card that disappears with
+   * no way back is a trap. It is one quiet line against a tinted card, so the
+   * thing they asked to stop seeing has stopped being a thing they see.
+   *
+   * Not shown when they are already on that server: they did not hide it to
+   * get rid of a server they use, and the row would not be there anyway.
+   */
+  const showHiddenNote =
+    officialServerHidden && !!officialServer && !servers[officialServer.host];
 
   const canJoin =
     !!serverHost &&
@@ -397,52 +421,57 @@ export function AddNewServer({
               </Dialog.Description>
             </div>
 
-            {/* Step one. A single row, because there is one thing to create and
-                Gryt has no templates to offer under it. */}
+            {/* Two doors of equal weight (GRYT-894).
+                Joining used to be a label and a full-width button underneath
+                the create row, which read as an afterthought — while the
+                comment on the join step says most people arriving here have an
+                invite in their clipboard. The common path was the buried one.
+
+                Only the desktop app reaches this screen. `step` sends a browser
+                straight to Join, because there is no embedded server to create
+                with and a door onto a dead end is worse than no door. */}
             {step === null && (
-              <div className="flex flex-col gap-6 mt-2">
-                {/* Surface is a plain div with no asChild, and a box that only
-                    looks clickable wrapping a button is worse than the button
-                    wearing the surface itself. */}
-                <button
-                  type="button"
-                  data-tour="choose-host"
-                  className="rounded-(--gryt-radius-lg) border border-gryt-border bg-gryt-surface text-gryt-text w-full cursor-pointer p-4 text-left"
-                  onClick={() => setMode("host")}
-                >
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center justify-center" style={{
-                          width: 36,
-                          height: 36,
-                          borderRadius: "var(--gryt-radius-md)",
-                          background: "var(--gryt-accent-a3)",
-                          color: "var(--gryt-accent-11)",
-                          flexShrink: 0,
-                        }}>
-                        <PiHouseFill size={18} />
-                      </div>
+              <div className="flex flex-col gap-4 mt-2">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <EntryCard
+                    tour="choose-host"
+                    icon={<PiHouseFill size={17} />}
+                    name={hasOwnServer ? "Create another" : "Create my own"}
+                    hint="Runs on this machine. Best for a few friends."
+                    onPick={() => setMode("host")}
+                  />
+                  <EntryCard
+                    tour="choose-join"
+                    icon={<PiLinkSimpleBold size={17} />}
+                    name="Join with an invite"
+                    hint="Paste a link or an address you were given."
+                    onPick={() => setMode("join")}
+                  />
+                </div>
 
-                      <div className="flex flex-col gap-0" style={{ minWidth: 0 }}>
-                        <span className="text-base font-bold">
-                          {hasOwnServer ? "Create another" : "Create my own"}
-                        </span>
-                        <span className="text-sm">
-                          Runs on this machine. Best for a few friends.
-                        </span>
-                      </div>
+                {/* Below a rule rather than between the two doors. The server we
+                    run is a third answer, not a step inside the first one. */}
+                {showOfficial && officialServer && (
+                  <>
+                    <OrRule />
+                    <OfficialServerOffer
+                      server={officialServer}
+                      onPick={() => pickOfficialServer(officialServer.host)}
+                      onHide={() => setOfficialServerHidden(true)}
+                    />
+                  </>
+                )}
 
-                      <div className="flex ml-auto" style={{ color: "var(--gryt-neutral-9)" }}>
-                        <PiCaretRightBold size={14} />
-                      </div>
-                    </div>
-                </button>
+                {showHiddenNote && (
+                  <HiddenOfficialNote onRestore={() => setOfficialServerHidden(false)} />
+                )}
 
                 {/* Only once there is something to manage. Creating and
                     managing are different jobs and this dialog is for the
                     first, but somebody who already hosts one and came here
                     looking for the other should not have to guess. */}
                 {hasOwnServer && (
-                  <span className="text-xs text-center -mt-3">
+                  <span className="text-xs text-center">
                     Already running{" "}
                     {hostedServers.length === 1
                       ? "one"
@@ -457,32 +486,6 @@ export function AddNewServer({
                     </button>
                   </span>
                 )}
-
-                {showOfficial && officialServer && (
-                  <OfficialServerCard
-                    server={officialServer}
-                    onPick={() => pickOfficialServer(officialServer.host)}
-                  />
-                )}
-
-                {/* The other half of the dialog, and deliberately not a second
-                    card of equal weight. Most people arriving here have an
-                    invite in their clipboard, but "create" is the thing this
-                    step is named after — so joining gets its own line rather
-                    than competing for the same row. */}
-                <div className="flex flex-col gap-2 items-center">
-                  <span className="text-sm font-bold">
-                    Have an invite already?
-                  </span>
-                  <Button
-                    data-tour="choose-join"
-                    size="medium"
-                    style={{ width: "100%" }}
-                    onClick={() => setMode("join")}
-                  >
-                    Join a server
-                  </Button>
-                </div>
               </div>
             )}
 
@@ -545,10 +548,15 @@ export function AddNewServer({
                     step above it is skipped when there is no embedded server to
                     create with. */}
                 {showOfficial && officialServer && serverHost.length === 0 && (
-                  <OfficialServerCard
+                  <OfficialServerOffer
                     server={officialServer}
                     onPick={() => pickOfficialServer(officialServer.host)}
+                    onHide={() => setOfficialServerHidden(true)}
                   />
+                )}
+
+                {showHiddenNote && serverHost.length === 0 && (
+                  <HiddenOfficialNote onRestore={() => setOfficialServerHidden(false)} />
                 )}
 
                 {/* The preview, and it stays a preview. There used to be a
@@ -772,6 +780,63 @@ interface ServerPreviewProps {
  * somebody who has nothing yet, and the old answer for that person was an empty
  * field and a format hint.
  */
+/** One of the two doors on the first screen. */
+function EntryCard({
+  icon,
+  name,
+  hint,
+  onPick,
+  tour,
+}: {
+  icon: React.ReactNode;
+  name: string;
+  hint: string;
+  onPick: () => void;
+  tour: string;
+}) {
+  return (
+    <button
+      type="button"
+      data-tour={tour}
+      onClick={onPick}
+      className="flex flex-col gap-2 rounded-(--gryt-radius-md) border border-gryt-border bg-gryt-surface text-gryt-text w-full cursor-pointer p-4 text-left transition-colors hover:border-(--gryt-accent-9)"
+      style={{ minWidth: 0 }}
+    >
+      <span
+        className="flex items-center justify-center"
+        style={{
+          width: 32,
+          height: 32,
+          borderRadius: "var(--gryt-radius-md)",
+          background: "var(--gryt-accent-a3)",
+          color: "var(--gryt-accent-11)",
+          flexShrink: 0,
+        }}
+      >
+        {icon}
+      </span>
+      <span className="text-sm font-bold">{name}</span>
+      <span className="text-xs" style={{ color: "var(--gryt-neutral-11)" }}>
+        {hint}
+      </span>
+    </button>
+  );
+}
+
+/** The "or" between the two doors and the server we run. */
+function OrRule() {
+  return (
+    <div
+      className="flex items-center gap-3 text-xs uppercase"
+      style={{ color: "var(--gryt-neutral-11)", letterSpacing: "0.08em" }}
+    >
+      <span className="h-px flex-1" style={{ background: "var(--gryt-border)" }} />
+      or
+      <span className="h-px flex-1" style={{ background: "var(--gryt-border)" }} />
+    </div>
+  );
+}
+
 function OfficialServerCard({
   server,
   onPick,
@@ -784,43 +849,113 @@ function OfficialServerCard({
   return (
     <button
       type="button"
-      className="rounded-(--gryt-radius-lg) border border-gryt-border bg-gryt-surface text-gryt-text w-full cursor-pointer p-4 text-left"
       onClick={onPick}
+      className="flex w-full cursor-pointer items-center gap-3 rounded-(--gryt-radius-md) p-3 text-left"
+      style={{
+        border: "1px solid var(--gryt-accent-9)",
+        background: "var(--gryt-accent-a3)",
+        color: "var(--gryt-text)",
+      }}
     >
-      <div className="flex items-center gap-3">
-        <div
-          className="flex items-center justify-center"
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: "var(--gryt-radius-md)",
-            background: "var(--gryt-accent-a3)",
-            color: "var(--gryt-accent-11)",
-            flexShrink: 0,
-          }}
-        >
-          <PiUsersThreeFill size={18} />
-        </div>
+      <span
+        className="flex items-center justify-center"
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: "var(--gryt-radius-md)",
+          background: "var(--gryt-surface)",
+          color: "var(--gryt-accent-11)",
+          flexShrink: 0,
+        }}
+      >
+        <PiUsersThreeFill size={18} />
+      </span>
 
-        <div className="flex flex-col gap-0" style={{ minWidth: 0 }}>
-          <span className="text-base font-bold">
-            {info?.name || "The Gryt server"}
-          </span>
-          {/* The member count when the server gave one, and the address when it
-              did not. Both say the same thing — this is a real place — and one
-              of them is a number we did not make up. */}
-          <span className="text-sm truncate">
-            {info
-              ? `We run this one. ${info.members} ${info.members === "1" ? "member" : "members"}.`
-              : `We run this one. ${host}`}
-          </span>
-        </div>
+      <span className="flex flex-col" style={{ minWidth: 0 }}>
+        <span className="text-base font-bold">{info?.name || "The Gryt server"}</span>
+        {/* The member count when the server gave one, and the address when it
+            did not. Both say the same thing — this is a real place — and one
+            of them is a number we did not make up. */}
+        <span className="text-sm truncate">
+          {info
+            ? `Run by us. ${info.members} ${info.members === "1" ? "member" : "members"}.`
+            : `Run by us. ${host}`}
+        </span>
+      </span>
 
-        <div className="flex ml-auto" style={{ color: "var(--gryt-neutral-9)" }}>
-          <PiCaretRightBold size={14} />
-        </div>
-      </div>
+      <span className="flex ml-auto" style={{ color: "var(--gryt-neutral-11)" }}>
+        <PiCaretRightBold size={14} />
+      </span>
     </button>
+  );
+}
+
+/**
+ * The offer, with the way to stop being offered it.
+ *
+ * "Hide forever" is text above the card rather than a cross inside it. A cross
+ * on the row sits inside the target somebody is reaching for, so the press that
+ * hides the server and the press that joins it are a few pixels apart — and one
+ * of those is the one nobody wants to hit by accident. Up here it is nowhere
+ * near the card, and it says what it does instead of leaving somebody to work
+ * out what a cross means.
+ */
+function OfficialServerOffer({
+  server,
+  onPick,
+  onHide,
+}: {
+  server: OfficialServer;
+  onPick: () => void;
+  onHide: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={onHide}
+          className="cursor-pointer appearance-none border-0 bg-transparent p-0 text-xs underline"
+          style={{ color: "var(--gryt-neutral-11)" }}
+        >
+          Hide forever
+        </button>
+      </div>
+      <OfficialServerCard server={server} onPick={onPick} />
+    </div>
+  );
+}
+
+/**
+ * What is left once somebody hides the offer.
+ *
+ * Removing every trace would be a trap: this row is the only place the address
+ * appears, and somebody who hid it by accident would have nothing to press. One
+ * quiet line against a tinted card is small enough that the thing they asked to
+ * stop seeing has stopped being a thing they see.
+ */
+function HiddenOfficialNote({ onRestore }: { onRestore: () => void }) {
+  return (
+    <div
+      className="flex items-center gap-2 rounded-(--gryt-radius-md) px-3 py-2 text-xs"
+      style={{
+        color: "var(--gryt-neutral-11)",
+        border: "1px dashed var(--gryt-border)",
+      }}
+    >
+      <PiEyeSlashFill size={13} style={{ flexShrink: 0 }} />
+      <span>
+        The Gryt server is hidden.{" "}
+        <button
+          type="button"
+          onClick={onRestore}
+          className="cursor-pointer appearance-none border-0 bg-transparent p-0 underline"
+          style={{ color: "var(--gryt-accent-11)" }}
+        >
+          Show it again
+        </button>
+      </span>
+    </div>
   );
 }
 

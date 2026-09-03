@@ -95,6 +95,8 @@ function useSettingsHook() {
   const [userVolumes, setUserVolumes] = useState<Record<string, number>>({});
   const [showVoiceView, setShowVoiceView] = useState(true);
 
+  const [officialServerHidden, setOfficialServerHiddenState] = useState(false);
+
   const [pinChannelsSidebar, setPinChannelsSidebarState] = useState(true);
   const [pinMembersSidebar, setPinMembersSidebarState] = useState(true);
 
@@ -166,6 +168,7 @@ function useSettingsHook() {
       setScreenShareMaxBitrateState(getUserValue("screenShareMaxBitrate", 0));
       setScreenShareScalabilityModeState(getUserValue<ScalabilityMode>("screenShareScalabilityMode", "L1T3"));
       setUserVolumes(getUserValue("userVolumes", {}));
+      setOfficialServerHiddenState(getUserValue("officialServerHidden", false));
       setPinChannelsSidebarState(getUserValue("pinChannelsSidebar", true));
       setPinMembersSidebarState(getUserValue("pinMembersSidebar", true));
       setAfkTimeoutMinutes(getUserValue("afkTimeoutMinutes", 5));
@@ -473,6 +476,11 @@ function useSettingsHook() {
     setShowSettings(true);
   }
 
+  function updateOfficialServerHidden(hidden: boolean) {
+    setOfficialServerHiddenState(hidden);
+    setUserValue("officialServerHidden", hidden);
+  }
+
   function updatePinChannelsSidebar(pinned: boolean) {
     setPinChannelsSidebarState(pinned);
     setUserValue("pinChannelsSidebar", pinned);
@@ -504,6 +512,9 @@ function useSettingsHook() {
     dismissTour,
     showVoiceView,
     setShowVoiceView,
+    officialServerHidden,
+    setOfficialServerHidden: updateOfficialServerHidden,
+
     pinChannelsSidebar,
     setPinChannelsSidebar: updatePinChannelsSidebar,
     pinMembersSidebar,

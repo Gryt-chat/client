@@ -113,6 +113,16 @@ export interface Settings {
   showVoiceView: boolean;
   setShowVoiceView: (value: boolean) => void;
 
+  /**
+   * Whether the row offering the server we run has been hidden.
+   *
+   * Per device rather than per account, like the other preferences here.
+   * Which servers somebody declined is a UI choice, and the identity service
+   * has no business learning it.
+   */
+  officialServerHidden: boolean;
+  setOfficialServerHidden: (value: boolean) => void;
+
   pinChannelsSidebar: boolean;
   setPinChannelsSidebar: (value: boolean) => void;
   pinMembersSidebar: boolean;
@@ -288,6 +298,9 @@ export const settingsInit: Settings = {
   dismissTour: noop,
   showVoiceView: true,
   setShowVoiceView: noop,
+
+  officialServerHidden: false,
+  setOfficialServerHidden: noop,
 
   pinChannelsSidebar: true,
   setPinChannelsSidebar: noop,
