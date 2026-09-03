@@ -78,7 +78,7 @@
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
-    "@gryt/core": "^0.1.0",
+    "@gryt/core": "^0.2.0",
     "@gryt/crypto": "^0.2.0",
     "@gryt/owl": "^0.6.0",
     "@gryt/ui": "^0.25.1",
