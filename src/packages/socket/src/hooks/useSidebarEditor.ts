@@ -107,11 +107,7 @@ export function useSidebarEditor({
       setSheetMaxBitrate(ch?.maxBitrate ? String(ch.maxBitrate) : "");
       setSheetEsportsMode(ch?.eSportsMode || false);
       setSheetTextInVoice(ch?.textInVoice || false);
-      // The scope and its rules do not ride along on server:details, because a
-      // member who can see the channel is not necessarily allowed to read who
-      // else can. They are fetched when the editor opens instead.
-      setSheetScopeChoice(EVERYONE_VALUE);
-      setSheetScopeRules([]);
+      // The scope and its rules are not reset here. See the effect below.
     } else if (selectedSidebarItem.kind === "spacer") {
       setSheetSpacerHeight(String(selectedSidebarItem.spacerHeight ?? 16));
     } else if (selectedSidebarItem.kind === "separator") {
@@ -162,6 +158,25 @@ export function useSidebarEditor({
     selectedSidebarItem?.kind === "channel"
       ? selectedSidebarItem.channelId ?? selectedSidebarItem.id
       : null;
+
+  /*
+   * Clear the scope when a different channel is opened, and only then.
+   *
+   * The scope and its rules do not ride along on `server:details`, because a
+   * member who can see a channel is not necessarily allowed to read who else
+   * can. They are fetched when the editor opens, by the effect below.
+   *
+   * This used to sit in the effect above, which depends on
+   * `selectedSidebarItem` — a fresh object every time `serverDetailsList`
+   * changes identity. Saving a scope makes the server broadcast
+   * `server:details`, so the save reset the dropdown to Everyone a moment
+   * after setting it, and the setting looked like it had not taken (GRYT-892).
+   * The channel id is a string, so it only changes when the channel does.
+   */
+  useEffect(() => {
+    setSheetScopeChoice(EVERYONE_VALUE);
+    setSheetScopeRules([]);
+  }, [editingChannelId]);
 
   useEffect(() => {
     if (!editDialogOpen) return;
