@@ -33,6 +33,8 @@ type RoleDefinition = {
   /** Null on either half means that half is not being asked for. */
   autoGrantAfterDays: number | null;
   autoGrantAfterMessages: number | null;
+  /** Whether an invite may be bound to this role. Off until somebody ticks it. */
+  grantableByInvite: boolean;
   memberCount: number;
 };
 
@@ -339,6 +341,7 @@ export function ServerRoleEditorTab({
       draft.name !== selected.name ||
       draft.color !== selected.color ||
       draft.rank !== selected.rank ||
+      draft.grantableByInvite !== selected.grantableByInvite ||
       draft.autoGrantAfterDays !== selected.autoGrantAfterDays ||
       draft.autoGrantAfterMessages !== selected.autoGrantAfterMessages
     );
@@ -407,6 +410,7 @@ export function ServerRoleEditorTab({
       permissions: permissions ?? permDrafts[roleId] ?? role.permissions,
       autoGrantAfterDays: role.autoGrantAfterDays,
       autoGrantAfterMessages: role.autoGrantAfterMessages,
+      grantableByInvite: role.grantableByInvite,
     });
   };
 
@@ -517,6 +521,7 @@ export function ServerRoleEditorTab({
       permissions: [],
       isSystem: false,
       autoGrantAfterDays: null,
+      grantableByInvite: false,
       autoGrantAfterMessages: null,
       memberCount: 0,
     });
@@ -697,6 +702,29 @@ export function ServerRoleEditorTab({
 
               {!draft.isSystem && (
                 <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-1">
+                    <label className="flex items-center gap-3 text-sm font-bold">
+                      <input
+                        type="checkbox"
+                        checked={draft.grantableByInvite}
+                        disabled={draft.isSystem}
+                        onChange={(e) => {
+                          setDraft({ ...draft, grantableByInvite: e.target.checked });
+                          commitSettings();
+                        }}
+                      />
+                      Can be given out by an invite
+                    </label>
+                    <span className="text-xs text-gryt-muted">
+                      Off unless you turn it on, for every role. With it on, an invite
+                      can be bound to this role and whoever joins on that link arrives
+                      holding it — which is only as private as the link is.{" "}
+                      {draft.isSystem
+                        ? "Built-in roles cannot be given out this way."
+                        : "Admin and owner can never be given out this way, and neither can a role that can hand out permissions. Those are given by hand."}
+                    </span>
+                  </div>
+
                   <div className="flex flex-col">
                     <span className="text-sm font-bold">Given out automatically</span>
                     <span className="text-xs text-gryt-muted">

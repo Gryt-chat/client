@@ -68,6 +68,32 @@ export function ServerInvitesTab({
 }) {
   const { servers: embeddedServers } = useEmbeddedServer();
 
+  /* Roles an invite may be bound to. The server decides which those are — the
+     flag is off for every role until somebody ticks it, and admin, owner and
+     anything that can hand out permissions are refused outright. So this list
+     is whatever came back already filtered, not a judgement made here. An empty
+     list means the picker does not appear, which is the honest thing to show
+     somebody who has not marked any role as invite-grantable. */
+  const [grantableRoles, setGrantableRoles] = useState<
+    { id: string; name: string }[]
+  >([]);
+  const [grantsRole, setGrantsRole] = useState("");
+
+  useEffect(() => {
+    if (!socket || !accessToken) return;
+    socket.emit("server:roles:definitions:list", { accessToken });
+  }, [socket, accessToken]);
+
+  useSocketEvent<{
+    roles?: { id: string; name: string; grantableByInvite?: boolean }[];
+  }>(socket, "server:roles:definitions", (payload) => {
+    setGrantableRoles(
+      (payload?.roles ?? [])
+        .filter((r) => r.grantableByInvite)
+        .map((r) => ({ id: r.id, name: r.name })),
+    );
+  });
+
   /* The embedded server this host is, if it is one. Matched on the port it
      answers on, since a locally hosted server is only ever reached over
      loopback and the port is what tells two of them apart. */
@@ -161,6 +187,7 @@ export function ServerInvitesTab({
         expiresInHours: typeof eh === "number" && eh > 0 ? eh : undefined,
         note: note.trim().length ? note.trim() : null,
         customCode: cc.length ? cc : null,
+        grantsRole: grantsRole || null,
       });
     } finally {
       setCreating(false);
@@ -255,6 +282,29 @@ export function ServerInvitesTab({
               <TextField value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />
             </div>
           </div>
+          {grantableRoles.length > 0 && (
+            <div className="flex flex-col gap-1" style={{ minWidth: 220 }}>
+              <span className="text-sm font-medium">Gives the role</span>
+              <select
+                value={grantsRole}
+                onChange={(e) => setGrantsRole(e.target.value)}
+                className="bg-transparent border-b border-gryt-border outline-none text-sm py-1"
+              >
+                <option value="">No role, they join as normal</option>
+                {grantableRoles.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+              <span className="text-xs text-gryt-muted">
+                Anybody joining on this link arrives holding that role, so the link is
+                worth as much as the role is. Set the uses or an expiry unless you mean
+                to hand it out forever. Only roles you have marked as invite-grantable
+                appear here, and only ones below your own.
+              </span>
+            </div>
+          )}
           <div className="flex justify-end gap-2">
             <Button size="small" onClick={refresh} disabled={creating || loading}>
               Refresh
