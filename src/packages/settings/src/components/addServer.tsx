@@ -2,7 +2,6 @@ import { Alert, Avatar, Button, Chip, Dialog, IconButton, Surface, TextField } f
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import {
-  PiBroadcastFill,
   PiCaretRightBold,
   PiEyeSlashFill,
   PiHouseFill,
@@ -18,6 +17,7 @@ import {
   getServerHttpBase,
   normalizeCode,
   parseServerInput,
+  useAccount,
 } from "@/common";
 
 import { SkeletonBase } from "../../../socket/src/components/skeletons";
@@ -55,11 +55,25 @@ interface AddNewServerProps {
 const LOOKUP_DEBOUNCE_MS = 450;
 
 /**
- * What an invite looks like, for the three chips under the field.
+ * How long each example sits in the placeholder before the next one.
  *
- * Kept as literal examples rather than a description of the format. "An invite
- * link or a server address" tells somebody nothing about whether the thing on
- * their clipboard is one.
+ * Long enough to read one and glance away; short enough that somebody who
+ * pauses sees more than one shape. It stops entirely once there is anything in
+ * the field, because text moving under somebody who is typing is the thing this
+ * must never do.
+ */
+const PLACEHOLDER_ROTATE_MS = 3000;
+
+/**
+ * What an invite looks like.
+ *
+ * These are the placeholder now rather than a row of chips beneath the field.
+ * They answer "is the thing on my clipboard one of these", which is a question
+ * you have while the field is empty and never after — so they cost no height
+ * and stop competing with the input for the same glance.
+ *
+ * Literal examples rather than a description of the format: "an invite link or
+ * a server address" tells somebody nothing about whether what they have is one.
  */
 const WEB_INPUT_EXAMPLES = [
   "gryt.chat/invite?host=…",
@@ -101,8 +115,7 @@ export function AddNewServer({
   showAddServer,
   setShowAddServer,
 }: AddNewServerProps) {
-  const { servers, switchToServer, setShowDiscovery, addServer } =
-    useServerManagement();
+  const { servers, switchToServer, addServer } = useServerManagement();
   const { isElectron } = useLanDiscovery();
 
   const inputExamples = isElectron
@@ -111,6 +124,10 @@ export function AddNewServer({
 
   const { openSettings, officialServerHidden, setOfficialServerHidden } =
     useSettings();
+  /* `isSignedIn` is undefined until Keycloak answers. Treated as "signed in"
+     for the button below, so a control does not flip from "Sign in to join" to
+     "Join" a beat after the dialog opens. */
+  const { isSignedIn, login } = useAccount();
   const { isAvailable: embeddedServerAvailable, servers: hostedServers } =
     useEmbeddedServer();
   /**
@@ -299,11 +316,6 @@ export function AddNewServer({
     setJoinError(outcome.message);
   }
 
-  function openDiscovery() {
-    setShowDiscovery(true);
-    closeDialog();
-  }
-
   function openMyServers() {
     closeDialog();
     openSettings("my-servers");
@@ -347,6 +359,31 @@ export function AddNewServer({
   const showHiddenNote =
     officialServerHidden && !!officialServer && !servers[officialServer.host];
 
+  /* Cycles only while the field is empty and only while the dialog is open. */
+  const [exampleIndex, setExampleIndex] = useState(0);
+  useEffect(() => {
+    if (!showAddServer || inviteInput.length > 0) return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+
+    const timer = setInterval(
+      () => setExampleIndex((i) => (i + 1) % inputExamples.length),
+      PLACEHOLDER_ROTATE_MS,
+    );
+    return () => clearInterval(timer);
+  }, [showAddServer, inviteInput.length, inputExamples.length]);
+
+  /**
+   * Whether this server will refuse the identity we have.
+   *
+   * Only claimed when the server said which tiers it takes. An older one sends
+   * none, and silence is better than telling somebody to sign in for a server
+   * that would have let them in.
+   */
+  const needsAccount =
+    isSignedIn === false &&
+    !!serverInfo?.identityTiers &&
+    !serverInfo.identityTiers.includes("local");
+
   const canJoin =
     !!serverHost &&
     !alreadyMember &&
@@ -356,6 +393,27 @@ export function AddNewServer({
     !webAddressError &&
     (!!serverInfo || serverPrivate) &&
     (!inviteRequired || normalizeCode(inviteCode).length > 0);
+
+  /**
+   * What the button says, and what pressing it does.
+   *
+   * A server that needs an account gets "Sign in to join" rather than a
+   * disabled button and a tooltip. A disabled control is a dead end: there is
+   * no hover on touch, a tooltip is not reachable from the keyboard, and it
+   * leaves somebody holding a requirement with no way to satisfy it. The pill
+   * on the card already states the requirement; the button is the way out of
+   * it.
+   *
+   * The only genuinely disabled cases are the ones where pressing it could do
+   * nothing useful: nothing typed, nothing answered, or you are already there.
+   */
+  const joinAction = alreadyMember
+    ? { label: "Already joined", tone: "secondary" as const, disabled: true, run: () => {} }
+    : needsAccount
+      ? { label: "Sign in to join", tone: "primary" as const, disabled: false, run: () => void login() }
+      : serverInfo?.joinPolicy === "request"
+        ? { label: "Ask to join", tone: "primary" as const, disabled: !canJoin, run: () => void handleJoin() }
+        : { label: "Join", tone: "primary" as const, disabled: !canJoin, run: () => void handleJoin() };
 
   return (
     <Dialog.Root
@@ -509,34 +567,18 @@ export function AddNewServer({
 
             {step === "join" && (
               <div className="flex flex-col gap-4">
-                <div className="flex flex-col gap-2" data-tour="join-address">
-                  <span className="text-sm font-bold">
-                    Invite or server address{" "}
-                    <span>
-                      *
-                    </span>
-                  </span>
-
+                {/* No label and no asterisk: it is the only field on the
+                    screen, so it is both obvious and required. The examples
+                    are the placeholder. */}
+                <div data-tour="join-address">
                   <TextField
                     autoFocus
                     disabled={isJoining}
-                    placeholder="https://gryt.chat/invite?host=…&code=…"
+                    aria-label="Invite or server address"
+                    placeholder={inputExamples[exampleIndex]}
                     value={inviteInput}
                     onChange={(e) => setInviteInput(e.target.value)}
                   />
-
-                  <div className="flex flex-col gap-1">
-                    <span className="text-xs">
-                      Examples
-                    </span>
-                    <div className="flex gap-1 flex-wrap">
-                      {inputExamples.map((example) => (
-                        <Chip key={example}>
-                          {example}
-                        </Chip>
-                      ))}
-                    </div>
-                  </div>
                 </div>
 
                 {/* Only while the field is empty. Once there is an address in
@@ -615,14 +657,12 @@ export function AddNewServer({
                       exit={{ height: 0, opacity: 0 }}
                       style={{ overflow: "hidden" }}
                     >
-                      <div className="flex flex-col gap-2">
+                      {/* Only on a server that lets people in by hand, which
+                          is the only place there is anybody to read it. The
+                          label carries what the paragraph used to. */}
+                      <div className="flex flex-col gap-1">
                         <span className="text-sm font-bold">
-                          Anything to say?
-                        </span>
-                        <span className="text-xs">
-                          This server lets people in by hand. A line about who
-                          you are gives them something to go on — a nickname on
-                          its own does not.
+                          Say who you are
                         </span>
                         <TextField
                           disabled={isJoining}
@@ -671,44 +711,6 @@ export function AddNewServer({
                   )}
                 </AnimatePresence>
 
-                {/* Discovery lives in the rail now (GRYT-223), not stacked in
-                    this column fighting the field for the same space. This row
-                    is the way back to it for somebody who came here looking for
-                    a server on their own network. */}
-                {isElectron && (
-                  <button
-                    type="button"
-                    className="rounded-(--gryt-radius-lg) border border-gryt-border bg-gryt-surface text-gryt-text w-full cursor-pointer p-3 text-left"
-                    onClick={openDiscovery}
-                  >
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center justify-center" style={{
-                            width: 28,
-                            height: 28,
-                            borderRadius: "50%",
-                            background: "color-mix(in oklab, var(--gryt-success-9) 7%, transparent)",
-                            color: "var(--gryt-success-11)",
-                            flexShrink: 0,
-                          }}>
-                          <PiBroadcastFill size={14} />
-                        </div>
-
-                        <div className="flex flex-col" style={{ minWidth: 0 }}>
-                          <span className="text-sm font-bold">
-                            Don&rsquo;t have an invite?
-                          </span>
-                          <span className="text-xs">
-                            Look for servers running on your network.
-                          </span>
-                        </div>
-
-                        <div className="flex ml-auto" style={{ color: "var(--gryt-neutral-9)" }}>
-                          <PiCaretRightBold size={14} />
-                        </div>
-                    </div>
-                  </button>
-                )}
-
                 <Dialog.Footer className="justify-between">
                   {/* Only offered when there is a step behind this one. In a
                       browser Join *is* the first step, and a Back that lands on
@@ -727,14 +729,11 @@ export function AddNewServer({
                   )}
 
                   <Button
-                    disabled={!canJoin}
-                    onClick={() => {
-                      void handleJoin();
-                    }}
+                    tone={joinAction.tone}
+                    disabled={joinAction.disabled}
+                    onClick={joinAction.run}
                   >
-                    {alreadyMember ? (
-                      "Already joined"
-                    ) : isJoining ? (
+                    {isJoining ? (
                       <>
                         <SkeletonBase
                           width="16px"
@@ -744,7 +743,7 @@ export function AddNewServer({
                         Joining…
                       </>
                     ) : (
-                      "Join server"
+                      joinAction.label
                     )}
                   </Button>
                 </Dialog.Footer>
@@ -969,13 +968,15 @@ function ServerPreview({
 }: ServerPreviewProps) {
   return (
     <Surface className="p-3">
-      <div className="flex items-center gap-3">
+      {/* Top-aligned, because the description below the name can run to two
+          lines and an icon centred against three lines floats. */}
+      <div className="flex items-start gap-3">
         {/* Seeded on the address until /info answers, and on the name from then
             on — so the planet in the preview is the one the rail will draw once
             you have joined, rather than a different one you never see again. */}
         <Avatar
           size="small"
-          className="rounded-(--gryt-radius-md)"
+          className="rounded-(--gryt-radius-md) shrink-0"
           src={info ? `${getServerHttpBase(host)}/icon` : undefined}
           fallback={<GeneratedServerIcon seed={info?.name || host} />}
         />
@@ -989,6 +990,11 @@ function ServerPreview({
             </span>
           )}
 
+          {/* What the place is, in the server's own words, clamped at two
+              lines. No expand control: this is a preview before a decision
+              rather than the server's profile, and the sentence saying what
+              somewhere is should not be behind a press. The address is not
+              repeated — it is in the field directly above. */}
           {loading ? (
             <SkeletonBase width="5rem" height="0.75rem" />
           ) : error ? (
@@ -1000,15 +1006,16 @@ function ServerPreview({
               Public info is off. An invite code can still get you in.
             </span>
           ) : (
-            <span className="text-xs truncate">
-              {info
-                ? `${info.members} ${info.members === "1" ? "member" : "members"} · ${host}`
-                : host}
+            <span className="text-xs line-clamp-2">
+              {info?.description || host}
             </span>
           )}
         </div>
 
-        <div className="flex gap-2 items-center ml-auto">
+        {/* The two facts about this server, on one right edge: what it costs
+            you, then how big it is. The count wears no chrome and is a size
+            down — two badges would read as two warnings. */}
+        <div className="flex flex-col gap-1 items-end ml-auto shrink-0 pl-2">
           {alreadyMember && (
             <Chip>
               <PiInfoFill size={12} />
@@ -1029,6 +1036,14 @@ function ServerPreview({
                 ? "No account needed"
                 : "Account required"}
             </Chip>
+          )}
+          {info && !loading && (
+            <span
+              className="text-xs tabular-nums"
+              style={{ color: "var(--gryt-neutral-11)" }}
+            >
+              {info.members} {info.members === "1" ? "member" : "members"}
+            </span>
           )}
         </div>
       </div>
