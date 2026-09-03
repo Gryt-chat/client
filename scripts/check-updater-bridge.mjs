@@ -57,7 +57,18 @@ assert.match(builder, /from: build\/embedded-native\//);
 
 assert.doesNotMatch(builder, /from: build\/embedded-server\/server\//);
 
-assert.match(builder, /electronLanguages:\r?\n\s+- en\r?\n\s+- nb/);
+/*
+ * Both languages are in the list, wherever they sit in it.
+ *
+ * This used to require them adjacent, which broke the moment `en-US` and
+ * `en-GB` were added between them (GRYT-875) — the packaging was right and the
+ * check was wrong, and it took every client PR red with it. What matters is
+ * that the pruning did not drop a language the app ships strings for.
+ */
+const languages = builder.match(/electronLanguages:\n((?:\s+-\s+\S+\n)+)/)?.[1] ?? "";
+for (const language of ["en", "nb"]) {
+  assert.match(languages, new RegExp(`^\\s+-\\s+${language}\\s*$`, "m"), `electronLanguages is missing ${language}`);
+}
 
 // The Windows update handoff.
 //
