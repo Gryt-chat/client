@@ -32,6 +32,7 @@ import { fileURLToPath } from "url";
 
 import { parseCombo, type ParsedCombo } from "../src/lib/hotkeys";
 import {
+  checkAddonUpdates,
   getAddons,
   getAddonsDir,
   initAddonManager,
@@ -2816,6 +2817,15 @@ if (!gotSingleInstanceLock) {
       ipcMain.handle(
         "addons:list",
         () => getAddons()
+      );
+
+      // Asked for by the addons page when it opens, rather than on a timer.
+      // Nobody needs to know an addon is out of date while they are in a call,
+      // and a check that only runs when somebody is looking at the answer
+      // cannot spend anybody's rate limit in the background.
+      ipcMain.handle(
+        "addons:check-updates",
+        () => checkAddonUpdates()
       );
 
       ipcMain.handle(

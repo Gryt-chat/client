@@ -400,6 +400,17 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return ipcRenderer.invoke("addons:open-folder");
   },
 
+  checkAddonUpdates(): Promise<
+    Array<{
+      addonId: string;
+      installed: string;
+      latest: string;
+      releaseUrl: string;
+    }>
+  > {
+    return ipcRenderer.invoke("addons:check-updates");
+  },
+
   resolveAddonAsset(addonId: string, relativePath: string): Promise<string> {
     return ipcRenderer.invoke("addons:resolve-asset", addonId, relativePath);
   },

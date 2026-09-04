@@ -2,7 +2,7 @@ import { Button, Chip, Switch } from "@gryt/ui";
 import { useEffect, useState } from "react";
 import { PiFolderFill } from "react-icons/pi";
 
-import type { AddonManifest } from "@/addons";
+import type { AddonManifest, AddonUpdate } from "@/addons";
 import { useAddons } from "@/addons";
 
 import { getElectronAPI, isElectron } from "../../../../lib/electron";
@@ -60,14 +60,55 @@ function useAddonAssetUrl(
   return url;
 }
 
+/**
+ * What each addon's repository says is newer, keyed by addon id.
+ *
+ * Checked when this screen opens rather than on a timer. Nobody needs to learn
+ * an addon is out of date mid-call, and a check that only runs while somebody
+ * is looking at the answer cannot quietly spend their rate limit.
+ */
+function useAddonUpdates(): Record<string, AddonUpdate> {
+  const [updates, setUpdates] = useState<Record<string, AddonUpdate>>({});
+
+  useEffect(() => {
+    if (!isElectron()) return;
+
+    const api = getElectronAPI();
+    // Absent on a build older than this feature, and the page still works.
+    if (!api?.checkAddonUpdates) return;
+
+    let cancelled = false;
+
+    api
+      .checkAddonUpdates()
+      .then((found) => {
+        if (cancelled) return;
+        setUpdates(
+          Object.fromEntries(found.map((update) => [update.addonId, update])),
+        );
+      })
+      .catch(() => {
+        // Offline, or GitHub is having a day. The page is still the page.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return updates;
+}
+
 function AddonCard({
   addon,
   enabled,
   onToggle,
+  update,
 }: {
   addon: AddonManifest;
   enabled: boolean;
   onToggle: () => void;
+  update?: AddonUpdate;
 }) {
   const isTheme = addon.type === "theme";
   const bannerUrl = useAddonAssetUrl(addon.id, addon.banner);
@@ -103,6 +144,11 @@ function AddonCard({
               <span className="text-xs text-gryt-muted">
                 v{addon.version}
               </span>
+              {update && (
+                <Chip tone="neutral" color="green">
+                  v{update.latest} available
+                </Chip>
+              )}
               {!isTheme && addon.requiresReloadOnDisable && (
                 <Chip tone="warning" label="Reload on disable" />
               )}
@@ -134,6 +180,17 @@ function AddonCard({
             by {addon.author}
           </span>
         )}
+
+        {/* Opens the release rather than installing it. Replacing an addon's
+            files means running whatever the repository publishes next, so the
+            step where somebody looks at it first is the point, not a gap. */}
+        {update && (
+          <Button tone="neutral" size="small"
+            onClick={() => getElectronAPI()?.openExternal(update.releaseUrl)}
+          >
+            View v{update.latest}
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -141,6 +198,7 @@ function AddonCard({
 
 export function AddonsSettings() {
   const { addons, enabledIds, toggleAddon, openAddonsFolder } = useAddons();
+  const updates = useAddonUpdates();
   const inElectron = isElectron();
 
   return (
@@ -192,6 +250,7 @@ export function AddonsSettings() {
               addon={addon}
               enabled={enabledIds.has(addon.id)}
               onToggle={() => toggleAddon(addon.id)}
+              update={updates[addon.id]}
             />
           ))}
         </div>

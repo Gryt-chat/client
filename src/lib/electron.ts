@@ -1,4 +1,4 @@
-import { AddonManifest } from "@/addons";
+import { AddonManifest, AddonUpdate } from "@/addons";
 
 import type { HotkeyAction, HotkeyBindings } from "./hotkeys";
 
@@ -226,6 +226,7 @@ export interface ElectronAPI {
   onAuthCallback(callback: (url: string) => void): () => void;
   listAddons(): Promise<AddonManifest[]>;
   openAddonsFolder(): Promise<string>;
+  checkAddonUpdates(): Promise<AddonUpdate[]>;
   resolveAddonAsset(addonId: string, relativePath: string): Promise<string>;
   onAddonsChanged(callback: (addons: AddonManifest[]) => void): () => void;
   /** Servers already discovered, for a renderer that mounted after the fact. */
