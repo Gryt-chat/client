@@ -43,27 +43,24 @@ directories:
   buildResources: build
   output: release
 
+# No node_modules rules here on purpose. electron-builder packs the transitive
+# closure of `dependencies` on top of the globs below, and ignores
+# devDependencies entirely — so package.json is what decides, and it is a better
+# place to decide it than a list of negated globs.
+#
+# Only the main process loads anything from node_modules at runtime. Vite inlines
+# every renderer import into dist/assets, which is under 8MB for the whole app,
+# so a renderer-only package in `dependencies` is a second copy that ships,
+# gets signed and notarized, and is never read. That closure was 208 packages
+# and 218MB against the 5.4MB the main process actually needs.
+#
+# So `dependencies` holds exactly what electron/ requires and everything else is
+# a devDependency. Adding a bare import to an electron/ file means promoting that
+# package back, and forgetting shows up as MODULE_NOT_FOUND in a packaged build
+# rather than at build time.
 files:
   - dist/**/*
   - dist-electron/**/*
-  # electron-builder packs every production dependency into the asar on top of
-  # the globs above, whether or not anything can reach it. Vite has already
-  # bundled the renderer's imports into dist/assets, which is 7.5MB for the whole
-  # app, so the node_modules copy of a renderer-only package is dead weight that
-  # still gets shipped, signed, notarized and downloaded.
-  #
-  # These two were 117MB of a 233MB asar. react-icons carries every icon set it
-  # publishes, while this app imports 69 icons and 66 of those come from
-  # react-icons/pi. @mediapipe is worse than unused: the Vite plugin has already
-  # copied the same WASM into dist/mediapipe, so it shipped twice.
-  #
-  # Only the two that were measured. Most of what remains is renderer-only too,
-  # but replacing this with "!node_modules/**/*" and an allow-list means naming
-  # the transitive closure of what the main process requires, and getting that
-  # wrong fails as MODULE_NOT_FOUND in a packaged build rather than at build
-  # time — which is the kind of thing that ships.
-  - "!node_modules/react-icons/**/*"
-  - "!node_modules/@mediapipe/**/*"
 
 extraResources:
   - from: build/icon.png
