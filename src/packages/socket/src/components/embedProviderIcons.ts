@@ -1,17 +1,17 @@
 import type { IconType } from "react-icons";
 import {
-  SiApplemusic, SiArxiv, SiBandcamp, SiBehance, SiBluesky, SiCloudflare,
-  SiCodepen, SiCodesandbox, SiCurseforge, SiDevdotto, SiDiscord, SiDocker,
-  SiDribbble, SiEpicgames, SiFacebook, SiFigma, SiFlickr, SiGiphy, SiGithub,
-  SiGitlab, SiGogdotcom, SiGoodreads, SiGoogledrive, SiGooglemaps, SiImdb,
-  SiImgur, SiInstagram, SiInternetarchive, SiItchdotio, SiJira, SiKick,
-  SiLastdotfm, SiLetterboxd, SiLinear, SiLinkedin, SiMastodon, SiMdnwebdocs,
-  SiMedium, SiMixcloud, SiModrinth, SiNetlify, SiNexusmods, SiNintendo,
-  SiNotion, SiNpm, SiObsidian, SiOpenstreetmap, SiPinterest, SiPlaystation,
-  SiPypi, SiReddit, SiReplit, SiRumble, SiRust, SiSnapchat, SiSoundcloud,
-  SiSpotify, SiStackblitz, SiStackoverflow, SiSteam, SiTelegram, SiThreads,
-  SiTidal, SiTiktok, SiTrello, SiTwitch, SiVercel, SiVimeo, SiWikipedia,
-  SiWolfram, SiX, SiYcombinator, SiYoutube,
+  SiApplemusic, SiArxiv, SiBambulab, SiBandcamp, SiBehance, SiBluesky,
+  SiCloudflare, SiCodepen, SiCodesandbox, SiCurseforge, SiDevdotto, SiDiscord,
+  SiDocker, SiDribbble, SiEpicgames, SiFacebook, SiFigma, SiFlickr, SiGiphy,
+  SiGithub, SiGitlab, SiGogdotcom, SiGoodreads, SiGoogledrive, SiGooglemaps,
+  SiImdb, SiImgur, SiInstagram, SiInternetarchive, SiItchdotio, SiJira,
+  SiKick, SiLastdotfm, SiLetterboxd, SiLinear, SiLinkedin, SiMastodon,
+  SiMdnwebdocs, SiMedium, SiMixcloud, SiModrinth, SiNetlify, SiNexusmods,
+  SiNintendo, SiNotion, SiNpm, SiObsidian, SiOpenstreetmap, SiPinterest,
+  SiPlaystation, SiPrintables, SiPypi, SiReddit, SiReplit, SiRumble, SiRust,
+  SiSnapchat, SiSoundcloud, SiSpotify, SiStackblitz, SiStackoverflow, SiSteam,
+  SiTelegram, SiThingiverse, SiThreads, SiTidal, SiTiktok, SiTrello, SiTwitch,
+  SiVercel, SiVimeo, SiWikipedia, SiWolfram, SiX, SiYcombinator, SiYoutube,
 } from "react-icons/si";
 
 /**
@@ -105,4 +105,10 @@ export const PROVIDER_ICONS: Record<string, IconType> = {
   googledrive: SiGoogledrive,
   googlemaps: SiGooglemaps,
   openstreetmap: SiOpenstreetmap,
+
+  /* MakerWorld is Bambu Lab's site and has no mark of its own, which is the
+     same reason its provider entry wears their green. */
+  makerworld: SiBambulab,
+  printables: SiPrintables,
+  thingiverse: SiThingiverse,
 };
