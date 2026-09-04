@@ -2429,8 +2429,13 @@ if (!gotSingleInstanceLock) {
 
       try {
         await prepareEmbeddedServerRuntime();
+        // prepareEmbeddedServerRuntime returns early when there is no archive,
+        // which is every slim build. Saying "ready" for that sent me looking
+        // for an extracted runtime that was never meant to exist.
         startupLog(
-          "Embedded server runtime ready"
+          isSlimInstall()
+            ? "Embedded server runtime: not in this build"
+            : "Embedded server runtime ready"
         );
       } catch (error) {
         startupLog(
