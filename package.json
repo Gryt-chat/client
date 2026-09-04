@@ -1,8 +1,8 @@
 {
   "name": "gryt-chat",
   "private": true,
-  "version": "1.9.12",
-  "description": "Gryt Chat \u2014 real-time voice chat desktop client",
+  "version": "1.9.13",
+  "description": "Gryt Chat — real-time voice chat desktop client",
   "author": {
     "name": "Gryt Chat",
     "email": "sivert@gryt.chat",
