@@ -19,6 +19,8 @@ import { readFileSync, existsSync, statSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
+import { EMBEDDED_RESOURCE_PREFIX, isSlimBuild } from "./variant.mjs";
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
 
@@ -46,7 +48,14 @@ function extraResourceSources(yml) {
 
 export default async function beforeBuild() {
   const yml = readFileSync(join(root, "electron-builder.yml"), "utf8");
-  const sources = extraResourceSources(yml);
+  const slim = isSlimBuild();
+
+  // A slim build drops these from the config as well, so demanding them here
+  // would fail a build that is correct. Every other entry is still checked,
+  // which is the point — this skips two known names, not the whole check.
+  const sources = extraResourceSources(yml).filter(
+    (src) => !slim || !src.startsWith(EMBEDDED_RESOURCE_PREFIX),
+  );
 
   const missing = [];
   const empty = [];
