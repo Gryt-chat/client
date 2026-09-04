@@ -1,3 +1,5 @@
+import { base64Url } from "@gryt/crypto";
+
 import { asIdentityScope, deriveScopedKeyPair, jwkThumbprint, signJwtWithKey } from "@/common";
 
 /**
@@ -53,9 +55,7 @@ async function bodyHash(body: string): Promise<string> {
     "SHA-256",
     new TextEncoder().encode(body),
   );
-  let binary = "";
-  for (const b of new Uint8Array(digest)) binary += String.fromCharCode(b);
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  return base64Url(new Uint8Array(digest));
 }
 
 /**

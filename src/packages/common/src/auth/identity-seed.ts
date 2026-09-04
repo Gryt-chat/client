@@ -18,8 +18,8 @@
  * the database — this file is only the calculation, so it can be read and
  * checked on its own.
  */
-
 import type { IdentityScope } from "@gryt/crypto";
+import { base64Url as sharedBase64Url } from "@gryt/crypto";
 import { mapHashToField } from "@noble/curves/abstract/modular.js";
 import { p256 } from "@noble/curves/nist.js";
 import { hkdf } from "@noble/hashes/hkdf.js";
@@ -80,11 +80,8 @@ function utf8(value: string): Uint8Array<ArrayBuffer> {
   return new TextEncoder().encode(value) as Uint8Array<ArrayBuffer>;
 }
 
-function base64Url(bytes: Uint8Array): string {
-  let binary = "";
-  for (const b of bytes) binary += String.fromCharCode(b);
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
+/* base64url is @gryt/crypto's (GRYT-898). */
+const base64Url = sharedBase64Url;
 
 /**
  * Reject a seed that is obviously not random.
