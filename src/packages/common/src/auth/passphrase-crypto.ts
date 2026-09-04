@@ -1,3 +1,4 @@
+import { base64UrlDecode } from "@gryt/crypto";
 /**
  * Turning a passphrase somebody chose into a key, and the encoding around it.
  *
@@ -22,18 +23,14 @@ export const PBKDF2_ITERATIONS = 600_000;
 export const SALT_BYTES = 16;
 export const IV_BYTES = 12;
 
-export function base64Url(bytes: Uint8Array): string {
-  let binary = "";
-  for (const b of bytes) binary += String.fromCharCode(b);
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
+/* base64url comes from @gryt/crypto now (GRYT-898). The three copies this file
+   and its neighbours carried were all the same `btoa` pair that package was
+   written to replace — see its `base64.ts` header for why `btoa` is the wrong
+   one to standardise on. Re-exported so callers do not have to move. */
+export { base64Url } from "@gryt/crypto";
 
 export function fromBase64Url(value: string): Uint8Array<ArrayBuffer> {
-  const padded = value.replace(/-/g, "+").replace(/_/g, "/");
-  const binary = atob(padded);
-  const out = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
-  return out as Uint8Array<ArrayBuffer>;
+  return base64UrlDecode(value) as Uint8Array<ArrayBuffer>;
 }
 
 export async function deriveWrappingKey(
