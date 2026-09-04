@@ -24,6 +24,7 @@ jobs:
       - run: yarn test:updater-bridge
       - run: yarn test:server-notice
       - run: yarn test:identity-vault
+      - run: yarn test:identity-certificate
       - run: yarn test:message-vault
       - run: yarn test:message-key
       - run: yarn test:message-key-offer

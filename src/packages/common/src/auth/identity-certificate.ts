@@ -5,7 +5,8 @@
  * ownership of a public key.
  */
 import { getGrytConfig } from "../../../../config";
-import { getPublicKeyJwk } from "./identity-keys";
+import { certificateVerdict } from "./certificate-verdict";
+import { clearIdentityKeys, getPublicKeyJwk } from "./identity-keys";
 import { decodeJwt } from "./jwt";
 import { getValidIdentityToken } from "./keycloak";
 
@@ -141,27 +142,74 @@ async function fetchCertificateFromService(): Promise<string> {
 }
 
 /**
+ * Which account is signed in at this moment, or null when nothing can say.
+ *
+ * Null covers being signed out, a lapsed session and a refresh that could not
+ * reach Keycloak. All three mean "no answer", not "a different person", and the
+ * caller treats them that way — a laptop off the network must not throw away a
+ * certificate it may be about to need.
+ */
+async function signedInSub(): Promise<string | null> {
+  const token = await getValidIdentityToken().catch(() => undefined);
+  return token ? parseJwtSub(token) : null;
+}
+
+/**
  * Returns a valid identity certificate, fetching/renewing if needed.
  * The certificate is a JWT proving that a public key belongs to a Gryt user.
  */
 export async function getValidCertificate(): Promise<string> {
   const stored = getStoredCert();
-  if (stored && stored.expiresAt > Date.now() + RENEW_BUFFER_MS) {
-    // Unexpired is not the same as usable. A certificate that names a key we no
-    // longer hold produces an assertion the server rejects with "signature
-    // verification failed", and because the certificate is still in date it is
-    // never renewed — the client stays wedged until it expires on its own.
-    //
-    // Checking here means the mismatch repairs itself on the next join, with
-    // nothing for the user to do.
-    const currentJwk = await getPublicKeyJwk();
-    if (certificateMatchesKey(stored.certificate, currentJwk)) {
-      return stored.certificate;
+  if (stored) {
+    /*
+     * The decision is `certificateVerdict`; this reads what it needs and acts
+     * on the answer.
+     *
+     * Both reads cost something — `signedInSub` may refresh a token and
+     * `getPublicKeyJwk` opens IndexedDB — which is exactly why the rule lives
+     * in a module with no imports and this one does the fetching.
+     */
+    const verdict = certificateVerdict({
+      certificateSub: parseJwtSub(stored.certificate),
+      signedInSub: await signedInSub(),
+      matchesKey: certificateMatchesKey(stored.certificate, await getPublicKeyJwk()),
+      needsRenewal: stored.expiresAt <= Date.now() + RENEW_BUFFER_MS,
+    });
+
+    if (verdict === "use") return stored.certificate;
+
+    if (verdict === "wrong-account") {
+      console.warn(
+        "[Identity] Cached certificate belongs to another account — discarding it.",
+      );
+      clearIdentityCertificate();
+      /*
+       * And the key with it. The certificate binds one `sub` to one public key,
+       * so minting a new certificate over the key the previous account was
+       * using would hand two accounts the same key — and a server that pinned
+       * it sees one key arrive under a second name.
+       *
+       * Safe to drop: an account key is random rather than derived
+       * (`identity-keys.ts`), the CA certifies a fresh one on the next
+       * sign-in, and DM keys come off the seed, which this does not touch.
+       */
+      await clearIdentityKeys().catch(() => {});
+    } else if (verdict === "wrong-key") {
+      // Unexpired is not the same as usable. A certificate that names a key we
+      // no longer hold produces an assertion the server rejects with "signature
+      // verification failed", and because the certificate is still in date it is
+      // never renewed — the client stays wedged until it expires on its own.
+      //
+      // Checking here means the mismatch repairs itself on the next join, with
+      // nothing for the user to do.
+      console.warn(
+        "[Identity] Cached certificate does not match the current keypair — renewing."
+      );
+      clearIdentityCertificate();
     }
-    console.warn(
-      "[Identity] Cached certificate does not match the current keypair — renewing."
-    );
-    clearIdentityCertificate();
+    // `stale` falls through to the fetch below with the old certificate still
+    // in storage. A renewal that cannot reach the network should not also cost
+    // us the `sub` that `getCertificateSub` reads back out of it.
   }
 
   if (fetchPromise) return fetchPromise;
