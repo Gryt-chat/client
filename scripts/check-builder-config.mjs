@@ -40,17 +40,83 @@ const validate = require("@develar/schema-utils");
 
 const config = load(readFileSync(join(here, "..", "electron-builder.yml"), "utf8"));
 
-try {
-  validate(schema, config, { name: "electron-builder" });
-} catch (err) {
-  console.error("electron-builder.yml does not match electron-builder's schema:\n");
-  console.error(err.message);
+function check(candidate, label) {
+  try {
+    validate(schema, candidate, { name: "electron-builder" });
+  } catch (err) {
+    console.error(`${label} does not match electron-builder's schema:\n`);
+    console.error(err.message);
+    console.error(
+      "\nThis is the validation electron-builder runs at package time. It checks " +
+        "the whole config before looking at what is being built, so a mistake " +
+        "under `win` fails the macOS and Linux builds too.",
+    );
+    process.exit(1);
+  }
+}
+
+check(config, "electron-builder.yml");
+
+// A release publishes two builds and only one of them is this file. The slim
+// config is the YAML with three edits applied, and an edit that leaves the
+// schema costs exactly as much there as it does here.
+const configPath = join(here, "..", "electron-builder.config.cjs");
+
+function loadVariant(variant) {
+  const previous = process.env.GRYT_VARIANT;
+  if (variant === undefined) delete process.env.GRYT_VARIANT;
+  else process.env.GRYT_VARIANT = variant;
+
+  try {
+    delete require.cache[require.resolve(configPath)];
+    return require(configPath);
+  } finally {
+    if (previous === undefined) delete process.env.GRYT_VARIANT;
+    else process.env.GRYT_VARIANT = previous;
+  }
+}
+
+const slim = loadVariant("slim");
+check(slim, "electron-builder.config.cjs at GRYT_VARIANT=slim");
+
+const embeddedIn = (candidate) =>
+  (candidate.extraResources ?? []).filter((entry) =>
+    String(entry.from).startsWith("build/embedded-"),
+  );
+
+// The three things a slim build has to get right, asserted rather than assumed.
+// Each of them fails quietly: the wrong filter produces a build that looks slim
+// and is not, the wrong channel updates people back onto the full build, and
+// the wrong name has the two variants overwrite each other in one release.
+const stillEmbedded = embeddedIn(slim);
+if (stillEmbedded.length > 0) {
   console.error(
-    "\nThis is the validation electron-builder runs at package time. It checks " +
-      "the whole config before looking at what is being built, so a mistake " +
-      "under `win` fails the macOS and Linux builds too.",
+    "slim config still ships the embedded server:\n" +
+      stillEmbedded.map((entry) => `  ${entry.from}`).join("\n"),
   );
   process.exit(1);
 }
 
-console.log("builder-config: ok");
+if (slim.publish?.channel !== "slim") {
+  console.error(
+    `slim config publishes to channel ${JSON.stringify(slim.publish?.channel)}, ` +
+      "so a slim install would update itself onto the full build.",
+  );
+  process.exit(1);
+}
+
+if (!String(slim.artifactName).includes("slim")) {
+  console.error(
+    "slim artifacts are named like the full ones, so the two would overwrite " +
+      "each other in the same release.",
+  );
+  process.exit(1);
+}
+
+// And the default is still the whole thing.
+if (embeddedIn(loadVariant(undefined)).length === 0) {
+  console.error("the default build has lost the embedded server.");
+  process.exit(1);
+}
+
+console.log("builder-config: ok, both variants");
