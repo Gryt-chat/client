@@ -330,6 +330,8 @@ export const VoiceView = ({
     voiceTwoPersonLayout,
     setShowSettings,
     setSettingsTab,
+    micSilentWarningDismissed,
+    setMicSilentWarningDismissed,
   } = useSettings();
   const { latency: selfLatency } = useVoiceLatency(showPeerLatency);
 
@@ -411,11 +413,28 @@ export const VoiceView = ({
     isInThisVoiceChannel && !micUnavailable,
   );
 
+  // Once per visit to the channel, the way micUnavailable already does it, and
+  // not once per silent stretch. A headset that gates its own noise floor sends
+  // digital silence between sentences, which is precisely what the detector
+  // looks for — so on that hardware this came back every time the room went
+  // quiet for eight seconds. Reported from the community server as "getting a
+  // little bit annoyed", which is fair.
+  const warnedAboutSilenceRef = useRef(false);
+
   useEffect(() => {
+    if (!isInThisVoiceChannel) {
+      warnedAboutSilenceRef.current = false;
+      toast.dismiss("mic-silent");
+      return;
+    }
+
     if (!rawInputSilent) {
       toast.dismiss("mic-silent");
       return;
     }
+
+    if (micSilentWarningDismissed || warnedAboutSilenceRef.current) return;
+    warnedAboutSilenceRef.current = true;
 
     toast(
       (t) => (
@@ -433,6 +452,17 @@ export const VoiceView = ({
           >
             Open settings
           </Button>
+          {/* Turns it off everywhere, not just this once. Sound & video has a
+              switch to put it back, because a warning you cannot get back is
+              worse than one that nags. */}
+          <Button tone="neutral" size="xsmall"
+            onClick={() => {
+              toast.dismiss(t.id);
+              setMicSilentWarningDismissed(true);
+            }}
+          >
+            Don&apos;t show again
+          </Button>
         </div>
       ),
       {
@@ -442,7 +472,14 @@ export const VoiceView = ({
         icon: <PiMicrophoneSlashFill size={18} />,
       },
     );
-  }, [rawInputSilent, setSettingsTab, setShowSettings]);
+  }, [
+    isInThisVoiceChannel,
+    rawInputSilent,
+    micSilentWarningDismissed,
+    setMicSilentWarningDismissed,
+    setSettingsTab,
+    setShowSettings,
+  ]);
 
   /**
    * A camera that will not start says so (GRYT-16). Without this the button

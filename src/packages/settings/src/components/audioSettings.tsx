@@ -90,6 +90,8 @@ export function AudioSettings() {
     setIsMuted,
     inputMode,
     setInputMode,
+    micSilentWarningDismissed,
+    setMicSilentWarningDismissed,
   } = useSettings();
 
   const { isConnected } = useSFU();
@@ -600,6 +602,16 @@ export function AudioSettings() {
           onChange={setCompressorAmount}
         />
       )}
+
+      {/* The way back from the toast's "Don't show again". Reads as the warning
+          rather than as the dismissal, so the switch is on by default and the
+          stored flag is inverted here. */}
+      <ToggleSetting
+        title="Warn me when my microphone goes silent"
+        description="Says so if your microphone stops sending anything at all while you are in a voice channel. Some headsets mute their own noise floor between sentences, which looks the same from here, so turn this off if it keeps firing while you are audible."
+        checked={!micSilentWarningDismissed}
+        onCheckedChange={(enabled) => setMicSilentWarningDismissed(!enabled)}
+      />
 
       <Divider />
 

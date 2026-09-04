@@ -1,4 +1,4 @@
-import { AlertDialog, Avatar, Button, IconButton, Tabs, TextField, Tooltip } from "@gryt/ui";
+import { AlertDialog, Avatar, Button, IconButton, Select, Tabs, TextField, Tooltip } from "@gryt/ui";
 import { AvatarChoiceDialog, OwlDesignerDialog } from "@gryt/ui";
 import { useCallback,useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
@@ -9,6 +9,15 @@ import { useSettings } from "@/settings";
 import { useServerManagement, useSockets } from "@/socket";
 
 import { SettingsContainer } from "./settingsComponents";
+
+/**
+ * How many servers the tab row still holds before it becomes a select.
+ *
+ * Counts servers, not tabs, so the All Servers tab is the sixth one on screen
+ * at the switchover. Five is roughly where the row filled the panel at its
+ * normal width — a seventh name was already running off the edge.
+ */
+const SERVERS_BEFORE_DROPDOWN = 5;
 
 function extForMime(mime: string): string {
   switch ((mime || "").toLowerCase()) {
@@ -770,6 +779,19 @@ export function ProfileSettings() {
   // removing one all set `uploading` or `removing` on the way through.
   const storedWorn = getStoredWorn();
 
+  // One list, rendered two ways. Built here rather than inline so the tabs and
+  // the select cannot drift apart on what a server is called.
+  const serverTabs = [
+    { label: "All Servers", value: "all" },
+    ...serverHosts.map((host) => ({
+      label:
+        serverDetailsList?.[host]?.server_info?.name ||
+        servers[host]?.name ||
+        host,
+      value: host,
+    })),
+  ];
+
   return (
     <SettingsContainer>
       <h2 className="text-lg">
@@ -778,20 +800,30 @@ export function ProfileSettings() {
 
       {serverHosts.length > 0 && (
         <div className="flex justify-center" style={{ paddingTop: 4, paddingBottom: 4 }}>
-          <Tabs value={selectedTab} onValueChange={(v) => setSelectedTab(String(v))}>
-            <Tabs.List aria-label="Which server">
-              <Tabs.Tab value="all">All Servers</Tabs.Tab>
-              {serverHosts.map((host) => {
-                const name = serverDetailsList?.[host]?.server_info?.name || servers[host]?.name || host;
-                return (
-                  <Tabs.Tab key={host} value={host}>
-                    {name}
+          {/* The tab row does not wrap or scroll, so past a handful of servers
+              the names on the end run off the edge of the panel and cannot be
+              reached at all. A select holds any number of them in the width of
+              one control, so the tabs stay for the case they suit and hand over
+              once they stop fitting. */}
+          {serverHosts.length >= SERVERS_BEFORE_DROPDOWN ? (
+            <Select
+              value={selectedTab}
+              onValueChange={(v) => setSelectedTab(String(v))}
+              placeholder="Which server"
+              options={serverTabs}
+            />
+          ) : (
+            <Tabs value={selectedTab} onValueChange={(v) => setSelectedTab(String(v))}>
+              <Tabs.List aria-label="Which server">
+                {serverTabs.map((tab) => (
+                  <Tabs.Tab key={tab.value} value={tab.value}>
+                    {tab.label}
                   </Tabs.Tab>
-                );
-              })}
-              <Tabs.Indicator />
-            </Tabs.List>
-          </Tabs>
+                ))}
+                <Tabs.Indicator />
+              </Tabs.List>
+            </Tabs>
+          )}
         </div>
       )}
 

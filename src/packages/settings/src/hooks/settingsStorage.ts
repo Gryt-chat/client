@@ -123,6 +123,18 @@ export interface Settings {
   officialServerHidden: boolean;
   setOfficialServerHidden: (value: boolean) => void;
 
+  /**
+   * Whether the "microphone is not picking up any sound" toast has been turned
+   * off for good.
+   *
+   * Per device, because the thing it is wrong about is a device: a headset that
+   * gates its own noise floor emits digital silence between sentences, which is
+   * exactly what the detector looks for. Somebody on that headset wants the
+   * warning gone here and still wants it on the laptop.
+   */
+  micSilentWarningDismissed: boolean;
+  setMicSilentWarningDismissed: (value: boolean) => void;
+
   pinChannelsSidebar: boolean;
   setPinChannelsSidebar: (value: boolean) => void;
   pinMembersSidebar: boolean;
@@ -301,6 +313,9 @@ export const settingsInit: Settings = {
 
   officialServerHidden: false,
   setOfficialServerHidden: noop,
+
+  micSilentWarningDismissed: false,
+  setMicSilentWarningDismissed: noop,
 
   pinChannelsSidebar: true,
   setPinChannelsSidebar: noop,

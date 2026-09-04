@@ -366,6 +366,7 @@ export const SETTINGS_KEYS = [
   "screenShareScalabilityMode",
   "userVolumes",
   "officialServerHidden",
+  "micSilentWarningDismissed",
   "pinChannelsSidebar",
   "pinMembersSidebar",
   "afkTimeoutMinutes",
