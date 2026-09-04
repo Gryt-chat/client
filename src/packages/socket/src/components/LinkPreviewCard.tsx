@@ -3,14 +3,15 @@ import {
   getCardSubtitle,
   getLinkProvider,
   getProviderDetail,
+  getProviderLogo,
   hostnameOf,
+  LOGO_VIEW_BOX,
 } from "@gryt/core";
 import { memo, useEffect, useMemo, useState } from "react";
 import { PiLinkSimpleBold } from "react-icons/pi";
 
 import { getServerAccessToken, getServerHttpBase, useTheme } from "@/common";
 
-import { PROVIDER_ICONS } from "./embedProviderIcons";
 import { DismissButton } from "./EmbedRenderers";
 import {
   cardByline,
@@ -36,15 +37,25 @@ const CardSite = memo(({
   favicon: string | null;
 }) => {
   const provider = getLinkProvider(url);
-  const Icon = provider ? PROVIDER_ICONS[provider.id] : undefined;
+  // Path data rather than a component, because the phone needs the same mark
+  // and cannot draw a react-icons one. The class already sets size and colour,
+  // so currentColor is all this has to say.
+  const logo = provider ? getProviderLogo(provider.id) : undefined;
   const [faviconFailed, setFaviconFailed] = useState(false);
 
   useEffect(() => setFaviconFailed(false), [favicon]);
 
   return (
     <div className="link-embed-card-site">
-      {Icon ? (
-        <Icon className="link-embed-card-brand" aria-hidden />
+      {logo ? (
+        <svg
+          className="link-embed-card-brand"
+          viewBox={LOGO_VIEW_BOX}
+          fill="currentColor"
+          aria-hidden
+        >
+          <path d={logo} />
+        </svg>
       ) : favicon && !faviconFailed ? (
         <img
           src={favicon}
