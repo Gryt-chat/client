@@ -11,19 +11,19 @@
    Re-exported rather than repointed at every consumer, because four files
    import from this path and the move is not their business. */
 export {
+  type CellState,
   cellState,
+  type ChannelRule,
   CUSTOM_VALUE,
   describeRules,
   EVERYONE_VALUE,
   indexRules,
   nextCellState,
+  type RuleEffect,
+  type ScopeChoice,
   scopeChoiceFromValue,
   scopeChoiceValue,
   scopeOptions,
   scopeSetPayload,
   withCell,
-  type CellState,
-  type ChannelRule,
-  type RuleEffect,
-  type ScopeChoice,
 } from "@gryt/core";
