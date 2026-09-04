@@ -39,45 +39,33 @@ const LOCAL_PREFIX = "local:";
 const SERVER_SCOPE_PREFIX = "srv:";
 
 /**
- * Where a signing key comes from.
+ * Where a signing key comes from. `account` is the one key the Gryt CA has
+ * certified; there is exactly one, since the account `sub` is the same on every
+ * server anyway.
  *
- * `account` is the one key the Gryt CA has issued a certificate for. There is
- * exactly one, because the certificate binds one key to one account, and the
- * account `sub` is the same on every server anyway.
- *
- * `local` is a key for one server and used nowhere else. Nothing binds these
- * together as far as a server can tell, which is the point: a local identity is
- * its own key, so one key per server means two servers cannot work out they are
- * talking to the same person. They are calculated from a single seed rather
- * than each generated separately — see `identity-seed.ts` — which keeps that
- * property and makes the whole set portable at the same time.
+ * `local` is a key for one server and used nowhere else. **Nothing binds them
+ * together as far as a server can tell** — that is the point, and it is what
+ * one key per server buys. They are derived from a single seed rather than
+ * generated separately, which keeps the property and makes the set portable.
  */
 export type IdentitySource =
   | { kind: "account" }
   | { kind: "local"; host: string };
 
 /**
- * What a local identity is filed and calculated under (GRYT-257).
+ * What a local identity is filed and derived under (GRYT-257).
  *
- * The server, not the address it currently answers on. An address changes when
- * a port is taken (GRYT-48) or a router hands out a new lease, and the client
- * already recognises the server through that — pins are filed under the key for
- * exactly this reason. Filing the identity under the address instead meant the
- * client knew it was the same server and then arrived as a stranger: new `sub`,
- * no roles, no ownership, no history, and nothing logged to say why.
+ * **The server, not the address it currently answers on.** An address changes
+ * when a port is taken or a lease moves, and filing under it meant the client
+ * recognised the server and then arrived as a stranger — new `sub`, no roles,
+ * no ownership, nothing logged.
  *
- * The lineage id rather than today's key, so a server rotating its key does not
- * do the same thing (GRYT-54).
+ * The lineage id rather than today's key, so a rotation does not do the same
+ * thing (GRYT-54). A server reachable at two addresses is therefore one
+ * identity, which is the correct answer.
  *
- * One consequence worth knowing: a server reachable at two addresses — a LAN
- * address and a tunnel, say — is one identity now, where it used to be two.
- * That is the correct answer to "am I the same person on both", and it was
- * previously no.
- *
- * Falls back to the address when the server offered no proof at all, since
- * there is then nothing better to go on. Those identities keep the old
- * behaviour, including its bug, because nothing else is available to fix it
- * with.
+ * Falls back to the address for a server that offered no proof, which keeps the
+ * old behaviour and its bug because nothing better is available.
  */
 /*
  * Re-exported here because this is where a consumer looks for them —
@@ -310,23 +298,16 @@ async function loadOrGenerateKeyPair(
     return existing;
   }
 
-  // A local key is calculated from the seed, so the same identity comes back on
-  // any device that holds it, including for servers that device has never
-  // connected to. Every local key on this device works this way — the random
-  // per-server keys that came before were only ever a day old when this landed,
-  // so nothing carries them forward and there is no second kind of key to
-  // reason about.
+  // A local key is derived from the seed, so the same identity comes back on
+  // any device holding it, including for servers that device never connected to.
   //
-  // Local keys are extractable so they can be saved and restored; the account
-  // key is not, and does not need to be — losing it costs you nothing, because
-  // the CA will certify a fresh one for the same account.
-  //
-  // The trade is smaller than "extractable" makes it sound. A non-extractable
-  // key can still be *used* to sign by anything running in this page, so what
-  // extractability changes is whether a compromise outlives the page, not
-  // whether one is possible. Set against that: without it, clearing site data
-  // destroys every server this identity was known on — the roles, the
-  // ownership, the history — permanently, silently, and with no way back.
+  // **Local keys are extractable so they can be saved and restored**; the
+  // account key is not and does not need to be, since the CA will certify a
+  // fresh one. The trade is smaller than it sounds: a non-extractable key can
+  // still be *used* to sign by anything in this page, so extractability decides
+  // whether a compromise outlives the page rather than whether one is possible.
+  // Without it, clearing site data destroys every server this identity was
+  // known on, permanently and silently.
   const stored: StoredKeyPair =
     source.kind === "local"
       ? {
@@ -433,40 +414,27 @@ export async function signJwtWithKey(
 }
 
 /**
- * A key from this device's seed for something that is not a Gryt server.
+ * A key from this device's seed for something that is not a Gryt server — the
+ * report service. Signing with a per-server guest key would tell that service
+ * which server the reporter uses, which is the disclosure the one-key-per-server
+ * design exists to avoid.
  *
- * The report service is the case this exists for. Signing a report with one of
- * the per-server guest keys would tell that service which server the reporter
- * uses — the same disclosure the one-key-per-server design spends its effort
- * avoiding, pointed in a different direction. A scope of its own costs nothing
- * and keeps the property.
+ * **`scope` shares a namespace with `identityScopeFor`, which prefixes servers
+ * with `srv:`.** Anything passed here has to stay clear of that prefix.
  *
- * `scope` shares a namespace with `identityScopeFor`, which prefixes every
- * server with `srv:`. Anything passed here has to stay clear of that prefix or
- * it is a server's key under another name.
- *
- * Not stored, not cached, and not written to the guest history: it is
- * reproducible from the seed in a millisecond, and the history is a record of
- * servers joined rather than of keys derived. It does create the seed if there
- * is not one yet, which is the same thing joining anywhere would do.
+ * Not stored or cached, since it is reproducible from the seed. It does create
+ * the seed if there is not one, as joining anywhere would.
  */
 /**
- * The binding this device would publish for one server (GRYT-727).
+ * The binding this device would publish for one server (GRYT-727). Assembled
+ * here because it needs two things that never leave this module: the seed and
+ * the identity private key.
  *
- * Assembled here rather than by a caller because it needs two things that never
- * leave this module: the seed, and the identity private key. Everything else
- * about it is in `dm-key-binding.ts`.
+ * **`source` has to be the identity this device actually joined with.** The DM
+ * key does not depend on it; the signature does, and the value of the binding
+ * is that the signing key is the one the server challenged on the way in.
  *
- * `source` has to be the identity this device actually joined with. The DM key
- * itself does not depend on it — that comes from the seed and the scope either
- * way — but the signature does, and the whole value of the binding is that the
- * key which signed it is the key the server challenged on the way in. Signing
- * with the other one still verifies and still pins; it just stops being a
- * statement the server has already vouched for, which is the part that makes a
- * forged one contradict the server's own proof.
- *
- * Returns null when there is no seed and no identity, which is a device that
- * has not joined anything. Nothing to publish, and not an error.
+ * Null for a device that has not joined anything. Not an error.
  */
 export async function dmKeyBindingFor(host: string): Promise<string | null> {
   const scope = identityScopeFor(host);
@@ -480,33 +448,19 @@ export async function dmKeyBindingFor(host: string): Promise<string | null> {
   }
 
   /*
-   * Signed with the key derived from the seed, whichever identity joined this
-   * server (GRYT-759).
+   * **Signed with the key derived from the seed, whichever identity joined this
+   * server** (GRYT-759). An account key is `crypto.subtle.generateKey` — random
+   * and different on every device — so two devices signed into one account
+   * published two bindings for the same DM key and every peer watched the
+   * thumbprint flip. That is indistinguishable from a server substituting a
+   * key, so the client correctly refused to encrypt.
    *
-   * It used to sign with the key that joined, which for a guest is this same
-   * derivation and for an account is `crypto.subtle.generateKey` — random,
-   * non-extractable, and different on every device.
+   * Nothing is weakened. A binding is trust on first use, and nothing ties it
+   * to the identity the server knows you by — what a peer pins is the
+   * thumbprint that keeps arriving, which is what the seed buys.
    *
-   * A peer pins two things: the DM key, and the thumbprint of whatever vouched
-   * for it. The DM key comes from the seed, so every device agrees on it. The
-   * account key did not, so two devices signed into one account published two
-   * bindings for the same key, whichever spoke last was what the server held,
-   * and every peer watched the thumbprint flip back and forth. From their side
-   * that is indistinguishable from a server substituting a key, which is
-   * exactly what it is supposed to look like — so the client correctly refused
-   * to encrypt, and an account holder with a laptop and a phone had the feature
-   * quietly switched off.
-   *
-   * Nothing is weakened by the change. A binding is trust on first use:
-   * `verifyDmKeyBinding` checks it signed itself and named this scope, and
-   * nothing anywhere ties it to the identity the server knows you by. What a
-   * peer pins is the thumbprint that keeps arriving, so the only property that
-   * matters is that it keeps arriving — which is what the seed buys and the
-   * account key cannot.
-   *
-   * It also makes the desktop and the phone agree. Mobile has signed with this
-   * derivation since GRYT-732, so an account holder with both was flipping
-   * across platforms as well as across devices.
+   * Mobile has signed with this derivation since GRYT-732, so it also makes the
+   * two platforms agree.
    */
   const identity = await deriveLocalKeyPair(seed, scope);
   const identityPublicJwk = await crypto.subtle.exportKey("jwk", identity.publicKey);
@@ -529,17 +483,14 @@ export async function dmKeyBindingFor(host: string): Promise<string | null> {
  */
 /**
  * This device's DM keypair for one server, private half included (GRYT-729).
+ * X25519 is not in WebCrypto, so there is no non-extractable handle to pass
+ * instead of the bytes.
  *
- * The private half has to leave this module, because sealing and opening happen
- * where the messages are and X25519 is not in WebCrypto — there is no
- * non-extractable handle to pass instead of the bytes. So this is the one
- * accessor that hands out key material, and the rule for it is the rule in
- * `dm-keys.ts`: it goes to `sealMessage` and `openMessage` and nowhere else. It
- * is never sent, never stored anywhere but the seed it came from, and never
- * logged.
- *
- * The seed itself stays in here. That is the difference between handing out one
- * server's key and handing out every key this person will ever have.
+ * **This is the one accessor that hands out key material.** It goes to
+ * `sealMessage` and `openMessage` and nowhere else: never sent, never stored
+ * anywhere but the seed it came from, never logged. **The seed itself stays in
+ * this module** — that is the difference between handing out one server's key
+ * and handing out every key this person will ever have.
  */
 export async function ownDmKeyPair(host: string): Promise<DmKeyPair> {
   const db = await openDB();
@@ -684,21 +635,16 @@ export async function hasLocalIdentity(host: string): Promise<boolean> {
  * derivation cannot tell that apart from what could be used.
  */
 /**
- * Delete stored local keys the seed can reproduce (GRYT-285).
+ * Delete stored local keys the seed can reproduce (GRYT-285) — a second copy of
+ * a private key kept to save a millisecond of arithmetic.
  *
- * Everything derived since GRYT-254 was also written to disk, which is a second
- * copy of a private key kept to save a millisecond of arithmetic. Derivation is
- * deterministic, so those copies are redundant and can go.
+ * **Each is checked rather than assumed.** A key is removed only when the seed
+ * reproduces the same public coordinates. Anything that does not match is left
+ * alone: on a device that joined before the seed existed those keys are random
+ * and the only copy, so deleting one takes the membership with it.
  *
- * Each is checked rather than assumed. A stored key is only removed when the
- * seed reproduces the same public coordinates, which is what makes it certain
- * the key is not lost by deleting it. Anything that does not match is left
- * exactly where it is: on a device that joined servers before the seed existed
- * those keys are random and the only copy in existence, and deleting one would
- * take the membership with it.
- *
- * Runs after `backfillGuestHistory`, which is what preserves the record of
- * having been on those servers once the keys are gone.
+ * Runs after `backfillGuestHistory`, which preserves the record of having been
+ * on those servers once the keys are gone.
  */
 export async function pruneReproducibleKeys(): Promise<void> {
   try {
@@ -800,22 +746,18 @@ export interface ExportResult {
 }
 
 /**
- * Write every local identity out for safekeeping.
+ * Write every local identity out for safekeeping. **This file is the person** —
+ * anyone holding it can be them on every server in it, which is why the UI that
+ * calls this says so.
  *
- * This is the file that is the person. Anyone holding it can be them on every
- * server listed in it, which is why the UI that calls this says so.
+ * **The file keeps exactly the shape it had**: a seed plus one entry per
+ * server. A backup written today still restores on a client from before
+ * GRYT-285, which is not a property to give up on the file people reach for
+ * after losing everything.
  *
- * The keys are derived here rather than read, since GRYT-285 stopped storing
- * them. The file keeps exactly the shape it had: a seed plus one entry per
- * server, each carrying the key that server knows. That is deliberate — a
- * backup written today still restores on a client from before this change,
- * which is not a property to give up on the one file people reach for after
- * losing everything.
- *
- * Two sources, because two kinds of entry can exist. The guest history names
- * the servers this device has been on, and their keys come from the seed. A
- * stored `local:*` entry is a key that predates the seed and cannot be
- * reproduced, so it is read as-is and takes precedence.
+ * Two sources: the guest history names servers whose keys come from the seed,
+ * and a stored `local:*` entry is a key that predates the seed, cannot be
+ * reproduced, and takes precedence.
  */
 export async function exportLocalIdentities(): Promise<ExportResult> {
   const db = await openDB();
@@ -1057,23 +999,15 @@ export async function restoreIdentityFromWords(phrase: string): Promise<void> {
 }
 
 /**
- * Drop every server session this device holds (GRYT-286).
- *
- * A new seed is a new identity on every server, and the keys above are only
- * half of what proves who you are. The other half is the access token each
- * server issued, which is stored per host and carries the `grytUserId` it was
+ * Drop every server session this device holds (GRYT-286). A new seed is a new
+ * identity, and the keys are only half of what proves who you are — the other
+ * half is each server's access token, which carries the `grytUserId` it was
  * minted for.
  *
- * That matters because a stored token skips the identity challenge entirely.
- * `reconnectServer` re-uses it and asks for `server:details` rather than
- * `server:join`, so the new key is never presented and the server keeps
- * answering as whoever this device used to be. Reloading does not help: the
- * tokens are in localStorage and outlive it, which is why restoring appeared to
- * do nothing until you left the server and joined it again. Leaving is what
- * removed them.
- *
- * Clearing them puts every server back on the join path, where the challenge is
- * answered with the key derived from the seed that was just restored.
+ * **A stored token skips the identity challenge entirely**, so the new key is
+ * never presented and the server keeps answering as whoever this device used to
+ * be. The tokens outlive a reload, which is why restoring appeared to do
+ * nothing until you left the server and joined again.
  */
 function discardServerSessions(): void {
   clearAllServerTokens();
