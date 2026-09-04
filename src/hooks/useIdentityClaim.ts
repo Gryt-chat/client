@@ -26,11 +26,10 @@ export function useIdentityClaim() {
   /**
    * Whether claiming is still on the table for this server.
    *
-   * A previous "no" does not close it. Somebody who declined on a shared
-   * machine and later thinks better of it should not have to sign out to change
-   * their mind, and the decision is only consulted when a challenge is
-   * answered, so revisiting it costs nothing. An existing "yes" is the one that
-   * closes it: it has already happened.
+   * A previous "no" does not close it — the decision is only consulted when a
+   * challenge is answered, so revisiting it costs nothing, and somebody who
+   * declined on a shared machine should not have to sign out to change their
+   * mind. An existing "yes" does close it: it has already happened.
    */
   const canClaim = useCallback(
     (host: string | null | undefined): boolean =>

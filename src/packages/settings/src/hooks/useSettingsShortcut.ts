@@ -5,11 +5,6 @@ import { useSettings } from "./useSettings";
 /**
  * Cmd + , on macOS, Ctrl + , everywhere else — toggles the settings modal.
  *
- * macOS makes this the system-wide Preferences shortcut, so Mac users try it
- * unprompted. Windows and Linux have no OS-level equivalent, but Ctrl + , is
- * what VS Code, Slack, Spotify and Discord all use, and Gryt's users mostly
- * arrive from Discord.
- *
  * Matches on e.code rather than e.key so it survives keyboard layouts that put
  * comma somewhere else.
  *

@@ -128,15 +128,12 @@ export function Discovery() {
     (server: LanServer) => {
       // The address, and only the address.
       //
-      // There used to be a second check here comparing `server.serverId` — the
-      // TXT record's `server_id` — against a joined server's, which is
-      // `/info`'s `serverId`. Those share a name and nothing else:
-      // `server_id` is `SERVER_INSTANCE_ID || "default"`, published so two
-      // servers on one host do not overwrite each other's avahi file, and
-      // almost nobody sets it. On the dgram path, which is what Windows and
-      // Linux use, that made a joined server reporting `serverId: "default"`
-      // hide every unjoined server on the network — the same disappearing act
-      // GRYT-485 fixed in the browser, by another route. GRYT-527.
+      // A second check here compared `server.serverId` — the TXT record's
+      // `server_id`, which is `SERVER_INSTANCE_ID || "default"` and almost
+      // nobody sets — against `/info`'s `serverId`. They share a name and
+      // nothing else. On the dgram path, which is what Windows and Linux use,
+      // that made a joined server reporting `serverId: "default"` hide every
+      // unjoined server on the network. GRYT-527.
       const host = normalizeHost(lanServerAddr(server));
       return !!servers[host];
     },

@@ -2,17 +2,15 @@
  * A stable id for this installation, used to namespace settings for somebody
  * who has not signed in.
  *
- * Settings are stored under `user:<id>:<key>`, and until now that id came only
- * from Keycloak. Signed out, it was null, and every write was dropped on the
- * floor — which was survivable while an account was the only way in, and stopped
- * being survivable the moment guest-by-default (GRYT-173) made signed-out the
- * normal first run. Nickname, audio devices, volumes, pinned sidebars, the
- * server list and hasSeenWelcome all evaporated on reload (GRYT-181).
+ * Settings are stored under `user:<id>:<key>` and that id came only from
+ * Keycloak, so signed out every write was dropped on the floor — survivable
+ * until guest-by-default (GRYT-173) made signed-out the normal first run, and
+ * nickname, audio devices, volumes, pinned sidebars, the server list and
+ * hasSeenWelcome all evaporated on reload (GRYT-181).
  *
  * The `device:` prefix keeps this in a namespace an account id can never reach:
- * a Keycloak sub is a bare UUID, so the two cannot collide, and the tier can be
- * read off any stored id without a schema change. That is the same trick the
- * identity work uses for its `key:` prefix.
+ * a Keycloak sub is a bare UUID, so the two cannot collide and the tier can be
+ * read off any stored id. The same trick the identity work uses for `key:`.
  */
 
 const DEVICE_ID_KEY = "gryt.deviceId";

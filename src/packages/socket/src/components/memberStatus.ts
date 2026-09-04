@@ -4,9 +4,7 @@ import type { UserStatus } from "../types/clients";
  * How a member's presence is named and coloured, in one place.
  *
  * It lived inside MemberSidebar and the hover card needed the same answers.
- * Importing it back out of MemberSidebar would have made a cycle — that file
- * imports the card — so it sits here instead, which is also the honest shape:
- * neither component owns what "AFK" is called.
+ * Importing it back out would have made a cycle — that file imports the card.
  */
 export const statusConfig: Record<UserStatus, { label: string; color: string }> = {
   in_voice: { label: "In Voice", color: "var(--gryt-accent-9)" },

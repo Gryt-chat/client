@@ -164,8 +164,7 @@ function useServerSettingsHook(): ServerSettings {
    *
    * This used to take `Object.keys(servers)[0]`, which is the order servers
    * were added in. Dragging one to the top of the rail therefore changed where
-   * it appeared and not what opened, and the only way to make a server open
-   * first was to remove the others and add them again in the order you wanted.
+   * it appeared and not what opened.
    *
    * `pendingFocusServer` in useServerManagement runs after this and still wins,
    * so a deep link opens what it names rather than the top of the rail.

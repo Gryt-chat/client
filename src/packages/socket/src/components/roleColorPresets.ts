@@ -2,16 +2,14 @@
  * The colours a role can be given without opening a picker.
  *
  * Ten hues spaced evenly round the wheel at one lightness and one chroma —
- * `oklch(0.66 0.15 h)` — which is what makes them look like a set rather than
- * ten colours that happened to be chosen. Stored as hex because that is what
- * the server's `role_definitions.color` column holds, and because a role
+ * `oklch(0.66 0.15 h)` — which is what makes them look like a set. Stored as
+ * hex because that is what `role_definitions.color` holds, and because a role
  * colour is seen by everybody on the server: it cannot follow the viewer's own
  * accent, or two people would disagree about what Moderator looks like.
  *
- * Every one of them clears WCAG AA on the member rail in both themes once
+ * Every one clears WCAG AA on the member rail in both themes once
  * `readableRoleColor` has pulled it into its band — 4.89:1 at worst dark,
- * 5.11:1 at worst light. That is not a coincidence: the band and this list
- * were fitted to each other.
+ * 5.11:1 at worst light. The band and this list were fitted to each other.
  */
 export const ROLE_COLOR_PRESETS = [
   { name: "Ember", value: "#df6862" },
@@ -29,13 +27,12 @@ export const ROLE_COLOR_PRESETS = [
 /**
  * A colour for a role that does not have one yet.
  *
- * Takes the first preset nobody is using, so the second role on a server does
- * not arrive the same colour as the first. Once all ten are spoken for it
- * wraps rather than giving up — a repeat is better than a role with no colour,
- * which is the thing this exists to stop.
+ * The first preset nobody is using, so the second role on a server does not
+ * arrive the same colour as the first. Once all ten are spoken for it wraps
+ * rather than giving up.
  *
- * Case-insensitive, because a colour typed into the picker comes back
- * lowercase and one pasted by hand might not.
+ * Case-insensitive, because a colour typed into the picker comes back lowercase
+ * and one pasted by hand might not.
  */
 export function nextUnusedPreset(taken: (string | null | undefined)[]): string {
   const used = new Set(

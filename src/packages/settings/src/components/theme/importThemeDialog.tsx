@@ -26,8 +26,7 @@ const GENERATOR = "https://ui.gryt.chat/theme/generator";
  * second definition of the format to fall behind.
  *
  * Nothing is saved until it has been looked at. A theme is a couple of dozen
- * hex values and reading them tells you nothing, so what arrives is rendered
- * under real components first, in the appearance the app is currently in.
+ * hex values and reading them tells you nothing.
  */
 export function ImportThemeDialog({
   open,

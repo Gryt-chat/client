@@ -6,14 +6,11 @@ const HALO_MAX_SCALE = 1.32;
 
 /**
  * The disc behind the avatar that grows with how loudly someone is talking.
- *
- * Meet's speaking treatment is this plus a ring on the avatar, and nothing on
- * the tile — so that is what this does. The size follows dBFS rather than raw
- * amplitude; see volumeToLevel for why.
+ * The size follows dBFS rather than raw amplitude; see volumeToLevel for why.
  *
  * Animated by writing to the element from requestAnimationFrame instead of
- * through state. The level changes every frame, and putting that in React
- * would re-render the whole panel sixty times a second to move one circle.
+ * through state. The level changes every frame, and putting that in React would
+ * re-render the whole panel sixty times a second to move one circle.
  *
  * Attack is faster than release, so a syllable is visible immediately and the
  * ring settles rather than flickering between words.

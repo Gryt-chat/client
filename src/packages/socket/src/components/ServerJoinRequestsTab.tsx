@@ -20,14 +20,12 @@ function fmt(v: string | Date): string {
 /**
  * People waiting to be let in, on a server whose join policy is "request".
  *
- * There is not much to go on when deciding — a nickname anybody can pick, when
- * they asked, and whatever they wrote. That is the honest amount of information
- * and the row does not dress it up. The note is the only part they control, so
- * it is rendered as text and never as markup.
+ * The note is the only part they control, so it is rendered as text and never
+ * as markup.
  *
  * Approving does not admit anybody on its own: the server records the decision
- * and they get in the next time they try, which is what the person was told
- * would happen when they were turned away.
+ * and they get in the next time they try, which is what they were told would
+ * happen when they were turned away.
  */
 export function ServerJoinRequestsTab({
   host,

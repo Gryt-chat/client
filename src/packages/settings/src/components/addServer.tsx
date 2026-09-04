@@ -47,9 +47,8 @@ interface AddNewServerProps {
  * itself.
  *
  * The preview fetches on paste rather than on a button, which means it also
- * fetches on every character somebody types by hand. Long enough that typing an
- * address does not fire a request per letter, short enough that a paste — the
- * case this is built for — feels immediate.
+ * fetches on every character somebody types by hand. Long enough not to fire a
+ * request per letter, short enough that a paste feels immediate.
  */
 const LOOKUP_DEBOUNCE_MS = 450;
 
@@ -319,9 +318,7 @@ export function AddNewServer({
    *
    * Everything the join needs — the preview, the account chip, the approval
    * this server's `request` policy leads to — already hangs off the address in
-   * that field. Putting the address there is the whole change; the rest of the
-   * dialog does what it does for any other server, and the person still gets to
-   * read who they are joining before they press the button.
+   * that field, and the person still gets to read who they are joining.
    */
   function pickOfficialServer(host: string) {
     setMode("join");
@@ -861,10 +858,7 @@ function OfficialServerCard({
  *
  * "Hide forever" is text above the card rather than a cross inside it. A cross
  * on the row sits inside the target somebody is reaching for, so the press that
- * hides the server and the press that joins it are a few pixels apart — and one
- * of those is the one nobody wants to hit by accident. Up here it is nowhere
- * near the card, and it says what it does instead of leaving somebody to work
- * out what a cross means.
+ * hides the server and the press that joins it would be a few pixels apart.
  */
 function OfficialServerOffer({
   server,

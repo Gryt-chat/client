@@ -64,8 +64,7 @@ export type ChatMessage = {
    *
    * `locked` is having no wrapped key: a message sent before you joined the
    * conversation, which is ordinary and permanent. `broken` is a key that is
-   * there and does not open, which is not ordinary and should not read like an
-   * empty message.
+   * there and does not open, which is not.
    */
   sealedState?: "opening" | "open" | "locked" | "broken";
 };

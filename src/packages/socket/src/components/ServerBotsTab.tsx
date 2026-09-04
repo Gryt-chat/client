@@ -26,14 +26,11 @@ type BotEntry = {
 /**
  * Bots, and what they have been allowed to do.
  *
- * The screen is built around one idea: **you are agreeing to a list, and the
- * list is the bot's, not yours.** A bot says what it wants when it turns up;
- * every permission here is one it asked for, and there is no way to add to
- * that from this side. Ticking fewer is always available, and usually right.
- *
- * That constraint is the reason a compromised bot cannot talk its way into
- * more later — it can ask again all it likes, and the server hands back the
- * question it asked the first time.
+ * **You are agreeing to a list, and the list is the bot's, not yours.** A bot
+ * says what it wants when it turns up; every permission here is one it asked
+ * for, and there is no way to add to that from this side. That is why a
+ * compromised bot cannot talk its way into more later — it can ask again all it
+ * likes, and the server hands back the question it asked the first time.
  */
 export function ServerBotsTab({
   host,
@@ -323,12 +320,9 @@ export function ServerBotsTab({
 }
 
 /**
- * Naming a bot that does not exist yet.
- *
- * Created with no permissions on purpose. The operator can widen it afterwards
- * only as far as it was registered for — and starting at nothing means a
- * half-filled form leaves a bot that can do nothing rather than one that can do
- * whatever was left ticked.
+ * Naming a bot that does not exist yet. Created with no permissions on purpose:
+ * a half-filled form leaves a bot that can do nothing rather than one that can
+ * do whatever was left ticked.
  */
 function RegisterBot({ busy, onCreate }: { busy: boolean; onCreate: (nickname: string) => void }) {
   const [nickname, setNickname] = useState("");

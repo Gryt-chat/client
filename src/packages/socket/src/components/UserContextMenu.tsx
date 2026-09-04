@@ -13,14 +13,13 @@ type Role = string;
 interface UserContextMenuProps {
   children: ReactNode;
   /**
-   * Which server this menu belongs to, so the permissions and the role list
-   * can be looked up rather than assumed.
+   * Which server this menu belongs to, so the permissions and the role list can
+   * be looked up rather than assumed.
    *
    * Optional because two callers render this outside a server view. Without it
-   * the menu falls back to the built-in ladder, which is what it did before
-   * roles were editable — wrong for a custom role, and never wrong in the
-   * direction of offering something the server would refuse, since the built-in
-   * ranks are the highest any custom role can be given.
+   * the menu falls back to the built-in ladder — wrong for a custom role, and
+   * never wrong in the direction of offering something the server would refuse,
+   * since the built-in ranks are the highest any custom role can be given.
    */
   serverHost?: string;
   serverUserId?: string;
@@ -67,22 +66,19 @@ interface UserContextMenuProps {
    * permission and has to work against somebody who outranks you, which is the
    * whole difference between it and a kick.
    *
-   * Absent when the menu is rendered outside a server view, and on a server old
-   * enough not to have the events.
+   * Absent outside a server view, and on a server too old for the events.
    */
   onToggleBlock?: () => void;
   isBlocked?: boolean;
   /**
    * Put this person in front of the moderators.
    *
-   * Beside Block rather than in the moderator section, for the same reason:
-   * reporting somebody who outranks you is the report that matters most, so it
-   * cannot live among the actions that check rank. What it does check is
-   * `report_messages`, which is the same permission reporting a message asks
-   * for — see the item below.
+   * Beside Block rather than in the moderator section: reporting somebody who
+   * outranks you is the report that matters most, so it cannot live among the
+   * actions that check rank. It does check `report_messages`, the same
+   * permission reporting a message asks for.
    *
-   * Absent when the menu is rendered outside a server view, and on a server old
-   * enough not to have the event.
+   * Absent outside a server view, and on a server too old for the event.
    */
   onReport?: () => void;
 }
@@ -220,8 +216,7 @@ export function UserContextMenu({
    *
    * The subtitle lists all of them, which is the only place outside settings
    * that says a member is two things — the sidebar groups and colours by the
-   * highest ranked one, and drawing every role beside every name in a 240px
-   * column would cost more than it tells anyone.
+   * highest ranked one.
    */
   const heldRoles = targetRoles ?? (targetRole ? [targetRole] : []);
   const targetRoleName = heldRoles.length > 0 ? heldRoles.map(nameOfRole).join(", ") : null;

@@ -14,9 +14,6 @@ import { useIdentityClaim } from "../hooks/useIdentityClaim";
  * **The proof that an account controls a guest identity is also the
  * disclosure**, so once it reaches the server, declining changes nothing. The
  * question has to be answerable locally, which is what `hasGuestScope` is for.
- *
- * A yes takes effect by reconnecting: `answerChallenge` reads the decision, and
- * dropping the token puts the next connect back on the join path (GRYT-286).
  */
 export function IdentityClaimPrompt() {
   const { isSignedIn } = useAccount();

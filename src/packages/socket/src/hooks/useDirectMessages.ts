@@ -13,14 +13,13 @@ import type { Socket } from "socket.io-client";
  * The direct messages open on one server.
  *
  * One server. A DM here has nothing to do with a DM with the same person on a
- * different server — they are separate conversations with separate history, and
- * the client cannot tell that the two members are the same person anyway. The
+ * different server — separate conversations with separate history, and the
+ * client cannot tell that the two members are the same person anyway. The
  * server withholds what would make that knowable, on purpose, so that two
  * servers cannot work out they share a member.
  *
- * So this hook is per-socket and the list it holds is per-server. There is
- * deliberately no merged view across servers, and adding one would mean asking
- * for the identifier that exists to not be handed out.
+ * So there is deliberately no merged view across servers, and adding one would
+ * mean asking for the identifier that exists to not be handed out.
  */
 
 interface DmErrorPayload {

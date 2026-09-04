@@ -11,9 +11,6 @@ import { useSettings } from "@/settings";
  * `@gryt/voice` used to take a file and a volume and play them. It no longer
  * plays anything: it reports, and this decides. That is why the assets, the
  * volumes and the enabled flags all live here, where the settings already are.
- *
- * A caller that wants a sound calls one of these. A caller that does not, does
- * not — which replaces the `playSound` argument `disconnect()` used to take.
  */
 export function useVoiceSounds() {
   const {

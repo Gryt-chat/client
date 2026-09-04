@@ -1,17 +1,17 @@
+// ── Remembered scheme ────────────────────────────────────────────────────────
 // Whether a server is dialled over http/ws or https/wss.
 //
 // This used to guess from the host: an allowlist of loopback, the RFC1918
 // ranges and `.local`, with everything else assumed secure. Every version of
-// that guess leaks. It got public IPs wrong, and router names like
-// `gryt.server`, and single-label hostnames, and Tailscale's CGNAT range, and
-// link-local. Widening the list only moves the edge somewhere else, because
-// there is no way to tell `gryt.server` from `gryt.chat` by looking at it.
+// that guess leaks — public IPs, router names like `gryt.server`, single-label
+// hostnames, Tailscale's CGNAT range, link-local. Widening the list only moves
+// the edge, because there is no way to tell `gryt.server` from `gryt.chat` by
+// looking at it.
 //
-// So it does not guess from the host any more. Plain is the default, because
-// Gryt's server has no TLS of its own — `createServer` from `"http"` — and a
-// deployment that does have it sits behind a proxy that will either redirect
-// the plain request or refuse it. Both of those are answers, and `rememberScheme`
-// records them, so the guess is wrong at most once per server.
+// So plain is the default: Gryt's server has no TLS of its own — `createServer`
+// from `"http"` — and a deployment that does have it sits behind a proxy that
+// will either redirect the plain request or refuse it. Both are answers, and
+// `rememberScheme` records them, so the guess is wrong at most once per server.
 
 // ── Remembered scheme ───────────────────────────────────────────────────
 
@@ -121,8 +121,7 @@ const probesInFlight = new Map<string, Promise<Scheme>>();
  *
  * Adding a server records this already, from the `/info` call the join flow
  * makes. Nothing else did, so a server that has been in the list since before
- * that code — or was added on another machine and arrived through the profile
- * sync — never learned anything, and kept the default forever.
+ * that code — or arrived through the profile sync — kept the default forever.
  *
  * On the desktop app the default is plain http, and a deployment behind a
  * proxy answers plain http with a redirect to https. `fetch` follows one on a
@@ -135,7 +134,7 @@ const probesInFlight = new Map<string, Promise<Scheme>>();
  * Deliberately unauthenticated. The `Authorization` header is what makes a
  * request preflighted in the first place, and the reply's status does not
  * matter here — a private server answers 404 and that is a perfectly good
- * answer. All this reads is which scheme was on the other end of it.
+ * answer.
  */
 export async function ensureSchemeKnown(host: string): Promise<Scheme> {
   const known = getRememberedScheme(host);
@@ -193,14 +192,12 @@ export function getServerWsBase(host: string): string {
  * The URL for a stored file, carrying the token that is allowed to read it.
  *
  * The token is in the query string rather than a header because most of these
- * become `<img src>` — avatars in the member list, pictures in the chat, a
- * group's icon — and an image element has no way to send one. Everything that
- * builds one of these URLs goes through here, which is why adding the
+ * become `<img src>`, and an image element has no way to send one. Everything
+ * that builds one of these URLs goes through here, which is why adding the
  * credential was a change to one function rather than to twenty call sites.
  *
  * A missing token still returns a URL. The server answers 401 and the picture
- * fails, which is the same thing that happens to a token that expired, and is
- * better than a call site having to decide what to render instead.
+ * fails, which is the same thing that happens to an expired token.
  */
 export function getUploadsFileUrl(
   host: string,

@@ -201,28 +201,17 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
       {meta.dayBreak && <DateSeparator date={meta.dayBreak} />}
 
       {meta.isSystem ? (
-        /* An event, not a message (GRYT-896).
-
-           It used to render in a full message slot: the word "System" where a
-           nickname goes, in the same weight and size, a 51px avatar column held
-           empty so the absence read as a missing avatar rather than a different
-           kind of thing, a timestamp line of its own — and reactions and a
-           hover toolbar, so you could react to somebody joining.
-
-           One quiet row now. The avatar column carries a small arrow instead of
-           standing empty, so the space is doing something and the row is
-           unmistakably not somebody talking. No name line: there is no author.
-           The time trails the text.
+        /* An event, not a message (GRYT-896). One quiet row: the avatar
+           column carries a small arrow rather than standing empty, there is no
+           name line because there is no author, and the time trails the text.
 
            The left edge every message shares stays where it is. A centred rule
-           would say "not a message" more loudly and break that edge, and a
-           channel where people come and go is exactly where a run of rules
-           chops the conversation into fragments.
+           would break it, and a channel where people come and go is exactly
+           where a run of rules chops the conversation into fragments.
 
-           The one thing it does have is a right-click, carrying Delete and
-           nothing else, for somebody who may moderate (GRYT-908). No hover
-           toolbar still: the toolbar's job is reactions and a reply, which is
-           the part that should not exist here. */
+           It does have a right-click, carrying Delete and nothing else, for
+           somebody who may moderate (GRYT-908). Still no hover toolbar: the
+           toolbar's job is reactions and a reply. */
         <MessageContextMenu messageActions={systemActions} onOpenChange={handleCtxMenuOpenChange}>
         <div
           className="flex gap-3 items-baseline"

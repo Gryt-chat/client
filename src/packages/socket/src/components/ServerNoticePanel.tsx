@@ -10,11 +10,10 @@ import {
 /**
  * Where the installer comes from.
  *
- * Not GitHub Releases, which is a page of release notes above a collapsed
- * Assets list holding a dozen files across three platforms — and the person
- * reading this is stuck on a client that cannot update itself. This resolves
- * the current build for the platform in the query and starts the download on
- * arrival. The notice only ever reaches Windows, so it can say which.
+ * Not GitHub Releases: that is a page of notes above a collapsed Assets list of
+ * a dozen files across three platforms, and the person reading this is stuck on
+ * a client that cannot update itself. This resolves the current build for the
+ * platform in the query and starts the download on arrival.
  */
 const INSTALLER_URL = "https://gryt.chat/download?os=windows";
 const INSTRUCTIONS_URL = "https://docs.gryt.chat/docs/client/updates";
@@ -22,10 +21,9 @@ const INSTRUCTIONS_URL = "https://docs.gryt.chat/docs/client/updates";
 /**
  * Every word a notice can put on screen.
  *
- * This is the point of the whole shape. The server sends `{ kind, version }`
- * and nothing else, so there is no arrangement of bytes it can send that puts
- * a sentence — or a link — in front of somebody. Adding a kind means adding a
- * case here and shipping a release.
+ * The server sends `{ kind, version }` and nothing else, so there is no
+ * arrangement of bytes it can send that puts a sentence — or a link — in front
+ * of somebody. Adding a kind means adding a case here and shipping a release.
  */
 function copyFor(notice: ServerNotice) {
   switch (notice.kind) {
@@ -46,11 +44,9 @@ function copyFor(notice: ServerNotice) {
  *
  * Below the channel header and above the messages, so it sits inside the
  * server's area rather than in the app's own chrome. Anything painted in Gryt's
- * chrome should only ever be Gryt, and this is somebody else's machine talking.
- *
- * Said out loud in the frame for the same reason: "From <server>, only to you"
- * is not decoration, it is the line that stops this reading as Gryt addressing
- * you. The links are ours, hardcoded above — a server cannot reach them.
+ * chrome should only ever be Gryt, and this is somebody else's machine talking
+ * — which is what "From <server>, only to you" in the frame is for. The links
+ * are ours, hardcoded above; a server cannot reach them.
  */
 export function ServerNoticePanel({
   host,

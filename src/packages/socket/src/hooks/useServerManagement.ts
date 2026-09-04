@@ -160,10 +160,9 @@ function useServerManagementHook(): ServerManagement {
    * What the badge on the rail counts.
    *
    * Not what is on the network: six servers run on this machine alone, and a
-   * count of those would sit permanently at six and carry no information. This
-   * is the ones that have turned up since Discovery was last open, which does
-   * empty when somebody looks, so it is worth showing as a number rather than
-   * a dot.
+   * count of those would sit permanently at six. This is the ones that have
+   * turned up since Discovery was last open, which does empty when somebody
+   * looks.
    */
   const newLanServers = useMemo(
     () => pendingLanServers.filter((s) => !seenLanServers.includes(lanServerKey(s))),
@@ -293,8 +292,7 @@ function useServerManagementHook(): ServerManagement {
    * servers, with a deletion on the end of it.
    *
    * `originKeyId` carries the identity across rotations. The cost is that this
-   * only sees addresses connected to at least once, which is when a pin is
-   * written.
+   * only sees addresses connected to at least once.
    */
   const [hostIdentities, setHostIdentities] = useState<Record<string, string>>(
     {},
@@ -434,11 +432,10 @@ function useServerManagementHook(): ServerManagement {
   /**
    * The same, for every address one server was reachable at.
    *
-   * Deleting a server you host has to forget all of them at once. Calling
-   * removeServer in a loop cannot do it: `servers` is state read out of this
-   * closure, so the second call rebuilds the map from the version that still
-   * holds the first call's entry, and writes it back — one removal survives,
-   * and the persisted copy is the wrong one.
+   * Calling removeServer in a loop cannot do it: `servers` is state read out of
+   * this closure, so the second call rebuilds the map from the version that
+   * still holds the first call's entry and writes it back — one removal
+   * survives, and the persisted copy is the wrong one.
    */
   const removeServers = useCallback(
     (hosts: string[]) => {

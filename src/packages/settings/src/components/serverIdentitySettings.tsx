@@ -231,9 +231,8 @@ export function ServerIdentitySettings() {
 
       // Unblocking is someone saying "this server was replaced", so the
       // identity it replaced is retired too. Without this the old pin lingers
-      // with nothing pointing at it, and Known servers shows two rows for the
-      // same address with different fingerprints — which reads as a problem
-      // rather than as history.
+      // and Known servers shows two rows for the same address with different
+      // fingerprints, which reads as a problem rather than as history.
       //
       // Only when nothing else still expects that key: the same server
       // legitimately answers at more than one address, and forgetting it would

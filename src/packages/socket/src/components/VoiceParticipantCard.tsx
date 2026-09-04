@@ -167,13 +167,11 @@ export function VideoCard({
         />
       ) : (
         // No background of its own: the tile underneath is #000 and stays that
-        // way in both themes, because it is a video surface and a video surface
-        // with no picture is black. The placeholder used to paint
-        // var(--gryt-neutral-3) over it, which on the light theme is #f7f8fb —
-        // and the participant's name below is hardcoded white, correct over
-        // video and invisible over that (GRYT-524).
-        //
-        // Everything in here is therefore light-on-dark and fixed, not themed.
+        // way in both themes, because a video surface with no picture is black.
+        // The placeholder used to paint var(--gryt-neutral-3) over it, which on
+        // the light theme is #f7f8fb — and the participant's name below is
+        // hardcoded white (GRYT-524). Everything in here is therefore
+        // light-on-dark and fixed, not themed.
         <div className="flex items-center justify-center px-2" style={{
             width: "100%",
             height: "100%",
@@ -220,10 +218,8 @@ export const TILE_RADIUS = 16;
 /**
  * The muted badge, top-right of the tile.
  *
- * Meet tints this to the tile's own hue rather than using a neutral chip, so it
- * reads as part of the tile instead of an overlay. On a video tile there is no
- * hue to borrow — the tile is the camera image — so it falls back to a dark
- * translucent circle, which is what Meet does there too.
+ * Tinted to the tile's own hue so it reads as part of the tile. On a video tile
+ * there is no hue to borrow, so it falls back to a dark translucent circle.
  *
  * The diameter is not measured. It steps at the same tile height as the avatar
  * buckets so the two stay in proportion.
@@ -591,12 +587,10 @@ export function VoiceParticipantCard({
 
   /* Worked out once and used for the tile, the badge and the ring.
    *
-   * The nickname, because that is what the avatar is drawn from — a tile tinted
-   * from anything else is a colour that matches nothing on it. That was already
-   * written here and the tile below still passed `serverUserId`, which for a
-   * fake participant is `fake-0`: the tile came out as the colour of an owl
-   * belonging to a person who does not exist, next to the owl of one who does.
-   * One value now, so the three cannot disagree again. */
+   * From the nickname, because that is what the avatar is drawn from. The tile
+   * below still passed `serverUserId`, which for a fake participant is
+   * `fake-0`, so it came out as the colour of an owl belonging to a person who
+   * does not exist. One value now, so the three cannot disagree again. */
   const tint = tileTint(client.nickname, memberInfo?.avatarColor, {
     nickname: client.nickname,
     worn: memberInfo?.avatarWorn,

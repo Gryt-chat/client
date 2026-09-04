@@ -39,15 +39,13 @@ const SYSTEM_SOURCE_ID = "system";
 /**
  * Which applications a running screen share is taking audio from.
  *
- * A share starts on everything except Gryt. Picking applications swaps that
- * for one capture process each, which is the only way Windows will do it — a
- * process loopback client activates against a single PID. The main process
- * owns that set and sums what comes back, so this hook is a remote control
- * rather than the thing holding the state.
+ * A share starts on everything except Gryt. Picking applications swaps that for
+ * one capture process each, which is the only way Windows will do it — a
+ * process loopback client activates against a single PID. The main process owns
+ * that set and sums what comes back.
  *
  * Windows only, and the UI is expected to ask `supported` before offering it:
- * the macOS capture helper ignores the process it is handed and takes the
- * machine either way.
+ * the macOS capture helper ignores the process it is handed.
  */
 function useScreenAudioSourcesHook(): ScreenAudioSources {
   const { screenShareActive } = useScreenShare();

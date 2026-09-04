@@ -139,20 +139,19 @@ export function useChat({
   /**
    * The server's own token is the credential, not a Keycloak session.
    *
-   * This used to require isUserAuthenticated() as well, which is true only
-   * when Keycloak says so — and a server that admits the local tier issues a
-   * token to somebody who has never seen Keycloak. The join dialog tells them
-   * "No account needed", and then the composer took what they typed, cleared
-   * it, and sent nothing.
+   * This used to require isUserAuthenticated() as well, which is true only when
+   * Keycloak says so — and a server that admits the local tier issues a token to
+   * somebody who has never seen Keycloak. The join dialog tells them "No account
+   * needed", and then the composer took what they typed, cleared it, and sent
+   * nothing.
    */
   /*
    * Whether this channel is one they may post in, as the server resolved it.
    *
    * Server-wide `send_messages` is not the whole answer: a channel scope can
    * take it away or hand it out, and those rules are only readable with
-   * `manage_channels`. So the server says, and `undefined` means it is too old
-   * to have an opinion — which has to read as yes, or every channel on an older
-   * server would look locked.
+   * `manage_channels`. `undefined` means the server is too old to have an
+   * opinion, which has to read as yes or every channel on it would look locked.
    */
   const canSendHere = activeChannel?.canSend !== false;
 
@@ -198,11 +197,10 @@ export function useChat({
    *
    * Here rather than in `onNew` and `onHistory` separately, because both put
    * messages into the same state and opening is asynchronous — doing it at
-   * arrival would mean two copies of the same logic, each racing the other's
-   * `setChatMessages`.
+   * arrival would mean two copies racing each other's `setChatMessages`.
    *
-   * Every message is opened once. `sealedState` is set to `opening` before the
-   * work starts, so a second pass over the same list does not start it again.
+   * `sealedState` is set to `opening` before the work starts, so a second pass
+   * over the same list does not start it again.
    */
   useEffect(() => {
     const pending = chatMessages.filter((m) => m.sealed && !m.sealedState);
@@ -231,8 +229,7 @@ export function useChat({
            * Fetched here rather than in the row, because the key only exists
            * once the message has opened and a component that fetched on render
            * would do it again on every re-render. One failed attachment does
-           * not fail the message: `allSettled`, and the ones that opened are
-           * drawn.
+           * not fail the message.
            */
           const fileIds = message.attachments ?? [];
           const settled = await Promise.allSettled(
@@ -312,8 +309,7 @@ export function useChat({
    *
    * A blob URL pins its bytes for the lifetime of the document. Scrolling a
    * conversation full of photographs and never revoking them is a leak that
-   * grows with the history, and on the desktop app the document is the whole
-   * session.
+   * grows with the history, and on the desktop the document is the session.
    */
   useEffect(() => {
     const urls = objectUrlsRef.current;
@@ -434,11 +430,10 @@ export function useChat({
        * Their reactions on everybody else's messages, which the purge event
        * does not name.
        *
-       * The server has already removed them, and works this out the same way,
+       * The server has already removed them and works this out the same way,
        * but says nothing per message: someone with a few hundred reactions
-       * would otherwise be a few hundred broadcasts to convey something every
-       * client can derive. A reaction whose last user was this person is
-       * dropped rather than left showing zero.
+       * would otherwise be a few hundred broadcasts. A reaction whose last user
+       * was this person is dropped rather than left showing zero.
        */
       const stripReactions = (list: ChatMessage[]): ChatMessage[] =>
         list.map((m) => {

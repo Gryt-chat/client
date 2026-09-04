@@ -9,16 +9,15 @@ import { useSettings } from "@/settings";
 /**
  * The theme editor, floating over the running app.
  *
- * Not a Dialog, and that is the whole point rather than an implementation
- * detail. A Dialog traps focus and dims what is behind it, and what is behind
- * it is the thing being edited — the member list, a voice tile, a mention.
- * Somebody should be able to drag a slider, click into a channel, hover a
- * card, and drag the slider again without the panel getting in the way. So it
- * is a plain fixed element with no backdrop and nothing captured.
+ * Not a Dialog, and that is the point rather than an implementation detail. A
+ * Dialog traps focus and dims what is behind it, and what is behind it is the
+ * thing being edited. Somebody should be able to drag a slider, click into a
+ * channel, hover a card, and drag the slider again. So it is a plain fixed
+ * element with no backdrop and nothing captured.
  *
- * It is dragged by its header and remembers where it was left, because the
- * only reliable way to see what a colour does to one corner of the app is to
- * move the panel off that corner.
+ * It is dragged by its header and remembers where it was left, because the only
+ * reliable way to see what a colour does to one corner of the app is to move
+ * the panel off that corner.
  */
 
 const POSITION_KEY = "theme.editor.position";

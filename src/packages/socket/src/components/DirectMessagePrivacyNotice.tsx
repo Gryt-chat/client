@@ -9,8 +9,7 @@ import { PiLockOpen } from "react-icons/pi";
  * alert: shouting it every time teaches people to stop seeing it, and a fact
  * that stays true should not be something you agree never to be told again.
  *
- * When encryption lands (GRYT-709) this becomes conditional — shown when a
- * conversation cannot be encrypted, naming who cannot hold a key.
+ * Conditional once encryption lands (GRYT-709).
  */
 
 const SECURITY_DOC =

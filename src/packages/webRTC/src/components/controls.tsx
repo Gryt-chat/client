@@ -157,26 +157,18 @@ export function Controls({ onDisconnect }: ControlsProps) {
             bitrate = Math.min(Math.round(bitrate * 1.5), 50_000_000);
           }
         }
-        /* Asked for by name, not looked up by track.
+        /* **Asked for by name, not looked up by track.** `getSenders().find(s
+         * => s.track === videoTrack)` works on the first share, because addTrack
+         * sets `sender.track` synchronously — and fails silently on every one
+         * after, where the engine takes the replaceTrack path and `sender.track`
+         * is not set until the promise resolves.
          *
-         * This used to be `pc.getSenders().find(s => s.track === videoTrack)`,
-         * run immediately after addScreenVideoTrack. On the first share that
-         * works, because addTrack sets `sender.track` synchronously. On every
-         * share after it the engine takes the replaceTrack path, and
-         * replaceTrack does not set `sender.track` until its promise resolves
-         * — so the lookup found nothing and everything below was skipped in
-         * silence.
+         * Which is GRYT-13: the encodings then keep the *previous* quality's
+         * maxBitrate, so going up a step leaves a cap far too small for the new
+         * frame size and participants get something unwatchable.
          *
-         * Which is GRYT-13: stop, change the quality, start again, and the
-         * encodings still carry the *previous* quality's maxBitrate and
-         * maxFramerate. Going up a step leaves a cap far too small for the new
-         * frame size, and with maintain-framerate the encoder spends it on
-         * frame rate rather than picture — so participants get something
-         * unwatchable, or nothing.
-         *
-         * getScreenVideoSender is the engine's own ref, set synchronously by
-         * both the add and the replace path, and already used a few effects
-         * down for the encoded transform. */
+         * `getScreenVideoSender` is the engine's own ref, set synchronously by
+         * both paths. */
         const screenSender = getScreenVideoSender?.() ?? null;
         if (screenSender) {
           const params = screenSender.getParameters();
@@ -351,32 +343,16 @@ export function Controls({ onDisconnect }: ControlsProps) {
     }
   }, [screenShareActive, screenVideoStream, screenAudioStream, isConnected, currentServerConnected, sockets]);
 
-  /* Say the camera and the screen share are still on, after a reconnect that
-     did not move either (GRYT-612).
+  /* Re-announce camera and screen share after a reconnect that did not move
+     either (GRYT-612). `clientsInfo` is keyed by socket id, so a reconnect
+     hands this client a fresh entry with both back at their defaults while the
+     media never stopped.
    *
-   * `clientsInfo` on the server is keyed by socket id, so a reconnect hands
-   * this client a fresh entry with `cameraEnabled` and `screenShareEnabled`
-   * back at their defaults. The two effects above are what would correct that,
-   * and neither re-runs: a reconnect changes none of their dependencies —
-   * socket.io reuses the same Socket instance, so even `sockets` holds — and
-   * the media itself never stopped, because the signalling socket is not the
-   * media path. So the room saw a camera that was still sending as off.
-   *
-   * Sent on `voice:room:granted` rather than on the reconnect itself. Both
-   * handlers here are permission-gated, and a socket that has just reconnected
-   * has no cached permissions until `session:restore` finishes — so sending on
-   * the reconnect loses the race and the server answers `forbidden`, which is
-   * the one error the client does not retry. Measured against a local server:
-   *
-   *     RECV  voice:camera:state  { enabled: true, streamId: fbe93a87… }
-   *     EMIT  voice:room:error    forbidden, permission: share_video
-   *
-   * The grant is the server saying this socket is admitted and back in the
-   * channel — it cannot be issued without `join_voice` — so by then the
-   * permissions these two need are cached. `refusedAsUnidentified` on the
-   * server fences the same race for the room request itself, and the client's
-   * re-announce backs off until it lands; this waits for that to happen rather
-   * than racing alongside it.
+   * **Sent on `voice:room:granted`, not on the reconnect.** Both handlers are
+   * permission-gated and a just-reconnected socket has no cached permissions
+   * until `session:restore` finishes, so the server answers `forbidden` — the
+   * one error the client does not retry. The grant cannot be issued without
+   * `join_voice`, so by then the permissions are cached.
    *
    * One-shot, and armed only by a reconnect: a first join emits both states
    * from the effects above anyway. */

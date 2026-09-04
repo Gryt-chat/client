@@ -90,12 +90,8 @@ export async function getFreshServerAccessToken(
 }
 
 /**
- * Reads a fresh access token from storage, triggers a refresh if it's
- * near expiry or expired, waits for the refreshed token, then emits the
- * socket event with the up-to-date token in the payload.
- *
- * Returns true if the event was emitted, false if no valid token could
- * be obtained.
+ * Emits with a fresh access token, refreshing first if the stored one is near
+ * expiry. False if no valid token could be obtained.
  */
 export async function emitAuthenticated(
   socket: Socket,

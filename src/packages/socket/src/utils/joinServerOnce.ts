@@ -13,9 +13,8 @@ export type JoinServerOnceRequest = {
    * A line for whoever decides, on a server that admits people by request.
    *
    * Sent with the assertion rather than with the join, because the challenge
-   * binds what must not change between the two steps — the nickname, the invite
-   * claimed — and a note is a message to a person that nothing downstream
-   * trusts.
+   * binds what must not change between the two steps, and a note is a message
+   * to a person that nothing downstream trusts.
    */
   note?: string;
 };
@@ -41,10 +40,9 @@ export type JoinServerOnceError = {
   /**
    * Which half of the identity exchange the server refused.
    *
-   * The server has always sent this and this type has never had a field for
-   * it, so it was read off the wire and dropped. That is why a clock an hour
-   * out was reported as the server trusting a different identity service: the
-   * only message left to show was the one written for the other cause.
+   * The server has always sent this and this type has never had a field for it,
+   * so it was read off the wire and dropped — which is why a clock an hour out
+   * was reported as the server trusting a different identity service.
    */
   reason?: "certificate_rejected" | "assertion_rejected" | "nonce_mismatch" | "unknown";
   /**
@@ -99,14 +97,12 @@ function describeConnectError(err: unknown, host: string): JoinServerOnceError {
  * once more.
  *
  * getValidCertificate() already refuses to hand back a certificate that names a
- * key we no longer hold, which covers the case we have actually seen. This is
- * for the rest: a certificate the identity service has rotated away from, or
- * one signed by a key the server no longer trusts. Neither is visible from
- * here, and both are fixed by asking for a new one.
+ * key we no longer hold. This is for the rest: one the identity service has
+ * rotated away from, or one signed by a key the server no longer trusts.
+ * Neither is visible from here, and both are fixed by asking for a new one.
  *
- * Exactly one retry, and only for this error. Anything else — a ban, a bad
- * invite, an unreachable host — is not helped by a new certificate, and a
- * second attempt would just be a slower failure.
+ * Exactly one retry, and only for this error. A ban, a bad invite or an
+ * unreachable host is not helped by a new certificate.
  */
 export async function joinServerOnce(
   req: JoinServerOnceRequest,
@@ -161,9 +157,8 @@ export async function joinServerOnce(
  * The clock is wrong, and by how much.
  *
  * Worded from this machine's side, which is the one the reader can do something
- * about. The mirror of `serverProofErrorMessage`'s "expired" case, which says
- * the same thing about a server whose clock is off — see the note there about
- * why naming the direction beats asking somebody to compare two clocks.
+ * about. The mirror of `serverProofErrorMessage`'s "expired" case, which
+ * carries the note about why naming the direction beats comparing two clocks.
  */
 function clockSkewError(host: string, skewMs: number): JoinServerOnceError {
   const direction = skewMs > 0 ? "behind" : "ahead of";

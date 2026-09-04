@@ -12,15 +12,13 @@ export interface UploadedFile {
 /**
  * Encrypt a file, if this conversation is being encrypted, and upload it.
  *
- * The seal happens here rather than in the caller so there is one place where
- * bytes go to the server, and so the `sealed=1` field and the encryption cannot
- * come apart — a file encrypted and uploaded without the flag would be
+ * The seal happens here rather than in the caller so the `sealed=1` field and
+ * the encryption cannot come apart — a file encrypted without the flag would be
  * validated as an image and refused, and one flagged without being encrypted
  * would be stored opaque and served as a download for no reason.
  *
- * `seal` returning null is the ordinary case: a channel, or a conversation
- * somebody in it is holding up. The file goes as itself, which is what happened
- * before any of this existed.
+ * `seal` returning null is the ordinary case: a channel. The file goes as
+ * itself.
  */
 export async function uploadChatFile(
   file: File,

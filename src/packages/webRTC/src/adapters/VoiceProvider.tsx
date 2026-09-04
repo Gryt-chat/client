@@ -36,9 +36,7 @@ function VoiceLifecycle() {
  *
  * Recording the second would mean unplugging a headset quietly replaces the
  * stored choice with the built-in microphone, so plugging it back in does not
- * return to it. Leaving the setting alone costs nothing: the device is still
- * missing next time, and the engine falls back again. The camera is the same
- * question with the same answer, so both are handled the same way here.
+ * return to it. The camera is the same question with the same answer.
  */
 function useDeviceCallbacks(): VoiceConfigCallbacks {
   const settings = useSettings();

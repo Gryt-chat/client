@@ -20,19 +20,12 @@ import { statusConfig } from "./memberStatus";
 /**
  * What a member list can say about somebody beyond their chosen name.
  *
- * Nicknames are not unique and never have been, so "Sivert" in the sidebar is a
- * claim rather than a fact. These are the parts of that claim nobody can pick:
- * when the account first joined *this* server, whether there is an account
- * behind it at all, and a marker that stays the same across renames.
- *
- * Presence first, identity on demand. Hovering somebody mid-call is nearly
- * always a question about where they are rather than an audit, so the ring, the
- * name and the status answer it without a click and everything that proves who
- * they are sits in a drawer underneath.
- *
- * The exception is a member with no account, where the question on hover really
- * is identity. There the fingerprint comes out of the drawer and stays on the
- * face of the card.
+ * Nicknames are not unique, so "Sivert" in the sidebar is a claim rather than a
+ * fact. These are the parts nobody can pick: when the account first joined
+ * *this* server, whether there is an account behind it at all, and a marker
+ * that survives a rename. A member with no account shows the fingerprint on the
+ * face of the card rather than in the drawer, because there the question on
+ * hover really is identity.
  */
 
 function formatJoined(value?: string | Date): string | null {
@@ -54,11 +47,9 @@ const TIER_LABEL: Record<string, { label: string; amber: boolean }> = {
 /**
  * A rename described by when and how often, never by what it used to say.
  *
- * A recent rename is the thing worth noticing — an account that became this
- * name an hour ago is worth a second look in a way that one which has held it
- * for a year is not. Past names would answer a question nobody is asking here,
- * at the cost of publishing something somebody may have had a good reason to
- * change.
+ * A recent rename is the thing worth noticing. Past names would answer a
+ * question nobody is asking here, at the cost of publishing something somebody
+ * may have had a good reason to change.
  */
 function describeRenames(count?: number, at?: string | null): string | null {
   if (!count || count < 1) return null;
@@ -93,11 +84,8 @@ function describeRenames(count?: number, at?: string | null): string | null {
  * A local identity is a keypair its holder makes, so a few characters could be
  * ground out to match somebody worth impersonating — the server keys the
  * fingerprint so that cannot be done offline, and the full value is what makes
- * comparing it mean anything. Four authoritative-looking characters would be
- * worse than none: they invite a comparison that does not hold.
- *
- * The groups are for reading it aloud, which is how two people actually check
- * one against the other.
+ * comparing it mean anything. Four authoritative-looking characters invite a
+ * comparison that does not hold. The groups are for reading it aloud.
  */
 function Fingerprint({ value }: { value: string }) {
   return (
@@ -127,15 +115,13 @@ export function MemberIdentityCard({
   member: MemberInfo;
   /**
    * Which server this member is being shown on, so their key state can be
-   * looked up (GRYT-728).
+   * looked up (GRYT-728). Optional; without it the key section is absent, the
+   * same as a server too old to carry bindings at all.
    *
-   * Read from the hook here rather than passed down, because both callers —
-   * the sidebar and a message row — would otherwise have to thread it through
-   * components that have no other use for it, and one of them forgetting is a
-   * card that quietly stops mentioning a changed key.
-   *
-   * Optional, and without it the key section is simply absent. Same as a server
-   * too old to carry bindings at all.
+   * Read from the hook here rather than passed down, because both callers would
+   * otherwise have to thread it through components with no other use for it,
+   * and one of them forgetting is a card that quietly stops mentioning a
+   * changed key.
    */
   serverHost?: string;
   /**

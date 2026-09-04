@@ -6,16 +6,13 @@ import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 
 /**
- * A drawn cursor for the tour to move around with.
- *
- * The tour opens modals on the user's behalf, and doing that invisibly is what
- * made it hard to follow: Settings arrived out of nowhere and nothing said
- * which button it came from. So the tour presses the button first, and this is
- * the thing that does the pressing.
+ * A drawn cursor for the tour to move around with. The tour opens modals on the
+ * user's behalf, and doing that invisibly is what made it hard to follow:
+ * Settings arrived out of nowhere and nothing said which button it came from.
  *
  * It is a drawing, never a real pointer. `pointer-events: none` is the whole
- * contract — the tour card only just got its clicks back (GRYT-200) and a
- * cursor that intercepted them would be a poor joke.
+ * contract — a cursor that intercepted the tour card's clicks (GRYT-200) would
+ * be a poor joke.
  */
 
 /** Unhurried, and damped hard enough never to overshoot onto a neighbour. */

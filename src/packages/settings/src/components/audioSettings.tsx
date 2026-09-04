@@ -15,17 +15,13 @@ import { SettingGroup, SettingsContainer, SliderSetting, ToggleSetting } from ".
 const VISUALIZER_INTERVAL_MS = 33;
 
 /**
- * Smoothing for the level indicator on the noise gate slider.
+ * Smoothing for the level indicator on the noise gate slider: the weights of an
+ * exponential moving average, applied per sample.
  *
- * Speech RMS swings hard between syllables, so drawing raw samples 30 times a
- * second makes the marker jitter enough to be hard to read. These are the
- * weights of an exponential moving average, applied per sample.
- *
- * Attack is fast so a sudden peak still shows up almost immediately — the whole
- * point of the indicator is judging where to put the gate threshold, and a
- * meter that under-reports peaks would have you set it too low. Release is much
- * slower so the indicator falls away smoothly instead of flickering down
- * between words.
+ * Attack is fast so a sudden peak still shows up almost immediately — the
+ * indicator is for judging where to put the gate threshold, and one that
+ * under-reports peaks would have you set it too low. Release is much slower so
+ * it falls away smoothly instead of flickering down between words.
  *
  * At these weights and a 33 ms sample: a peak reads at 90 % within ~100 ms,
  * decays to 10 % over ~730 ms, and average frame-to-frame movement against
@@ -44,11 +40,10 @@ const LEVEL_TRANSITION = "60ms linear";
 /**
  * Drops options that repeat an id already in the list.
  *
- * Select keys its items by `value`, and the platform hands us a device whose
- * id is literally "default" alongside the real one — so the Default entry we
- * add ourselves and the enumerated one collide, and React warns about two
- * children with the same key on every render. The first one wins, which keeps
- * our own plain "Default" label rather than the enumerated "Default - <device>".
+ * Select keys its items by `value`, and the platform hands us a device whose id
+ * is literally "default" alongside the real one — so the Default entry we add
+ * ourselves and the enumerated one collide, and React warns about two children
+ * with the same key. The first one wins, keeping our own plain "Default" label.
  */
 function dedupeByValue(options: SelectOption[]): SelectOption[] {
   const seen = new Set<string>();

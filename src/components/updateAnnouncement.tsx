@@ -22,22 +22,15 @@ type Shown = {
 const BAR_HEIGHT = "0.25rem";
 
 /**
- * Telling somebody a release exists while they are using the app (GRYT-543).
- * Plain `react-hot-toast`, the one already in `main.tsx` — nothing here is a
- * second toast system.
+ * Telling somebody a release exists while they are using the app (GRYT-543), on
+ * the `react-hot-toast` already in `main.tsx`.
  *
- * **`announced` raises it; the rest of the statuses only move it along.** The
- * others also answer a check somebody pressed a button for, and Settings is
- * already showing them that.
+ * **`announced` raises it; the rest of the statuses only move it along** — the
+ * others answer a check somebody pressed a button for, and Settings shows those.
  *
- * **Not `toast.success`.** A green tick means the thing you did worked; nobody
- * did anything here.
- *
- * **No duration.** It stays until the cross is pressed or the update is taken.
- * Dismissing does not bring it back for the same version in this run.
- *
- * **The action is a link, not a filled button** — it restarts Gryt, which drops
- * you out of a call, and bottom-right is where people aim to dismiss things.
+ * **No duration, no `toast.success`, and the action is a link.** Nobody did
+ * anything here, so there is no tick; and restarting drops you out of a call,
+ * so it is not the control in the corner people aim at to dismiss things.
  */
 export function UpdateAnnouncement() {
   /* The toast currently on screen. A newer release during the same run has to
@@ -223,12 +216,10 @@ export function UpdateAnnouncement() {
 }
 
 /**
- * How far the download has got.
- *
- * Indeterminate until the first `download-progress` event, which is a second or
- * two after the announcement on a fast line and much longer on a slow one. A
- * bar sitting at zero reads as stuck, so there is no bar until there is a
- * number — the text carries it in the meantime.
+ * How far the download has got. Indeterminate until the first
+ * `download-progress` event, which is a second or two away on a fast line and
+ * much longer on a slow one — a bar sitting at zero reads as stuck, so there is
+ * no bar until there is a number.
  */
 function ProgressBar({ percent }: { percent?: number }) {
   if (percent == null) return null;
@@ -299,11 +290,8 @@ function Subtitle({
     /* The window is about to go, and on the way back the installer runs before
        anything is drawn. That gap reads as Gryt having closed and failed to
        reopen, and somebody who reads it that way opens it again, which is the
-       one thing that makes it worse (GRYT-646).
-     *
-     * Nothing can be shown during the gap, because nothing is running. This is
-       the moment before it: the press gets an answer, and the window closing
-       becomes the expected next thing. */
+       one thing that makes it worse (GRYT-646). Nothing can be shown during the
+       gap, because nothing is running, so this is the moment before it. */
     case "installing":
       return <>Installing… Gryt will restart on its own.</>;
 

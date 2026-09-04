@@ -46,15 +46,12 @@ import { Welcome } from "./components/welcome";
 export function App() {
   const { isSignedIn } = useAccount();
 
-  // Nobody is asked to choose. You arrive as an identity held on this device,
-  // and signing in is something you do later from settings if you want a
-  // durable account — at which point the servers you already joined come with
-  // you (GRYT-170). `isSignedIn` still gates nothing; it only decides what a
-  // server is told about you at the moment you join one.
+  // Waits for Keycloak to settle before mounting. It resolves to false quickly
+  // when there is no session, and mounting first would let a signed-in person's
+  // saved servers reconnect as a guest before their account was known.
   //
-  // Still waits for Keycloak to settle before mounting. It resolves to false
-  // quickly when there is no session, and mounting first would let a signed-in
-  // person's saved servers reconnect as a guest before their account was known.
+  // `isSignedIn` gates nothing else; it only decides what a server is told
+  // about you at the moment you join one (GRYT-170).
   const ready = isSignedIn !== undefined;
   const { showAddServer, setShowAddServer, addServer, hasServer, switchToServer } =
     useServerManagement();

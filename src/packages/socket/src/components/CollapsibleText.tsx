@@ -3,15 +3,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 /**
  * Folds a tall message down until somebody asks for the rest.
  *
- * Height rather than character count, because the two disagree in the case
- * that matters. Two hundred newlines is four hundred characters and half a
- * screen; one unbroken paragraph is four thousand characters and six lines. A
- * cap on length is the server's job (it refuses past 4,000) — this is about
- * how much room one message may take before you have to scroll past it.
+ * Height rather than character count, because the two disagree in the case that
+ * matters: two hundred newlines is four hundred characters and half a screen,
+ * one unbroken paragraph is four thousand characters and six lines.
  *
- * Nothing is loaded when it opens, and the control says so: the whole message
- * arrived with the message. Folding is not a saving in what the server sends —
- * the cap is what bounds that.
+ * Nothing is loaded when it opens — the whole message arrived with the message,
+ * and the server's 4,000 cap is what bounds what it sends.
  */
 
 /** How tall a message may be before it is folded. About twelve lines. */
@@ -32,11 +29,9 @@ const ASSUMED_LINE_RATIO = 1.5;
  *
  * A CSS `transform` on this chevron computed to the identity matrix in the
  * running client — measured with an inline style, on both an `<svg>` and a
- * `<span>` wrapper, with no competing rule in the sheet and reduced-motion off,
- * while the same declaration on a plain div beside it rotated fine. Rather than
- * keep chasing that, the mark is simply drawn the other way up. It is two path
- * strings; it cannot fail, and there is nothing to animate away under
- * prefers-reduced-motion.
+ * `<span>` wrapper, with no competing rule and reduced-motion off, while the
+ * same declaration on a plain div beside it rotated fine. Two path strings
+ * cannot fail, and there is nothing to animate away.
  */
 function Chevron({ up }: { up: boolean }) {
   return (
@@ -92,20 +87,13 @@ export function CollapsibleText({ children }: { children: React.ReactNode }) {
   const folds = hiddenLines > 0;
 
   /*
-   * Measure directly, then observe for later changes.
-   *
-   * Both, not just the observer. ResizeObserver is specified to deliver an
-   * initial callback for an element with a box, and relying on that alone left
-   * a message that never folded when it did not arrive — observed in the
-   * Browser pane, where a fresh observer on a 618x1440 element stayed silent
-   * for the better part of a second. Whatever the reason there, a fold that
-   * depends on a callback firing is a fold that sometimes does not happen, and
-   * the direct call costs one layout read.
-   *
-   * The observer still earns its place for everything after the first paint:
-   * custom emoji and code blocks land late, and an edit rewrites the content
-   * in place. Without it the control goes missing on a message that grew and
-   * is stranded on one that shrank.
+   * Measure directly, then observe for later changes. Both, not just the
+   * observer: ResizeObserver is specified to deliver an initial callback for an
+   * element with a box, and relying on that alone left a message that never
+   * folded when it did not arrive — a fresh observer on a 618x1440 element
+   * stayed silent for the better part of a second. The observer still earns its
+   * place for content that lands late: custom emoji, code blocks, an edit
+   * rewriting the text in place.
    *
    * `folds` is in the deps because the element is remounted when the wrapper
    * appears — the observer would otherwise be left watching a detached node.

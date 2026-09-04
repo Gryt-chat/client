@@ -93,17 +93,12 @@ export function groupMembersByRole(
 }
 
 /**
- * The role's colour, pulled into a band this theme can read. An operator picks
- * against no background in particular, and `#000080` on the dark sidebar is
- * unreadable — refusing to draw it throws away their choice, drawing it as-is
- * throws away the name.
- *
- * Hue is kept and the other two clamped, in OKLCH, so navy stays navy.
+ * The role's colour, pulled into a band this theme can read. Hue is kept and
+ * the other two clamped, in OKLCH, so navy stays navy.
  *
  * **The numbers are measured against `--gryt-neutral-4`**, not chosen: worst
- * case over every hue is 4.84:1 dark and 4.72:1 light, so anything clears WCAG
- * AA. **Chroma is capped too** — a lightness floor alone left a saturated red
- * at 3.58:1.
+ * case over every hue is 4.84:1 dark and 4.72:1 light. **Chroma is capped
+ * too** — a lightness floor alone left a saturated red at 3.58:1.
  *
  * A browser without relative colour syntax drops the declaration and the name
  * inherits ordinary text colour, so there is no `@supports` here.

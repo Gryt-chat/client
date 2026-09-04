@@ -59,9 +59,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
    * manager says they are doing.
    *
    * The connection status alone cannot tell "my server is booting" from "a
-   * stranger's server has not answered", and those are not the same thing to
-   * watch. The client already knows which servers are its own, so it says so
-   * (GRYT-314). Empty in a browser, where there is no embedded server at all.
+   * stranger's server has not answered" (GRYT-314). Empty in a browser.
    */
   const { servers: embeddedServers } = useEmbeddedServer();
   const embeddedStatusByHost = useMemo(() => {
@@ -317,16 +315,12 @@ function ServerItem({
   const [mergeOpen, setMergeOpen] = useState(false);
   // No entry yet is not the same as down.
   //
-  // A server added a moment ago — an embedded one you just created, most
-  // obviously — has no status until useSockets gets round to creating its
-  // socket and sets "connecting". Falling back to "disconnected" meant it
-  // rendered greyed out at 30% opacity with "• OFFLINE" beside it before
-  // anything had been attempted, so creating a server looked like it had
-  // failed. GRYT-290.
-  //
-  // So an unknown host reads as connecting, and only becomes offline once it
-  // has had SETTLE_MS to say otherwise. A server that really is down still
-  // gets there, just after showing that something was tried.
+  // A server added a moment ago has no status until useSockets gets round to
+  // creating its socket and sets "connecting". Falling back to "disconnected"
+  // rendered it greyed out with "• OFFLINE" beside it before anything had been
+  // attempted, so creating a server looked like it had failed (GRYT-290). An
+  // unknown host reads as connecting and only becomes offline once it has had
+  // SETTLE_MS to say otherwise.
   const rawStatus = serverConnectionStatus[host];
   const [settleExpired, setSettleExpired] = useState(false);
   useEffect(() => {

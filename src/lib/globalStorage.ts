@@ -1,16 +1,9 @@
 /**
  * Backs localStorage with a JSON file in Electron's userData directory.
  *
- * Call `initGlobalStorage()` once **before** React renders. It will:
- *   1. Load the file store from the main process via IPC.
- *   2. On first launch, migrate all existing localStorage entries into the
- *      file store (skipping per-user keys already handled by userStore).
- *   3. Restore every file-store entry back into localStorage so existing
- *      consumer code works unchanged.
- *   4. Patch `localStorage.setItem` / `localStorage.removeItem` so future
- *      writes are automatically synced to the file store.
- *
- * On the web (non-Electron), `initGlobalStorage()` is a no-op.
+ * Call `initGlobalStorage()` once **before** React renders: it patches
+ * `localStorage.setItem` and `removeItem` to sync writes through, so anything
+ * written before that never reaches the file store. A no-op on the web.
  */
 
 import { getElectronAPI, isElectron } from "./electron";

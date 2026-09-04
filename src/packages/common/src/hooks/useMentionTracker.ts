@@ -6,12 +6,10 @@ import { useCallback, useSyncExternalStore } from "react";
  * Separate from the unread tracker next door, which answers a different
  * question: unread means something happened here, a mention means something
  * happened *to you*. On a server with a busy general channel the first is
- * always true and stops carrying information, and the question that actually
- * needs answering — did anyone ask me something — is the one that gets lost.
+ * always true and stops carrying information.
  *
- * A count rather than a flag, because "three people asked you something" and
- * "one person did" are different amounts of owed reply, and the number is what
- * the server stores anyway.
+ * A count rather than a flag, because the number is what the server stores
+ * anyway.
  *
  * The store lives at module scope, like the unread one, so a mention that
  * arrives while the channel list is unmounted is still there when it comes

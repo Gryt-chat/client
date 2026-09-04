@@ -7,14 +7,13 @@ import { GeneratedServerIcon } from "./GeneratedServerIcon";
  *
  * "Could not reach the voice server" on its own is not a diagnosis. Somebody
  * with three servers open gets a message that could be about any of them, and
- * the report that comes back is "voice broke" with nothing to act on — which is
- * exactly what happened on 2026-08-29 and is why this exists.
+ * the report that comes back is "voice broke" with nothing to act on.
  *
  * Deliberately presentational: it takes strings and a URL, and resolves
- * nothing. A toast is rendered by react-hot-toast into its own subtree, and a
- * component that reached for `useSockets` to look a name up would be one
- * refactor away from rendering outside the provider that supplies it. The call
- * site already has both — it is the thing that knew which server failed.
+ * nothing. react-hot-toast renders a toast into its own subtree, so a component
+ * that reached for `useSockets` to look a name up would be one refactor away
+ * from rendering outside the provider that supplies it. The call site already
+ * has both.
  *
  * Styles live in style.css under `.server-toast`, with the rest of the app's.
  */

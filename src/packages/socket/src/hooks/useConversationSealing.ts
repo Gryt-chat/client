@@ -18,11 +18,10 @@ import { useSockets } from "./useSockets";
 /**
  * Whether the conversation on screen can be encrypted, and doing it (GRYT-729).
  *
- * Pulls together the three things that decide it — who is in the conversation,
- * what this client made of each of their keys, and this device's own keypair —
- * and hands back a decision plus the two operations. Everything with a rule in
- * it lives in `conversation-encryption` in `@gryt/crypto`; this is the part that
- * has to be a hook because the inputs are React state.
+ * Everything with a rule in it lives in `conversation-encryption` in
+ * `@gryt/crypto`; this is the part that has to be a hook because the inputs —
+ * who is in the conversation, what this client made of each of their keys, and
+ * this device's own keypair — are React state.
  */
 
 export interface ConversationSealing {
@@ -47,13 +46,12 @@ export interface ConversationSealing {
   /**
    * Encrypt one file, or null when this conversation is not being sealed.
    *
-   * Null is the ordinary answer for a channel and for a conversation somebody
-   * in it is holding up, and it means upload the file as it is. A caller that
-   * treats null as an error stops people sending pictures in a channel.
+   * Null is the ordinary answer for a channel, and it means upload the file as
+   * it is. A caller that treats null as an error stops people sending pictures
+   * in a channel.
    *
    * The bytes are not bound to the server's file id, because there is not one
-   * yet — `meta.id` is a value the package chooses and puts inside the metadata.
-   * See `sealAttachment`.
+   * yet — `meta.id` is a value the package chooses. See `sealAttachment`.
    */
   sealFile: (
     bytes: Uint8Array,
@@ -71,10 +69,8 @@ export interface ConversationSealing {
    * was sent. Throws when a key is there and does not open, which is tampering
    * or the wrong conversation rather than an ordinary absence.
    *
-   * `attachments` is the file keys the message carried, by file id, and is
-   * empty for the messages that have none. Nothing draws it yet — the upload
-   * path still sends files in the clear — but it is what comes back, so it is
-   * not hidden behind a second call somebody has to remember to make.
+   * `attachments` is the file keys the message carried, by file id, and empty
+   * for the messages that have none.
    */
   open: (sealed: string) => Promise<OpenedMessage | null>;
 }

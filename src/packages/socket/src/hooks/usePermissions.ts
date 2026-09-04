@@ -15,21 +15,16 @@ export type ServerRoleSummary = {
 /**
  * What this client may do on one server, and what the roles there are called.
  *
- * Both arrive on `server:details` and are refreshed whenever the server
- * rebroadcasts it, which it does on every role change — so a demotion takes
- * effect in the UI without a reconnect.
+ * Both arrive on `server:details`, refreshed whenever the server rebroadcasts
+ * it, which it does on every role change — so a demotion takes effect without a
+ * reconnect.
  *
  * `can` answers true in the two cases where the server has not actually said
- * no. One is a server that sent no permission list at all — older than this
- * feature entirely. The other is a permission missing from the server's own
- * catalogue, which means that build has never heard of it and therefore cannot
- * be withholding it. Both used to read as a denial, and the second is worse
- * than it sounds: a client that learns about `read_messages` before its server
- * does would blank out every channel on it.
- *
- * The server is the one enforcing this. The client is only deciding what to
- * offer, so leaning towards offering is the safe direction — the refusal comes
- * back as an error rather than as a wrong answer.
+ * no: a server that sent no permission list at all, and a permission missing
+ * from the server's own catalogue. Both used to read as a denial, and the
+ * second is worse than it sounds — a client that learns about `read_messages`
+ * before its server does would blank out every channel on it. The server is
+ * the one enforcing this, so leaning towards offering is the safe direction.
  */
 export function useServerPermissions(host: string) {
   const { serverDetailsList } = useSockets();

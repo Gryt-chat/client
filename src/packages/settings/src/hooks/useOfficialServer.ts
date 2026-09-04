@@ -34,11 +34,10 @@ let cached: OfficialServer | null = null;
 /**
  * Whether there is an official server to offer, and what it calls itself.
  *
- * It is a probe rather than a constant because the row it feeds is an offer: a
- * server that does not answer must not be suggested, or the first thing a new
- * install does is hand somebody an address that fails. `/info` is the same
- * endpoint the preview below the field uses, so an answer here means the join
- * that follows will get one too.
+ * A probe rather than a constant because the row it feeds is an offer: a server
+ * that does not answer must not be suggested. `/info` is the same endpoint the
+ * preview below the field uses, so an answer here means the join that follows
+ * will get one too.
  */
 export function useOfficialServer(enabled: boolean): OfficialServer | null {
   const [server, setServer] = useState<OfficialServer | null>(cached);

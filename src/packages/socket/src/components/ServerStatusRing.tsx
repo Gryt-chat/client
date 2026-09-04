@@ -6,14 +6,12 @@
 
 /**
  * What a server is doing, drawn around its icon in the rail (GRYT-314). The
- * distinction is not which state machine value is set — it is **whether waiting
- * is the right thing to do**:
+ * distinction is **whether waiting is the right thing to do**:
  *
- * - `starting` — your own embedded server is booting, so the icon keeps its
+ * - `starting` — your own embedded server is booting: the icon keeps its
  *   colour and the ring is drawn in the accent.
  * - `settling` — a remote server has a fixed budget before it is called
- *   offline, and the ring *empties* over it, so the flip is the visible end of
- *   something you watched.
+ *   offline, and the ring *empties* over it.
  * - `connecting` / `reconnecting` — no deadline. Indeterminate sweep, muted.
  *
  * **Two shapes, not two colours.** A sweep means working, a depleting ring

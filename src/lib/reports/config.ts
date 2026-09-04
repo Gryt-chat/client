@@ -11,8 +11,7 @@ import { isElectron } from "../electron";
  *
  * **There is no app key.** One shipped inside a public app is not a secret, and
  * the day it needs rotating is the day everybody who has not updated stops
- * being able to report a bug (GRYT-529). What keeps junk out is on the service
- * side; what identifies a reporter is the assertion in `assertion.ts`.
+ * being able to report a bug (GRYT-529).
  */
 
 export interface ReportsConfig {

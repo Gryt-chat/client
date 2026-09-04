@@ -20,15 +20,11 @@ const PRIVACY_URL = "https://gryt.chat/privacy";
 /*
  * "Get the desktop app" sent people to GitHub Releases, which is release notes
  * above a collapsed Assets list of a dozen files across three platforms. The
- * reader of that card has not asked for a file — they have asked for the app,
- * and the card has just told them it is available for their platform.
+ * reader of that card has asked for the app, not for a file.
  *
- * /download resolves the build for them and starts it. No ?os= here, unlike
- * the server's reminder, because this card only renders in the browser build
- * and the user agent is the right answer.
- *
- * That was the last caller of the releases URL, so it is gone. Nothing else in
- * this panel wanted the release notes; the version number does not link out.
+ * /download resolves the build for them and starts it. No ?os= here, unlike the
+ * server's reminder, because this card only renders in the browser build and
+ * the user agent is the right answer.
  */
 const DOWNLOAD_URL = "https://gryt.chat/download";
 
@@ -357,11 +353,9 @@ export function AboutSettings() {
  * Updates as a destination of its own, first in the sidebar.
  *
  * It used to sit at the bottom of About, which is where you look last. Checking
- * for an update is something people come to settings to do deliberately, so it
- * gets its own entry rather than being reference material's footer.
+ * for an update is something people come to settings to do deliberately.
  *
- * In the browser there is no updater, so this offers the desktop app instead —
- * the same swap About was already making.
+ * In the browser there is no updater, so this offers the desktop app instead.
  */
 export function UpdatesSettings() {
   const inElectron = isElectron();

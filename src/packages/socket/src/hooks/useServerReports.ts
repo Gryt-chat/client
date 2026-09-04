@@ -11,27 +11,17 @@ interface UseServerReportsParams {
   /**
    * Whether this member may *read* the reports queue.
    *
-   * `view_reports`, not `manage_reports`. Those are two permissions — one
-   * reads the queue, the other acts on what is in it — and the server gates
-   * `reports:list` on the first (`socket/handlers/reports.ts`, and
-   * `permissionGates.test.ts` asserts the pairing). This asked on the second,
-   * so the two disagreed about who may ask.
+   * `view_reports`, not `manage_reports`. Those are two permissions and the
+   * server gates `reports:list` on the first (`socket/handlers/reports.ts`,
+   * asserted in `permissionGates.test.ts`). Asking on the second refused
+   * members who could read and let members who could not act emit anyway,
+   * which surfaced as an error toast naming an internal permission string
+   * moments after joining. GRYT-844. Acting on a report stays gated on
+   * `manage_reports`, inside the panel.
    *
-   * That mismatch was loud in one direction and silent in the other. A member
-   * holding `manage_reports` without `view_reports` emitted and was refused,
-   * and the refusal arrived as an error toast naming an internal permission
-   * string — for a request nobody made, moments after joining. A member with
-   * `view_reports` and not `manage_reports` was allowed to read the queue and
-   * never asked, so their badge stayed empty. GRYT-844.
-   *
-   * Acting on a report stays gated on `manage_reports`, inside the panel.
-   *
-   * Pass `has("view_reports")`, not `can("view_reports")`. GRYT-844 corrected
-   * which permission this asks about and left the timing alone, so the same
-   * toast came back for a second reason: `can` answers true until the server
-   * says no, `server:details` has not arrived the first time this runs, and a
-   * guest emitted anyway. `has` waits for the grant. GRYT-874, and the caller
-   * carries the longer note.
+   * `has("view_reports")`, not `can(...)`: `can` answers true until the server
+   * says no, and `server:details` has not arrived the first time this runs, so
+   * a guest emitted and got the same toast for a second reason. GRYT-874.
    */
   canViewReports: boolean;
 }
@@ -65,8 +55,7 @@ export function useServerReports({
    *
    * This used to copy out three fields — nickname, serverUserId, avatarFileId —
    * which is why none of GRYT-159's identity detail ever reached chat: it was
-   * dropped here, one layer above the components that needed it. Passing the
-   * member through costs nothing; it is the same objects, in a map.
+   * dropped here, one layer above the components that needed it.
    */
   const memberListMap = useMemo(() => {
     const members = currentlyViewingServer ? memberLists[currentlyViewingServer.host] : undefined;

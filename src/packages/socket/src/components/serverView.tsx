@@ -127,9 +127,8 @@ export const ServerView = () => {
    * What the voice panel is actually taking out of the row, which is what the
    * member list has to be measured against.
    *
-   * Zero in three cases, and all three matter: no call, the panel minimized,
-   * and the panel maximized — the last one hides the chat entirely, so the
-   * member list is not competing with anything.
+   * Zero in three cases: no call, the panel minimized, and the panel maximized
+   * — the last hides the chat entirely, so nothing is competing.
    */
   /*
    * Whether the chat pane is drawn at all. The same condition the pane itself
@@ -194,11 +193,10 @@ export const ServerView = () => {
   /*
    * Reading a conversation clears the mentions in it.
    *
-   * Separate from the effect above rather than folded into it, because it also
-   * has to fire for a mention that lands while the conversation is already
-   * open — `mentionCount` changes then, and the conversation does not. Cleared
-   * here as well as on the server so the badge goes when they look at it rather
-   * than when the reply comes back.
+   * Separate from the effect above because it also has to fire for a mention
+   * that lands while the conversation is already open — `mentionCount` changes
+   * then, and the conversation does not. Cleared here as well as on the server
+   * so the badge goes when they look at it rather than when the reply comes.
    */
   const openConversationMentions = currentlyViewingServer
     ? conversationMentionCount(currentlyViewingServer.host, visibleDmId || visibleChannelId || "")
@@ -316,11 +314,8 @@ export const ServerView = () => {
      * otherwise, which is right for offering a button and wrong here: this
      * drives an automatic `reports:list` on join, before `server:details`
      * arrives, so it said yes to guests and the refusal was the first thing a
-     * new member saw.
-     *
-     * The cost is that a server too old to send a permission list gives nobody
-     * the badge count. It also cannot say who may read the queue, so asking was
-     * a guess that erred about a third of the time (GRYT-874). */
+     * new member saw. The cost is that a server too old to send a permission
+     * list gives nobody the badge count (GRYT-874). */
     canViewReports: viewerPermissions.has("view_reports"),
   });
 
@@ -356,10 +351,9 @@ export const ServerView = () => {
    * Open a DM and read it.
    *
    * The server answers `dm:opened` whether it made one or found the existing
-   * one, so this waits for that rather than guessing the id — the id is
+   * one, so this waits for that rather than guessing the id. The id is
    * derivable, but deriving it here would mean the client owning a rule the
-   * server also owns, and the two drifting is a bug nobody would see until a
-   * conversation opened empty.
+   * server also owns, and a conversation opening empty when the two drift.
    */
   const handleOpenDm = useCallback((targetServerUserId: string) => {
     const existing = directConversations.find(
@@ -474,10 +468,9 @@ export const ServerView = () => {
   /**
    * The caller's picture, from the member list.
    *
-   * A ring carries a nickname and nothing else, deliberately — the member list
-   * is where a person's appearance lives and duplicating it into the ring would
-   * be a second copy to go stale. A caller who is not in the list draws their
-   * owl from the nickname, which is what `resolveAvatarSrc` does anyway.
+   * A ring carries a nickname and nothing else, deliberately — duplicating a
+   * person's appearance into the ring would be a second copy to go stale. A
+   * caller who is not in the list draws their owl from the nickname.
    */
   const caller = incomingCall ? memberListMap[incomingCall.from.server_user_id] : undefined;
   const callerAvatarUrl =
@@ -735,11 +728,9 @@ export const ServerView = () => {
         {isTiny ? (
           /*
            * One channel and nothing else — `MainApp` drops the rail, the lists
-           * and the padding at this size.
-           *
-           * **No way to change channel from here**; the way out is a bigger
-           * window. `useIsTinyWindow` is gated on a fine pointer so a phone
-           * never reaches this, where that would be a dead end.
+           * and the padding at this size. **No way to change channel from
+           * here**; the way out is a bigger window, and `useIsTinyWindow` is
+           * gated on a fine pointer so a phone never reaches this.
            *
            * A call is the exception: the voice panel is gone at this width, so
            * the phone layout's floating button comes with it, or the microphone

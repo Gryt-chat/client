@@ -145,10 +145,9 @@ function logDecision(host: string, decision: ServerProofDecision): void {
 /**
  * A rough gap in words, because the exact figure is not the point.
  *
- * Somebody reading this needs to know whether a clock is a minute out or a day
- * out — the first is a missing time sync, the second is usually a machine that
- * came up without a battery-backed clock at all. Rounding to something sayable
- * makes that difference obvious and a stray hundred milliseconds invisible.
+ * A minute out is a missing time sync; a day out is usually a machine that came
+ * up without a battery-backed clock at all. Rounding to something sayable makes
+ * that difference obvious and a stray hundred milliseconds invisible.
  */
 export function describeGap(ms: number): string {
   const seconds = Math.round(ms / 1000);

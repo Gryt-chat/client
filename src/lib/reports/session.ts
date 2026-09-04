@@ -1,21 +1,16 @@
 import { useEffect } from "react";
 
 /**
- * The two things a report knows about this run that the form cannot see for
- * itself.
+ * The two things a report knows about this run that the form cannot see.
  *
- * **Where they were.** The service's `context.route` wants "where in the app
- * they were", and the obvious reading — ask the form — answers "the report
- * form", which is the one place that cannot be the reason for a bug report.
- * Settings does not record either, for the same reason: the report is opened
- * from About, and "About" is never the answer.
+ * **Where they were.** `context.route` wants where in the app they were, and
+ * asking the form answers "the report form" — the one place that cannot be the
+ * reason for a bug report.
  *
- * **How long they had been running.** `context.sessionUptimeSec`. "It broke
- * twenty minutes in" and "it broke on launch" are different bugs, and nobody
- * thinks to write down which one it was.
+ * **How long they had been running.** "It broke twenty minutes in" and "it
+ * broke on launch" are different bugs, and nobody writes down which.
  *
- * Module variables rather than context, because nothing should re-render on
- * either of these.
+ * Module variables rather than context: nothing should re-render on these.
  */
 
 const startedAt = Date.now();

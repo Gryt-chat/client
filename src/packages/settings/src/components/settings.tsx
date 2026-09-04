@@ -41,12 +41,10 @@ function PanelDivider() {
 
 /**
  * Five destinations named for what you are trying to do rather than which
- * subsystem owns the setting. Replaces fourteen flat tabs, two of which held a
- * single control each and three of which covered the same mental model.
+ * subsystem owns the setting.
  *
  * `mountWhenActive` panels touch hardware — microphone analysers, camera
- * preview — so they mount only while their destination is open, preserving the
- * old `conditional` behaviour.
+ * preview — so they mount only while their destination is open.
  */
 const DESTINATIONS = [
   {
@@ -298,9 +296,7 @@ export function Settings() {
       open={showSettings}
       /* The tour lives in a portal of its own, so pressing Next on a coach mark
          counts as a press outside this dialog and used to dismiss it. The panel
-         closed on every step change and the next step opened it again, which
-         read as the whole thing flickering shut and back for no reason. The
-         tour is not outside in any sense the user cares about.
+         closed on every step change and the next step opened it again.
 
          Radix took an onInteractOutside handler that could preventDefault. Base
          UI routes every open change through one callback with the reason and a

@@ -6,14 +6,13 @@ import type { Socket } from "socket.io-client";
  * Reporting a person to the moderators of the server you are both on.
  *
  * Separate from the message report in `useChat`, which fires and forgets: there
- * the message is on screen, and a report that quietly went nowhere still leaves
+ * the message is on screen, so a report that quietly went nowhere still leaves
  * the thing that prompted it visible. Here the entire report is what somebody
- * just typed, and if it goes nowhere they have no way of knowing.
+ * just typed.
  *
  * So this waits for an answer. A server too old to know `user:report` sends
  * none — the event is simply not registered — and the timeout below is the only
- * way to tell that apart from a report that landed. Six seconds is well past a
- * normal round trip and short enough that nobody has walked away.
+ * way to tell that apart from a report that landed.
  */
 
 const NO_ANSWER_MS = 6_000;

@@ -182,14 +182,13 @@ function useSocketsHook() {
   }, []);
 
   // Both places that sync an avatar run at a moment that can arrive before
-  // there is a userId: the join event, and the details fetch a second after a
-  // socket is made. Reading the ref stops them using a stale null, but it does
-  // not help when the answer is still genuinely not known — and for the owner
-  // it never is, because their join is the first thing that happens.
+  // there is a userId, and for the owner it never is: their join is the first
+  // thing that happens. Reading the ref stops them using a stale null but does
+  // not help when the answer is genuinely not known yet.
   //
   // So sync again when the userId does arrive. syncAvatarToHost compares the
-  // stored hash against what the host already has, so a host that is already in
-  // sync costs one hash and no upload (GRYT-12).
+  // stored hash against what the host has, so a host already in sync costs one
+  // hash and no upload (GRYT-12).
   useEffect(() => {
     if (!userId) return;
 
@@ -310,18 +309,12 @@ function useSocketsHook() {
           toast.loading(`Reconnecting to ${serverName}...`, { id: toastId });
         });
 
-        /* The server restored a voice state it stashed when this socket
-           dropped, and it restored the mute, deafen and AFK flags with it.
-           Those are ours to decide, and the copy it just put back is only as
-           new as the moment the connection broke.
-         *
-         * Nothing corrected it before GRYT-644. The emit above runs from an
-         * effect keyed on the three flags and the sockets map, and a reconnect
-         * moves none of them: the flags are whatever they already were, and
-         * socket.io reuses the same Socket instance, so even its identity
-         * holds. So the server's copy stood, and somebody who had unmuted
-         * during the drop — or before it, if the stash predated that — showed
-         * as muted to the room while still being heard.
+        /* The server restored the mute, deafen and AFK flags it stashed when
+           this socket dropped, and its copy is only as new as the moment the
+           connection broke. Nothing corrected it before GRYT-644: the emit
+           above is keyed on the three flags and the sockets map, and a
+           reconnect moves neither, so somebody who had unmuted during the drop
+           showed as muted to the room while still being heard.
          *
          * Sent here rather than on `connect` because the stash is applied
          * during `session:restore`, and this event is the server saying it has
@@ -353,16 +346,14 @@ function useSocketsHook() {
 
         // Find out whether this host is http or https before anything fetches
         // from it. Only the add-server flow ever recorded that, so a server
-        // already in the list still had the default — and on the desktop app
-        // the default is plain http, which a proxied deployment answers with a
-        // redirect that a preflighted request is not allowed to follow.
+        // already in the list still had the default — and on the desktop the
+        // default is plain http, which a proxied deployment answers with a
+        // redirect that a preflighted request may not follow.
         //
-        // The socket does not wait for it. The WebSocket URL is chosen from
-        // the same remembered scheme, but a proxy that redirects plain http
-        // will often still take a plain WebSocket upgrade, so holding every
+        // The socket does not wait for it: a proxy that redirects plain http
+        // will usually still take a plain WebSocket upgrade, so holding every
         // connection back for a round trip would cost startup time to fix
-        // something that mostly is not broken. It settles within the second
-        // the avatar sync below already waits.
+        // something that mostly is not broken.
         const schemeKnown = ensureSchemeKnown(host).catch(() => undefined);
 
         // Initial join / details fetch
@@ -419,17 +410,15 @@ function useSocketsHook() {
   }, [servers, identityReady]);
 
   /* Ask again, on a timer, for servers waiting on a moderator (GRYT-289).
-     
-     Approving a request happens in the moderator's client and the server tells
-     nobody else: `server:joinRequest:decided` goes back to whoever clicked it,
-     and the person waiting is not connected as a member to be told. Without
-     this they would sit there until they thought to try joining again by hand,
-     which is the thing the task was raised about.
-     
-     A minute, because approval is a human action and the cost of being a minute
-     late is nothing. Each attempt is one `server:join`, which the server
-     answers from the join_requests row — approved lets them in and clears the
-     row, anything else replies approval_pending again and nothing changes. */
+
+     Approving happens in the moderator's client and the server tells nobody
+     else: `server:joinRequest:decided` goes back to whoever clicked it, and the
+     person waiting is not connected as a member to be told.
+
+     A minute, because approval is a human action. Each attempt is one
+     `server:join`, which the server answers from the join_requests row —
+     approved lets them in and clears the row, anything else replies
+     approval_pending again and nothing changes. */
   useEffect(() => {
     const waiting = Object.keys(serversRef.current).filter(
       (host) => serversRef.current[host]?.approvalRequestedAt,

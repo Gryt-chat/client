@@ -5,15 +5,13 @@ import { useCallback, useSyncExternalStore } from "react";
  *
  * **The server sends a kind and some values. Every word on screen is here.**
  *
- * That is deliberate and it is the whole security property. A panel rendered in
- * app furniture, carrying text a server chose, addressed to one person, is a
- * phishing message with a nice border — "Your Gryt session has expired, sign in
- * at …". Attribution and link-stripping would make that harder. Taking the text
- * away entirely makes it impossible.
- *
- * The cost is a client release whenever there is something new to say. That is
- * the trade: a server with something bespoke to tell people has the ordinary
- * system-message path, which is public, attributable and deletable.
+ * That is the whole security property. A panel rendered in app furniture,
+ * carrying text a server chose, addressed to one person, is a phishing message
+ * with a nice border — "Your Gryt session has expired, sign in at …". Taking
+ * the text away entirely makes that impossible rather than harder. The cost is
+ * a client release whenever there is something new to say; a server with
+ * something bespoke to tell people has the ordinary system-message path, which
+ * is public, attributable and deletable.
  *
  * Adding a kind means adding it here *and* to `ClientNotice` on the server. A
  * kind this client does not know is dropped rather than rendered as anything.

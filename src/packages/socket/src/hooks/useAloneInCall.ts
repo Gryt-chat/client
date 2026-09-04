@@ -3,34 +3,24 @@ import { useCallback, useEffect, useRef, useState } from "react";
 /**
  * Leaving a call once you are the only one left in it (GRYT-711).
  *
- * A voice channel is a place, and sitting in one alone is an ordinary thing to
- * do. A call is an event between named people, and being the last one in it
- * means it is over — usually the other person hung up and you walked off, or
- * the tab is open behind forty others. The room, its peer connection and its
- * socket stay up either way.
+ * A voice channel is a place and sitting in one alone is ordinary. A call is an
+ * event between named people, and being the last one in it means it is over.
  *
- * The SFU ends it too, and that is the half that saves the resources: a client
- * that is closed, wedged or modified never runs this timer, and those are
- * exactly the ones leaving rooms up. This half exists so the person who *is*
- * there is told rather than having the call vanish on them.
+ * The SFU counts too, and that is the half that frees the resources: a client
+ * that is closed, wedged or modified never runs this timer. This half exists so
+ * the person who *is* there is told rather than having the call vanish on them.
  *
- * ## The stay button
- *
- * There was no button at first, because it would have been a lie: the SFU was
- * counting too and was not listening, so pressing Stay would have held the tile
- * up for thirty seconds and then the socket would have closed anyway. GRYT-715
- * gave the SFU a `still_here` message that restarts its clock, so the button
- * now moves both. `stay()` restarts this one; sending the message is the
- * caller's job, because it is the caller that holds the SFU connection.
+ * The stay button moves both clocks. `stay()` restarts this one; sending the
+ * SFU's `still_here` (GRYT-715) is the caller's job, because the caller holds
+ * that connection. Without it the button would hold the tile up for thirty
+ * seconds and the socket would close anyway.
  */
 
 /**
  * What to count down from when the SFU has not said.
  *
- * It matches `DefaultCallAloneTimeout` in the SFU's config, and it used to be
- * the only number this had: the value is read from the environment on a machine
- * this client never talks to, and there was no route back. GRYT-715 gave
- * `room_joined` one, so this is now the fallback for an SFU too old to use it
+ * Matches `DefaultCallAloneTimeout` in the SFU's config. GRYT-715 gave
+ * `room_joined` a value, so this is the fallback for an SFU too old to send one
  * rather than a guess made on every call.
  */
 export const ALONE_SECONDS = 120;
@@ -59,10 +49,10 @@ export interface AloneInCall extends Countdown {
 /**
  * What to show after this many seconds alone, and whether to hang up.
  *
- * Pure, and separate from the hook, because this is the part with the
- * boundaries in it: showing the notice a second too late, or counting down to
- * one instead of zero, is not something a type checker or a running app makes
- * obvious. `check-alone-in-call.mjs` walks it second by second.
+ * Pure and separate from the hook, because this is the part with the boundaries
+ * in it: showing the notice a second too late, or counting down to one instead
+ * of zero, is not something a type checker makes obvious.
+ * `check-alone-in-call.mjs` walks it second by second.
  */
 export function callCountdown(
   secondsAlone: number,

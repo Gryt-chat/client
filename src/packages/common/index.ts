@@ -1,12 +1,12 @@
 // Message encryption is one implementation shared with the mobile app
-// (GRYT-732). These were files in `src/auth` until the package existed, and are
-// re-exported one for one so nothing in the client had to change its imports.
+// (GRYT-732), re-exported one for one so nothing in the client had to change
+// its imports.
 //
 // Taken by subpath rather than as `export * from "@gryt/crypto"`, because the
 // package's own `peer-keys` exports the same names as `./src/auth/peer-keys`
-// below with the store spelled out. Two star exports of one name is ambiguous,
-// and TypeScript drops the name rather than complaining — every call site would
-// stop compiling with nothing saying why.
+// below. Two star exports of one name is ambiguous, and TypeScript drops the
+// name rather than complaining — every call site would stop compiling with
+// nothing saying why.
 export * from "@gryt/crypto/attachments";
 export * from "@gryt/crypto/comparison-code";
 export * from "@gryt/crypto/conversation-encryption";

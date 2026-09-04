@@ -113,9 +113,8 @@ function useHandleChannelClick({
         // stack says when the room grant never arrives.
         //
         // Both answers, because they can differ: `can` is the role's
-        // server-wide permission and `canJoin` is this room's, and a scope that
-        // shuts one door is invisible to the first. Absent means the server is
-        // too old to say, which reads as allowed.
+        // server-wide permission and `canJoin` is this room's. Absent means the
+        // server is too old to say, which reads as allowed.
         if (!can("join_voice") || channel.canJoin === false) {
           const host = currentlyViewingServer.host;
           const name = currentlyViewingServer.name || host;

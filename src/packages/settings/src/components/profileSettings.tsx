@@ -27,12 +27,10 @@ function extForMime(mime: string): string {
  * uploaded — ours re-encodes to AVIF — and the upload endpoint does not accept
  * everything it emits. Copying an avatar between servers therefore has to
  * decode and re-encode rather than pass the bytes along: `avatar.bin` with an
- * `image/avif` body comes back 400 invalid_file, which is what the first
- * version of this did.
+ * `image/avif` body comes back 400 invalid_file.
  *
- * Animated formats are passed through untouched. A canvas keeps the first
- * frame and throws the animation away, and somebody who uploaded a moving
- * avatar picked it on purpose.
+ * Animated formats are passed through untouched. A canvas keeps the first frame
+ * and throws the animation away.
  */
 async function asUploadableAvatar(blob: Blob): Promise<File> {
   const type = (blob.type || "").toLowerCase();
@@ -327,22 +325,19 @@ export function ProfileSettings() {
    * `worn` is the look the picture was rendered from, or null when this is a
    * photograph somebody picked.
    *
-   * Both paths upload a PNG — the editor renders one so that a client too old
-   * to know about the string still shows the right owl, and so the server has
-   * something to take a dominant colour from for voice tiles. So the upload on
-   * its own cannot say which of the two happened, and the string has to be
-   * passed down and sent explicitly. Null is not "leave it alone": it is what
+   * Both paths upload a PNG — the editor renders one so a client too old to
+   * know about the string still shows the right owl, and so the server has
+   * something to take a dominant colour from. So the upload on its own cannot
+   * say which of the two happened. Null is not "leave it alone": it is what
    * clears a designed look when somebody goes back to a photograph.
    */
   /**
    * Whether this server lets us put a picture on it.
    *
-   * The same rule `useServerPermissions` uses, applied per host because a
-   * profile change goes to several at once and they will not agree: an older
-   * server has never heard of `upload_avatar_image`, and a server that has
-   * simply not granted it is a no. Both look like an absence in the list, so
-   * the catalogue is what separates them — and a server that does not know the
-   * permission cannot be withholding it.
+   * Applied per host because a profile change goes to several at once and they
+   * will not agree: an older server has never heard of `upload_avatar_image`,
+   * and a server that has simply not granted it is a no. Both look like an
+   * absence in the list, so the catalogue is what separates them.
    */
   const mayUploadPicture = (host: string): boolean => {
     const info = serverDetailsList[host]?.server_info;
@@ -380,12 +375,11 @@ export function ProfileSettings() {
      *
      * It is a string on the profile and every client draws it, so on a server
      * that does not allow pictures the owl still arrives — only the PNG that
-     * usually accompanies it is skipped. Sending the string anyway is what
-     * makes `upload_avatar_image` a restriction on files rather than on
-     * having an avatar at all.
+     * usually accompanies it is skipped. That is what makes
+     * `upload_avatar_image` a restriction on files rather than on having an
+     * avatar at all.
      *
-     * A picture has nothing to fall back on, so those hosts are reported
-     * instead of quietly doing nothing.
+     * A picture has nothing to fall back on, so those hosts are reported.
      */
     const permitted = hosts.filter(mayUploadPicture);
     const refused = hosts.filter((h) => !permitted.includes(h));
@@ -605,13 +599,8 @@ export function ProfileSettings() {
   };
 
   /**
-   * Take one server's avatar and use it everywhere.
-   *
-   * The button next door syncs the account's profile outward. This is the
-   * other direction, and it is the one people actually ask for: the owl you
-   * designed on one server, or the picture you uploaded there, is the one you
-   * want — and until now the only way to get it onto the others was to design
-   * or upload it again on each.
+   * Take one server's avatar and use it everywhere — the other direction from
+   * the button next door.
    *
    * Owls and pictures are the same job here, which is worth saying because it
    * looks like it should be two. A designed owl is stored as an uploaded PNG
@@ -619,9 +608,8 @@ export function ProfileSettings() {
    * server already has, and carry the worn string with them". Re-rendering the
    * owl would be a second implementation of something that is already a file.
    *
-   * The nickname is deliberately left alone. It is per-server for a reason —
-   * people are called different things in different places — and quietly
-   * renaming somebody on five servers is not what "use this avatar" asked for.
+   * The nickname is deliberately left alone. It is per-server for a reason, and
+   * quietly renaming somebody on five servers is not what this asked for.
    */
   const handleSyncFromServer = async (sourceHost: string) => {
     if (syncing || uploading || removing) return;

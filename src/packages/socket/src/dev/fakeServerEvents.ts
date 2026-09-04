@@ -5,24 +5,12 @@ import type { Client } from "../types/clients";
 /**
  * Server events delivered to this client as if the server had sent them.
  *
- * The difference between this and `fakeParticipants.ts` is the whole point of
- * it. That one writes fake people straight into the `clients` record, which is
- * exactly right for looking at a seven-person grid and — as its own comment
- * says — proves the layout and nothing about the plumbing. Everything between
- * the socket and that record is skipped, so a bug in the handling cannot show
- * up: the fakes are injected already correct.
- *
- * Two bugs shipped in calling behind that gap. A caller who rang and never
- * joined the room, so answering found it empty; and a call that drew nobody at
- * all, because the server blanks a conversation id out of `server:clients` on
- * purpose and nothing put it back. Both were found by reading the code. Neither
- * could have been found with a fixture that starts after the handler.
- *
- * So this one starts before it. `deliverServerEvent` calls the client's own
- * listeners for an event, which is what socket.io does when a real message
- * arrives — the same handler, the same state updates, the same re-render. What
- * it does not exercise is the wire and the server, which is the honest limit:
- * it proves this client handles what the server says it sends.
+ * `fakeParticipants.ts` writes fake people straight into the `clients` record,
+ * which skips everything between the socket and that record — so a bug in the
+ * handling cannot show up there. Two bugs shipped in calling behind that gap.
+ * This one starts before the handler: `deliverServerEvent` calls the client's
+ * own listeners for an event, so it is the same handler, the same state updates
+ * and the same re-render. What it does not exercise is the wire and the server.
  *
  * **Dev only, and gated twice.** `import.meta.env.DEV` is compiled out of a
  * packaged build, and every entry point checks it again. A build that could

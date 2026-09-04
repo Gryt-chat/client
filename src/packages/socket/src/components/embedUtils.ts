@@ -3,13 +3,9 @@ const VIDEO_EXT = /\.(mp4|webm|mov|ogv)(\?[^\s]*)?$/i;
 const AUDIO_EXT = /\.(mp3|wav|ogg|flac|aac|m4a|opus)(\?[^\s]*)?$/i;
 
 /* The preview payload, the card layout rule, the failure wording and the URL
-   scan moved to @gryt/core: the phone was deciding all four separately and
-   arriving at the same answers. What stays here is only true of this app —
-   which sites get a real player instead of a card, and the dismissal and cache
-   state a desktop session keeps.
-
-   Re-exported rather than imported directly by every consumer, so the move
-   costs one import line here instead of a rename across six files. */
+   scan live in @gryt/core, so the phone and this app cannot drift. What stays
+   here is only true of this app: which sites get a real player instead of a
+   card, and the dismissal and cache state a desktop session keeps. */
 export {
   describePreviewFailure,
   extractUrls,
@@ -258,11 +254,9 @@ export const previewCache = new Map<string, LinkPreviewData>();
  * holds successes, so a LAN address pasted into a channel produced a 400 on
  * every mount of the card, forever.
  *
- * A 400 is the server's SSRF guard working, and that answer cannot change while
- * the process is up — session-lived, so a reload asks once more.
- *
- * **Only refusals, not failures.** A 502 or a dropped connection is worth
- * trying again and lands in neither map.
+ * A 400 is the server's SSRF guard working and that answer cannot change while
+ * the process is up — session-lived, so a reload asks once more. **Only
+ * refusals, not failures:** a 502 or a dropped connection lands in neither map.
  */
 export const previewRefused = new Set<string>();
 

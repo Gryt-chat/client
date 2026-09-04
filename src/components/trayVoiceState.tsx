@@ -7,15 +7,12 @@ import { useSockets } from "@/socket";
 
 /**
  * Keeps the desktop tray in step with voice, and handles its menu commands.
- *
- * Renders nothing. It exists because the main process cannot see any of this
- * on its own — mute and deafen are renderer settings, and whether there is an
- * SFU connection at all is a renderer concern.
+ * Renders nothing: the main process cannot see any of this on its own.
  *
  * Mounted at the app root rather than inside the voice UI on purpose. Controls
  * only exists while you are looking at a voice channel, so publishing from
- * there would leave the tray showing a call that ended the moment you
- * navigated away.
+ * there would leave the tray showing a call that ended the moment you navigated
+ * away.
  */
 export function TrayVoiceState() {
   const { isConnected, currentServerConnected } = useSFU();

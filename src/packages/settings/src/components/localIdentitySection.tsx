@@ -26,8 +26,7 @@ import {
  * when the person who lost the key is the owner.
  *
  * The copy is 24 words since GRYT-255: the seed, which reproduces every
- * identity derived from it. Older encrypted backup files remain importable,
- * but new backups use the words so there is one recovery format.
+ * identity derived from it. Older encrypted backup files remain importable.
  */
 
 type Panel = "words" | "restore" | "unlock-file" | null;

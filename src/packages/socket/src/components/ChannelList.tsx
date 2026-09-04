@@ -410,12 +410,9 @@ export const ChannelList = ({
   const displayItems = canManage ? localItems : effectiveItems;
 
   /**
-   * Below the channels, and outside the reorder group above.
-   *
-   * The channel list is draggable for anyone who can manage the server, and
-   * these are not part of that order — they are not sidebar items, an operator
-   * does not arrange them, and dropping a channel into the middle of somebody's
-   * conversations is not a thing to offer.
+   * Below the channels, and outside the reorder group above. These are not
+   * sidebar items an operator arranges, and dropping a channel into the middle
+   * of somebody's conversations is not a thing to offer.
    */
   const directMessages = onSelectDm ? (
     <>

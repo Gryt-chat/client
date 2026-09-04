@@ -7,11 +7,9 @@ import type { VoiceTileLayout } from "../hooks/settingsStorage";
  * The size the arrangement is worked out at, before being scaled into the
  * swatch.
  *
- * Asking computeGridLayout for a 132px-wide grid would not answer the question
- * being asked: MIN_TILE_WIDTH is 140, so every rule collapses to the same
- * degenerate single column and both previews would look identical. Computing at
- * a realistic panel size and scaling the result down keeps the arrangement
- * honest.
+ * Asking computeGridLayout for a 132px-wide grid would not answer the question:
+ * MIN_TILE_WIDTH is 140, so every rule collapses to the same single column and
+ * both previews would look identical.
  */
 const REFERENCE = { width: 880, height: 495 };
 

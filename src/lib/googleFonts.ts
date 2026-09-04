@@ -1,18 +1,14 @@
 /**
- * Fetching a typeface a theme asked for, when this machine has agreed to.
+ * Fetching a typeface a theme asked for, when this machine has agreed to. A
+ * font request to Google hands them an address and a picture of who is running
+ * Gryt, so it happens only behind the Appearance setting.
  *
- * Gryt's argument is that you host it yourself and nothing phones home, so a
- * font request to Google is not a detail — it hands them an address and a
- * picture of who is running Gryt. It happens only behind the setting in
- * Appearance, which is off until somebody turns it on.
+ * **The theme says which face it wants; this machine says whether it will go
+ * and get one.** In the theme, a link somebody was sent could switch on network
+ * access for whoever opened it.
  *
- * What is loaded is decided here rather than by the theme, and that division
- * is the point. A theme says which face it wants; this machine says whether it
- * will go and get one. If it lived in the theme, a link somebody was sent
- * could switch on network access for whoever opened it.
- *
- * Only the families a theme actually names, and only ones not already on the
- * machine. Atkinson ships with the app, so the default theme asks for nothing.
+ * Only families a theme names and the machine lacks. Atkinson ships with the
+ * app, so the default theme asks for nothing.
  */
 
 /** Families that ship with Gryt or come from the OS. Never fetched. */
@@ -55,10 +51,9 @@ function primary(stack: string): string {
 /**
  * Point the document at whatever the current theme needs, or at nothing.
  *
- * Idempotent, and rewrites one link element rather than accumulating them: a
- * theme changes on every keystroke while somebody is dragging through the
- * editor, and a stylesheet per keystroke would be a hundred requests and a
- * hundred elements.
+ * Rewrites one link element rather than accumulating them: a theme changes on
+ * every keystroke while somebody is dragging through the editor, and a
+ * stylesheet per keystroke would be a hundred requests and a hundred elements.
  */
 export function syncGoogleFonts(stacks: string[], enabled: boolean): void {
   const existing = document.getElementById(LINK_ID);

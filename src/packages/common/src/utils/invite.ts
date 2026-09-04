@@ -1,12 +1,7 @@
 /* Capturing an invite the desktop was opened with.
  *
- * The parsing moved to `@gryt/core` (GRYT-406). Both apps had `normalizeHost`,
- * `normalizeCode` and `parseServerInput` byte for byte, so there is one copy
- * now and both read an address the same way.
- *
- * Re-exported from here rather than changed at every call site: everything
- * reaches them through `@/common`, and rewriting a dozen import lists to prove
- * a point is a bigger diff with more places to get it wrong.
+ * The parsing moved to `@gryt/core` (GRYT-406) and is re-exported from here
+ * rather than changed at every call site.
  *
  * What stayed is below. Capturing an invite off the launch URL and holding it
  * across a reload is the desktop's alone — the phone is handed a deep link

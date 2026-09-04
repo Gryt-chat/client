@@ -6,14 +6,13 @@ import type { Socket } from "socket.io-client";
  *
  * A block is enforced entirely by the server — their messages are not
  * delivered, history comes back without them, and a conversation between the
- * two cannot be opened from either side. Nothing in here hides anything.
+ * two cannot be opened from either side. This list is not a filter: it exists
+ * so a menu can say Unblock rather than offering Block on somebody who already
+ * is.
  *
- * So this list is not a filter. It exists so a menu can say Unblock rather than
- * offering Block on somebody who already is, and so there is a way back at all.
- *
- * **Per server.** Dropped when the socket changes rather than merged: a name on
- * this list means nothing on another server, and showing the previous server's
- * blocks while a new list is in flight would be wrong about both.
+ * **Per server.** Dropped when the socket changes rather than merged: showing
+ * the previous server's blocks while a new list is in flight would be wrong
+ * about both.
  */
 
 export interface BlockedPerson {
