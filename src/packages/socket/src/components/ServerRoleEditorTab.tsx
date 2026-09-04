@@ -42,6 +42,14 @@ type EditorState = {
   roles: RoleDefinition[];
   permissions: string[];
   defaults: { account: string; local: string };
+  /**
+   * Which identities this server admits, from `GRYT_IDENTITY_TIERS`.
+   *
+   * Optional because a server older than GRYT-907 does not send it. Where it is
+   * absent the guest controls stay exactly as they were rather than being
+   * switched off on a guess.
+   */
+  identityTiers?: string[];
 };
 
 /**
@@ -381,6 +389,17 @@ export function ServerRoleEditorTab({
   };
 
   /**
+   * Whether this server turns guests away at the door (GRYT-907).
+   *
+   * Only claimed when the server said which tiers it takes. A server too old to
+   * send them answers undefined, and undefined is not "no" — switching the
+   * control off on a guess would tell an operator their guest setting is dead
+   * when it may be the thing letting people in.
+   */
+  const guestsRefused =
+    !!state?.identityTiers && !state.identityTiers.includes("local");
+
+  /**
    * Write one role, whole.
    *
    * The server's save event takes a role and everything about it, so every
@@ -401,6 +420,20 @@ export function ServerRoleEditorTab({
       autoGrantAfterMessages: role.autoGrantAfterMessages,
       grantableByInvite: role.grantableByInvite,
     });
+  };
+
+  /**
+   * The owner role's colour, and only that (GRYT-906).
+   *
+   * Its own emit rather than `saveRole`, because the server's exception for the
+   * owner requires every other field to be *absent* — a payload carrying a rank
+   * beside the colour is refused whole. That is the right shape on the server,
+   * and it means the seven-field save above cannot be reused here.
+   */
+  const saveOwnerColor = (color: string | null) => {
+    pendingSaves.current += 1;
+    setSaving(true);
+    emit("server:roles:definitions:save", { roleId: OWNER_ROLE, color });
   };
 
   /**
@@ -627,12 +660,30 @@ export function ServerRoleEditorTab({
         <Surface style={{ flex: "1 1 380px", minWidth: 320 }}>
           {!draft ? (
             <span className="text-sm text-gryt-muted">Pick a role to edit.</span>
-          ) : draft.id === "owner" ? (
-            <span className="text-sm text-gryt-muted">
-              The owner holds every permission and cannot be edited. It is what the server
-              falls back to if anything else here goes wrong, which is the only reason
-              a mistake on this screen is recoverable.
-            </span>
+          ) : draft.id === OWNER_ROLE ? (
+            /* Everything but the colour (GRYT-906). The server takes a
+               colour-only save for this role and refuses the rest, so this
+               panel offers exactly that and says why the rest is missing. */
+            <div className="flex flex-col gap-4">
+              <span className="text-sm text-gryt-muted">
+                The owner holds every permission, and its name, rank and permissions cannot
+                be changed. It is what the server falls back to if anything else here goes
+                wrong, which is the only reason a mistake on this screen is recoverable.
+              </span>
+
+              <div className="flex flex-col gap-2">
+                <span className="text-gryt-muted text-sm">Colour</span>
+                <RoleColorField
+                  value={draft.color}
+                  onChange={(color) => setDraft({ ...draft, color })}
+                  onCommit={(color) => saveOwnerColor(color)}
+                />
+                <span className="text-xs text-gryt-muted">
+                  Colours the owner&rsquo;s name in the member list and in chat. It is the one
+                  thing here that changes nothing about what the owner can do.
+                </span>
+              </div>
+            </div>
           ) : (
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -839,15 +890,29 @@ export function ServerRoleEditorTab({
                 onValueChange={(v) => emit("server:roles:defaults:set", { localRoleId: String(v) })}
                 options={roleOptions}
                 size="small"
+                disabled={guestsRefused}
               />
+              {/* Where the answer is known, it replaces the footnote below
+                  rather than joining it. A live control with a note underneath
+                  explaining it does nothing is the thing this fixes. */}
+              {guestsRefused && (
+                <span className="text-xs text-gryt-muted" style={{ maxWidth: 260 }}>
+                  No guests are allowed on this server, so this is never used.
+                </span>
+              )}
             </label>
           </div>
 
-          <span className="text-xs text-gryt-muted">
-            Guests only reach this server at all if it accepts self-signed identities —
-            GRYT_IDENTITY_TIERS on the server. Where it does not, the guest default is
-            never used.
-          </span>
+          {/* Only where the server did not say. A server too old to send its
+              tiers leaves this exactly as it was — the note is the best that
+              can be offered when the answer is unknown. */}
+          {state.identityTiers === undefined && (
+            <span className="text-xs text-gryt-muted">
+              Guests only reach this server at all if it accepts self-signed identities —
+              GRYT_IDENTITY_TIERS on the server. Where it does not, the guest default is
+              never used.
+            </span>
+          )}
         </div>
       </Surface>
     </div>
