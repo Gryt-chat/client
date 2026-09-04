@@ -435,6 +435,50 @@ function isOnBetaChannel(): boolean {
   return readBoolConfig("betaChannel", app.getVersion().includes("-"));
 }
 
+/**
+ * Whether this install is the build without the embedded server.
+ *
+ * Read off disk rather than from a value baked in at build time, because the
+ * file is what actually differs: `embedded-server.tar.gz` is an extraResource
+ * the slim config filters out, and everything else about the variant follows
+ * from that. `isEmbeddedServerAvailable()` already decides the same way.
+ *
+ * A full build that somehow lost the archive would read as slim here. That is
+ * the failure check-extra-resources.mjs exists to catch, and it fails the build
+ * rather than shipping one — so absence means slim.
+ *
+ * Never slim unpackaged: there is no resourcesPath worth reading, and the
+ * updater does not run in development.
+ */
+function isSlimInstall(): boolean {
+  if (!app.isPackaged) return false;
+  return !existsSync(join(process.resourcesPath, "embedded-server.tar.gz"));
+}
+
+/**
+ * Which update feed this install follows, for the checks that run before
+ * electron-updater has loaded anything.
+ *
+ * Both variants go into the same GitHub release, so they need separate channel
+ * files, or a slim install downloads the full installer on the next release and
+ * quietly puts 34MB back. electron-builder writes slim.yml from
+ * `publish.channel` and bakes `channel: slim` into app-update.yml, which is
+ * what electron-updater itself reads.
+ *
+ * So this is deliberately not assigned to `autoUpdater.channel`. app-update.yml
+ * is the build's own statement of which variant it is, and setting the property
+ * would override that with a value inferred from a file being missing. If the
+ * inference here is ever wrong, the pre-check looks for a yml that is not there
+ * and reports no update — annoying, and much better than handing the updater
+ * the wrong installer.
+ *
+ * Beta is a separate axis on allowPrerelease: that picks which release to look
+ * at, this picks which file inside it.
+ */
+function updateChannel(): string {
+  return isSlimInstall() ? "slim" : "latest";
+}
+
 autoUpdater.allowPrerelease = isOnBetaChannel();
 
 autoUpdater.allowDowngrade = true;
@@ -522,9 +566,12 @@ type GhRelease = {
 };
 
 function channelYmlName(): string {
-  if (process.platform === "darwin") return "latest-mac.yml";
-  if (process.platform === "win32") return "latest.yml";
-  return "latest-linux.yml";
+  // Same name electron-updater derives from autoUpdater.channel, spelled out
+  // here because this code reads the file before the updater does.
+  const channel = updateChannel();
+  if (process.platform === "darwin") return `${channel}-mac.yml`;
+  if (process.platform === "win32") return `${channel}.yml`;
+  return `${channel}-linux.yml`;
 }
 
 async function fetchWithTimeout(
