@@ -1,96 +1,20 @@
-import type { ServerRoleSummary } from "../hooks/usePermissions";
+import { groupMembersByRole, type MemberGroup as CoreMemberGroup } from "@gryt/core";
+
 import type { MemberInfo } from "./MemberSidebar";
 
 /**
- * One block of the member list: a heading and the people under it.
+ * The member list, cut into role groups, from `@gryt/core` (GRYT-898). The
+ * phone drew the same list from its own copy of the same rules, and the two had
+ * drifted over what a member with no `status` means.
  *
- * `color` is the role's own colour, straight from the server, or null for a
- * role that has none and for the two groups that are not roles.
+ * Re-exported from here rather than repointed at the call site, because
+ * `readableRoleColor` below is still this app's — it emits a CSS `oklch()`
+ * string React Native cannot use — and MemberSidebar wants both.
  */
-export interface MemberGroup {
-  key: string;
-  title: string;
-  color: string | null;
-  members: MemberInfo[];
-}
+export { groupMembersByRole };
 
-/** Anybody not offline, in one group, when the server named no roles. */
-const UNGROUPED_KEY = "__ungrouped__";
-
-const OFFLINE_KEY = "__offline__";
-
-function byName(a: MemberInfo, b: MemberInfo): number {
-  return a.nickname.localeCompare(b.nickname, undefined, { sensitivity: "base" });
-}
-
-/**
- * The member list, cut into role groups. **Offline leaves its role** — the
- * question the list answers is "who is around", so they go to one group at the
- * end in one alphabet rather than to the bottom of each role.
- *
- * Roles run highest rank first, and roles nobody holds are left out rather than
- * drawn empty. A member whose role the server did not describe lands in one
- * unnamed group after the named ones, which is also what a server too old to
- * send roles looks like.
- */
-export function groupMembersByRole(
-  members: MemberInfo[],
-  roles: ServerRoleSummary[],
-): MemberGroup[] {
-  const byRank = [...roles].sort((a, b) => b.rank - a.rank);
-  const known = new Map(roles.map((r) => [r.id, r]));
-
-  const offline: MemberInfo[] = [];
-  const present = new Map<string, MemberInfo[]>();
-
-  for (const member of members) {
-    if (member.status === "offline") {
-      offline.push(member);
-      continue;
-    }
-
-    const key = member.role && known.has(member.role) ? member.role : UNGROUPED_KEY;
-    const bucket = present.get(key);
-    if (bucket) bucket.push(member);
-    else present.set(key, [member]);
-  }
-
-  const groups: MemberGroup[] = [];
-
-  for (const role of byRank) {
-    const held = present.get(role.id);
-    if (!held?.length) continue;
-    groups.push({
-      key: role.id,
-      title: role.name,
-      color: role.color,
-      members: held.sort(byName),
-    });
-  }
-
-  const rest = present.get(UNGROUPED_KEY);
-  if (rest?.length) {
-    groups.push({
-      key: UNGROUPED_KEY,
-      // Named rather than blank, because a heading with no words above a list
-      // of people reads as a rendering fault.
-      title: groups.length > 0 ? "Everyone else" : "Members",
-      color: null,
-      members: rest.sort(byName),
-    });
-  }
-
-  if (offline.length) {
-    groups.push({
-      key: OFFLINE_KEY,
-      title: "Offline",
-      color: null,
-      members: offline.sort(byName),
-    });
-  }
-
-  return groups;
-}
+/** One block of the member list, holding this app's members. */
+export type MemberGroup = CoreMemberGroup<MemberInfo>;
 
 /**
  * The role's colour, pulled into a band this theme can read. Hue is kept and
