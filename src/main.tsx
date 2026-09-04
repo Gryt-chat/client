@@ -58,25 +58,16 @@ function ThemedApp() {
     root.style.colorScheme = resolvedAppearance;
   }, [resolvedAppearance]);
 
-  /* The scale, on the root for the same reason the appearance class is.
-     
-     It used to sit on .gryt-app below, which is the element wrapping the
-     titlebar, the app and the toaster — and nothing else. Base UI portals
-     every dialog, menu, popover, tooltip and drawer to document.body, so a
-     portal node is a sibling of .gryt-app rather than a descendant of it, and
-     zoom inherits down the tree. The slider and Ctrl+plus scaled the sidebar,
-     the chat and the member list, and did not touch the owl designer,
-     settings, the emoji picker, any menu or any tooltip. Turned up for a big
-     screen, the app came apart into two sizes.
+  /* **The scale goes on the root, not on `.gryt-app`.** Base UI portals every
+     dialog, menu, popover and tooltip to document.body, so those are siblings
+     of `.gryt-app` rather than descendants — the slider scaled the sidebar and
+     the chat and left settings, menus and tooltips alone, and the app came
+     apart into two sizes.
 
-     --chat-font-size moves with it: EmojiAutocomplete and MentionAutocomplete
-     read it and are popovers, so they had been falling back to 16px whatever
-     the reader had chosen.
+     `--chat-font-size` moves with it, since the autocompletes are popovers.
 
-     zoom on the root is safe for the backdrop, which is the thing to check —
-     a `fixed inset-0` element under a zoomed ancestor could have covered the
-     wrong box. Measured at 1440x900: the backdrop is 1440x900 at zoom 1, 1.5
-     and 0.75, and the popup scales. */
+     Safe for the backdrop, which is the thing to check: measured at 1440x900,
+     a `fixed inset-0` element is 1440x900 at zoom 1, 1.5 and 0.75. */
   useEffect(() => {
     const root = document.documentElement;
     root.style.zoom = String(uiScale);

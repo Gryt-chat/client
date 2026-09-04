@@ -64,15 +64,9 @@ const LOOKUP_DEBOUNCE_MS = 450;
 const PLACEHOLDER_ROTATE_MS = 3000;
 
 /**
- * What an invite looks like.
- *
- * These are the placeholder now rather than a row of chips beneath the field.
- * They answer "is the thing on my clipboard one of these", which is a question
- * you have while the field is empty and never after — so they cost no height
- * and stop competing with the input for the same glance.
- *
- * Literal examples rather than a description of the format: "an invite link or
- * a server address" tells somebody nothing about whether what they have is one.
+ * What an invite looks like, as the placeholder — the question is "is the thing
+ * on my clipboard one of these", which you have while the field is empty and
+ * never after. Literal examples rather than a description of the format.
  */
 const WEB_INPUT_EXAMPLES = [
   "gryt.chat/invite?host=…",
@@ -381,17 +375,12 @@ export function AddNewServer({
     (!inviteRequired || normalizeCode(inviteCode).length > 0);
 
   /**
-   * What the button says, and what pressing it does.
+   * What the button says and does. A server needing an account gets "Sign in to
+   * join" rather than a disabled button and a tooltip — there is no hover on
+   * touch and no keyboard route to a tooltip, so that is a dead end.
    *
-   * A server that needs an account gets "Sign in to join" rather than a
-   * disabled button and a tooltip. A disabled control is a dead end: there is
-   * no hover on touch, a tooltip is not reachable from the keyboard, and it
-   * leaves somebody holding a requirement with no way to satisfy it. The pill
-   * on the card already states the requirement; the button is the way out of
-   * it.
-   *
-   * The only genuinely disabled cases are the ones where pressing it could do
-   * nothing useful: nothing typed, nothing answered, or you are already there.
+   * Genuinely disabled only when pressing could do nothing: nothing typed,
+   * nothing answered, or you are already there.
    */
   const joinAction = alreadyMember
     ? { label: "Already joined", tone: "secondary" as const, disabled: true, run: () => {} }

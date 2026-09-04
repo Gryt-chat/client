@@ -20,21 +20,14 @@ import {
 /* Hallmark · pre-emit critique: P5 H5 E4 S5 R5 V4 */
 
 /**
- * Saving and restoring an identity that has no account behind it.
+ * Saving and restoring an identity that has no account behind it. Clearing site
+ * data takes the keypair and every server it was known on —
+ * `replaceUserIdentity` needs somebody with a role to run it, which is no help
+ * when the person who lost the key is the owner.
  *
- * A local identity is a keypair on this device and nothing else. Clearing site
- * data takes it, and with it every server that identity was known on — the
- * roles, the ownership, the messages attributed to it. `replaceUserIdentity`
- * can hand a server user to a new identity, but somebody with a role has to run
- * it, which is no help at all when the person who lost the key is the owner.
- *
- * So this section exists to make the risk visible before it lands, and to give
- * people the one thing that actually fixes it: a copy of the key.
- *
- * Since GRYT-255 that copy is 24 words: the seed, which reproduces every
- * identity calculated from it and is short enough to keep in a password
- * manager. Older encrypted backup files remain importable, but new backups use
- * the words so there is one recovery format to understand.
+ * The copy is 24 words since GRYT-255: the seed, which reproduces every
+ * identity derived from it. Older encrypted backup files remain importable,
+ * but new backups use the words so there is one recovery format.
  */
 
 type Panel = "words" | "restore" | "unlock-file" | null;

@@ -99,36 +99,21 @@ function persistUnder(userId: string, values: UserData): void {
 }
 
 /**
- * Move what this device set up as a guest onto the account that just signed in.
+ * Move what this device set up as a guest onto the account that just signed in
+ * — without it, settings survive a reload and vanish the moment you sign in.
  *
- * Fixing the device id alone would have swapped one silent reset for another:
- * settings survive a reload, then vanish the moment you sign in, because the
- * account id is a different namespace with nothing in it.
- *
- * This rides on the answer GRYT-173 already collects rather than asking a second
- * time. The reasoning there applies unchanged here, and the server list lives in
- * this same store: carrying a guest's settings onto an account is right on your
- * own machine and wrong on a borrowed one, where you would inherit whoever used
- * it last. Unanswered means no.
- *
- * Only fills keys the account does not have. An account that has been used
- * before keeps everything it already knows.
+ * Rides on the answer GRYT-173 already collects: carrying a guest's settings
+ * onto an account is right on your own machine and wrong on a borrowed one.
+ * **Unanswered means no**, and only keys the account does not have are filled.
  */
 /**
- * Whether this device has been claimed as the signed-in person's own.
+ * Whether this device has been claimed as the signed-in person's own — one fact
+ * about the machine, **not the per-server membership question GRYT-285 asks**.
+ * Folding the two together would answer this by accident the first time
+ * somebody claimed anything.
  *
- * Reads the device-wide answer that GRYT-285 removed from the identity path.
- * The two questions look alike and are not the same: whether a *membership* may
- * be claimed is now asked per server, because the answer differs per server,
- * while whether this *machine* is yours is one fact about the machine. Folding
- * the second into the first would answer it by accident the first time somebody
- * claimed anything.
- *
- * Read here rather than through a shared module because nothing else needs it,
- * and re-exporting it invites the two to be confused again. It gets a prompt of
- * its own when somebody decides what should ask it — until then this is
- * unanswered for anyone who has not seen the old dialog, and unanswered means
- * settings stay on the device, which is the safe direction.
+ * Read here rather than re-exported, which would invite confusing them again.
+ * Unanswered means settings stay on the device, which is the safe direction.
  */
 function deviceIsMine(): boolean {
   try {

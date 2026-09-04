@@ -1,14 +1,10 @@
 /**
- * Work out which hop between this client and a server is broken.
- *
- * Every voice support thread starts the same way: chat works, voice does not,
- * and finding out which part is unreachable means somebody reading an SFU log
- * by hand. The client already knows enough to answer that itself.
+ * Work out which hop between this client and a server is broken, so "chat works
+ * and voice does not" does not mean reading an SFU log by hand.
  *
  * The checks run in the order the connection does, so the first failure is the
- * one to act on. Anything after it is reported as untested rather than as
- * passing or failing, because a later hop cannot be judged when an earlier one
- * is down.
+ * one to act on. **Anything after it is reported as untested**, never as
+ * passing or failing.
  */
 
 export type CheckId =
@@ -292,17 +288,12 @@ function checkSfuWebSocket(url: string): Promise<CheckResult> {
 }
 
 /**
- * Whether UDP leaves this machine at all.
+ * Whether UDP leaves this machine at all. A renderer cannot send raw UDP, so
+ * this gathers ICE candidates against the STUN servers instead, exercising the
+ * same outbound path.
  *
- * There is no way to test the SFU's media port directly: a renderer cannot
- * send raw UDP, so nothing here can open 3478 and see who answers. What it can
- * do is gather ICE candidates against the configured STUN servers, which
- * exercises the same outbound UDP path media would take.
- *
- * So this is deliberately narrower than it looks, and the wording says so. A
- * pass means UDP gets out and a public address came back. It does not prove
- * the SFU's port is open, and claiming otherwise would send people to check
- * the wrong thing.
+ * **Narrower than it looks, and the wording says so.** A pass means UDP gets
+ * out and a public address came back; it does not prove the SFU's port is open.
  */
 function checkMedia(stunHosts: string[]): Promise<CheckResult> {
   return new Promise((resolve) => {
@@ -390,16 +381,10 @@ function checkMedia(stunHosts: string[]): Promise<CheckResult> {
 }
 
 /**
- * The route media took, read from the stats of a connected peer connection.
- *
- * Found through the transport's `selectedCandidatePairId` rather than by
- * looking for a pair flagged `nominated`. Nomination is the controlling
- * agent's job, and here that is the SFU — Chrome reports `nominated: false` on
- * every pair including the one it is using, so filtering on it finds nothing
- * and this line silently degrades to "media flowed", which is the half of the
- * sentence nobody needed.
- *
- * A succeeded pair is the fallback, for a browser that reports no transport.
+ * The route media took. **Found through `selectedCandidatePairId`, not a pair
+ * flagged `nominated`** — nomination is the SFU's job here, and Chrome reports
+ * `nominated: false` on every pair including the one it is using, so filtering
+ * on it degrades this line to "media flowed".
  */
 function describeSelectedPair(stats: RTCStatsReport): string {
   const generic = "Connected to the voice server and media flowed.";
@@ -451,15 +436,9 @@ export interface DoctorRoomGrant {
 }
 
 /**
- * Ask the SFU for a real connection, into a room with nobody else in it.
- *
- * The checks above prove the SFU is reachable and will talk. This proves media
- * gets through, which is a different question and the one people actually have.
- * A firewall that passes TCP 5005 and drops UDP 3478 looks perfect until here.
- *
- * The prize is `selectedPair`: the candidate types and addresses ICE settled
- * on. "srflx over 26.196.88.218" is a complete answer to a support thread that
- * would otherwise take an evening.
+ * Ask the SFU for a real connection into an empty room. The checks above prove
+ * it is reachable; this proves media gets through, which a firewall passing TCP
+ * 5005 and dropping UDP 3478 does not. The prize is `selectedPair`.
  */
 async function checkCall(
   grant: DoctorRoomGrant,

@@ -1,20 +1,15 @@
 /**
- * Whether this socket has already done something (GRYT-758).
+ * Whether this socket has already done something (GRYT-758). One caller:
+ * publishing the DM key, which has to happen on both routes into a server and
+ * exactly once, since the server rate-limits it while `server:details` arrives
+ * again whenever anything changes.
  *
- * One thing uses it: saying what DM key to encrypt to us. That has to happen on
- * both routes into a server — a first join and a session restore — and exactly
- * once, because the server rate-limits it to five a minute while
- * `server:details` arrives again whenever anything about the server changes.
+ * **Out here rather than inside the handler so it can be checked** — that file
+ * imports React and a Vite alias, none of which loads in Node, which is how the
+ * bug this fixes went out.
  *
- * Out here rather than inside the handler so it can be checked. The handler
- * imports React, a toast library and `@/common` through a Vite alias, and none
- * of that loads in Node — which is how the bug this fixes went out in the first
- * place.
- *
- * A `WeakSet` keyed on the socket, because socket.io reuses one `Socket` object
- * across reconnects. That makes the scope once per run per server rather than
- * once per wifi blink, and nothing has to be cleaned up: the entry goes when the
- * socket does.
+ * Keyed on the socket, which socket.io reuses across reconnects: once per run
+ * per server rather than once per wifi blink, and nothing to clean up.
  */
 const done = new WeakMap<object, Set<string>>();
 

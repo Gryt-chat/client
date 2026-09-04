@@ -11,19 +11,13 @@ import {
 import { useSockets } from "@/socket";
 
 /**
- * Claiming a guest membership on one server, from either direction (GRYT-285).
+ * Claiming a guest membership on one server (GRYT-285). `IdentityClaimPrompt`
+ * asks when the local guest history says this device has been here; the context
+ * menu offers it by hand for a seed restored onto a device that has not.
  *
- * Two things reach this. `IdentityClaimPrompt` asks on its own when the local
- * guest history says this device has been here before. The server context menu
- * offers it by hand for the case the history cannot cover: a seed restored onto
- * a device that has never been to this server, where nothing local knows there
- * is anything to claim.
- *
- * That second route is not a convenience. The history is deliberately the only
- * way to know without asking the server, and asking the server means proving
- * the link, which is the disclosure itself. On a fresh device there is nothing
- * to go on — so the person saying "I have used this server before" *is* the
- * consent, and the only source of it.
+ * **The second route is not a convenience.** Asking the server would mean
+ * proving the link, which is the disclosure itself — so on a fresh device the
+ * person saying "I have used this server before" *is* the consent.
  */
 export function useIdentityClaim() {
   const { isSignedIn } = useAccount();

@@ -47,18 +47,13 @@ export function setCustomAuthIssuer(issuer: string | null): void {
 }
 
 /**
- * The identity service that signs certificates for the auth server above.
+ * The identity service that signs certificates for the auth server above. A
+ * different service on a different host, so there is nothing in an issuer URL
+ * to derive it from.
  *
- * Kept separate rather than derived, because it is a different service on a
- * different host — `id.gryt.chat` next to `auth.gryt.chat`, and whatever a
- * self-hoster runs next to their own Keycloak. There is nothing in an issuer
- * URL to derive it from.
- *
- * Pointing at another Keycloak without also moving this is what GRYT-156 was:
- * the token came from the custom issuer and was posted to Gryt's certificate
- * authority, which validates against its own configured issuer and rejects it.
- * The 401 says "no applicable key found in the JWKS", which describes the
- * symptom and not the cause.
+ * **Pointing at another Keycloak without also moving this** posts a token from
+ * the custom issuer to Gryt's own CA, which rejects it with "no applicable key
+ * found in the JWKS" — the symptom, not the cause (GRYT-156).
  */
 export function getCustomIdentityUrl(): string | null {
   try {
@@ -89,25 +84,17 @@ function readWindowConfig(): GrytRuntimeConfig | undefined {
 }
 
 /**
- * Which of the two configuration mechanisms wins.
+ * Which of the two configuration mechanisms wins. Production's nginx container
+ * writes `/config.js` at startup and sets no `VITE_` variable; development
+ * writes no `config.js`, so `ops/start_dev.sh`'s `VITE_` variables are all
+ * there is.
  *
- * There are two, and they belong to different environments. In production the
- * nginx container writes `/config.js` at startup from its own environment, and
- * no `VITE_` variable is ever set — the build has no build args for them. In
- * development nothing writes `config.js`, so the `VITE_` variables that
- * `ops/start_dev.sh` sets are the only way to configure anything.
+ * Read window-first, the tracked `public/config.js` — production defaults —
+ * beat the local values, so a dev session signed in against production Keycloak
+ * while the dev servers trusted only the local CA.
  *
- * They were read window-first everywhere, which meant the tracked
- * `public/config.js` — holding production defaults, because production is what
- * it was written for — beat the local values in dev. A dev session signed in
- * against production Keycloak while the dev servers trusted only the local CA,
- * and the only sign of it was a 401 from the identity service complaining
- * about a key it had never seen. The token was real; it was just signed by the
- * wrong Keycloak.
- *
- * Gated on `DEV` rather than on "is a VITE_ variable set", so that adding build
- * args to the Dockerfile later cannot quietly stop the container's runtime
- * configuration from taking effect.
+ * **Gated on `DEV`, not on "is a VITE_ variable set"**, so adding build args to
+ * the Dockerfile cannot quietly disable the container's runtime configuration.
  */
 function configValue(
   windowValue: string | undefined,

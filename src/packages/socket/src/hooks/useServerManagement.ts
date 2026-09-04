@@ -88,18 +88,10 @@ function useServerManagementHook(): ServerManagement {
   const { lanServers } = useLanDiscovery();
   const { serverDetailsList } = useSockets();
 
-  // Write down a server's id once we are actually talking to it.
-  //
-  // addServer already refuses to add a server it recognises by id, so the
-  // second entry only appears when the id was unknown at the time — the /info
-  // fetch did not land, or it was typed in by address and never fetched. The
-  // id was then never learned at all, because nothing wrote it after the fact,
-  // so the dedupe could not fire on any later attempt either.
-  //
-  // The socket reports it on every connection, so take it from there. One
-  // server reached two ways — 127.0.0.1:port from My servers and
-  // <machine>.local:port from Discovery — stops being addable twice as soon as
-  // either address has been connected to once. GRYT-224.
+  // Write down a server's id once we are talking to it. A duplicate entry only
+  // appears when the id was unknown when it was added — and nothing wrote it
+  // afterwards, so the dedupe could never fire on a later attempt either. The
+  // socket reports it on every connection (GRYT-224).
   useEffect(() => {
     const learned: Record<string, string> = {};
 
@@ -154,19 +146,11 @@ function useServerManagementHook(): ServerManagement {
       if (servers[normalized]) return false;
       if (dismissedLanServers.includes(key)) return false;
 
-      /* There used to be a second check here, hiding a found server whose
-       * `serverId` matched one already added. It compared two different fields
-       * that share a name: `s.serverId` is the mDNS TXT record's `server_id`,
-       * which is `SERVER_INSTANCE_ID || "default"` and is a per-host
-       * disambiguator, while a stored `serverId` is `/info`'s — a real
-       * per-install identity, or the socket's `<name>_<port>_<instance>`.
-       *
-       * So it never matched the thing it was written to match, and the only
-       * way it could fire was by accident: set `SERVER_INSTANCE_ID` on two
-       * machines to the same value and Discovery would hide the second one.
-       * The address check above is what actually deduplicates, and GRYT-224's
-       * id learning is what makes *that* work across two addresses for one
-       * server. GRYT-485. */
+      /* **Do not add a `serverId` check here.** One existed and compared two
+       * different fields sharing a name: mDNS's `server_id` is
+       * `SERVER_INSTANCE_ID || "default"`, a per-host disambiguator, while a
+       * stored `serverId` is `/info`'s. It could only fire by accident, hiding
+       * a real second machine. The address check above deduplicates (GRYT-485). */
 
       return true;
     });
@@ -303,23 +287,14 @@ function useServerManagementHook(): ServerManagement {
   /**
    * The pairs GRYT-224 stopped making but could not undo.
    *
-   * Keyed on the server's identity key, not on `serverId`. GRYT-317 was
-   * written assuming `serverId` names a server, and it does not: the socket
-   * reports `<name>_<port>_<instance>` (`computeServerId` in the server's
-   * `utils/serverId.ts`), which exists to tell two servers on one host apart.
-   * Two people each running an unconfigured server both publish the same
-   * string, so grouping the rail on it would offer to merge two entries that
-   * are different servers — the same shape as GRYT-485, with a deletion on the
-   * end of it.
+   * **Keyed on the server's identity key, not on `serverId`.** The socket's
+   * `serverId` is `<name>_<port>_<instance>`, which two unconfigured servers
+   * both publish — grouping the rail on it would offer to merge two different
+   * servers, with a deletion on the end of it.
    *
-   * The identity key does name a server. It is what the pin is for, and
-   * `originKeyId` carries it across rotations, so it survives the one event
-   * that would otherwise split a server in two.
-   *
-   * The cost is that this only sees addresses that have been connected to at
-   * least once, because that is when a pin is written. An entry typed in and
-   * never reached is not grouped with anything, which is the right answer
-   * anyway: nothing has established what is at that address.
+   * `originKeyId` carries the identity across rotations. The cost is that this
+   * only sees addresses connected to at least once, which is when a pin is
+   * written.
    */
   const [hostIdentities, setHostIdentities] = useState<Record<string, string>>(
     {},
@@ -451,17 +426,10 @@ function useServerManagementHook(): ServerManagement {
   );
 
   /**
-   * Leaving a server, and meaning it.
-   *
-   * This used to remove the sidebar entry and stop there, which left two things
-   * behind that only make sense for a member. The tokens: being kicked drops
-   * both, and the comment there says keeping the refresh token is what let a
-   * kicked client mint a new access token and walk back in — leaving
-   * voluntarily should not keep the credential either.
-   *
-   * And the pinned identity, which is the one people actually hit. It outlived
-   * the membership, so rebuilding a server on the same address was refused with
-   * a message pointing at a settings screen you had to already know about.
+   * Leaving a server, and meaning it. Removing the sidebar entry alone left the
+   * tokens — the refresh token is what lets a client mint a new access token —
+   * and the pinned identity, which outlived the membership, so rebuilding a
+   * server on the same address was refused.
    */
   /**
    * The same, for every address one server was reachable at.
@@ -510,16 +478,11 @@ function useServerManagementHook(): ServerManagement {
   );
 
   /**
-   * Being kicked or banned takes the server out of the sidebar.
+   * Being kicked or banned takes the server out of the sidebar. The socket
+   * layer cannot reach `removeServer`, so it dispatches a window event.
    *
-   * The socket layer knows it happened but cannot reach `removeServer`, so it
-   * dispatches a window event and this picks it up — the same hop
-   * `server_settings_open` and `server_voice_disconnect` already use.
-   *
-   * `removeServer` is the whole removal: it drops the entry, and switches away
-   * if you were looking at it. The socket is closed by the effect in useSockets
-   * that watches for a host leaving the list — without that the client would
-   * reconnect and put the server straight back.
+   * The socket is closed by the effect in useSockets watching for a host
+   * leaving the list — without that the client reconnects and puts it back.
    */
   useEffect(() => {
     const handler = (event: Event) => {

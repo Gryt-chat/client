@@ -15,19 +15,11 @@ import {
 
 /**
  * Offering this device the message key the account already has (GRYT-783).
+ * Above a direct message, because asking at sign-in asks for a password to
+ * solve a problem nobody has met yet.
  *
- * Shown above a direct message, because that is the moment the reason is
- * obvious. Asking at sign-in would be asking for a password to solve a problem
- * nobody has met yet; asking here is answering the question somebody is about
- * to have, which is why their older conversations are not readable.
- *
- * Sits beside DirectMessagePrivacyNotice, which anticipated exactly this: "with
- * a way to fix it where there is one". This is that way, for the one case where
- * the fix belongs to the person reading it.
- *
- * Silent unless there is something to offer — see `shouldOfferMessageKey`. In
- * particular it stays silent while the answer is still loading, rather than
- * flashing a password box and withdrawing it.
+ * Silent unless there is something to offer — including **while the answer is
+ * still loading**, rather than flashing a password box and withdrawing it.
  */
 export function MessageKeyPrompt() {
   const [grytUserId, setGrytUserId] = useState<string | null>(null);

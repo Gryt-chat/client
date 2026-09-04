@@ -254,22 +254,15 @@ export function parseRemoteImageMetadata(raw: unknown): RemoteImageMetadata | nu
 export const previewCache = new Map<string, LinkPreviewData>();
 
 /**
- * URLs the server has already refused, so we stop asking.
+ * URLs the server has already refused, so we stop asking. `previewCache` only
+ * holds successes, so a LAN address pasted into a channel produced a 400 on
+ * every mount of the card, forever.
  *
- * `previewCache` only holds successes, so a link that can never have a preview
- * was re-requested on every mount of the card — and a card mounts every time
- * its message scrolls back into the list. A LAN address pasted into a channel
- * produced a 400 per mount, forever, which is what a console full of
- * `link-preview … 400` turned out to be.
+ * A 400 is the server's SSRF guard working, and that answer cannot change while
+ * the process is up — session-lived, so a reload asks once more.
  *
- * A 400 is the server working: it will not fetch a private address on a
- * client's behalf (see the SSRF guard in the server's linkPreview route), and
- * that answer cannot change while the process is up. Session-lived and keyed by
- * URL for that reason — a reload asks once more, which is the right amount of
- * forgetting for a server that may have been reconfigured.
- *
- * Only refusals, not failures. A 502 or a dropped connection is worth trying
- * again, and lands in neither map.
+ * **Only refusals, not failures.** A 502 or a dropped connection is worth
+ * trying again and lands in neither map.
  */
 export const previewRefused = new Set<string>();
 

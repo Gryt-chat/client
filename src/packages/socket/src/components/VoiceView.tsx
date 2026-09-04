@@ -140,16 +140,12 @@ function useFinalProcessedSpeaking(
 /**
  * Detects a microphone that is open but producing nothing at all.
  *
- * This reads the raw analyser deliberately. It is tapped straight off the
- * input, before RNNoise, the gate and muteGain, so muting yourself or sitting
- * behind a closed gate does not look like a dead device.
+ * **The raw analyser, tapped before RNNoise, the gate and muteGain**, so muting
+ * yourself does not look like a dead device.
  *
- * The test is digital silence rather than a low level: a live microphone in a
- * quiet room still has a noise floor, so some bin is non-zero on every frame.
- * All bins reading exactly zero for SILENCE_MS means no samples are arriving —
- * the wrong device is selected, it is muted at the OS level, or it is a
- * loopback device with nothing feeding it. Anything looser than this warns
- * people who are simply not talking, which is worse than not warning at all.
+ * **Digital silence rather than a low level.** A live microphone in a quiet
+ * room still has a noise floor, so all bins reading exactly zero means no
+ * samples are arriving. Anything looser warns people who are not talking.
  */
 function useSustainedRawSilence(
   analyser: AnalyserNode | undefined,
@@ -449,17 +445,11 @@ export const VoiceView = ({
   }, [rawInputSilent, setSettingsTab, setShowSettings]);
 
   /**
-   * A camera that would not start used to say nothing at all.
+   * A camera that will not start says so (GRYT-16). Without this the button
+   * turned itself back off with no reason, which reads as the app ignoring you.
    *
-   * `cameraError` has always been set by the engine and read by nobody, so
-   * pressing the camera button on a device that refuses gave you a button that
-   * turned itself back off and no reason — which reads as the app ignoring you
-   * rather than as a failure. The microphone has said this since GRYT-120;
-   * this is the camera's version of the same toast (GRYT-16).
-   *
-   * Not gated on being in a voice channel, unlike the microphone one. This is
-   * the direct result of pressing a button, so it should answer wherever it
-   * was pressed — including the preview in settings.
+   * Not gated on being in a voice channel, unlike the microphone one: this is
+   * the direct result of pressing a button, including in settings.
    */
   useEffect(() => {
     if (!cameraError) {

@@ -114,16 +114,10 @@ function SortableRole({
 }
 
 /**
- * Ten swatches, a picker and a Clear.
- *
- * The picker used to be the whole control, which meant every role started
- * grey and the ones that got a colour got whatever the OS colour wheel was
- * pointing at. Swatches first, because the answer is nearly always "one that
- * looks like the others" — and these ten are one family by construction, so
- * any of them does.
- *
- * The selected swatch is marked with a ring rather than a tick. A tick has to
- * be drawn in some colour, and there is no colour that reads on all ten.
+ * Ten swatches, a picker and a Clear. Swatches first, because the answer is
+ * nearly always "one that looks like the others" and these ten are one family
+ * by construction. Marked with a ring rather than a tick: a tick has to be
+ * drawn in some colour, and none reads on all ten.
  */
 function RoleColorField({
   value,
@@ -212,17 +206,12 @@ function RoleColorField({
 }
 
 /**
- * The role editor.
+ * The role editor: what each role may do, and which role somebody lands on when
+ * they arrive.
  *
- * Two decisions live on this screen. What each role may do, which is the list
- * of switches, and which role somebody lands on when they arrive, which is the
- * pair of pickers at the bottom. The second is the one that makes a public
- * server possible: a guest who may read and nothing else, an account that may
- * talk, and no moderator standing at the door handing out roles by hand.
- *
- * The permission catalogue comes from the server rather than from this file, so
- * a client older than the server it is talking to still shows every permission
- * that server has — see lib/permissions.
+ * **The permission catalogue comes from the server, not this file**, so a
+ * client older than the server still shows every permission it has — see
+ * lib/permissions.
  */
 export function ServerRoleEditorTab({
   host,
@@ -415,18 +404,12 @@ export function ServerRoleEditorTab({
   };
 
   /**
-   * Commit the settings form, on the way out of whichever field was being
-   * edited.
+   * Commit on the way out of whichever field was being edited, like every other
+   * settings screen in Gryt. A Save button at the far end of a scrolling panel
+   * put a batch of role edits in the bin.
    *
-   * Every other settings screen in Gryt saves on focus loss; this one had a
-   * Save button, at the far end of a panel you have to scroll, and a batch of
-   * role edits went in the bin because of it. Nothing here needs a confirmation
-   * — these are all one-field changes with a visible result, and the audit log
-   * has the rest.
-   *
-   * A role being created is the one thing that cannot commit on every blur: its
-   * id comes from its name, so there is nothing to write until the name is
-   * there. It saves the moment there is one.
+   * A role being created cannot commit on every blur — its id comes from its
+   * name, so there is nothing to write until the name is there.
    */
   const commitSettings = (patch?: Partial<RoleDefinition>) => {
     if (!state || !draft) return;
@@ -480,19 +463,13 @@ export function ServerRoleEditorTab({
   );
 
   /**
-   * Dropping a role somewhere writes the order back as ranks.
+   * Dropping a role somewhere writes the order back as ranks. The server still
+   * compares rank; what goes is the *number* on screen — an operator arranges a
+   * list and the numbers follow.
    *
-   * Rank is still what the server compares — kicks, bans and role changes all
-   * refuse against an equal or higher one, and the joining defaults are checked
-   * against it — so this does not remove the concept. It removes the *number*
-   * from the screen: what an operator arranges is a list, and the numbers are
-   * derived from where things ended up.
-   *
-   * Spaced by ten rather than numbered 1, 2, 3. Rank is a shared scale, and
-   * leaving room between neighbours means a role added later, or one moved by
-   * somebody else while this was open, does not need every other row rewritten
-   * to fit. Owner keeps 100 and never moves: the server refuses to save it, so
-   * a row that could be dragged would be a row whose drop came back rejected.
+   * **Spaced by ten**, so a role added later, or moved by somebody else while
+   * this was open, does not need every other row rewritten. Owner keeps 100 and
+   * never moves, since the server refuses to save it.
    */
   const handleReorder = (event: DragEndEvent) => {
     const { active, over } = event;

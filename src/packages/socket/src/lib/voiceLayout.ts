@@ -1,23 +1,16 @@
 /**
- * Voice panel layout arithmetic.
+ * Voice panel layout arithmetic. Pure functions, no React, so the rules can be
+ * checked against the numbers they came from — measured off Google Meet on
+ * 2026-08-07, recorded on GRYT-40.
  *
- * Pure functions, no React, so the rules can be checked against the numbers
- * they came from. Everything here was measured off Google Meet on 2026-08-07 —
- * the phone figures from screenshots, the desktop figures by driving a live
- * meeting and reading getBoundingClientRect. The full record is on GRYT-40.
- *
- * The uncomfortable finding is that Meet does not appear to use one rule. At
- * phone proportions the column count is the one that maximises tile area; at
- * desktop proportions that is demonstrably not it — nine people come out as
- * 4+5 when 3x3 would give larger tiles. Maximising the shared row height
- * reproduces desktop exactly and gets the phone wrong. So the "meet" rule
- * splits on container aspect, because that is what the measurements support.
+ * **Meet does not appear to use one rule.** At phone proportions the column
+ * count maximises tile area; at desktop it does not — nine people come out 4+5
+ * where 3x3 gives larger tiles. So the "meet" rule splits on container aspect.
  * It is fitted, not derived.
  *
- * Rather than pick a winner, both are offered: "meet" copies the measurements,
- * "large" always takes the arrangement with the biggest tiles. At sidebar
- * proportions the two agree at every count, so the choice only shows up in the
- * maximised and fullscreen views.
+ * Both are offered rather than picking a winner: "meet" copies the
+ * measurements, "large" always takes the biggest tiles. At sidebar proportions
+ * they agree at every count.
  */
 import type { VoiceTileLayout } from "@/settings";
 
