@@ -72,7 +72,8 @@
     "test:sealed-attachments": "node scripts/check-sealed-attachments.mjs",
     "test:channel-permissions": "node scripts/check-channel-permissions.mjs",
     "test:report-user": "node scripts/check-report-user.mjs",
-    "test:embed-icons": "node scripts/check-embed-icons.mjs"
+    "test:embed-icons": "node scripts/check-embed-icons.mjs",
+    "test:card-byline": "node scripts/check-card-byline.mjs"
   },
   "dependencies": {
     "electron-updater": "^6.8.3",

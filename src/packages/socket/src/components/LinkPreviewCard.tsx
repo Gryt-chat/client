@@ -13,6 +13,7 @@ import { getServerAccessToken, getServerHttpBase, useTheme } from "@/common";
 import { PROVIDER_ICONS } from "./embedProviderIcons";
 import { DismissButton } from "./EmbedRenderers";
 import {
+  cardByline,
   describePreviewFailure,
   getLinkCardLayout,
   type LinkPreviewData,
@@ -182,6 +183,8 @@ export const LinkPreviewCard = memo(({
 
   const subtitle = getCardSubtitle(data.title, providerDetail);
 
+  const byline = cardByline(data.author, data.publishedAt);
+
   const showImage = Boolean(data.image) && !imageFailed && layout !== "text" && layout !== "bare";
 
   const image = showImage ? (
@@ -224,6 +227,18 @@ export const LinkPreviewCard = memo(({
                     : data.description}
                 </div>
               )}
+
+              {/* Who made it and when, where the page said (GRYT-913).
+
+                  The server has carried `author` and `publishedAt` for as long
+                  as this card has existed and nothing drew either, so an
+                  article with a byline and a MakerWorld model with a creator
+                  both arrived with the two most human facts about them thrown
+                  away.
+
+                  Under the description rather than above the title. It is
+                  attribution, not the headline. */}
+              {byline && <div className="link-embed-card-byline">{byline}</div>}
 
               {failure && <div className="link-embed-card-failure">{failure}</div>}
 
