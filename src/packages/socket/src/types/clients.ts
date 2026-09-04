@@ -26,7 +26,6 @@ export type Clients = { [id: string]: Client };
 
 /**
  * What one server holds for you: your profile as other members there see it.
- *
  * Per-server on purpose — the nickname, the picture and the look are all things
  * somebody can set differently in one place than in another.
  *

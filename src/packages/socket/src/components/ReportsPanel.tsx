@@ -14,10 +14,9 @@ import { ImageLightbox } from "./ImageLightbox";
 /**
  * A person somebody reported, with every open report about them folded in.
  *
- * One card per person rather than per report, so a queue does not fill with
- * six rows when six people report the same person on the same evening. The
- * reasons are all here because they are the only evidence: unlike a message
- * report there is nothing else attached.
+ * One card per person rather than per report, so a queue does not fill with six
+ * rows when six people report the same person on the same evening. The reasons
+ * are all here because they are the only evidence.
  */
 export interface AggregatedUserReport {
   reportedServerUserId: string;
@@ -69,10 +68,9 @@ export function ReportsPanel({
    * Why the queue is not here, when it is not here.
    *
    * The spinner used to be the only state between asking and answering, and it
-   * was cleared in exactly one place — the reply. A server that had stopped, a
-   * socket part-way through reconnecting, or a refusal arriving as
-   * `server:error` all left it turning, and a moderator cannot tell that apart
-   * from a queue that is still loading.
+   * was cleared in exactly one place — the reply. A stopped server, a socket
+   * part-way through reconnecting, or a refusal arriving as `server:error` all
+   * left it turning, which a moderator cannot tell from still loading.
    */
   const [loadError, setLoadError] = useState<string | null>(null);
 

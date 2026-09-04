@@ -20,15 +20,8 @@ import { BetaTag } from "./wordmark";
  * the app shows a different owl from the one on every README and every favicon,
  * with nothing to say so.
  *
- * The 2026 mark inverted figure and ground. The old one was a dark bird on a
- * violet disc, so tinting the *background* was what made a beta build look like
- * one. Here the ground is dark and the bird carries the colour, so the tint
- * moved to the bird.
- *
- * That note used to end "tinting the ground now would only darken a dark
- * square", and it was right about a darker tint. The beta rose is *lighter*
- * than the bird on it, so figure and ground swap back over and the whole tile
- * changes rather than one shape inside it. Both move now.
+ * The beta tint moves the bird and the ground together. The rose is lighter
+ * than the bird on it, so tinting one alone swaps figure and ground over.
  */
 function LogoIcon({ size = 48, beta = false }: { size?: number; beta?: boolean }) {
   const body = beta ? BETA_ACCENT : "#A495E3";

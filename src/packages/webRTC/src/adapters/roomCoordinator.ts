@@ -25,9 +25,8 @@ const ACCESS_TIMEOUT_MS = 15_000;
 /**
  * Gryt's half of joining a channel, over the socket the client already has.
  *
- * The engine asks to be let in and says what it is publishing. Who may enter and
- * how many fit are the server's rules rather than WebRTC's, so the engine asks
- * and this answers.
+ * Who may enter and how many fit are the server's rules rather than WebRTC's,
+ * so the engine asks and this answers.
  *
  * The rate-limit toast lives here rather than in the engine. `RoomAccess`
  * carries the reason and the retry delay, and deciding whether that is worth

@@ -54,8 +54,7 @@ export function useSidebarEditor({
    * not set policy had the list refused and was offered Everyone and Custom
    * with no way to learn that any template existed.
    *
-   * Names and ids only. What a template decides is still `manage_roles`, and
-   * the templates tab is still where it is read.
+   * Names and ids only. What a template decides is still `manage_roles`.
    */
   const [permissionTemplates, setPermissionTemplates] = useState<
     { id: string; name: string | null; isSystem: boolean }[]
@@ -119,12 +118,10 @@ export function useSidebarEditor({
    * The choices for the visibility gate, as "everyone" plus one per role.
    *
    * The stored value is a rank, not a role id, so several roles at the same
-   * rank collapse into one choice — which is correct, because picking either
-   * would store the same number and mean the same thing. Showing both would
-   * offer a distinction the gate cannot keep.
+   * rank collapse into one choice — picking either would store the same number.
+   * Showing both would offer a distinction the gate cannot keep.
    *
-   * Sorted low to high so the list runs from "most people" to "fewest", which
-   * is the direction somebody narrowing a channel is thinking in.
+   * Sorted low to high, the direction somebody narrowing a channel is thinking.
    */
   const scopeChoiceOptions = useMemo(
     () => scopeOptions(permissionTemplates.map((t) => ({ id: t.id, name: t.name }))),
@@ -140,11 +137,10 @@ export function useSidebarEditor({
   /**
    * Ask the server for the templates and for this channel's own rules.
    *
-   * Runs when the dialog opens on a channel rather than on every render of the
-   * sidebar. Neither answer rides along on `server:details`: being allowed to
-   * see a channel is not the same as being allowed to read which roles cannot,
-   * and putting the matrix in the payload every member receives would hand that
-   * out to all of them.
+   * Neither answer rides along on `server:details`: being allowed to see a
+   * channel is not the same as being allowed to read which roles cannot, and
+   * putting the matrix in the payload every member receives would hand that out
+   * to all of them.
    */
   // The item is read through a ref rather than depended on. `selectedSidebarItem`
   // is a fresh object whenever `serverDetailsList` changes identity, and this
@@ -162,16 +158,12 @@ export function useSidebarEditor({
   /*
    * Clear the scope when a different channel is opened, and only then.
    *
-   * The scope and its rules do not ride along on `server:details`, because a
-   * member who can see a channel is not necessarily allowed to read who else
-   * can. They are fetched when the editor opens, by the effect below.
-   *
-   * This used to sit in the effect above, which depends on
+   * This used to sit in the effect below, which depends on
    * `selectedSidebarItem` — a fresh object every time `serverDetailsList`
    * changes identity. Saving a scope makes the server broadcast
-   * `server:details`, so the save reset the dropdown to Everyone a moment
-   * after setting it, and the setting looked like it had not taken (GRYT-892).
-   * The channel id is a string, so it only changes when the channel does.
+   * `server:details`, so the save reset the dropdown to Everyone a moment after
+   * setting it (GRYT-892). The channel id is a string, so it only changes when
+   * the channel does.
    */
   useEffect(() => {
     setSheetScopeChoice(EVERYONE_VALUE);
@@ -226,24 +218,20 @@ export function useSidebarEditor({
    *
    * Separate from `saveSelectedSidebarItem` on purpose. That one renames and
    * retunes the channel, and a rename must never be able to change who can see
-   * it — the server refuses to take a scope on `server:channels:upsert` for the
-   * same reason.
+   * it — the server refuses a scope on `server:channels:upsert` for the same
+   * reason.
    */
   /*
    * `choice` and `rules` are arguments rather than only state because a caller
    * that changes one of them and saves in the same tick cannot wait for the
-   * state to arrive.
-   *
-   * This function is held in a ref that is reassigned during render, so calling
-   * it from an event handler runs the closure the *last* render built — with
+   * state to arrive. This function is held in a ref that is reassigned during
+   * render, so an event handler runs the closure the *last* render built — with
    * the value the control had before it was changed. The dropdown did that, and
    * since the previous value is almost always `everyone`, every attempt to
-   * restrict a channel sent "clear the scope", stored it, and echoed back a
-   * dropdown reading Everyone (GRYT-892).
+   * restrict a channel sent "clear the scope" (GRYT-892).
    *
-   * Passing the value through the call is what makes that impossible rather
-   * than unlikely. The debounced callers still pass nothing and read state,
-   * which is correct for them: 600ms later the render has happened.
+   * The debounced callers still pass nothing and read state, which is correct
+   * for them: 600ms later the render has happened.
    */
   const saveChannelScope = useCallback((choice?: string, rules?: ChannelRule[]) => {
     const item = selectedItemRef.current;

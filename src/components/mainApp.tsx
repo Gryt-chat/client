@@ -14,14 +14,10 @@ export function MainApp() {
   const { servers, setShowAddServer, showDiscovery } = useServerManagement();
   const { showTour, dismissTour } = useSettings();
 
-  /*
-   * A window this small is one channel, so the shell around it goes.
-   *
-   * The rail and the 16px of page padding are most of what is left to give at
-   * 300px wide — the padding alone is a tenth of the window, and the rail is
-   * another tenth for a list of servers you cannot act on when there is no
-   * channel list to go with it. `ServerView` drops the rest.
-   */
+  /* A window this small is one channel, so the shell around it goes. At 300px
+     wide the 16px of page padding is a tenth of the window and the rail another
+     tenth, for a list of servers you cannot act on with no channel list beside
+     it. `ServerView` drops the rest. */
   const isTiny = useIsTinyWindow();
 
   /* What a bug report calls "where you were". Recorded here rather than in the

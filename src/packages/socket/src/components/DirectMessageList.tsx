@@ -11,28 +11,24 @@ import { UnreadIndicator } from "./UnreadIndicator";
 /**
  * Conversations on this server, under the channel list — one section per kind.
  *
- * Under the channels rather than above the server rail, and that placement is
- * the whole point: these conversations belong to this server. The same person
- * on another server is a different conversation with different history, so a
- * list that sat outside the server would be claiming something untrue.
+ * Under the channels rather than above the server rail, because these
+ * conversations belong to this server: the same person on another server is a
+ * different conversation with different history.
  *
- * Direct messages and groups get a section each rather than sharing one. They
- * behave the same and are drawn the same; what differs is that a group has a
- * name and a picture of its own, and mixing the two would put a row you can
- * rename next to one you cannot.
+ * Direct messages and groups get a section each. A group has a name and a
+ * picture of its own, and mixing the two would put a row you can rename next to
+ * one you cannot.
  */
 /**
  * Which of these conversations has a call going on in it.
  *
- * Read off `clients` rather than held separately, because it is already there.
- * The server sends `voice:call:members` to everybody in the conversation — not
- * only to the people in the call — and the socket handler writes the
- * conversation id back onto those clients' `voiceChannelId`. So "is there a
- * call in here" is "is anybody's room this conversation", which is the same
- * question the voice view asks.
+ * Read off `clients` rather than held separately. The server sends
+ * `voice:call:members` to everybody in the conversation, and the socket handler
+ * writes the conversation id back onto those clients' `voiceChannelId` — so "is
+ * there a call in here" is "is anybody's room this conversation".
  *
- * Nothing extra arrives for a server that predates calling: no event, no ids
- * written back, an empty set, and no dot.
+ * A server that predates calling sends no event, so the set is empty and there
+ * is no dot.
  */
 function useConversationsInCall(serverHost: string): Set<string> {
   const { clients } = useSockets();

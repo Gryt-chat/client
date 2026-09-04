@@ -17,9 +17,8 @@ import { TITLEBAR_HEIGHT } from "./titlebar";
  *
  * useAccount gives Keycloak 12 seconds and then forces signed-out, so the worst
  * case here was twelve seconds of a spinner and no explanation, followed by
- * being dropped into the app as a guest with no idea why. Five seconds is well
- * inside that: long enough that a normal start never sees it, early enough that
- * nobody is left guessing for the other seven.
+ * being dropped into the app as a guest. Five is long enough that a normal
+ * start never sees it.
  */
 const SLOW_AFTER_MS = 5_000;
 

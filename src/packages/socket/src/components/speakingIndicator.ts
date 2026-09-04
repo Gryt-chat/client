@@ -1,11 +1,9 @@
 /**
  * One implementation of "this person is talking", for every place that shows it.
  *
- * The voice tile and the sidebar's connected-user row both read the same
- * `clientsSpeaking` record, but they used to draw it differently — a flush 2px
- * accent outline in the sidebar, a 2.5px one on the tile — so the same fact
- * looked like two different things depending on where you were looking. The
- * geometry lives here now, and both call it.
+ * The voice tile and the sidebar's connected-user row read the same
+ * `clientsSpeaking` record and used to draw it differently — a flush 2px accent
+ * outline in the sidebar, a 2.5px one on the tile. The geometry lives here now.
  */
 
 import { generatedAvatarColor, TILE_HUES } from "@/common";
@@ -17,12 +15,8 @@ export { TILE_HUES };
  *
  * The server does send a per-user `color`, but the client overwrites every one
  * of them with a flat gray in the members:list handler, so there is nothing
- * usable to read. Deriving it here means the same person is the same colour on
- * every client without the server having to agree, and it cannot drift out of
- * sync with whatever the sidebar decides to do.
- *
- * `avatarColor` on the member is the better source where it exists — see
- * hueFromAvatarColor.
+ * usable to read. `avatarColor` on the member is the better source where it
+ * exists — see hueFromAvatarColor.
  */
 export function hueFromId(id: string): number {
   let hash = 0;
@@ -47,25 +41,15 @@ export { hueFromAvatarColor, tintFromAvatarColor };
  * picture: the owl they designed, then a picture they uploaded, then the owl
  * their name draws, then the id hash.
  *
- * The designed owl has to come first, and it did not. Saving a design uploads a
- * PNG as well — that is what an old client shows — so anybody with a designed
- * owl also has an `avatarFileId`, and therefore a server-computed
- * `dominant_color` sampled off that raster. Reading it first meant the tile was
- * tinted by whatever the sampler happened to land on, which for an owl is the
- * large pale face rather than the hood: a red owl on a yellow tile, wrong in a
- * way nothing downstream could correct.
+ * **The designed owl has to come first.** Saving a design uploads a PNG as
+ * well, so anybody with a designed owl also has an `avatarFileId` and a
+ * server-computed `dominant_color` sampled off that raster — which for an owl
+ * lands on the large pale face rather than the hood: a red owl on a yellow
+ * tile.
  *
- * `owl` is a nickname and a worn string rather than reusing `id`, because the
- * two are not interchangeable. `id` is the hash seed and callers pass a
- * serverUserId for it; `generatedAvatarColor` needs the nickname the avatar
- * renderer actually drew from.
- *
- * The generated case still matters. The tint exists to make a tile recognisably
- * that person's, and a generated avatar is what most people have — falling
- * straight through to the id hash put a violet face on a green tile and made the
- * tinting look arbitrary, which is the one thing it must not look like.
- * hueFromId stays as the last resort, for a caller that has no seed to generate
- * from.
+ * `owl` takes a nickname and a worn string rather than reusing `id`. `id` is
+ * the hash seed and callers pass a serverUserId for it; `generatedAvatarColor`
+ * needs the nickname the avatar renderer actually drew from.
  */
 export function tileTint(
   id: string,
@@ -107,10 +91,8 @@ export function tileHue(
  *
  * Exists so a caller that needs the tile, the badge and the ring can derive all
  * three from one `tileTint` rather than calling it once per use. Three calls
- * meant three chances to pass a different id, and VoiceParticipantCard took
- * two of them — the tile was tinted from `serverUserId` while the avatar beside
- * it was drawn from the nickname, so every fake participant's tile was the
- * colour of an owl belonging to somebody called `fake-0` (GRYT-648).
+ * meant three chances to pass a different id, and VoiceParticipantCard took two
+ * of them (GRYT-648).
  */
 export function tileGradientFrom({ hue, sat, light }: TileTint): string {
 
@@ -135,10 +117,9 @@ export function tileGradient(
  * The speaking ring's thickness, in px.
  *
  * On a video tile it is drawn with a negative outline-offset. A tile fills its
- * grid cell exactly, so an outline at the default offset is painted outside the
- * cell — into the 12px gap between tiles, or clipped away entirely at the
- * panel's edge. Pulling it inward by its own width keeps it on the tile and
- * lets it follow the corner radius.
+ * grid cell exactly, so an outline at the default offset is painted into the
+ * 12px gap between tiles, or clipped away at the panel's edge. Pulling it
+ * inward by its own width keeps it on the tile and follows the corner radius.
  */
 export const SPEAKING_RING = 2.5;
 

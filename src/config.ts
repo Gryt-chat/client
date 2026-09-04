@@ -162,9 +162,6 @@ export function getGrytConfig(): Required<GrytRuntimeConfig> {
    * server's configuration reaches it. Configurable anyway because a dev box
    * wants a local one, and because the web container has no build step to bake
    * anything into.
-   *
-   * There was a `GRYT_REPORTS_APP_KEY` beside this. GRYT-529 took it out at the
-   * service, so nothing reads the header any more.
    */
   const reportsUrl = configValue(
     win?.GRYT_REPORTS_URL,

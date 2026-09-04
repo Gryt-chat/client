@@ -97,8 +97,8 @@ export function ServerRolesTab({
    *
    * `server:roles:set` still exists and still replaces the whole set — it is
    * what a demotion means — but this screen is where somebody is given a second
-   * role, and doing that by sending the whole intended set would make every
-   * change a chance to drop one by accident.
+   * role, and sending the whole intended set would make every change a chance
+   * to drop one by accident.
    */
   const send = (event: string, serverUserId: string, role: Role) => {
     if (!socket || !socket.connected) return toast.error("Not connected to the server yet.");

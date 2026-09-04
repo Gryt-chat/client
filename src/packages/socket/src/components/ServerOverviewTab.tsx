@@ -73,9 +73,9 @@ export function ServerOverviewTab({
    * Whether this member may change any of this.
    *
    * Was `canEdit`, off the settings payload. `manage_server` is owner-only by
-   * default, so for a server nobody has touched the answer is the same — but an
-   * owner who grants it to a role should get a form that works, rather than one
-   * that looks read-only and would have been accepted.
+   * default, so for an untouched server the answer is the same — but an owner
+   * who grants it to a role should get a form that works rather than one that
+   * looks read-only and would have been accepted.
    */
   const { can } = useServerPermissions(host);
   const canEdit = can("manage_server");

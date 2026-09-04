@@ -173,11 +173,10 @@ export function migrateAccessTokensToMode(mode: AccessTokenStorageMode): void {
 /**
  * Your own per-server user id, read out of the access token for that host.
  *
- * The member list is the usual source of a serverUserId, but that only ever
- * tells you about other people — nothing in it says which entry is you. The
- * token is the one place the client holds its own, and it is needed wherever
- * your avatar has to be seeded the same way everyone else's is, so you are not
- * looking at two different faces for yourself on one screen.
+ * The member list is the usual source of a serverUserId, but it only ever tells
+ * you about other people — nothing in it says which entry is you. The token is
+ * the one place the client holds its own, and it is needed wherever your avatar
+ * has to be seeded the same way everyone else's is.
  */
 export function getOwnServerUserId(host: string | null | undefined): string | undefined {
   if (!host) return undefined;
@@ -192,16 +191,13 @@ export function getOwnServerUserId(host: string | null | undefined): string | un
 }
 
 /**
- * The seed to draw your own generated avatar from.
+ * The seed to draw your own generated avatar from: the server you are looking
+ * at, then any server you are on, and only then the account.
  *
- * Your face has to be the one other people see, which means the id the server
- * knows you by — but the global surfaces (the All Servers profile tab, the
- * sidebar before you open anything) have no server in scope, and seeding those
- * on the Gryt account drew you a second face right next to the first one.
- *
- * So they borrow: the server you are looking at, then any server you are on,
- * and only then the account. In practice that means one face everywhere, and
- * it stops being a guess as soon as you are in a server.
+ * It has to be the id the server knows you by, so other people see the same
+ * face — but the global surfaces (the All Servers profile tab, the sidebar
+ * before you open anything) have no server in scope, and seeding those on the
+ * Gryt account drew you a second face right next to the first one.
  *
  * Nickname would match everywhere by construction and was rejected for it.
  * Nicknames are not unique, so two people called the same thing would share a

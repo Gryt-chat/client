@@ -4,13 +4,12 @@
  * The invite dialog builds its link from whatever address the client is
  * connected on. For a server started from the desktop app that is
  * `127.0.0.1:<port>`, so the link tells whoever receives it to connect to their
- * own machine. It is a valid address and it is the wrong computer, which is the
- * worst shape a broken link can take: nothing errors, it just does not find the
- * server, and the person who sent it has no reason to suspect the link.
+ * own machine. Nothing errors, it just does not find the server, and the person
+ * who sent it has no reason to suspect the link.
  *
- * Since GRYT-277 an embedded server knows the addresses it advertises, so there
- * is usually something better to name. Where there is not, the honest answer is
- * to say so rather than hand somebody a link that cannot work.
+ * Since GRYT-277 an embedded server knows the addresses it advertises. Where
+ * there is nothing better, the honest answer is to say so rather than hand
+ * somebody a link that cannot work.
  */
 
 /**
@@ -72,19 +71,16 @@ export type ShareableHost =
 /**
  * Pick the address to put in an invite.
  *
- * Anything that is not loopback is already shareable and is returned unchanged.
- * That covers every server somebody joined by address, which is most of them,
- * and means this cannot make an ordinary invite worse.
+ * Anything that is not loopback is already shareable and is returned unchanged,
+ * so this cannot make an ordinary invite worse.
  *
- * For a loopback address, the host's own typed-in addresses come first. Somebody
- * who went to Settings and entered a public IP was answering exactly this
- * question, and their answer beats anything detected. Detected addresses come
- * next, which are the machine's LAN addresses: not reachable from the internet,
- * but correct for the case an embedded server is usually used for, which is
- * people in the same building.
+ * For a loopback address the host's own typed-in addresses come first —
+ * somebody who went to Settings and entered a public IP was answering exactly
+ * this question. Detected addresses come next, the machine's LAN addresses: not
+ * reachable from the internet, but correct for what an embedded server is
+ * usually used for, which is people in the same building.
  *
  * One address rather than several, because the invite format carries one host.
- * Offering a choice would mean changing that format and every parser of it.
  */
 export function pickShareableHost(
   host: string,

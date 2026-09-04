@@ -493,8 +493,7 @@ export const VoiceView = ({
 
   /**
    * Fullscreen is the maximised layout with a different container, so there is
-   * no separate layout code — the panel goes fullscreen and the grid's
-   * ResizeObserver picks up the new size on its own.
+   * no separate layout code — the grid's ResizeObserver picks up the new size.
    *
    * State is read back from the document rather than tracked independently,
    * because the browser can leave fullscreen without us: Escape, the window
@@ -563,10 +562,9 @@ export const VoiceView = ({
   /**
    * The other person hung up and nobody is left but you.
    *
-   * Counting `visibleClients` rather than working it out again, because the
-   * two would drift: this has to mean the same thing as "the panel is drawing
-   * one tile", and the tile is what somebody is looking at when it says the
-   * call is ending.
+   * Counting `visibleClients` rather than working it out again, because this
+   * has to mean the same thing as "the panel is drawing one tile", and the tile
+   * is what somebody is looking at when it says the call is ending.
    *
    * Not while connecting, when the only tile is your own placeholder.
    */
@@ -797,11 +795,10 @@ export const VoiceView = ({
   /**
    * Two people, one big and one in the corner.
    *
-   * The default, because it is what a video call usually does and it gives the
-   * person you are talking to more pixels. Set to "equal" it falls through to
-   * the ordinary grid, which for two tiles stacks them in the sidebar and puts
-   * them side by side once there is width for it — the same aspect-ratio rule
-   * every other count goes through (GRYT-123).
+   * The default, because it gives the person you are talking to more pixels.
+   * Set to "equal" it falls through to the ordinary grid, which for two tiles
+   * stacks them in the sidebar and puts them side by side once there is width —
+   * the same aspect-ratio rule every other count goes through (GRYT-123).
    */
   const isHeroPip =
     voiceTwoPersonLayout === "hero" &&
@@ -854,9 +851,8 @@ export const VoiceView = ({
    *
    * Anyone with a camera or a screen share outranks a plain avatar tile: an
    * avatar is the same information the member list already gives you, video is
-   * not. Sorting is stable, so within a rank the existing order — including a
-   * manual drag — is preserved. Dragging across ranks does not stick, which is
-   * the cost of ranking at all.
+   * not. Sorting is stable, so within a rank a manual drag is preserved.
+   * Dragging across ranks does not stick, which is the cost of ranking at all.
    */
   const prioritisedPeople = useMemo(() => {
     const rank = (itemId: string) => {

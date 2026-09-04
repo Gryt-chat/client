@@ -103,11 +103,8 @@ export function useChatSend({
 
   /**
    * A ref because `markLatestPendingFailed` is declared below this and
-   * `performRetry` needs it (GRYT-765).
-   *
-   * Reordering the two would work and would put `performRetry` after everything
-   * it reads, which is a bigger diff in a file where the order is already
-   * load-bearing for the other callbacks.
+   * `performRetry` needs it (GRYT-765). Reordering the two would work and be a
+   * bigger diff in a file where the order is already load-bearing.
    */
   const markLatestPendingFailedRef = useRef<() => void>(() => {});
 
@@ -136,15 +133,11 @@ export function useChatSend({
     /*
      * Sealed, exactly as the first attempt was (GRYT-765).
      *
-     * This used to put `text` straight on the payload and emit. So a message
+     * This used to put `text` straight on the payload and emit, so a message
      * the composer said was encrypted went to the server in the clear the
      * moment it was retried — and nothing looked different, because the row was
      * already on screen and the retry succeeded. Being rate-limited while
      * sending a direct message was enough to reach it.
-     *
-     * A failure to seal sends nothing, for the reason `sendMessageWithToken`
-     * gives: falling back to plaintext because a derivation threw is the one
-     * outcome nobody would notice and nobody would want.
      */
     const text = target.entry.text;
     // With the same file keys, so a resend does not produce a message whose
@@ -215,8 +208,8 @@ export function useChatSend({
      * written down (GRYT-729).
      *
      * A failure to seal sends nothing rather than falling back. Somebody typing
-     * into a conversation the composer says is encrypted must not have it go out
-     * in the open because a derivation threw.
+     * into a conversation the composer says is encrypted must not have it go
+     * out in the open because a derivation threw.
      */
     void seal(messageText, attachmentKeys ?? undefined)
       .then((sealed) => {

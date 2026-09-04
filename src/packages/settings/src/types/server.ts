@@ -10,13 +10,12 @@ export type Channel = {
   textInVoice?: boolean;
   /**
    * Which permission scope decides what each role may do here, or null when the
-   * channel has no opinion and every role gets what its server-wide definition
-   * gives it.
+   * channel has no opinion.
    *
    * A channel somebody may not read is not in this array at all — the server
    * leaves it out of `server:details` rather than sending it with a flag. So
-   * nothing reads this to decide whether to draw a channel. It is here for the
-   * editor, and only ever seen by somebody already allowed to see the channel.
+   * nothing reads this to decide whether to draw a channel; it is here for the
+   * editor.
    */
   permissionScopeId?: string | null;
   /**
@@ -26,9 +25,8 @@ export type Channel = {
    * a client cannot work this out — which is why a read-only channel used to
    * draw an ordinary composer and refuse whatever was typed into it.
    *
-   * Absent from a server too old to send it, and absent is not false: an
-   * unknown answer has to mean "try", or every channel on an older server
-   * would look read-only.
+   * Absent is not false: an unknown answer has to mean "try", or every channel
+   * on an older server would look read-only.
    */
   canSend?: boolean;
   /**
@@ -36,12 +34,10 @@ export type Channel = {
    *
    * Visibility and entry are different questions: a voice channel is visible to
    * anybody who may read it, and `join_voice` decides who gets in. So a room
-   * can be visible and shut, which the permissions have always allowed and
-   * nothing drew — the row looked open and the refusal came out of the media
-   * stack.
+   * can be visible and shut, which nothing drew — the row looked open and the
+   * refusal came out of the media stack.
    *
-   * Absent from an older server, and absent reads as yes for the same reason
-   * `canSend` does.
+   * Absent from an older server, and absent reads as yes, as `canSend` does.
    */
   canJoin?: boolean;
 };
@@ -92,11 +88,10 @@ export type serverDetails = {
      * Every permission the *server* knows about, which is not the same list
      * this build knows about.
      *
-     * Without it an absence in `permissions` is ambiguous: it could be a
-     * denial, or it could be a permission this client has heard of and that
-     * server has not. Reading the second as a denial is how a client that
-     * learns about `read_messages` first blanks out every channel on a server
-     * that has not been upgraded yet.
+     * Without it an absence in `permissions` is ambiguous: a denial, or a
+     * permission this client has heard of and that server has not. Reading the
+     * second as a denial is how a client that learns about `read_messages`
+     * first blanks out every channel on a server not yet upgraded.
      */
     permission_catalogue?: string[];
     /** Every role this server has defined, for colouring and labelling people. */
@@ -131,13 +126,11 @@ export type Server = {
    * When a request to join was made, for a server that admits people by
    * approval (GRYT-289).
    *
-   * Present means the request is outstanding. It is set when the server answers
-   * a join with `approval_pending`, and cleared the moment a join succeeds,
-   * which is how the sidebar knows to stop showing the server as waiting.
+   * Present means the request is outstanding. Set when the server answers a
+   * join with `approval_pending`, cleared the moment a join succeeds.
    *
    * A timestamp rather than a flag so the entry can say how long it has been
-   * waiting, and so a request that has clearly gone stale is distinguishable
-   * from one made a minute ago.
+   * waiting.
    */
   approvalRequestedAt?: number;
 };

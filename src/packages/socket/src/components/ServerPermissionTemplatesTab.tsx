@@ -12,13 +12,11 @@ import { ChannelPermissionMatrix } from "./ChannelPermissionMatrix";
 /**
  * Permission templates: the answer several channels share.
  *
- * A channel can hold its own rules, and for one channel that is fine. The
- * moment there are four that were meant to match, per-channel rules drift —
- * somebody edits one, forgets the others, and six months later nobody can say
- * which of the four is right. That is the failure this screen exists to
- * prevent, which is why the count of channels using a template is on the row
- * rather than hidden: it is the difference between an edit that changes one
- * thing and an edit that changes nine.
+ * A channel can hold its own rules, and for one channel that is fine. Four that
+ * were meant to match will drift — somebody edits one, forgets the others, and
+ * six months later nobody can say which is right. That is why the count of
+ * channels using a template is on the row rather than hidden: it is the
+ * difference between an edit that changes one thing and one that changes nine.
  *
  * Needs `manage_roles` rather than `manage_channels`. A template is server-wide
  * policy; choosing one for a channel is the channel-level act, and the server

@@ -14,16 +14,12 @@ import { EmojiText } from "./EmojiText";
 import type { MemberInfo } from "./MemberSidebar";
 
 /**
- * Starting a group, and managing one.
- *
- * The same dialog for both, because they ask the same questions — what is it
- * called, who is in it — and a separate "edit" screen would be the same fields
- * with a different verb on the button.
+ * Starting a group, and managing one. The same dialog for both, because they
+ * ask the same questions.
  *
  * There is no owner. Anybody in a group can rename it, add somebody, or leave;
  * nobody can remove anybody else. A conversation with no moderators does not
- * need a moderation model, and not having one is a decision that needs no
- * further decisions later.
+ * need a moderation model.
  */
 export const GroupDialog = ({
   open,

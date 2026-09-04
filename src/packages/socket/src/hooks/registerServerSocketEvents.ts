@@ -52,9 +52,8 @@ const tokenHealLastAttempt = new Map<string, number>();
  * Our own serverUserId per host, learned from `clients:update`.
  *
  * The member list identifies people by serverUserId and carries the nickname
- * the server actually holds, but nothing in the list says which entry is you.
- * This is how the two are joined up so the per-server profile can show the
- * server's value instead of quietly falling back to the local one.
+ * the server actually holds, but nothing in it says which entry is you. This is
+ * how the two are joined up.
  */
 const myServerUserIdByHost = new Map<string, string>();
 
@@ -112,11 +111,10 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
   /**
    * Who is in each call on this server, as last heard.
    *
-   * Held here rather than in state because nothing renders it directly — it is
-   * only ever used to put the conversation id back onto `clients`, which is
-   * what everything downstream already groups by. And it has to be remembered
-   * rather than applied once: the next `server:clients` arrives with the id
-   * blanked out again, so this is re-applied on every one of them.
+   * Held here rather than in state because nothing renders it directly. It has
+   * to be remembered rather than applied once: the next `server:clients`
+   * arrives with the conversation id blanked out again, so this is re-applied
+   * on every one of them.
    */
   let callMemberships: CallMemberships = {};
 
@@ -143,10 +141,10 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
   /*
    * Where you have been named and have not read it.
    *
-   * The server answers the whole list rather than a count, and answers on the
-   * same event name for both the question and a "these are read now" — so this
-   * one handler covers both, and two windows belonging to the same person
-   * cannot end up disagreeing about what is left.
+   * The server answers the whole list rather than a count, and on the same
+   * event name for both the question and a "these are read now" — so this one
+   * handler covers both, and two windows belonging to the same person cannot
+   * disagree about what is left.
    */
   socket.on("mentions:list", (payload: { counts?: Record<string, number> }) => {
     setMentionCounts(host, payload?.counts ?? {});
@@ -231,10 +229,9 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     // in this handler depends on it, and a key that never arrives means no
     // encrypted messages rather than a join that failed.
     //
-    // Kept alongside the `server:details` publish rather than replaced by it. A
-    // first join produces both, and this one is the earlier of the two — the
-    // key is on the server before the first member list goes out rather than
-    // after it, so nobody sees the new member appear without one.
+    // Kept alongside the `server:details` publish rather than replaced by it.
+    // This one is the earlier of the two — the key is on the server before the
+    // first member list goes out, so nobody sees the new member appear without.
     if (firstTimeOnThisSocket(socket, DM_KEY)) void publishDmKey(socket, host);
     if (joinInfo.refreshToken) {
       setServerRefreshToken(host, joinInfo.refreshToken);
@@ -270,8 +267,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     // Seed a server that has never heard of this account's look.
     //
     // Only when this device has one and the server has none. The look is
-    // per-server once it is set — somebody can be a pirate in one place and
-    // plain everywhere else — so pushing it on every reconnect would undo a
+    // per-server once it is set, so pushing it on every reconnect would undo a
     // per-server choice every time the socket dropped. `server:joined` fires on
     // reconnects too, which is why the condition is about what the server
     // already holds rather than about this being a first join.
@@ -349,11 +345,10 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
   /* Something the server needs this one person to see (GRYT-896).
 
      The payload is a kind plus values — never text. Everything that reaches the
-     screen ships in `ServerNoticePanel`, so there is no arrangement of bytes a
-     server can send that puts a sentence, or a link, in front of somebody.
-     `setServerNotice` re-checks the shape rather than trusting it: the server
-     validating its own output guards against a bug in the server, and this
-     guards against the server, which is somebody else's machine. */
+     screen ships in `ServerNoticePanel`. `setServerNotice` re-checks the shape
+     rather than trusting it: the server validating its own output guards
+     against a bug in the server, and this guards against the server, which is
+     somebody else's machine. */
   socket.on("server:notice", (payload: unknown) => {
     setServerNotice(host, payload);
   });
@@ -656,8 +651,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
          * **Held back before it is shown, and taken away when it stops being
          * true** (GRYT-784). We publish our own key on join, so the first
          * member list of a session routinely arrives first and every join
-         * flashed the warning — a real mismatch is still there seconds later, a
-         * race is not.
+         * flashed the warning. A real mismatch is still there seconds later.
          *
          * Not only timing: a second device derives a different key and
          * genuinely does mismatch, which is why the wording names that first.

@@ -26,10 +26,9 @@ const cardStyle: React.CSSProperties = {
 /**
  * Failures where the server answered and said no.
  *
- * Worth separating from the rest, because "Failed to load server" and a Retry
- * button are wrong for all of them: nothing failed to load, and pressing Retry
- * asks the same question and gets the same answer. What changes the outcome is
- * signing in, or a moderator — never the button.
+ * "Failed to load server" and a Retry button are wrong for all of them: nothing
+ * failed to load, and pressing Retry asks the same question and gets the same
+ * answer. What changes the outcome is signing in, or a moderator.
  */
 const REFUSALS = new Set([
   "identity_tier_refused",

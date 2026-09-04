@@ -6,19 +6,13 @@ import type { Socket } from "socket.io-client";
  * Ringing, and only ringing.
  *
  * A call is not a thing the server keeps — it is an SFU room whose id is the
- * conversation id, joined through the same path a voice channel is. So there is
- * nothing here that tracks a call in progress: once you are in, you are in a
- * voice room and the existing voice state is the truth about it.
- *
- * What this holds is the moment before that. Somebody is ringing you and you
- * have not answered; or you are ringing and nobody has picked up. Both end,
- * always — the server withdraws every ring it starts, including on a timeout —
- * so neither state can get stuck without the server having gone away entirely.
+ * conversation id, joined the same way a voice channel is. So nothing here
+ * tracks a call in progress: once you are in, the existing voice state is the
+ * truth about it.
  *
  * Answering is not an event. It is `connect(conversationId)`, the ordinary
- * voice join, and the server ends the ring when the join lands. That is why
- * `accept` here takes a callback rather than emitting anything: this hook knows
- * about ringing and deliberately knows nothing about media.
+ * voice join, and the server ends the ring when the join lands — which is why
+ * `accept` takes a callback rather than emitting anything.
  */
 
 export interface IncomingCall {

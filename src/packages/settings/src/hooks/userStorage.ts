@@ -112,7 +112,6 @@ function persistUnder(userId: string, values: UserData): void {
  * Folding the two together would answer this by accident the first time
  * somebody claimed anything.
  *
- * Read here rather than re-exported, which would invite confusing them again.
  * Unanswered means settings stay on the device, which is the safe direction.
  */
 function deviceIsMine(): boolean {

@@ -19,12 +19,10 @@ export type GridRole = {
  *
  * Not a server concept — the server has one flat list and is right to. This is
  * presentation, like the grouping and the labels next door: a red edge on the
- * five rows where a mis-click is somebody else's problem. The catalogue already
- * says as much in prose ("the keys to the building", "the most dangerous thing
- * here"); this is that sentence in a form you can see while scanning.
+ * five rows where a mis-click is somebody else's problem.
  *
- * An id the server sends that is not in here simply draws plain, which is the
- * same way an undescribed permission behaves.
+ * An id the server sends that is not in here draws plain, the same way an
+ * undescribed permission behaves.
  */
 const DESTRUCTIVE = new Set([
   "replace_identity",
@@ -38,16 +36,15 @@ const DESTRUCTIVE = new Set([
  * The container's width, watched rather than read once.
  *
  * Two sources, and both are needed. The ResizeObserver catches the panel
- * changing size on its own — a sidebar opening, the dialog resizing — which the
- * window never hears about. The window listener catches the case the observer
- * misses here: this box sits inside ancestors with `overflow-x: auto`, and when
- * the window shrinks the layout resolves by letting content overflow rather
- * than by resizing this element's content box, so no observation fires. That
- * left the measurement pinned at its mount value — 708 while the element was
- * really 453 — and the narrow fallback never came.
+ * changing size on its own, which the window never hears about. The window
+ * listener catches what the observer misses: this box sits inside ancestors
+ * with `overflow-x: auto`, so when the window shrinks the layout resolves by
+ * letting content overflow rather than by resizing this element's content box,
+ * and no observation fires. That pinned the measurement at its mount value —
+ * 708 while the element was really 453 — and the narrow fallback never came.
  *
- * `getBoundingClientRect` rather than `contentRect` on both paths, so the two
- * sources cannot disagree about whether padding counts.
+ * `getBoundingClientRect` on both paths, so the two cannot disagree about
+ * whether padding counts.
  */
 function useContainerWidth(): [React.RefObject<HTMLDivElement | null>, number] {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -112,12 +109,11 @@ function PermissionName({ permission }: { permission: PermissionMeta }) {
  * Every role's permissions at once.
  *
  * Roles across, permissions down, so the policy is one thing you read rather
- * than six things you hold in your head. The list this replaced showed one
- * role at a time with every description expanded, which was about six rows on
- * screen and no way at all to compare two roles.
+ * than six things you hold in your head. The list this replaced showed one role
+ * at a time with every description expanded.
  *
  * Below `hasRoomForPermissionMatrix` the same state draws as a ladder instead —
- * see the component at the bottom of this file. Both edit the same drafts.
+ * the component at the bottom of this file. Both edit the same drafts.
  */
 export function RolePermissionGrid({
   roles,
@@ -393,10 +389,9 @@ function PermissionMatrix({
  * The same state, one role at a time, for a container too narrow for a grid.
  *
  * Each role shows only what it adds to the rank below it. That is not a
- * different model of the data — `auto_grant` only ever promotes and rank
- * ordering is what kicks and bans compare against, so "the one below, plus
- * this" is what a role already is. It happens to be the only shape that fits
- * on a phone, which is how it got here.
+ * different model of the data — `auto_grant` only ever promotes, and rank
+ * ordering is what kicks and bans compare against — so "the one below, plus
+ * this" is what a role already is.
  */
 function PermissionLadder({ groups, roles, held, onToggle, readOnlyRoleIds }: ViewProps) {
   const visible = new Set(groups.flatMap((g) => g.permissions.map((p) => p.id)));

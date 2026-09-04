@@ -61,13 +61,11 @@ function ThemedApp() {
   /* **The scale goes on the root, not on `.gryt-app`.** Base UI portals every
      dialog, menu, popover and tooltip to document.body, so those are siblings
      of `.gryt-app` rather than descendants — the slider scaled the sidebar and
-     the chat and left settings, menus and tooltips alone, and the app came
-     apart into two sizes.
+     the chat and left settings, menus and tooltips alone.
 
      `--chat-font-size` moves with it, since the autocompletes are popovers.
-
-     Safe for the backdrop, which is the thing to check: measured at 1440x900,
-     a `fixed inset-0` element is 1440x900 at zoom 1, 1.5 and 0.75. */
+     Measured at 1440x900, a `fixed inset-0` element is 1440x900 at zoom 1, 1.5
+     and 0.75, so the backdrop is safe. */
   useEffect(() => {
     const root = document.documentElement;
     root.style.zoom = String(uiScale);

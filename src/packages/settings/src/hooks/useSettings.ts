@@ -26,14 +26,12 @@ function useSettingsHook() {
    * Whether the stored settings have actually been read yet.
    *
    * Everything below defaults to something, and until the load has run those
-   * defaults are guesses rather than answers. That is fine for most of them,
-   * and wrong for anything that decides whether to show a first-run thing:
-   * `hasSeenWelcome` defaults to false, so without this the app is briefly
-   * certain that everybody is new.
+   * defaults are guesses. That is fine for most of them and wrong for anything
+   * deciding whether to show a first-run thing: `hasSeenWelcome` defaults to
+   * false, so without this the app is briefly certain that everybody is new.
    *
    * The window is not small. `useUserId` holds `userId` at null until Keycloak
-   * answers, on purpose, so the effect below does not even start until a
-   * network round trip has finished.
+   * answers, so the effect below does not start until a round trip has finished.
    */
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [showTour, setShowTour] = useState(false);
@@ -44,11 +42,10 @@ function useSettingsHook() {
   /**
    * Whether settings show everything or only what most people need.
    *
-   * Off by default, and off is the honest default: the panel had grown to the
-   * point where the essential controls sat between debug overlays and things
-   * nobody should touch without a reason. Turning it on reveals the rest in
-   * place rather than moving anything, so a setting somebody has been shown
-   * before does not wander off.
+   * Off by default: the panel had grown to the point where the essential
+   * controls sat between debug overlays and things nobody should touch without
+   * a reason. Turning it on reveals the rest in place rather than moving
+   * anything, so a setting somebody has been shown before does not wander off.
    */
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showDebugOverlay, setShowDebugOverlay] = useState(false);
@@ -123,8 +120,7 @@ function useSettingsHook() {
        * The old answer was "Unknown", which went out as the nickname on every
        * join — so strangers arrived on other people's servers called Unknown,
        * and since the generated avatar is seeded on the name, all of them had
-       * the same face. Written back rather than picked per load, because that
-       * face would otherwise change every launch. GRYT-846.
+       * the same face. Written back rather than picked per load. GRYT-846.
        */
       const stored = getUserValue<string>("nickname", "");
       const name = stored || pickRandomName();
@@ -430,12 +426,9 @@ function useSettingsHook() {
    * Takes its answer in an options object rather than a bare boolean, which is
    * defensive on purpose: this gets wired to `onOpenChange`, and a handler that
    * receives an event where it expected a flag reads it as truthy. An event
-   * object here yields `startTour: undefined`, so the accident is a skip — the
-   * quiet outcome rather than the app suddenly performing a tour nobody asked
-   * for.
+   * object here yields `startTour: undefined`, so the accident is a skip.
    *
-   * The tour still only runs for somebody who has not picked a nickname; asking
-   * for it does not force it on a returning user who already has one.
+   * The tour still only runs for somebody who has not picked a nickname.
    */
   function completeWelcome(options?: { startTour?: boolean }) {
     setHasSeenWelcome(true);

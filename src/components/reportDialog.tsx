@@ -17,12 +17,9 @@ import { useReportForm } from "../lib/reports/useReportForm";
 /**
  * Telling us something is broken, without leaving the app.
  *
- * This replaces two links that opened a browser: a Fider board for feedback and
- * a prefilled GitHub issue for bugs. Both asked somebody to sign in to a third
- * party before they could say anything, which is a wall in front of exactly the
- * people worth hearing from — and neither could carry the Electron version, the
- * bundled server's version, or the tail of the renderer log, which are the
- * fields that make a voice bug diagnosable.
+ * It carries the Electron version, the bundled server's version and the tail of
+ * the renderer log, which are the fields that make a voice bug diagnosable and
+ * which the prefilled GitHub issue it replaced could not.
  *
  * The mobile app has the same form, posting to the same service.
  */
@@ -50,12 +47,9 @@ export function ReportDialog() {
 }
 
 /**
- * The same words the mobile form uses, deliberately.
- *
- * Two clients asking for the same thing in different language reads as two
- * features. Mobile's wording is the considered one (GRYT-530) — the bug
- * prompt asks what you were doing, and the feedback prompt names the three
- * things people actually write in.
+ * The same words the mobile form uses, deliberately. Two clients asking for the
+ * same thing in different language reads as two features, and mobile's wording
+ * is the considered one (GRYT-530).
  */
 const COPY: Record<ReportType, { title: string; description: string; placeholder: string; send: string }> = {
   bug: {
@@ -173,16 +167,12 @@ function ReportForm({ type, onDone }: { type: ReportType; onDone: () => void }) 
 }
 
 /**
- * Everything that goes with what they wrote, and the payload itself, so
- * somebody describing a crash can see their build number and route are going
- * too.
+ * Everything that goes with what they wrote, and the payload itself.
  *
  * **The list is a summary; the JSON is the thing.** The exact object that will
  * be posted is one click away, and it is the same object rather than a second
- * one built for display.
- *
- * **The log tail is off unless asked for** — it is the one field that describes
- * the person rather than the build.
+ * one built for display. **The log tail is off unless asked for** — it is the
+ * one field that describes the person rather than the build.
  */
 function Attached({
   lines,
@@ -251,9 +241,6 @@ function Attached({
  *
  * **The title is the words mobile's toast already uses.** Two clients saying
  * "received" and "sent" for one event reads as two different things happening.
- *
- * Nothing here claims what happens next — that is a promise this dialog is in
- * no position to make.
  */
 function Sent({ type, onDone }: { type: ReportType; onDone: () => void }) {
   const bug = type === "bug";

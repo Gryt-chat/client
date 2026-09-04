@@ -5,10 +5,9 @@
  * anything the member controls — a person cannot spell their way into it, and a
  * bot cannot spell its way out.
  *
- * It sits beside the name everywhere a name appears, including on every message
- * rather than only in the member list. Somebody deciding whether to act on what
- * a message says is looking at the message; making them cross-reference a
- * sidebar is the gap this exists to close.
+ * It sits beside the name on every message rather than only in the member list.
+ * Somebody deciding whether to act on what a message says is looking at the
+ * message, not at a sidebar.
  */
 export function BotTag({ size = "normal" }: { size?: "normal" | "small" }) {
   return (

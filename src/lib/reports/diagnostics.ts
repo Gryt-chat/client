@@ -12,12 +12,10 @@ import { lastPlace, sessionUptimeSec } from "./session";
 /**
  * What the app knows about itself, for a report nobody should have to fill in.
  *
- * The service's README is blunt about which of these matter: app version, build
- * number and OS version are "the ones every bug report needs and nobody
- * remembers to include". The desktop build can answer more than that — Electron
+ * App version, build number and OS version are the ones every bug report needs
+ * and nobody remembers to include. The desktop build can answer more — Electron
  * and Chrome versions, whether it is running its own server, the tail of the
- * renderer log — and those are the fields that make a voice bug diagnosable.
- * None of them survive a round trip through a GitHub issue form.
+ * renderer log — and those are what make a voice bug diagnosable.
  *
  * Everything here is best-effort and nullable. `buildReport` drops what is
  * missing rather than sending a guess.

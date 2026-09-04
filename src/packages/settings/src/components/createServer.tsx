@@ -19,14 +19,11 @@ interface CreateServerPanelProps {
  *
  * This used to be the whole embedded-server manager — create form, running
  * card, logs, autostart, start and stop — reached through a dialog called "Add
- * a server". Managing something you already run is not adding one, and the two
- * jobs were taking turns in the same space depending on state you had no way
- * to predict from the outside. The manager lives in Settings → My servers now.
+ * a server". The manager lives in Settings → My servers now.
  *
  * Create finishes the job: it writes the config, starts the process and hands
- * the address back so the caller can join it. Previously it stopped after
- * writing the config and left a second button, Connect, as the thing that
- * actually got you there.
+ * the address back so the caller can join it. It used to stop after writing the
+ * config and leave a second button, Connect, as the thing that got you there.
  */
 export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelProps) {
   const { isAvailable, creating, createServer, suggestPort, checkPort } =

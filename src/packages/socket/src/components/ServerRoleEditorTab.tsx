@@ -57,8 +57,7 @@ type EditorState = {
  *
  * Ids are not renameable — every membership row and both joining defaults point
  * at one — so this runs once, when the role is first saved, and never again.
- * Deriving rather than asking means nobody has to be told what a slug is, and
- * it is why a new role is held locally until it has a name: creating it on the
+ * It is why a new role is held locally until it has a name: creating it on the
  * button press would mint `new-role-1a2b` and then be stuck with it.
  */
 function slugify(name: string): string {
@@ -75,21 +74,17 @@ const NEW_ROLE = "__new__";
 /**
  * Roles the grid draws but will not let you edit.
  *
- * `owner` is the only one. The server refuses to save it — it is the role that
- * can hand the server to somebody else — so an editable column would be a
- * column whose every change came back rejected. Shown rather than hidden,
- * because "what can the owner do" is a question with an answer and leaving the
- * column out would make the grid look like it was missing a role.
+ * `owner` is the only one, and the server refuses to save it — an editable
+ * column would be one whose every change came back rejected. Shown rather than
+ * hidden, because leaving it out would make the grid look like it was missing
+ * a role.
  */
 const READ_ONLY_ROLES = new Set(["owner"]);
 
 /**
- * One row of the role list, draggable.
- *
- * The handle is the whole row. A role list is short and the rows are already
- * one tap target each, so a separate grip would be a second thing to hit in a
- * 220px column — and dnd-kit's pointer sensor only starts a drag after 5px of
- * movement, so a click still selects.
+ * One row of the role list, draggable. The handle is the whole row: a role list
+ * is short and the rows are already one tap target each, and dnd-kit's pointer
+ * sensor only starts a drag after 5px of movement, so a click still selects.
  */
 function SortableRole({
   id,
@@ -238,10 +233,10 @@ export function ServerRoleEditorTab({
   /**
    * Permission edits for every role, keyed by role id.
    *
-   * The grid edits all of them at once, and the save event takes one role and
-   * its whole permission list — so a matrix that changed three roles is three
-   * saves. `draft` above is still the *settings* of the one selected role: its
-   * name, colour, rank and auto-grant, none of which the grid touches.
+   * The grid edits all of them at once and the save event takes one role with
+   * its whole permission list, so a matrix that changed three roles is three
+   * saves. `draft` above is still the *settings* of the one selected role, none
+   * of which the grid touches.
    *
    * Seeded from the server's answer and reset by it, so somebody else saving
    * while this is open replaces what is here rather than merging into it.
@@ -403,9 +398,8 @@ export function ServerRoleEditorTab({
    * Write one role, whole.
    *
    * The server's save event takes a role and everything about it, so every
-   * commit below goes through here rather than each caller assembling the same
-   * seven fields. `permissions` comes from the drafts because the grid may have
-   * moved them since the server last spoke.
+   * commit below goes through here. `permissions` comes from the drafts because
+   * the grid may have moved them since the server last spoke.
    */
   const saveRole = (role: RoleDefinition, roleId: string, permissions?: string[]) => {
     pendingSaves.current += 1;
@@ -448,15 +442,12 @@ export function ServerRoleEditorTab({
     if (!state || !draft) return;
 
     /*
-     * The patch, and why it has to be here.
-     *
      * A field that commits on blur has already told React about its change by
-     * the time focus leaves it, so `draft` is current. A swatch does both in
-     * one press — set the colour, then save — and `setDraft` has not landed
-     * yet when the save runs. Reading `draft` there gives the colour from
-     * before the press, `dirty` comes back false, and the write never happens:
-     * the ring moved and the database did not. So the caller hands over what
-     * it just set.
+     * the time focus leaves it, so `draft` is current. A swatch does both in one
+     * press — set the colour, then save — and `setDraft` has not landed when the
+     * save runs: reading `draft` there gives the colour from before the press,
+     * `dirty` comes back false, and the ring moves while the database does not.
+     * So the caller hands over what it just set.
      */
     const next = patch ? { ...draft, ...patch } : draft;
     const changed = patch
@@ -482,10 +473,9 @@ export function ServerRoleEditorTab({
    * The other way out of a field: closing the dialog.
    *
    * Blur covers moving between fields and clicking another role. It does not
-   * cover Escape, or the X, because the input is unmounted rather than left —
-   * and losing an edit to closing the window is the same lost edit that the
-   * Save button used to cause. A ref, because the effect has to run on unmount
-   * only and would otherwise close over the first render's draft.
+   * cover Escape or the X, because the input is unmounted rather than left. A
+   * ref, because the effect has to run on unmount only and would otherwise
+   * close over the first render's draft.
    */
   const commitRef = useRef(commitSettings);
   commitRef.current = commitSettings;
@@ -496,13 +486,9 @@ export function ServerRoleEditorTab({
   );
 
   /**
-   * Dropping a role somewhere writes the order back as ranks. The server still
-   * compares rank; what goes is the *number* on screen — an operator arranges a
-   * list and the numbers follow.
-   *
-   * **Spaced by ten**, so a role added later, or moved by somebody else while
-   * this was open, does not need every other row rewritten. Owner keeps 100 and
-   * never moves, since the server refuses to save it.
+   * Dropping a role somewhere writes the order back as ranks. **Spaced by
+   * ten** — see `ranksAfterMove`. Owner keeps 100 and never moves, since the
+   * server refuses to save it.
    */
   const handleReorder = (event: DragEndEvent) => {
     const { active, over } = event;

@@ -31,12 +31,10 @@ function getProbe(): CanvasRenderingContext2D | null {
 /**
  * A CSS custom property as `#rrggbb`.
  *
- * Via a canvas pixel rather than by reading the string back, because the
- * string is whatever the theme author wrote. The shipped palette is hex, but
- * `createGrytTheme` output and imported themes are not promised to be —
- * `oklch()`, `color()` and plain colour names all serialise differently, and
- * Electron throws on anything it cannot parse. Painting one pixel and reading
- * it back gives sRGB bytes no matter what went in.
+ * Via a canvas pixel rather than by reading the string back, because the string
+ * is whatever the theme author wrote — `oklch()`, `color()` and plain colour
+ * names all serialise differently, and Electron throws on anything it cannot
+ * parse. Painting one pixel and reading it back gives sRGB bytes.
  */
 function resolveToHex(variable: string): string | null {
   const raw = getComputedStyle(document.documentElement)

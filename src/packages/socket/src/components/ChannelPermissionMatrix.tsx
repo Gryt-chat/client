@@ -16,14 +16,12 @@ import { describePermission } from "../lib/permissions";
  * What one channel changes, per role.
  *
  * Deliberately not `RolePermissionGrid`. That one draws whether a role holds a
- * permission, which is a checkbox: on or off. This draws whether a channel
- * *changes* it, which is three states, and the middle one has to say what it is
- * inheriting or the grid is unreadable — a blank cell would mean both "allowed
- * everywhere" and "denied everywhere" depending on the role, which is exactly
- * the thing somebody opens this to find out.
+ * permission, which is on or off. This draws whether a channel *changes* it,
+ * which is three states, and the middle one has to say what it is inheriting —
+ * a blank cell would mean both "allowed everywhere" and "denied everywhere"
+ * depending on the role, which is what somebody opens this to find out.
  *
- * Roles across and permissions down, matching the role editor, so the two read
- * the same way round.
+ * Roles across and permissions down, matching the role editor.
  */
 
 const CELL_LABEL: Record<CellState, string> = {

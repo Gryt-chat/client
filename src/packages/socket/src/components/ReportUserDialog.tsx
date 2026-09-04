@@ -4,10 +4,9 @@ import { useEffect, useState } from "react";
 /**
  * Reporting a person, as opposed to reporting one thing they said.
  *
- * A message report needs no explanation — the message is attached and the
- * moderator reads it. This one has nothing attached, so the reason is required
- * and the button stays off until there is one. A card in the queue saying only
- * that somebody is unhappy cannot be acted on.
+ * A message report needs no explanation — the message is attached. This one has
+ * nothing attached, so the reason is required and the button stays off until
+ * there is one. A card saying only that somebody is unhappy cannot be acted on.
  *
  * **Blocking is offered here, and defaults to on.** The report goes to whoever
  * is awake to read it, which at three in the morning is nobody; the block takes

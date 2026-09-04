@@ -18,14 +18,12 @@ import {
  * A logo for each site `@gryt/core` knows by name.
  *
  * The hostnames, the brand colours and the path rules live in the package,
- * because the phone needs all three and was carrying its own copy of them. The
- * artwork cannot go with them: a logo is a React component here and an SVG path
- * or a favicon there, and the package compiles without a DOM on purpose.
+ * because the phone needs all three. The artwork cannot go with them: a logo is
+ * a React component here and an SVG path there, and the package compiles
+ * without a DOM on purpose.
  *
- * So this is what stays app-side, keyed by the provider `id`. A provider with
- * no entry falls back to the site's own favicon, which is what every site
- * outside the list gets anyway — so adding a provider to the package without
- * adding a logo here degrades rather than breaks.
+ * A provider with no entry falls back to the site's own favicon, so adding one
+ * to the package without adding a logo here degrades rather than breaks.
  */
 export const PROVIDER_ICONS: Record<string, IconType> = {
   github: SiGithub,

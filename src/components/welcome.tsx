@@ -12,9 +12,6 @@ import { useSettings } from "@/settings";
  * The first thing anybody sees, drawn as a message rather than a dialog — an
  * avatar, a name, a role and a bubble, so a first-run person learns the app's
  * main idiom by being greeted in it.
- *
- * The words are the point, and anything undercutting them goes: the confetti
- * did, because fireworks over an apology reads as two products talking.
  */
 export function Welcome() {
   const { hasSeenWelcome, settingsLoaded, completeWelcome } = useSettings();

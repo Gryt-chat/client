@@ -1,27 +1,21 @@
 import type { Clients } from "../types/clients";
 
 /**
- * Putting the conversation back into a call the server would not name.
+ * Putting the conversation id back onto the clients the server would not name.
  *
- * The server blanks a conversation id out of `members:list` and
- * `server:clients` deliberately: both go to every member of the server, and a
- * one-to-one id is a hash of the sorted pair, so anybody holding a member list
- * could read back who is talking to whom.
- *
- * That leaves this client unable to see its own call. Everything here groups
- * participants by `voiceChannelId` — `VoiceView` filters on it, the channel
- * list draws people under it — and blanked, nothing matches: a call drew nobody
- * in it, including yourself.
+ * The server blanks it out of `members:list` and `server:clients` deliberately:
+ * both go to every member of the server, and a one-to-one id is a hash of the
+ * sorted pair, so anybody holding a member list could read back who is talking
+ * to whom. Blanked, nothing downstream matches on `voiceChannelId` and a call
+ * drew nobody in it, including yourself.
  *
  * `voice:call:members` closes that. The server sends it only into the call's
  * own socket.io room, so receiving it is itself the proof of being allowed to
- * know, and this writes the id back onto the clients it names. Nothing
- * downstream has to learn what a conversation is.
+ * know.
  *
- * Kept apart from the socket wiring because the rules are small and worth
- * asserting: the memberships are remembered, so they survive the next
- * `server:clients` re-blanking them, and a member who has since left the room
- * has their id taken away again rather than left behind.
+ * The memberships are remembered so they survive the next `server:clients`
+ * re-blanking them, and a member who has since left the room has their id taken
+ * away again rather than left behind.
  */
 
 /** Who is in each conversation call, as this client last heard. */

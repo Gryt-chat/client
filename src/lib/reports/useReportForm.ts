@@ -8,12 +8,12 @@ import { singletonHook } from "@/common";
  *
  * A singleton because the two rows that open it are in different trees — the
  * avatar menu in the sidebar, and About inside the settings modal — and the
- * form itself is mounted once at the app root next to the other dialogs.
+ * form itself is mounted once at the app root.
  *
  * The type is the row that opened it. "Give feedback" and "Report a bug" are
  * the same form with a different label on the service, and asking somebody to
- * pick again after they already pressed one of two buttons is asking a question
- * that has been answered.
+ * pick again after they pressed one of two buttons is asking a question that
+ * has been answered.
  */
 
 export interface ReportForm {

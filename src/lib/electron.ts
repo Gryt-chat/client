@@ -213,12 +213,8 @@ export interface ElectronAPI {
    * Encrypt and decrypt with the OS keychain (GRYT-256).
    *
    * Not a store — the sealed blob stays wherever the caller already keeps it.
-   * The OS holds the key and ties it to the user's login, so this protects
-   * something at rest without asking for a password. Desktop only; the web
-   * client has no equivalent.
-   *
-   * `secretsAvailable` is false on a Linux box with no keyring, which plenty of
-   * self-hosters will be, so every caller needs a path for that.
+   * Desktop only. `secretsAvailable` is false on a Linux box with no keyring,
+   * which plenty of self-hosters will be, so every caller needs a path for it.
    */
   secretsAvailable(): Promise<boolean>;
   sealSecret(plain: string): Promise<string>;

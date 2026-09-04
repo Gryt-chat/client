@@ -18,12 +18,10 @@ import { MentionAutocomplete, type MentionMember } from "./MentionAutocomplete";
 /**
  * The server's cap, mirrored so the counter and the send button can see it.
  *
- * Two copies of a number is how they drift, and there is no shared package
- * between the client and the server to hold one — they are separate
- * repositories that meet over a socket. The server is the one that enforces it
+ * There is no shared package to hold one copy — client and server are separate
+ * repositories that meet over a socket. The server enforces it
  * (`utils/messageLimits.ts`); if this drifts low the composer nags early, and
- * if it drifts high the send is refused with `message_too_long`. Neither loses
- * anybody's text.
+ * if it drifts high the send is refused with `message_too_long`.
  */
 const MESSAGE_MAX_LENGTH = 4000;
 
@@ -52,9 +50,8 @@ interface ChatEditorProps {
    * Whether attaching is offered at all.
    *
    * Separate from `disabled`, because a role can be allowed to talk and not to
-   * upload — which is the shape a public server actually wants. Hiding the clip
-   * is the whole of the client's part; the server refuses the upload and the
-   * message either way.
+   * upload. Hiding the clip is the whole of the client's part; the server
+   * refuses the upload and the message either way.
    */
   allowFiles?: boolean;
   maxFileSize?: number | null;

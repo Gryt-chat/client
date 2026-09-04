@@ -25,11 +25,10 @@ const ROOM_GRANT_TIMEOUT_MS = 8000;
  * What is broken between here and one server, in the order the connection
  * happens.
  *
- * Written for somebody who has been told "voice does not work" and has no way
- * to find out why. The value is the per-address breakdown under voice
- * signalling: a server advertises several addresses and any given person can
- * usually reach some of them, so "none of these three answered" is a different
- * problem from "the LAN one did not, which is expected from outside".
+ * The value is the per-address breakdown under voice signalling: a server
+ * advertises several addresses and any given person can usually reach some of
+ * them, so "none of these three answered" is a different problem from "the LAN
+ * one did not, which is expected from outside".
  */
 
 const ICON: Record<CheckStatus, ReactNode> = {
@@ -125,9 +124,8 @@ export function ServerDoctor({
    * Ask the server for a room with nobody in it.
    *
    * Resolves to the grant or rejects with the server's own words, which are
-   * worth keeping: "you do not have permission to join voice on this server"
-   * is a different problem from a server that cannot reach its own SFU, and
-   * both arrive here.
+   * worth keeping: "you do not have permission to join voice on this server" is
+   * a different problem from a server that cannot reach its own SFU.
    */
   const requestDoctorRoom = useCallback(
     () =>

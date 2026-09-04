@@ -40,11 +40,8 @@ export function useAdminActions({
    * refreshes an expiring token first; mute, deafen and role changes used a
    * memoised `accessToken` that only re-read when `tokenRevision` changed, so
    * an expired token made those three fail server-side with an error nothing
-   * surfaced.
-   *
-   * The returned promise was also dropped, so "no access token" meant the emit
-   * silently never happened and the moderator saw exactly nothing. Now it says
-   * so.
+   * surfaced. The returned promise was dropped too, so "no access token" meant
+   * the emit silently never happened.
    */
   const send = useCallback(
     async (event: string, payload: Record<string, unknown>) => {
@@ -94,8 +91,7 @@ export function useAdminActions({
    *
    * Banning somebody who arrived on a still-live invite achieves less than it
    * looks: an identity with no account behind it costs nothing to replace, so
-   * they can come back on a new key using the same code. The moderator can
-   * only weigh that if they are told.
+   * they can come back on a new key using the same code.
    *
    * Resolves to null rather than throwing. A dialog that cannot answer this
    * should still let somebody be banned.
@@ -137,10 +133,9 @@ export function useAdminActions({
    * Give one role or take it away, leaving the rest.
    *
    * Was `handleChangeRole`, which sent `server:roles:set` — replace everything
-   * they hold with this one. That is still what the server does with `set`, and
-   * still the right thing for a demotion, but it is the wrong default now that
-   * roles stack: an operator giving somebody a second role would have silently
-   * taken away the first.
+   * they hold with this one. That is still right for a demotion, and the wrong
+   * default now that roles stack: an operator giving somebody a second role
+   * would have silently taken away the first.
    */
   const handleToggleRole = useCallback((targetServerUserId: string, role: string, hold: boolean) => {
     void send(hold ? "server:roles:add" : "server:roles:remove", { serverUserId: targetServerUserId, role });

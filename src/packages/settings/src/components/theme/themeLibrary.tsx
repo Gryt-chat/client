@@ -26,10 +26,8 @@ const GENERATOR = "https://ui.gryt.chat/theme/generator";
  * The themes on this machine, and the one in use.
  *
  * The built-in half comes from @gryt/ui rather than from a list here, so a
- * newer library brings new ones with it and nobody has to copy a palette
- * across. They cannot be deleted — there has to be something to go back to —
- * but any of them opens in the generator, for somebody who wants Dracula with
- * a different accent.
+ * newer library brings new ones with it. They cannot be deleted — there has to
+ * be something to go back to — but any of them opens in the generator.
  */
 export function ThemeLibrary() {
   const { themes, activeId, setActiveTheme, deleteTheme } = useCustomThemes();

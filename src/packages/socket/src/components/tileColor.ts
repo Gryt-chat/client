@@ -4,8 +4,7 @@
  * **Its own module so `scripts/check-tile-contrast.mjs` can import it.** White
  * nickname text sits on these, so the lightness ceiling is a contrast decision,
  * and a test that reimplements the maths proves nothing — the first version of
- * that check passed with the clamp deleted. Nothing here touches React or a
- * bundler alias, which is what made importing the old home impossible.
+ * that check passed with the clamp deleted.
  */
 
 /** A tile's colour, as the three parts of an `hsl()`. */
@@ -61,12 +60,10 @@ const WHITE_TEXT_CONTRAST = 4.5;
  *
  * A single ceiling cannot do this job: at the same lightness, yellow is roughly
  * twice as bright as blue. The old tile was a fixed `hsl(h 48% 42%)`, which is
- * 6.7:1 on blue and **2.8:1 on yellow** — so the yellow tiles have been failing
- * AA all along, and quietly, because nothing measured them.
+ * 6.7:1 on blue and **2.8:1 on yellow** — so the yellow tiles had been failing
+ * AA all along, quietly, because nothing measured them.
  *
- * Bisected rather than tabulated so it follows the saturation it is actually
- * given. Twenty rounds is well under a tenth of a percent, and the whole thing
- * is a few multiplications on a value that changes when somebody's avatar does.
+ * Bisected rather than tabulated so it follows the saturation it is given.
  */
 export function maxLightForWhiteText(hue: number, sat: number): number {
   let low = 0;
@@ -84,9 +81,8 @@ export function maxLightForWhiteText(hue: number, sat: number): number {
 
 /**
  * The avatar's own colour, as a tile. **Taken whole and banded, never snapped
- * to `TILE_HUES`** — snapping made a bright green and a dark green one tile,
- * so the grid read as arbitrary (GRYT-648). Hue, saturation and lightness are
- * all the avatar's, held inside a range the panel can carry.
+ * to `TILE_HUES`** — snapping made a bright green and a dark green one tile, so
+ * the grid read as arbitrary (GRYT-648).
  *
  * Null for a grey avatar, whose hue is rounding noise, and for anything
  * malformed. The caller falls back to the id hash.

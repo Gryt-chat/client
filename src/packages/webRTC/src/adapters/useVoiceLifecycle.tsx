@@ -12,9 +12,8 @@ import { useVoiceSounds } from "./useVoiceSounds";
  * engine's.
  *
  * All three of these used to live inside `useSFU`, and all three were left out
- * of the package deliberately: they need the server list, the DOM, or a decision
- * about what the person should hear, and the engine has no business with any of
- * them.
+ * of the package deliberately: they need the server list, the DOM, or a
+ * decision about what the person should hear.
  *
  * Rendered inside `VoiceProvider`, below `VoiceConfigProvider`, because it
  * consumes `useSFU`.
@@ -59,10 +58,9 @@ export function useVoiceLifecycle() {
    * Where the call was, kept because the engine forgets before the toast runs.
    *
    * Giving up clears the whole connection state — `serverId: null`,
-   * `roomId: null` — in the same update that sets "reconnect-failed". So by the
-   * time the effect below reads `currentServerConnected` it is "", and the one
-   * case that most needs to say which server is the one that could not. These
-   * latch the last non-empty values instead.
+   * `roomId: null` — in the same update that sets "reconnect-failed", so by the
+   * time the effect below reads `currentServerConnected` it is "". These latch
+   * the last non-empty values instead.
    */
   const lastHost = useRef("");
   const lastChannelId = useRef("");
@@ -72,21 +70,16 @@ export function useVoiceLifecycle() {
   }, [currentServerConnected, currentChannelConnected]);
 
   /*
-   * Telling somebody the call dropped, which the engine deliberately does not
-   * do itself. It reports that it gave up; whether that is worth interrupting
-   * anybody is the app's call.
+   * Telling somebody the call dropped, which the engine deliberately leaves to
+   * the app — it reports that it gave up.
    *
-   * Only once the engine has actually stopped trying, and that is the fix for
-   * GRYT-668 rather than a nicety. `connectionError` is set the moment the peer
-   * connection fails, and the engine's own recovery then retries up to five
-   * times — so a blip that healed on the first retry, 1.5 seconds later, still
-   * put "this network may not allow voice traffic through" on screen. Somebody
-   * reported voice as broken while their call was up and working, and the toast
-   * had blamed their network for a STUN response that arrived a moment late.
+   * **Only once the engine has actually stopped trying** (GRYT-668).
+   * `connectionError` is set the moment the peer connection fails and the
+   * engine then retries five times, so a blip that healed 1.5 seconds later
+   * still blamed somebody's network for a late STUN response.
    *
-   * DISCONNECTED is the engine saying it is done: FAILED always moves on to
-   * RECONNECTING while a retry is possible, and only the give-up path lands
-   * here with an error attached. That is the contract useSFU documents.
+   * DISCONNECTED is the engine saying it is done: FAILED moves on to
+   * RECONNECTING while a retry is possible, which is `useSFU`'s contract.
    */
   useEffect(() => {
     if (!connectionError) return;
@@ -102,13 +95,11 @@ export function useVoiceLifecycle() {
     /*
      * Which words. Whether the call ever came up is the difference between a
      * network that cannot carry voice at all and one that dropped it, and the
-     * engine cannot say — "reconnect-failed" covers both. This has watched the
-     * connection state the whole time, so it can.
+     * engine cannot say — "reconnect-failed" covers both.
      *
      * Gryt has no relay, on purpose, so a network that will not carry a direct
      * path cannot carry a call — carrier-grade NAT on mobile data being the
-     * usual one. That guess is only fair after every attempt has failed, which
-     * is the other half of why this waits.
+     * usual one. That guess is only fair after every attempt has failed.
      */
     const message =
       connectionError === "reconnect-failed"

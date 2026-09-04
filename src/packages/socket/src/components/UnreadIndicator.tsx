@@ -4,13 +4,11 @@
  * Two states rather than one, because they answer different questions. A dot
  * means something happened here; a number means somebody named you, and how
  * many times. On a server with a busy general channel the dot is always lit and
- * stops carrying information — the question worth answering is whether anyone
- * asked you something, and that is the one that used to be invisible.
+ * stops carrying information.
  *
- * One component for both, used by the channel list and the direct message list.
- * They drew the same eight-pixel dot from two copies of the same inline style,
- * and a mention count added to one of them would have been a channel list that
- * counted and a DM list that did not.
+ * One component for both lists. They drew the same eight-pixel dot from two
+ * copies of the same inline style, and a mention count added to one of them
+ * would have been a channel list that counted and a DM list that did not.
  */
 export function UnreadIndicator({
   unread,

@@ -1,16 +1,14 @@
 /**
  * Search index for the settings modal.
  *
- * Every entry points at a control that exists in the UI. The `id` is the anchor
- * SettingGroup renders, derived from the title by the same `settingAnchorId`
- * below, so a search hit can always scroll to its control.
+ * The `id` is the anchor SettingGroup renders, derived from the title by the
+ * same `settingAnchorId` below, so a search hit can always scroll to its
+ * control. Entries flagged `panel: true` are whole panels rather than setting
+ * rows, so they match by name.
  *
  * Titles here are the stable part only. Several settings render their value in
  * the title ("Microphone Volume: 50%"), so the anchor uses the text before the
  * colon and stays put as the value changes.
- *
- * Entries flagged `panel: true` are whole panels with bespoke UI rather than
- * setting rows, so they match by name and land you on the panel.
  *
  * Generated from the title/description props in the settings components. If a
  * title changes and this is not updated, SettingGroup logs a warning in dev
@@ -97,12 +95,8 @@ export const SETTINGS_INDEX: SettingsIndexEntry[] = [
 /**
  * Case-insensitive match across titles, descriptions and section names.
  *
- * Results come back in the order the settings appear on screen — destinations
- * in sidebar order, then controls in the order their panel renders them —
- * rather than by how well each one matched. Scanning results then feels like
- * scanning the panel, and two results that sit next to each other in the list
- * sit next to each other in the UI.
- *
+ * Results come back in the order the settings appear on screen rather than by
+ * how well each one matched, so scanning results feels like scanning the panel.
  * The trade-off is that a description-only match can appear above an exact
  * title match. SETTINGS_INDEX is stored in render order, so position in that
  * array is the sort key.

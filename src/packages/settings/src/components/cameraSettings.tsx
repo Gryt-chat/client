@@ -50,13 +50,10 @@ export function CameraSettings() {
    *
    * The chip below used to read `track.getSettings()`, which is the raw camera
    * track — before the encoder gets to it. What goes out is whatever survives
-   * the outbound sender: the constraints, the encoding caps, and any
-   * bandwidth- or CPU-driven downscaling the encoder does on its own. Those
-   * are routinely different numbers, so somebody checking their own preview to
-   * judge quality got a confident wrong answer (GRYT-31).
-   *
-   * `useVideoStats` already reads `outbound-rtp` for the debug overlay and
-   * polls once a second, which is also the rate the old chip refreshed at.
+   * the outbound sender: the constraints, the encoding caps, and any bandwidth-
+   * or CPU-driven downscaling the encoder does on its own. Those are routinely
+   * different numbers, so somebody checking their own preview to judge quality
+   * got a confident wrong answer (GRYT-31).
    */
   const { outbound } = useVideoStats(cameraEnabled);
   const sent = outbound.find((o) => o.label === "camera") ?? null;

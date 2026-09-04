@@ -1,33 +1,19 @@
 /**
  * Chat from the fake participants, for looking at messages you cannot easily
- * make yourself — and, since GRYT-649, at a channel that looks used.
- *
- * Everything a message can be — a mention, an emoji, a link with a preview, a
- * wall of text, a reply — takes a second person to produce, and the server
- * allows one connection per user. This invents the second person.
+ * make yourself, and at a channel that looks used (GRYT-649). The server allows
+ * one connection per user; this invents the second person.
  *
  * Delivered by calling the client's own `chat:new` listeners rather than by
  * appending to the rendered list. That is the difference between seeing a
  * message and exercising one: the real handler is what plays the sound, marks
- * the channel unread, bumps the badge and writes the cache, and none of that
- * happens if you only push a row into an array. Nothing is sent to the server,
- * so nobody else sees any of it and nothing is stored.
+ * the channel unread, bumps the badge and writes the cache. Nothing is sent to
+ * the server, so nobody else sees any of it and nothing is stored.
  *
- * It runs until stopped. That is deliberate — a fixture you have to start is
- * one you remember is on — but it does mean the Developer panel owns the only
- * off switch, so it is a button rather than a slider that can be left anywhere.
- *
- * **It plays conversations rather than firing lines.** The first version picked
- * a random person and a random template on a fixed interval, which covered the
- * layouts it was written for and read like a machine: nobody answered anybody,
- * and every message landed on the same beat. Now a script is picked, the same
- * people play it through, and the gaps come from what is being said — a "hehe"
- * lands in half a second, a paragraph takes as long as it would take to type.
- * Two people talk over each other, and messages get reacted to.
- *
- * The templates the old version had are still here, as one-line scripts. They
- * exist to exercise code blocks, link previews, mentions and wrapping, and a
- * prettier conversation that stopped covering those would be a downgrade.
+ * It plays scripted conversations rather than firing random lines on a fixed
+ * interval, so the gaps come from what is being said. The old templates are
+ * still here as one-line scripts: they exist to exercise code blocks, link
+ * previews, mentions and wrapping, and a prettier conversation that stopped
+ * covering those would be a downgrade.
  */
 import { useEffect, useRef } from "react";
 

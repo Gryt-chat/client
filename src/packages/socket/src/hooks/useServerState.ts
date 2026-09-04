@@ -51,10 +51,10 @@ type UseServerStateResult = {
   /**
    * The direct message being read, if one is.
    *
-   * Kept apart from `selectedChannelId` rather than folded into it. The effect
-   * below puts the selection back on a real channel whenever it is not one, so
-   * that a deleted channel does not leave the view pointing at nothing — a DM
-   * id stored there would be bounced out by that on the next render.
+   * Kept apart from `selectedChannelId`. The effect below puts the selection
+   * back on a real channel whenever it is not one, so that a deleted channel
+   * does not leave the view pointing at nothing — a DM id stored there would be
+   * bounced out by that on the next render.
    */
   selectedDmId: string | null;
   setSelectedDmId: Dispatch<SetStateAction<string | null>>;

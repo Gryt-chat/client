@@ -8,13 +8,11 @@ import type { Servers } from "./types/server";
  *
  * `serverOrder` only lists hosts that have been dragged at least once, and it
  * goes on listing hosts that have since been removed, so neither list is usable
- * on its own. Anything the order does not name keeps the position it has in the
+ * on its own. Anything the order does not name keeps its position in the
  * servers map, which is the order those servers were added in.
  *
- * Its own module, rather than a helper inside the hook that owns
- * `serverOrder`, because two callers in two different hooks need the same
+ * Its own module because two callers in two different hooks need the same
  * answer: the rail renders this, and the launch focus opens the first of it.
- * Written out twice, the two agree right up until somebody changes one.
  */
 export function orderServerHosts(
   servers: Servers,

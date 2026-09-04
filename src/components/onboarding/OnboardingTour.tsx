@@ -19,19 +19,15 @@ const CARD_WIDTH = 320;
  * How long a step is allowed to wait for a target that is on its way.
  *
  * A step that opens a modal has no target for a frame or two, which is
- * indistinguishable from a target that will never arrive. Waiting makes the
- * first case work; the ceiling keeps the second from stranding anybody on a
- * step that cannot render, which is what skipping was there to prevent.
+ * indistinguishable from a target that will never arrive. The ceiling keeps the
+ * second case from stranding anybody on a step that cannot render.
  */
 const TARGET_WAIT_MS = 2500;
 
 /**
- * The beats of a step change, and they are deliberately unhurried.
- *
- * "The settings panel just appears, and when you hit next the account tab is
- * just there — no animations, no delay, the human brain cant watch that fast."
- * Every one of these is there to be followed by an eye rather than to be over
- * quickly.
+ * The beats of a step change, and they are deliberately unhurried. "No
+ * animations, no delay, the human brain cant watch that fast" — every one of
+ * these is there to be followed by an eye rather than to be over quickly.
  */
 /** Focus off the old thing before anything moves. */
 const FADE_MS = 260;
@@ -52,14 +48,6 @@ interface Rect {
   height: number;
 }
 
-/**
- * Press a control the way a person does.
- *
- * Radix opens menus and dialogs off pointerdown, not off a synthetic click, so
- * a bare element.click() moved the drawing without the app noticing. These are
- * real pointer events, which is why the menu now actually opens and the tour
- * can stop pretending.
- */
 /**
  * Presses a control for real, **with a click and nothing else**. Base UI opens
  * a menu on pointerdown, so sending the pointer pair and then a click toggles
@@ -273,12 +261,10 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
   // Re-measure on anything that can move the target. A coach mark pointing at
   // where a button used to be is worse than no coach mark.
   //
-  // A target that is absent or zero-sized is waited for, then skipped. Skipping
-  // immediately is what the first version did, and it is still the right end
-  // state — the voice controls are 0x0 until a connection exists, and a step
-  // that can never render must not kill the tour. But a step that just opened a
-  // modal looks exactly like that for a frame or two, so it gets TARGET_WAIT_MS
-  // before being given up on.
+  // A target that is absent or zero-sized is waited for, then skipped: the
+  // voice controls are 0x0 until a connection exists and a step that can never
+  // render must not kill the tour, but a step that just opened a modal looks
+  // exactly the same for a frame or two, so it gets TARGET_WAIT_MS first.
   const measure = useCallback(() => {
     if (!step) {
       return;
@@ -321,12 +307,10 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
   // The observers below only fire on layout the app happens to do, and a target
   // inside a modal moves without producing any: switching the settings
   // destination re-flows the panel while the body stays exactly the same size,
-  // so nothing fires and the spotlight stays where the last target was. It sat
-  // on "Addons" while pointing at the sign-in button.
+  // so the spotlight sat on "Addons" while pointing at the sign-in button.
   //
-  // So this runs for as long as the tour does, not just while waiting for a
-  // target to appear. A getBoundingClientRect every 60ms costs nothing next to
-  // being wrong, and measure() only sets state when the rect has moved.
+  // So this polls for as long as the tour does, not just while waiting for a
+  // target to appear. measure() only sets state when the rect has moved.
   useEffect(() => {
     const id = window.setInterval(measure, TARGET_POLL_MS);
     return () => window.clearInterval(id);

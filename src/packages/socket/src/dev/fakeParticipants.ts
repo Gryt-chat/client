@@ -14,11 +14,8 @@
  *   ?fake=4&fakedeaf=1   ...and the last is deafened
  *   ?fake=4&fakespeak=0  ...none of whom talk
  *
- * The screen share is a real MediaStream off a canvas, not a placeholder, so
- * the tile takes the same code path a real share does — <video> element,
- * object-fit contain, the lot. Speech is the same idea and lives in
- * fakeSpeech.ts: a real audio track per participant, ramped like someone
- * talking, read by the analyser the halo and the ring already use.
+ * The screen share is a real MediaStream off a canvas, so the tile takes the
+ * same code path a real share does. Speech is the same idea, in fakeSpeech.ts.
  */
 import type { MemberInfo } from "../components/MemberSidebar";
 import type { Client, UserStatus } from "../types/clients";

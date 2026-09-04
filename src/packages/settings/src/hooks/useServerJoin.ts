@@ -40,10 +40,9 @@ export type FetchInfo = {
  * Give up on /info after this long.
  *
  * Without a deadline the fetch runs until the OS gives up on the TCP connect,
- * which is over a minute on macOS — a minute of a spinner with nothing
- * explaining it. A server that advertises an address it does not listen on,
- * which the dev servers do by binding loopback while announcing their
- * hostname, hits this every time.
+ * which is over a minute on macOS. A server that advertises an address it does
+ * not listen on — which the dev servers do, by binding loopback while
+ * announcing their hostname — hits this every time.
  */
 export const INFO_TIMEOUT_MS = 8000;
 

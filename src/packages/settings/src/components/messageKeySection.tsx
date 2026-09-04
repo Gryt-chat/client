@@ -22,8 +22,7 @@ import {
  * showing a key that was not yours — a hostile-server warning raised by your
  * own laptop.
  *
- * **Guests are not offered this.** They already have the 24 words, which do the
- * same job and need nothing stored anywhere.
+ * **Guests are not offered this.** They already have the 24 words.
  */
 export function MessageKeySection() {
   const [vault, setVault] = useState<SealedVault | null | undefined>(undefined);

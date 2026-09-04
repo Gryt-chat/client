@@ -17,8 +17,7 @@ import { ThemeLibrary } from "./themeLibrary";
  *
  * A control that names a colour without showing it makes you apply it and look,
  * then come back — which is why the theme list draws each one rather than
- * listing its name, and why importing a theme shows it on real components
- * before it is saved.
+ * listing its name.
  */
 export function AppearanceSettings() {
   const {

@@ -23,11 +23,8 @@ import { SettingsContainer } from "./settingsComponents";
 /**
  * The servers you run, as opposed to the ones you have joined.
  *
- * This was the other half of the add-server dialog: a running-server card with
- * start, stop, logs and autostart, shown or not depending on state, under a
- * heading that said "Add a server". Managing something you already run is a
- * different job from adding one, and it belongs where you go to change things
- * rather than where you go to get somewhere.
+ * This was the other half of the add-server dialog: a running-server card
+ * shown or not depending on state, under a heading that said "Add a server".
  *
  * A list of however many you host. They share one SFU — it routes on the server
  * id every message carries — so the second one costs a server process and an
@@ -143,20 +140,16 @@ export function MyServersSettings() {
 /**
  * Every rail entry pointing at a server this machine hosts.
  *
- * The address on its own was not enough. The rail keys an entry on whatever
- * address you joined at, and joining your own server from the LAN — which is
- * what the discovery list and an invite you sent somebody both hand you — keys
- * it on 192.168.x.x, not 127.0.0.1. Deleting the server matched only the
- * loopback address and left the other entry sitting there.
- *
- * That entry is not merely untidy. It keeps the tokens and the pinned identity
- * for a server that no longer exists, and the next server created takes the
- * same preferred port, so it inherits them and is refused by a server that has
+ * Matched on id, not address. The rail keys an entry on whatever address you
+ * joined at, and joining your own server from the LAN keys it on 192.168.x.x
+ * rather than 127.0.0.1 — so deleting the server left the other entry behind,
+ * still holding the tokens and the pinned identity. The next server created
+ * takes the same preferred port, inherits them, and is refused by a server that
  * never issued them.
  *
- * The id is the half that holds: the config id here is SERVER_INSTANCE_ID, and
- * that is what the server reports as its serverId. The address stays as a
- * fallback for an entry added before the server ever answered with one.
+ * The config id here is SERVER_INSTANCE_ID, which is what the server reports as
+ * its serverId. The address stays as a fallback for an entry added before the
+ * server ever answered with one.
  */
 function railEntriesFor(
   server: EmbeddedServerState,

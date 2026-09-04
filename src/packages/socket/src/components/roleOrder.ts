@@ -1,15 +1,13 @@
 /**
  * What the ranks become when a role is dropped somewhere else.
  *
- * Rank has not gone anywhere: the server still compares it for kicks, bans,
+ * Rank has not gone anywhere — the server still compares it for kicks, bans,
  * role changes and the joining defaults. What has gone is the *number* on the
- * screen. An operator arranges a list, and the numbers are derived from where
- * things ended up — which is the same information without asking anybody to
- * pick 45 over 50 and wonder what the difference buys them.
+ * screen: an operator arranges a list, and the numbers are derived from where
+ * things ended up.
  *
  * Pure and in its own file so the arithmetic can be read and checked without a
- * drag, a socket or a server. The gesture is dnd-kit's; this is the part that
- * is ours to get wrong.
+ * drag, a socket or a server.
  */
 
 export interface RankedRole {
@@ -34,8 +32,7 @@ const TOP = 90;
  *
  * Ties broken by id rather than left to the sort's discretion, because two
  * roles seeded at the same rank — `trusted` and `greeter` both arrive at 5 —
- * would otherwise swap places between renders and make the list look like it
- * was rearranging itself.
+ * would otherwise swap places between renders and look like rearranging.
  */
 export function byRank(roles: RankedRole[]): RankedRole[] {
   return [...roles].sort((a, b) => b.rank - a.rank || a.id.localeCompare(b.id));
@@ -47,9 +44,9 @@ export function byRank(roles: RankedRole[]): RankedRole[] {
  * Returns only the roles that actually moved, so a drop that changes three
  * positions is three saves rather than a rewrite of every role on the server.
  *
- * Spaced rather than numbered 1, 2, 3: leaving room between neighbours means a
- * role added later, or one moved by somebody else while this screen was open,
- * does not need every other row rewritten to fit between two of them.
+ * Spaced rather than numbered 1, 2, 3: room between neighbours means a role
+ * added later, or one moved by somebody else while this screen was open, does
+ * not need every other row rewritten to fit between two of them.
  */
 export function ranksAfterMove(
   roles: RankedRole[],

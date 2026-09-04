@@ -2,26 +2,18 @@
  * Speech for the fake voice participants, so a still of a voice channel shows
  * something happening.
  *
- * A screenshot of a call where nobody is talking is a grid of idle tiles — the
- * speaking ring and the halo, which are most of what the voice pass changed,
- * are invisible in it. This gives each fake participant a real audio track that
- * goes quiet and loud on a random schedule, so the indicator lights up the same
- * way it does for a real person.
- *
- * It is real audio rather than a boolean on purpose. The halo sizes itself from
- * an AnalyserNode frame by frame, so a fake that only flipped a flag would draw
- * a ring with a dead circle behind it, and would prove nothing about the part
- * that reads levels. Each fake gets noise through a gain node that is ramped
- * like speech, and the same analyser both drives the halo and answers "is this
- * person talking".
+ * Real audio rather than a boolean, because the halo sizes itself from an
+ * AnalyserNode frame by frame — a fake that only flipped a flag would draw a
+ * ring with a dead circle behind it. Each fake gets noise through a gain node
+ * ramped like speech, and the same analyser both drives the halo and answers
+ * "is this person talking".
  *
  * Nothing is connected to the audio context's destination, so none of it is
  * audible.
  *
  * The speaking flags are polled here rather than in useServerState, whose loop
- * runs before the fakes are merged in and only knows about real clients. The
- * poll below is the remote branch of that loop — same isSpeaking, same
- * threshold, same 100ms — so what the tiles read is arrived at the same way.
+ * runs before the fakes are merged in. The poll below is the remote branch of
+ * that loop — same isSpeaking, same threshold, same 100ms.
  */
 import type { StreamSources } from "@gryt/voice";
 import { isSpeaking, useSharedAudioContext } from "@gryt/voice";

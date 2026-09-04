@@ -19,13 +19,11 @@ type Role = string;
  * Two layouts are too narrow for the voice panel and drop it: the phone layout
  * below 768, and the one-channel window below 520. Dropping the panel also
  * drops mute, deafen and leave, and none of that stops the connection — the
- * microphone is still open. Without this button the only way out of a call is
- * to make the window bigger again, which is not something you want to be
- * looking for while you are the one being heard.
+ * microphone is still open.
  *
- * The phone layout had this already. It lives here rather than inside
- * `MobileServerView` so the tiny window renders the same button and the same
- * sheet, instead of a second set of call controls to keep in step.
+ * It lives here rather than inside `MobileServerView` so the tiny window
+ * renders the same button and the same sheet, instead of a second set of call
+ * controls to keep in step.
  */
 export const VoiceSheetButton = ({
   connected,

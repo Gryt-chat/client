@@ -24,12 +24,11 @@ function fmt(v: string | Date): string {
  * The bans list, and the only way to undo one.
  *
  * `server:bans:list` and `server:unban` have both existed on the server since
- * banning did, and nothing has ever emitted either — so a ban could only be
+ * banning did, and nothing had ever emitted either — so a ban could only be
  * lifted by editing the database by hand.
  *
- * Names come from the server, which joins the users table for them. They can
- * still be null when the user's row is gone entirely, and the identifier is
- * shown in that case rather than an empty row.
+ * Names come from the server and can be null when the user's row is gone, in
+ * which case the identifier is shown rather than an empty row.
  */
 export function ServerBansTab({
   host,

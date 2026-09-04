@@ -1,20 +1,16 @@
 /**
- * The hotkey combo grammar, shared by the settings UI, the renderer's
- * listeners and the Electron main process.
- *
- * A combo is zero or more modifiers and exactly one base token, joined with
- * "+":
+ * The hotkey combo grammar, shared by the settings UI, the renderer's listeners
+ * and the Electron main process. Zero or more modifiers and one base token,
+ * joined with "+":
  *
  *   Ctrl+Shift+KeyM   a keyboard key, named by DOM `KeyboardEvent.code`
  *   Alt+Mouse4        a mouse button
  *
- * Mouse buttons are numbered by the physical button the way mice, games and
- * every other voice app number them — Mouse1 left, Mouse2 right, Mouse3
- * middle, Mouse4 and Mouse5 the side buttons. The DOM numbers them
- * differently (middle is 1, right is 2), and libuiohook agrees with the
- * physical numbering, so the DOM is the odd one out and gets translated here.
+ * **Mouse buttons are numbered physically** — Mouse1 left, Mouse2 right, Mouse3
+ * middle — which is what mice, games and libuiohook do. The DOM numbers them
+ * differently and gets translated here.
  *
- * Combos are persisted as these strings, so changing a token changes what
+ * **Combos are persisted as these strings**, so changing a token changes what
  * people already have bound.
  */
 
@@ -61,12 +57,9 @@ const MODIFIER_CODES = [
 const DOM_BUTTON_TO_MOUSE: Record<number, number> = { 0: 1, 1: 3, 2: 2, 3: 4, 4: 5 };
 
 /**
- * Left and right click are deliberately not bindable.
- *
- * uiohook listens without swallowing the event, so a left-click binding would
- * key the microphone on every click anywhere in the OS — including the click
- * that binds it. Middle and the two side buttons are the ones people mean by
- * "mouse hotkey" anyway.
+ * Left and right click are deliberately not bindable. uiohook listens without
+ * swallowing the event, so a left-click binding would key the microphone on
+ * every click anywhere in the OS — including the click that binds it.
  */
 export const BINDABLE_MOUSE_BUTTONS = [3, 4, 5];
 

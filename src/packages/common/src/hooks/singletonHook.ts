@@ -4,17 +4,14 @@ import { createElement, useLayoutEffect, useSyncExternalStore } from "react";
 /**
  * A drop-in replacement for react-singleton-hook.
  *
- * The package it replaces was last published in November 2022 and reads
+ * The package it replaces reads
  * ReactDOM.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED, which React 19
  * removed — so it does not merely warn on install, it breaks at runtime. It
- * also mounted a second React root on a hidden div to run the hook bodies,
- * which meant nothing inside a singleton hook could ever see context from the
- * app tree.
+ * also mounted a second React root on a hidden div, which meant nothing inside
+ * a singleton hook could ever see context from the app tree.
  *
- * This version keeps the same two-argument API, so no call site changed, but
- * runs the bodies inside the app's own tree via <SingletonHooks /> — mounted
- * once in main.tsx. One root, no hidden DOM, and the hooks can reach context
- * if they ever need to.
+ * Same two-argument API, so no call site changed, but the bodies run inside the
+ * app's own tree via <SingletonHooks />, mounted once in main.tsx.
  *
  * The contract is unchanged: the body runs exactly once no matter how many
  * components call the hook, and callers get `initialValue` until the first

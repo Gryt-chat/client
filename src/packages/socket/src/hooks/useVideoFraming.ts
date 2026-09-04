@@ -11,9 +11,9 @@ import { useSockets } from "./useSockets";
  * Republished this often, unchanged.
  *
  * Framing only moves when someone asks it to, so without this anyone who joins
- * after the last re-centre would see a centred crop until the sender happened
- * to press the button again — which might be never. Two numbers on this
- * interval is nothing, and it keeps the server from having to store anything.
+ * after the last re-centre sees a centred crop until the sender happens to
+ * press the button again. Two numbers on this interval keeps the server from
+ * having to store anything.
  */
 const REPUBLISH_MS = 15000;
 

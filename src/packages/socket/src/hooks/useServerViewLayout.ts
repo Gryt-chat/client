@@ -31,12 +31,11 @@ function useMediaAutoShow({
    * back when it can.
    *
    * `isCompact` alone was not enough. It is 1024, and the row needs 1136 for a
-   * rail, a channel list, the 600px panel and a chat at its 200px minimum —
-   * so between those two the panel stayed at 600, the chat was squeezed under
-   * its own minimum (measured at 118px in a 1030px window) and the row ran
-   * past the right edge of the window. The clamp inside `useVoiceLayout`
-   * cannot catch that: it measures a container that has already grown to hold
-   * the panel.
+   * rail, a channel list, the 600px panel and a chat at its 200px minimum — so
+   * between those two the chat was squeezed under its own minimum (measured at
+   * 118px in a 1030px window) and the row ran past the right edge. The clamp
+   * inside `useVoiceLayout` cannot catch that: it measures a container that has
+   * already grown to hold the panel.
    */
   const tooNarrow = isCompact || !roomForVoice;
   const compactAutoHiddenRef = useRef(false);
@@ -111,10 +110,9 @@ function useSidebarHover({ pinChannelsSidebar, pinMembersSidebar, isDraggingResi
    * Hovering is gated too, not just the pin.
    *
    * The left sidebar can be opened at any width because the chat gives way for
-   * it — `minWidth: 0` and it shrinks. The member panel is `flexShrink: 0` and
-   * sits after a voice panel that is a fixed 600, so when the row cannot pay
-   * for it, opening it on hover puts it through the right edge of the window
-   * exactly the way pinning it did. Same rule for both ways of opening it.
+   * it. The member panel is `flexShrink: 0` and sits after a voice panel that is
+   * a fixed 600, so opening it on hover puts it through the right edge of the
+   * window exactly the way pinning it did.
    */
   const rightSidebarOpen = roomForMembers && (pinMembersSidebar || hoverRightSidebar);
 
@@ -173,13 +171,12 @@ interface UseVoiceLayoutParams {
 /**
  * The voice view's layout state.
  *
- * Three of GRYT-40's four states: minimized is `showVoiceView === false`,
- * shown is the fixed sidebar width, maximized fills the row and hides the
- * chat. Fullscreen is not here yet.
+ * Three of GRYT-40's four states: minimized is `showVoiceView === false`, shown
+ * is the fixed sidebar width, maximized fills the row and hides the chat.
  *
  * Neither state is persisted, so maximizing lasts as long as the view does.
- * Whether it should be remembered per channel, per server or globally is one
- * of GRYT-40's open questions and is deliberately not guessed at here.
+ * Whether it should be remembered per channel, per server or globally is one of
+ * GRYT-40's open questions and is deliberately not guessed at here.
  */
 function useVoiceLayout({ setShowVoiceView }: UseVoiceLayoutParams) {
   const [voiceFocused, setVoiceFocused] = useState(false);

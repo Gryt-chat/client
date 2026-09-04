@@ -94,10 +94,9 @@ LinkPreviewSkeleton.displayName = "LinkPreviewSkeleton";
  * A link drawn as a card.
  *
  * The shape follows what the page actually gave us rather than one fixed
- * template: see `getLinkCardLayout`. The version before this always reserved a
- * picture slot and always filled it, with a grey rectangle when there was no
- * picture, so a page with no `og:image` came out as a hostname beside an empty
- * box. That is the card in the GitHub screenshot that started this.
+ * template — see `getLinkCardLayout`. The version before this always reserved a
+ * picture slot and filled it with a grey rectangle, so a page with no
+ * `og:image` came out as a hostname beside an empty box.
  */
 export const LinkPreviewCard = memo(({
   url,
@@ -137,12 +136,11 @@ export const LinkPreviewCard = memo(({
         if (!res.ok) {
           /* 4xx is the server's verdict on this URL and will not change: it is
              private, malformed, or not something it will fetch. 5xx and a
-             dropped connection are worth another go when the card next mounts,
-             so they are not remembered.
+             dropped connection are worth another go, so they are not remembered.
 
              A page that 404s is not one of these. That comes back as a 200
-             carrying `status: 404`, because the answer "this page is gone" is
-             a preview worth drawing rather than a refusal to make one. */
+             carrying `status: 404`, because "this page is gone" is a preview
+             worth drawing rather than a refusal to make one. */
           if (res.status >= 400 && res.status < 500) previewRefused.add(url);
           throw new Error(`link preview refused: ${res.status}`);
         }
