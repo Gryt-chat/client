@@ -1,3 +1,10 @@
+/* The title and its two types moved to `@gryt/core` (GRYT-898). This file's
+   version was missing the empty-group case, so an unnamed group whose members
+   had not arrived drew a blank row. Core keeps the phone's, which has it. */
+import { type DirectConversation } from "@gryt/core";
+
+export { conversationTitle, type DirectConversation } from "@gryt/core";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
@@ -15,46 +22,6 @@ import type { Socket } from "socket.io-client";
  * deliberately no merged view across servers, and adding one would mean asking
  * for the identifier that exists to not be handed out.
  */
-
-export interface ConversationParticipant {
-  server_user_id: string;
-  nickname: string;
-  avatar_file_id: string | null;
-  /** The owl look, so a row draws the same avatar the member list does. */
-  avatar_worn: string | null;
-}
-
-export interface DirectConversation {
-  conversation_id: string;
-  /** Two people, or more than two. Groups live in their own section. */
-  kind: "dm" | "group";
-  /** What a group was named. Null means read it off `members`. */
-  name: string | null;
-  /** An upload. Null means draw one from the name. */
-  icon_file_id: string | null;
-  created_at: string;
-  last_message_at: string | null;
-  /** Everybody but you. */
-  members: ConversationParticipant[];
-  /** The first of `members`. Kept for one-to-ones, where it is the whole story. */
-  other: ConversationParticipant;
-}
-
-/**
- * What to call a conversation on screen.
- *
- * A one-to-one is the other person. A named group is its name. An unnamed
- * group is who is in it — built here rather than stored, so it follows a
- * rename instead of going stale, and so an empty-ish group still says
- * something rather than nothing.
- */
-export function conversationTitle(conversation: DirectConversation): string {
-  if (conversation.kind === "dm") return conversation.other.nickname;
-  if (conversation.name) return conversation.name;
-  const names = conversation.members.map((m) => m.nickname);
-  if (names.length <= 2) return names.join(" and ");
-  return `${names.slice(0, 2).join(", ")} and ${names.length - 2} more`;
-}
 
 interface DmErrorPayload {
   error?: string;
