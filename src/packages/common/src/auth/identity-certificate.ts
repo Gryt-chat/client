@@ -4,9 +4,9 @@
  * key to their Gryt identity. It is NOT a bearer token -- it only proves
  * ownership of a public key.
  */
-
 import { getGrytConfig } from "../../../../config";
 import { getPublicKeyJwk } from "./identity-keys";
+import { decodeJwt } from "./jwt";
 import { getValidIdentityToken } from "./keycloak";
 
 const CERT_STORAGE_KEY = "gryt_identity_certificate";
@@ -21,7 +21,7 @@ function parseJwtExp(jwt: string): number | null {
   try {
     const parts = jwt.split(".");
     if (parts.length !== 3) return null;
-    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+    const payload = decodeJwt<Record<string, unknown>>(jwt) ?? {};
     return typeof payload.exp === "number" ? payload.exp * 1000 : null;
   } catch {
     return null;
@@ -32,7 +32,7 @@ function parseJwtSub(jwt: string): string | null {
   try {
     const parts = jwt.split(".");
     if (parts.length !== 3) return null;
-    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+    const payload = decodeJwt<Record<string, unknown>>(jwt) ?? {};
     return typeof payload.sub === "string" ? payload.sub : null;
   } catch {
     return null;
@@ -43,7 +43,7 @@ function parseJwtJwk(jwt: string): JsonWebKey | null {
   try {
     const parts = jwt.split(".");
     if (parts.length !== 3) return null;
-    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+    const payload = decodeJwt<Record<string, unknown>>(jwt) ?? {};
     return payload.jwk && typeof payload.jwk === "object" ? (payload.jwk as JsonWebKey) : null;
   } catch {
     return null;
