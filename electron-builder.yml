@@ -43,6 +43,21 @@ directories:
   buildResources: build
   output: release
 
+# No node_modules rules here on purpose. electron-builder packs the transitive
+# closure of `dependencies` on top of the globs below, and ignores
+# devDependencies entirely — so package.json is what decides, and it is a better
+# place to decide it than a list of negated globs.
+#
+# Only the main process loads anything from node_modules at runtime. Vite inlines
+# every renderer import into dist/assets, which is under 8MB for the whole app,
+# so a renderer-only package in `dependencies` is a second copy that ships,
+# gets signed and notarized, and is never read. That closure was 208 packages
+# and 218MB against the 5.4MB the main process actually needs.
+#
+# So `dependencies` holds exactly what electron/ requires and everything else is
+# a devDependency. Adding a bare import to an electron/ file means promoting that
+# package back, and forgetting shows up as MODULE_NOT_FOUND in a packaged build
+# rather than at build time.
 files:
   - dist/**/*
   - dist-electron/**/*

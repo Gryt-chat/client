@@ -94,6 +94,9 @@ function useSettingsHook() {
 
   const [officialServerHidden, setOfficialServerHiddenState] = useState(false);
 
+  const [micSilentWarningDismissed, setMicSilentWarningDismissedState] =
+    useState(false);
+
   const [pinChannelsSidebar, setPinChannelsSidebarState] = useState(true);
   const [pinMembersSidebar, setPinMembersSidebarState] = useState(true);
 
@@ -165,6 +168,9 @@ function useSettingsHook() {
       setScreenShareScalabilityModeState(getUserValue<ScalabilityMode>("screenShareScalabilityMode", "L1T3"));
       setUserVolumes(getUserValue("userVolumes", {}));
       setOfficialServerHiddenState(getUserValue("officialServerHidden", false));
+      setMicSilentWarningDismissedState(
+        getUserValue("micSilentWarningDismissed", false),
+      );
       setPinChannelsSidebarState(getUserValue("pinChannelsSidebar", true));
       setPinMembersSidebarState(getUserValue("pinMembersSidebar", true));
       setAfkTimeoutMinutes(getUserValue("afkTimeoutMinutes", 5));
@@ -474,6 +480,11 @@ function useSettingsHook() {
     setUserValue("officialServerHidden", hidden);
   }
 
+  function updateMicSilentWarningDismissed(dismissed: boolean) {
+    setMicSilentWarningDismissedState(dismissed);
+    setUserValue("micSilentWarningDismissed", dismissed);
+  }
+
   function updatePinChannelsSidebar(pinned: boolean) {
     setPinChannelsSidebarState(pinned);
     setUserValue("pinChannelsSidebar", pinned);
@@ -507,6 +518,9 @@ function useSettingsHook() {
     setShowVoiceView,
     officialServerHidden,
     setOfficialServerHidden: updateOfficialServerHidden,
+
+    micSilentWarningDismissed,
+    setMicSilentWarningDismissed: updateMicSilentWarningDismissed,
 
     pinChannelsSidebar,
     setPinChannelsSidebar: updatePinChannelsSidebar,

@@ -1,7 +1,7 @@
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import { cpSync, existsSync, mkdirSync } from "fs";
-import { resolve } from "path";
+import { cpSync, existsSync, mkdirSync, rmSync } from "fs";
+import { basename, resolve } from "path";
 import { defineConfig } from "vite";
 import electron from "vite-plugin-electron";
 import renderer from "vite-plugin-electron-renderer";
@@ -37,10 +37,35 @@ function copyMediapipeWasm() {
       if (!existsSync(from)) return;
 
       const to = resolve(__dirname, "public/mediapipe");
+      // Emptied first. The filter decides what gets copied in and has no say
+      // over what is already there, so without this a checkout that built once
+      // before keeps serving — and shipping — the builds this now skips.
+      rmSync(to, { recursive: true, force: true });
       mkdirSync(to, { recursive: true });
-      cpSync(from, to, { recursive: true });
+      cpSync(from, to, { recursive: true, filter: keepMediapipeBuild });
     },
   };
+}
+
+/**
+ * Which of the three WASM builds in that directory anything can actually ask
+ * for. All three are about 11 MB, so the two dead ones are most of the 34.
+ *
+ * FilesetResolver composes the filename rather than listing it:
+ * `forVisionTasks(basePath, useModule = false)` asks for
+ * `vision_wasm${useModule ? "_module" : ""}${simd ? "" : "_nosimd"}_internal`.
+ * faceFraming.ts calls it with one argument, so useModule is false and the
+ * `_module_` build is unreachable — no code path in this app can name it.
+ *
+ * `_nosimd_` is the fallback for an engine without WASM SIMD. Electron has had
+ * it for far longer than the version this ships with, so the desktop build
+ * drops that one too. The browser build keeps it: a browser old enough to need
+ * it is the one place this can still be reached.
+ */
+function keepMediapipeBuild(source: string): boolean {
+  const name = basename(source);
+  if (name.includes("_module_")) return false;
+  return !(isElectron && name.includes("_nosimd_"));
 }
 
 const isElectron = !!process.env.ELECTRON;

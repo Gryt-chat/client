@@ -1049,8 +1049,12 @@ const AUTO_START_KEY = "embeddedServer.autoStart";
  * Which servers start with the app, as a list of ids.
  *
  * This was one boolean, for the one server that could exist. Nothing reads the
- * old shape: the embedded server is beta and unused, so a server made before
- * this change is not carried forward at all — see generateConfig.
+ * old shape and nothing migrates it: when multi-server landed in August 2026
+ * the embedded server was still beta, so the few configs on the old key were
+ * dropped rather than carried forward — see generateConfig.
+ *
+ * That reasoning has expired. People host real servers from the desktop app
+ * now, so a future change to this key needs a migration written for it.
  */
 function autoStartIds(): string[] {
   const store = loadGlobalStore();
