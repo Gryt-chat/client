@@ -41,12 +41,13 @@ import sharp from "sharp";
 import { readFileSync, writeFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
-  PiMicrophoneFill,
-  PiMicrophoneSlashFill,
-  PiSpeakerSlashFill,
-} from "react-icons/pi";
+  Microphone,
+  MicrophoneSlash,
+  SpeakerSlash,
+} from "@phosphor-icons/react";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const buildDir = join(__dirname, "..", "build");
@@ -188,7 +189,7 @@ const R = 250;
 const C = 256;
 
 /**
- * The inner markup of a react-icons glyph, scaled onto the disc.
+ * The inner markup of a phosphor glyph, scaled onto the disc.
  *
  * Rendered through react-dom rather than by reaching into the package's own
  * files: the components are the supported interface, and a build script that
@@ -197,9 +198,15 @@ const C = 256;
  * `frac` is the glyph's size as a fraction of the disc diameter. Kept well
  * under 1 — a glyph that touches the disc edge reads as clipped once it is
  * 16px, because antialiasing eats the last pixel of both.
+ *
+ * The weight is a prop rather than part of the name. These came from
+ * react-icons, where PiMicrophoneFill was its own component; phosphor has one
+ * component per icon and picks the weight at render. createElement rather than
+ * calling the component, because phosphor's are forwardRef objects and calling
+ * one throws.
  */
 function glyph(Icon, frac) {
-  const markup = renderToStaticMarkup(Icon({}));
+  const markup = renderToStaticMarkup(createElement(Icon, { weight: "fill" }));
   const inner = markup.replace(/^<svg[^>]*>/, "").replace(/<\/svg>$/, "");
   const size = R * 2 * frac;
   const scale = size / 256; // every Phosphor icon is authored in a 256 box
@@ -255,11 +262,11 @@ const states = {
   "tray-idle": MARK,
   // In voice with the microphone open. Not driven by voice activity — that
   // would flip the icon several times a second through one sentence.
-  "tray-live": disc(GREEN, glyph(PiMicrophoneFill, 0.56)),
-  "tray-muted": disc(ROSE, glyph(PiMicrophoneSlashFill, 0.62)),
+  "tray-live": disc(GREEN, glyph(Microphone, 0.56)),
+  "tray-muted": disc(ROSE, glyph(MicrophoneSlash, 0.62)),
   // Deafening also mutes, so this one wins when both are true: it is the more
   // complete statement of what is happening.
-  "tray-deafened": disc(ROSE, glyph(PiSpeakerSlashFill, 0.62)),
+  "tray-deafened": disc(ROSE, glyph(SpeakerSlash, 0.62)),
 };
 
 for (const [name, source] of Object.entries(states)) {
