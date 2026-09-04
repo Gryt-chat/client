@@ -1,5 +1,4 @@
 import { Button, Chip, Divider } from "@gryt/ui";
-import { PiPlayFill, PiStopFill } from "react-icons/pi";
 
 import { useSettings } from "@/settings";
 import {
@@ -7,6 +6,7 @@ import {
   useFakeChatRunning,
 } from "@/socket/src/dev/fakeChatController";
 
+import { PiPlayFill, PiStopFill } from "../../../../lib/icons";
 import {
   SettingGroup,
   SettingsContainer,

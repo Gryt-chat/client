@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { PiX } from "react-icons/pi";
 
 import { getServerAccessToken, getServerHttpBase, useTheme } from "@/common";
 
+import { PiX } from "../../../../lib/icons";
 import {
   getInstagramEmbedSrc,
   getSpotifyEmbed,

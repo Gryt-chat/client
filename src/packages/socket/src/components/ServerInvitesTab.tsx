@@ -1,12 +1,12 @@
 import { Button, Surface, Switch, TextField } from "@gryt/ui";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { PiCopyFill, PiPlus } from "react-icons/pi";
 import type { Socket } from "socket.io-client";
 
 import { isLoopbackHost, pickShareableHost } from "@/common";
 import { useEmbeddedServer } from "@/settings/src/hooks/useEmbeddedServer";
 
+import { PiCopyFill, PiPlus } from "../../../../lib/icons";
 import { useSocketEvent } from "../hooks/useSocketEvent";
 
 export type InviteItem = {

@@ -1,7 +1,6 @@
 import { Button, TextField } from "@gryt/ui";
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { PiKey } from "react-icons/pi";
 
 import {
   adoptSealedIdentity,
@@ -12,6 +11,8 @@ import {
   type SealedVault,
   shouldOfferMessageKey,
 } from "@/common";
+
+import { PiKey } from "../../../../lib/icons";
 
 /**
  * Offering this device the message key the account already has (GRYT-783).

@@ -1,15 +1,6 @@
 import { Alert, Avatar, Button, Chip, Dialog, IconButton, Surface, TextField } from "@gryt/ui";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
-import {
-  PiCaretRightBold,
-  PiHouseFill,
-  PiInfoFill,
-  PiLinkSimpleBold,
-  PiUsersThreeFill,
-  PiWarningFill,
-  PiX,
-} from "react-icons/pi";
 
 import {
   GeneratedServerIcon,
@@ -19,6 +10,15 @@ import {
   useAccount,
 } from "@/common";
 
+import {
+  PiCaretRightBold,
+  PiHouseFill,
+  PiInfoFill,
+  PiLinkSimpleBold,
+  PiUsersThreeFill,
+  PiWarningFill,
+  PiX,
+} from "../../../../lib/icons";
 import { SkeletonBase } from "../../../socket/src/components/skeletons";
 import { useServerManagement } from "../../../socket/src/hooks/useServerManagement";
 import { useEmbeddedServer } from "../hooks/useEmbeddedServer";

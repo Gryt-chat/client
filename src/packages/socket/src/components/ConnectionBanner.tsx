@@ -1,5 +1,6 @@
 import { Button, Spinner } from "@gryt/ui";
-import { PiArrowsClockwiseFill, PiWifiSlashFill } from "react-icons/pi";
+
+import { PiArrowsClockwiseFill, PiWifiSlashFill } from "../../../../lib/icons";
 
 interface ConnectionBannerProps {
   connectionStatus: string;

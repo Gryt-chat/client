@@ -1,5 +1,9 @@
 import { Accordion, Alert, AlertDialog, Avatar, Button, Checkbox, Chip, Spinner, Surface, TextField } from "@gryt/ui";
 import { useEffect, useState } from "react";
+
+import { GeneratedServerIcon, normalizeHost } from "@/common";
+
+import type { EmbeddedServerState } from "../../../../lib/electron";
 import {
   PiHardDrivesFill,
   PiPlayFill,
@@ -8,11 +12,7 @@ import {
   PiTrashFill,
   PiWarningFill,
   PiX,
-} from "react-icons/pi";
-
-import { GeneratedServerIcon, normalizeHost } from "@/common";
-
-import type { EmbeddedServerState } from "../../../../lib/electron";
+} from "../../../../lib/icons";
 import { useServerManagement } from "../../../socket/src/hooks/useServerManagement";
 import { useEmbeddedServer } from "../hooks/useEmbeddedServer";
 import { useSettings } from "../hooks/useSettings";

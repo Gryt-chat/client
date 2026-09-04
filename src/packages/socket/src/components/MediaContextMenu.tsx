@@ -1,7 +1,7 @@
 import { ContextMenu } from "@gryt/ui";
 import React, { type ReactNode, useCallback, useMemo } from "react";
-import { PiArrowBendUpLeftFill, PiArrowSquareOutFill, PiCloudArrowDownFill, PiCopyFill, PiFlagFill, PiImageFill, PiPencilSimpleFill, PiSmileyFill, PiTrashFill } from "react-icons/pi";
 
+import { PiArrowBendUpLeftFill, PiArrowSquareOutFill, PiCloudArrowDownFill, PiCopyFill, PiFlagFill, PiImageFill, PiPencilSimpleFill, PiSmileyFill, PiTrashFill } from "../../../../lib/icons";
 import { triggerDownload } from "../utils/downloadFile";
 import { copyImageToClipboard } from "../utils/mediaClipboard";
 import { getRecentReactions } from "../utils/recentReactions";

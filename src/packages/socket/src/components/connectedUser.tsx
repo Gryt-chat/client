@@ -1,7 +1,7 @@
 import { Avatar, Tooltip } from "@gryt/ui";
 import { motion } from "motion/react";
-import { PiMicrophoneSlashFill, PiScreencastFill, PiSpeakerSlashFill, PiVideoCameraFill } from "react-icons/pi";
 
+import { PiMicrophoneSlashFill, PiScreencastFill, PiSpeakerSlashFill, PiVideoCameraFill } from "../../../../lib/icons";
 import { SkeletonBase } from "./skeletons";
 import { SpeakingHalo } from "./SpeakingHalo";
 import {

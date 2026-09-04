@@ -1,7 +1,7 @@
 import { Checkbox, Select, TextField, Tooltip } from "@gryt/ui";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { PiInfoBold, PiMagnifyingGlassBold } from "react-icons/pi";
 
+import { PiInfoBold, PiMagnifyingGlassBold } from "../../../../lib/icons";
 import { hasRoomForPermissionMatrix } from "../lib/permissionGridLayout";
 import { groupPermissions, type PermissionMeta } from "../lib/permissions";
 

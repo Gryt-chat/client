@@ -1,13 +1,13 @@
 import { AlertDialog, Button } from "@gryt/ui";
 import { AnimatePresence } from "motion/react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { PiChatCircleFill, PiCloudArrowUpFill, PiSpeakerHighFill } from "react-icons/pi";
 import { Socket } from "socket.io-client";
 
 import type { SealDecision } from "@/common";
 import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 import { useSettings } from "@/settings";
 
+import { PiChatCircleFill, PiCloudArrowUpFill, PiSpeakerHighFill } from "../../../../lib/icons";
 import { useChatActions } from "../hooks/useChatActions";
 import { useChatScroll } from "../hooks/useChatScroll";
 import { useServerPermissions } from "../hooks/usePermissions";

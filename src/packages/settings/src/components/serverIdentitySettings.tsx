@@ -1,11 +1,11 @@
 import { Alert, AlertDialog, Button, Chip, IconButton, Tooltip } from "@gryt/ui";
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { PiHardDrivesFill, PiShieldCheckFill, PiTrashFill, PiWarningFill } from "react-icons/pi";
 
 import type { BlockedServer, ServerPin } from "@/common";
 import { forgetPin, listBlocked, listHostExpectations, listPins, unblockServer } from "@/common";
 
+import { PiHardDrivesFill, PiShieldCheckFill, PiTrashFill, PiWarningFill } from "../../../../lib/icons";
 import { SettingsContainer } from "./settingsComponents";
 
 function formatDate(epoch: number): string {

@@ -1,10 +1,10 @@
 import { Button, Chip, IconButton, TextField } from "@gryt/ui";
 import { type ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { PiUploadSimpleFill, PiX } from "react-icons/pi";
 
 import { getServerAccessToken } from "@/common";
 
+import { PiUploadSimpleFill, PiX } from "../../../../lib/icons";
 import { useEmojiUpload } from "../hooks/useEmojiUpload";
 import {
   fetchCustomEmojis,

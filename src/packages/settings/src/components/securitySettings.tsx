@@ -1,7 +1,6 @@
 import { AlertDialog, Button, Chip, IconButton, Spinner, TextField, Tooltip } from "@gryt/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { PiCheck, PiKeyFill, PiPencilSimpleFill, PiPlus, PiTrashFill, PiX } from "react-icons/pi";
 
 import type { KeycloakCredential } from "@/common";
 import {
@@ -12,6 +11,7 @@ import {
   useAccount,
 } from "@/common";
 
+import { PiCheck, PiKeyFill, PiPencilSimpleFill, PiPlus, PiTrashFill, PiX } from "../../../../lib/icons";
 import { LocalIdentitySection } from "./localIdentitySection";
 import { MessageKeySection } from "./messageKeySection";
 import { SettingsContainer } from "./settingsComponents";

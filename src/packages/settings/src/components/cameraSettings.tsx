@@ -1,10 +1,10 @@
 import { Button, Chip, Divider, Select, Tooltip } from "@gryt/ui";
 import { CAMERA_FPS_OPTIONS, type CameraQuality, QUALITY_CONSTRAINTS, useCamera, useVideoStats } from "@gryt/voice";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { PiArrowsClockwiseFill } from "react-icons/pi";
 
 import { useSettings } from "@/settings";
 
+import { PiArrowsClockwiseFill } from "../../../../lib/icons";
 import { SettingsContainer, ToggleSetting } from "./settingsComponents";
 
 const QUALITY_OPTIONS = [

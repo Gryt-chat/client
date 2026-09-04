@@ -1,5 +1,6 @@
 import { Alert, Button, Dialog, IconButton, Spinner } from "@gryt/ui";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
+
 import {
   PiArrowSquareOutBold,
   PiCheckCircleFill,
@@ -7,8 +8,7 @@ import {
   PiWarningCircleFill,
   PiX,
   PiXCircleFill,
-} from "react-icons/pi";
-
+} from "../../../../lib/icons";
 import { useSockets } from "../hooks/useSockets";
 import {
   type CheckResult,

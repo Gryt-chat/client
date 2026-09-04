@@ -1,8 +1,7 @@
 import { Button, Surface } from "@gryt/ui";
-import { FaGithub } from "react-icons/fa";
-import { PiArrowSquareOutFill } from "react-icons/pi";
-import { SiKofi } from "react-icons/si";
 
+import { FaGithub, SiKofi } from "../../../../lib/brandIcons";
+import { PiArrowSquareOutFill } from "../../../../lib/icons";
 import { SettingsContainer } from "./settingsComponents";
 
 const GITHUB_URL = "https://github.com/Gryt-chat/gryt";

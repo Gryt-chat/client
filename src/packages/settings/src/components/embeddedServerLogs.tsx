@@ -1,9 +1,9 @@
 import { Button, Chip, Tabs } from "@gryt/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { PiTrashFill } from "react-icons/pi";
 
 import type { EmbeddedLogLine, EmbeddedLogSource } from "../../../../lib/electron";
 import { getElectronAPI } from "../../../../lib/electron";
+import { PiTrashFill } from "../../../../lib/icons";
 
 const SOURCE_LABEL: Record<EmbeddedLogSource, string> = {
   server: "Server",

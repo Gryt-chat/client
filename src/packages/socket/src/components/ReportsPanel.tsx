@@ -1,11 +1,11 @@
 import { AlertDialog, Button, Chip, Dialog, IconButton, ScrollArea, Spinner, Tooltip } from "@gryt/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { PiBootFill, PiCheck, PiProhibitFill, PiTrashFill, PiWarningCircle, PiWarningFill } from "react-icons/pi";
 import type { Socket } from "socket.io-client";
 
 import { getServerAccessToken, getUploadsFileUrl } from "@/common";
 
+import { PiBootFill, PiCheck, PiProhibitFill, PiTrashFill, PiWarningCircle, PiWarningFill } from "../../../../lib/icons";
 import { useServerPermissions } from "../hooks/usePermissions";
 import type { AttachmentMeta } from "./chatUtils";
 import { FileCard } from "./FileCard";

@@ -1,7 +1,7 @@
 import { Dialog, IconButton, TextField } from "@gryt/ui";
 import { useState } from "react";
-import { PiX } from "react-icons/pi";
 
+import { PiX } from "../../../../lib/icons";
 import { useSettings } from "../hooks/useSettings";
 
 export function Nickname() {

@@ -2,7 +2,6 @@ import { AlertDialog, Avatar, Button, ContextMenu, IconButton, Menu, PreviewCard
 import { useSFU } from "@gryt/voice";
 import { Reorder } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
-import { PiBroadcastFill, PiBugFill, PiChatCircleDotsFill, PiGearFill, PiMicrophoneFill, PiPlus, PiSignInFill } from "react-icons/pi";
 
 import {
   GeneratedServerIcon,
@@ -27,6 +26,7 @@ import { ServerStatusRing } from "@/socket/src/components/ServerStatusRing";
 import { MiniControls } from "@/webRTC/src/components/miniControls";
 
 import { useIdentityClaim } from "../hooks/useIdentityClaim";
+import { PiBroadcastFill, PiBugFill, PiChatCircleDotsFill, PiGearFill, PiMicrophoneFill, PiPlus, PiSignInFill } from "../lib/icons";
 import { useReportForm } from "../lib/reports/useReportForm";
 
 

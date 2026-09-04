@@ -15,9 +15,9 @@ import { CSS } from "@dnd-kit/utilities";
 import { Button, IconButton, Select, Surface } from "@gryt/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { PiPlusBold, PiTrashBold } from "react-icons/pi";
 import type { Socket } from "socket.io-client";
 
+import { PiPlusBold, PiTrashBold } from "../../../../lib/icons";
 import { useSocketEvent } from "../hooks/useSocketEvent";
 import { nextUnusedPreset,ROLE_COLOR_PRESETS } from "./roleColorPresets";
 import { byRank, OWNER_ROLE, ranksAfterMove } from "./roleOrder";

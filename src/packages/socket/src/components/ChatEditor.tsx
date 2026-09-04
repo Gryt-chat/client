@@ -7,7 +7,8 @@ import {
   useState,
 } from "react";
 import toast from "react-hot-toast";
-import { PiCode, PiFileAudioFill, PiFileFill, PiFileTextFill, PiFileVideoFill, PiFileZipFill, PiImageFill, PiPaperclipFill, PiPaperPlaneTiltFill, PiSmileyFill } from "react-icons/pi";
+
+import { PiCode, PiFileAudioFill, PiFileFill, PiFileTextFill, PiFileVideoFill, PiFileZipFill, PiImageFill, PiPaperclipFill, PiPaperPlaneTiltFill, PiSmileyFill } from "../../../../lib/icons";
 const FaFilePdf = PiFileTextFill;
 
 import { type EmojiEntry, getCustomEmojis, recordRecentEmoji } from "../utils/emojiData";

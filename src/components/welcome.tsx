@@ -4,9 +4,10 @@
  * pre-emit critique: P5 H5 E5 S5 R5 V4
  */
 import { Avatar, Button, Dialog, IconButton, MessageBubble } from "@gryt/ui";
-import { PiSignpost, PiX } from "react-icons/pi";
 
 import { useSettings } from "@/settings";
+
+import { PiSignpost, PiX } from "../lib/icons";
 
 /**
  * The first thing anybody sees, drawn as a message rather than a dialog — an

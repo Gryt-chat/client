@@ -1,5 +1,6 @@
 import { useCallback } from "react";
-import { PiCode, PiDownloadSimpleFill, PiFileAudioFill, PiFileFill, PiFileTextFill, PiFileVideoFill, PiFileZipFill, PiImageFill } from "react-icons/pi";
+
+import { PiCode, PiDownloadSimpleFill, PiFileAudioFill, PiFileFill, PiFileTextFill, PiFileVideoFill, PiFileZipFill, PiImageFill } from "../../../../lib/icons";
 const FaFilePdf = PiFileTextFill;
 
 import { getUploadsFileUrl } from "@/common";

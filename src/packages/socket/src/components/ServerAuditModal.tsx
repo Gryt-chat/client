@@ -1,10 +1,10 @@
 import { Button, Dialog, IconButton, Surface } from "@gryt/ui";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { PiX } from "react-icons/pi";
 
 import { getServerAccessToken } from "@/common";
 
+import { PiX } from "../../../../lib/icons";
 import { useSocketEvent } from "../hooks/useSocketEvent";
 import { useSockets } from "../hooks/useSockets";
 

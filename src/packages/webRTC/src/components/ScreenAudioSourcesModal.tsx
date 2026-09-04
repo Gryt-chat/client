@@ -1,7 +1,7 @@
 import { Button, Checkbox, Dialog } from "@gryt/ui";
 import { useEffect } from "react";
-import { PiSquaresFourFill } from "react-icons/pi";
 
+import { PiSquaresFourFill } from "../../../../lib/icons";
 import { useScreenAudioSources } from "../adapters/useScreenAudioSources";
 
 interface ScreenAudioSourcesModalProps {

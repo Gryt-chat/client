@@ -1,8 +1,8 @@
 import { IconButton } from "@gryt/ui";
 import { useState } from "react";
-import { PiDownloadSimpleFill, PiX } from "react-icons/pi";
 
 import { isElectron } from "../lib/electron";
+import { PiDownloadSimpleFill, PiX } from "../lib/icons";
 
 const STORAGE_KEY = "browserBannerDismissed";
 

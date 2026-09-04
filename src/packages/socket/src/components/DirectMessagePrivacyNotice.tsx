@@ -1,4 +1,4 @@
-import { PiLockOpen } from "react-icons/pi";
+import { PiLockOpen } from "../../../../lib/icons";
 
 /**
  * What a direct message does not protect you from. A DM looks private, so the

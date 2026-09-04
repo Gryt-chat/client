@@ -7,8 +7,8 @@ import {
 } from "@gryt/core";
 import { Alert, Button, Checkbox, Dialog, Divider, TextField } from "@gryt/ui";
 import { useMemo, useState } from "react";
-import { PiBugFill, PiChatCircleDotsFill, PiPaperPlaneRightFill } from "react-icons/pi";
 
+import { PiBugFill, PiChatCircleDotsFill, PiPaperPlaneRightFill } from "../lib/icons";
 import { useDiagnostics } from "../lib/reports/diagnostics";
 import { recentLogs } from "../lib/reports/logs";
 import { submitReport } from "../lib/reports/submit";

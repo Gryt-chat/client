@@ -1,5 +1,6 @@
 import { Chip, IconButton, Menu, Surface, Tooltip } from "@gryt/ui";
-import { PiDotsThreeVerticalBold, PiPushPinFill, PiPushPinSlashFill } from "react-icons/pi";
+
+import { PiDotsThreeVerticalBold, PiPushPinFill, PiPushPinSlashFill } from "../../../../lib/icons";
 
 export const ServerHeader = ({
   serverName,

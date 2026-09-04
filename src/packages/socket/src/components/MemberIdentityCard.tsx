@@ -1,7 +1,6 @@
 import { Avatar, Button, Chip, Collapsible } from "@gryt/ui";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { PiCaretDownBold, PiCopySimpleBold } from "react-icons/pi";
 
 import {
   comparisonCode,
@@ -11,6 +10,7 @@ import {
   resolveAvatarSrc,
 } from "@/common";
 
+import { PiCaretDownBold, PiCopySimpleBold } from "../../../../lib/icons";
 import { useSockets } from "../hooks/useSockets";
 import { describeChange, describePin } from "../utils/memberKeyWording";
 import { BotTag } from "./BotTag";

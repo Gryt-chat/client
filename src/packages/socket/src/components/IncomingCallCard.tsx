@@ -1,8 +1,8 @@
 import { Avatar, Button } from "@gryt/ui";
-import { PiPhoneFill, PiPhoneXFill } from "react-icons/pi";
 
 import { resolveAvatarSrc } from "@/common";
 
+import { PiPhoneFill, PiPhoneXFill } from "../../../../lib/icons";
 import type { IncomingCall } from "../hooks/useCalls";
 
 interface IncomingCallCardProps {

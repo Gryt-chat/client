@@ -1,10 +1,10 @@
 import { Dialog, Divider, IconButton, TextField } from "@gryt/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { PiArrowFatLineDownFill, PiFadersHorizontalFill, PiFlaskFill, PiGearSixFill, PiHardDrivesFill, PiHeartFill, PiMagnifyingGlassFill, PiPuzzlePieceFill, PiUserCircleFill, PiUserFill, PiVideoCameraFill, PiX } from "react-icons/pi";
 
 import { useSettings } from "@/settings";
 
 import { isElectron } from "../../../../lib/electron";
+import { PiArrowFatLineDownFill, PiFadersHorizontalFill, PiFlaskFill, PiGearSixFill, PiHardDrivesFill, PiHeartFill, PiMagnifyingGlassFill, PiPuzzlePieceFill, PiUserCircleFill, PiUserFill, PiVideoCameraFill, PiX } from "../../../../lib/icons";
 import type { SettingsIndexEntry } from "../hooks/settingsSearch";
 import { searchSettings } from "../hooks/settingsSearch";
 import { AboutSettings, UpdatesSettings } from "./aboutSettings";

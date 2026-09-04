@@ -1,10 +1,10 @@
 import { AlertDialog, Button, IconButton, TextField } from "@gryt/ui";
 import { type ChangeEvent, useState } from "react";
 import toast from "react-hot-toast";
-import { PiCheck, PiPencilSimpleFill, PiTrashFill, PiX } from "react-icons/pi";
 
 import { getServerHttpBase } from "@/common";
 
+import { PiCheck, PiPencilSimpleFill, PiTrashFill, PiX } from "../../../../lib/icons";
 import { getCustomEmojiUrl } from "../utils/emojiData";
 import type { EmojiItem } from "../utils/emojiFileUtils";
 import { EMOJI_NAME_RE } from "../utils/emojiFileUtils";

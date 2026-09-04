@@ -1,7 +1,6 @@
 import { Alert, Button, Chip, TextField } from "@gryt/ui";
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { PiEyeFill, PiInfoFill, PiSignOutFill } from "react-icons/pi";
 
 import {
   type AccountProfile,
@@ -20,6 +19,7 @@ import {
   setCustomAuthIssuer,
   setCustomIdentityUrl,
 } from "../../../../config";
+import { PiEyeFill, PiInfoFill, PiSignOutFill } from "../../../../lib/icons";
 import { useSettings } from "../hooks/useSettings";
 import { SettingsContainer } from "./settingsComponents";
 

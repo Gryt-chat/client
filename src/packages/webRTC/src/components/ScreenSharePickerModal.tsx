@@ -2,11 +2,11 @@ import { Button, Checkbox, Chip, Dialog, IconButton, Select, Tooltip } from "@gr
 import type { ScreenShareFps, ScreenShareQuality } from "@gryt/voice";
 import { estimateBitrate, EXPERIMENTAL_FPS_OPTIONS, STANDARD_FPS_OPTIONS } from "@gryt/voice";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { PiCaretDownFill, PiCaretUpFill, PiMonitorFill, PiScreencastFill, PiSquaresFourFill, PiX } from "react-icons/pi";
 
 import type { ScalabilityMode, ScreenShareCodec } from "@/settings";
 
 import { type DesktopSource, isElectron } from "../../../../lib/electron";
+import { PiCaretDownFill, PiCaretUpFill, PiMonitorFill, PiScreencastFill, PiSquaresFourFill, PiX } from "../../../../lib/icons";
 import { audioScopeHint, currentPlatform } from "../../../../lib/screenShareAudio";
 
 interface ScreenSharePickerModalProps {

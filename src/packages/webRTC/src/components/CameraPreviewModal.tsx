@@ -1,9 +1,10 @@
 import { Button, Checkbox, Chip, Dialog, IconButton, Select } from "@gryt/ui";
 import { CAMERA_FPS_OPTIONS, type CameraQuality, QUALITY_CONSTRAINTS } from "@gryt/voice";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { PiArrowsClockwiseFill, PiVideoCameraFill, PiX } from "react-icons/pi";
 
 import { useSettings } from "@/settings";
+
+import { PiArrowsClockwiseFill, PiVideoCameraFill, PiX } from "../../../../lib/icons";
 
 interface CameraPreviewModalProps {
   open: boolean;
