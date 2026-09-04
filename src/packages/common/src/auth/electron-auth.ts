@@ -1,3 +1,5 @@
+import { base64Url } from "@gryt/crypto";
+
 import { getGrytConfig } from "../../../../config";
 import { getElectronAPI } from "../../../../lib/electron";
 import { SessionExpiredError } from "./session-expired";
@@ -24,11 +26,9 @@ async function sha256(plain: string): Promise<ArrayBuffer> {
   return crypto.subtle.digest("SHA-256", encoder.encode(plain));
 }
 
+/* Only the coercion is local; the encoding is @gryt/crypto's (GRYT-898). */
 function base64UrlEncode(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  for (const b of bytes) binary += String.fromCharCode(b);
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  return base64Url(new Uint8Array(buffer));
 }
 
 async function generatePKCE(): Promise<{

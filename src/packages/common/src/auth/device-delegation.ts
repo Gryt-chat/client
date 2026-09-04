@@ -1,3 +1,5 @@
+import { base64Url as encodeBase64Url } from "@gryt/crypto";
+
 /**
  * Being yourself on a new device without moving your key to it.
  *
@@ -13,7 +15,6 @@
  * servers come back with the roles and ownership you had, rather than as a
  * stranger with a familiar name.
  */
-
 import { getPublicKeyJwk, parseIdentityBackup } from "./identity-keys";
 import { jwkThumbprint } from "./server-pins";
 
@@ -119,11 +120,9 @@ export async function delegationSub(certificate: string): Promise<string | null>
   }
 }
 
+/* Only the coercion is local; the encoding is @gryt/crypto's (GRYT-898). */
 function base64Url(buf: ArrayBuffer | Uint8Array): string {
-  const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
-  let binary = "";
-  for (const b of bytes) binary += String.fromCharCode(b);
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  return encodeBase64Url(buf instanceof Uint8Array ? buf : new Uint8Array(buf));
 }
 
 
