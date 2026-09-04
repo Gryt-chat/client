@@ -293,23 +293,31 @@ export const MemberSidebar = ({
         overflow: "hidden",
       }}>
       <div className="flex flex-col h-full p-3 gap-1">
-        <div className="pb-2">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-sm font-bold text-gryt-muted">
-              Members — {members.length}
-            </span>
-            {onTogglePinned && (
-              <Tooltip title={pinned ? "Unpin sidebar" : "Pin sidebar"}>
-                <IconButton tone="neutral" size="xsmall"
-                  onClick={onTogglePinned}
-                  aria-label={pinned ? "Unpin sidebar" : "Pin sidebar"}
-                >
-                  {pinned ? <PiPushPinFill size={14} /> : <PiPushPinSlashFill size={14} />}
-                </IconButton>
-              </Tooltip>
-            )}
+        {/*
+          No "Members — 12" above the groups (GRYT-904).
+
+          It and a group heading were the same construct — a name, an em dash, a
+          count — separated only by size and case, and the first group sits
+          directly under it. On a server with one member that read as two
+          stacked headings, the upper one apparently empty: "Members — 1" over
+          "OWNER — 1". The panel is already the member list; saying so was a
+          line that told you where you were and nothing else.
+
+          The region keeps `aria-label="Members"`, so nothing is lost to a
+          screen reader. The pin keeps its row.
+        */}
+        {onTogglePinned && (
+          <div className="flex items-center justify-end pb-1">
+            <Tooltip title={pinned ? "Unpin sidebar" : "Pin sidebar"}>
+              <IconButton tone="neutral" size="xsmall"
+                onClick={onTogglePinned}
+                aria-label={pinned ? "Unpin sidebar" : "Pin sidebar"}
+              >
+                {pinned ? <PiPushPinFill size={14} /> : <PiPushPinSlashFill size={14} />}
+              </IconButton>
+            </Tooltip>
           </div>
-        </div>
+        )}
 
         <div className="flex flex-col" style={{ overflow: "auto", flex: 1 }}>
           {groups.map((group, index) => (
@@ -317,8 +325,8 @@ export const MemberSidebar = ({
               key={group.key}
               aria-labelledby={`members-${group.key}`}
               /* Space above each heading rather than between every row, so the
-                 grouping is what the eye picks up. The first one sits flush
-                 under the panel title, which is a heading already. */
+                 grouping is what the eye picks up. The first one sits flush at
+                 the top: there is nothing above it to be separated from. */
               className={index === 0 ? "" : "mt-4"}
             >
               {/* Sticky, because the whole point of a heading here is knowing

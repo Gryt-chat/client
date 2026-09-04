@@ -140,6 +140,27 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
     canDelete,
   };
 
+  /**
+   * A system row's menu: Delete, and nothing else (GRYT-908).
+   *
+   * Not `messageActions`. A join or leave line has no author, so Reply, Edit
+   * and Report have nothing to act on, and Copy link and the quick reactions
+   * are the things GRYT-896 took away on purpose — being able to react to
+   * somebody joining is what the quiet row exists to stop.
+   *
+   * Deleting one is a different question, and the answer was already yes: the
+   * server's `chat:delete` looks a message up by id and takes anybody holding
+   * `manage_messages`, with no special case for these. There was simply no way
+   * to ask for it.
+   *
+   * Undefined rather than an empty object when there is nothing to offer, so
+   * `MessageContextMenu` renders no menu at all rather than an empty popup on
+   * every right-click for people who cannot moderate.
+   */
+  const systemActions: MessageActions | undefined = canDeleteAny
+    ? { onDelete: () => onDelete(m), canDelete: true }
+    : undefined;
+
   const handleMouseEnter = useCallback(() => {
     setIsHovered(true);
   }, []);
@@ -196,7 +217,13 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
            The left edge every message shares stays where it is. A centred rule
            would say "not a message" more loudly and break that edge, and a
            channel where people come and go is exactly where a run of rules
-           chops the conversation into fragments. */
+           chops the conversation into fragments.
+
+           The one thing it does have is a right-click, carrying Delete and
+           nothing else, for somebody who may moderate (GRYT-908). No hover
+           toolbar still: the toolbar's job is reactions and a reply, which is
+           the part that should not exist here. */
+        <MessageContextMenu messageActions={systemActions} onOpenChange={handleCtxMenuOpenChange}>
         <div
           className="flex gap-3 items-baseline"
           ref={rowRef}
@@ -233,6 +260,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
             </span>
           </span>
         </div>
+        </MessageContextMenu>
       ) : meta.isFirstInGroup ? (
         <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange} onReaction={(src) => onReaction(src, m)} serverHost={serverHost}>
           <div className="flex gap-3 items-start" style={{ width: "100%", marginTop: 12 }}>
