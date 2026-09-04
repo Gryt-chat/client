@@ -1,25 +1,14 @@
 /**
- * The tail of the renderer's own log, kept so a bug report can carry it.
+ * The tail of the renderer's own log, so a bug report can carry it — somebody
+ * reporting that voice dropped has the reason in their console and no
+ * reasonable way to get it into a form.
  *
- * This is the field a round trip through a GitHub issue form cannot produce.
- * Somebody reporting that voice dropped has the reason in their console —
- * an ICE failure, a track that never arrived, a socket that closed — and no
- * reasonable way to get it out of the app and into a form.
+ * The last few hundred lines, in memory, never on disk. `warn` and `error`
+ * only, or routine chatter pushes out the line that mattered.
  *
- * ## What it keeps
- *
- * The last few hundred lines, in memory, never written to disk. `warn` and
- * `error` only: the client logs a great deal at `log` level, and a buffer full
- * of routine chatter pushes out the one line that mattered.
- *
- * ## Why a report does not attach these unless asked
- *
- * Nothing is redacted here, and the client does log things about the person
- * rather than about the build: a failed connection writes the server's address,
- * and a self-hosted Gryt server's address is frequently somebody's house.
- *
- * So the buffer exists, and the form asks before it travels. Off unless the
- * reporter ticks the box, and the exact payload is theirs to read first.
+ * **Nothing is redacted, and this is off unless the reporter ticks the box.** A
+ * failed connection writes the server's address, and a self-hosted Gryt
+ * server's address is frequently somebody's house.
  */
 
 const MAX_LINES = 300;

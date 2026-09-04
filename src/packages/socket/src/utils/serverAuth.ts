@@ -10,17 +10,12 @@ import {
 
 /**
  * Authenticate a server before we say anything else to it (GRYT-51).
+ * **Connection-level rather than part of the join handshake** — a client with a
+ * saved token reconnects without ever joining, which is the most common path.
  *
- * This is a connection-level gate rather than part of the join handshake, and
- * that distinction is the whole point. A client with a saved access token
- * reconnects without ever joining, so a check that lived on join would miss the
- * most common path entirely and hand a bearer token to a server nobody had
- * authenticated.
- *
- * Rather than ask thirteen call sites to remember to wait, the gate holds the
- * socket's outgoing traffic until the server has proved itself. Anything
- * emitted before then is queued and flushed on success, or dropped on refusal.
- * New code cannot forget to be covered by it.
+ * The gate holds the socket's outgoing traffic until the server has proved
+ * itself, queuing and flushing on success or dropping on refusal, so new code
+ * cannot forget to be covered by it.
  */
 
 /** How long to wait for a proof before deciding the server isn't offering one. */

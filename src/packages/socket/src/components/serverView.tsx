@@ -139,16 +139,12 @@ export const ServerView = () => {
     chatTakenOver || (isMaximized && showVoiceView && voiceWidth !== "0px");
 
   /*
-   * What the person is actually looking at, which is not the same as what was
-   * last clicked. A direct message takes over the pane, and a maximized call
-   * hides it outright, so in both cases the channel underneath is off screen.
+   * What the person is actually looking at, which is not what was last clicked
+   * — a DM takes over the pane and a maximized call hides it.
    *
-   * Everything that means "the thing you have open" reads this rather than
-   * selectedChannelId: the highlight in the sidebar, the unread dot it
-   * suppresses, and marking a conversation read. They were disagreeing —
-   * a channel stayed lit and kept being marked read while a DM or a maximized
-   * call was covering it, so it claimed you were reading something you could
-   * not see.
+   * **Everything meaning "the thing you have open" reads this, not
+   * `selectedChannelId`**, or a covered channel stays lit and keeps being
+   * marked read.
    */
   const visibleChannelId = chatPaneHidden || selectedDmId ? null : selectedChannelId;
   const visibleDmId = chatPaneHidden ? null : selectedDmId;
@@ -281,17 +277,12 @@ export const ServerView = () => {
   });
 
   /**
-   * What is on screen, with anybody blocked taken out.
+   * What is on screen, with anybody blocked taken out. The server already
+   * withholds their new messages and history, so this only covers what was
+   * already drawn when Block was pressed.
    *
-   * The server already refuses to deliver a blocked person's new messages and
-   * leaves them out of history, so this is only about the messages that were
-   * already drawn when Block was pressed. Those stayed until something
-   * refetched — which is the one moment somebody most wants them gone, and the
-   * only part of the block that was not immediate.
-   *
-   * Filtered here rather than inside `useChat` because it is a view decision:
-   * the store still holds them, and unblocking puts them back without asking
-   * the server for anything.
+   * Filtered here rather than in `useChat` because it is a view decision — the
+   * store still holds them, so unblocking puts them back without a refetch.
    */
   const visibleChatMessages = useMemo(
     () => chatMessages.filter((m) => !isBlocked(m.sender_server_id)),
@@ -321,25 +312,15 @@ export const ServerView = () => {
 
   const { reportsOpen, setReportsOpen, pendingReportCount, memberListMap } = useServerReports({
     currentConnection, accessToken, currentlyViewingServer, memberLists,
-    /* `has`, not `can`, and this is the one place that difference matters.
+    /* **`has`, not `can`.** `can` answers true while the server has not said
+     * otherwise, which is right for offering a button and wrong here: this
+     * drives an automatic `reports:list` on join, before `server:details`
+     * arrives, so it said yes to guests and the refusal was the first thing a
+     * new member saw.
      *
-     * `can` answers true while the server has not said otherwise, which is
-     * right for deciding whether to offer a button: the worst case is a button
-     * that comes back refused. This is not that. It drives an automatic
-     * `reports:list` on join, and `server:details` has not arrived yet at that
-     * moment, so `can` said yes to everybody — guests included. The refusal
-     * came back as a toast reading "You do not have permission to do that
-     * (view_reports)", as the first thing a new member saw, for a request they
-     * never made.
-     *
-     * GRYT-844 fixed which permission this asks about. It did not fix asking
-     * before the answer exists. `has` is false until the server actually grants
-     * it, which is what an unprompted background request should wait for.
-     *
-     * The cost is a server too old to send a permission list at all: nobody
-     * there gets the badge count now. That server also cannot tell us who may
-     * read the queue, so asking on their behalf was a guess that produced an
-     * error toast about a third of the time. GRYT-874. */
+     * The cost is that a server too old to send a permission list gives nobody
+     * the badge count. It also cannot say who may read the queue, so asking was
+     * a guess that erred about a third of the time (GRYT-874). */
     canViewReports: viewerPermissions.has("view_reports"),
   });
 
@@ -410,15 +391,9 @@ export const ServerView = () => {
   }, [handleOpenDm]);
 
   /**
-   * Take a call.
-   *
-   * Answering is joining the conversation's voice room, and nothing else — the
-   * server ends the ring when the join lands rather than on a message of its
-   * own. `connect` takes the room id opaquely, so a conversation id goes
-   * through the same path a channel does.
-   *
-   * The conversation is opened for reading too. Somebody who just answered is
-   * looking at that conversation whatever else was on screen.
+   * Take a call. Answering is joining the conversation's voice room and nothing
+   * else — the server ends the ring when the join lands. The conversation is
+   * opened for reading too.
    */
   useFakeCallEvents(currentConnection, selectedDmId, fakeCallOptionsFromUrl);
 
@@ -466,17 +441,12 @@ export const ServerView = () => {
   );
 
   /**
-   * Whether the room this client is connected to is a call rather than a
-   * channel — which decides whether being the only one in it ends it
-   * (GRYT-711).
+   * Whether the connected room is a call rather than a channel, which decides
+   * whether being alone in it ends it (GRYT-711).
    *
-   * A lookup in the conversation list, not a test on the id. Both are `dm_`
-   * and a hash, and `conversations.ts` says outright that a channel can be
-   * named to look like one; the list is the answer rather than an
-   * approximation of it. It is also the list this client is already holding.
-   *
-   * `currentChannelId` is the room actually joined, not the one on screen, so
-   * this stays right while somebody reads a channel during a call.
+   * **A lookup in the conversation list, not a test on the id** — a channel can
+   * be named to look like one. `currentChannelId` is the room joined rather
+   * than the one on screen, so this holds while reading during a call.
    */
   const connectedToACall = useMemo(
     () => Boolean(currentChannelId)
@@ -517,24 +487,15 @@ export const ServerView = () => {
   const callerAvatarWorn = caller?.avatarWorn ?? null;
 
   /**
-   * What sits in the conversation header: call, and start a group.
+   * What sits in the conversation header. Built once and used by both layouts,
+   * which each carried their own copy.
    *
-   * Built once and used by both layouts. The two used to carry a copy of the
-   * same button each, which is how one of them ends up a version behind.
+   * Calling is offered whether or not one is going: joining and starting are
+   * the same act, and the server refuses a second ring.
    *
-   * Calling is offered whether or not a call is already going. Joining one in
-   * progress and starting one are the same act — the room is the room — and the
-   * server refuses a second ring while the first is going, so pressing it
-   * during a ring says so rather than doing something surprising.
-   *
-   * Offered at all only with `start_calls` (GRYT-712), which a server owner can
-   * take off a role to say who may place a call. It is not the permission for
-   * answering one — that is `join_voice` — so somebody without this still gets
-   * rung and can still pick up. The button is what goes.
-   *
-   * `can` reads a permission its server has never heard of as held rather than
-   * withheld, so this does not take the button away on a server older than the
-   * permission.
+   * Gated on `start_calls` (GRYT-712), which is not the permission for
+   * answering — somebody without it still gets rung and can pick up. `can`
+   * reads an unknown permission as held, so an older server keeps the button.
    */
   const dmHeaderActions = useMemo(() => {
     if (!activeDm || !viewerPermissions.can("send_direct_messages")) return undefined;
@@ -543,15 +504,9 @@ export const ServerView = () => {
     const mayCall = viewerPermissions.can("start_calls");
 
     /**
-     * Ringing and joining are one act.
-     *
-     * The caller is in the room from the moment it rings. Without that,
-     * answering joins a room with nobody in it — the ring says somebody wants
-     * to talk to you, you say yes, and there is silence, because the person who
-     * rang never went in.
-     *
-     * Giving up leaves it again. Cancel is only offered while nobody has
-     * answered, so at that point the room holds the caller and no one else.
+     * Ringing and joining are one act: the caller is in the room from the
+     * moment it rings, or answering joins a room with nobody in it. Giving up
+     * leaves again, and cancel is only offered while nobody has answered.
      */
     const startCall = () => {
       ringConversation(conversationId);
@@ -779,22 +734,15 @@ export const ServerView = () => {
         )}
         {isTiny ? (
           /*
-           * One channel, and nothing else.
+           * One channel and nothing else — `MainApp` drops the rail, the lists
+           * and the padding at this size.
            *
-           * No rail, no channel list, no member list, no voice panel and no
-           * page padding — `MainApp` drops those when the window is this size.
-           * What is left is the conversation you were already in, filling the
-           * window.
+           * **No way to change channel from here**; the way out is a bigger
+           * window. `useIsTinyWindow` is gated on a fine pointer so a phone
+           * never reaches this, where that would be a dead end.
            *
-           * There is deliberately no way to change channel from here. The way
-           * out is to make the window bigger, which is also the only gesture
-           * that makes sense for a window somebody shrank on purpose to watch
-           * one channel. `useIsTinyWindow` is gated on a fine pointer so a
-           * phone never reaches this, where that would be a dead end.
-           *
-           * A call is the one thing that does not wait for a bigger window.
-           * The voice panel is gone at this width, so the floating button the
-           * phone layout already uses comes with it — otherwise the microphone
+           * A call is the exception: the voice panel is gone at this width, so
+           * the phone layout's floating button comes with it, or the microphone
            * stays open with nothing on screen to close it.
            */
           <div className="flex" style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
@@ -951,18 +899,10 @@ export const ServerView = () => {
             <div className="flex grow" ref={voiceContainerRef} style={{ position: "relative", minWidth: 0 }}>
               <VoiceView
                 showVoiceView={showVoiceView && (!isCompact || voiceFocused)}
-                /* Focusing a stream no longer changes this.
-                 *
-                 * It used to: focus expanded the panel to two thirds of the
-                 * row, shrank the chat to the other third and closed both
-                 * sidebars — which is not what focus means, and is why
-                 * clicking a tile was described as going fullscreen. Clicking
-                 * a tile now makes that stream the big one inside the panel
-                 * and leaves the app where it was (GRYT-110).
-                 *
-                 * Hiding the chat is still a thing you can do, from the button
-                 * next to the focused view's controls. That one is a press
-                 * rather than a side effect. */
+                /* Focusing a stream does not change this. It makes that
+                 * stream the big one inside the panel and leaves the app where
+                 * it was (GRYT-110). Hiding the chat is a press of its own,
+                 * next to the focused view's controls. */
                 voiceWidth={
                   chatTakenOver
                     ? "100%"

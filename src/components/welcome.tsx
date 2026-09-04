@@ -9,18 +9,12 @@ import { PiSignpost, PiX } from "react-icons/pi";
 import { useSettings } from "@/settings";
 
 /**
- * The first thing anybody sees.
+ * The first thing anybody sees, drawn as a message rather than a dialog — an
+ * avatar, a name, a role and a bubble, so a first-run person learns the app's
+ * main idiom by being greeted in it.
  *
- * It used to be a dialog written in the first person, which is a different
- * thing from a message from a person. So it is a message now: an avatar, a
- * name, a role, and a bubble — the same parts the rest of the app uses to say
- * somebody said something. A first-run person learns the app's main idiom by
- * being greeted in it.
- *
- * The words are the point. Gryt is mostly one person's work and some of it is
- * rough, and hearing that from him beats finding it out on your own. Anything
- * that undercuts that has to go, which is why the confetti did: fireworks over
- * an apology reads as two different products talking.
+ * The words are the point, and anything undercutting them goes: the confetti
+ * did, because fireworks over an apology reads as two products talking.
  */
 export function Welcome() {
   const { hasSeenWelcome, settingsLoaded, completeWelcome } = useSettings();

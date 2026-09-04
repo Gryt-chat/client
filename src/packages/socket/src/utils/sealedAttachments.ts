@@ -4,17 +4,11 @@ import type { AttachmentMeta } from "../components/chatUtils";
 
 /**
  * Turning an encrypted upload back into something the message row can draw
- * (GRYT-761).
+ * (GRYT-761). The server holds ciphertext with no name and no dimensions;
+ * everything a row needs came back inside the sealed message.
  *
- * The server holds ciphertext under `application/octet-stream` with no name and
- * no dimensions, because that is all it was given. Everything a row needs to
- * draw the attachment — what it is called, what it is, how big the picture is —
- * came back inside the sealed message.
- *
- * So this rebuilds the shape the renderer already takes. `local_url` is the
- * seam: it exists for the optimistic preview of a file still uploading, and a
- * blob URL of the decrypted bytes fits it exactly. Nothing in `MessageRow`
- * changes.
+ * `local_url` is the seam — it exists for the optimistic preview of a file
+ * still uploading, and a blob URL of the decrypted bytes fits it exactly.
  */
 
 /**

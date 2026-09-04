@@ -22,43 +22,22 @@ type Shown = {
 const BAR_HEIGHT = "0.25rem";
 
 /**
- * Telling somebody a release exists, while they are using the app.
+ * Telling somebody a release exists while they are using the app (GRYT-543).
+ * Plain `react-hot-toast`, the one already in `main.tsx` — nothing here is a
+ * second toast system.
  *
- * Until GRYT-543 nothing did. The update check ran at launch and from the
- * button in Settings, and `aboutSettings.tsx` was the only thing in the whole
- * client subscribed to update status — so a client left open both failed to
- * look and had nowhere to say it if it had.
+ * **`announced` raises it; the rest of the statuses only move it along.** The
+ * others also answer a check somebody pressed a button for, and Settings is
+ * already showing them that.
  *
- * Plain `react-hot-toast`, the one already mounted in `main.tsx`: the container,
- * the surface colour and the border all come from the `toastOptions` there, and
- * dismissing is the library's own `toast.dismiss`. Nothing here is a second
- * toast system.
+ * **Not `toast.success`.** A green tick means the thing you did worked; nobody
+ * did anything here.
  *
- * **`announced` raises it; the rest of the statuses move it along.** Only the
- * background check sends `announced`. `available`, `downloading` and
- * `downloaded` also answer a check somebody pressed a button for, and Settings
- * is already showing them that — so those are read only while a toast is
- * already up, and never raise one.
+ * **No duration.** It stays until the cross is pressed or the update is taken.
+ * Dismissing does not bring it back for the same version in this run.
  *
- * **The progress bar is here because the splash is gone.** GRYT-622 deleted the
- * window that used to count a download at you on a black screen, and the
- * download moved behind the app. This is where it surfaces now: the same toast
- * that named the version fills a bar under it and turns into the restart when
- * the bytes are down. Nothing else has to open.
- *
- * **Not `toast.success`.** That puts a green tick on it, and a green tick means
- * the thing you did worked — a file saved, a key copied. Nobody did anything
- * here and nothing succeeded; a release exists. The only colour on this is the
- * accent, carried by the version chip and the bar.
- *
- * **No duration.** It stays until the cross is pressed or the update is taken,
- * rather than sliding past somebody who was reading something else. Dismissing
- * does not bring it back for the same version in this run.
- *
- * **The action is a link, not a filled button.** It restarts Gryt, which drops
- * you out of a call. Bottom-right is the corner people aim at to get rid of
- * things, so the control that sits there is the cross, and the one that
- * restarts is the quiet one.
+ * **The action is a link, not a filled button** — it restarts Gryt, which drops
+ * you out of a call, and bottom-right is where people aim to dismiss things.
  */
 export function UpdateAnnouncement() {
   /* The toast currently on screen. A newer release during the same run has to

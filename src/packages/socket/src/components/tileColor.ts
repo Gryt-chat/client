@@ -1,16 +1,11 @@
 /**
  * The colour a voice tile is painted, derived from the avatar on it.
  *
- * Its own module so `scripts/check-tile-contrast.mjs` can import it: white
- * nickname text sits on these, the ceiling of the lightness band is therefore a
- * contrast decision, and a test that reimplements the maths instead of calling
- * it proves nothing. speakingIndicator.ts resolves `@/common`, which is a
- * bundler alias and not a node one, so importing it from a script is not
- * possible — and a check that cannot run against the real function is how the
- * first version of that test passed with the clamp deleted.
- *
- * Nothing here touches React or the avatar modules. It is hex in, `hsl()`
- * parts out.
+ * **Its own module so `scripts/check-tile-contrast.mjs` can import it.** White
+ * nickname text sits on these, so the lightness ceiling is a contrast decision,
+ * and a test that reimplements the maths proves nothing — the first version of
+ * that check passed with the clamp deleted. Nothing here touches React or a
+ * bundler alias, which is what made importing the old home impossible.
  */
 
 /** A tile's colour, as the three parts of an `hsl()`. */
@@ -88,24 +83,12 @@ export function maxLightForWhiteText(hue: number, sat: number): number {
 }
 
 /**
- * The avatar's own colour, as a tile.
+ * The avatar's own colour, as a tile. **Taken whole and banded, never snapped
+ * to `TILE_HUES`** — snapping made a bright green and a dark green one tile,
+ * so the grid read as arbitrary (GRYT-648). Hue, saturation and lightness are
+ * all the avatar's, held inside a range the panel can carry.
  *
- * This used to snap the hue to `TILE_HUES` and paint it at one fixed
- * saturation and lightness, on the reasoning that an arbitrary hue at a fixed
- * lightness lands in the olive band often enough to look broken. The reasoning
- * was sound and the conclusion was the wrong half: keeping the hue and throwing
- * away the other two is what made tiles stop matching their owls.
- *
- * It collided, too. Guro's `#62d087` and Håkon's `#2a5a3a` are a bright green
- * and a dark green, and both snapped to hue 140 — one tile for two visibly
- * different birds, which is most of why the grid read as arbitrary (GRYT-648).
- *
- * So the colour is taken whole and banded instead. The hue is the avatar's
- * actual hue, and saturation and lightness are its own, held inside a range the
- * panel can carry — which answers the olive problem directly rather than by
- * discarding the information that would have avoided it.
- *
- * Still null for a grey avatar, whose hue is rounding noise, and for anything
+ * Null for a grey avatar, whose hue is rounding noise, and for anything
  * malformed. The caller falls back to the id hash.
  */
 export function tintFromAvatarColor(hex: string | null | undefined): TileTint | null {

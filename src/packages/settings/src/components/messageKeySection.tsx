@@ -16,21 +16,14 @@ import {
 } from "@/common";
 
 /**
- * The message password, for signed-in accounts (GRYT-783).
+ * The message password, for signed-in accounts (GRYT-783). Signing in on a
+ * second device made a fresh identity for messages, so the new device published
+ * its key over the old one and the first then warned that the server was
+ * showing a key that was not yours — a hostile-server warning raised by your
+ * own laptop.
  *
- * What this fixes: signing in on a second device made a fresh identity for
- * messages. Everything derived from the seed differed, the new device published
- * its key over the old one, and the first device then warned that the server was
- * showing a key that was not yours — a warning about a hostile server, raised by
- * your own laptop.
- *
- * The panel beside this used to say "when you sign in on another device, Gryt
- * restores this identity for you. There is no separate recovery key to save."
- * That was true of the account and not of the messages, and this section is what
- * makes the sentence honest.
- *
- * Guests are not offered this. They already have the 24 words, which do the same
- * job and need nothing stored anywhere — see LocalIdentitySection.
+ * **Guests are not offered this.** They already have the 24 words, which do the
+ * same job and need nothing stored anywhere.
  */
 export function MessageKeySection() {
   const [vault, setVault] = useState<SealedVault | null | undefined>(undefined);

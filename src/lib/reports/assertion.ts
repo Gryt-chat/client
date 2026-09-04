@@ -3,36 +3,18 @@ import { base64Url } from "@gryt/crypto";
 import { asIdentityScope, deriveScopedKeyPair, jwkThumbprint, signJwtWithKey } from "@/common";
 
 /**
- * Proving a report came from a real Gryt install, without saying which one.
+ * Proving a report came from a real Gryt install, without saying which one. It
+ * ties repeat reports from one install together and lets an abuser be banned by
+ * key rather than by address, collecting nothing about the person.
  *
- * The app key in the header is friction rather than authentication — the
- * service says so itself: anyone can pull it out of a bundle. This is the part
- * that authenticates. It lets repeat reports from one install be tied together
- * and an abuser be banned by key rather than by whatever address they were on,
- * and it collects nothing about the person.
+ * **A key derived for this service alone, never one of the per-server guest
+ * keys.** Those are deliberately unlinkable, so signing a report with one would
+ * tell this service which server the reporter uses. Mobile derives the same key
+ * from the same seed under the same scope — see `src/feedback/claims.ts` there.
  *
- * ## Which key
- *
- * **A key derived for this service alone, and not one of the per-server guest
- * keys.** That is the whole decision here. The guest keys are deliberately
- * unlinkable from each other so two servers cannot work out their members are
- * the same person; signing a report with one would tell this service which
- * server the reporter uses, which is the same disclosure in a different
- * direction. `deriveScopedKeyPair` gives a key per scope, so a scope of its own
- * costs nothing and keeps the property.
- *
- * It is still stable across reports and across restoring the same twenty-four
- * words, which is what makes it worth having at all. The mobile app derives the
- * same key from the same seed under the same scope — see
- * `src/feedback/claims.ts` there — so one person's reports tie together across
- * their devices without either app sending anything that says so.
- *
- * ## Why there is no challenge
- *
- * A server join is a challenge-response; there is no round trip here. The
- * service replaces it with three things and the client has to hold up all
- * three: the assertion is bound to the exact bytes posted through `bh`, it
- * expires in five minutes, and its `jti` is accepted once.
+ * No challenge, so the service replaces one with three things the client has to
+ * hold up together: the assertion is bound to the exact bytes posted through
+ * `bh`, it expires in five minutes, and its `jti` is accepted once.
  */
 
 /**

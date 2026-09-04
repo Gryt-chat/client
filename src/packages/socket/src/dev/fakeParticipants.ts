@@ -1,17 +1,12 @@
 /**
- * Fake voice participants, for looking at the grid at counts we cannot reach.
+ * Fake voice participants, for looking at the grid at counts we cannot reach —
+ * the server allows one voice connection per user, so a second tab is kicked.
  *
- * The server allows one voice connection per user — a second tab is kicked with
- * "Device Switch Detected" — so the only way to see a three-, five- or
- * seven-person grid on a dev box with one account is to invent the extra
- * people. This injects them into the real `clients` record, so the real
- * VoiceView renders them through the real providers with the real CSS. What it
- * does not do is exercise the socket path that would normally populate that
- * record, so it proves the layout and nothing about the plumbing.
+ * They go into the real `clients` record, so the real VoiceView renders them
+ * with the real CSS. **It proves the layout and nothing about the plumbing**,
+ * since the socket path that would populate that record is not exercised.
  *
- * Dev only. Normally driven from Settings → Developer, which is where it is
- * reachable in the desktop app. The query string still works and overrides the
- * settings while it is present, which is handy in a browser:
+ * Dev only, from Settings → Developer. The query string overrides it:
  *
  *   ?fake=7              seven fake participants alongside you
  *   ?fake=4&fakeshare=1  ...one of whom is sharing a screen
@@ -31,17 +26,10 @@ import type { Client, UserStatus } from "../types/clients";
 const FAKE_PREFIX = "fake-";
 
 /**
- * Ordered so the first eighteen owls are eighteen different colours.
- *
- * The generator gives six of these names a colour another one already has —
- * Astrid and Frøya are both `#da986c` — and the voice grid takes the front of
- * this list. Two people in one call with the same bird, on tiles tinted from
- * that bird, reads as the tinting being broken rather than as a coincidence.
- * The duplicates are still here, at the back, where the member list reaches
- * them and nothing sits them side by side.
- *
- * check-fake-participants asserts it, because the order looks arbitrary and
- * would not survive somebody tidying it alphabetically.
+ * **Ordered so the first eighteen owls are eighteen different colours**, and
+ * check-fake-participants asserts it — the order looks arbitrary and would not
+ * survive somebody tidying it alphabetically. Six names share a colour with
+ * another, and the voice grid takes the front of this list.
  */
 const NAMES = [
   "Astrid",
@@ -274,16 +262,10 @@ export function withFakeParticipants(
 }
 
 /**
- * The member list: the people in the call, plus the rest of the server.
- *
- * The call half was added because a nine-person call sat next to a members
- * panel saying two. The other half is here because that fix produced the
- * opposite lie — a server where every single member happened to be in voice,
- * which is not what a server looks like either.
- *
- * People in voice are marked in_voice, because they are; the rest are spread
- * across online, AFK and offline by index. The panel groups by status, so
- * getting this wrong puts people under the wrong heading.
+ * The member list: the people in the call, plus the rest of the server —
+ * without the second half every member is in voice, which is not what a server
+ * looks like. The rest are spread across online, AFK and offline by index,
+ * because the panel groups by status.
  */
 export function withFakeMembers(
   members: MemberInfo[],

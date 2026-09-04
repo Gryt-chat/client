@@ -5,29 +5,19 @@
  */
 
 /**
- * What a server is doing, drawn around its icon in the rail.
+ * What a server is doing, drawn around its icon in the rail (GRYT-314). The
+ * distinction is not which state machine value is set — it is **whether waiting
+ * is the right thing to do**:
  *
- * The rail used to say all of this with one look: greyed out, plus a
- * "• Connecting…" label you only saw on hover. A server you created ten
- * seconds ago and a stranger's server that has not answered got the same
- * treatment, and neither told you whether waiting was worth doing (GRYT-314).
+ * - `starting` — your own embedded server is booting, so the icon keeps its
+ *   colour and the ring is drawn in the accent.
+ * - `settling` — a remote server has a fixed budget before it is called
+ *   offline, and the ring *empties* over it, so the flip is the visible end of
+ *   something you watched.
+ * - `connecting` / `reconnecting` — no deadline. Indeterminate sweep, muted.
  *
- * The distinction this draws is not "which state machine value is set". It is
- * **whether waiting is the right thing to do**:
- *
- * - `starting` — your own embedded server is booting. The app knows it is
- *   coming, so the icon keeps its colour and the ring is drawn in the accent.
- *   Confidence.
- * - `settling` — a remote server has not answered yet, and there is a fixed
- *   budget before it is called offline. The ring *empties* over that budget,
- *   so the flip to offline is the visible end of something you watched rather
- *   than a verdict that arrives from nowhere.
- * - `connecting` / `reconnecting` — the socket has said something, and there
- *   is no deadline. Indeterminate sweep, muted.
- *
- * Two shapes, not two colours: a sweep means "working", a depleting ring means
- * "time is running out". That reads at a glance and it reads the same at one
- * second as at ten, which a spinner does not.
+ * **Two shapes, not two colours.** A sweep means working, a depleting ring
+ * means time is running out, and both read the same at one second as at ten.
  */
 export type ServerRingState =
   | "none"

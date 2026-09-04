@@ -7,31 +7,16 @@ import { useServerManagement } from "@/socket";
 import { useIdentityClaim } from "../hooks/useIdentityClaim";
 
 /**
- * Asked about one server, when you are signed in and have been a guest here
- * before (GRYT-285).
+ * Asked per server, when you are signed in and have been a guest here before
+ * (GRYT-285). One question after signing in authorised every guest identity on
+ * the device at once, including servers joined later.
  *
- * Replaces a single question asked once after signing in, whose yes authorised
- * every guest identity on the device at once — including servers joined later,
- * which nobody had been asked about. The decision genuinely differs per server:
- * somebody may want their own community carried onto their account and a server
- * they were a guest on once left exactly as it is.
+ * **The proof that an account controls a guest identity is also the
+ * disclosure**, so once it reaches the server, declining changes nothing. The
+ * question has to be answerable locally, which is what `hasGuestScope` is for.
  *
- * ## Why it can ask before anything is sent
- *
- * The proof that an account controls a guest identity is also the disclosure
- * that they are the same person. Once it reaches the server, declining changes
- * nothing. So the question has to be answerable without asking the server, and
- * it is: `hasGuestScope` is a local record of having been here, kept precisely
- * so this prompt can come first.
- *
- * ## How a yes takes effect
- *
- * By reconnecting. `answerChallenge` reads the decision when it answers a
- * challenge, and a connected client is past that point — but a server session
- * is only reused while its token is on disk, so dropping the token puts the
- * next connect back on the join path where the challenge is asked again
- * (GRYT-286). The link is signed then, and the server carries the membership
- * across.
+ * A yes takes effect by reconnecting: `answerChallenge` reads the decision, and
+ * dropping the token puts the next connect back on the join path (GRYT-286).
  */
 export function IdentityClaimPrompt() {
   const { isSignedIn } = useAccount();

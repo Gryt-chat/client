@@ -1,17 +1,10 @@
 import { getElectronAPI } from "./electron";
 
 /**
- * Keep the native window controls in the app's colours (GRYT-288).
- *
- * On Windows and Linux the minimise, maximise and close buttons are drawn by
- * the OS into an overlay strip, not by us. They are the one part of the window
- * the stylesheet cannot reach: they were set once when the window was built
- * and stayed that colour forever, so choosing a light theme left three
- * dark-theme buttons in the corner of a light titlebar, with a visible seam
- * where the strip met the titlebar the app draws itself.
- *
- * macOS is not affected — the traffic lights are the OS's and follow the
- * system appearance — and main ignores the message there.
+ * Keep the native window controls in the app's colours (GRYT-288). On Windows
+ * and Linux they are drawn by the OS into an overlay strip the stylesheet
+ * cannot reach, set once when the window was built — so a light theme left
+ * three dark buttons in the corner. macOS ignores this.
  */
 
 /** The two tokens the titlebar itself paints with. Kept in step with titlebar.tsx. */

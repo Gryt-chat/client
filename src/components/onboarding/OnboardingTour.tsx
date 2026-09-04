@@ -61,22 +61,13 @@ interface Rect {
  * can stop pretending.
  */
 /**
- * Presses a control for real, with a click and nothing else.
+ * Presses a control for real, **with a click and nothing else**. Base UI opens
+ * a menu on pointerdown, so sending the pointer pair and then a click toggles
+ * it straight back shut — which read as the tour losing its place from step two
+ * onwards.
  *
- * It used to send pointerdown, pointerup and then click, on the reasoning that
- * this is what a mouse does. Against Base UI it is what a mouse does and then
- * some: the menu opens on pointerdown and the click that follows toggles it
- * straight back shut, so the tour pressed the avatar, no menu appeared, the
- * next hop found nothing, and the step timed out and skipped ahead. It looked
- * like the tour losing its place from step two onwards.
- *
- * Measured against the real trigger and a real Menu.Item: pointer events alone
- * open the menu but never run an item's onClick; a click alone does both. So a
- * click alone is the whole press. The visible press is the cursor's own
- * animation and does not depend on these events.
- *
- * This was fallout from moving the library off Radix, which did open from the
- * pointer pair.
+ * Measured against a real trigger and a real Menu.Item: pointer events alone
+ * open the menu and never run an item's onClick; a click alone does both.
  */
 function pressControl(target: string): void {
   const node = document.querySelector<HTMLElement>(`[data-tour="${target}"]`);
@@ -151,14 +142,9 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
   /** When the step's action ran. The wait for its target starts from there. */
   const stepEnteredAt = useRef(0);
   /**
-   * Whether the current step has acted yet.
-   *
-   * The skip-on-missing-target rule and the choreography were fighting: the
-   * clock started when the step became current, but the cursor now spends
-   * over a second travelling before the action fires, so a step could be
-   * given up on before it had done anything. Steps two and three both
-   * vanished that way, and the tour raced to the end. Nothing is skipped
-   * until it has had its turn.
+   * Whether the current step has acted yet. The skip-on-missing-target clock
+   * used to start when the step became current, while the cursor spends over a
+   * second travelling — so steps were given up on before doing anything.
    */
   const stepHasActed = useRef(false);
   /**
@@ -185,16 +171,9 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
   }
 
   /**
-   * The choreography, in order, once per step.
-   *
-   * The first version did all of this at once: the cursor moved while the
-   * spotlight was still lit on the last thing and the modal opened underneath
-   * both. Everything happened on top of everything else and none of it read.
-   *
-   * So the focus gets out of the way first. Fade the spotlight and card out,
-   * move the cursor, press, let the app do the thing it was pressed into
-   * doing, give it a beat to settle, and only then bring the focus back on
-   * whatever the step is actually about.
+   * The choreography, in order, once per step: fade the spotlight and card out,
+   * move the cursor, press, let the app respond, settle, then bring the focus
+   * back. Done at once it all happens on top of itself and none of it reads.
    */
   useEffect(() => {
     if (!step) return;
@@ -428,16 +407,10 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
           )
         };
 
-  // Portaled to body, and it has to be.
-  //
-  // The app renders inside `.radix-themes`, which is position: relative with
-  // z-index: 0 — a stacking context. Anything inside it is sealed under level
-  // zero of the root, however high its own z-index goes, while Radix Themes
-  // portals its dialogs straight to body as siblings. So the tour at z-index 40
-  // lost to a dialog at z-index 1, and no number would have fixed it.
-  //
-  // That never showed while the tour only pointed at things already on screen.
-  // It opens modals now, so it has to live in the same stacking context they do.
+  // **Portaled to body, and it has to be.** The app renders inside
+  // `.radix-themes`, a stacking context, so anything within it is sealed under
+  // level zero however high its z-index — the tour at 40 lost to a dialog at 1,
+  // and no number would have fixed it. It opens modals now.
   return createPortal(
     /* The layer itself stays transparent to the pointer so the control being
        spotlighted is still clickable through it — that is the whole point of a

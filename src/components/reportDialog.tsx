@@ -173,21 +173,16 @@ function ReportForm({ type, onDone }: { type: ReportType; onDone: () => void }) 
 }
 
 /**
- * Everything that goes with what they wrote, and the payload itself.
+ * Everything that goes with what they wrote, and the payload itself, so
+ * somebody describing a crash can see their build number and route are going
+ * too.
  *
- * Not a disclosure notice and not a consent gate. Somebody about to describe a
- * crash should be able to see, without leaving the dialog, that their build
- * number and the route they were on are going too.
+ * **The list is a summary; the JSON is the thing.** The exact object that will
+ * be posted is one click away, and it is the same object rather than a second
+ * one built for display.
  *
- * **The list is a summary; the JSON is the thing.** A row saying "Log — last
- * 40 lines" is a claim about the payload, and a claim is only worth what the
- * reader can check. So the exact object that will be posted is one click away,
- * and it is the same object — not a second one built for display.
- *
- * **The log tail is off unless asked for**, because it is the one field that
- * can describe the person rather than the build: a failed connection writes
- * the server's address, and a self-hosted server's address is often somebody's
- * house.
+ * **The log tail is off unless asked for** — it is the one field that describes
+ * the person rather than the build.
  */
 function Attached({
   lines,
@@ -251,22 +246,14 @@ function Attached({
 }
 
 /**
- * It waits.
- *
- * This used to close itself after 2.5 seconds, on the theory that somebody who
- * has said their piece is finished with the dialog. What that actually does is
- * flash a paragraph at somebody and take it away while they are reading it, and
- * a confirmation nobody manages to read is the same as no confirmation.
+ * It waits. Closing itself after 2.5 seconds flashes a paragraph at somebody
+ * and takes it away while they are reading it.
  *
  * **The title is the words mobile's toast already uses.** Two clients saying
- * "received" and "sent" for the same event reads as two different things
- * happening. Mobile has no thank-you page at all — it closes the screen and
- * raises a toast, which is deliberate and is staying that way — but where both
- * do say something, they say it the same.
+ * "received" and "sent" for one event reads as two different things happening.
  *
- * Nothing here claims what happens next. It said the feedback was read by a
- * person rather than counted as a vote, which is a promise this dialog is in no
- * position to make and reassurance nobody asked for.
+ * Nothing here claims what happens next — that is a promise this dialog is in
+ * no position to make.
  */
 function Sent({ type, onDone }: { type: ReportType; onDone: () => void }) {
   const bug = type === "bug";

@@ -59,17 +59,11 @@ const tokenHealLastAttempt = new Map<string, number>();
 const myServerUserIdByHost = new Map<string, string>();
 
 /**
- * What `firstTimeOnThisSocket` is asked about below (GRYT-758).
- *
- * `publishDmKey` used to run only from `server:joined`, and the server emits
- * that from one place: the `server:verify` handler. A client that already holds
- * a token never goes near it — `useSockets` sends `session:restore` on connect
- * instead — so everybody who was already a member of a server published no key
- * at all, and encrypted DMs were on for new members only. Nothing errored, and
- * the composer correctly reported that the other side had published nothing.
- *
- * `server:details` is the one signal both routes produce, and it is already
- * what this client treats as the restore having landed.
+ * What `firstTimeOnThisSocket` is asked about below (GRYT-758). `server:joined`
+ * fires only from `server:verify`, which a client holding a token never
+ * reaches — so keyed on that, every existing member published no DM key and
+ * encrypted DMs were on for new members only, with nothing erroring.
+ * `server:details` is the one signal both routes produce.
  */
 const DM_KEY = "dm-key";
 
@@ -293,16 +287,11 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     // because it is also how a mention read on a phone stops showing here.
     socket.emit("mentions:list");
 
-    // Read when the event fires, not when the handler was registered. These
-    // handlers are registered once per socket, and the socket is created as
-    // soon as Keycloak has initialised — while useUserId is still resolving
-    // the account's sub in an effect of its own. Capturing the value meant
-    // `userId` was usually still null here, so the sync was skipped and never
-    // tried again, because server:joined only fires once.
-    //
-    // The owner is the one this always caught: their membership is created by
-    // this very event, at the earliest moment the app can reach a server, so
-    // the race is not a race for them — it is a certainty (GRYT-12).
+    // **Read when the event fires, not when the handler was registered.** The
+    // socket is created as soon as Keycloak initialises, while `useUserId` is
+    // still resolving in an effect — so a captured value was usually null, the
+    // sync was skipped, and `server:joined` never fires twice. For the owner it
+    // is a certainty rather than a race (GRYT-12).
     const userId = userIdRef.current;
     if (joinInfo.accessToken && userId) {
       syncAvatarToHost(host, joinInfo.accessToken, joinInfo.avatarFileId, socket, setServerProfiles, userId)
@@ -502,21 +491,17 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       return;
     }
 
-    // Refused for what this identity is rather than for who it is: the server
-    // does not admit this tier at all. This one the server does explain, and it
-    // says so in `server:info` before anyone tries, so the message is passed
-    // straight through.
+    // Refused for what this identity is rather than who it is. The server
+    // explains this one and already says so in `server:info`, so the message
+    // passes straight through.
     //
-    // Recorded like the refusals below because that is what ends the attempt.
-    // Without it this fell to the generic branch, which toasts the raw error
-    // code and records nothing — so the connection never reached a terminal
-    // state, the panel sat on the connecting skeleton until its timeout, and
-    // the app blamed network conditions for a "no" that had arrived
-    // immediately. The retry loops kept asking for as long as it stayed open.
+    // **Recorded like the refusals below, because that is what ends the
+    // attempt.** On the generic branch the connection never reached a terminal
+    // state and the panel sat on the skeleton, blaming network conditions for a
+    // "no" that arrived immediately.
     //
-    // Tokens are deliberately left alone, unlike the refusals below. Signing
-    // back in is the whole fix, and what was rejected is the identity in hand,
-    // not anything stored for this server.
+    // **Tokens are deliberately left alone.** What was rejected is the identity
+    // in hand, not anything stored for this server.
     if (errorInfo.error === "identity_tier_refused") {
       const message =
         errorInfo.message || "This server requires a Gryt account to join.";
@@ -665,21 +650,16 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
 
         /*
          * This server is showing a message key you did not publish (GRYT-727).
-         * A fact about the server rather than about one person, so it belongs
-         * here and not in a card somebody may never open.
+         * A fact about the server, so it belongs here rather than in a card
+         * somebody may never open.
          *
-         * Held back before it is shown, and taken away when it stops being
-         * true. Both matter, and neither used to happen (GRYT-784):
+         * **Held back before it is shown, and taken away when it stops being
+         * true** (GRYT-784). We publish our own key on join, so the first
+         * member list of a session routinely arrives first and every join
+         * flashed the warning — a real mismatch is still there seconds later, a
+         * race is not.
          *
-         *   - We publish our own key on join, so the first member list of a
-         *     session routinely arrives before that lands and every join
-         *     flashed the warning.
-         *   - `duration: Infinity` with no dismiss meant that flash stayed on
-         *     screen for the rest of the session, long after the key agreed.
-         *
-         * The delay is the whole fix for the first: a real mismatch is still
-         * there seconds later, a race is not. Note this is not only about
-         * timing — signing in on a second device derives a different key and
+         * Not only timing: a second device derives a different key and
          * genuinely does mismatch, which is why the wording names that first.
          */
         const myId = myServerUserIdByHost.get(host);
@@ -714,18 +694,11 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
         // alone is right: dropping them would make every peer look new.
       });
 
-    // Record what this server actually holds for us.
-    //
-    // serverProfiles was only ever written in response to a change —
-    // profile:updated fires after profile:update or avatar:updated — so on a
-    // plain join it stayed empty and the per-server tab in Settings fell back
-    // to the locally stored nickname. It therefore showed the local value under
-    // the caption "This is how other users will see you" while the member list
-    // beside it showed something else entirely, which is how the GRYT-58
-    // desync went unnoticed for so long.
-    //
-    // The member list is the same data other people see, so it is the right
-    // source. Nothing new is fetched.
+    // Record what this server actually holds for us. `serverProfiles` was only
+    // written on a change, so a plain join left it empty and Settings fell back
+    // to the local nickname — under the caption "This is how other users will
+    // see you", beside a member list saying something else (GRYT-58). The
+    // member list is the same data other people see, and nothing new is fetched.
     const myServerUserId = myServerUserIdByHost.get(host);
     if (!myServerUserId) return;
 

@@ -1,16 +1,11 @@
 /**
- * What "include audio" on a screen share actually picks up, which is not the
- * same thing on every platform or for every source.
+ * What "include audio" on a screen share picks up, which differs by platform
+ * and by source. Windows captures per process: a window share carries that
+ * application's audio, a screen share everything except Gryt — so sharing a
+ * game while in another app's voice chat sends that app's audio back out.
  *
- * Windows captures per process: a window share carries only that application's
- * audio, and a whole-screen share carries everything except Gryt. That
- * difference is the answer to a real complaint — sharing a game while sitting
- * in another app's voice chat sends that app's audio back out, and the people
- * in it hear themselves — so the picker says which one you are about to do.
- *
- * macOS captures the machine either way: the capture helper there is
- * ScreenCaptureKit with `excludesCurrentProcessAudio`, and it ignores the
- * source it is handed. Per-application capture is GRYT-564.
+ * macOS captures the machine either way and ignores the source. Per-application
+ * capture is GRYT-564.
  */
 export function audioScopeHint(platform: string, sourceId: string | null): string {
   const isWindows = platform === "win32";
