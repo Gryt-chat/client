@@ -1,10 +1,10 @@
 import { Avatar, Chip, PreviewCard, Tooltip } from "@gryt/ui";
 import { AnimatePresence, motion } from "motion/react";
 import { forwardRef, memo, useCallback, useRef, useState } from "react";
-import { PiSignInBold, PiSignOutBold } from "react-icons/pi";
 
 import { getUploadsFileUrl } from "@/common";
 
+import { PiSignInBold, PiSignOutBold } from "../../../../lib/icons";
 import { useServerPermissions } from "../hooks/usePermissions";
 import type { CustomEmojiEntry } from "../utils/remarkEmoji";
 import { sealedPlaceholder } from "../utils/sealedText";

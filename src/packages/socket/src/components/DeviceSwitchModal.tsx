@@ -1,6 +1,7 @@
 import { Button, Dialog, IconButton } from "@gryt/ui";
 import { useEffect,useState } from "react";
-import { PiWarningFill, PiX } from "react-icons/pi";
+
+import { PiWarningFill, PiX } from "../../../../lib/icons";
 
 interface DeviceSwitchData {
   message: string;

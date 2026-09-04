@@ -1,9 +1,9 @@
 import { Avatar, IconButton, PreviewCard, Tooltip } from "@gryt/ui";
 import { useMemo } from "react";
-import { PiPushPinFill, PiPushPinSlashFill } from "react-icons/pi";
 
 import { getUploadsFileUrl, resolveAvatarSrc, useTheme } from "@/common";
 
+import { PiPushPinFill, PiPushPinSlashFill } from "../../../../lib/icons";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { UserStatus } from "../types/clients";
 import { BotTag } from "./BotTag";

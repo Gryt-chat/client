@@ -1,12 +1,12 @@
 import { AlertDialog, Avatar, Button, Select, Switch, TextField } from "@gryt/ui";
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { PiCameraFill, PiTrashFill } from "react-icons/pi";
 
 import { GeneratedServerIcon, getServerAccessToken, getServerHttpBase } from "@/common";
 import { useSettings } from "@/settings";
 import type { Channel } from "@/settings/src/types/server";
 
+import { PiCameraFill, PiTrashFill } from "../../../../lib/icons";
 import { useServerPermissions } from "../hooks/usePermissions";
 
 type ProfanityMode = "off" | "flag" | "censor" | "block";

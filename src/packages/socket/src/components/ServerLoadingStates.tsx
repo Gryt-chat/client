@@ -1,6 +1,6 @@
 import { Button, Spinner } from "@gryt/ui";
-import { PiArrowsClockwiseFill, PiClockFill, PiWarningCircleFill, PiWifiSlashFill } from "react-icons/pi";
 
+import { PiArrowsClockwiseFill, PiClockFill, PiWarningCircleFill, PiWifiSlashFill } from "../../../../lib/icons";
 import { ServerDetailsSkeleton } from "./skeletons";
 
 interface ServerLoadingStatesProps {

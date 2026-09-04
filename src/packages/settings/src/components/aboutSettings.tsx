@@ -1,11 +1,11 @@
 import { AlertDialog, Button, Chip, Divider, Surface, Switch } from "@gryt/ui";
 import { useCallback, useEffect, useState } from "react";
-import { FaGithub } from "react-icons/fa";
-import { PiArrowsClockwiseFill, PiArrowSquareOutFill, PiBugFill, PiChatCircleDotsFill, PiCheckCircleFill, PiClockClockwiseFill, PiDesktopFill, PiDownloadSimpleFill, PiXCircleFill } from "react-icons/pi";
 
 import { Wordmark } from "@/common";
 
+import { FaGithub } from "../../../../lib/brandIcons";
 import { getElectronAPI, isElectron, UpdateStatus } from "../../../../lib/electron";
+import { PiArrowsClockwiseFill, PiArrowSquareOutFill, PiBugFill, PiChatCircleDotsFill, PiCheckCircleFill, PiClockClockwiseFill, PiDesktopFill, PiDownloadSimpleFill, PiXCircleFill } from "../../../../lib/icons";
 import { useReportForm } from "../../../../lib/reports/useReportForm";
 import { SettingsContainer } from "./settingsComponents";
 

@@ -1,7 +1,7 @@
 import { Button, Chip, TextField } from "@gryt/ui";
 import { type ChangeEvent } from "react";
-import { PiDownloadSimpleFill, PiMagnifyingGlassFill, PiX } from "react-icons/pi";
 
+import { PiDownloadSimpleFill, PiMagnifyingGlassFill, PiX } from "../../../../lib/icons";
 import { useEmoteImport } from "../hooks/useEmoteImport";
 import { type TokenRefreshSocketLike } from "../utils/tokenManager";
 import { EmoteRow } from "./EmoteRow";

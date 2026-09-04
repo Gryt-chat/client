@@ -1,6 +1,5 @@
 import { Tooltip } from "@gryt/ui";
 import { cloneElement, isValidElement, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { PiCheck, PiCopyFill } from "react-icons/pi";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
@@ -9,6 +8,7 @@ import remarkGfm from "remark-gfm";
 
 import { getServerAccessToken, getServerHttpBase, useTheme } from "@/common";
 
+import { PiCheck, PiCopyFill } from "../../../../lib/icons";
 import { type CustomEmojiEntry, preprocessCustomEmojis, preprocessSmileys, remarkEmoji } from "../utils/remarkEmoji";
 import { createRemarkMention } from "../utils/remarkMention";
 import type { ProfanityMatchRange } from "./chatUtils";

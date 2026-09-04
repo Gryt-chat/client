@@ -1,11 +1,11 @@
 import { Button, IconButton, Surface, TextField } from "@gryt/ui";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { PiPlusBold, PiTrashBold } from "react-icons/pi";
 import type { Socket } from "socket.io-client";
 
 import type { ChannelRule } from "@/settings/src/channelPermissionRules";
 
+import { PiPlusBold, PiTrashBold } from "../../../../lib/icons";
 import { useSocketEvent } from "../hooks/useSocketEvent";
 import { ChannelPermissionMatrix } from "./ChannelPermissionMatrix";
 

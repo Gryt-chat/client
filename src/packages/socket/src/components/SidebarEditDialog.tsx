@@ -1,6 +1,5 @@
 import { Dialog, IconButton, Select, Switch, TextField } from "@gryt/ui";
 import { useCallback, useMemo, useRef } from "react";
-import { PiX } from "react-icons/pi";
 
 import {
   type ChannelRule,
@@ -10,6 +9,7 @@ import {
 } from "@/settings/src/channelPermissionRules";
 import type { SidebarItem } from "@/settings/src/types/server";
 
+import { PiX } from "../../../../lib/icons";
 import { ChannelPermissionMatrix } from "./ChannelPermissionMatrix";
 
 export interface SidebarEditorFields {

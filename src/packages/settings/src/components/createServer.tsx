@@ -1,10 +1,10 @@
 import { Alert, Avatar, Button, Checkbox, Dialog, Spinner, TextField } from "@gryt/ui";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import { PiCheckCircleFill, PiWarningFill, PiX } from "react-icons/pi";
 
 import { GeneratedServerIcon } from "@/common";
 
+import { PiCheckCircleFill, PiWarningFill, PiX } from "../../../../lib/icons";
 import { useEmbeddedServer } from "../hooks/useEmbeddedServer";
 
 interface CreateServerPanelProps {

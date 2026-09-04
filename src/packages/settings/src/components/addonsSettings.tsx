@@ -1,11 +1,11 @@
 import { Button, Chip, Switch } from "@gryt/ui";
 import { useEffect, useState } from "react";
-import { PiFolderFill } from "react-icons/pi";
 
 import type { AddonManifest, AddonUpdate } from "@/addons";
 import { useAddons } from "@/addons";
 
 import { getElectronAPI, isElectron } from "../../../../lib/electron";
+import { PiFolderFill } from "../../../../lib/icons";
 import { SettingsContainer } from "./settingsComponents";
 
 function useAddonAssetUrl(

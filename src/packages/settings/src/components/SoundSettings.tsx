@@ -1,7 +1,8 @@
 import { Button, IconButton, Slider, Switch, Tooltip } from "@gryt/ui";
 import { useEffect, useRef, useState } from "react";
-import { PiArrowsClockwiseFill, PiPlayFill, PiStopFill } from "react-icons/pi";
 import useSound from "use-sound";
+
+import { PiArrowsClockwiseFill, PiPlayFill, PiStopFill } from "../../../../lib/icons";
 
 interface SoundSettingsProps {
   label: string;

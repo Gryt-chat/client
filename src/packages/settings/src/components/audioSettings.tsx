@@ -3,12 +3,12 @@ import { useMicrophone, useScreenShare, useSpeakers } from "@gryt/voice";
 import { useSFU } from "@gryt/voice";
 import { voiceLog } from "@gryt/voice";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { PiArrowsClockwiseFill, PiWarningFill } from "react-icons/pi";
 
 import { MAX_VOLUME_PERCENT } from "@/lib/audioVolume";
 import { setNotificationOutputDevice } from "@/lib/notificationSound";
 import { useSettings } from "@/settings";
 
+import { PiArrowsClockwiseFill, PiWarningFill } from "../../../../lib/icons";
 import { SettingGroup, SettingsContainer, SliderSetting, ToggleSetting } from "./settingsComponents";
 
 /** Visualizer refresh rate. 30 fps is plenty for a level meter. */

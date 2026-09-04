@@ -1,5 +1,4 @@
 import { Tooltip } from "@gryt/ui";
-import { PiCheckBold, PiMinusBold, PiProhibitBold } from "react-icons/pi";
 
 import {
   type CellState,
@@ -10,6 +9,7 @@ import {
   withCell,
 } from "@/settings/src/channelPermissionRules";
 
+import { PiCheckBold, PiMinusBold, PiProhibitBold } from "../../../../lib/icons";
 import { describePermission } from "../lib/permissions";
 
 /**

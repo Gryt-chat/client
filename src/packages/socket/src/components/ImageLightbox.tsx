@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { PiCheck, PiCloudArrowDownFill, PiImageFill } from "react-icons/pi";
 
+import { PiCheck, PiCloudArrowDownFill, PiImageFill } from "../../../../lib/icons";
 import { triggerDownload } from "../utils/downloadFile";
 import { copyImageToClipboard } from "../utils/mediaClipboard";
 

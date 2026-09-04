@@ -1,11 +1,12 @@
 import { Button } from "@gryt/ui";
-import { PiWarningFill, PiX } from "react-icons/pi";
 
 import {
   dismissServerNotice,
   type ServerNotice,
   useServerNotice,
 } from "@/common";
+
+import { PiWarningFill, PiX } from "../../../../lib/icons";
 
 /**
  * Where the installer comes from.

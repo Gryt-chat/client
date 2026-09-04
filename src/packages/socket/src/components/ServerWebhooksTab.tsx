@@ -1,9 +1,10 @@
 import { Avatar, Button, IconButton, Select, Surface, TextField, Tooltip } from "@gryt/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { PiCopyFill, PiPlus, PiTrashFill } from "react-icons/pi";
 
 import { getServerAccessToken, getServerHttpBase, getUploadsFileUrl } from "@/common";
+
+import { PiCopyFill, PiPlus, PiTrashFill } from "../../../../lib/icons";
 
 type WebhookItem = {
   webhook_id: string;

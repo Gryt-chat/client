@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { PiCaretLeftFill, PiCaretRightFill } from "react-icons/pi";
 
 import { isElectron } from "../lib/electron";
+import { PiCaretLeftFill, PiCaretRightFill } from "../lib/icons";
 
 export const TITLEBAR_HEIGHT = 36;
 

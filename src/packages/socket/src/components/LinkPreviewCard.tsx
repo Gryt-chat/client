@@ -8,10 +8,10 @@ import {
   LOGO_VIEW_BOX,
 } from "@gryt/core";
 import { memo, useEffect, useMemo, useState } from "react";
-import { PiLinkSimpleBold } from "react-icons/pi";
 
 import { getServerAccessToken, getServerHttpBase, useTheme } from "@/common";
 
+import { PiLinkSimpleBold } from "../../../../lib/icons";
 import { DismissButton } from "./EmbedRenderers";
 import {
   cardByline,

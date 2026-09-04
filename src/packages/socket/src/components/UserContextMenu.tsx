@@ -1,10 +1,10 @@
 import { ContextMenu, Slider } from "@gryt/ui";
 import { ReactNode } from "react";
 import toast from "react-hot-toast";
-import { PiAtFill, PiChatCircleFill, PiCheckBold, PiCopyFill, PiFlagFill, PiProhibitFill } from "react-icons/pi";
 
 import { useSettings } from "@/settings";
 
+import { PiAtFill, PiChatCircleFill, PiCheckBold, PiCopyFill, PiFlagFill, PiProhibitFill } from "../../../../lib/icons";
 import { useServerPermissions } from "../hooks/usePermissions";
 
 /** A role id. The server defines what they are; this only passes them around. */

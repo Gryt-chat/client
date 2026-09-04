@@ -2,8 +2,8 @@ import { IconButton } from "@gryt/ui";
 import type { StreamSources } from "@gryt/voice";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
-import { PiPhoneCallFill } from "react-icons/pi";
 
+import { PiPhoneCallFill } from "../../../../lib/icons";
 import type { PeerLatencyStats } from "../hooks/usePeerLatency";
 import type { Client } from "../types/clients";
 import type { AdminActions, MemberInfo } from "./MemberSidebar";

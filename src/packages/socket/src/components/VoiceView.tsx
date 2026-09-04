@@ -27,11 +27,11 @@ import {
   useState,
 } from "react";
 import toast from "react-hot-toast";
-import { PiArrowLineLeftFill, PiArrowLineRightFill, PiChatCircleFill, PiCornersInFill, PiCornersOutFill, PiMicrophoneSlashFill, PiVideoCameraSlashFill } from "react-icons/pi";
 
 import { useSettings } from "@/settings";
 import { Controls } from "@/webRTC";
 
+import { PiArrowLineLeftFill, PiArrowLineRightFill, PiChatCircleFill, PiCornersInFill, PiCornersOutFill, PiMicrophoneSlashFill, PiVideoCameraSlashFill } from "../../../../lib/icons";
 import { useAloneInCall } from "../hooks/useAloneInCall";
 import type { PeerLatencyStats } from "../hooks/usePeerLatency";
 import { usePopoutStreams } from "../hooks/usePopoutStreams";

@@ -3,10 +3,10 @@ import type { StreamSources } from "@gryt/voice";
 import { useMicrophone } from "@gryt/voice";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
-import { PiMicrophoneSlashFill, PiScreencastFill, PiSpeakerSlashFill, PiVideoCameraFill } from "react-icons/pi";
 
 import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 
+import { PiMicrophoneSlashFill, PiScreencastFill, PiSpeakerSlashFill, PiVideoCameraFill } from "../../../../lib/icons";
 import { toObjectPosition, useVideoFraming } from "../hooks/useVideoFraming";
 import type { Client } from "../types/clients";
 import type { AdminActions, MemberInfo } from "./MemberSidebar";

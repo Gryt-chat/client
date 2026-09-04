@@ -2,12 +2,12 @@ import { AlertDialog, Avatar, Button, IconButton, Select, Tabs, TextField, Toolt
 import { AvatarChoiceDialog, OwlDesignerDialog } from "@gryt/ui";
 import { useCallback,useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { PiArrowsClockwiseFill, PiCameraFill, PiCheck, PiCopyFill } from "react-icons/pi";
 
 import { compressStaticAvatarToLimit, getAvatarHash, getServerAccessToken, getServerHttpBase, getStoredAvatar, getStoredWorn, getUploadsFileUrl, resolveAvatarSrc, setStoredWorn, useUserId } from "@/common";
 import { useSettings } from "@/settings";
 import { useServerManagement, useSockets } from "@/socket";
 
+import { PiArrowsClockwiseFill, PiCameraFill, PiCheck, PiCopyFill } from "../../../../lib/icons";
 import { SettingsContainer } from "./settingsComponents";
 
 /**

@@ -1,9 +1,9 @@
 import { Button, IconButton, Surface, Switch } from "@gryt/ui";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { PiCopyBold, PiTrashBold } from "react-icons/pi";
 import type { Socket } from "socket.io-client";
 
+import { PiCopyBold, PiTrashBold } from "../../../../lib/icons";
 import { useSocketEvent } from "../hooks/useSocketEvent";
 import { describePermission } from "../lib/permissions";
 

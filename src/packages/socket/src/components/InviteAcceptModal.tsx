@@ -1,8 +1,9 @@
 import { Alert, Avatar, Button, Dialog, IconButton, Spinner } from "@gryt/ui";
 import { useEffect, useRef, useState } from "react";
-import { PiEnvelopeFill, PiUsersFill, PiWarningFill, PiX } from "react-icons/pi";
 
 import { GeneratedServerIcon, getServerHttpBase, type PendingInvite } from "@/common";
+
+import { PiEnvelopeFill, PiUsersFill, PiWarningFill, PiX } from "../../../../lib/icons";
 
 type ServerPreview = {
   name: string;

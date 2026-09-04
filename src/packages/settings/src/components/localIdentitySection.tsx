@@ -1,12 +1,6 @@
 import { Alert, Button, TextField } from "@gryt/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import {
-  PiCopySimple,
-  PiEyeFill,
-  PiUploadSimple,
-  PiWarningFill,
-} from "react-icons/pi";
 
 import {
   getIdentityWords,
@@ -16,6 +10,13 @@ import {
   restoreIdentityFromWords,
   unlockBackup,
 } from "@/common";
+
+import {
+  PiCopySimple,
+  PiEyeFill,
+  PiUploadSimple,
+  PiWarningFill,
+} from "../../../../lib/icons";
 
 /* Hallmark · pre-emit critique: P5 H5 E4 S5 R5 V4 */
 

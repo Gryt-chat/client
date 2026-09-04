@@ -1,10 +1,5 @@
 import { Alert, Avatar, Button, Chip, Divider, IconButton, Spinner, Surface, Tooltip } from "@gryt/ui";
 import { useCallback, useEffect, useState } from "react";
-import {
-  PiArrowsClockwiseBold,
-  PiBroadcastFill,
-  PiWarningFill,
-} from "react-icons/pi";
 
 import { GeneratedServerIcon, getServerHttpBase, normalizeHost } from "@/common";
 import { useLanDiscovery } from "@/settings/src/hooks/useLanDiscovery";
@@ -16,6 +11,11 @@ import {
 } from "@/socket/src/hooks/useServerManagement";
 
 import type { LanServer } from "../lib/electron";
+import {
+  PiArrowsClockwiseBold,
+  PiBroadcastFill,
+  PiWarningFill,
+} from "../lib/icons";
 
 /**
  * How long the pane looks before admitting it has found nothing.

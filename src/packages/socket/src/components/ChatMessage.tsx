@@ -1,6 +1,6 @@
 import { Skeleton } from "@gryt/ui";
-import { PiChatCircleFill, PiSpeakerHighFill } from "react-icons/pi";
 
+import { PiChatCircleFill, PiSpeakerHighFill } from "../../../../lib/icons";
 import { EmojiText } from "./EmojiText";
 
 export const MessageHoverToolbar = ({

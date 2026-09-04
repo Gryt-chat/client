@@ -8,16 +8,16 @@ import {
 } from "@gryt/ui";
 import { useState } from "react";
 import toast from "react-hot-toast";
+
+import type { SavedTheme } from "@/common";
+import { presetThemeId, useCustomThemes, useTheme } from "@/common";
+
 import {
   PiCheckBold,
   PiLinkSimpleBold,
   PiPencilSimpleBold,
   PiTrashBold,
-} from "react-icons/pi";
-
-import type { SavedTheme } from "@/common";
-import { presetThemeId, useCustomThemes, useTheme } from "@/common";
-
+} from "../../../../../lib/icons";
 import { ImportThemeDialog } from "./importThemeDialog";
 
 const GENERATOR = "https://ui.gryt.chat/theme/generator";

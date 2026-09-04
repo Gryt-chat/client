@@ -1,11 +1,11 @@
 import { IconButton } from "@gryt/ui";
 import type { StreamSources } from "@gryt/voice";
 import { useCallback, useState } from "react";
-import { PiList, PiUsersFill } from "react-icons/pi";
 
 import type { SealDecision } from "@/common";
 import type { Channel, SidebarItem } from "@/settings/src/types/server";
 
+import { PiList, PiUsersFill } from "../../../../lib/icons";
 import type { DirectConversation } from "../hooks/useDirectMessages";
 import type { PeerLatencyStats } from "../hooks/usePeerLatency";
 import type { Client } from "../types/clients";

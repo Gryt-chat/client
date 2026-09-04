@@ -4,11 +4,11 @@ import { useSFU } from "@gryt/voice";
 import { AnimatePresence, motion, Variants } from "motion/react";
 import { useCallback, useState } from "react";
 import toast from "react-hot-toast";
-import { PiMicrophoneFill, PiMicrophoneSlashFill, PiMonitorArrowUpFill, PiPhoneDisconnectFill, PiScreencastFill, PiSpeakerHighFill, PiSpeakerSimpleHighFill, PiSpeakerSimpleSlashFill, PiSpeakerSlashFill, PiVideoCameraFill, PiVideoCameraSlashFill } from "react-icons/pi";
 
 import { useSettings } from "@/settings";
 import { useServerManagement } from "@/socket";
 
+import { PiMicrophoneFill, PiMicrophoneSlashFill, PiMonitorArrowUpFill, PiPhoneDisconnectFill, PiScreencastFill, PiSpeakerHighFill, PiSpeakerSimpleHighFill, PiSpeakerSimpleSlashFill, PiSpeakerSlashFill, PiVideoCameraFill, PiVideoCameraSlashFill } from "../../../../lib/icons";
 import { useScreenAudioMute } from "../adapters/useScreenAudioMute";
 import { CameraPreviewModal } from "./CameraPreviewModal";
 import { ScreenSharePickerModal } from "./ScreenSharePickerModal";
