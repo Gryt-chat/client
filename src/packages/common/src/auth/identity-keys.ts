@@ -1,8 +1,8 @@
+import { base64Url as sharedBase64Url, base64UrlDecode as sharedBase64UrlDecode } from "@gryt/crypto";
 /**
  * Client-side ECDSA P-256 keypair management for challenge-response
  * identity authentication. The private key never leaves the client.
  */
-
 import {
   deriveDmKeyPair,
   type DmKeyPair,
@@ -376,18 +376,13 @@ export async function getPublicKeyJwk(
   return crypto.subtle.exportKey("jwk", publicKey);
 }
 
+/* Only the coercion is local; the encoding is @gryt/crypto's (GRYT-898). */
 function base64UrlEncode(buf: ArrayBuffer | Uint8Array): string {
-  const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
-  let binary = "";
-  for (const b of bytes) binary += String.fromCharCode(b);
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  return sharedBase64Url(buf instanceof Uint8Array ? buf : new Uint8Array(buf));
 }
 
 function base64UrlDecode(value: string): Uint8Array<ArrayBuffer> {
-  const binary = atob(value.replace(/-/g, "+").replace(/_/g, "/"));
-  const out = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
-  return out as Uint8Array<ArrayBuffer>;
+  return sharedBase64UrlDecode(value) as Uint8Array<ArrayBuffer>;
 }
 
 function utf8ToBuffer(str: string): Uint8Array<ArrayBuffer> {
