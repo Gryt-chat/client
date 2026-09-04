@@ -1,4 +1,5 @@
 import { getGrytConfig } from "../../../../config";
+import { decodeJwt } from "./jwt";
 import { getValidIdentityToken } from "./keycloak";
 
 export interface KeycloakCredential {
@@ -93,9 +94,7 @@ function decodeTokenClaims(token: string): Record<string, unknown> | null {
   try {
     const part = token.split(".")[1];
     if (!part) return null;
-    return JSON.parse(
-      atob(part.replace(/-/g, "+").replace(/_/g, "/")),
-    ) as Record<string, unknown>;
+    return decodeJwt<Record<string, unknown>>(token);
   } catch {
     return null;
   }

@@ -16,6 +16,7 @@ import { base64Url as encodeBase64Url } from "@gryt/crypto";
  * stranger with a familiar name.
  */
 import { getPublicKeyJwk, parseIdentityBackup } from "./identity-keys";
+import { decodeJwt } from "./jwt";
 import { jwkThumbprint } from "./server-pins";
 
 /** Must match `DELEGATED_ISSUER` in the server's `auth/identity.ts`. */
@@ -83,9 +84,7 @@ function decodePayload(jwt: string): Record<string, unknown> | null {
   try {
     const part = jwt.split(".")[1];
     if (!part) return null;
-    return JSON.parse(
-      atob(part.replace(/-/g, "+").replace(/_/g, "/")),
-    ) as Record<string, unknown>;
+    return decodeJwt<Record<string, unknown>>(jwt);
   } catch {
     return null;
   }
