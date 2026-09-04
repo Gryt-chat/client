@@ -1027,6 +1027,17 @@ body {
   white-space: nowrap;
 }
 
+/* Attribution, under the description. Smaller and dimmer than the detail line
+   above the title, because that one is what the card is about and this one is
+   who to credit for it. */
+.link-embed-card-byline {
+  font-size: 11.5px;
+  color: var(--gryt-neutral-10);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .link-embed-card-failure {
   font-size: 12.5px;
   color: var(--gryt-neutral-10);

@@ -268,3 +268,44 @@ export function safeJsonParseOEmbed(raw: unknown): OEmbedPayload | null {
   if (typeof rec.html !== "string") return null;
   return { html: rec.html };
 }
+
+/**
+ * The attribution line under a card: who made it, and when (GRYT-913).
+ *
+ * The server has carried `author` and `publishedAt` for as long as the card has
+ * existed and nothing drew either, so an article with a byline and a MakerWorld
+ * model with a creator both arrived with the two most human facts about them
+ * thrown away.
+ *
+ * Pure and here rather than in the component, because the interesting parts are
+ * the empty cases: a page with no author, a date that is not one, an author who
+ * *is* the site — and each of those is a line that should not be drawn rather
+ * than a line reading "null" or "Invalid Date".
+ */
+export function cardByline(
+  author: string | null | undefined,
+  publishedAt: string | null | undefined,
+  now: Date = new Date(),
+): string | null {
+  const who = typeof author === "string" ? author.trim() : "";
+
+  /* A date only when it parses and is not absurd. `article:published_time` is
+     free text as far as anything here is concerned: pages ship empty strings,
+     Unix epochs from a broken template, and dates a century out. A card is not
+     the place to argue with them — it just says nothing. */
+  let when = "";
+  if (typeof publishedAt === "string" && publishedAt.trim()) {
+    const date = new Date(publishedAt);
+    const year = date.getFullYear();
+    if (!Number.isNaN(date.getTime()) && year > 1990 && year <= now.getFullYear() + 1) {
+      when = date.toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    }
+  }
+
+  if (who && when) return `${who} · ${when}`;
+  return who || when || null;
+}
