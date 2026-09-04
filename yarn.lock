@@ -547,14 +547,15 @@
   resolved "https://registry.yarnpkg.com/@gryt/core/-/core-0.3.0.tgz#90d3a7d9c331a033f363f6d1521ab6aca1e1d09c"
   integrity sha512-jtyLwV8y4CHJr/sfsBruLDUyWxC1PdUBIMKJCRPP5YqgieNMFPE57pWxk5eA9DWfZJgIKMapRaSXrjAfGIl9Mw==
 
-"@gryt/crypto@^0.3.0":
-  version "0.3.0"
-  resolved "https://registry.yarnpkg.com/@gryt/crypto/-/crypto-0.3.0.tgz#a678b21fb634fbb1d4588da7104764e840e63c19"
-  integrity sha512-QqcjK9nYP7IGSUUP7a+Q/ucz16JipdvQT451KCIrBi7He5CwV25J4OoODo1vbWxMHGh7rZ4GhoaiI7+x5H+Gnw==
+"@gryt/crypto@^0.4.0":
+  version "0.4.0"
+  resolved "https://registry.yarnpkg.com/@gryt/crypto/-/crypto-0.4.0.tgz#b2d41782e13d887e20ef3cc4c2aacf8602f4797b"
+  integrity sha512-dlkPza6jmyiq0ElBEOtHVRJjHNiFdL6aJg1c2Ng+C/t+4Sj+bLFAGJNNgarruZ/nUtBh7WlzQMjAU77FW4fMGA==
   dependencies:
     "@noble/ciphers" "^2"
     "@noble/curves" "^2.3.0"
     "@noble/hashes" "^2.3.0"
+    "@scure/bip39" "^2.3.0"
 
 "@gryt/owl@^0.6.0":
   version "0.6.0"
