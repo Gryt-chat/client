@@ -11,24 +11,16 @@ import {
 export { assertUsableSeed, SEED_BYTES, seedToWords, wordsToSeed };
 
 /**
- * Per-server identity keys calculated from one seed (GRYT-254).
+ * Per-server identity keys derived from one seed (GRYT-254). A device holding
+ * the seed arrives at the same key for a server it has never connected to, so
+ * there is nothing to sync between devices.
  *
- * A guest identity used to be a keypair generated at random for each server.
- * That is fine until somebody owns a second device: moving across means copying
- * every key over, and the copy is stale the moment they join somewhere new.
+ * **Two servers still cannot tell they are talking to the same person.** HKDF's
+ * output is indistinguishable from random without the seed, so the derived keys
+ * look unrelated from outside.
  *
- * One seed replaces the keyring. Each server's key is calculated from the seed
- * and that server's host, so a device holding the seed arrives at the same key
- * for a server it has never connected to. There is nothing left to sync.
- *
- * Two servers still cannot tell they are talking to the same person. HKDF's
- * output is indistinguishable from random to anyone without the seed, so the
- * derived keys look unrelated from the outside. That is what one-key-per-server
- * was bought for in the first place, and it survives the change.
- *
- * Nothing here touches storage. The seed lives in `identity-keys.ts`, which owns
- * the database — this file is only the calculation, so it can be read and
- * checked on its own.
+ * **Nothing here touches storage.** The seed lives in `identity-keys.ts`, which
+ * owns the database; this is only the calculation, so it can be checked alone.
  */
 import type { IdentityScope } from "@gryt/crypto";
 import { base64Url as sharedBase64Url } from "@gryt/crypto";
@@ -42,19 +34,14 @@ import { sha256 } from "@noble/hashes/sha2.js";
 /** Length of the seed every local identity is calculated from. */
 
 /**
- * What a per-server key is derived under, and why it is not a plain string.
+ * What a per-server key is derived under. `identityScopeFor` gives the server's
+ * lineage id, or the address only when the server proved nothing — a key
+ * derived from the address makes the client arrive at a server it already knows
+ * as a stranger (GRYT-257).
  *
- * `identityScopeFor` in `identity-keys.ts` turns an address into this: the
- * server's lineage id where the server proved one, and the address only when it
- * proved nothing. GRYT-257 is the reason — an address changes when a port is
- * taken or a router hands out a new lease, and a key derived from the address
- * makes the client arrive at a server it already knows as a stranger.
- *
- * The brand lives in `@gryt/crypto` rather than here, and this file re-exports
- * it so nothing that already imports it from `@/common` has to change. It has
- * to be one declaration: a `unique symbol` brand declared twice produces two
- * types that do not assign to each other, so a second copy in the client would
- * make every scope the client mints unusable by the package's own functions.
+ * **The brand has to be one declaration**, so it lives in `@gryt/crypto` and is
+ * re-exported here. A `unique symbol` declared twice produces two types that do
+ * not assign to each other.
  */
 export { asIdentityScope, type IdentityScope } from "@gryt/crypto";
 
@@ -107,19 +94,13 @@ export function generateSeed(): Uint8Array<ArrayBuffer> {
 }
 
 /**
- * The keypair this seed gives for one server.
+ * The keypair this seed gives for one server. Deterministic on any device,
+ * whether or not that server has been seen before.
  *
- * Deterministic: the same seed and scope always produce the same key, on any
- * device, whether or not that server has ever been seen before.
- *
- * Done with a curve library rather than WebCrypto because WebCrypto cannot do
- * it. It will generate a keypair for you and it will import one you already
- * have, but it will not multiply a scalar by the curve's base point, and that
- * is the step between "here are 32 derived bytes" and "here is the public half
- * that goes in the JWK".
- *
- * Extractable, like the random local keys before it, so an identity can still be
- * exported and restored.
+ * A curve library rather than WebCrypto, which will generate and import a
+ * keypair but will not multiply a scalar by the base point — the step between
+ * 32 derived bytes and the public half. Extractable, so an identity can still
+ * be exported and restored.
  */
 export async function deriveLocalKeyPair(
   seed: Uint8Array,

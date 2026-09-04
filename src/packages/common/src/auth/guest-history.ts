@@ -1,39 +1,17 @@
 /**
- * Which servers this device has been a guest on (GRYT-285).
+ * Which servers this device has been a guest on (GRYT-285). The seed reproduces
+ * every guest key that could exist; this is the separate question of which were
+ * ever used somewhere, which derivation cannot answer.
  *
- * Not a secret, and deliberately not stored with the secrets. The seed in
- * IndexedDB reproduces every guest key that has ever existed; this is the
- * separate question of which of those keys was ever actually used somewhere,
- * which derivation cannot answer — it will happily produce a key for a server
- * nobody has visited.
+ * **It has to be local, because the server cannot be asked without telling it
+ * the answer.** Proving a prior guest identity means signing a link with that
+ * guest key, and the moment the proof arrives the account and the guest are the
+ * same person — declining afterwards cannot take that back. Per-server
+ * unlinkability is what the whole guest design protects, so the question of
+ * whether to prove anything has to be answerable without proving anything.
  *
- * That question used to be answered by the presence of a stored `local:*`
- * keypair, which is why those keypairs were written down at all. Keeping a
- * private key on disk to record a fact about where you have been is the wrong
- * trade, so the fact is recorded here and the keys can stop being persisted.
- *
- * ## Why it matters that this is local
- *
- * The alternative is asking the server, and the server cannot be asked without
- * telling it the answer. Proving a prior guest identity means signing a link
- * with that guest key, and the moment that proof arrives the server knows the
- * account and the guest are the same person. If the reply is "yes, there is
- * something to claim" and the person then says no thanks, the linkage has
- * already happened and cannot be taken back.
- *
- * Per-server unlinkability is the property the whole guest design exists to
- * protect, so the question of whether to prove anything has to be answerable
- * without proving anything. Knowing locally is what makes that possible: the
- * person is asked first, and the proof is signed only after they agree.
- *
- * ## What it stores
- *
- * Scopes, the same strings the keys were filed under — the server's lineage
- * where one is known, the address where it is not. Not addresses: a server that
- * moves is still the same server, which is the whole point of GRYT-257.
- *
- * Nothing here identifies a person. It is a list of servers this browser
- * profile has talked to, which is also plainly visible from the server list.
+ * **Stores scopes, not addresses** — a server that moves is still the same
+ * server (GRYT-257). Nothing here identifies a person.
  */
 
 import { asIdentityScope, type IdentityScope } from "./identity-seed.ts";
@@ -86,29 +64,13 @@ export function listGuestScopes(): IdentityScope[] {
 
 /**
  * How many guest identities are at stake, and whether that number is worth
- * printing.
+ * printing. Here rather than beside the reset so a check can exercise it
+ * without opening an IndexedDB to answer a question about localStorage.
  *
- * Lives here rather than beside the reset because this is the only thing it
- * depends on, and putting it here is what lets a check exercise it — importing
- * the reset module pulls in `identity-keys` and an IndexedDB it has no business
- * opening to answer a question about localStorage.
- *
- * `certain` is simply whether anything is on record, and the two ways it can be
- * false are worth telling apart in your head even though the answer is the same:
- *
- * - `read` returned nothing because the store could not be read — private mode,
- *   disabled site data, a quota error, a value overwritten with nonsense. It
- *   swallows all of those and answers empty, deliberately, because every other
- *   caller is offering a claim and the cost of being wrong there is small.
- * - The history really is empty. Usually honest, but a device set up by
- *   restoring a 24-word phrase has no history and may still have guest
- *   identities — a phrase brings nothing, because a seed knows nothing about
- *   where it has been. That is exactly the person reaching for a reset.
- *
- * So a count of zero is never a promise, and the warning says so instead of
- * disappearing. It used to disappear: the caller had a branch for "could not
- * tell" that could not fire, because `read` had already turned the failure into
- * an empty list.
+ * **A count of zero is never a promise.** `read` swallows every failure and
+ * answers empty, and a device set up by restoring a 24-word phrase has no
+ * history and may still have guest identities — which is exactly the person
+ * reaching for a reset. So the warning says so rather than disappearing.
  */
 export function guestScopeRisk(): { count: number; certain: boolean } {
   const scopes = read();

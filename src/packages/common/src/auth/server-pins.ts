@@ -1,18 +1,14 @@
 import { base64Url as sharedBase64Url, base64UrlDecode as sharedBase64UrlDecode } from "@gryt/crypto";
 /**
- * Trust-on-first-use pinning of server identity keys (GRYT-51).
+ * Trust-on-first-use pinning of server identity keys (GRYT-51). Nothing else
+ * authenticates a *server* to us — on a LAN there is no TLS, and **`server_id`
+ * from an mDNS advertisement is a discovery hint, never a credential**.
  *
- * Nothing else authenticates a *server* to us. On the public deployment TLS
- * proves the endpoint; on a LAN there is no TLS and mDNS advertisements are
- * unauthenticated, so `server_id` is a discovery hint and never a credential.
+ * A server proves itself by signing a nonce we chose with a key we pinned the
+ * first time. **Pins are filed under the key, not under host:port**, so a
+ * server that moves is still recognisably the same server.
  *
- * A server proves itself by signing a nonce we chose with a long-lived key we
- * pinned the first time we joined it. Pins are filed under the key, not under
- * host:port, so a server that moves — which GRYT-48 now makes it do on its own
- * when a port is taken — is still recognisably the same server.
- *
- * This module decides; it does not connect. The socket layer applies the
- * decision.
+ * This module decides; the socket layer applies the decision.
  */
 
 const PINS_KEY = "serverIdentityPins";
@@ -30,16 +26,12 @@ export interface ServerPin {
   /** Most recent address this key answered on. Display only — never a key. */
   lastHost: string;
   /**
-   * The key this server was *first* pinned under, carried across rotations.
+   * The key this server was *first* pinned under, carried across rotations, so
+   * it names the server rather than its current key — `identityScopeFor` files
+   * a guest identity under it.
    *
-   * `keyId` is what the server signs with today and changes every time it
-   * rotates. This does not, which is what makes it usable as a name for the
-   * server itself rather than for its current key — see `identityScopeFor` in
-   * `identity-keys.ts`, which files a guest identity under it.
-   *
-   * Optional because pins written before this existed do not have one. Absent
-   * means "treat today's key as the origin": the lineage starts from whatever
-   * is known now, which is the most that can be recovered.
+   * Optional, because pins written before this do not have one. Absent means
+   * today's key is the origin, which is the most that can be recovered.
    */
   originKeyId?: string;
 }
@@ -66,13 +58,10 @@ export type ServerProofFailure =
       reason: "expired";
       detail: string;
       /**
-       * How far the server's clock sits behind ours, in milliseconds, negative
-       * if it is ahead. Absent when the proof carried no `iat` to compare.
-       *
-       * Measured from `iat` rather than `exp` because it is the one instant both
-       * sides describe: the server says when it signed, and we know when we read
-       * it. The gap is the skew plus the network round trip, and a round trip is
-       * milliseconds against a window of a minute, so what survives is the skew.
+       * How far the server's clock sits behind ours, negative if ahead. From
+       * `iat` rather than `exp`, the one instant both sides describe — the gap
+       * is skew plus a round trip, and a round trip is milliseconds against a
+       * window of a minute.
        */
       skewMs?: number;
     }
@@ -144,14 +133,9 @@ export function getExpectedKeyIdForHost(host: string): string | null {
 }
 
 /**
- * A name for the server at an address that survives both moving and rotating.
- *
- * The address changes when a port is taken (GRYT-48) or a home router hands out
- * a new lease; the key changes on rotation (GRYT-54). Neither is a different
- * server, so neither should look like one to anything filed per-server.
- *
- * Null when the server offered no proof, which is the one case where there is
- * nothing better than the address to go on.
+ * A name for the server at an address that survives both moving and rotating —
+ * neither is a different server, so neither should look like one to anything
+ * filed per-server. Null when the server offered no proof.
  */
 export function getOriginKeyIdForHost(host: string): string | null {
   const keyId = getExpectedKeyIdForHost(host);
@@ -190,15 +174,12 @@ export function savePin(keyId: string, jwk: JsonWebKey, host: string): void {
 
 /**
  * Succeed one pinned key with another after a proven rotation (GRYT-54).
+ * **Every address that expected the old key moves**, not just the connected
+ * one — the same server answers at several, and leaving the rest on a retired
+ * key downgrades them to first-join and loses the substitution check.
  *
- * Every address that expected the old key is moved to the new one, not just the
- * address we happen to be connected to. The same server legitimately answers at
- * several, and leaving the others pointing at a retired key would quietly
- * downgrade them to first-join on next contact — losing exactly the
- * substitution check this exists to provide.
- *
- * `firstSeenAt` carries over: it is when this *server* was first trusted, which
- * a key change does not reset.
+ * `firstSeenAt` carries over: a key change does not reset when this *server*
+ * was first trusted.
  */
 export function replacePin(
   oldKeyId: string,
@@ -247,28 +228,17 @@ export function forgetPin(keyId: string): void {
 }
 
 /**
- * Forget everything this client knows about one address.
+ * Forget everything this client knows about one address — what leaving a server
+ * should do. A pin protects an ongoing relationship; once you have left,
+ * rejoining is the same fresh trust decision you made the first time.
  *
- * What leaving a server should do. A pin protects an ongoing relationship: it
- * says "the server I am a member of answers with this key, and I want to know
- * if something else ever answers instead". Once you have left, there is no
- * relationship left to protect, and rejoining is the same fresh trust decision
- * you made the first time.
+ * **Deliberately not `forgetPin`**, which deletes the key and every address
+ * expecting it. One key legitimately answers at several hosts, and leaving one
+ * must not un-pin the others — so the expectation for this host goes, and the
+ * pin only once no address still expects it.
  *
- * Leaving used to drop the sidebar entry and nothing else, so the expectation
- * outlived the membership. Rebuild a server on the same address and the client
- * refused it, and the only way out was Settings → Server identities, which you
- * had to already know existed.
- *
- * Deliberately not `forgetPin`. That deletes the key and every address
- * expecting it, and the same key legitimately answers at several — a server
- * reachable on its LAN address and through a tunnel is one key and two hosts.
- * Leaving one of those must not un-pin the other. So the expectation for this
- * host goes, and the pin itself goes only once no address still expects it.
- *
- * Any block recorded against this address goes too. It describes a refusal
- * that can no longer happen, and leaving it behind would refuse the next join
- * by a rule about a membership that has ended.
+ * Any block against this address goes too: it describes a refusal that can no
+ * longer happen.
  */
 export function forgetHost(host: string): void {
   const index = readHostIndex();
