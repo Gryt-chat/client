@@ -7,6 +7,7 @@ import {
   watch,
 } from "fs";
 import { join, relative, resolve, sep } from "path";
+import { gt, valid } from "semver";
 
 interface AddonManifest {
   id: string;
@@ -22,6 +23,15 @@ interface AddonManifest {
   main?: string;
   /** Plugin-only: if true, disabling the addon reloads the client */
   requiresReloadOnDisable?: boolean;
+  /** `owner/repo` on GitHub. See isValidRepository. */
+  repository?: string;
+}
+
+interface AddonUpdate {
+  addonId: string;
+  installed: string;
+  latest: string;
+  releaseUrl: string;
 }
 
 let addonsDir: string | null = null;
@@ -47,6 +57,21 @@ function isSafePathInside(parentDir: string, candidatePath: string): boolean {
   return rel !== "" && !rel.startsWith("..") && !rel.includes(`..${sep}`);
 }
 
+/** GitHub's own rule for a user or repository name, near enough. */
+const REPO_SEGMENT = /^[A-Za-z0-9._-]{1,100}$/;
+
+function isValidRepository(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+
+  const parts = value.split("/");
+  if (parts.length !== 2) return false;
+
+  // "." and ".." pass the character class and are exactly what must not.
+  return parts.every(
+    (part) => REPO_SEGMENT.test(part) && part !== "." && part !== "..",
+  );
+}
+
 function isValidManifest(data: unknown): data is AddonManifest {
   if (typeof data !== "object" || data === null) return false;
 
@@ -62,6 +87,15 @@ function isValidManifest(data: unknown): data is AddonManifest {
     return false;
   }
   if (obj.author != null && typeof obj.author !== "string") return false;
+
+  // Checked when the manifest is read rather than when the fetch happens. A
+  // manifest is a file anybody can drop in the addons folder, and this value
+  // decides what gets requested over the network — so the narrow shape is the
+  // check. Two path segments of the characters GitHub allows in a name: no
+  // scheme, no host, no `..`, no query string to point it somewhere else.
+  if (obj.repository != null && !isValidRepository(obj.repository)) {
+    return false;
+  }
 
   if (obj.type === "theme") {
     if (
@@ -194,4 +228,79 @@ export function resolveAddonFilePath(pathname: string): string | null {
   }
 
   return null;
+}
+
+/**
+ * The newest release tag of a repository, without spending GitHub API quota.
+ *
+ * `/releases/latest` is a redirect to `/releases/tag/<tag>`, so the tag is in
+ * the Location header of a request that never follows it. The same trick the
+ * app's own update check uses, and for the same reason: api.github.com allows
+ * 60 unauthenticated calls an hour per address, and somebody with a handful of
+ * addons opening the page a few times would spend it.
+ *
+ * A repository with no releases redirects to `/releases` instead, which has no
+ * tag in it, so that reads as "nothing to report" rather than an error.
+ */
+async function newestReleaseTag(
+  repository: string,
+): Promise<{ tag: string; url: string } | null> {
+  try {
+    const res = await fetch(
+      `https://github.com/${repository}/releases/latest`,
+      {
+        redirect: "manual",
+        signal: AbortSignal.timeout(8000),
+        headers: { "User-Agent": "Gryt" },
+      },
+    );
+
+    const location = res.headers.get("location");
+    if (!location) return null;
+
+    const match = location.match(/\/releases\/tag\/([^/?#]+)$/);
+    if (!match) return null;
+
+    return { tag: decodeURIComponent(match[1]), url: location };
+  } catch {
+    // Offline, blocked, renamed, deleted, rate-limited by something else. None
+    // of it is worth a dialog: the page just does not offer an update.
+    return null;
+  }
+}
+
+/**
+ * Which installed addons have a newer release than the version they declare.
+ *
+ * Only addons that named a repository, and only when the tag parses as a
+ * version newer than the installed one. A tag that is not semver at all is
+ * skipped rather than guessed at — "latest" and "v2-final" are real tag names
+ * and neither says anything about ordering.
+ *
+ * Every repository is checked at once. They are independent, there are only
+ * ever a handful, and doing them in sequence makes opening the page feel like
+ * it hung on whichever one is slowest.
+ */
+export async function checkAddonUpdates(): Promise<AddonUpdate[]> {
+  const withRepos = getAddons().filter((addon) => addon.repository);
+
+  const results = await Promise.all(
+    withRepos.map(async (addon) => {
+      const release = await newestReleaseTag(addon.repository as string);
+      if (!release) return null;
+
+      const latest = release.tag.replace(/^v/, "");
+      if (!valid(latest) || !valid(addon.version)) return null;
+      if (!gt(latest, addon.version)) return null;
+
+      return {
+        addonId: addon.id,
+        installed: addon.version,
+        latest,
+        releaseUrl: release.url,
+      };
+    }),
+  );
+
+  return results.filter((update): update is AddonUpdate => update !== null);
 }
