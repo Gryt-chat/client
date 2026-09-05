@@ -31,6 +31,7 @@ jobs:
       - run: yarn test:reset-warning
       - run: yarn test:guest-history
       - run: yarn test:sidebar-tree
+      - run: yarn test:notification-prefs
       - run: yarn test:hotkeys
       - run: yarn test:screen-audio
       - run: yarn test:audio-mixer

@@ -2,9 +2,17 @@ import { Button, ContextMenu, Tooltip } from "@gryt/ui";
 import type { StreamSources } from "@gryt/voice";
 import { useMicrophone } from "@gryt/voice";
 import { AnimatePresence, LayoutGroup, motion, Reorder } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
-import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
+import {
+  getOwnLevel,
+  getPrefsSnapshot,
+  getUploadsFileUrl,
+  type NotificationLevel,
+  resolveAvatarSrc,
+  setNotificationLevel,
+  subscribeToPrefs,
+} from "@/common";
 import { Channel, SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
 
 import { PiCaretDownFill, PiCaretRightFill, PiChatCircleFill, PiFolderFill, PiGameControllerFill, PiGaugeFill, PiKeyboardFill, PiLockSimpleFill, PiSpeakerHighFill } from "../../../../lib/icons";
@@ -127,6 +135,11 @@ export const ChannelList = ({
     () => new Map(channels.map((c) => [c.id, c])),
     [channels],
   );
+
+  /* Subscribed rather than read once, so the tick in the menu moves the moment
+     a level is chosen. The value is not used directly; the subscription is what
+     re-renders, and `getOwnLevel` reads the current answer where it is needed. */
+  useSyncExternalStore(subscribeToPrefs, getPrefsSnapshot, getPrefsSnapshot);
 
   /*
    * Which folders are shut, per server, on this device.
@@ -469,8 +482,56 @@ export const ChannelList = ({
     return renderChannel(item);
   };
 
+  /**
+   * How loud one scope is, as four choices with the current one marked.
+   *
+   * "Default" is a real option rather than a synonym for All: a channel set
+   * back to default follows its folder again, and one set to All stops
+   * following it. Somebody who mutes a folder and wants one channel out of it
+   * needs the difference.
+   */
+  const notificationSubmenu = (
+    scope: { kind: "server" } | { kind: "folder" | "channel"; id: string },
+  ) => {
+    const own = getOwnLevel(serverHost, scope);
+    const choices: { label: string; value: NotificationLevel | null }[] = [
+      { label: "Everything", value: "all" },
+      { label: "Only mentions", value: "mentions" },
+      { label: "Nothing", value: "none" },
+      { label: scope.kind === "server" ? "Default (everything)" : "Default (inherit)", value: null },
+    ];
+
+    return (
+      <ContextMenu.SubmenuRoot>
+        <ContextMenu.SubmenuTrigger>Notifications</ContextMenu.SubmenuTrigger>
+        <ContextMenu.Portal>
+          <ContextMenu.Positioner>
+            <ContextMenu.Popup>
+              {choices.map((choice) => (
+                <ContextMenu.Item
+                  key={choice.label}
+                  onClick={() => setNotificationLevel(serverHost, scope, choice.value)}
+                >
+                  <span style={{ display: "inline-block", width: 16 }}>
+                    {own === choice.value ? "✓" : ""}
+                  </span>
+                  {choice.label}
+                </ContextMenu.Item>
+              ))}
+            </ContextMenu.Popup>
+          </ContextMenu.Positioner>
+        </ContextMenu.Portal>
+      </ContextMenu.SubmenuRoot>
+    );
+  };
+
   const wrapWithContextMenu = (item: SidebarItem, index: number, content: React.ReactNode) => {
-    if (!canManage) return content;
+    /* A separator and a spacer are decoration, so they carry nothing for
+       somebody who cannot rearrange them. A channel and a folder always do:
+       how loud they are is that person's own setting, not an admin action. */
+    const notifiable = item.kind === "channel" || item.kind === "folder";
+    if (!canManage && !notifiable) return content;
+
     const isFirst = index === 0;
     const isLast = index === effectiveItems.length - 1;
     const label = item.kind === "channel"
@@ -490,25 +551,40 @@ export const ChannelList = ({
               <EmojiText text={label} disableTooltip />
             </ContextMenu.GroupLabel>
           </ContextMenu.Group>
-          <ContextMenu.Item onClick={() => onEditItem?.(item)}>
-            Edit
-          </ContextMenu.Item>
-          {/* Right-click anywhere in the list to start a folder. The new one
-              lands at the end, empty, and channels go in by being dragged. */}
-          <ContextMenu.Item onClick={() => onAddItem?.("folder")}>
-            Add folder
-          </ContextMenu.Item>
-          <ContextMenu.Separator />
-          <ContextMenu.Item disabled={isFirst} onClick={() => onMoveItem?.(item, "up")}>
-            Move up
-          </ContextMenu.Item>
-          <ContextMenu.Item disabled={isLast} onClick={() => onMoveItem?.(item, "down")}>
-            Move down
-          </ContextMenu.Item>
-          <ContextMenu.Separator />
-          <ContextMenu.Item className="text-gryt-danger" onClick={() => onDeleteItem?.(item)}>
-            Delete
-          </ContextMenu.Item>
+
+          {notifiable
+            ? notificationSubmenu(
+                item.kind === "folder"
+                  ? { kind: "folder", id: item.id }
+                  : { kind: "channel", id: item.channelId ?? item.id },
+              )
+            : null}
+
+          {canManage ? (
+            <>
+              {notifiable ? <ContextMenu.Separator /> : null}
+              <ContextMenu.Item onClick={() => onEditItem?.(item)}>
+                Edit
+              </ContextMenu.Item>
+              {/* Right-click anywhere in the list to start a folder. The new
+                  one lands at the end, empty, and channels go in by being
+                  dragged. */}
+              <ContextMenu.Item onClick={() => onAddItem?.("folder")}>
+                Add folder
+              </ContextMenu.Item>
+              <ContextMenu.Separator />
+              <ContextMenu.Item disabled={isFirst} onClick={() => onMoveItem?.(item, "up")}>
+                Move up
+              </ContextMenu.Item>
+              <ContextMenu.Item disabled={isLast} onClick={() => onMoveItem?.(item, "down")}>
+                Move down
+              </ContextMenu.Item>
+              <ContextMenu.Separator />
+              <ContextMenu.Item className="text-gryt-danger" onClick={() => onDeleteItem?.(item)}>
+                Delete
+              </ContextMenu.Item>
+            </>
+          ) : null}
         </ContextMenu.Popup>
           </ContextMenu.Positioner>
         </ContextMenu.Portal>
@@ -639,12 +715,37 @@ export const ChannelList = ({
     </LayoutGroup>
   );
 
+  /*
+   * Somebody who cannot rearrange the sidebar still gets a right-click, because
+   * how loud this server is belongs to them rather than to whoever runs it.
+   * Only the notification choice, since everything else in that menu is an
+   * admin action.
+   */
   if (!canManage) {
     return (
-      <>
-        {staticList}
-        {directMessages}
-      </>
+      <ContextMenu.Root>
+        <ContextMenu.Trigger
+          render={
+            <div style={{ display: "flex", flexDirection: "column", minHeight: "100%" }} />
+          }
+        >
+          {staticList}
+          {directMessages}
+          <div style={{ flex: 1 }} />
+        </ContextMenu.Trigger>
+        <ContextMenu.Portal>
+          <ContextMenu.Positioner>
+            <ContextMenu.Popup>
+              <ContextMenu.Group>
+                <ContextMenu.GroupLabel style={{ fontWeight: "bold" }}>
+                  This server
+                </ContextMenu.GroupLabel>
+              </ContextMenu.Group>
+              {notificationSubmenu({ kind: "server" })}
+            </ContextMenu.Popup>
+          </ContextMenu.Positioner>
+        </ContextMenu.Portal>
+      </ContextMenu.Root>
     );
   }
 
@@ -721,8 +822,18 @@ export const ChannelList = ({
       <ContextMenu.Portal>
         <ContextMenu.Positioner>
           <ContextMenu.Popup>
+        <ContextMenu.Group>
+          <ContextMenu.GroupLabel style={{ fontWeight: "bold" }}>
+            This server
+          </ContextMenu.GroupLabel>
+        </ContextMenu.Group>
+        {notificationSubmenu({ kind: "server" })}
+        <ContextMenu.Separator />
         <ContextMenu.Item onClick={() => onAddItem?.("channel:text")}>
           Add channel
+        </ContextMenu.Item>
+        <ContextMenu.Item onClick={() => onAddItem?.("folder")}>
+          Add folder
         </ContextMenu.Item>
         <ContextMenu.Separator />
         <ContextMenu.Item onClick={() => onAddItem?.("separator")}>

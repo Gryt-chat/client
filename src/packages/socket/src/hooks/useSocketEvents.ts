@@ -5,13 +5,17 @@ import { Socket } from "socket.io-client";
 import type { MemberKeyState } from "@/common";
 import {
   answerChallenge,
+  getPlacement,
+  getPrefsSnapshot,
   getServerRefreshToken,
   isSessionExpired,
   markChannelUnread,
   removeServerAccessToken,
   removeServerRefreshToken,
+  resolveLevel,
   setServerAccessToken,
   setServerFileToken,
+  shouldAnnounceMessage,
 } from "@/common";
 import { playNotificationSound, preloadNotificationSound } from "@/lib/notificationSound";
 import {
@@ -352,9 +356,50 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
         if (host === currentlyViewingServerRef.current?.host) return;
         const myId = socket.id ? clientsRef.current[host]?.[socket.id]?.serverUserId : undefined;
         if (myId && msg.sender_server_id === myId) return;
+
+        /* Marked unread whatever the level says. Muting a channel is about not
+           being interrupted, not about pretending nothing happened there. The
+           dot is how somebody finds it later, on their own terms. */
         if (msg.conversation_id) {
           markChannelUnread(host, msg.conversation_id);
         }
+
+        const level = resolveLevel(
+          getPrefsSnapshot(),
+          host,
+          msg.conversation_id ? getPlacement(host, msg.conversation_id) : null,
+        );
+        if (!shouldAnnounceMessage(level)) return;
+
+        if (messageSoundEnabledRef.current) {
+          playNotificationSound(messageSoundFileRef.current, messageSoundVolumeRef.current);
+        }
+        if (notificationBadgeEnabledRef.current) {
+          incrementUnreadRef.current();
+        }
+      });
+
+      /*
+       * Being named, which is what makes "mentions only" a level rather than a
+       * quieter way of saying none.
+       *
+       * A second listener on an event `registerServerSocketEvents` also handles.
+       * socket.io calls both, and they answer different questions: that one
+       * keeps the count, this one decides whether to make a noise.
+       *
+       * Silent at "all", because `chat:new` has already fired for the same
+       * message and two sounds for one arrival is worse than none.
+       */
+      socket.on("mention:new", (payload: { conversationId?: string }) => {
+        if (host === currentlyViewingServerRef.current?.host) return;
+
+        const level = resolveLevel(
+          getPrefsSnapshot(),
+          host,
+          payload?.conversationId ? getPlacement(host, payload.conversationId) : null,
+        );
+        if (level !== "mentions") return;
+
         if (messageSoundEnabledRef.current) {
           playNotificationSound(messageSoundFileRef.current, messageSoundVolumeRef.current);
         }

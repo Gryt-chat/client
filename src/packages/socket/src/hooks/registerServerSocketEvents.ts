@@ -9,6 +9,7 @@ import {
   getServerRefreshToken,
   getStoredWorn,
   getUploadsFileUrl,
+  rememberPlacements,
   removeServerAccessToken,
   removeServerFileToken,
   removeServerRefreshToken,
@@ -155,6 +156,15 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
   });
 
   socket.on("server:details", (data: serverDetails) => {
+    /* Recorded here because this is where the sidebar arrives, and the socket
+       layer that decides whether a message makes a noise has no other way to
+       know which folder a channel is in. Before the join check below, since the
+       placement is worth having even on a payload this handler goes on to bail
+       out of, and it costs a map of ids. */
+    if (Array.isArray(data.sidebar_items)) {
+      rememberPlacements(host, data.sidebar_items);
+    }
+
     if (data.error === "join_required") {
       const existingAccessToken = getServerAccessToken(host);
       if (existingAccessToken) {
