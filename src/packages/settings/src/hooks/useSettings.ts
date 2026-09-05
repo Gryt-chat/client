@@ -14,6 +14,41 @@ import { type ScalabilityMode, type ScreenShareCodec, settingsInit, type VideoCo
 import { loadAudioFromCache, useAudioSettings } from "./useAudioSettings";
 import { getUserValue, loadForUser, setUserValue } from "./userStorage";
 
+/**
+ * Whether the greeting has been shown, kept per device rather than per user.
+ *
+ * It was `setUserValue`, which sets its in-memory cache and then returns without
+ * persisting when there is no user id yet. A guest dismissed the welcome, the
+ * dialog closed, nothing reached disk, and the greeting was back on the next
+ * launch. The id is absent for every guest, and in the browser build it can stay
+ * absent for the whole session.
+ *
+ * Per device is also what it means. Being greeted is about this copy of the app
+ * on this machine rather than about an account, and the phone has always stored
+ * it that way under `gryt.welcome`.
+ */
+const WELCOME_KEY = "gryt.hasSeenWelcome";
+
+function readSeenWelcome(): boolean {
+  try {
+    if (localStorage.getItem(WELCOME_KEY) === "true") return true;
+  } catch {
+    // Unreadable storage means greet them. Showing it twice is a smaller
+    // failure than never showing it at all.
+  }
+  // Anybody who dismissed it before this moved is not greeted again.
+  return getUserValue<boolean>("hasSeenWelcome", false);
+}
+
+function writeSeenWelcome() {
+  try {
+    localStorage.setItem(WELCOME_KEY, "true");
+  } catch {
+    // Private mode or a full quota. It holds for this session and is gone next
+    // launch, which is the safe way to lose it.
+  }
+}
+
 function useSettingsHook() {
   const userId = useUserId();
   const audio = useAudioSettings();
@@ -129,7 +164,7 @@ function useSettingsHook() {
       const name = stored || pickRandomName();
       if (!stored) setUserValue("nickname", name);
       setNickname(name);
-      setHasSeenWelcome(getUserValue("hasSeenWelcome", false));
+      setHasSeenWelcome(readSeenWelcome());
       setShowAdvanced(getUserValue("showAdvanced", false));
       setShowDebugOverlay(getUserValue("showDebugOverlay", false));
       setShowVideoDebugOverlay(getUserValue("showVideoDebugOverlay", false));
@@ -175,7 +210,7 @@ function useSettingsHook() {
       setPinMembersSidebarState(getUserValue("pinMembersSidebar", true));
       setAfkTimeoutMinutes(getUserValue("afkTimeoutMinutes", 5));
 
-      const seen = getUserValue<boolean>("hasSeenWelcome", false);
+      const seen = readSeenWelcome();
       setHasSeenWelcome(seen);
       // A returning user who never picked a nickname used to have Settings
       // opened on top of them here, with no explanation of why. They get the
@@ -438,7 +473,7 @@ function useSettingsHook() {
    */
   function completeWelcome(options?: { startTour?: boolean }) {
     setHasSeenWelcome(true);
-    setUserValue("hasSeenWelcome", true);
+    writeSeenWelcome();
 
     if (options?.startTour === true) {
       if (
