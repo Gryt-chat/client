@@ -92,7 +92,7 @@
     "@gryt/core": "^0.6.0",
     "@gryt/crypto": "^0.4.0",
     "@gryt/owl": "^0.6.0",
-    "@gryt/ui": "^0.25.1",
+    "@gryt/ui": "^0.26.0",
     "@gryt/voice": "0.4.4",
     "@mediapipe/tasks-vision": "^1.0.1",
     "@noble/curves": "^2.3.0",

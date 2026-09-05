@@ -34,6 +34,18 @@
    config. One source of truth for the palette (GRYT-150). */
 @import "@gryt/ui/theme.css";
 
+/* The library's stylesheet-shaped rules: the message bubble, the composer, the
+   conversation item, the indeterminate progress bar, and the hover that makes a
+   label act like the control it wraps.
+ *
+ * Not dist/styles.css, for the reason above — that carries a utilities layer
+ * and importing it here is what GRYT-858 removed. Dropping it also dropped
+ * these, which are not utilities and so are not recovered by @source scanning:
+ * the welcome bubble lost its radius and padding and rendered as a square, and
+ * nothing failed. components.css is the same rules with no utilities layer
+ * attached. */
+@import "@gryt/ui/components.css";
+
 @font-face {
   font-family: "Atkinson Hyperlegible Next";
   src: url("./assets/fonts/AtkinsonHyperlegibleNextVF-Variable.woff2") format("woff2");
