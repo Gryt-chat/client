@@ -2,7 +2,7 @@ import type { StreamSources } from "@gryt/voice";
 import { motion } from "motion/react";
 import { RefObject } from "react";
 
-import type { Channel, SidebarItem } from "@/settings/src/types/server";
+import type { Channel, SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
 
 import type { DirectConversation } from "../hooks/useDirectMessages";
 import type { Client } from "../types/clients";
@@ -50,7 +50,7 @@ interface ServerSidebarProps {
   onEditItem: (item: SidebarItem) => void;
   onDeleteItem: (item: SidebarItem) => void;
   onMoveItem: (item: SidebarItem, direction: "up" | "down") => void;
-  onReorder: (ids: string[]) => void;
+  onReorder: (entries: SidebarReorderEntry[]) => void;
   onAddItem: (kind: string) => void;
   onDisconnectUser: ((id: string) => void) | undefined;
   currentUserRole: Role | undefined;

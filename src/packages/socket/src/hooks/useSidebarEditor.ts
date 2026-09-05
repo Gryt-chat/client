@@ -12,7 +12,7 @@ import {
   scopeOptions,
   scopeSetPayload,
 } from "@/settings/src/channelPermissionRules";
-import { Channel, serverDetailsList as ServerDetailsList,SidebarItem } from "@/settings/src/types/server";
+import { Channel, serverDetailsList as ServerDetailsList,SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
 
 interface UseSidebarEditorParams {
   currentlyViewingServer: { host: string; name: string } | null;
@@ -109,7 +109,7 @@ export function useSidebarEditor({
       // The scope and its rules are not reset here. See the effect below.
     } else if (selectedSidebarItem.kind === "spacer") {
       setSheetSpacerHeight(String(selectedSidebarItem.spacerHeight ?? 16));
-    } else if (selectedSidebarItem.kind === "separator") {
+    } else if (selectedSidebarItem.kind === "separator" || selectedSidebarItem.kind === "folder") {
       setSheetSeparatorLabel(String(selectedSidebarItem.label ?? ""));
     }
   }, [channelById, selectedSidebarItem]);
@@ -257,8 +257,15 @@ export function useSidebarEditor({
     setSelectedSidebarItemId(null);
   }, []);
 
+  /**
+   * `order` carries the folder each item belongs in as well as its place.
+   *
+   * One drag can do both, so they travel together. The server still accepts a
+   * bare id per entry, meaning "leave the folder alone", which is what a client
+   * from before folders sends.
+   */
   const reorderSidebar = useCallback(
-    (order: string[]) => {
+    (order: SidebarReorderEntry[]) => {
       if (!currentlyViewingServer) return;
       if (!currentConnection || !currentConnection.connected)
         return toast.error("Not connected to the server yet.");
@@ -314,6 +321,22 @@ export function useSidebarEditor({
           kind: "separator",
           position: pos,
           label: null,
+        });
+        return;
+      }
+
+      /* Named on creation rather than left blank and edited after. A folder
+         with no name draws as "Folder", which is a row nobody can tell from
+         the next one, and the sidebar is where they would be telling them
+         apart. */
+      if (paletteKind === "folder") {
+        const itemId = `sb_fold_${uuidv4().slice(0, 10)}`;
+        currentConnection.emit("server:sidebar:item:upsert", {
+          accessToken,
+          itemId,
+          kind: "folder",
+          position: pos,
+          label: "New folder",
         });
         return;
       }
@@ -451,14 +474,22 @@ export function useSidebarEditor({
       return;
     }
 
-    if (selectedSidebarItem.kind === "separator") {
-      const label = sheetSeparatorLabel.trim().length
-        ? sheetSeparatorLabel.trim()
-        : null;
+    /* A folder is renamed through the same field a separator uses, because it
+       is the same edit: both carry one piece of text and nothing else. The one
+       difference is the empty case — a separator with no label is a plain rule,
+       which is a reasonable thing to want, while a folder with no name is a row
+       you cannot tell from the next one. So it keeps the name it had. */
+    if (selectedSidebarItem.kind === "separator" || selectedSidebarItem.kind === "folder") {
+      const typed = sheetSeparatorLabel.trim();
+      const label = typed.length
+        ? typed
+        : selectedSidebarItem.kind === "folder"
+          ? selectedSidebarItem.label ?? "New folder"
+          : null;
       currentConnection.emit("server:sidebar:item:upsert", {
         accessToken,
         itemId: selectedSidebarItem.id,
-        kind: "separator",
+        kind: selectedSidebarItem.kind,
         position: selectedSidebarItem.position,
         label,
       });

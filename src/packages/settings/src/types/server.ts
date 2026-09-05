@@ -42,7 +42,7 @@ export type Channel = {
   canJoin?: boolean;
 };
 
-export type SidebarItemKind = "channel" | "separator" | "spacer";
+export type SidebarItemKind = "channel" | "separator" | "spacer" | "folder";
 
 export type SidebarItem = {
   id: string;
@@ -52,9 +52,25 @@ export type SidebarItem = {
   channelId?: string | null;
   // For kind="spacer"
   spacerHeight?: number | null;
-  // For kind="separator"
+  // For kind="separator" and kind="folder"
   label?: string | null;
+  /**
+   * The folder this channel sits in, or absent for the top level.
+   *
+   * Only a channel ever has one. The server drops it for every other kind, so
+   * a folder inside a folder never comes back however it was sent.
+   */
+  parentItemId?: string | null;
 };
+
+/**
+ * One line of a reorder.
+ *
+ * A bare id means "this position, whatever folder it is already in", which is
+ * what a drag straight up or down sends. The object form is for a drag that
+ * crossed the indent threshold and changed the folder as well.
+ */
+export type SidebarReorderEntry = string | { itemId: string; parentItemId: string | null };
 
 export type serverDetails = {
   sidebar_items?: SidebarItem[];

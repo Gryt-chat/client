@@ -40,6 +40,7 @@ export * from "./src/components/GeneratedServerIcon";
 export * from "./src/components/logo";
 export * from "./src/components/ServerErrorToast";
 export * from "./src/components/wordmark";
+export * from "./src/hooks/notificationPrefs";
 export * from "./src/hooks/singletonHook";
 export * from "./src/hooks/SingletonHooks";
 export * from "./src/hooks/useAccount";

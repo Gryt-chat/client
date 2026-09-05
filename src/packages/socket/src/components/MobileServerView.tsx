@@ -3,7 +3,7 @@ import type { StreamSources } from "@gryt/voice";
 import { useCallback, useState } from "react";
 
 import type { SealDecision } from "@/common";
-import type { Channel, SidebarItem } from "@/settings/src/types/server";
+import type { Channel, SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
 
 import { PiList, PiUsersFill } from "../../../../lib/icons";
 import type { DirectConversation } from "../hooks/useDirectMessages";
@@ -52,7 +52,7 @@ interface MobileServerViewProps {
   onEditItem: (item: SidebarItem) => void;
   onDeleteItem: (item: SidebarItem) => void;
   onMoveItem: (item: SidebarItem, direction: "up" | "down") => void;
-  onReorder: (ids: string[]) => void;
+  onReorder: (entries: SidebarReorderEntry[]) => void;
   onAddItem: (kind: string) => void;
   onDisconnectUser?: (targetServerUserId: string) => void;
   currentUserRole?: Role;

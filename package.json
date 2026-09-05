@@ -29,6 +29,8 @@
     "test:message-key-offer": "node scripts/check-message-key-offer.mjs",
     "test:reset-warning": "node scripts/check-reset-warning.mjs",
     "test:guest-history": "node scripts/check-guest-history.mjs",
+    "test:sidebar-tree": "node scripts/check-sidebar-tree.mjs",
+    "test:notification-prefs": "node scripts/check-notification-prefs.mjs",
     "test:hotkeys": "node scripts/check-hotkeys.mjs",
     "test:screen-audio": "node scripts/check-screen-audio.mjs",
     "test:audio-mixer": "node scripts/check-audio-mixer.mjs",
