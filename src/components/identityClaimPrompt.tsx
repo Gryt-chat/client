@@ -1,7 +1,7 @@
 import { Button, Dialog } from "@gryt/ui";
 import { useCallback, useEffect, useState } from "react";
 
-import { getClaimDecision, hasGuestScope, identityScopeFor, useAccount } from "@/common";
+import { getClaimDecision, getGuestVisit, identityScopeFor, useAccount } from "@/common";
 import { useServerManagement } from "@/socket";
 
 import { useIdentityClaim } from "../hooks/useIdentityClaim";
@@ -13,7 +13,12 @@ import { useIdentityClaim } from "../hooks/useIdentityClaim";
  *
  * **The proof that an account controls a guest identity is also the
  * disclosure**, so once it reaches the server, declining changes nothing. The
- * question has to be answerable locally, which is what `hasGuestScope` is for.
+ * question has to be answerable locally, which is what the guest history is for.
+ *
+ * The question is what happens to the old user, so that is what it asks. It read
+ * as "are you two people here?" before, which is not a thing that can happen:
+ * either way you are the account on this server afterwards, and the only
+ * outcome in play is whether the guest user comes with you.
  */
 export function IdentityClaimPrompt() {
   const { isSignedIn } = useAccount();
@@ -21,6 +26,7 @@ export function IdentityClaimPrompt() {
   const { claim, decline } = useIdentityClaim();
   const host = currentlyViewingServer?.host ?? null;
   const [asking, setAsking] = useState<string | null>(null);
+  const [lastUsed, setLastUsed] = useState<number | null>(null);
 
   useEffect(() => {
     if (!isSignedIn || !host) {
@@ -28,8 +34,12 @@ export function IdentityClaimPrompt() {
       return;
     }
     const scope = identityScopeFor(host);
-    // Been here as a guest, and nobody has said either way yet.
-    setAsking(hasGuestScope(scope) && getClaimDecision(scope) === null ? host : null);
+    const visit = getGuestVisit(scope);
+    // Been here as a guest, nobody has said either way, and it has not already
+    // been waved off this session.
+    const ask = Boolean(visit) && getClaimDecision(scope) === null && !postponed.has(scope);
+    setLastUsed(visit?.lastUsed ?? null);
+    setAsking(ask ? host : null);
   }, [isSignedIn, host]);
 
   const answer = useCallback(
@@ -43,34 +53,80 @@ export function IdentityClaimPrompt() {
     [asking, claim, decline],
   );
 
+  /**
+   * Dismissing is "not now", not "no".
+   *
+   * Nothing is stored, because nothing has been disclosed and an unanswered
+   * server is one nobody has agreed to link. Suppressed for the session so
+   * waving it off does not mean meeting it again on the next channel, and
+   * offered again on the next launch. The server menu has it in the meantime.
+   */
+  const postpone = useCallback(() => {
+    if (asking) postponed.add(identityScopeFor(asking));
+    setAsking(null);
+  }, [asking]);
+
   return (
-    /* No onOpenChange. Dismissing without answering would leave the server
-       undecided and ask again on the next visit, which is a worse experience
-       than answering once. */
-    <Dialog.Root open={asking !== null}>
+    <Dialog.Root open={asking !== null} onOpenChange={(open) => !open && postpone()}>
       <Dialog.Portal>
         <Dialog.Backdrop />
         <Dialog.Popup className="w-[27.5rem] max-w-[calc(100vw-2rem)]">
-          <Dialog.Title>Use your previous membership here?</Dialog.Title>
+          <Dialog.Title>You already have a user on this server</Dialog.Title>
           <Dialog.Description className="mt-2 mb-3">
-            You used this server before signing in. Gryt can attach that
-            membership to your account, so you keep your roles, anything you own
-            and the history attached to it.
+            Before you signed in, this device used{" "}
+            <span className="text-gryt-text">{asking}</span> as a guest.
+            {lastUsed !== null && <> Last used {formatLastUsed(lastUsed)}.</>}
           </Dialog.Description>
-          <p className="mb-4 text-sm text-gryt-muted">
-            Only do this if that was you. On a shared computer the previous
-            membership belongs to whoever used it last.
+          <p className="mb-3 text-sm">
+            Should that user become your account here? It keeps its roles,
+            anything it owns and its history.
           </p>
-          <div className="flex justify-end gap-2">
-            <Button tone="neutral" size="small" onClick={() => answer("no")}>
-              Keep separate
+          <p className="mb-3 text-sm text-gryt-muted">
+            Only say yes if that user was you. On a shared computer it belongs to
+            whoever used it last. You can&rsquo;t undo it. Saying yes tells the
+            server that your account and that user are the same person.
+          </p>
+          <p className="mb-4 text-sm text-gryt-muted">
+            Starting fresh is safe. You can convert the old user later from the
+            server menu.
+          </p>
+          {/* "Ask me later" sits away from the two answers, because it is not a
+              third answer. Visible rather than only on Esc: a way out nobody
+              can see is one nobody takes, which is how this became a dialog you
+              had to answer to carry on reading. */}
+          <div className="flex items-center justify-between gap-2">
+            <Button tone="ghost" size="small" onClick={postpone}>
+              Ask me later
             </Button>
-            <Button size="small" onClick={() => answer("yes")}>
-              Use previous membership
-            </Button>
+            <div className="flex gap-2">
+              <Button tone="neutral" size="small" onClick={() => answer("no")}>
+                No, this is a new user
+              </Button>
+              <Button size="small" onClick={() => answer("yes")}>
+                Yes, convert my user
+              </Button>
+            </div>
           </div>
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>
   );
+}
+
+/** Scopes waved off since launch. Deliberately not persisted. */
+const postponed = new Set<string>();
+
+/**
+ * The date, in the reader's locale. The year appears only when it is not this
+ * one, so the common case reads "12 August" rather than carrying a number that
+ * is the same on every line it could appear on.
+ */
+function formatLastUsed(epochMs: number): string {
+  const date = new Date(epochMs);
+  const sameYear = date.getFullYear() === new Date().getFullYear();
+  return date.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "long",
+    ...(sameYear ? {} : { year: "numeric" }),
+  });
 }
