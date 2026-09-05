@@ -5,20 +5,29 @@ import { AnimatePresence, LayoutGroup, motion, Reorder } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
-import { Channel, SidebarItem } from "@/settings/src/types/server";
+import { Channel, SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
 
-import { PiChatCircleFill, PiGameControllerFill, PiGaugeFill, PiKeyboardFill, PiLockSimpleFill, PiSpeakerHighFill } from "../../../../lib/icons";
+import { PiCaretDownFill, PiCaretRightFill, PiChatCircleFill, PiFolderFill, PiGameControllerFill, PiGaugeFill, PiKeyboardFill, PiLockSimpleFill, PiSpeakerHighFill } from "../../../../lib/icons";
 import type { DirectConversation } from "../hooks/useDirectMessages";
 import type { Client } from "../types/clients";
 import { ConnectedUser } from "./connectedUser";
 import { DirectMessageList } from "./DirectMessageList";
 import { EmojiText } from "./EmojiText";
 import type { AdminActions,MemberInfo } from "./MemberSidebar";
+import {
+  buildReorderPayload,
+  flattenSidebar,
+  orderChanged,
+  resolveDropParent,
+} from "./sidebarTree";
 import { SkeletonBase } from "./skeletons";
 import { UnreadIndicator } from "./UnreadIndicator";
 
 /** A role id. The server defines its own; these only pass one along. */
 type Role = string;
+
+/** How far a row inside a folder is inset. Matches the caret's own width. */
+const INDENT_PX = 14;
 
 export const ChannelList = ({
   channels,
@@ -69,7 +78,14 @@ export const ChannelList = ({
   onEditItem?: (item: SidebarItem) => void;
   onDeleteItem?: (item: SidebarItem) => void;
   onMoveItem?: (item: SidebarItem, direction: "up" | "down") => void;
-  onReorder?: (ids: string[]) => void;
+  /**
+   * The new order, each entry naming the folder it belongs in.
+   *
+   * Used to be a bare `string[]`. A drag can move a channel into a folder as
+   * well as up the list, and the two arrive together, so the order alone can no
+   * longer describe what happened.
+   */
+  onReorder?: (entries: SidebarReorderEntry[]) => void;
   onAddItem?: (kind: string) => void;
   onDisconnectUser?: (targetServerUserId: string) => void;
   currentUserRole?: Role;
@@ -111,6 +127,39 @@ export const ChannelList = ({
     () => new Map(channels.map((c) => [c.id, c])),
     [channels],
   );
+
+  /*
+   * Which folders are shut, per server, on this device.
+   *
+   * Local because it is a view preference rather than a fact about the server:
+   * two people looking at the same sidebar can reasonably have different folders
+   * open, and an operator collapsing one should not fold it up for everybody.
+   */
+  const collapseKey = `gryt_sidebar_collapsed:${serverHost}`;
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem(collapseKey);
+      const parsed: unknown = raw ? JSON.parse(raw) : null;
+      return new Set(Array.isArray(parsed) ? parsed.filter((s): s is string => typeof s === "string") : []);
+    } catch {
+      // Unreadable is the same as nothing collapsed, which shows more rather
+      // than fewer channels.
+      return new Set();
+    }
+  });
+
+  const toggleCollapsed = useCallback((folderId: string) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(folderId)) next.delete(folderId); else next.add(folderId);
+      try {
+        localStorage.setItem(collapseKey, JSON.stringify([...next]));
+      } catch {
+        // Losing the preference costs a folder being open next time.
+      }
+      return next;
+    });
+  }, [collapseKey]);
 
   const stableKeyById = useMemo(() => {
     const keys = new Map<string, string>();
@@ -155,6 +204,52 @@ export const ChannelList = ({
     const h = Math.max(0, Math.min(500, Math.floor(item.spacerHeight ?? 16)));
     return (
       <div className="w-full relative" style={{ height: h }} />
+    );
+  };
+
+  /**
+   * A folder row, which is a header rather than a destination.
+   *
+   * Clicking it opens and shuts it and nothing else, so a folder never steals
+   * the selection from the channel you are reading. The count is of the
+   * channels this person can see, which is why it is taken from the drawn rows
+   * rather than from the item list: a folder of channels somebody may not read
+   * says nothing rather than promising six.
+   */
+  const renderFolder = (item: SidebarItem) => {
+    const isCollapsed = collapsed.has(item.id);
+    const Caret = isCollapsed ? PiCaretRightFill : PiCaretDownFill;
+    const inside = folderRollup.get(item.id);
+
+    /* Only while shut. Open, every child draws its own state, and a folder
+       lit up above rows that are already lit is two answers to one question. */
+    const holdsSelected = isCollapsed && !!inside?.holdsSelected;
+    const unread = isCollapsed && !!inside?.unread;
+    const mentions = isCollapsed ? inside?.mentions ?? 0 : 0;
+
+    return (
+      <div className="relative w-full">
+        <UnreadIndicator unread={unread} mentions={mentions} />
+        <button
+          type="button"
+          onClick={() => toggleCollapsed(item.id)}
+          aria-expanded={!isCollapsed}
+          className={[
+            "flex w-full items-center gap-1.5 rounded-(--gryt-radius-md) px-2 py-1 text-left",
+            "text-xs font-semibold tracking-wide uppercase transition-colors",
+            holdsSelected ? "bg-gryt-accent text-gryt-on-accent" : "text-gryt-muted hover:text-gryt-text",
+          ].join(" ")}
+        >
+          <Caret size={10} />
+          <PiFolderFill size={12} />
+          <span className="min-w-0 flex-1 truncate normal-case">
+            <EmojiText text={item.label || "Folder"} />
+          </span>
+          {isCollapsed && inside?.children ? (
+            <span className="tabular-nums opacity-70">{inside.children}</span>
+          ) : null}
+        </button>
+      </div>
     );
   };
 
@@ -337,9 +432,40 @@ export const ChannelList = ({
     );
   };
 
+  /**
+   * What each folder has to say on behalf of the channels inside it.
+   *
+   * A shut folder is the only row its children have. `renderChannel` carries
+   * the note about "you are here" being the one thing the list stopped saying
+   * when every row looked selected; closing a folder around the open channel
+   * brings that back by removing the row entirely. So the folder wears it.
+   *
+   * Unread and mentions roll up for the same reason. Without it, collapsing a
+   * folder would quietly mute everything in it, which is a thing somebody would
+   * do by accident and then not be able to explain.
+   */
+  const folderRollup = useMemo(() => {
+    const rollup = new Map<string, { children: number; unread: boolean; mentions: number; holdsSelected: boolean }>();
+    for (const item of effectiveItems) {
+      const parent = item.parentItemId;
+      if (!parent) continue;
+      const entry = rollup.get(parent) ?? { children: 0, unread: false, mentions: 0, holdsSelected: false };
+      entry.children += 1;
+
+      const channelId = item.channelId ?? item.id;
+      if (channelId === selectedChannelId) entry.holdsSelected = true;
+      if (channelId !== selectedChannelId && unreadChannelIds?.has(channelId)) entry.unread = true;
+      entry.mentions += mentionCounts?.get(channelId) ?? 0;
+
+      rollup.set(parent, entry);
+    }
+    return rollup;
+  }, [effectiveItems, selectedChannelId, unreadChannelIds, mentionCounts]);
+
   const renderItem = (item: SidebarItem) => {
     if (item.kind === "separator") return renderSeparator(item);
     if (item.kind === "spacer") return renderSpacer(item);
+    if (item.kind === "folder") return renderFolder(item);
     return renderChannel(item);
   };
 
@@ -367,6 +493,11 @@ export const ChannelList = ({
           <ContextMenu.Item onClick={() => onEditItem?.(item)}>
             Edit
           </ContextMenu.Item>
+          {/* Right-click anywhere in the list to start a folder. The new one
+              lands at the end, empty, and channels go in by being dragged. */}
+          <ContextMenu.Item onClick={() => onAddItem?.("folder")}>
+            Add folder
+          </ContextMenu.Item>
           <ContextMenu.Separator />
           <ContextMenu.Item disabled={isFirst} onClick={() => onMoveItem?.(item, "up")}>
             Move up
@@ -385,29 +516,71 @@ export const ChannelList = ({
     );
   };
 
-  const [localItems, setLocalItems] = useState(effectiveItems);
+  /** Drawn order: top level in position order, each folder followed by its own. */
+  const rows = useMemo(
+    () => flattenSidebar(effectiveItems, collapsed),
+    [effectiveItems, collapsed],
+  );
+
+  const [localItems, setLocalItems] = useState(() => rows.map((r) => r.item));
   const isDragging = useRef(false);
+
+  /**
+   * How far right the pointer has travelled, which is the whole gesture for
+   * folders.
+   *
+   * A ref rather than state: it changes on every pointer move and nothing is
+   * drawn from it except the indent preview below, which reads it through its
+   * own state so the render stays cheap.
+   */
+  const dragOffsetX = useRef(0);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [pendingParent, setPendingParent] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isDragging.current) {
-      setLocalItems(effectiveItems);
+      setLocalItems(rows.map((r) => r.item));
     }
-  }, [effectiveItems]);
+  }, [rows]);
 
   const handleReorder = useCallback((newItems: SidebarItem[]) => {
     setLocalItems(newItems);
   }, []);
 
-  const handleDragEnd = useCallback(() => {
-    isDragging.current = false;
-    const ids = localItems.map((i) => i.id);
-    const originalIds = effectiveItems.map((i) => i.id);
-    if (ids.join(",") !== originalIds.join(",")) {
-      onReorder?.(ids);
-    }
-  }, [localItems, effectiveItems, onReorder]);
+  const handleDrag = useCallback((item: SidebarItem, offsetX: number) => {
+    dragOffsetX.current = offsetX;
+    setPendingParent(resolveDropParent(localItems, item.id, offsetX, effectiveItems));
+  }, [localItems, effectiveItems]);
 
-  const displayItems = canManage ? localItems : effectiveItems;
+  const handleDragEnd = useCallback((item: SidebarItem) => {
+    isDragging.current = false;
+    const parent = resolveDropParent(localItems, item.id, dragOffsetX.current, effectiveItems);
+    dragOffsetX.current = 0;
+    setDraggingId(null);
+    setPendingParent(null);
+
+    if (!orderChanged(rows, localItems.map((i) => i.id), item.id, parent)) return;
+    onReorder?.(buildReorderPayload(localItems, effectiveItems, item.id, parent));
+  }, [localItems, effectiveItems, rows, onReorder]);
+
+  const depthById = useMemo(() => {
+    const map = new Map<string, 0 | 1>();
+    for (const row of rows) map.set(row.item.id, row.depth);
+    return map;
+  }, [rows]);
+
+  /**
+   * Where a row sits while it is being dragged, which is not always where it
+   * sits at rest — a channel held to the right of the threshold is drawn
+   * indented before the drop, so the folder it is about to join is visible
+   * rather than guessed at.
+   */
+  const indentFor = (item: SidebarItem): number => {
+    if (draggingId === item.id) return pendingParent ? 1 : 0;
+    return depthById.get(item.id) ?? 0;
+  };
+
+  const displayItems = canManage ? localItems : rows.map((r) => r.item);
 
   /**
    * Below the channels, and outside the reorder group above. These are not
@@ -456,7 +629,7 @@ export const ChannelList = ({
                 opacity: { duration: 0.2 },
                 y: { duration: 0.2 },
               }}
-              style={{ width: "100%" }}
+              style={{ width: "100%", paddingLeft: indentFor(item) * INDENT_PX }}
             >
               {wrapWithContextMenu(item, index, renderItem(item))}
             </motion.div>
@@ -498,7 +671,7 @@ export const ChannelList = ({
               opacity: { duration: 0.2 },
               y: { duration: 0.2 },
             }}
-            style={{ width: "100%", cursor: "grab" }}
+            style={{ width: "100%", cursor: "grab", paddingLeft: indentFor(item) * INDENT_PX }}
             whileDrag={{
               scale: 1.02,
               boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
@@ -506,8 +679,13 @@ export const ChannelList = ({
               zIndex: 50,
               borderRadius: "var(--gryt-radius-md)",
             }}
-            onDragStart={() => { isDragging.current = true; }}
-            onDragEnd={handleDragEnd}
+            onDragStart={() => { isDragging.current = true; setDraggingId(item.id); }}
+            /* `axis="y"` pins the row to the column, but the pointer is not
+               pinned and `info.offset.x` still reports where it went. That is
+               what carries the folder half of the gesture: the row stays in
+               line while the cursor decides the depth. */
+            onDrag={(_event, info) => handleDrag(item, info.offset.x)}
+            onDragEnd={() => handleDragEnd(item)}
           >
             {wrapWithContextMenu(item, index, renderItem(item))}
           </Reorder.Item>

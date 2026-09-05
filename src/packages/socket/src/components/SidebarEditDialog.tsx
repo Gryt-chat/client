@@ -268,15 +268,20 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
             </div>
           )}
 
-          {selectedSidebarItem?.kind === "separator" && (
+          {(selectedSidebarItem?.kind === "separator" || selectedSidebarItem?.kind === "folder") && (
             <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium">Label</span>
+              <span className="text-sm font-medium">
+                {selectedSidebarItem.kind === "folder" ? "Name" : "Label"}
+              </span>
               <TextField
                 value={sheetSeparatorLabel}
                 onChange={(e) => setSheetSeparatorLabel(e.target.value)}
                 onBlur={flushSave}
                 onKeyDown={handleKeyEnter}
-                placeholder="Optional"
+                /* A separator with no label is a plain rule, which is a
+                   reasonable thing to want. A folder with no name is a row you
+                   cannot tell from the next one. */
+                placeholder={selectedSidebarItem.kind === "folder" ? "New folder" : "Optional"}
               />
             </div>
           )}
