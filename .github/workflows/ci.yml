@@ -29,6 +29,7 @@ jobs:
       - run: yarn test:message-key
       - run: yarn test:message-key-offer
       - run: yarn test:reset-warning
+      - run: yarn test:guest-history
       - run: yarn test:hotkeys
       - run: yarn test:screen-audio
       - run: yarn test:audio-mixer
