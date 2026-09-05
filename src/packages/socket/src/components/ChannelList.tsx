@@ -15,7 +15,7 @@ import {
 } from "@/common";
 import { Channel, SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
 
-import { PiCaretDownFill, PiCaretRightFill, PiChatCircleFill, PiFolderFill, PiGameControllerFill, PiGaugeFill, PiKeyboardFill, PiLockSimpleFill, PiSpeakerHighFill } from "../../../../lib/icons";
+import { PiCaretDownFill, PiCaretRightFill, PiChatCircleFill, PiGameControllerFill, PiGaugeFill, PiKeyboardFill, PiLockSimpleFill, PiSpeakerHighFill } from "../../../../lib/icons";
 import type { DirectConversation } from "../hooks/useDirectMessages";
 import type { Client } from "../types/clients";
 import { ConnectedUser } from "./connectedUser";
@@ -243,24 +243,48 @@ export const ChannelList = ({
     return (
       <div className="relative w-full">
         <UnreadIndicator unread={unread} mentions={mentions} />
+        {/* Label, then a hairline running out to the caret on the right.
+            No folder icon: a row that opens and shuts is already a folder, and
+            the glyph cost 12px of indent on every label. With the caret moved
+            over as well, the label sits at the row's own 8px padding instead of
+            22px in, so nesting is the only thing left that shifts a row
+            sideways.
+
+            That puts it 8px left of where the channel icons start, not level
+            with the channel names, which is deliberate — it reads as a heading
+            over the rows rather than as another row. The rule carries the
+            grouping: it runs from the label to the caret and gives the eye a
+            line to follow down to the children.
+
+            Nothing fills with accent any more. A shut folder holding the open
+            channel tints its label and its rule instead. The fill was the
+            loudest thing in the sidebar, louder than the channel you were
+            actually in, which is the wrong way round. */}
         <button
           type="button"
           onClick={() => toggleCollapsed(item.id)}
           aria-expanded={!isCollapsed}
           className={[
-            "flex w-full items-center gap-1.5 rounded-(--gryt-radius-md) px-2 py-1 text-left",
-            "text-xs font-semibold tracking-wide uppercase transition-colors",
-            holdsSelected ? "bg-gryt-accent text-gryt-on-accent" : "text-gryt-muted hover:text-gryt-text",
+            "flex w-full items-center gap-2 rounded-(--gryt-radius-md) px-2 py-1 text-left",
+            "text-xs font-semibold tracking-wide transition-colors",
+            "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gryt-accent-light",
+            holdsSelected ? "text-gryt-accent" : "text-gryt-muted hover:text-gryt-text active:text-gryt-text",
           ].join(" ")}
         >
-          <Caret size={10} />
-          <PiFolderFill size={12} />
-          <span className="min-w-0 flex-1 truncate normal-case">
+          <span className="min-w-0 shrink truncate">
             <EmojiText text={item.label || "Folder"} />
           </span>
+          <span
+            aria-hidden="true"
+            className={[
+              "h-px min-w-2 flex-1 transition-colors",
+              holdsSelected ? "bg-gryt-accent/45" : "bg-gryt-border",
+            ].join(" ")}
+          />
           {isCollapsed && inside?.children ? (
-            <span className="tabular-nums opacity-70">{inside.children}</span>
+            <span className="shrink-0 tabular-nums opacity-70">{inside.children}</span>
           ) : null}
+          <Caret size={10} className="shrink-0" />
         </button>
       </div>
     );
