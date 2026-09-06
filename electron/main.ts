@@ -1,3 +1,4 @@
+import { execFile } from "child_process";
 import {
   app,
   BrowserWindow,
@@ -18,8 +19,10 @@ import { autoUpdater as defaultAutoUpdater, NsisUpdater } from "electron-updater
 import { DownloadedUpdateHelper } from "electron-updater/out/DownloadedUpdateHelper";
 import {
   appendFileSync,
+  copyFileSync,
   createReadStream,
   existsSync,
+  mkdirSync,
   readFileSync,
   rmSync,
   statSync,
@@ -213,9 +216,90 @@ if (process.defaultApp) {
     ]);
   }
 } else if (process.platform === "linux" && process.env.APPIMAGE) {
+  // Electron's registration is a no-op on many AppImage setups: it points
+  // xdg-mime at a .desktop file that only exists inside the mounted AppImage,
+  // never in ~/.local/share/applications. So `xdg-mime query default
+  // x-scheme-handler/gryt` comes back empty and the browser has nowhere to hand
+  // the sign-in callback. Write and register the handler ourselves. GRYT-922.
+  ensureLinuxAppImageProtocolHandler(process.env.APPIMAGE);
   app.setAsDefaultProtocolClient(PROTOCOL, process.env.APPIMAGE);
 } else {
   app.setAsDefaultProtocolClient(PROTOCOL);
+}
+
+// A cold protocol launch on Linux and Windows delivers the URL in argv, not
+// through `open-url` (macOS) or `second-instance` (already running). Capture it
+// now so the pending-link flush after the window loads still fires. GRYT-922.
+if (process.platform !== "darwin") {
+  const argvDeepLink = process.argv.find((arg) =>
+    arg.startsWith(`${PROTOCOL}://`)
+  );
+  if (argvDeepLink) pendingDeepLinkUrl = argvDeepLink;
+}
+
+/**
+ * Install a desktop entry so the OS knows this AppImage handles `gryt://`.
+ *
+ * An AppImage is a single file that was never "installed", so nothing copied a
+ * .desktop file into ~/.local/share/applications or told xdg-mime about the
+ * scheme. Without that, clicking "Open Gryt" after signing in resolves to no
+ * handler and the login never gets back to the app. GRYT-922.
+ *
+ * Best-effort and idempotent: a failure here must never stop the app starting,
+ * and the entry is rewritten each run so it follows the AppImage if it moves.
+ */
+function ensureLinuxAppImageProtocolHandler(appImagePath: string): void {
+  try {
+    const home = app.getPath("home");
+    const appsDir = join(home, ".local", "share", "applications");
+    mkdirSync(appsDir, { recursive: true });
+
+    // resourcesPath lives inside the AppImage mount, which changes every launch,
+    // so copy the icon somewhere stable and reference that. Cosmetic — the
+    // handler works either way — so a failure just falls back to a theme name.
+    let icon = "gryt-chat";
+    try {
+      const stableIcon = join(home, ".local", "share", "icons", "gryt-chat.png");
+      mkdirSync(dirname(stableIcon), { recursive: true });
+      copyFileSync(join(process.resourcesPath, "icon.png"), stableIcon);
+      icon = stableIcon;
+    } catch {
+      // Leave `icon` as the theme name.
+    }
+
+    // %U passes the gryt:// URL through as an argument on launch.
+    const entry =
+      [
+        "[Desktop Entry]",
+        "Type=Application",
+        "Name=Gryt Chat",
+        `Exec=${appImagePath} %U`,
+        `Icon=${icon}`,
+        "Terminal=false",
+        "Categories=Network;",
+        "MimeType=x-scheme-handler/gryt;",
+        // Handler-only: the AppImage has its own launcher entry, so keep this
+        // one out of the app menu rather than showing a second "Gryt Chat".
+        "NoDisplay=true",
+      ].join("\n") + "\n";
+
+    const desktopFile = join(appsDir, "gryt-chat.desktop");
+    if (!existsSync(desktopFile) || readFileSync(desktopFile, "utf8") !== entry) {
+      writeFileSync(desktopFile, entry);
+    }
+
+    // Register the association. execFile, not a shell, so a spaced AppImage path
+    // is never word-split; both calls are best-effort.
+    execFile("update-desktop-database", [appsDir], () => {});
+    execFile(
+      "xdg-mime",
+      ["default", "gryt-chat.desktop", "x-scheme-handler/gryt"],
+      () => {}
+    );
+    startupLog(`Registered gryt:// handler at ${desktopFile}`);
+  } catch (error) {
+    startupLog(`Could not register gryt:// handler: ${error}`);
+  }
 }
 
 function handleDeepLink(url: string): void {
