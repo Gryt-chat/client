@@ -1,0 +1,223 @@
+import { useMemo, useState } from "react";
+
+import { PiChatsFill } from "../../../../lib/icons";
+import { type ForumFilter, type ForumTopic,useForum } from "../hooks/useForum";
+import type { ThreadSummary } from "../hooks/useThreads";
+import { EmojiText } from "./EmojiText";
+
+interface ForumViewProps {
+  socketConnection: unknown;
+  conversationId: string;
+  serverHost?: string;
+  currentUserId?: string;
+  onOpenTopic: (summary: ThreadSummary) => void;
+}
+
+const FILTERS: { key: ForumFilter; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "unanswered", label: "Unanswered" },
+  { key: "solved", label: "Solved" },
+  { key: "mine", label: "Mine" },
+];
+
+function relativeTime(value: string): string {
+  const then = new Date(value).getTime();
+  if (Number.isNaN(then)) return "";
+  const secs = Math.max(0, Math.floor((Date.now() - then) / 1000));
+  if (secs < 60) return "just now";
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return "yesterday";
+  if (days < 7) return `${days}d`;
+  return new Date(value).toLocaleDateString([], { month: "short", day: "numeric" });
+}
+
+function toSummary(t: ForumTopic): ThreadSummary {
+  return {
+    thread_id: t.thread_id,
+    conversation_id: t.conversation_id,
+    root_message_id: t.root_message_id,
+    title: t.title,
+    status: t.status,
+    reply_count: t.reply_count,
+    last_message_at: t.last_message_at,
+  };
+}
+
+function matchesFilter(t: ForumTopic, filter: ForumFilter, currentUserId?: string): boolean {
+  switch (filter) {
+    case "unanswered": return t.reply_count === 0 && t.status !== "closed";
+    case "solved": return t.status === "solved";
+    case "mine": return !!currentUserId && t.creator_server_id === currentUserId;
+    default: return t.status !== "closed";
+  }
+}
+
+export function ForumView({ socketConnection, conversationId, serverHost, currentUserId, onOpenTopic }: ForumViewProps) {
+  const { topics, loading, createTopic } = useForum(socketConnection, conversationId, serverHost);
+  const [filter, setFilter] = useState<ForumFilter>("all");
+  const [composing, setComposing] = useState(false);
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+
+  const shown = useMemo(
+    () => topics.filter((t) => matchesFilter(t, filter, currentUserId)),
+    [topics, filter, currentUserId],
+  );
+
+  const counts = useMemo(() => ({
+    all: topics.filter((t) => t.status !== "closed").length,
+    unanswered: topics.filter((t) => t.reply_count === 0 && t.status !== "closed").length,
+    solved: topics.filter((t) => t.status === "solved").length,
+    mine: topics.filter((t) => !!currentUserId && t.creator_server_id === currentUserId).length,
+  }), [topics, currentUserId]);
+
+  const submit = () => {
+    if (!title.trim() || !body.trim()) return;
+    createTopic(title, body);
+    setTitle("");
+    setBody("");
+    setComposing(false);
+  };
+
+  return (
+    <div style={{ position: "relative", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+      {/* Filter bar */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", paddingBottom: 12, borderBottom: "1px solid var(--gryt-neutral-6)" }}>
+        <div style={{ display: "flex", gap: 2, background: "var(--gryt-neutral-3)", border: "1px solid var(--gryt-neutral-6)", borderRadius: "var(--gryt-radius-full)", padding: 3 }}>
+          {FILTERS.map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              aria-pressed={filter === f.key}
+              style={{
+                background: filter === f.key ? "var(--gryt-neutral-4)" : "transparent",
+                color: filter === f.key ? "var(--gryt-neutral-12)" : "var(--gryt-neutral-10)",
+                border: "none", borderRadius: "var(--gryt-radius-full)", padding: "5px 12px",
+                fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+              }}
+            >
+              {f.label}
+              <span style={{ color: "var(--gryt-neutral-9)", marginLeft: 5, fontVariantNumeric: "tabular-nums" }}>
+                {counts[f.key]}
+              </span>
+            </button>
+          ))}
+        </div>
+        <span style={{ flex: 1 }} />
+        <button
+          onClick={() => setComposing(true)}
+          style={{
+            background: "var(--gryt-accent-9)", color: "var(--gryt-on-accent, #0c0a20)", border: "none",
+            fontWeight: 700, fontSize: 13, padding: "8px 15px", borderRadius: "var(--gryt-radius-full)",
+            display: "inline-flex", alignItems: "center", gap: 7, cursor: "pointer", whiteSpace: "nowrap",
+          }}
+        >
+          <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> New topic
+        </button>
+      </div>
+
+      {/* Topic list */}
+      <div style={{ flex: 1, overflowY: "auto" }}>
+        {loading ? (
+          <div style={{ padding: 24, color: "var(--gryt-neutral-10)", fontSize: 13 }}>Loading topics…</div>
+        ) : shown.length === 0 ? (
+          <div style={{ padding: "40px 24px", textAlign: "center", color: "var(--gryt-neutral-10)" }}>
+            <PiChatsFill size={28} style={{ opacity: 0.5 }} />
+            <p style={{ marginTop: 8, fontSize: 14 }}>
+              {topics.length === 0 ? "No topics yet. Start the first one." : "Nothing matches this filter."}
+            </p>
+          </div>
+        ) : (
+          shown.map((t) => (
+            <button
+              key={t.thread_id}
+              onClick={() => onOpenTopic(toSummary(t))}
+              style={{
+                display: "grid", gridTemplateColumns: "1fr auto", gap: "4px 16px", alignItems: "center", width: "100%",
+                textAlign: "left", background: "transparent", border: "none",
+                borderBottom: "1px solid var(--gryt-neutral-3)", padding: "11px 4px", cursor: "pointer",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gryt-neutral-3)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+            >
+              <div style={{ fontWeight: 700, fontSize: 14.5, color: "var(--gryt-neutral-12)", gridColumn: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <EmojiText text={t.title || t.preview || "Untitled topic"} />
+              </div>
+              <div style={{ gridColumn: 1, color: "var(--gryt-neutral-10)", fontSize: 12, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                <span>{t.creator_nickname || "Someone"}</span>
+                <span>·</span>
+                <span>{t.reply_count} {t.reply_count === 1 ? "reply" : "replies"}</span>
+                <span>·</span>
+                <span>{t.participant_count} {t.participant_count === 1 ? "participant" : "participants"}</span>
+                <span>·</span>
+                <span>{relativeTime(t.last_message_at)}</span>
+              </div>
+              {t.status === "solved" && (
+                <span style={{
+                  gridRow: "1 / 3", gridColumn: 2, alignSelf: "center",
+                  fontSize: 11, fontWeight: 700, color: "#5cc79a", background: "rgba(92,199,154,0.12)",
+                  padding: "3px 9px", borderRadius: "var(--gryt-radius-full)", whiteSpace: "nowrap",
+                }}>
+                  ✓ Solved
+                </span>
+              )}
+            </button>
+          ))
+        )}
+      </div>
+
+      {/* New topic dialog */}
+      {composing && (
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) setComposing(false); }}
+          style={{ position: "absolute", inset: 0, background: "rgba(6,7,10,0.55)", display: "grid", placeItems: "center", padding: 16, zIndex: 30 }}
+        >
+          <div style={{ width: "min(520px, 100%)", background: "var(--gryt-neutral-2, var(--gryt-neutral-1))", border: "1px solid var(--gryt-neutral-6)", borderRadius: "var(--gryt-radius-lg)", overflow: "hidden" }}>
+            <div style={{ padding: "16px 18px 4px", fontSize: 16, fontWeight: 700, color: "var(--gryt-neutral-12)" }}>New topic</div>
+            <div style={{ padding: "12px 18px 18px", display: "flex", flexDirection: "column", gap: 12 }}>
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Title"
+                autoFocus
+                maxLength={200}
+                style={{ background: "var(--gryt-neutral-3)", border: "1px solid var(--gryt-neutral-6)", borderRadius: "var(--gryt-radius-sm)", padding: "10px 12px", color: "var(--gryt-neutral-12)", fontSize: 14, fontFamily: "inherit", outline: "none" }}
+              />
+              <textarea
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                placeholder="Describe what's happening…"
+                rows={5}
+                style={{ background: "var(--gryt-neutral-3)", border: "1px solid var(--gryt-neutral-6)", borderRadius: "var(--gryt-radius-sm)", padding: "10px 12px", color: "var(--gryt-neutral-12)", fontSize: 14, fontFamily: "inherit", resize: "vertical", outline: "none" }}
+              />
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                <button
+                  onClick={() => setComposing(false)}
+                  style={{ background: "var(--gryt-neutral-4)", color: "var(--gryt-neutral-12)", border: "1px solid var(--gryt-neutral-6)", fontWeight: 600, fontSize: 13, padding: "8px 14px", borderRadius: "var(--gryt-radius-full)", cursor: "pointer" }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submit}
+                  disabled={!title.trim() || !body.trim()}
+                  style={{
+                    background: title.trim() && body.trim() ? "var(--gryt-accent-9)" : "var(--gryt-neutral-6)",
+                    color: title.trim() && body.trim() ? "var(--gryt-on-accent, #0c0a20)" : "var(--gryt-neutral-10)",
+                    border: "none", fontWeight: 700, fontSize: 13, padding: "8px 15px", borderRadius: "var(--gryt-radius-full)",
+                    cursor: title.trim() && body.trim() ? "pointer" : "default",
+                  }}
+                >
+                  Create topic
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
