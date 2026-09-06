@@ -178,10 +178,21 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       host,
       Array.isArray(data.server_info?.plugins)
         ? data.server_info.plugins
-            .filter((p) => typeof p?.id === "string" && typeof p?.version === "string")
+            .filter((p) => typeof p?.id === "string")
             .map((p) => ({
               id: p.id,
-              version: p.version,
+              /* A server that named it without a name is old rather than shy,
+                 and the id is what it called itself. */
+              name: typeof p.name === "string" ? p.name : p.id,
+              author: typeof p.author === "string" ? p.author : undefined,
+              description: typeof p.description === "string" ? p.description : undefined,
+              /* Already checked to be http(s) by the server. Checked again on
+                 the way in, because a link somebody clicks is worth not taking
+                 on trust from a server they may have joined by accident. */
+              homepage:
+                typeof p.homepage === "string" && /^https?:\/\//i.test(p.homepage)
+                  ? p.homepage
+                  : undefined,
               capabilities: Array.isArray(p.capabilities)
                 ? p.capabilities.filter((c): c is string => typeof c === "string")
                 : [],

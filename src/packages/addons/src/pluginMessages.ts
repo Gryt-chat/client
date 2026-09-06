@@ -72,7 +72,11 @@ const listeners = new Map<string, Set<PluginMessageHandler>>();
 /** A plugin a server is running, as it describes itself. */
 export interface AnnouncedPlugin {
   id: string;
-  version: string;
+  name: string;
+  author?: string;
+  description?: string;
+  /** Where to read about it. The server has already checked it is http(s). */
+  homepage?: string;
   /**
    * What it may do, in the server's own vocabulary — `messages:read`,
    * `moderation` and so on.
@@ -83,6 +87,13 @@ export interface AnnouncedPlugin {
    */
   capabilities: string[];
 }
+
+/*
+ * No version, and that is the server's decision rather than an omission here.
+ * A version number is which known problem applies, so it is the one thing in a
+ * plugin list that narrows an attack rather than describing the plugin. A
+ * plugin pair that needs to agree on one puts it in its own payloads.
+ */
 
 /**
  * Which plugins each server says it runs (GRYT-939, GRYT-941).
@@ -102,7 +113,10 @@ export function setAnnouncedPlugins(
     host,
     plugins.map((p) => ({
       id: p.id,
-      version: p.version,
+      name: p.name,
+      author: p.author,
+      description: p.description,
+      homepage: p.homepage,
       /* Copied rather than referenced. What a plugin may do is the half a
          person decides on, and a list anything downstream can edit is not one
          to decide on. */
@@ -117,19 +131,22 @@ export function forgetAnnouncedPlugins(host: string): void {
 }
 
 /**
- * The servers running the other half of this plugin, and which version.
+ * The servers running the other half of this plugin.
  *
  * A plugin asks this to decide whether to say anything at all. Sending anyway
  * is harmless — the server drops it — but a plugin that knows can stop polling,
  * stop drawing an empty panel, and tell somebody why nothing is happening.
+ *
+ * Hosts and nothing else. The server does not say which version it is running,
+ * on purpose, so a pair that needs to agree on one says so in its own payloads
+ * where it is between the two halves rather than on the doorstep.
  */
-export function serversRunning(addonId: string): { host: string; version: string }[] {
-  const out: { host: string; version: string }[] = [];
+export function serversRunning(addonId: string): string[] {
+  const out: string[] = [];
   for (const [host, plugins] of announcedByHost) {
-    const match = plugins.find((p) => p.id === addonId);
-    if (match) out.push({ host, version: match.version });
+    if (plugins.some((p) => p.id === addonId)) out.push(host);
   }
-  return out.sort((a, b) => a.host.localeCompare(b.host));
+  return out.sort();
 }
 
 /**

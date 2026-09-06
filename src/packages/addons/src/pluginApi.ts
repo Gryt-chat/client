@@ -36,15 +36,20 @@ export interface PluginMessaging {
   /** Hear what the server half sends. Returns a function that stops listening. */
   on(topic: string, handler: PluginMessageHandler): () => void;
   /**
-   * The servers running the other half of this plugin, and which version
-   * (GRYT-939).
+   * The hosts running the other half of this plugin (GRYT-939).
    *
-   * Only servers whose copy asked to be visible, so an empty list means "none
-   * that said so" rather than "none". Sending anyway is harmless — a server
-   * running no half drops it — but a plugin that knows can stop polling, stop
-   * drawing an empty panel, and tell somebody why nothing is happening.
+   * Sending anyway is harmless — a server running no half drops it — but a
+   * plugin that knows can stop polling, stop drawing an empty panel, and tell
+   * somebody why nothing is happening.
+   *
+   * No version, because the server does not say: a version number is which
+   * known problem applies, and a server does not hand that to everybody who
+   * joins. A pair that needs to agree on one puts it in its own payloads.
+   *
+   * Empty from a server too old to say anything, which looks the same as one
+   * running nothing.
    */
-  servers(): { host: string; version: string }[];
+  servers(): string[];
 }
 
 export interface GrytPluginAPI {

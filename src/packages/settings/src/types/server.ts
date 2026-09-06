@@ -145,10 +145,20 @@ export type serverDetails = {
      * one whose messages are being read, so what code sits between them and the
      * people they are talking to is theirs to know.
      *
+     * No version, on purpose: a version number is which known problem applies,
+     * and a server does not hand that to everybody who joins.
+     *
      * Absent from a server too old to say, which is not the same as a server
      * running nothing.
      */
-    plugins?: { id: string; version: string; capabilities?: string[] }[];
+    plugins?: {
+      id: string;
+      name?: string;
+      author?: string;
+      description?: string;
+      homepage?: string;
+      capabilities?: string[];
+    }[];
   };
   error?: string;
   message?: string;
