@@ -6,6 +6,7 @@ import {
   dialog,
   ipcMain,
   Menu,
+  Notification,
   nativeImage,
   powerMonitor,
   safeStorage,
@@ -3883,6 +3884,46 @@ if (!gotSingleInstanceLock) {
 
             return false;
           }
+        }
+      );
+
+      /*
+       * A desktop notification, raised by the renderer when a message arrives
+       * somewhere this person is not looking.
+       *
+       * `silent: true` always. The app plays its own message sound from the
+       * same event, and letting the OS play one as well is two noises for one
+       * message.
+       *
+       * The icon is passed explicitly because Linux will not guess it. A
+       * notification there is drawn by the desktop's own daemon, which looks
+       * the sender up by desktop entry, and an AppImage that has not been
+       * registered has no entry to find. Handing it the file works either way.
+       */
+      ipcMain.on(
+        "show-notification",
+        (
+          _event,
+          payload: { title?: string; body?: string }
+        ) => {
+          if (!Notification.isSupported()) return;
+          if (!payload?.title) return;
+
+          const notification = new Notification({
+            title: payload.title,
+            body: payload.body || "",
+            icon: appIcon,
+            silent: true,
+          });
+
+          notification.on("click", () => {
+            if (!mainWindow) return;
+            if (!mainWindow.isVisible()) mainWindow.show();
+            if (mainWindow.isMinimized()) mainWindow.restore();
+            mainWindow.focus();
+          });
+
+          notification.show();
         }
       );
 
