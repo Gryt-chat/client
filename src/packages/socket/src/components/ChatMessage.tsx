@@ -1,6 +1,6 @@
 import { Skeleton } from "@gryt/ui";
 
-import { PiChatCircleFill, PiChatsFill, PiSpeakerHighFill } from "../../../../lib/icons";
+import { PiChatCircleFill, PiChatsFill, PiSmileyFill, PiSpeakerHighFill } from "../../../../lib/icons";
 import { EmojiText } from "./EmojiText";
 
 export const MessageHoverToolbar = ({
@@ -11,6 +11,7 @@ export const MessageHoverToolbar = ({
   canDelete,
   quickReactions,
   onQuickReaction,
+  onOpenEmojiPicker,
 }: {
   onReply?: () => void;
   onThread?: () => void;
@@ -26,6 +27,14 @@ export const MessageHoverToolbar = ({
    */
   quickReactions?: string[];
   onQuickReaction?: (src: string) => void;
+  /**
+   * Open the full picker, for a reaction that is not one of the four above.
+   *
+   * Passed only when this person may react, so the button follows the same
+   * permission as the emoji beside it without this component knowing what a
+   * permission is.
+   */
+  onOpenEmojiPicker?: () => void;
 }) => {
   const showQuick = !!onQuickReaction && !!quickReactions && quickReactions.length > 0;
   return (
@@ -40,6 +49,11 @@ export const MessageHoverToolbar = ({
         padding: "2px 3px",
         boxShadow: "0 2px 10px rgba(0, 0, 0, 0.18)",
         pointerEvents: "auto",
+        /* Chrome, not content. Without this a drag across a few rows copies the
+           four quick reactions, the reply arrow and the bin along with what
+           people actually wrote, because the bar sits earlier in the DOM than
+           the message text it floats over. */
+        userSelect: "none",
         whiteSpace: "nowrap",
       }}
       onMouseDown={(e) => e.stopPropagation()}
@@ -73,7 +87,36 @@ export const MessageHoverToolbar = ({
           <EmojiText text={src} emojiSize={16} disableTooltip />
         </button>
       ))}
-      {showQuick && (onReply || (canDelete && onDelete)) && (
+      {/* Anything the four above are not.
+          The four are what this person reaches for, so the fifth reaction they
+          want is the one they cannot get here, and right-clicking the message
+          to find it is a step people do not know is there. */}
+      {onOpenEmojiPicker && (
+        <button
+          onClick={onOpenEmojiPicker}
+          title="React with another emoji"
+          aria-label="React with another emoji"
+          style={{
+            background: "none",
+            border: "none",
+            padding: "4px 6px",
+            fontSize: "14px",
+            lineHeight: 1,
+            borderRadius: "var(--gryt-radius-md)",
+            cursor: "pointer",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "var(--gryt-neutral-11)",
+            transition: "background 0.15s",
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gryt-neutral-4)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
+        >
+          <PiSmileyFill size={15} />
+        </button>
+      )}
+      {(showQuick || onOpenEmojiPicker) && (onReply || (canDelete && onDelete)) && (
         <span
           aria-hidden="true"
           style={{
