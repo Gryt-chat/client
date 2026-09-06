@@ -14,6 +14,9 @@ import {
 } from "@/settings/src/channelPermissionRules";
 import { Channel, serverDetailsList as ServerDetailsList,SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
 
+import { type ChannelKind, fieldsToKind, kindToFields } from "../components/channelKind";
+import type { ForumTagDraft } from "../components/ForumTagsField";
+
 interface UseSidebarEditorParams {
   currentlyViewingServer: { host: string; name: string } | null;
   currentConnection: Socket | null;
@@ -34,6 +37,8 @@ export function useSidebarEditor({
 
   const [sheetChannelName, setSheetChannelName] = useState("");
   const [sheetChannelIsVoice, setSheetChannelIsVoice] = useState(false);
+  const [sheetChannelKind, setSheetChannelKind] = useState<ChannelKind>("chat");
+  const [sheetForumTags, setSheetForumTags] = useState<ForumTagDraft[]>([]);
   const [sheetRequirePtt, setSheetRequirePtt] = useState(false);
   const [sheetDisableRnnoise, setSheetDisableRnnoise] = useState(false);
   const [sheetMaxBitrate, setSheetMaxBitrate] = useState("");
@@ -101,6 +106,8 @@ export function useSidebarEditor({
       const ch = channelById.get(channelId);
       setSheetChannelName(ch?.name || "");
       setSheetChannelIsVoice((ch?.type || "text") === "voice");
+      setSheetChannelKind(fieldsToKind({ type: ch?.type, layout: ch?.layout, automated: ch?.automated }));
+      setSheetForumTags((ch?.forumTags ?? []).map((t) => ({ id: t.id, name: t.name, emoji: t.emoji ?? null, color: t.color ?? null })));
       setSheetRequirePtt(ch?.requirePushToTalk || false);
       setSheetDisableRnnoise(ch?.disableRnnoise || false);
       setSheetMaxBitrate(ch?.maxBitrate ? String(ch.maxBitrate) : "");
@@ -479,7 +486,8 @@ export function useSidebarEditor({
       const nextName = sheetChannelName.trim().length
         ? sheetChannelName.trim()
         : (existing?.name || "Channel");
-      const nextType: "text" | "voice" = sheetChannelIsVoice ? "voice" : "text";
+      const kindFields = kindToFields(sheetChannelKind);
+      const nextType: "text" | "voice" = kindFields.type;
       const parsedBitrate = parseInt(sheetMaxBitrate, 10);
       currentConnection.emit("server:channels:upsert", {
         accessToken,
@@ -492,6 +500,9 @@ export function useSidebarEditor({
         maxBitrate: !isNaN(parsedBitrate) && parsedBitrate > 0 ? parsedBitrate : null,
         eSportsMode: sheetEsportsMode,
         textInVoice: sheetTextInVoice,
+        layout: kindFields.layout,
+        automated: kindFields.automated,
+        forumTags: sheetForumTags,
         // Always sent, including as null. The server treats an *absent*
         // viewMinRank as "leave it alone", which is what stops an older client
         // reopening a hidden channel by saving an unrelated setting. This
@@ -544,6 +555,8 @@ export function useSidebarEditor({
     channelById,
     sheetChannelName,
     sheetChannelIsVoice,
+    sheetChannelKind,
+    sheetForumTags,
     sheetRequirePtt,
     sheetDisableRnnoise,
     sheetMaxBitrate,
@@ -564,6 +577,10 @@ export function useSidebarEditor({
     setSheetChannelName,
     sheetChannelIsVoice,
     setSheetChannelIsVoice,
+    sheetChannelKind,
+    setSheetChannelKind,
+    sheetForumTags,
+    setSheetForumTags,
     sheetRequirePtt,
     setSheetRequirePtt,
     sheetDisableRnnoise,

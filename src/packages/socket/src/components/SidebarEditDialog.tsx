@@ -10,7 +10,10 @@ import {
 import type { SidebarItem } from "@/settings/src/types/server";
 
 import { PiX } from "../../../../lib/icons";
+import { type ChannelKind } from "./channelKind";
+import { ChannelKindPicker } from "./ChannelKindPicker";
 import { ChannelPermissionMatrix } from "./ChannelPermissionMatrix";
+import { type ForumTagDraft, ForumTagsField } from "./ForumTagsField";
 
 export interface SidebarEditorFields {
   selectedSidebarItem: SidebarItem | null;
@@ -18,6 +21,10 @@ export interface SidebarEditorFields {
   setSheetChannelName: (v: string) => void;
   sheetChannelIsVoice: boolean;
   setSheetChannelIsVoice: (v: boolean) => void;
+  sheetChannelKind: ChannelKind;
+  setSheetChannelKind: (v: ChannelKind) => void;
+  sheetForumTags: ForumTagDraft[];
+  setSheetForumTags: (v: ForumTagDraft[]) => void;
   sheetRequirePtt: boolean;
   setSheetRequirePtt: (v: boolean) => void;
   sheetDisableRnnoise: boolean;
@@ -56,6 +63,8 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
     selectedSidebarItem,
     sheetChannelName, setSheetChannelName,
     sheetChannelIsVoice, setSheetChannelIsVoice,
+    sheetChannelKind, setSheetChannelKind,
+    sheetForumTags, setSheetForumTags,
     sheetRequirePtt, setSheetRequirePtt,
     sheetDisableRnnoise, setSheetDisableRnnoise,
     sheetMaxBitrate, setSheetMaxBitrate,
@@ -146,10 +155,27 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
                   placeholder="Channel name"
                 />
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Voice channel</span>
-                <Switch checked={sheetChannelIsVoice} onCheckedChange={(v) => { setSheetChannelIsVoice(v); debouncedSave(); }} />
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-medium">Channel type</span>
+                <ChannelKindPicker
+                  value={sheetChannelKind}
+                  onChange={(k) => {
+                    setSheetChannelKind(k);
+                    // Kept in step because the voice-only block below still reads it.
+                    setSheetChannelIsVoice(k === "voice");
+                    debouncedSave();
+                  }}
+                />
               </div>
+              {sheetChannelKind === "forum" && (
+                <div className="flex flex-col gap-2">
+                  <span className="text-sm font-medium">Tags</span>
+                  <ForumTagsField
+                    tags={sheetForumTags}
+                    onChange={(t) => { setSheetForumTags(t); debouncedSave(); }}
+                  />
+                </div>
+              )}
               <div className="flex flex-col gap-2">
                 <span className="text-sm font-medium">Who can use this channel</span>
                 {/* Everyone, a shared template, or this channel's own rules.

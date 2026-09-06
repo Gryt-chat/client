@@ -562,6 +562,8 @@ export const ChatView = memo(({
               onClose={threads.closeThread}
               onSend={threads.sendReply}
               onSetStatus={threads.setStatus}
+              forumTags={forumTags ?? []}
+              onSetTags={threads.setTags}
             />
           )}
         </div>

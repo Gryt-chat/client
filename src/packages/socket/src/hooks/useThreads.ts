@@ -23,6 +23,8 @@ export interface ThreadSummary {
   status: "open" | "solved" | "closed";
   reply_count: number;
   last_message_at: string;
+  /** Tag ids from the channel's palette. Absent on a plain chat thread. */
+  tags?: string[];
 }
 
 interface OpenThread {
@@ -58,6 +60,8 @@ export interface UseThreadsResult {
   openSummary: (summary: ThreadSummary) => void;
   closeThread: () => void;
   sendReply: (text: string) => void;
+  /** Set the open topic's tags. The server gates who may, and drops unknown ids. */
+  setTags: (tagIds: string[]) => void;
   /** Mark the open topic open / solved / closed. The server gates who may. */
   setStatus: (status: "open" | "solved" | "closed") => void;
 }
@@ -135,7 +139,9 @@ export function useThreads(
     const onHistory = (p: { conversation_id: string; thread: ThreadSummary; root: ChatMessage | null; items: ChatMessage[] }) => {
       if (p.conversation_id !== conversationId) return;
       if (openRef.current?.thread.thread_id !== p.thread.thread_id) return;
-      setOpen({ thread: p.thread, root: p.root, messages: p.items ?? [], loading: false });
+      // Merged like thread:updated: history carries the thread, but not the
+      // tags the forum index already knew about.
+      setOpen((o) => ({ thread: { ...o?.thread, ...p.thread }, root: p.root, messages: p.items ?? [], loading: false }));
     };
 
     // A thread reply arrives as an ordinary chat:new carrying a thread_id. It is
@@ -210,6 +216,14 @@ export function useThreads(
 
   const closeThread = useCallback(() => setOpen(null), []);
 
+  const setTags = useCallback((tagIds: string[]) => {
+    const socket = asSocket(socketConnection);
+    const accessToken = getServerAccessToken(serverHost || "");
+    const cur = openRef.current;
+    if (!socket || !accessToken || !cur) return;
+    socket.emit("thread:tags:set", { conversationId, threadId: cur.thread.thread_id, tagIds, accessToken });
+  }, [socketConnection, conversationId, serverHost]);
+
   const setStatus = useCallback((status: "open" | "solved" | "closed") => {
     const socket = asSocket(socketConnection);
     const accessToken = getServerAccessToken(serverHost || "");
@@ -242,5 +256,5 @@ export function useThreads(
     socket.emit("chat:send", { conversationId, threadId: cur.thread.thread_id, text: trimmed, accessToken, nonce });
   }, [socketConnection, conversationId, serverHost, currentUserId, currentUserNickname]);
 
-  return { summaries, open, startThread, openThread, openSummary, closeThread, sendReply, setStatus };
+  return { summaries, open, startThread, openThread, openSummary, closeThread, sendReply, setTags, setStatus };
 }
