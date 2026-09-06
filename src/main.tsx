@@ -1,11 +1,12 @@
 import "./style.css";
 
 import { createGrytTheme, grytThemeToOptions } from "@gryt/ui";
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import ReactDOM from "react-dom/client";
 import { Toaster } from "react-hot-toast";
 
 import {
+  dropPluginApiListeners,
   initPluginApi,
   pruneGrants,
   setPluginApiActivitySetter,
@@ -141,12 +142,25 @@ function ThemedApp() {
      the list changes, because an addon updating its manifest is exactly the
      case a stale copy would get wrong. */
   const { addons } = useAddons();
+  /* Which ids were installed last time round, so a departure can be spotted.
+     `addons` is the current list and says nothing about what left. */
+  const listeningRef = useRef<string[]>([]);
   useEffect(() => {
     updatePluginApiCapabilities(addons);
     /* And forget what an addon that is no longer here was allowed to do. An
        id is a folder name, so a grant left behind would be inherited by the
        next addon to use the same one. */
-    pruneGrants(addons.map((addon) => addon.id));
+    const installed = addons.map((addon) => addon.id);
+    pruneGrants(installed);
+
+    /* Same for what it was listening to (GRYT-939). A plugin that has been
+       turned off keeps receiving until its handlers are dropped, and one
+       reloaded from a changed file would otherwise have two generations of
+       handlers running at once. */
+    for (const id of listeningRef.current) {
+      if (!installed.includes(id)) dropPluginApiListeners(id);
+    }
+    listeningRef.current = installed;
   }, [addons]);
 
   /* The one thing a plugin can currently do. Wired here rather than inside the

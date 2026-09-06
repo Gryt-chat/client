@@ -54,6 +54,7 @@ jobs:
       - run: yarn test:member-invite
       - run: yarn test:addon-capabilities
       - run: yarn test:actor-name
+      - run: yarn test:plugin-messaging
       - run: yarn test:fake-participants
       - run: yarn test:narrow-layout
       - run: yarn test:permission-grid
