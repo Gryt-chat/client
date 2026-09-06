@@ -3655,11 +3655,26 @@ if (!gotSingleInstanceLock) {
             })
             .then(
               (sources) => {
+                /* Wayland can return nothing: the compositor will not let an
+                   app enumerate screens. Calling back with an undefined source
+                   fails the request silently. */
+                if (sources.length === 0) {
+                  console.warn(
+                    "[screen] no capture sources; session is",
+                    process.env.XDG_SESSION_TYPE ?? "unknown"
+                  );
+                  callback({});
+                  return;
+                }
+
                 callback({
-                  video:
-                    sources[0],
-                  audio:
-                    "loopback",
+                  video: sources[0],
+                  /* Windows only, per Electron's typings. Asking for it
+                     elsewhere is a second capture request, and under
+                     xdg-desktop-portal that is a second permission dialog. */
+                  ...(process.platform === "win32"
+                    ? { audio: "loopback" as const }
+                    : {}),
                 });
               }
             );
