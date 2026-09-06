@@ -81,7 +81,8 @@
     "test:member-invite": "node scripts/check-member-invite.mjs",
     "test:addon-capabilities": "node scripts/check-addon-capabilities.mjs",
     "test:actor-name": "node scripts/check-actor-name.mjs",
-    "test:plugin-messaging": "node scripts/check-plugin-messaging.mjs"
+    "test:plugin-messaging": "node scripts/check-plugin-messaging.mjs",
+    "test:plugin-wording": "node scripts/check-plugin-wording.mjs"
   },
   "dependencies": {
     "electron-updater": "^6.8.3",

@@ -27,6 +27,7 @@ import {
 } from "@/common";
 import { ThemeEditorPanel } from "@/settings";
 import { useSettings } from "@/settings";
+import { ServerPluginsModal } from "@/socket";
 import { VoiceProvider } from "@/webRTC";
 
 import { App } from "./App.tsx";
@@ -185,6 +186,10 @@ function ThemedApp() {
         <App />
       </div>
       <UpdateAnnouncement />
+      {/* Mounted once rather than per server view, because the two places a
+          server menu is drawn — the sidebar and the mobile view — would
+          otherwise each need the state and the dialog (GRYT-942). */}
+      <ServerPluginsModal />
       {/* Inside .gryt-app so it scales with the rest, and last so it sits over
           it. Not portalled: it is part of the app, not an overlay above it —
           a menu or a dialog opened while it is up should still come out on
