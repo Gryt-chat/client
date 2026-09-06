@@ -93,6 +93,12 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     permissions: [
       { id: "change_nickname", label: "Change nickname", description: "Rename themselves on this server." },
       { id: "change_avatar", label: "Change avatar", description: "Set or clear their own picture." },
+      /* Split off `change_avatar` on the server in GRYT-866 and never given a
+         label here, so it was the one permission landing in the "Newer than
+         this client" group on a current build. It saved and applied correctly
+         the whole time; it just showed as a bare id with nothing said about it,
+         which reads as a client that is out of date. */
+      { id: "upload_avatar_image", label: "Upload an avatar image", description: "Use their own picture rather than an owl. Puts a file from them in front of everybody." },
       { id: "view_members", label: "See the member list", description: "Know who else is here." },
       { id: "create_invite", label: "Create invites", description: "Mint an invite code." },
     ],
