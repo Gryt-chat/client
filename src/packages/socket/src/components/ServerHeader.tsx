@@ -1,11 +1,15 @@
 import { Chip, IconButton, Menu, Surface, Tooltip } from "@gryt/ui";
+import toast from "react-hot-toast";
 
 import { PiDotsThreeVerticalBold, PiPushPinFill, PiPushPinSlashFill } from "../../../../lib/icons";
 
 export const ServerHeader = ({
   serverName,
+  serverHost,
   onLeave,
   onCreateChannel,
+  onCreateFolder,
+  onOpenInvites,
   onOpenSettings,
   onOpenReports,
   role,
@@ -15,8 +19,12 @@ export const ServerHeader = ({
   onTogglePinned,
 }: {
   serverName?: string;
+  /** For "Copy server address". Absent hides that item rather than copying "". */
+  serverHost?: string;
   onLeave: () => void;
   onCreateChannel?: () => void;
+  onCreateFolder?: () => void;
+  onOpenInvites?: () => void;
   onOpenSettings?: () => void;
   onOpenReports?: () => void;
   role?: string;
@@ -26,6 +34,19 @@ export const ServerHeader = ({
   onTogglePinned?: () => void;
 }) => {
   const canManage = role === "owner" || role === "admin";
+
+  const copyHost = async () => {
+    if (!serverHost) return;
+    try {
+      await navigator.clipboard.writeText(serverHost);
+      toast.success("Server address copied");
+    } catch {
+      // Clipboard access can be refused, and a silent no-op looks like a menu
+      // item that does nothing.
+      toast.error("Could not copy the address");
+    }
+  };
+
   return (
     <Surface
       style={{
@@ -64,14 +85,25 @@ export const ServerHeader = ({
             <Menu.Portal>
               <Menu.Positioner>
                 <Menu.Popup>
-              {/* First, because it is the thing people come to this menu for.
-                  It is also the only way in that does not require knowing the
-                  channel list takes a right-click. */}
-              {canManage && onCreateChannel && (
-                <Menu.Item onClick={onCreateChannel}>Create channel</Menu.Item>
-              )}
-              {canManage && onCreateChannel && (onOpenSettings || onOpenReports) && (
-                <Menu.Separator />
+              {/*
+                Ordered to match the server menu people already know from
+                elsewhere: invite and settings, then the things you make, then
+                moderation, then the identifier, then leaving.
+
+                The items Gryt has no equivalent for are simply absent rather
+                than shown disabled — boosting, insights, events, threads, an
+                app directory, per-server profiles, and the raid tools. A
+                disabled row advertises a feature that does not exist.
+
+                Two are missing for a reason rather than by omission. Muting
+                this server is on the channel list's own right-click, where the
+                per-channel and per-folder choices live, and splitting one
+                setting across two menus is worse than one extra click. "Show
+                all channels" needs a per-person hidden-channel list, which
+                Gryt does not have — visibility here is a permission.
+              */}
+              {canManage && onOpenInvites && (
+                <Menu.Item onClick={onOpenInvites}>Invite to server</Menu.Item>
               )}
               {canManage && onOpenSettings && (
                 <Menu.Item onClick={onOpenSettings}>
@@ -83,6 +115,21 @@ export const ServerHeader = ({
                   </div>
                 </Menu.Item>
               )}
+
+              {canManage && (onOpenInvites || onOpenSettings) && (onCreateChannel || onCreateFolder) && (
+                <Menu.Separator />
+              )}
+
+              {canManage && onCreateChannel && (
+                <Menu.Item onClick={onCreateChannel}>Create channel</Menu.Item>
+              )}
+              {/* Discord calls this a category. Gryt's folders are the same
+                  idea and the sidebar already says folder, so it says folder. */}
+              {canManage && onCreateFolder && (
+                <Menu.Item onClick={onCreateFolder}>Create folder</Menu.Item>
+              )}
+
+              {canManage && onOpenReports && <Menu.Separator />}
               {canManage && onOpenReports && (
                 <Menu.Item onClick={onOpenReports}>
                   <div className="flex items-center gap-2">
@@ -95,6 +142,16 @@ export const ServerHeader = ({
                   </div>
                 </Menu.Item>
               )}
+
+              {/* The address, not an id. It is what identifies a Gryt server,
+                  it is what somebody else needs to reach it, and unlike a
+                  snowflake it is worth pasting to a person. Everyone gets it:
+                  anybody who is here already knows it. */}
+              {serverHost && <Menu.Separator />}
+              {serverHost && (
+                <Menu.Item onClick={copyHost}>Copy server address</Menu.Item>
+              )}
+
               <Menu.Separator />
               <Menu.Item className="text-gryt-danger" onClick={onLeave}>
                 Leave

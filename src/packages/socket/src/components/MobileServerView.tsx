@@ -29,6 +29,7 @@ interface MobileServerViewProps {
 
   // ServerHeader
   onOpenSettings: () => void;
+  onOpenInvites: () => void;
   onOpenReports: () => void;
   pendingReportCount: number;
   updateAvailable: boolean;
@@ -206,7 +207,11 @@ export const MobileServerView = (props: MobileServerViewProps) => {
           <div className="p-3" style={{ flexShrink: 0 }}>
             <ServerHeader
               serverName={props.serverName}
+              serverHost={props.serverHost}
               role={props.serverRole}
+              onCreateChannel={() => props.onAddItem("channel:text")}
+              onCreateFolder={() => props.onAddItem("folder")}
+              onOpenInvites={props.onOpenInvites}
               onOpenSettings={props.onOpenSettings}
               onOpenReports={props.onOpenReports}
               pendingReportCount={props.pendingReportCount}
