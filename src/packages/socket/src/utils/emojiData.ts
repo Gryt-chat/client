@@ -224,7 +224,22 @@ export function getRecentEmojis(limit = 8, serverHost?: string): EmojiEntry[] {
   return results.slice(0, limit);
 }
 
-export async function fetchCustomEmojis(serverHost: string): Promise<{ name: string; file_id: string }[]> {
+/**
+ * The server's emoji list, or null when it could not be read.
+ *
+ * Null and `[]` are different answers and every caller has to tell them apart.
+ * `[]` is the server saying it has none; null is this client not knowing.
+ *
+ * Returning `[]` for both is what turned a refused request into an erased set.
+ * A pack import spent the server's emoji rate limit, `GET /api/emojis` started
+ * answering 429, and each caller stored the empty array — so every emoji
+ * vanished from the picker and out of messages that already used them, on a
+ * server where nothing had been deleted.
+ *
+ * Keeping the last known list is the safer wrong answer. It goes stale until
+ * the next read succeeds; the alternative loses emoji that are still there.
+ */
+export async function fetchCustomEmojis(serverHost: string): Promise<{ name: string; file_id: string }[] | null> {
   const base = getServerHttpBase(serverHost);
   const url = `${base}/api/emojis?t=${Date.now()}`;
   console.log("[EmojiData] fetchCustomEmojis:", { serverHost, url });
@@ -233,14 +248,14 @@ export async function fetchCustomEmojis(serverHost: string): Promise<{ name: str
     console.log("[EmojiData] fetchCustomEmojis response:", { status: res.status, ok: res.ok });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      console.warn("[EmojiData] fetchCustomEmojis failed:", { status: res.status, body: text });
-      return [];
+      console.warn("[EmojiData] fetchCustomEmojis failed, keeping the list we have:", { status: res.status, body: text });
+      return null;
     }
     const data = await res.json();
     console.log("[EmojiData] fetchCustomEmojis got", data.length, "emojis");
     return data;
   } catch (err) {
-    console.error("[EmojiData] fetchCustomEmojis error:", err);
-    return [];
+    console.error("[EmojiData] fetchCustomEmojis error, keeping the list we have:", err);
+    return null;
   }
 }

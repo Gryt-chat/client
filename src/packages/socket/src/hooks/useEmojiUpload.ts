@@ -231,6 +231,31 @@ export function useEmojiUpload({
       }
     }
 
+    /*
+     * Wait out a refusal rather than failing the emoji.
+     *
+     * Importing a pack is one request per emoji at six in flight, so a pack of
+     * any size will meet the server's write limit partway through. Giving up on
+     * the first 429 failed every emoji after that point and left the import
+     * half done, which is what "Too many requests" looked like from the outside.
+     *
+     * Two attempts, on the delay the server asked for. The limit is a window,
+     * so waiting it out is the whole fix; retrying sooner or more often would
+     * only spend the next window early.
+     *
+     * The row stays "uploading" throughout, which is what it still is from the
+     * outside. A status of its own would need every consumer of that union to
+     * learn a state that only means "the same thing, shortly".
+     */
+    for (let attempt = 0; attempt < 2; attempt++) {
+      // Bound to a const so the refusal branch narrows; `result` is reassigned
+      // below, which widens it again at the top of every iteration.
+      const refused = result;
+      if (refused.ok || refused.status !== 429) break;
+      await new Promise((r) => setTimeout(r, refused.retryAfterMs ?? 5_000));
+      result = await stageEmojiViaXhr(xhrArgs);
+    }
+
     if (result.ok) {
       toast.success(`Emoji :${item.name}: queued for processing.`);
       setPendingEmojis((prev) => {

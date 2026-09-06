@@ -225,7 +225,10 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
 
   socket.on("server:emojis:updated", () => {
     fetchCustomEmojis(host).then((list) => {
-      setCustomEmojis(list, host);
+      // Null is a refused read rather than an empty server. This event fires
+      // once per emoji an import stages, which is exactly the moment the read
+      // is most likely to be rate-limited.
+      if (list) setCustomEmojis(list, host);
     });
   });
 
