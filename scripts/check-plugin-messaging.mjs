@@ -19,6 +19,7 @@ const {
   deliverPluginMessage,
   dropListeners,
   forgetAnnouncedPlugins,
+  pluginsOn,
   requireTopic,
   resetAnnouncedPlugins,
   resetPluginMessageListeners,
@@ -167,33 +168,90 @@ resetAnnouncedPlugins();
 
 assert.deepEqual(serversRunning("presence"), [], "a plugin heard about a server nobody described");
 
-setAnnouncedPlugins("one.example", [{ id: "presence", version: "2.1.0" }]);
-setAnnouncedPlugins("two.example", [{ id: "scoreboard", version: "1.0.0" }]);
+setAnnouncedPlugins("one.example", [
+  { id: "presence", name: "Presence", capabilities: ["messaging"] },
+]);
+setAnnouncedPlugins("two.example", [
+  { id: "scoreboard", name: "Scoreboard", capabilities: [] },
+]);
 setAnnouncedPlugins("three.example", [
-  { id: "presence", version: "1.4.0" },
-  { id: "scoreboard", version: "9.9.9" },
+  { id: "presence", name: "Presence", capabilities: ["messaging"] },
+  {
+    id: "scoreboard",
+    name: "Scoreboard",
+    author: "somebody",
+    description: "Keeps score",
+    homepage: "https://example.com/scoreboard",
+    capabilities: ["messages:read", "moderation"],
+  },
 ]);
 
-/* Sorted, so a plugin iterating them does not get a different order each time
-   the details arrive. */
-assert.deepEqual(serversRunning("presence"), [
-  { host: "one.example", version: "2.1.0" },
-  { host: "three.example", version: "1.4.0" },
-]);
+/* Hosts and nothing else: a server does not say which version it runs, because
+   a version number is which known problem applies. Sorted, so a plugin
+   iterating them does not get a different order each time the details arrive. */
+assert.deepEqual(serversRunning("presence"), ["one.example", "three.example"]);
 
 assert.deepEqual(serversRunning("nobody-runs-this"), []);
 
 /* Replaced rather than merged, so a plugin the operator removed stops being
    announced on the next details rather than lingering until a reconnect. */
+/* ── what is running on one server ───────────────────────────────────────── */
+
+/*
+ * Not for plugins. This is the answer to "what is reading my messages here",
+ * and the capabilities are the half somebody can act on — "this server runs
+ * automod" says nothing, "…which reads every message you send" is the sentence
+ * they decide on (GRYT-941).
+ */
+assert.deepEqual(pluginsOn("three.example"), [
+  { id: "presence", name: "Presence", author: undefined, description: undefined, homepage: undefined, capabilities: ["messaging"] },
+  {
+    id: "scoreboard",
+    name: "Scoreboard",
+    author: "somebody",
+    description: "Keeps score",
+    homepage: "https://example.com/scoreboard",
+    capabilities: ["messages:read", "moderation"],
+  },
+]);
+
+/* No version anywhere in it. The server does not send one and nothing here
+   should invent a place to put one. */
+assert.doesNotMatch(JSON.stringify(pluginsOn("three.example")), /version/i);
+
+/* A server too old to say looks the same as one running nothing, which is worth
+   knowing and not worth pretending otherwise about. */
+assert.deepEqual(pluginsOn("nobody.example"), []);
+
+/* Handed out as a copy, twice over: the caller cannot edit the stored list and
+   cannot edit the capabilities inside it either. A safety net whoever holds it
+   can rewrite is not one. */
+const held = pluginsOn("one.example");
+held[0].name = "Something Else";
+held[0].capabilities.push("moderation");
+assert.deepEqual(pluginsOn("one.example"), [
+  { id: "presence", name: "Presence", author: undefined, description: undefined, homepage: undefined, capabilities: ["messaging"] },
+]);
+
+/* And the same for what was passed in — a caller that keeps its array must not
+   be able to change what the app reports afterwards. */
+const supplied = [{ id: "later", name: "Later", capabilities: ["messaging"] }];
+setAnnouncedPlugins("four.example", supplied);
+supplied[0].capabilities.push("moderation");
+assert.deepEqual(pluginsOn("four.example"), [
+  { id: "later", name: "Later", author: undefined, description: undefined, homepage: undefined, capabilities: ["messaging"] },
+]);
+forgetAnnouncedPlugins("four.example");
+
 setAnnouncedPlugins("one.example", []);
-assert.deepEqual(serversRunning("presence"), [{ host: "three.example", version: "1.4.0" }]);
+assert.deepEqual(serversRunning("presence"), ["three.example"]);
 
 /* And a server that is gone takes its list with it, or a plugin keeps sending
    into somewhere nobody is. */
 forgetAnnouncedPlugins("three.example");
 assert.deepEqual(serversRunning("presence"), []);
-/* two.example still has its own, at its own version — forgetting one server
-   must not touch another's list. */
-assert.deepEqual(serversRunning("scoreboard"), [{ host: "two.example", version: "1.0.0" }]);
+/* two.example still has its own — forgetting one server must not touch
+   another's list. */
+assert.deepEqual(serversRunning("scoreboard"), ["two.example"]);
 
 console.log("check-plugin-messaging: ok");

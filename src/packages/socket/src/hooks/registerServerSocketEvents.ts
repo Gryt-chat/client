@@ -166,17 +166,37 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       rememberPlacements(host, data.sidebar_items);
     }
 
-    /* Which plugins this server admits to running, for a client plugin deciding
-       whether its other half is here (GRYT-939). Replaced rather than merged,
-       so a plugin the operator removed stops being announced on the next
-       details. Read defensively because an older server sends nothing. */
+    /* Everything this server is running, and what each one may do (GRYT-939,
+       GRYT-941). For a client plugin finding its other half, and for showing
+       somebody what sits between them and the people they are talking to.
+
+       Replaced rather than merged, so a plugin the operator removed stops being
+       listed on the next details. Read defensively because a server too old to
+       say sends nothing, and an entry with no capabilities is a plugin that
+       declared none rather than one that would not say. */
     setAnnouncedPlugins(
       host,
       Array.isArray(data.server_info?.plugins)
-        ? data.server_info.plugins.filter(
-            (p): p is { id: string; version: string } =>
-              typeof p?.id === "string" && typeof p?.version === "string",
-          )
+        ? data.server_info.plugins
+            .filter((p) => typeof p?.id === "string")
+            .map((p) => ({
+              id: p.id,
+              /* A server that named it without a name is old rather than shy,
+                 and the id is what it called itself. */
+              name: typeof p.name === "string" ? p.name : p.id,
+              author: typeof p.author === "string" ? p.author : undefined,
+              description: typeof p.description === "string" ? p.description : undefined,
+              /* Already checked to be http(s) by the server. Checked again on
+                 the way in, because a link somebody clicks is worth not taking
+                 on trust from a server they may have joined by accident. */
+              homepage:
+                typeof p.homepage === "string" && /^https?:\/\//i.test(p.homepage)
+                  ? p.homepage
+                  : undefined,
+              capabilities: Array.isArray(p.capabilities)
+                ? p.capabilities.filter((c): c is string => typeof c === "string")
+                : [],
+            }))
         : [],
     );
 
