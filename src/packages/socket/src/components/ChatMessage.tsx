@@ -7,11 +7,23 @@ export const MessageHoverToolbar = ({
   onReply,
   onDelete,
   canDelete,
+  quickReactions,
+  onQuickReaction,
 }: {
   onReply?: () => void;
   onDelete?: () => void;
   canDelete?: boolean;
+  /**
+   * The reactions this person uses most, already ordered and padded.
+   *
+   * Empty when they may not react here, which is why the toolbar takes a list
+   * rather than a permission — the caller knows about permissions and this
+   * does not.
+   */
+  quickReactions?: string[];
+  onQuickReaction?: (src: string) => void;
 }) => {
+  const showQuick = !!onQuickReaction && !!quickReactions && quickReactions.length > 0;
   return (
     <div
       style={{
@@ -28,6 +40,46 @@ export const MessageHoverToolbar = ({
       }}
       onMouseDown={(e) => e.stopPropagation()}
     >
+      {/* Reactions first, then a rule, then reply and delete.
+          Reacting is the thing people do most and the thing this bar exists
+          for, and putting it left of the divider keeps Delete at the far end,
+          away from the pointer's path to everything else. */}
+      {showQuick && quickReactions.map((src) => (
+        <button
+          key={src}
+          onClick={() => onQuickReaction(src)}
+          title={`React with ${src}`}
+          aria-label={`React with ${src}`}
+          style={{
+            background: "none",
+            border: "none",
+            padding: "3px 5px",
+            fontSize: "15px",
+            lineHeight: 1,
+            borderRadius: "var(--gryt-radius-md)",
+            cursor: "pointer",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "background 0.15s",
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gryt-neutral-4)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
+        >
+          <EmojiText text={src} emojiSize={16} disableTooltip />
+        </button>
+      ))}
+      {showQuick && (onReply || (canDelete && onDelete)) && (
+        <span
+          aria-hidden="true"
+          style={{
+            width: "1px",
+            alignSelf: "stretch",
+            margin: "2px 3px",
+            background: "var(--gryt-neutral-6)",
+          }}
+        />
+      )}
       {onReply && (
         <button
           onClick={onReply}
