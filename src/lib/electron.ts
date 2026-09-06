@@ -147,6 +147,14 @@ export interface ElectronAPI {
   setAutoUpdate(enabled: boolean): void;
   getBetaChannel(): Promise<boolean>;
   setBetaChannel(enabled: boolean): void;
+  /**
+   * Whether this install follows the build without the embedded server, what
+   * is actually installed, and whether those two disagree. Absent on builds
+   * older than the one that added the setting.
+   */
+  getSlimVariant?(): Promise<{ preferred: boolean; installed: boolean; pending: boolean }>;
+  /** Ask for a variant and start a check for the installer that matches. */
+  setSlimVariant?(slim: boolean): void;
   switchUpdateChannel(enabled: boolean): void;
   getCloseToTray(): Promise<boolean>;
   setCloseToTray(enabled: boolean): void;

@@ -89,6 +89,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("set-auto-update", enabled);
   },
 
+  getSlimVariant(): Promise<{ preferred: boolean; installed: boolean; pending: boolean }> {
+    return ipcRenderer.invoke("get-slim-variant");
+  },
+
+  setSlimVariant(slim: boolean) {
+    ipcRenderer.send("set-slim-variant", slim);
+  },
+
   getBetaChannel(): Promise<boolean> {
     return ipcRenderer.invoke("get-beta-channel");
   },

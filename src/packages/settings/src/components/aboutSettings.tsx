@@ -32,6 +32,7 @@ function UpdateControls() {
   const [status, setStatus] = useState<UpdateStatus | null>(null);
   const [appVersion, setAppVersion] = useState<string>("…");
   const [betaChannel, setBetaChannel] = useState(false);
+  const [slimVariant, setSlimVariant] = useState({ preferred: false, installed: false, pending: false });
   const [autoUpdate, setAutoUpdate] = useState(true);
   const [pendingSwitch, setPendingSwitch] = useState<boolean | null>(null);
 
@@ -41,6 +42,9 @@ function UpdateControls() {
 
     api.getAppVersion().then(setAppVersion);
     api.getBetaChannel().then(setBetaChannel);
+    /* Absent on builds older than the setting, which read as the full variant
+       — true of every build before this one. */
+    api.getSlimVariant?.().then(setSlimVariant);
     api.getAutoUpdate().then(setAutoUpdate);
     return api.onUpdateStatus(setStatus);
   }, []);
@@ -139,6 +143,32 @@ function UpdateControls() {
             </span>
           </div>
           <Switch checked={autoUpdate} onCheckedChange={handleAutoUpdateToggle} />
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-1">
+            <span className="font-medium">Built-in server</span>
+            <span className="text-gryt-muted">
+              {slimVariant.pending
+                ? slimVariant.preferred
+                  ? "Switching to the build without it. Install the update below to finish."
+                  : "Switching to the build with it. Install the update below to finish."
+                : slimVariant.preferred
+                  ? "Off. The download is about 34MB smaller, and you cannot host a server from the app."
+                  : "On. You can host a server from this app. It makes the download about 34MB bigger."}
+            </span>
+            <span className="text-gryt-muted">
+              Servers you already host stay where they are either way — their data does not
+              live in the app.
+            </span>
+          </div>
+          <Switch
+            checked={!slimVariant.preferred}
+            onCheckedChange={(enabled) => {
+              window.electronAPI?.setSlimVariant?.(!enabled);
+              setSlimVariant((prev) => ({ ...prev, preferred: !enabled, pending: !enabled !== prev.installed }));
+            }}
+          />
         </div>
 
         <div className="flex items-center justify-between">

@@ -542,30 +542,81 @@ function isSlimInstall(): boolean {
 }
 
 /**
- * Which update feed this install follows, for the checks that run before
- * electron-updater has loaded anything.
+ * Which variant this install should follow from now on.
+ *
+ * Defaults to whatever was installed, so nobody's first launch changes
+ * anything. Once somebody sets it, it is a preference and it wins.
+ *
+ * Same shape as the beta channel above: a value in gryt-config.json, applied
+ * to the updater, taking effect on the next release rather than immediately.
+ */
+function prefersSlim(): boolean {
+  return readBoolConfig("slimVariant", isSlimInstall());
+}
+
+/**
+ * Which update feed this install follows.
  *
  * Both variants go into the same GitHub release, so they need separate channel
  * files, or a slim install downloads the full installer on the next release and
  * quietly puts 34MB back. electron-builder writes slim.yml from
- * `publish.channel` and bakes `channel: slim` into app-update.yml, which is
- * what electron-updater itself reads.
+ * `publish.channel` and bakes `channel: slim` into app-update.yml.
  *
- * So this is deliberately not assigned to `autoUpdater.channel`. app-update.yml
- * is the build's own statement of which variant it is, and setting the property
- * would override that with a value inferred from a file being missing. If the
- * inference here is ever wrong, the pre-check looks for a yml that is not there
- * and reports no update — annoying, and much better than handing the updater
- * the wrong installer.
+ * This *is* assigned to `autoUpdater.channel`, and that is a change. It used to
+ * be left alone on the reasoning that app-update.yml is the build's own
+ * statement of which variant it is, and inferring from a missing file should
+ * not override it. That reasoning holds right up until somebody can choose,
+ * which is the whole point of the setting: a preference that the installer can
+ * silently overrule is not a preference. app-update.yml still decides the first
+ * launch, because that is what the default reads.
  *
  * Beta is a separate axis on allowPrerelease: that picks which release to look
  * at, this picks which file inside it.
  */
 function updateChannel(): string {
-  return isSlimInstall() ? "slim" : "latest";
+  return prefersSlim() ? "slim" : "latest";
 }
 
 autoUpdater.allowPrerelease = isOnBetaChannel();
+autoUpdater.channel = updateChannel();
+
+/**
+ * Somebody asked for the other variant and has not got it yet.
+ *
+ * Self-clearing: once the installer has run, the file on disk matches the
+ * preference and this is false again. There is no flag to reset and nothing to
+ * go stale, which matters because the thing it controls is a lie told to the
+ * updater.
+ */
+function variantSwitchPending(): boolean {
+  return app.isPackaged && prefersSlim() !== isSlimInstall();
+}
+
+/**
+ * Make the release the app is already on look like an update, so the other
+ * variant can be installed from it.
+ *
+ * The two variants share a version — 1.9.21 slim and 1.9.21 full are the same
+ * release — and electron-updater returns false on `eq(latest, current)` before
+ * it looks at the channel or at allowDowngrade. So a variant switch is
+ * invisible to it, and without this the setting would only take effect at the
+ * next release, which is a strange thing to ask somebody to wait for.
+ *
+ * Lying about the current version rather than downloading the installer here:
+ * electron-updater's path verifies the sha512 from the channel yml, handles the
+ * differential download and does the elevation dance on Windows. Reimplementing
+ * that to save one assignment would be trading a small lie for a large amount
+ * of security-relevant code.
+ *
+ * `currentVersion` is readonly in the types and a plain assigned property at
+ * runtime, which is why this is a cast rather than a call.
+ */
+function applyVariantSwitchSpoof(): void {
+  if (!variantSwitchPending()) return;
+  (autoUpdater as unknown as { currentVersion: semver.SemVer }).currentVersion = new semver.SemVer("0.0.0");
+}
+
+applyVariantSwitchSpoof();
 
 autoUpdater.allowDowngrade = true;
 
@@ -2532,6 +2583,43 @@ if (!gotSingleInstanceLock) {
       ipcMain.handle(
         "get-app-version",
         () => app.getVersion()
+      );
+
+      ipcMain.handle(
+        "get-slim-variant",
+        () => ({
+          /** What they have asked for. */
+          preferred: prefersSlim(),
+          /** What is actually on disk right now. */
+          installed: isSlimInstall(),
+          /** Asked for one thing, running the other. */
+          pending: variantSwitchPending(),
+        })
+      );
+
+      /*
+       * Unlike the beta switch this does not relaunch.
+       *
+       * There is nothing to reload: the channel and the spoofed version are
+       * both properties on the updater, and the check that follows is the
+       * thing the person is waiting for. Relaunching would throw away the
+       * window and land them back here to press check anyway.
+       */
+      ipcMain.on(
+        "set-slim-variant",
+        (_event, slim: boolean) => {
+          writeConfig({
+            slimVariant: slim,
+          });
+
+          autoUpdater.channel = updateChannel();
+          applyVariantSwitchSpoof();
+
+          void autoUpdater.checkForUpdates().catch(() => {
+            /* The renderer hears about failures through update-status; a
+               rejection here is the same event twice. */
+          });
+        }
       );
 
       ipcMain.handle(
