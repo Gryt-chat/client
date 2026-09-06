@@ -34,6 +34,12 @@ export type ChatMessage = {
   edited_at?: string | Date | null;
   reactions: Reaction[] | null;
   reply_to_message_id?: string | null;
+  /**
+   * The thread this message belongs to, or absent for a normal channel message.
+   * Independent of reply_to_message_id. Thread replies are filtered out of the
+   * main list and shown only in the thread panel. GRYT-981.
+   */
+  thread_id?: string | null;
   pending?: boolean;
   failed?: boolean;
   nonce?: string;

@@ -11,6 +11,7 @@ import { PiChatCircleFill, PiCloudArrowUpFill, PiRobotFill, PiSpeakerHighFill } 
 import { useChatActions } from "../hooks/useChatActions";
 import { useChatScroll } from "../hooks/useChatScroll";
 import { useServerPermissions } from "../hooks/usePermissions";
+import { useThreads } from "../hooks/useThreads";
 import { useTypingIndicator } from "../hooks/useTypingIndicator";
 import { fetchCustomEmojis, getCustomEmojis, onCustomEmojisChange, setCustomEmojis } from "../utils/emojiData";
 import type { CustomEmojiEntry } from "../utils/remarkEmoji";
@@ -26,6 +27,7 @@ import { readableRoleColor } from "./memberGroups";
 import type { MemberInfo } from "./MemberSidebar";
 import { MessageKeyPrompt } from "./MessageKeyPrompt";
 import { MessageRow } from "./MessageRow";
+import { ThreadPanel } from "./ThreadPanel";
 import { TypingIndicator } from "./TypingIndicator";
 
 export type { AttachmentMeta, ChatMessage, Reaction } from "./chatUtils";
@@ -147,6 +149,10 @@ export const ChatView = memo(({
     seenMessageIdsRef,
     newMessageMarkerId,
   } = useChatScroll(chatMessages, conversationKey, hasOlderMessages, isLoadingOlder, onLoadOlder);
+
+  // Threads live here so both the desktop and mobile chat views get them for
+  // free — the socket, conversation and member list are all already in hand.
+  const threads = useThreads(socketConnection, conversationKey ?? "", serverHost, currentUserId, currentUserNickname);
 
   const {
     replyingTo,
@@ -365,7 +371,7 @@ export const ChatView = memo(({
             </div>
           </div>
         )}
-        <div className="flex h-full w-full flex-col p-3">
+        <div className="flex h-full w-full flex-col p-3" style={{ position: "relative" }}>
           {channelName && (
             <div className="flex items-center gap-2" style={{ marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid var(--gryt-neutral-6)" }}>
               {automated ? <PiRobotFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : channelType === "voice" && conversationKind === "channel" ? <PiSpeakerHighFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : <PiChatCircleFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} />}
@@ -456,6 +462,9 @@ export const ChatView = memo(({
                       onDelete={requestDelete}
                       scrollToMessage={scrollToMessage}
                       onLightboxOpen={onLightboxOpen}
+                      threadSummary={threads.summaries[m.message_id]}
+                      onStartThread={conversationKind === "dm" ? undefined : threads.startThread}
+                      onOpenThread={threads.openThread}
                     />
                   );
                 })}
@@ -522,6 +531,17 @@ export const ChatView = memo(({
             serverHost={serverHost}
           />
           </>
+          )}
+          {threads.open && (
+            <ThreadPanel
+              thread={threads.open.thread}
+              root={threads.open.root}
+              messages={threads.open.messages}
+              loading={threads.open.loading}
+              memberList={memberList}
+              onClose={threads.closeThread}
+              onSend={threads.sendReply}
+            />
           )}
         </div>
       </div>

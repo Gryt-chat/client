@@ -1,7 +1,7 @@
 import { ContextMenu } from "@gryt/ui";
 import React, { type ReactNode, useCallback, useMemo } from "react";
 
-import { PiArrowBendUpLeftFill, PiArrowSquareOutFill, PiCloudArrowDownFill, PiCopyFill, PiFlagFill, PiImageFill, PiPencilSimpleFill, PiSmileyFill, PiTrashFill } from "../../../../lib/icons";
+import { PiArrowBendUpLeftFill, PiArrowSquareOutFill, PiChatsFill, PiCloudArrowDownFill, PiCopyFill, PiFlagFill, PiImageFill, PiPencilSimpleFill, PiSmileyFill, PiTrashFill } from "../../../../lib/icons";
 import { triggerDownload } from "../utils/downloadFile";
 import { copyImageToClipboard } from "../utils/mediaClipboard";
 import { getRecentReactions } from "../utils/recentReactions";
@@ -16,6 +16,11 @@ export interface MessageActions {
   onDelete?: () => void;
   canEdit?: boolean;
   canDelete?: boolean;
+  /** Start a thread from this message, when it does not have one yet. GRYT-981. */
+  onStartThread?: () => void;
+  /** Open this message's existing thread. */
+  onOpenThread?: () => void;
+  replyCount?: number;
 }
 
 interface MediaProps {
@@ -180,6 +185,21 @@ function MessageActionItems({ actions }: { actions: MessageActions }) {
           </div>
         </ContextMenu.Item>
       )}
+      {actions.onOpenThread ? (
+        <ContextMenu.Item onClick={actions.onOpenThread}>
+          <div className="flex items-center gap-1">
+            <PiChatsFill size={14} />
+            Open thread{actions.replyCount ? ` (${actions.replyCount})` : ""}
+          </div>
+        </ContextMenu.Item>
+      ) : actions.onStartThread ? (
+        <ContextMenu.Item onClick={actions.onStartThread}>
+          <div className="flex items-center gap-1">
+            <PiChatsFill size={14} />
+            Start thread
+          </div>
+        </ContextMenu.Item>
+      ) : null}
       {actions.canEdit && actions.onEdit && (
         <ContextMenu.Item onClick={actions.onEdit}>
           <div className="flex items-center gap-1">
