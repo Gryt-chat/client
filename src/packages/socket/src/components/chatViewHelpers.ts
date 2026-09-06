@@ -29,6 +29,15 @@ export function buildMessageMetadata(
   getSenderName: (msg: ChatMessage) => string,
   getSenderAvatarUrl: (msg: ChatMessage) => string | undefined,
   memberList?: Record<string, MemberInfo>,
+  /**
+   * Role id to the colour its members' names are drawn in, already made
+   * readable against the current theme.
+   *
+   * Passed in rather than worked out here, because the same map is what the
+   * member sidebar draws from — a name has to be the same colour in both, and
+   * two places computing it is two places for it to drift.
+   */
+  roleColors?: Map<string, string | undefined>,
 ): MessageMeta[] {
   /**
    * Display names that more than one member is currently using.
@@ -102,6 +111,9 @@ export function buildMessageMetadata(
       isWebhook,
       isBot: !isSystem && !isWebhook && m.sender_is_bot === true,
       sender,
+      /* Undefined for a role with no colour set, and for System and webhooks,
+         which hold no role. The row falls back to what it drew before. */
+      roleColor: sender?.role ? roleColors?.get(sender.role) : undefined,
       nameIsAmbiguous: !!sender && ambiguousNames.has(senderName),
     };
   });
