@@ -3,12 +3,34 @@ import {
   addonMay,
   declaredCapabilities,
 } from "./capabilities";
+import { type PluginMessageHandler, requireTopic, subscribe } from "./pluginMessages";
 
 type ThemeInfo = { appearance: "light" | "dark"; accentColor: string };
 type ThemeChangeHandler = (theme: ThemeInfo) => void;
 
 /** Set by the app; the API calls it rather than reaching for a socket itself. */
 type ActivitySetter = (activity: string) => void;
+
+
+/** Set by the app. `host` omitted means every server this person is on. */
+type PluginMessageSender = (pluginId: string, topic: string, data: unknown, host?: string) => void;
+
+export interface PluginMessaging {
+  /**
+   * Send to the copy of this plugin running on the server.
+   *
+   * Goes to every server this person is on unless one is named, the same way a
+   * status does — a plugin pair is usually about the person rather than about
+   * one room.
+   *
+   * The server drops it silently if it runs no plugin with this id, which is
+   * the ordinary case rather than an error: most servers will not have the
+   * other half.
+   */
+  send(topic: string, data: unknown, host?: string): void;
+  /** Hear what the server half sends. Returns a function that stops listening. */
+  on(topic: string, handler: PluginMessageHandler): () => void;
+}
 
 export interface GrytPluginAPI {
   version: string;
@@ -30,6 +52,16 @@ export interface GrytPluginAPI {
    * this is disclosure rather than a sandbox.
    */
   setActivity(addonId: string, activity: string): void;
+  /**
+   * The pipe to the copy of this plugin running on a server (GRYT-939).
+   *
+   * Needs the `messaging` capability. Throws without it, at the call, rather
+   * than going quiet — a plugin whose messages vanish is an afternoon somebody
+   * does not get back.
+   *
+   * **What arrives on it was written by whoever runs that server.** Check it.
+   */
+  messaging(addonId: string): PluginMessaging;
 }
 
 declare global {
@@ -49,6 +81,19 @@ let setActivityImpl: ActivitySetter | null = null;
 
 /** What each installed plugin declared, so a grant can be checked against it. */
 let declaredByAddon = new Map<string, AddonCapability[]>();
+
+let sendMessageImpl: PluginMessageSender | null = null;
+
+function requireMessaging(addonId: string): void {
+  const declared = declaredByAddon.get(addonId) ?? [];
+  if (!addonMay(addonId, "messaging", declared)) {
+    throw new Error(
+      `[gryt] "${addonId}" has no permission to talk to the server. Add ` +
+        `"capabilities": ["messaging"] to its manifest, then allow it in ` +
+        `Settings, Addons.`,
+    );
+  }
+}
 
 export function initPluginApi(version: string): void {
   const api: GrytPluginAPI = {
@@ -77,6 +122,27 @@ export function initPluginApi(version: string): void {
       }
       setActivityImpl(typeof activity === "string" ? activity : "");
     },
+    messaging(addonId) {
+      /* Checked when the object is asked for as well as when it is used, so a
+         plugin that grabs it at startup finds out then rather than on the first
+         thing it tries to say. */
+      requireMessaging(addonId);
+
+      return {
+        send(topic, data, host) {
+          requireMessaging(addonId);
+          requireTopic(addonId, topic);
+          if (!sendMessageImpl) {
+            throw new Error("[gryt] Gryt is not connected to a server yet.");
+          }
+          sendMessageImpl(addonId, topic, data, host);
+        },
+        on(topic, handler) {
+          requireMessaging(addonId);
+          return subscribe(addonId, topic, handler);
+        },
+      };
+    },
   };
   window.gryt = api;
 }
@@ -85,6 +151,12 @@ export function initPluginApi(version: string): void {
 export function setPluginApiActivitySetter(setter: ActivitySetter): void {
   setActivityImpl = setter;
 }
+
+/** Wire the outbound half. Called from the app, which owns the sockets. */
+export function setPluginApiMessageSender(sender: PluginMessageSender | null): void {
+  sendMessageImpl = sender;
+}
+
 
 /** Refresh what each addon declared, whenever the installed list changes. */
 export function updatePluginApiCapabilities(

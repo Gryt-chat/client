@@ -8,13 +8,19 @@ export {
   pruneGrants,
   setGrantedCapabilities,
 } from "./src/capabilities";
-export type { GrytPluginAPI } from "./src/pluginApi";
+export type { GrytPluginAPI, PluginMessaging } from "./src/pluginApi";
 export {
   initPluginApi,
   setPluginApiActivitySetter,
+  setPluginApiMessageSender,
   updatePluginApiCapabilities,
   updatePluginApiTheme,
 } from "./src/pluginApi";
+export type { PluginMessage } from "./src/pluginMessages";
+export {
+  deliverPluginMessage,
+  dropListeners as dropPluginApiListeners,
+} from "./src/pluginMessages";
 export type { AddonManifest, AddonUpdate } from "./src/types";
 export { useAddonLoader } from "./src/useAddonLoader";
 export type { AddonsState } from "./src/useAddons";

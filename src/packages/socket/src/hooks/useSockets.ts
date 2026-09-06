@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { io, Socket } from "socket.io-client";
 
+import { deliverPluginMessage, setPluginApiMessageSender } from "@/addons";
 import connectMp3 from "@/audio/src/assets/connect.mp3";
 import disconnectMp3 from "@/audio/src/assets/disconnect.mp3";
 import messageSoundMp3 from "@/audio/src/assets/universfield-computer-mouse-click-02-383961.mp3";
@@ -158,6 +159,30 @@ function useSocketsHook() {
       sockets[host]?.emit("presence:activity", { activity });
     });
   }, [activity, sockets]);
+
+  /* The outbound half of a plugin's pipe (GRYT-939). Wired here because this is
+     where the sockets and the tokens are; `pluginApi.ts` stays free of both so
+     it can be tested without either.
+
+     A server that runs no plugin with this id drops it silently, so sending to
+     every server is the right default rather than a waste — most plugin pairs
+     are about the person rather than about one room, and a plugin that cares
+     names a host. */
+  useEffect(() => {
+    setPluginApiMessageSender((pluginId, topic, data, host) => {
+      const hosts = host ? [host] : Object.keys(sockets);
+      for (const target of hosts) {
+        const socket = sockets[target];
+        if (!socket?.connected) continue;
+        const accessToken = getServerAccessToken(target);
+        /* No token means not joined. The server would refuse it, and refusing
+           here saves a round trip and the log line it would write. */
+        if (!accessToken) continue;
+        socket.emit("plugin:message", { accessToken, pluginId, topic, data });
+      }
+    });
+    return () => setPluginApiMessageSender(null);
+  }, [sockets]);
 
   // Merge incoming server:info updates into the saved list in a single write.
   // Previously each iteration spread the same stale `servers` closure, so
@@ -326,6 +351,21 @@ function useSocketsHook() {
         socket.on("disconnect", () => {
           setServerConnectionStatus(prev => ({ ...prev, [host]: 'reconnecting' }));
           toast.loading(`Reconnecting to ${serverName}...`, { id: toastId });
+        });
+
+        /* A message from the copy of a plugin running on this server
+           (GRYT-939). Routed by the id the server stamped, so one server's
+           plugin cannot deliver to another plugin's listeners.
+
+           Nothing here validates `data`. It was written by whoever runs this
+           server, the transport has already capped its size and its shape, and
+           what it means is the plugin's to decide — which is why the API type
+           calls it `unknown`. */
+        socket.on("plugin:message", (payload: { pluginId?: unknown; topic?: unknown; data?: unknown }) => {
+          const pluginId = typeof payload?.pluginId === "string" ? payload.pluginId : "";
+          const topic = typeof payload?.topic === "string" ? payload.topic : "";
+          if (!pluginId || !topic) return;
+          deliverPluginMessage(pluginId, { host, topic, data: payload?.data });
         });
 
         /* The server restored the mute, deafen and AFK flags it stashed when

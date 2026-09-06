@@ -26,13 +26,20 @@
  */
 
 /** Everything a plugin can ask for. Adding one means adding it here first. */
-export const ADDON_CAPABILITIES = ["status"] as const;
+export const ADDON_CAPABILITIES = ["status", "messaging"] as const;
 
 export type AddonCapability = (typeof ADDON_CAPABILITIES)[number];
 
 /** What each one lets a plugin do, in the words somebody agreeing to it reads. */
 export const CAPABILITY_LABELS: Record<AddonCapability, string> = {
   status: "Set what you are doing, on every server you are on",
+  /*
+   * Worded around what it costs rather than what it enables (GRYT-939). What a
+   * plugin sends reaches a server this person joined, and what comes back was
+   * sent by whoever runs it — so this is the one capability where agreeing to
+   * it involves somebody else's server as well as this plugin.
+   */
+  messaging: "Exchange its own messages with the servers you are on",
 };
 
 function isCapability(value: unknown): value is AddonCapability {
