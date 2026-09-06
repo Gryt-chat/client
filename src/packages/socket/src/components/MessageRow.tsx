@@ -46,6 +46,11 @@ export interface MessageMeta {
    */
   sender?: MemberInfo;
   /**
+   * The colour this sender's role draws its names in, already made readable
+   * against the current theme. Undefined when the role sets no colour.
+   */
+  roleColor?: string;
+  /**
    * Somebody else in this server is currently displaying the same name.
    *
    * The one case where a reader genuinely cannot tell who wrote a message from
@@ -285,7 +290,20 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
             )}
             <div className="flex flex-col" style={{ flex: 1, minWidth: 0 }}>
               <div className="flex items-baseline gap-2" style={{ marginBottom: 2 }}>
-                <span className="text-sm font-bold" style={{ color: meta.isSelf ? "var(--gryt-accent-11)" : "var(--gryt-neutral-12)" }}>
+                {/* Role colour first, so a name reads the same here as it does
+                    in the member sidebar. It applies to your own messages too:
+                    the sidebar colours you by role like everybody else, and
+                    keeping the accent here would make your own name the one
+                    that disagrees.
+
+                    The old accent-for-self and neutral-for-everyone-else stay
+                    as the fallback, for a role with no colour set — which is
+                    every role until somebody picks one, so on most servers
+                    nothing changes until they do. */}
+                <span
+                  className="text-sm font-bold"
+                  style={{ color: meta.roleColor ?? (meta.isSelf ? "var(--gryt-accent-11)" : "var(--gryt-neutral-12)") }}
+                >
                   {meta.senderName}
                 </span>
                 {meta.nameIsAmbiguous && (

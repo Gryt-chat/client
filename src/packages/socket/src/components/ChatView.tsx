@@ -4,7 +4,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Socket } from "socket.io-client";
 
 import type { SealDecision } from "@/common";
-import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
+import { getUploadsFileUrl, resolveAvatarSrc, useTheme } from "@/common";
 import { useSettings } from "@/settings";
 
 import { PiChatCircleFill, PiCloudArrowUpFill, PiSpeakerHighFill } from "../../../../lib/icons";
@@ -22,6 +22,7 @@ import { buildMessageMap, buildMessageMetadata, getReplyPreview } from "./chatVi
 import { DirectMessagePrivacyNotice } from "./DirectMessagePrivacyNotice";
 import { EmojiText } from "./EmojiText";
 import { ImageLightbox } from "./ImageLightbox";
+import { readableRoleColor } from "./memberGroups";
 import type { MemberInfo } from "./MemberSidebar";
 import { MessageKeyPrompt } from "./MessageKeyPrompt";
 import { MessageRow } from "./MessageRow";
@@ -277,10 +278,35 @@ export const ChatView = memo(({
     [mentionMembers],
   );
 
+  // What this server lets us do here. A read-only role still sees every
+  // message — the compose box is what goes away, with a line saying why rather
+  // than a box that swallows what you type and then errors.
+  //
+  // Read up here rather than beside `maySend` below, because the role list it
+  // also returns feeds the name colours in the metadata pass underneath.
+  const { can: mayHere, roles } = useServerPermissions(serverHost || "");
+  const { resolvedAppearance } = useTheme();
+
+  /**
+   * Role id to the colour its members' names take, the same map and the same
+   * `readableRoleColor` the member sidebar builds.
+   *
+   * Names have to agree between the two: seeing somebody in green in the
+   * sidebar and in plain white two inches to the left is the sort of mismatch
+   * that reads as a bug in whichever one you looked at second.
+   */
+  const roleColors = useMemo(() => {
+    const map = new Map<string, string | undefined>();
+    for (const role of roles) {
+      map.set(role.id, readableRoleColor(role.color, resolvedAppearance));
+    }
+    return map;
+  }, [roles, resolvedAppearance]);
+
   // ── Message metadata ──────────────────────────────────────────
   const messageMetadata = useMemo(
-    () => buildMessageMetadata(chatMessages, newMessageMarkerId, currentUserId, getSenderName, getSenderAvatarUrl, memberList),
-    [chatMessages, newMessageMarkerId, currentUserId, getSenderName, getSenderAvatarUrl, memberList],
+    () => buildMessageMetadata(chatMessages, newMessageMarkerId, currentUserId, getSenderName, getSenderAvatarUrl, memberList, roleColors),
+    [chatMessages, newMessageMarkerId, currentUserId, getSenderName, getSenderAvatarUrl, memberList, roleColors],
   );
 
   const messageMap = useMemo(() => buildMessageMap(chatMessages), [chatMessages]);
@@ -289,10 +315,6 @@ export const ChatView = memo(({
     setLightboxImage({ src, alt });
   }, []);
 
-  // What this server lets us do here. A read-only role still sees every
-  // message — the compose box is what goes away, with a line saying why rather
-  // than a box that swallows what you type and then errors.
-  const { can: mayHere } = useServerPermissions(serverHost || "");
   // Both have to say yes: the role has to allow posting at all, and this
   // channel has to be one of the ones it allows it in.
   const maySend = mayHere("send_messages") && canSendHere !== false;
