@@ -7,7 +7,7 @@ import type { SealDecision } from "@/common";
 import { getUploadsFileUrl, resolveAvatarSrc, useTheme } from "@/common";
 import { useSettings } from "@/settings";
 
-import { PiChatCircleFill, PiCloudArrowUpFill, PiSpeakerHighFill } from "../../../../lib/icons";
+import { PiChatCircleFill, PiCloudArrowUpFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
 import { useChatActions } from "../hooks/useChatActions";
 import { useChatScroll } from "../hooks/useChatScroll";
 import { useServerPermissions } from "../hooks/usePermissions";
@@ -43,6 +43,7 @@ export const ChatView = memo(({
   serverHost,
   memberList,
   channelName,
+  automated,
   channelType,
   conversationKind = "channel",
   sealing,
@@ -85,6 +86,8 @@ export const ChatView = memo(({
   memberList?: Record<string, MemberInfo>;
   channelName?: string;
   channelType?: "text" | "voice";
+  /** An automated channel: only bots and the system post, so the composer is locked. GRYT-982. */
+  automated?: boolean;
   /** A direct message reads differently: no `#`, and its own empty state. */
   conversationKind?: "channel" | "dm";
   /**
@@ -365,7 +368,7 @@ export const ChatView = memo(({
         <div className="flex h-full w-full flex-col p-3">
           {channelName && (
             <div className="flex items-center gap-2" style={{ marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid var(--gryt-neutral-6)" }}>
-              {channelType === "voice" && conversationKind === "channel" ? <PiSpeakerHighFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : <PiChatCircleFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} />}
+              {automated ? <PiRobotFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : channelType === "voice" && conversationKind === "channel" ? <PiSpeakerHighFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : <PiChatCircleFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} />}
               <span className="text-lg font-bold" style={{ color: "var(--gryt-neutral-12)" }}>
                 <EmojiText text={channelName} />
               </span>
@@ -489,6 +492,16 @@ export const ChatView = memo(({
             </div>
           )}
 
+          {automated ? (
+            <div
+              className="mt-1 flex items-center gap-3 px-4 py-3 text-sm"
+              style={{ borderRadius: "var(--gryt-radius-md)", border: "1px dashed var(--gryt-neutral-6)", background: "var(--gryt-neutral-3)", color: "var(--gryt-neutral-11)" }}
+            >
+              <PiRobotFill size={22} style={{ color: "var(--gryt-neutral-9)", flexShrink: 0 }} />
+              <span>This is an automated channel &mdash; messages come from bots and the system. You can read here, but not post.</span>
+            </div>
+          ) : (
+          <>
           <TypingIndicator typingUsers={typingUsers} serverHost={serverHost} />
           <ChatEditorBar
             replyingTo={replyingTo}
@@ -508,6 +521,8 @@ export const ChatView = memo(({
             onStopTyping={emitStopTyping}
             serverHost={serverHost}
           />
+          </>
+          )}
         </div>
       </div>
       {lightboxImage && (

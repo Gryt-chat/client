@@ -40,6 +40,7 @@ import {
   CaretUp,
   ChatCircle,
   ChatCircleDots,
+  Chats,
   Check,
   CheckCircle,
   Clock,
@@ -170,6 +171,7 @@ export const PiCaretRightFill: Icon = weighted(CaretRight, "fill", "PiCaretRight
 export const PiCaretUpFill: Icon = weighted(CaretUp, "fill", "PiCaretUpFill");
 export const PiChatCircleDotsFill: Icon = weighted(ChatCircleDots, "fill", "PiChatCircleDotsFill");
 export const PiChatCircleFill: Icon = weighted(ChatCircle, "fill", "PiChatCircleFill");
+export const PiChatsFill: Icon = weighted(Chats, "fill", "PiChatsFill");
 export const PiCheck: Icon = Check;
 export const PiCheckBold: Icon = weighted(Check, "bold", "PiCheckBold");
 export const PiCheckCircleFill: Icon = weighted(CheckCircle, "fill", "PiCheckCircleFill");

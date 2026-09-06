@@ -59,6 +59,7 @@ interface UseChatReturn {
   canViewVoiceChannelText: boolean;
   activeChannelName: string;
   activeChannelType: "text" | "voice";
+  activeChannelAutomated: boolean;
   restoreText: string | null;
   clearRestoreText: () => void;
   fetchOlderMessages: () => void;
@@ -371,6 +372,9 @@ export function useChat({
 
   const activeChannelName = activeChannel?.name || "";
   const activeChannelType: "text" | "voice" = activeChannel?.type || "text";
+  // Automated is enforced by the server in the send path; the client reads it
+  // only to lock the composer and draw the robot icon. GRYT-982.
+  const activeChannelAutomated = activeChannel?.automated === true;
 
   // Chat event listeners
   useEffect(() => {
@@ -600,6 +604,7 @@ export function useChat({
     canViewVoiceChannelText,
     activeChannelName,
     activeChannelType,
+    activeChannelAutomated,
     restoreText,
     clearRestoreText,
     fetchOlderMessages,

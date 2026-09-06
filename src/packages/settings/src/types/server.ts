@@ -8,6 +8,10 @@ export type Channel = {
   maxBitrate?: number | null;
   eSportsMode?: boolean;
   textInVoice?: boolean;
+  /** A forum-layout text channel shows a list of topics instead of a chat stream. Absent means chat. GRYT-981. */
+  layout?: "chat" | "forum";
+  /** An automated channel: only bots and the system may post. People read only. GRYT-982. */
+  automated?: boolean;
   /**
    * Which permission scope decides what each role may do here, or null when the
    * channel has no opinion.
