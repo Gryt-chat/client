@@ -78,7 +78,8 @@
     "test:channel-permissions": "node scripts/check-channel-permissions.mjs",
     "test:report-user": "node scripts/check-report-user.mjs",
     "test:card-byline": "node scripts/check-card-byline.mjs",
-    "test:member-invite": "node scripts/check-member-invite.mjs"
+    "test:member-invite": "node scripts/check-member-invite.mjs",
+    "test:addon-capabilities": "node scripts/check-addon-capabilities.mjs"
   },
   "dependencies": {
     "electron-updater": "^6.8.3",

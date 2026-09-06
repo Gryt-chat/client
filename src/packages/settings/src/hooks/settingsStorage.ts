@@ -70,6 +70,17 @@ export interface Settings {
   setNickname: (name: string) => void;
   nickname: string;
 
+  /**
+   * What this person says they are doing, shown under their name (GRYT-929).
+   *
+   * Empty means they have not set one. Kept per device rather than per server:
+   * it is one line about you, sent to every server you are on, and the client
+   * re-sends it after a reconnect because the server holds it on the connection
+   * rather than storing it.
+   */
+  activity: string;
+  setActivity: (value: string) => void;
+
   avatarDataUrl: string | null;
   setAvatarDataUrl: (value: string | null) => void;
   setAvatarFile: (file: File | null) => Promise<void>;
@@ -297,6 +308,8 @@ export const settingsInit: Settings = {
   setShowNickname: noop,
   nickname: "Unknown",
   setNickname: noop,
+  activity: "",
+  setActivity: noop,
   avatarDataUrl: null,
   setAvatarDataUrl: noop,
   setAvatarFile: async () => {},

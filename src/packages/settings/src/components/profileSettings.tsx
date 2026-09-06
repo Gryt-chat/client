@@ -304,6 +304,56 @@ function ProfileEditor({
   );
 }
 
+/**
+ * What you are doing, in your own words (GRYT-929).
+ *
+ * Above the server tabs and outside them, because it is not per server. The
+ * nickname and the picture are — you can be "Sivert" on one and "S" on another
+ * — but this is one line about you that goes everywhere you are joined, and a
+ * copy of it per server would be a chore rather than a feature.
+ *
+ * Saved on blur like every other field here. A server whose role does not allow
+ * it refuses quietly; the line simply does not appear there.
+ */
+function ActivityField() {
+  const { activity, setActivity } = useSettings();
+  const [draft, setDraft] = useState(activity);
+
+  // Follow the stored value when something else changes it — a plugin setting
+  // it, or another window of the same account.
+  useEffect(() => setDraft(activity), [activity]);
+
+  const save = () => {
+    const trimmed = draft.trim();
+    if (trimmed !== activity) setActivity(trimmed);
+  };
+
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-sm font-bold">What you are doing</span>
+      <span className="text-xs text-gryt-muted">
+        Shown under your name on every server you are on. Leave it empty for nothing.
+      </span>
+      <TextField
+        placeholder="Heads down until 3"
+        /* The server caps at 96 and truncates rather than refusing, so this is
+           the same number said earlier — a box that stops accepting text is
+           clearer than one that quietly loses the end of it. */
+        maxLength={96}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={save}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            save();
+            (e.target as HTMLInputElement).blur();
+          }
+        }}
+      />
+    </div>
+  );
+}
+
 export function ProfileSettings() {
   const userId = useUserId();
   const { nickname, setNickname, avatarDataUrl, setAvatarDataUrl, setAvatarFile } =
@@ -785,6 +835,8 @@ export function ProfileSettings() {
       <h2 className="text-lg">
         Profile
       </h2>
+
+      <ActivityField />
 
       {serverHosts.length > 0 && (
         <div className="flex justify-center" style={{ paddingTop: 4, paddingBottom: 4 }}>

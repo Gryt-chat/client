@@ -86,6 +86,7 @@ function useSettingsHook() {
   const [showDebugOverlay, setShowDebugOverlay] = useState(false);
   const [showVideoDebugOverlay, setShowVideoDebugOverlay] = useState(false);
   const [nickname, setNickname] = useState("Unknown");
+  const [activity, setActivity] = useState("");
   const [showPeerLatency, setShowPeerLatency] = useState(true);
   /* Whether a theme may fetch a typeface from Google.
      Off, and the default is the decision. A toggle that starts on is not
@@ -165,6 +166,7 @@ function useSettingsHook() {
       if (!stored) setUserValue("nickname", name);
       setNickname(name);
       setHasSeenWelcome(readSeenWelcome());
+      setActivity(getUserValue("activity", ""));
       setShowAdvanced(getUserValue("showAdvanced", false));
       setShowDebugOverlay(getUserValue("showDebugOverlay", false));
       setShowVideoDebugOverlay(getUserValue("showVideoDebugOverlay", false));
@@ -277,6 +279,11 @@ function useSettingsHook() {
   function updateNickname(newName: string) {
     setNickname(newName);
     setUserValue("nickname", newName);
+  }
+
+  function updateActivity(next: string) {
+    setActivity(next);
+    setUserValue("activity", next);
   }
 
   function updateAfkTimeoutMinutes(newTimeout: number) {
@@ -534,6 +541,8 @@ function useSettingsHook() {
     ...audio,
     nickname,
     setNickname: updateNickname,
+    activity,
+    setActivity: updateActivity,
     avatarDataUrl,
     setAvatarDataUrl: updateAvatarDataUrl,
     setAvatarFile,

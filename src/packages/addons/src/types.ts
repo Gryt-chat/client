@@ -13,6 +13,17 @@ export interface AddonManifest {
   /** Plugin-only: if true, disabling the addon reloads the client */
   requiresReloadOnDisable?: boolean;
   /**
+   * Plugin-only: what it says it needs to do (GRYT-928).
+   *
+   * Declared here and agreed to per addon before `window.gryt` will answer.
+   * **Not a sandbox** — see `capabilities.ts` for what this does and does not
+   * buy. A plugin runs in the app's own page and could go around it.
+   *
+   * Unknown names are dropped rather than refused, so a manifest written
+   * against a newer Gryt still loads on an older one.
+   */
+  capabilities?: string[];
+  /**
    * Where the addon is published, as `owner/repo` on GitHub.
    *
    * Optional. An addon without it never reports an update, which is the right
