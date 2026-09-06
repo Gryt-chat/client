@@ -483,9 +483,8 @@ export const ChatView = memo(({
                       threadSummary={threads.summaries[m.message_id]}
                       onStartThread={conversationKind === "dm" ? undefined : threads.startThread}
                       onOpenThread={threads.openThread}
-                      /* In a DM, anything without an envelope reached the server as
-                         readable text. Channels are not sealed at all, so the mark
-                         would be on every message and mean nothing. */
+                      /* Channels are never sealed, so the mark would be on every
+                         message and mean nothing. */
                       unencrypted={conversationKind === "dm" && !m.sealed}
                     />
                   );

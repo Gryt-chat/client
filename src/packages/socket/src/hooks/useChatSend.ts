@@ -257,19 +257,9 @@ export function useChatSend({
   currentUserIdRef.current = currentUserId;
 
   /*
-   * Sending in the clear is a decision, not a notice (GRYT-729).
-   *
-   * When a conversation could be sealed and is not, the composer already says
-   * so above the box. On 2026-09-06 that line was read, understood, and typed
-   * past: five messages went to the server as plaintext in a DM whose whole
-   * point is that they would not. A warning that costs nothing to ignore is
-   * one people ignore.
-   *
-   * So the first send after the conversation falls back asks. Once per
-   * conversation per blocking state — the state is part of the key, so a peer
-   * rotating again asks again rather than riding on an answer about a
-   * different key. Held in a ref rather than stored: a new session asking once
-   * more is the safe direction to be wrong in.
+   * Asked once per conversation per blocking state, so a peer rotating again
+   * asks again rather than riding on an answer about a different key. A ref,
+   * not storage: a new session asking once more is the safe way to be wrong.
    */
   const plaintextOkRef = useRef<Set<string>>(new Set());
   const pendingSendRef = useRef<{ text: string; files: File[]; replyToMessageId?: string } | null>(null);
@@ -451,7 +441,7 @@ export function useChatSend({
   }, [currentConnection, currentlyViewingServer?.host]);
 
 
-  /** They chose to send it anyway. Remember for this conversation and go. */
+  /** Remembered for this conversation, then sent. */
   const confirmPlaintextSend = useCallback(() => {
     const key = plaintextGateKey();
     if (key) plaintextOkRef.current.add(key);
@@ -461,7 +451,7 @@ export function useChatSend({
     if (pending) sendChat(pending.text, pending.files, pending.replyToMessageId);
   }, [plaintextGateKey, sendChat]);
 
-  /** They backed out. The composer text is restored so nothing is lost. */
+  /** Backed out: the text goes back in the composer. */
   const cancelPlaintextSend = useCallback(() => {
     const pending = pendingSendRef.current;
     pendingSendRef.current = null;

@@ -186,14 +186,8 @@ export function useConversationSealing({
     [keys, conversationId, myServerUserId],
   );
 
-  /*
-   * One object per set of parts, rather than a fresh one every render.
-   *
-   * `useChat` has an effect that depends on this to open sealed messages, so a
-   * new identity on every render re-ran that effect on every render. Every
-   * re-run tore down the one before it, and the one before it was the one
-   * holding the decryption in flight.
-   */
+  /* Stable identity: `useChat` has an effect that depends on this, and a new
+     object every render re-ran it every render. */
   return useMemo(
     () => ({ decision, seal, sealFile, openFile, open }),
     [decision, seal, sealFile, openFile, open],

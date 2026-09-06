@@ -218,18 +218,11 @@ export function EmojiPickerContent({ onSelect, serverHost, autoFocusSearch = tru
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           /*
-           * Keep the keystrokes.
-           *
-           * This picker is also rendered inside a Base UI context menu submenu,
-           * and a menu runs typeahead: MenuRoot puts useTypeahead on the popup,
-           * and that handler calls preventDefault on every single-character key
-           * while the menu is open. The input is a child of that popup, so the
-           * letters were eaten before they could land and searching did nothing
-           * at all. Reported by Carlo on 2026-09-06 from Linux, but there is
-           * nothing platform-specific about it.
-           *
-           * Bubble phase only, so the overlay picker is unaffected: its Escape
-           * handler is a capture-phase listener on document and still runs.
+           * This also renders inside a Base UI context menu, whose MenuRoot
+           * puts useTypeahead on the popup — that calls preventDefault on every
+           * single-character key while the menu is open, so the letters never
+           * reached the field. Bubble phase only; the overlay picker's Escape
+           * handler is a capture listener on document.
            */
           onKeyDown={(e) => e.stopPropagation()}
           style={{
