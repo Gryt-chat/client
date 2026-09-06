@@ -1,13 +1,19 @@
 import { AlertDialog, Avatar, Button, ContextMenu, IconButton, Menu, PreviewCard, Tooltip } from "@gryt/ui";
 import { useSFU } from "@gryt/voice";
 import { Reorder } from "motion/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import toast from "react-hot-toast";
 
 import {
   GeneratedServerIcon,
+  getOwnLevel,
+  getPrefsSnapshot,
   normalizeHost,
+  type NotificationLevel,
   resolveAvatarSrc,
   serverIconSrc,
+  setNotificationLevel,
+  subscribeToPrefs,
   useAccount,
   useUnreadTracker,
 } from "@/common";
@@ -32,6 +38,38 @@ import { useReportForm } from "../lib/reports/useReportForm";
 
 interface SidebarProps {
   setShowAddServer: (show: boolean) => void;
+}
+
+
+/**
+ * How loud a whole server is, as the three levels plus a reset.
+ *
+ * The same four the channel list offers per channel and per folder. Declared
+ * once out here because the menu renders per server in a map.
+ */
+const SERVER_NOTIFICATION_CHOICES: { label: string; value: NotificationLevel | null }[] = [
+  { label: "Everything", value: "all" },
+  { label: "Only mentions", value: "mentions" },
+  { label: "Nothing", value: "none" },
+  { label: "Default (everything)", value: null },
+];
+
+/** Opens the settings modal, on a named tab when one is asked for. */
+function openServerSettings(host: string, tab?: string): void {
+  window.dispatchEvent(
+    new CustomEvent("server_settings_open", { detail: tab ? { host, tab } : { host } }),
+  );
+}
+
+async function copyServerAddress(host: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(host);
+    toast.success("Server address copied");
+  } catch {
+    // Clipboard access can be refused, and a row that silently does nothing
+    // reads as a broken menu item.
+    toast.error("Could not copy the address");
+  }
 }
 
 export function Sidebar({ setShowAddServer }: SidebarProps) {
@@ -311,6 +349,11 @@ function ServerItem({
   embeddedStatus,
 }: ServerItemProps) {
   const { canClaim, claim } = useIdentityClaim();
+  /* Subscribed rather than read once, so the tick in the notifications
+     submenu moves the moment a level is picked. The value is unused; the
+     subscription is what re-renders, and `getOwnLevel` reads the current
+     answer where the rows are drawn. */
+  useSyncExternalStore(subscribeToPrefs, getPrefsSnapshot, getPrefsSnapshot);
   const [doctorOpen, setDoctorOpen] = useState(false);
   const [mergeOpen, setMergeOpen] = useState(false);
   // No entry yet is not the same as down.
@@ -464,6 +507,54 @@ function ServerItem({
                 {servers[host].name}
               </ContextMenu.GroupLabel>
             </ContextMenu.Group>
+            {/*
+              Ordered like the server menu people arrive already knowing:
+              invite, then how loud it is, then settings, then what you make,
+              then leaving, then the identifier.
+
+              What Gryt has no equivalent for is absent rather than greyed \u2014
+              boosting, insights, events, threads, privacy settings, per-server
+              profiles and raid tools. "Mark as read" and "Hide muted channels"
+              are absent for a different reason: both are real ideas Gryt could
+              have, and neither exists yet, so there is nothing to wire a row to.
+
+              Three rows went the other way. Edit, Share and "Add to new group"
+              were `<ContextMenu.Item>` with no `onClick` \u2014 they have never done
+              anything. A row that does nothing when pressed is worse than no
+              row, so they are gone rather than reordered.
+            */}
+            <ContextMenu.Item onClick={() => openServerSettings(host, "invites")}>
+              Invite to server
+            </ContextMenu.Item>
+            <ContextMenu.Separator />
+
+            {/* The same three levels the channel list offers per channel and
+                per folder, at the scope above them. Device-local, like those. */}
+            <ContextMenu.SubmenuRoot>
+              <ContextMenu.SubmenuTrigger>Notifications</ContextMenu.SubmenuTrigger>
+              <ContextMenu.Portal>
+                <ContextMenu.Positioner>
+                  <ContextMenu.Popup>
+                    {SERVER_NOTIFICATION_CHOICES.map((choice) => (
+                      <ContextMenu.Item
+                        key={choice.label}
+                        onClick={() => setNotificationLevel(host, { kind: "server" }, choice.value)}
+                      >
+                        <span style={{ display: "inline-block", width: 16 }}>
+                          {getOwnLevel(host, { kind: "server" }) === choice.value ? "\u2713" : ""}
+                        </span>
+                        {choice.label}
+                      </ContextMenu.Item>
+                    ))}
+                  </ContextMenu.Popup>
+                </ContextMenu.Positioner>
+              </ContextMenu.Portal>
+            </ContextMenu.SubmenuRoot>
+            <ContextMenu.Separator />
+
+            <ContextMenu.Item onClick={() => openServerSettings(host)}>
+              Server settings
+            </ContextMenu.Item>
             {canClaim(host) && (
               /* For a seed restored onto a device that has never been to this
                  server: nothing local knows there is a membership to claim, and
@@ -474,10 +565,6 @@ function ServerItem({
                 I&rsquo;ve used this server before
               </ContextMenu.Item>
             )}
-            <ContextMenu.Item>Edit</ContextMenu.Item>
-            <ContextMenu.Item>Share</ContextMenu.Item>
-            <ContextMenu.Item>Add to new group</ContextMenu.Item>
-            <ContextMenu.Separator />
             {/* Offered whatever the connection state is, deliberately. A server
                 that will not connect at all is the case somebody most needs
                 this for, and hiding it there would leave them with nothing.
@@ -497,11 +584,18 @@ function ServerItem({
             )}
             <ContextMenu.Separator />
             <ContextMenu.Item
+              className="text-gryt-danger"
               onClick={() => {
                 setShowRemoveServer(host);
               }}
             >
-              Leave
+              Leave server
+            </ContextMenu.Item>
+            <ContextMenu.Separator />
+            {/* The address rather than an id: it is what identifies a Gryt
+                server, and it is the thing worth pasting to somebody. */}
+            <ContextMenu.Item onClick={() => copyServerAddress(host)}>
+              Copy server address
             </ContextMenu.Item>
           </ContextMenu.Popup>
             </ContextMenu.Positioner>
