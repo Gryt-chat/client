@@ -1,4 +1,4 @@
-import { Button, Chip, Select, Surface } from "@gryt/ui";
+import { Button, Chip, Select, Surface, Tooltip } from "@gryt/ui";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
@@ -6,6 +6,7 @@ import type { Socket } from "socket.io-client";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { useSocketEvent } from "../hooks/useSocketEvent";
 import { useSockets } from "../hooks/useSockets";
+import { inviteState, type MemberInvite } from "./memberInvite";
 
 /**
  * A role id. Was one of four names; a server defines its own now, so the list
@@ -34,7 +35,7 @@ export function ServerRolesTab({
 }) {
   const { memberLists, requestMemberList } = useSockets();
   const members = host ? (memberLists[host] || []) : [];
-  const { roles: definitions } = useServerPermissions(host);
+  const { roles: definitions, has } = useServerPermissions(host);
 
   const nameOf = useMemo(() => {
     const map = new Map(definitions.map((r) => [r.id, r.name]));
@@ -44,10 +45,26 @@ export function ServerRolesTab({
   const [roles, setRoles] = useState<Record<string, Role[]>>({});
   const [submitting, setSubmitting] = useState(false);
 
+  /**
+   * How each member got in, keyed by member.
+   *
+   * Empty against a server too old to answer, and against anybody without
+   * `manage_invites` — in both cases the column simply is not drawn, rather
+   * than drawn empty and implying nobody used an invite.
+   */
+  const [invites, setInvites] = useState<Record<string, MemberInvite>>({});
+  const [invitesAnswered, setInvitesAnswered] = useState(false);
+
+  /* `has` rather than `can`: this one is strict. `can` is optimistic about a
+     permission the server has not mentioned, and firing a request that comes
+     back refused is worse than not asking. */
+  const maySeeInvites = has("manage_invites");
+
   const refresh = () => {
     if (!socket || !socket.connected) return toast.error("Not connected to the server yet.");
     if (!accessToken) return toast.error("Join the server first.");
     socket.emit("server:roles:list", { accessToken });
+    if (maySeeInvites) socket.emit("server:members:invites", { accessToken });
     requestMemberList(host);
   };
 
@@ -84,6 +101,40 @@ export function ServerRolesTab({
       );
     },
   );
+
+  useSocketEvent<{ members: MemberInvite[] }>(
+    socket,
+    "server:members:invites",
+    (payload) => {
+      const map: Record<string, MemberInvite> = {};
+      (payload?.members || []).forEach((m) => {
+        if (m?.serverUserId) map[m.serverUserId] = m;
+      });
+      setInvites(map);
+      setInvitesAnswered(true);
+    },
+  );
+
+  /* Repaint on a revoke from anywhere — this tab, the Invites tab, or somebody
+     else's client. The row says whether the door is still open, so it has to
+     stop saying "live" the moment it is not. */
+  useSocketEvent<{ code?: string }>(socket, "server:invite:revoked", (payload) => {
+    const code = payload?.code;
+    if (!code) return;
+    setInvites((prev) => {
+      const next: Record<string, MemberInvite> = {};
+      for (const [id, invite] of Object.entries(prev)) {
+        next[id] = invite.code === code ? { ...invite, revoked: true } : invite;
+      }
+      return next;
+    });
+  });
+
+  const revokeInvite = (code: string) => {
+    if (!socket || !socket.connected) return toast.error("Not connected to the server yet.");
+    if (!accessToken) return toast.error("Join the server first.");
+    socket.emit("server:invites:revoke", { accessToken, code });
+  };
 
   useEffect(() => {
     if (!host) return;
@@ -139,6 +190,9 @@ export function ServerRolesTab({
             const held = roles[m.serverUserId] ?? [];
             const isOwner = held.includes(OWNER_ROLE);
 
+            const invite = invites[m.serverUserId];
+            const state = invite ? inviteState(invite) : null;
+
             // Only what they do not already hold. Offering a role somebody has
             // is offering a click that changes nothing.
             const available = definitions
@@ -155,6 +209,48 @@ export function ServerRolesTab({
                     <span className="text-xs text-gryt-muted">
                       ID: {m.serverUserId}
                     </span>
+
+                    {/* How they got in (GRYT-923).
+
+                        Only where the server answered and this member arrived
+                        on an invite. Somebody who has none is drawn with
+                        nothing rather than "no invite": the first member claims
+                        the server and an open join needs no code, so an absent
+                        entry is ordinary and a label saying so would be noise
+                        on most rows. */}
+                    {maySeeInvites && invitesAnswered && invite && (
+                      <span className="flex items-center gap-1.5 text-xs">
+                        <span className="text-gryt-muted">Joined with</span>
+                        {/* The note where there is one, because "Kari's
+                            friends" is what an operator recognises and the code
+                            is a random string. The code stays reachable on
+                            hover, since it is what the Invites tab lists. */}
+                        <Tooltip title={state!.hint}>
+                          <span
+                            style={{
+                              fontFamily: "var(--code-font-family)",
+                              color: state!.dead ? "var(--gryt-neutral-10)" : "var(--gryt-text)",
+                              textDecoration: state!.dead ? "line-through" : undefined,
+                            }}
+                          >
+                            {state!.label}
+                          </span>
+                        </Tooltip>
+                        {state!.reason && (
+                          <span className="text-gryt-muted">· {state!.reason}</span>
+                        )}
+                        {!state!.dead && (
+                          <Button
+                            tone="ghost"
+                            size="xsmall"
+                            onClick={() => revokeInvite(invite.code)}
+                            disabled={submitting}
+                          >
+                            Revoke
+                          </Button>
+                        )}
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-2 flex-wrap justify-end">
