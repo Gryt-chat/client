@@ -38,6 +38,7 @@ function useSocketsHook() {
     isMuted,
     isDeafened,
     isAFK,
+    activity,
     connectSoundEnabled,
     disconnectSoundEnabled,
     connectSoundVolume,
@@ -129,6 +130,11 @@ function useSocketsHook() {
      the time (GRYT-644). */
   const voiceSelfStateRef = useRef({ isMuted, isDeafened, isAFK });
 
+  /* The same trick for the status line (GRYT-929). The server keeps it on the
+     connection rather than storing it, so every reconnect starts with nothing
+     and this is what puts it back. */
+  const activityRef = useRef(activity);
+
   useEffect(() => {
     voiceSelfStateRef.current = { isMuted, isDeafened, isAFK };
 
@@ -140,6 +146,17 @@ function useSocketsHook() {
       });
     });
   }, [isMuted, isDeafened, isAFK, sockets]);
+
+  /* Told to every server, because it is one line about you rather than
+     something you say per room. A server whose role does not allow it refuses
+     with `server:error`, which the settings panel is where somebody would find
+     out about — sending it anyway keeps this loop from having to know. */
+  useEffect(() => {
+    activityRef.current = activity;
+    Object.keys(sockets).forEach((host) => {
+      sockets[host]?.emit("presence:activity", { activity });
+    });
+  }, [activity, sockets]);
 
   // Merge incoming server:info updates into the saved list in a single write.
   // Previously each iteration spread the same stale `servers` closure, so
@@ -321,6 +338,9 @@ function useSocketsHook() {
          * finished doing that. Sending earlier would race it and lose. */
         socket.on("voice:state:restored", () => {
           socket.emit("voice:state:update", voiceSelfStateRef.current);
+          if (activityRef.current) {
+            socket.emit("presence:activity", { activity: activityRef.current });
+          }
         });
 
         socket.io.on("reconnect", () => {
@@ -334,6 +354,13 @@ function useSocketsHook() {
              case, and the member list would otherwise show the server's
              defaults rather than what this client is actually doing. */
           socket.emit("voice:state:update", voiceSelfStateRef.current);
+          /* And the status, for the same reason: it lives on the connection,
+             so a reconnect is a blank one until this says otherwise. Only when
+             there is one — an empty emit would be a needless round trip on
+             every reconnect for everybody who has never set a status. */
+          if (activityRef.current) {
+            socket.emit("presence:activity", { activity: activityRef.current });
+          }
           window.dispatchEvent(new CustomEvent("server_socket_reconnected", {
             detail: { host },
           }));

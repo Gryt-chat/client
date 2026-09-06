@@ -44,6 +44,14 @@ export interface MemberInfo {
    */
   roles?: Role[];
   status: UserStatus;
+  /**
+   * What they say they are doing, in their own words (GRYT-929).
+   *
+   * Absent for anybody who has not set one, and for every server too old to
+   * send it. The server holds it on the connection, so somebody offline never
+   * has one.
+   */
+  activity?: string;
   lastSeen?: Date;
   createdAt?: string | Date;
   /** Whether there is a Gryt account behind this member, or only a device key. */
@@ -234,6 +242,32 @@ const MemberItem = ({
             {showStatusLine && (
               <span className="text-xs" style={{ color: statusColor, lineHeight: 1.2 }}>
                 {statusLabel}
+              </span>
+            )}
+
+            {/* What they say they are doing (GRYT-929).
+
+                Under the derived line rather than instead of it: "In Voice" is
+                the server's answer to where somebody is and this is their own
+                answer to what they are up to, and a call worth joining is the
+                more urgent of the two.
+
+                One line, clipped. The server caps the text at 96 characters
+                and strips anything that would break the row, but a narrow
+                sidebar can still run out of width before that. */}
+            {member.activity && (
+              <span
+                className="text-xs"
+                style={{
+                  color: "var(--gryt-neutral-11)",
+                  lineHeight: 1.2,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+                title={member.activity}
+              >
+                {member.activity}
               </span>
             )}
           </div>

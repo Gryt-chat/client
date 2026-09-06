@@ -2,6 +2,12 @@ import { Button, Chip, Switch } from "@gryt/ui";
 import { useEffect, useState } from "react";
 
 import type { AddonManifest, AddonUpdate } from "@/addons";
+import {
+  CAPABILITY_LABELS,
+  declaredCapabilities,
+  grantedCapabilities,
+  setGrantedCapabilities,
+} from "@/addons";
 import { useAddons } from "@/addons";
 
 import { getElectronAPI, isElectron } from "../../../../lib/electron";
@@ -181,6 +187,8 @@ function AddonCard({
           </span>
         )}
 
+        <AddonCapabilities addon={addon} />
+
         {/* Opens the release rather than installing it. Replacing an addon's
             files means running whatever the repository publishes next, so the
             step where somebody looks at it first is the point, not a gap. */}
@@ -192,6 +200,53 @@ function AddonCard({
           </Button>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * What a plugin asked for, and whether it may have it (GRYT-928).
+ *
+ * **Not a sandbox, and the copy says so.** A plugin runs in the app's own page
+ * and could go around every one of these — see `capabilities.ts`. What a switch
+ * here buys is that the polite path refuses, so a plugin ignoring the answer
+ * has to do it on purpose rather than by accident, and somebody has read the
+ * list before enabling it.
+ *
+ * Drawn only for a plugin that asks for something. Most do not, and an empty
+ * "Permissions" heading on every card would be a section about nothing.
+ */
+function AddonCapabilities({ addon }: { addon: AddonManifest }) {
+  const declared = declaredCapabilities(addon.capabilities);
+  const [granted, setGranted] = useState(() => grantedCapabilities(addon.id));
+
+  if (declared.length === 0) return null;
+
+  const toggle = (capability: (typeof declared)[number]) => {
+    const next = granted.includes(capability)
+      ? granted.filter((c) => c !== capability)
+      : [...granted, capability];
+    setGranted(next);
+    setGrantedCapabilities(addon.id, next);
+  };
+
+  return (
+    <div className="flex flex-col gap-1" style={{ marginTop: 4 }}>
+      <span className="text-xs font-bold text-gryt-muted">This addon asks to</span>
+      {declared.map((capability) => (
+        <label key={capability} className="flex items-center justify-between gap-2 text-sm">
+          <span>{CAPABILITY_LABELS[capability]}</span>
+          <Switch
+            checked={granted.includes(capability)}
+            onCheckedChange={() => toggle(capability)}
+            style={{ flexShrink: 0 }}
+          />
+        </label>
+      ))}
+      <span className="text-xs text-gryt-muted">
+        An addon runs as part of Gryt and could ignore this. Only turn on what you
+        would trust whoever wrote it with.
+      </span>
     </div>
   );
 }

@@ -5,7 +5,14 @@ import React, { useEffect } from "react";
 import ReactDOM from "react-dom/client";
 import { Toaster } from "react-hot-toast";
 
-import { initPluginApi, updatePluginApiTheme, useAddonLoader } from "@/addons";
+import {
+  initPluginApi,
+  setPluginApiActivitySetter,
+  updatePluginApiCapabilities,
+  updatePluginApiTheme,
+  useAddonLoader,
+  useAddons,
+} from "@/addons";
 import {
   backfillGuestHistory,
   migrateLegacyMergeChoice,
@@ -127,6 +134,23 @@ function ThemedApp() {
   useZoomShortcuts();
   useAddonLoader();
   updatePluginApiTheme({ appearance: resolvedAppearance, accentColor });
+
+  /* What each installed plugin says it needs, so `window.gryt` can check a
+     grant against the manifest it was made for (GRYT-928). Refreshed whenever
+     the list changes, because an addon updating its manifest is exactly the
+     case a stale copy would get wrong. */
+  const { addons } = useAddons();
+  useEffect(() => {
+    updatePluginApiCapabilities(addons);
+  }, [addons]);
+
+  /* The one thing a plugin can currently do. Wired here rather than inside the
+     API so `pluginApi.ts` stays free of the socket layer and can be tested
+     without one. */
+  const { setActivity } = useSettings();
+  useEffect(() => {
+    setPluginApiActivitySetter(setActivity);
+  }, [setActivity]);
 
   return (
     /* The <Theme> that used to sit here was Radix's, and it existed to define
