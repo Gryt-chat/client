@@ -7,7 +7,7 @@ import messageSoundMp3 from "@/audio/src/assets/universfield-computer-mouse-clic
 import type { SealDecision } from "@/common";
 import { getServerAccessToken, getUploadsFileUrl, markChannelUnread, useUnreadBadge } from "@/common";
 import { useSettings } from "@/settings";
-import { serverDetailsList as ServerDetailsList } from "@/settings/src/types/server";
+import { type ForumTag,serverDetailsList as ServerDetailsList } from "@/settings/src/types/server";
 
 import type { ChatMessage } from "../components/chatUtils";
 import {
@@ -61,6 +61,7 @@ interface UseChatReturn {
   activeChannelType: "text" | "voice";
   activeChannelAutomated: boolean;
   activeChannelLayout: "chat" | "forum";
+  activeChannelForumTags: ForumTag[];
   restoreText: string | null;
   clearRestoreText: () => void;
   fetchOlderMessages: () => void;
@@ -377,6 +378,7 @@ export function useChat({
   // only to lock the composer and draw the robot icon. GRYT-982.
   const activeChannelAutomated = activeChannel?.automated === true;
   const activeChannelLayout: "chat" | "forum" = activeChannel?.layout === "forum" ? "forum" : "chat";
+  const activeChannelForumTags: ForumTag[] = activeChannel?.forumTags ?? [];
 
   // Chat event listeners
   useEffect(() => {
@@ -608,6 +610,7 @@ export function useChat({
     activeChannelType,
     activeChannelAutomated,
     activeChannelLayout,
+    activeChannelForumTags,
     restoreText,
     clearRestoreText,
     fetchOlderMessages,

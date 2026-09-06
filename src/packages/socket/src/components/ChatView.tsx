@@ -48,6 +48,7 @@ export const ChatView = memo(({
   channelName,
   automated,
   layout,
+  forumTags,
   channelType,
   conversationKind = "channel",
   sealing,
@@ -94,6 +95,7 @@ export const ChatView = memo(({
   automated?: boolean;
   /** A forum channel shows a topic index instead of a chat stream. GRYT-981 Stage 2. */
   layout?: "chat" | "forum";
+  forumTags?: import("@/settings/src/types/server").ForumTag[];
   /** A direct message reads differently: no `#`, and its own empty state. */
   conversationKind?: "channel" | "dm";
   /**
@@ -395,6 +397,7 @@ export const ChatView = memo(({
               conversationId={conversationKey ?? ""}
               serverHost={serverHost}
               currentUserId={currentUserId}
+              forumTags={forumTags ?? []}
               onOpenTopic={threads.openSummary}
             />
           ) : (

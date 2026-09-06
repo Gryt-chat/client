@@ -381,7 +381,7 @@ export function useSidebarEditor({
   // Create a fully-configured channel in one confirmed step, instead of
   // dropping a default text channel that has to be edited after. GRYT-983.
   const createChannel = useCallback(
-    async (opts: { name: string; type: "text" | "voice"; layout?: "chat" | "forum"; automated?: boolean; description?: string | null }) => {
+    async (opts: { name: string; type: "text" | "voice"; layout?: "chat" | "forum"; automated?: boolean; description?: string | null; forumTags?: { id: string; name: string; emoji?: string | null; color?: string | null }[] }) => {
       if (!currentlyViewingServer) return;
       if (!currentConnection || !currentConnection.connected) {
         toast.error("Not connected to the server yet.");
@@ -406,6 +406,7 @@ export function useSidebarEditor({
         description: opts.description ?? null,
         layout: opts.layout ?? "chat",
         automated: opts.automated ?? false,
+        forumTags: opts.forumTags ?? [],
       });
       currentConnection.emit("server:sidebar:item:upsert", {
         accessToken,

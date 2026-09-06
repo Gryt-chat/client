@@ -4,12 +4,15 @@ import { useEffect, useState } from "react";
 import { PiChatCircleFill, PiChatsFill, PiRobotFill, PiSpeakerHighFill, PiX } from "../../../../lib/icons";
 
 /** What the create form collects, mapped onto the channel's stored fields. */
+export interface ForumTagDraft { id: string; name: string; emoji?: string | null; color?: string | null }
+
 export interface NewChannelOptions {
   name: string;
   type: "text" | "voice";
   layout?: "chat" | "forum";
   automated?: boolean;
   description?: string | null;
+  forumTags?: ForumTagDraft[];
 }
 
 type ChannelKind = "chat" | "voice" | "forum" | "automated";
@@ -28,11 +31,15 @@ const KINDS: { key: ChannelKind; label: string; desc: string; Icon: typeof PiCha
   { key: "automated", label: "Automated", desc: "Only bots and the system post.", Icon: PiRobotFill },
 ];
 
-function toOptions(name: string, description: string, kind: ChannelKind): NewChannelOptions {
+function slugifyTag(name: string): string {
+  return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || `tag-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function toOptions(name: string, description: string, kind: ChannelKind, tags: ForumTagDraft[]): NewChannelOptions {
   const desc = description.trim() || null;
   switch (kind) {
     case "voice": return { name, type: "voice", description: desc };
-    case "forum": return { name, type: "text", layout: "forum", description: desc };
+    case "forum": return { name, type: "text", layout: "forum", description: desc, forumTags: tags };
     case "automated": return { name, type: "text", automated: true, description: desc };
     default: return { name, type: "text", layout: "chat", description: desc };
   }
@@ -42,6 +49,8 @@ export function CreateChannelDialog({ open, onOpenChange, initialType = "chat", 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [kind, setKind] = useState<ChannelKind>(initialType);
+  const [tags, setTags] = useState<ForumTagDraft[]>([]);
+  const [tagInput, setTagInput] = useState("");
 
   // Start fresh each time the dialog opens, honouring the type it was opened for.
   useEffect(() => {
@@ -49,6 +58,8 @@ export function CreateChannelDialog({ open, onOpenChange, initialType = "chat", 
       setName("");
       setDescription("");
       setKind(initialType);
+      setTags([]);
+      setTagInput("");
     }
   }, [open, initialType]);
 
@@ -56,7 +67,7 @@ export function CreateChannelDialog({ open, onOpenChange, initialType = "chat", 
 
   const create = () => {
     if (!canCreate) return;
-    editor.createChannel(toOptions(name.trim(), description, kind));
+    editor.createChannel(toOptions(name.trim(), description, kind, tags));
     onOpenChange(false);
   };
 
@@ -116,6 +127,38 @@ export function CreateChannelDialog({ open, onOpenChange, initialType = "chat", 
                 })}
               </div>
             </div>
+
+            {kind === "forum" && (
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-medium">Tags <span style={{ color: "var(--gryt-neutral-10)", fontWeight: 400 }}>(optional)</span></span>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 7, alignItems: "center" }}>
+                  {tags.map((t) => (
+                    <span key={t.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, padding: "3px 6px 3px 10px", borderRadius: "var(--gryt-radius-full)", background: "var(--gryt-neutral-3)", color: "var(--gryt-neutral-11)", border: "1px solid var(--gryt-neutral-6)" }}>
+                      {t.name}
+                      <button type="button" onClick={() => setTags((prev) => prev.filter((x) => x.id !== t.id))} aria-label={`Remove ${t.name}`} style={{ background: "none", border: "none", color: "var(--gryt-neutral-10)", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
+                    </span>
+                  ))}
+                  <input
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if ((e.key === "Enter" || e.key === ",") && tagInput.trim()) {
+                        e.preventDefault();
+                        const name = tagInput.trim().slice(0, 40);
+                        const id = slugifyTag(name);
+                        setTags((prev) => (prev.some((x) => x.id === id) || prev.length >= 40 ? prev : [...prev, { id, name }]));
+                        setTagInput("");
+                      } else if (e.key === "Backspace" && !tagInput) {
+                        setTags((prev) => prev.slice(0, -1));
+                      }
+                    }}
+                    placeholder={tags.length ? "Add another…" : "Linux, macOS, Voice…"}
+                    style={{ flex: 1, minWidth: 120, background: "transparent", border: "none", outline: "none", color: "var(--gryt-neutral-12)", fontSize: 14, fontFamily: "inherit" }}
+                  />
+                </div>
+                <span style={{ fontSize: 11.5, color: "var(--gryt-neutral-10)" }}>Press Enter to add a tag. People pick from these when they post a topic.</span>
+              </div>
+            )}
 
             <div className="flex flex-col gap-2">
               <span className="text-sm font-medium">Description <span style={{ color: "var(--gryt-neutral-10)", fontWeight: 400 }}>(optional)</span></span>
