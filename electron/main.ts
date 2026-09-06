@@ -518,20 +518,13 @@ let autoUpdateEnabled = readBoolConfig("autoUpdate", true);
 const defaultRolloutCheck = autoUpdater.isUserWithinRollout;
 
 /**
- * Whether this install follows the beta channel.
+ * Only a `beta` identifier means beta. Any other prerelease tag — `-rc.1`,
+ * `-slim` — would otherwise put somebody on the beta channel silently.
  *
- * The default reads the version, and it reads it precisely: only a `beta`
- * identifier counts, not any dash at all. `includes("-")` was the old test, and
- * it meant every prerelease identifier this project might ever want was
- * reserved by beta — a build tagged `-slim` or `-rc.1` would have silently put
- * somebody on the beta channel.
- *
- * That is not an argument for putting the variant in the version, which does
- * not work for a different reason: semver classifies anything with a dash as a
- * prerelease, so `newestReleaseWithoutApi` would filter a stable `-slim`
- * release out for everybody not on beta, and electron-updater's own comparisons
- * would sort it below the release it is a variant of. The variant lives in the
- * update channel instead. This is only about not reserving the whole namespace.
+ * The variant cannot live here for a different reason: semver treats any dash
+ * as a prerelease, so `newestReleaseWithoutApi` would hide a stable `-slim`
+ * release from everybody not on beta, and it sorts below the release it varies.
+ * It lives in the update channel instead.
  */
 function isOnBetaChannel(): boolean {
   const identifiers = semver.prerelease(app.getVersion()) ?? [];

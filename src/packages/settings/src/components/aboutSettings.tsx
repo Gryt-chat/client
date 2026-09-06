@@ -131,10 +131,8 @@ function UpdateControls() {
           <span className="font-medium">Running</span>
           <Chip tone="neutral">v{appVersion}</Chip>
           {betaChannel && <Chip tone="warning" label="Beta" />}
-          {/* What is installed, not what has been asked for. A pending switch
-              is described by the toggle below; this chip answers "which build
-              am I running right now", and until the installer has run the
-              answer has not changed. */}
+          {/* What is installed, not what has been asked for: a pending switch
+              is described by the toggle below. */}
           {slimVariant.installed && <Chip tone="neutral" label="Slim" />}
         </div>
 
