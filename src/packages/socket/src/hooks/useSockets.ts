@@ -49,6 +49,7 @@ function useSocketsHook() {
     messageSoundVolume,
     customMessageSoundFile,
     notificationBadgeEnabled,
+    desktopNotificationsEnabled,
     setIsServerMuted,
     setIsServerDeafened,
   } = useSettings();
@@ -239,6 +240,7 @@ function useSocketsHook() {
     messageSoundVolume,
     messageSoundFile,
     notificationBadgeEnabled,
+    desktopNotificationsEnabled,
     incrementUnread,
     currentlyViewingServerRef,
     clientsRef,

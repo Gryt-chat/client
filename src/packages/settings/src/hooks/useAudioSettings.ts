@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+import { requestNotificationPermission } from "@/lib/desktopNotification";
+
 import { getUserValue, setUserValue } from "./userStorage";
 
 export interface AudioSettingsData {
@@ -30,6 +32,7 @@ export interface AudioSettingsData {
   messageSoundVolume: number;
   customMessageSoundFile: string | null;
   notificationBadgeEnabled: boolean;
+  desktopNotificationsEnabled: boolean;
 }
 
 export const AUDIO_DEFAULTS: AudioSettingsData = {
@@ -65,6 +68,7 @@ export const AUDIO_DEFAULTS: AudioSettingsData = {
   messageSoundVolume: 30,
   customMessageSoundFile: null,
   notificationBadgeEnabled: true,
+  desktopNotificationsEnabled: true,
 };
 
 export function loadAudioFromCache(): AudioSettingsData {
@@ -97,6 +101,7 @@ export function loadAudioFromCache(): AudioSettingsData {
     messageSoundVolume: getUserValue("messageSoundVolume", AUDIO_DEFAULTS.messageSoundVolume),
     customMessageSoundFile: getUserValue("customMessageSoundFile", AUDIO_DEFAULTS.customMessageSoundFile),
     notificationBadgeEnabled: getUserValue("notificationBadgeEnabled", AUDIO_DEFAULTS.notificationBadgeEnabled),
+    desktopNotificationsEnabled: getUserValue("desktopNotificationsEnabled", AUDIO_DEFAULTS.desktopNotificationsEnabled),
   };
 }
 
@@ -140,6 +145,7 @@ export function useAudioSettings() {
   const [customMessageSoundFile, setCustomMessageSoundFile] = useState<string | null>(AUDIO_DEFAULTS.customMessageSoundFile);
 
   const [notificationBadgeEnabled, setNotificationBadgeEnabled] = useState(AUDIO_DEFAULTS.notificationBadgeEnabled);
+  const [desktopNotificationsEnabled, setDesktopNotificationsEnabled] = useState(AUDIO_DEFAULTS.desktopNotificationsEnabled);
 
   function applyAudioData(d: AudioSettingsData) {
     setMicID(d.micID);
@@ -169,6 +175,7 @@ export function useAudioSettings() {
     setMessageSoundVolume(d.messageSoundVolume);
     setCustomMessageSoundFile(d.customMessageSoundFile);
     setNotificationBadgeEnabled(d.notificationBadgeEnabled);
+    setDesktopNotificationsEnabled(d.desktopNotificationsEnabled);
   }
 
   function updateMicID(newID: string) {
@@ -345,6 +352,27 @@ export function useAudioSettings() {
     if (!value) window.electronAPI?.setBadgeCount(0);
   }
 
+  /*
+   * Turning it on in a browser is where the permission gets asked for.
+   *
+   * Chrome and Firefox both refuse a prompt that is not attached to something
+   * the person just clicked, so it cannot be done at startup and it cannot be
+   * done from the message handler. The desktop app skips all of it — the OS
+   * decides whether to show a notification and there is nothing to answer.
+   */
+  async function updateDesktopNotificationsEnabled(value: boolean) {
+    if (value) {
+      const state = await requestNotificationPermission();
+      if (state === "denied" || state === "unsupported") {
+        setDesktopNotificationsEnabled(false);
+        setUserValue("desktopNotificationsEnabled", false);
+        return;
+      }
+    }
+    setDesktopNotificationsEnabled(value);
+    setUserValue("desktopNotificationsEnabled", value);
+  }
+
   function setIsMuted(muted: boolean) {
     if (muted) {
       setIsMutedState(true);
@@ -433,5 +461,7 @@ export function useAudioSettings() {
     setCustomMessageSoundFile: updateCustomMessageSoundFile,
     notificationBadgeEnabled,
     setNotificationBadgeEnabled: updateNotificationBadgeEnabled,
+    desktopNotificationsEnabled,
+    setDesktopNotificationsEnabled: updateDesktopNotificationsEnabled,
   };
 }
