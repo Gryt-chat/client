@@ -27,6 +27,9 @@ export function handleNewMessage(
   setChatMessages: Dispatch<SetStateAction<ChatMessage[]>>,
 ): void {
   if (!msg || !msg.conversation_id) return;
+  // A thread reply carries a thread_id and belongs in the thread panel, not the
+  // channel's main flow. useThreads listens for it separately. GRYT-981.
+  if (msg.thread_id) return;
   const key = getCacheKey(msg.conversation_id);
   if (!key) return;
 

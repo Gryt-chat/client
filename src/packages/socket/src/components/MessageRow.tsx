@@ -4,8 +4,9 @@ import { forwardRef, memo, useCallback, useRef, useState } from "react";
 
 import { getUploadsFileUrl } from "@/common";
 
-import { PiSignInBold, PiSignOutBold } from "../../../../lib/icons";
+import { PiChatsFill, PiSignInBold, PiSignOutBold } from "../../../../lib/icons";
 import { useServerPermissions } from "../hooks/usePermissions";
+import type { ThreadSummary } from "../hooks/useThreads";
 import { getFrequentReactions } from "../utils/recentReactions";
 import type { CustomEmojiEntry } from "../utils/remarkEmoji";
 import { sealedPlaceholder } from "../utils/sealedText";
@@ -85,6 +86,12 @@ interface MessageRowProps {
   onDelete: (msg: ChatMessage) => void;
   scrollToMessage: (messageId: string) => void;
   onLightboxOpen: (src: string, alt?: string) => void;
+  /** This message's thread, if it has one — draws the "N replies" line. GRYT-981. */
+  threadSummary?: ThreadSummary;
+  /** Start a thread from this message. Absent in DMs and on pending rows. */
+  onStartThread?: (msg: ChatMessage) => void;
+  /** Open an existing thread by its root message id. */
+  onOpenThread?: (rootMessageId: string) => void;
   isNew?: boolean;
 }
 
@@ -112,6 +119,9 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
   onDelete,
   scrollToMessage,
   onLightboxOpen,
+  threadSummary,
+  onStartThread,
+  onOpenThread,
   isNew,
 }, forwardedRef) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -144,6 +154,9 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
     onDelete: canDelete ? () => onDelete(m) : undefined,
     canEdit,
     canDelete,
+    onOpenThread: threadSummary && onOpenThread ? () => onOpenThread(m.message_id) : undefined,
+    onStartThread: !threadSummary && onStartThread && !m.pending && !m.failed ? () => onStartThread(m) : undefined,
+    replyCount: threadSummary?.reply_count,
   };
 
   /**
@@ -564,6 +577,8 @@ function MessageContent({
               quickReactions={quickReactions}
               onQuickReaction={(src) => onReaction(src, m)}
               onReply={() => onReply(m)}
+              onThread={messageActions.onOpenThread || messageActions.onStartThread}
+              hasThread={!!messageActions.onOpenThread}
               canDelete={canDelete}
               onDelete={canDelete ? () => onDelete(m) : undefined}
             />
@@ -688,6 +703,21 @@ function MessageContent({
           </span>
         )}
       </motion.div>
+      {messageActions.onOpenThread && (
+        <button
+          onClick={messageActions.onOpenThread}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 6, marginTop: 4, alignSelf: "flex-start",
+            background: "none", border: "none", cursor: "pointer", padding: "3px 7px",
+            borderRadius: "var(--gryt-radius-sm)", color: "var(--gryt-accent-11)", fontSize: 12.5, fontWeight: 700,
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gryt-neutral-4)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
+        >
+          <PiChatsFill size={14} />
+          {messageActions.replyCount ?? 0} {(messageActions.replyCount ?? 0) === 1 ? "reply" : "replies"}
+        </button>
+      )}
       <ReactionBadges
         reactions={m.reactions}
         currentUserId={currentUserId}

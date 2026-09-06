@@ -1,16 +1,20 @@
 import { Skeleton } from "@gryt/ui";
 
-import { PiChatCircleFill, PiSpeakerHighFill } from "../../../../lib/icons";
+import { PiChatCircleFill, PiChatsFill, PiSpeakerHighFill } from "../../../../lib/icons";
 import { EmojiText } from "./EmojiText";
 
 export const MessageHoverToolbar = ({
   onReply,
+  onThread,
+  hasThread,
   onDelete,
   canDelete,
   quickReactions,
   onQuickReaction,
 }: {
   onReply?: () => void;
+  onThread?: () => void;
+  hasThread?: boolean;
   onDelete?: () => void;
   canDelete?: boolean;
   /**
@@ -102,6 +106,31 @@ export const MessageHoverToolbar = ({
           onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
         >
           ↩
+        </button>
+      )}
+      {onThread && (
+        <button
+          onClick={onThread}
+          title={hasThread ? "Open thread" : "Start thread"}
+          aria-label={hasThread ? "Open thread" : "Start thread"}
+          style={{
+            background: "none",
+            border: "none",
+            padding: "4px 6px",
+            fontSize: "14px",
+            lineHeight: 1,
+            borderRadius: "var(--gryt-radius-md)",
+            cursor: "pointer",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: hasThread ? "var(--gryt-accent-11)" : "var(--gryt-neutral-11)",
+            transition: "background 0.15s",
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gryt-neutral-4)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
+        >
+          <PiChatsFill size={14} />
         </button>
       )}
       {canDelete && onDelete && (
