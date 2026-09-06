@@ -46,6 +46,13 @@ function asSocket(s: unknown): ForumSocket | null {
 export interface UseForumResult {
   topics: ForumTopic[];
   loading: boolean;
+  /** A create is in flight — the composer stays open and disabled until it settles. */
+  creating: boolean;
+  /** Why the last create was refused, so the composer can say so and keep the text. */
+  createError: string | null;
+  /** Bumped once per accepted topic; the composer closes on the change. */
+  createdToken: number;
+  clearCreateError: () => void;
   createTopic: (title: string, text: string, tagIds?: string[]) => void;
 }
 
@@ -56,6 +63,11 @@ export function useForum(
 ): UseForumResult {
   const [topics, setTopics] = useState<ForumTopic[]>([]);
   const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [createdToken, setCreatedToken] = useState(0);
+  // A ref as well as state: the socket listeners read it without being rebuilt.
+  const creatingRef = useRef(false);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -77,12 +89,29 @@ export function useForum(
     const onThreadEvent = (p: { conversation_id?: string }) => {
       if (p?.conversation_id === conversationId) scheduleRefetch();
     };
+    const onCreated = (p: { conversation_id?: string }) => {
+      if (p?.conversation_id && p.conversation_id !== conversationId) return;
+      creatingRef.current = false;
+      setCreating(false);
+      setCreateError(null);
+      setCreatedToken((n) => n + 1);
+      scheduleRefetch();
+    };
+
     const onError = (e: { message?: string } | string) => {
       const message = typeof e === "string" ? e : e?.message;
+      // A refused create must not look like a successful one: the composer
+      // keeps what was typed and says why.
+      if (creatingRef.current) {
+        creatingRef.current = false;
+        setCreating(false);
+        setCreateError(message || "The server refused that topic.");
+      }
       if (message) toast.error(message);
     };
 
     socket.on("forum:topics:list", onList as (p: never) => void);
+    socket.on("forum:topic:created", onCreated as (p: never) => void);
     socket.on("thread:created", onThreadEvent as (p: never) => void);
     socket.on("thread:updated", onThreadEvent as (p: never) => void);
     socket.on("thread:deleted", onThreadEvent as (p: never) => void);
@@ -95,6 +124,7 @@ export function useForum(
       alive = false;
       if (debounce.current) clearTimeout(debounce.current);
       socket.off("forum:topics:list", onList as (p: never) => void);
+      socket.off("forum:topic:created", onCreated as (p: never) => void);
       socket.off("thread:created", onThreadEvent as (p: never) => void);
       socket.off("thread:updated", onThreadEvent as (p: never) => void);
       socket.off("thread:deleted", onThreadEvent as (p: never) => void);
@@ -106,8 +136,13 @@ export function useForum(
     const socket = asSocket(socketConnection);
     const accessToken = getServerAccessToken(serverHost || "");
     if (!socket || !accessToken) return;
+    creatingRef.current = true;
+    setCreating(true);
+    setCreateError(null);
     socket.emit("forum:topic:create", { conversationId, title: title.trim(), text: text.trim(), tagIds, accessToken });
   }, [socketConnection, conversationId, serverHost]);
 
-  return { topics, loading, createTopic };
+  const clearCreateError = useCallback(() => setCreateError(null), []);
+
+  return { topics, loading, creating, createError, createdToken, clearCreateError, createTopic };
 }

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type { ForumTag } from "@/settings/src/types/server";
 
@@ -53,7 +53,8 @@ function toSummary(t: ForumTopic): ThreadSummary {
 
 function matchesFilter(t: ForumTopic, filter: ForumFilter, currentUserId?: string): boolean {
   switch (filter) {
-    case "unanswered": return t.reply_count === 0 && t.status !== "closed";
+    // A solved topic is answered even with no replies — the author settled it.
+    case "unanswered": return t.reply_count === 0 && t.status === "open";
     case "solved": return t.status === "solved";
     case "mine": return !!currentUserId && t.creator_server_id === currentUserId;
     default: return t.status !== "closed";
@@ -61,7 +62,7 @@ function matchesFilter(t: ForumTopic, filter: ForumFilter, currentUserId?: strin
 }
 
 export function ForumView({ socketConnection, conversationId, serverHost, currentUserId, forumTags, onOpenTopic }: ForumViewProps) {
-  const { topics, loading, createTopic } = useForum(socketConnection, conversationId, serverHost);
+  const { topics, loading, creating, createError, createdToken, clearCreateError, createTopic } = useForum(socketConnection, conversationId, serverHost);
   const [filter, setFilter] = useState<ForumFilter>("all");
   const [composing, setComposing] = useState(false);
   const [title, setTitle] = useState("");
@@ -80,19 +81,30 @@ export function ForumView({ socketConnection, conversationId, serverHost, curren
 
   const counts = useMemo(() => ({
     all: topics.filter((t) => t.status !== "closed").length,
-    unanswered: topics.filter((t) => t.reply_count === 0 && t.status !== "closed").length,
+    unanswered: topics.filter((t) => t.reply_count === 0 && t.status === "open").length,
     solved: topics.filter((t) => t.status === "solved").length,
     mine: topics.filter((t) => !!currentUserId && t.creator_server_id === currentUserId).length,
   }), [topics, currentUserId]);
 
+  // Mirrors the server's cap so an over-long post is caught before a round trip.
+  const BODY_MAX = 4000;
+  const tooLong = body.length > BODY_MAX;
+  const canSubmit = !!title.trim() && !!body.trim() && !tooLong && !creating;
+
   const submit = () => {
-    if (!title.trim() || !body.trim()) return;
+    if (!canSubmit) return;
+    // Nothing is cleared or closed here. The composer closes when the server
+    // accepts the topic (createdToken), so a refusal keeps what was typed.
     createTopic(title, body, [...newTags]);
+  };
+
+  useEffect(() => {
+    if (createdToken === 0) return;
     setTitle("");
     setBody("");
     setNewTags(new Set());
     setComposing(false);
-  };
+  }, [createdToken]);
 
   return (
     <div style={{ position: "relative", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
@@ -273,24 +285,34 @@ export function ForumView({ socketConnection, conversationId, serverHost, curren
                   </div>
                 </div>
               )}
+              {(createError || tooLong) && (
+                <div
+                  role="alert"
+                  style={{ fontSize: 12.5, color: "var(--gryt-danger-9)", background: "var(--gryt-danger-2, rgba(248,113,113,0.12))", border: "1px solid var(--gryt-danger-9)", borderRadius: "var(--gryt-radius-sm)", padding: "8px 10px" }}
+                >
+                  {tooLong
+                    ? `That message is ${body.length - BODY_MAX} characters over the ${BODY_MAX} limit.`
+                    : createError}
+                </div>
+              )}
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
                 <button
-                  onClick={() => setComposing(false)}
+                  onClick={() => { clearCreateError(); setComposing(false); }}
                   style={{ background: "var(--gryt-neutral-4)", color: "var(--gryt-neutral-12)", border: "1px solid var(--gryt-neutral-6)", fontWeight: 600, fontSize: 13, padding: "8px 14px", borderRadius: "var(--gryt-radius-full)", cursor: "pointer" }}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={submit}
-                  disabled={!title.trim() || !body.trim()}
+                  disabled={!canSubmit}
                   style={{
-                    background: title.trim() && body.trim() ? "var(--gryt-accent-9)" : "var(--gryt-neutral-6)",
-                    color: title.trim() && body.trim() ? "var(--gryt-on-accent, #0c0a20)" : "var(--gryt-neutral-10)",
+                    background: canSubmit ? "var(--gryt-accent-9)" : "var(--gryt-neutral-6)",
+                    color: canSubmit ? "var(--gryt-on-accent, #0c0a20)" : "var(--gryt-neutral-10)",
                     border: "none", fontWeight: 700, fontSize: 13, padding: "8px 15px", borderRadius: "var(--gryt-radius-full)",
-                    cursor: title.trim() && body.trim() ? "pointer" : "default",
+                    cursor: canSubmit ? "pointer" : "default",
                   }}
                 >
-                  Create topic
+                  {creating ? "Creating…" : "Create topic"}
                 </button>
               </div>
             </div>

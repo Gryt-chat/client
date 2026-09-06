@@ -83,6 +83,9 @@ export function useThreads(
   // The root someone just started a thread on, so the matching thread:created
   // opens the panel for them and nobody else.
   const pendingOpenRoot = useRef<string | null>(null);
+  // The reply we are waiting on, so a refusal can mark that one failed rather
+  // than leaving it sitting there looking sent.
+  const pendingReply = useRef<string | null>(null);
 
   // Reset when the open conversation changes — summaries and the panel belong
   // to one channel.
@@ -150,6 +153,7 @@ export function useThreads(
       if (!msg.thread_id) return;
       const cur = openRef.current;
       if (!cur || cur.thread.thread_id !== msg.thread_id) return;
+      if (msg.nonce && pendingReply.current === msg.nonce) pendingReply.current = null;
       setOpen((o) => {
         if (!o) return o;
         const withoutPending = o.messages.filter(
@@ -165,11 +169,28 @@ export function useThreads(
       if (message) toast.error(message);
     };
 
+    // A reply the server refused (too long, muted, thread closed) must stop
+    // looking like it sent. It is marked failed the way the main chat marks a
+    // failed message, instead of sitting in the panel until a reload.
+    const onChatError = (e: { message?: string } | string) => {
+      const nonce = pendingReply.current;
+      if (!nonce) return;
+      pendingReply.current = null;
+      const message = typeof e === "string" ? e : e?.message;
+      if (message) toast.error(message);
+      setOpen((o) =>
+        o
+          ? { ...o, messages: o.messages.map((m) => (m.nonce === nonce ? { ...m, pending: false, failed: true } : m)) }
+          : o,
+      );
+    };
+
     socket.on("thread:created", onCreated as (p: never) => void);
     socket.on("thread:updated", onUpdated as (p: never) => void);
     socket.on("thread:deleted", onDeleted as (p: never) => void);
     socket.on("thread:history", onHistory as (p: never) => void);
     socket.on("thread:error", onError as (p: never) => void);
+    socket.on("chat:error", onChatError as (p: never) => void);
     socket.on("chat:new", onChatNew as (p: never) => void);
     return () => {
       socket.off("thread:created", onCreated as (p: never) => void);
@@ -177,6 +198,7 @@ export function useThreads(
       socket.off("thread:deleted", onDeleted as (p: never) => void);
       socket.off("thread:history", onHistory as (p: never) => void);
       socket.off("thread:error", onError as (p: never) => void);
+      socket.off("chat:error", onChatError as (p: never) => void);
       socket.off("chat:new", onChatNew as (p: never) => void);
     };
   }, [socketConnection, conversationId]);
@@ -239,6 +261,7 @@ export function useThreads(
     const trimmed = text.trim();
     if (!socket || !accessToken || !cur || !trimmed) return;
     const nonce = crypto.randomUUID();
+    pendingReply.current = nonce;
     const optimistic: ChatMessage = {
       conversation_id: conversationId,
       message_id: nonce,
