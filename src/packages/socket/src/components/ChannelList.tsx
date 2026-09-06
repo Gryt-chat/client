@@ -15,7 +15,7 @@ import {
 } from "@/common";
 import { Channel, SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
 
-import { PiCaretDownFill, PiCaretRightFill, PiChatCircleFill, PiGameControllerFill, PiGaugeFill, PiKeyboardFill, PiLockSimpleFill, PiSpeakerHighFill } from "../../../../lib/icons";
+import { PiCaretDownFill, PiCaretRightFill, PiChatCircleFill, PiChatsFill, PiGameControllerFill, PiGaugeFill, PiKeyboardFill, PiLockSimpleFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
 import type { DirectConversation } from "../hooks/useDirectMessages";
 import type { Client } from "../types/clients";
 import { ConnectedUser } from "./connectedUser";
@@ -335,6 +335,8 @@ export const ChannelList = ({
                 is only one thing to say: this room is not for you. */}
             {locked
               ? <PiLockSimpleFill size={16} />
+              : channel?.automated ? <PiRobotFill size={16} />
+              : channel?.layout === "forum" ? <PiChatsFill size={16} />
               : channel?.type === "voice" ? <PiSpeakerHighFill size={16} /> : <PiChatCircleFill size={16} />}
           </div>
           <span className="truncate" style={{ flex: 1, minWidth: 0, textAlign: "left", display: "block" }}>

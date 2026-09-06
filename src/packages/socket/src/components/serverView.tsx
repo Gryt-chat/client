@@ -265,7 +265,7 @@ export const ServerView = () => {
   const {
     chatMessages, sealing, canSend, canSendHere, sendChat, editMessage, isLoadingMessages,
     isRateLimited, rateLimitCountdown, isVoiceChannelTextChat,
-    canViewVoiceChannelText, activeChannelName, activeChannelType,
+    canViewVoiceChannelText, activeChannelName, activeChannelType, activeChannelAutomated,
     restoreText, clearRestoreText, fetchOlderMessages, isLoadingOlder, hasOlderMessages,
   } = useChat({
     currentConnection, activeConversationId, currentlyViewingServer,
@@ -705,6 +705,7 @@ export const ServerView = () => {
         currentUserId={currentServerUserId}
         channelName={activeDm ? conversationTitle(activeDm) : activeChannelName}
         channelType={activeChannelType}
+        automated={!activeDm && activeChannelAutomated}
         conversationKind={activeDm ? "dm" : "channel"}
         headerAction={dmHeaderActions}
         flush={isTiny}
@@ -818,6 +819,7 @@ export const ServerView = () => {
             currentUserId={currentServerUserId}
             channelName={activeDm ? conversationTitle(activeDm) : activeChannelName}
             channelType={activeChannelType}
+            automated={!activeDm && activeChannelAutomated}
             conversationKind={activeDm ? "dm" : "channel"}
             headerAction={dmHeaderActions}
             currentUserNickname={serverNickname}
