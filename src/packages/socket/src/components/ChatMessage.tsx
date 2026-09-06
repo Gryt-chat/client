@@ -243,11 +243,14 @@ export const WelcomeMessage = ({
   channelType = "text",
   conversationKind = "channel",
   serverName,
+  automated = false,
 }: {
   channelName?: string;
   channelType?: "text" | "voice";
   conversationKind?: "channel" | "dm";
   serverName?: string;
+  /** An automated channel has no "say something" — nobody here can. GRYT-982. */
+  automated?: boolean;
 }) => (
   <div className="flex w-full max-w-xl flex-col px-6 py-12 sm:px-8">
     <div className="flex items-start gap-4 sm:items-center sm:gap-6">
@@ -283,7 +286,9 @@ export const WelcomeMessage = ({
         <p className="mt-2 text-lg text-gryt-muted" style={{ maxWidth: "45ch", lineHeight: 1.5 }}>
           {conversationKind === "dm"
             ? "Only the two of you can read this. Whoever runs the server can too."
-            : "There\u2019s nothing to catch up on. Start wherever you like."}
+            : automated
+              ? "Nothing here yet. This one fills up when a bot or the system posts."
+              : "There\u2019s nothing to catch up on. Start wherever you like."}
         </p>
       </div>
     </div>
@@ -295,7 +300,9 @@ export const WelcomeMessage = ({
     >
       {conversationKind === "dm"
         ? `This conversation is on ${serverName || "this server"}. Messaging them on another server starts a separate one.`
-        : "The first message begins the history."}
+        : automated
+          ? "Only bots and the system write here."
+          : "The first message begins the history."}
     </p>
   </div>
 );

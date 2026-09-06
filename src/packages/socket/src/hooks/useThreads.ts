@@ -108,11 +108,17 @@ export function useThreads(
       }
     };
 
-    const onUpdated = (t: ThreadSummary) => {
+    // Merged, not replaced: thread:updated carries the counters and status that
+    // changed, not the whole thread. Overwriting dropped the title, so the panel
+    // header fell back to "Thread" the moment anybody replied.
+    const onUpdated = (t: Partial<ThreadSummary> & { conversation_id: string; thread_id: string; root_message_id: string }) => {
       if (t.conversation_id !== conversationId) return;
-      setSummaries((prev) => ({ ...prev, [t.root_message_id]: t }));
+      setSummaries((prev) => ({
+        ...prev,
+        [t.root_message_id]: { ...prev[t.root_message_id], ...t } as ThreadSummary,
+      }));
       if (openRef.current?.thread.thread_id === t.thread_id) {
-        setOpen((o) => (o ? { ...o, thread: t } : o));
+        setOpen((o) => (o ? { ...o, thread: { ...o.thread, ...t } } : o));
       }
     };
 
