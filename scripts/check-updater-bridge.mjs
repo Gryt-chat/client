@@ -65,7 +65,7 @@ assert.doesNotMatch(builder, /from: build\/embedded-server\/server\//);
  * check was wrong, and it took every client PR red with it. What matters is
  * that the pruning did not drop a language the app ships strings for.
  */
-const languages = builder.match(/electronLanguages:\n((?:\s+-\s+\S+\n)+)/)?.[1] ?? "";
+const languages = builder.match(/electronLanguages:\r?\n((?:\s+-\s+\S+\r?\n)+)/)?.[1] ?? "";
 for (const language of ["en", "nb"]) {
   assert.match(languages, new RegExp(`^\\s+-\\s+${language}\\s*$`, "m"), `electronLanguages is missing ${language}`);
 }
