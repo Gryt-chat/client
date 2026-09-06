@@ -10,6 +10,8 @@ import { SoundSettings } from "./SoundSettings";
 export function NotificationSettings() {
   const {
     notificationBadgeEnabled,
+    desktopNotificationsEnabled,
+    setDesktopNotificationsEnabled,
     setNotificationBadgeEnabled,
     messageSoundEnabled,
     setMessageSoundEnabled,
@@ -42,6 +44,15 @@ export function NotificationSettings() {
   return (
     <SettingsContainer>
       <h2>Notifications</h2>
+
+      <ToggleSetting
+        title="Desktop notifications"
+        description="Show a notification when a message arrives somewhere you are not looking. Never plays its own sound — the message sound below does that."
+        checked={desktopNotificationsEnabled}
+        onCheckedChange={setDesktopNotificationsEnabled}
+      />
+
+      <Divider />
 
       <ToggleSetting
         title="Unread message badge"

@@ -187,7 +187,9 @@ export interface Settings {
   setGoogleFontsEnabled: (value: boolean) => void;
 
   notificationBadgeEnabled: boolean;
+  desktopNotificationsEnabled: boolean;
   setNotificationBadgeEnabled: (value: boolean) => void;
+  setDesktopNotificationsEnabled: (value: boolean) => void;
 
   messageSoundEnabled: boolean;
   setMessageSoundEnabled: (value: boolean) => void;
@@ -381,7 +383,9 @@ export const settingsInit: Settings = {
   setGoogleFontsEnabled: noop,
 
   notificationBadgeEnabled: AUDIO_DEFAULTS.notificationBadgeEnabled,
+  desktopNotificationsEnabled: AUDIO_DEFAULTS.desktopNotificationsEnabled,
   setNotificationBadgeEnabled: noop,
+  setDesktopNotificationsEnabled: noop,
 
   messageSoundEnabled: AUDIO_DEFAULTS.messageSoundEnabled,
   setMessageSoundEnabled: noop,

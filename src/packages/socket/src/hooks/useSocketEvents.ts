@@ -17,6 +17,7 @@ import {
   setServerFileToken,
   shouldAnnounceMessage,
 } from "@/common";
+import { notificationBody, showDesktopNotification } from "@/lib/desktopNotification";
 import { playNotificationSound, preloadNotificationSound } from "@/lib/notificationSound";
 import {
   Server,
@@ -30,6 +31,23 @@ import { challengeHostMatches } from "../utils/challengeHost";
 import { registerServerSocketEvents } from "./registerServerSocketEvents";
 
 type Sockets = { [host: string]: Socket };
+
+
+/**
+ * As much of an arriving message as this file needs.
+ *
+ * The server sends the whole enriched message on `chat:new`; this named only
+ * the two fields the unread logic used. The notification needs a few more, and
+ * naming them here keeps that honest rather than casting at the call site.
+ */
+type BackgroundMessage = {
+  sender_server_id: string;
+  conversation_id?: string;
+  sender_nickname?: string;
+  text?: string | null;
+  sealed?: string | null;
+  attachments?: string[] | null;
+};
 
 export interface SocketEventDeps {
   servers: Servers;
@@ -45,6 +63,7 @@ export interface SocketEventDeps {
   messageSoundVolume: number;
   messageSoundFile: string;
   notificationBadgeEnabled: boolean;
+  desktopNotificationsEnabled: boolean;
   incrementUnread: () => void;
   currentlyViewingServerRef: MutableRefObject<{ host: string; name: string } | null>;
   clientsRef: MutableRefObject<{ [host: string]: Clients }>;
@@ -83,6 +102,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
     messageSoundVolume,
     messageSoundFile,
     notificationBadgeEnabled,
+    desktopNotificationsEnabled,
     incrementUnread,
     currentlyViewingServerRef,
     clientsRef,
@@ -111,6 +131,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
   const messageSoundVolumeRef = useRef(messageSoundVolume);
   const messageSoundFileRef = useRef(messageSoundFile);
   const notificationBadgeEnabledRef = useRef(notificationBadgeEnabled);
+  const desktopNotificationsEnabledRef = useRef(desktopNotificationsEnabled);
   const incrementUnreadRef = useRef(incrementUnread);
   const onTokenRefreshedRef = useRef(onTokenRefreshed);
 
@@ -124,6 +145,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
   useEffect(() => { messageSoundVolumeRef.current = messageSoundVolume; }, [messageSoundVolume]);
   useEffect(() => { messageSoundFileRef.current = messageSoundFile; preloadNotificationSound(messageSoundFile); }, [messageSoundFile]);
   useEffect(() => { notificationBadgeEnabledRef.current = notificationBadgeEnabled; }, [notificationBadgeEnabled]);
+  useEffect(() => { desktopNotificationsEnabledRef.current = desktopNotificationsEnabled; }, [desktopNotificationsEnabled]);
   useEffect(() => { incrementUnreadRef.current = incrementUnread; }, [incrementUnread]);
   useEffect(() => { onTokenRefreshedRef.current = onTokenRefreshed; }, [onTokenRefreshed]);
 
@@ -352,7 +374,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
 
       // ---- Background chat notification (non-focused servers) ----
 
-      socket.on("chat:new", (msg: { sender_server_id: string; conversation_id?: string }) => {
+      socket.on("chat:new", (msg: BackgroundMessage) => {
         if (host === currentlyViewingServerRef.current?.host) return;
         const myId = socket.id ? clientsRef.current[host]?.[socket.id]?.serverUserId : undefined;
         if (myId && msg.sender_server_id === myId) return;
@@ -376,6 +398,12 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
         }
         if (notificationBadgeEnabledRef.current) {
           incrementUnreadRef.current();
+        if (desktopNotificationsEnabledRef.current) {
+          showDesktopNotification(
+            msg.sender_nickname || "New message",
+            notificationBody(msg),
+          );
+        }
         }
       });
 

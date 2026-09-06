@@ -182,6 +182,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return () => ipcRenderer.removeListener("update-status", handler);
   },
 
+  showNotification(payload: { title: string; body?: string }) {
+    ipcRenderer.send("show-notification", payload);
+  },
+
   setBadgeCount(count: number) {
     ipcRenderer.send("set-badge-count", count);
   },

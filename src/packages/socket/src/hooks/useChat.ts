@@ -6,6 +6,7 @@ import useSound from "use-sound";
 import messageSoundMp3 from "@/audio/src/assets/universfield-computer-mouse-click-02-383961.mp3";
 import type { SealDecision } from "@/common";
 import { getServerAccessToken, getUploadsFileUrl, markChannelUnread, useUnreadBadge } from "@/common";
+import { notificationBody, showDesktopNotification } from "@/lib/desktopNotification";
 import { useSettings } from "@/settings";
 import { type ForumTag,serverDetailsList as ServerDetailsList } from "@/settings/src/types/server";
 
@@ -82,9 +83,11 @@ export function useChat({
 }: UseChatParams): UseChatReturn {
   const serverHost = currentlyViewingServer?.host || "";
   const { incrementUnread } = useUnreadBadge();
-  const { notificationBadgeEnabled, messageSoundEnabled, messageSoundVolume, customMessageSoundFile } = useSettings();
+  const { notificationBadgeEnabled, desktopNotificationsEnabled, messageSoundEnabled, messageSoundVolume, customMessageSoundFile } = useSettings();
   const notificationBadgeEnabledRef = useRef(notificationBadgeEnabled);
   useEffect(() => { notificationBadgeEnabledRef.current = notificationBadgeEnabled; }, [notificationBadgeEnabled]);
+  const desktopNotificationsEnabledRef = useRef(desktopNotificationsEnabled);
+  useEffect(() => { desktopNotificationsEnabledRef.current = desktopNotificationsEnabled; }, [desktopNotificationsEnabled]);
 
   const [playMessageSound] = useSound(customMessageSoundFile || messageSoundMp3, {
     volume: messageSoundVolume / 100,
@@ -423,6 +426,15 @@ export function useChat({
       }
       if (msg.sender_server_id !== currentUserId && !document.hasFocus()) {
         if (notificationBadgeEnabledRef.current) incrementUnread();
+        if (desktopNotificationsEnabledRef.current) {
+          /* A message that is still sealed says so rather than showing the
+             ciphertext or a blank body. It has not been opened yet at this
+             point — that happens in the effect above, after this. */
+          showDesktopNotification(
+            msg.sender_nickname || "New message",
+            notificationBody(msg),
+          );
+        }
         if (messageSoundEnabledRef.current) {
           try { messageSoundRef.current(); } catch { /* ignore playback errors */ }
         }
