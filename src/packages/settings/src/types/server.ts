@@ -1,3 +1,10 @@
+export type ForumTag = {
+  id: string;
+  name: string;
+  emoji?: string | null;
+  color?: string | null;
+};
+
 export type Channel = {
   name: string;
   type: "text" | "voice";
@@ -12,6 +19,8 @@ export type Channel = {
   layout?: "chat" | "forum";
   /** An automated channel: only bots and the system may post. People read only. GRYT-982. */
   automated?: boolean;
+  /** A forum channel's tag palette. GRYT-981 Stage 3. */
+  forumTags?: ForumTag[];
   /**
    * Which permission scope decides what each role may do here, or null when the
    * channel has no opinion.

@@ -24,6 +24,7 @@ export interface ForumTopic {
   creator_nickname: string | null;
   creator_avatar_file_id: string | null;
   preview: string | null;
+  tags: string[];
 }
 
 export type ForumFilter = "all" | "unanswered" | "solved" | "mine";
@@ -45,7 +46,7 @@ function asSocket(s: unknown): ForumSocket | null {
 export interface UseForumResult {
   topics: ForumTopic[];
   loading: boolean;
-  createTopic: (title: string, text: string) => void;
+  createTopic: (title: string, text: string, tagIds?: string[]) => void;
 }
 
 export function useForum(
@@ -101,11 +102,11 @@ export function useForum(
     };
   }, [socketConnection, conversationId]);
 
-  const createTopic = useCallback((title: string, text: string) => {
+  const createTopic = useCallback((title: string, text: string, tagIds: string[] = []) => {
     const socket = asSocket(socketConnection);
     const accessToken = getServerAccessToken(serverHost || "");
     if (!socket || !accessToken) return;
-    socket.emit("forum:topic:create", { conversationId, title: title.trim(), text: text.trim(), accessToken });
+    socket.emit("forum:topic:create", { conversationId, title: title.trim(), text: text.trim(), tagIds, accessToken });
   }, [socketConnection, conversationId, serverHost]);
 
   return { topics, loading, createTopic };

@@ -82,6 +82,7 @@ interface MobileServerViewProps {
   channelType?: "text" | "voice";
   automated?: boolean;
   layout?: "chat" | "forum";
+  forumTags?: import("@/settings/src/types/server").ForumTag[];
   conversationKind?: "channel" | "dm";
   headerAction?: React.ReactNode;
   currentUserNickname?: string;
@@ -183,6 +184,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
           channelType={props.channelType}
           automated={props.automated}
           layout={props.layout}
+          forumTags={props.forumTags}
           conversationKind={props.conversationKind}
           headerAction={props.headerAction}
           serverName={props.serverName}

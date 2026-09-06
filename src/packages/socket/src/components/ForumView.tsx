@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 
+import type { ForumTag } from "@/settings/src/types/server";
+
 import { PiChatsFill } from "../../../../lib/icons";
 import { type ForumFilter, type ForumTopic,useForum } from "../hooks/useForum";
 import type { ThreadSummary } from "../hooks/useThreads";
@@ -10,6 +12,7 @@ interface ForumViewProps {
   conversationId: string;
   serverHost?: string;
   currentUserId?: string;
+  forumTags: ForumTag[];
   onOpenTopic: (summary: ThreadSummary) => void;
 }
 
@@ -56,16 +59,22 @@ function matchesFilter(t: ForumTopic, filter: ForumFilter, currentUserId?: strin
   }
 }
 
-export function ForumView({ socketConnection, conversationId, serverHost, currentUserId, onOpenTopic }: ForumViewProps) {
+export function ForumView({ socketConnection, conversationId, serverHost, currentUserId, forumTags, onOpenTopic }: ForumViewProps) {
   const { topics, loading, createTopic } = useForum(socketConnection, conversationId, serverHost);
   const [filter, setFilter] = useState<ForumFilter>("all");
   const [composing, setComposing] = useState(false);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
+  const [newTags, setNewTags] = useState<Set<string>>(new Set());
+  const tagById = useMemo(() => new Map(forumTags.map((t) => [t.id, t])), [forumTags]);
+  const toggle = (set: Set<string>, id: string) => { const n = new Set(set); if (n.has(id)) n.delete(id); else n.add(id); return n; };
 
   const shown = useMemo(
-    () => topics.filter((t) => matchesFilter(t, filter, currentUserId)),
-    [topics, filter, currentUserId],
+    () => topics.filter((t) =>
+      matchesFilter(t, filter, currentUserId) &&
+      (selectedTags.size === 0 || t.tags.some((id) => selectedTags.has(id)))),
+    [topics, filter, currentUserId, selectedTags],
   );
 
   const counts = useMemo(() => ({
@@ -77,9 +86,10 @@ export function ForumView({ socketConnection, conversationId, serverHost, curren
 
   const submit = () => {
     if (!title.trim() || !body.trim()) return;
-    createTopic(title, body);
+    createTopic(title, body, [...newTags]);
     setTitle("");
     setBody("");
+    setNewTags(new Set());
     setComposing(false);
   };
 
@@ -109,7 +119,7 @@ export function ForumView({ socketConnection, conversationId, serverHost, curren
         </div>
         <span style={{ flex: 1 }} />
         <button
-          onClick={() => setComposing(true)}
+          onClick={() => { setNewTags(new Set()); setComposing(true); }}
           style={{
             background: "var(--gryt-accent-9)", color: "var(--gryt-on-accent, #0c0a20)", border: "none",
             fontWeight: 700, fontSize: 13, padding: "8px 15px", borderRadius: "var(--gryt-radius-full)",
@@ -119,6 +129,32 @@ export function ForumView({ socketConnection, conversationId, serverHost, curren
           <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> New topic
         </button>
       </div>
+
+      {forumTags.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 7, padding: "10px 0 12px", borderBottom: "1px solid var(--gryt-neutral-3)" }}>
+          {forumTags.map((tag) => {
+            const active = selectedTags.has(tag.id);
+            return (
+              <button
+                key={tag.id}
+                type="button"
+                onClick={() => setSelectedTags((s) => toggle(s, tag.id))}
+                aria-pressed={active}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 600,
+                  padding: "3px 10px", borderRadius: "var(--gryt-radius-full)", cursor: "pointer",
+                  background: active ? "var(--gryt-accent-3)" : "var(--gryt-neutral-3)",
+                  color: active ? "var(--gryt-accent-11)" : "var(--gryt-neutral-11)",
+                  border: `1px solid ${active ? "transparent" : "var(--gryt-neutral-6)"}`,
+                }}
+              >
+                <span style={{ width: 7, height: 7, borderRadius: 2, background: tag.color || "var(--gryt-accent-9)" }} />
+                {tag.emoji ? `${tag.emoji} ` : ""}{tag.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Topic list */}
       <div style={{ flex: 1, overflowY: "auto" }}>
@@ -147,6 +183,20 @@ export function ForumView({ socketConnection, conversationId, serverHost, curren
               <div style={{ fontWeight: 700, fontSize: 14.5, color: "var(--gryt-neutral-12)", gridColumn: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 <EmojiText text={t.title || t.preview || "Untitled topic"} />
               </div>
+              {t.tags.length > 0 && (
+                <div style={{ gridColumn: 1, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                  {t.tags.map((id) => {
+                    const tag = tagById.get(id);
+                    if (!tag) return null;
+                    return (
+                      <span key={id} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: "var(--gryt-radius-full)", background: "var(--gryt-neutral-3)", color: "var(--gryt-neutral-11)", border: "1px solid var(--gryt-neutral-6)" }}>
+                        <span style={{ width: 6, height: 6, borderRadius: 2, background: tag.color || "var(--gryt-accent-9)" }} />
+                        {tag.emoji ? `${tag.emoji} ` : ""}{tag.name}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
               <div style={{ gridColumn: 1, color: "var(--gryt-neutral-10)", fontSize: 12, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                 <span>{t.creator_nickname || "Someone"}</span>
                 <span>·</span>
@@ -194,6 +244,34 @@ export function ForumView({ socketConnection, conversationId, serverHost, curren
                 rows={5}
                 style={{ background: "var(--gryt-neutral-3)", border: "1px solid var(--gryt-neutral-6)", borderRadius: "var(--gryt-radius-sm)", padding: "10px 12px", color: "var(--gryt-neutral-12)", fontSize: 14, fontFamily: "inherit", resize: "vertical", outline: "none" }}
               />
+              {forumTags.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <span className="text-sm font-medium">Tags</span>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                    {forumTags.map((tag) => {
+                      const active = newTags.has(tag.id);
+                      return (
+                        <button
+                          key={tag.id}
+                          type="button"
+                          onClick={() => setNewTags((s) => toggle(s, tag.id))}
+                          aria-pressed={active}
+                          style={{
+                            display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 600,
+                            padding: "4px 10px", borderRadius: "var(--gryt-radius-full)", cursor: "pointer",
+                            background: active ? "var(--gryt-accent-3)" : "var(--gryt-neutral-3)",
+                            color: active ? "var(--gryt-accent-11)" : "var(--gryt-neutral-11)",
+                            border: `1px solid ${active ? "transparent" : "var(--gryt-neutral-6)"}`,
+                          }}
+                        >
+                          <span style={{ width: 7, height: 7, borderRadius: 2, background: tag.color || "var(--gryt-accent-9)" }} />
+                          {tag.emoji ? `${tag.emoji} ` : ""}{tag.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
                 <button
                   onClick={() => setComposing(false)}
