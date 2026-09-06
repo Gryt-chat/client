@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { PiChatsFill } from "../../../../lib/icons";
 import type { ChatMessage } from "./chatUtils";
@@ -89,6 +89,16 @@ export function ThreadPanel({ thread, root, messages, loading, memberList, onClo
   const REPLY_MAX = 4000;
   const tooLong = draft.length > REPLY_MAX;
 
+  // Escape closes the panel. Without it the only way out is the ×, which sits
+  // next to "Mark solved" — and a miss there changes the topic's state.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   const send = () => {
     const t = draft.trim();
     if (!t || tooLong) return;
@@ -140,6 +150,12 @@ export function ThreadPanel({ thread, root, messages, loading, memberList, onClo
             ✓ Mark solved
           </button>
         ))}
+        {onSetStatus && (
+          <span
+            aria-hidden="true"
+            style={{ width: 1, alignSelf: "stretch", margin: "4px 2px", background: "var(--gryt-neutral-6)" }}
+          />
+        )}
         <button
           onClick={onClose}
           aria-label="Close thread"
