@@ -16,11 +16,12 @@ export {
   updatePluginApiCapabilities,
   updatePluginApiTheme,
 } from "./src/pluginApi";
-export type { PluginMessage } from "./src/pluginMessages";
+export type { AnnouncedPlugin, PluginMessage } from "./src/pluginMessages";
 export {
   deliverPluginMessage,
   dropListeners as dropPluginApiListeners,
   forgetAnnouncedPlugins,
+  pluginsOn,
   setAnnouncedPlugins,
 } from "./src/pluginMessages";
 export type { AddonManifest, AddonUpdate } from "./src/types";

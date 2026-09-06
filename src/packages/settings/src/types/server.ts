@@ -138,14 +138,17 @@ export type serverDetails = {
     upload_max_bytes?: number | null;
     version?: string;
     /**
-     * The plugins this server runs that asked to be visible (GRYT-939).
+     * Every plugin this server is running, and what each one may do
+     * (GRYT-939, GRYT-941).
      *
-     * Empty on almost every server. A plugin has to say `"public": true` in its
-     * own manifest to be here, because what an operator runs is otherwise not
-     * something members are told — so an absence means "none said so" rather
-     * than "none".
+     * All of them — an operator cannot keep one off this list. A member is the
+     * one whose messages are being read, so what code sits between them and the
+     * people they are talking to is theirs to know.
+     *
+     * Absent from a server too old to say, which is not the same as a server
+     * running nothing.
      */
-    plugins?: { id: string; version: string }[];
+    plugins?: { id: string; version: string; capabilities?: string[] }[];
   };
   error?: string;
   message?: string;

@@ -69,22 +69,46 @@ function copyFor(message: PluginMessage): PluginMessage {
 
 const listeners = new Map<string, Set<PluginMessageHandler>>();
 
+/** A plugin a server is running, as it describes itself. */
+export interface AnnouncedPlugin {
+  id: string;
+  version: string;
+  /**
+   * What it may do, in the server's own vocabulary — `messages:read`,
+   * `moderation` and so on.
+   *
+   * Here because it is the half a person can act on (GRYT-941). "This server
+   * runs automod" says nothing; "…which reads every message you send" is the
+   * sentence somebody decides on.
+   */
+  capabilities: string[];
+}
+
 /**
- * Which plugins each server says it runs (GRYT-939).
+ * Which plugins each server says it runs (GRYT-939, GRYT-941).
  *
- * Only the ones whose manifest asked to be visible, so this is empty for almost
- * every server and short for the rest. Kept per host because a person is on
- * several and the answer differs per server, which is the whole question a
- * plugin is asking.
+ * Every plugin, not a chosen few: a server names all of them or it is running
+ * an old build. Kept per host because a person is on several and the answer
+ * differs per server.
  */
-const announcedByHost = new Map<string, { id: string; version: string }[]>();
+const announcedByHost = new Map<string, AnnouncedPlugin[]>();
 
 /** Replaces the list for one host, as `server:details` arrives. */
 export function setAnnouncedPlugins(
   host: string,
-  plugins: readonly { id: string; version: string }[],
+  plugins: readonly AnnouncedPlugin[],
 ): void {
-  announcedByHost.set(host, plugins.map((p) => ({ id: p.id, version: p.version })));
+  announcedByHost.set(
+    host,
+    plugins.map((p) => ({
+      id: p.id,
+      version: p.version,
+      /* Copied rather than referenced. What a plugin may do is the half a
+         person decides on, and a list anything downstream can edit is not one
+         to decide on. */
+      capabilities: [...(p.capabilities ?? [])],
+    })),
+  );
 }
 
 /** Forget a server that is gone, so a plugin does not keep sending into it. */
@@ -106,6 +130,21 @@ export function serversRunning(addonId: string): { host: string; version: string
     if (match) out.push({ host, version: match.version });
   }
   return out.sort((a, b) => a.host.localeCompare(b.host));
+}
+
+/**
+ * Everything one server is running, for showing somebody what is between them
+ * and the people they are talking to (GRYT-941).
+ *
+ * Not for plugins — this is the answer to "what is reading my messages here",
+ * and the app is what should be drawing it. Empty from a server too old to say,
+ * which is not the same as a server running nothing.
+ */
+export function pluginsOn(host: string): AnnouncedPlugin[] {
+  return (announcedByHost.get(host) ?? []).map((p) => ({
+    ...p,
+    capabilities: [...p.capabilities],
+  }));
 }
 
 /** For a check script, which must not inherit a previous case's servers. */

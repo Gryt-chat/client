@@ -166,17 +166,26 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       rememberPlacements(host, data.sidebar_items);
     }
 
-    /* Which plugins this server admits to running, for a client plugin deciding
-       whether its other half is here (GRYT-939). Replaced rather than merged,
-       so a plugin the operator removed stops being announced on the next
-       details. Read defensively because an older server sends nothing. */
+    /* Everything this server is running, and what each one may do (GRYT-939,
+       GRYT-941). For a client plugin finding its other half, and for showing
+       somebody what sits between them and the people they are talking to.
+
+       Replaced rather than merged, so a plugin the operator removed stops being
+       listed on the next details. Read defensively because a server too old to
+       say sends nothing, and an entry with no capabilities is a plugin that
+       declared none rather than one that would not say. */
     setAnnouncedPlugins(
       host,
       Array.isArray(data.server_info?.plugins)
-        ? data.server_info.plugins.filter(
-            (p): p is { id: string; version: string } =>
-              typeof p?.id === "string" && typeof p?.version === "string",
-          )
+        ? data.server_info.plugins
+            .filter((p) => typeof p?.id === "string" && typeof p?.version === "string")
+            .map((p) => ({
+              id: p.id,
+              version: p.version,
+              capabilities: Array.isArray(p.capabilities)
+                ? p.capabilities.filter((c): c is string => typeof c === "string")
+                : [],
+            }))
         : [],
     );
 
