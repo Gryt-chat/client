@@ -69,6 +69,50 @@ function copyFor(message: PluginMessage): PluginMessage {
 
 const listeners = new Map<string, Set<PluginMessageHandler>>();
 
+/**
+ * Which plugins each server says it runs (GRYT-939).
+ *
+ * Only the ones whose manifest asked to be visible, so this is empty for almost
+ * every server and short for the rest. Kept per host because a person is on
+ * several and the answer differs per server, which is the whole question a
+ * plugin is asking.
+ */
+const announcedByHost = new Map<string, { id: string; version: string }[]>();
+
+/** Replaces the list for one host, as `server:details` arrives. */
+export function setAnnouncedPlugins(
+  host: string,
+  plugins: readonly { id: string; version: string }[],
+): void {
+  announcedByHost.set(host, plugins.map((p) => ({ id: p.id, version: p.version })));
+}
+
+/** Forget a server that is gone, so a plugin does not keep sending into it. */
+export function forgetAnnouncedPlugins(host: string): void {
+  announcedByHost.delete(host);
+}
+
+/**
+ * The servers running the other half of this plugin, and which version.
+ *
+ * A plugin asks this to decide whether to say anything at all. Sending anyway
+ * is harmless — the server drops it — but a plugin that knows can stop polling,
+ * stop drawing an empty panel, and tell somebody why nothing is happening.
+ */
+export function serversRunning(addonId: string): { host: string; version: string }[] {
+  const out: { host: string; version: string }[] = [];
+  for (const [host, plugins] of announcedByHost) {
+    const match = plugins.find((p) => p.id === addonId);
+    if (match) out.push({ host, version: match.version });
+  }
+  return out.sort((a, b) => a.host.localeCompare(b.host));
+}
+
+/** For a check script, which must not inherit a previous case's servers. */
+export function resetAnnouncedPlugins(): void {
+  announcedByHost.clear();
+}
+
 const key = (addonId: string, topic: string) => `${addonId}\n${topic}`;
 
 /** Returns a function that stops listening. */

@@ -3,7 +3,12 @@ import {
   addonMay,
   declaredCapabilities,
 } from "./capabilities";
-import { type PluginMessageHandler, requireTopic, subscribe } from "./pluginMessages";
+import {
+  type PluginMessageHandler,
+  requireTopic,
+  serversRunning,
+  subscribe,
+} from "./pluginMessages";
 
 type ThemeInfo = { appearance: "light" | "dark"; accentColor: string };
 type ThemeChangeHandler = (theme: ThemeInfo) => void;
@@ -30,6 +35,16 @@ export interface PluginMessaging {
   send(topic: string, data: unknown, host?: string): void;
   /** Hear what the server half sends. Returns a function that stops listening. */
   on(topic: string, handler: PluginMessageHandler): () => void;
+  /**
+   * The servers running the other half of this plugin, and which version
+   * (GRYT-939).
+   *
+   * Only servers whose copy asked to be visible, so an empty list means "none
+   * that said so" rather than "none". Sending anyway is harmless — a server
+   * running no half drops it — but a plugin that knows can stop polling, stop
+   * drawing an empty panel, and tell somebody why nothing is happening.
+   */
+  servers(): { host: string; version: string }[];
 }
 
 export interface GrytPluginAPI {
@@ -140,6 +155,10 @@ export function initPluginApi(version: string): void {
         on(topic, handler) {
           requireMessaging(addonId);
           return subscribe(addonId, topic, handler);
+        },
+        servers() {
+          requireMessaging(addonId);
+          return serversRunning(addonId);
         },
       };
     },

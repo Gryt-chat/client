@@ -3,6 +3,7 @@ import { Dispatch, MutableRefObject, SetStateAction } from "react";
 import toast from "react-hot-toast";
 import { Socket } from "socket.io-client";
 
+import { setAnnouncedPlugins } from "@/addons";
 import {
   addMention,
   getServerAccessToken,
@@ -164,6 +165,20 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     if (Array.isArray(data.sidebar_items)) {
       rememberPlacements(host, data.sidebar_items);
     }
+
+    /* Which plugins this server admits to running, for a client plugin deciding
+       whether its other half is here (GRYT-939). Replaced rather than merged,
+       so a plugin the operator removed stops being announced on the next
+       details. Read defensively because an older server sends nothing. */
+    setAnnouncedPlugins(
+      host,
+      Array.isArray(data.server_info?.plugins)
+        ? data.server_info.plugins.filter(
+            (p): p is { id: string; version: string } =>
+              typeof p?.id === "string" && typeof p?.version === "string",
+          )
+        : [],
+    );
 
     if (data.error === "join_required") {
       const existingAccessToken = getServerAccessToken(host);
