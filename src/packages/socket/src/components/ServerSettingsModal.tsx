@@ -34,7 +34,15 @@ type SetupRequiredDetail = {
   };
 };
 
-type SettingsOpenDetail = { host: string };
+/**
+ * `tab` is a request, not an instruction.
+ *
+ * The tabs somebody sees depend on their permissions, so a caller asking for
+ * one cannot know it exists for them. An unknown or hidden value would leave
+ * the strip with nothing selected and no panel under it, so the effect below
+ * drops back to overview instead.
+ */
+type SettingsOpenDetail = { host: string; tab?: string };
 
 export function ServerSettingsModal() {
   const { sockets, serverDetailsList, tokenRevision } = useSockets();
@@ -92,7 +100,7 @@ export function ServerSettingsModal() {
       if (!h) return;
       setHost(h);
       setInitialOverviewSettings(undefined);
-      setTab("overview");
+      setTab(event.detail?.tab || "overview");
       setIsOpen(true);
     };
     window.addEventListener("server_settings_open", handler as EventListener);
@@ -255,6 +263,26 @@ export function ServerSettingsModal() {
   const TAB_CONFIG = ALL_TABS.filter(
     (t) => !permissionKnown || !t.needs || t.needs.some((p) => hasPermission(p)),
   );
+
+  /*
+   * Fall back when the selected tab is not one of the visible ones.
+   *
+   * A caller can ask to open on a tab, and whether that tab exists depends on
+   * permissions this modal has not necessarily heard about yet — the list
+   * arrives with the server details, so the first render after opening can be
+   * missing it. Left alone, the strip would show no selection and the body
+   * would be empty, which reads as a broken settings screen rather than as a
+   * tab somebody may not open.
+   */
+  // Keyed on the values rather than the array: TAB_CONFIG is rebuilt every
+  // render, so depending on it directly would re-run this on every one.
+  const visibleTabValues = TAB_CONFIG.map((t) => t.value).join(",");
+  useEffect(() => {
+    if (!isOpen || !visibleTabValues) return;
+    const values = visibleTabValues.split(",");
+    if (values.includes(tab)) return;
+    setTab(values[0]);
+  }, [isOpen, tab, visibleTabValues]);
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={handleDialogChange}>

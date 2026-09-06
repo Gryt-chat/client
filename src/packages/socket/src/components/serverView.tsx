@@ -665,6 +665,15 @@ export const ServerView = () => {
     window.dispatchEvent(new CustomEvent("server_settings_open", { detail: { host } }));
   };
 
+  /* Same modal, opened on the tab somebody asked for. The modal drops back to
+     overview if their permissions do not include this one, so asking for it
+     here does not need to check first. */
+  const onOpenInvites = () => {
+    window.dispatchEvent(
+      new CustomEvent("server_settings_open", { detail: { host, tab: "invites" } }),
+    );
+  };
+
   /**
    * The conversation, as one element used by two layouts.
    *
@@ -765,6 +774,7 @@ export const ServerView = () => {
             isServerUnreachable={isServerUnreachable}
             isConnectedToVoiceOnThisServer={isVoiceOnThisServer}
             onOpenSettings={onOpenSettings}
+            onOpenInvites={onOpenInvites}
             onOpenReports={() => setReportsOpen(true)}
             pendingReportCount={pendingReportCount}
             updateAvailable={updateAvailable}
@@ -852,6 +862,7 @@ export const ServerView = () => {
               pinned={pinChannelsSidebar}
               onTogglePinned={() => setPinChannelsSidebar(!pinChannelsSidebar)}
               onOpenSettings={onOpenSettings}
+              onOpenInvites={onOpenInvites}
               onOpenReports={() => setReportsOpen(true)}
               pendingReportCount={pendingReportCount}
               updateAvailable={updateAvailable}
