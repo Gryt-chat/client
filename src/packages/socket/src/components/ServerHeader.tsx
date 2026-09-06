@@ -152,6 +152,26 @@ export const ServerHeader = ({
                 <Menu.Item onClick={copyHost}>Copy server address</Menu.Item>
               )}
 
+              {/* Everyone, not just whoever can manage the place (GRYT-942).
+                  A server plugin reads what goes through the server, and the
+                  people sending it are who the list is for — a safety net only
+                  the operator can see is not one.
+
+                  Next to Leave on purpose. Leaving is what somebody does about
+                  what they read here, and putting the two together is the
+                  honest arrangement rather than an accident of ordering. */}
+              {serverHost && (
+                <Menu.Item
+                  onClick={() =>
+                    window.dispatchEvent(
+                      new CustomEvent("server_plugins_open", { detail: { host: serverHost } }),
+                    )
+                  }
+                >
+                  What this server runs
+                </Menu.Item>
+              )}
+
               <Menu.Separator />
               <Menu.Item className="text-gryt-danger" onClick={onLeave}>
                 Leave
