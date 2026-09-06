@@ -6,6 +6,7 @@ import { getUploadsFileUrl } from "@/common";
 
 import { PiSignInBold, PiSignOutBold } from "../../../../lib/icons";
 import { useServerPermissions } from "../hooks/usePermissions";
+import { getFrequentReactions } from "../utils/recentReactions";
 import type { CustomEmojiEntry } from "../utils/remarkEmoji";
 import { sealedPlaceholder } from "../utils/sealedText";
 import { BotTag } from "./BotTag";
@@ -200,6 +201,20 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
 
   const showToolbar = isHovered && !isCtxMenuOpen && !isReactionPickerOpen;
 
+  /*
+   * The four this person reaches for most, read while the toolbar is going up.
+   *
+   * Read on hover rather than held in state: the list only changes when they
+   * react, the row re-renders on hover anyway, and a store this small is
+   * cheaper to read than to subscribe to. It also means the bar is current the
+   * next time they hover, without anything having to tell it.
+   *
+   * Empty for somebody who may not react, which leaves the toolbar as it was.
+   */
+  const quickReactions = showToolbar && can("add_reactions")
+    ? getFrequentReactions(4, serverHost)
+    : undefined;
+
   const content = (
     <>
       {meta.showNewMessageDivider && <NewMessagesDivider />}
@@ -349,6 +364,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                 )}
               </div>
               <MessageContent
+                quickReactions={quickReactions}
                 m={m}
                 rowRef={rowRef}
                 bgColor={bgColor}
@@ -385,6 +401,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
           <div className="flex" style={{ width: "100%", paddingLeft: 63 }}>
             <div className="flex flex-col" style={{ flex: 1, minWidth: 0 }}>
               <MessageContent
+                quickReactions={quickReactions}
                 m={m}
                 rowRef={rowRef}
                 bgColor={bgColor}
@@ -463,6 +480,7 @@ function MessageContent({
   rowRef,
   bgColor,
   showToolbar,
+  quickReactions,
   canDelete,
   customEmojiList,
   memberNicknames,
@@ -491,6 +509,8 @@ function MessageContent({
   rowRef: React.RefObject<HTMLDivElement | null>;
   bgColor: string;
   showToolbar: boolean;
+  /** The reactions this person uses most, for the hover bar. */
+  quickReactions?: string[];
   canDelete: boolean;
   customEmojiList: CustomEmojiEntry[];
   memberNicknames: string[];
@@ -541,6 +561,8 @@ function MessageContent({
             style={{ position: "absolute", top: -16, right: 8, zIndex: 10 }}
           >
             <MessageHoverToolbar
+              quickReactions={quickReactions}
+              onQuickReaction={(src) => onReaction(src, m)}
               onReply={() => onReply(m)}
               canDelete={canDelete}
               onDelete={canDelete ? () => onDelete(m) : undefined}
