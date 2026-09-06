@@ -12,17 +12,10 @@ import { PiLockOpen, PiLockSimpleFill } from "../../../../lib/icons";
  * **Quiet, and not dismissible.** It is a standing property rather than an
  * alert: shouting it every time teaches people to stop seeing it, and a fact
  * that stays true should not be something you agree never to be told again.
- *
- * This said "This conversation isn't encrypted" with no condition on it from
- * GRYT-709 until 2026-09-06. Encryption landed in GRYT-729 and nobody came
- * back, so for that whole stretch it told people something false about a
- * conversation that was in fact sealed — while the messages in it visibly
- * failed to open, which is a confusing pair to be handed at once.
  */
 
-/* The anchor is the section about the server being able to read a DM, so it
-   only fits the plaintext case. The sealed case links to the guide itself
-   rather than to a heading that contradicts the sentence above it. */
+/* The plaintext anchor names a section that contradicts the sealed sentence,
+   so that case links to the guide root. */
 const SECURITY_DOC_PLAINTEXT =
   "https://docs.gryt.chat/docs/guide/security#direct-messages-are-not-private-from-the-server";
 const SECURITY_DOC_SEALED = "https://docs.gryt.chat/docs/guide/security";

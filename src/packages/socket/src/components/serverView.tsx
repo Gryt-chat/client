@@ -1078,11 +1078,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
         serverHost={host}
         memberList={memberLists[host]}
       />
-      {/*
-        The last stop before a private conversation goes out readable
-        (GRYT-729). Asked once per conversation per blocking state, so it is a
-        decision rather than a thing to click past every time.
-      */}
+      {/* Asked once per conversation per blocking state, not every send. */}
       <AlertDialog.Root
         open={!!plaintextPrompt}
         onOpenChange={(open) => { if (!open) cancelPlaintextSend(); }}

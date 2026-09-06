@@ -1,13 +1,8 @@
 /**
- * OS notifications, for a message that arrives while somebody is elsewhere.
+ * OS notifications. Electron's Notification is main-process only, so the app
+ * goes through IPC and the browser uses the web API.
  *
- * Two ways of doing the same thing. In the desktop app it goes through the
- * main process, because Electron's Notification is a main-process API and the
- * renderer cannot reach it. In a browser at gryt.chat it is the web
- * Notification API, which needs permission first.
- *
- * Both are silent. The app plays its own message sound from the same event,
- * and a second one from the OS is two noises for one message.
+ * Both silent: the app plays its own message sound from the same event.
  */
 
 /** How much of a message goes in the body before it is cut. */
@@ -15,13 +10,7 @@ const MAX_BODY = 140;
 
 export type NotificationPermissionState = "granted" | "denied" | "default" | "unsupported";
 
-/**
- * Whether this build can raise one at all.
- *
- * The desktop app answers yes as long as it is new enough to have the bridge;
- * an older build simply does not have `showNotification` on the API object,
- * which is the same check the rest of `electronAPI` uses for added methods.
- */
+/** Whether this build can raise one at all. */
 export function canNotify(): boolean {
   if (typeof window === "undefined") return false;
   if (window.electronAPI?.showNotification) return true;
@@ -38,11 +27,8 @@ export function notificationPermission(): NotificationPermissionState {
 }
 
 /**
- * Ask the browser, if it has not been asked.
- *
- * Called from the settings toggle rather than on startup, because Chrome and
- * Firefox both refuse a permission prompt that is not attached to something
- * the person just clicked.
+ * Asked from the settings toggle: Chrome and Firefox both refuse a prompt
+ * that is not attached to a click.
  */
 export async function requestNotificationPermission(): Promise<NotificationPermissionState> {
   if (typeof window === "undefined") return "unsupported";
@@ -57,12 +43,8 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
 }
 
 /**
- * What to put under the title.
- *
- * An encrypted message that has not been opened yet says nothing about itself,
- * on purpose: the ciphertext is right there in `sealed` and putting anything
- * derived from it on the lock screen would be worse than saying little. A
- * message with only files on it says so rather than arriving blank.
+ * An unopened envelope says nothing about itself: the ciphertext is right
+ * there in `sealed`.
  */
 export function notificationBody(msg: {
   text?: string | null;

@@ -553,15 +553,7 @@ function MessageContent({
   onMouseEnter: () => void;
   onMouseLeave: () => void;
   onOpenReactionPicker: (anchorEl?: HTMLElement) => void;
-  /**
-   * This one went to the server in the clear, in a conversation that is
-   * meant to be private (GRYT-729).
-   *
-   * Marked on the message rather than only above the composer, because the
-   * composer notice is about what happens next and this is about what
-   * already left. A conversation that fell back partway through looks
-   * identical either way otherwise.
-   */
+  /** Went out in the clear. */
   unencrypted?: boolean;
 }) {
   const hasReactions = !!(m.reactions && m.reactions.length > 0);
@@ -576,9 +568,7 @@ function MessageContent({
       }}
     >
     <div className="flex flex-col" ref={rowRef} data-message-id={m.message_id} style={{
-        /* A red rule down the side of anything that went out in the clear.
-           Inset rather than a border so the row does not shift by two pixels
-           depending on whether it was encrypted. */
+        /* Inset so the row does not shift by two pixels depending on it. */
         boxShadow: unencrypted ? "inset 2px 0 0 var(--gryt-danger-9)" : undefined,
         padding: "2px 6px",
         cursor: "default",

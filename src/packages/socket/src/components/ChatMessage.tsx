@@ -27,13 +27,7 @@ export const MessageHoverToolbar = ({
    */
   quickReactions?: string[];
   onQuickReaction?: (src: string) => void;
-  /**
-   * Open the full picker, for a reaction that is not one of the four above.
-   *
-   * Passed only when this person may react, so the button follows the same
-   * permission as the emoji beside it without this component knowing what a
-   * permission is.
-   */
+  /** Open the full picker. Passed only when this person may react. */
   onOpenEmojiPicker?: () => void;
 }) => {
   const showQuick = !!onQuickReaction && !!quickReactions && quickReactions.length > 0;
@@ -49,10 +43,8 @@ export const MessageHoverToolbar = ({
         padding: "2px 3px",
         boxShadow: "0 2px 10px rgba(0, 0, 0, 0.18)",
         pointerEvents: "auto",
-        /* Chrome, not content. Without this a drag across a few rows copies the
-           four quick reactions, the reply arrow and the bin along with what
-           people actually wrote, because the bar sits earlier in the DOM than
-           the message text it floats over. */
+        /* Chrome, not content: the bar sits earlier in the DOM than the text
+           it floats over, so a drag copied it too. */
         userSelect: "none",
         whiteSpace: "nowrap",
       }}
@@ -87,10 +79,6 @@ export const MessageHoverToolbar = ({
           <EmojiText text={src} emojiSize={16} disableTooltip />
         </button>
       ))}
-      {/* Anything the four above are not.
-          The four are what this person reaches for, so the fifth reaction they
-          want is the one they cannot get here, and right-clicking the message
-          to find it is a step people do not know is there. */}
       {onOpenEmojiPicker && (
         <button
           onClick={onOpenEmojiPicker}

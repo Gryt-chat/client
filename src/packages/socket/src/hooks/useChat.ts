@@ -210,26 +210,10 @@ export function useChat({
   });
 
   /*
-   * Open whatever arrived sealed (GRYT-729).
-   *
-   * Here rather than in `onNew` and `onHistory` separately, because both put
-   * messages into the same state and opening is asynchronous — doing it at
-   * arrival would mean two copies racing each other's `setChatMessages`.
-   *
-   * What is already being opened is tracked in a ref, not in `sealedState`.
-   * The state write below is for the UI, and it is also a change to
-   * `chatMessages`, which this effect depends on. Guarding on state therefore
-   * meant: mark them opening, re-render, effect re-runs, finds nothing pending
-   * because they are all marked, and the run that is actually decrypting gets
-   * torn down. Its results were then thrown away and the messages sat at
-   * "Decrypting…" forever, because nothing would pick them up again — they had
-   * a `sealedState`. Reported 2026-09-06 as DMs showing "Decrypting…" for
-   * everything, with the occasional message that got through being the one
-   * whose promise happened to settle before React committed.
-   *
-   * Nothing is cancelled on cleanup for the same reason. Results are keyed by
-   * message id and applied with a map over `prev`, so a result for a message
-   * that has since gone is a no-op rather than something to guard against.
+   * The in-flight set is a ref, not `sealedState`. This effect depends on
+   * `chatMessages`, and marking them is a write to it — guarding on state
+   * meant the effect tore down the run that was decrypting, and the messages
+   * kept a `sealedState` so nothing retried them.
    */
   const openingRef = useRef<Set<string>>(new Set());
   const mountedRef = useRef(true);
