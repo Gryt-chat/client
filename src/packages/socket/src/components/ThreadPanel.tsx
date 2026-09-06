@@ -25,6 +25,7 @@ interface ThreadPanelProps {
   memberList?: Record<string, MemberLite>;
   onClose: () => void;
   onSend: (text: string) => void;
+  onSetStatus?: (status: "open" | "solved" | "closed") => void;
 }
 
 function nameOf(m: ChatMessage, memberList?: Record<string, MemberLite>): string {
@@ -73,7 +74,7 @@ function ThreadMessage({ m, memberList }: { m: ChatMessage; memberList?: Record<
   );
 }
 
-export function ThreadPanel({ thread, root, messages, loading, memberList, onClose, onSend }: ThreadPanelProps) {
+export function ThreadPanel({ thread, root, messages, loading, memberList, onClose, onSend, onSetStatus }: ThreadPanelProps) {
   const [draft, setDraft] = useState("");
 
   const send = () => {
@@ -110,6 +111,23 @@ export function ThreadPanel({ thread, root, messages, loading, memberList, onClo
             {thread.status === "solved" && <span style={{ color: "var(--gryt-accent-11)", marginLeft: 8 }}>Solved</span>}
           </div>
         </div>
+        {onSetStatus && (thread.status === "solved" ? (
+          <button
+            onClick={() => onSetStatus("open")}
+            title="Reopen this topic"
+            style={{ background: "none", border: "1px solid var(--gryt-neutral-6)", color: "var(--gryt-neutral-11)", cursor: "pointer", fontSize: 12, fontWeight: 700, padding: "5px 10px", borderRadius: "var(--gryt-radius-full)", whiteSpace: "nowrap" }}
+          >
+            Reopen
+          </button>
+        ) : (
+          <button
+            onClick={() => onSetStatus("solved")}
+            title="Mark this topic solved"
+            style={{ background: "none", border: "1px solid #5cc79a", color: "#5cc79a", cursor: "pointer", fontSize: 12, fontWeight: 700, padding: "5px 10px", borderRadius: "var(--gryt-radius-full)", whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 5 }}
+          >
+            ✓ Mark solved
+          </button>
+        ))}
         <button
           onClick={onClose}
           aria-label="Close thread"

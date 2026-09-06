@@ -558,6 +558,7 @@ export const ChatView = memo(({
               memberList={memberList}
               onClose={threads.closeThread}
               onSend={threads.sendReply}
+              onSetStatus={threads.setStatus}
             />
           )}
         </div>
