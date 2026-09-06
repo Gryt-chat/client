@@ -120,6 +120,11 @@ export function useEmoteImport({
 
       setEmotes(revalidateAll(deduped));
       setUsername(listing.title);
+      /* Emptied once the fetch has actually produced something, so the box is
+         ready for the next link. Not on a failed fetch: a link that was not
+         recognised is one somebody may want to correct rather than retype, and
+         the fetched list below already says which pack this was. */
+      setUrl("");
       toast.success(`Found ${listing.emotes.length} emote(s)`);
       if (listing.note) toast(listing.note);
     } catch (err) {
