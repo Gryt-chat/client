@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
 
 import { useSocketEvent } from "../hooks/useSocketEvent";
+import { describeActor } from "../lib/actorName";
 
 type BanItem = {
   gryt_user_id: string;
@@ -97,7 +98,7 @@ export function ServerBansTab({
               {ban.reason && <span className="text-xs">{ban.reason}</span>}
               <span className="text-xs text-gryt-muted">
                 {fmt(ban.created_at)}
-                {ban.banned_by_nickname ? ` · by ${ban.banned_by_nickname}` : ""}
+                {` · by ${describeActor(ban.banned_by_server_user_id, ban.banned_by_nickname).label}`}
               </span>
             </div>
             <Button tone="neutral" size="xsmall"

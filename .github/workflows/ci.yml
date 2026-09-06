@@ -53,6 +53,7 @@ jobs:
       - run: yarn test:card-byline
       - run: yarn test:member-invite
       - run: yarn test:addon-capabilities
+      - run: yarn test:actor-name
       - run: yarn test:fake-participants
       - run: yarn test:narrow-layout
       - run: yarn test:permission-grid

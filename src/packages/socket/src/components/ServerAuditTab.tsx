@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
 
 import { useSocketEvent } from "../hooks/useSocketEvent";
+import { describeActor } from "../lib/actorName";
 
 type AuditItem = {
   createdAt: string | Date;
@@ -69,7 +70,7 @@ export function ServerAuditTab({
                   {it.target ? ` · ${it.target}` : ""}
                 </span>
                 <span className="text-xs text-gryt-muted">
-                  {fmt(it.createdAt)} · actor: {it.actorServerUserId || "system"}
+                  {fmt(it.createdAt)} · by {describeActor(it.actorServerUserId).label}
                 </span>
                 {it.meta ? (
                   <span className="text-xs text-gryt-muted" style={{ whiteSpace: "pre-wrap" }}>
