@@ -405,7 +405,7 @@ export const ChatView = memo(({
           {/* Above the messages rather than under the header, so it is the
               first thing read on the way down to the composer, and so it
               scrolls with a long conversation instead of sitting over it. */}
-          {conversationKind === "dm" && <DirectMessagePrivacyNotice />}
+          {conversationKind === "dm" && <DirectMessagePrivacyNotice decision={sealing} />}
           {conversationKind === "dm" && <MessageKeyPrompt />}
 
           {isVoiceChannelTextChat && !canViewVoiceChannelText && (
