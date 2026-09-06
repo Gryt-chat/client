@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 
 import {
   comparisonCode,
+  getUploadsFileUrl,
   identityScopeFor,
   markPeerCompared,
   ownComparisonSide,
@@ -195,6 +196,14 @@ export function MemberIdentityCard({
    */
   const [open, setOpen] = useState(false);
 
+  /*
+   * The key drawer inside the identity drawer. Shut whenever the outer one
+   * shuts, so opening "Who they are" again does not bring back the block of
+   * numbers somebody closed — the point of moving it was that it is not the
+   * default view.
+   */
+  const [verifyOpen, setVerifyOpen] = useState(false);
+
   const identityIsTheQuestion = member.identityTier === "local";
   const fingerprint = member.identityFingerprint;
 
@@ -222,10 +231,31 @@ export function MemberIdentityCard({
           className="shrink-0 rounded-(--gryt-radius-full) p-[3px]"
           style={{ background: offline ? "transparent" : status.color }}
         >
+          {/*
+            The picture they actually have, at the size this card can afford.
+
+            The uploaded one used to be left out: `resolveAvatarSrc` was handed
+            `undefined` where the URL goes, so anybody with a photograph and no
+            designed owl fell through to a *generated* owl. Their face on the
+            message, an owl on the card hovering over it, and no reading of that
+            except that the card belongs to somebody else.
+
+            `large` rather than the sidebar's `small`, and the full file rather
+            than the thumbnail. This card exists to answer "is this who I think
+            it is" and the picture is the fastest part of that answer; a
+            thumbnail scaled up to 48px would be the same data drawn worse.
+          */}
           <Avatar
             alt=""
+            size="large"
             fallback={member.nickname[0]}
-            src={resolveAvatarSrc(undefined, member.nickname, member.avatarWorn)}
+            src={resolveAvatarSrc(
+              member.avatarFileId && serverHost
+                ? getUploadsFileUrl(serverHost, member.avatarFileId)
+                : undefined,
+              member.nickname,
+              member.avatarWorn,
+            )}
           />
         </span>
 
@@ -282,7 +312,13 @@ export function MemberIdentityCard({
         </div>
       )}
 
-      <Collapsible.Root onOpenChange={setOpen} open={open}>
+      <Collapsible.Root
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (!next) setVerifyOpen(false);
+        }}
+        open={open}
+      >
         <Collapsible.Trigger className="cursor-pointer border-t border-gryt-border !px-0 pt-2.5 text-xs font-semibold text-gryt-muted hover:!bg-transparent hover:text-gryt-text">
           Who they are
           {/*
@@ -299,20 +335,14 @@ export function MemberIdentityCard({
         </Collapsible.Trigger>
         <Collapsible.Panel>
           <div className="flex flex-col gap-2.5 pt-2.5">
+            {/* Who they are, in the sense a person means it: whether there is
+                an account behind the name, when they turned up, and whether
+                they have been called something else. The key material moved a
+                level down — see the note on the second drawer below. */}
             <dl className="m-0 grid grid-cols-[auto_1fr] items-baseline gap-x-3.5 gap-y-1.5">
               {tier && <Fact label="Account">{tier.label}</Fact>}
               {joined && <Fact label="Joined">{joined}</Fact>}
               {renames && <Fact label="Name">{renames}</Fact>}
-              {keyState?.decision.kind === "known" && (
-                <Fact label="Message key">
-                  {keyState.decision.pin.comparedAt
-                    ? "Compared and matched"
-                    : describePin(keyState.decision.pin.firstSeenAt)}
-                </Fact>
-              )}
-              {keyState?.decision.kind === "first" && (
-                <Fact label="Message key">Seen for the first time</Fact>
-              )}
             </dl>
             {keyState?.decision.kind === "changed" && (
               /*
@@ -348,6 +378,55 @@ export function MemberIdentityCard({
                 </span>
               </div>
             )}
+            {/*
+              A second drawer, for the part that is about keys rather than
+              about a person.
+
+              Everything below answers "prove nobody is in the middle": a
+              twelve-group number to read aloud, a button recording that you
+              did, and a fingerprint. All of it correct, none of it meaningful
+              to somebody who has not been told what a key comparison is — and
+              it was the bulk of the card, so the two useful lines above it read
+              as a preamble to a cryptography lesson.
+
+              Shut by default, and shut again on the next hover: this is
+              deliberately not remembered, because a card that stays expanded
+              turns the thing we just moved out of the way back into the
+              default view.
+
+              Not shift-click. That would hide it from anybody who has not been
+              told the gesture exists, from touch entirely, and from a keyboard
+              — and the people most likely to need a key comparison are the
+              least likely to be told about a hidden modifier. A row that says
+              what it opens costs one line and asks nothing of anybody.
+
+              The "their key changed" warning stays above this, outside the
+              drawer. That one is not detail: it is the case where somebody
+              needs to stop and ask, and it has to be visible without a click.
+            */}
+            <Collapsible.Root onOpenChange={setVerifyOpen} open={verifyOpen}>
+              <Collapsible.Trigger className="cursor-pointer !px-0 text-xs font-semibold text-gryt-muted hover:!bg-transparent hover:text-gryt-text">
+                Check this is really them
+                <PiCaretDownBold
+                  className="transition-transform"
+                  size={10}
+                  style={{ transform: verifyOpen ? "rotate(180deg)" : undefined }}
+                />
+              </Collapsible.Trigger>
+              <Collapsible.Panel>
+                <div className="flex flex-col gap-2.5 pt-2.5">
+                  <dl className="m-0 grid grid-cols-[auto_1fr] items-baseline gap-x-3.5 gap-y-1.5">
+                    {keyState?.decision.kind === "known" && (
+                      <Fact label="Message key">
+                        {keyState.decision.pin.comparedAt
+                          ? "Compared and matched"
+                          : describePin(keyState.decision.pin.firstSeenAt)}
+                      </Fact>
+                    )}
+                    {keyState?.decision.kind === "first" && (
+                      <Fact label="Message key">Seen for the first time</Fact>
+                    )}
+                  </dl>
             {code && keyState?.decision.kind === "known" && (
               <div className="flex flex-col gap-1.5">
                 <span className="text-xs text-gryt-muted">
@@ -412,13 +491,16 @@ export function MemberIdentityCard({
                 )}
               </div>
             )}
-            {!identityIsTheQuestion && fingerprint && (
-              <div className="flex flex-col gap-1.5">
-                <span className="text-xs text-gryt-muted">Fingerprint</span>
-                <Fingerprint value={fingerprint} />
-              </div>
-            )}
-            {!identityIsTheQuestion && caution}
+                  {!identityIsTheQuestion && fingerprint && (
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-xs text-gryt-muted">Fingerprint</span>
+                      <Fingerprint value={fingerprint} />
+                    </div>
+                  )}
+                  {!identityIsTheQuestion && caution}
+                </div>
+              </Collapsible.Panel>
+            </Collapsible.Root>
           </div>
         </Collapsible.Panel>
       </Collapsible.Root>
