@@ -18,8 +18,12 @@ import assert from "node:assert/strict";
 const {
   deliverPluginMessage,
   dropListeners,
+  forgetAnnouncedPlugins,
   requireTopic,
+  resetAnnouncedPlugins,
   resetPluginMessageListeners,
+  serversRunning,
+  setAnnouncedPlugins,
   subscribe,
 } = await import("../src/packages/addons/src/pluginMessages.ts");
 
@@ -150,5 +154,46 @@ assert.deepEqual(survivors, [], "an addon's listeners survived being dropped");
 
 deliverPluginMessage("scoreboard", { host: "h", topic: "playing", data: {} });
 assert.deepEqual(boardHeard, [1], "dropping one addon's listeners took another's with them");
+
+/* ── which servers run the other half ────────────────────────────────────── */
+
+/*
+ * A plugin asks this to decide whether to say anything at all. Sending anyway
+ * is harmless — a server running no half drops it — but a plugin that knows can
+ * stop polling, stop drawing an empty panel, and tell somebody why nothing is
+ * happening.
+ */
+resetAnnouncedPlugins();
+
+assert.deepEqual(serversRunning("presence"), [], "a plugin heard about a server nobody described");
+
+setAnnouncedPlugins("one.example", [{ id: "presence", version: "2.1.0" }]);
+setAnnouncedPlugins("two.example", [{ id: "scoreboard", version: "1.0.0" }]);
+setAnnouncedPlugins("three.example", [
+  { id: "presence", version: "1.4.0" },
+  { id: "scoreboard", version: "9.9.9" },
+]);
+
+/* Sorted, so a plugin iterating them does not get a different order each time
+   the details arrive. */
+assert.deepEqual(serversRunning("presence"), [
+  { host: "one.example", version: "2.1.0" },
+  { host: "three.example", version: "1.4.0" },
+]);
+
+assert.deepEqual(serversRunning("nobody-runs-this"), []);
+
+/* Replaced rather than merged, so a plugin the operator removed stops being
+   announced on the next details rather than lingering until a reconnect. */
+setAnnouncedPlugins("one.example", []);
+assert.deepEqual(serversRunning("presence"), [{ host: "three.example", version: "1.4.0" }]);
+
+/* And a server that is gone takes its list with it, or a plugin keeps sending
+   into somewhere nobody is. */
+forgetAnnouncedPlugins("three.example");
+assert.deepEqual(serversRunning("presence"), []);
+/* two.example still has its own, at its own version — forgetting one server
+   must not touch another's list. */
+assert.deepEqual(serversRunning("scoreboard"), [{ host: "two.example", version: "1.0.0" }]);
 
 console.log("check-plugin-messaging: ok");

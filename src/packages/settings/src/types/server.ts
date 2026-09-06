@@ -137,6 +137,15 @@ export type serverDetails = {
     avatar_max_bytes?: number | null;
     upload_max_bytes?: number | null;
     version?: string;
+    /**
+     * The plugins this server runs that asked to be visible (GRYT-939).
+     *
+     * Empty on almost every server. A plugin has to say `"public": true` in its
+     * own manifest to be here, because what an operator runs is otherwise not
+     * something members are told — so an absence means "none said so" rather
+     * than "none".
+     */
+    plugins?: { id: string; version: string }[];
   };
   error?: string;
   message?: string;

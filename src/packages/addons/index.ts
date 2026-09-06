@@ -20,6 +20,8 @@ export type { PluginMessage } from "./src/pluginMessages";
 export {
   deliverPluginMessage,
   dropListeners as dropPluginApiListeners,
+  forgetAnnouncedPlugins,
+  setAnnouncedPlugins,
 } from "./src/pluginMessages";
 export type { AddonManifest, AddonUpdate } from "./src/types";
 export { useAddonLoader } from "./src/useAddonLoader";
