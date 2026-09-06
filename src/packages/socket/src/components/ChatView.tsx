@@ -7,7 +7,7 @@ import type { SealDecision } from "@/common";
 import { getUploadsFileUrl, resolveAvatarSrc, useTheme } from "@/common";
 import { useSettings } from "@/settings";
 
-import { PiChatCircleFill, PiCloudArrowUpFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
+import { PiChatCircleFill, PiChatsFill, PiCloudArrowUpFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
 import { useChatActions } from "../hooks/useChatActions";
 import { useChatScroll } from "../hooks/useChatScroll";
 import { useServerPermissions } from "../hooks/usePermissions";
@@ -22,6 +22,7 @@ import type { ChatMessage } from "./chatUtils";
 import { buildMessageMap, buildMessageMetadata, getReplyPreview } from "./chatViewHelpers";
 import { DirectMessagePrivacyNotice } from "./DirectMessagePrivacyNotice";
 import { EmojiText } from "./EmojiText";
+import { ForumView } from "./ForumView";
 import { ImageLightbox } from "./ImageLightbox";
 import { readableRoleColor } from "./memberGroups";
 import type { MemberInfo } from "./MemberSidebar";
@@ -46,6 +47,7 @@ export const ChatView = memo(({
   memberList,
   channelName,
   automated,
+  layout,
   channelType,
   conversationKind = "channel",
   sealing,
@@ -90,6 +92,8 @@ export const ChatView = memo(({
   channelType?: "text" | "voice";
   /** An automated channel: only bots and the system post, so the composer is locked. GRYT-982. */
   automated?: boolean;
+  /** A forum channel shows a topic index instead of a chat stream. GRYT-981 Stage 2. */
+  layout?: "chat" | "forum";
   /** A direct message reads differently: no `#`, and its own empty state. */
   conversationKind?: "channel" | "dm";
   /**
@@ -153,6 +157,7 @@ export const ChatView = memo(({
   // Threads live here so both the desktop and mobile chat views get them for
   // free — the socket, conversation and member list are all already in hand.
   const threads = useThreads(socketConnection, conversationKey ?? "", serverHost, currentUserId, currentUserNickname);
+  const isForum = layout === "forum" && conversationKind !== "dm";
 
   const {
     replyingTo,
@@ -374,7 +379,7 @@ export const ChatView = memo(({
         <div className="flex h-full w-full flex-col p-3" style={{ position: "relative" }}>
           {channelName && (
             <div className="flex items-center gap-2" style={{ marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid var(--gryt-neutral-6)" }}>
-              {automated ? <PiRobotFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : channelType === "voice" && conversationKind === "channel" ? <PiSpeakerHighFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : <PiChatCircleFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} />}
+              {isForum ? <PiChatsFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : automated ? <PiRobotFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : channelType === "voice" && conversationKind === "channel" ? <PiSpeakerHighFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : <PiChatCircleFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} />}
               <span className="text-lg font-bold" style={{ color: "var(--gryt-neutral-12)" }}>
                 <EmojiText text={channelName} />
               </span>
@@ -384,6 +389,16 @@ export const ChatView = memo(({
 
           {underHeader}
 
+          {isForum ? (
+            <ForumView
+              socketConnection={socketConnection}
+              conversationId={conversationKey ?? ""}
+              serverHost={serverHost}
+              currentUserId={currentUserId}
+              onOpenTopic={threads.openSummary}
+            />
+          ) : (
+          <>
           {/* Above the messages rather than under the header, so it is the
               first thing read on the way down to the composer, and so it
               scrolls with a long conversation instead of sitting over it. */}
@@ -530,6 +545,8 @@ export const ChatView = memo(({
             onStopTyping={emitStopTyping}
             serverHost={serverHost}
           />
+          </>
+          )}
           </>
           )}
           {threads.open && (

@@ -54,6 +54,8 @@ export interface UseThreadsResult {
   open: OpenThread | null;
   startThread: (message: ChatMessage) => void;
   openThread: (rootMessageId: string) => void;
+  /** Open a topic straight from a summary the forum index already holds. */
+  openSummary: (summary: ThreadSummary) => void;
   closeThread: () => void;
   sendReply: (text: string) => void;
 }
@@ -190,6 +192,14 @@ export function useThreads(
     socket.emit("thread:fetch", { conversationId, threadId: summary.thread_id });
   }, [socketConnection, conversationId, summaries]);
 
+  const openSummary = useCallback((summary: ThreadSummary) => {
+    const socket = asSocket(socketConnection);
+    if (!socket) return;
+    setOpen({ thread: summary, root: null, messages: [], loading: true });
+    openRef.current = { thread: summary, root: null, messages: [], loading: true };
+    socket.emit("thread:fetch", { conversationId, threadId: summary.thread_id });
+  }, [socketConnection, conversationId]);
+
   const closeThread = useCallback(() => setOpen(null), []);
 
   const sendReply = useCallback((text: string) => {
@@ -216,5 +226,5 @@ export function useThreads(
     socket.emit("chat:send", { conversationId, threadId: cur.thread.thread_id, text: trimmed, accessToken, nonce });
   }, [socketConnection, conversationId, serverHost, currentUserId, currentUserNickname]);
 
-  return { summaries, open, startThread, openThread, closeThread, sendReply };
+  return { summaries, open, startThread, openThread, openSummary, closeThread, sendReply };
 }
