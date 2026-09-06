@@ -72,8 +72,8 @@ export function ServerInvitesTab({
      flag is off for every role until somebody ticks it, and admin, owner and
      anything that can hand out permissions are refused outright. So this list
      is whatever came back already filtered, not a judgement made here. An empty
-     list means the picker does not appear, which is the honest thing to show
-     somebody who has not marked any role as invite-grantable. */
+     list draws the label with an explanation under it rather than nothing —
+     see the note further down. */
   const [grantableRoles, setGrantableRoles] = useState<
     { id: string; name: string }[]
   >([]);
@@ -282,6 +282,22 @@ export function ServerInvitesTab({
               <TextField value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />
             </div>
           </div>
+          {/* The empty case says so instead of rendering nothing.
+              The one sentence explaining why there is no picker lived inside
+              the picker, so somebody with no invite-grantable role saw an
+              invite form with no mention of roles at all — and no way to tell
+              whether the feature was missing, broken, or simply off. */}
+          {grantableRoles.length === 0 && (
+            <div className="flex flex-col gap-1" style={{ minWidth: 220 }}>
+              <span className="text-sm font-medium">Gives the role</span>
+              <span className="text-xs text-gryt-muted">
+                No role can be handed out by an invite yet, so there&rsquo;s nothing to
+                pick here. Turn on &ldquo;Can be given out by an invite&rdquo; for a role in
+                the Role editor and it&rsquo;ll show up. Owner, admin, and any role that
+                can hand out permissions are never eligible.
+              </span>
+            </div>
+          )}
           {grantableRoles.length > 0 && (
             <div className="flex flex-col gap-1" style={{ minWidth: 220 }}>
               <span className="text-sm font-medium">Gives the role</span>
