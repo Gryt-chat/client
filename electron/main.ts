@@ -586,12 +586,15 @@ function variantSwitchPending(): boolean {
  * invisible to it without this. Lying about the version reuses its verified
  * download instead of reimplementing sha512, deltas and Windows elevation.
  *
+ * Set both ways, not just on: toggling back has to put the real version
+ * back, or every later check offers the release already installed.
+ *
  * currentVersion is readonly in the types and a plain property at runtime,
  * which is why this is a cast.
  */
 function applyVariantSwitchSpoof(): void {
-  if (!variantSwitchPending()) return;
-  (autoUpdater as unknown as { currentVersion: semver.SemVer }).currentVersion = new semver.SemVer("0.0.0");
+  (autoUpdater as unknown as { currentVersion: semver.SemVer }).currentVersion =
+    new semver.SemVer(variantSwitchPending() ? "0.0.0" : app.getVersion());
 }
 
 applyVariantSwitchSpoof();
