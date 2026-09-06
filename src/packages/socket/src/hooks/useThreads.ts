@@ -58,6 +58,8 @@ export interface UseThreadsResult {
   openSummary: (summary: ThreadSummary) => void;
   closeThread: () => void;
   sendReply: (text: string) => void;
+  /** Mark the open topic open / solved / closed. The server gates who may. */
+  setStatus: (status: "open" | "solved" | "closed") => void;
 }
 
 export function useThreads(
@@ -202,6 +204,14 @@ export function useThreads(
 
   const closeThread = useCallback(() => setOpen(null), []);
 
+  const setStatus = useCallback((status: "open" | "solved" | "closed") => {
+    const socket = asSocket(socketConnection);
+    const accessToken = getServerAccessToken(serverHost || "");
+    const cur = openRef.current;
+    if (!socket || !accessToken || !cur) return;
+    socket.emit("thread:status:set", { conversationId, threadId: cur.thread.thread_id, status, accessToken });
+  }, [socketConnection, conversationId, serverHost]);
+
   const sendReply = useCallback((text: string) => {
     const socket = asSocket(socketConnection);
     const accessToken = getServerAccessToken(serverHost || "");
@@ -226,5 +236,5 @@ export function useThreads(
     socket.emit("chat:send", { conversationId, threadId: cur.thread.thread_id, text: trimmed, accessToken, nonce });
   }, [socketConnection, conversationId, serverHost, currentUserId, currentUserNickname]);
 
-  return { summaries, open, startThread, openThread, openSummary, closeThread, sendReply };
+  return { summaries, open, startThread, openThread, openSummary, closeThread, sendReply, setStatus };
 }
