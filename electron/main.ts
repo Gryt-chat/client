@@ -517,8 +517,18 @@ let autoUpdateEnabled = readBoolConfig("autoUpdate", true);
  */
 const defaultRolloutCheck = autoUpdater.isUserWithinRollout;
 
+/**
+ * Only a `beta` identifier means beta. Any other prerelease tag — `-rc.1`,
+ * `-slim` — would otherwise put somebody on the beta channel silently.
+ *
+ * The variant cannot live here for a different reason: semver treats any dash
+ * as a prerelease, so `newestReleaseWithoutApi` would hide a stable `-slim`
+ * release from everybody not on beta, and it sorts below the release it varies.
+ * It lives in the update channel instead.
+ */
 function isOnBetaChannel(): boolean {
-  return readBoolConfig("betaChannel", app.getVersion().includes("-"));
+  const identifiers = semver.prerelease(app.getVersion()) ?? [];
+  return readBoolConfig("betaChannel", identifiers.includes("beta"));
 }
 
 /**

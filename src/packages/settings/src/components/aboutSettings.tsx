@@ -131,6 +131,9 @@ function UpdateControls() {
           <span className="font-medium">Running</span>
           <Chip tone="neutral">v{appVersion}</Chip>
           {betaChannel && <Chip tone="warning" label="Beta" />}
+          {/* What is installed, not what has been asked for: a pending switch
+              is described by the toggle below. */}
+          {slimVariant.installed && <Chip tone="neutral" label="Slim" />}
         </div>
 
         <div className="flex items-center justify-between">
