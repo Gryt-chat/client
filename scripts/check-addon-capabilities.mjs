@@ -27,6 +27,12 @@ globalThis.localStorage = {
   getItem: (k) => (store.has(k) ? store.get(k) : null),
   setItem: (k, v) => store.set(k, String(v)),
   removeItem: (k) => store.delete(k),
+  // `pruneGrants` walks the keys, which is the only way to find grants left by
+  // an addon that is no longer installed.
+  get length() {
+    return store.size;
+  },
+  key: (i) => [...store.keys()][i] ?? null,
 };
 
 const {
@@ -35,6 +41,7 @@ const {
   addonMay,
   declaredCapabilities,
   grantedCapabilities,
+  pruneGrants,
   setGrantedCapabilities,
 } = await import("../src/packages/addons/src/capabilities.ts");
 
@@ -196,5 +203,47 @@ assert.equal(
   JSON.stringify(["status"]),
   "the setter must not write a capability that is not in the catalogue",
 );
+
+/*
+ * ── a grant must not outlive the addon ───────────────────────────────────
+ *
+ * An id is a folder name. A grant left behind after somebody deletes an addon
+ * would be inherited by the next one to call itself the same thing — which is
+ * the exact substitution these switches exist to prevent. Found by writing the
+ * docs for this and trying to state what deleting a folder does.
+ */
+store.clear();
+setGrantedCapabilities("stillhere", ["status"]);
+setGrantedCapabilities("deleted", ["status"]);
+
+pruneGrants(["stillhere"]);
+
+assert.deepEqual(grantedCapabilities("stillhere"), ["status"], "pruned an installed addon");
+assert.deepEqual(grantedCapabilities("deleted"), [], "kept a grant for an addon that is gone");
+assert.equal(
+  addonMay("deleted", "status", ["status"]),
+  false,
+  "an addon reusing a deleted addon's id must not inherit its permission",
+);
+
+/*
+ * An empty list means "not known yet", not "nothing installed".
+ *
+ * The installed set is empty for a moment at startup and while it is being
+ * read. Pruning against that would wipe every grant on the device, which is a
+ * far worse failure than the one orphaned key it would have cleaned up.
+ */
+setGrantedCapabilities("stillhere", ["status"]);
+pruneGrants([]);
+assert.deepEqual(
+  grantedCapabilities("stillhere"),
+  ["status"],
+  "an empty installed list wiped the grants",
+);
+
+/* Nothing else in storage is touched. */
+store.set("something.else", "leave me alone");
+pruneGrants(["stillhere"]);
+assert.equal(store.get("something.else"), "leave me alone");
 
 console.log("check-addon-capabilities: ok");

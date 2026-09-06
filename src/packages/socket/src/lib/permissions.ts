@@ -92,6 +92,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     description: "What somebody may change about their own presence, and who they can see.",
     permissions: [
       { id: "change_nickname", label: "Change nickname", description: "Rename themselves on this server." },
+      { id: "set_activity", label: "Set what you are doing", description: "Write a line about themselves under their name, which everybody here reads. A plugin can write it for them." },
       { id: "change_avatar", label: "Change avatar", description: "Set or clear their own picture." },
       /* Split off `change_avatar` on the server in GRYT-866 and never given a
          label here, so it was the one permission landing in the "Newer than

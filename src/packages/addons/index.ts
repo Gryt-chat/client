@@ -5,6 +5,7 @@ export {
   CAPABILITY_LABELS,
   declaredCapabilities,
   grantedCapabilities,
+  pruneGrants,
   setGrantedCapabilities,
 } from "./src/capabilities";
 export type { GrytPluginAPI } from "./src/pluginApi";

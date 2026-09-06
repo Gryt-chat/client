@@ -7,6 +7,7 @@ import { Toaster } from "react-hot-toast";
 
 import {
   initPluginApi,
+  pruneGrants,
   setPluginApiActivitySetter,
   updatePluginApiCapabilities,
   updatePluginApiTheme,
@@ -142,6 +143,10 @@ function ThemedApp() {
   const { addons } = useAddons();
   useEffect(() => {
     updatePluginApiCapabilities(addons);
+    /* And forget what an addon that is no longer here was allowed to do. An
+       id is a folder name, so a grant left behind would be inherited by the
+       next addon to use the same one. */
+    pruneGrants(addons.map((addon) => addon.id));
   }, [addons]);
 
   /* The one thing a plugin can currently do. Wired here rather than inside the

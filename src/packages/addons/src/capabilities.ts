@@ -80,6 +80,40 @@ export function grantedCapabilities(addonId: string): AddonCapability[] {
   }
 }
 
+/**
+ * Forget the grants of addons that are no longer installed.
+ *
+ * Without this a grant outlives the addon it was made for, sitting in storage
+ * keyed on an id. Ids come from a folder name, so the next addon to call itself
+ * `nowplaying` would inherit permission somebody gave a different piece of
+ * software — which is the exact thing the switches exist to prevent.
+ *
+ * **Only ever called with a list that is actually loaded.** The installed set
+ * is empty for a moment at startup and while it is being read, and pruning
+ * against that would wipe every grant on the device. An empty list is treated
+ * as "not known yet" rather than as "nothing installed", so the one case this
+ * cannot clean up is a person removing their last addon — which costs one
+ * orphaned key and no permission anybody would notice.
+ */
+export function pruneGrants(installedIds: readonly string[]): void {
+  if (installedIds.length === 0) return;
+
+  const installed = new Set(installedIds);
+  try {
+    const stale: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key?.startsWith(GRANT_PREFIX)) continue;
+      if (!installed.has(key.slice(GRANT_PREFIX.length))) stale.push(key);
+    }
+    // Collected first, because removing while iterating by index skips entries.
+    for (const key of stale) localStorage.removeItem(key);
+  } catch {
+    /* A device that will not let us read the keys keeps the stale ones, which
+       is the same place we were before this existed. */
+  }
+}
+
 export function setGrantedCapabilities(
   addonId: string,
   capabilities: AddonCapability[],
