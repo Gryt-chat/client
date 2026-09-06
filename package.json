@@ -2,7 +2,7 @@
   "name": "gryt-chat",
   "private": true,
   "version": "1.9.21",
-  "description": "Gryt Chat — real-time voice chat desktop client",
+  "description": "Gryt Chat \u2014 real-time voice chat desktop client",
   "author": {
     "name": "Gryt Chat",
     "email": "sivert@gryt.chat",
@@ -79,7 +79,8 @@
     "test:report-user": "node scripts/check-report-user.mjs",
     "test:card-byline": "node scripts/check-card-byline.mjs",
     "test:member-invite": "node scripts/check-member-invite.mjs",
-    "test:addon-capabilities": "node scripts/check-addon-capabilities.mjs"
+    "test:addon-capabilities": "node scripts/check-addon-capabilities.mjs",
+    "test:actor-name": "node scripts/check-actor-name.mjs"
   },
   "dependencies": {
     "electron-updater": "^6.8.3",
