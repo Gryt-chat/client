@@ -200,19 +200,42 @@ export function useChat({
    * messages into the same state and opening is asynchronous — doing it at
    * arrival would mean two copies racing each other's `setChatMessages`.
    *
-   * `sealedState` is set to `opening` before the work starts, so a second pass
-   * over the same list does not start it again.
+   * What is already being opened is tracked in a ref, not in `sealedState`.
+   * The state write below is for the UI, and it is also a change to
+   * `chatMessages`, which this effect depends on. Guarding on state therefore
+   * meant: mark them opening, re-render, effect re-runs, finds nothing pending
+   * because they are all marked, and the run that is actually decrypting gets
+   * torn down. Its results were then thrown away and the messages sat at
+   * "Decrypting…" forever, because nothing would pick them up again — they had
+   * a `sealedState`. Reported 2026-09-06 as DMs showing "Decrypting…" for
+   * everything, with the occasional message that got through being the one
+   * whose promise happened to settle before React committed.
+   *
+   * Nothing is cancelled on cleanup for the same reason. Results are keyed by
+   * message id and applied with a map over `prev`, so a result for a message
+   * that has since gone is a no-op rather than something to guard against.
    */
+  const openingRef = useRef<Set<string>>(new Set());
+  const mountedRef = useRef(true);
   useEffect(() => {
-    const pending = chatMessages.filter((m) => m.sealed && !m.sealedState);
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const pending = chatMessages.filter(
+      (m) => m.sealed && !m.sealedState && !openingRef.current.has(m.message_id),
+    );
     if (pending.length === 0) return;
 
     const ids = new Set(pending.map((m) => m.message_id));
+    for (const id of ids) openingRef.current.add(id);
     setChatMessages((prev) =>
       prev.map((m) => (ids.has(m.message_id) ? { ...m, sealedState: "opening" } : m)),
     );
 
-    let live = true;
     void Promise.all(
       pending.map(async (message) => {
         try {
@@ -284,7 +307,10 @@ export function useChat({
         }
       }),
     ).then((opened) => {
-      if (!live) return;
+      // Released whether or not this component is still here, so a message that
+      // comes back on a later fetch is not blocked by an entry nobody clears.
+      for (const o of opened) openingRef.current.delete(o.id);
+      if (!mountedRef.current) return;
       const byId = new Map(opened.map((o) => [o.id, o]));
       setChatMessages((prev) =>
         prev.map((m) => {
@@ -300,9 +326,6 @@ export function useChat({
       );
     });
 
-    return () => {
-      live = false;
-    };
   }, [chatMessages, sealing, setChatMessages, serverHost]);
 
   /**
