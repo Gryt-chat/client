@@ -194,7 +194,9 @@ export const ChatView = memo(({
     let cancelled = false;
     fetchCustomEmojis(serverHost).then((emojis) => {
       if (cancelled) return;
-      setCustomEmojis(emojis, serverHost);
+      // Null is a refused read. Leave whatever is already stored rather than
+      // blanking the emoji in messages on screen.
+      if (emojis) setCustomEmojis(emojis, serverHost);
     });
     return () => { cancelled = true; };
   }, [serverHost]);
