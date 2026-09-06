@@ -47,6 +47,7 @@ function toSummary(t: ForumTopic): ThreadSummary {
     status: t.status,
     reply_count: t.reply_count,
     last_message_at: t.last_message_at,
+    tags: t.tags,
   };
 }
 

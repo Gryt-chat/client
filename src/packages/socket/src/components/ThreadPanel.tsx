@@ -10,6 +10,7 @@ interface ThreadSummary {
   title: string | null;
   status: "open" | "solved" | "closed";
   reply_count: number;
+  tags?: string[];
 }
 
 interface MemberLite {
@@ -26,6 +27,9 @@ interface ThreadPanelProps {
   onClose: () => void;
   onSend: (text: string) => void;
   onSetStatus?: (status: "open" | "solved" | "closed") => void;
+  /** The channel's tag palette. Empty on a plain chat thread. */
+  forumTags?: { id: string; name: string; emoji?: string | null; color?: string | null }[];
+  onSetTags?: (tagIds: string[]) => void;
 }
 
 function nameOf(m: ChatMessage, memberList?: Record<string, MemberLite>): string {
@@ -74,7 +78,7 @@ function ThreadMessage({ m, memberList }: { m: ChatMessage; memberList?: Record<
   );
 }
 
-export function ThreadPanel({ thread, root, messages, loading, memberList, onClose, onSend, onSetStatus }: ThreadPanelProps) {
+export function ThreadPanel({ thread, root, messages, loading, memberList, onClose, onSend, onSetStatus, forumTags = [], onSetTags }: ThreadPanelProps) {
   const [draft, setDraft] = useState("");
 
   const send = () => {
@@ -139,6 +143,39 @@ export function ThreadPanel({ thread, root, messages, loading, memberList, onClo
           ×
         </button>
       </header>
+
+      {forumTags.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "10px 14px", borderBottom: "1px solid var(--gryt-neutral-6)", flexShrink: 0 }}>
+          {forumTags.map((tag) => {
+            const on = (thread.tags ?? []).includes(tag.id);
+            return (
+              <button
+                key={tag.id}
+                type="button"
+                disabled={!onSetTags}
+                onClick={() => {
+                  if (!onSetTags) return;
+                  const current = thread.tags ?? [];
+                  onSetTags(on ? current.filter((id) => id !== tag.id) : [...current, tag.id]);
+                }}
+                aria-pressed={on}
+                title={on ? `Remove ${tag.name}` : `Add ${tag.name}`}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 600,
+                  padding: "3px 10px", borderRadius: "var(--gryt-radius-full)",
+                  cursor: onSetTags ? "pointer" : "default",
+                  background: on ? "var(--gryt-accent-3)" : "var(--gryt-neutral-3)",
+                  color: on ? "var(--gryt-accent-11)" : "var(--gryt-neutral-10)",
+                  border: `1px solid ${on ? "transparent" : "var(--gryt-neutral-6)"}`,
+                }}
+              >
+                <span style={{ width: 7, height: 7, borderRadius: 2, background: tag.color || "var(--gryt-accent-9)" }} />
+                {tag.emoji ? `${tag.emoji} ` : ""}{tag.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <div style={{ flex: 1, overflowY: "auto", paddingBottom: 8 }}>
         {root && (
