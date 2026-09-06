@@ -573,9 +573,13 @@ function MessageContent({
             transition={{ type: "spring", stiffness: 500, damping: 25 }}
             style={{ position: "absolute", top: -16, right: 8, zIndex: 10 }}
           >
+            {/* onOpenEmojiPicker follows quickReactions rather than a
+                permission of its own: that list is undefined for somebody who
+                may not react, so the button goes with it. */}
             <MessageHoverToolbar
               quickReactions={quickReactions}
               onQuickReaction={(src) => onReaction(src, m)}
+              onOpenEmojiPicker={quickReactions ? () => onOpenReactionPicker() : undefined}
               onReply={() => onReply(m)}
               onThread={messageActions.onOpenThread || messageActions.onStartThread}
               hasThread={!!messageActions.onOpenThread}
@@ -708,6 +712,7 @@ function MessageContent({
           onClick={messageActions.onOpenThread}
           style={{
             display: "inline-flex", alignItems: "center", gap: 6, marginTop: 4, alignSelf: "flex-start",
+            userSelect: "none",
             background: "none", border: "none", cursor: "pointer", padding: "3px 7px",
             borderRadius: "var(--gryt-radius-sm)", color: "var(--gryt-accent-11)", fontSize: 12.5, fontWeight: 700,
           }}
@@ -750,7 +755,11 @@ function ReactionBadges({
   if (!hasReactions) return null;
 
   return (
+    /* Not part of the message, so not part of a copy of it.
+       A drag across a few rows used to come out with the counts and the plus
+       interleaved with what people actually said (Carlo, 2026-09-06). */
     <div className="flex flex-wrap items-center" style={{
+      userSelect: "none",
       position: "absolute",
       bottom: 0,
       left: "6px",
