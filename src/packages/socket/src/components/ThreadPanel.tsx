@@ -73,6 +73,9 @@ function ThreadMessage({ m, memberList }: { m: ChatMessage; memberList?: Record<
         <div style={{ fontSize: 14, color: "var(--gryt-neutral-11)", wordBreak: "break-word", marginTop: 2 }}>
           {m.text ? <EmojiText text={m.text} /> : <span style={{ fontStyle: "italic", opacity: 0.7 }}>No text</span>}
         </div>
+        {m.failed && (
+          <span style={{ fontSize: 11.5, color: "var(--gryt-danger-9)" }}>Failed to send</span>
+        )}
       </div>
     </div>
   );
@@ -81,9 +84,14 @@ function ThreadMessage({ m, memberList }: { m: ChatMessage; memberList?: Record<
 export function ThreadPanel({ thread, root, messages, loading, memberList, onClose, onSend, onSetStatus, forumTags = [], onSetTags }: ThreadPanelProps) {
   const [draft, setDraft] = useState("");
 
+  // Mirrors the server's cap, so an over-long reply is stopped here rather than
+  // sent and refused.
+  const REPLY_MAX = 4000;
+  const tooLong = draft.length > REPLY_MAX;
+
   const send = () => {
     const t = draft.trim();
-    if (!t) return;
+    if (!t || tooLong) return;
     onSend(t);
     setDraft("");
   };
@@ -193,6 +201,11 @@ export function ThreadPanel({ thread, root, messages, loading, memberList, onClo
       </div>
 
       <div style={{ padding: "10px 14px 14px", borderTop: "1px solid var(--gryt-neutral-6)", flexShrink: 0 }}>
+        {tooLong && (
+          <div role="alert" style={{ fontSize: 11.5, color: "var(--gryt-danger-9)", marginBottom: 6 }}>
+            {draft.length - REPLY_MAX} characters over the {REPLY_MAX} limit.
+          </div>
+        )}
         <div
           style={{
             display: "flex", alignItems: "flex-end", gap: 8,
@@ -213,12 +226,12 @@ export function ThreadPanel({ thread, root, messages, loading, memberList, onClo
           />
           <button
             onClick={send}
-            disabled={!draft.trim()}
+            disabled={!draft.trim() || tooLong}
             style={{
-              background: draft.trim() ? "var(--gryt-accent-9)" : "var(--gryt-neutral-6)",
-              color: draft.trim() ? "var(--gryt-on-accent, #0c0a20)" : "var(--gryt-neutral-10)",
+              background: draft.trim() && !tooLong ? "var(--gryt-accent-9)" : "var(--gryt-neutral-6)",
+              color: draft.trim() && !tooLong ? "var(--gryt-on-accent, #0c0a20)" : "var(--gryt-neutral-10)",
               border: "none", borderRadius: "var(--gryt-radius-sm)", padding: "6px 12px",
-              fontWeight: 700, fontSize: 13, cursor: draft.trim() ? "pointer" : "default",
+              fontWeight: 700, fontSize: 13, cursor: draft.trim() && !tooLong ? "pointer" : "default",
             }}
           >
             Send
