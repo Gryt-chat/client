@@ -4,7 +4,7 @@ import { forwardRef, memo, useCallback, useRef, useState } from "react";
 
 import { getUploadsFileUrl } from "@/common";
 
-import { PiChatsFill, PiSignInBold, PiSignOutBold } from "../../../../lib/icons";
+import { PiChatsFill, PiLockOpen, PiSignInBold, PiSignOutBold } from "../../../../lib/icons";
 import { useServerPermissions } from "../hooks/usePermissions";
 import type { ThreadSummary } from "../hooks/useThreads";
 import { getFrequentReactions } from "../utils/recentReactions";
@@ -88,6 +88,8 @@ interface MessageRowProps {
   onLightboxOpen: (src: string, alt?: string) => void;
   /** This message's thread, if it has one — draws the "N replies" line. GRYT-981. */
   threadSummary?: ThreadSummary;
+  /** This message went out in the clear (GRYT-729). */
+  unencrypted?: boolean;
   /** Start a thread from this message. Absent in DMs and on pending rows. */
   onStartThread?: (msg: ChatMessage) => void;
   /** Open an existing thread by its root message id. */
@@ -120,6 +122,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
   scrollToMessage,
   onLightboxOpen,
   threadSummary,
+  unencrypted,
   onStartThread,
   onOpenThread,
   isNew,
@@ -405,6 +408,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                 onMouseEnter={handleMouseEnter}
                 onMouseLeave={handleMouseLeave}
                 onOpenReactionPicker={handleOpenReactionPicker}
+                unencrypted={unencrypted}
               />
             </div>
           </div>
@@ -442,6 +446,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                 onMouseEnter={handleMouseEnter}
                 onMouseLeave={handleMouseLeave}
                 onOpenReactionPicker={handleOpenReactionPicker}
+                unencrypted={unencrypted}
               />
             </div>
           </div>
@@ -517,6 +522,7 @@ function MessageContent({
   onMouseEnter,
   onMouseLeave,
   onOpenReactionPicker,
+  unencrypted,
 }: {
   m: ChatMessage;
   rowRef: React.RefObject<HTMLDivElement | null>;
@@ -547,6 +553,16 @@ function MessageContent({
   onMouseEnter: () => void;
   onMouseLeave: () => void;
   onOpenReactionPicker: (anchorEl?: HTMLElement) => void;
+  /**
+   * This one went to the server in the clear, in a conversation that is
+   * meant to be private (GRYT-729).
+   *
+   * Marked on the message rather than only above the composer, because the
+   * composer notice is about what happens next and this is about what
+   * already left. A conversation that fell back partway through looks
+   * identical either way otherwise.
+   */
+  unencrypted?: boolean;
 }) {
   const hasReactions = !!(m.reactions && m.reactions.length > 0);
   const sealedNote = sealedPlaceholder(m);
@@ -560,6 +576,10 @@ function MessageContent({
       }}
     >
     <div className="flex flex-col" ref={rowRef} data-message-id={m.message_id} style={{
+        /* A red rule down the side of anything that went out in the clear.
+           Inset rather than a border so the row does not shift by two pixels
+           depending on whether it was encrypted. */
+        boxShadow: unencrypted ? "inset 2px 0 0 var(--gryt-danger-9)" : undefined,
         padding: "2px 6px",
         cursor: "default",
         position: "relative",
@@ -618,6 +638,26 @@ function MessageContent({
         {/* Only the text folds. Attachments and embeds below carry their own
             sizing, and folding them too would hide an image behind a control
             that says "show full message". */}
+        {unencrypted && (
+          <span
+            title="Sent without encryption. Whoever runs this server can read it in the clear."
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 3,
+              marginRight: 6,
+              verticalAlign: "middle",
+              color: "var(--gryt-danger-11)",
+              fontSize: 10,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.03em",
+            }}
+          >
+            <PiLockOpen aria-hidden="true" size={11} />
+            Not encrypted
+          </span>
+        )}
         {sealedNote ? (
           /* An envelope this client has not opened has no words to draw, and
              three of the four states never will (GRYT-729). Plain rather than

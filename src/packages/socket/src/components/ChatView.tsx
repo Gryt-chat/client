@@ -7,7 +7,7 @@ import type { SealDecision } from "@/common";
 import { getUploadsFileUrl, resolveAvatarSrc, useTheme } from "@/common";
 import { useSettings } from "@/settings";
 
-import { PiChatCircleFill, PiChatsFill, PiCloudArrowUpFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
+import { PiChatCircleFill, PiChatsFill, PiCloudArrowUpFill, PiLockOpen, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
 import { useChatActions } from "../hooks/useChatActions";
 import { useChatScroll } from "../hooks/useChatScroll";
 import { useServerPermissions } from "../hooks/usePermissions";
@@ -483,6 +483,10 @@ export const ChatView = memo(({
                       threadSummary={threads.summaries[m.message_id]}
                       onStartThread={conversationKind === "dm" ? undefined : threads.startThread}
                       onOpenThread={threads.openThread}
+                      /* In a DM, anything without an envelope reached the server as
+                         readable text. Channels are not sealed at all, so the mark
+                         would be on every message and mean nothing. */
+                      unencrypted={conversationKind === "dm" && !m.sealed}
                     />
                   );
                 })}
@@ -503,19 +507,24 @@ export const ChatView = memo(({
           {sealing?.kind === "plaintext" && sealing.blockedBy.length > 0 && (
             <div
               aria-live="polite"
-              className="mb-1.5 px-1 text-xs leading-snug text-gryt-muted"
+              className="mb-1.5 flex items-start gap-1.5 px-1 text-xs leading-snug"
+              style={{ color: "var(--gryt-danger-11)" }}
             >
-              Not encrypted:{" "}
-              {sealing.blockedBy
-                .map((blocked) => {
-                  const who =
-                    memberNames?.[blocked.memberId] ?? "somebody in this conversation";
-                  if (blocked.reason === "changed") return `${who}'s key changed`;
-                  if (blocked.reason === "unusable") return `${who}'s key did not check out`;
-                  return `${who} has not published a key`;
-                })
-                .join(", ")}
-              .
+              <PiLockOpen aria-hidden="true" size={13} style={{ flexShrink: 0, marginTop: "1px" }} />
+              <span>
+                <strong style={{ fontWeight: 700 }}>Not encrypted.</strong> Whoever runs this
+                server can read what you send here, in the clear.{" "}
+                {sealing.blockedBy
+                  .map((blocked) => {
+                    const who =
+                      memberNames?.[blocked.memberId] ?? "somebody in this conversation";
+                    if (blocked.reason === "changed") return `${who}'s key changed`;
+                    if (blocked.reason === "unusable") return `${who}'s key did not check out`;
+                    return `${who} has not published a key`;
+                  })
+                  .join(", ")}
+                .
+              </span>
             </div>
           )}
 
