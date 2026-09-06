@@ -378,6 +378,47 @@ export function useSidebarEditor({
     [currentlyViewingServer, currentConnection, effectiveSidebarItems],
   );
 
+  // Create a fully-configured channel in one confirmed step, instead of
+  // dropping a default text channel that has to be edited after. GRYT-983.
+  const createChannel = useCallback(
+    async (opts: { name: string; type: "text" | "voice"; layout?: "chat" | "forum"; automated?: boolean; description?: string | null }) => {
+      if (!currentlyViewingServer) return;
+      if (!currentConnection || !currentConnection.connected) {
+        toast.error("Not connected to the server yet.");
+        return;
+      }
+      const accessToken = getFreshAccessToken();
+      if (!accessToken) {
+        toast.error("Join the server first.");
+        return;
+      }
+      const maxPos = Math.max(
+        0,
+        ...effectiveSidebarItems.map((i) => (typeof i.position === "number" ? i.position : 0)),
+      );
+      const channelId = `chan_${uuidv4().slice(0, 10)}`;
+      const itemId = `sb_${uuidv4().slice(0, 10)}`;
+      currentConnection.emit("server:channels:upsert", {
+        accessToken,
+        channelId,
+        name: opts.name.trim() || (opts.type === "voice" ? "New voice channel" : "New channel"),
+        type: opts.type,
+        description: opts.description ?? null,
+        layout: opts.layout ?? "chat",
+        automated: opts.automated ?? false,
+      });
+      currentConnection.emit("server:sidebar:item:upsert", {
+        accessToken,
+        itemId,
+        kind: "channel",
+        channelId,
+        position: maxPos + 10,
+      });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [currentlyViewingServer, currentConnection, effectiveSidebarItems],
+  );
+
   const [pendingDeleteItem, setPendingDeleteItem] = useState<SidebarItem | null>(null);
 
   const requestDeleteSidebarItem = useCallback((item: SidebarItem) => {
@@ -549,6 +590,7 @@ export function useSidebarEditor({
     closeEditDialog,
     reorderSidebar,
     insertFromPalette,
+    createChannel,
     pendingDeleteItem,
     requestDeleteSidebarItem,
     cancelDelete,

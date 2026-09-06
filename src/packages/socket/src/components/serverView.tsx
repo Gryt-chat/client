@@ -40,6 +40,7 @@ import { getUpdateAvailable } from "../hooks/useVersionStatus";
 import { getCustomEmojis } from "../utils/emojiData";
 import { ChatView } from "./ChatView";
 import { ConnectionBanner } from "./ConnectionBanner";
+import { CreateChannelDialog } from "./CreateChannelDialog";
 import { GroupDialog } from "./GroupDialog";
 import { IncomingCallCard } from "./IncomingCallCard";
 import { MemberSidebarPanel } from "./MemberSidebarPanel";
@@ -112,6 +113,8 @@ export const ServerView = () => {
   } = useVoiceLayout({ setShowVoiceView });
 
   const [focusedChatHidden, setFocusedChatHidden] = useState(false);
+  const [createChannelOpen, setCreateChannelOpen] = useState(false);
+  const [createChannelType, setCreateChannelType] = useState<"chat" | "voice" | "forum" | "automated">("chat");
   const toggleFocusedChat = useCallback(() => setFocusedChatHidden((v) => !v), []);
 
   /**
@@ -303,6 +306,13 @@ export const ServerView = () => {
   }, [effectiveSidebarItems, reorderSidebar]);
 
   const handleAddItem = useCallback((kind: string) => {
+    // "Add channel" opens the full create modal instead of dropping a default
+    // channel that has to be edited after. Folders/spacers stay immediate. GRYT-983.
+    if (kind === "channel:text" || kind === "channel:voice") {
+      setCreateChannelType(kind === "channel:voice" ? "voice" : "chat");
+      setCreateChannelOpen(true);
+      return;
+    }
     insertFromPalette(kind, effectiveSidebarItems.length);
   }, [insertFromPalette, effectiveSidebarItems]);
 
@@ -1025,6 +1035,7 @@ export const ServerView = () => {
       />
 
       <SidebarEditDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} editor={sidebarEditor} />
+      <CreateChannelDialog open={createChannelOpen} onOpenChange={setCreateChannelOpen} initialType={createChannelType} editor={sidebarEditor} />
 
       <ReportUserDialog
         target={reportTarget}
