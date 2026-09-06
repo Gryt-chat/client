@@ -1,4 +1,4 @@
-import { Button } from "@gryt/ui";
+import { AlertDialog, Button } from "@gryt/ui";
 import { useSFU } from "@gryt/voice";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
@@ -270,6 +270,7 @@ export const ServerView = () => {
     isRateLimited, rateLimitCountdown, isVoiceChannelTextChat,
     canViewVoiceChannelText, activeChannelName, activeChannelType, activeChannelAutomated, activeChannelLayout, activeChannelForumTags,
     restoreText, clearRestoreText, fetchOlderMessages, isLoadingOlder, hasOlderMessages,
+    plaintextPrompt, confirmPlaintextSend, cancelPlaintextSend,
   } = useChat({
     currentConnection, activeConversationId, currentlyViewingServer,
     currentChannelId, isConnected, serverDetailsList, nickname,
@@ -1077,6 +1078,51 @@ forumTags={activeDm ? [] : activeChannelForumTags}
         serverHost={host}
         memberList={memberLists[host]}
       />
+      {/*
+        The last stop before a private conversation goes out readable
+        (GRYT-729). Asked once per conversation per blocking state, so it is a
+        decision rather than a thing to click past every time.
+      */}
+      <AlertDialog.Root
+        open={!!plaintextPrompt}
+        onOpenChange={(open) => { if (!open) cancelPlaintextSend(); }}
+      >
+        <AlertDialog.Portal>
+          <AlertDialog.Backdrop />
+          <AlertDialog.Popup>
+            <AlertDialog.Title>Send this without encryption?</AlertDialog.Title>
+            <AlertDialog.Description>
+              This conversation cannot be encrypted right now, so whoever runs this
+              server will be able to read what you send, in the clear.
+              {plaintextPrompt?.kind === "plaintext" && plaintextPrompt.blockedBy.length > 0 && (
+                <>
+                  {" "}
+                  {plaintextPrompt.blockedBy
+                    .map((blocked) => {
+                      const who = memberNames[blocked.memberId]
+                        ?? "Somebody in this conversation";
+                      if (blocked.reason === "changed") return `${who} changed their key`;
+                      if (blocked.reason === "unusable") return `${who}'s key did not check out`;
+                      return `${who} has not published a key`;
+                    })
+                    .join(", ")}
+                  .
+                </>
+              )}
+            </AlertDialog.Description>
+
+            <div className="flex gap-3 mt-4 justify-end">
+              <Button tone="neutral" size="small" onClick={cancelPlaintextSend}>
+                Cancel
+              </Button>
+              <Button tone="danger" size="small" onClick={confirmPlaintextSend}>
+                Send unencrypted
+              </Button>
+            </div>
+          </AlertDialog.Popup>
+        </AlertDialog.Portal>
+      </AlertDialog.Root>
+
     </>
   );
 };

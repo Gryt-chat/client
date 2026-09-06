@@ -1,9 +1,9 @@
-import { Dispatch, MutableRefObject, SetStateAction, useCallback, useRef } from "react";
+import { Dispatch, MutableRefObject, SetStateAction, useCallback, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { Socket } from "socket.io-client";
 import { v4 as uuidv4 } from "uuid";
 
-import type { SealedAttachmentKey } from "@/common";
+import type { SealDecision, SealedAttachmentKey } from "@/common";
 import { getServerAccessToken, getServerRefreshToken } from "@/common";
 
 import type { AttachmentMeta, ChatMessage } from "../components/chatUtils";
@@ -40,6 +40,8 @@ interface UseChatSendParams {
   setChatMessages: Dispatch<SetStateAction<ChatMessage[]>>;
   setMessageCache: Dispatch<SetStateAction<Record<string, ChatMessage[]>>>;
   setRestoreText: Dispatch<SetStateAction<string | null>>;
+  /** Whether the next message can be sealed, and who is stopping it. */
+  sealDecision: SealDecision;
   canSend: boolean;
   isRateLimited: boolean;
   isVoiceChannelTextChat: boolean;
@@ -78,6 +80,16 @@ interface UseChatSendReturn {
   retryQueueRef: MutableRefObject<Map<string, RetryEntry>>;
   performRetry: () => void;
   markLatestPendingFailed: () => void;
+  /**
+   * Set when a send was held back because the conversation would go out in the
+   * clear, and carries who is blocking it so the dialog can say. Null the rest
+   * of the time.
+   */
+  plaintextPrompt: SealDecision | null;
+  /** Send it unencrypted, and stop asking for this conversation. */
+  confirmPlaintextSend: () => void;
+  /** Do not send it. The text goes back in the composer. */
+  cancelPlaintextSend: () => void;
 }
 
 export function useChatSend({
@@ -89,6 +101,7 @@ export function useChatSend({
   setChatMessages,
   setMessageCache,
   setRestoreText,
+  sealDecision,
   canSend,
   isRateLimited,
   isVoiceChannelTextChat,
@@ -225,6 +238,10 @@ export function useChatSend({
   markLatestPendingFailedRef.current = markLatestPendingFailed;
 
   const canSendRef = useRef(canSend);
+  const sealDecisionRef = useRef(sealDecision);
+  sealDecisionRef.current = sealDecision;
+  const activeConversationIdRef = useRef(activeConversationId);
+  activeConversationIdRef.current = activeConversationId;
   canSendRef.current = canSend;
   const isRateLimitedRef = useRef(isRateLimited);
   isRateLimitedRef.current = isRateLimited;
@@ -239,9 +256,46 @@ export function useChatSend({
   const currentUserIdRef = useRef(currentUserId);
   currentUserIdRef.current = currentUserId;
 
+  /*
+   * Sending in the clear is a decision, not a notice (GRYT-729).
+   *
+   * When a conversation could be sealed and is not, the composer already says
+   * so above the box. On 2026-09-06 that line was read, understood, and typed
+   * past: five messages went to the server as plaintext in a DM whose whole
+   * point is that they would not. A warning that costs nothing to ignore is
+   * one people ignore.
+   *
+   * So the first send after the conversation falls back asks. Once per
+   * conversation per blocking state — the state is part of the key, so a peer
+   * rotating again asks again rather than riding on an answer about a
+   * different key. Held in a ref rather than stored: a new session asking once
+   * more is the safe direction to be wrong in.
+   */
+  const plaintextOkRef = useRef<Set<string>>(new Set());
+  const pendingSendRef = useRef<{ text: string; files: File[]; replyToMessageId?: string } | null>(null);
+  const [plaintextPrompt, setPlaintextPrompt] = useState<SealDecision | null>(null);
+
+  const plaintextGateKey = useCallback(() => {
+    const d = sealDecisionRef.current;
+    if (!d || d.kind !== "plaintext" || d.blockedBy.length === 0) return null;
+    const who = d.blockedBy
+      .map((b) => `${b.memberId}:${b.reason}`)
+      .sort()
+      .join("|");
+    return `${activeConversationIdRef.current ?? ""}::${who}`;
+  }, []);
+
   const sendChat = useCallback((text: string, files: File[], replyToMessageId?: string) => {
     const body = text.trim();
     if (!body && files.length === 0) return;
+
+    const gateKey = plaintextGateKey();
+    if (gateKey && !plaintextOkRef.current.has(gateKey)) {
+      pendingSendRef.current = { text, files, replyToMessageId };
+      setPlaintextPrompt(sealDecisionRef.current);
+      return;
+    }
+
 
     if (!canSendRef.current) {
       // Rate limiting has its own countdown on screen, so a toast would be
@@ -386,7 +440,7 @@ export function useChatSend({
     // others above. It closes over the sealing decision, and a stale one is not
     // a stale flag — a conversation that has just become sealable would hand
     // back null and the file would go up in the clear (GRYT-761).
-  }, [currentConnection, currentlyViewingServer?.host, activeConversationId, serverHost, cacheKeyFor, sealFile, sendMessageWithToken, setChatMessages, setMessageCache]);
+  }, [currentConnection, currentlyViewingServer?.host, activeConversationId, serverHost, cacheKeyFor, sealFile, sendMessageWithToken, setChatMessages, setMessageCache, plaintextGateKey]);
 
   const editMessage = useCallback((messageId: string, conversationId: string, newText: string) => {
     const text = newText.trim();
@@ -396,5 +450,23 @@ export function useChatSend({
     currentConnection.emit("chat:edit", { conversationId, messageId, text, accessToken });
   }, [currentConnection, currentlyViewingServer?.host]);
 
-  return { sendChat, editMessage, retryQueueRef, performRetry, markLatestPendingFailed };
+
+  /** They chose to send it anyway. Remember for this conversation and go. */
+  const confirmPlaintextSend = useCallback(() => {
+    const key = plaintextGateKey();
+    if (key) plaintextOkRef.current.add(key);
+    setPlaintextPrompt(null);
+    const pending = pendingSendRef.current;
+    pendingSendRef.current = null;
+    if (pending) sendChat(pending.text, pending.files, pending.replyToMessageId);
+  }, [plaintextGateKey, sendChat]);
+
+  /** They backed out. The composer text is restored so nothing is lost. */
+  const cancelPlaintextSend = useCallback(() => {
+    const pending = pendingSendRef.current;
+    pendingSendRef.current = null;
+    setPlaintextPrompt(null);
+    if (pending?.text) setRestoreText(pending.text);
+  }, [setRestoreText]);
+  return { sendChat, editMessage, retryQueueRef, performRetry, markLatestPendingFailed, plaintextPrompt, confirmPlaintextSend, cancelPlaintextSend };
 }

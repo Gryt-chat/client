@@ -46,6 +46,16 @@ interface UseChatParams {
 }
 
 interface UseChatReturn {
+  /**
+   * Set when a send was held back because the conversation would go out in the
+   * clear, and carries who is blocking it so the dialog can say. Null the rest
+   * of the time.
+   */
+  plaintextPrompt: SealDecision | null;
+  /** Send it unencrypted, and stop asking for this conversation. */
+  confirmPlaintextSend: () => void;
+  /** Do not send it. The text goes back in the composer. */
+  cancelPlaintextSend: () => void;
   chatMessages: ChatMessage[];
   sealing: SealDecision;
   canSend: boolean;
@@ -178,8 +188,9 @@ export function useChat({
   /** Blob URLs made for decrypted attachments, revoked on unmount. */
   const objectUrlsRef = useRef<Set<string>>(new Set());
 
-  const { sendChat, editMessage, retryQueueRef, performRetry, markLatestPendingFailed } = useChatSend({
+  const { sendChat, editMessage, retryQueueRef, performRetry, markLatestPendingFailed, plaintextPrompt, confirmPlaintextSend, cancelPlaintextSend } = useChatSend({
     seal: sealing.seal,
+    sealDecision: sealing.decision,
     sealFile: sealing.sealFile,
     currentConnection,
     activeConversationId,
@@ -625,6 +636,9 @@ export function useChat({
   }, [currentConnection, activeConversationId, isLoadingOlder, hasOlderMessages, chatMessages, cacheKeyFor]);
 
   return {
+    plaintextPrompt,
+    confirmPlaintextSend,
+    cancelPlaintextSend,
     chatMessages,
     /**
      * Whether the next message will be encrypted, and who is stopping it
