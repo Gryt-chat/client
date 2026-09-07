@@ -131,7 +131,10 @@ let version = "";
  * whenever a server appeared or went away.
  */
 const gryt = {
-  get version() {
+  /* Annotated, unlike an inferred `string`, because the generated API
+     reference reads this file as text and prints what it finds. Without it the
+     reference listed `version` with no type beside it. */
+  get version(): string {
     return version;
   },
   get theme(): ThemeInfo {

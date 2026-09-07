@@ -1,0 +1,10 @@
+{
+  "id": "presence",
+  "name": "Presence",
+  "version": "1.0.0",
+  "type": "plugin",
+  "main": "index.js",
+  "author": "Gryt",
+  "description": "Shows what you are playing, and tells servers running the other half",
+  "capabilities": ["status", "messaging"]
+}
