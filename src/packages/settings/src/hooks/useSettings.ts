@@ -9,6 +9,7 @@ import {
   useUserId,
 } from "@/common";
 
+import { getElectronAPI, isElectron } from "../../../../lib/electron";
 import type { VoiceTileLayout, VoiceTwoPersonLayout } from "./settingsStorage";
 import { type ScalabilityMode, type ScreenShareCodec, settingsInit, type VideoCodec } from "./settingsStorage";
 import { loadAudioFromCache, useAudioSettings } from "./useAudioSettings";
@@ -87,6 +88,14 @@ function useSettingsHook() {
   const [showVideoDebugOverlay, setShowVideoDebugOverlay] = useState(false);
   const [nickname, setNickname] = useState("Unknown");
   const [activity, setActivity] = useState("");
+  /*
+   * The watched programs running right now (GRYT-931).
+   *
+   * Pushed from the main process, which is the only side that can look. Empty
+   * in a browser, and empty on the desktop until somebody lists something —
+   * the watcher does not poll at all with nothing to watch for.
+   */
+  const [playingNow, setPlayingNow] = useState<string[]>([]);
   const [showPeerLatency, setShowPeerLatency] = useState(true);
   /* Whether a theme may fetch a typeface from Google.
      Off, and the default is the decision. A toggle that starts on is not
@@ -275,6 +284,33 @@ function useSettingsHook() {
     avatarObjectUrlRef.current = url;
     setAvatarDataUrlState(url);
   }
+
+  /*
+   * Follow what the main process is seeing.
+   *
+   * Read once as well as subscribed, because a window opened after a game
+   * started would otherwise wait for the next change to find out — and if the
+   * game is the only thing on the list, the next change is when it quits.
+   */
+  useEffect(() => {
+    if (!isElectron()) return;
+    const api = getElectronAPI();
+    if (!api?.onWatchedProgramsChanged) return;
+
+    let cancelled = false;
+    void api.getRunningWatched?.().then((names) => {
+      if (!cancelled) setPlayingNow(names);
+    });
+
+    const drop = api.onWatchedProgramsChanged((names) => {
+      if (!cancelled) setPlayingNow(names);
+    });
+
+    return () => {
+      cancelled = true;
+      drop();
+    };
+  }, []);
 
   function updateNickname(newName: string) {
     setNickname(newName);
@@ -543,6 +579,11 @@ function useSettingsHook() {
     setNickname: updateNickname,
     activity,
     setActivity: updateActivity,
+    /* A game wins while it is running, and hands the line back when it stops.
+       Only the first: two games at once is somebody testing, and a member list
+       row is one line. */
+    effectiveActivity: playingNow[0] ?? activity,
+    playingNow,
     avatarDataUrl,
     setAvatarDataUrl: updateAvatarDataUrl,
     setAvatarFile,

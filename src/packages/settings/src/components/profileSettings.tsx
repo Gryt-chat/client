@@ -9,6 +9,7 @@ import { useServerManagement, useSockets } from "@/socket";
 
 import { PiArrowsClockwiseFill, PiCameraFill, PiCheck, PiCopyFill } from "../../../../lib/icons";
 import { SettingsContainer } from "./settingsComponents";
+import { WatchedPrograms } from "./watchedPrograms";
 
 /**
  * How many servers the tab row still holds before it becomes a select.
@@ -837,6 +838,7 @@ export function ProfileSettings() {
       </h2>
 
       <ActivityField />
+      <WatchedPrograms />
 
       {serverHosts.length > 0 && (
         <div className="flex justify-center" style={{ paddingTop: 4, paddingBottom: 4 }}>

@@ -58,6 +58,9 @@ jobs:
       - run: yarn test:plugin-wording
       - run: yarn test:plugin-isolation
       - run: yarn test:plugin-panel
+      # The claim is that only the programs somebody listed leave the main
+      # process. Nothing else here would notice that stopping being true.
+      - run: yarn test:watched-programs
       # examples/ is the addon people copy. It calls the same `gryt` API the
       # worker exposes, and nothing else here would notice it drifting.
       - run: yarn test:examples

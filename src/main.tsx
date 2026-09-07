@@ -9,6 +9,7 @@ import {
   dropPluginApiListeners,
   pruneGrants,
   setPluginApiActivitySetter,
+  setPluginApiRunningPrograms,
   setPluginHostTheme,
   setPluginHostVersion,
   useAddonLoader,
@@ -164,10 +165,17 @@ function ThemedApp() {
   /* The one thing a plugin can currently do. Wired here rather than inside the
      API so `pluginApi.ts` stays free of the socket layer and can be tested
      without one. */
-  const { setActivity } = useSettings();
+  const { setActivity, playingNow } = useSettings();
   useEffect(() => {
     setPluginApiActivitySetter(setActivity);
   }, [setActivity]);
+
+  /* What the person's listed programs are doing, pushed to any plugin that
+     asked (GRYT-931). Wired here for the same reason the setter above is: the
+     host stays free of the settings layer. */
+  useEffect(() => {
+    setPluginApiRunningPrograms(playingNow);
+  }, [playingNow]);
 
   return (
     /* The <Theme> that used to sit here was Radix's, and it existed to define

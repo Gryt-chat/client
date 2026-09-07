@@ -109,6 +109,43 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("switch-update-channel", enabled);
   },
 
+  /*
+   * Watching for programs somebody listed (GRYT-931).
+   *
+   * Four calls, and the shape of them is the decision. `listRunningPrograms`
+   * hands over what is open — to the settings screen, so somebody can pick
+   * rather than guess at an executable name. Everything else deals only in the
+   * list they wrote and which of it is running.
+   *
+   * Nothing here reaches a plugin directly. A plugin sits behind the `gryt`
+   * worker API and gets matches only, which is why its capability can say "a
+   * program you have listed" and mean it.
+   */
+  listRunningPrograms(): Promise<string[]> {
+    return ipcRenderer.invoke("processes-list-running");
+  },
+
+  getWatchedPrograms(): Promise<{ match: string; name: string }[]> {
+    return ipcRenderer.invoke("processes-get-watched");
+  },
+
+  /** Returns the list as stored, which may be shorter than what was sent. */
+  setWatchedPrograms(
+    programs: { match: string; name: string }[],
+  ): Promise<{ match: string; name: string }[]> {
+    return ipcRenderer.invoke("processes-set-watched", programs);
+  },
+
+  getRunningWatched(): Promise<string[]> {
+    return ipcRenderer.invoke("processes-running");
+  },
+
+  onWatchedProgramsChanged(callback: (running: string[]) => void) {
+    const handler = (_event: unknown, running: string[]) => callback(running);
+    ipcRenderer.on("processes-changed", handler);
+    return () => ipcRenderer.removeListener("processes-changed", handler);
+  },
+
   getCloseToTray(): Promise<boolean> {
     return ipcRenderer.invoke("get-close-to-tray");
   },

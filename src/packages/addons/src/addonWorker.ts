@@ -179,6 +179,28 @@ const gryt = {
       return call("messaging.servers", []) as Promise<string[]>;
     },
   },
+  processes: {
+    /**
+     * Which of the programs the person listed are running. Needs `processes`.
+     *
+     * Their list, not their machine. Somebody who has written down two games
+     * gets an answer about those two games and nothing about the other two
+     * hundred things they have open — which is what makes the capability's
+     * wording true rather than a euphemism.
+     *
+     * Empty in a browser, and empty on the desktop until somebody lists
+     * something. Both look the same from here on purpose: a plugin should
+     * degrade rather than tell people to go and configure Gryt.
+     */
+    running(): Promise<string[]> {
+      return call("processes.running", []) as Promise<string[]>;
+    },
+    /** Hear when that answer changes. Needs `processes`. */
+    on(handler: (running: string[]) => void): () => void {
+      void call("processes.subscribe", []);
+      return on("processes", handler as Handler);
+    },
+  },
   ui: {
     /**
      * Draw a panel beside the member list. Needs `display`.

@@ -87,6 +87,12 @@ import {
   startLanDiscovery,
 } from "./lanDiscovery";
 import {
+  createProcessWatcher,
+  listRunningPrograms,
+  type ProcessWatcher,
+  readWatchList,
+} from "./processWatcher";
+import {
   isNativeScreenCaptureAvailable,
   startNativeScreenCapture,
   stopNativeScreenCapture,
@@ -160,6 +166,15 @@ let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuitting = false;
 let closeToTray = true;
+
+/*
+ * Watches for the programs somebody listed (GRYT-931).
+ *
+ * Null until the first window exists, because the only thing it does with an
+ * answer is send it to a renderer. Started with whatever is in the global
+ * store, so a match is known before anybody opens settings.
+ */
+let processWatcher: ProcessWatcher | null = null;
 
 type VoiceState = {
   inVoice: boolean;
@@ -1824,6 +1839,22 @@ function createMainWindow(): BrowserWindow {
     mainWindow = null;
   });
 
+  /*
+   * Start watching for whatever was listed last time (GRYT-931).
+   *
+   * Here rather than at app start because the only thing a match does is reach
+   * a renderer, and there is no renderer before this. Created once: a second
+   * window would otherwise mean two pollers asking the same question.
+   */
+  if (!processWatcher) {
+    processWatcher = createProcessWatcher({
+      onChange: (running) => {
+        mainWindow?.webContents.send("processes-changed", running);
+      },
+    });
+    processWatcher.watch(readWatchList(loadGlobalStore()["watchedPrograms"]));
+  }
+
   mainWindow.on(
     "show",
     refreshTrayMenu
@@ -2654,6 +2685,38 @@ if (!gotSingleInstanceLock) {
           }
         }
       );
+
+      /*
+       * Watching for programs you listed (GRYT-931).
+       *
+       * The watch list lives in the global store rather than per user: it is
+       * about this machine — which executables are on it and what they are
+       * called — and the same person on a laptop and a desktop does not have
+       * the same games installed on both.
+       *
+       * `listRunningPrograms` is the only thing here that hands over a list of
+       * what is open, and it is answered on demand for the settings screen.
+       * The watcher itself only ever reports matches, which is what makes the
+       * capability a plugin asks for an honest one.
+       */
+      ipcMain.handle("processes-list-running", () => listRunningPrograms());
+
+      ipcMain.handle("processes-get-watched", () =>
+        readWatchList(loadGlobalStore()["watchedPrograms"]),
+      );
+
+      ipcMain.handle(
+        "processes-set-watched",
+        (_event, programs: unknown) => {
+          const list = readWatchList(programs);
+          setGlobalValue("watchedPrograms", list);
+          processWatcher?.watch(list);
+          return list;
+        },
+      );
+
+      /** What is running right now, out of the list. Never the whole list. */
+      ipcMain.handle("processes-running", () => processWatcher?.current() ?? []);
 
       ipcMain.handle(
         "get-close-to-tray",

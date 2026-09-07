@@ -13,6 +13,7 @@ export {
   runningPlugins,
   setPluginApiActivitySetter,
   setPluginApiMessageSender,
+  setPluginApiRunningPrograms,
   setPluginHostTheme,
   setPluginHostVersion,
   startPlugin,

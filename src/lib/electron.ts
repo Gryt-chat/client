@@ -130,6 +130,12 @@ export interface EmbeddedServerInfo {
   bundled?: { server?: string; sfu?: string; worker?: string };
 }
 
+/** One entry in the watch list: an executable, and what to call it. */
+export interface WatchedProgram {
+  match: string;
+  name: string;
+}
+
 export interface ElectronAPI {
   isElectron: true;
   getAppVersion(): Promise<string>;
@@ -156,6 +162,19 @@ export interface ElectronAPI {
   /** Ask for a variant and start a check for the installer that matches. */
   setSlimVariant?(slim: boolean): void;
   switchUpdateChannel(enabled: boolean): void;
+  /**
+   * Watching for programs somebody listed (GRYT-931).
+   *
+   * `listRunningPrograms` is the one that hands over what is open, and it is
+   * for the settings screen so somebody can pick from a list rather than guess
+   * at an executable name. The rest deal only in the list they wrote.
+   */
+  listRunningPrograms?(): Promise<string[]>;
+  getWatchedPrograms?(): Promise<WatchedProgram[]>;
+  setWatchedPrograms?(programs: WatchedProgram[]): Promise<WatchedProgram[]>;
+  getRunningWatched?(): Promise<string[]>;
+  onWatchedProgramsChanged?(callback: (running: string[]) => void): () => void;
+
   getCloseToTray(): Promise<boolean>;
   setCloseToTray(enabled: boolean): void;
   setSignedIn(signedIn: boolean): void;

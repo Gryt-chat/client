@@ -39,7 +39,10 @@ function useSocketsHook() {
     isMuted,
     isDeafened,
     isAFK,
-    activity,
+    /* What a game says, or what you typed when none is running (GRYT-931).
+       `activity` is still the typed line and is what the settings field edits;
+       this is the one servers are told. */
+    effectiveActivity: activity,
     connectSoundEnabled,
     disconnectSoundEnabled,
     connectSoundVolume,
