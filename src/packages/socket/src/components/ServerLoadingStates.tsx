@@ -11,6 +11,15 @@ interface ServerLoadingStatesProps {
   connectionStatus?: 'connected' | 'disconnected' | 'connecting' | 'reconnecting' | 'refused';
   onReconnect?: () => void;
   onSignIn?: () => void;
+  /**
+   * Let this device back into a server it was signed out of.
+   *
+   * Separate from `onSignIn`, which starts a Gryt account sign-in. A device
+   * signed out from somewhere else is still signed in to Gryt, and still a
+   * member here -- what it is missing is somebody at this machine saying to
+   * come back. GRYT-987.
+   */
+  onResumeHere?: () => void;
 }
 
 const cardStyle: React.CSSProperties = {
@@ -69,6 +78,7 @@ export const ServerLoadingStates = ({
   refusalHelpUrl,
   onReconnect,
   onSignIn,
+  onResumeHere,
 }: ServerLoadingStatesProps) => {
   // The session ending is not a loading failure and Retry is the wrong verb for
   // it — reloading asks the same expired session the same question. Signing in
@@ -91,10 +101,20 @@ export const ServerLoadingStates = ({
                   "Sign in again to reconnect to this server."}
               </span>
             </div>
-            {onSignIn && (
-              <Button size="small" onClick={onSignIn} style={{ marginTop: 4 }}>
-                Sign in
+            {/* A token that ran out and a device somebody signed out want
+                different buttons. The first needs a Gryt sign-in; the second
+                is still signed in and still a member, and needs this machine
+                to say it is allowed back. */}
+            {serverFailure?.error === "session_ended" && onResumeHere ? (
+              <Button size="small" onClick={onResumeHere} style={{ marginTop: 4 }}>
+                Use this server here again
               </Button>
+            ) : (
+              onSignIn && (
+                <Button size="small" onClick={onSignIn} style={{ marginTop: 4 }}>
+                  Sign in
+                </Button>
+              )
             )}
           </div>
         </div>
