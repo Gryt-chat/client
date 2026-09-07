@@ -1,0 +1,9 @@
+{
+  "id": "paper-theme",
+  "name": "Paper",
+  "version": "1.0.0",
+  "type": "theme",
+  "author": "Gryt",
+  "description": "A warmer light theme. Paper instead of grey.",
+  "styles": ["paper.css"]
+}

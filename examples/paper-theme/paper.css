@@ -1,0 +1,41 @@
+/*
+ * Paper — a warmer light theme.
+ *
+ * A theme is CSS and nothing else. Gryt appends these files to the page after
+ * its own, so anything here wins on specificity ties. Set the variables and
+ * leave the rest of the app alone; a theme that reaches for a class name will
+ * break the first time somebody renames it.
+ *
+ * The variables Gryt defines are in src/style.css. The ones worth setting are
+ * below. Everything else — buttons, panels, borders — is built out of these.
+ */
+
+.light,
+.light-theme {
+  /* Behind everything. */
+  --color-background: #f4f0e8;
+
+  /* Channel list, member list, message composer. */
+  --color-panel-solid: #fbf8f2;
+
+  /* The same panel where Gryt wants to see through it. Keep the alpha; a
+     solid colour here makes menus look like they are floating on nothing. */
+  --color-panel-translucent: rgba(251, 248, 242, 0.88);
+
+  /* Inputs, cards, anything sitting on a panel. */
+  --color-surface: #ffffff;
+
+  /* Dims the page behind a modal. */
+  --color-overlay: rgba(60, 48, 32, 0.22);
+
+  /* Buttons, links, the unread dot. Radix generates twelve steps from the
+     accent picked in Settings; overriding step 9 changes the loud one and
+     leaves the quiet ones alone. */
+  --gryt-accent-9: #b3541e;
+}
+
+/* Code blocks and anything monospaced. Falls back the same way Gryt's does, so
+   a machine without the font still gets something readable. */
+:root {
+  --code-font-family: "iA Writer Mono", ui-monospace, monospace;
+}

@@ -78,6 +78,7 @@
     "test:channel-permissions": "node scripts/check-channel-permissions.mjs",
     "test:report-user": "node scripts/check-report-user.mjs",
     "test:card-byline": "node scripts/check-card-byline.mjs",
+    "test:examples": "node --test examples/examples.test.mjs",
     "test:member-invite": "node scripts/check-member-invite.mjs",
     "test:addon-capabilities": "node scripts/check-addon-capabilities.mjs",
     "test:actor-name": "node scripts/check-actor-name.mjs",
