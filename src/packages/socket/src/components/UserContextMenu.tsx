@@ -6,6 +6,7 @@ import { useSettings } from "@/settings";
 
 import { PiAtFill, PiChatCircleFill, PiCheckBold, PiCopyFill, PiFlagFill, PiProhibitFill } from "../../../../lib/icons";
 import { useServerPermissions } from "../hooks/usePermissions";
+import { makeRankOf } from "../lib/memberFacts";
 
 /** A role id. The server defines what they are; this only passes them around. */
 type Role = string;
@@ -82,19 +83,6 @@ interface UserContextMenuProps {
    */
   onReport?: () => void;
 }
-
-/**
- * The ranks the built-in roles ship with, for a server that has not told us
- * otherwise — one that predates editable roles, or a menu rendered where the
- * host is not known.
- */
-const BUILT_IN_RANK: Record<string, number> = {
-  owner: 100,
-  admin: 80,
-  mod: 60,
-  member: 40,
-  guest: 10,
-};
 
 export function UserContextMenu({
   children,
@@ -189,8 +177,7 @@ export function UserContextMenu({
   const volume = userVolumes[serverUserId] ?? 100;
   const showDisconnect = canDisconnect && isInVoice && onDisconnectFromVoice;
 
-  const rankOf = (roleId?: string) =>
-    (roleId ? roles.find((r) => r.id === roleId)?.rank ?? BUILT_IN_RANK[roleId] : undefined) ?? -1;
+  const rankOf = makeRankOf(roles);
 
   // Rank decides who may be acted on; permissions decide what the action is.
   // They used to be the same question asked of a four-rung ladder, which is why

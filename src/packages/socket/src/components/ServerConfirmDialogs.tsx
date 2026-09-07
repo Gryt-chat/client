@@ -4,18 +4,7 @@ import { useEffect, useState } from "react";
 import type { Channel, SidebarItem } from "@/settings/src/types/server";
 
 import type { MemberInviteInfo } from "../hooks/useAdminActions";
-
-/**
- * Ban lengths, as minutes. Null is permanent, which is what the server stores
- * as a null expiry — so the two agree without the client knowing the encoding.
- */
-const BAN_DURATIONS: { value: string; label: string; minutes: number | null }[] = [
-  { value: "1h", label: "1 hour", minutes: 60 },
-  { value: "1d", label: "1 day", minutes: 1440 },
-  { value: "7d", label: "7 days", minutes: 10080 },
-  { value: "30d", label: "30 days", minutes: 43200 },
-  { value: "permanent", label: "Permanent", minutes: null },
-];
+import { BAN_DURATIONS } from "../lib/memberFacts";
 
 interface PendingUser {
   id: string;
