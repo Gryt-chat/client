@@ -1,5 +1,6 @@
-import { Dialog, Divider, IconButton, TextField } from "@gryt/ui";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Dialog, IconButton, TextField } from "@gryt/ui";
+import type { ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useSettings } from "@/settings";
 
@@ -29,47 +30,64 @@ import { AppearanceSettings } from "./theme/appearanceSettings";
 import { VoiceSettings } from "./voiceSettings";
 
 /**
- * Divider between the former tabs now sharing a destination.
- *
- * Deliberately no heading: every panel already renders its own, so adding one
- * here produced "Profile / Profile". The panel owns its title — this only
- * supplies the separation that used to come from being on different tabs.
- */
-function PanelDivider() {
-  return <Divider className="my-5" />;
-}
-
-/**
  * Five destinations named for what you are trying to do rather than which
  * subsystem owns the setting.
  *
  * `mountWhenActive` panels touch hardware — microphone analysers, camera
  * preview — so they mount only while their destination is open.
  */
-const DESTINATIONS = [
+/**
+ * Where things live, named for what you are trying to do rather than which
+ * subsystem owns the setting.
+ *
+ * A destination with `pages` is a category rather than a page: the rail nests
+ * them under it and the pane shows one at a time. That replaces stacking four
+ * panels behind dividers, where Sound & video was a single scroll holding the
+ * microphone, voice, camera and screen share.
+ *
+ * `mountWhenActive` panels touch hardware — microphone analysers, camera
+ * preview — so they mount only while you are on them. Splitting the category
+ * made that finer: opening Sound & video no longer starts the camera because
+ * you wanted the microphone.
+ */
+interface SettingsPage {
+  value: string;
+  label: string;
+  content: ReactNode;
+  /** Mount only while you are on it. For panels that hold hardware open. */
+  mountWhenActive?: boolean;
+}
+
+interface SettingsDestination {
+  value: string;
+  label: string;
+  icon: typeof PiUserFill;
+  /** A category shows one of these at a time. Without them it is one page. */
+  pages?: SettingsPage[];
+  content?: ReactNode;
+  pinBottom?: boolean;
+}
+
+const DESTINATIONS: SettingsDestination[] = [
   {
     value: "you",
     label: "You",
     icon: PiUserFill,
-    content: (
-      <>
-        <ProfileSettings />
-      </>
-    ),
+    content: <ProfileSettings />,
   },
   {
     value: "account",
     label: "Account",
     icon: PiUserCircleFill,
-    content: (
-      <>
-        <AccountSettings />
-        <PanelDivider />
-        <SecuritySettings />
-        <PanelDivider />
-        <ServerIdentitySettings />
-      </>
-    ),
+    pages: [
+      { value: "account", label: "Account", content: <AccountSettings /> },
+      { value: "security", label: "Security", content: <SecuritySettings /> },
+      {
+        value: "identities",
+        label: "Server identities",
+        content: <ServerIdentitySettings />,
+      },
+    ],
   },
   // Electron only, because the embedded server is. In a browser this would be
   // a destination that can never have anything in it.
@@ -87,30 +105,35 @@ const DESTINATIONS = [
     value: "sound-video",
     label: "Sound & video",
     icon: PiVideoCameraFill,
-    mountWhenActive: true,
-    content: (
-      <>
-        <AudioSettings />
-        <PanelDivider />
-        <VoiceSettings />
-        <PanelDivider />
-        <CameraSettings />
-        <PanelDivider />
-        <ScreenShareSettings />
-      </>
-    ),
+    pages: [
+      {
+        value: "audio",
+        label: "Audio",
+        mountWhenActive: true,
+        content: <AudioSettings />,
+      },
+      { value: "voice", label: "Voice", content: <VoiceSettings /> },
+      {
+        value: "camera",
+        label: "Camera",
+        mountWhenActive: true,
+        content: <CameraSettings />,
+      },
+      {
+        value: "screen",
+        label: "Screen share",
+        content: <ScreenShareSettings />,
+      },
+    ],
   },
   {
     value: "looks",
     label: "How Gryt looks",
     icon: PiGearSixFill,
-    content: (
-      <>
-        <AppearanceSettings />
-        <PanelDivider />
-        <ChatSettings />
-      </>
-    ),
+    pages: [
+      { value: "theme", label: "Theme", content: <AppearanceSettings /> },
+      { value: "chat", label: "Chat", content: <ChatSettings /> },
+    ],
   },
   {
     /* Its own destination rather than a section inside "How Gryt behaves".
@@ -125,21 +148,14 @@ const DESTINATIONS = [
     value: "behaviour",
     label: "How Gryt behaves",
     icon: PiFadersHorizontalFill,
-    content: (
-      <>
-        <HotkeySettings />
-        <PanelDivider />
-        <PresenceSettings />
-        {isElectron() && (
-          <>
-            <PanelDivider />
-            <DesktopSettings />
-          </>
-        )}
-        <PanelDivider />
-        <AdvancedSettings />
-      </>
-    ),
+    pages: [
+      { value: "hotkeys", label: "Hotkeys", content: <HotkeySettings /> },
+      { value: "presence", label: "Presence", content: <PresenceSettings /> },
+      ...(isElectron()
+        ? [{ value: "desktop", label: "Desktop", content: <DesktopSettings /> }]
+        : []),
+      { value: "advanced", label: "Advanced", content: <AdvancedSettings /> },
+    ],
   },
   // Dev builds only. `import.meta.env.DEV` folds to false in a release, so
   // both the tab and the panel drop out of the bundle.
@@ -168,13 +184,10 @@ const DESTINATIONS = [
     value: "updates",
     label: "Updates & about",
     icon: PiArrowFatLineDownFill,
-    content: (
-      <>
-        <UpdatesSettings />
-        <PanelDivider />
-        <AboutSettings />
-      </>
-    ),
+    pages: [
+      { value: "updates", label: "Updates", content: <UpdatesSettings /> },
+      { value: "about", label: "About", content: <AboutSettings /> },
+    ],
   },
   {
     value: "support",
@@ -218,11 +231,30 @@ export function Settings() {
   const results = useMemo(() => searchSettings(query), [query]);
   const searching = query.trim().length > 0;
 
-  // Every persisted value is an old tab name and none survive the rename, so
-  // anything unrecognised falls back instead of rendering an empty panel.
-  const active = DESTINATIONS.some((d) => d.value === settingsTab)
-    ? settingsTab
-    : DEFAULT_DESTINATION;
+  /* Where the persisted value points, as a destination and a page inside it.
+     Stored as "sound-video/camera", and a bare "sound-video" still resolves —
+     both because that is every value written before this existed, and because
+     the callers that send you here mostly name a category.
+
+     A bare page name resolves too. useChannelSettings has always called
+     setSettingsTab("audio") when the microphone is missing, which matched no
+     destination, so the toast said "Settings → Audio" and the dialog opened on
+     Profile. Looking through the pages is what makes that land. */
+  const [active, activePage] = useMemo(() => {
+    const [first, second] = (settingsTab ?? "").split("/");
+
+    const destination =
+      DESTINATIONS.find((d) => d.value === first) ??
+      DESTINATIONS.find((d) => d.pages?.some((page) => page.value === first));
+
+    if (!destination) return [DEFAULT_DESTINATION, null] as const;
+    if (!destination.pages) return [destination.value, null] as const;
+
+    const wanted = destination.value === first ? second : first;
+    const page =
+      destination.pages.find((p) => p.value === wanted) ?? destination.pages[0];
+    return [destination.value, page.value] as const;
+  }, [settingsTab]);
 
   const changeDestination = useCallback(
     (value: string) => {
@@ -244,7 +276,9 @@ export function Settings() {
       pendingScroll.current = entry.panel ? null : entry.id;
       setPicked(entry.id);
       setJump((n) => n + 1);
-      changeDestination(entry.destination);
+      changeDestination(
+        entry.page ? `${entry.destination}/${entry.page}` : entry.destination,
+      );
       // The query deliberately survives. Results stay put so you can click
       // through several candidates to find the one you meant, rather than
       // retyping the search after every guess.
@@ -280,7 +314,7 @@ export function Settings() {
     });
 
     return () => cancelAnimationFrame(frame);
-  }, [active, jump]);
+  }, [active, activePage, jump]);
 
   useEffect(() => {
     if (!highlighted) return;
@@ -428,18 +462,34 @@ export function Settings() {
                     <SearchResults results={results} onPick={jumpTo} picked={picked} />
                   ) : (
                     <div className="flex flex-col gap-1 h-full">
-                      {MAIN_DESTINATIONS.map(({ value, label, icon: Icon }) => (
-                        <button
-                          key={value}
-                          type="button"
-                          onClick={() => changeDestination(value)}
-                          className="gryt-settings-nav"
-                          data-tour={`settings-${value}`}
-                          data-active={value === active}
-                        >
-                          <Icon size={16} />
-                          {label}
-                        </button>
+                      {MAIN_DESTINATIONS.map(({ value, label, icon: Icon, pages }) => (
+                        <Fragment key={value}>
+                          <button
+                            type="button"
+                            onClick={() => changeDestination(value)}
+                            className="gryt-settings-nav"
+                            data-tour={`settings-${value}`}
+                            data-active={value === active}
+                          >
+                            <Icon size={16} />
+                            {label}
+                          </button>
+
+                          {/* Only the category you are in opens. All ten at
+                              once is the scroll this replaced. */}
+                          {value === active &&
+                            pages?.map((page) => (
+                              <button
+                                key={page.value}
+                                type="button"
+                                onClick={() => changeDestination(`${value}/${page.value}`)}
+                                className="gryt-settings-nav gryt-settings-subnav"
+                                data-active={page.value === activePage}
+                              >
+                                {page.label}
+                              </button>
+                            ))}
+                        </Fragment>
                       ))}
 
                       <div style={{ flex: 1, minHeight: "12px" }} />
@@ -467,9 +517,18 @@ export function Settings() {
                   overflowX: "hidden",
                   minWidth: 0,
                 }}>
-                {DESTINATIONS.map(({ value, content, mountWhenActive }) => (
+                {DESTINATIONS.map(({ value, content, pages }) => (
                   <div key={value} hidden={value !== active}>
-                    {mountWhenActive ? value === active && content : content}
+                    {pages
+                      ? pages.map((page) => {
+                          const shown = value === active && page.value === activePage;
+                          return (
+                            <div key={page.value} hidden={!shown}>
+                              {page.mountWhenActive ? shown && page.content : page.content}
+                            </div>
+                          );
+                        })
+                      : content}
                   </div>
                 ))}
               </div>
@@ -494,6 +553,13 @@ export function Settings() {
             color: var(--gryt-neutral-12);
           }
           .gryt-settings-nav:hover { background: var(--gryt-neutral-a3); }
+          /* Indented to the width of the icon above it, so a page lines up
+             under its category's label rather than under its icon. */
+          .gryt-settings-subnav {
+            padding-left: 34px;
+            font-size: 13px;
+            color: var(--gryt-neutral-11);
+          }
           .gryt-settings-nav[data-active="true"] {
             background: var(--gryt-accent-a3);
             color: var(--gryt-accent-11);
