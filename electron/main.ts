@@ -304,15 +304,45 @@ function ensureLinuxAppImageProtocolHandler(appImagePath: string): void {
       writeFileSync(desktopFile, entry);
     }
 
-    // Register the association. execFile, not a shell, so a spaced AppImage path
-    // is never word-split; both calls are best-effort.
-    execFile("update-desktop-database", [appsDir], () => {});
+    /*
+     * Register the association. execFile, not a shell, so a spaced AppImage path
+     * is never word-split.
+     *
+     * Still best-effort — neither failure should stop the app starting — but
+     * the outcome is written down now (GRYT-967). Throwing the exit code away
+     * meant a missing or broken `xdg-mime` produced no association, no sign-in
+     * and no explanation, which is the same silent shape as the bug in
+     * GRYT-965 from a different cause.
+     *
+     * `update-desktop-database` is absent on plenty of minimal systems and the
+     * scheme still resolves without it, so its failure is logged as a note
+     * rather than as the thing that broke.
+     */
+    execFile("update-desktop-database", [appsDir], (error) => {
+      if (error) startupLog(`update-desktop-database did not run: ${error.message}`);
+    });
+
     execFile(
       "xdg-mime",
       ["default", "gryt-chat.desktop", "x-scheme-handler/gryt"],
-      () => {}
+      (error) => {
+        /* This one is the association. Without it the browser has nowhere to
+           hand the sign-in callback, so it is the line worth finding in the
+           log. */
+        if (error) {
+          startupLog(`xdg-mime failed, so gryt:// is not associated: ${error.message}`);
+        } else {
+          startupLog(`Registered gryt:// handler at ${desktopFile}`);
+        }
+      }
     );
-    startupLog(`Registered gryt:// handler at ${desktopFile}`);
+
+    /* Deliberately not "Registered …" — that used to be logged here, which is
+       synchronously after dispatching both commands and before either had
+       returned, so the log said the handler was registered whether or not it
+       was. The one artefact somebody reads when this breaks was the thing
+       lying to them. */
+    startupLog(`Wrote gryt:// desktop entry at ${desktopFile}`);
   } catch (error) {
     startupLog(`Could not register gryt:// handler: ${error}`);
   }
