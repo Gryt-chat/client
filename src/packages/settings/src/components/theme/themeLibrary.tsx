@@ -1,12 +1,12 @@
 import type { GrytTheme } from "@gryt/ui";
 import {
+  Accordion,
   AlertDialog,
   Button,
   encodeGrytTheme,
-  grytPresets,
-  grytThemeHues,
+  grytPresetsByCollection,
 } from "@gryt/ui";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
 import type { SavedTheme } from "@/common";
@@ -19,8 +19,17 @@ import {
   PiTrashBold,
 } from "../../../../../lib/icons";
 import { ImportThemeDialog } from "./importThemeDialog";
+import { ThemePreview } from "./themePreview";
 
 const GENERATOR = "https://ui.gryt.chat/theme/generator";
+
+/** Wide enough that the four panels still read as four panels. */
+const PREVIEW_WIDTH = 208;
+
+/** Imported themes are not a collection in the library, so they get a name here. */
+const YOURS = "Yours";
+
+const PRESET_PREFIX = "preset:";
 
 /**
  * The themes on this machine, and the one in use.
@@ -28,54 +37,109 @@ const GENERATOR = "https://ui.gryt.chat/theme/generator";
  * The built-in half comes from @gryt/ui rather than from a list here, so a
  * newer library brings new ones with it. They cannot be deleted — there has to
  * be something to go back to — but any of them opens in the generator.
+ *
+ * Collections are accordions because there are forty-seven presets now. Only
+ * the collection holding the theme in use starts open: a list that long with
+ * everything expanded is the same scroll it was before, and the row you want to
+ * see is the one you are already wearing.
  */
 export function ThemeLibrary() {
   const { themes, activeId, setActiveTheme, deleteTheme } = useCustomThemes();
   const { resolvedAppearance } = useTheme();
   const [importing, setImporting] = useState(false);
 
+  // Whichever collection holds the theme in use, so opening Appearance shows
+  // where you are rather than the top of the list.
+  const openCollection = useMemo(() => {
+    if (activeId === null) return "Gryt";
+    if (!activeId.startsWith(PRESET_PREFIX)) return YOURS;
+    const id = activeId.slice(PRESET_PREFIX.length);
+    return (
+      grytPresetsByCollection.find((group) =>
+        group.presets.some((preset) => preset.id === id),
+      )?.collection ?? "Gryt"
+    );
+  }, [activeId]);
+
+  const [open, setOpen] = useState<string[]>([openCollection]);
+
   return (
     <div className="flex flex-col gap-2">
-      <ul className="m-0 flex list-none flex-col gap-2 p-0">
-        {grytPresets.map((preset) => (
-          <li key={preset.id}>
-            <ThemeRow
-              active={
-                preset.id === "gryt"
-                  ? activeId === null
-                  : activeId === presetThemeId(preset.id)
-              }
-              appearance={resolvedAppearance}
-              name={preset.name}
-              note={preset.note}
-              theme={preset.theme}
-              onSelect={() =>
-                setActiveTheme(
-                  // Gryt's own is the absence of a theme rather than a theme:
-                  // nothing on the root, the stylesheet as shipped.
-                  preset.id === "gryt" ? null : presetThemeId(preset.id),
-                )
-              }
-              onOpenInGenerator={() => openInGenerator(preset.theme)}
+      <Accordion
+        className="gap-1 p-1"
+        multiple
+        value={open}
+        onValueChange={(value) => setOpen(value as string[])}
+      >
+        {grytPresetsByCollection.map((group) => (
+          <Accordion.Item key={group.collection} value={group.collection}>
+            <CollectionTrigger
+              accents={group.presets.map((preset) => preset.theme.hue.accent)}
+              count={group.presets.length}
+              name={group.collection}
+              note={group.note}
             />
-          </li>
+            <Accordion.Panel>
+              <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
+                {group.presets.map((preset) => (
+                  <li key={preset.id}>
+                    <ThemeRow
+                      active={
+                        preset.id === "gryt"
+                          ? activeId === null
+                          : activeId === presetThemeId(preset.id)
+                      }
+                      appearance={resolvedAppearance}
+                      name={preset.name}
+                      note={preset.note}
+                      source={preset.source}
+                      theme={preset.theme}
+                      onOpenInGenerator={() => openInGenerator(preset.theme)}
+                      onSelect={() =>
+                        setActiveTheme(
+                          // Gryt's own is the absence of a theme rather than a
+                          // theme: nothing on the root, the stylesheet as shipped.
+                          preset.id === "gryt" ? null : presetThemeId(preset.id),
+                        )
+                      }
+                    />
+                  </li>
+                ))}
+              </ul>
+            </Accordion.Panel>
+          </Accordion.Item>
         ))}
-        {themes.map((entry) => (
-          <li key={entry.id}>
-            <ThemeRow
-              active={activeId === entry.id}
-              appearance={resolvedAppearance}
-              name={entry.name}
-              note="Imported"
-              theme={entry.theme}
-              onSelect={() => setActiveTheme(entry.id)}
-              onCopyLink={() => copyLink(entry)}
-              onOpenInGenerator={() => openInGenerator(entry.theme)}
-              onDelete={() => deleteTheme(entry.id)}
+
+        {themes.length > 0 && (
+          <Accordion.Item value={YOURS}>
+            <CollectionTrigger
+              accents={themes.map((entry) => entry.theme.hue.accent)}
+              count={themes.length}
+              name={YOURS}
+              note="Imported from a link."
             />
-          </li>
-        ))}
-      </ul>
+            <Accordion.Panel>
+              <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
+                {themes.map((entry) => (
+                  <li key={entry.id}>
+                    <ThemeRow
+                      active={activeId === entry.id}
+                      appearance={resolvedAppearance}
+                      name={entry.name}
+                      note="Imported"
+                      theme={entry.theme}
+                      onCopyLink={() => copyLink(entry)}
+                      onDelete={() => deleteTheme(entry.id)}
+                      onOpenInGenerator={() => openInGenerator(entry.theme)}
+                      onSelect={() => setActiveTheme(entry.id)}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </Accordion.Panel>
+          </Accordion.Item>
+        )}
+      </Accordion>
 
       <div className="flex flex-wrap items-center gap-3 pt-1">
         <Button size="small" onClick={() => setImporting(true)}>
@@ -93,6 +157,40 @@ export function ThemeLibrary() {
 
       <ImportThemeDialog open={importing} onOpenChange={setImporting} />
     </div>
+  );
+}
+
+function CollectionTrigger({
+  accents,
+  count,
+  name,
+  note,
+}: {
+  accents: string[];
+  count: number;
+  name: string;
+  note: string;
+}) {
+  return (
+    <Accordion.Trigger>
+      <span className="flex min-w-0 flex-1 items-center gap-3">
+        <span className="shrink-0">{name}</span>
+        <span className="truncate text-xs font-normal text-gryt-muted">{note}</span>
+      </span>
+      {/* Four accents is enough to tell Winter from Autumn with the panel shut. */}
+      <span aria-hidden="true" className="flex shrink-0 gap-1">
+        {accents.slice(0, 4).map((accent, index) => (
+          <span
+            key={index}
+            className="block h-2.5 w-2.5 rounded-full border border-gryt-border"
+            style={{ backgroundColor: accent }}
+          />
+        ))}
+      </span>
+      <span className="shrink-0 text-xs font-normal tabular-nums text-gryt-muted">
+        {count}
+      </span>
+    </Accordion.Trigger>
   );
 }
 
@@ -115,11 +213,36 @@ function copyLink(entry: SavedTheme) {
     .catch(() => toast.error("Could not copy the link"));
 }
 
+/**
+ * The corner radius, drawn as a corner.
+ *
+ * The preview shows it truthfully and therefore almost invisibly: at a fifth of
+ * size a 20px corner is four pixels, and Gryt and Solarized look equally square
+ * there. This is the same value on a box standing in for a 44px panel, so the
+ * shape is the theme's own ratio at a size you can see.
+ */
+function RadiusGlyph({ radius }: { radius: GrytTheme["radius"] }) {
+  return (
+    <span
+      className="flex shrink-0 items-center gap-1.5 text-gryt-muted"
+      title={`radius.lg ${radius.lg}px`}
+    >
+      <span
+        aria-hidden="true"
+        className="block h-5 w-5 border-t-2 border-l-2 border-current opacity-80"
+        style={{ borderTopLeftRadius: Math.min(11, radius.lg * 0.5) }}
+      />
+      <span className="text-xs tabular-nums">{radius.lg}</span>
+    </span>
+  );
+}
+
 function ThemeRow({
   active,
   appearance,
   name,
   note,
+  source,
   theme,
   onSelect,
   onCopyLink,
@@ -130,6 +253,7 @@ function ThemeRow({
   appearance: "dark" | "light";
   name: string;
   note: string;
+  source?: string;
   theme: GrytTheme;
   onSelect: () => void;
   onCopyLink?: () => void;
@@ -137,13 +261,11 @@ function ThemeRow({
   onDelete?: () => void;
 }) {
   const [confirming, setConfirming] = useState(false);
-  const neutrals = theme[appearance];
-  const hues = grytThemeHues(theme, appearance);
 
   return (
     <div
       className={[
-        "flex items-center gap-3 rounded-(--gryt-radius-lg) border p-3 transition-colors",
+        "flex items-center gap-3 rounded-(--gryt-radius-lg) border p-2 transition-colors",
         active
           ? "border-gryt-accent bg-gryt-neutral-3"
           : "border-gryt-border hover:bg-gryt-neutral-3",
@@ -157,25 +279,21 @@ function ThemeRow({
         type="button"
         onClick={onSelect}
       >
-        <span
-          aria-hidden="true"
-          className="flex shrink-0 overflow-hidden rounded-(--gryt-radius-md) border border-gryt-border"
-        >
-          {[neutrals.bg, neutrals.surface, hues.accent, hues.secondary].map(
-            (colour, index) => (
-              <span
-                key={index}
-                className="block h-8 w-4"
-                style={{ backgroundColor: colour }}
-              />
-            ),
-          )}
+        <span className="block shrink-0 overflow-hidden rounded-(--gryt-radius-md) border border-gryt-border leading-none">
+          <ThemePreview appearance={appearance} theme={theme} width={PREVIEW_WIDTH} />
         </span>
 
-        <span className="flex min-w-0 flex-col">
+        <span className="flex min-w-0 flex-1 flex-col">
           <span className="truncate text-sm font-medium">{name}</span>
-          <span className="truncate text-xs text-gryt-muted">{note}</span>
+          <span className="text-xs text-gryt-muted">{note}</span>
+          {source ? (
+            <span className="truncate pt-0.5 text-[10px] text-gryt-muted opacity-75">
+              {source}
+            </span>
+          ) : null}
         </span>
+
+        <RadiusGlyph radius={theme.radius} />
 
         {active ? (
           <PiCheckBold aria-label="In use" className="shrink-0 text-gryt-accent-11" />
@@ -224,13 +342,11 @@ function ThemeRow({
                 copy.
               </AlertDialog.Description>
               <div className="mt-4 flex justify-end gap-3">
-                <AlertDialog.Close
-                  render={
-                    <Button size="small" tone="neutral">
-                      Keep it
-                    </Button>
-                  }
-                />
+                <AlertDialog.Close render={<span />}>
+                  <Button size="small" tone="neutral">
+                    Keep it
+                  </Button>
+                </AlertDialog.Close>
                 <Button
                   size="small"
                   tone="danger"
