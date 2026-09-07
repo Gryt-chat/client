@@ -14,6 +14,7 @@ function harness({ game = "Factorio", hosts = [] } = {}) {
     activity: [],
     sent: [],
     logs: [],
+    panels: [],
     subs: new Map(),
     cleanup: null,
     pending: null,
@@ -54,6 +55,10 @@ function harness({ game = "Factorio", hosts = [] } = {}) {
         return () => {};
       },
       servers: async () => [...state.hosts],
+    },
+    ui: {
+      panel: async (spec) => void state.panels.push(spec),
+      clear: async () => void state.panels.push(null),
     },
     log: {
       info: (m) => state.logs.push(["info", m]),
@@ -159,17 +164,47 @@ test("presence: a reconnect introduces itself again", async () => {
   ]);
 });
 
-test("presence: the roster is checked before it is logged", async () => {
+test("presence: the roster is checked before it is drawn", async () => {
   const s = await start(harness({ game: "Factorio", hosts: ["gryt.example"] }));
   const roster = s.subs.get("roster");
   assert.ok(roster, "subscribed at activate, not on first send");
 
   roster({ host: "gryt.example", data: "not an array" });
+  assert.equal(s.panels.length, 0, "junk is not a roster");
+
   roster({ host: "gryt.example", data: [{ who: 1, game: 2 }, null, { who: "sam" }] });
-  assert.equal(s.logs.length, 0);
+  assert.deepEqual(s.panels.at(-1), null, "nothing usable means no panel, not an empty one");
 
   roster({ host: "gryt.example", data: [{ who: "sam", game: "Tetris" }] });
-  assert.deepEqual(s.logs, [["info", "[gryt.example] sam is playing Tetris"]]);
+  assert.deepEqual(s.panels.at(-1), {
+    title: "Playing now",
+    rows: [{ label: "sam", value: "Tetris" }],
+  });
+});
+
+test("presence: two servers are one panel, and say which is which", async () => {
+  const s = await start(harness({ game: "Factorio", hosts: ["one.example", "two.example"] }));
+  const roster = s.subs.get("roster");
+
+  roster({ host: "one.example", data: [{ who: "sam", game: "Tetris" }] });
+  assert.deepEqual(s.panels.at(-1).rows, [{ label: "sam", value: "Tetris" }],
+    "one server, so naming it says nothing");
+
+  roster({ host: "two.example", data: [{ who: "kari", game: "Factorio" }] });
+  assert.deepEqual(s.panels.at(-1).rows, [
+    { label: "sam", value: "Tetris · one.example" },
+    { label: "kari", value: "Factorio · two.example" },
+  ]);
+});
+
+test("presence: leaving a server takes its people out of the panel", async () => {
+  const s = await start(harness({ game: "Factorio", hosts: ["gryt.example"] }));
+  s.subs.get("roster")({ host: "gryt.example", data: [{ who: "sam", game: "Tetris" }] });
+  assert.equal(s.panels.at(-1).rows.length, 1);
+
+  s.hosts = [];
+  await s.tick();
+  assert.deepEqual(s.panels.at(-1), null, "the panel outlived the server it described");
 });
 
 test("presence: turning it off clears the status line and stops the poll", async () => {
@@ -180,6 +215,7 @@ test("presence: turning it off clears the status line and stops the poll", async
   await new Promise((r) => setTimeout(r, 5));
 
   assert.equal(s.activity.at(-1), "");
+  assert.deepEqual(s.panels.at(-1), null, "the panel outlived the plugin");
   assert.equal(s.pending, null, "nothing left queued");
   assert.equal(s.fetches, fetches, "and nothing still polling");
 });

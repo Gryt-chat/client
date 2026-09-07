@@ -6,12 +6,13 @@
  *   1. Sets your own status line, which everybody already sees in the member
  *      list. This needs `status` and no server plugin at all.
  *   2. Sends the same thing to any server running the server half, which fans
- *      it out to everybody else's copy of this plugin. This needs `messaging`
- *      on both ends.
+ *      it out to everybody else's copy of this plugin, and draws what comes
+ *      back in a panel. This needs `messaging` on both ends, and `display` for
+ *      the panel.
  *
  * The second one is the pair. The first one works on its own, so if you only
  * want your own status line, delete the messaging half and drop `messaging`
- * from the manifest.
+ * and `display` from the manifest.
  *
  * Where the game name comes from: a plugin runs in a worker and cannot see
  * your processes, so something outside has to tell it. This one asks a small
@@ -66,24 +67,56 @@ export function activate() {
    */
   const greeted = new Set();
 
+  /*
+   * Who is playing what, per server, so a panel can show all of them at once.
+   * `roster` arrives per host and replaces that host's part of the list.
+   */
+  const rosters = new Map();
+
+  function draw() {
+    const rows = [];
+    for (const [host, entries] of rosters) {
+      for (const entry of entries) {
+        // The host in the value, so somebody on two servers can tell them
+        // apart. Dropped when there is only one, because then it says nothing.
+        rows.push({
+          label: entry.who,
+          value: rosters.size > 1 ? `${entry.game} · ${host}` : entry.game,
+        });
+      }
+    }
+
+    // Nothing to say, so take the panel down rather than leave an empty one.
+    if (rows.length === 0) return gryt.ui.clear();
+
+    return gryt.ui.panel({ title: "Playing now", rows });
+  }
+
   gryt.messaging.on("roster", ({ host, data }) => {
     // This came from your own server half, which built it out of other
     // people's messages. Check it anyway.
     if (!Array.isArray(data)) return;
 
+    const entries = [];
     for (const entry of data) {
       if (typeof entry?.who !== "string" || typeof entry?.game !== "string") continue;
-      gryt.log.info(`[${host}] ${entry.who} is playing ${entry.game}`);
+      entries.push({ who: entry.who, game: entry.game });
     }
+
+    rosters.set(host, entries);
+    void draw();
   });
 
   async function sync(changed) {
     const hosts = await gryt.messaging.servers();
 
     // A server we were on and no longer are gets introduced to again if we
-    // come back, which is what makes a reconnect work.
+    // come back, which is what makes a reconnect work. Its roster goes with it:
+    // leaving a server should not leave its people in the panel.
     for (const host of [...greeted]) {
-      if (!hosts.includes(host)) greeted.delete(host);
+      if (hosts.includes(host)) continue;
+      greeted.delete(host);
+      if (rosters.delete(host)) void draw();
     }
 
     for (const host of hosts) {
@@ -125,9 +158,11 @@ export function activate() {
     stopped = true;
     if (timer) clearTimeout(timer);
 
-    // Turning the plugin off should take the status line with it, otherwise
-    // you are Factorio forever.
+    // Turning the plugin off should take the status line and the panel with
+    // it, otherwise you are Factorio forever and the panel outlives the plugin
+    // that drew it.
     void gryt.setActivity("");
+    void gryt.ui.clear();
   });
 
   void tick();
