@@ -88,6 +88,41 @@ for (const forbidden of ["localStorage", "document.", "window."]) {
   );
 }
 
+/*
+ * A worker has no DOM, but it does have origin storage — and origin storage is
+ * the app's. `indexedDB` in a worker opens the same databases the app writes
+ * to, so a plugin could read what it was refused by asking the browser instead
+ * of asking Gryt.
+ *
+ * `Worker` is the one that makes the rest worth anything: a plugin that can
+ * start one gets a fresh global with all of this back.
+ */
+for (const global of ["indexedDB", "caches", "Worker", "SharedWorker"]) {
+  assert.match(
+    workerCode,
+    new RegExp(`["']${global}["']`),
+    `the worker no longer takes ${global} away before importing a plugin`,
+  );
+}
+
+/* Off the prototype chain, not off `globalThis`. These are getters on the
+   worker global's prototype, so deleting from the object does nothing at all —
+   which is what the first attempt did, and the plugin still had them. */
+assert.match(
+  workerCode,
+  /getPrototypeOf/,
+  "the worker deletes from globalThis rather than walking the prototype chain, which does nothing",
+);
+
+/* And the network stays. A plugin that cannot reach Spotify is not a
+   now-playing plugin, and pretending otherwise here would be a lie the docs
+   would then have to repeat. */
+assert.doesNotMatch(
+  workerCode,
+  /["'](fetch|WebSocket)["']/,
+  "the worker takes the network away; that is not what was decided",
+);
+
 /* ── the capability decision ─────────────────────────────────────────────── */
 
 /* Both leaves, so this runs without a browser: the protocol holds the decision
