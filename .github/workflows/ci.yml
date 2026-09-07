@@ -61,6 +61,9 @@ jobs:
       # The claim is that only the programs somebody listed leave the main
       # process. Nothing else here would notice that stopping being true.
       - run: yarn test:watched-programs
+      # Sign-in leaves for the browser and comes back through gryt://. If the
+      # AppImage moved, it cannot — and nothing else here would notice.
+      - run: yarn test:appimage-location
       # examples/ is the addon people copy. It calls the same `gryt` API the
       # worker exposes, and nothing else here would notice it drifting.
       - run: yarn test:examples

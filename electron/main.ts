@@ -45,6 +45,11 @@ import {
   watchAddons,
 } from "./addonManager";
 import {
+  appImageState,
+  APPS_DIR,
+  restoreFromTrash,
+} from "./appImageLocation";
+import {
   isNativeAudioCaptureAvailable,
   listAudioCaptureSources,
   setAudioCaptureApplications,
@@ -251,6 +256,99 @@ if (process.platform !== "darwin") {
     arg.startsWith(`${PROTOCOL}://`)
   );
   if (argvDeepLink) pendingDeepLinkUrl = argvDeepLink;
+}
+
+/**
+ * Stop a sign-in that cannot come back, and offer to fix the cause (GRYT-965).
+ *
+ * Returns whether to go ahead and open the browser. True for everything except
+ * the one case worth interrupting: a Linux AppImage that is no longer at the
+ * path its `gryt://` handler names.
+ *
+ * The offer is only made when it can actually be honoured. Nothing holds a
+ * deleted AppImage open — every Gryt process resolves to the mounted squashfs,
+ * and the launcher has exited — so when the file is not in the Trash either,
+ * this says so instead of showing a button that would fail.
+ */
+async function warnIfAppImageMoved(): Promise<boolean> {
+  const state = appImageState(process.env.APPIMAGE);
+  if (state.kind === "not-applicable" || state.kind === "present") return true;
+
+  const parent = mainWindow ?? undefined;
+
+  if (state.kind === "trashed") {
+    const { response } = await dialog.showMessageBox(parent!, {
+      type: "warning",
+      title: "Gryt is in the Trash",
+      message: "Gryt is running from the Trash.",
+      detail:
+        "An AppImage is the app itself rather than an installer, so deleting it " +
+        "leaves nothing to come back to. Signing in opens your browser, and the " +
+        "browser hands you back to Gryt — which it cannot do from here.\n\n" +
+        `Gryt can move itself to ${APPS_DIR} and carry on.`,
+      buttons: ["Move Gryt and continue", "Sign in anyway", "Cancel"],
+      defaultId: 0,
+      cancelId: 2,
+      noLink: true,
+    });
+
+    if (response === 2) return false;
+    if (response === 1) return true;
+
+    try {
+      const restored = restoreFromTrash(state);
+      /* Re-register against the new path straight away, so the handler is
+         right before the browser is ever opened rather than on next launch. */
+      ensureLinuxAppImageProtocolHandler(restored);
+      startupLog(`Recovered AppImage from Trash to ${restored}`);
+
+      await dialog.showMessageBox(parent!, {
+        type: "info",
+        title: "Gryt moved",
+        message: `Gryt now lives in ${APPS_DIR}.`,
+        detail:
+          "Sign-in will work from here on. This copy is still the one that was " +
+          "in the Trash, so launch Gryt from its new home next time rather than " +
+          "from wherever you started it.",
+        buttons: ["Sign in"],
+        noLink: true,
+      });
+      return true;
+    } catch (error) {
+      startupLog(`Could not recover AppImage: ${error}`);
+      await dialog.showMessageBox(parent!, {
+        type: "error",
+        title: "Could not move Gryt",
+        message: "Gryt could not move itself out of the Trash.",
+        detail:
+          `Move ${state.trashedAt} to ${APPS_DIR} yourself, then start Gryt from ` +
+          "there. Sign-in will work once it is running from a permanent home.",
+        buttons: ["OK"],
+        noLink: true,
+      });
+      return false;
+    }
+  }
+
+  /* Gone, and not in the Trash. There is nothing to put back — say what is
+     wrong and what fixes it, rather than offering a button that cannot work. */
+  const { response } = await dialog.showMessageBox(parent!, {
+    type: "warning",
+    title: "Gryt has moved",
+    message: "Gryt is not where it was when it started.",
+    detail:
+      `It was launched from ${state.path}, which is no longer there. An AppImage ` +
+      "is the app itself rather than an installer, so moving or deleting it " +
+      "breaks the link your browser uses to hand sign-in back.\n\n" +
+      `Put the AppImage somewhere permanent — ${APPS_DIR} is a good home — and ` +
+      "start Gryt from there.",
+    buttons: ["Sign in anyway", "Cancel"],
+    defaultId: 1,
+    cancelId: 1,
+    noLink: true,
+  });
+
+  return response === 0;
 }
 
 /**
@@ -3876,7 +3974,16 @@ if (!gotSingleInstanceLock) {
       ipcMain.on(
         "auth:open-external",
         (_event, url: string) => {
-          shell.openExternal(url);
+          /*
+           * Sign-in leaves for the browser and comes back through `gryt://`,
+           * so if the AppImage is not where the handler points, this is a
+           * one-way trip (GRYT-965). Asked here rather than at startup: the
+           * handler is rewritten from `process.env.APPIMAGE` every launch, so
+           * at startup it has just been made correct and could never be stale.
+           */
+          void warnIfAppImageMoved().then((proceed) => {
+            if (proceed) shell.openExternal(url);
+          });
         }
       );
 
