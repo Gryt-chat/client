@@ -20,10 +20,12 @@ import {
   serversRunning,
   subscribe,
 } from "./pluginMessages";
+import { forgetPanels, hidePanel, showPanel } from "./pluginPanels";
 import {
   type HostMessage,
   mayCall,
   METHOD_CAPABILITY,
+  readPanel,
   STOP_GRACE_MS,
   type ThemeInfo,
   type WorkerMessage,
@@ -52,6 +54,14 @@ export function setPluginApiMessageSender(sender: MessageSender | null): void {
 interface Running {
   worker: Worker;
   capabilities: AddonCapability[];
+  /**
+   * The addon's `name` from its manifest.
+   *
+   * Carried because a panel is drawn with it beside the title (GRYT-951), and
+   * an id is not a name — "presence" is what the folder is called, "Presence"
+   * is what somebody agreed to install.
+   */
+  name: string;
   /** Dropped when the plugin stops, so a late message reaches nothing. */
   unsubscribes: (() => void)[];
 }
@@ -136,6 +146,23 @@ async function serve(
       return serversRunning(addonId);
     }
 
+    case "ui.panel": {
+      /* Read here rather than trusted. What arrives is a plugin's own object,
+         and a plugin's rows are usually built out of what other people's
+         clients sent it — the presence example fills them with nicknames
+         strangers chose. `readPanel` is the only thing between that and a
+         React tree. */
+      const verdict = readPanel(args[0]);
+      if (!verdict.ok) throw new Refused(`"${addonId}" sent something that is not a panel: ${verdict.reason}`);
+      showPanel(addonId, entry.name, verdict.panel);
+      return undefined;
+    }
+
+    case "ui.clear": {
+      hidePanel(addonId);
+      return undefined;
+    }
+
     default:
       /* Unreachable: `mayCall` refuses anything not in METHOD_CAPABILITY, and
          every entry there has a branch above. Here so adding one to the map and
@@ -155,6 +182,7 @@ export function startPlugin(
   addonId: string,
   url: string,
   manifestCapabilities: string[] | undefined,
+  addonName: string = addonId,
 ): void {
   stopPlugin(addonId);
 
@@ -169,6 +197,7 @@ export function startPlugin(
   const entry: Running = {
     worker,
     capabilities: declaredCapabilities(manifestCapabilities),
+    name: addonName,
     unsubscribes: [],
   };
   running.set(addonId, entry);
@@ -232,6 +261,12 @@ export function stopPlugin(addonId: string): void {
 
   for (const drop of entry.unsubscribes) drop();
 
+  /* Before the worker is asked to stop rather than after. A panel outliving the
+     plugin that drew it is the failure people notice: the addon is off in
+     Settings and its list is still sitting beside the member list, saying
+     something that was true a minute ago. */
+  hidePanel(addonId);
+
   try {
     entry.worker.postMessage({ kind: "stop" } satisfies HostMessage);
   } catch {
@@ -242,6 +277,10 @@ export function stopPlugin(addonId: string): void {
 
 export function stopAllPlugins(): void {
   for (const addonId of [...running.keys()]) stopPlugin(addonId);
+  /* `stopPlugin` already takes each plugin's panel down, so this is for a panel
+     whose plugin is somehow no longer in `running` — a start that half failed.
+     Cheap, and the alternative is a panel with nothing behind it. */
+  forgetPanels();
 }
 
 /** Re-exported so the socket layer keeps one import for inbound messages. */

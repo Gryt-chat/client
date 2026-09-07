@@ -31,7 +31,7 @@
  */
 
 /** Everything a plugin can ask for. Adding one means adding it here first. */
-export const ADDON_CAPABILITIES = ["status", "messaging"] as const;
+export const ADDON_CAPABILITIES = ["status", "messaging", "display"] as const;
 
 export type AddonCapability = (typeof ADDON_CAPABILITIES)[number];
 
@@ -45,6 +45,17 @@ export const CAPABILITY_LABELS: Record<AddonCapability, string> = {
    * it involves somebody else's server as well as this plugin.
    */
   messaging: "Exchange its own messages with the servers you are on",
+  /*
+   * Worded around the room it takes rather than around what it draws (GRYT-951).
+   *
+   * A plugin with this puts a panel beside your member list, on every server,
+   * and what is in it comes from whoever wrote the plugin. It cannot draw over
+   * Gryt and it cannot send anything anywhere — the panel is text the app
+   * renders — but it is space in the app with somebody else's words in it, and
+   * the person agreeing to that should be agreeing to that rather than to
+   * "shows information".
+   */
+  display: "Show its own panel beside the member list",
 };
 
 function isCapability(value: unknown): value is AddonCapability {

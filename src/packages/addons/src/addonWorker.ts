@@ -179,6 +179,25 @@ const gryt = {
       return call("messaging.servers", []) as Promise<string[]>;
     },
   },
+  ui: {
+    /**
+     * Draw a panel beside the member list. Needs `display`.
+     *
+     * A title and rows of text, and nothing else — no markup, no colours, no
+     * node handed over. The app renders it with its own components, which is
+     * what lets a plugin be seen at all from inside a worker with no DOM.
+     *
+     * Calling it again replaces what is there. There is one panel per plugin,
+     * so a plugin does not have to track handles or clean up more than one.
+     */
+    panel(panel: { title: string; rows: { label: string; value?: string }[] }): Promise<unknown> {
+      return call("ui.panel", [panel]);
+    },
+    /** Take it down. Needs `display`. */
+    clear(): Promise<unknown> {
+      return call("ui.clear", []);
+    },
+  },
   log: {
     info: (message: string) => post({ kind: "log", level: "info", message: String(message) }),
     warn: (message: string) => post({ kind: "log", level: "warn", message: String(message) }),

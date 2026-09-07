@@ -84,7 +84,8 @@
     "test:actor-name": "node scripts/check-actor-name.mjs",
     "test:plugin-messaging": "node scripts/check-plugin-messaging.mjs",
     "test:plugin-wording": "node scripts/check-plugin-wording.mjs",
-    "test:plugin-isolation": "node scripts/check-plugin-isolation.mjs"
+    "test:plugin-isolation": "node scripts/check-plugin-isolation.mjs",
+    "test:plugin-panel": "node scripts/check-plugin-panel.mjs"
   },
   "dependencies": {
     "electron-updater": "^6.8.3",

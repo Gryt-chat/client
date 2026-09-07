@@ -57,6 +57,7 @@ jobs:
       - run: yarn test:plugin-messaging
       - run: yarn test:plugin-wording
       - run: yarn test:plugin-isolation
+      - run: yarn test:plugin-panel
       # examples/ is the addon people copy. It calls the same `gryt` API the
       # worker exposes, and nothing else here would notice it drifting.
       - run: yarn test:examples
