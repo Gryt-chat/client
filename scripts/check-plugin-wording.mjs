@@ -167,8 +167,12 @@ assert.doesNotMatch(
 
 /* And it is next to Leave, which is what somebody does about what they read.
    Matched on the menu row rather than on `onLeave`, which also appears in the
-   props above and would make this pass wherever the row ended up. */
-const leaveRow = header.indexOf("onClick={onLeave}");
+   props above and would make this pass wherever the row ended up.
+
+   Leaving is two rows since GRYT-988 — removing the server from the sidebar
+   keeps the membership, leaving ends it. The one anchored on is the leave,
+   because that is the one this row is about. */
+const leaveRow = header.indexOf('onLeave("leave")');
 assert.ok(leaveRow > 0, "the Leave row is gone — this check needs rewriting");
 assert.ok(leaveRow > item, "the plugin list is no longer above Leave");
 
