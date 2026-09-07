@@ -349,9 +349,110 @@ export const ChatView = memo(({
 
   const messageMap = useMemo(() => buildMessageMap(chatMessages), [chatMessages]);
 
+
   const onLightboxOpen = useCallback((src: string, alt?: string) => {
     setLightboxImage({ src, alt });
   }, []);
+  /*
+   * The thread panel's rows, built the way the channel's are.
+   *
+   * `buildMessageMetadata` is a pure pass over an ordered array — grouping needs
+   * neighbours — so the root goes in front of the replies and the result is
+   * keyed by message id afterwards. The panel then asks for a row by message and
+   * does not have to know where it sat.
+   */
+  const threadMessages = useMemo(
+    () =>
+      threads.open?.root
+        ? [threads.open.root, ...visibleThreadMessages]
+        : visibleThreadMessages,
+    [threads.open?.root, visibleThreadMessages],
+  );
+
+  const threadMetaById = useMemo(() => {
+    const metas = buildMessageMetadata(
+      threadMessages,
+      null,
+      currentUserId,
+      getSenderName,
+      getSenderAvatarUrl,
+      memberList,
+      roleColors,
+    );
+    const byId = new Map<string, (typeof metas)[number]>();
+    threadMessages.forEach((m, i) => {
+      const meta = metas[i];
+      if (meta) byId.set(m.message_id, meta);
+    });
+    return byId;
+  }, [threadMessages, currentUserId, getSenderName, getSenderAvatarUrl, memberList, roleColors]);
+
+  const renderThreadMessage = useCallback(
+    (m: ChatMessage) => {
+      const meta = threadMetaById.get(m.message_id);
+      if (!meta) return null;
+      const replyOriginal = m.reply_to_message_id
+        ? messageMap.get(m.reply_to_message_id)
+        : undefined;
+      return (
+        <MessageRow
+          message={m}
+          meta={meta}
+          replyPreviewText={
+            m.reply_to_message_id ? getReplyPreview(replyOriginal ?? null, 100) : null
+          }
+          isMentioned={
+            !!(currentUserId && m.text && m.text.includes(`mention:${currentUserId}`))
+          }
+          customEmojiList={customEmojiList}
+          memberNicknames={memberNicknames}
+          blurProfanity={blurProfanity}
+          smileyConversion={smileyConversion}
+          disabledSmileys={disabledSmileys}
+          serverHost={serverHost}
+          currentUserId={currentUserId}
+          currentUserNickname={currentUserNickname}
+          canDeleteAny={!!canDeleteAny}
+          chatMediaVolume={chatMediaVolume}
+          memberList={memberList}
+          setChatMediaVolume={setChatMediaVolume}
+          onReaction={handleReaction}
+          onReply={handleReply}
+          onEdit={startEditing}
+          onReport={handleReport}
+          onDelete={requestDelete}
+          scrollToMessage={scrollToMessage}
+          onLightboxOpen={onLightboxOpen}
+          /* No onStartThread. A thread cannot hang off a message already in
+             one — the server refuses it with `already_in_thread` — so the row
+             should not offer it. */
+        />
+      );
+    },
+    [
+      threadMetaById,
+      messageMap,
+      currentUserId,
+      customEmojiList,
+      memberNicknames,
+      blurProfanity,
+      smileyConversion,
+      disabledSmileys,
+      serverHost,
+      currentUserNickname,
+      canDeleteAny,
+      chatMediaVolume,
+      memberList,
+      setChatMediaVolume,
+      handleReaction,
+      handleReply,
+      startEditing,
+      handleReport,
+      requestDelete,
+      scrollToMessage,
+      onLightboxOpen,
+    ],
+  );
 
   // Both have to say yes: the role has to allow posting at all, and this
   // channel has to be one of the ones it allows it in.
@@ -588,7 +689,7 @@ export const ChatView = memo(({
               root={threads.open.root}
               messages={visibleThreadMessages}
               loading={threads.open.loading}
-              memberList={memberList}
+              renderMessage={renderThreadMessage}
               onClose={threads.closeThread}
               onSend={threads.sendReply}
               onSetStatus={threads.setStatus}
