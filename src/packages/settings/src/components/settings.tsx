@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSettings } from "@/settings";
 
 import { isElectron } from "../../../../lib/electron";
-import { PiArrowFatLineDownFill, PiFadersHorizontalFill, PiFlaskFill, PiGearSixFill, PiHardDrivesFill, PiHeartFill, PiMagnifyingGlassFill, PiPuzzlePieceFill, PiUserCircleFill, PiUserFill, PiVideoCameraFill, PiX } from "../../../../lib/icons";
+import { PiArrowFatLineDownFill, PiBellFill, PiFadersHorizontalFill, PiFlaskFill, PiGearSixFill, PiHardDrivesFill, PiHeartFill, PiMagnifyingGlassFill, PiPuzzlePieceFill, PiUserCircleFill, PiUserFill, PiVideoCameraFill, PiX } from "../../../../lib/icons";
 import type { SettingsIndexEntry } from "../hooks/settingsSearch";
 import { searchSettings } from "../hooks/settingsSearch";
 import { AboutSettings, UpdatesSettings } from "./aboutSettings";
@@ -113,6 +113,15 @@ const DESTINATIONS = [
     ),
   },
   {
+    /* Its own destination rather than a section inside "How Gryt behaves".
+       It had four settings there; it now carries the global level and a row
+       per server, which is a page rather than a paragraph. */
+    value: "notifications",
+    label: "Notifications",
+    icon: PiBellFill,
+    content: <NotificationSettings />,
+  },
+  {
     value: "behaviour",
     label: "How Gryt behaves",
     icon: PiFadersHorizontalFill,
@@ -121,8 +130,6 @@ const DESTINATIONS = [
         <HotkeySettings />
         <PanelDivider />
         <PresenceSettings />
-        <PanelDivider />
-        <NotificationSettings />
         {isElectron() && (
           <>
             <PanelDivider />

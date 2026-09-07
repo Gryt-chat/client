@@ -17,7 +17,10 @@
 import assert from "node:assert/strict";
 
 const {
+  globalOverrules,
   parsePrefs,
+  parseStored,
+  quieterOf,
   resolveLevel,
   shouldAnnounceMention,
   shouldAnnounceMessage,
@@ -113,5 +116,55 @@ assert.deepEqual(parsePrefs({ [HOST]: { folders: { f1: 7 } } }), {});
 // A good file survives intact.
 const good = { [HOST]: { server: "mentions", folders: { f1: "none" }, channels: { c1: "all" } } };
 assert.deepEqual(parsePrefs(good), good);
+
+// ── The global ceiling ──────────────────────────────────────────────────────
+//
+// It only ever quietens. The case that matters is the last pair: a global of
+// "everything" must not un-mute a server somebody muted on purpose, which is
+// what a global that worked in both directions would do.
+
+assert.equal(quieterOf("all", "mentions"), "mentions");
+assert.equal(quieterOf("mentions", "all"), "mentions");
+assert.equal(quieterOf("mentions", "none"), "none");
+assert.equal(quieterOf("none", "all"), "none");
+assert.equal(quieterOf("all", "all"), "all");
+
+// A global of "everything" leaves every server exactly where it was.
+assert.equal(quieterOf("all", "none"), "none");
+assert.equal(quieterOf("all", "mentions"), "mentions");
+
+// The menus say so only where the global is the one deciding.
+assert.equal(globalOverrules("mentions", "all"), true);
+assert.equal(globalOverrules("none", "mentions"), true);
+assert.equal(globalOverrules("mentions", "mentions"), false);
+assert.equal(globalOverrules("mentions", "none"), false);
+assert.equal(globalOverrules("all", "all"), false);
+
+// ── Reading either shape of the file ────────────────────────────────────────
+
+// The shape it is written in now.
+assert.deepEqual(
+  parseStored({ global: "mentions", servers: { [HOST]: { server: "none" } } }),
+  { global: "mentions", servers: { [HOST]: { server: "none" } } },
+);
+
+// The shape it used to be written in: the servers map on its own, no global.
+// Anybody upgrading has one of these on disk, and reading it as an empty file
+// would silently un-mute everything they had muted.
+assert.deepEqual(parseStored({ [HOST]: { server: "none" } }), {
+  global: "all",
+  servers: { [HOST]: { server: "none" } },
+});
+
+// A global that is not a level falls back to hearing everything, like the rest
+// of this file does.
+assert.deepEqual(parseStored({ global: "quiet", servers: {} }), {
+  global: "all",
+  servers: {},
+});
+
+assert.deepEqual(parseStored(null), { global: "all", servers: {} });
+assert.deepEqual(parseStored("nonsense"), { global: "all", servers: {} });
+assert.deepEqual(parseStored([1, 2, 3]), { global: "all", servers: {} });
 
 console.log("notification prefs: ok");

@@ -152,7 +152,7 @@ export function UserContextMenu({
               context to point aria-labelledby at it. Without one it throws —
               which is what took the app down on a right-click. */}
           <ContextMenu.Group>
-            <ContextMenu.GroupLabel style={{ fontWeight: "bold" }}>
+            <ContextMenu.GroupLabel>
               {nickname}
             </ContextMenu.GroupLabel>
           </ContextMenu.Group>
@@ -228,7 +228,7 @@ export function UserContextMenu({
         <ContextMenu.Positioner>
           <ContextMenu.Popup className="min-w-55">
         <ContextMenu.Group>
-          <ContextMenu.GroupLabel style={{ fontWeight: "bold" }}>
+          <ContextMenu.GroupLabel>
             {nickname}
           </ContextMenu.GroupLabel>
         </ContextMenu.Group>

@@ -1,71 +1,50 @@
+import { Badge } from "@gryt/ui";
+
 /**
- * The mark on a conversation that has something waiting in it.
+ * The count on a conversation that has something waiting in it.
  *
- * Two states rather than one, because they answer different questions. A dot
- * means something happened here; a number means somebody named you, and how
- * many times. On a server with a busy general channel the dot is always lit and
- * stops carrying information.
+ * It used to be a dot, and a dot only ever said "something happened here" —
+ * which on a server with a busy general channel is true all day and stops
+ * carrying information. The number is how much.
  *
- * One component for both lists. They drew the same eight-pixel dot from two
- * copies of the same inline style, and a mention count added to one of them
- * would have been a channel list that counted and a DM list that did not.
+ * Two counts feed it and they are not the same thing. Unread is every message
+ * that arrived and nobody read; mentions are the ones that named you, and only
+ * those are stored by the server. So a window that has just connected can know
+ * about a mention and not about the messages around it — the unread count is
+ * counted from the connection, `mentions:list` answers the whole history. Where
+ * unread knows nothing the mention count is what there is to show.
+ *
+ * Tone carries the difference the number cannot: primary when you were named,
+ * neutral when it is only messages. One accent badge per row would make a busy
+ * channel look exactly as urgent as one that asked for you.
+ *
+ * Inline rather than pinned to a corner. It sat at the row's top-right at
+ * `-4px, -4px`, so it hung off the row and lined up with nothing; in a list it
+ * has to sit at the end of the row and centre with the name.
  */
 export function UnreadIndicator({
   unread,
   mentions = 0,
 }: {
-  unread: boolean;
-  /** Unseen mentions in this conversation. Zero draws the plain dot. */
+  /** Unread messages in this conversation. */
+  unread: number;
+  /** Unseen mentions in it, which are a subset of them. */
   mentions?: number;
 }) {
-  if (mentions > 0) {
-    return (
-      <div
-        className="absolute flex items-center justify-center"
-        style={{
-          top: "-4px",
-          right: "-4px",
-          minWidth: 16,
-          height: 16,
-          padding: "0 5px",
-          borderRadius: "var(--gryt-radius-full)",
-          // The same fill as the dot, because a mention should not read as
-          // quieter than "something happened here". A step 4 pill measured 1.35:1
-          // against the sidebar — the number floated and the pill was invisible.
-          backgroundColor: "var(--gryt-accent-9)",
-          // The theme's own answer to what reads on the accent, which is what
-          // the server rail already writes its own badge in. This computed the
-          // same thing from the accent's lightness for a while, which was a
-          // clever way of not knowing the token was there.
-          color: "var(--gryt-on-accent)",
-          fontSize: 10,
-          fontWeight: 700,
-          lineHeight: 1,
-          fontVariantNumeric: "tabular-nums",
-          zIndex: 1,
-          pointerEvents: "none",
-        }}
-      >
-        {mentions > 99 ? "99+" : mentions}
-      </div>
-    );
-  }
+  const count = unread || mentions;
+  if (count <= 0) return null;
 
-  if (!unread) return null;
+  const title =
+    mentions > 0
+      ? `${count} unread, ${mentions} naming you`
+      : `${count} unread`;
 
   return (
-    <div
-      className="absolute"
-      style={{
-        top: "-2px",
-        right: "-2px",
-        width: 8,
-        height: 8,
-        borderRadius: "50%",
-        backgroundColor: "var(--gryt-accent-9)",
-        zIndex: 1,
-        pointerEvents: "none",
-      }}
+    <Badge
+      badgeContent={count}
+      tone={mentions > 0 ? "primary" : "neutral"}
+      title={title}
+      className="shrink-0"
     />
   );
 }

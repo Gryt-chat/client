@@ -191,7 +191,7 @@ export const ServerView = () => {
     requestDisconnectUser, requestKickUser, requestBanUser,
   } = useAdminActions({ currentConnection, currentlyViewingServer, accessToken, memberLists });
 
-  const { getUnreadChannels } = useUnreadTracker();
+  const { getUnreadCounts } = useUnreadTracker();
   const { conversationMentionCount, getMentionCounts } = useMentionTracker();
   /*
    * Reading a conversation clears the mentions in it.
@@ -637,7 +637,7 @@ export const ServerView = () => {
   }
 
   const host = currentlyViewingServer.host;
-  const unreadChannelIds = getUnreadChannels(host);
+  const unreadCounts = getUnreadCounts(host);
   const mentionCounts = getMentionCounts(host);
   const isServerUnreachable = currentConnectionStatus === "disconnected" || currentConnectionStatus === "reconnecting";
   const isVoiceOnThisServer = isConnected && currentServerConnected === host;
@@ -820,7 +820,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
             onDisconnectUser={canDisconnectFromVoice ? requestDisconnectUser : undefined}
             currentUserRole={currentUserRole}
             adminActions={currentAdminActions}
-            unreadChannelIds={unreadChannelIds}
+            unreadCounts={unreadCounts}
             mentionCounts={mentionCounts}
             chatMessages={visibleChatMessages}
             sealing={activeDm ? sealing : undefined}
@@ -911,7 +911,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
               onDisconnectUser={canDisconnectFromVoice ? requestDisconnectUser : undefined}
               currentUserRole={currentUserRole}
               adminActions={currentAdminActions}
-              unreadChannelIds={unreadChannelIds}
+              unreadCounts={unreadCounts}
               mentionCounts={mentionCounts}
               streamSources={voiceStreamSources}
             />
