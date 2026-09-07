@@ -1,4 +1,4 @@
-import { Dialog, IconButton, TextField } from "@gryt/ui";
+import { Button, Dialog, IconButton, TextField } from "@gryt/ui";
 import { useEffect, useState } from "react";
 
 import { PiX } from "../../../../lib/icons";
@@ -110,26 +110,12 @@ export function CreateChannelDialog({ open, onOpenChange, initialType = "chat", 
             </div>
 
             <div className="flex justify-end gap-3" style={{ marginTop: 4 }}>
-              <button
-                type="button"
-                onClick={() => onOpenChange(false)}
-                style={{ background: "var(--gryt-neutral-4)", color: "var(--gryt-neutral-12)", border: "1px solid var(--gryt-neutral-6)", fontWeight: 600, fontSize: 13, padding: "8px 14px", borderRadius: "var(--gryt-radius-full)", cursor: "pointer" }}
-              >
+              <Button tone="neutral" size="small" onClick={() => onOpenChange(false)}>
                 Cancel
-              </button>
-              <button
-                type="button"
-                onClick={create}
-                disabled={!canCreate}
-                style={{
-                  background: canCreate ? "var(--gryt-accent-9)" : "var(--gryt-neutral-6)",
-                  color: canCreate ? "var(--gryt-on-accent, #0c0a20)" : "var(--gryt-neutral-10)",
-                  border: "none", fontWeight: 700, fontSize: 13, padding: "8px 16px", borderRadius: "var(--gryt-radius-full)",
-                  cursor: canCreate ? "pointer" : "default",
-                }}
-              >
+              </Button>
+              <Button size="small" onClick={create} disabled={!canCreate}>
                 Create channel
-              </button>
+              </Button>
             </div>
           </div>
         </Dialog.Popup>

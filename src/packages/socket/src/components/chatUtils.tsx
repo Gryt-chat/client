@@ -1,5 +1,7 @@
 import { Tooltip } from "@gryt/ui";
 
+import { LabelledDivider } from "./LabelledDivider";
+
 export type Reaction = {
   src: string;
   amount: number;
@@ -143,21 +145,17 @@ export const MessageTimestamp = ({ date }: { date: Date }) => (
 );
 
 export const DateSeparator = ({ date }: { date: Date }) => (
-  <div className="flex items-center gap-3" style={{ padding: "8px 0", width: "100%" }}>
-    <div style={{ flex: 1, height: 1, background: "var(--gryt-neutral-6)" }} />
-    <span className="text-xs text-gryt-muted font-medium" style={{ whiteSpace: "nowrap" }}>
-      {formatDateSeparator(date)}
-    </span>
-    <div style={{ flex: 1, height: 1, background: "var(--gryt-neutral-6)" }} />
-  </div>
+  <LabelledDivider className="py-2" labelClassName="text-gryt-muted font-medium">
+    {formatDateSeparator(date)}
+  </LabelledDivider>
 );
 
 export const NewMessagesDivider = () => (
-  <div className="flex items-center gap-3" style={{ padding: "8px 0", width: "100%" }}>
-    <div style={{ flex: 1, height: 1, background: "var(--gryt-danger-8)" }} />
-    <span className="text-xs text-gryt-danger font-medium" style={{ whiteSpace: "nowrap" }}>
-      New since last visit
-    </span>
-    <div style={{ flex: 1, height: 1, background: "var(--gryt-danger-8)" }} />
-  </div>
+  <LabelledDivider
+    className="py-2"
+    lineClassName="bg-gryt-danger-8"
+    labelClassName="text-gryt-danger font-medium"
+  >
+    New since last visit
+  </LabelledDivider>
 );

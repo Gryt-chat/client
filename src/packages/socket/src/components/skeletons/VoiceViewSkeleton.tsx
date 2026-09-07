@@ -1,5 +1,5 @@
 
-import { SkeletonBase } from "./SkeletonBase";
+import { Skeleton } from "@gryt/ui";
 
 export const VoiceViewSkeleton = () => {
   return (
@@ -17,13 +17,13 @@ export const VoiceViewSkeleton = () => {
             }}>
             <div className="flex items-center justify-center relative">
               {/* Avatar skeleton */}
-              <SkeletonBase width="48px" height="48px" borderRadius="50%" />
+              <Skeleton variant="circular" width="48px" height="48px" />
             </div>
             <div className="flex flex-col items-center gap-1">
               {/* Username skeleton */}
-              <SkeletonBase 
-                width={index % 2 === 0 ? "60px" : "80px"} 
-                height="16px" 
+              <Skeleton
+                width={index % 2 === 0 ? "60px" : "80px"}
+                height="16px"
               />
             </div>
           </div>
@@ -38,7 +38,7 @@ export const VoiceViewSkeleton = () => {
             justifyContent: "center",
             padding: "24px",
           }}>
-          <SkeletonBase width="120px" height="40px" borderRadius="var(--gryt-radius-md)" />
+          <Skeleton className="rounded-(--gryt-radius-md)" width="120px" height="40px" />
         </div>
       </div>
     </div>

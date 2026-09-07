@@ -1,4 +1,4 @@
-import { Button, IconButton, Surface, Switch } from "@gryt/ui";
+import { Button, Checkbox, IconButton, Surface, Switch } from "@gryt/ui";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
@@ -220,10 +220,11 @@ export function ServerBotsTab({
                             className="flex items-start gap-2 text-sm"
                             style={{ cursor: "pointer" }}
                           >
-                            <input
-                              type="checkbox"
+                            <Checkbox
                               checked={chosen.has(permission)}
-                              onChange={(e) => toggle(bot.registrationId, permission, e.target.checked)}
+                              onCheckedChange={(checked) =>
+                                toggle(bot.registrationId, permission, checked)
+                              }
                               style={{ marginTop: "0.3em" }}
                             />
                             <span className="flex flex-col">

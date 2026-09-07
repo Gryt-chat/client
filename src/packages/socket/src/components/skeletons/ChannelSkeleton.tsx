@@ -1,5 +1,5 @@
 
-import { SkeletonBase } from "./SkeletonBase";
+import { Skeleton } from "@gryt/ui";
 
 export const ChannelSkeleton = () => {
   return (
@@ -15,11 +15,11 @@ export const ChannelSkeleton = () => {
               border: "1px solid var(--gryt-neutral-4)",
             }}>
             {/* Icon skeleton */}
-            <SkeletonBase width="16px" height="16px" borderRadius="50%" />
+            <Skeleton variant="circular" width="16px" height="16px" />
             {/* Channel name skeleton */}
-            <SkeletonBase 
-              width={index % 2 === 0 ? "80px" : "120px"} 
-              height="16px" 
+            <Skeleton
+              width={index % 2 === 0 ? "80px" : "120px"}
+              height="16px"
             />
           </div>
         </div>

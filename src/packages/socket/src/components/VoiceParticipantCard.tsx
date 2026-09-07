@@ -1,4 +1,4 @@
-import { Avatar, Tooltip } from "@gryt/ui";
+import { Avatar, Skeleton, Tooltip } from "@gryt/ui";
 import type { StreamSources } from "@gryt/voice";
 import { useMicrophone } from "@gryt/voice";
 import type { ReactNode } from "react";
@@ -10,7 +10,6 @@ import { PiMicrophoneSlashFill, PiScreencastFill, PiSpeakerSlashFill, PiVideoCam
 import { toObjectPosition, useVideoFraming } from "../hooks/useVideoFraming";
 import type { Client } from "../types/clients";
 import type { AdminActions, MemberInfo } from "./MemberSidebar";
-import { SkeletonBase } from "./skeletons";
 import { SpeakingHalo } from "./SpeakingHalo";
 import {
   SPEAKING_RING,
@@ -694,7 +693,7 @@ export function VoiceParticipantCard({
               background: "var(--gryt-neutral-a3)",
               borderRadius: "50%",
             }}>
-            <SkeletonBase width="24px" height="24px" borderRadius="50%" />
+            <Skeleton variant="circular" width="24px" height="24px" />
           </div>
         )}
 

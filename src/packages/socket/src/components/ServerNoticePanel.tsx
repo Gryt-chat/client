@@ -1,4 +1,4 @@
-import { Button } from "@gryt/ui";
+import { Button, IconButton } from "@gryt/ui";
 
 import {
   dismissServerNotice,
@@ -117,15 +117,14 @@ export function ServerNoticePanel({
       {/* Dismissal is per device and permanent, and the server is not told. A
           server learning which of its notices somebody has silenced is the
           beginning of working around it. */}
-      <button
-        type="button"
+      <IconButton
+        size="xsmall"
         aria-label="Dismiss"
+        className="shrink-0"
         onClick={() => dismissServerNotice(host, notice.kind)}
-        className="shrink-0 cursor-pointer appearance-none border-0 bg-transparent p-1 rounded-(--gryt-radius-md)"
-        style={{ color: "var(--gryt-neutral-11)" }}
       >
         <PiX size={14} />
-      </button>
+      </IconButton>
     </div>
   );
 }

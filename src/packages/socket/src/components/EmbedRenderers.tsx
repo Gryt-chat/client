@@ -1,3 +1,4 @@
+import { Skeleton } from "@gryt/ui";
 import { useEffect, useState } from "react";
 
 import { getServerAccessToken, getServerHttpBase, useTheme } from "@/common";
@@ -14,7 +15,6 @@ import {
   parseRemoteImageMetadata,
   safeJsonParseOEmbed,
 } from "./embedUtils";
-import { SkeletonBase } from "./skeletons/SkeletonBase";
 
 export const DismissButton = ({ onDismiss }: { onDismiss: () => void }) => (
   <button
@@ -283,7 +283,7 @@ export const XEmbed = ({ url, serverHost, onDismiss }: { url: string; serverHost
       <div className="link-embed-container">
         <DismissButton onDismiss={onDismiss} />
         <div className="link-embed-twitter-skeleton">
-          <SkeletonBase width="100%" height="100%" borderRadius="var(--gryt-radius-md)" />
+          <Skeleton className="rounded-(--gryt-radius-md)" width="100%" height="100%" />
         </div>
       </div>
     );
