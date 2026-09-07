@@ -1,13 +1,23 @@
 import { useEffect, useRef } from "react";
 
 import { getElectronAPI, isElectron } from "../../../lib/electron";
+import { startPlugin, stopPlugin } from "./pluginHost";
 import { useAddons } from "./useAddons";
 
 const ADDON_ATTR = "data-gryt-addon";
 const CLEANUP_WAIT_MS = 150;
 
+/**
+ * Take an addon back off, whichever kind it is.
+ *
+ * A theme is elements in the head. A plugin is a worker, and stopping one is
+ * `stopPlugin` rather than removing a tag: it asks the plugin to clean up and
+ * then terminates it either way (GRYT-930). Nothing is left running once this
+ * returns, which was not true while plugins were scripts on the page — a
+ * removed `<script>` leaves everything it registered behind.
+ */
 function cleanupAddon(addonId: string): void {
-  window.dispatchEvent(new CustomEvent(`gryt:addon-cleanup:${addonId}`));
+  stopPlugin(addonId);
   document
     .querySelectorAll(`[${ADDON_ATTR}="${addonId}"]`)
     .forEach((el) => el.remove());
@@ -43,16 +53,22 @@ async function injectThemeStyles(
   }
 }
 
-async function injectPluginScript(
+/**
+ * Start a plugin in a worker of its own (GRYT-930).
+ *
+ * This used to append a `<script type="module">` to the app's own page, which
+ * gave every plugin the DOM, the sockets, the message store and the identity
+ * key — and made the capability switches a statement of intent rather than a
+ * boundary. A worker has none of that, so what a plugin was granted is now the
+ * whole of what it can reach.
+ */
+async function startPluginWorker(
   addonId: string,
-  main: string
+  main: string,
+  capabilities: string[] | undefined
 ): Promise<void> {
   const src = await resolveAddonUrl(addonId, main);
-  const script = document.createElement("script");
-  script.type = "module";
-  script.src = src;
-  script.setAttribute(ADDON_ATTR, addonId);
-  document.head.appendChild(script);
+  startPlugin(addonId, src, capabilities);
 }
 
 function requestReload(): void {
@@ -109,7 +125,7 @@ export function useAddonLoader(): void {
           }
 
           if (addon.type === "plugin" && addon.main) {
-            await injectPluginScript(addon.id, addon.main);
+            await startPluginWorker(addon.id, addon.main, addon.capabilities);
           }
         } catch (err) {
           console.error(`[AddonLoader] Failed to load addon "${id}":`, err);
@@ -147,7 +163,7 @@ export function useAddonLoader(): void {
           }
 
           if (addon.type === "plugin" && addon.main) {
-            await injectPluginScript(addon.id, addon.main);
+            await startPluginWorker(addon.id, addon.main, addon.capabilities);
           }
         } catch (err) {
           console.error(`[AddonLoader] Failed to reload addon "${id}":`, err);

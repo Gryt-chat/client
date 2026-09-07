@@ -56,6 +56,7 @@ jobs:
       - run: yarn test:actor-name
       - run: yarn test:plugin-messaging
       - run: yarn test:plugin-wording
+      - run: yarn test:plugin-isolation
       - run: yarn test:fake-participants
       - run: yarn test:narrow-layout
       - run: yarn test:permission-grid

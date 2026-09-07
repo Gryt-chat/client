@@ -7,11 +7,10 @@ import { Toaster } from "react-hot-toast";
 
 import {
   dropPluginApiListeners,
-  initPluginApi,
   pruneGrants,
   setPluginApiActivitySetter,
-  updatePluginApiCapabilities,
-  updatePluginApiTheme,
+  setPluginHostTheme,
+  setPluginHostVersion,
   useAddonLoader,
   useAddons,
 } from "@/addons";
@@ -136,18 +135,16 @@ function ThemedApp() {
 
   useZoomShortcuts();
   useAddonLoader();
-  updatePluginApiTheme({ appearance: resolvedAppearance, accentColor });
+  setPluginHostTheme({ appearance: resolvedAppearance, accentColor });
 
-  /* What each installed plugin says it needs, so `window.gryt` can check a
-     grant against the manifest it was made for (GRYT-928). Refreshed whenever
-     the list changes, because an addon updating its manifest is exactly the
-     case a stale copy would get wrong. */
+  /* A plugin's own manifest reaches its worker when it starts (GRYT-930), so
+     nothing global has to be kept in step with it any more. What is left here
+     is forgetting what an addon that has gone was allowed to do. */
   const { addons } = useAddons();
   /* Which ids were installed last time round, so a departure can be spotted.
      `addons` is the current list and says nothing about what left. */
   const listeningRef = useRef<string[]>([]);
   useEffect(() => {
-    updatePluginApiCapabilities(addons);
     /* And forget what an addon that is no longer here was allowed to do. An
        id is a folder name, so a grant left behind would be inherited by the
        next addon to use the same one. */
@@ -214,7 +211,7 @@ function ThemedApp() {
    buffer when somebody files a report about it twenty minutes later. */
 captureLogs();
 
-initPluginApi(__APP_VERSION__);
+setPluginHostVersion(__APP_VERSION__);
 
 /* One pass to teach the guest history what the stored keys already know
    (GRYT-285). Only does anything on an install that predates it, and failing is
