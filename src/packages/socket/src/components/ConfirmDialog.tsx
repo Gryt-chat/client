@@ -4,19 +4,22 @@ import { type ReactNode, useEffect, useState } from "react";
 import { phraseMatches } from "../lib/confirmPhrase";
 
 /**
- * A confirmation, optionally one somebody has to type their way through.
+ * Every confirmation in the app, optionally one somebody types their way
+ * through.
  *
- * There are two hand-rolled versions of the typing part already -- deleting a
- * server types the server's name, resetting a message key types "start again"
- * -- and they disagree about whether case matters and about whether a wrong
- * answer disables the button or raises a toast. This is the third thing that
- * wants it, so it is a component rather than a fourth copy. Migrating the other
- * two is GRYT-996.
+ * There were six hand-rolled ones, and they disagreed with each other in ways
+ * nobody chose: whether the confirm button carried a danger tone, whether Esc
+ * was a cancel, and -- on the two that asked for a typed phrase -- whether case
+ * mattered and whether a wrong answer disabled the button or raised a toast
+ * after the click.
  *
  * `confirmPhrase` is compared case-insensitively and trimmed. The phrase worth
- * asking for is usually a name somebody is reading off the row in front of
- * them, and being told to match the capitals of a nickname they did not choose
- * is a puzzle rather than a check.
+ * asking for is a name somebody is reading off the screen in front of them, and
+ * being told to match its capitals is a puzzle rather than a check.
+ *
+ * Sixteen plain confirms elsewhere are still hand-rolled. They do not
+ * disagree with anything, so moving them is tidying rather than a fix, and
+ * it is GRYT-1002.
  */
 export function ConfirmDialog({
   open,
@@ -27,6 +30,7 @@ export function ConfirmDialog({
   confirmTone = "danger",
   confirmPhrase,
   confirmPhraseLabel,
+  confirmDisabled = false,
   onConfirm,
   children,
 }: {
@@ -39,6 +43,8 @@ export function ConfirmDialog({
   /** When set, the button stays disabled until this is typed back. */
   confirmPhrase?: string;
   confirmPhraseLabel?: ReactNode;
+  /** For a caller with a reason of its own -- a request already in flight. */
+  confirmDisabled?: boolean;
   onConfirm: () => void;
   /** Extra fields -- a reason, a duration, a checkbox. */
   children?: ReactNode;
@@ -78,12 +84,13 @@ export function ConfirmDialog({
           )}
 
           <div className="flex gap-3 mt-4 justify-end">
-            <AlertDialog.Close render={<Button tone="neutral">Cancel</Button>} />
+            <AlertDialog.Close render={<Button size="small" tone="neutral">Cancel</Button>} />
             {/* Deliberately not wrapped in AlertDialog.Close: it has to be able
                 to stay disabled, and Close renders its own button. */}
             <Button
+              size="small"
               tone={confirmTone}
-              disabled={!matches}
+              disabled={confirmDisabled || !matches}
               onClick={() => {
                 onConfirm();
                 onOpenChange(false);

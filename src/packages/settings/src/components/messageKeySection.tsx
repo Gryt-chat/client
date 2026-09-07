@@ -15,6 +15,8 @@ import {
   writeSealedVault,
 } from "@/common";
 
+import { phraseMatches } from "../../../socket/src/lib/confirmPhrase";
+
 /**
  * The message password, for signed-in accounts (GRYT-783). Signing in on a
  * second device made a fresh identity for messages, so the new device published
@@ -24,6 +26,14 @@ import {
  *
  * **Guests are not offered this.** They already have the 24 words.
  */
+
+/**
+ * Typed back before the key is replaced. Named once so the check and the
+ * label above it cannot drift, which is how the label came to say one thing
+ * while the comparison looked for another elsewhere in the app.
+ */
+const RESET_PHRASE = "start again";
+
 export function MessageKeySection() {
   const [vault, setVault] = useState<SealedVault | null | undefined>(undefined);
   const [open, setOpen] = useState<"set" | "use" | "reset" | null>(null);
@@ -101,8 +111,8 @@ export function MessageKeySection() {
     const problem = describePasswordProblem(secret);
     if (problem) return toast.error(problem);
     if (secret !== confirm) return toast.error("The two passwords do not match.");
-    if (confirmReset.trim().toLowerCase() !== "start again") {
-      return toast.error('Type "start again" to confirm.');
+    if (!phraseMatches(confirmReset, RESET_PHRASE)) {
+      return toast.error(`Type "${RESET_PHRASE}" to confirm.`);
     }
 
     setBusy(true);
@@ -207,7 +217,7 @@ export function MessageKeySection() {
           </Alert>
 
           <TextField
-            label="Type &ldquo;start again&rdquo; to confirm"
+            label={`Type \u201c${RESET_PHRASE}\u201d to confirm`}
             value={confirmReset}
             onChange={(e) => setConfirmReset(e.target.value)}
           />
