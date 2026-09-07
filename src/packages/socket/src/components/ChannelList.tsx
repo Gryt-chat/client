@@ -1,4 +1,4 @@
-import { Button, ContextMenu, Tooltip } from "@gryt/ui";
+import { Button, ContextMenu, Skeleton, Tooltip } from "@gryt/ui";
 import type { StreamSources } from "@gryt/voice";
 import { useMicrophone } from "@gryt/voice";
 import { AnimatePresence, LayoutGroup, motion, Reorder } from "motion/react";
@@ -18,6 +18,7 @@ import type { Client } from "../types/clients";
 import { ConnectedUser } from "./connectedUser";
 import { DirectMessageList } from "./DirectMessageList";
 import { EmojiText } from "./EmojiText";
+import { LabelledDivider } from "./LabelledDivider";
 import type { AdminActions,MemberInfo } from "./MemberSidebar";
 import {
   buildReorderPayload,
@@ -25,7 +26,6 @@ import {
   orderChanged,
   resolveDropParent,
 } from "./sidebarTree";
-import { SkeletonBase } from "./skeletons";
 import { UnreadIndicator } from "./UnreadIndicator";
 
 /** A role id. The server defines its own; these only pass one along. */
@@ -195,15 +195,9 @@ export const ChannelList = ({
   }, [effectiveItems, channelById, serverHost]);
 
   const renderSeparator = (item: SidebarItem) => (
-    <div className="flex w-full relative items-center gap-2">
-      <div style={{ height: 1, background: "var(--gryt-neutral-6)", flex: 1, opacity: 0.7 }} />
-      {item.label ? (
-        <span className="text-xs text-gryt-muted">
-          <EmojiText text={item.label} />
-        </span>
-      ) : null}
-      <div style={{ height: 1, background: "var(--gryt-neutral-6)", flex: 1, opacity: 0.7 }} />
-    </div>
+    <LabelledDivider className="relative" lineClassName="opacity-70">
+      {item.label ? <EmojiText text={item.label} /> : null}
+    </LabelledDivider>
   );
 
   const renderSpacer = (item: SidebarItem) => {
@@ -373,10 +367,10 @@ export const ChannelList = ({
             isConnecting &&
             channel.id === currentChannelId &&
             serverHost === currentServerConnected && (
-              <SkeletonBase
+              <Skeleton
+                variant="circular"
                 width="16px"
                 height="16px"
-                borderRadius="50%"
                 style={{ marginLeft: hasIndicators ? "4px" : "auto" }}
               />
             )}

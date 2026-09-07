@@ -1,6 +1,6 @@
+import { Skeleton } from "@gryt/ui";
 import { memo, useCallback, useState } from "react";
 
-import { SkeletonBase } from "./skeletons";
 
 interface ImageAttachmentProps {
   src: string;
@@ -42,10 +42,10 @@ export const ImageAttachment = memo(({
       } as React.CSSProperties : undefined}
     >
       {!loaded && (
-        <SkeletonBase
+        <Skeleton
+          className="rounded-(--gryt-radius-md)"
           width="100%"
           height="100%"
-          borderRadius="var(--gryt-radius-md)"
           style={{ position: "absolute", inset: 0 }}
         />
       )}

@@ -1,4 +1,4 @@
-import { Button, Surface, Switch, TextField } from "@gryt/ui";
+import { Button, Select, Surface, Switch, TextField } from "@gryt/ui";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
@@ -8,6 +8,9 @@ import { useEmbeddedServer } from "@/settings/src/hooks/useEmbeddedServer";
 
 import { PiCopyFill, PiPlus } from "../../../../lib/icons";
 import { useSocketEvent } from "../hooks/useSocketEvent";
+
+/** Stands in for "no role" so the row is not mistaken for the placeholder. */
+const NO_ROLE = "__none__";
 
 export type InviteItem = {
   code: string;
@@ -301,18 +304,20 @@ export function ServerInvitesTab({
           {grantableRoles.length > 0 && (
             <div className="flex flex-col gap-1" style={{ minWidth: 220 }}>
               <span className="text-sm font-medium">Gives the role</span>
-              <select
-                value={grantsRole}
-                onChange={(e) => setGrantsRole(e.target.value)}
-                className="bg-transparent border-b border-gryt-border outline-none text-sm py-1"
-              >
-                <option value="">No role, they join as normal</option>
-                {grantableRoles.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                  </option>
-                ))}
-              </select>
+              {/* NO_ROLE rather than "": Base UI renders an option whose value
+                  is the empty string as the placeholder, so the choice
+                  somebody made would show as no choice at all. */}
+              <Select
+                size="small"
+                value={grantsRole || NO_ROLE}
+                onValueChange={(value) =>
+                  setGrantsRole(value === NO_ROLE ? "" : String(value))
+                }
+                options={[
+                  { label: "No role, they join as normal", value: NO_ROLE },
+                  ...grantableRoles.map((r) => ({ label: r.name, value: r.id })),
+                ]}
+              />
               <span className="text-xs text-gryt-muted">
                 Anybody joining on this link arrives holding that role, so the link is
                 worth as much as the role is. Set the uses or an expiry unless you mean

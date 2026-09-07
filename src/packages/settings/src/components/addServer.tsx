@@ -1,4 +1,4 @@
-import { Alert, Avatar, Button, Chip, Dialog, IconButton, Surface, TextField } from "@gryt/ui";
+import { Alert, Avatar, Button, Chip, Dialog, IconButton, Skeleton, Surface, TextField } from "@gryt/ui";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -19,7 +19,6 @@ import {
   PiWarningFill,
   PiX,
 } from "../../../../lib/icons";
-import { SkeletonBase } from "../../../socket/src/components/skeletons";
 import { useServerManagement } from "../../../socket/src/hooks/useServerManagement";
 import { useEmbeddedServer } from "../hooks/useEmbeddedServer";
 import { useLanDiscovery } from "../hooks/useLanDiscovery";
@@ -699,10 +698,10 @@ export function AddNewServer({
                   >
                     {isJoining ? (
                       <>
-                        <SkeletonBase
+                        <Skeleton
+                          variant="circular"
                           width="16px"
                           height="16px"
-                          borderRadius="50%"
                         />{" "}
                         Joining…
                       </>
@@ -911,7 +910,7 @@ function ServerPreview({
 
         <div className="flex flex-col" style={{ minWidth: 0 }}>
           {loading ? (
-            <SkeletonBase width="8rem" height="1rem" />
+            <Skeleton width="8rem" height="1rem" />
           ) : (
             <span className="text-sm font-bold truncate">
               {info?.name || host}
@@ -924,7 +923,7 @@ function ServerPreview({
               somewhere is should not be behind a press. The address is not
               repeated — it is in the field directly above. */}
           {loading ? (
-            <SkeletonBase width="5rem" height="0.75rem" />
+            <Skeleton width="5rem" height="0.75rem" />
           ) : error ? (
             <span className="text-xs">
               {error}

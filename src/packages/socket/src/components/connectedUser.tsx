@@ -1,8 +1,7 @@
-import { Avatar, Tooltip } from "@gryt/ui";
+import { Avatar, Skeleton, Tooltip } from "@gryt/ui";
 import { motion } from "motion/react";
 
 import { PiMicrophoneSlashFill, PiScreencastFill, PiSpeakerSlashFill, PiVideoCameraFill } from "../../../../lib/icons";
-import { SkeletonBase } from "./skeletons";
 import { SpeakingHalo } from "./SpeakingHalo";
 import {
   speakingRingStyle,
@@ -140,7 +139,7 @@ export function ConnectedUser({
 
         <div className="flex gap-1 items-center" style={{ flexShrink: 0 }}>
           {isConnectingToVoice && (
-            <SkeletonBase width="12px" height="12px" borderRadius="50%" />
+            <Skeleton variant="circular" width="12px" height="12px" />
           )}
           {screenShareEnabled && (
             <Tooltip title="Streaming">

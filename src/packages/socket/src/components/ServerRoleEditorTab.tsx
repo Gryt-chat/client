@@ -12,7 +12,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Button, IconButton, Select, Surface } from "@gryt/ui";
+import { Button, Checkbox, IconButton, Select, Surface } from "@gryt/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
@@ -718,12 +718,11 @@ export function ServerRoleEditorTab({
                 <div className="flex flex-col gap-2">
                   <div className="flex flex-col gap-1">
                     <label className="flex items-center gap-3 text-sm font-bold">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         checked={draft.grantableByInvite}
                         disabled={draft.isSystem}
-                        onChange={(e) => {
-                          setDraft({ ...draft, grantableByInvite: e.target.checked });
+                        onCheckedChange={(checked) => {
+                          setDraft({ ...draft, grantableByInvite: checked });
                           commitSettings();
                         }}
                       />

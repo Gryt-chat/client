@@ -1,3 +1,4 @@
+import { Progress } from "@gryt/ui";
 import { useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 
@@ -19,7 +20,6 @@ type Shown = {
   dismissed?: boolean;
 };
 
-const BAR_HEIGHT = "0.25rem";
 
 /**
  * Telling somebody a release exists while they are using the app (GRYT-543), on
@@ -216,41 +216,22 @@ export function UpdateAnnouncement() {
 }
 
 /**
- * How far the download has got. Indeterminate until the first
- * `download-progress` event, which is a second or two away on a fast line and
- * much longer on a slow one — a bar sitting at zero reads as stuck, so there is
- * no bar until there is a number.
+ * How far the download has got. Nothing until the first `download-progress`
+ * event, which is a second or two away on a fast line and much longer on a slow
+ * one — a bar sitting at zero reads as stuck, so there is no bar until there is
+ * a number.
+ *
+ * Progress handles the indeterminate case itself with `value={null}`, but that
+ * is a different thing from "no bar" and this wants the second one.
  */
 function ProgressBar({ percent }: { percent?: number }) {
   if (percent == null) return null;
 
   return (
-    <span
-      role="progressbar"
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={percent}
-      style={{
-        background: "var(--gryt-accent-3)",
-        borderRadius: "var(--gryt-radius-full)",
-        display: "block",
-        height: BAR_HEIGHT,
-        marginTop: "0.5rem",
-        overflow: "hidden",
-        width: "100%",
-      }}
-    >
-      <span
-        style={{
-          background: "var(--gryt-accent-9)",
-          borderRadius: "var(--gryt-radius-full)",
-          display: "block",
-          height: BAR_HEIGHT,
-          transition: "width 200ms linear",
-          width: `${Math.min(100, Math.max(0, percent))}%`,
-        }}
-      />
-    </span>
+    <Progress
+      className="mt-2"
+      value={Math.min(100, Math.max(0, percent))}
+    />
   );
 }
 

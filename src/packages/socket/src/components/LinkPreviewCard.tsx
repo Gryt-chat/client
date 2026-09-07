@@ -7,6 +7,7 @@ import {
   hostnameOf,
   LOGO_VIEW_BOX,
 } from "@gryt/core";
+import { Skeleton } from "@gryt/ui";
 import { memo, useEffect, useMemo, useState } from "react";
 
 import { getServerAccessToken, getServerHttpBase, useTheme } from "@/common";
@@ -21,7 +22,6 @@ import {
   previewCache,
   previewRefused,
 } from "./embedUtils";
-import { SkeletonBase } from "./skeletons/SkeletonBase";
 
 /**
  * The line above the title: a logo where we have one, the site's own favicon
@@ -91,9 +91,9 @@ export const LinkPreviewSkeleton = memo(({
       <div className="link-embed-card-inner">
         <div className="link-embed-card-body">
           <CardSite url={url} siteName={null} favicon={null} />
-          <SkeletonBase width="70%" height={15} borderRadius="var(--gryt-radius-sm)" />
-          <SkeletonBase width="90%" height={12} borderRadius="var(--gryt-radius-sm)" />
-          <SkeletonBase width="60%" height={12} borderRadius="var(--gryt-radius-sm)" />
+          <Skeleton width="70%" height={15} />
+          <Skeleton width="90%" height={12} />
+          <Skeleton width="60%" height={12} />
         </div>
       </div>
     </div>
