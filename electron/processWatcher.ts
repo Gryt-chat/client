@@ -175,28 +175,51 @@ function run(command: string, args: string[]): Promise<string> {
  * answer, which is why nothing here reports a game *stopping* as a fact — it
  * reports the list, and the caller sees it shrink.
  */
-export async function listRunningExecutables(): Promise<string[]> {
-  if (process.platform === "linux") {
-    try {
-      const entries = await readdir("/proc");
-      const names = await Promise.all(
-        entries
-          .filter((entry) => /^\d+$/.test(entry))
-          .map(async (pid) => {
-            try {
-              return (await readFile(`/proc/${pid}/comm`, "utf8")).trim();
-            } catch {
-              /* The process exited between the readdir and the read, which is
-                 the normal case rather than an error. */
-              return "";
+/**
+ * Linux, out of `/proc`.
+ *
+ * `comm` is what the kernel calls the task, and it is **truncated to fifteen
+ * characters** — `at-spi2-registr` and `arch-update-tra` are what a real box
+ * answers. That is survivable because the picker reads the same file, so
+ * somebody chooses the truncated name and it matches the truncated name. What
+ * it does mean is that typing a long executable in by hand will not match, and
+ * that a long name reads oddly in the list. Measured on CachyOS: 389 processes,
+ * 350 distinct.
+ *
+ * `userOnly` drops kernel threads, which have an empty `cmdline` and are more
+ * than three quarters of that count. Only the picker wants it — the matching
+ * path has a list to compare against and does not care what else is in there —
+ * and it costs a second small read per process, which is why it is not the
+ * default. On the same box it takes 350 down to 69.
+ */
+async function listLinuxProcesses(userOnly: boolean): Promise<string[]> {
+  try {
+    const entries = await readdir("/proc");
+    const names = await Promise.all(
+      entries
+        .filter((entry) => /^\d+$/.test(entry))
+        .map(async (pid) => {
+          try {
+            if (userOnly) {
+              const cmdline = await readFile(`/proc/${pid}/cmdline`, "utf8");
+              if (!cmdline.replace(/\0/g, "").trim()) return "";
             }
-          }),
-      );
-      return names.filter(Boolean);
-    } catch {
-      return [];
-    }
+            return (await readFile(`/proc/${pid}/comm`, "utf8")).trim();
+          } catch {
+            /* The process exited between the readdir and the read, which is
+               the normal case rather than an error. */
+            return "";
+          }
+        }),
+    );
+    return names.filter(Boolean);
+  } catch {
+    return [];
   }
+}
+
+export async function listRunningExecutables(): Promise<string[]> {
+  if (process.platform === "linux") return listLinuxProcesses(false);
 
   if (process.platform === "win32") {
     /* CSV rather than the table, because the table pads with spaces and its
@@ -277,7 +300,10 @@ function looksLikeAnApp(raw: string): boolean {
  * their own machine, when they asked for it. Never to a plugin.
  */
 export async function listRunningPrograms(): Promise<string[]> {
-  const running = await listRunningExecutables();
+  const running =
+    process.platform === "linux"
+      ? await listLinuxProcesses(true)
+      : await listRunningExecutables();
   const seen = new Map<string, string>();
 
   for (const raw of running) {
