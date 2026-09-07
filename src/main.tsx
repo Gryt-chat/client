@@ -32,6 +32,7 @@ import { VoiceProvider } from "@/webRTC";
 
 import { App } from "./App.tsx";
 import { BrowserBanner } from "./components/browserBanner";
+import { ServiceStatusBanner } from "./components/serviceStatusBanner";
 import { Titlebar } from "./components/titlebar";
 import { UpdateAnnouncement } from "./components/updateAnnouncement";
 import { initGlobalStorage } from "./lib/globalStorage";
@@ -186,6 +187,7 @@ function ThemedApp() {
        them. */
     <div className="gryt-app flex min-h-0 flex-1 flex-col">
       <Titlebar />
+      <ServiceStatusBanner />
       <BrowserBanner />
       <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
         <App />

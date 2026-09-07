@@ -68,6 +68,9 @@ jobs:
       # A session somebody ended has to stay ended, and recovering from one has to give up.
       # Both are decided in one small module, and neither is visible from anywhere else.
       - run: yarn test:session-recovery
+      # The outage banner has to stay silent when nothing is wrong, and a
+      # client with no internet must not invent an outage.
+      - run: yarn test:service-status
       # examples/ is the addon people copy. It calls the same `gryt` API the
       # worker exposes, and nothing else here would notice it drifting.
       - run: yarn test:examples

@@ -89,7 +89,8 @@
     "test:plugin-panel": "node scripts/check-plugin-panel.mjs",
     "test:watched-programs": "node scripts/check-watched-programs.mjs",
     "test:appimage-location": "node scripts/check-appimage-location.mjs",
-    "test:session-recovery": "node scripts/check-session-recovery.mjs"
+    "test:session-recovery": "node scripts/check-session-recovery.mjs",
+    "test:service-status": "node scripts/check-service-status.mjs"
   },
   "dependencies": {
     "electron-updater": "^6.8.3",
