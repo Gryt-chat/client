@@ -26,7 +26,8 @@ import { ScreenShareSettings } from "./screenShareSettings";
 import { SecuritySettings } from "./securitySettings";
 import { ServerIdentitySettings } from "./serverIdentitySettings";
 import { SupportSettings } from "./supportSettings";
-import { AppearanceSettings } from "./theme/appearanceSettings";
+import { ThemeSettings } from "./theme/appearanceSettings";
+import { DisplaySettings } from "./theme/displaySettings";
 import { VoiceSettings } from "./voiceSettings";
 
 /**
@@ -140,7 +141,8 @@ const DESTINATIONS: SettingsDestination[] = [
     label: "Appearance",
     icon: PiPaletteFill,
     pages: [
-      { value: "theme", label: "Theme", content: <AppearanceSettings /> },
+      { value: "theme", label: "Theme", content: <ThemeSettings /> },
+      { value: "display", label: "Display", content: <DisplaySettings /> },
       { value: "chat", label: "Chat", content: <ChatSettings /> },
     ],
   },

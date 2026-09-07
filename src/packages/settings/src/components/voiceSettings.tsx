@@ -5,8 +5,10 @@ import connectMp3 from "@/audio/src/assets/connect.mp3";
 import disconnectMp3 from "@/audio/src/assets/disconnect.mp3";
 import { useSettings } from "@/settings";
 
-import { SettingsContainer, ToggleSetting } from "./settingsComponents";
+import { SettingGroup, SettingsContainer, ToggleSetting } from "./settingsComponents";
 import { SoundSettings } from "./SoundSettings";
+import { TileLayoutPicker } from "./tileLayoutPicker";
+import { TwoPersonLayoutPicker } from "./twoPersonLayoutPicker";
 
 export function VoiceSettings() {
   const {
@@ -24,6 +26,10 @@ export function VoiceSettings() {
     setCustomConnectSoundFile,
     customDisconnectSoundFile,
     setCustomDisconnectSoundFile,
+    voiceTileLayout,
+    setVoiceTileLayout,
+    voiceTwoPersonLayout,
+    setVoiceTwoPersonLayout,
   } = useSettings();
 
   const [alertDialog, setAlertDialog] = useState<{
@@ -127,6 +133,25 @@ export function VoiceSettings() {
           </AlertDialog.Portal>
         </AlertDialog.Root>
       )}
+      <SettingGroup
+        title="Tile layout"
+        description="How the voice grid arranges people once it is maximised or fullscreen. Both were measured against Google Meet; which you prefer is a matter of taste. The sidebar looks the same either way."
+      >
+        <TileLayoutPicker value={voiceTileLayout} onChange={setVoiceTileLayout} />
+
+
+      </SettingGroup>
+
+      <SettingGroup
+        title="Two people"
+        description="With exactly two of you in a channel and nobody sharing a screen. One large and one small is what a video call usually does; same size is better when you are both doing something rather than talking to each other."
+      >
+        <TwoPersonLayoutPicker
+          value={voiceTwoPersonLayout}
+          onChange={setVoiceTwoPersonLayout}
+          rule={voiceTileLayout}
+        />
+      </SettingGroup>
     </SettingsContainer>
   );
 }

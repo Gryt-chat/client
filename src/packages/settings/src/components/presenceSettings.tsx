@@ -15,7 +15,7 @@ export function PresenceSettings() {
   return (
     <SettingsContainer>
       <h2 className="text-lg">
-        Voice
+        Presence
       </h2>
 
       <SliderSetting

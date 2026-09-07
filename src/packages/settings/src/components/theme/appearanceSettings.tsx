@@ -1,4 +1,4 @@
-import { Button, Radio, RadioGroup, Slider, Switch } from "@gryt/ui";
+import { Button, Radio, RadioGroup, Switch } from "@gryt/ui";
 import { grytDraft } from "@gryt/ui";
 import { PencilSimple } from "@phosphor-icons/react";
 import { useMemo } from "react";
@@ -7,30 +7,22 @@ import { useCustomThemes, useTheme, useThemeEditor } from "@/common";
 import { useSettings } from "@/settings";
 
 import { SettingGroup, SettingsContainer } from "../settingsComponents";
-import { TileLayoutPicker } from "../tileLayoutPicker";
-import { TwoPersonLayoutPicker } from "../twoPersonLayoutPicker";
 import { ThemeLibrary } from "./themeLibrary";
 
 /**
- * Everything about how Gryt looks, in the order somebody reaches for it: the
- * mode first, then the palette, then how big everything is.
+ * The mode and the palette.
  *
  * A control that names a colour without showing it makes you apply it and look,
  * then come back — which is why the theme list draws each one rather than
  * listing its name.
+ *
+ * The heading matches the page in the rail. It read "Appearance" while the rail
+ * said Theme, on a panel that also held the UI scale and the voice grid, so the
+ * category, the page and the heading were three words for overlapping things.
+ * The sizes are DisplaySettings now and the grid moved to Voice.
  */
-export function AppearanceSettings() {
-  const {
-    appearancePreference,
-    setAppearancePreference,
-    emojiSize,
-    setEmojiSize,
-    chatFontSize,
-    setChatFontSize,
-    uiScale,
-    setUiScale,
-    resetZoom,
-  } = useTheme();
+export function ThemeSettings() {
+  const { appearancePreference, setAppearancePreference } = useTheme();
 
   const appearanceOptions = useMemo(() => [
     { value: "system", label: "System" },
@@ -39,10 +31,6 @@ export function AppearanceSettings() {
   ], []);
 
   const {
-    voiceTileLayout,
-    setVoiceTileLayout,
-    voiceTwoPersonLayout,
-    setVoiceTwoPersonLayout,
     googleFontsEnabled,
     setGoogleFontsEnabled,
     officialServerHidden,
@@ -54,7 +42,7 @@ export function AppearanceSettings() {
 
   return (
     <SettingsContainer>
-      <h2 className="text-lg">Appearance</h2>
+      <h2 className="text-lg">Theme</h2>
 
       <div className="flex flex-col gap-2">
         <span className="font-medium text-sm">Mode</span>
@@ -137,82 +125,6 @@ export function AppearanceSettings() {
         </label>
       </SettingGroup>
 
-      <div className="flex flex-col gap-2">
-        <div className="flex justify-between items-center">
-          <span className="font-medium text-sm">UI scale</span>
-          <span className="text-xs text-gryt-muted">{Math.round(uiScale * 100)}%</span>
-        </div>
-        <Slider
-          min={50}
-          max={200}
-          step={10}
-          value={Math.round(uiScale * 100)}
-          onValueChange={(next) => setUiScale(Number(next) / 100)}
-        />
-        <span className="text-xs text-gryt-muted">
-          Ctrl+Plus / Ctrl+Minus to zoom, Ctrl+0 to reset
-        </span>
-        {uiScale !== 1 && (
-          <span className="text-xs" style={{ cursor: "pointer", width: "fit-content", color: "var(--gryt-accent-11)" }} onClick={resetZoom}>
-            Reset to 100%
-          </span>
-        )}
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <div className="flex justify-between items-center">
-          <span className="font-medium text-sm">Chat font size</span>
-          <span className="text-xs text-gryt-muted">{chatFontSize}px</span>
-        </div>
-        <Slider
-          min={10}
-          max={24}
-          step={1}
-          value={chatFontSize}
-          onValueChange={(next) => setChatFontSize(Number(next))}
-        />
-        <span className="text-xs text-gryt-muted" style={{ fontSize: chatFontSize, lineHeight: 1.5 }}>
-          Preview text at {chatFontSize}px
-        </span>
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <div className="flex justify-between items-center">
-          <span className="font-medium text-sm">Standalone emoji size</span>
-          <span className="text-xs text-gryt-muted">{emojiSize}px</span>
-        </div>
-        <Slider
-          min={12}
-          max={96}
-          step={4}
-          value={emojiSize}
-          onValueChange={(next) => setEmojiSize(Number(next))}
-        />
-        <div className="flex items-center gap-2 pt-1">
-          <span className="text-xs text-gryt-muted">Preview:</span>
-          <span style={{ fontSize: emojiSize, lineHeight: 1.25 }}>😀</span>
-        </div>
-      </div>
-
-      <SettingGroup
-        title="Tile layout"
-        description="How the voice grid arranges people once it is maximised or fullscreen. Both were measured against Google Meet; which you prefer is a matter of taste. The sidebar looks the same either way."
-      >
-        <TileLayoutPicker value={voiceTileLayout} onChange={setVoiceTileLayout} />
-
-
-      </SettingGroup>
-
-      <SettingGroup
-        title="Two people"
-        description="With exactly two of you in a channel and nobody sharing a screen. One large and one small is what a video call usually does; same size is better when you are both doing something rather than talking to each other."
-      >
-        <TwoPersonLayoutPicker
-          value={voiceTwoPersonLayout}
-          onChange={setVoiceTwoPersonLayout}
-          rule={voiceTileLayout}
-        />
-      </SettingGroup>
     </SettingsContainer>
   );
 }
