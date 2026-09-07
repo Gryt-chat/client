@@ -1,4 +1,4 @@
-import { Accordion, Alert, AlertDialog, Avatar, Button, Checkbox, Chip, Spinner, Surface, TextField } from "@gryt/ui";
+import { Accordion, Alert, Avatar, Button, Checkbox, Chip, Spinner, Surface, TextField } from "@gryt/ui";
 import { useEffect, useState } from "react";
 
 import { GeneratedServerIcon, normalizeHost } from "@/common";
@@ -13,6 +13,7 @@ import {
   PiWarningFill,
   PiX,
 } from "../../../../lib/icons";
+import { ConfirmDialog } from "../../../socket/src/components/ConfirmDialog";
 import { useServerManagement } from "../../../socket/src/hooks/useServerManagement";
 import { useEmbeddedServer } from "../hooks/useEmbeddedServer";
 import { useSettings } from "../hooks/useSettings";
@@ -210,7 +211,6 @@ function HostedServerCard({
   const [logsOpen, setLogsOpen] = useState<string[]>([]);
   const [confirmDelete, setConfirmDelete] = useState(false);
   /** Typed back before Delete works. This destroys a database. */
-  const [typedName, setTypedName] = useState("");
   const [customAddresses, setCustomAddresses] = useState("");
   const [addressSaveFailed, setAddressSaveFailed] = useState(false);
   /** Which accordion sections are open, ports included. */
@@ -318,77 +318,42 @@ function HostedServerCard({
               </span>
             </label>
 
-          <AlertDialog.Root
-            open={confirmDelete}
-            onOpenChange={(open) => {
-              setConfirmDelete(open);
-              if (!open) setTypedName("");
-            }}
+          <Button
+            tone="ghost"
+            size="xsmall"
+            className="ml-auto"
+            disabled={busy}
+            onClick={() => setConfirmDelete(true)}
           >
-            <Button
-              tone="ghost"
-              size="xsmall"
-              className="ml-auto"
-              disabled={busy}
-              onClick={() => setConfirmDelete(true)}
-            >
-              <PiTrashFill size={12} />
-              Delete
-            </Button>
+            <PiTrashFill size={12} />
+            Delete
+          </Button>
 
-            <AlertDialog.Portal>
-              <AlertDialog.Backdrop />
-              <AlertDialog.Popup>
-              <AlertDialog.Title>Delete {name}?</AlertDialog.Title>
-              <AlertDialog.Description>
+          <ConfirmDialog
+            open={confirmDelete}
+            onOpenChange={setConfirmDelete}
+            title={`Delete ${name}?`}
+            description={
+              <>
                 This deletes the server and everything on it — its messages, its
                 members, its uploads and its identity key. There is no other
                 copy.
-              </AlertDialog.Description>
-
-              {/* Said separately because it is the part nobody expects.
-                  Everyone who joined pinned this server's identity key, so a
-                  new server with the same name and port is a different server
-                  to them, and they are turned away rather than let back in. */}
-              <p className="text-sm mt-3">
-                Anybody who joined cannot rejoin a replacement, even with the
-                same name and port.
-              </p>
-
-              <div className="flex flex-col gap-2 mt-4">
-                <span className="text-sm">
-                  Type <strong>{name}</strong> to confirm.
-                </span>
-                <TextField
-                  value={typedName}
-                  onChange={(e) => setTypedName(e.target.value)}
-                  placeholder={name}
-                  autoFocus
-                />
-              </div>
-
-              <div className="flex gap-3 mt-4 justify-end">
-                <AlertDialog.Close
-                  render={
-                    <Button size="small">
-                      Cancel
-                    </Button>
-                  }
-                />
-                <Button size="small"
-                  disabled={typedName.trim() !== name}
-                  onClick={() => {
-                    setConfirmDelete(false);
-                    setTypedName("");
-                    onDelete();
-                  }}
-                >
-                  Delete for good
-                </Button>
-              </div>
-            </AlertDialog.Popup>
-            </AlertDialog.Portal>
-          </AlertDialog.Root>
+              </>
+            }
+            confirmLabel="Delete for good"
+            confirmPhrase={name}
+            confirmPhraseLabel={<>Type <strong>{name}</strong> to confirm</>}
+            onConfirm={onDelete}
+          >
+            {/* Said separately because it is the part nobody expects.
+                Everyone who joined pinned this server's identity key, so a
+                new server with the same name and port is a different server
+                to them, and they are turned away rather than let back in. */}
+            <span className="text-sm">
+              Anybody who joined cannot rejoin a replacement, even with the
+              same name and port.
+            </span>
+          </ConfirmDialog>
         </div>
 
         <div className="flex flex-col gap-2 border-t border-gryt-border pt-3">

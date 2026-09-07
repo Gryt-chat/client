@@ -1,10 +1,11 @@
-import { AlertDialog, Button, Checkbox, Select, TextField } from "@gryt/ui";
+import { Checkbox, Select, TextField } from "@gryt/ui";
 import { useEffect, useState } from "react";
 
 import type { Channel, SidebarItem } from "@/settings/src/types/server";
 
 import type { MemberInviteInfo } from "../hooks/useAdminActions";
 import { BAN_DURATIONS } from "../lib/memberFacts";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 interface PendingUser {
   id: string;
@@ -76,179 +77,132 @@ export const ServerConfirmDialogs = ({
     if (pendingBanUser) { setBanReason(""); setBanDuration("permanent"); setBanDeleteContent(true); }
   }, [pendingBanUser]);
 
+  const deletedChannelName =
+    pendingDeleteItem?.kind === "channel"
+      ? channelById.get(pendingDeleteItem.channelId ?? pendingDeleteItem.id)?.name || "this channel"
+      : null;
+
   return (
   <>
-    <AlertDialog.Root open={!!pendingDeleteItem} onOpenChange={(open) => { if (!open) cancelDelete(); }}>
-      <AlertDialog.Portal>
-        <AlertDialog.Backdrop />
-        <AlertDialog.Popup>
-        <AlertDialog.Title>Delete {pendingDeleteItem?.kind === "channel" ? "channel" : "item"}?</AlertDialog.Title>
-        <AlertDialog.Description>
-          {pendingDeleteItem?.kind === "channel"
-            ? `This will permanently delete the channel "${channelById.get(pendingDeleteItem.channelId ?? pendingDeleteItem.id)?.name || "this channel"}" and all associated data. This action cannot be undone.`
-            : "This will remove this item from the sidebar. This action cannot be undone."}
-        </AlertDialog.Description>
-        <div className="flex gap-3 mt-4 justify-end">
-          <AlertDialog.Close
-            render={
-              <Button size="small">Cancel</Button>
-            }
-          />
-          <AlertDialog.Close
-            render={
-              <Button size="small" onClick={confirmDelete}>Delete</Button>
-            }
-          />
-        </div>
-      </AlertDialog.Popup>
-      </AlertDialog.Portal>
-    </AlertDialog.Root>
+    <ConfirmDialog
+      open={!!pendingDeleteItem}
+      onOpenChange={(open) => { if (!open) cancelDelete(); }}
+      title={`Delete ${pendingDeleteItem?.kind === "channel" ? "channel" : "item"}?`}
+      description={
+        deletedChannelName
+          ? `This will permanently delete the channel "${deletedChannelName}" and all associated data. This action cannot be undone.`
+          : "This will remove this item from the sidebar. This action cannot be undone."
+      }
+      confirmLabel="Delete"
+      onConfirm={confirmDelete}
+    />
 
-    <AlertDialog.Root open={!!pendingDisconnectUser} onOpenChange={(open) => { if (!open) setPendingDisconnectUser(null); }}>
-      <AlertDialog.Portal>
-        <AlertDialog.Backdrop />
-        <AlertDialog.Popup>
-        <AlertDialog.Title>Disconnect {pendingDisconnectUser?.nickname}?</AlertDialog.Title>
-        <AlertDialog.Description>
-          This will disconnect {pendingDisconnectUser?.nickname} from the voice channel.
-        </AlertDialog.Description>
-        <div className="flex gap-3 mt-4 justify-end">
-          <AlertDialog.Close
-            render={
-              <Button size="small">Cancel</Button>
-            }
-          />
-          <AlertDialog.Close
-            render={
-              <Button size="small" onClick={() => { if (pendingDisconnectUser) { onDisconnectUser(pendingDisconnectUser.id); setPendingDisconnectUser(null); } }}>Disconnect</Button>
-            }
-          />
-        </div>
-      </AlertDialog.Popup>
-      </AlertDialog.Portal>
-    </AlertDialog.Root>
+    <ConfirmDialog
+      open={!!pendingDisconnectUser}
+      onOpenChange={(open) => { if (!open) setPendingDisconnectUser(null); }}
+      title={`Disconnect ${pendingDisconnectUser?.nickname}?`}
+      description={`This will disconnect ${pendingDisconnectUser?.nickname} from the voice channel.`}
+      confirmLabel="Disconnect"
+      onConfirm={() => {
+        if (pendingDisconnectUser) onDisconnectUser(pendingDisconnectUser.id);
+        setPendingDisconnectUser(null);
+      }}
+    />
 
-    <AlertDialog.Root open={!!pendingKickUser} onOpenChange={(open) => { if (!open) setPendingKickUser(null); }}>
-      <AlertDialog.Portal>
-        <AlertDialog.Backdrop />
-        <AlertDialog.Popup>
-        <AlertDialog.Title>Kick {pendingKickUser?.nickname}?</AlertDialog.Title>
-        <AlertDialog.Description>
-          They will be removed from the server and can rejoin later.
-        </AlertDialog.Description>
-        <div className="flex flex-col gap-1 mt-3">
-          <span className="text-xs">Reason (optional — shown to them)</span>
-          <TextField
-            value={kickReason}
-            onChange={(e) => setKickReason(e.target.value)}
-            placeholder="Spamming the general channel"
-            maxLength={200}
-          />
-        </div>
-        <div className="flex gap-3 mt-4 justify-end">
-          <AlertDialog.Close
-            render={
-              <Button size="small">Cancel</Button>
-            }
-          />
-          <AlertDialog.Close
-            render={
-              <Button size="small" onClick={() => { if (pendingKickUser) { onKickUser(pendingKickUser.id, kickReason); setPendingKickUser(null); } }}>Kick</Button>
-            }
-          />
-        </div>
-      </AlertDialog.Popup>
-      </AlertDialog.Portal>
-    </AlertDialog.Root>
+    <ConfirmDialog
+      open={!!pendingKickUser}
+      onOpenChange={(open) => { if (!open) setPendingKickUser(null); }}
+      title={`Kick ${pendingKickUser?.nickname}?`}
+      description="They will be removed from the server and can rejoin later."
+      confirmLabel="Kick"
+      onConfirm={() => {
+        if (pendingKickUser) onKickUser(pendingKickUser.id, kickReason);
+        setPendingKickUser(null);
+      }}
+    >
+      <div className="flex flex-col gap-1">
+        <span className="text-xs">Reason (optional — shown to them)</span>
+        <TextField
+          value={kickReason}
+          onChange={(e) => setKickReason(e.target.value)}
+          placeholder="Spamming the general channel"
+          maxLength={200}
+        />
+      </div>
+    </ConfirmDialog>
 
-    <AlertDialog.Root open={!!pendingBanUser} onOpenChange={(open) => { if (!open) setPendingBanUser(null); }}>
-      <AlertDialog.Portal>
-        <AlertDialog.Backdrop />
-        <AlertDialog.Popup>
-        <AlertDialog.Title>Ban {pendingBanUser?.nickname}?</AlertDialog.Title>
-        <AlertDialog.Description>
-          They will be removed and cannot rejoin until the ban lifts.
-        </AlertDialog.Description>
-        <div className="flex flex-col gap-1 mt-3">
-          <span className="text-xs">Reason (optional — shown to them)</span>
-          <TextField
-            value={banReason}
-            onChange={(e) => setBanReason(e.target.value)}
-            placeholder="Repeated harassment after a warning"
-            maxLength={200}
-          />
-        </div>
-        <div className="flex flex-col gap-1 mt-3">
-          <span className="text-xs">Duration</span>
-          <Select
-            value={banDuration}
-            onValueChange={(v) => setBanDuration(String(v))}
-            options={BAN_DURATIONS.map((d) => ({ label: d.label, value: d.value }))}
-          />
-        </div>
-        <label className="text-sm mt-3" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Checkbox
-            checked={banDeleteContent}
-            onCheckedChange={(v) => setBanDeleteContent(v === true)}
-          />
-          Delete their messages and reactions
-        </label>
+    <ConfirmDialog
+      open={!!pendingBanUser}
+      onOpenChange={(open) => { if (!open) setPendingBanUser(null); }}
+      title={`Ban ${pendingBanUser?.nickname}?`}
+      description="They will be removed and cannot rejoin until the ban lifts."
+      confirmLabel="Ban"
+      confirmPhrase={pendingBanUser?.nickname}
+      confirmPhraseLabel={<>Type <strong>{pendingBanUser?.nickname}</strong> to confirm</>}
+      onConfirm={() => {
+        if (!pendingBanUser) return;
+        const minutes = BAN_DURATIONS.find((d) => d.value === banDuration)?.minutes ?? null;
+        onBanUser(pendingBanUser.id, banReason, minutes, banDeleteContent, banRevokeInvite);
+        setPendingBanUser(null);
+      }}
+    >
+      <div className="flex flex-col gap-1">
+        <span className="text-xs">Reason (optional — shown to them)</span>
+        <TextField
+          value={banReason}
+          onChange={(e) => setBanReason(e.target.value)}
+          placeholder="Repeated harassment after a warning"
+          maxLength={200}
+        />
+      </div>
+      <div className="flex flex-col gap-1">
+        <span className="text-xs">Duration</span>
+        <Select
+          value={banDuration}
+          onValueChange={(v) => setBanDuration(String(v))}
+          options={BAN_DURATIONS.map((d) => ({ label: d.label, value: d.value }))}
+        />
+      </div>
+      <label className="text-sm" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <Checkbox
+          checked={banDeleteContent}
+          onCheckedChange={(v) => setBanDeleteContent(v === true)}
+        />
+        Delete their messages and reactions
+      </label>
 
-        {/*
-          Only when there is a live invite to close. A ban on somebody who
-          arrived on one achieves less than it looks — an identity with no
-          account behind it costs nothing to replace, so they can return on a
-          new key with the same code. Offering it here is the moment it can be
-          acted on.
-        */}
-        {banInvite?.code && banInvite.active && (
-          <>
-            <label className="text-sm mt-3" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Checkbox
-                checked={banRevokeInvite}
-                onCheckedChange={(v) => setBanRevokeInvite(v === true)}
-              />
-              Revoke the invite they joined with
-            </label>
-            <div className="text-xs mt-1">
-              They joined with <code className="font-mono text-xs text-gryt-text">{banInvite.code}</code>, still
-              active and used {banInvite.usesConsumed}{" "}
-              {banInvite.usesConsumed === 1 ? "time" : "times"}. Leaving it open
-              lets them return on a new identity — and takes anyone else with
-              the link too, so weigh it.
-            </div>
-          </>
-        )}
-        {!banDeleteContent && (
-          <div className="text-xs mt-1">
-            Their messages stay. Unbanning restores access but never restores
-            deleted messages, so this is the only chance to keep them.
-          </div>
-        )}
-        <div className="flex gap-3 mt-4 justify-end">
-          <AlertDialog.Close
-            render={
-              <Button size="small">Cancel</Button>
-            }
-          />
-          <AlertDialog.Close
-            render={
-              <Button size="small"
-                onClick={() => {
-                  if (!pendingBanUser) return;
-                  const minutes = BAN_DURATIONS.find((d) => d.value === banDuration)?.minutes ?? null;
-                  onBanUser(pendingBanUser.id, banReason, minutes, banDeleteContent, banRevokeInvite);
-                  setPendingBanUser(null);
-                }}
-              >
-                Ban
-              </Button>
-            }
-          />
+      {/*
+        Only when there is a live invite to close. A ban on somebody who
+        arrived on one achieves less than it looks — an identity with no
+        account behind it costs nothing to replace, so they can return on a
+        new key with the same code. Offering it here is the moment it can be
+        acted on.
+      */}
+      {banInvite?.code && banInvite.active && (
+        <div className="flex flex-col gap-1">
+          <label className="text-sm" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Checkbox
+              checked={banRevokeInvite}
+              onCheckedChange={(v) => setBanRevokeInvite(v === true)}
+            />
+            Revoke the invite they joined with
+          </label>
+          <span className="text-xs text-gryt-muted">
+            They joined with <code className="font-mono text-xs text-gryt-text">{banInvite.code}</code>, still
+            active and used {banInvite.usesConsumed}{" "}
+            {banInvite.usesConsumed === 1 ? "time" : "times"}. Leaving it open
+            lets them return on a new identity — and takes anyone else with
+            the link too, so weigh it.
+          </span>
         </div>
-      </AlertDialog.Popup>
-      </AlertDialog.Portal>
-    </AlertDialog.Root>
+      )}
+      {!banDeleteContent && (
+        <span className="text-xs text-gryt-muted">
+          Their messages stay. Unbanning restores access but never restores
+          deleted messages, so this is the only chance to keep them.
+        </span>
+      )}
+    </ConfirmDialog>
   </>
   );
 };
