@@ -154,6 +154,10 @@ export const ChatView = memo(({
 }) => {
   const { chatMediaVolume, setChatMediaVolume, blurProfanity, smileyConversion, disabledSmileys } = useSettings();
   const editorRef = useRef<ChatEditorHandle>(null);
+  /* The thread's own handle. Sharing the channel's would put one draft in two
+     places: opening a thread would show whatever was half-typed in the channel,
+     and sending from either would clear both. */
+  const threadEditorRef = useRef<ChatEditorHandle>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<{ src: string; alt?: string } | null>(null);
   const dragCounterRef = useRef(0);
@@ -459,6 +463,34 @@ export const ChatView = memo(({
   const maySend = mayHere("send_messages") && canSendHere !== false;
   const mayRead = mayHere("read_messages");
 
+  const renderThreadComposer = useCallback(
+    () => (
+      <ChatEditorBar
+        replyingTo={null}
+        editingMessage={null}
+        editorRef={threadEditorRef}
+        placeholder="Reply to thread…"
+        disabled={!maySend}
+        allowFiles={mayHere("attach_files")}
+        maxFileSize={maxFileSize}
+        memberList={mentionMembers}
+        getSenderName={getSenderName}
+        onCancelReply={() => {}}
+        onCancelEditing={() => {}}
+        onSend={(markdown, files) => threads.sendReply(markdown, files)}
+        /* Up-arrow-to-edit scans the channel's messages, so in here it would
+           open the wrong message for editing. Editing a reply from inside the
+           thread is its own piece of work. */
+        onArrowUpEmpty={() => {}}
+        onTyping={emitTyping}
+        onStopTyping={emitStopTyping}
+        serverHost={serverHost}
+      />
+    ),
+    [maySend, mayHere, maxFileSize, mentionMembers, getSenderName, threads, emitTyping, emitStopTyping, serverHost],
+  );
+
+
   const editorPlaceholder =
     !canViewVoiceChannelText && isVoiceChannelTextChat
       ? "Text chat is not available in this voice channel"
@@ -690,8 +722,8 @@ export const ChatView = memo(({
               messages={visibleThreadMessages}
               loading={threads.open.loading}
               renderMessage={renderThreadMessage}
+              renderComposer={renderThreadComposer}
               onClose={threads.closeThread}
-              onSend={threads.sendReply}
               onSetStatus={threads.setStatus}
               forumTags={forumTags ?? []}
               onSetTags={threads.setTags}

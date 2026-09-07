@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import { getServerAccessToken } from "@/common";
 
 import type { ChatMessage } from "../components/chatUtils";
+import { uploadChatFile } from "./uploadChatFile";
 
 /**
  * A thread is a discussion that hangs off one root message. Its replies carry a
@@ -59,7 +60,8 @@ export interface UseThreadsResult {
   /** Open a topic straight from a summary the forum index already holds. */
   openSummary: (summary: ThreadSummary) => void;
   closeThread: () => void;
-  sendReply: (text: string) => void;
+  /** Files go up the same way a channel's do; nothing here is sealed. */
+  sendReply: (text: string, files?: File[]) => void;
   /** Set the open topic's tags. The server gates who may, and drops unknown ids. */
   setTags: (tagIds: string[]) => void;
   /** Mark the open topic open / solved / closed. The server gates who may. */
@@ -254,20 +256,48 @@ export function useThreads(
     socket.emit("thread:status:set", { conversationId, threadId: cur.thread.thread_id, status, accessToken });
   }, [socketConnection, conversationId, serverHost]);
 
-  const sendReply = useCallback((text: string) => {
+  /**
+   * Post into the open thread.
+   *
+   * Files go up the same way a channel's do — `uploadChatFile` is the shared
+   * helper, and `chat:send` is the same event with a `threadId` alongside the
+   * attachments. Nothing here is sealed: sealing is a DM feature and a thread
+   * cannot be started in a DM, so the seal argument is left off rather than
+   * threaded through as null.
+   *
+   * The optimistic row carries local ids and object URLs like the channel's
+   * does, so an image appears while it uploads instead of after.
+   */
+  const sendReply = useCallback((text: string, files: File[] = []) => {
     const socket = asSocket(socketConnection);
     const accessToken = getServerAccessToken(serverHost || "");
     const cur = openRef.current;
     const trimmed = text.trim();
-    if (!socket || !accessToken || !cur || !trimmed) return;
+    if (!socket || !accessToken || !cur) return;
+    if (!trimmed && files.length === 0) return;
+
     const nonce = crypto.randomUUID();
     pendingReply.current = nonce;
+
+    const localIds = files.map(() => `local-${crypto.randomUUID()}`);
     const optimistic: ChatMessage = {
       conversation_id: conversationId,
       message_id: nonce,
       sender_server_id: currentUserId || "",
-      text: trimmed,
-      attachments: null,
+      text: trimmed || null,
+      attachments: localIds.length ? localIds : null,
+      enriched_attachments: files.length
+        ? files.map((f, i) => ({
+            file_id: localIds[i],
+            mime: f.type || null,
+            size: f.size,
+            original_name: f.name,
+            width: null,
+            height: null,
+            has_thumbnail: false,
+            local_url: f.type.startsWith("image/") ? URL.createObjectURL(f) : undefined,
+          }))
+        : null,
       reactions: null,
       created_at: new Date(),
       thread_id: cur.thread.thread_id,
@@ -276,7 +306,43 @@ export function useThreads(
       sender_nickname: currentUserNickname,
     };
     setOpen((o) => (o ? { ...o, messages: [...o.messages, optimistic] } : o));
-    socket.emit("chat:send", { conversationId, threadId: cur.thread.thread_id, text: trimmed, accessToken, nonce });
+
+    void (async () => {
+      let fileIds: string[] | null = null;
+      if (files.length > 0) {
+        try {
+          const uploaded = await Promise.all(
+            files.map((f) => uploadChatFile(f, serverHost || "")),
+          );
+          fileIds = uploaded.map((u) => u.fileId);
+        } catch (err) {
+          const msg = err instanceof Error && err.message ? err.message : "Failed to upload file(s)";
+          toast.error(msg);
+          // The optimistic row is marked rather than removed, the same way a
+          // failed send is in a channel — a reply that vanishes reads as one
+          // that went.
+          setOpen((o) =>
+            o
+              ? {
+                  ...o,
+                  messages: o.messages.map((m) =>
+                    m.message_id === nonce ? { ...m, pending: false, failed: true } : m,
+                  ),
+                }
+              : o,
+          );
+          return;
+        }
+      }
+      socket.emit("chat:send", {
+        conversationId,
+        threadId: cur.thread.thread_id,
+        text: trimmed,
+        attachments: fileIds,
+        accessToken,
+        nonce,
+      });
+    })();
   }, [socketConnection, conversationId, serverHost, currentUserId, currentUserNickname]);
 
   return { summaries, open, startThread, openThread, openSummary, closeThread, sendReply, setTags, setStatus };
