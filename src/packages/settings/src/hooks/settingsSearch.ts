@@ -44,8 +44,8 @@ export function settingAnchorId(title: string): string {
 }
 
 export const SETTINGS_INDEX: SettingsIndexEntry[] = [
-  { id: "updates", title: "Updates", description: "Check for updates and see your current version.", page: "updates", destination: "updates", section: "About", panel: true },
-  { id: "profile", title: "Profile", description: "Your display name, avatar and identity.", destination: "you", section: "Profile", panel: true },
+  { id: "updates", title: "Updates", description: "Check for updates and see your current version.", page: "updates", destination: "about", section: "About", panel: true },
+  { id: "profile", title: "Profile", description: "Your display name, avatar and identity.", destination: "profile", section: "Profile", panel: true },
   { id: "security", title: "Security", description: "Your recovery key and account passkeys.", page: "security", destination: "account", section: "Security", panel: true },
   { id: "server-identities", title: "Server identities", description: "Servers Gryt recognises by their identity key, and any it has blocked for answering with a different one. Unblock a server you rebuilt yourself.", page: "identities", destination: "account", section: "Server identities", panel: true },
   ...(isElectron()
@@ -66,12 +66,12 @@ export const SETTINGS_INDEX: SettingsIndexEntry[] = [
   { id: "flip-camera", title: "Flip camera", description: "Flips the video everyone else sees. This changes the stream itself, not just your preview.", page: "camera", destination: "sound-video", section: "Camera" },
   { id: "center-my-face-automatically", title: "Center my face automatically", description: "Works out where your face is so everyone else's crop of your camera follows you instead of cutting you off. Detection runs on your machine; only two numbers are sent, never video.", page: "camera", destination: "sound-video", section: "Camera" },
   { id: "mirror-preview", title: "Mirror preview", description: "Mirrors your own preview. Nobody else sees any difference.", page: "camera", destination: "sound-video", section: "Camera" },
-  { id: "appearance", title: "Appearance", description: "Mode, themes, UI scale and text size.", page: "theme", destination: "looks", section: "Theme", panel: true },
-  { id: "theme", title: "Theme", description: "Build one on ui.gryt.chat, press Copy link, and paste it here. A theme is a couple of dozen hex values, so a link is the whole thing.", page: "theme", destination: "looks", section: "Appearance" },
-  { id: "tile-layout", title: "Tile layout", description: "How the voice grid arranges people once it is maximised or fullscreen. Match Google Meet allows tall narrow tiles and more columns; Biggest tiles picks whichever arrangement makes them largest.", page: "theme", destination: "looks", section: "Appearance" },
-  { id: "two-person-layout", title: "Two people", description: "What a channel with exactly two people in it looks like. One large and one small puts the other person in the panel and you in the corner; same size gives you both the same tile, stacked in the sidebar and side by side once there is room.", page: "theme", destination: "looks", section: "Appearance" },
-  { id: "smiley-conversion", title: "Smiley conversion", description: "Turns typed smileys into emoji as you write them.", page: "chat", destination: "looks", section: "Chat" },
-  { id: "blur-profanity", title: "Blur profanity", description: "Blurs profane words when the server has profanity filtering set to flag. Click a blurred word to reveal it.", page: "chat", destination: "looks", section: "Chat" },
+  { id: "appearance", title: "Appearance", description: "Mode, themes, UI scale and text size.", page: "theme", destination: "appearance", section: "Theme", panel: true },
+  { id: "theme", title: "Theme", description: "Build one on ui.gryt.chat, press Copy link, and paste it here. A theme is a couple of dozen hex values, so a link is the whole thing.", page: "theme", destination: "appearance", section: "Appearance" },
+  { id: "tile-layout", title: "Tile layout", description: "How the voice grid arranges people once it is maximised or fullscreen. Match Google Meet allows tall narrow tiles and more columns; Biggest tiles picks whichever arrangement makes them largest.", page: "theme", destination: "appearance", section: "Appearance" },
+  { id: "two-person-layout", title: "Two people", description: "What a channel with exactly two people in it looks like. One large and one small puts the other person in the panel and you in the corner; same size gives you both the same tile, stacked in the sidebar and side by side once there is room.", page: "theme", destination: "appearance", section: "Appearance" },
+  { id: "smiley-conversion", title: "Smiley conversion", description: "Turns typed smileys into emoji as you write them.", page: "chat", destination: "appearance", section: "Chat" },
+  { id: "blur-profanity", title: "Blur profanity", description: "Blurs profane words when the server has profanity filtering set to flag. Click a blurred word to reveal it.", page: "chat", destination: "appearance", section: "Chat" },
   { id: "hotkeys", title: "Hotkeys", description: "Keyboard and mouse-button shortcuts, including your push-to-talk key.", page: "hotkeys", destination: "behaviour", section: "Hotkeys", panel: true },
   { id: "push-to-talk-key", title: "Push to Talk Key", description: "Hold this key or mouse button to transmit your microphone. Only shown while input mode is push to talk.", page: "hotkeys", destination: "behaviour", section: "Hotkeys" },
   { id: "toggle-mute", title: "Toggle mute", description: "Toggle your microphone on or off.", page: "hotkeys", destination: "behaviour", section: "Hotkeys" },
