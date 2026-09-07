@@ -1,6 +1,6 @@
-import { Alert, Button, Composer, Divider, IconButton } from "@gryt/ui";
+import { Button, Divider, IconButton } from "@gryt/ui";
 import type { ReactNode } from "react";
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect } from "react";
 
 import { PiChatsFill, PiX } from "../../../../lib/icons";
 import type { ChatMessage } from "./chatUtils";
@@ -32,22 +32,23 @@ interface ThreadPanelProps {
    * builds the row and this renders where it goes. GRYT-1000.
    */
   renderMessage: (message: ChatMessage) => ReactNode;
+  /**
+   * The box you reply in, handed down for the same reason the rows are.
+   *
+   * It was a bare textarea, so there was no way to attach a file, no @mention
+   * autocomplete, no emoji picker and nothing telling anybody you were typing.
+   * The channel's ChatEditorBar does all of it and needs the member list, the
+   * permission gates and the upload limits — all of which ChatView holds.
+   */
+  renderComposer: () => ReactNode;
   onClose: () => void;
-  onSend: (text: string) => void;
   onSetStatus?: (status: "open" | "solved" | "closed") => void;
   /** The channel's tag palette. Empty on a plain chat thread. */
   forumTags?: { id: string; name: string; emoji?: string | null; color?: string | null }[];
   onSetTags?: (tagIds: string[]) => void;
 }
 
-export function ThreadPanel({ thread, root, messages, loading, renderMessage, onClose, onSend, onSetStatus, forumTags = [], onSetTags }: ThreadPanelProps) {
-  const [draft, setDraft] = useState("");
-
-  // Mirrors the server's cap, so an over-long reply is stopped here rather than
-  // sent and refused.
-  const REPLY_MAX = 4000;
-  const tooLong = draft.length > REPLY_MAX;
-
+export function ThreadPanel({ thread, root, messages, loading, renderMessage, renderComposer, onClose, onSetStatus, forumTags = [], onSetTags }: ThreadPanelProps) {
   // Escape closes the panel. Without it the only way out is the ×, which sits
   // next to "Mark solved" — and a miss there changes the topic's state.
   useEffect(() => {
@@ -57,13 +58,6 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, on
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
-
-  const send = () => {
-    const t = draft.trim();
-    if (!t || tooLong) return;
-    onSend(t);
-    setDraft("");
-  };
 
   return (
     <aside
@@ -171,30 +165,12 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, on
         )}
       </div>
 
-      <div style={{ padding: "10px 14px 14px", borderTop: "1px solid var(--gryt-neutral-6)", flexShrink: 0 }}>
-        {tooLong && (
-          <Alert severity="error" className="mb-1.5 px-2.5 py-1.5 text-xs">
-            {draft.length - REPLY_MAX} characters over the {REPLY_MAX} limit.
-          </Alert>
-        )}
-        {/* Composer already grows with the text and carries its own send
-            button. Enter still sends and shift+enter still breaks the line —
-            that is this handler, spread onto the textarea, not something
-            Composer decides.
-
-            No `disabled`: Composer puts it on the textarea as well as the
-            button, so an empty draft would lock the box you type into and
-            being over the limit would stop you deleting characters. `send`
-            already refuses both, so the button is live and does nothing rather
-            than looking dead. GRYT-998 is the prop that would fix it. */}
-        <Composer
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-          onSubmit={(e) => { e.preventDefault(); send(); }}
-          placeholder="Reply to thread…"
-          maxRows={5}
-        />
+      {/* The channel's own editor, so a reply can carry a file, name somebody
+          and pick an emoji — and so the character limit, the permission gates
+          and the upload cap are the ones the channel already enforces rather
+          than a second copy of them. */}
+      <div className="shrink-0 border-t border-gryt-border px-3.5 pt-2.5 pb-3.5">
+        {renderComposer()}
       </div>
     </aside>
   );
