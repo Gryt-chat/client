@@ -6,5 +6,9 @@
   "main": "index.js",
   "author": "Gryt",
   "description": "Shows what you are playing, and tells servers running the other half",
-  "capabilities": ["status", "messaging"]
+  "capabilities": [
+    "status",
+    "messaging",
+    "display"
+  ]
 }

@@ -5,7 +5,7 @@ Two addons you can copy and change.
 | | What it is | Asks for |
 | --- | --- | --- |
 | [`paper-theme`](paper-theme) | A warmer light theme. CSS, nothing else. | nothing |
-| [`presence`](presence) | Sets your status line to what you're playing, and tells servers running the other half | `status`, `messaging` |
+| [`presence`](presence) | Puts what you're playing under your name, and draws who else is playing what | `status`, `messaging`, `display` |
 
 `presence` is half of a pair. The server half is in the server repo, under
 [`examples/presence`](https://github.com/Gryt-chat/server/tree/main/examples/presence).
@@ -28,6 +28,10 @@ A plugin is JavaScript, and Gryt runs it in a worker of its own. It can reach
 the `gryt` API for what you granted, and the internet, and nothing else. Not the
 page, not your messages, not your identity key. What you granted is what it
 gets.
+
+It can still be seen. A plugin sends Gryt a title and rows of text and Gryt
+draws them beside the member list — never markup, never an element it hands
+over. `presence` is the one that does this.
 
 The internet is the hole in that. What a plugin is given it can send anywhere,
 so letting one read your messages is trusting whoever wrote it with those

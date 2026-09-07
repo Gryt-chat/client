@@ -33,9 +33,10 @@ switches under it:
 
 - **Set what you are doing, on every server you are on** — the status line
 - **Exchange its own messages with the servers you are on** — the roster
+- **Show its own panel beside the member list** — where the roster is drawn
 
-Turn on only the first and the status line still works. The plugin logs an
-error about the second and carries on.
+Turn on only the first and the status line still works. The plugin logs an error
+about whichever is missing and carries on.
 
 ## The server half
 
@@ -66,10 +67,31 @@ payloads.
 
 ## Where the roster goes
 
-`gryt.log.info`, which is the console and nothing else. A plugin can't draw —
-it isn't on the page — so there's nowhere else to put it yet.
+A panel under the member list, titled **Playing now**, with the plugin's name
+under it so nobody mistakes it for something Gryt knows:
 
-## Two things that will bite
+```
+PLAYING NOW
+Presence
+sam                    Tetris
+kari                   Factorio
+```
+
+That's `gryt.ui.panel({ title, rows })`. You send a title and rows of text and
+Gryt draws them — no markup, no colours, no element you hand over. A plugin runs
+in a worker with no DOM, and this is what it can put on screen instead.
+
+On two servers at once, the row says which one:
+
+```
+sam                    Tetris · one.example
+kari                   Factorio · two.example
+```
+
+Leaving a server takes its people out. So does turning the addon off — a panel
+that outlives the plugin that drew it is the failure people notice.
+
+## Three things that will bite
 
 **Send on a change, not on a tick.** Thirty messages per ten seconds is the
 limit, per person per plugin, and a poll loop is exactly how you find it. This
@@ -79,3 +101,9 @@ one holds the last game and only sends when it moves.
 the wifi dropped, gives you a server that has never heard from you and won't
 until you next quit a game. `sync` tracks which hosts it has greeted and says
 hello to the ones it hasn't.
+
+**Rows are somebody else's words.** `entry.who` is a nickname a stranger picked,
+and it ends up in front of you. Gryt caps the lengths and strips the characters
+that would let a row render as something other than what it says, but the shape
+is yours to check — this one drops an entry whose `who` or `game` isn't a string
+rather than drawing `undefined`.
