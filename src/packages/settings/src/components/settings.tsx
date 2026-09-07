@@ -5,7 +5,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { useSettings } from "@/settings";
 
 import { isElectron } from "../../../../lib/electron";
-import { PiArrowFatLineDownFill, PiBellFill, PiFadersHorizontalFill, PiFlaskFill, PiGearSixFill, PiHardDrivesFill, PiHeartFill, PiMagnifyingGlassFill, PiPuzzlePieceFill, PiUserCircleFill, PiUserFill, PiVideoCameraFill, PiX } from "../../../../lib/icons";
+import { PiBellFill, PiFadersHorizontalFill, PiFlaskFill, PiHardDrivesFill, PiHeartFill, PiInfoFill, PiMagnifyingGlassFill, PiMicrophoneFill, PiPaletteFill, PiPuzzlePieceFill, PiShieldCheckFill, PiUserFill, PiX } from "../../../../lib/icons";
 import type { SettingsIndexEntry } from "../hooks/settingsSearch";
 import { searchSettings } from "../hooks/settingsSearch";
 import { AboutSettings, UpdatesSettings } from "./aboutSettings";
@@ -37,8 +37,17 @@ import { VoiceSettings } from "./voiceSettings";
  * preview — so they mount only while their destination is open.
  */
 /**
- * Where things live, named for what you are trying to do rather than which
- * subsystem owns the setting.
+ * Where things live, named with the word people already scan for.
+ *
+ * These used to read "How Gryt looks" and "How Gryt behaves". The pair was
+ * accurate and it made you parse a sentence to find a row, which is the one
+ * thing a settings rail must not do. Appearance and Behaviour say the same
+ * and are caught at a glance.
+ *
+ * Icons are picked to separate rows rather than to decorate them. Profile and
+ * Account were a person and a person-in-a-circle side by side, which told you
+ * nothing about which held your passkeys; Appearance was a gear, which is what
+ * the whole dialog is.
  *
  * A destination with `pages` is a category rather than a page: the rail nests
  * them under it and the pane shows one at a time. That replaces stacking four
@@ -70,15 +79,15 @@ interface SettingsDestination {
 
 const DESTINATIONS: SettingsDestination[] = [
   {
-    value: "you",
-    label: "You",
+    value: "profile",
+    label: "Profile",
     icon: PiUserFill,
     content: <ProfileSettings />,
   },
   {
     value: "account",
     label: "Account",
-    icon: PiUserCircleFill,
+    icon: PiShieldCheckFill,
     pages: [
       { value: "account", label: "Account", content: <AccountSettings /> },
       { value: "security", label: "Security", content: <SecuritySettings /> },
@@ -104,7 +113,7 @@ const DESTINATIONS: SettingsDestination[] = [
   {
     value: "sound-video",
     label: "Sound & video",
-    icon: PiVideoCameraFill,
+    icon: PiMicrophoneFill,
     pages: [
       {
         value: "audio",
@@ -127,9 +136,9 @@ const DESTINATIONS: SettingsDestination[] = [
     ],
   },
   {
-    value: "looks",
-    label: "How Gryt looks",
-    icon: PiGearSixFill,
+    value: "appearance",
+    label: "Appearance",
+    icon: PiPaletteFill,
     pages: [
       { value: "theme", label: "Theme", content: <AppearanceSettings /> },
       { value: "chat", label: "Chat", content: <ChatSettings /> },
@@ -146,7 +155,7 @@ const DESTINATIONS: SettingsDestination[] = [
   },
   {
     value: "behaviour",
-    label: "How Gryt behaves",
+    label: "Behaviour",
     icon: PiFadersHorizontalFill,
     pages: [
       { value: "hotkeys", label: "Hotkeys", content: <HotkeySettings /> },
@@ -181,9 +190,9 @@ const DESTINATIONS: SettingsDestination[] = [
     content: <AddonsSettings />,
   },
   {
-    value: "updates",
-    label: "Updates & about",
-    icon: PiArrowFatLineDownFill,
+    value: "about",
+    label: "About",
+    icon: PiInfoFill,
     pages: [
       { value: "updates", label: "Updates", content: <UpdatesSettings /> },
       { value: "about", label: "About", content: <AboutSettings /> },
@@ -204,7 +213,7 @@ const DESTINATIONS: SettingsDestination[] = [
 const MAIN_DESTINATIONS = DESTINATIONS.filter((d) => !d.pinBottom);
 const PINNED_DESTINATIONS = DESTINATIONS.filter((d) => d.pinBottom);
 
-const DEFAULT_DESTINATION = "you";
+const DEFAULT_DESTINATION = "profile";
 
 /** How long a jumped-to setting stays highlighted. */
 const HIGHLIGHT_MS = 1600;

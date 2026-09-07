@@ -93,6 +93,7 @@ import {
   MinusCircle,
   Monitor,
   MonitorArrowUp,
+  Palette,
   Paperclip,
   PaperPlaneRight,
   PaperPlaneTilt,
@@ -234,6 +235,7 @@ export const PiMonitorArrowUpFill: Icon = weighted(MonitorArrowUp, "fill", "PiMo
 export const PiMonitorFill: Icon = weighted(Monitor, "fill", "PiMonitorFill");
 export const PiPaperclipFill: Icon = weighted(Paperclip, "fill", "PiPaperclipFill");
 export const PiPaperPlaneRightFill: Icon = weighted(PaperPlaneRight, "fill", "PiPaperPlaneRightFill");
+export const PiPaletteFill: Icon = weighted(Palette, "fill", "PiPaletteFill");
 export const PiPaperPlaneTiltFill: Icon = weighted(PaperPlaneTilt, "fill", "PiPaperPlaneTiltFill");
 export const PiPencilSimpleBold: Icon = weighted(PencilSimple, "bold", "PiPencilSimpleBold");
 export const PiPencilSimpleFill: Icon = weighted(PencilSimple, "fill", "PiPencilSimpleFill");
