@@ -1,8 +1,10 @@
+import { Alert, Button, Composer, Divider, IconButton } from "@gryt/ui";
 import { useEffect, useState } from "react";
 
-import { PiChatsFill } from "../../../../lib/icons";
+import { PiChatsFill, PiX } from "../../../../lib/icons";
 import type { ChatMessage } from "./chatUtils";
 import { EmojiText } from "./EmojiText";
+import { ForumTagChip } from "./ForumTagChip";
 
 interface ThreadSummary {
   thread_id: string;
@@ -133,69 +135,63 @@ export function ThreadPanel({ thread, root, messages, loading, memberList, onClo
             {thread.status === "solved" && <span style={{ color: "var(--gryt-accent-11)", marginLeft: 8 }}>Solved</span>}
           </div>
         </div>
+        {/* The old "Mark solved" was #5cc79a on a #5cc79a border — a green
+            picked against the dark theme and left there for the light one.
+            Marking something solved is an ordinary action, so it takes the
+            accent; the solved *state* keeps the success tone on its chip. */}
         {onSetStatus && (thread.status === "solved" ? (
-          <button
-            onClick={() => onSetStatus("open")}
+          <Button
+            size="xsmall"
+            tone="neutral"
+            className="shrink-0 whitespace-nowrap"
             title="Reopen this topic"
-            style={{ background: "none", border: "1px solid var(--gryt-neutral-6)", color: "var(--gryt-neutral-11)", cursor: "pointer", fontSize: 12, fontWeight: 700, padding: "5px 10px", borderRadius: "var(--gryt-radius-full)", whiteSpace: "nowrap" }}
+            onClick={() => onSetStatus("open")}
           >
             Reopen
-          </button>
+          </Button>
         ) : (
-          <button
-            onClick={() => onSetStatus("solved")}
+          <Button
+            size="xsmall"
+            className="shrink-0 whitespace-nowrap"
             title="Mark this topic solved"
-            style={{ background: "none", border: "1px solid #5cc79a", color: "#5cc79a", cursor: "pointer", fontSize: 12, fontWeight: 700, padding: "5px 10px", borderRadius: "var(--gryt-radius-full)", whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 5 }}
+            onClick={() => onSetStatus("solved")}
           >
             ✓ Mark solved
-          </button>
+          </Button>
         ))}
         {onSetStatus && (
-          <span
-            aria-hidden="true"
-            style={{ width: 1, alignSelf: "stretch", margin: "4px 2px", background: "var(--gryt-neutral-6)" }}
-          />
+          <Divider orientation="vertical" className="my-1 self-stretch" />
         )}
-        <button
-          onClick={onClose}
-          aria-label="Close thread"
-          style={{
-            background: "none", border: "none", color: "var(--gryt-neutral-10)", cursor: "pointer",
-            fontSize: 20, lineHeight: 1, padding: "2px 6px", borderRadius: "var(--gryt-radius-sm)",
-          }}
-        >
-          ×
-        </button>
+        <IconButton size="xsmall" aria-label="Close thread" onClick={onClose}>
+          <PiX size={16} />
+        </IconButton>
       </header>
 
       {forumTags.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "10px 14px", borderBottom: "1px solid var(--gryt-neutral-6)", flexShrink: 0 }}>
+          {/* Without `onSetTags` these are labels rather than dead buttons —
+              a disabled control still takes a tab stop and still announces
+              itself as something you could press. */}
           {forumTags.map((tag) => {
             const on = (thread.tags ?? []).includes(tag.id);
             return (
-              <button
+              <ForumTagChip
                 key={tag.id}
-                type="button"
-                disabled={!onSetTags}
-                onClick={() => {
-                  if (!onSetTags) return;
-                  const current = thread.tags ?? [];
-                  onSetTags(on ? current.filter((id) => id !== tag.id) : [...current, tag.id]);
-                }}
-                aria-pressed={on}
-                title={on ? `Remove ${tag.name}` : `Add ${tag.name}`}
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 600,
-                  padding: "3px 10px", borderRadius: "var(--gryt-radius-full)",
-                  cursor: onSetTags ? "pointer" : "default",
-                  background: on ? "var(--gryt-accent-3)" : "var(--gryt-neutral-3)",
-                  color: on ? "var(--gryt-accent-11)" : "var(--gryt-neutral-10)",
-                  border: `1px solid ${on ? "transparent" : "var(--gryt-neutral-6)"}`,
-                }}
-              >
-                <span style={{ width: 7, height: 7, borderRadius: 2, background: tag.color || "var(--gryt-accent-9)" }} />
-                {tag.emoji ? `${tag.emoji} ` : ""}{tag.name}
-              </button>
+                tag={tag}
+                active={on}
+                onToggle={
+                  onSetTags
+                    ? () => {
+                        const current = thread.tags ?? [];
+                        onSetTags(
+                          on
+                            ? current.filter((id) => id !== tag.id)
+                            : [...current, tag.id],
+                        );
+                      }
+                    : undefined
+                }
+              />
             );
           })}
         </div>
@@ -218,41 +214,28 @@ export function ThreadPanel({ thread, root, messages, loading, memberList, onClo
 
       <div style={{ padding: "10px 14px 14px", borderTop: "1px solid var(--gryt-neutral-6)", flexShrink: 0 }}>
         {tooLong && (
-          <div role="alert" style={{ fontSize: 11.5, color: "var(--gryt-danger-9)", marginBottom: 6 }}>
+          <Alert severity="error" className="mb-1.5 px-2.5 py-1.5 text-xs">
             {draft.length - REPLY_MAX} characters over the {REPLY_MAX} limit.
-          </div>
+          </Alert>
         )}
-        <div
-          style={{
-            display: "flex", alignItems: "flex-end", gap: 8,
-            background: "var(--gryt-neutral-3)", border: "1px solid var(--gryt-neutral-6)",
-            borderRadius: "var(--gryt-radius-md)", padding: "8px 10px",
-          }}
-        >
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-            placeholder="Reply to thread…"
-            rows={1}
-            style={{
-              flex: 1, resize: "none", background: "transparent", border: "none", outline: "none",
-              color: "var(--gryt-neutral-12)", fontSize: 14, fontFamily: "inherit", maxHeight: 120,
-            }}
-          />
-          <button
-            onClick={send}
-            disabled={!draft.trim() || tooLong}
-            style={{
-              background: draft.trim() && !tooLong ? "var(--gryt-accent-9)" : "var(--gryt-neutral-6)",
-              color: draft.trim() && !tooLong ? "var(--gryt-on-accent, #0c0a20)" : "var(--gryt-neutral-10)",
-              border: "none", borderRadius: "var(--gryt-radius-sm)", padding: "6px 12px",
-              fontWeight: 700, fontSize: 13, cursor: draft.trim() && !tooLong ? "pointer" : "default",
-            }}
-          >
-            Send
-          </button>
-        </div>
+        {/* Composer already grows with the text and carries its own send
+            button. Enter still sends and shift+enter still breaks the line —
+            that is this handler, spread onto the textarea, not something
+            Composer decides.
+
+            No `disabled`: Composer puts it on the textarea as well as the
+            button, so an empty draft would lock the box you type into and
+            being over the limit would stop you deleting characters. `send`
+            already refuses both, so the button is live and does nothing rather
+            than looking dead. GRYT-998 is the prop that would fix it. */}
+        <Composer
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+          onSubmit={(e) => { e.preventDefault(); send(); }}
+          placeholder="Reply to thread…"
+          maxRows={5}
+        />
       </div>
     </aside>
   );
