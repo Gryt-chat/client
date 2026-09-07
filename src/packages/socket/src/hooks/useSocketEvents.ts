@@ -6,13 +6,12 @@ import type { MemberKeyState } from "@/common";
 import {
   answerChallenge,
   getPlacement,
-  getPrefsSnapshot,
   getServerRefreshToken,
   isSessionExpired,
   markChannelUnread,
   removeServerAccessToken,
   removeServerRefreshToken,
-  resolveLevel,
+  resolveAnnounceLevel,
   setServerAccessToken,
   setServerFileToken,
   shouldAnnounceMessage,
@@ -455,8 +454,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
           markChannelUnread(host, msg.conversation_id);
         }
 
-        const level = resolveLevel(
-          getPrefsSnapshot(),
+        const level = resolveAnnounceLevel(
           host,
           msg.conversation_id ? getPlacement(host, msg.conversation_id) : null,
         );
@@ -490,8 +488,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
       socket.on("mention:new", (payload: { conversationId?: string }) => {
         if (host === currentlyViewingServerRef.current?.host) return;
 
-        const level = resolveLevel(
-          getPrefsSnapshot(),
+        const level = resolveAnnounceLevel(
           host,
           payload?.conversationId ? getPlacement(host, payload.conversationId) : null,
         );

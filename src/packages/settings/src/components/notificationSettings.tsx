@@ -1,11 +1,24 @@
-import { AlertDialog, Button, Divider } from "@gryt/ui";
-import { useState } from "react";
+import { AlertDialog, Button, Divider, Toggle, ToggleGroup } from "@gryt/ui";
+import { useState, useSyncExternalStore } from "react";
 
 import messageSoundMp3 from "@/audio/src/assets/universfield-computer-mouse-click-02-383961.mp3";
+import {
+  getStoredSnapshot,
+  type NotificationLevel,
+  setGlobalLevel,
+  subscribeToPrefs,
+} from "@/common";
 import { useSettings } from "@/settings";
 
-import { SettingsContainer, ToggleSetting } from "./settingsComponents";
+import { ServerNotificationList } from "./serverNotificationList";
+import { SettingGroup, SettingsContainer, ToggleSetting } from "./settingsComponents";
 import { SoundSettings } from "./SoundSettings";
+
+const GLOBAL_LEVELS: { label: string; value: NotificationLevel }[] = [
+  { label: "Everything", value: "all" },
+  { label: "Only mentions", value: "mentions" },
+  { label: "Nothing", value: "none" },
+];
 
 export function NotificationSettings() {
   const {
@@ -20,6 +33,14 @@ export function NotificationSettings() {
     customMessageSoundFile,
     setCustomMessageSoundFile,
   } = useSettings();
+
+  /* The global level and the per-server rules share a store, and this reads
+     the whole thing so the toggles move when either changes. */
+  const globalLevel = useSyncExternalStore(
+    subscribeToPrefs,
+    getStoredSnapshot,
+    getStoredSnapshot,
+  ).global;
 
   const [alertDialog, setAlertDialog] = useState<{
     open: boolean;
@@ -44,6 +65,41 @@ export function NotificationSettings() {
   return (
     <SettingsContainer>
       <h2>Notifications</h2>
+
+      {/* First, because it is the one that decides what the rest can do. */}
+      <SettingGroup
+        title="Notification level"
+        description="Applies to every server. It can only quieten one, never make one louder — a server you have already muted stays muted."
+      >
+        <ToggleGroup
+          value={[globalLevel]}
+          onValueChange={(next) => {
+            // Base UI hands back an array and clears it when the pressed one is
+            // pressed again. There is always a level, so an empty answer means
+            // "no change" rather than "none".
+            const picked = next[0];
+            if (picked) setGlobalLevel(picked as NotificationLevel);
+          }}
+          multiple={false}
+        >
+          {GLOBAL_LEVELS.map((level) => (
+            <Toggle key={level.value} value={level.value} size="small">
+              {level.label}
+            </Toggle>
+          ))}
+        </ToggleGroup>
+      </SettingGroup>
+
+      <Divider />
+
+      <SettingGroup
+        title="Per server"
+        description="How loud each server is on its own. Set from the right-click menu too — this is the same setting, in one place."
+      >
+        <ServerNotificationList />
+      </SettingGroup>
+
+      <Divider />
 
       <ToggleSetting
         title="Desktop notifications"

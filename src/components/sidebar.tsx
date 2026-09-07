@@ -1,20 +1,17 @@
-import { AlertDialog, Avatar, Button, ContextMenu, IconButton, Menu, PreviewCard, Tooltip } from "@gryt/ui";
+import { AlertDialog, Avatar, Badge, Button, ContextMenu, IconButton, Menu, PreviewCard, Tooltip } from "@gryt/ui";
 import { useSFU } from "@gryt/voice";
 import { Reorder } from "motion/react";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
 import {
   GeneratedServerIcon,
-  getOwnLevel,
-  getPrefsSnapshot,
   normalizeHost,
-  type NotificationLevel,
+  NotificationLevelMenu,
   resolveAvatarSrc,
   serverIconSrc,
-  setNotificationLevel,
-  subscribeToPrefs,
   useAccount,
+  useMentionTracker,
   useUnreadTracker,
 } from "@/common";
 import { useSettings } from "@/settings";
@@ -40,19 +37,6 @@ interface SidebarProps {
   setShowAddServer: (show: boolean) => void;
 }
 
-
-/**
- * How loud a whole server is, as the three levels plus a reset.
- *
- * The same four the channel list offers per channel and per folder. Declared
- * once out here because the menu renders per server in a map.
- */
-const SERVER_NOTIFICATION_CHOICES: { label: string; value: NotificationLevel | null }[] = [
-  { label: "Everything", value: "all" },
-  { label: "Only mentions", value: "mentions" },
-  { label: "Nothing", value: "none" },
-  { label: "Default (everything)", value: null },
-];
 
 /** Opens the settings modal, on a named tab when one is asked for. */
 function openServerSettings(host: string, tab?: string): void {
@@ -112,7 +96,8 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
   const { currentServerConnected, isConnected } = useSFU();
   const { serverConnectionStatus, serverProfiles, serverDetailsList } =
     useSockets();
-  const { serverHasUnread } = useUnreadTracker();
+  const { serverUnreadCount } = useUnreadTracker();
+  const { serverMentionCount } = useMentionTracker();
 
   const currentHost = currentlyViewingServer?.host;
   const activeProfile = currentHost ? serverProfiles[currentHost] : undefined;
@@ -154,7 +139,8 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
               serverDetailsList={serverDetailsList}
               isConnected={isConnected}
               currentServerConnected={currentServerConnected}
-              serverHasUnread={serverHasUnread}
+              serverUnreadCount={serverUnreadCount}
+              serverMentionCount={serverMentionCount}
               switchToServer={switchToServer}
               setShowRemoveServer={setShowRemoveServer}
               duplicateHosts={duplicatesOf(host)}
@@ -315,7 +301,8 @@ interface ServerItemProps {
   serverDetailsList: ServerDetailsListType;
   isConnected: boolean;
   currentServerConnected: string | null;
-  serverHasUnread: (host: string) => boolean;
+  serverUnreadCount: (host: string) => number;
+  serverMentionCount: (host: string) => number;
   switchToServer: (host: string) => void;
   setShowRemoveServer: (host: string | null) => void;
   /** Other addresses in the rail that are this same server (GRYT-317). */
@@ -341,7 +328,8 @@ function ServerItem({
   serverDetailsList,
   isConnected,
   currentServerConnected,
-  serverHasUnread,
+  serverUnreadCount,
+  serverMentionCount,
   switchToServer,
   setShowRemoveServer,
   duplicateHosts,
@@ -349,11 +337,6 @@ function ServerItem({
   embeddedStatus,
 }: ServerItemProps) {
   const { canClaim, claim } = useIdentityClaim();
-  /* Subscribed rather than read once, so the tick in the notifications
-     submenu moves the moment a level is picked. The value is unused; the
-     subscription is what re-renders, and `getOwnLevel` reads the current
-     answer where the rows are drawn. */
-  useSyncExternalStore(subscribeToPrefs, getPrefsSnapshot, getPrefsSnapshot);
   const [doctorOpen, setDoctorOpen] = useState(false);
   const [mergeOpen, setMergeOpen] = useState(false);
   // No entry yet is not the same as down.
@@ -484,15 +467,35 @@ function ServerItem({
                     <PiMicrophoneFill size={8} color="var(--gryt-on-accent)" />
                   </div>
                 )}
-                {serverHasUnread(host) && (
-                  <div className="absolute" style={{ bottom: "-2px", right: "-2px", width: 10,
-                      height: 10,
-                      borderRadius: "50%",
-                      backgroundColor: "var(--gryt-accent-9)",
-                      border: "2px solid var(--gryt-neutral-1)",
-                      zIndex: 1,
-                      pointerEvents: "none" }} />
-                )}
+                {/* A count, not a dot. The dot said "something happened in
+                    here", which on any server somebody actually uses is true
+                    all day. Bottom-right because the mic pill has the top
+                    corner while you are in a call, and the two would sit on
+                    top of each other.
+
+                    Mentions colour it rather than replace the number: the
+                    count is how much is waiting, the accent is whether any of
+                    it named you. */}
+                {(() => {
+                  const unread = serverUnreadCount(host);
+                  const mentions = serverMentionCount(host);
+                  const count = unread || mentions;
+                  if (count <= 0) return null;
+                  return (
+                    <div className="pointer-events-none absolute -bottom-1 -right-1 z-1">
+                      <Badge
+                        badgeContent={count}
+                        tone={mentions > 0 ? "primary" : "neutral"}
+                        ring
+                        title={
+                          mentions > 0
+                            ? `${count} unread, ${mentions} naming you`
+                            : `${count} unread`
+                        }
+                      />
+                    </div>
+                  );
+                })()}
               </div>
             </PreviewCard.Trigger>
           </ContextMenu.Trigger>
@@ -503,9 +506,7 @@ function ServerItem({
                 context to point aria-labelledby at it. Without one it throws,
                 which is what a right-click here used to do. */}
             <ContextMenu.Group>
-              <ContextMenu.GroupLabel style={{ fontWeight: "bold" }}>
-                {servers[host].name}
-              </ContextMenu.GroupLabel>
+              <ContextMenu.GroupLabel>{servers[host].name}</ContextMenu.GroupLabel>
             </ContextMenu.Group>
             {/*
               Ordered like the server menu people arrive already knowing:
@@ -530,26 +531,7 @@ function ServerItem({
 
             {/* The same three levels the channel list offers per channel and
                 per folder, at the scope above them. Device-local, like those. */}
-            <ContextMenu.SubmenuRoot>
-              <ContextMenu.SubmenuTrigger>Notifications</ContextMenu.SubmenuTrigger>
-              <ContextMenu.Portal>
-                <ContextMenu.Positioner>
-                  <ContextMenu.Popup>
-                    {SERVER_NOTIFICATION_CHOICES.map((choice) => (
-                      <ContextMenu.Item
-                        key={choice.label}
-                        onClick={() => setNotificationLevel(host, { kind: "server" }, choice.value)}
-                      >
-                        <span style={{ display: "inline-block", width: 16 }}>
-                          {getOwnLevel(host, { kind: "server" }) === choice.value ? "\u2713" : ""}
-                        </span>
-                        {choice.label}
-                      </ContextMenu.Item>
-                    ))}
-                  </ContextMenu.Popup>
-                </ContextMenu.Positioner>
-              </ContextMenu.Portal>
-            </ContextMenu.SubmenuRoot>
+            <NotificationLevelMenu host={host} scope={{ kind: "server" }} />
             <ContextMenu.Separator />
 
             <ContextMenu.Item onClick={() => openServerSettings(host)}>

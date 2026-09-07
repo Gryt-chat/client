@@ -2,16 +2,13 @@ import { Button, ContextMenu, Tooltip } from "@gryt/ui";
 import type { StreamSources } from "@gryt/voice";
 import { useMicrophone } from "@gryt/voice";
 import { AnimatePresence, LayoutGroup, motion, Reorder } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
-  getOwnLevel,
-  getPrefsSnapshot,
   getUploadsFileUrl,
-  type NotificationLevel,
+  NotificationLevelMenu,
+  type NotificationScope,
   resolveAvatarSrc,
-  setNotificationLevel,
-  subscribeToPrefs,
 } from "@/common";
 import { Channel, SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
 
@@ -60,7 +57,7 @@ export const ChannelList = ({
   onDisconnectUser,
   currentUserRole,
   adminActions,
-  unreadChannelIds,
+  unreadCounts,
   mentionCounts,
   directConversations,
   selectedDmId,
@@ -98,7 +95,8 @@ export const ChannelList = ({
   onDisconnectUser?: (targetServerUserId: string) => void;
   currentUserRole?: Role;
   adminActions?: AdminActions;
-  unreadChannelIds?: Set<string>;
+  /** Unread messages per conversation id. Absent, or missing, means none. */
+  unreadCounts?: Map<string, number>;
   /** Unseen mentions per conversation id. Absent means none. */
   mentionCounts?: Map<string, number>;
   directConversations?: DirectConversation[];
@@ -135,11 +133,6 @@ export const ChannelList = ({
     () => new Map(channels.map((c) => [c.id, c])),
     [channels],
   );
-
-  /* Subscribed rather than read once, so the tick in the menu moves the moment
-     a level is chosen. The value is not used directly; the subscription is what
-     re-renders, and `getOwnLevel` reads the current answer where it is needed. */
-  useSyncExternalStore(subscribeToPrefs, getPrefsSnapshot, getPrefsSnapshot);
 
   /*
    * Which folders are shut, per server, on this device.
@@ -237,12 +230,11 @@ export const ChannelList = ({
     /* Only while shut. Open, every child draws its own state, and a folder
        lit up above rows that are already lit is two answers to one question. */
     const holdsSelected = isCollapsed && !!inside?.holdsSelected;
-    const unread = isCollapsed && !!inside?.unread;
+    const unread = isCollapsed ? inside?.unread ?? 0 : 0;
     const mentions = isCollapsed ? inside?.mentions ?? 0 : 0;
 
     return (
       <div className="relative w-full">
-        <UnreadIndicator unread={unread} mentions={mentions} />
         {/* Label, then a hairline running out to the caret on the right.
             No folder icon: a row that opens and shuts is already a folder, and
             the glyph cost 12px of indent on every label. With the caret moved
@@ -284,6 +276,7 @@ export const ChannelList = ({
           {isCollapsed && inside?.children ? (
             <span className="shrink-0 tabular-nums opacity-70">{inside.children}</span>
           ) : null}
+          <UnreadIndicator unread={unread} mentions={mentions} />
           <Caret size={10} className="shrink-0" />
         </button>
       </div>
@@ -294,7 +287,10 @@ export const ChannelList = ({
     const channelId = item.channelId ?? item.id;
     const channel = channelById.get(channelId);
     const hasIndicators = channel?.type === "voice" && (channel?.eSportsMode || channel?.requirePushToTalk || channel?.disableRnnoise || channel?.maxBitrate);
-    const isUnread = !!channel && channel.id !== selectedChannelId && !!unreadChannelIds?.has(channel.id);
+    const unread =
+      channel && channel.id !== selectedChannelId
+        ? unreadCounts?.get(channel.id) ?? 0
+        : 0;
     // Shown even for the channel you have open. Unread is suppressed there
     // because you are reading it, and a mention is cleared by reading rather
     // than by having it open — so if one is still counted, it has not been
@@ -308,7 +304,6 @@ export const ChannelList = ({
 
     return (
       <div className="flex flex-col items-start w-full relative">
-        <UnreadIndicator unread={isUnread} mentions={mentions} />
         {/* Ghost unless it is the one you are in. Every row was a plain
             <Button>, which is the filled accent one, so the whole list read as
             selected and the channel you were actually in was invisible —
@@ -385,6 +380,11 @@ export const ChannelList = ({
                 style={{ marginLeft: hasIndicators ? "4px" : "auto" }}
               />
             )}
+          {/* Last in the row, so it sits at the right edge and centres with
+              the name. `marginLeft: auto` rather than a spacer, because the
+              per-channel indicators above already claim `auto` when they are
+              there and two of them would fight. */}
+          <UnreadIndicator unread={unread} mentions={mentions} />
         </Button>
 
         {channel?.type === "voice" && (
@@ -484,22 +484,22 @@ export const ChannelList = ({
    * do by accident and then not be able to explain.
    */
   const folderRollup = useMemo(() => {
-    const rollup = new Map<string, { children: number; unread: boolean; mentions: number; holdsSelected: boolean }>();
+    const rollup = new Map<string, { children: number; unread: number; mentions: number; holdsSelected: boolean }>();
     for (const item of effectiveItems) {
       const parent = item.parentItemId;
       if (!parent) continue;
-      const entry = rollup.get(parent) ?? { children: 0, unread: false, mentions: 0, holdsSelected: false };
+      const entry = rollup.get(parent) ?? { children: 0, unread: 0, mentions: 0, holdsSelected: false };
       entry.children += 1;
 
       const channelId = item.channelId ?? item.id;
       if (channelId === selectedChannelId) entry.holdsSelected = true;
-      if (channelId !== selectedChannelId && unreadChannelIds?.has(channelId)) entry.unread = true;
+      if (channelId !== selectedChannelId) entry.unread += unreadCounts?.get(channelId) ?? 0;
       entry.mentions += mentionCounts?.get(channelId) ?? 0;
 
       rollup.set(parent, entry);
     }
     return rollup;
-  }, [effectiveItems, selectedChannelId, unreadChannelIds, mentionCounts]);
+  }, [effectiveItems, selectedChannelId, unreadCounts, mentionCounts]);
 
   const renderItem = (item: SidebarItem) => {
     if (item.kind === "separator") return renderSeparator(item);
@@ -509,47 +509,25 @@ export const ChannelList = ({
   };
 
   /**
-   * How loud one scope is, as four choices with the current one marked.
-   *
-   * "Default" is a real option rather than a synonym for All: a channel set
-   * back to default follows its folder again, and one set to All stops
-   * following it. Somebody who mutes a folder and wants one channel out of it
-   * needs the difference.
+   * How loud one scope is. The menu itself lives in `common` — the server rail
+   * shows the same one, and the two copies had already started to differ.
    */
-  const notificationSubmenu = (
-    scope: { kind: "server" } | { kind: "folder" | "channel"; id: string },
-  ) => {
-    const own = getOwnLevel(serverHost, scope);
-    const choices: { label: string; value: NotificationLevel | null }[] = [
-      { label: "Everything", value: "all" },
-      { label: "Only mentions", value: "mentions" },
-      { label: "Nothing", value: "none" },
-      { label: scope.kind === "server" ? "Default (everything)" : "Default (inherit)", value: null },
-    ];
-
-    return (
-      <ContextMenu.SubmenuRoot>
-        <ContextMenu.SubmenuTrigger>Notifications</ContextMenu.SubmenuTrigger>
-        <ContextMenu.Portal>
-          <ContextMenu.Positioner>
-            <ContextMenu.Popup>
-              {choices.map((choice) => (
-                <ContextMenu.Item
-                  key={choice.label}
-                  onClick={() => setNotificationLevel(serverHost, scope, choice.value)}
-                >
-                  <span style={{ display: "inline-block", width: 16 }}>
-                    {own === choice.value ? "✓" : ""}
-                  </span>
-                  {choice.label}
-                </ContextMenu.Item>
-              ))}
-            </ContextMenu.Popup>
-          </ContextMenu.Positioner>
-        </ContextMenu.Portal>
-      </ContextMenu.SubmenuRoot>
-    );
-  };
+  const notificationSubmenu = (scope: NotificationScope) => (
+    <NotificationLevelMenu
+      host={serverHost}
+      scope={scope}
+      placement={
+        scope.kind === "channel"
+          ? {
+              channelId: scope.id,
+              parentItemId:
+                effectiveItems.find((i) => (i.channelId ?? i.id) === scope.id)
+                  ?.parentItemId ?? null,
+            }
+          : null
+      }
+    />
+  );
 
   const wrapWithContextMenu = (item: SidebarItem, index: number, content: React.ReactNode) => {
     /* A separator and a spacer are decoration, so they carry nothing for
@@ -573,7 +551,7 @@ export const ChannelList = ({
           {/* The label names a group; without one Base UI throws, and a
               right-click on a channel took the app down. */}
           <ContextMenu.Group>
-            <ContextMenu.GroupLabel style={{ fontWeight: "bold" }}>
+            <ContextMenu.GroupLabel>
               <EmojiText text={label} disableTooltip />
             </ContextMenu.GroupLabel>
           </ContextMenu.Group>
@@ -696,7 +674,7 @@ export const ChannelList = ({
         conversations={(directConversations ?? []).filter((c) => c.kind !== "group")}
         serverHost={serverHost}
         selectedConversationId={selectedDmId ?? null}
-        unreadConversationIds={unreadChannelIds}
+        unreadCounts={unreadCounts}
         mentionCounts={mentionCounts}
         onSelect={onSelectDm}
         onHide={onHideDm}
@@ -707,7 +685,7 @@ export const ChannelList = ({
         conversations={(directConversations ?? []).filter((c) => c.kind === "group")}
         serverHost={serverHost}
         selectedConversationId={selectedDmId ?? null}
-        unreadConversationIds={unreadChannelIds}
+        unreadCounts={unreadCounts}
         mentionCounts={mentionCounts}
         onSelect={onSelectDm}
         onHide={onHideDm}
@@ -763,7 +741,7 @@ export const ChannelList = ({
           <ContextMenu.Positioner>
             <ContextMenu.Popup>
               <ContextMenu.Group>
-                <ContextMenu.GroupLabel style={{ fontWeight: "bold" }}>
+                <ContextMenu.GroupLabel>
                   This server
                 </ContextMenu.GroupLabel>
               </ContextMenu.Group>
@@ -849,7 +827,7 @@ export const ChannelList = ({
         <ContextMenu.Positioner>
           <ContextMenu.Popup>
         <ContextMenu.Group>
-          <ContextMenu.GroupLabel style={{ fontWeight: "bold" }}>
+          <ContextMenu.GroupLabel>
             This server
           </ContextMenu.GroupLabel>
         </ContextMenu.Group>

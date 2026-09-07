@@ -57,7 +57,8 @@ interface ServerSidebarProps {
   onDisconnectUser: ((id: string) => void) | undefined;
   currentUserRole: Role | undefined;
   adminActions: AdminActions | undefined;
-  unreadChannelIds?: Set<string>;
+  /** Unread messages per conversation id. Absent means none. */
+  unreadCounts?: Map<string, number>;
   mentionCounts?: Map<string, number>;
   directConversations?: DirectConversation[];
   selectedDmId?: string | null;
@@ -78,7 +79,7 @@ export const ServerSidebar = ({
   isConnecting, currentConnectionId, selectedChannelId,
   onChannelClick, clientsSpeaking, streamSources,
   canManage, onEditItem, onDeleteItem, onMoveItem, onReorder, onAddItem,
-  onDisconnectUser, currentUserRole, adminActions, unreadChannelIds, mentionCounts,
+  onDisconnectUser, currentUserRole, adminActions, unreadCounts, mentionCounts,
   directConversations, selectedDmId, onSelectDm, onHideDm, onManageGroup,
 }: ServerSidebarProps) => (
   <div
@@ -187,7 +188,7 @@ export const ServerSidebar = ({
                 onDisconnectUser={onDisconnectUser}
                 currentUserRole={currentUserRole}
                 adminActions={adminActions}
-                unreadChannelIds={unreadChannelIds}
+                unreadCounts={unreadCounts}
                 mentionCounts={mentionCounts}
                 directConversations={directConversations}
                 selectedDmId={selectedDmId}

@@ -48,7 +48,7 @@ export const DirectMessageList = ({
   serverHost,
   title,
   selectedConversationId,
-  unreadConversationIds,
+  unreadCounts,
   mentionCounts,
   onHide,
   onManage,
@@ -59,7 +59,8 @@ export const DirectMessageList = ({
   title: string;
   serverHost: string;
   selectedConversationId: string | null;
-  unreadConversationIds?: Set<string>;
+  /** Unread messages per conversation id. Absent, or missing, means none. */
+  unreadCounts?: Map<string, number>;
   /** Unseen mentions per conversation id. Absent means none. */
   mentionCounts?: Map<string, number>;
   onSelect: (conversation: DirectConversation) => void;
@@ -85,14 +86,15 @@ export const DirectMessageList = ({
 
       {conversations.map((conversation) => {
         const isSelected = conversation.conversation_id === selectedConversationId;
-        const isUnread = !isSelected && !!unreadConversationIds?.has(conversation.conversation_id);
+        const unread = isSelected
+          ? 0
+          : unreadCounts?.get(conversation.conversation_id) ?? 0;
         const mentions = mentionCounts?.get(conversation.conversation_id) ?? 0;
 
         return (
           <ContextMenu.Root key={conversation.conversation_id}>
           <ContextMenu.Trigger>
           <div className="flex flex-col items-start w-full relative">
-            <UnreadIndicator unread={isUnread} mentions={mentions} />
             <Button
               size="small"
               tone={isSelected ? "primary" : "ghost"}
@@ -150,6 +152,9 @@ export const DirectMessageList = ({
                   className="size-2 shrink-0 rounded-(--gryt-radius-full) bg-gryt-accent"
                 />
               ) : null}
+              {/* Last in the row, so it ends at the right edge and centres
+                  with the name rather than hanging off the corner. */}
+              <UnreadIndicator unread={unread} mentions={mentions} />
             </Button>
           </div>
           </ContextMenu.Trigger>
@@ -157,7 +162,7 @@ export const DirectMessageList = ({
             <ContextMenu.Positioner>
               <ContextMenu.Popup className="min-w-55">
                 <ContextMenu.Group>
-                  <ContextMenu.GroupLabel style={{ fontWeight: "bold" }}>
+                  <ContextMenu.GroupLabel>
                     {conversationTitle(conversation)}
                   </ContextMenu.GroupLabel>
                 </ContextMenu.Group>

@@ -14,6 +14,12 @@
  * which beats the server's, which falls back to hearing everything. Muting a
  * server therefore quietens it without deciding for a channel somebody has
  * already had an opinion about.
+ *
+ * Over all of that sits one global level, and it can only quieten. Set it to
+ * "Only mentions" and a server asking for everything drops to mentions; a
+ * server already muted stays muted. A global setting that could also make
+ * things louder would un-mute the server somebody muted last week, which is not
+ * what anybody means by turning the whole app down.
  */
 
 export type NotificationLevel = "all" | "mentions" | "none";
@@ -26,6 +32,40 @@ export interface ServerNotificationPrefs {
 }
 
 export type NotificationPrefs = Record<string, ServerNotificationPrefs>;
+
+/** Everything this device has decided: the ceiling, and the per-server rules. */
+export interface StoredNotificationPrefs {
+  global: NotificationLevel;
+  servers: NotificationPrefs;
+}
+
+/** Loudest to quietest, so two levels can be compared. */
+const LOUDNESS: Record<NotificationLevel, number> = {
+  all: 2,
+  mentions: 1,
+  none: 0,
+};
+
+/** The quieter of two levels. The global ceiling is applied with this. */
+export function quieterOf(
+  a: NotificationLevel,
+  b: NotificationLevel,
+): NotificationLevel {
+  return LOUDNESS[a] <= LOUDNESS[b] ? a : b;
+}
+
+/**
+ * Whether the global level is the one actually deciding here.
+ *
+ * The menus say so where it is true, because a channel that reads "Everything"
+ * and makes no sound is a bug report waiting to happen.
+ */
+export function globalOverrules(
+  global: NotificationLevel,
+  resolved: NotificationLevel,
+): boolean {
+  return LOUDNESS[global] < LOUDNESS[resolved];
+}
 
 /** Only what the resolver needs, so it can be tested without a sidebar. */
 export interface ChannelPlacement {
@@ -69,6 +109,32 @@ export function parsePrefs(raw: unknown): NotificationPrefs {
     if (entry.server || entry.folders || entry.channels) out[host] = entry;
   }
   return out;
+}
+
+/**
+ * The whole file, in either shape it has been written in.
+ *
+ * It used to be the servers map on its own. The global level needed somewhere
+ * to live and a top-level key would have collided with a host, so the file is
+ * now `{ global, servers }` — and anything without a `servers` object is read as
+ * the old flat map. A host called "servers" would have to be a bare word with
+ * no dot and no port to be confused for the new key, which is not a host.
+ */
+export function parseStored(raw: unknown): StoredNotificationPrefs {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return { global: "all", servers: {} };
+  }
+
+  const outer = raw as Record<string, unknown>;
+  const nested = outer.servers;
+  if (nested && typeof nested === "object" && !Array.isArray(nested)) {
+    return {
+      global: isLevel(outer.global) ? outer.global : "all",
+      servers: parsePrefs(nested),
+    };
+  }
+
+  return { global: "all", servers: parsePrefs(raw) };
 }
 
 /**
@@ -116,22 +182,22 @@ export function shouldAnnounceMention(level: NotificationLevel): boolean {
 // next door, so a change made in the sidebar reaches the socket layer without
 // either one holding a reference to the other.
 
-let prefs: NotificationPrefs = load();
+let stored: StoredNotificationPrefs = load();
 const listeners = new Set<() => void>();
 
-function load(): NotificationPrefs {
+function load(): StoredNotificationPrefs {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return parsePrefs(raw ? JSON.parse(raw) : null);
+    return parseStored(raw ? JSON.parse(raw) : null);
   } catch {
     // Unreadable is the same as unset, which is hearing everything.
-    return {};
+    return { global: "all", servers: {} };
   }
 }
 
 function persist() {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
   } catch {
     // Private mode or a full quota. The setting holds for this session and is
     // gone next launch, which is the safe way to lose it.
@@ -148,7 +214,43 @@ export function subscribeToPrefs(listener: () => void) {
 }
 
 export function getPrefsSnapshot(): NotificationPrefs {
-  return prefs;
+  return stored.servers;
+}
+
+/**
+ * Both halves, as one object that is replaced on every write.
+ *
+ * `useSyncExternalStore` bails out when the snapshot is identical, so a
+ * component watching only `getPrefsSnapshot` would never re-render when the
+ * global level changed on its own. Anything that shows the global level
+ * subscribes to this instead.
+ */
+export function getStoredSnapshot(): StoredNotificationPrefs {
+  return stored;
+}
+
+export function getGlobalLevel(): NotificationLevel {
+  return stored.global;
+}
+
+/** The ceiling over every server. "all" is the same as having none. */
+export function setGlobalLevel(level: NotificationLevel) {
+  if (stored.global === level) return;
+  stored = { ...stored, global: level };
+  persist();
+  emit();
+}
+
+/**
+ * What a channel is actually set to once the ceiling is applied. This is the
+ * answer the socket layer wants; `resolveLevel` on its own is the per-server
+ * half of it.
+ */
+export function resolveAnnounceLevel(
+  host: string,
+  placement: ChannelPlacement | null,
+): NotificationLevel {
+  return quieterOf(stored.global, resolveLevel(stored.servers, host, placement));
 }
 
 /**
@@ -163,7 +265,7 @@ export function setNotificationLevel(
   scope: { kind: "server" } | { kind: "folder" | "channel"; id: string },
   level: NotificationLevel | null,
 ) {
-  const next: NotificationPrefs = { ...prefs };
+  const next: NotificationPrefs = { ...stored.servers };
   const entry: ServerNotificationPrefs = { ...(next[host] ?? {}) };
 
   if (scope.kind === "server") {
@@ -181,7 +283,7 @@ export function setNotificationLevel(
   if (entry.server || entry.folders || entry.channels) next[host] = entry;
   else delete next[host];
 
-  prefs = next;
+  stored = { ...stored, servers: next };
   persist();
   emit();
 }
@@ -228,7 +330,7 @@ export function getOwnLevel(
   host: string,
   scope: { kind: "server" } | { kind: "folder" | "channel"; id: string },
 ): NotificationLevel | null {
-  const entry = prefs[host];
+  const entry = stored.servers[host];
   if (!entry) return null;
   if (scope.kind === "server") return entry.server ?? null;
   const bag = scope.kind === "folder" ? entry.folders : entry.channels;

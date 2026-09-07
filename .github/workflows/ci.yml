@@ -38,6 +38,7 @@ jobs:
       - run: yarn test:capture-set
       - run: yarn test:avatar-precedence
       - run: yarn test:mention-tracker
+      - run: yarn test:unread-tracker
       - run: yarn test:peer-keys
       - run: yarn test:dm-key-published
       - run: yarn test:sealed-text

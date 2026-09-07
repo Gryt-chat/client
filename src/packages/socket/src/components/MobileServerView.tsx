@@ -58,7 +58,8 @@ interface MobileServerViewProps {
   onDisconnectUser?: (targetServerUserId: string) => void;
   currentUserRole?: Role;
   adminActions?: AdminActions;
-  unreadChannelIds?: Set<string>;
+  /** Unread messages per conversation id. Absent means none. */
+  unreadCounts?: Map<string, number>;
   mentionCounts?: Map<string, number>;
   directConversations?: DirectConversation[];
   selectedDmId?: string | null;
@@ -250,7 +251,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
               onDisconnectUser={props.canManage ? props.onDisconnectUser : undefined}
               currentUserRole={props.currentUserRole}
               adminActions={props.adminActions}
-              unreadChannelIds={props.unreadChannelIds}
+              unreadCounts={props.unreadCounts}
               mentionCounts={props.mentionCounts}
               directConversations={props.directConversations}
               selectedDmId={props.selectedDmId}

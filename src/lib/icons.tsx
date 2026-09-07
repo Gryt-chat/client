@@ -30,6 +30,8 @@ import {
   ArrowsLeftRight,
   ArrowSquareOut,
   At,
+  Bell,
+  BellSlash,
   Boot,
   Broadcast,
   Bug,
@@ -159,6 +161,8 @@ export const PiArrowsLeftRightFill: Icon = weighted(ArrowsLeftRight, "fill", "Pi
 export const PiArrowSquareOutBold: Icon = weighted(ArrowSquareOut, "bold", "PiArrowSquareOutBold");
 export const PiArrowSquareOutFill: Icon = weighted(ArrowSquareOut, "fill", "PiArrowSquareOutFill");
 export const PiAtFill: Icon = weighted(At, "fill", "PiAtFill");
+export const PiBellFill: Icon = weighted(Bell, "fill", "PiBellFill");
+export const PiBellSlashFill: Icon = weighted(BellSlash, "fill", "PiBellSlashFill");
 export const PiBootFill: Icon = weighted(Boot, "fill", "PiBootFill");
 export const PiBroadcastFill: Icon = weighted(Broadcast, "fill", "PiBroadcastFill");
 export const PiBugFill: Icon = weighted(Bug, "fill", "PiBugFill");
