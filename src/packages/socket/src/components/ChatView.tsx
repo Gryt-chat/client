@@ -158,6 +158,42 @@ export const ChatView = memo(({
      places: opening a thread would show whatever was half-typed in the channel,
      and sending from either would clear both. */
   const threadEditorRef = useRef<ChatEditorHandle>(null);
+
+  /* Reply and edit state of its own, for the same reason the editor handle is
+     its own: the channel's chip belongs over the channel's composer. Sharing it
+     would put "replying to…" above the box you are not typing in. */
+  const [threadReplyingTo, setThreadReplyingTo] = useState<ChatMessage | null>(null);
+  const [threadEditing, setThreadEditing] = useState<ChatMessage | null>(null);
+
+  const handleThreadReply = useCallback((m: ChatMessage) => {
+    setThreadEditing(null);
+    setThreadReplyingTo(m);
+    requestAnimationFrame(() => threadEditorRef.current?.focus());
+  }, []);
+
+  const startThreadEditing = useCallback((m: ChatMessage) => {
+    if (!m.text) return;
+    setThreadReplyingTo(null);
+    setThreadEditing(m);
+  }, []);
+
+  /*
+   * Fill the box after the render that opens editing, not during the click.
+   *
+   * The channel sets its content in a requestAnimationFrame and gets away with
+   * it. This composer is built by a callback whose identity changes when
+   * `threadEditing` does, so the editor remounts on that same render and threw
+   * away anything written into it a frame earlier — the chip appeared over an
+   * empty box.
+   */
+  useEffect(() => {
+    if (threadEditing?.text) threadEditorRef.current?.setContent(threadEditing.text);
+  }, [threadEditing]);
+
+  const cancelThreadEditing = useCallback(() => {
+    setThreadEditing(null);
+    threadEditorRef.current?.clear();
+  }, []);
   const [isDragOver, setIsDragOver] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<{ src: string; alt?: string } | null>(null);
   const dragCounterRef = useRef(0);
@@ -395,8 +431,12 @@ export const ChatView = memo(({
     (m: ChatMessage) => {
       const meta = threadMetaById.get(m.message_id);
       if (!meta) return null;
+      /* A reply inside a thread points at another thread message, which is not
+         in the channel's map — that one holds the main timeline. Look in the
+         thread first, then fall back for a reply that quotes the root. */
       const replyOriginal = m.reply_to_message_id
-        ? messageMap.get(m.reply_to_message_id)
+        ? threadMessages.find((t) => t.message_id === m.reply_to_message_id) ??
+          messageMap.get(m.reply_to_message_id)
         : undefined;
       return (
         <MessageRow
@@ -421,8 +461,8 @@ export const ChatView = memo(({
           memberList={memberList}
           setChatMediaVolume={setChatMediaVolume}
           onReaction={handleReaction}
-          onReply={handleReply}
-          onEdit={startEditing}
+          onReply={handleThreadReply}
+          onEdit={startThreadEditing}
           onReport={handleReport}
           onDelete={requestDelete}
           scrollToMessage={scrollToMessage}
@@ -435,6 +475,7 @@ export const ChatView = memo(({
     },
     [
       threadMetaById,
+      threadMessages,
       messageMap,
       currentUserId,
       customEmojiList,
@@ -449,8 +490,8 @@ export const ChatView = memo(({
       memberList,
       setChatMediaVolume,
       handleReaction,
-      handleReply,
-      startEditing,
+      handleThreadReply,
+      startThreadEditing,
       handleReport,
       requestDelete,
       scrollToMessage,
@@ -466,8 +507,8 @@ export const ChatView = memo(({
   const renderThreadComposer = useCallback(
     () => (
       <ChatEditorBar
-        replyingTo={null}
-        editingMessage={null}
+        replyingTo={threadReplyingTo}
+        editingMessage={threadEditing}
         editorRef={threadEditorRef}
         placeholder="Reply to thread…"
         disabled={!maySend}
@@ -475,9 +516,18 @@ export const ChatView = memo(({
         maxFileSize={maxFileSize}
         memberList={mentionMembers}
         getSenderName={getSenderName}
-        onCancelReply={() => {}}
-        onCancelEditing={() => {}}
-        onSend={(markdown, files) => threads.sendReply(markdown, files)}
+        onCancelReply={() => setThreadReplyingTo(null)}
+        onCancelEditing={cancelThreadEditing}
+        onSend={(markdown, files) => {
+          if (threadEditing) {
+            // Optional on the props, and absent where editing is not offered.
+            editMessage?.(threadEditing.message_id, threadEditing.conversation_id, markdown);
+            cancelThreadEditing();
+            return;
+          }
+          threads.sendReply(markdown, files, threadReplyingTo?.message_id);
+          setThreadReplyingTo(null);
+        }}
         /* Up-arrow-to-edit scans the channel's messages, so in here it would
            open the wrong message for editing. Editing a reply from inside the
            thread is its own piece of work. */
@@ -487,7 +537,7 @@ export const ChatView = memo(({
         serverHost={serverHost}
       />
     ),
-    [maySend, mayHere, maxFileSize, mentionMembers, getSenderName, threads, emitTyping, emitStopTyping, serverHost],
+    [maySend, mayHere, maxFileSize, mentionMembers, getSenderName, threads, emitTyping, emitStopTyping, serverHost, threadReplyingTo, threadEditing, cancelThreadEditing, editMessage],
   );
 
 

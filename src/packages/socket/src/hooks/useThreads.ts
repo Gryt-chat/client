@@ -61,7 +61,7 @@ export interface UseThreadsResult {
   openSummary: (summary: ThreadSummary) => void;
   closeThread: () => void;
   /** Files go up the same way a channel's do; nothing here is sealed. */
-  sendReply: (text: string, files?: File[]) => void;
+  sendReply: (text: string, files?: File[], replyToMessageId?: string) => void;
   /** Set the open topic's tags. The server gates who may, and drops unknown ids. */
   setTags: (tagIds: string[]) => void;
   /** Mark the open topic open / solved / closed. The server gates who may. */
@@ -342,7 +342,7 @@ export function useThreads(
    * The optimistic row carries local ids and object URLs like the channel's
    * does, so an image appears while it uploads instead of after.
    */
-  const sendReply = useCallback((text: string, files: File[] = []) => {
+  const sendReply = useCallback((text: string, files: File[] = [], replyToMessageId?: string) => {
     const socket = asSocket(socketConnection);
     const accessToken = getServerAccessToken(serverHost || "");
     const cur = openRef.current;
@@ -373,6 +373,7 @@ export function useThreads(
           }))
         : null,
       reactions: null,
+      reply_to_message_id: replyToMessageId || null,
       created_at: new Date(),
       thread_id: cur.thread.thread_id,
       pending: true,
@@ -413,6 +414,7 @@ export function useThreads(
         threadId: cur.thread.thread_id,
         text: trimmed,
         attachments: fileIds,
+        replyToMessageId,
         accessToken,
         nonce,
       });
