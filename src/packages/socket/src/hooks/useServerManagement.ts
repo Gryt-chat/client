@@ -17,11 +17,24 @@ import { Server, Servers } from "@/settings/src/types/server";
 import { type LanServer } from "../../../../lib/electron";
 import { useSockets } from "./useSockets";
 
+/**
+ * The two ways out of a server, which are not the same thing.
+ *
+ * `remove` is local: the entry goes from the rail, the socket closes, and the
+ * membership on the server is untouched -- still a member, still the owner if
+ * that is what they are, just not connected and so not online and not syncing a
+ * picture there. `leave` tells the server, and the membership ends.
+ *
+ * Until GRYT-988 only `remove` existed, and every button offering it said
+ * "Leave server".
+ */
+export type ServerExit = { host: string; mode: "remove" | "leave" };
+
 interface ServerManagement {
   servers: Servers;
   currentlyViewingServer: Server | null;
   showAddServer: boolean;
-  showRemoveServer: string | null;
+  showRemoveServer: ServerExit | null;
   showDiscovery: boolean;
   orderedServerHosts: string[];
   pendingLanServers: LanServer[];
@@ -46,7 +59,7 @@ interface ServerManagement {
   reconnectServer: (host: string) => void;
   reorderServers: (orderedHosts: string[]) => void;
   setShowAddServer: (show: boolean) => void;
-  setShowRemoveServer: (host: string | null) => void;
+  setShowRemoveServer: (exit: ServerExit | null) => void;
   setShowDiscovery: (show: boolean) => void;
   dismissLanServer: (key: string) => void;
   markLanServersSeen: (keys: string[]) => void;
@@ -118,7 +131,7 @@ function useServerManagementHook(): ServerManagement {
   }, [serverDetailsList, servers, setServers]);
 
   const [showAddServer, setShowAddServer] = useState(false);
-  const [showRemoveServer, setShowRemoveServer] = useState<string | null>(null);
+  const [showRemoveServer, setShowRemoveServer] = useState<ServerExit | null>(null);
   const [showDiscovery, setShowDiscovery] = useState(false);
   const [pendingFocusServer, setPendingFocusServer] = useState<string | null>(
     null

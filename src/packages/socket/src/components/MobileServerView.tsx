@@ -33,7 +33,11 @@ interface MobileServerViewProps {
   onOpenReports: () => void;
   pendingReportCount: number;
   updateAvailable: boolean;
-  onLeave: () => void;
+  /**
+   * One of the two ways out. Removing is local and keeps the membership;
+   * leaving ends it. GRYT-988.
+   */
+  onLeave: (mode: "remove" | "leave") => void;
 
   // ChannelList
   channels: Channel[];

@@ -304,7 +304,7 @@ interface ServerItemProps {
   serverUnreadCount: (host: string) => number;
   serverMentionCount: (host: string) => number;
   switchToServer: (host: string) => void;
-  setShowRemoveServer: (host: string | null) => void;
+  setShowRemoveServer: (exit: { host: string; mode: "remove" | "leave" } | null) => void;
   /** Other addresses in the rail that are this same server (GRYT-317). */
   duplicateHosts: string[];
   mergeDuplicates: (keepHost: string) => void;
@@ -565,10 +565,21 @@ function ServerItem({
               </ContextMenu.Item>
             )}
             <ContextMenu.Separator />
+            {/* Two different things, and they used to be one. Removing takes
+                the entry out of the rail and leaves the membership alone, which
+                is what somebody wants for a server they own but do not sit in.
+                Leaving ends the membership. GRYT-988. */}
+            <ContextMenu.Item
+              onClick={() => {
+                setShowRemoveServer({ host, mode: "remove" });
+              }}
+            >
+              Remove from sidebar
+            </ContextMenu.Item>
             <ContextMenu.Item
               className="text-gryt-danger"
               onClick={() => {
-                setShowRemoveServer(host);
+                setShowRemoveServer({ host, mode: "leave" });
               }}
             >
               Leave server
