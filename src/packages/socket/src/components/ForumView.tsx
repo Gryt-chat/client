@@ -1,11 +1,13 @@
+import { Alert, Button, Chip, Dialog, IconButton, TextField, Toggle, ToggleGroup } from "@gryt/ui";
 import { useEffect, useMemo, useState } from "react";
 
 import type { ForumTag } from "@/settings/src/types/server";
 
-import { PiChatsFill } from "../../../../lib/icons";
+import { PiChatsFill, PiPlus, PiX } from "../../../../lib/icons";
 import { type ForumFilter, type ForumTopic,useForum } from "../hooks/useForum";
 import type { ThreadSummary } from "../hooks/useThreads";
 import { EmojiText } from "./EmojiText";
+import { ForumTagChip } from "./ForumTagChip";
 
 interface ForumViewProps {
   socketConnection: unknown;
@@ -109,63 +111,45 @@ export function ForumView({ socketConnection, conversationId, serverHost, curren
   return (
     <div style={{ position: "relative", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
       {/* Filter bar */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", paddingBottom: 12, borderBottom: "1px solid var(--gryt-neutral-6)" }}>
-        <div style={{ display: "flex", gap: 2, background: "var(--gryt-neutral-3)", border: "1px solid var(--gryt-neutral-6)", borderRadius: "var(--gryt-radius-full)", padding: 3 }}>
-          {FILTERS.map((f) => (
-            <button
-              key={f.key}
-              onClick={() => setFilter(f.key)}
-              aria-pressed={filter === f.key}
-              style={{
-                background: filter === f.key ? "var(--gryt-neutral-4)" : "transparent",
-                color: filter === f.key ? "var(--gryt-neutral-12)" : "var(--gryt-neutral-10)",
-                border: "none", borderRadius: "var(--gryt-radius-full)", padding: "5px 12px",
-                fontSize: 12.5, fontWeight: 600, cursor: "pointer",
-              }}
-            >
-              {f.label}
-              <span style={{ color: "var(--gryt-neutral-9)", marginLeft: 5, fontVariantNumeric: "tabular-nums" }}>
-                {counts[f.key]}
-              </span>
-            </button>
-          ))}
-        </div>
-        <span style={{ flex: 1 }} />
-        <button
-          onClick={() => { setNewTags(new Set()); setComposing(true); }}
-          style={{
-            background: "var(--gryt-accent-9)", color: "var(--gryt-on-accent, #0c0a20)", border: "none",
-            fontWeight: 700, fontSize: 13, padding: "8px 15px", borderRadius: "var(--gryt-radius-full)",
-            display: "inline-flex", alignItems: "center", gap: 7, cursor: "pointer", whiteSpace: "nowrap",
+      <div className="flex flex-wrap items-center gap-2.5 border-b border-gryt-border pb-3">
+        {/* Base UI hands back an array and clears it when the pressed one is
+            pressed again. There is always a filter, so an empty answer means
+            "no change" rather than "none". */}
+        <ToggleGroup
+          value={[filter]}
+          onValueChange={(next) => {
+            const picked = next[0];
+            if (picked) setFilter(picked as ForumFilter);
           }}
+          multiple={false}
         >
-          <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> New topic
-        </button>
+          {FILTERS.map((f) => (
+            <Toggle key={f.key} value={f.key} tone="neutral" size="xsmall">
+              {f.label}
+              <span className="ml-1 tabular-nums opacity-70">{counts[f.key]}</span>
+            </Toggle>
+          ))}
+        </ToggleGroup>
+        <span className="flex-1" />
+        <Button
+          size="small"
+          startIcon={<PiPlus size={14} />}
+          onClick={() => { setNewTags(new Set()); setComposing(true); }}
+        >
+          New topic
+        </Button>
       </div>
 
       {forumTags.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 7, padding: "10px 0 12px", borderBottom: "1px solid var(--gryt-neutral-3)" }}>
-          {forumTags.map((tag) => {
-            const active = selectedTags.has(tag.id);
-            return (
-              <button
-                key={tag.id}
-                type="button"
-                onClick={() => setSelectedTags((s) => toggle(s, tag.id))}
-                aria-pressed={active}
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 600,
-                  padding: "3px 10px", borderRadius: "var(--gryt-radius-full)", cursor: "pointer",
-                  background: active ? "var(--gryt-accent-3)" : "var(--gryt-neutral-3)",
-                  color: active ? "var(--gryt-accent-11)" : "var(--gryt-neutral-11)",
-                  border: `1px solid ${active ? "transparent" : "var(--gryt-neutral-6)"}`,
-                }}
-              >
-                <span style={{ width: 7, height: 7, borderRadius: 2, background: tag.color || "var(--gryt-accent-9)" }} />
-                {tag.emoji ? `${tag.emoji} ` : ""}{tag.name}
-              </button>
-            );
-          })}
+        <div className="flex flex-wrap gap-[7px] border-b border-gryt-neutral-3 pt-2.5 pb-3">
+          {forumTags.map((tag) => (
+            <ForumTagChip
+              key={tag.id}
+              tag={tag}
+              active={selectedTags.has(tag.id)}
+              onToggle={() => setSelectedTags((s) => toggle(s, tag.id))}
+            />
+          ))}
         </div>
       )}
 
@@ -190,23 +174,19 @@ export function ForumView({ socketConnection, conversationId, serverHost, curren
                 textAlign: "left", background: "transparent", border: "none",
                 borderBottom: "1px solid var(--gryt-neutral-3)", padding: "11px 4px", cursor: "pointer",
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gryt-neutral-3)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              /* Hover through CSS rather than by writing to style on every
+                 pointer event, which fought the row's own background and left
+                 it stuck whenever the pointer left during a re-render. */
+              className="hover:bg-gryt-neutral-3"
             >
               <div style={{ fontWeight: 700, fontSize: 14.5, color: "var(--gryt-neutral-12)", gridColumn: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 <EmojiText text={t.title || t.preview || "Untitled topic"} />
               </div>
               {t.tags.length > 0 && (
-                <div style={{ gridColumn: 1, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                <div style={{ gridColumn: 1 }} className="flex flex-wrap items-center gap-1.5">
                   {t.tags.map((id) => {
                     const tag = tagById.get(id);
-                    if (!tag) return null;
-                    return (
-                      <span key={id} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: "var(--gryt-radius-full)", background: "var(--gryt-neutral-3)", color: "var(--gryt-neutral-11)", border: "1px solid var(--gryt-neutral-6)" }}>
-                        <span style={{ width: 6, height: 6, borderRadius: 2, background: tag.color || "var(--gryt-accent-9)" }} />
-                        {tag.emoji ? `${tag.emoji} ` : ""}{tag.name}
-                      </span>
-                    );
+                    return tag ? <ForumTagChip key={id} tag={tag} /> : null;
                   })}
                 </div>
               )}
@@ -220,105 +200,93 @@ export function ForumView({ socketConnection, conversationId, serverHost, curren
                 <span>{relativeTime(t.last_message_at)}</span>
               </div>
               {t.status === "solved" && (
-                <span style={{
-                  gridRow: "1 / 3", gridColumn: 2, alignSelf: "center",
-                  fontSize: 11, fontWeight: 700, color: "#5cc79a", background: "rgba(92,199,154,0.12)",
-                  padding: "3px 9px", borderRadius: "var(--gryt-radius-full)", whiteSpace: "nowrap",
-                }}>
-                  ✓ Solved
-                </span>
+                /* The success tone, rather than the #5cc79a it used to hardcode
+                   — that green was picked against the dark theme and stayed put
+                   on the light one. */
+                <Chip
+                  tone="success"
+                  label="✓ Solved"
+                  className="self-center px-2.5 py-0.5 text-[11px] whitespace-nowrap"
+                  style={{ gridRow: "1 / 3", gridColumn: 2 }}
+                />
               )}
             </button>
           ))
         )}
       </div>
 
-      {/* New topic dialog */}
-      {composing && (
-        <div
-          onClick={(e) => { if (e.target === e.currentTarget) setComposing(false); }}
-          style={{ position: "absolute", inset: 0, background: "rgba(6,7,10,0.55)", display: "grid", placeItems: "center", padding: 16, zIndex: 30 }}
-        >
-          <div style={{ width: "min(520px, 100%)", background: "var(--gryt-neutral-2, var(--gryt-neutral-1))", border: "1px solid var(--gryt-neutral-6)", borderRadius: "var(--gryt-radius-lg)", overflow: "hidden" }}>
-            <div style={{ padding: "16px 18px 4px", fontSize: 16, fontWeight: 700, color: "var(--gryt-neutral-12)" }}>New topic</div>
-            <div style={{ padding: "12px 18px 18px", display: "flex", flexDirection: "column", gap: 12 }}>
-              <input
+      {/* New topic dialog. A real one: it was a scrim div with a
+          click-outside check on e.target, so it had no focus trap, nothing on
+          escape, and it rendered inside the forum's own stacking context. */}
+      <Dialog.Root
+        open={composing}
+        onOpenChange={(open) => {
+          if (!open) clearCreateError();
+          setComposing(open);
+        }}
+      >
+        <Dialog.Portal>
+          <Dialog.Backdrop />
+          <Dialog.Popup>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <Dialog.Title style={{ margin: 0 }}>New topic</Dialog.Title>
+                <Dialog.Close>
+                  <IconButton size="xsmall"><PiX size={16} /></IconButton>
+                </Dialog.Close>
+              </div>
+
+              <TextField
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Title"
                 autoFocus
                 maxLength={200}
-                style={{ background: "var(--gryt-neutral-3)", border: "1px solid var(--gryt-neutral-6)", borderRadius: "var(--gryt-radius-sm)", padding: "10px 12px", color: "var(--gryt-neutral-12)", fontSize: 14, fontFamily: "inherit", outline: "none" }}
               />
-              <textarea
+              <TextField
+                multiline
+                minRows={5}
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
-                placeholder="Describe what's happening…"
-                rows={5}
-                style={{ background: "var(--gryt-neutral-3)", border: "1px solid var(--gryt-neutral-6)", borderRadius: "var(--gryt-radius-sm)", padding: "10px 12px", color: "var(--gryt-neutral-12)", fontSize: 14, fontFamily: "inherit", resize: "vertical", outline: "none" }}
+                placeholder="Describe what&rsquo;s happening…"
               />
+
               {forumTags.length > 0 && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <div className="flex flex-col gap-1.5">
                   <span className="text-sm font-medium">Tags</span>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-                    {forumTags.map((tag) => {
-                      const active = newTags.has(tag.id);
-                      return (
-                        <button
-                          key={tag.id}
-                          type="button"
-                          onClick={() => setNewTags((s) => toggle(s, tag.id))}
-                          aria-pressed={active}
-                          style={{
-                            display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 600,
-                            padding: "4px 10px", borderRadius: "var(--gryt-radius-full)", cursor: "pointer",
-                            background: active ? "var(--gryt-accent-3)" : "var(--gryt-neutral-3)",
-                            color: active ? "var(--gryt-accent-11)" : "var(--gryt-neutral-11)",
-                            border: `1px solid ${active ? "transparent" : "var(--gryt-neutral-6)"}`,
-                          }}
-                        >
-                          <span style={{ width: 7, height: 7, borderRadius: 2, background: tag.color || "var(--gryt-accent-9)" }} />
-                          {tag.emoji ? `${tag.emoji} ` : ""}{tag.name}
-                        </button>
-                      );
-                    })}
+                  <div className="flex flex-wrap gap-[7px]">
+                    {forumTags.map((tag) => (
+                      <ForumTagChip
+                        key={tag.id}
+                        tag={tag}
+                        active={newTags.has(tag.id)}
+                        onToggle={() => setNewTags((s) => toggle(s, tag.id))}
+                      />
+                    ))}
                   </div>
                 </div>
               )}
+
               {(createError || tooLong) && (
-                <div
-                  role="alert"
-                  style={{ fontSize: 12.5, color: "var(--gryt-danger-9)", background: "var(--gryt-danger-2, rgba(248,113,113,0.12))", border: "1px solid var(--gryt-danger-9)", borderRadius: "var(--gryt-radius-sm)", padding: "8px 10px" }}
-                >
+                <Alert severity="error" className="text-xs">
                   {tooLong
                     ? `That message is ${body.length - BODY_MAX} characters over the ${BODY_MAX} limit.`
                     : createError}
-                </div>
+                </Alert>
               )}
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-                <button
-                  onClick={() => { clearCreateError(); setComposing(false); }}
-                  style={{ background: "var(--gryt-neutral-4)", color: "var(--gryt-neutral-12)", border: "1px solid var(--gryt-neutral-6)", fontWeight: 600, fontSize: 13, padding: "8px 14px", borderRadius: "var(--gryt-radius-full)", cursor: "pointer" }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={submit}
-                  disabled={!canSubmit}
-                  style={{
-                    background: canSubmit ? "var(--gryt-accent-9)" : "var(--gryt-neutral-6)",
-                    color: canSubmit ? "var(--gryt-on-accent, #0c0a20)" : "var(--gryt-neutral-10)",
-                    border: "none", fontWeight: 700, fontSize: 13, padding: "8px 15px", borderRadius: "var(--gryt-radius-full)",
-                    cursor: canSubmit ? "pointer" : "default",
-                  }}
-                >
+
+              <div className="flex justify-end gap-3">
+                <Dialog.Close>
+                  <Button tone="neutral" size="small">Cancel</Button>
+                </Dialog.Close>
+                <Button size="small" onClick={submit} disabled={!canSubmit}>
                   {creating ? "Creating…" : "Create topic"}
-                </button>
+                </Button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </Dialog.Popup>
+        </Dialog.Portal>
+      </Dialog.Root>
     </div>
   );
 }

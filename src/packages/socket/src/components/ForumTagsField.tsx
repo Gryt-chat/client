@@ -1,3 +1,4 @@
+import { Chip } from "@gryt/ui";
 import { useState } from "react";
 
 export interface ForumTagDraft {
@@ -50,26 +51,15 @@ export function ForumTagsField({
           borderRadius: "var(--gryt-radius-sm)", padding: "8px 10px",
         }}
       >
+        {/* Chip's own onDelete draws the remove button and labels it
+            "Remove", which is what the span here was reimplementing by hand. */}
         {tags.map((t) => (
-          <span
+          <Chip
             key={t.id}
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600,
-              padding: "3px 6px 3px 10px", borderRadius: "var(--gryt-radius-full)",
-              background: "var(--gryt-neutral-4)", color: "var(--gryt-neutral-11)",
-              border: "1px solid var(--gryt-neutral-6)",
-            }}
-          >
-            {t.name}
-            <button
-              type="button"
-              onClick={() => onChange(tags.filter((x) => x.id !== t.id))}
-              aria-label={`Remove ${t.name}`}
-              style={{ background: "none", border: "none", color: "var(--gryt-neutral-10)", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0 }}
-            >
-              ×
-            </button>
-          </span>
+            label={t.name}
+            className="px-2.5 py-0.5 text-xs"
+            onDelete={() => onChange(tags.filter((x) => x.id !== t.id))}
+          />
         ))}
         <input
           value={draft}
