@@ -10,6 +10,7 @@ import { BotTag } from "./BotTag";
 import { groupMembersByRole, readableRoleColor } from "./memberGroups";
 import { MemberIdentityCard } from "./MemberIdentityCard";
 import { statusConfig } from "./memberStatus";
+import { PluginPanels } from "./PluginPanels";
 import { UserContextMenu } from "./UserContextMenu";
 
 /** A role id. The server defines its own; these only pass one along. */
@@ -401,6 +402,12 @@ export const MemberSidebar = ({
               </div>
             </section>
           ))}
+
+          {/* Under the members, inside the same scroll (GRYT-951). A plugin's
+              panel is extra rather than instead: the member list stays the
+              first thing in this rail, and anything an addon adds sits below
+              what Gryt itself knows. */}
+          <PluginPanels />
         </div>
       </div>
     </div>

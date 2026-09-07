@@ -72,6 +72,8 @@ export const METHOD_CAPABILITY: Record<string, string> = {
   "messaging.send": "messaging",
   "messaging.subscribe": "messaging",
   "messaging.servers": "messaging",
+  "ui.panel": "display",
+  "ui.clear": "display",
 };
 
 export type CallVerdict =
@@ -104,4 +106,104 @@ export function mayCall(
     return { allowed: false, needs };
   }
   return { allowed: true };
+}
+
+/* ── What a plugin may draw ──────────────────────────────────────────── */
+
+/**
+ * A panel, as a plugin describes it and the app draws it (GRYT-951).
+ *
+ * The plugin sends this shape and nothing else. No markup, no HTML, no colours,
+ * no node it hands over — a title and rows of text that Gryt renders with its
+ * own components.
+ *
+ * That is the whole design. A plugin runs in a worker with no DOM, which is
+ * what GRYT-930 bought and is worth keeping, so the alternative — an iframe, or
+ * a node passed across — would give back most of what isolation took away. This
+ * one cannot: the app never receives anything it would execute or insert, only
+ * strings it puts in a `<div>`.
+ */
+export interface PluginPanel {
+  title: string;
+  rows: PluginPanelRow[];
+}
+
+export interface PluginPanelRow {
+  /** Left column. A name, usually. */
+  label: string;
+  /** Right column. Optional, so a row can be one line of text. */
+  value?: string;
+}
+
+/**
+ * Caps, in the same spirit as the messaging ones.
+ *
+ * A panel is drawn in a 240px rail beside the member list, so these are about
+ * what fits and stays readable rather than about memory. A plugin that sends
+ * more is truncated rather than refused: half a roster is more useful than an
+ * error, and a plugin whose list grew past twenty is not misbehaving.
+ */
+export const MAX_PANEL_TITLE = 48;
+export const MAX_PANEL_ROWS = 20;
+export const MAX_PANEL_LABEL = 48;
+export const MAX_PANEL_VALUE = 64;
+
+/*
+ * Control characters, including the bidirectional overrides.
+ *
+ * A right-to-left override in a label reorders everything drawn after it, which
+ * is how a row saying one thing renders as another — the trick that has been
+ * used on filenames for twenty years. Stripped rather than refused, because the
+ * plugin that sends one is usually passing through somebody's nickname.
+ *
+ * The rule this disables exists to catch a control character somebody typed by
+ * accident. Here they are the subject: this is the only thing standing between
+ * a plugin's string and a member list, and matching them is the whole job.
+ */
+// eslint-disable-next-line no-control-regex
+const CONTROL = /[\u0000-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
+
+function readText(value: unknown, max: number): string | null {
+  if (typeof value !== "string") return null;
+  const clean = value.replace(CONTROL, "").trim();
+  return clean ? clean.slice(0, max) : null;
+}
+
+/**
+ * Read what a plugin sent, or say why it is not a panel.
+ *
+ * Pure and in this file for the reason the rest of it is: the check script that
+ * asserts a plugin cannot smuggle markup through here has to import it, and a
+ * `.mjs` cannot import a module that pulls in the app.
+ *
+ * Everything here arrived from a plugin, and a plugin's own data usually came
+ * from somebody else's client before that — the presence example builds its
+ * rows out of nicknames other people chose. So this is the boundary, and it is
+ * strict about types and forgiving about size.
+ */
+export function readPanel(value: unknown): { ok: true; panel: PluginPanel } | { ok: false; reason: string } {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return { ok: false, reason: "a panel is an object with a title and rows" };
+  }
+
+  const source = value as Record<string, unknown>;
+
+  const title = readText(source.title, MAX_PANEL_TITLE);
+  if (!title) return { ok: false, reason: "title has to be a non-empty string" };
+
+  if (!Array.isArray(source.rows)) return { ok: false, reason: "rows has to be an array" };
+
+  const rows: PluginPanelRow[] = [];
+  for (const entry of source.rows.slice(0, MAX_PANEL_ROWS)) {
+    if (typeof entry !== "object" || entry === null) continue;
+    const row = entry as Record<string, unknown>;
+
+    const label = readText(row.label, MAX_PANEL_LABEL);
+    if (!label) continue;
+
+    const text = readText(row.value, MAX_PANEL_VALUE);
+    rows.push(text ? { label, value: text } : { label });
+  }
+
+  return { ok: true, panel: { title, rows } };
 }

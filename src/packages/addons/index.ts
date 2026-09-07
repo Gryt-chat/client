@@ -26,8 +26,10 @@ export {
   pluginsOn,
   setAnnouncedPlugins,
 } from "./src/pluginMessages";
+export type { ShownPanel } from "./src/pluginPanels";
+export { shownPanels, subscribePanels } from "./src/pluginPanels";
 export type { AddonManifest, AddonUpdate } from "./src/types";
 export { useAddonLoader } from "./src/useAddonLoader";
 export type { AddonsState } from "./src/useAddons";
 export { useAddons } from "./src/useAddons";
-export type { ThemeInfo } from "./src/workerProtocol";
+export type { PluginPanel, PluginPanelRow, ThemeInfo } from "./src/workerProtocol";

@@ -65,10 +65,14 @@ async function injectThemeStyles(
 async function startPluginWorker(
   addonId: string,
   main: string,
-  capabilities: string[] | undefined
+  capabilities: string[] | undefined,
+  /* The manifest's `name`, carried through so a panel can be drawn with it
+     (GRYT-951). The host falls back to the id without it, which is a folder
+     name where a person expects a title. */
+  addonName: string
 ): Promise<void> {
   const src = await resolveAddonUrl(addonId, main);
-  startPlugin(addonId, src, capabilities);
+  startPlugin(addonId, src, capabilities, addonName);
 }
 
 function requestReload(): void {
@@ -125,7 +129,7 @@ export function useAddonLoader(): void {
           }
 
           if (addon.type === "plugin" && addon.main) {
-            await startPluginWorker(addon.id, addon.main, addon.capabilities);
+            await startPluginWorker(addon.id, addon.main, addon.capabilities, addon.name);
           }
         } catch (err) {
           console.error(`[AddonLoader] Failed to load addon "${id}":`, err);
@@ -163,7 +167,7 @@ export function useAddonLoader(): void {
           }
 
           if (addon.type === "plugin" && addon.main) {
-            await startPluginWorker(addon.id, addon.main, addon.capabilities);
+            await startPluginWorker(addon.id, addon.main, addon.capabilities, addon.name);
           }
         } catch (err) {
           console.error(`[AddonLoader] Failed to reload addon "${id}":`, err);
