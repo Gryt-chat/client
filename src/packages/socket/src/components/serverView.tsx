@@ -792,7 +792,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
             onOpenReports={() => setReportsOpen(true)}
             pendingReportCount={pendingReportCount}
             updateAvailable={updateAvailable}
-            onLeave={() => setShowRemoveServer(host)}
+            onLeave={(mode) => setShowRemoveServer({ host, mode })}
             channels={hostChannels}
             sidebarItems={effectiveSidebarItems}
             serverHost={host}
@@ -883,7 +883,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
               onOpenReports={() => setReportsOpen(true)}
               pendingReportCount={pendingReportCount}
               updateAvailable={updateAvailable}
-              onLeave={() => setShowRemoveServer(host)}
+              onLeave={(mode) => setShowRemoveServer({ host, mode })}
               channels={hostChannels}
               sidebarItems={effectiveSidebarItems}
               serverHost={host}

@@ -512,6 +512,18 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       return;
     }
 
+    // Leaving refused or failed. Passed straight through for the same reason
+    // the moderation list below is: the generic branch calls everything a join
+    // failure, and somebody leaving is already in.
+    if (
+      errorInfo.error === "owner_cannot_leave" ||
+      errorInfo.error === "leave_failed" ||
+      errorInfo.error === "not_registered"
+    ) {
+      toast.error(errorInfo.message || "Could not leave this server.", { duration: 8000 });
+      return;
+    }
+
     // A refusal, not a failure. It used to fall through to the generic branch
     // below and read "Failed to join server <host>: banned" — repeatedly, since
     // the retry loops keep re-emitting server:join. Clear the tokens so those

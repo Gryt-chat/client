@@ -21,7 +21,11 @@ export const ServerHeader = ({
   serverName?: string;
   /** For "Copy server address". Absent hides that item rather than copying "". */
   serverHost?: string;
-  onLeave: () => void;
+  /**
+   * One of the two ways out. Removing is local and keeps the membership;
+   * leaving ends it. GRYT-988.
+   */
+  onLeave: (mode: "remove" | "leave") => void;
   onCreateChannel?: () => void;
   onCreateFolder?: () => void;
   onOpenInvites?: () => void;
@@ -173,8 +177,11 @@ export const ServerHeader = ({
               )}
 
               <Menu.Separator />
-              <Menu.Item className="text-gryt-danger" onClick={onLeave}>
-                Leave
+              <Menu.Item onClick={() => onLeave("remove")}>
+                Remove from sidebar
+              </Menu.Item>
+              <Menu.Item className="text-gryt-danger" onClick={() => onLeave("leave")}>
+                Leave server
               </Menu.Item>
             </Menu.Popup>
               </Menu.Positioner>

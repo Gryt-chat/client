@@ -680,23 +680,81 @@ function useSocketsHook() {
     };
   }, [sockets, nickname, failedServerDetails]);
 
+  /**
+   * Actually leave: tell the server, and take the entry out of the sidebar once
+   * it says it heard.
+   *
+   * The entry is removed on `server:left` rather than straight away, because
+   * removing it first closes the socket and the emit goes nowhere. That was the
+   * shape of the bug this replaces — every Leave in the app called
+   * `removeServer`, which is local-only, so the server never heard and the
+   * person stayed a member with their picture still on it.
+   *
+   * A server that does not answer keeps its entry. Dropping it anyway would
+   * quietly turn a leave into a remove, and the two now mean different things:
+   * the toast says so and points at the other one.
+   */
   const leaveServer = (host: string) => {
     const socket = sockets[host];
-    if (socket) {
-      socket.emit('server:leave');
-      
-      socket.once('server:left', () => {
-        toast.success(`Left server ${host}`);
-        removeServerAccessToken(host);
-        removeServerRefreshToken(host);
-      });
-      
-      socket.once('server:error', (error: string) => {
-        toast.error(`Failed to leave server: ${error}`);
-      });
-    } else {
-      toast.error(`Not connected to server ${host}`);
+    if (!socket) {
+      toast.error(`Not connected to ${host}, so it cannot be told you are leaving.`);
+      return;
     }
+
+    const toastId = `leave-${host}`;
+    toast.loading(`Leaving ${host}...`, { id: toastId });
+
+    let settled = false;
+    const finish = () => {
+      settled = true;
+      socket.off("server:left", onLeft);
+      socket.off("server:error", onError);
+      clearTimeout(timer);
+    };
+
+    const onLeft = () => {
+      if (settled) return;
+      finish();
+      removeServerAccessToken(host);
+      removeServerRefreshToken(host);
+      toast.success(`Left ${host}`, { id: toastId });
+      // The sidebar entry lives in useServerManagement, which this layer cannot
+      // reach. Same event a kick uses, and it does the same job.
+      window.dispatchEvent(new CustomEvent("server_force_remove", { detail: { host } }));
+    };
+
+    // Listened for rather than left to the global handler, because that one
+    // reports everything as a join problem and this person is already in.
+    //
+    // `server:error` carries everything the server refuses, so anything that is
+    // not about leaving is left alone and the wait continues. Older servers send
+    // a bare string here and cannot be told apart, which is why one is taken at
+    // face value.
+    const LEAVE_ERRORS = ["owner_cannot_leave", "leave_failed", "not_registered"];
+    const onError = (info: { error?: string; message?: string } | string) => {
+      if (settled) return;
+      if (typeof info !== "string" && !LEAVE_ERRORS.includes(info?.error ?? "")) {
+        socket.once("server:error", onError);
+        return;
+      }
+      const message =
+        typeof info === "string" ? info : info?.message || "The server refused.";
+      finish();
+      toast.error(message, { id: toastId, duration: 8000 });
+    };
+
+    const timer = setTimeout(() => {
+      if (settled) return;
+      finish();
+      toast.error(
+        `${host} did not answer, so you are still a member. Try again, or remove it from the sidebar.`,
+        { id: toastId, duration: 8000 },
+      );
+    }, 8000);
+
+    socket.once("server:left", onLeft);
+    socket.once("server:error", onError);
+    socket.emit("server:leave");
   };
 
   return { sockets, serverDetailsList, clients, memberLists, memberKeyStates, serverProfiles, setServerProfiles, getChannelDetails, requestMemberList, failedServerDetails, serverConnectionStatus, refusalReason, refusalHelpUrl, reconnectServer, leaveServer, tokenRevision };
