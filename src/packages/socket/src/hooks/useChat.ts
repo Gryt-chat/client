@@ -117,6 +117,15 @@ export function useChat({
   }>({});
   const fetchDebounceRef = useRef<number | null>(null);
   const inFlightFetchRef = useRef<Set<string>>(new Set());
+  /**
+   * Bumped when the socket connects again, to send the history fetch back
+   * through its effect.
+   *
+   * socket.io hands back the same Socket instance across a reconnect, so
+   * nothing keyed on `currentConnection` re-runs on its own and a conversation
+   * whose fetch failed stays failed until the page is reloaded.
+   */
+  const [reconnectNonce, setReconnectNonce] = useState(0);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isLoadingOlder, setIsLoadingOlder] = useState(false);
   const [hasOlderMap, setHasOlderMap] = useState<Record<string, boolean>>({});
@@ -348,6 +357,16 @@ export function useChat({
     if (!currentConnection) return;
 
     const onError = (error: ChatErrorPayload) => {
+      // Let the conversation be fetched again. The key goes into the in-flight
+      // set just before the emit and comes out in one place only, when
+      // chat:history arrives — which a failed fetch never produces. Left
+      // behind it makes the guard below permanent: every later attempt returns
+      // early at `inFlightFetchRef.current.has(scopedKey)`, so the error stays
+      // on screen until the page is reloaded and the ref is rebuilt. That is
+      // why a server coming back healthy still left every open client stuck
+      // until its user pressed Ctrl+R. GRYT-977.
+      inFlightFetchRef.current.delete(cacheKeyFor(activeConversationId));
+
       handleChatErrorEvent(error, activeConversationId, cacheKeyFor(activeConversationId), {
         setIsRateLimited,
         setMessageCacheMeta,
@@ -500,6 +519,18 @@ export function useChat({
       });
     };
 
+    // Heal on reconnect. socket.io reuses the same Socket instance, so neither
+    // this effect nor the fetch effect re-runs when the connection comes back:
+    // whatever the conversation was showing when it dropped is what it keeps
+    // showing. Clearing the guard and bumping the nonce sends the fetch effect
+    // round again, so a server that returns fixes every open client without
+    // anybody reloading. GRYT-977.
+    const onConnect = () => {
+      inFlightFetchRef.current.clear();
+      setReconnectNonce((n) => n + 1);
+    };
+
+    currentConnection.on("connect", onConnect);
     currentConnection.on("chat:new", onNew);
     currentConnection.on("chat:history", onHistory);
     currentConnection.on("chat:reaction", onReaction);
@@ -509,6 +540,7 @@ export function useChat({
     currentConnection.on("report:already_reported", onAlreadyReported);
     currentConnection.on("chat:purge_user", onPurgeUser);
     return () => {
+      currentConnection.off("connect", onConnect);
       currentConnection.off("chat:new", onNew);
       currentConnection.off("chat:history", onHistory);
       currentConnection.off("chat:reaction", onReaction);
@@ -604,6 +636,7 @@ export function useChat({
     cacheKeyFor,
     messageCache,
     messageCacheMeta,
+    reconnectNonce,
   ]);
 
   const fetchOlderMessages = useCallback(() => {
