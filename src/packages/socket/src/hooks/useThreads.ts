@@ -166,6 +166,74 @@ export function useThreads(
       });
     };
 
+    /*
+     * The three things that happen to a message after it is posted.
+     *
+     * They arrive as ordinary chat events keyed on the message, not on the
+     * thread — `chat:react`, `chat:delete` and `chat:edit` have always worked
+     * on a thread message, because a thread message is an ordinary message
+     * with a thread id. Nothing here listened for the results, so a reaction
+     * somebody added, a moderator's delete, or an edit stayed invisible until
+     * the panel was closed and reopened. GRYT-1000 turned the UI for all three
+     * on, which is what made the gap worth closing.
+     *
+     * Guarded on the open thread rather than on `thread_id`: `chat:edited` and
+     * `chat:reaction` carry the whole message, so the id is there, but a delete
+     * carries only the conversation and the message. Matching on what is in
+     * the panel answers all three the same way.
+     */
+    const patchOpen = (
+      messageId: string,
+      apply: (messages: ChatMessage[]) => ChatMessage[],
+    ) => {
+      setOpen((o) => {
+        if (!o) return o;
+        const inRoot = o.root?.message_id === messageId;
+        const inReplies = o.messages.some((m) => m.message_id === messageId);
+        if (!inRoot && !inReplies) return o;
+        return { ...o, messages: apply(o.messages) };
+      });
+    };
+
+    const onReaction = (updated: ChatMessage) => {
+      if (!updated?.message_id) return;
+      patchOpen(updated.message_id, (messages) =>
+        messages.map((m) => (m.message_id === updated.message_id ? { ...m, reactions: updated.reactions } : m)),
+      );
+      // The root sits above the divider and is held separately.
+      setOpen((o) =>
+        o && o.root?.message_id === updated.message_id
+          ? { ...o, root: { ...o.root, reactions: updated.reactions } }
+          : o,
+      );
+    };
+
+    const onEdited = (updated: ChatMessage) => {
+      if (!updated?.message_id) return;
+      patchOpen(updated.message_id, (messages) =>
+        messages.map((m) => (m.message_id === updated.message_id ? { ...m, ...updated } : m)),
+      );
+      setOpen((o) =>
+        o && o.root?.message_id === updated.message_id ? { ...o, root: { ...o.root, ...updated } } : o,
+      );
+    };
+
+    /*
+     * A deleted root closes the panel rather than leaving a thread hanging off
+     * nothing. Its replies are gone on the server too — the topic is the root.
+     */
+    const onMessageDeleted = (payload: { conversation_id: string; message_id: string }) => {
+      const id = payload?.message_id;
+      if (!id) return;
+      const cur = openRef.current;
+      if (!cur) return;
+      if (cur.root?.message_id === id) {
+        setOpen(null);
+        return;
+      }
+      patchOpen(id, (messages) => messages.filter((m) => m.message_id !== id));
+    };
+
     const onError = (e: { message?: string } | string) => {
       const message = typeof e === "string" ? e : e?.message;
       if (message) toast.error(message);
@@ -194,6 +262,9 @@ export function useThreads(
     socket.on("thread:error", onError as (p: never) => void);
     socket.on("chat:error", onChatError as (p: never) => void);
     socket.on("chat:new", onChatNew as (p: never) => void);
+    socket.on("chat:reaction", onReaction as (p: never) => void);
+    socket.on("chat:edited", onEdited as (p: never) => void);
+    socket.on("chat:deleted", onMessageDeleted as (p: never) => void);
     return () => {
       socket.off("thread:created", onCreated as (p: never) => void);
       socket.off("thread:updated", onUpdated as (p: never) => void);
@@ -202,6 +273,9 @@ export function useThreads(
       socket.off("thread:error", onError as (p: never) => void);
       socket.off("chat:error", onChatError as (p: never) => void);
       socket.off("chat:new", onChatNew as (p: never) => void);
+      socket.off("chat:reaction", onReaction as (p: never) => void);
+      socket.off("chat:edited", onEdited as (p: never) => void);
+      socket.off("chat:deleted", onMessageDeleted as (p: never) => void);
     };
   }, [socketConnection, conversationId]);
 
