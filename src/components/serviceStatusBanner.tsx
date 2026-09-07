@@ -1,8 +1,8 @@
 import { IconButton } from "@gryt/ui";
 import { useEffect, useState } from "react";
-import { PiWarningFill, PiX } from "react-icons/pi";
 
 import { getGrytConfig } from "../config";
+import { PiWarningFill, PiX } from "../lib/icons";
 import {
   decideBanner,
   fetchDeclaredStatus,
