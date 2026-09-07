@@ -64,6 +64,9 @@ jobs:
       # Sign-in leaves for the browser and comes back through gryt://. If the
       # AppImage moved, it cannot — and nothing else here would notice.
       - run: yarn test:appimage-location
+      # A session somebody ended has to stay ended, and recovering from one has to give up.
+      # Both are decided in one small module, and neither is visible from anywhere else.
+      - run: yarn test:session-recovery
       # examples/ is the addon people copy. It calls the same `gryt` API the
       # worker exposes, and nothing else here would notice it drifting.
       - run: yarn test:examples

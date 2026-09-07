@@ -28,6 +28,7 @@ import {
 import { MemberInfo } from "../components/MemberSidebar";
 import { Clients, ServerProfile } from "../types/clients";
 import { challengeHostMatches } from "../utils/challengeHost";
+import { idleRecovery, planRecovery, type RecoveryState } from "../utils/sessionRecovery";
 import { registerServerSocketEvents } from "./registerServerSocketEvents";
 
 type Sockets = { [host: string]: Socket };
@@ -87,6 +88,12 @@ export interface SocketEventDeps {
 export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
   const registeredRef = useRef<Set<string>>(new Set());
   const myVoiceStateByHostRef = useRef<Record<string, { hasJoinedChannel: boolean; voiceChannelId: string }>>({});
+  // How much of its recovery budget each server has spent, and the retry it has
+  // waiting. Refs rather than state: the handlers below are registered once per
+  // host and never re-registered, so anything they read has to survive renders
+  // without moving.
+  const revokedRecoveryRef = useRef<Record<string, RecoveryState>>({});
+  const revokedTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const {
     servers,
@@ -281,7 +288,19 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
 
       // ---- Token lifecycle ----
 
+      // Recovering worked, so the budget goes back to full. A server that
+      // rotates its token counter twice in an afternoon is not the thing the
+      // cap is there for, and without this each of those would eat a retry that
+      // never came back until the quiet period elapsed.
+      //
+      // `server:joined` is handled in registerServerSocketEvents too. Two
+      // listeners for one event is fine, and it keeps the budget next to the
+      // code that spends it.
+      const recoveryWorked = () => { delete revokedRecoveryRef.current[host]; };
+      socket.on("server:joined", recoveryWorked);
+
       socket.on("token:refreshed", (refreshInfo: { accessToken: string; fileToken?: string }) => {
+        recoveryWorked();
         setServerAccessToken(host, refreshInfo.accessToken);
         // Re-stored with the access token. A file token lasts hours rather than
         // minutes, so a session that keeps refreshing never reaches the point
@@ -301,15 +320,65 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
       socket.on("token:revoked", (info: { reason?: string; message?: string }) => {
         removeServerAccessToken(host);
 
-        const refreshToken = getServerRefreshToken(host);
-        if (refreshToken) {
-          socket.emit("token:refresh", { refreshToken });
-        } else {
-          if (info?.message) toast.error(info.message);
-          setTimeout(() => {
-            socket.emit("server:join", { nickname, inviteCode: servers[host]?.token || undefined });
-          }, 300);
+        const pending = revokedTimersRef.current[host];
+        if (pending) {
+          clearTimeout(pending);
+          delete revokedTimersRef.current[host];
         }
+
+        const { plan, state } = planRecovery(
+          revokedRecoveryRef.current[host] ?? idleRecovery(),
+          info?.reason,
+          Date.now(),
+        );
+        revokedRecoveryRef.current[host] = state;
+
+        if (plan.act === "stop") {
+          // Both ways of stopping clear the refresh token as well, and both put
+          // the server into `failedServerDetails`. That is not only so the user
+          // sees something — it is what stops the client letting itself back
+          // in. `refreshIfStuck` in useSockets rejoins any connected server
+          // that has no details and no access token, on every window focus,
+          // unless the server is listed as failed. Without this the session
+          // came back the next time somebody clicked the app.
+          removeServerRefreshToken(host);
+
+          if (plan.because === "deliberate") {
+            toast.error(info?.message || `Your session on ${host} was ended.`);
+            setFailedServerDetails(prev => ({
+              ...prev,
+              [host]: {
+                error: "session_ended",
+                message: "Sign in again to reconnect to this server.",
+                timestamp: Date.now(),
+              },
+            }));
+            return;
+          }
+
+          const givenUp = `Stopped reconnecting to ${host}. It keeps ending your session.`;
+          toast.error(givenUp);
+          setFailedServerDetails(prev => ({
+            ...prev,
+            [host]: { error: "revocation_loop", message: givenUp, timestamp: Date.now() },
+          }));
+          return;
+        }
+
+        // Said once, on the first try, rather than on each. The server's message
+        // is about a session that is being replaced anyway, and five toasts
+        // saying so is worse than none.
+        if (plan.retry === 1 && info?.message) toast.error(info.message);
+
+        const refreshToken = getServerRefreshToken(host);
+        revokedTimersRef.current[host] = setTimeout(() => {
+          delete revokedTimersRef.current[host];
+          if (refreshToken) {
+            socket.emit("token:refresh", { refreshToken });
+          } else {
+            socket.emit("server:join", { nickname, inviteCode: servers[host]?.token || undefined });
+          }
+        }, plan.delayMs);
       });
 
       socket.on("token:invalid", (message: string) => {

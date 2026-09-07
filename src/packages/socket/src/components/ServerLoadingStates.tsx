@@ -37,6 +37,19 @@ const REFUSALS = new Set([
   "membership_required",
 ]);
 
+/**
+ * Failures where signing in again is the whole fix.
+ *
+ * A token running out and a session somebody ended leave the same hole and want
+ * the same button. They differ in the heading only, because "expired" is the
+ * wrong word for a session that was ended on purpose from another device — that
+ * person wants to see that it worked, not read that something timed out.
+ */
+const SIGN_IN_AGAIN: Record<string, string> = {
+  session_expired: "Your session has expired",
+  session_ended: "Your session was ended",
+};
+
 const iconWrapStyle = (bg: string): React.CSSProperties => ({
   width: 56,
   height: 56,
@@ -60,7 +73,8 @@ export const ServerLoadingStates = ({
   // The session ending is not a loading failure and Retry is the wrong verb for
   // it — reloading asks the same expired session the same question. Signing in
   // is the only thing that changes the answer, so that is the only button.
-  if (serverFailure?.error === "session_expired") {
+  const signInHeading = serverFailure ? SIGN_IN_AGAIN[serverFailure.error] : undefined;
+  if (signInHeading) {
     return (
       <div className="flex w-full h-full items-center justify-center p-4">
         <div style={cardStyle}>
@@ -70,10 +84,10 @@ export const ServerLoadingStates = ({
             </div>
             <div className="flex flex-col gap-2 items-center">
               <span className="text-lg font-bold">
-                Your session has expired
+                {signInHeading}
               </span>
               <span className="text-sm text-gryt-muted" style={{ lineHeight: 1.5 }}>
-                {serverFailure.message ||
+                {serverFailure?.message ||
                   "Sign in again to reconnect to this server."}
               </span>
             </div>
