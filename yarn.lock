@@ -562,19 +562,19 @@
   resolved "https://registry.yarnpkg.com/@gryt/owl/-/owl-0.6.0.tgz#7efa4a1c28884e71cdac3316c9db01dc5c21c08e"
   integrity sha512-2T+YiP8ds8Z3dfkNd2GgaCQyknp0OPmxwC6yAwMsmRG8blGlakd7bdaEoeuUYnlXNgWt+Ssc5ZAE2r/4pMSqaA==
 
-"@gryt/theme@^0.10.0":
-  version "0.10.0"
-  resolved "https://registry.yarnpkg.com/@gryt/theme/-/theme-0.10.0.tgz#9b2cc77c255ac371cffe1b276f6a11f83a1a8e61"
-  integrity sha512-eLcpI/Ckvgrl/y7FrXu63sO/UAMgx/jRtbF/JUhOPDTBfV79jtT9b4/9AvC3om6yvjLiFeYQUaKnoqNoPIaZmw==
+"@gryt/theme@^0.11.0":
+  version "0.11.0"
+  resolved "https://registry.yarnpkg.com/@gryt/theme/-/theme-0.11.0.tgz#ceb37c42e1b0418220e2dee049bb0491a24c61a4"
+  integrity sha512-AyBoh/LuN/olWx42zu0okm2VAEgwQGxpT5DhTg+AVrhxJNj4f3hLIt9O7GxyJonOaaEbzf7TBXWF9dfTlh70vA==
 
-"@gryt/ui@^0.28.0":
-  version "0.28.0"
-  resolved "https://registry.yarnpkg.com/@gryt/ui/-/ui-0.28.0.tgz#318eb7cf09654b923f82a0fba4908ed35c093e7b"
-  integrity sha512-acl9JFb50a8H5tkVGL8vmOFNpbxW4FbvqYlzLVG9LBLN8RqSFV5CjHaPA3HnhS/axWLajz2VwF7P5VhMe0yspA==
+"@gryt/ui@^0.29.0":
+  version "0.29.0"
+  resolved "https://registry.yarnpkg.com/@gryt/ui/-/ui-0.29.0.tgz#0fafde96031f5c27f077010b4cf027f83112335f"
+  integrity sha512-fH9tDlRYGGRL+ibezoXRSomwbqevTkgQOk0lWtUruM4LOIaZzDZfqMDsyhHjxAbNgdvLGepG1+eyckZh1uHTfw==
   dependencies:
     "@base-ui/react" "^1.7.0"
     "@gryt/owl" "^0.6.0"
-    "@gryt/theme" "^0.10.0"
+    "@gryt/theme" "^0.11.0"
     "@phosphor-icons/react" "^2.1.10"
     clsx "^2.1.1"
     tailwind-merge "^3.4.0"
