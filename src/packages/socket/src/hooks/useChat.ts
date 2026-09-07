@@ -435,6 +435,21 @@ export function useChat({
         }
       }
       handleNewMessage(msg, activeConversationId, cacheKeyFor, setMessageCache, setChatMessages);
+
+      /* A thread reply is not news about the channel it hangs off.
+         `handleNewMessage` already drops it from that channel's list, and
+         everything below was firing anyway — so a reply in a thread badged the
+         channel, rang the sound and raised a notification, and opening the
+         channel showed nothing new. GRYT-986 made it louder rather than
+         causing it: the badge was a dot and is a count now, so the channel
+         could read "12 unread" with nothing in it.
+
+         Silence is not the end state — a thread you are in should be able to
+         tell you something. It needs somewhere to say it, and both trackers
+         are keyed by conversation. That is GRYT-1000. Being named still
+         arrives, because `mention:new` is its own event and is not gated here. */
+      if (msg.thread_id) return;
+
       if (msg.conversation_id !== activeConversationId && msg.sender_server_id !== currentUserId) {
         markChannelUnread(serverHost, msg.conversation_id);
       }
