@@ -80,6 +80,9 @@ function ThemedApp() {
   useEffect(() => {
     const root = document.documentElement;
     root.style.zoom = String(uiScale);
+    // body sizes itself off this. Viewport units are not divided by a zoom on
+    // the root, so without it the window and the layout disagree by the scale.
+    root.style.setProperty("--gryt-ui-scale", String(uiScale));
     root.style.setProperty("--chat-font-size", `${chatFontSize}px`);
   }, [uiScale, chatFontSize]);
 

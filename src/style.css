@@ -246,11 +246,16 @@ html {
   --color-overlay: rgba(0, 0, 0, 0.5);
 }
 
+/* Divided by the UI scale, because the zoom that scales the app sits on the
+   root and viewport units do not go through it. At 150% on a 1440x900 window
+   the body laid out 2160x1350 and 720px of the app was off-screen. Keep dvh
+   rather than swapping to 100%: dvh is what tracks a mobile browser's toolbar
+   sliding in and out, and 100% would follow the large viewport instead. */
 body {
   margin: 0;
   padding: 0;
-  width: 100dvw;
-  height: 100dvh;
+  width: calc(100dvw / var(--gryt-ui-scale, 1));
+  height: calc(100dvh / var(--gryt-ui-scale, 1));
 }
 
 #root {
