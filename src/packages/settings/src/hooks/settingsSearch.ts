@@ -15,11 +15,19 @@
  * rather than letting the entry silently stop matching.
  */
 
+import { isElectron } from "../../../../lib/electron";
+
 export interface SettingsIndexEntry {
   id: string;
   title: string;
   description: string;
   destination: string;
+  /**
+   * The sub-page inside the destination, where one has sub-pages. Absent for a
+   * destination that is a single page — and absent is not the same as wrong: a
+   * hit with no page lands on the destination, which is the whole of it.
+   */
+  page?: string;
   section: string;
   /** A whole panel rather than an individual control. */
   panel?: boolean;
@@ -36,45 +44,55 @@ export function settingAnchorId(title: string): string {
 }
 
 export const SETTINGS_INDEX: SettingsIndexEntry[] = [
-  { id: "updates", title: "Updates", description: "Check for updates and see your current version.", destination: "updates", section: "About", panel: true },
+  { id: "updates", title: "Updates", description: "Check for updates and see your current version.", page: "updates", destination: "updates", section: "About", panel: true },
   { id: "profile", title: "Profile", description: "Your display name, avatar and identity.", destination: "you", section: "Profile", panel: true },
-  { id: "security", title: "Security", description: "Your recovery key and account passkeys.", destination: "account", section: "Security", panel: true },
-  { id: "server-identities", title: "Server identities", description: "Servers Gryt recognises by their identity key, and any it has blocked for answering with a different one. Unblock a server you rebuilt yourself.", destination: "account", section: "Server identities", panel: true },
-  { id: "my-servers", title: "My servers", description: "The server Gryt runs on this machine. Start it, stop it, read its logs, and choose whether it starts with the app.", destination: "my-servers", section: "My servers", panel: true },
-  { id: "microphone-volume", title: "Microphone volume", description: "Your microphone input level (100% = unchanged, 200% = 2x boost)", destination: "sound-video", section: "Microphone" },
-  { id: "test-microphone", title: "Test microphone", description: "Hear yourself through your speakers or headphones, to check what the processing is doing.", destination: "sound-video", section: "Microphone" },
-  { id: "noise-reduction", title: "Noise reduction", description: "Removes background noise before your voice is sent. Runs in an AudioWorklet off the main thread, and adds about 20 ms.", destination: "sound-video", section: "Microphone" },
-  { id: "auto-gain", title: "Auto gain", description: "Brings your microphone to a target volume. Quiet speech is boosted, loud speech is reduced.", destination: "sound-video", section: "Microphone" },
-  { id: "target-level", title: "Target level", description: "The volume your voice is brought to. Lower is quieter, higher is louder.", destination: "sound-video", section: "Microphone" },
-  { id: "compressor", title: "Compressor", description: "Narrows the gap between your quietest and loudest, so your level stays steadier. Runs after auto gain.", destination: "sound-video", section: "Microphone" },
-  { id: "compression-amount", title: "Compression amount", description: "How aggressively to compress. Low = subtle leveling, high = heavy squash.", destination: "sound-video", section: "Microphone" },
-  { id: "output-volume", title: "Output volume", description: "Volume of all incoming audio (100% = unchanged, 200% = 2x boost)", destination: "sound-video", section: "Playback" },
-  { id: "input-mode", title: "Input mode", description: "Voice activity transmits whenever you speak above the noise gate. Push to talk only transmits while you hold a key, and hides the gate below.", destination: "sound-video", section: "Audio" },
-  { id: "afk-timeout", title: "AFK timeout", description: "You are marked AFK after this many minutes of silence, and only while you are connected to voice.", destination: "behaviour", section: "Voice" },
-  { id: "flip-camera", title: "Flip camera", description: "Flips the video everyone else sees. This changes the stream itself, not just your preview.", destination: "sound-video", section: "Camera" },
-  { id: "center-my-face-automatically", title: "Center my face automatically", description: "Works out where your face is so everyone else's crop of your camera follows you instead of cutting you off. Detection runs on your machine; only two numbers are sent, never video.", destination: "sound-video", section: "Camera" },
-  { id: "mirror-preview", title: "Mirror preview", description: "Mirrors your own preview. Nobody else sees any difference.", destination: "sound-video", section: "Camera" },
-  { id: "appearance", title: "Appearance", description: "Mode, themes, UI scale and text size.", destination: "looks", section: "Theme", panel: true },
-  { id: "theme", title: "Theme", description: "Build one on ui.gryt.chat, press Copy link, and paste it here. A theme is a couple of dozen hex values, so a link is the whole thing.", destination: "looks", section: "Appearance" },
-  { id: "tile-layout", title: "Tile layout", description: "How the voice grid arranges people once it is maximised or fullscreen. Match Google Meet allows tall narrow tiles and more columns; Biggest tiles picks whichever arrangement makes them largest.", destination: "looks", section: "Appearance" },
-  { id: "two-person-layout", title: "Two people", description: "What a channel with exactly two people in it looks like. One large and one small puts the other person in the panel and you in the corner; same size gives you both the same tile, stacked in the sidebar and side by side once there is room.", destination: "looks", section: "Appearance" },
-  { id: "smiley-conversion", title: "Smiley conversion", description: "Turns typed smileys into emoji as you write them.", destination: "looks", section: "Chat" },
-  { id: "blur-profanity", title: "Blur profanity", description: "Blurs profane words when the server has profanity filtering set to flag. Click a blurred word to reveal it.", destination: "looks", section: "Chat" },
-  { id: "hotkeys", title: "Hotkeys", description: "Keyboard and mouse-button shortcuts, including your push-to-talk key.", destination: "behaviour", section: "Hotkeys", panel: true },
-  { id: "push-to-talk-key", title: "Push to Talk Key", description: "Hold this key or mouse button to transmit your microphone. Only shown while input mode is push to talk.", destination: "behaviour", section: "Hotkeys" },
-  { id: "toggle-mute", title: "Toggle mute", description: "Toggle your microphone on or off.", destination: "behaviour", section: "Hotkeys" },
-  { id: "toggle-deafen", title: "Toggle deafen", description: "Mute all incoming audio and your microphone.", destination: "behaviour", section: "Hotkeys" },
-  { id: "disconnect", title: "Disconnect", description: "Disconnect from the current voice channel.", destination: "behaviour", section: "Hotkeys" },
+  { id: "security", title: "Security", description: "Your recovery key and account passkeys.", page: "security", destination: "account", section: "Security", panel: true },
+  { id: "server-identities", title: "Server identities", description: "Servers Gryt recognises by their identity key, and any it has blocked for answering with a different one. Unblock a server you rebuilt yourself.", page: "identities", destination: "account", section: "Server identities", panel: true },
+  ...(isElectron()
+    ? ([
+    { id: "my-servers", title: "My servers", description: "The server Gryt runs on this machine. Start it, stop it, read its logs, and choose whether it starts with the app.", destination: "my-servers", section: "My servers", panel: true }
+      ] satisfies SettingsIndexEntry[])
+    : []),
+  { id: "microphone-volume", title: "Microphone volume", description: "Your microphone input level (100% = unchanged, 200% = 2x boost)", page: "audio", destination: "sound-video", section: "Microphone" },
+  { id: "test-microphone", title: "Test microphone", description: "Hear yourself through your speakers or headphones, to check what the processing is doing.", page: "audio", destination: "sound-video", section: "Microphone" },
+  { id: "noise-reduction", title: "Noise reduction", description: "Removes background noise before your voice is sent. Runs in an AudioWorklet off the main thread, and adds about 20 ms.", page: "audio", destination: "sound-video", section: "Microphone" },
+  { id: "auto-gain", title: "Auto gain", description: "Brings your microphone to a target volume. Quiet speech is boosted, loud speech is reduced.", page: "audio", destination: "sound-video", section: "Microphone" },
+  { id: "target-level", title: "Target level", description: "The volume your voice is brought to. Lower is quieter, higher is louder.", page: "audio", destination: "sound-video", section: "Microphone" },
+  { id: "compressor", title: "Compressor", description: "Narrows the gap between your quietest and loudest, so your level stays steadier. Runs after auto gain.", page: "audio", destination: "sound-video", section: "Microphone" },
+  { id: "compression-amount", title: "Compression amount", description: "How aggressively to compress. Low = subtle leveling, high = heavy squash.", page: "audio", destination: "sound-video", section: "Microphone" },
+  { id: "output-volume", title: "Output volume", description: "Volume of all incoming audio (100% = unchanged, 200% = 2x boost)", page: "audio", destination: "sound-video", section: "Playback" },
+  { id: "input-mode", title: "Input mode", description: "Voice activity transmits whenever you speak above the noise gate. Push to talk only transmits while you hold a key, and hides the gate below.", page: "audio", destination: "sound-video", section: "Audio" },
+  { id: "afk-timeout", title: "AFK timeout", description: "You are marked AFK after this many minutes of silence, and only while you are connected to voice.", page: "presence", destination: "behaviour", section: "Voice" },
+  { id: "flip-camera", title: "Flip camera", description: "Flips the video everyone else sees. This changes the stream itself, not just your preview.", page: "camera", destination: "sound-video", section: "Camera" },
+  { id: "center-my-face-automatically", title: "Center my face automatically", description: "Works out where your face is so everyone else's crop of your camera follows you instead of cutting you off. Detection runs on your machine; only two numbers are sent, never video.", page: "camera", destination: "sound-video", section: "Camera" },
+  { id: "mirror-preview", title: "Mirror preview", description: "Mirrors your own preview. Nobody else sees any difference.", page: "camera", destination: "sound-video", section: "Camera" },
+  { id: "appearance", title: "Appearance", description: "Mode, themes, UI scale and text size.", page: "theme", destination: "looks", section: "Theme", panel: true },
+  { id: "theme", title: "Theme", description: "Build one on ui.gryt.chat, press Copy link, and paste it here. A theme is a couple of dozen hex values, so a link is the whole thing.", page: "theme", destination: "looks", section: "Appearance" },
+  { id: "tile-layout", title: "Tile layout", description: "How the voice grid arranges people once it is maximised or fullscreen. Match Google Meet allows tall narrow tiles and more columns; Biggest tiles picks whichever arrangement makes them largest.", page: "theme", destination: "looks", section: "Appearance" },
+  { id: "two-person-layout", title: "Two people", description: "What a channel with exactly two people in it looks like. One large and one small puts the other person in the panel and you in the corner; same size gives you both the same tile, stacked in the sidebar and side by side once there is room.", page: "theme", destination: "looks", section: "Appearance" },
+  { id: "smiley-conversion", title: "Smiley conversion", description: "Turns typed smileys into emoji as you write them.", page: "chat", destination: "looks", section: "Chat" },
+  { id: "blur-profanity", title: "Blur profanity", description: "Blurs profane words when the server has profanity filtering set to flag. Click a blurred word to reveal it.", page: "chat", destination: "looks", section: "Chat" },
+  { id: "hotkeys", title: "Hotkeys", description: "Keyboard and mouse-button shortcuts, including your push-to-talk key.", page: "hotkeys", destination: "behaviour", section: "Hotkeys", panel: true },
+  { id: "push-to-talk-key", title: "Push to Talk Key", description: "Hold this key or mouse button to transmit your microphone. Only shown while input mode is push to talk.", page: "hotkeys", destination: "behaviour", section: "Hotkeys" },
+  { id: "toggle-mute", title: "Toggle mute", description: "Toggle your microphone on or off.", page: "hotkeys", destination: "behaviour", section: "Hotkeys" },
+  { id: "toggle-deafen", title: "Toggle deafen", description: "Mute all incoming audio and your microphone.", page: "hotkeys", destination: "behaviour", section: "Hotkeys" },
+  { id: "disconnect", title: "Disconnect", description: "Disconnect from the current voice channel.", page: "hotkeys", destination: "behaviour", section: "Hotkeys" },
   { id: "desktop-notifications", title: "Desktop notifications", description: "Show a notification when a message arrives somewhere you are not looking. Never plays its own sound — the message sound does that.", destination: "notifications", section: "Notifications" },
   { id: "notification-level", title: "Notification level", description: "Applies to every server. It can only quieten one, never make one louder — a server you have already muted stays muted.", destination: "notifications", section: "Notifications" },
   { id: "per-server", title: "Per server", description: "How loud each server is on its own. Set from the right-click menu too — this is the same setting, in one place.", destination: "notifications", section: "Notifications" },
   { id: "unread-message-badge", title: "Unread message badge", description: "Show an unread message count on the taskbar icon when the app is not focused.", destination: "notifications", section: "Notifications" },
-  { id: "start-with-windows", title: "Start with Windows", description: "Launches Gryt when you sign in to Windows.", destination: "behaviour", section: "Desktop" },
-  { id: "start-minimized-on-login", title: "Start minimized on login", description: "Only applies when Gryt is launched automatically on sign-in. Manual launches will still show the window.", destination: "behaviour", section: "Desktop" },
-  { id: "minimize-to-tray-on-close", title: "Minimize to tray on close", description: "Closing the window hides Gryt in the system tray instead of quitting it.", destination: "behaviour", section: "Desktop" },
-  { id: "hardware-acceleration", title: "Hardware acceleration", description: "Uses your GPU for rendering. Turn it off if you see visual glitches or high GPU usage. Changing this restarts Gryt.", destination: "behaviour", section: "Desktop" },
-  { id: "esports-mode", title: "eSports mode", description: "Lowest possible latency. Disables all audio processing, enables push-to-talk, caps bitrate at 128kbps (studio quality), and optimizes Opus packetization (10ms frames).", destination: "sound-video", section: "Voice" },
-  { id: "experimental-screen-share", title: "Experimental screen share", description: "Unlock high frame rate options (144, 165, 240 FPS) for screen sharing. These require significant bandwidth and may not work on all hardware.", destination: "sound-video", section: "Screen share" },
+  // Electron only, like the panel itself. Offering "Hardware acceleration" in
+  // a browser used to send you to a page that does not render it.
+  ...(isElectron()
+    ? ([
+      { id: "start-with-windows", title: "Start with Windows", description: "Launches Gryt when you sign in to Windows.", page: "desktop", destination: "behaviour", section: "Desktop" },
+      { id: "start-minimized-on-login", title: "Start minimized on login", description: "Only applies when Gryt is launched automatically on sign-in. Manual launches will still show the window.", page: "desktop", destination: "behaviour", section: "Desktop" },
+      { id: "minimize-to-tray-on-close", title: "Minimize to tray on close", description: "Closing the window hides Gryt in the system tray instead of quitting it.", page: "desktop", destination: "behaviour", section: "Desktop" },
+      { id: "hardware-acceleration", title: "Hardware acceleration", description: "Uses your GPU for rendering. Turn it off if you see visual glitches or high GPU usage. Changing this restarts Gryt.", page: "desktop", destination: "behaviour", section: "Desktop" }
+      ] satisfies SettingsIndexEntry[])
+    : []),
+  { id: "esports-mode", title: "eSports mode", description: "Lowest possible latency. Disables all audio processing, enables push-to-talk, caps bitrate at 128kbps (studio quality), and optimizes Opus packetization (10ms frames).", page: "voice", destination: "sound-video", section: "Voice" },
+  { id: "experimental-screen-share", title: "Experimental screen share", description: "Unlock high frame rate options (144, 165, 240 FPS) for screen sharing. These require significant bandwidth and may not work on all hardware.", page: "screen", destination: "sound-video", section: "Screen share" },
   // Dev builds only, the same way the Developer destination itself is. Without
   // the gate a release would offer search results for a panel that is not in
   // the bundle.
