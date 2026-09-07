@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { getGrytConfig } from "../config";
 import { PiWarningFill, PiX } from "../lib/icons";
 import {
+  type AnnouncementType,
   decideBanner,
-  fetchDeclaredStatus,
+  fetchAnnouncement,
   POLL_INTERVAL_MS,
   probeAccountServices,
   type ServiceBanner,
@@ -14,11 +15,18 @@ import { useAccount } from "../packages/common/src/hooks/useAccount";
 
 const DISMISSED_KEY = "serviceStatusDismissed";
 
-const GENERIC = {
-  title: "Can't reach Gryt's account services",
-  body: "You can keep using servers you're already in. Signing in or out won't work until this clears.",
-  link: "https://discord.gg/Q3JKUGsnHE",
-  linkLabel: "What's going on?",
+const STATUS_PAGE = "https://status.gryt.chat";
+
+const GENERIC =
+  "Can't reach Gryt's account services. You can keep using servers you're already in, but signing in or out won't work until this clears.";
+
+/** Gatus's own severities, so the banner and the status page agree on colour. */
+const TONE: Record<AnnouncementType, string> = {
+  outage: "danger",
+  warning: "warning",
+  information: "accent",
+  operational: "warning",
+  none: "warning",
 };
 
 /**
@@ -52,18 +60,18 @@ export function ServiceStatusBanner() {
         return;
       }
 
-      const declared = await fetchDeclaredStatus();
+      const announcement = await fetchAnnouncement();
 
-      /* Only probe when there is nothing posted — a declared notice wins
-         either way, so the request would change nothing. */
-      if (!declared) {
+      /* Only probe when nothing is announced — an announcement wins either
+         way, so the request would change nothing. */
+      if (!announcement) {
         const reachable = await probeAccountServices(getGrytConfig().GRYT_OIDC_ISSUER);
         failures = reachable ? 0 : failures + 1;
       } else {
         failures = 0;
       }
 
-      if (!cancelled) setBanner(decideBanner(declared, failures));
+      if (!cancelled) setBanner(decideBanner(announcement, failures));
     };
 
     check();
@@ -87,8 +95,12 @@ export function ServiceStatusBanner() {
 
   if (!banner) return null;
 
-  const shown = banner.kind === "declared" ? banner.status : GENERIC;
-  if (shown.title === dismissed) return null;
+  const message =
+    banner.kind === "announced" ? banner.announcement.message : GENERIC;
+  const tone =
+    banner.kind === "announced" ? TONE[banner.announcement.type] : "warning";
+
+  if (message === dismissed) return null;
 
   return (
     <div
@@ -96,32 +108,25 @@ export function ServiceStatusBanner() {
       role="status"
       style={{
         flexShrink: 0,
-        background: "color-mix(in oklab, var(--gryt-warning-9) 10%, transparent)",
-        borderBottom:
-          "1px solid color-mix(in oklab, var(--gryt-warning-9) 20%, transparent)",
+        background: `color-mix(in oklab, var(--gryt-${tone}-9) 10%, transparent)`,
+        borderBottom: `1px solid color-mix(in oklab, var(--gryt-${tone}-9) 20%, transparent)`,
       }}
     >
       <PiWarningFill
         size={14}
-        style={{ flexShrink: 0, color: "var(--gryt-warning-11)" }}
+        style={{ flexShrink: 0, color: `var(--gryt-${tone}-11)` }}
       />
-      <span className="text-xs" style={{ color: "var(--gryt-warning-11)" }}>
-        <span className="font-medium">{shown.title}</span>
-        {shown.body ? ` ${shown.body}` : null}
-        {shown.link ? (
-          <>
-            {" "}
-            <a
-              className="font-medium underline-offset-2 hover:underline"
-              style={{ color: "var(--gryt-warning-11)" }}
-              href={shown.link}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {shown.linkLabel}
-            </a>
-          </>
-        ) : null}
+      <span className="text-xs" style={{ color: `var(--gryt-${tone}-11)` }}>
+        {message}{" "}
+        <a
+          className="font-medium underline-offset-2 hover:underline"
+          style={{ color: `var(--gryt-${tone}-11)` }}
+          href={STATUS_PAGE}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Status page
+        </a>
       </span>
       <IconButton
         tone="ghost"
@@ -129,8 +134,8 @@ export function ServiceStatusBanner() {
         aria-label="Dismiss"
         style={{ marginLeft: "auto", flexShrink: 0 }}
         onClick={() => {
-          localStorage.setItem(DISMISSED_KEY, shown.title);
-          setDismissed(shown.title);
+          localStorage.setItem(DISMISSED_KEY, message);
+          setDismissed(message);
         }}
       >
         <PiX size={12} />

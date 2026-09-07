@@ -2,81 +2,116 @@
  * Whether to tell a signed-in person that Gryt is having a problem, and what to
  * say.
  *
- * Two sources, and they answer different questions. A probe of the account
- * services says *whether* something is wrong. A file Sivert edits says *what* —
- * so a known outage reads "we're investigating" instead of the generic line.
+ * Two sources answering different questions. A probe of the OIDC issuer says
+ * *whether* something is wrong. An announcement on status.gryt.chat says
+ * *what*, in Sivert's words, and can go up before anything has failed.
  *
- * The file lives on gryt.chat, which runs on the Pi. Keycloak, the identity
- * service and the Gryt servers run on a different machine, so the notice
- * explaining the outage does not go down with the thing it describes.
+ * The announcements come from the status page's own API rather than a file
+ * invented for this. Gatus already has the feature, the page already renders
+ * them, and one place to post means the banner and the page cannot disagree.
+ *
+ * It runs on a VPS rather than at home. Everything it describes is served from
+ * home through a Cloudflare tunnel, so a notice hosted alongside would be
+ * unreachable at the one moment anybody wants it.
  */
 
-export interface ServiceStatus {
-  title: string;
-  body: string;
-  link?: string;
-  linkLabel?: string;
+/** Gatus severities. `operational` is the all-clear, so it never raises a banner. */
+export type AnnouncementType =
+  | "outage"
+  | "warning"
+  | "information"
+  | "operational"
+  | "none";
+
+export interface Announcement {
+  message: string;
+  type: AnnouncementType;
+  timestamp: string;
 }
 
 export type ServiceBanner =
   /** Sivert posted something. His words win. */
-  | { kind: "declared"; status: ServiceStatus }
+  | { kind: "announced"; announcement: Announcement }
   /** Nothing posted, and the account services did not answer. */
   | { kind: "unreachable" };
 
-export const STATUS_URL = "https://gryt.chat/status.json";
+export const STATUS_API_URL = "https://status.gryt.chat/api/v1/config";
 
 /** One loop does both checks, so this is the whole polling cost. */
 export const POLL_INTERVAL_MS = 60_000;
 
 /**
- * One failure is a blip. Two in a row, a minute apart, is a problem worth
- * interrupting somebody about.
+ * One failure is a blip. Two in a row, a minute apart, is worth interrupting
+ * somebody about.
  */
 export const FAILURES_BEFORE_BANNER = 2;
 
 const FETCH_TIMEOUT_MS = 8_000;
 
-const MAX_TITLE = 80;
-const MAX_BODY = 200;
-const MAX_LINK_LABEL = 40;
+/** Long enough for a real notice, short enough not to bury the app. */
+const MAX_MESSAGE = 240;
 
-function text(value: unknown, max: number): string {
-  return typeof value === "string" ? value.trim().slice(0, max) : "";
+const TYPES: AnnouncementType[] = [
+  "outage",
+  "warning",
+  "information",
+  "operational",
+  "none",
+];
+
+function parseOne(raw: unknown): Announcement | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const value = raw as Record<string, unknown>;
+
+  /* Gatus renders the message as markdown. This renders it as text, so the
+     worst a stray asterisk does is look like an asterisk. */
+  const message =
+    typeof value.message === "string" ? value.message.trim().slice(0, MAX_MESSAGE) : "";
+  if (!message) return null;
+
+  const type = TYPES.includes(value.type as AnnouncementType)
+    ? (value.type as AnnouncementType)
+    : "none";
+
+  return {
+    message,
+    type,
+    timestamp: typeof value.timestamp === "string" ? value.timestamp : "",
+  };
 }
 
 /**
- * https only. The banner renders this as something somebody clicks, and a
- * status file should never become a way to run anything in the app.
+ * The announcement worth showing, or null.
+ *
+ * Archived ones are the status page's history rather than something happening
+ * now, and `operational` is the all-clear that closes an incident out — putting
+ * either in a banner would interrupt somebody to tell them nothing is wrong.
+ *
+ * Newest wins when more than one is live, because that is the current word on
+ * an incident that has been updated.
  */
-function safeLink(value: unknown): string | undefined {
-  if (typeof value !== "string") return undefined;
-  try {
-    const url = new URL(value.trim());
-    return url.protocol === "https:" ? url.toString() : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-export function parseStatus(raw: unknown): ServiceStatus | null {
+export function pickAnnouncement(raw: unknown): Announcement | null {
   if (typeof raw !== "object" || raw === null) return null;
 
-  const value = raw as Record<string, unknown>;
-  if (value.active !== true) return null;
+  const list = (raw as Record<string, unknown>).announcements;
+  if (!Array.isArray(list)) return null;
 
-  const title = text(value.title, MAX_TITLE);
+  const live = list
+    .filter(
+      (a) =>
+        typeof a === "object" &&
+        a !== null &&
+        (a as Record<string, unknown>).archived !== true,
+    )
+    .map(parseOne)
+    .filter((a): a is Announcement => a !== null)
+    .filter((a) => a.type !== "operational");
 
-  /* An empty banner is worse than none: it says something is wrong and refuses
-     to say what. Falls through to the probe, which has its own wording. */
-  if (!title) return null;
+  if (live.length === 0) return null;
 
-  return {
-    title,
-    body: text(value.body, MAX_BODY),
-    link: safeLink(value.link),
-    linkLabel: text(value.linkLabel, MAX_LINK_LABEL) || "More",
-  };
+  return live.reduce((newest, a) =>
+    a.timestamp > newest.timestamp ? a : newest,
+  );
 }
 
 async function getJson(url: string): Promise<unknown> {
@@ -91,12 +126,12 @@ async function getJson(url: string): Promise<unknown> {
   }
 }
 
-/** Null for a missing, broken or inactive file. Never throws. */
-export async function fetchDeclaredStatus(
-  url: string = STATUS_URL,
-): Promise<ServiceStatus | null> {
+/** Null for a missing or broken response, and for nothing announced. Never throws. */
+export async function fetchAnnouncement(
+  url: string = STATUS_API_URL,
+): Promise<Announcement | null> {
   try {
-    return parseStatus(await getJson(url));
+    return pickAnnouncement(await getJson(url));
   } catch {
     return null;
   }
@@ -105,9 +140,9 @@ export async function fetchDeclaredStatus(
 /**
  * Can the account services be reached?
  *
- * The OIDC issuer's own discovery document, which every signed-in client
- * already depends on to refresh a token. A 5xx counts as unreachable the same
- * as a timeout — from here the difference does not change what to say.
+ * The OIDC issuer, which every signed-in client already depends on to refresh a
+ * token. A 5xx counts the same as a timeout — from here the difference does not
+ * change what to say.
  */
 export async function probeAccountServices(issuerUrl: string): Promise<boolean> {
   const controller = new AbortController();
@@ -126,17 +161,17 @@ export async function probeAccountServices(issuerUrl: string): Promise<boolean> 
 }
 
 /**
- * What to show, given a declared notice and how many probes have failed.
+ * What to show, given an announcement and how many probes have failed.
  *
- * A declared notice always wins, including while everything is reachable —
- * that is the case where Sivert is warning people before he takes something
- * down, and it is the whole reason the file exists.
+ * An announcement wins even while everything is reachable — warning people
+ * before taking something down is the case the status page exists for, and
+ * nothing has failed yet at that point.
  */
 export function decideBanner(
-  declared: ServiceStatus | null,
+  announcement: Announcement | null,
   consecutiveFailures: number,
 ): ServiceBanner | null {
-  if (declared) return { kind: "declared", status: declared };
+  if (announcement) return { kind: "announced", announcement };
   if (consecutiveFailures >= FAILURES_BEFORE_BANNER) return { kind: "unreachable" };
   return null;
 }

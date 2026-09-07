@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 /**
- * The outage banner, and the two ways it could go wrong (GRYT-982).
+ * The outage banner (GRYT-982).
  *
- * It has to appear when Sivert says there is an outage, and it has to stay
- * silent otherwise — including when the status file cannot be fetched at all,
- * because a client with no internet must not invent an outage.
+ * The failure that matters is a banner appearing when nothing is wrong, so
+ * most of this is about staying quiet: an empty announcement list, an archived
+ * one, the all-clear, a single failed probe, a machine with no internet.
  *
- * The parser is where both live, so that is what this exercises.
+ * The announcements come from the status page's own API, which is written by a
+ * person and could say anything, so what it renders is checked too.
  */
 
 import assert from "node:assert/strict";
@@ -17,8 +18,8 @@ import { fileURLToPath } from "node:url";
 import {
   decideBanner,
   FAILURES_BEFORE_BANNER,
-  parseStatus,
-  STATUS_URL,
+  pickAnnouncement,
+  STATUS_API_URL,
 } from "../src/lib/serviceStatus.ts";
 
 let failures = 0;
@@ -32,50 +33,102 @@ function check(name, run) {
   }
 }
 
+const at = (ts, extra = {}) => ({
+  timestamp: ts,
+  type: "outage",
+  message: `notice ${ts}`,
+  ...extra,
+});
+
 console.log("service status");
 
 /* ── Silence is the default ──────────────────────────────────────────── */
 
-check("nothing is announced unless active is exactly true", () => {
-  assert.equal(parseStatus({ title: "Down" }), null);
-  assert.equal(parseStatus({ active: false, title: "Down" }), null);
-  assert.equal(parseStatus({ active: "true", title: "Down" }), null);
-  assert.equal(parseStatus({ active: 1, title: "Down" }), null);
+check("nothing announced means nothing shown", () => {
+  assert.equal(pickAnnouncement({ announcements: [] }), null);
+  assert.equal(pickAnnouncement({}), null);
 });
 
-check("a malformed file announces nothing", () => {
-  assert.equal(parseStatus(null), null);
-  assert.equal(parseStatus(undefined), null);
-  assert.equal(parseStatus("outage"), null);
-  assert.equal(parseStatus([]), null);
+check("a malformed response announces nothing", () => {
+  assert.equal(pickAnnouncement(null), null);
+  assert.equal(pickAnnouncement(undefined), null);
+  assert.equal(pickAnnouncement("outage"), null);
+  assert.equal(pickAnnouncement({ announcements: "outage" }), null);
+  assert.equal(pickAnnouncement({ announcements: [null, 7, "x"] }), null);
 });
 
-check("an active notice with no title announces nothing", () => {
-  /* Rendering an empty banner would be worse than rendering none: it tells
-     somebody something is wrong and refuses to say what. */
-  assert.equal(parseStatus({ active: true }), null);
-  assert.equal(parseStatus({ active: true, title: "   " }), null);
+check("an announcement with no message is not shown", () => {
+  /* A banner that says something is wrong and refuses to say what is worse
+     than no banner. */
+  assert.equal(pickAnnouncement({ announcements: [{ type: "outage" }] }), null);
+  assert.equal(
+    pickAnnouncement({ announcements: [at("2026-09-07T18:00:00Z", { message: "  " })] }),
+    null,
+  );
 });
 
-/* ── What it renders when there is something to say ──────────────────── */
+check("archived announcements are history, not news", () => {
+  const raw = { announcements: [at("2026-09-07T18:00:00Z", { archived: true })] };
+  assert.equal(pickAnnouncement(raw), null);
+});
 
-check("an active notice comes through", () => {
-  const s = parseStatus({
-    active: true,
-    title: "Sign-in is temporarily unavailable",
-    body: "You can keep using Gryt until your session expires.",
-    link: "https://discord.gg/Q3JKUGsnHE",
-    linkLabel: "What's going on?",
+check("the all-clear does not raise a banner", () => {
+  /* `operational` is how an incident is closed out on the status page.
+     Interrupting somebody to say nothing is wrong is not an improvement. */
+  const raw = {
+    announcements: [at("2026-09-07T18:00:00Z", { type: "operational" })],
+  };
+  assert.equal(pickAnnouncement(raw), null);
+});
+
+/* ── What it shows when there is something to say ────────────────────── */
+
+check("a live announcement comes through", () => {
+  const a = pickAnnouncement({
+    announcements: [
+      {
+        timestamp: "2026-09-07T18:00:00Z",
+        type: "outage",
+        message: "An issue has appeared and we are investigating it.",
+      },
+    ],
   });
-  assert.equal(s.title, "Sign-in is temporarily unavailable");
-  assert.equal(s.body, "You can keep using Gryt until your session expires.");
-  assert.equal(s.link, "https://discord.gg/Q3JKUGsnHE");
-  assert.equal(s.linkLabel, "What's going on?");
+  assert.equal(a.message, "An issue has appeared and we are investigating it.");
+  assert.equal(a.type, "outage");
+});
+
+check("the newest live announcement wins", () => {
+  /* An incident that has been updated: the latest word is the true one. */
+  const a = pickAnnouncement({
+    announcements: [
+      at("2026-09-07T18:00:00Z"),
+      at("2026-09-07T20:30:00Z"),
+      at("2026-09-07T19:00:00Z"),
+    ],
+  });
+  assert.equal(a.timestamp, "2026-09-07T20:30:00Z");
+});
+
+check("a resolved incident stops the banner even with history above it", () => {
+  const a = pickAnnouncement({
+    announcements: [
+      at("2026-09-07T18:00:00Z", { archived: true }),
+      at("2026-09-07T20:00:00Z", { type: "operational" }),
+    ],
+  });
+  assert.equal(a, null);
+});
+
+check("an unknown severity is treated as a plain notice", () => {
+  const a = pickAnnouncement({
+    announcements: [at("2026-09-07T18:00:00Z", { type: "catastrophe" })],
+  });
+  assert.equal(a.type, "none");
 });
 
 /* ── Which of the two sources wins ───────────────────────────────────── */
 
-const NOTICE = { title: "We're investigating", body: "", linkLabel: "More" };
+const NOTICE = { message: "We're investigating", type: "outage", timestamp: "z" };
 
 check("one failed probe says nothing", () => {
   /* A blip is not an outage, and a banner that flickers teaches people to
@@ -85,78 +138,45 @@ check("one failed probe says nothing", () => {
 });
 
 check("repeated failures raise the generic banner", () => {
-  const b = decideBanner(null, FAILURES_BEFORE_BANNER);
-  assert.equal(b.kind, "unreachable");
+  assert.equal(decideBanner(null, FAILURES_BEFORE_BANNER).kind, "unreachable");
   assert.equal(decideBanner(null, 9).kind, "unreachable");
 });
 
-check("a posted notice wins over the generic one", () => {
+check("an announcement wins over the generic banner", () => {
   const b = decideBanner(NOTICE, 9);
-  assert.equal(b.kind, "declared");
-  assert.equal(b.status.title, "We're investigating");
+  assert.equal(b.kind, "announced");
+  assert.equal(b.announcement.message, "We're investigating");
 });
 
-check("a posted notice shows even while everything is reachable", () => {
-  /* Warning people before taking something down is the reason the file
-     exists, and nothing has failed yet at that point. */
-  const b = decideBanner(NOTICE, 0);
-  assert.equal(b.kind, "declared");
+check("an announcement shows even while everything is reachable", () => {
+  /* Warning people before taking something down is what the status page is
+     for, and nothing has failed yet at that point. */
+  assert.equal(decideBanner(NOTICE, 0).kind, "announced");
 });
 
-check("a notice without a link still shows", () => {
-  const s = parseStatus({ active: true, title: "Maintenance" });
-  assert.equal(s.title, "Maintenance");
-  assert.equal(s.body, "");
-  assert.equal(s.link, undefined);
-});
+/* ── The response cannot break the app ───────────────────────────────── */
 
-/* ── The file cannot break the app ───────────────────────────────────── */
-
-check("only https links are rendered", () => {
-  const bad = (link) => parseStatus({ active: true, title: "x", link }).link;
-
-  /* The banner renders this as something somebody clicks, so a status file
-     must not become a way to run anything in the app. */
-  assert.equal(bad("javascript:alert(1)"), undefined);
-  assert.equal(bad("http://example.com"), undefined);
-  assert.equal(bad("data:text/html,hi"), undefined);
-  assert.equal(bad("file:///etc/passwd"), undefined);
-  assert.equal(bad("not a url"), undefined);
-  assert.equal(bad(""), undefined);
-  assert.equal(bad(42), undefined);
-});
-
-check("long strings are cut rather than allowed to break the layout", () => {
-  const s = parseStatus({
-    active: true,
-    title: "t".repeat(500),
-    body: "b".repeat(1000),
-    linkLabel: "l".repeat(200),
-    link: "https://gryt.chat",
+check("a long message is cut rather than allowed to bury the app", () => {
+  const a = pickAnnouncement({
+    announcements: [at("2026-09-07T18:00:00Z", { message: "m".repeat(2000) })],
   });
-  assert.ok(s.title.length <= 80, `title was ${s.title.length}`);
-  assert.ok(s.body.length <= 200, `body was ${s.body.length}`);
-  assert.ok(s.linkLabel.length <= 40, `linkLabel was ${s.linkLabel.length}`);
+  assert.ok(a.message.length <= 240, `message was ${a.message.length}`);
 });
 
-check("non-string fields do not reach the banner", () => {
-  const s = parseStatus({
-    active: true,
-    title: "Down",
-    body: { toString: () => "nope" },
-    linkLabel: 7,
+check("a non-string message is not rendered", () => {
+  const a = pickAnnouncement({
+    announcements: [at("2026-09-07T18:00:00Z", { message: { toString: () => "x" } })],
   });
-  assert.equal(s.body, "");
-  assert.equal(s.linkLabel, "More");
+  assert.equal(a, null);
 });
 
 /* ── Where it reads from ─────────────────────────────────────────────── */
 
-check("the status file is on the host that survives the outage", () => {
-  /* gryt.chat runs on the Pi. Keycloak, the identity service and the Gryt
-     servers run on a different machine, which is the one that goes down — so
-     the notice explaining the outage is not hosted on the thing that is out. */
-  assert.equal(STATUS_URL, "https://gryt.chat/status.json");
+check("it reads the status page, on the host that survives the outage", () => {
+  /* status.gryt.chat runs on a VPS. Everything it describes is served from
+     home through a Cloudflare tunnel, so a notice hosted alongside would be
+     unreachable at the one moment anybody wants it. */
+  assert.equal(STATUS_API_URL, "https://status.gryt.chat/api/v1/config");
 });
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -172,10 +192,12 @@ check("the banner is gated on being signed in", () => {
   );
 });
 
-check("the banner renders text, never markup from the file", () => {
+check("the announcement renders as text, never as markup", () => {
+  /* Gatus renders these as markdown. Here the worst a stray asterisk does is
+     look like an asterisk. */
   assert.ok(
     !banner.includes("dangerouslySetInnerHTML"),
-    "the banner renders the status file as markup",
+    "the banner renders an announcement as markup",
   );
 });
 
