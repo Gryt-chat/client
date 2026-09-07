@@ -7,6 +7,7 @@ import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 
 import { useSocketEvent } from "../hooks/useSocketEvent";
 import { useSockets } from "../hooks/useSockets";
+import { formatJoined } from "../lib/memberFacts";
 import type { MemberInfo } from "./MemberSidebar";
 
 interface ReplaceSuccessPayload {
@@ -14,13 +15,6 @@ interface ReplaceSuccessPayload {
   oldGrytUserId: string;
   newGrytUserId: string;
   ownerUpdated: boolean;
-}
-
-function formatJoinDate(raw?: string | Date): string {
-  if (!raw) return "Unknown";
-  const d = typeof raw === "string" ? new Date(raw) : raw;
-  if (isNaN(d.getTime())) return "Unknown";
-  return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
 function filterMembers(members: MemberInfo[], query: string): MemberInfo[] {
@@ -73,7 +67,7 @@ function MemberDropdownItem({
           {member.nickname}
         </span>
         <span className="text-xs">
-          Joined {formatJoinDate(member.createdAt)}
+          Joined {formatJoined(member.createdAt) ?? "Unknown"}
         </span>
       </div>
     </div>

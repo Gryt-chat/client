@@ -68,6 +68,9 @@ jobs:
       # A session somebody ended has to stay ended, and recovering from one has to give up.
       # Both are decided in one small module, and neither is visible from anywhere else.
       - run: yarn test:session-recovery
+      # Who may be acted on, and the typing gate on the ban dialog. Both are
+      # enforced again by the server, and neither is visible from anywhere else.
+      - run: yarn test:member-moderation
       # The outage banner has to stay silent when nothing is wrong, and a
       # client with no internet must not invent an outage.
       - run: yarn test:service-status

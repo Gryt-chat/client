@@ -13,6 +13,7 @@ import {
 
 import { PiCaretDownBold, PiCopySimpleBold } from "../../../../lib/icons";
 import { useSockets } from "../hooks/useSockets";
+import { formatJoined, TIER_LABEL } from "../lib/memberFacts";
 import { describeChange, describePin } from "../utils/memberKeyWording";
 import { BotTag } from "./BotTag";
 import type { MemberInfo } from "./MemberSidebar";
@@ -28,22 +29,6 @@ import { statusConfig } from "./memberStatus";
  * face of the card rather than in the drawer, because there the question on
  * hover really is identity.
  */
-
-function formatJoined(value?: string | Date): string | null {
-  if (!value) return null;
-  const d = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-const TIER_LABEL: Record<string, { label: string; amber: boolean }> = {
-  account: { label: "Gryt account", amber: false },
-  local: { label: "No account", amber: true },
-};
 
 /**
  * A rename described by when and how often, never by what it used to say.
