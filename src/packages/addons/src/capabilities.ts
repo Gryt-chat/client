@@ -1,28 +1,33 @@
 /**
- * What a plugin says it wants to do, and what somebody has agreed to (GRYT-928).
+ * What a plugin says it wants to do, and what somebody has agreed to
+ * (GRYT-928, GRYT-930).
  *
- * ## Read this before treating it as a sandbox, because it is not one
+ * ## This is a boundary now, which it was not
  *
- * A plugin is loaded with `<script type="module">` into the app's own page —
- * see `useAddonLoader`. It shares `window`, the DOM, `localStorage` and every
- * module the app has already imported. Nothing here can stop a plugin that
- * wants to go around it, and pretending otherwise would be worse than pretending
- * nothing: somebody would read "this addon may only set your status" as a
- * guarantee rather than as a claim.
+ * A plugin used to be a `<script type="module">` on the app's own page. It
+ * shared `window`, the DOM, `localStorage` and every module the app had already
+ * imported — the sockets, the message store, the identity keypair — so a plugin
+ * that did not want to ask simply did not call `window.gryt`. This file opened
+ * by saying so at length, because a list that reads as a guarantee and is only a
+ * claim is worse than no list.
  *
- * So this is **disclosure, not enforcement**. What it buys, honestly:
+ * A plugin runs in a worker now (`pluginHost.ts`, `addonWorker.ts`). The API is
+ * a message protocol, every message is checked against this before it is
+ * served, and there is no second route to what was refused: no `window`, no
+ * DOM, no `localStorage`, no `indexedDB`, and no way to start a worker that
+ * would have them.
  *
- * - A plugin states what it needs, in its manifest, before it is enabled.
- * - The person sees that list and agrees to it, per addon.
- * - The polite path — `window.gryt` — refuses what was not agreed to, so a
- *   plugin that respects the contract is easy to write and a plugin that does
- *   not has to visibly go around it, which is the difference between an
- *   accident and a decision.
+ * ## What it still does not cover
  *
- * Real isolation means running plugins somewhere they cannot reach the app —
- * a worker or an iframe with a message port. That is a different piece of work
- * and it is filed as one. Until it exists, installing a plugin is trusting
- * whoever wrote it, and the addons screen should keep saying so.
+ * A plugin keeps the network, on purpose — one that cannot reach Spotify is not
+ * a now-playing plugin. So a granted capability is a boundary on what a plugin
+ * can *read*, and not on where it can send what it was given. Somebody who
+ * grants `messages:read` to a plugin is trusting it with those messages
+ * wherever it decides to put them, and nothing here changes that.
+ *
+ * The manifest and the grant are still both checked, and both still have to say
+ * yes: an addon that drops a capability in an update must not keep the
+ * agreement somebody made when it had one.
  */
 
 /** Everything a plugin can ask for. Adding one means adding it here first. */
