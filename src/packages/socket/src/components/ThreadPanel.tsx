@@ -1,5 +1,6 @@
 import { Alert, Button, Composer, Divider, IconButton } from "@gryt/ui";
-import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
+import { Fragment, useEffect, useState } from "react";
 
 import { PiChatsFill, PiX } from "../../../../lib/icons";
 import type { ChatMessage } from "./chatUtils";
@@ -15,17 +16,22 @@ interface ThreadSummary {
   tags?: string[];
 }
 
-interface MemberLite {
-  nickname?: string;
-  avatar_file_id?: string;
-}
-
 interface ThreadPanelProps {
   thread: ThreadSummary;
   root: ChatMessage | null;
   messages: ChatMessage[];
   loading: boolean;
-  memberList?: Record<string, MemberLite>;
+  /**
+   * Draws one message, handed down rather than done here.
+   *
+   * The panel used to own a thirty-line renderer that read four fields off a
+   * message: a coloured letter for an avatar, the name, a clock time and the
+   * text. No markdown, no attachments, no reactions, no mentions — a reply from
+   * last week showed a bare time with no date anywhere. The channel's MessageRow
+   * does all of it, and needs a dozen things ChatView already holds, so ChatView
+   * builds the row and this renders where it goes. GRYT-1000.
+   */
+  renderMessage: (message: ChatMessage) => ReactNode;
   onClose: () => void;
   onSend: (text: string) => void;
   onSetStatus?: (status: "open" | "solved" | "closed") => void;
@@ -34,56 +40,7 @@ interface ThreadPanelProps {
   onSetTags?: (tagIds: string[]) => void;
 }
 
-function nameOf(m: ChatMessage, memberList?: Record<string, MemberLite>): string {
-  return memberList?.[m.sender_server_id]?.nickname || m.sender_nickname || "Unknown";
-}
-
-function timeOf(value: string | Date): string {
-  const d = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}
-
-const AVATAR_HUES = ["#968ff8", "#e0a458", "#5cc79a", "#e06cae", "#7aa2f7", "#d98695"];
-function hueFor(id: string): string {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-  return AVATAR_HUES[h % AVATAR_HUES.length];
-}
-
-function ThreadMessage({ m, memberList }: { m: ChatMessage; memberList?: Record<string, MemberLite> }) {
-  const name = nameOf(m, memberList);
-  return (
-    <div style={{ display: "flex", gap: "10px", padding: "8px 16px", opacity: m.pending ? 0.6 : 1 }}>
-      <div
-        aria-hidden="true"
-        style={{
-          width: 32, height: 32, borderRadius: "var(--gryt-radius-full)", flexShrink: 0,
-          background: hueFor(m.sender_server_id), color: "var(--gryt-on-accent, #0c0a20)",
-          display: "grid", placeItems: "center", fontWeight: 700, fontSize: 13,
-        }}
-      >
-        {name.charAt(0).toUpperCase()}
-      </div>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-          <span style={{ fontWeight: 700, fontSize: 14, color: "var(--gryt-neutral-12)" }}>
-            <EmojiText text={name} />
-          </span>
-          <span style={{ fontSize: 11, color: "var(--gryt-neutral-10)" }}>{timeOf(m.created_at)}</span>
-        </div>
-        <div style={{ fontSize: 14, color: "var(--gryt-neutral-11)", wordBreak: "break-word", marginTop: 2 }}>
-          {m.text ? <EmojiText text={m.text} /> : <span style={{ fontStyle: "italic", opacity: 0.7 }}>No text</span>}
-        </div>
-        {m.failed && (
-          <span style={{ fontSize: 11.5, color: "var(--gryt-danger-9)" }}>Failed to send</span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-export function ThreadPanel({ thread, root, messages, loading, memberList, onClose, onSend, onSetStatus, forumTags = [], onSetTags }: ThreadPanelProps) {
+export function ThreadPanel({ thread, root, messages, loading, renderMessage, onClose, onSend, onSetStatus, forumTags = [], onSetTags }: ThreadPanelProps) {
   const [draft, setDraft] = useState("");
 
   // Mirrors the server's cap, so an over-long reply is stopped here rather than
@@ -199,8 +156,8 @@ export function ThreadPanel({ thread, root, messages, loading, memberList, onClo
 
       <div style={{ flex: 1, overflowY: "auto", paddingBottom: 8 }}>
         {root && (
-          <div style={{ borderBottom: "1px solid var(--gryt-neutral-6)", paddingBottom: 6, marginBottom: 4 }}>
-            <ThreadMessage m={root} memberList={memberList} />
+          <div className="mb-1 border-b border-gryt-border pb-1.5">
+            {renderMessage(root)}
           </div>
         )}
         {loading ? (
@@ -208,7 +165,9 @@ export function ThreadPanel({ thread, root, messages, loading, memberList, onClo
         ) : messages.length === 0 && root ? (
           <div style={{ padding: 16, fontSize: 13, color: "var(--gryt-neutral-10)" }}>No replies yet. Start the conversation.</div>
         ) : (
-          messages.map((m) => <ThreadMessage key={m.message_id} m={m} memberList={memberList} />)
+          messages.map((m) => (
+            <Fragment key={m.message_id}>{renderMessage(m)}</Fragment>
+          ))
         )}
       </div>
 
