@@ -31,7 +31,7 @@
  */
 
 /** Everything a plugin can ask for. Adding one means adding it here first. */
-export const ADDON_CAPABILITIES = ["status", "messaging", "display"] as const;
+export const ADDON_CAPABILITIES = ["status", "messaging", "display", "processes"] as const;
 
 export type AddonCapability = (typeof ADDON_CAPABILITIES)[number];
 
@@ -56,6 +56,16 @@ export const CAPABILITY_LABELS: Record<AddonCapability, string> = {
    * "shows information".
    */
   display: "Show its own panel beside the member list",
+  /*
+   * Worded as the list rather than as the machine (GRYT-931).
+   *
+   * "Read what you are running" would be the wrong sentence, because that is
+   * not what this grants and somebody agreeing to it should not think it is.
+   * Gryt reads the process list; a plugin is told which of the programs *you
+   * listed* are running, and nothing about anything else you have open. The
+   * scope of it is a list you wrote and can see.
+   */
+  processes: "See which of your listed programs are running",
 };
 
 function isCapability(value: unknown): value is AddonCapability {

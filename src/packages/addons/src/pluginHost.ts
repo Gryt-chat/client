@@ -47,6 +47,42 @@ export function setPluginApiActivitySetter(setter: ActivitySetter | null): void 
   setActivityImpl = setter;
 }
 
+/*
+ * What the person's listed programs are doing (GRYT-931).
+ *
+ * Held here as a plain value rather than fetched, because the app already
+ * knows: `useSettings` subscribes to the main process and pushes it in. A
+ * plugin asking gets the last thing the app was told, which is the same thing
+ * the member list is showing.
+ */
+let runningPrograms: string[] = [];
+const processListeners = new Set<string>();
+
+/** Called by the app whenever the answer changes. */
+export function setPluginApiRunningPrograms(running: string[]): void {
+  if (running.length === runningPrograms.length && running.every((n, i) => n === runningPrograms[i])) {
+    return;
+  }
+  runningPrograms = [...running];
+
+  for (const addonId of processListeners) {
+    pushProcesses(addonId);
+  }
+}
+
+function pushProcesses(addonId: string): void {
+  const entry = running.get(addonId);
+  if (!entry) {
+    processListeners.delete(addonId);
+    return;
+  }
+  entry.worker.postMessage({
+    kind: "event",
+    event: "processes",
+    payload: [...runningPrograms],
+  } satisfies HostMessage);
+}
+
 export function setPluginApiMessageSender(sender: MessageSender | null): void {
   sendMessageImpl = sender;
 }
@@ -163,6 +199,15 @@ async function serve(
       return undefined;
     }
 
+    case "processes.running": {
+      return [...runningPrograms];
+    }
+
+    case "processes.subscribe": {
+      processListeners.add(addonId);
+      return undefined;
+    }
+
     default:
       /* Unreachable: `mayCall` refuses anything not in METHOD_CAPABILITY, and
          every entry there has a branch above. Here so adding one to the map and
@@ -260,6 +305,7 @@ export function stopPlugin(addonId: string): void {
   running.delete(addonId);
 
   for (const drop of entry.unsubscribes) drop();
+  processListeners.delete(addonId);
 
   /* Before the worker is asked to stop rather than after. A panel outliving the
      plugin that drew it is the failure people notice: the addon is off in

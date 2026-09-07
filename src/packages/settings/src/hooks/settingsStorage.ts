@@ -80,6 +80,18 @@ export interface Settings {
    */
   activity: string;
   setActivity: (value: string) => void;
+  /**
+   * What servers are actually told, which is not always what you typed
+   * (GRYT-931).
+   *
+   * A program from your watch list takes precedence while it is running, so
+   * launching a game says the game and quitting it gives you your own line
+   * back. `activity` stays what you wrote — the settings field reads and writes
+   * that one, and a game must not overwrite a sentence somebody typed.
+   */
+  effectiveActivity: string;
+  /** The watched programs running now. Empty in the browser, and usually. */
+  playingNow: string[];
 
   avatarDataUrl: string | null;
   setAvatarDataUrl: (value: string | null) => void;
@@ -312,6 +324,8 @@ export const settingsInit: Settings = {
   setNickname: noop,
   activity: "",
   setActivity: noop,
+  effectiveActivity: "",
+  playingNow: [],
   avatarDataUrl: null,
   setAvatarDataUrl: noop,
   setAvatarFile: async () => {},

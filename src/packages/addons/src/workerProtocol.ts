@@ -74,6 +74,8 @@ export const METHOD_CAPABILITY: Record<string, string> = {
   "messaging.servers": "messaging",
   "ui.panel": "display",
   "ui.clear": "display",
+  "processes.running": "processes",
+  "processes.subscribe": "processes",
 };
 
 export type CallVerdict =
