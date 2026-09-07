@@ -45,6 +45,7 @@ export const ChatView = memo(({
   socketConnection,
   serverHost,
   memberList,
+  isBlocked,
   channelName,
   automated,
   layout,
@@ -89,6 +90,15 @@ export const ChatView = memo(({
   socketConnection?: unknown;
   serverHost?: string;
   memberList?: Record<string, MemberInfo>;
+  /**
+   * Whether this person has blocked that sender.
+   *
+   * `chatMessages` arrives already filtered, but the thread panel's messages
+   * come from `useThreads` inside this component and never passed through it —
+   * so somebody you had blocked still turned up in a thread. Same predicate,
+   * applied in the one place the thread list exists.
+   */
+  isBlocked?: (serverUserId: string) => boolean;
   channelName?: string;
   channelType?: "text" | "voice";
   /** An automated channel: only bots and the system post, so the composer is locked. GRYT-982. */
@@ -160,6 +170,18 @@ export const ChatView = memo(({
   // free — the socket, conversation and member list are all already in hand.
   const threads = useThreads(socketConnection, conversationKey ?? "", serverHost, currentUserId, currentUserNickname);
   const isForum = layout === "forum" && conversationKind !== "dm";
+
+  /* The same filter `chatMessages` already arrived with. Blocking somebody hid
+     them from the channel and not from a thread, because the thread's messages
+     are fetched here rather than upstream. Filtered at the view like the other
+     one, so unblocking puts them back without a refetch. */
+  const visibleThreadMessages = useMemo(
+    () =>
+      isBlocked
+        ? (threads.open?.messages ?? []).filter((m) => !isBlocked(m.sender_server_id))
+        : threads.open?.messages ?? [],
+    [threads.open?.messages, isBlocked],
+  );
 
   const {
     replyingTo,
@@ -564,7 +586,7 @@ export const ChatView = memo(({
             <ThreadPanel
               thread={threads.open.thread}
               root={threads.open.root}
-              messages={threads.open.messages}
+              messages={visibleThreadMessages}
               loading={threads.open.loading}
               memberList={memberList}
               onClose={threads.closeThread}

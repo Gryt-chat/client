@@ -715,6 +715,7 @@ export const ServerView = () => {
           />
         }
         chatMessages={visibleChatMessages}
+        isBlocked={isBlocked}
         conversationKey={activeConversationId}
         sealing={activeDm ? sealing : undefined}
         memberNames={memberNames}

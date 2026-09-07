@@ -49,6 +49,10 @@ type BackgroundMessage = {
   text?: string | null;
   sealed?: string | null;
   attachments?: string[] | null;
+  /* Set on a reply posted in a thread. The server has always sent it — this
+     type simply never named it, so this handler could not tell a thread reply
+     from a channel message and badged the channel for both. */
+  thread_id?: string | null;
 };
 
 export interface SocketEventDeps {
@@ -473,6 +477,10 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
         if (host === currentlyViewingServerRef.current?.host) return;
         const myId = socket.id ? clientsRef.current[host]?.[socket.id]?.serverUserId : undefined;
         if (myId && msg.sender_server_id === myId) return;
+        // Same reason as the foreground handler in useChat: a thread reply is
+        // not news about the channel, and there is nowhere yet to say it is
+        // news about the thread. GRYT-999.
+        if (msg.thread_id) return;
 
         /* Marked unread whatever the level says. Muting a channel is about not
            being interrupted, not about pretending nothing happened there. The
