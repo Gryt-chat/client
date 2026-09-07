@@ -71,6 +71,9 @@ jobs:
       # Who may be acted on, and the typing gate on the ban dialog. Both are
       # enforced again by the server, and neither is visible from anywhere else.
       - run: yarn test:member-moderation
+      # A device somebody signed out has to stay signed out across a restart,
+      # and the note that makes that happen is not visible from anywhere else.
+      - run: yarn test:signed-out
       # The outage banner has to stay silent when nothing is wrong, and a
       # client with no internet must not invent an outage.
       - run: yarn test:service-status

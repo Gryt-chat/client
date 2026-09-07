@@ -8,7 +8,9 @@ import {
   getPlacement,
   getServerRefreshToken,
   isSessionExpired,
+  isSignedOut,
   markChannelUnread,
+  markSignedOut,
   removeServerAccessToken,
   removeServerRefreshToken,
   resolveAnnounceLevel,
@@ -253,6 +255,27 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
           return;
         }
 
+        // Somebody signed this device out of this server, and nobody at this
+        // machine has said to come back. Refusing here rather than at each
+        // caller because this is the one thing every join needs: a dozen places
+        // emit `server:join`, and a thirteenth would quietly not be covered.
+        //
+        // The keypair is still on disk and the membership is still live, so
+        // answering would sign them straight back in -- which is exactly what
+        // happened on every restart before this. GRYT-987.
+        if (isSignedOut(host)) {
+          console.log(`[Auth:Socket] Not answering for ${host}: signed out on this device`);
+          setFailedServerDetails(prev => ({
+            ...prev,
+            [host]: {
+              error: "session_ended",
+              message: "You signed this device out. Sign in again to use this server here.",
+              timestamp: Date.now(),
+            },
+          }));
+          return;
+        }
+
         try {
           const { certificate, assertion, tier, link } = await answerChallenge(host, challenge);
           console.log(`[Auth:Socket] Answering as ${tier} identity`);
@@ -343,6 +366,10 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
           removeServerRefreshToken(host);
 
           if (plan.because === "deliberate") {
+            // Written down, so it survives the app closing. Without this the
+            // refusal lived only in `failedServerDetails` and the next launch
+            // rejoined with the keypair as if nothing had happened.
+            markSignedOut(host);
             toast.error(info?.message || `Your session on ${host} was ended.`);
             setFailedServerDetails(prev => ({
               ...prev,

@@ -91,6 +91,7 @@
     "test:appimage-location": "node scripts/check-appimage-location.mjs",
     "test:session-recovery": "node scripts/check-session-recovery.mjs",
     "test:member-moderation": "node scripts/check-member-moderation.mjs",
+    "test:signed-out": "node scripts/check-signed-out.mjs",
     "test:service-status": "node scripts/check-service-status.mjs"
   },
   "dependencies": {

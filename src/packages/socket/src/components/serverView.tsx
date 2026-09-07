@@ -3,7 +3,7 @@ import { useSFU } from "@gryt/voice";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
-import { clearMentions, getUploadsFileUrl, markChannelRead, useAccount, useMentionTracker, useUnreadTracker } from "@/common";
+import { clearMentions, clearSignedOut, getUploadsFileUrl, markChannelRead, useAccount, useMentionTracker, useUnreadTracker } from "@/common";
 import { useIsCompact, useIsMobile } from "@/mobile";
 import { useSettings } from "@/settings";
 import { SidebarItem } from "@/settings/src/types/server";
@@ -632,6 +632,15 @@ export const ServerView = () => {
         refusalHelpUrl={currentRefusalHelpUrl}
         onReconnect={() => reconnectServer(currentlyViewingServer.host)}
         onSignIn={() => void login()}
+        onResumeHere={() => {
+          // The one thing that lifts a sign-out, and it only ever comes from
+          // this button. Clearing has to come first: reconnecting triggers a
+          // challenge, and the handler refuses to answer while the note stands.
+          // The card goes on its own -- `server:details` landing clears the
+          // failure it is drawn from.
+          clearSignedOut(currentlyViewingServer.host);
+          reconnectServer(currentlyViewingServer.host);
+        }}
       />
     );
   }

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { singletonHook } from "@/common";
 import {
+  clearSignedOut,
   forgetHost,
   listHostExpectations,
   listPins,
@@ -210,6 +211,11 @@ function useServerManagementHook(): ServerManagement {
       if (focusNewServer) setShowDiscovery(false);
 
       const normalizedHost = normalizeHost(incomingServer.host);
+      // Adding a server is somebody at this machine asking for it, which is the
+      // only thing that lifts a sign-out. Without this, adding back a server
+      // you had signed this device out of would connect and then refuse to
+      // answer the challenge, with no way to say otherwise. GRYT-987.
+      clearSignedOut(normalizedHost);
       const normalizedIncoming: Server = {
         ...incomingServer,
         host: normalizedHost,
@@ -380,6 +386,7 @@ function useServerManagementHook(): ServerManagement {
         removeServerAccessToken(host);
         removeServerRefreshToken(host);
         forgetHost(host);
+        clearSignedOut(host);
       }
       newServers[normalizedKeep] = { ...survivor, token: inheritedToken };
       setServers(newServers);
@@ -462,6 +469,10 @@ function useServerManagementHook(): ServerManagement {
         removeServerAccessToken(host);
         removeServerRefreshToken(host);
         forgetHost(host);
+        // Nothing is left of this server here, so the note saying not to
+        // rejoin it has nothing to guard. Kept and it would silently block
+        // adding the server back months later. GRYT-987.
+        clearSignedOut(host);
       }
       setServers(newServers);
 
