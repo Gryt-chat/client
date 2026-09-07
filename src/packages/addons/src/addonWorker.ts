@@ -137,7 +137,18 @@ const gryt = {
   get theme(): ThemeInfo {
     return { ...theme };
   },
-  on(event: "themeChange", handler: (theme: ThemeInfo) => void): () => void {
+  /**
+   * Hear about something.
+   *
+   * `themeChange` when the app's appearance or accent changes, and `cleanup`
+   * when this plugin is being turned off — which is the only chance it gets to
+   * clear a status or stop a timer. Whatever it does not finish quickly enough
+   * happens anyway: the worker is terminated shortly after, from outside.
+   */
+  on(
+    event: "themeChange" | "cleanup",
+    handler: (payload: ThemeInfo | undefined) => void,
+  ): () => void {
     return on(event, handler as Handler);
   },
   /**
