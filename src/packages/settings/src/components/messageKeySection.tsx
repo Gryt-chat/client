@@ -28,6 +28,29 @@ import { phraseMatches } from "../../../socket/src/lib/confirmPhrase";
  */
 const RESET_PHRASE = "start again";
 
+// Adopting drops every server session and clears the derived keys, so sending
+// breaks until a restart, not only reading. GRYT-1068.
+function showAdoptedToast(lead: string): void {
+  toast.success(
+    () => (
+      <div className="flex flex-col gap-2" style={{ minWidth: 0 }}>
+        <span className="text-sm" style={{ lineHeight: 1.5 }}>
+          {lead} Gryt has to restart before it can send or read encrypted
+          messages again.
+        </span>
+        <Button
+          size="small"
+          style={{ alignSelf: "flex-end" }}
+          onClick={() => window.location.reload()}
+        >
+          Restart now
+        </Button>
+      </div>
+    ),
+    { duration: 30000 },
+  );
+}
+
 export function MessageKeySection() {
   const [vault, setVault] = useState<SealedVault | null | undefined>(undefined);
   const [open, setOpen] = useState<"set" | "use" | "reset" | null>(null);
@@ -90,7 +113,7 @@ export function MessageKeySection() {
       const sub = await getAccountProfile().then((p) => p.sub).catch(() => null);
       if (sub) rememberMessageKeyHere(sub);
       close();
-      toast.success("This device now uses your message key. Reload to see your conversations.");
+      showAdoptedToast("This device now uses your message key.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not open the sealed key.");
     } finally {
@@ -114,7 +137,7 @@ export function MessageKeySection() {
       if (sub) rememberMessageKeyHere(sub);
       setVault(sealed);
       close();
-      toast.success("New message key set. Older conversations stay unreadable.");
+      showAdoptedToast("New message key set. Older conversations stay unreadable.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not reset the message key.");
     } finally {
