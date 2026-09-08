@@ -1,8 +1,15 @@
 import { IconButton } from "@gryt/ui";
+import type { Icon } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 
 import { getGrytConfig } from "../config";
-import { PiWarningFill, PiX } from "../lib/icons";
+import {
+  PiCheckCircleFill,
+  PiInfoFill,
+  PiWarningCircleFill,
+  PiWarningFill,
+  PiX,
+} from "../lib/icons";
 import {
   type AnnouncementType,
   decideBanner,
@@ -19,6 +26,18 @@ const STATUS_PAGE = "https://status.gryt.chat";
 
 const GENERIC =
   "Can't reach Gryt's account services. You can keep using servers you're already in, but signing in or out won't work until this clears.";
+
+/**
+ * A glyph per severity. It was a triangle whatever the notice said, so an
+ * `information` notice arrived as an accent-coloured warning (GRYT-1052).
+ */
+const ICON: Record<AnnouncementType, Icon> = {
+  outage: PiWarningFill,
+  warning: PiWarningCircleFill,
+  information: PiInfoFill,
+  operational: PiCheckCircleFill,
+  none: PiInfoFill,
+};
 
 /** Gatus's own severities, so the banner and the status page agree on colour. */
 const TONE: Record<AnnouncementType, string> = {
@@ -50,6 +69,9 @@ export function ServiceStatusBanner() {
 
     let cancelled = false;
     let failures = 0;
+    /* Logged once per distinct reason. A feed that has been unreachable for a
+       week should say so, not sixty times an hour. */
+    let loggedReason = "";
 
     const check = async () => {
       /* The OS knows better than a failed fetch does. Someone on a train with
@@ -60,7 +82,19 @@ export function ServiceStatusBanner() {
         return;
       }
 
-      const announcement = await fetchAnnouncement();
+      const result = await fetchAnnouncement();
+
+      if (!result.ok && result.reason !== loggedReason) {
+        loggedReason = result.reason;
+        console.warn(
+          `Service status: cannot read the announcements feed — ${result.reason}`,
+        );
+      }
+      if (result.ok) loggedReason = "";
+
+      /* An unreadable feed is not an announcement, and not a reason to invent
+         one — the probe below decides that on its own evidence. */
+      const announcement = result.ok ? result.announcement : null;
 
       /* Only probe when nothing is announced — an announcement wins either
          way, so the request would change nothing. */
@@ -99,6 +133,9 @@ export function ServiceStatusBanner() {
     banner.kind === "announced" ? banner.announcement.message : GENERIC;
   const tone =
     banner.kind === "announced" ? TONE[banner.announcement.type] : "warning";
+  /* Not reachable is a warning whatever else is going on. */
+  const Glyph =
+    banner.kind === "announced" ? ICON[banner.announcement.type] : PiWarningFill;
 
   if (message === dismissed) return null;
 
@@ -112,7 +149,7 @@ export function ServiceStatusBanner() {
         borderBottom: `1px solid color-mix(in oklab, var(--gryt-${tone}-9) 20%, transparent)`,
       }}
     >
-      <PiWarningFill
+      <Glyph
         size={14}
         style={{ flexShrink: 0, color: `var(--gryt-${tone}-11)` }}
       />
