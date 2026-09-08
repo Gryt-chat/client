@@ -28,6 +28,7 @@ import {
   localPeerPinStore,
   type MemberKeyState,
   ownDmPublicKey,
+  readSealedVault,
 } from "@/common";
 import {
   Server,
@@ -36,6 +37,7 @@ import {
   Servers,
 } from "@/settings/src/types/server";
 
+import { type DmKeyFix, showDmKeyWarning } from "../components/dmKeyWarningToast";
 import { MemberInfo } from "../components/MemberSidebar";
 import {
   applyCallMemberships,
@@ -110,6 +112,54 @@ const DM_KEY_WARNING_DELAY_MS = 5000;
 
 /** Pending warnings, per host, so a resolution can cancel one before it shows. */
 const dmKeyWarningTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+/**
+ * A dismissal that holds.
+ *
+ * The warning is re-armed from every `members:list`, and one of those arrives
+ * whenever anybody joins or leaves. Dismissing it therefore bought a few
+ * seconds of quiet and no more, which is why it read as impossible to get rid
+ * of. Cleared again the moment the mismatch stops, in the branch below.
+ *
+ * Per device rather than per account: the key it is about is this device's.
+ */
+const DM_KEY_DISMISSED_PREFIX = "gryt_dm_key_warning_dismissed:";
+
+function dmKeyWarningDismissed(host: string): boolean {
+  try {
+    return localStorage.getItem(`${DM_KEY_DISMISSED_PREFIX}${host}`) === "1";
+  } catch {
+    // No storage. Showing it is the safe direction for a warning.
+    return false;
+  }
+}
+
+function rememberDmKeyWarningDismissed(host: string): void {
+  try {
+    localStorage.setItem(`${DM_KEY_DISMISSED_PREFIX}${host}`, "1");
+  } catch {
+    /* Then it comes back next launch, which is a nuisance and not a bug. */
+  }
+}
+
+function forgetDmKeyWarningDismissed(host: string): void {
+  try {
+    localStorage.removeItem(`${DM_KEY_DISMISSED_PREFIX}${host}`);
+  } catch {
+    /* as above */
+  }
+}
+
+/** What this device can do about a mismatch, asked of the account. */
+async function dmKeyFix(): Promise<DmKeyFix> {
+  try {
+    return (await readSealedVault()) ? "unlock" : "set-up";
+  } catch {
+    // Not signed in, or the account would not answer. Neither button would
+    // work, so neither is offered.
+    return "none";
+  }
+}
 
 export function registerServerSocketEvents(socket: Socket, host: string, ctx: ServerEventContext) {
   /**
@@ -738,17 +788,26 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
         const pending = dmKeyWarningTimers.get(host);
 
         if (myId && states[myId]?.ownKeyRewritten) {
-          if (pending === undefined) {
+          if (pending === undefined && !dmKeyWarningDismissed(host)) {
             dmKeyWarningTimers.set(
               host,
               setTimeout(() => {
                 dmKeyWarningTimers.delete(host);
-                toast.error(
-                  `${serversRef.current[host]?.name || host} has a message key this device did not publish. ` +
-                    `That usually means you signed in on another device — restore your recovery phrase in Settings so both use the same key. ` +
-                    `If you have not, treat direct messages here as readable by the server.`,
-                  { id: toastId, duration: Infinity },
-                );
+                /* Which repair to offer depends on the account, so it is asked
+                   here rather than guessed: a sealed copy means this device can
+                   take it, and no sealed copy means there is nothing for a
+                   second device to take yet. A guest, or a request that fails,
+                   gets the warning with no button rather than one that leads
+                   somewhere useless. */
+                void dmKeyFix().then((fix) => {
+                  if (dmKeyWarningDismissed(host)) return;
+                  showDmKeyWarning({
+                    id: toastId,
+                    serverName: serversRef.current[host]?.name || host,
+                    fix,
+                    onDismiss: () => rememberDmKeyWarningDismissed(host),
+                  });
+                });
               }, DM_KEY_WARNING_DELAY_MS),
             );
           }
@@ -757,6 +816,9 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
             clearTimeout(pending);
             dmKeyWarningTimers.delete(host);
           }
+          /* The mismatch is gone, so an earlier dismissal has done its job. If
+             it ever comes back it is news again, and should say so. */
+          forgetDmKeyWarningDismissed(host);
           toast.dismiss(toastId);
         }
       })

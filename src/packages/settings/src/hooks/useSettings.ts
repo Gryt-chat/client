@@ -553,6 +553,25 @@ function useSettingsHook() {
     setShowSettings(true);
   }
 
+  /**
+   * The same thing, for code that is not in the React tree.
+   *
+   * The socket layer is plain modules and cannot reach this hook, so a warning
+   * raised there could only ever tell somebody to go and find the setting
+   * themselves. `server_settings_open` beside it already works this way for a
+   * server's own settings.
+   */
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const tab = (event as CustomEvent<{ tab?: string }>).detail?.tab;
+      setSettingsTab(tab || "appearance");
+      setShowSettings(true);
+    };
+
+    window.addEventListener("user_settings_open", handler);
+    return () => window.removeEventListener("user_settings_open", handler);
+  }, []);
+
   function updateOfficialServerHidden(hidden: boolean) {
     setOfficialServerHiddenState(hidden);
     setUserValue("officialServerHidden", hidden);
