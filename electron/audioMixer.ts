@@ -1,15 +1,6 @@
 /**
- * Sums the PCM coming out of several capture processes into one stream.
- *
- * Capturing more than one application means one child process per application
- * — WASAPI process loopback activates against a single PID — and the renderer
- * still wants a single track. Mixing here rather than in the renderer keeps
- * @gryt/voice out of it: its `useNativeAudioCapture` reads one `native-audio-data`
- * channel and does not need to know how many sources are behind it.
- *
- * Every source produces the same format, which is what the capture binaries
- * are written to emit: 48 kHz, 16-bit signed, stereo, little endian. Nothing
- * here resamples.
+ * Sums the PCM coming out of several capture processes into one stream, so
+ * @gryt/voice reads one channel. Every source is 48 kHz, 16-bit, stereo, LE.
  */
 
 /** 48 kHz stereo 16-bit: 4 bytes a frame, 1920 bytes for 10 ms. */
@@ -18,11 +9,7 @@ export const MIX_CHUNK_BYTES = 1920;
 
 /**
  * How far a source is allowed to run ahead before the oldest audio is dropped.
- *
- * Each capture process has its own clock and they drift, so a source that runs
- * fast would otherwise grow its queue forever and be heard later and later
- * behind the others. 100 ms is enough to ride out scheduling hiccups and short
- * enough that dropping is better than the latency.
+ * Each capture process has its own clock, and a fast one would grow forever.
  */
 export const MAX_QUEUED_BYTES = MIX_CHUNK_BYTES * 10;
 
@@ -81,12 +68,8 @@ export class AudioMixer {
   }
 
   /**
-   * The mixed audio that is ready, in whole chunks.
-   *
-   * A source with less than a chunk queued contributes what it has and silence
-   * for the rest, rather than holding everyone else up: the capture processes
-   * are not in lockstep and one being a few milliseconds late is normal.
-   * Returns null when no source has a full chunk to give.
+   * The mixed audio that is ready, in whole chunks. A source with less than a
+   * chunk contributes silence rather than holding everyone else up.
    */
   pull(): Buffer | null {
     if (this.sources.size === 0) return null;

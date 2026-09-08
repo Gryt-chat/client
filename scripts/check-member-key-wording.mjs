@@ -1,16 +1,8 @@
 /* eslint-env node */
 
 /**
- * What the card says about a key, and about a key that changed (GRYT-728).
- *
- * Both of these are wrong in ways that look fine. A boundary off by one reads
- * "Same key for 0 days" to somebody who pinned it an hour ago. A sentence that
- * picks a cause tells a person their peer got a new phone, when the same event
- * is what a server substituting a key produces — and that is the reassuring
- * half of a guess this client cannot make.
- *
- * `describePin` takes a timestamp and compares it to now, so every case here is
- * expressed as an offset from `Date.now()` at the moment of the call.
+ * What the card says about a key, and about a key that changed. Both are wrong in
+ * ways that look fine — an off-by-one boundary, or a guessed cause (GRYT-728).
  */
 
 import assert from "node:assert/strict";
@@ -32,10 +24,8 @@ assert.equal(describePin(ago(DAY)), "Same key since yesterday");
 assert.equal(describePin(ago(2 * DAY)), "Same key for 2 days");
 
 /*
- * Never "0 days" and never "1 days". Those are the two the arithmetic produces
- * on its own if the branches above are dropped, and both look like a bug to
- * whoever reads them at exactly the moment they are deciding whether to trust
- * somebody.
+ * Never "0 days" and never "1 days" — the two the arithmetic produces on its own,
+ * read at exactly the moment somebody is deciding whether to trust a person.
  */
 for (let ms = 0; ms < 40 * DAY; ms += DAY / 4) {
   const said = describePin(ago(ms));
@@ -66,10 +56,8 @@ assert.ok(!describePin(ago(400 * DAY)).includes("days"),
     assert.ok(said.endsWith("."), `"${said}" is a sentence somebody reads`);
 
     /*
-     * No cause, in either direction. "They probably" and "may have" are the
-     * shapes that creep in, and both of them are this client claiming to know
-     * something it cannot: a restored seed and a substituted key are the same
-     * event from here.
+     * No cause, in either direction. "They probably" and "may have" both claim
+     * something this client cannot know.
      */
     for (const guess of [
       "probably",

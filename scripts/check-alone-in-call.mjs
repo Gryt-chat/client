@@ -1,17 +1,8 @@
 /* eslint-env node */
 
 /**
- * The countdown that ends a call nobody else is in (GRYT-711).
- *
- * The boundaries are the whole of this. A notice that appears a second late is
- * invisible against a thirty-second window; one that ends at one instead of
- * zero hangs up while the screen still says there is a second left; one that
- * never reaches `ended` leaves the call up until the SFU drops the socket,
- * which is the behaviour this was written to replace. None of those fail to
- * compile and none of them look wrong in the source.
- *
- * The rest of the hook is React and a `setInterval`. What is asserted here is
- * the part that decides, driven a second at a time.
+ * The countdown that ends a call nobody else is in. The boundaries are the whole
+ * of this, and none of the ways to get them wrong look wrong (GRYT-711).
  */
 
 import assert from "node:assert/strict";
@@ -74,10 +65,8 @@ console.log(
 /* ── The SFU's number, when it sent one (GRYT-715) ───────────────────────── */
 
 /**
- * `ALONE_SECONDS` is now the fallback rather than the timeout. An SFU that
- * carries GRYT-715 sends its own in `room_joined`, and an operator who raised
- * `SFU_CALL_ALONE_TIMEOUT` used to get a client that hung up early on a call
- * the SFU was still keeping.
+ * `ALONE_SECONDS` is now the fallback rather than the timeout. An operator who
+ * raised `SFU_CALL_ALONE_TIMEOUT` used to get a client that hung up early.
  */
 const FIVE_MINUTES = 300;
 
@@ -105,9 +94,8 @@ assert.equal(
 /* ── And when the operator turned the sweep off ──────────────────────────── */
 
 /**
- * `SFU_CALL_ALONE_TIMEOUT=0`. Nothing is counting on the other end, so nothing
- * counts here. A client that hung up after two minutes anyway ended a call the
- * SFU was happy to keep, for a reason nobody watching could see.
+ * `SFU_CALL_ALONE_TIMEOUT=0`. Nothing counts on the other end, so nothing counts
+ * here — hanging up anyway ended a call the SFU was happy to keep.
  */
 for (const alone of [0, WARN_SECONDS, ALONE_SECONDS, ALONE_SECONDS * 10]) {
   assert.deepEqual(

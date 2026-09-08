@@ -1,18 +1,8 @@
 /* eslint-env node */
 
 /**
- * Sealing the identity seed so it can follow somebody to a second device
- * (GRYT-783).
- *
- * This is the file that decides whether the stored ciphertext is worth
- * anything. The blob is meant to sit on a server, handed back after
- * authentication, so the interesting failures are the quiet ones: a wrong
- * secret that opens it anyway, a blob that can be opened as something it is
- * not, or a "seal" that returns the seed in a form somebody could read off the
- * wire.
- *
- * Run against the real module rather than a copy — Node strips the types on
- * import, which is why these live in .mjs and the source stays .ts.
+ * Sealing the identity seed so it can follow somebody to a second device. The
+ * interesting failures are the quiet ones (GRYT-783).
  */
 
 import assert from "node:assert/strict";
@@ -66,8 +56,7 @@ const same = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
 // ── every stored field is authenticated ─────────────────────────────────────
 {
   // AES-GCM covers the ciphertext, and the associated data covers the rest.
-  // Without that a server holding the blob could change the iteration count or
-  // the salt and see what happened.
+  // Without it a server holding the blob could change the iteration count.
   for (const field of ["data", "iv", "salt"]) {
     const sealed = await sealSeed(SEED, SECRET, "password");
     const bytes = [...atob(sealed[field].replace(/-/g, "+").replace(/_/g, "/"))].map((c) => c.charCodeAt(0));
@@ -81,9 +70,8 @@ const same = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
 
 // ── a backup file cannot be opened as a vault, or the other way round ───────
 {
-  // Same shape, same algorithm, same passphrase. The only thing keeping them
-  // apart is the associated data, so this is the test that proves it is doing
-  // something.
+  // Same shape, same algorithm, same passphrase. Only the associated data keeps
+  // them apart, so this is the test that proves it is doing something.
   const sealed = await sealSeed(SEED, SECRET, "password");
   const asBackup = JSON.parse(await lockBackup(JSON.stringify({ hello: "world" }), SECRET));
 

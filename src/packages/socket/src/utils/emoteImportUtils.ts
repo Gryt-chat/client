@@ -1,10 +1,6 @@
 /**
- * The bits of importing emotes that do not care where they came from.
- *
- * BetterTTV and emoji.gg differ in exactly four places — how a link is
- * recognised, how a listing is fetched, where the preview image lives, and
- * which proxy the file is downloaded through. Those four are described in
- * emoteImportSources.ts; everything after them is written once here.
+ * The bits of importing emotes that do not care where they came from. The four
+ * places the sources differ are in emoteImportSources.ts.
  */
 export const EMOJI_NAME_RE = /^[A-Za-z0-9_]{2,32}$/;
 
@@ -113,12 +109,8 @@ export async function downloadAsFileWithProgress({
 }
 
 /**
- * Which of two emotes claiming one name should win: animated, every time.
- *
- * Sites hosting emoji often carry a still and an animated version under names
- * that sanitise to the same shortcode — an emoji.gg pack lists `pepe_pizza.gif`
- * beside `pepe_pizza.png` — and taking whichever came last imported a frozen
- * frame. You can always look at a GIF's first frame; you cannot animate a PNG.
+ * Which of two emotes claiming one name should win: animated, every time. You can
+ * always look at a GIF's first frame; you cannot animate a PNG.
  */
 export function preferredOfDuplicates<T extends { animated: boolean }>(
   current: T | undefined,

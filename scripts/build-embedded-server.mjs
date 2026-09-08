@@ -1,4 +1,5 @@
 /* eslint-env node */
+
 /**
  * Builds the embedded server resources, SFU for this platform only.
  * Usage: node scripts/build-embedded-server.mjs [--skip-sfu|--skip-server|--skip-worker]
@@ -129,8 +130,7 @@ if (ifMissing) {
 
   /**
    * Present is not current: skipping on existence alone built the output once and
-   * never again, however far the submodules moved. Only what moved is rebuilt,
-   * because the Go build is the slow part.
+   * never again. Only what moved is rebuilt, because the Go build is slow.
    */
   const built = readBuiltVersions();
   const stale = (have, builtVersion, dir) =>
@@ -370,9 +370,8 @@ if (skipWorker) {
 }
 
 /**
- * The embedded server fell back to "1.0.0" and looked permanently out of date.
- * Only what was built moves: a skipped component keeps its old version, or the
- * next run believes the old binary is current and skips it forever.
+ * The embedded server fell back to "1.0.0" and looked out of date. Only what was
+ * built moves, or the next run believes an old binary is current.
  */
 const previous = readBuiltVersions();
 const versionFor = (skipped, dir, prior) => {

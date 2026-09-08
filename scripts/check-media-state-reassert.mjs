@@ -1,25 +1,8 @@
 /* eslint-env node */
 
 /**
- * The client says the camera and the screen share are still on, after a
- * reconnect that did not move either (GRYT-612).
- *
- * `clientsInfo` on the server is keyed by socket id, so a reconnect hands the
- * client a fresh entry with `cameraEnabled` and `screenShareEnabled` back at
- * their defaults. The two effects that would correct that are keyed on the
- * camera and screen streams, the connection flag and the sockets map, and a
- * reconnect moves none of them — socket.io reuses the same Socket instance, so
- * even the map holds. The media itself never stopped either, because the
- * signalling socket is not the media path. So the room saw a camera that was
- * still sending as off.
- *
- * GRYT-644 fixed the same shape for mute, deafen and AFK, and that half had a
- * grace-period stash on the server behind it. Camera and screen share are never
- * stashed, so the client re-asserting them is the only thing that puts them
- * back. `check-voice-state-reassert.mjs` covers the other half.
- *
- * A source check, for the same reason that one is: the failure is an effect
- * that does not re-run, which no test of a pure function can see.
+ * The client says the camera and the screen share are still on, after a reconnect
+ * that did not move either. A source check: the failure is an effect (GRYT-612).
  */
 
 import assert from "node:assert/strict";
@@ -72,11 +55,8 @@ const listener = controls.slice(
 );
 assert.ok(listener.length > 0, "could not find the reconnect listener — this check needs rewriting");
 
-// Waited for, not raced. Both handlers are permission-gated and a socket that
-// has just reconnected holds no cached permissions until session:restore
-// finishes, so sending on the reconnect itself is answered `forbidden` — the
-// one error the client does not retry. The grant cannot be issued without
-// join_voice, so it is proof the permissions are there.
+// Waited for, not raced: a just-reconnected socket holds no cached permissions
+// until session:restore finishes, so sending early is answered `forbidden`.
 assert.match(
   listener,
   /once\("voice:room:granted"/,
@@ -94,9 +74,8 @@ assert.match(
   "the screen state is not re-sent on reconnect",
 );
 
-// Filtered to the server that reconnected. The event carries a host and a
-// client can hold sockets to several servers at once, so an unfiltered
-// listener would tell every one of them about a camera on one.
+// Filtered to the server that reconnected. A client can hold sockets to several,
+// so an unfiltered listener would tell every one about a camera on one.
 assert.match(
   listener,
   /detail\?\.host && detail\.host !== host/,
