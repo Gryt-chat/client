@@ -1,6 +1,6 @@
 import { Button, Divider, IconButton } from "@gryt/ui";
 import type { ReactNode } from "react";
-import { Fragment, useEffect } from "react";
+import { Fragment, useEffect, useLayoutEffect, useRef } from "react";
 
 import { PiChatsFill, PiX } from "../../../../lib/icons";
 import type { ChatMessage } from "./chatUtils";
@@ -41,6 +41,12 @@ interface ThreadPanelProps {
    * permission gates and the upload limits — all of which ChatView holds.
    */
   renderComposer: () => ReactNode;
+  /** There is a page older than the first reply shown. */
+  hasOlder?: boolean;
+  /** One is already on its way. */
+  loadingOlder?: boolean;
+  /** Ask for it. Called when the list is scrolled near its top. */
+  onLoadOlder?: () => void;
   onClose: () => void;
   onSetStatus?: (status: "open" | "solved" | "closed") => void;
   /** The channel's tag palette. Empty on a plain chat thread. */
@@ -48,7 +54,7 @@ interface ThreadPanelProps {
   onSetTags?: (tagIds: string[]) => void;
 }
 
-export function ThreadPanel({ thread, root, messages, loading, renderMessage, renderComposer, onClose, onSetStatus, forumTags = [], onSetTags }: ThreadPanelProps) {
+export function ThreadPanel({ thread, root, messages, loading, renderMessage, renderComposer, hasOlder, loadingOlder, onLoadOlder, onClose, onSetStatus, forumTags = [], onSetTags }: ThreadPanelProps) {
   // Escape closes the panel. Without it the only way out is the ×, which sits
   // next to "Mark solved" — and a miss there changes the topic's state.
   useEffect(() => {
@@ -58,6 +64,36 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  /*
+   * Hold the anchor across a prepend.
+   *
+   * Older replies go in above what is on screen, so the browser keeps the same
+   * scrollTop and the content under the pointer jumps down by the height of
+   * whatever arrived. Measured before the paint and corrected after, which is
+   * what the channel's scroll hook does for the same reason.
+   */
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const anchorRef = useRef<number | null>(null);
+  const firstIdRef = useRef<string | null>(null);
+
+  const onScroll = () => {
+    const el = scrollRef.current;
+    if (!el || !onLoadOlder || !hasOlder || loadingOlder) return;
+    if (el.scrollTop > 120) return;
+    anchorRef.current = el.scrollHeight - el.scrollTop;
+    onLoadOlder();
+  };
+
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    const firstId = messages[0]?.message_id ?? null;
+    const grew = anchorRef.current !== null && firstId !== firstIdRef.current;
+    firstIdRef.current = firstId;
+    if (!el || !grew) return;
+    el.scrollTop = el.scrollHeight - anchorRef.current!;
+    anchorRef.current = null;
+  }, [messages]);
 
   return (
     <aside
@@ -148,7 +184,17 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
         </div>
       )}
 
-      <div style={{ flex: 1, overflowY: "auto", paddingBottom: 8 }}>
+      {/* Over the list rather than in it. Inside the scroller it added its own
+          height while loading and took it away after, which moved the anchored
+          content by exactly the banner — 32px of drift on a page that was
+          otherwise held still. */}
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        {loadingOlder && (
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-1 py-2 text-center text-xs text-gryt-muted">
+            Loading older replies…
+          </div>
+        )}
+        <div ref={scrollRef} onScroll={onScroll} style={{ flex: 1, overflowY: "auto", paddingBottom: 8 }}>
         {root && (
           <div className="mb-1 border-b border-gryt-border pb-1.5">
             {renderMessage(root)}
@@ -163,6 +209,7 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
             <Fragment key={m.message_id}>{renderMessage(m)}</Fragment>
           ))
         )}
+        </div>
       </div>
 
       {/* The channel's own editor, so a reply can carry a file, name somebody

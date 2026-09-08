@@ -33,6 +33,10 @@ interface OpenThread {
   root: ChatMessage | null;
   messages: ChatMessage[];
   loading: boolean;
+  /** Whether there is a page older than the first message held. */
+  hasOlder: boolean;
+  /** A page is on its way, so the scroll handler does not ask twice. */
+  loadingOlder: boolean;
 }
 
 // The slice of a socket.io client this hook touches, so nothing has to be typed
@@ -62,6 +66,8 @@ export interface UseThreadsResult {
   closeThread: () => void;
   /** Files go up the same way a channel's do; nothing here is sealed. */
   sendReply: (text: string, files?: File[], replyToMessageId?: string) => void;
+  /** Fetch the page before the oldest reply held. No-op when there is none. */
+  loadOlder: () => void;
   /** Set the open topic's tags. The server gates who may, and drops unknown ids. */
   setTags: (tagIds: string[]) => void;
   /** Mark the open topic open / solved / closed. The server gates who may. */
@@ -103,8 +109,8 @@ export function useThreads(
     if (!socket || !conversationId) return;
 
     const fetchThread = (thread: ThreadSummary) => {
-      setOpen({ thread, root: null, messages: [], loading: true });
-      openRef.current = { thread, root: null, messages: [], loading: true };
+      setOpen({ thread, root: null, messages: [], loading: true, hasOlder: false, loadingOlder: false });
+      openRef.current = { thread, root: null, messages: [], loading: true, hasOlder: false, loadingOlder: false };
       socket.emit("thread:fetch", { conversationId, threadId: thread.thread_id });
     };
 
@@ -141,12 +147,50 @@ export function useThreads(
       if (openRef.current?.thread.thread_id === p.thread_id) setOpen(null);
     };
 
-    const onHistory = (p: { conversation_id: string; thread: ThreadSummary; root: ChatMessage | null; items: ChatMessage[] }) => {
+    const onHistory = (p: {
+      conversation_id: string;
+      thread: ThreadSummary;
+      root: ChatMessage | null;
+      items: ChatMessage[];
+      hasMore?: boolean;
+      before?: string;
+    }) => {
       if (p.conversation_id !== conversationId) return;
       if (openRef.current?.thread.thread_id !== p.thread.thread_id) return;
-      // Merged like thread:updated: history carries the thread, but not the
-      // tags the forum index already knew about.
-      setOpen((o) => ({ thread: { ...o?.thread, ...p.thread }, root: p.root, messages: p.items ?? [], loading: false }));
+      const items = p.items ?? [];
+      setOpen((o) => {
+        // Merged like thread:updated: history carries the thread, but not the
+        // tags the forum index already knew about.
+        const thread = { ...o?.thread, ...p.thread } as ThreadSummary;
+
+        /* A page fetched with `before` goes in front of what is held; the
+           first page replaces it. Without the distinction, scrolling back
+           threw away everything newer than the page that just arrived. */
+        if (p.before && o) {
+          const known = new Set(o.messages.map((m) => m.message_id));
+          const older = items.filter((m) => !known.has(m.message_id));
+          return {
+            ...o,
+            thread,
+            // The root rides on the first page only, so an older page must not
+            // blank the topic sitting above the divider.
+            root: o.root,
+            messages: [...older, ...o.messages],
+            loading: false,
+            loadingOlder: false,
+            hasOlder: p.hasMore ?? false,
+          };
+        }
+
+        return {
+          thread,
+          root: p.root,
+          messages: items,
+          loading: false,
+          loadingOlder: false,
+          hasOlder: p.hasMore ?? false,
+        };
+      });
     };
 
     // A thread reply arrives as an ordinary chat:new carrying a thread_id. It is
@@ -286,8 +330,8 @@ export function useThreads(
     // Already threaded — just open it.
     const existing = summaries[message.message_id];
     if (existing) {
-      setOpen({ thread: existing, root: null, messages: [], loading: true });
-      openRef.current = { thread: existing, root: null, messages: [], loading: true };
+      setOpen({ thread: existing, root: null, messages: [], loading: true, hasOlder: false, loadingOlder: false });
+      openRef.current = { thread: existing, root: null, messages: [], loading: true, hasOlder: false, loadingOlder: false };
       socket.emit("thread:fetch", { conversationId, threadId: existing.thread_id });
       return;
     }
@@ -299,16 +343,16 @@ export function useThreads(
     const socket = asSocket(socketConnection);
     const summary = summaries[rootMessageId];
     if (!socket || !summary) return;
-    setOpen({ thread: summary, root: null, messages: [], loading: true });
-    openRef.current = { thread: summary, root: null, messages: [], loading: true };
+    setOpen({ thread: summary, root: null, messages: [], loading: true, hasOlder: false, loadingOlder: false });
+    openRef.current = { thread: summary, root: null, messages: [], loading: true, hasOlder: false, loadingOlder: false };
     socket.emit("thread:fetch", { conversationId, threadId: summary.thread_id });
   }, [socketConnection, conversationId, summaries]);
 
   const openSummary = useCallback((summary: ThreadSummary) => {
     const socket = asSocket(socketConnection);
     if (!socket) return;
-    setOpen({ thread: summary, root: null, messages: [], loading: true });
-    openRef.current = { thread: summary, root: null, messages: [], loading: true };
+    setOpen({ thread: summary, root: null, messages: [], loading: true, hasOlder: false, loadingOlder: false });
+    openRef.current = { thread: summary, root: null, messages: [], loading: true, hasOlder: false, loadingOlder: false };
     socket.emit("thread:fetch", { conversationId, threadId: summary.thread_id });
   }, [socketConnection, conversationId]);
 
@@ -421,5 +465,30 @@ export function useThreads(
     })();
   }, [socketConnection, conversationId, serverHost, currentUserId, currentUserNickname]);
 
-  return { summaries, open, startThread, openThread, openSummary, closeThread, sendReply, setTags, setStatus };
+  /**
+   * Ask for the page before the oldest reply held.
+   *
+   * A no-op while one is in flight or when the last page came back short — the
+   * scroll handler fires on every frame of a flick, and without the guard a
+   * fast scroll to the top would send a dozen identical fetches.
+   *
+   * Against a server that predates the cursor, `before` is ignored and the
+   * whole thread comes back as a first page. That is what happens today, so an
+   * old server is no worse off.
+   */
+  const loadOlder = useCallback(() => {
+    const socket = asSocket(socketConnection);
+    const cur = openRef.current;
+    if (!socket || !cur || cur.loadingOlder || !cur.hasOlder) return;
+    const oldest = cur.messages[0];
+    if (!oldest) return;
+    setOpen((o) => (o ? { ...o, loadingOlder: true } : o));
+    socket.emit("thread:fetch", {
+      conversationId,
+      threadId: cur.thread.thread_id,
+      before: new Date(oldest.created_at).toISOString(),
+    });
+  }, [socketConnection, conversationId]);
+
+  return { summaries, open, startThread, openThread, openSummary, closeThread, sendReply, setTags, setStatus, loadOlder };
 }
