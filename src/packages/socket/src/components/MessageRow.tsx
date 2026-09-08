@@ -175,6 +175,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
     onOpenThread: threadSummary && onOpenThread ? () => onOpenThread(m.message_id) : undefined,
     onStartThread: !threadSummary && onStartThread && !m.pending && !m.failed ? () => onStartThread(m) : undefined,
     replyCount: threadSummary?.reply_count,
+    unreadCount: threadUnread,
   };
 
   /**
@@ -581,6 +582,7 @@ function MessageContent({
   threadMentions?: number;
 }) {
   const hasReactions = !!(m.reactions && m.reactions.length > 0);
+  const hasThreadNews = (threadUnread ?? 0) > 0 || (threadMentions ?? 0) > 0;
   const sealedNote = sealedPlaceholder(m);
   return (
     <motion.div
@@ -768,7 +770,14 @@ function MessageContent({
             display: "inline-flex", alignItems: "center", gap: 6, marginTop: 4, alignSelf: "flex-start",
             userSelect: "none",
             background: "none", border: "none", cursor: "pointer", padding: "3px 7px",
-            borderRadius: "var(--gryt-radius-sm)", color: "var(--gryt-accent-11)", fontSize: 12.5, fontWeight: 700,
+            borderRadius: "var(--gryt-radius-sm)",
+            /* Accent only when there is something in there to read. It used to
+               be accent either way, so a channel with fifteen threads drew
+               fifteen accent lines and none of them meant anything — and the
+               forum's topic rows, which carry the same counts, are neutral
+               with the badge doing the talking (GRYT-1026). */
+            color: hasThreadNews ? "var(--gryt-accent-11)" : "var(--gryt-neutral-11)",
+            fontSize: 12.5, fontWeight: 700,
           }}
           onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gryt-neutral-4)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
