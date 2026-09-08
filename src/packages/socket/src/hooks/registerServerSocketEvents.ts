@@ -54,22 +54,12 @@ import { syncAvatarToHost } from "../utils/syncAvatarToHost";
 const TOKEN_HEAL_COOLDOWN_MS = 10_000;
 const tokenHealLastAttempt = new Map<string, number>();
 
-/**
- * Our own serverUserId per host, learned from `clients:update`.
- *
- * The member list identifies people by serverUserId and carries the nickname
- * the server actually holds, but nothing in it says which entry is you. This is
- * how the two are joined up.
- */
+/** The member list identifies people by serverUserId but says nothing about
+    which entry is you, so this is how the two are joined up. */
 const myServerUserIdByHost = new Map<string, string>();
 
-/**
- * What `firstTimeOnThisSocket` is asked about below (GRYT-758). `server:joined`
- * fires only from `server:verify`, which a client holding a token never
- * reaches — so keyed on that, every existing member published no DM key and
- * encrypted DMs were on for new members only, with nothing erroring.
- * `server:details` is the one signal both routes produce.
- */
+/** `server:joined` fires only from `server:verify`, which a client holding a
+    token never reaches, so `server:details` is the signal both routes produce. */
 const DM_KEY = "dm-key";
 
 function canAttemptTokenHeal(host: string): boolean {
@@ -101,13 +91,8 @@ export interface ServerEventContext {
   setIsServerDeafened: (value: boolean) => void;
 }
 
-/**
- * How long a key mismatch has to persist before it is worth telling somebody.
- *
- * Long enough that our own publish, and the member list the server broadcasts
- * after it, have both landed. Short enough that a genuine mismatch is not
- * hidden for any length of time.
- */
+/** Long enough for our publish and the member list after it to land, short
+    enough that a genuine mismatch is not hidden. */
 const DM_KEY_WARNING_DELAY_MS = 5000;
 
 /** Pending warnings, per host, so a resolution can cancel one before it shows. */
@@ -162,14 +147,8 @@ async function dmKeyFix(): Promise<DmKeyFix> {
 }
 
 export function registerServerSocketEvents(socket: Socket, host: string, ctx: ServerEventContext) {
-  /**
-   * Who is in each call on this server, as last heard.
-   *
-   * Held here rather than in state because nothing renders it directly. It has
-   * to be remembered rather than applied once: the next `server:clients`
-   * arrives with the conversation id blanked out again, so this is re-applied
-   * on every one of them.
-   */
+  /** Remembered rather than applied once: the next `server:clients` arrives with
+      the conversation id blanked again, so this is re-applied to each. */
   let callMemberships: CallMemberships = {};
 
   const { nickname, userIdRef, servers, serversRef, lastInviteJoinAttemptRef, myVoiceStateByHostRef } = ctx;
@@ -192,14 +171,8 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     });
   });
 
-  /*
-   * Where you have been named and have not read it.
-   *
-   * The server answers the whole list rather than a count, and on the same
-   * event name for both the question and a "these are read now" — so this one
-   * handler covers both, and two windows belonging to the same person cannot
-   * disagree about what is left.
-   */
+  /* One event name for both the question and the answer, so one handler covers
+     both and two windows cannot disagree about what is left. */
   socket.on(
     "mentions:list",
     (payload: {
@@ -207,12 +180,8 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       mentions?: Array<{ conversation_id?: string; thread_id?: string | null }>;
     }) => {
       setMentionCounts(host, payload?.counts ?? {});
-      /* A naming inside a thread counts on the channel as well, which is how
-         somebody notices it. This is the second half, keyed by thread, which is
-         how they find it (GRYT-1012).
-         Built from the rows rather than the `threadCounts` the server sends
-         beside them: those are keyed by thread alone, and the store needs the
-         conversation to know how much of a channel's count it is holding. */
+      /* Built from the rows rather than the counts beside them, which are keyed by
+         thread alone and cannot say how much of a channel's count they hold. */
       setThreadMentionCounts(host, payload?.mentions ?? []);
     },
   );
@@ -224,23 +193,14 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
   });
 
   socket.on("server:details", (data: serverDetails) => {
-    /* Recorded here because this is where the sidebar arrives, and the socket
-       layer that decides whether a message makes a noise has no other way to
-       know which folder a channel is in. Before the join check below, since the
-       placement is worth having even on a payload this handler goes on to bail
-       out of, and it costs a map of ids. */
+    /* Where the sidebar arrives, and the layer deciding whether a message makes a
+       noise has no other way to know a channel's folder. Before the join check. */
     if (Array.isArray(data.sidebar_items)) {
       rememberPlacements(host, data.sidebar_items);
     }
 
-    /* Everything this server is running, and what each one may do (GRYT-939,
-       GRYT-941). For a client plugin finding its other half, and for showing
-       somebody what sits between them and the people they are talking to.
-
-       Replaced rather than merged, so a plugin the operator removed stops being
-       listed on the next details. Read defensively because a server too old to
-       say sends nothing, and an entry with no capabilities is a plugin that
-       declared none rather than one that would not say. */
+    /* Replaced rather than merged, so a removed plugin stops being listed on the
+       next details. A server too old to say sends nothing. */
     setAnnouncedPlugins(
       host,
       Array.isArray(data.server_info?.plugins)
@@ -253,9 +213,8 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
               name: typeof p.name === "string" ? p.name : p.id,
               author: typeof p.author === "string" ? p.author : undefined,
               description: typeof p.description === "string" ? p.description : undefined,
-              /* Already checked to be http(s) by the server. Checked again on
-                 the way in, because a link somebody clicks is worth not taking
-                 on trust from a server they may have joined by accident. */
+              /* Checked again on the way in: a link somebody clicks is not worth
+                 taking on trust from a server they joined by accident. */
               homepage:
                 typeof p.homepage === "string" && /^https?:\/\//i.test(p.homepage)
                   ? p.homepage
@@ -309,9 +268,8 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
 
     setServerDetailsList((old) => ({ ...old, [host]: data }));
 
-    // Say what key to encrypt to us here (GRYT-727, GRYT-758). Not awaited:
-    // nothing else depends on it, and a key that never arrives means no
-    // encrypted messages rather than a connection that failed.
+    // Not awaited: a key that never arrives means no encrypted messages rather
+    // than a connection that failed.
     if (firstTimeOnThisSocket(socket, DM_KEY)) void publishDmKey(socket, host);
 
     if (data.sfu_hosts?.length) {
@@ -327,9 +285,8 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
 
   socket.on("server:emojis:updated", () => {
     fetchCustomEmojis(host).then((list) => {
-      // Null is a refused read rather than an empty server. This event fires
-      // once per emoji an import stages, which is exactly the moment the read
-      // is most likely to be rate-limited.
+      // Null is a refused read, not an empty server: this fires once per emoji an
+      // import stages, when the read is most likely rate-limited.
       if (list) setCustomEmojis(list, host);
     });
   });
@@ -340,22 +297,15 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     // so storing it late means a screen of broken images on the first join.
     if (joinInfo.fileToken) setServerFileToken(host, joinInfo.fileToken);
 
-    // Say what key to encrypt to us here (GRYT-727). Not awaited: nothing else
-    // in this handler depends on it, and a key that never arrives means no
-    // encrypted messages rather than a join that failed.
-    //
-    // Kept alongside the `server:details` publish rather than replaced by it.
-    // This one is the earlier of the two — the key is on the server before the
-    // first member list goes out, so nobody sees the new member appear without.
+    // The earlier of the two publishes, so the key is on the server before the
+    // first member list goes out and nobody sees them appear without one.
     if (firstTimeOnThisSocket(socket, DM_KEY)) void publishDmKey(socket, host);
     if (joinInfo.refreshToken) {
       setServerRefreshToken(host, joinInfo.refreshToken);
     }
 
-    // Somebody let them in (GRYT-289). The wait is the only thing this clears,
-    // and it is worth saying out loud: the request was made minutes or days
-    // ago, in a dialog that has long since closed, so an entry quietly going
-    // from grey to normal is a change nobody is watching for.
+    // Said out loud, because the request was made in a dialog that has long since
+    // closed and grey going to normal is a change nobody is watching for.
     if (serversRef.current[host]?.approvalRequestedAt) {
       const rest = { ...serversRef.current[host] };
       delete rest.approvalRequestedAt;
@@ -379,13 +329,8 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       },
     }));
 
-    // Seed a server that has never heard of this account's look.
-    //
-    // Only when this device has one and the server has none. The look is
-    // per-server once it is set, so pushing it on every reconnect would undo a
-    // per-server choice every time the socket dropped. `server:joined` fires on
-    // reconnects too, which is why the condition is about what the server
-    // already holds rather than about this being a first join.
+    // Only when the server has none: the look is per-server once set, and
+    // `server:joined` fires on reconnects, so pushing would undo that choice.
     const storedWorn = getStoredWorn();
     if (storedWorn && !joinInfo.avatarWorn) {
       socket.emit("profile:update", { avatarWorn: storedWorn });
@@ -393,16 +338,12 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
 
     socket.emit("server:details");
     socket.emit("members:fetch");
-    // What was said to you while you were away. Asked on every join rather than
-    // only the first, because being away is exactly when it accumulates — and
-    // because it is also how a mention read on a phone stops showing here.
+    // Every join, not just the first: being away is when this accumulates, and it
+    // is how a mention read on a phone stops showing here.
     socket.emit("mentions:list");
 
-    // **Read when the event fires, not when the handler was registered.** The
-    // socket is created as soon as Keycloak initialises, while `useUserId` is
-    // still resolving in an effect — so a captured value was usually null, the
-    // sync was skipped, and `server:joined` never fires twice. For the owner it
-    // is a certainty rather than a race (GRYT-12).
+    // Read when the event fires, not at registration: the socket exists before
+    // `useUserId` resolves, so a captured value was usually null.
     const userId = userIdRef.current;
     if (joinInfo.accessToken && userId) {
       syncAvatarToHost(host, joinInfo.accessToken, joinInfo.avatarFileId, socket, setServerProfiles, userId)
@@ -419,10 +360,8 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
         avatarUrl: data.avatarFileId
           ? getUploadsFileUrl(host, data.avatarFileId)
           : null,
-        // Optional on the wire, because a server older than the field does not
-        // send it. Undefined there reads as null here — no designed look — and
-        // the uploaded PNG the editor saved is what shows instead, which is
-        // exactly what that server has.
+        // Optional on the wire, since an older server does not send it. Undefined
+        // reads as no designed look, and the uploaded PNG shows instead.
         avatarWorn: data.avatarWorn ?? null,
       },
     }));
@@ -439,9 +378,8 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
         isConfigured?: boolean;
       };
     }) => {
-      // Reconnect/startup should not reopen setup for an already configured
-      // server. Keep this guard even if the server is fixed as protection against
-      // older server versions.
+      // A reconnect must not reopen setup for a configured server. Kept as
+      // protection against older server versions.
       if (payload?.settings?.isConfigured === true) {
         return;
       }
@@ -457,13 +395,8 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     }
   );
 
-  /* Something the server needs this one person to see (GRYT-896).
-
-     The payload is a kind plus values — never text. Everything that reaches the
-     screen ships in `ServerNoticePanel`. `setServerNotice` re-checks the shape
-     rather than trusting it: the server validating its own output guards
-     against a bug in the server, and this guards against the server, which is
-     somebody else's machine. */
+  /* A kind plus values, never text; everything on screen ships in
+     `ServerNoticePanel`. Re-checked here, because that is somebody else's machine. */
   socket.on("server:notice", (payload: unknown) => {
     setServerNotice(host, payload);
   });
@@ -472,9 +405,8 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     const serverName = serversRef.current[host]?.name || host;
     toast.error(data?.reason ? `${serverName}: ${data.reason}` : `You were removed from ${serverName}.`);
 
-    // Both, not just the access token. Keeping the refresh token is what let a
-    // kicked client mint a new access token and walk straight back in — the
-    // handler immediately below this one has always removed both.
+    // Both, not just the access token: keeping the refresh token let a kicked
+    // client mint a new one and walk straight back in.
     removeServerAccessToken(host);
     removeServerFileToken(host);
     removeServerRefreshToken(host);
@@ -483,10 +415,8 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       detail: { host, reason: data?.action === "ban" ? "banned_from_server" : "kicked_from_server" },
     }));
 
-    // Take it out of the sidebar. A kick is not permanent — rejoining by
-    // address, LAN discovery or a still-valid invite all still work — but
-    // leaving a server there that you have been removed from is worse than
-    // making you add it back.
+    // A kick is not permanent and rejoining still works, but leaving a server you
+    // were removed from in the sidebar is worse than adding it back.
     window.dispatchEvent(new CustomEvent("server_force_remove", { detail: { host } }));
   });
 
@@ -542,10 +472,8 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       return;
     }
 
-    // Waiting on a person, not a code. Deliberately not an error toast: nothing
-    // went wrong and there is nothing to retry — the answer arrives when a
-    // moderator gets to it, and the message says so. A denial is reported the
-    // same way, because the server refuses to say which of the two it is.
+    // Not an error toast: nothing went wrong and there is nothing to retry. A
+    // denial reads the same, because the server will not say which it is.
     if (errorInfo.error === "approval_pending") {
       const message =
         errorInfo.message || "This server admits people by request. Yours is with the moderators.";
@@ -579,8 +507,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       return;
     }
 
-    // Leaving refused or failed. Passed straight through for the same reason
-    // the moderation list below is: the generic branch calls everything a join
+    // Passed straight through: the generic branch calls everything a join
     // failure, and somebody leaving is already in.
     if (
       errorInfo.error === "owner_cannot_leave" ||
@@ -591,12 +518,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       return;
     }
 
-    // A refusal, not a failure. It used to fall through to the generic branch
-    // below and read "Failed to join server <host>: banned" — repeatedly, since
-    // the retry loops keep re-emitting server:join. Clear the tokens so those
-    // loops have nothing left to try with.
-    // Moderation refusals and failures. These are not join problems, and the
-    // generic branch below renders every one of them as
+    // Not join problems: the generic branch renders every one of these as
     // "Failed to join server <host>: forbidden", which is wrong in both halves.
     const MODERATION_ERRORS = [
       "forbidden",
@@ -613,17 +535,8 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       return;
     }
 
-    // Refused for what this identity is rather than who it is. The server
-    // explains this one and already says so in `server:info`, so the message
-    // passes straight through.
-    //
-    // **Recorded like the refusals below, because that is what ends the
-    // attempt.** On the generic branch the connection never reached a terminal
-    // state and the panel sat on the skeleton, blaming network conditions for a
-    // "no" that arrived immediately.
-    //
-    // **Tokens are deliberately left alone.** What was rejected is the identity
-    // in hand, not anything stored for this server.
+    // Recorded like the refusals below, or the panel sits on a skeleton blaming
+    // the network. Tokens are left alone: the identity was rejected, not them.
     if (errorInfo.error === "identity_tier_refused") {
       const message =
         errorInfo.message || "This server requires a Gryt account to join.";
@@ -640,13 +553,8 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       return;
     }
 
-    // The server will not say why, on purpose — a refusal does not confirm
-    // whether a ban exists or whether this identity is even known there. So the
-    // client cannot tell a ban from any other refusal, and must not guess:
-    // no force-remove, because a refusal may be temporary and deleting
-    // somebody's server entry is not recoverable.
-    //
-    // `banned` is still handled for servers that predate the generic refusal.
+    // The server will not say why, so the client cannot tell a ban from any other
+    // refusal and must not guess: no force-remove, which is not recoverable.
     if (
       errorInfo.error === 'join_refused' ||
       errorInfo.error === 'banned' ||
@@ -690,13 +598,8 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     }
   });
 
-  /**
-   * The people in a call, which the server tells only the call.
-   *
-   * Sent into that call's own socket.io room and nowhere else, so receiving it
-   * is the proof of being allowed to know. See `lib/callMembers.ts` for why the
-   * id is missing in the first place.
-   */
+  /** Sent into that call's own room and nowhere else, so receiving it is the
+      proof of being allowed to know. */
   socket.on(
     "voice:call:members",
     (payload: { conversation_id?: string; server_user_ids?: string[] }) => {
@@ -753,9 +656,8 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     }));
     setMemberLists((old) => ({ ...old, [host]: membersWithGrayColor }));
 
-    // Pin whoever is new, and notice whoever changed (GRYT-727). Separate from
-    // the list above so a slow evaluation never holds up drawing the sidebar —
-    // a key decision changes what can be encrypted, not who is online.
+    // Separate from the list above, so a slow evaluation never holds up the
+    // sidebar: a key decision changes what can be encrypted, not who is online.
     const myId = myServerUserIdByHost.get(host) ?? null;
     void (myId ? ownDmPublicKey(host).catch(() => null) : Promise.resolve(null))
       .then((ownKey) =>
@@ -770,19 +672,9 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       .then((states) => {
         setMemberKeyStates((old) => ({ ...old, [host]: states }));
 
-        /*
-         * This server is showing a message key you did not publish (GRYT-727).
-         * A fact about the server, so it belongs here rather than in a card
-         * somebody may never open.
-         *
-         * **Held back before it is shown, and taken away when it stops being
-         * true** (GRYT-784). We publish our own key on join, so the first
-         * member list of a session routinely arrives first and every join
-         * flashed the warning. A real mismatch is still there seconds later.
-         *
-         * Not only timing: a second device derives a different key and
-         * genuinely does mismatch, which is why the wording names that first.
-         */
+        /* Held back before it is shown, since our own publish races the first
+           member list and every join flashed it. A second device really does
+           mismatch, which is why the wording names that first. */
         const myId = myServerUserIdByHost.get(host);
         const toastId = `dm-key-rewritten-${host}`;
         const pending = dmKeyWarningTimers.get(host);
@@ -827,11 +719,8 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
         // alone is right: dropping them would make every peer look new.
       });
 
-    // Record what this server actually holds for us. `serverProfiles` was only
-    // written on a change, so a plain join left it empty and Settings fell back
-    // to the local nickname — under the caption "This is how other users will
-    // see you", beside a member list saying something else (GRYT-58). The
-    // member list is the same data other people see, and nothing new is fetched.
+    // Written on a plain join, not only on a change: Settings fell back to the
+    // local nickname under a caption saying it was what others see.
     const myServerUserId = myServerUserIdByHost.get(host);
     if (!myServerUserId) return;
 
