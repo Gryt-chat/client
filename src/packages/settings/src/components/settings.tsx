@@ -1,4 +1,5 @@
 import { Dialog, IconButton, TextField } from "@gryt/ui";
+import { AnimatePresence, motion } from "motion/react";
 import type { ReactNode } from "react";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -434,12 +435,17 @@ export function Settings() {
                     <div className="flex flex-col gap-1 h-full">
                       {MAIN_DESTINATIONS.map(({ value, label, icon: Icon, pages }) => (
                         <Fragment key={value}>
+                          {/* A category holding the page you are on is marked
+                              open, not active: two filled rows read as two
+                              selections. */}
                           <button
                             type="button"
                             onClick={() => changeDestination(value)}
                             className="gryt-settings-nav"
                             data-tour={`settings-${value}`}
-                            data-active={value === active}
+                            data-active={value === active && !pages?.length}
+                            data-open={value === active && !!pages?.length}
+                            aria-expanded={pages?.length ? value === active : undefined}
                           >
                             <Icon size={16} />
                             {label}
@@ -447,18 +453,31 @@ export function Settings() {
 
                           {/* Only the category you are in opens. All ten at
                               once is the scroll this replaced. */}
-                          {value === active &&
-                            pages?.map((page) => (
-                              <button
-                                key={page.value}
-                                type="button"
-                                onClick={() => changeDestination(`${value}/${page.value}`)}
-                                className="gryt-settings-nav gryt-settings-subnav"
-                                data-active={page.value === activePage}
+                          <AnimatePresence initial={false}>
+                            {value === active && !!pages?.length && (
+                              <motion.div
+                                key={`${value}-pages`}
+                                className="gryt-settings-subnav-group"
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
                               >
-                                {page.label}
-                              </button>
-                            ))}
+                                {pages.map((page) => (
+                                  <button
+                                    key={page.value}
+                                    type="button"
+                                    onClick={() => changeDestination(`${value}/${page.value}`)}
+                                    className="gryt-settings-nav gryt-settings-subnav"
+                                    data-active={page.value === activePage}
+                                    aria-current={page.value === activePage ? "page" : undefined}
+                                  >
+                                    {page.label}
+                                  </button>
+                                ))}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </Fragment>
                       ))}
 
@@ -523,16 +542,41 @@ export function Settings() {
             color: var(--gryt-neutral-12);
           }
           .gryt-settings-nav:hover { background: var(--gryt-neutral-a3); }
+          /* The animated wrapper. Clipped, so the height tween has an edge to
+             move, and it carries the column gap the buttons lost. */
+          .gryt-settings-subnav-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            overflow: hidden;
+          }
           /* Indented to the width of the icon above it, so a page lines up
              under its category's label rather than under its icon. */
           .gryt-settings-subnav {
             padding-left: 34px;
             font-size: 13px;
             color: var(--gryt-neutral-11);
+            /* The rule is what makes these read as inside the category rather
+               than as more categories; the indent alone never did. */
+            border-left: 1px solid var(--gryt-neutral-a4);
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
+            margin-left: 17px;
+            padding-left: 17px;
           }
           .gryt-settings-nav[data-active="true"] {
             background: var(--gryt-accent-a3);
             color: var(--gryt-accent-11);
+            font-weight: 600;
+          }
+          .gryt-settings-subnav[data-active="true"] {
+            border-left-color: var(--gryt-accent-9);
+          }
+          /* Open, not active. You are somewhere inside this, and the filled row
+             below says where — so this only tints its text. */
+          .gryt-settings-nav[data-open="true"] {
+            color: var(--gryt-accent-11);
+            font-weight: 600;
           }
           /* Just the heart carries the colour. A filled button competes with the
              active-item highlight and shouts in a settings sidebar. */
