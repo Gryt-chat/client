@@ -10,9 +10,7 @@ export type CustomEmojiEntry = {
   url: string;
 };
 
-// ---------------------------------------------------------------------------
-// Text-smiley → emoji-shortcode conversion
-// ---------------------------------------------------------------------------
+// ── Text-smiley → emoji-shortcode conversion ──────────────────────────────
 
 const SMILEY_MAP = new Map<string, string>([
   // 5+ characters
@@ -203,9 +201,8 @@ function convertSmileys(text: string, disabled?: ReadonlySet<string>): string {
 }
 
 /**
- * Convert common text smileys (e.g. `:)`, `:D`, `XD`) into gemoji shortcodes
- * so the existing emoji pipeline can render them. Skips code fences and inline
- * code spans to avoid mangling code snippets.
+ * Convert common text smileys into gemoji shortcodes. Skips code fences and
+ * inline code spans so snippets are not mangled.
  */
 export function preprocessSmileys(
   content: string,
@@ -218,9 +215,8 @@ export function preprocessSmileys(
 }
 
 /**
- * Replace custom emoji shortcodes in a raw content string before markdown
- * parsing. Checks both the passed list and the global custom emoji cache
- * so newly-uploaded emojis are always resolved.
+ * Replace custom emoji shortcodes before markdown parsing. Checks the passed list
+ * and the global cache, so newly uploaded emoji resolve.
  */
 export function preprocessCustomEmojis(
   content: string,
@@ -273,9 +269,8 @@ function buildReplacements(value: string): PhrasingContent[] {
 }
 
 /**
- * Remark plugin that converts standard (gemoji) shortcodes like `:smile:` to
- * their Unicode equivalents. Custom emoji replacement is handled separately
- * by {@link preprocessCustomEmojis} before the markdown is parsed.
+ * Converts gemoji shortcodes to Unicode. Custom emoji are handled separately by
+ * {@link preprocessCustomEmojis} before the markdown is parsed.
  */
 export const remarkEmoji: Plugin<[], Root> = () => (tree: Root) => {
   visit(tree, "text", (node: Text, index, parent) => {

@@ -1,21 +1,8 @@
 /* eslint-env node */
 
 /**
- * Which account a cached certificate is allowed to speak for (GRYT-905).
- *
- * The bug this exists to stop: signed in as one account, the client joined a
- * server as a different one — the owner — because the certificate left over
- * from that account was still in date and still matched the key on the device.
- * `answer-challenge.ts` signs its assertion with the `sub` it reads out of the
- * certificate, so the server was handed a real certificate, a real signature
- * and the wrong person, and nothing it could check would have caught it.
- *
- * `certificateVerdict` has no imports precisely so it can be run here. The
- * module that uses it needs Keycloak, IndexedDB, `fetch` and a keychain, which
- * is how the rule went unchecked long enough for that to ship.
- *
- * Run against the real module rather than a copy — Node strips the types on
- * import, which is why this lives in .mjs and the source stays .ts.
+ * Which account a cached certificate is allowed to speak for. Signed in as one
+ * account, the client joined as another whose certificate was still valid (GRYT-905).
  */
 
 import assert from "node:assert/strict";
@@ -51,11 +38,8 @@ assert.equal(
 );
 
 /*
- * And the account is decided before anything else.
- *
- * This is the assertion that pins the bug. Every other signal says the
- * certificate is fine — in date, key matches — and it is those signals passing
- * that made the wrong identity look like a normal join.
+ * And the account is decided before anything else. Every other signal says the
+ * certificate is fine, which is what made the wrong identity look normal.
  */
 assert.equal(
   certificateVerdict({
@@ -82,10 +66,8 @@ assert.equal(
 /* ── not knowing who is signed in is not a mismatch ──────────────────────── */
 
 /*
- * The failure mode on the other side: a laptop off the network, or a session
- * that lapsed while the app was open, answers null. Treating that as "somebody
- * else" would discard the certificate *and* the keypair of the person who is
- * actually there, on the strength of a failed token refresh.
+ * A laptop off the network answers null. Treating that as "somebody else" would
+ * discard the certificate and keypair of the person who is actually there.
  */
 assert.equal(
   certificateVerdict({ ...good, signedInSub: null }),
@@ -104,9 +86,8 @@ assert.equal(certificateVerdict({ ...good, needsRenewal: true }), "stale");
 assert.equal(certificateVerdict({ ...good, matchesKey: false }), "wrong-key");
 
 /*
- * Expiry outranks a key mismatch. Both end in a fetch, but only `wrong-key`
- * clears storage first, and clearing on a renewal that then fails offline
- * would throw away the `sub` `getCertificateSub` reads back out of it.
+ * Expiry outranks a key mismatch. Only `wrong-key` clears storage first, and
+ * clearing on a renewal that then fails offline throws away the `sub`.
  */
 assert.equal(
   certificateVerdict({ ...good, needsRenewal: true, matchesKey: false }),
@@ -116,11 +97,8 @@ assert.equal(
 /* ── the caller acts on all four ─────────────────────────────────────────── */
 
 /*
- * A source check, because the verdict being right is worth nothing if the
- * consumer ignores a case. `wrong-account` is the one that must also drop the
- * keypair: a new certificate minted over the previous account's key binds two
- * accounts to one key, and a server that pinned it sees the same key arrive
- * under a second name.
+ * A source check, because the verdict being right is worth nothing if the consumer
+ * ignores a case. `wrong-account` must also drop the keypair.
  */
 const source = readFileSync(
   join(HERE, "../src/packages/common/src/auth/identity-certificate.ts"),

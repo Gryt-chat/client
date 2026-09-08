@@ -1,23 +1,8 @@
 /* eslint-env node */
 
 /**
- * Validates electron-builder.yml against electron-builder's own schema.
- *
- * This exists because of a specific mistake. `signExts` was written under
- * `win.signtoolOptions`, where it is not a valid property — it belongs on `win`
- * itself, next to `target` and `icon`. Nothing local caught it. lint does not
- * read this file, the checks do not read this file, and the only thing that
- * validates it is electron-builder at package time, which only runs during a
- * release.
- *
- * The part that made it expensive: electron-builder validates the *whole*
- * configuration object before it looks at what it is building. So a Windows-only
- * mistake failed the macOS and Linux builds as well, and the first release after
- * it merged died on all three platforms at once.
- *
- * The schema ships inside app-builder-lib, so this is the same check
- * electron-builder makes, run in a second instead of twenty minutes into a
- * release.
+ * Validates electron-builder.yml against electron-builder's own schema. It
+ * validates the whole object, so a Windows-only mistake fails all three builds.
  */
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";
@@ -31,11 +16,8 @@ const here = dirname(fileURLToPath(import.meta.url));
 const { load } = require("js-yaml");
 const schema = require("app-builder-lib/scheme.json");
 
-// electron-builder's own validator rather than a second opinion. The stack
-// trace from the failed release ends in exactly this function, so a config that
-// passes here is a config electron-builder accepts, and the wording of a
-// failure is the wording a release would have shown.
-// Exported as the module itself rather than as a named export.
+// electron-builder's own validator rather than a second opinion, so a config that
+// passes here is one it accepts. Exported as the module itself, not by name.
 const validate = require("@develar/schema-utils");
 
 const config = load(readFileSync(join(here, "..", "electron-builder.yml"), "utf8"));
@@ -57,9 +39,8 @@ function check(candidate, label) {
 
 check(config, "electron-builder.yml");
 
-// A release publishes two builds and only one of them is this file. The slim
-// config is the YAML with three edits applied, and an edit that leaves the
-// schema costs exactly as much there as it does here.
+// A release publishes two builds and only one is this file. The slim config is
+// this YAML with three edits, and an edit can leave the schema too.
 const configPath = join(here, "..", "electron-builder.config.cjs");
 
 function loadVariant(variant) {
@@ -84,10 +65,8 @@ const embeddedIn = (candidate) =>
     String(entry.from).startsWith("build/embedded-"),
   );
 
-// The three things a slim build has to get right, asserted rather than assumed.
-// Each of them fails quietly: the wrong filter produces a build that looks slim
-// and is not, the wrong channel updates people back onto the full build, and
-// the wrong name has the two variants overwrite each other in one release.
+// The three things a slim build has to get right, each of which fails quietly: a
+// build that looks slim, a channel that updates back, a name that overwrites.
 const stillEmbedded = embeddedIn(slim);
 if (stillEmbedded.length > 0) {
   console.error(
@@ -119,11 +98,8 @@ if (embeddedIn(loadVariant(undefined)).length === 0) {
   process.exit(1);
 }
 
-// The Linux icon set. electron-builder ships exactly what `linux.icon` points
-// at: a single PNG means a single PNG in the package, which is what left the
-// deb and the snap carrying nothing but a 1024x1024 (GRYT-1008). Checked here
-// because the failure is silent -- the build succeeds and the icon is simply
-// wrong everywhere it is drawn.
+// The Linux icon set. electron-builder ships exactly what `linux.icon` points at,
+// so a single PNG left the deb and the snap with a 1024x1024 (GRYT-1008).
 const linuxIcon = loadVariant(undefined).linux?.icon;
 
 if (linuxIcon !== "build/icons") {

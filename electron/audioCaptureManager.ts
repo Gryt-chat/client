@@ -1,22 +1,6 @@
 /**
- * Manages the native subprocesses that capture audio for a screen share and
- * forwards their PCM to the renderer over IPC.
- *
- * Each process captures one thing, because that is what the OS APIs offer:
- *
- *   "exclude" — everything except Gryt's process tree
- *   "include" — one application's process tree, and nothing else
- *
- * Windows:  WASAPI PROCESS_LOOPBACK_MODE_{INCLUDE,EXCLUDE}_TARGET_PROCESS_TREE
- * macOS:    ScreenCaptureKit excludesCurrentProcessAudio
- *
- * A process loopback client activates against a single PID, so capturing two
- * applications means two processes. Their PCM is summed here (audioMixer.ts)
- * and leaves as one stream, which is what the renderer already reads.
- *
- * macOS ignores the PID it is handed and captures the machine either way, so
- * choosing applications is Windows only — `supportsPerApplicationAudio` is
- * what the UI asks before offering it.
+ * Manages the native subprocesses that capture audio for a screen share. One
+ * process per capture, summed here; choosing applications is Windows only.
  */
 
 import { ChildProcess, execFileSync, spawn } from "child_process";
@@ -42,9 +26,8 @@ const captures = new Map<string, Capture>();
 const mixer = new AudioMixer();
 
 /**
- * The window source ids the renderer last asked for, which is what it gets
- * back. Captures are keyed by process id underneath — two windows of the same
- * application are one capture — so the two lists are not the same shape.
+ * The window source ids the renderer last asked for, which is what it gets back.
+ * Captures are keyed by process id underneath, so the shapes differ.
  */
 let requestedSources: string[] = [];
 let diagnosticWindow: BrowserWindow | null = null;
@@ -211,10 +194,8 @@ function spawnCapture(
     sendDiag(`[${id} stderr] ${data.toString().trimEnd()}`);
   });
 
-  // Both handlers check that the entry is still this process. Deselecting an
-  // application and selecting it again inside the half second a stop is given
-  // spawns a new capture under the same id, and the old process exiting must
-  // not take the new one out of the map with it.
+  // Both handlers check the entry is still this process: reselecting inside the
+  // half second a stop is given spawns a new capture under the same id.
   proc.on("error", (err) => {
     sendDiag(`spawn error for ${id}: ${err.message}`);
     if (captures.get(id) === capture) forget(id);
@@ -303,15 +284,8 @@ export interface AudioCaptureSourceState {
 }
 
 /**
- * Replace the set of applications being captured.
- *
- * An empty list means the share goes back to everything except Gryt, which is
- * what a screen share starts as. Otherwise the machine-wide capture is
- * dropped: the chosen applications are already in it, and running both would
- * send them twice.
- *
- * Ids are the renderer's to choose and are the desktopCapturer window source
- * ids it already has, so nothing has to be enumerated twice.
+ * Replace the set of applications being captured. An empty list goes back to
+ * everything except Gryt; otherwise the machine-wide capture is dropped.
  */
 export function setAudioCaptureApplications(
   window: BrowserWindow,
@@ -319,9 +293,8 @@ export function setAudioCaptureApplications(
 ): AudioCaptureSourceState[] {
   diagnosticWindow = window;
 
-  // Windows that cannot be resolved to a process are dropped here rather than
-  // reported as captured, so the UI does not show a tick over something that
-  // is not being sent.
+  // Windows that cannot be resolved to a process are dropped rather than reported
+  // as captured, so the UI does not tick something that is not being sent.
   const resolved: { sourceId: string; key: string }[] = [];
 
   for (const sourceId of sourceIds) {
