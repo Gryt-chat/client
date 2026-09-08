@@ -136,6 +136,7 @@ linux:
   target:
     - AppImage
     - deb
+    - rpm
     - snap
   category: Network
   synopsis: "Real-time voice chat"
@@ -145,6 +146,22 @@ linux:
   desktop:
     entry:
       X-AppImage-Payload-License: "AGPL-3.0-or-later"
+
+rpm:
+  # Named for Fedora, not guessed. electron-builder derives rpm dependencies
+  # from the same list it uses for the deb, which is Debian names -- libgtk-3-0,
+  # libnss3, libxss1 and the rest -- and none of those exist on Fedora, so the
+  # package installs nowhere it is meant to.
+  depends:
+    - gtk3
+    - libnotify
+    - nss
+    - libXScrnSaver
+    - libXtst
+    - xdg-utils
+    - at-spi2-atk
+    - libuuid
+    - libsecret
 
 snap:
   confinement: strict
