@@ -186,7 +186,9 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
             Loading older replies…
           </div>
         )}
-        <div ref={scrollRef} onScroll={onScroll} style={{ flex: 1, overflowY: "auto", paddingBottom: 8 }}>
+        {/* 14 inline, matching the header, the tag row and the composer. Without
+            it an avatar sits against the panel edge while the channel's does not. */}
+        <div ref={scrollRef} onScroll={onScroll} style={{ flex: 1, overflowY: "auto", paddingBottom: 8, paddingInline: 14 }}>
         {root && (
           <div className="mb-1 border-b border-gryt-border pb-1.5">
             {renderMessage(root)}
