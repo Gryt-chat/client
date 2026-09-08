@@ -626,8 +626,7 @@ function findFreePort(): Promise<number> {
 
 /**
  * Separate on purpose: it hands stranger-uploaded bytes to libvips, and a corrupt
- * image must not take down the process holding the signing keys. One per server,
- * since it opens one DATA_DIR, and its death is not the server's.
+ * image must not take down the process holding the signing keys.
  */
 function spawnWorker(
   config: EmbeddedServerConfig,

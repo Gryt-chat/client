@@ -1,12 +1,8 @@
 /* eslint-env node */
 
 /**
- * The PCM mixer in electron/audioMixer.ts.
- *
- * Capturing several applications means one child process each, and what the
- * renderer gets is their sum. None of that can be run here — process loopback
- * per application is Windows only — so the arithmetic and the queueing are
- * checked directly instead.
+ * The PCM mixer in electron/audioMixer.ts. Process loopback per application is
+ * Windows only, so the arithmetic and the queueing are checked directly.
  */
 
 import assert from "node:assert/strict";

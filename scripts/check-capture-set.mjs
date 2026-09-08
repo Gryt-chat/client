@@ -1,13 +1,8 @@
 /* eslint-env node */
 
 /**
- * The capture-set planning in electron/captureSet.ts.
- *
- * One process per application is the only way Windows will capture more than
- * the whole machine, so changing which applications a share sends means
- * stopping and starting processes. Stop one too many and the share goes
- * silent; keep one too many and an application somebody deselected is still
- * going out.
+ * The capture-set planning in electron/captureSet.ts. Stop one too many and the
+ * share goes silent; keep one too many and a deselected application still goes out.
  */
 
 import assert from "node:assert/strict";

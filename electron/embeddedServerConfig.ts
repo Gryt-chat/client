@@ -158,8 +158,7 @@ function existingMediaPort(): number | null {
 
 /**
  * Walks upward rather than taking an ephemeral port: these are numbers somebody
- * types into a router. Used for every port a new server picks, since ports no
- * longer move afterwards and an ephemeral one would be the server's for good.
+ * types into a router, and ports no longer move after a server picks one.
  */
 async function findFriendlyPortFrom(preferred: number): Promise<number> {
   for (let port = preferred; port < preferred + 50 && port <= 65535; port++) {
@@ -190,10 +189,8 @@ export interface PortConflict {
 }
 
 /**
- * Reported rather than moved: a number written into a router is a promise, and a
- * server that quietly moved off 5000 came back looking healthy while nobody
- * outside could reach it. The pinned SFU ports are not a move — there is one SFU
- * per app, so a second server is pointed at the one already up.
+ * Reported rather than moved: a server that quietly left 5000 looked healthy while
+ * nobody outside could reach it. The pinned SFU ports are not a move.
  */
 export async function checkPortsAvailable(
   id: string,

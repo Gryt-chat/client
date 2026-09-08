@@ -1,19 +1,6 @@
 /**
- * Manages a native subprocess that captures the screen via DXGI Desktop
- * Duplication.
- *
- * Two modes of operation:
- *
- *   **WebSocket mode** (preferred)  — the binary runs a local WS server and
- *   the renderer connects directly. Frame data never touches the main
- *   process. The main process only manages the child lifetime and relays
- *   the port number.
- *
- *   **Legacy stdout mode** — the binary writes raw I420 frames to stdout
- *   and the main process parses + forwards them via IPC. This is the
- *   fallback when the binary is too old to support `--ws`.
- *
- * Windows only. Requires screen-capture.exe in build/native/.
+ * Manages a native subprocess capturing the screen via DXGI Desktop Duplication.
+ * WebSocket mode is preferred; stdout mode is the fallback for an old binary.
  */
 
 import { ChildProcess, spawn } from "child_process";

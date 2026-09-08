@@ -227,16 +227,8 @@ export function resolveAddonFilePath(pathname: string): string | null {
 }
 
 /**
- * The newest release tag of a repository, without spending GitHub API quota.
- *
- * `/releases/latest` is a redirect to `/releases/tag/<tag>`, so the tag is in
- * the Location header of a request that never follows it. The same trick the
- * app's own update check uses, and for the same reason: api.github.com allows
- * 60 unauthenticated calls an hour per address, and somebody with a handful of
- * addons opening the page a few times would spend it.
- *
- * A repository with no releases redirects to `/releases` instead, which has no
- * tag in it, so that reads as "nothing to report" rather than an error.
+ * The newest release tag of a repository, without spending API quota:
+ * `/releases/latest` is a redirect, so the tag is in the Location header.
  */
 async function newestReleaseTag(
   repository: string,
@@ -266,16 +258,8 @@ async function newestReleaseTag(
 }
 
 /**
- * Which installed addons have a newer release than the version they declare.
- *
- * Only addons that named a repository, and only when the tag parses as a
- * version newer than the installed one. A tag that is not semver at all is
- * skipped rather than guessed at — "latest" and "v2-final" are real tag names
- * and neither says anything about ordering.
- *
- * Every repository is checked at once. They are independent, there are only
- * ever a handful, and doing them in sequence makes opening the page feel like
- * it hung on whichever one is slowest.
+ * Which installed addons have a newer release than the version they declare. A
+ * tag that is not semver is skipped rather than guessed at.
  */
 export async function checkAddonUpdates(): Promise<AddonUpdate[]> {
   const withRepos = getAddons().filter((addon) => addon.repository);
