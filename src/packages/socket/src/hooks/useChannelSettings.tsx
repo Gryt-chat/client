@@ -109,8 +109,7 @@ function useHandleChannelClick({
     switch (channel.type) {
       case "voice": {
         // The server refuses this too, but stopping here makes the answer read as
-        // "you are not allowed in". Both answers, because they can differ:
-        // `can` is server-wide and `canJoin` is this room's.
+        // "you are not allowed in". `can` is server-wide, `canJoin` this room's.
         if (!can("join_voice") || channel.canJoin === false) {
           const host = currentlyViewingServer.host;
           const name = currentlyViewingServer.name || host;

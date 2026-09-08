@@ -6,9 +6,8 @@ import { dmKeyBindingFor } from "@/common";
  */
 
 /**
- * Send this device's binding for a server it is a member of, signed with the key
- * derived from the seed and the server's scope. **Do not gate this on
- * `identitySourceUsedFor`** — it is empty after a reload (GRYT-758, GRYT-759).
+ * Send this device's binding for a server it is a member of. **Do not gate this
+ * on `identitySourceUsedFor`** — it is empty after a reload (GRYT-758).
  */
 export async function publishDmKey(
   socket: { emit: (event: string, payload: unknown) => unknown },

@@ -475,8 +475,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
       });
 
       /* A second listener on an event `registerServerSocketEvents` also handles:
-         that one keeps the count, this one decides whether to make a noise.
-         Silent at "all", where `chat:new` has already fired. */
+         that one keeps the count, this one decides whether to make a noise. */
       socket.on("mention:new", (payload: { conversationId?: string }) => {
         if (host === currentlyViewingServerRef.current?.host) return;
 

@@ -59,9 +59,8 @@ export function ServerEmojisTab({
     setLoading(true);
     try {
       const list = await fetchCustomEmojis(host);
-      // Null is a refused read rather than an empty server. Saying so matters
-      // most here: this is the screen somebody is on while importing, and an
-      // empty list is the thing that reads as "my emoji are gone".
+      // Null is a refused read rather than an empty server. This is the screen
+      // somebody is on while importing, where empty reads as "they are gone".
       if (!list) {
         toast.error("Could not refresh the list just now. Nothing has been lost.");
         return;

@@ -60,9 +60,8 @@ export function stageEmojiViaXhr({
       const error = typeof firstObj?.error === "string" ? firstObj.error : (typeof root.error === "string" ? root.error : "http_error");
       const message = typeof firstObj?.message === "string" ? firstObj.message : (typeof root.message === "string" ? root.message : `HTTP ${status}`);
 
-      /* The server says how long to wait when it refuses, and passing that up
-         is what lets an import ride out its own rate limit instead of failing
-         the rest of the pack. Seconds on the wire, milliseconds here. */
+      /* The server says how long to wait when it refuses, and passing that up is
+         what lets an import ride out its own rate limit. Seconds on the wire. */
       const retryAfterRaw = Number(xhr.getResponseHeader("Retry-After"));
       const retryAfterMs = Number.isFinite(retryAfterRaw) && retryAfterRaw > 0
         ? Math.min(retryAfterRaw, 60) * 1000

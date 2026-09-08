@@ -28,10 +28,8 @@ export function usePopoutStreams(
         return;
       }
 
-      // A handle whose window has already gone, but whose close has not been
-      // noticed yet, is retired here. Left in the map it would report the
-      // close later and take the entry we are about to create with it, leaving
-      // a window nothing can close (GRYT-108).
+      // A handle whose window has gone but whose close has not been noticed is
+      // retired here, or it would take the entry we are about to create.
       if (existing) {
         handles.current.delete(itemId);
         existing.close();

@@ -13,15 +13,7 @@ export interface ScreenAudioMute {
 
 /**
  * Silences the audio a screen share is sending, without stopping the share.
- *
- * The client's call rather than the engine's: @gryt/voice captures whatever the
- * OS hands over and reports the track, and what leaves the machine is a
- * decision about the call. Disabling the track is what does it — the track
- * stays in the peer connection, so nothing renegotiates.
- *
- * It does not choose *which* application is captured. On Windows a window share
- * already captures only that window's process audio; a whole-screen share takes
- * everything except Gryt (GRYT-564).
+ * Disabling the track does it, so nothing renegotiates (GRYT-564).
  */
 function useScreenAudioMuteHook(): ScreenAudioMute {
   const { screenShareActive, screenAudioStream } = useScreenShare();

@@ -22,14 +22,8 @@ function fmt(v: string | Date): string {
 }
 
 /**
- * The bans list, and the only way to undo one.
- *
- * `server:bans:list` and `server:unban` have both existed on the server since
- * banning did, and nothing had ever emitted either — so a ban could only be
- * lifted by editing the database by hand.
- *
- * Names come from the server and can be null when the user's row is gone, in
- * which case the identifier is shown rather than an empty row.
+ * The bans list, and the only way to undo one — the events existed and nothing
+ * emitted either, so a ban could only be lifted in the database.
  */
 export function ServerBansTab({
   host,

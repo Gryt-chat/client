@@ -24,9 +24,8 @@ function useMediaAutoShow({
   currentChannelId, serverClients,
 }: UseMediaAutoShowParams) {
   /*
-   * The panel gets out of the way when the window cannot hold it. `isCompact` is
-   * 1024 and the row needs 1136, so between the two the chat went under its own
-   * minimum.
+   * The panel gets out of the way when the window cannot hold it: `isCompact` is
+   * 1024 and the row needs 1136, so between the two the chat went under.
    */
   const tooNarrow = isCompact || !roomForVoice;
   const compactAutoHiddenRef = useRef(false);

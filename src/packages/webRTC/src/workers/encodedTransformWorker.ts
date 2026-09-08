@@ -1,8 +1,5 @@
-// WebRTC Encoded Transform worker.
-//
-// Receives pre-encoded H.264 NAL units from the main thread via a
-// MessagePort and replaces outgoing RTCEncodedVideoFrame data in the
-// WebRTC pipeline, bypassing the browser's internal re-encode cycle.
+// WebRTC Encoded Transform worker. Takes pre-encoded H.264 NAL units over a
+// MessagePort and replaces outgoing frame data, bypassing the re-encode cycle.
 
 interface PreEncodedFrame {
   data: ArrayBuffer;

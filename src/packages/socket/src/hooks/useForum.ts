@@ -4,10 +4,8 @@ import toast from "react-hot-toast";
 import { getServerAccessToken } from "@/common";
 
 /**
- * A forum channel's topic index. Topics are the threads in the channel; this
- * hook fetches them as summary rows and creates new ones. It refetches when a
- * thread is created, updated or deleted so the list stays live without holding
- * every topic's messages. GRYT-981 Stage 2.
+ * A forum channel's topic index, fetched as summary rows. It refetches on create,
+ * update and delete, so the list stays live without holding every topic.
  */
 
 export interface ForumTopic {

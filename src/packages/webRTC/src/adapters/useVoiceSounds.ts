@@ -6,11 +6,8 @@ import { playNotificationSound } from "@/lib/notificationSound";
 import { useSettings } from "@/settings";
 
 /**
- * The connect and disconnect sounds, which are the client's again.
- *
- * `@gryt/voice` used to take a file and a volume and play them. It no longer
- * plays anything: it reports, and this decides. That is why the assets, the
- * volumes and the enabled flags all live here, where the settings already are.
+ * The connect and disconnect sounds, which are the client's again. `@gryt/voice`
+ * reports and this decides, so the assets and volumes live where the settings do.
  */
 export function useVoiceSounds() {
   const {

@@ -93,9 +93,8 @@ export const DirectMessageList = ({
                 {conversation.kind === "group" ? (
                   <Avatar
                     size="small"
-                    /* Seeded on the name, so renaming a group redraws it, and
-                       the same seed the mobile app hands `eggAvatarSvg`. A
-                       rounded square: a circle is a person, and a group is not. */
+                    /* Seeded on the name, and the same seed the mobile app
+                       hands `eggAvatarSvg`. A rounded square, not a circle. */
                     className="rounded-(--gryt-radius-md)"
                     eggSeed={conversationTitle(conversation)}
                     src={

@@ -3,10 +3,7 @@ import type { ReactNode } from "react";
 
 /**
  * Something happened and there is nothing to decide. One button, no Cancel.
- *
- * Separate from ConfirmDialog rather than a flag on it, because a confirmation
- * with its Cancel hidden still reads as a question, and the two are answered
- * differently: dismissing this one is the only thing you can do.
+ * A confirmation with its Cancel hidden still reads as a question.
  */
 export function NoticeDialog({
   open,

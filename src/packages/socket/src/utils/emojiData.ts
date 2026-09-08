@@ -225,19 +225,8 @@ export function getRecentEmojis(limit = 8, serverHost?: string): EmojiEntry[] {
 }
 
 /**
- * The server's emoji list, or null when it could not be read.
- *
- * Null and `[]` are different answers and every caller has to tell them apart.
- * `[]` is the server saying it has none; null is this client not knowing.
- *
- * Returning `[]` for both is what turned a refused request into an erased set.
- * A pack import spent the server's emoji rate limit, `GET /api/emojis` started
- * answering 429, and each caller stored the empty array — so every emoji
- * vanished from the picker and out of messages that already used them, on a
- * server where nothing had been deleted.
- *
- * Keeping the last known list is the safer wrong answer. It goes stale until
- * the next read succeeds; the alternative loses emoji that are still there.
+ * The server's emoji list, or null when it could not be read. `[]` is the server
+ * saying it has none; null is not knowing, and conflating them erased the set.
  */
 export async function fetchCustomEmojis(serverHost: string): Promise<{ name: string; file_id: string }[] | null> {
   const base = getServerHttpBase(serverHost);

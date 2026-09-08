@@ -1,9 +1,6 @@
 /**
- * Where imported emotes can come from. One box takes a link and works out what
- * it is, rather than one box per site.
- *
- * Adding a third source means adding an entry here. Nothing else in the import
- * path knows which site an emote came from.
+ * Where imported emotes can come from. Adding a third source means an entry here;
+ * nothing else in the import path knows which site an emote came from.
  */
 import type { ImportEmote } from "./emoteImportUtils";
 

@@ -14,16 +14,8 @@ import { VoiceView } from "./VoiceView";
 type Role = string;
 
 /**
- * The way back to a call from a layout with no room to draw one.
- *
- * Two layouts are too narrow for the voice panel and drop it: the phone layout
- * below 768, and the one-channel window below 520. Dropping the panel also
- * drops mute, deafen and leave, and none of that stops the connection — the
- * microphone is still open.
- *
- * It lives here rather than inside `MobileServerView` so the tiny window
- * renders the same button and the same sheet, instead of a second set of call
- * controls to keep in step.
+ * The way back to a call from a layout with no room to draw one. Here rather than
+ * in `MobileServerView`, so the tiny window renders the same button and sheet.
  */
 export const VoiceSheetButton = ({
   connected,

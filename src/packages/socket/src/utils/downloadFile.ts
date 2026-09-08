@@ -1,9 +1,6 @@
 /**
- * Download a file without triggering page navigation.
- *
- * fetch + blob URL, so the browser never starts navigating away — a
- * cross-origin download link fires `beforeunload` and tears down the WebSocket
- * and WebRTC connections. Falls back to a new tab if the fetch fails.
+ * Download a file without triggering page navigation: a cross-origin download
+ * link fires `beforeunload` and tears down the WebSocket and WebRTC connections.
  */
 export async function triggerDownload(
   url: string,
