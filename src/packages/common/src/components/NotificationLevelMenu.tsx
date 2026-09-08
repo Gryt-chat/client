@@ -27,17 +27,8 @@ export interface NotificationScopePlacement {
 }
 
 /**
- * How loud one scope is, as four choices with the current one marked.
- *
- * "Default" is a real option rather than a synonym for Everything: a channel
- * set back to default follows its folder again, and one set to Everything stops
- * following it. Somebody who mutes a folder and wants one channel out of it
- * needs the difference.
- *
- * One component for the server rail and the channel list. They had a copy each,
- * differing only in which scope they wrote to and by one word in the Default
- * label — so the global override note would have landed in one menu and not the
- * other.
+ * How loud one scope is, as four choices with the current one marked. "Default" is
+ * a real option: a channel set back to it follows its folder again.
  */
 export function NotificationLevelMenu({
   host,
@@ -59,10 +50,8 @@ export function NotificationLevelMenu({
   const own = getOwnLevel(host, scope);
   const global = getGlobalLevel();
 
-  /* What this scope currently comes out as, which is the number the ceiling is
-     compared against. Worked out per scope rather than through `resolveLevel`
-     for all three: that resolver answers for a channel, and handing it a null
-     placement for a folder would silently report the server's answer. */
+  /* What this scope currently comes out as. Worked out per scope rather than
+     through `resolveLevel`, which answers for a channel and would mislead here. */
   const resolved: NotificationLevel =
     scope.kind === "channel"
       ? resolveLevel(getStoredSnapshot().servers, host, {

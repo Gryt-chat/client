@@ -2,24 +2,7 @@ import { useCallback, useSyncExternalStore } from "react";
 
 /**
  * How many messages have arrived in a conversation that nobody has looked at.
- *
- * A count rather than a flag. The flag it replaced drew a dot, and a dot on a
- * server icon says only that something happened somewhere in it — which on a
- * server with a busy general channel is always true, so it stopped carrying
- * information the moment you joined anything active.
- *
- * Distinct from the mention tracker next door, which counts the messages that
- * named *you*. Both are shown: the count is how much is waiting, a mention is
- * why you might want to go now. Where both exist the mention wins the badge,
- * because it is the more urgent of the two.
- *
- * **Counted from when this window connected, not from a server-side read
- * marker.** Nothing persists it and no server sends it, so a reconnect starts
- * the count over — the same limit the flag had, made visible by being a number.
- * GRYT-985 is the server-side version.
- *
- * The store lives at module scope so a message that arrives while the channel
- * list is unmounted is still counted when it comes back.
+ * **Counted from when this window connected**, not from a server-side marker.
  */
 type UnreadMap = Map<string, Map<string, number>>;
 
@@ -40,9 +23,8 @@ function getSnapshot(): UnreadMap {
 }
 
 /**
- * The store as it stands, for a test with no React to render into. Exported
- * rather than reached through the hook because what is worth checking here is
- * the arithmetic.
+ * The store as it stands, for a test with no React to render into. What is worth
+ * checking here is the arithmetic rather than the subscription.
  */
 export function getUnreadSnapshot(): UnreadMap {
   return unreadMap;

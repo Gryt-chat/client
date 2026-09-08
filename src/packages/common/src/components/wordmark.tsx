@@ -15,10 +15,8 @@ export function BetaTag() {
         fontWeight: 700,
         letterSpacing: "0.1em",
         textTransform: "uppercase",
-        /* The mark's own pairing: the face colour on the body colour, 5.6:1.
-           This was a near-black on the old amber, which measured 8.99:1 and
-           would have measured 2.2:1 once the accent went from a light amber to
-           a dark plum — a tag nobody can read, and nothing would have said so. */
+        /* The mark's own pairing: the face colour on the body colour, 5.6:1. A
+           near-black would have measured 2.2:1 once the accent went to plum. */
         color: BETA_ACCENT_SOFT,
         background: BETA_ACCENT,
         padding: "2px 5px",
@@ -33,10 +31,8 @@ export function BetaTag() {
 }
 
 /**
- * "Gryt", plus the beta tag when this is a beta build.
- *
- * Everywhere the name is written should use this, so a beta build is marked in
- * all of them at once rather than in whichever ones someone remembered.
+ * "Gryt", plus the beta tag when this is a beta build. Everywhere the name is
+ * written should use this, so a beta build is marked in all of them at once.
  */
 const TEXT_SIZE = {
   "1": "text-xs",

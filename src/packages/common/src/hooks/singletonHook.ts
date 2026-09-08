@@ -2,20 +2,8 @@ import type { ReactElement } from "react";
 import { createElement, useLayoutEffect, useSyncExternalStore } from "react";
 
 /**
- * A drop-in replacement for react-singleton-hook.
- *
- * The package it replaces reads
- * ReactDOM.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED, which React 19
- * removed — so it does not merely warn on install, it breaks at runtime. It
- * also mounted a second React root on a hidden div, which meant nothing inside
- * a singleton hook could ever see context from the app tree.
- *
- * Same two-argument API, so no call site changed, but the bodies run inside the
- * app's own tree via <SingletonHooks />, mounted once in main.tsx.
- *
- * The contract is unchanged: the body runs exactly once no matter how many
- * components call the hook, and callers get `initialValue` until the first
- * render of the body has committed.
+ * A drop-in replacement for react-singleton-hook, which reads a React internal
+ * that 19 removed. Same API; the bodies run inside the app's own tree.
  */
 
 type Listener = () => void;
@@ -65,9 +53,8 @@ export function singletonHook<T>(initialValue: T, useBody: () => T): () => T {
   function Runner() {
     const next = useBody();
 
-    // Layout effect, not effect: the value should be published before the
-    // browser paints, so a consumer does not show the initial value for a
-    // frame after the body has already produced the real one.
+    // Layout effect, not effect: the value should be published before the browser
+    // paints, so a consumer does not show the initial value for a frame.
     useLayoutEffect(() => {
       publish(next);
     });

@@ -1,14 +1,5 @@
-/* Capturing an invite the desktop was opened with.
- *
- * The parsing moved to `@gryt/core` (GRYT-406) and is re-exported from here
- * rather than changed at every call site.
- *
- * What stayed is below. Capturing an invite off the launch URL and holding it
- * across a reload is the desktop's alone — the phone is handed a deep link
- * rather than finding one in its own address bar — and it touches
- * `window.location` and `sessionStorage`, so it fails the test at the top of
- * `@gryt/core` twice over.
- */
+/* Capturing an invite the desktop was opened with. The parsing moved to
+ * `@gryt/core` and is re-exported; what stayed touches `window.location`. */
 
 import { normalizeCode, normalizeHost } from "@gryt/core";
 
@@ -30,11 +21,8 @@ export type PendingInvite = {
 const PENDING_INVITE_KEY = "pendingInvite";
 
 /**
- * The default host for a legacy `/invite/<code>` link.
- *
- * Those links carry no host, and the only client ever served from a path like
- * that is the hosted one. Kept here so the join field and the URL capture below
- * agree on it rather than each picking their own.
+ * The default host for a legacy `/invite/<code>` link. Those links carry no host,
+ * and the only client served from such a path is the hosted one.
  */
 const DEFAULT_LEGACY_HOST = "app.gryt.chat";
 

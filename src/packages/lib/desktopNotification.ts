@@ -1,8 +1,6 @@
 /**
- * OS notifications. Electron's Notification is main-process only, so the app
- * goes through IPC and the browser uses the web API.
- *
- * Both silent: the app plays its own message sound from the same event.
+ * OS notifications. Electron's is main-process only, so the app goes through IPC
+ * and the browser uses the web API. Both silent: the app plays its own sound.
  */
 
 /** How much of a message goes in the body before it is cut. */

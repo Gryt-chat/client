@@ -1,10 +1,6 @@
 /**
- * A perceptually-uniform volume curve.
- *
- * Human hearing is roughly logarithmic, so a linear slider→gain mapping packs
- * most of the perceived change into the bottom 20 %. A cubic curve spreads it
- * across the slider's range while keeping the endpoints unchanged: 0 % → 0,
- * 100 % → 1.0. Above 100 the result scales proportionally.
+ * A perceptually-uniform volume curve. Hearing is roughly logarithmic, so a cubic
+ * spreads the change across the slider while keeping 0 → 0 and 100% → 1.0.
  */
 
 /** Convert a linear slider percentage to a perceptual gain multiplier. */
@@ -25,15 +21,8 @@ export function gainToSlider(gain: number, max = 100): number {
 export const MAX_VOLUME_PERCENT = 200;
 
 /**
- * Slider percentage → gain for the microphone and output volume sliders.
- *
- * Deliberately linear: the percentage means what it says, so 100 % is unity and
- * 200 % is twice the amplitude. This replaced a cubic curve (`t³ × 2`) where
- * 100 % was a 2× boost and unity landed at roughly 79 %, which made the numbers
- * meaningless — 50 % was 0.25×, not "half".
- *
- * A cubic cannot produce both 100 % → 1× and 200 % → 2×, so the perceptual
- * curve was traded for predictability.
+ * Slider percentage → gain for the microphone and output sliders. Deliberately
+ * linear, so 100% is unity and 200% is twice the amplitude.
  */
 export function sliderToOutputGain(sliderPercent: number): number {
   const clamped = Math.max(0, Math.min(MAX_VOLUME_PERCENT, sliderPercent));

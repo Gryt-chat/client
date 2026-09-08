@@ -103,9 +103,8 @@ const PROBE_TIMEOUT_MS = 8000;
 const probesInFlight = new Map<string, Promise<Scheme>>();
 
 /**
- * Find out which scheme a host actually answers on, once, and remember it.
- * Deliberately unauthenticated: `Authorization` is what makes a request
- * preflighted, and a preflight may not be redirected.
+ * Find out which scheme a host answers on, once, and remember it. Unauthenticated:
+ * `Authorization` makes it preflighted, and a preflight cannot be redirected.
  */
 export async function ensureSchemeKnown(host: string): Promise<Scheme> {
   const known = getRememberedScheme(host);
