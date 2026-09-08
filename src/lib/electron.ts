@@ -15,13 +15,11 @@ export interface UpdateStatus {
     | "not-available"
     | "downloading"
     | "downloaded"
-    // An install has already been handed to the installer and is still going.
-    // Checking again would start a second update cycle, which destroys the
-    // first — so this is reported instead of a new check.
+    // An install is already with the installer. Checking again starts a second
+    // update cycle, which destroys the first, so this is reported instead.
     | "pending"
     // A background check found a release. Distinct from "available", which
-    // answers a check somebody asked for and is shown in Settings. This one
-    // nobody asked for, so it is what raises the toast.
+    // answers a check somebody asked for. Nobody asked, so this raises a toast.
     | "announced"
     // A check somebody pressed found nothing. Only ever sent for a forced
     // check, because it is an answer to a question rather than news.
@@ -31,18 +29,13 @@ export interface UpdateStatus {
   /** On "announced", the version being run right now. */
   from?: string;
   /**
-   * On "announced", whether Gryt is fetching this release on its own.
-   *
-   * False when automatic updates are off, which is the whole difference the
-   * toast shows: a progress bar it can only watch, or a button that starts the
-   * download.
+   * On "announced", whether Gryt is fetching this release on its own. False when
+   * automatic updates are off: a bar to watch, or a button to start.
    */
   autoDownload?: boolean;
   /**
-   * On "announced", that this was asked for rather than discovered.
-   *
-   * A dismissed toast stays dismissed for news. Pressing Check for Updates, or
-   * reloading the window, is a later ask and redraws it.
+   * On "announced", that this was asked for rather than discovered. A dismissed
+   * toast stays dismissed for news; a later ask redraws it.
    */
   reannounce?: boolean;
   percent?: number;
@@ -154,20 +147,16 @@ export interface ElectronAPI {
   getBetaChannel(): Promise<boolean>;
   setBetaChannel(enabled: boolean): void;
   /**
-   * Whether this install follows the build without the embedded server, what
-   * is actually installed, and whether those two disagree. Absent on builds
-   * older than the one that added the setting.
+   * Whether this install follows the build without the embedded server, what is
+   * installed, and whether the two disagree. Absent on older builds.
    */
   getSlimVariant?(): Promise<{ preferred: boolean; installed: boolean; pending: boolean }>;
   /** Ask for a variant and start a check for the installer that matches. */
   setSlimVariant?(slim: boolean): void;
   switchUpdateChannel(enabled: boolean): void;
   /**
-   * Watching for programs somebody listed (GRYT-931).
-   *
-   * `listRunningPrograms` is the one that hands over what is open, and it is
-   * for the settings screen so somebody can pick from a list rather than guess
-   * at an executable name. The rest deal only in the list they wrote.
+   * Watching for programs somebody listed. `listRunningPrograms` is the one that
+   * hands over what is open, and it is for the settings screen (GRYT-931).
    */
   listRunningPrograms?(): Promise<string[]>;
   getWatchedPrograms?(): Promise<WatchedProgram[]>;
@@ -179,10 +168,8 @@ export interface ElectronAPI {
   setCloseToTray(enabled: boolean): void;
   setSignedIn(signedIn: boolean): void;
   /**
-   * Tell the tray what voice is doing.
-   *
-   * The main process has no other route to any of this — mute and deafen are
-   * renderer settings and the SFU connection is a renderer concern.
+   * Tell the tray what voice is doing. The main process has no other route: mute
+   * and deafen are renderer settings and the SFU connection is a renderer concern.
    */
   setVoiceState(state: TrayVoiceState): void;
   /** Mute and deafen, driven from the tray menu. Returns an unsubscribe. */
@@ -242,11 +229,8 @@ export interface ElectronAPI {
   saveUserData(userId: string, data: Record<string, unknown>): void;
   setUserData(userId: string, key: string, value: unknown): void;
   /**
-   * Encrypt and decrypt with the OS keychain (GRYT-256).
-   *
-   * Not a store — the sealed blob stays wherever the caller already keeps it.
-   * Desktop only. `secretsAvailable` is false on a Linux box with no keyring,
-   * which plenty of self-hosters will be, so every caller needs a path for it.
+   * Encrypt and decrypt with the OS keychain. Not a store. `secretsAvailable` is
+   * false on a Linux box with no keyring, so every caller needs a path for it.
    */
   secretsAvailable(): Promise<boolean>;
   sealSecret(plain: string): Promise<string>;

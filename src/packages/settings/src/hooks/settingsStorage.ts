@@ -1,22 +1,14 @@
 import { AUDIO_DEFAULTS } from "./useAudioSettings";
 
 /**
- * How the voice grid chooses its rows and columns.
- *
- * "meet" reproduces Google Meet, measured: more columns, tiles allowed to go
- * portrait. "large" picks whatever arrangement gives the biggest tiles, which
- * at nine people is a 3x3 of wide tiles where Meet gives 4+5. Both look
- * correct, so it is a setting rather than a decision baked into the layout.
+ * How the voice grid chooses its rows and columns. "meet" reproduces Google Meet
+ * as measured; "large" picks the biggest tiles. Both look right, so it is a setting.
  */
 export type VoiceTileLayout = "meet" | "large";
 
 /**
- * What two people in a channel look like.
- *
- * "hero" is what a video call usually does and what Gryt has always done: one
- * camera fills the panel, the other sits in the corner. "equal" gives them the
- * same tile, which is better when you are both doing something rather than
- * talking to each other.
+ * What two people in a channel look like. "hero" fills the panel with one camera;
+ * "equal" gives them the same tile, better when both are doing something.
  */
 export type VoiceTwoPersonLayout = "hero" | "equal";
 
@@ -71,23 +63,14 @@ export interface Settings {
   nickname: string;
 
   /**
-   * What this person says they are doing, shown under their name (GRYT-929).
-   *
-   * Empty means they have not set one. Kept per device rather than per server:
-   * it is one line about you, sent to every server you are on, and the client
-   * re-sends it after a reconnect because the server holds it on the connection
-   * rather than storing it.
+   * What this person says they are doing, shown under their name. Per device, and
+   * re-sent after a reconnect because the server holds it on the connection.
    */
   activity: string;
   setActivity: (value: string) => void;
   /**
-   * What servers are actually told, which is not always what you typed
-   * (GRYT-931).
-   *
-   * A program from your watch list takes precedence while it is running, so
-   * launching a game says the game and quitting it gives you your own line
-   * back. `activity` stays what you wrote — the settings field reads and writes
-   * that one, and a game must not overwrite a sentence somebody typed.
+   * What servers are actually told, which is not always what you typed. A running
+   * watched program takes precedence; `activity` stays what you wrote (GRYT-931).
    */
   effectiveActivity: string;
   /** The watched programs running now. Empty in the browser, and usually. */
@@ -119,12 +102,8 @@ export interface Settings {
 
   hasSeenWelcome: boolean;
   /**
-   * Whether the stored settings have been read yet.
-   *
-   * Anything deciding whether to show a first-run thing has to wait for this.
-   * The defaults here say "new user" because that is the only safe default for
-   * a value nobody has set, and a first-run dialog cannot tell that apart from
-   * a genuine new user without being told.
+   * Whether the stored settings have been read yet. Anything deciding whether to
+   * show a first-run thing has to wait for it — the defaults here say "new user".
    */
   settingsLoaded: boolean;
   completeWelcome: (options?: { startTour?: boolean }) => void;
@@ -136,23 +115,15 @@ export interface Settings {
   setShowVoiceView: (value: boolean) => void;
 
   /**
-   * Whether the row offering the server we run has been hidden.
-   *
-   * Per device rather than per account, like the other preferences here.
-   * Which servers somebody declined is a UI choice, and the identity service
-   * has no business learning it.
+   * Whether the row offering the server we run has been hidden. Per device: which
+   * servers somebody declined is a UI choice, not the identity service's business.
    */
   officialServerHidden: boolean;
   setOfficialServerHidden: (value: boolean) => void;
 
   /**
-   * Whether the "microphone is not picking up any sound" toast has been turned
-   * off for good.
-   *
-   * Per device, because the thing it is wrong about is a device: a headset that
-   * gates its own noise floor emits digital silence between sentences, which is
-   * exactly what the detector looks for. Somebody on that headset wants the
-   * warning gone here and still wants it on the laptop.
+   * Whether the "microphone is not picking up any sound" toast is off for good.
+   * Per device, because a headset gating its noise floor is what triggers it.
    */
   micSilentWarningDismissed: boolean;
   setMicSilentWarningDismissed: (value: boolean) => void;
@@ -190,10 +161,8 @@ export interface Settings {
   setDisconnectHotkey: (value: string) => void;
 
   showPeerLatency: boolean;
-  /* Whether a theme may fetch a typeface from Google. Per machine, not part
-     of the theme: a theme says which face it wants, this says whether this
-     install will go and get one. In the theme it would let a shared link turn
-     on network access for whoever opened it. */
+  /* Whether a theme may fetch a typeface from Google. Per machine, not part of
+     the theme — in the theme a shared link would enable it for whoever opened it. */
   googleFontsEnabled: boolean;
   setShowPeerLatency: (value: boolean) => void;
   setGoogleFontsEnabled: (value: boolean) => void;

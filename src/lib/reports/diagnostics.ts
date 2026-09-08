@@ -11,14 +11,7 @@ import { lastPlace, sessionUptimeSec } from "./session";
 
 /**
  * What the app knows about itself, for a report nobody should have to fill in.
- *
- * App version, build number and OS version are the ones every bug report needs
- * and nobody remembers to include. The desktop build can answer more — Electron
- * and Chrome versions, whether it is running its own server, the tail of the
- * renderer log — and those are what make a voice bug diagnosable.
- *
- * Everything here is best-effort and nullable. `buildReport` drops what is
- * missing rather than sending a guess.
+ * Everything is best-effort; `buildReport` drops what is missing.
  */
 export function useDiagnostics(): Diagnostics {
   const { serverDetailsList } = useSockets();
@@ -57,10 +50,8 @@ export function useDiagnostics(): Diagnostics {
 
     engine: isElectron() ? "electron" : "browser",
     chromeVersion: ua.chrome,
-    /* Gated on the bridge rather than taken from the string. A web build can
-       be opened inside somebody else's Electron shell — that is how the
-       preview browser runs — and reporting its version would say this was the
-       desktop app when nothing else about the report is. */
+    /* Gated on the bridge rather than the string: a web build opened inside
+       somebody else's Electron shell would report as the desktop app. */
     electronVersion: isElectron() ? ua.electron : null,
     userAgent: navigator.userAgent || null,
 
@@ -76,20 +67,14 @@ export function useDiagnostics(): Diagnostics {
     embeddedServer: isElectron() ? running !== null : null,
     embeddedServerVersion: bundled?.server ?? null,
 
-    /* No logs here. They are the one field that can carry something about the
-       person rather than about the build — a failed connection logs the server
-       address, and a self-hosted server's address is often somebody's house.
-       The form asks before attaching them; see `logs.ts`. */
+    /* No logs here. A failed connection logs the server address, and a
+       self-hosted one is often somebody's house. The form asks first. */
   };
 }
 
 /**
- * The version the app actually is.
- *
- * `__APP_VERSION__` is the one baked in at build time and is right in the
- * browser. On the desktop it can disagree with what is installed — an update
- * that has been staged but not restarted into — so the main process is asked
- * first and the constant is the fallback while it answers.
+ * The version the app actually is. `__APP_VERSION__` is baked in at build time
+ * and can disagree with an update staged but not restarted into.
  */
 function useAppVersion(): string {
   const [version, setVersion] = useState(__APP_VERSION__);
@@ -124,12 +109,8 @@ function useOnline(): boolean {
 }
 
 /**
- * Electron and Chrome versions, read off the user agent.
- *
- * Not from `process.versions`, which the renderer cannot see under context
- * isolation, and not through a new bridge call — Electron puts both in the user
- * agent already, and a preload addition is a whole release before an older
- * build can send one.
+ * Electron and Chrome versions, read off the user agent. Not `process.versions`,
+ * which the renderer cannot see, and not a new preload call.
  */
 function readUserAgent(): {
   chrome: string | null;
@@ -145,12 +126,8 @@ function readUserAgent(): {
 }
 
 /**
- * The OS version as the user agent states it.
- *
- * Coarse on purpose and coarser than it used to be: Chrome freezes the Windows
- * version at 10.0 and macOS at 10.15.7 whatever the machine is running. Worth
- * sending anyway — "Windows" and "macOS" are still the answer to which platform
- * this is, and the frozen number is at least not a wrong one.
+ * The OS version as the user agent states it. Chrome freezes Windows at 10.0 and
+ * macOS at 10.15.7, so this is coarse — but the platform is still the answer.
  */
 function readOsVersion(ua: string): string | null {
   return (
@@ -170,10 +147,8 @@ function readPlatform(): string | null {
 }
 
 /**
- * Whether this build takes beta updates.
- *
- * Null rather than "stable" when there is no updater at all, which is the web
- * build — it has no channel, and saying "stable" would claim otherwise.
+ * Whether this build takes beta updates. Null rather than "stable" when there is
+ * no updater at all, which is the web build.
  */
 function useChannel(): string | null {
   const [channel, setChannel] = useState<string | null>(null);
@@ -191,11 +166,8 @@ function useChannel(): string | null {
 }
 
 /**
- * `4g`, `wifi`, or nothing.
- *
- * Behind the Network Information API, which Chrome has and nothing else does.
- * Worth asking for anyway: voice breaking on a phone hotspot and voice breaking
- * on fibre are different reports.
+ * `4g`, `wifi`, or nothing. Behind the Network Information API, which only Chrome
+ * has. Voice breaking on a hotspot and on fibre are different reports.
  */
 function readNetworkType(): string | null {
   const connection = (
