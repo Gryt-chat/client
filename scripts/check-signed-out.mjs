@@ -1,18 +1,8 @@
 /* eslint-env node */
 
 /**
- * The note that keeps a signed-out device signed out across a restart.
- *
- * Signing out your other devices used to last only as long as the app did. The
- * refusal lived in React state, and the next launch rejoined with the keypair
- * still on disk, silently, without telling the person who signed it out. What
- * is checked here is that the note survives, that it is keyed the way the rest
- * of the client keys servers, and that nothing but a deliberate clear lifts it.
- *
- * The half this cannot check is the chokepoint that reads it -- the challenge
- * handler, which is JSX. That is called out in the PR rather than asserted
- * here, because a source check that a handler calls a function is not a check
- * that the function does anything.
+ * The note that keeps a signed-out device signed out across a restart. The
+ * chokepoint that reads it is JSX and is called out in the PR instead.
  */
 
 import assert from "node:assert/strict";
@@ -82,17 +72,15 @@ markSignedOut("");
 markSignedOut("   ");
 assert.equal(isSignedOut(""), false);
 assert.equal(isSignedOut("   "), false);
-// The record itself, not just the lookup. `isSignedOut` refuses a blank host on
-// its own, which would hide a `markSignedOut` that had written one -- and a
-// stray key nothing can ever clear is how this file grows forever.
+// The record itself, not just the lookup: `isSignedOut` refuses a blank host on
+// its own, which would hide a `markSignedOut` that had written one.
 assert.equal(signedOutAt(""), null, "a blank host must not reach the record");
 assert.equal(signedOutAt("   "), null);
 
 // ── storage that will not cooperate ────────────────────────────────
 
 // A private window, a browser blocking site data, a thumbnail render. A device
-// that cannot remember must still start, and must not claim to be signed out
-// of everywhere.
+// that cannot remember must start, and must not claim to be signed out.
 throwing = true;
 assert.equal(isSignedOut(OTHER), false, "unreadable storage means no note, not every note");
 // Including the empty key, because a fallback that invents one entry is a

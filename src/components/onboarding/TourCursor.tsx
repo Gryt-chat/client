@@ -1,18 +1,11 @@
 /* Hallmark · component: overlay affordance · genre: modern-minimal
- * theme: @gryt/ui (design.md) · states: travelling · pressing · resting · reduced-motion
- * pre-emit critique: P5 H5 E5 S5 R5 V4
- */
+ * theme: @gryt/ui (design.md) · states: travelling · pressing · resting */
 import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 
 /**
- * A drawn cursor for the tour to move around with. The tour opens modals on the
- * user's behalf, and doing that invisibly is what made it hard to follow:
- * Settings arrived out of nowhere and nothing said which button it came from.
- *
- * It is a drawing, never a real pointer. `pointer-events: none` is the whole
- * contract — a cursor that intercepted the tour card's clicks (GRYT-200) would
- * be a poor joke.
+ * A drawn cursor for the tour to move around with, because opening modals
+ * invisibly is what made it hard to follow. `pointer-events: none` is the contract.
  */
 
 /** Unhurried, and damped hard enough never to overshoot onto a neighbour. */
@@ -36,8 +29,7 @@ export function TourCursor({
   const reduceMotion = useReducedMotion();
 
   // The inner dot leans the way it is going, so the thing reads as steering
-  // itself rather than being dragged. Direction comes from the step it just
-  // took; it relaxes back to centre once it has arrived.
+  // itself. It relaxes back to centre once it has arrived.
   const previous = useRef({ x, y });
   const [lean, setLean] = useState({ x: 0, y: 0 });
 

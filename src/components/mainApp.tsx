@@ -14,16 +14,12 @@ export function MainApp() {
   const { servers, setShowAddServer, showDiscovery } = useServerManagement();
   const { showTour, dismissTour } = useSettings();
 
-  /* A window this small is one channel, so the shell around it goes. At 300px
-     wide the 16px of page padding is a tenth of the window and the rail another
-     tenth, for a list of servers you cannot act on with no channel list beside
-     it. `ServerView` drops the rest. */
+  /* A window this small is one channel, so the shell around it goes: at 300px the
+     padding and the rail are a fifth of it. `ServerView` drops the rest. */
   const isTiny = useIsTinyWindow();
 
   /* What a bug report calls "where you were". Recorded here rather than in the
-     report form, which would always answer "the report form", and not in
-     settings, which would always answer "About" — that is where the form is
-     opened from. */
+     report form, which would always answer "the report form". */
   useRememberPlace(
     showDiscovery ? "discovery" : Object.keys(servers).length > 0 ? "server" : "empty",
   );
@@ -40,11 +36,8 @@ export function MainApp() {
       ) : Object.keys(servers).length > 0 ? (
         <ServerView />
       ) : (
-        /* Was a line of text with a finger emoji pointing at the sidebar, which
-           is the tour's job now and was never a good one for a permanent empty
-           state: it explained where a button was instead of offering the thing
-           the button does. Somebody who dismissed the tour still ends up here,
-           so this has to stand on its own. */
+        /* Was a line of text with a finger emoji pointing at the sidebar. That is
+           the tour's job; somebody who dismissed it still ends up here. */
         <div className="flex grow items-center justify-center">
           <div className="flex flex-col items-center gap-3" style={{ maxWidth: "24rem", textAlign: "center" }}>
             <h2 className="text-lg">Nothing here yet</h2>
