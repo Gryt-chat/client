@@ -1,9 +1,6 @@
 /**
- * Reliable notification sound player using the Web Audio API.
- *
- * HTML5 Audio (`new Audio().play()`) is throttled / blocked by browsers
- * in background tabs.  A shared AudioContext that was resumed during a
- * user gesture keeps working regardless of tab focus.
+ * Notification sound player on the Web Audio API. HTML5 Audio is throttled in
+ * background tabs; a resumed AudioContext keeps working regardless of focus.
  */
 
 import { sliderToGain } from "./audioVolume";
@@ -49,10 +46,8 @@ async function fetchBuffer(url: string): Promise<AudioBuffer> {
 }
 
 /**
- * Play a notification sound.  Works in background / unfocused tabs.
- *
- * @param url         URL or data-URI of the sound file.
- * @param sliderValue Volume slider value (0-100).
+ * Play a notification sound. Works in background tabs.
+ * @param url URL or data-URI. @param sliderValue Volume slider value (0-100).
  */
 export function playNotificationSound(url: string, sliderValue: number): void {
   const actx = getContext();
@@ -88,10 +83,8 @@ export function preloadNotificationSound(url: string): void {
 }
 
 /**
- * Ensure the AudioContext is in the "running" state.
- * Call this from any user-gesture handler (click, keydown, etc.)
- * so that later programmatic playback is allowed by the browser.
- * No-op if no sound has been played yet (context doesn't exist).
+ * Ensure the AudioContext is running. Call from a user-gesture handler so later
+ * programmatic playback is allowed. No-op if no sound has been played yet.
  */
 export function warmNotificationContext(): void {
   if (!ctx) return;

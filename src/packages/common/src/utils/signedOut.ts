@@ -1,19 +1,6 @@
 /**
- * Servers this device has been signed out of, and has not been let back into.
- *
- * Signing out your other devices works while they are running: they get
- * `token:revoked`, drop both tokens, and refuse to rejoin. That refusal lived
- * in React state, so restarting the app undid it. The client still holds the
- * keypair and is still a member, and the server cannot tell that join apart
- * from any other -- so the device signed itself back in on the next launch, and
- * the person who signed it out was never told. GRYT-987.
- *
- * This is a note to ourselves, not a security boundary. Anybody who controls
- * the machine can clear it, and a client that ignored it entirely would still
- * be let in. What it buys is that the ordinary case -- somebody signs a laptop
- * out from their phone -- stays signed out until a person at that laptop says
- * otherwise. Ending it on the server needs a device identity, which is the
- * device-list work still open on GRYT-973.
+ * Servers this device has been signed out of. A note to ourselves, not a security
+ * boundary — it keeps a laptop signed out across a restart (GRYT-987).
  */
 
 const KEY = "gryt.signedOutServers";
@@ -21,8 +8,7 @@ const KEY = "gryt.signedOutServers";
 type SignedOutRecord = Record<string, string>;
 
 /**
- * Storage throws rather than returning null in a few real places -- a private
- * window, a browser set to block site data, a thumbnail render. A device that
+ * Storage throws rather than returning null in a few real places. A device that
  * cannot remember being signed out should still start.
  */
 function read(): SignedOutRecord {
@@ -62,11 +48,8 @@ export function isSignedOut(host: string): boolean {
 }
 
 /**
- * Let this device back in.
- *
- * Only ever from something a person did at this machine -- pressing the button
- * on the card, reconnecting, or adding the server again. Never from an
- * automatic retry, which is the whole point.
+ * Let this device back in. Only ever from something a person did at this machine,
+ * never from an automatic retry.
  */
 export function clearSignedOut(host: string): void {
   const key = normalise(host);

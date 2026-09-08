@@ -27,9 +27,8 @@ function extForMime(mime: string): string {
 }
 
 /**
- * A server stores what its worker produced, and the upload endpoint does not
- * accept everything it emits, so this decodes and re-encodes. Animation is
- * passed through untouched, since a canvas keeps only the first frame.
+ * A server stores what its worker produced and the upload endpoint does not accept
+ * all of it, so this re-encodes. Animation passes through: a canvas keeps frame one.
  */
 async function asUploadableAvatar(blob: Blob): Promise<File> {
   const type = (blob.type || "").toLowerCase();
@@ -344,8 +343,7 @@ export function ProfileSettings() {
 
   /**
    * Per host, because a profile change goes to several at once and they will not
-   * agree. An older server and one that withheld the permission both look like
-   * an absence, so the catalogue is what separates them.
+   * agree. The catalogue separates an old server from a withheld permission.
    */
   const mayUploadPicture = (host: string): boolean => {
     const info = serverDetailsList[host]?.server_info;
@@ -590,8 +588,7 @@ export function ProfileSettings() {
 
 /**
    * Owls and pictures are one job: a designed owl is a PNG plus the string that
-   * draws it, so both are "fetch the bytes and carry the string". The nickname is
-   * left alone, being per-server for a reason.
+   * draws it. The nickname is left alone, being per-server for a reason.
    */
   const handleSyncFromServer = async (sourceHost: string) => {
     if (syncing || uploading || removing) return;

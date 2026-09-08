@@ -23,17 +23,8 @@ function isInputFocused(): boolean {
 }
 
 /**
- * The trigger half of every hotkey: push to talk, mute, deafen and disconnect.
- *
- * Two transports, and never both at once. In Electron the bindings go to the
- * main process, which watches the whole OS through uiohook and reports back —
- * that is what makes them work while Gryt is in the background. Everywhere
- * else, and on any desktop where uiohook could not start, the window's own key
- * and mouse events do the same job while Gryt has focus.
- *
- * Push to talk only opens and closes the gate here. What that does to the
- * audio graph belongs to @gryt/voice, which is why this hands off to
- * `setPushToTalkActive` rather than touching gain itself.
+ * The trigger half of every hotkey. Two transports, never both: uiohook through
+ * the main process in Electron, the window's own events everywhere else.
  */
 export function useGlobalHotkeys(onDisconnect?: () => void) {
   const {
@@ -67,9 +58,8 @@ export function useGlobalHotkeys(onDisconnect?: () => void) {
     disconnect: disconnectHotkey,
   };
 
-  // Everything the handlers need, off the dependency list. Without this the
-  // IPC subscription would tear down and re-subscribe on every mute toggle,
-  // and a key held across that gap would never be released.
+  // Everything the handlers need, off the dependency list. Otherwise the IPC
+  // subscription re-subscribes on every mute toggle and drops a held key.
   const stateRef = useRef({
     bindings: {} as Record<HotkeyAction, string>,
     isMuted,
@@ -96,9 +86,8 @@ export function useGlobalHotkeys(onDisconnect?: () => void) {
   const pressAction = useCallback((action: HotkeyAction) => {
     const s = stateRef.current;
 
-    // Typing "m" into a message must not toggle mute. Push to talk is exempt —
-    // talking while typing is the point of it — and so is a mouse binding,
-    // which types nothing.
+    // Typing "m" into a message must not toggle mute. Push to talk is exempt, and
+    // so is a mouse binding, which types nothing.
     if (
       action !== "ptt" &&
       comboMouseButton(s.bindings[action]) === null &&

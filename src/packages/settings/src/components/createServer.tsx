@@ -15,15 +15,8 @@ interface CreateServerPanelProps {
 }
 
 /**
- * Making a server, and nothing else.
- *
- * This used to be the whole embedded-server manager — create form, running
- * card, logs, autostart, start and stop — reached through a dialog called "Add
- * a server". The manager lives in Settings → My servers now.
- *
- * Create finishes the job: it writes the config, starts the process and hands
- * the address back so the caller can join it. It used to stop after writing the
- * config and leave a second button, Connect, as the thing that got you there.
+ * Making a server, and nothing else — the manager lives in Settings → My servers.
+ * Create writes the config, starts the process and hands the address back.
  */
 export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelProps) {
   const { isAvailable, creating, createServer, suggestPort, checkPort } =
@@ -34,12 +27,8 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
   const [error, setError] = useState("");
 
   /**
-   * The port, offered rather than demanded.
-   *
-   * Prefilled with one that is actually free, so the common case is to leave it
-   * alone. Anybody who cares — a port already forwarded on their router, or one
-   * their firewall rules already name — can say so here instead of creating a
-   * server and then finding out it landed somewhere else.
+   * The port, offered rather than demanded. Prefilled with one that is free, so
+   * anybody who cares about a forwarded port can say so before creating.
    */
   const [port, setPort] = useState("");
   const [portState, setPortState] = useState<
@@ -86,12 +75,8 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
   if (!isAvailable) return null;
 
   /**
-   * Create, and hand back the server that was created.
-   *
-   * Deliberately keyed off the returned state rather than off a status effect.
-   * When there was only ever one server, watching for "a server went running"
-   * was good enough; with several, that fires for a server somebody else just
-   * started and would join you to the wrong one.
+   * Create, and hand back the server that was created. Keyed off the returned
+   * state: watching for "a server went running" joins you to somebody else's.
    */
   async function handleCreate() {
     setError("");

@@ -3,12 +3,8 @@ import { useEffect, useState } from "react";
 import { type FetchInfo, fetchServerInfo } from "./useServerJoin";
 
 /**
- * The one Gryt server we run ourselves.
- *
- * Hardcoded rather than configured. It is already hardcoded in the Terms, the
- * Privacy page and the Community Guidelines, and a value that has to agree with
- * three published legal pages is not one anybody should be able to point
- * somewhere else from a settings field.
+ * The one Gryt server we run ourselves. Hardcoded, because it is already
+ * hardcoded in the Terms, the Privacy page and the Community Guidelines.
  */
 export const OFFICIAL_SERVER_HOST = "community.gryt.chat";
 
@@ -22,22 +18,14 @@ export interface OfficialServer {
 }
 
 /**
- * Remembered across dialogs, because the answer does not change while the app
- * is open and the dialog is opened more than once.
- *
- * Only a server that answered is cached. Caching "unreachable" would mean
- * somebody who opened the dialog on a train never sees the row again until they
- * restart, and unreachable is the answer a bad minute of network gives.
+ * Remembered across dialogs. Only a server that answered is cached: caching
+ * "unreachable" would hide the row until a restart after one bad minute.
  */
 let cached: OfficialServer | null = null;
 
 /**
- * Whether there is an official server to offer, and what it calls itself.
- *
- * A probe rather than a constant because the row it feeds is an offer: a server
- * that does not answer must not be suggested. `/info` is the same endpoint the
- * preview below the field uses, so an answer here means the join that follows
- * will get one too.
+ * Whether there is an official server to offer, and what it calls itself. A probe
+ * rather than a constant, because the row it feeds is an offer.
  */
 export function useOfficialServer(enabled: boolean): OfficialServer | null {
   const [server, setServer] = useState<OfficialServer | null>(cached);
