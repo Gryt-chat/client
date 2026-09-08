@@ -75,14 +75,8 @@ export const ChatView = memo(({
   chatMessages: ChatMessage[];
   conversationKey?: string;
   canSend: boolean;
-  /**
-   * Whether the open channel allows posting, as the server resolved it.
-   *
-   * Separate from the server-wide permission below, because a channel scope can
-   * take `send_messages` away from a role that holds it everywhere else — and
-   * the rules that say so are only readable with `manage_channels`, so the
-   * client cannot work it out. Absent means the server is too old to say.
-   */
+  /** A channel scope can take `send_messages` from a role that holds it
+      everywhere else, and only `manage_channels` can read the rules. */
   canSendHere?: boolean;
   sendChat: (text: string, files: File[], replyToMessageId?: string) => void;
   editMessage?: (messageId: string, conversationId: string, newText: string) => void;
@@ -91,14 +85,8 @@ export const ChatView = memo(({
   socketConnection?: unknown;
   serverHost?: string;
   memberList?: Record<string, MemberInfo>;
-  /**
-   * Whether this person has blocked that sender.
-   *
-   * `chatMessages` arrives already filtered, but the thread panel's messages
-   * come from `useThreads` inside this component and never passed through it —
-   * so somebody you had blocked still turned up in a thread. Same predicate,
-   * applied in the one place the thread list exists.
-   */
+  /** `chatMessages` arrives filtered, but the thread panel's come from
+      `useThreads` in here and never did. */
   isBlocked?: (serverUserId: string) => boolean;
   channelName?: string;
   channelType?: "text" | "voice";
@@ -109,36 +97,19 @@ export const ChatView = memo(({
   forumTags?: import("@/settings/src/types/server").ForumTag[];
   /** A direct message reads differently: no `#`, and its own empty state. */
   conversationKind?: "channel" | "dm";
-  /**
-   * Whether the next message will be encrypted (GRYT-729). Absent on a channel,
-   * which is never encrypted and needs no note saying so.
-   */
+  /** Absent on a channel, which is never encrypted and needs no note. */
   sealing?: SealDecision;
   /** Member id to nickname, so a refusal can name the person rather than an id. */
   memberNames?: Record<string, string>;
   serverName?: string;
-  /**
-   * Put at the right-hand end of the header.
-   *
-   * A slot rather than a named button, because what belongs there depends on
-   * what is open and this component does not need to know: the DM view puts
-   * "start a group" here, and a channel puts nothing.
-   */
+  /** A slot rather than a named button: the DM view puts "start a group" here
+      and a channel puts nothing. */
   headerAction?: React.ReactNode;
-  /**
-   * Rendered directly under the channel header.
-   *
-   * A slot rather than the panel itself, because ChatView does not know about
-   * servers — it is the same component for a DM.
-   */
+  /** A slot rather than the panel, because this is the same component for a DM
+      and knows nothing about servers. */
   underHeader?: React.ReactNode;
-  /**
-   * Drawn flush to the window rather than as a card.
-   *
-   * The tiny window has no rail, no sidebars and no page padding, so the
-   * conversation is the window — and a rounded corner against the window's own
-   * corner reads as something clipped rather than as a panel.
-   */
+  /** In the tiny window the conversation is the window, and a rounded corner
+      against the window's own reads as something clipped. */
   flush?: boolean;
   isRateLimited?: boolean;
   rateLimitCountdown?: number;
@@ -155,14 +126,12 @@ export const ChatView = memo(({
 }) => {
   const { chatMediaVolume, setChatMediaVolume, blurProfanity, smileyConversion, disabledSmileys } = useSettings();
   const editorRef = useRef<ChatEditorHandle>(null);
-  /* The thread's own handle. Sharing the channel's would put one draft in two
-     places: opening a thread would show whatever was half-typed in the channel,
-     and sending from either would clear both. */
+  /* Its own handle: sharing the channel's would show a half-typed channel draft
+     in the thread, and sending from either would clear both. */
   const threadEditorRef = useRef<ChatEditorHandle>(null);
 
-  /* Reply and edit state of its own, for the same reason the editor handle is
-     its own: the channel's chip belongs over the channel's composer. Sharing it
-     would put "replying to…" above the box you are not typing in. */
+  /* Its own, for the same reason: sharing would put "replying to…" above the box
+     you are not typing in. */
   const [threadReplyingTo, setThreadReplyingTo] = useState<ChatMessage | null>(null);
   const [threadEditing, setThreadEditing] = useState<ChatMessage | null>(null);
 
@@ -178,15 +147,8 @@ export const ChatView = memo(({
     setThreadEditing(m);
   }, []);
 
-  /*
-   * Fill the box after the render that opens editing, not during the click.
-   *
-   * The channel sets its content in a requestAnimationFrame and gets away with
-   * it. This composer is built by a callback whose identity changes when
-   * `threadEditing` does, so the editor remounts on that same render and threw
-   * away anything written into it a frame earlier — the chip appeared over an
-   * empty box.
-   */
+  /* After the render that opens editing: this composer's callback identity
+     changes with `threadEditing`, so the editor remounts and loses a frame. */
   useEffect(() => {
     if (threadEditing?.text) threadEditorRef.current?.setContent(threadEditing.text);
   }, [threadEditing]);
@@ -212,10 +174,8 @@ export const ChatView = memo(({
   const threads = useThreads(socketConnection, conversationKey ?? "", serverHost, currentUserId, currentUserNickname);
   const isForum = layout === "forum" && conversationKind !== "dm";
 
-  /* The same filter `chatMessages` already arrived with. Blocking somebody hid
-     them from the channel and not from a thread, because the thread's messages
-     are fetched here rather than upstream. Filtered at the view like the other
-     one, so unblocking puts them back without a refetch. */
+  /* The same filter `chatMessages` arrived with: a thread's messages are fetched
+     here rather than upstream, so a blocked sender still turned up. */
   const visibleThreadMessages = useMemo(
     () =>
       isBlocked
@@ -259,9 +219,8 @@ export const ChatView = memo(({
     conversationKey ?? "",
   );
 
-  /* The thread's own, on the same socket. Two instances rather than one that
-     knows about both, so the thread panel and the channel each get the list
-     that belongs to them and neither has to filter the other's out. */
+  /* Two instances rather than one that knows about both, so neither has to
+     filter the other's list out. */
   const {
     typingUsers: threadTypingUsers,
     emitTyping: emitThreadTyping,
@@ -272,14 +231,8 @@ export const ChatView = memo(({
     threads.open?.thread.thread_id ?? null,
   );
 
-  /*
-   * What a thread's footer under its root message has to say.
-   *
-   * Subscribed here rather than in MessageRow: both stores hand back a new map
-   * on every change, so a hook down there would re-render every row in the
-   * channel whenever any thread moved, and the row is memoised to stop exactly
-   * that. Up here the numbers change for the one row that cares (GRYT-1019).
-   */
+  /* Subscribed here rather than in MessageRow, whose memoisation a hook down
+     there would defeat every time any thread moved. */
   const { threadUnreadCount } = useThreadUnread();
   const { threadMentionCount } = useThreadMentions();
   const threadCountsFor = useCallback(
@@ -360,15 +313,11 @@ export const ChatView = memo(({
   const getSenderAvatarUrl = useCallback((msg: ChatMessage): string | undefined => {
     const fileId = memberList?.[msg.sender_server_id]?.avatarFileId || msg.sender_avatar_file_id;
     const uploaded = fileId && serverHost ? getUploadsFileUrl(serverHost, fileId) : undefined;
-    // Only from the member list, never off the message. A message carries the
-    // avatar its sender had when it was sent, which is right for somebody who
-    // has since left; a look is drawn live, so an old string would redress
-    // them in whatever they were wearing that afternoon.
+    // From the member list, never the message: a message carries the avatar its
+    // sender had, and a look is drawn live.
     const worn = memberList?.[msg.sender_server_id]?.avatarWorn;
-    // Seeded on the same id the member list uses, so the face beside a message
-    // is the face in the sidebar. Webhooks are excluded for the same reason
-    // server icons are: a generated face is wrong for something that is not a
-    // person, and their sender id is "webhook:<id>" rather than a member's.
+    // The same id the member list uses, so the faces agree. Webhooks are excluded:
+    // a generated face is wrong for something that is not a person.
     if (msg.sender_server_id?.startsWith("webhook:")) return uploaded;
     return resolveAvatarSrc(uploaded, getSenderName(msg), worn);
   }, [memberList, serverHost, getSenderName]);
@@ -391,23 +340,13 @@ export const ChatView = memo(({
     [mentionMembers],
   );
 
-  // What this server lets us do here. A read-only role still sees every
-  // message — the compose box is what goes away, with a line saying why rather
-  // than a box that swallows what you type and then errors.
-  //
-  // Read up here rather than beside `maySend` below, because the role list it
-  // also returns feeds the name colours in the metadata pass underneath.
+  // A read-only role still sees every message; the compose box is what goes.
+  // Read here, because the role list also feeds the name colours below.
   const { can: mayHere, roles } = useServerPermissions(serverHost || "");
   const { resolvedAppearance } = useTheme();
 
-  /**
-   * Role id to the colour its members' names take, the same map and the same
-   * `readableRoleColor` the member sidebar builds.
-   *
-   * Names have to agree between the two: seeing somebody in green in the
-   * sidebar and in plain white two inches to the left is the sort of mismatch
-   * that reads as a bug in whichever one you looked at second.
-   */
+  /** The same map and `readableRoleColor` the member sidebar builds: a name in
+      green there and white here reads as a bug in whichever you saw second. */
   const roleColors = useMemo(() => {
     const map = new Map<string, string | undefined>();
     for (const role of roles) {
@@ -428,14 +367,8 @@ export const ChatView = memo(({
   const onLightboxOpen = useCallback((src: string, alt?: string) => {
     setLightboxImage({ src, alt });
   }, []);
-  /*
-   * The thread panel's rows, built the way the channel's are.
-   *
-   * `buildMessageMetadata` is a pure pass over an ordered array — grouping needs
-   * neighbours — so the root goes in front of the replies and the result is
-   * keyed by message id afterwards. The panel then asks for a row by message and
-   * does not have to know where it sat.
-   */
+  /* `buildMessageMetadata` is a pure pass over an ordered array, since grouping
+     needs neighbours, so the root goes in front and the result is keyed after. */
   const threadMessages = useMemo(
     () =>
       threads.open?.root
@@ -466,9 +399,8 @@ export const ChatView = memo(({
     (m: ChatMessage) => {
       const meta = threadMetaById.get(m.message_id);
       if (!meta) return null;
-      /* A reply inside a thread points at another thread message, which is not
-         in the channel's map — that one holds the main timeline. Look in the
-         thread first, then fall back for a reply that quotes the root. */
+      /* A reply in a thread points at another thread message, which the channel's
+         map does not hold. Thread first, then fall back for the root. */
       const replyOriginal = m.reply_to_message_id
         ? threadMessages.find((t) => t.message_id === m.reply_to_message_id) ??
           messageMap.get(m.reply_to_message_id)
@@ -502,9 +434,8 @@ export const ChatView = memo(({
           onDelete={requestDelete}
           scrollToMessage={scrollToMessage}
           onLightboxOpen={onLightboxOpen}
-          /* No onStartThread. A thread cannot hang off a message already in
-             one — the server refuses it with `already_in_thread` — so the row
-             should not offer it. */
+          /* No onStartThread: a thread cannot hang off a message already in one,
+             and the server refuses it. */
         />
       );
     },
@@ -563,9 +494,8 @@ export const ChatView = memo(({
           threads.sendReply(markdown, files, threadReplyingTo?.message_id);
           setThreadReplyingTo(null);
         }}
-        /* Up-arrow-to-edit scans the channel's messages, so in here it would
-           open the wrong message for editing. Editing a reply from inside the
-           thread is its own piece of work. */
+        /* Up-arrow-to-edit scans the channel's messages, so in here it opens the
+           wrong one. */
         onArrowUpEmpty={() => {}}
         onTyping={emitThreadTyping}
         onStopTyping={emitThreadStopTyping}
