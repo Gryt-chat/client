@@ -19,19 +19,31 @@ interface TypingEventPayload {
   avatarFileId: string | null;
   avatarWorn?: string | null;
   conversationId: string;
+  /** Absent from a server older than GRYT-1020, which means the channel. */
+  threadId?: string | null;
 }
 
 interface StopTypingEventPayload {
   serverUserId: string;
   conversationId: string;
+  threadId?: string | null;
 }
 
 const TYPING_THROTTLE_MS = 3_000;
 const CLIENT_TIMEOUT_MS = 8_000;
 
+/**
+ * Who is typing in one place, and telling the room you are typing in it.
+ *
+ * A thread is one of those places (GRYT-1020). Called twice where a thread can
+ * be open: once for the channel and once for the thread, on the same socket.
+ * Both instances see every event and each keeps the ones addressed to it, so
+ * writing a reply does not put "typing…" under the channel timeline.
+ */
 export function useTypingIndicator(
   socket: Socket | null,
   activeConversationId: string,
+  activeThreadId?: string | null,
 ) {
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   const entriesRef = useRef(new Map<string, TypingEntry>());
@@ -39,6 +51,8 @@ export function useTypingIndicator(
   const isTypingRef = useRef(false);
   const activeConvRef = useRef(activeConversationId);
   activeConvRef.current = activeConversationId;
+  const activeThreadRef = useRef(activeThreadId ?? null);
+  activeThreadRef.current = activeThreadId ?? null;
 
   const clearEntry = useCallback((serverUserId: string) => {
     const entries = entriesRef.current;
@@ -55,6 +69,7 @@ export function useTypingIndicator(
 
     const handleTyping = (payload: TypingEventPayload) => {
       if (payload.conversationId !== activeConvRef.current) return;
+      if ((payload.threadId ?? null) !== activeThreadRef.current) return;
 
       const entries = entriesRef.current;
       const existing = entries.get(payload.serverUserId);
@@ -74,6 +89,7 @@ export function useTypingIndicator(
 
     const handleStopTyping = (payload: StopTypingEventPayload) => {
       if (payload.conversationId !== activeConvRef.current) return;
+      if ((payload.threadId ?? null) !== activeThreadRef.current) return;
       clearEntry(payload.serverUserId);
     };
 
@@ -96,7 +112,7 @@ export function useTypingIndicator(
     setTypingUsers([]);
     lastEmitRef.current = 0;
     isTypingRef.current = false;
-  }, [activeConversationId]);
+  }, [activeConversationId, activeThreadId]);
 
   const emitTyping = useCallback(() => {
     if (!socket) return;
@@ -104,14 +120,20 @@ export function useTypingIndicator(
     if (now - lastEmitRef.current < TYPING_THROTTLE_MS && isTypingRef.current) return;
     lastEmitRef.current = now;
     isTypingRef.current = true;
-    socket.emit("chat:typing", { conversationId: activeConvRef.current });
+    socket.emit("chat:typing", {
+      conversationId: activeConvRef.current,
+      threadId: activeThreadRef.current,
+    });
   }, [socket]);
 
   const emitStopTyping = useCallback(() => {
     if (!socket || !isTypingRef.current) return;
     isTypingRef.current = false;
     lastEmitRef.current = 0;
-    socket.emit("chat:stop_typing", { conversationId: activeConvRef.current });
+    socket.emit("chat:stop_typing", {
+      conversationId: activeConvRef.current,
+      threadId: activeThreadRef.current,
+    });
   }, [socket]);
 
   return { typingUsers, emitTyping, emitStopTyping };

@@ -259,6 +259,19 @@ export const ChatView = memo(({
     conversationKey ?? "",
   );
 
+  /* The thread's own, on the same socket. Two instances rather than one that
+     knows about both, so the thread panel and the channel each get the list
+     that belongs to them and neither has to filter the other's out. */
+  const {
+    typingUsers: threadTypingUsers,
+    emitTyping: emitThreadTyping,
+    emitStopTyping: emitThreadStopTyping,
+  } = useTypingIndicator(
+    (socketConnection as Socket) ?? null,
+    conversationKey ?? "",
+    threads.open?.thread.thread_id ?? null,
+  );
+
   // ── Custom emoji ──────────────────────────────────────────────
   const [customEmojiList, setCustomEmojiList] = useState<CustomEmojiEntry[]>([]);
 
@@ -533,12 +546,12 @@ export const ChatView = memo(({
            open the wrong message for editing. Editing a reply from inside the
            thread is its own piece of work. */
         onArrowUpEmpty={() => {}}
-        onTyping={emitTyping}
-        onStopTyping={emitStopTyping}
+        onTyping={emitThreadTyping}
+        onStopTyping={emitThreadStopTyping}
         serverHost={serverHost}
       />
     ),
-    [maySend, mayHere, maxFileSize, mentionMembers, getSenderName, threads, emitTyping, emitStopTyping, serverHost, threadReplyingTo, threadEditing, cancelThreadEditing, editMessage],
+    [maySend, mayHere, maxFileSize, mentionMembers, getSenderName, threads, emitThreadTyping, emitThreadStopTyping, serverHost, threadReplyingTo, threadEditing, cancelThreadEditing, editMessage],
   );
 
 
@@ -779,6 +792,9 @@ export const ChatView = memo(({
               onLoadOlder={threads.loadOlder}
               onClose={threads.closeThread}
               onSetStatus={threads.setStatus}
+              typingIndicator={
+                <TypingIndicator typingUsers={threadTypingUsers} serverHost={serverHost} />
+              }
               forumTags={forumTags ?? []}
               onSetTags={threads.setTags}
             />
