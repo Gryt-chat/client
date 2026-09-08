@@ -12,6 +12,7 @@ import {
 } from "@/common";
 
 import { PiCaretDownBold, PiCopySimpleBold } from "../../../../lib/icons";
+import { useServerPermissions } from "../hooks/usePermissions";
 import { useSockets } from "../hooks/useSockets";
 import { formatJoined, TIER_LABEL } from "../lib/memberFacts";
 import { describeChange, describePin } from "../utils/memberKeyWording";
@@ -97,12 +98,17 @@ export function MemberIdentityCard({
   voiceChannelName?: string;
 }) {
   const { memberKeyStates } = useSockets();
+  const { roles: roleSummaries } = useServerPermissions(serverHost ?? "");
 
   // Every role, not only the one their name is coloured by. `roles` absent is an
   // older server with no opinion, so it falls back to `role` (GRYT-748).
-  const rolePills = (member.roles ?? (member.role ? [member.role] : [])).filter(
-    (role) => role && role !== "member",
-  );
+  const rolePills = (member.roles ?? (member.role ? [member.role] : []))
+    // `member` and `guest` are the two joiner defaults, so a pill for either
+    // says only that nobody has given them anything. GRYT-1076.
+    .filter((role) => role && role !== "member" && role !== "guest")
+    // The id is what the server sends; the name is what the rest of the app
+    // shows. Falls back to the id where the server sent no definitions.
+    .map((role) => ({ id: role, name: roleSummaries.find((r) => r.id === role)?.name ?? role }));
   // Only to redraw after marking one; the pin itself is the record.
   const [, setCompared] = useState(false);
   const [ownKeys, setOwnKeys] = useState<{ thumbprint: string; dmPublicKey: string } | null>(null);
@@ -239,8 +245,8 @@ export function MemberIdentityCard({
       {(rolePills.length > 0 || tier?.amber) && (
         <div className="flex flex-wrap gap-1.5">
           {rolePills.map((role) => (
-            <Chip key={role} tone="primary">
-              {role}
+            <Chip key={role.id} tone="primary">
+              {role.name}
             </Chip>
           ))}
           {/*
