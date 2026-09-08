@@ -19,15 +19,8 @@ import { type LanServer } from "../../../../lib/electron";
 import { useSockets } from "./useSockets";
 
 /**
- * The two ways out of a server, which are not the same thing.
- *
- * `remove` is local: the entry goes from the rail, the socket closes, and the
- * membership on the server is untouched -- still a member, still the owner if
- * that is what they are, just not connected and so not online and not syncing a
- * picture there. `leave` tells the server, and the membership ends.
- *
- * Until GRYT-988 only `remove` existed, and every button offering it said
- * "Leave server".
+ * Two ways out of a server. `remove` is local — the entry goes, the membership
+ * stays. `leave` tells the server, and the membership ends.
  */
 export type ServerExit = { host: string; mode: "remove" | "leave" };
 
@@ -43,9 +36,8 @@ interface ServerManagement {
   newLanServers: LanServer[];
 
   /**
-   * Addresses that turn out to be one server, keyed by its identity key.
-   *
-   * Only groups of two or more. A host not in any group has no duplicate.
+   * Addresses that turn out to be one server, keyed by its identity key. Only
+   * groups of two or more; a host in no group has no duplicate.
    */
   duplicateHostGroups: Record<string, string[]>;
   /** The other addresses this same server is also in the rail under. */
@@ -102,10 +94,8 @@ function useServerManagementHook(): ServerManagement {
   const { lanServers } = useLanDiscovery();
   const { serverDetailsList } = useSockets();
 
-  // Write down a server's id once we are talking to it. A duplicate entry only
-  // appears when the id was unknown when it was added — and nothing wrote it
-  // afterwards, so the dedupe could never fire on a later attempt either. The
-  // socket reports it on every connection (GRYT-224).
+  // Write down a server's id once we are talking to it: a duplicate entry only
+  // appears when the id was unknown when it was added (GRYT-224).
   useEffect(() => {
     const learned: Record<string, string> = {};
 
@@ -119,10 +109,8 @@ function useServerManagementHook(): ServerManagement {
 
     if (Object.keys(learned).length === 0) return;
 
-    // setServers takes a value, not an updater, so this writes the map built
-    // from the `servers` this effect ran against. It is guarded on `learned`
-    // being non-empty above and on the id differing, so a repeat render with
-    // the same data does not write again and cannot loop.
+    // setServers takes a value, not an updater, so this writes the map built from
+    // the `servers` this effect ran against. Guarded above, so it cannot loop.
     setServers({ ...servers, ...Object.fromEntries(
       Object.entries(learned).map(([host, id]) => [
         host,
@@ -160,23 +148,16 @@ function useServerManagementHook(): ServerManagement {
       if (servers[normalized]) return false;
       if (dismissedLanServers.includes(key)) return false;
 
-      /* **Do not add a `serverId` check here.** One existed and compared two
-       * different fields sharing a name: mDNS's `server_id` is
-       * `SERVER_INSTANCE_ID || "default"`, a per-host disambiguator, while a
-       * stored `serverId` is `/info`'s. It could only fire by accident, hiding
-       * a real second machine. The address check above deduplicates (GRYT-485). */
+      /* **Do not add a `serverId` check here.** mDNS's `server_id` is a per-host
+       * disambiguator, not `/info`'s; comparing them hid a real machine (GRYT-485). */
 
       return true;
     });
   }, [lanServers, servers, dismissedLanServers]);
 
   /**
-   * What the badge on the rail counts.
-   *
-   * Not what is on the network: six servers run on this machine alone, and a
-   * count of those would sit permanently at six. This is the ones that have
-   * turned up since Discovery was last open, which does empty when somebody
-   * looks.
+   * What the badge on the rail counts: servers seen since Discovery was last
+   * open, not what is on the network — six run on this machine alone.
    */
   const newLanServers = useMemo(
     () => pendingLanServers.filter((s) => !seenLanServers.includes(lanServerKey(s))),
@@ -212,9 +193,7 @@ function useServerManagementHook(): ServerManagement {
 
       const normalizedHost = normalizeHost(incomingServer.host);
       // Adding a server is somebody at this machine asking for it, which is the
-      // only thing that lifts a sign-out. Without this, adding back a server
-      // you had signed this device out of would connect and then refuse to
-      // answer the challenge, with no way to say otherwise. GRYT-987.
+      // only thing that lifts a sign-out (GRYT-987).
       clearSignedOut(normalizedHost);
       const normalizedIncoming: Server = {
         ...incomingServer,
@@ -303,24 +282,15 @@ function useServerManagementHook(): ServerManagement {
   );
 
   /**
-   * The pairs GRYT-224 stopped making but could not undo.
-   *
-   * **Keyed on the server's identity key, not on `serverId`.** The socket's
-   * `serverId` is `<name>_<port>_<instance>`, which two unconfigured servers
-   * both publish — grouping the rail on it would offer to merge two different
-   * servers, with a deletion on the end of it.
-   *
-   * `originKeyId` carries the identity across rotations. The cost is that this
-   * only sees addresses connected to at least once.
+   * **Keyed on the server's identity key, not on `serverId`.** Two unconfigured
+   * servers publish the same `serverId`, so grouping on it offers to merge them.
    */
   const [hostIdentities, setHostIdentities] = useState<Record<string, string>>(
     {},
   );
 
-  // Pins are written when a connection is established, so serverDetailsList
-  // changing is the render this needs to re-read on. The comparison keeps the
-  // object identity stable when nothing moved, so the grouping below does not
-  // recompute on every connection event.
+  // Pins are written when a connection is established, so serverDetailsList is the
+  // render to re-read on. Stable identity keeps the grouping from recomputing.
   useEffect(() => {
     const expectations = listHostExpectations();
     const pins = listPins();
@@ -445,17 +415,12 @@ function useServerManagementHook(): ServerManagement {
 
   /**
    * Leaving a server, and meaning it. Removing the sidebar entry alone left the
-   * tokens — the refresh token is what lets a client mint a new access token —
-   * and the pinned identity, which outlived the membership, so rebuilding a
-   * server on the same address was refused.
+   * tokens and the pinned identity, so rebuilding on the address was refused.
    */
+
   /**
-   * The same, for every address one server was reachable at.
-   *
-   * Calling removeServer in a loop cannot do it: `servers` is state read out of
-   * this closure, so the second call rebuilds the map from the version that
-   * still holds the first call's entry and writes it back — one removal
-   * survives, and the persisted copy is the wrong one.
+   * The same, for every address one server was reachable at. removeServer in a
+   * loop cannot do it: `servers` is read out of this closure, so one removal wins.
    */
   const removeServers = useCallback(
     (hosts: string[]) => {
@@ -469,9 +434,8 @@ function useServerManagementHook(): ServerManagement {
         removeServerAccessToken(host);
         removeServerRefreshToken(host);
         forgetHost(host);
-        // Nothing is left of this server here, so the note saying not to
-        // rejoin it has nothing to guard. Kept and it would silently block
-        // adding the server back months later. GRYT-987.
+        // Nothing is left of this server here, so the note saying not to rejoin
+        // it has nothing to guard, and would block adding it back (GRYT-987).
         clearSignedOut(host);
       }
       setServers(newServers);
@@ -499,11 +463,8 @@ function useServerManagementHook(): ServerManagement {
   );
 
   /**
-   * Being kicked or banned takes the server out of the sidebar. The socket
-   * layer cannot reach `removeServer`, so it dispatches a window event.
-   *
-   * The socket is closed by the effect in useSockets watching for a host
-   * leaving the list — without that the client reconnects and puts it back.
+   * Being kicked or banned takes the server out of the sidebar. The socket layer
+   * cannot reach `removeServer`, so it dispatches a window event.
    */
   useEffect(() => {
     const handler = (event: Event) => {
@@ -526,8 +487,7 @@ function useServerManagementHook(): ServerManagement {
       }
 
       // Discovery is a destination in the same rail, so picking a server has to
-      // leave it. Without this the server switches underneath a pane that is
-      // still showing the network list, and the rail highlight lies.
+      // leave it, or the rail highlight lies about what the pane is showing.
       setShowDiscovery(false);
       setCurrentlyViewingServer(normalizedHost);
     },

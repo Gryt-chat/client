@@ -1,16 +1,6 @@
 /**
- * Voice panel layout arithmetic. Pure functions, no React, so the rules can be
- * checked against the numbers they came from — measured off Google Meet on
- * 2026-08-07, recorded on GRYT-40.
- *
- * **Meet does not appear to use one rule.** At phone proportions the column
- * count maximises tile area; at desktop it does not — nine people come out 4+5
- * where 3x3 gives larger tiles. So the "meet" rule splits on container aspect.
- * It is fitted, not derived.
- *
- * Both are offered rather than picking a winner: "meet" copies the
- * measurements, "large" always takes the biggest tiles. At sidebar proportions
- * they agree at every count.
+ * Voice panel layout arithmetic, fitted to measurements off Google Meet rather
+ * than derived. "meet" copies them; "large" always takes the biggest tiles.
  */
 import type { VoiceTileLayout } from "@/settings";
 
@@ -22,24 +12,21 @@ export const GRID_PADDING = 16;
 export const MIN_TILE_WIDTH = 140;
 
 /**
- * Tile aspect never leaves this range. Measured: 0.749 at three participants
- * on desktop, 1.777 at four, 1.791 at four on the phone, and free values in
- * between (1.062, 0.948, 1.534).
+ * Tile aspect never leaves this range. Measured: 0.749 at three participants on
+ * desktop, 1.777 at four, 1.791 at four on the phone.
  */
 export const MIN_TILE_ASPECT = 3 / 4;
 export const MAX_TILE_ASPECT = 16 / 9;
 
 /**
- * Where the container stops being a sidebar and starts being a stage. Gryt's
- * sidebar sits near 0.6 and the maximised state near 1.6, so the exact
- * threshold is not load-bearing — nothing real lands near 1.0.
+ * Where the container stops being a sidebar and starts being a stage. The
+ * sidebar sits near 0.6 and the maximised state near 1.6, so nothing lands here.
  */
 export const WIDE_LAYOUT_MIN_ASPECT = 1;
 
 /**
- * A pinned share puts participants in a strip across the top, and the strip is
- * 25% of the container height: measured 188 of 755 and 198 of 789. One of the
- * few things Meet sizes proportionally rather than absolutely.
+ * A pinned share puts participants in a strip 25% of the container height:
+ * measured 188 of 755 and 198 of 789.
  */
 export const SHARE_STRIP_HEIGHT_FRACTION = 0.25;
 
@@ -47,9 +34,8 @@ export const SHARE_STRIP_HEIGHT_FRACTION = 0.25;
 export const SHARE_STRIP_MAX_SLOTS = 6;
 
 /**
- * The picture-in-picture tile is an absolute size, not a fraction: 235x132 in
- * a 1207-wide container and 227x131 in a 395-wide one. Nearly the same pixels
- * at three times the container width.
+ * The picture-in-picture tile is an absolute size, not a fraction: 235x132 in a
+ * 1207-wide container and 227x131 in a 395-wide one.
  */
 export const PIP_WIDTH = 235;
 export const PIP_HEIGHT = 132;
@@ -60,9 +46,8 @@ export const PIP_RADIUS = 12;
 export const MIN_READABLE_TILE_HEIGHT = 110;
 
 /**
- * Corner radius steps with the tile. Measured at four sizes — a 132px-tall
- * tile is 12, 296 is 16, and both 526 and 777 are 24 — so the thresholds
- * between them are interpolated rather than observed.
+ * Corner radius steps with the tile. Measured at four sizes — 132px tall is 12,
+ * 296 is 16, 526 and 777 are 24 — and interpolated between them.
  */
 export function tileRadius(height: number): number {
   if (height >= 400) return 24;
@@ -71,9 +56,8 @@ export function tileRadius(height: number): number {
 }
 
 /**
- * How many tiles sit in each row. Remainder lands in the later rows, so the
- * short row is always at the top: three render as one above two, five as two
- * above three, nine as four above five.
+ * How many tiles sit in each row. The remainder lands in the later rows, so the
+ * short row is at the top: three render as one above two, nine as four above five.
  */
 export function distributeRows(count: number, columns: number): number[] {
   if (count <= 0 || columns <= 0) return [];
@@ -121,13 +105,8 @@ function rowCellWidth(width: number, count: number): number {
 }
 
 /**
- * Pick the column count giving the largest total tile area, then clamp each
- * row independently.
- *
- * Matches the phone measurements exactly — four people in a 395x785 container
- * come out as four stacked 333x187 tiles, centred, which is what Meet does.
- * Used for every container under the "large" rule, and for sidebar
- * proportions under "meet".
+ * Pick the column count giving the largest total tile area, then clamp each row
+ * independently. Matches the phone measurements exactly.
  */
 function narrowLayout(
   width: number,
@@ -161,18 +140,11 @@ function narrowLayout(
 
 /**
  * Stage proportions: every row shares one height, and the winning column count
- * is the one that makes that height largest.
- *
- * The shared height is what a single row can be without any row exceeding the
- * 3:4 portrait floor. Nine people at 1208x755 land on 4+5 because the 5-tile
- * row's 232px cells cap the height at 309, which is still taller than the 244
- * a 3x3 would give — and 3x3 has the larger tiles by area, which is precisely
- * why area is the wrong objective here.
+ * makes that height largest. Area is the wrong objective here — 3x3 wins on it.
  */
 function wideLayout(width: number, height: number, count: number): GridLayout {
-  // Four is measured as an exact 16:9 2x2, which neither objective produces:
-  // the cell has spare height and Meet declines to use it. Reproduced over
-  // three stable reads, so it is copied rather than explained.
+  // Four is measured as an exact 16:9 2x2, which neither objective produces.
+  // Reproduced over three stable reads, so it is copied rather than explained.
   if (count === 4) {
     const cellW = rowCellWidth(width, 2);
     const tileH = Math.min((height - GRID_GAP) / 2, cellW / MAX_TILE_ASPECT);
@@ -239,11 +211,8 @@ export function computeGridLayout(
 }
 
 /**
- * How many tiles fit before they stop being readable.
- *
- * Walks the counts rather than solving, because the column count changes
- * underneath as the count grows and tile size is not monotonic across those
- * jumps.
+ * How many tiles fit before they stop being readable. Walks the counts because
+ * the column count changes underneath and tile size is not monotonic.
  */
 export function gridCapacity(
   width: number,
@@ -264,10 +233,8 @@ export function gridCapacity(
 }
 
 /**
- * The pinned-share split. Which side the share goes on flips with the
- * container: at sidebar proportions the share is pinned above the grid, at
- * stage proportions the participants become a strip across the top and the
- * share takes everything below.
+ * The pinned-share split. Which side the share goes on flips with the container:
+ * above the grid at sidebar proportions, below a strip at stage proportions.
  */
 export interface ShareLayout {
   orientation: "share-above" | "strip-above";
