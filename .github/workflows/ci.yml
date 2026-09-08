@@ -33,6 +33,10 @@ jobs:
       # The chat scroller has to give up height to anything drawn between it and
       # the composer, and re-pin. Otherwise the newest message sits behind it.
       - run: yarn test:chat-scroll-anchor
+
+      # A member changing group moves their row to another section, which remounts
+      # it. The open hover card has to survive that.
+      - run: yarn test:member-card-state
       - run: yarn test:sidebar-tree
       - run: yarn test:settings-index
       - run: yarn test:notification-prefs
