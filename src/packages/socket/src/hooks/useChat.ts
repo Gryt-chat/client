@@ -38,19 +38,14 @@ interface UseChatParams {
   serverDetailsList: ServerDetailsList;
   nickname: string;
   currentUserId?: string;
-  /**
-   * Everybody in this conversation apart from you, or null for a channel
-   * (GRYT-729). Only a conversation can be encrypted.
-   */
+  /** Everybody but you, or null for a channel: only a conversation can be
+      encrypted. */
   conversationMembers?: { server_user_id: string }[] | null;
 }
 
 interface UseChatReturn {
-  /**
-   * Set when a send was held back because the conversation would go out in the
-   * clear, and carries who is blocking it so the dialog can say. Null the rest
-   * of the time.
-   */
+  /** Set when a send was held back for going out in the clear, and carries who
+      is blocking it. */
   plaintextPrompt: SealDecision | null;
   /** Send it unencrypted, and stop asking for this conversation. */
   confirmPlaintextSend: () => void;
@@ -117,14 +112,8 @@ export function useChat({
   }>({});
   const fetchDebounceRef = useRef<number | null>(null);
   const inFlightFetchRef = useRef<Set<string>>(new Set());
-  /**
-   * Bumped when the socket connects again, to send the history fetch back
-   * through its effect.
-   *
-   * socket.io hands back the same Socket instance across a reconnect, so
-   * nothing keyed on `currentConnection` re-runs on its own and a conversation
-   * whose fetch failed stays failed until the page is reloaded.
-   */
+  /** socket.io reuses the same Socket across a reconnect, so nothing keyed on it
+      re-runs and a failed fetch stays failed until a reload. */
   const [reconnectNonce, setReconnectNonce] = useState(0);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isLoadingOlder, setIsLoadingOlder] = useState(false);
@@ -161,22 +150,10 @@ export function useChat({
   const canSendToVoiceChannel = !isVoiceChannelTextChat || (isConnected && textInVoiceEnabled);
   const canViewVoiceChannelText = !isVoiceChannelTextChat || (isConnected && textInVoiceEnabled);
 
-  /**
-   * The server's own token is the credential, not a Keycloak session.
-   *
-   * This used to require isUserAuthenticated() as well, which is true only when
-   * Keycloak says so — and a server that admits the local tier issues a token to
-   * somebody who has never seen Keycloak. The join dialog tells them "No account
-   * needed", and then the composer took what they typed, cleared it, and sent
-   * nothing.
-   */
   /*
-   * Whether this channel is one they may post in, as the server resolved it.
-   *
-   * Server-wide `send_messages` is not the whole answer: a channel scope can
-   * take it away or hand it out, and those rules are only readable with
-   * `manage_channels`. `undefined` means the server is too old to have an
-   * opinion, which has to read as yes or every channel on it would look locked.
+   * A channel scope can take `send_messages` away or hand it out, and only
+   * `manage_channels` can read those rules. `undefined` reads as yes, or every
+   * channel on an older server looks locked.
    */
   const canSendHere = activeChannel?.canSend !== false;
 
@@ -218,12 +195,8 @@ export function useChat({
     currentUserId,
   });
 
-  /*
-   * The in-flight set is a ref, not `sealedState`. This effect depends on
-   * `chatMessages`, and marking them is a write to it — guarding on state
-   * meant the effect tore down the run that was decrypting, and the messages
-   * kept a `sealedState` so nothing retried them.
-   */
+  /* A ref, not state: this effect depends on `chatMessages` and marking them
+     writes to it, so guarding on state tore down the run that was decrypting. */
   const openingRef = useRef<Set<string>>(new Set());
   const mountedRef = useRef(true);
   useEffect(() => {
@@ -255,22 +228,14 @@ export function useChat({
             return { id: message.message_id, text: null, state: "locked", enriched: null } as const;
           }
 
-          /*
-           * The files, decrypted, in the shape the row already draws
-           * (GRYT-761).
-           *
-           * Fetched here rather than in the row, because the key only exists
-           * once the message has opened and a component that fetched on render
-           * would do it again on every re-render. One failed attachment does
-           * not fail the message.
-           */
+          /* Here rather than in the row: the key only exists once the message has
+             opened, and a fetch on render repeats on every re-render. */
           const fileIds = message.attachments ?? [];
           const settled = await Promise.allSettled(
             fileIds.map(async (fileId) => {
               const key = opened.attachments[fileId];
-              // No key for this one means it went up in the clear, which is
-              // every attachment sent before this shipped. The server's own
-              // metadata already describes it.
+              // No key means it went up in the clear, which is every attachment
+              // sent before this shipped.
               if (!key) return null;
 
               const blob = await fetchSealedAttachment({
@@ -287,9 +252,8 @@ export function useChat({
           const enriched = fileIds.map((fileId, i) => {
             const result = settled[i];
             if (result.status === "fulfilled" && result.value) return result.value;
-            // Either it was never sealed, or it would not open. Fall back to
-            // what the server says, which for a sealed file is an unnamed
-            // octet-stream — visibly broken rather than invisibly absent.
+            // Never sealed, or it would not open. The server's answer for a sealed
+            // file is an unnamed octet-stream: visibly broken, not absent.
             return (
               message.enriched_attachments?.[i] ?? {
                 file_id: fileId,
@@ -337,13 +301,8 @@ export function useChat({
 
   }, [chatMessages, sealing, setChatMessages, serverHost]);
 
-  /**
-   * Every blob URL made for a decrypted attachment, so they can be let go.
-   *
-   * A blob URL pins its bytes for the lifetime of the document. Scrolling a
-   * conversation full of photographs and never revoking them is a leak that
-   * grows with the history, and on the desktop the document is the session.
-   */
+  /** A blob URL pins its bytes for the document's life, and on the desktop the
+      document is the session. */
   useEffect(() => {
     const urls = objectUrlsRef.current;
     return () => {
@@ -357,14 +316,8 @@ export function useChat({
     if (!currentConnection) return;
 
     const onError = (error: ChatErrorPayload) => {
-      // Let the conversation be fetched again. The key goes into the in-flight
-      // set just before the emit and comes out in one place only, when
-      // chat:history arrives — which a failed fetch never produces. Left
-      // behind it makes the guard below permanent: every later attempt returns
-      // early at `inFlightFetchRef.current.has(scopedKey)`, so the error stays
-      // on screen until the page is reloaded and the ref is rebuilt. That is
-      // why a server coming back healthy still left every open client stuck
-      // until its user pressed Ctrl+R. GRYT-977.
+      // The key comes out of the in-flight set only on `chat:history`, which a
+      // failed fetch never produces — so left behind, the guard is permanent.
       inFlightFetchRef.current.delete(cacheKeyFor(activeConversationId));
 
       handleChatErrorEvent(error, activeConversationId, cacheKeyFor(activeConversationId), {
@@ -436,17 +389,9 @@ export function useChat({
       }
       handleNewMessage(msg, activeConversationId, cacheKeyFor, setMessageCache, setChatMessages);
 
-      /* A thread reply is news about the thread, not about the channel it
-         hangs off — `handleNewMessage` has already dropped it from that
-         channel's list, so badging the channel pointed at somewhere that
-         looked empty. GRYT-999 fixed that by saying nothing, because both
-         trackers were keyed by conversation and there was nowhere else to put
-         it. This is that somewhere.
-
-         The store refuses to count the thread that is open rather than this
-         clearing it afterwards: the panel and this counter are two chat:new
-         handlers on one socket, and which runs first is whichever subscribed
-         first. */
+      /* A thread reply is news about the thread, and badging the channel pointed
+         at something that looked empty. The store refuses to count the open
+         thread rather than this clearing it, since the handler order is arbitrary. */
       if (msg.thread_id) {
         if (msg.sender_server_id !== currentUserId) markThreadUnread(serverHost, msg.conversation_id, msg.thread_id);
         return;
@@ -458,9 +403,8 @@ export function useChat({
       if (msg.sender_server_id !== currentUserId && !document.hasFocus()) {
         if (notificationBadgeEnabledRef.current) incrementUnread();
         if (desktopNotificationsEnabledRef.current) {
-          /* A message that is still sealed says so rather than showing the
-             ciphertext or a blank body. It has not been opened yet at this
-             point — that happens in the effect above, after this. */
+          /* Says so rather than showing ciphertext or a blank body: opening happens
+             in the effect above, after this. */
           showDesktopNotification(
             msg.sender_nickname || "New message",
             notificationBody(msg),
@@ -500,15 +444,8 @@ export function useChat({
     const onPurgeUser = (payload: { sender_server_user_id: string; affected_conversations: string[] }) => {
       const gone = payload.sender_server_user_id;
 
-      /**
-       * Their reactions on everybody else's messages, which the purge event
-       * does not name.
-       *
-       * The server has already removed them and works this out the same way,
-       * but says nothing per message: someone with a few hundred reactions
-       * would otherwise be a few hundred broadcasts. A reaction whose last user
-       * was this person is dropped rather than left showing zero.
-       */
+      /** The server removed these and says nothing per message, since a few
+          hundred reactions would be a few hundred broadcasts. */
       const stripReactions = (list: ChatMessage[]): ChatMessage[] =>
         list.map((m) => {
           if (!m.reactions?.some((r) => r.users?.includes(gone))) return m;
@@ -536,12 +473,8 @@ export function useChat({
       });
     };
 
-    // Heal on reconnect. socket.io reuses the same Socket instance, so neither
-    // this effect nor the fetch effect re-runs when the connection comes back:
-    // whatever the conversation was showing when it dropped is what it keeps
-    // showing. Clearing the guard and bumping the nonce sends the fetch effect
-    // round again, so a server that returns fixes every open client without
-    // anybody reloading. GRYT-977.
+    // socket.io reuses the same Socket, so neither effect re-runs on a reconnect.
+    // Clearing the guard and bumping the nonce sends the fetch round again.
     const onConnect = () => {
       inFlightFetchRef.current.clear();
       setReconnectNonce((n) => n + 1);
@@ -674,11 +607,8 @@ export function useChat({
     confirmPlaintextSend,
     cancelPlaintextSend,
     chatMessages,
-    /**
-     * Whether the next message will be encrypted, and who is stopping it
-     * (GRYT-729). A composer that does not draw this sends in the clear
-     * without saying so.
-     */
+    /** Whether the next message is encrypted and who is stopping it: a composer
+        that does not draw this sends in the clear without saying so. */
     sealing: sealing.decision,
     canSend,
     canSendHere,

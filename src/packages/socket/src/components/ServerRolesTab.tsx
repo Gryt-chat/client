@@ -12,11 +12,8 @@ import { emitAuthenticated } from "../utils/tokenManager";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { inviteState, type MemberInvite } from "./memberInvite";
 
-/**
- * A role id. Was one of four names; a server defines its own now, so the list
- * of what can be picked comes off `server:details` rather than out of this
- * file.
- */
+/** A server defines its own roles, so what can be picked comes off
+    `server:details` rather than this file. */
 type Role = string;
 
 /** Ownership is the server's, not a role to hand out, so it is never offered. */
@@ -38,22 +35,15 @@ export function ServerRolesTab({
   accessToken: string | null;
 }) {
   const { memberLists, requestMemberList } = useSockets();
-  // Memoised because the search below reads it: `|| []` is a fresh array on
-  // every render, so without this the filter re-runs whether or not anything
-  // moved.
+  // Memoised because the search reads it: `|| []` is a fresh array every render,
+  // so the filter would re-run whether or not anything moved.
   const allMembers = useMemo(() => (host ? memberLists[host] || [] : []), [host, memberLists]);
   const { roles: definitions, has, roleId: myRoleId } = useServerPermissions(host);
 
   const [query, setQuery] = useState("");
 
-  /**
-   * Filtered by nickname, and by id for somebody working from a log line.
-   *
-   * The list is drawn in full otherwise. That is fine at twenty members and not
-   * at two thousand, and searching is what makes the per-row actions usable --
-   * scrolling to the right person and acting on the row above them is the
-   * mistake this screen can now make.
-   */
+  /** By nickname, and by id for somebody working from a log line. Searching is
+      what stops the mistake of acting on the row above the right person. */
   const members = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return allMembers;
@@ -72,19 +62,13 @@ export function ServerRolesTab({
   const [roles, setRoles] = useState<Record<string, Role[]>>({});
   const [submitting, setSubmitting] = useState(false);
 
-  /**
-   * How each member got in, keyed by member.
-   *
-   * Empty against a server too old to answer, and against anybody without
-   * `manage_invites` — in both cases the column simply is not drawn, rather
-   * than drawn empty and implying nobody used an invite.
-   */
+  /** Empty against an older server and against anybody without `manage_invites`:
+      the column is not drawn rather than drawn empty. */
   const [invites, setInvites] = useState<Record<string, MemberInvite>>({});
   const [invitesAnswered, setInvitesAnswered] = useState(false);
 
-  /* `has` rather than `can`: this one is strict. `can` is optimistic about a
-     permission the server has not mentioned, and firing a request that comes
-     back refused is worse than not asking. */
+  /* `has` rather than `can`, which is optimistic about a permission the server
+     has not mentioned: a refused request is worse than not asking. */
   const maySeeInvites = has("manage_invites");
 
   const refresh = () => {
