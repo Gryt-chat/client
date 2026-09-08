@@ -94,6 +94,7 @@
     "test:member-moderation": "node scripts/check-member-moderation.mjs",
     "test:signed-out": "node scripts/check-signed-out.mjs",
     "test:dialog-primitives": "node scripts/check-dialog-primitives.mjs",
+    "test:prebuild-pruning": "node scripts/check-prebuild-pruning.mjs",
     "test:service-status": "node scripts/check-service-status.mjs"
   },
   "dependencies": {
