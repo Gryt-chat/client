@@ -47,13 +47,8 @@ async function accountFetch(
 }
 
 /**
- * The account as Keycloak represents it, with whatever attributes the realm's
- * user profile declares.
- *
- * Separate from `AccountProfile`, which is the shape the settings panel shows a
- * person. This one is the wire format, and it exists so `message-vault` can
- * read an attribute and write it back without this module having to know what
- * the attribute means.
+ * The account as Keycloak represents it — the wire format, so `message-vault` can
+ * read an attribute and write it back without knowing what it means.
  */
 export async function getAccountRepresentation(): Promise<Record<string, unknown>> {
   const res = await accountFetch("/");
@@ -61,11 +56,8 @@ export async function getAccountRepresentation(): Promise<Record<string, unknown
 }
 
 /**
- * Replace the account representation.
- *
- * Replace, not patch — Keycloak takes the whole object, so anything left out is
- * a request to unset it. Callers read first and send back what they were given
- * with their one change applied.
+ * Replace the account representation. **Replace, not patch**: Keycloak takes the
+ * whole object, so anything left out is a request to unset it.
  */
 export async function putAccountRepresentation(account: Record<string, unknown>): Promise<void> {
   await accountFetch("/", {
@@ -79,13 +71,8 @@ export interface AccountProfile {
   sub?: string;
   email?: string;
   /**
-   * When the account was created, if it can be had.
-   *
-   * Usually it cannot. Keycloak keeps `createdTimestamp` on the user, but only
-   * the admin API exposes it and a person's own token is not allowed there. The
-   * account API returns the profile and not that field. So this is populated
-   * only when the realm has been configured to put it in the token, and the UI
-   * leaves the row out rather than showing a date it had to invent.
+   * When the account was created, if it can be had. Only the admin API exposes
+   * `createdTimestamp`, so this is populated only when the realm puts it in the token.
    */
   createdAt?: number;
 }
@@ -101,11 +88,8 @@ function decodeTokenClaims(token: string): Record<string, unknown> | null {
 }
 
 /**
- * Who the signed-in account is, for showing back to its owner.
- *
- * The id comes from the token, which is the only place it is authoritative.
- * The rest comes from the account API, and a failure there is not worth
- * surfacing — the panel simply shows less.
+ * Who the signed-in account is, for showing back to its owner. The id comes from
+ * the token, the rest from the account API, and a failure there shows less.
  */
 export async function getAccountProfile(): Promise<AccountProfile> {
   const token = await getValidIdentityToken();

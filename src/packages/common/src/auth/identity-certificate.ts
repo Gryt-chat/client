@@ -1,8 +1,6 @@
 /**
- * Fetches and caches identity certificates from the Gryt Identity Service.
- * A certificate is a JWT signed by the Gryt CA that binds a user's public
- * key to their Gryt identity. It is NOT a bearer token -- it only proves
- * ownership of a public key.
+ * Fetches and caches identity certificates from the Gryt Identity Service. A
+ * certificate is **not a bearer token** — it only proves ownership of a key.
  */
 import { getGrytConfig } from "../../../../config";
 import { certificateVerdict } from "./certificate-verdict";
@@ -52,21 +50,8 @@ function parseJwtJwk(jwt: string): JsonWebKey | null {
 }
 
 /**
- * Does this certificate still describe the key we would sign with?
- *
- * The certificate binds a public key to an identity, and the server verifies
- * the assertion against the key inside the certificate. So a certificate that
- * names a different key is worthless — worse than none, because it looks valid
- * and fails at the far end.
- *
- * The two can drift apart because they live in different places. The keypair is
- * in IndexedDB and is silently regenerated when it is missing; the certificate
- * is in localStorage, which Electron restores across profiles. Clear one and not
- * the other — a profile reset, a cache wipe — and the client signs with a new
- * key while presenting the old certificate.
- *
- * Comparing x and y is enough: they are the P-256 public point, so a matching
- * pair means the same key. crv and kty are implied by the algorithm we use.
+ * Does this certificate still describe the key we would sign with? The keypair is
+ * in IndexedDB and the certificate in localStorage, so clearing one drifts them.
  */
 function certificateMatchesKey(certificate: string, currentJwk: JsonWebKey): boolean {
   const certJwk = parseJwtJwk(certificate);
@@ -142,12 +127,8 @@ async function fetchCertificateFromService(): Promise<string> {
 }
 
 /**
- * Which account is signed in at this moment, or null when nothing can say.
- *
- * Null covers being signed out, a lapsed session and a refresh that could not
- * reach Keycloak. All three mean "no answer", not "a different person", and the
- * caller treats them that way — a laptop off the network must not throw away a
- * certificate it may be about to need.
+ * Which account is signed in at this moment, or null when nothing can say. Null is
+ * "no answer", not "a different person" — a laptop off the network is one.
  */
 async function signedInSub(): Promise<string | null> {
   const token = await getValidIdentityToken().catch(() => undefined);
@@ -162,12 +143,8 @@ export async function getValidCertificate(): Promise<string> {
   const stored = getStoredCert();
   if (stored) {
     /*
-     * The decision is `certificateVerdict`; this reads what it needs and acts
-     * on the answer.
-     *
-     * Both reads cost something — `signedInSub` may refresh a token and
-     * `getPublicKeyJwk` opens IndexedDB — which is exactly why the rule lives
-     * in a module with no imports and this one does the fetching.
+     * The decision is `certificateVerdict`; this reads what it needs and acts on
+     * the answer. Both reads cost something, which is why the rule lives apart.
      */
     const verdict = certificateVerdict({
       certificateSub: parseJwtSub(stored.certificate),
@@ -184,32 +161,20 @@ export async function getValidCertificate(): Promise<string> {
       );
       clearIdentityCertificate();
       /*
-       * And the key with it. The certificate binds one `sub` to one public key,
-       * so minting a new certificate over the key the previous account was
-       * using would hand two accounts the same key — and a server that pinned
-       * it sees one key arrive under a second name.
-       *
-       * Safe to drop: an account key is random rather than derived
-       * (`identity-keys.ts`), the CA certifies a fresh one on the next
-       * sign-in, and DM keys come off the seed, which this does not touch.
+       * And the key with it: minting a new certificate over the previous
+       * account's key hands two accounts one key. Safe to drop — it is random.
        */
       await clearIdentityKeys().catch(() => {});
     } else if (verdict === "wrong-key") {
-      // Unexpired is not the same as usable. A certificate that names a key we
-      // no longer hold produces an assertion the server rejects with "signature
-      // verification failed", and because the certificate is still in date it is
-      // never renewed — the client stays wedged until it expires on its own.
-      //
-      // Checking here means the mismatch repairs itself on the next join, with
-      // nothing for the user to do.
+      // Unexpired is not the same as usable: a certificate naming a key we no
+      // longer hold is never renewed, so the client stays wedged until it expires.
       console.warn(
         "[Identity] Cached certificate does not match the current keypair — renewing."
       );
       clearIdentityCertificate();
     }
-    // `stale` falls through to the fetch below with the old certificate still
-    // in storage. A renewal that cannot reach the network should not also cost
-    // us the `sub` that `getCertificateSub` reads back out of it.
+    // `stale` falls through to the fetch with the old certificate still stored. A
+    // renewal that cannot reach the network should not also cost us the `sub`.
   }
 
   if (fetchPromise) return fetchPromise;

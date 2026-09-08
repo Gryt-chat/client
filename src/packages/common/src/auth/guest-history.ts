@@ -1,23 +1,7 @@
 /**
- * Which servers this device has been a guest on (GRYT-285). The seed reproduces
- * every guest key that could exist; this is the separate question of which were
- * ever used somewhere, which derivation cannot answer.
- *
- * **It has to be local, because the server cannot be asked without telling it
- * the answer.** Proving a prior guest identity means signing a link with that
- * guest key, and the moment the proof arrives the account and the guest are the
- * same person — declining afterwards cannot take that back. Per-server
- * unlinkability is what the whole guest design protects, so the question of
- * whether to prove anything has to be answerable without proving anything.
- *
- * **Stores scopes, not addresses** — a server that moves is still the same
- * server (GRYT-257). Nothing here identifies a person.
- *
- * Each scope also carries when it was last used, so the prompt asking whether
- * to convert a guest membership has something to show. That date comes off this
- * device and never off the server, for the reason above. No nickname: the local
- * one is device-wide, so it would print the name you have now rather than the
- * name that membership carries.
+ * Which servers this device has been a guest on. **It has to be local, because the
+ * server cannot be asked without telling it the answer.** Stores scopes, not
+ * addresses, and nothing here identifies a person (GRYT-285).
  */
 
 import { asIdentityScope, type IdentityScope } from "./identity-seed.ts";
@@ -27,9 +11,8 @@ const STORAGE_KEY = "gryt_guest_history";
 /** What this device knows about one guest membership. */
 export interface GuestVisit {
   /**
-   * Epoch ms of the last guest key derive for this scope. Null for an entry
-   * written before this field existed, and for scopes taken in by the backfill
-   * or from a backup file, neither of which knows a date.
+   * Epoch ms of the last guest key derive for this scope. Null for an older entry,
+   * and for scopes taken in by the backfill or from a backup file.
    */
   lastUsed: number | null;
 }
@@ -38,9 +21,7 @@ type History = Map<string, GuestVisit>;
 
 /**
  * Reads both shapes. This was a bare array of scope strings until the date was
- * added, and those entries stay valid with nothing known about when they were
- * used — somebody who upgrades mid-membership still has to be offered the
- * conversion.
+ * added, and those entries stay valid with nothing known about when.
  */
 function read(): History {
   try {
@@ -71,9 +52,8 @@ function read(): History {
     }
     return out;
   } catch {
-    // Unreadable or unparseable is the same as empty. The cost of being wrong
-    // is that somebody is not offered a claim they could have made, and they
-    // can still ask for it by hand.
+    // Unreadable or unparseable is the same as empty: the cost is that somebody is
+    // not offered a claim, and they can still ask for it by hand.
     return new Map();
   }
 }

@@ -1,21 +1,6 @@
 /**
- * The half of GRYT-719's assertion that stayed in the client.
- *
- * `deriveLocalKeyPair(seed, host)` and `deriveLocalKeyPair(seed, scope)` are the
- * same call to read, and the difference only shows up when somebody's server
- * changes address — at which point the client arrives at a server it already
- * knows as a stranger, with a new `sub`, no roles and no history. So the brand
- * exists, and this is what proves it is still doing its job.
- *
- * `@ts-expect-error` is the assertion. If `IdentityScope` ever collapses back to
- * `string`, this line stops erroring, `tsc` reports the directive as unused, and
- * `yarn lint` fails. There is no runtime here to check.
- *
- * The DM half of this file moved to `@gryt/crypto` in GRYT-732, along with
- * `deriveDmKeyPair` and the brand itself. `deriveLocalKeyPair` stayed, because
- * the identity key is a `CryptoKey` the desktop hands straight to WebCrypto.
- *
- * Compiled and then dropped by the bundler. Nothing imports it.
+ * The half of GRYT-719's assertion that stayed in the client. `@ts-expect-error` is
+ * the assertion: if `IdentityScope` collapses back to `string`, lint fails.
  */
 
 import { asIdentityScope, deriveLocalKeyPair } from "./identity-seed";
