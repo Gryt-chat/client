@@ -4,18 +4,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 /**
- * Drops the native prebuilds for platforms the package cannot run on.
- *
- * `uiohook-napi` ships one binary per platform in a single package and picks at
- * run time with node-gyp-build, so every build carried all five. Measured on the
- * 1.9.24 macOS build: 303KB of Linux and Windows binaries inside a .app.
- *
- * An afterPack hook rather than a `files` exclude, and that is not a style
- * choice. getNodeModuleFileMatcher in app-builder-lib takes only patterns
- * beginning with `!` for node_modules -- "grab only excludes" in its own
- * comment. So excluding the directory and re-including the one that matches
- * silently keeps the exclude and drops the re-include, which leaves an app that
- * starts and then fails the first time somebody presses a global hotkey.
+ * Drops the native prebuilds for platforms the package cannot run on. An
+ * afterPack hook, because node_modules `files` patterns take only excludes.
  */
 
 /** Directory names node-gyp-build looks for, `${platform}-${arch}`. */
@@ -24,10 +14,8 @@ function wantedDir(electronPlatformName, arch) {
 }
 
 /**
- * What to delete from one prebuilds directory.
- *
- * Separated from the filesystem so it can be tested against a list rather than
- * against a packaged app.
+ * What to delete from one prebuilds directory. Separated from the filesystem so
+ * it can be tested against a list rather than a packaged app.
  */
 function foreignPrebuilds(present, electronPlatformName, arch) {
   const keep = wantedDir(electronPlatformName, arch);
@@ -35,15 +23,12 @@ function foreignPrebuilds(present, electronPlatformName, arch) {
 }
 
 /**
- * Returns what it kept and removed, so a caller can fail rather than log.
- * Removing everything is the dangerous outcome, so finding no match is an error
- * rather than a quiet no-op.
+ * Returns what it kept and removed, so a caller can fail rather than log. Finding
+ * no match is an error: removing everything is the dangerous outcome.
  */
 function prunePrebuilds(appOutDir, electronPlatformName, arch, { dryRun = false } = {}) {
-  // Walked from appOutDir rather than from a fixed prefix. appOutDir is the
-  // output *directory*, so on macOS the tree begins with `<name>.app/Contents`
-  // and on Windows and Linux with `resources` -- and hard-coding either found
-  // nothing on the other, silently, leaving every prebuild in place.
+  // Walked from appOutDir rather than a fixed prefix: macOS begins with
+  // `<name>.app/Contents` and the others with `resources`.
   const roots = [];
   const walk = (dir, depth) => {
     if (depth > 10) return;

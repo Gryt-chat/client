@@ -1,18 +1,8 @@
 /* eslint-env node */
 
 /**
- * How a client answers a server that says the session is over.
- *
- * Two things are being pinned here. One is that a session somebody deliberately
- * ended stays ended: rejoining a Gryt server needs no password, only the
- * keypair on this machine, so a client that recovers on its own would sign the
- * person straight back in on the device they just signed out of. The other is
- * that recovering has a budget — a server can send this event as often as it
- * likes, and answering every one immediately is a loop that burns battery and
- * makes the machine sign with its private key on demand.
- *
- * The clock is passed in rather than read, so the backoff is checked without
- * anybody waiting through it.
+ * How a client answers a server that says the session is over. A deliberate
+ * sign-out stays ended, and recovering has a budget. The clock is passed in.
  */
 
 import assert from "node:assert/strict";
@@ -53,9 +43,8 @@ assert.equal(isDeliberateRevocation(undefined), false);
   assert.equal(plan.retry, 1);
 }
 
-// A reason this client has never heard of is treated as recoverable rather than
-// as an ending. Guessing the other way would sign people out of servers running
-// a version that says something new.
+// A reason this client has never heard of is treated as recoverable. Guessing
+// the other way would sign people out of servers running a newer version.
 {
   const { plan } = planRecovery(idleRecovery(), "something_added_later", 0);
   assert.equal(plan.act, "retry");
@@ -92,9 +81,8 @@ function hammer(count, { reason = "token_version_mismatch", gapMs = 0 } = {}) {
   }
 }
 
-// Giving up is not permanent. Trouble that has passed leaves the next
-// occurrence a full budget, so a server that rotated its counter last week is
-// not still being punished for it.
+// Giving up is not permanent. Trouble that has passed leaves the next occurrence
+// a full budget.
 {
   const { state, now } = hammer(MAX_RETRIES + 1);
   const { plan } = planRecovery(state, "token_version_mismatch", now + QUIET_PERIOD_MS);
@@ -103,9 +91,8 @@ function hammer(count, { reason = "token_version_mismatch", gapMs = 0 } = {}) {
   assert.equal(plan.delayMs, 1_000);
 }
 
-// And a server that keeps shoving does not get to keep the budget shut by
-// shoving: the quiet period runs from the last thing this client actually did,
-// so the long-run rate is capped rather than driven to zero.
+// And a server that keeps shoving does not keep the budget shut: the quiet period
+// runs from the last thing this client actually did.
 {
   let { state } = hammer(MAX_RETRIES);
   const lastRetryAt = state.lastRetryAt;

@@ -1,22 +1,8 @@
 /* eslint-env node */
 
 /**
- * The fixture that starts before the socket handler (GRYT-680).
- *
- * `fakeParticipants.ts` writes fake people straight into the `clients` record
- * and says so: it proves the layout and nothing about the plumbing. Two calling
- * bugs shipped in the gap that leaves — a caller who rang and never joined, and
- * a call that drew nobody because the server blanks the conversation id out of
- * `server:clients` on purpose and nothing put it back. Neither was reachable
- * from a fixture that starts after the handler.
- *
- * So this one delivers real events to the client's own listeners. The
- * properties below are what make it able to find that class of bug, and each of
- * them looks like a detail somebody would tidy away.
- *
- * A source check, the way `check-fake-participants.mjs` is: these modules read
- * `import.meta.env`, which does not exist in Node, so they cannot be imported
- * here.
+ * The fixture that starts before the socket handler. A source check, the way
+ * `check-fake-participants.mjs` is: these modules read `import.meta.env`.
  */
 
 import assert from "node:assert/strict";
@@ -44,11 +30,8 @@ for (const entry of ["deliverServerEvent", "readFakeCallOptions", "useFakeCallEv
 
 /* ── The peer arrives the way the server actually sends one ──────────────── */
 
-// The blank room is the entire point. The server blanks a conversation id out
-// of `server:clients` because that payload goes to every member of the server
-// and a one-to-one id is a hash of the sorted pair. A fixture that fills it in
-// cannot reproduce the bug where a call drew nobody, which is the bug this
-// exists to have caught.
+// The blank room is the entire point: the server blanks a conversation id out of
+// `server:clients` because that payload goes to every member.
 const peer = events.slice(events.indexOf("export function fakeCallPeer"));
 assert.match(
   peer.slice(0, 800),
@@ -65,9 +48,8 @@ assert.match(
 
 /* ── The broken case stays reachable ─────────────────────────────────────── */
 
-// `voice:call:members` is what puts the id back. Being able to turn it off is
-// how somebody sees what a client that ignores it looks like — which is what
-// `main` looked like for two merges.
+// `voice:call:members` is what puts the id back. Turning it off is how somebody
+// sees what a client that ignores it looks like.
 assert.match(
   events,
   /params\.get\("fakecallmembers"\) !== "0"/,
@@ -82,9 +64,7 @@ assert.match(
 /* ── One delivery, not two ───────────────────────────────────────────────── */
 
 // `fakeChat` had its own copy of this loop. Two ways to deliver a fake event is
-// two behaviours to drift — one swallowing a throwing listener and the other
-// not, say, which would make the two fixtures disagree about whether the app
-// crashed.
+// two behaviours to drift.
 assert.match(
   chat,
   /deliverServerEvent\(latest\.current\.connection, event, message\)/,

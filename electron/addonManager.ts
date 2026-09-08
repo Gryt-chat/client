@@ -88,11 +88,8 @@ function isValidManifest(data: unknown): data is AddonManifest {
   }
   if (obj.author != null && typeof obj.author !== "string") return false;
 
-  // Checked when the manifest is read rather than when the fetch happens. A
-  // manifest is a file anybody can drop in the addons folder, and this value
-  // decides what gets requested over the network — so the narrow shape is the
-  // check. Two path segments of the characters GitHub allows in a name: no
-  // scheme, no host, no `..`, no query string to point it somewhere else.
+  // Checked when the manifest is read rather than at fetch time. A manifest is a
+  // file anybody can drop in, and this value decides what is requested.
   if (obj.repository != null && !isValidRepository(obj.repository)) {
     return false;
   }
@@ -198,9 +195,8 @@ export function watchAddons(): void {
 }
 
 /**
- * Resolve a request path like `/addons/my-theme/theme.css` to a safe
- * absolute filesystem path inside the addons directory, or null if the
- * path escapes the directory or the file doesn't exist.
+ * Resolve a request path to a safe absolute path inside the addons directory, or
+ * null if it escapes the directory or the file does not exist.
  */
 export function resolveAddonFilePath(pathname: string): string | null {
   const dir = getAddonsDir();
