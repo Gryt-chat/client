@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useThreadMentions, useThreadUnread } from "@/common";
 import type { ForumTag } from "@/settings/src/types/server";
 
-import { PiChatsFill, PiPlus, PiX } from "../../../../lib/icons";
+import { PiChatsFill, PiCheck, PiPlus, PiX } from "../../../../lib/icons";
 import { type ForumFilter, type ForumTopic,useForum } from "../hooks/useForum";
 import type { ThreadSummary } from "../hooks/useThreads";
 import { EmojiText } from "./EmojiText";
@@ -215,7 +215,8 @@ export function ForumView({ socketConnection, conversationId, serverHost, curren
                    green was picked against the dark theme. */
                 <Chip
                   tone="success"
-                  label="✓ Solved"
+                  icon={<PiCheck size={11} />}
+                  label="Solved"
                   className="px-2.5 py-0.5 text-[11px] whitespace-nowrap"
                 />
               )}

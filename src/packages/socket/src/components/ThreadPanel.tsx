@@ -2,7 +2,7 @@ import { Button, Divider, IconButton } from "@gryt/ui";
 import type { ReactNode } from "react";
 import { Fragment, useEffect, useLayoutEffect, useRef } from "react";
 
-import { PiChatsFill, PiX } from "../../../../lib/icons";
+import { PiChatsFill, PiCheck, PiX } from "../../../../lib/icons";
 import type { ChatMessage } from "./chatUtils";
 import { EmojiText } from "./EmojiText";
 import { ForumTagChip } from "./ForumTagChip";
@@ -131,10 +131,11 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
           <Button
             size="xsmall"
             className="shrink-0 whitespace-nowrap"
+            startIcon={<PiCheck size={14} />}
             title="Mark this topic solved"
             onClick={() => onSetStatus("solved")}
           >
-            ✓ Mark solved
+            Mark solved
           </Button>
         ))}
         {onSetStatus && (
