@@ -81,11 +81,8 @@ function canBind(port: number, host: string): Promise<boolean> {
   });
 }
 
-/**
- * Wildcard and loopback are different bindings and both can succeed, with the
- * more specific one winning the connection. Checking either alone handed a new
- * server a port another process was already answering on.
- */
+/** Wildcard and loopback are different bindings and both can succeed, so
+    checking either alone handed a server a port somebody else answered on. */
 async function portIsFree(port: number): Promise<boolean> {
   if (!(await canBind(port, "0.0.0.0"))) return false;
   return canBind(port, "127.0.0.1");
@@ -160,20 +157,9 @@ function existingMediaPort(): number | null {
 }
 
 /**
- * A free TCP port, near the one asked for.
- *
- * Walks upward rather than asking the OS for any free port. The OS gives back
- * something like 54162, which is fine for a machine and unfriendly to show a
- * person — these are numbers somebody may have to type into a router, and 5001
- * beats 54162 for that. Falls back to whatever is free if the whole run is
- * taken, since a working port matters more than a tidy one.
- *
- * Used for every port a new server picks. It used to be the create form only,
- * while the SFU port and the fallback for a taken server port went through
- * findFreePortFrom, which tries the preferred number once and then takes an
- * ephemeral one. A machine with something on 5005 — a dev SFU, most often —
- * produced a server advertising ws://127.0.0.1:55590, and now that ports do
- * not move afterwards that number is the server's for good. GRYT-469.
+ * Walks upward rather than taking an ephemeral port: these are numbers somebody
+ * types into a router. Used for every port a new server picks, since ports no
+ * longer move afterwards and an ephemeral one would be the server's for good.
  */
 async function findFriendlyPortFrom(preferred: number): Promise<number> {
   for (let port = preferred; port < preferred + 50 && port <= 65535; port++) {
@@ -204,33 +190,10 @@ export interface PortConflict {
 }
 
 /**
- * Check the ports a config asks for, and report the ones it cannot have.
- *
- * This used to move them. A port taken by something else was quietly swapped
- * for a free one, on the reasoning that a server which cannot start and cannot
- * be fixed from the UI is worse than a server on a different port. On macOS
- * that was not hypothetical: AirPlay Receiver binds 5000.
- *
- * The trade was wrong for anyone hosting for people outside their network,
- * which is most of the reason to host at all. They forward 5000 on a router,
- * something claims 5000 one morning, the app moves to 5001, and the server
- * comes back up looking perfectly healthy while nobody outside can reach it.
- * Since GRYT-459 the media port could drift the same way, which is worse
- * again: chat keeps working and only voice dies. A number written into a
- * router is a promise, and moving it silently breaks the promise in the one
- * direction the person cannot see. GRYT-469.
- *
- * So the ports are chosen once, at creation, and after that they are the
- * server's. A conflict is reported and the server does not start, which is
- * only a reasonable thing to do because the ports can now be changed in
- * My servers. `updateServerPorts` is the other half of this and they should
- * not be separated.
- *
- * `pinnedSfuPort` and `pinnedMediaPort` are the exception, and are not a move
- * in this sense. There is one SFU per app rather than one per server, so a
- * second server starting into a running SFU has to be pointed at the one that
- * is up. Nothing is being relocated: the SFU is where it is, and the config
- * catches up with it.
+ * Reported rather than moved: a number written into a router is a promise, and a
+ * server that quietly moved off 5000 came back looking healthy while nobody
+ * outside could reach it. The pinned SFU ports are not a move — there is one SFU
+ * per app, so a second server is pointed at the one already up.
  */
 export async function checkPortsAvailable(
   id: string,
@@ -283,9 +246,8 @@ export async function checkPortsAvailable(
     conflicts.push({ role: "server", port: serverPort, protocol: "TCP" });
   }
 
-  // Only when this server is the one starting the SFU. When it is joining a
-  // running one the ports are held by that SFU, and probing them would report
-  // a conflict with ourselves.
+  // Only when this server starts the SFU: joining a running one, the ports are
+  // held by it and probing reports a conflict with ourselves.
   if (pinnedSfuPort === undefined && !(await portIsFree(nextSfuPort))) {
     conflicts.push({ role: "sfu", port: nextSfuPort, protocol: "TCP" });
   }
@@ -319,17 +281,8 @@ export function describePortConflicts(conflicts: PortConflict[]): string {
   );
 }
 
-/**
- * Change the ports a server uses.
- *
- * The other half of not moving them automatically. Refused while the server is
- * running, like the advertised addresses, because the running process holds
- * the old ones.
- *
- * The SFU ports are shared by every server this app hosts, so changing them
- * changes them for all of them. That is a property of there being one SFU, not
- * a shortcut taken here.
- */
+/** Refused while running, since the process holds the old ones. The SFU ports
+    are shared, so changing them changes them for every server. */
 export async function updateServerPorts(
   id: string,
   ports: { serverPort?: number; sfuPort?: number; mediaPort?: number },
@@ -417,15 +370,8 @@ function isCgnatOrTailscaleIp(ip: string): boolean {
 }
 
 /**
- * Whether anything can open a connection to this address.
- *
- * These get advertised as the place to send voice to, so an address that is
- * merely well-formed is not enough — it has to be one a packet can be
- * addressed to. `0.0.0.0` is the one people reach for, because it is what you
- * write to *listen* on every interface, and it does the opposite here: it goes
- * into ICE_ADVERTISE_IP as a candidate nobody can use, and into SFU_PUBLIC_HOST
- * where the client pinging it resolves it to its own machine rather than the
- * host's. Loopback fails the same way and looks even more reasonable.
+ * Advertised as where to send voice, so well-formed is not enough. `0.0.0.0` is
+ * what you write to listen and does the opposite here; loopback fails the same.
  */
 function isDialableIpv4(ip: string): boolean {
   const parts = parseIpv4(ip);
@@ -441,15 +387,8 @@ function isDialableIpv4(ip: string): boolean {
   return true;
 }
 
-/**
- * Interfaces whose addresses are never reachable from another machine.
- *
- * Windows names its virtual adapters for the product rather than the driver —
- * "VMware Network Adapter VMnet8", "VirtualBox Host-Only Network" — so the
- * `vmnet` and `vboxnet` entries, which are the Linux and macOS names, never
- * matched there. A host with VMware installed advertised its 192.168.x VMnet
- * address alongside the real one, and every client dutifully tried it.
- */
+/** Windows names virtual adapters for the product, not the driver, so the Linux
+    and macOS names never matched and a VMnet address was advertised. */
 const VIRTUAL_INTERFACE =
   /^(docker|br-|bridge|veth|virbr|vmnet|vmware|virtualbox|hyper-v|utun|tun|tap|tailscale|zt|wg|vboxnet|vethernet)/i;
 
@@ -535,9 +474,8 @@ function customAddressesFrom(env: Record<string, string>): string[] {
 
 function withAdvertisedAddresses(raw: string, sfuPort: number): string {
   const env = parseEnv(raw);
-  // Filtered on the way out as well as on the way in, because a config written
-  // before `validateCustomAddress` refused these still has them on disk, and
-  // this runs on every load.
+  // On the way out as well as in, because a config written before the check still
+  // has them on disk and this runs on every load.
   const custom = customAddressesFrom(env).filter(
     (address) => isHostname(address) || isDialableIpv4(address),
   );
@@ -619,14 +557,8 @@ function extractHostFromHostPort(value: string): string {
   }
 }
 
-/**
- * The SFU port already agreed on by whatever servers exist.
- *
- * One SFU serves every server on this machine — it routes on the server id each
- * message carries, which is how gryt.chat runs three servers against one. So a
- * new server joins the port the others already use rather than asking for one
- * of its own; a second SFU process would be pure waste.
- */
+/** One SFU serves every server on this machine, routing on the server id, so a
+    new server joins the port the others use rather than asking for its own. */
 function existingSfuPort(): number | null {
   for (const id of listServerIds()) {
     const config = loadConfig(id);
@@ -638,14 +570,8 @@ function existingSfuPort(): number | null {
 export async function generateConfig(
   serverName: string,
   lanDiscoverable: boolean,
-  /**
-   * The port they asked for, if they asked for one.
-   *
-   * Still checked here rather than trusted from the form. The form's check and
-   * the create are two separate moments, and something else can take the port
-   * in between — so a port that has gone since it was offered falls back to a
-   * free one rather than producing a server that cannot start.
-   */
+  /** Checked here rather than trusted from the form: something else can take the
+      port between the two moments. */
   requestedPort?: number,
 ): Promise<EmbeddedServerConfig> {
   const id = makeServerId(serverName);
@@ -672,11 +598,8 @@ export async function generateConfig(
     [
       `# Gryt Embedded Server Configuration (auto-generated)`,
       `SERVER_NAME=${serverName}`,
-      // Part of how the SFU tells one server from another: it registers as
-      // SERVER_NAME_PORT_SERVER_INSTANCE_ID and keys voice rooms on that. The
-      // ports already differ, so this is belt and braces — but two servers
-      // sharing an identity means the second one's voice silently never
-      // starts, which is not a failure worth risking on a port allocator.
+      // Part of how the SFU tells servers apart, and belt and braces since the
+      // ports differ: two sharing an identity means the second's voice never starts.
       `SERVER_INSTANCE_ID=${id}`,
       `HOST=0.0.0.0`,
       `PORT=${serverPort}`,
@@ -686,16 +609,8 @@ export async function generateConfig(
       `JWT_SECRET=${jwtSecret}`,
       `SFU_PORT=${sfuPort}`,
       `SFU_WS_HOST=ws://127.0.0.1:${sfuPort}`,
-      // The port voice actually travels on, and the one that has to be opened
-      // by hand. SFU_PORT above only carries signalling, over TCP; this is UDP
-      // and it is separate, which is why a server can look completely healthy
-      // — people join, chat works — and still have silent voice channels.
-      //
-      // It was not written here at all until GRYT-459, and the SFU is spawned
-      // with an explicit environment rather than this file, so it never
-      // reached the SFU either. What that meant in practice was a media port
-      // nobody could name: pion picked ephemeral ports at random, so there was
-      // nothing to forward and no way to find out.
+      // The UDP port voice travels on and the one opened by hand; SFU_PORT above
+      // is signalling over TCP. Without it pion picks ephemeral ports at random.
       `ICE_UDP_MUX_PORT=${mediaPort}`,
       `EMBEDDED_SERVER_CUSTOM_ADDRESSES=`,
       `SFU_PUBLIC_HOST=${advertisedAddresses.map((address) => `${address}:${sfuPort}`).join(",") || `${lanIp}:${sfuPort}`}`,
@@ -703,28 +618,14 @@ export async function generateConfig(
       `STUN_SERVERS=stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302`,
       `CORS_ORIGIN=*`,
       `EXTERNAL_HOST=${externalHost}`,
-      // Accept people who have no Gryt account. IDENTITY_MODE=builtin used to
-      // stand here, meaning to make this server independent of Gryt's auth; it
-      // never did, because nothing ever issued a certificate in that mode and
-      // its issuer was a loopback URL no other machine on the LAN could reach.
-      //
-      // This is the setting that actually does it. Not a wide-open door: who
-      // may join is still the server's join policy, which starts at
-      // invite-only, so this only means an invited person does not *also* need
-      // to go and make an account first — which is the whole point of hosting
-      // one of these for people in the same room.
+      // Accept people with no Gryt account. Not a wide-open door: the join policy
+      // still starts invite-only, so an invited person just needs no account.
       `GRYT_IDENTITY_TIERS=account,local`,
-      // Seeds the server's `discoverable` column on its first run. Replaces
-      // MDNS_ENABLED, which nothing on the server ever read — so unticking the
-      // box at creation did nothing. This file is written once, at creation,
-      // and the server only applies the seed while the config row does not
-      // exist, so changing the setting in server settings later still wins.
+      // Seeds `discoverable` on the first run only, so a later change in server
+      // settings still wins. Replaces MDNS_ENABLED, which nothing ever read.
       `SERVER_DISCOVERABLE=${lanDiscoverable ? "true" : "false"}`,
-      // How many people fit in voice. This used to be written as
-      // SFU_UDP_PORT_MIN/MAX=10000/10019, which looked like a media-plane
-      // setting but was never read by the SFU — the server derived the seat
-      // limit from it as (max-min+1), so those two lines were the cap, at 20,
-      // wearing a costume. Same number, said plainly.
+      // The same cap SFU_UDP_PORT_MIN/MAX used to express as (max-min+1), which
+      // looked like a media setting and the SFU never read.
       `VOICE_MAX_USERS=20`,
     ].join("\n") + "\n";
 
@@ -766,9 +667,8 @@ export function loadConfig(id: string): EmbeddedServerConfig | null {
     serverName: env.SERVER_NAME || "My Server",
     serverPort: parseInt(env.PORT || "5000", 10),
     sfuPort: parseInt(env.SFU_PORT || "5005", 10),
-    // Configs written before GRYT-459 have no line for this. They report the
-    // SFU's own default, which is what those servers are really using, so the
-    // UI can name a port rather than shrug.
+    // Older configs have no line for this, so they report the SFU's own default —
+    // which is what those servers are really using.
     mediaPort: parseInt(env.ICE_UDP_MUX_PORT || "", 10) || DEFAULT_MEDIA_PORT,
     dataDir: env.DATA_DIR || join(getServerDir(id), "data"),
     configPath,
@@ -781,17 +681,8 @@ export function loadConfig(id: string): EmbeddedServerConfig | null {
 }
 
 /**
- * Remove a server's directory, and everything in it.
- *
- * This is the messages, the members, the uploads and the server's identity key.
- * There is no second copy anywhere — the caller is responsible for having
- * asked, and for having stopped the server first, because SQLite holds the file
- * open while it runs.
- *
- * Deleting the identity key is the part that is not obvious: anybody who joined
- * pinned it, so recreating a server with the same name and port is still a
- * different server to them, and they will be told it answered with the wrong
- * identity rather than let in.
+ * The messages, members, uploads and identity key, with no second copy anywhere.
+ * Anybody who joined pinned that key, so a recreated server is a different one.
  */
 export function deleteServerFiles(id: string): void {
   const dir = getServerDir(id);

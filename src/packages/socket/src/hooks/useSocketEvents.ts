@@ -36,13 +36,8 @@ import { registerServerSocketEvents } from "./registerServerSocketEvents";
 type Sockets = { [host: string]: Socket };
 
 
-/**
- * As much of an arriving message as this file needs.
- *
- * The server sends the whole enriched message on `chat:new`; this named only
- * the two fields the unread logic used. The notification needs a few more, and
- * naming them here keeps that honest rather than casting at the call site.
- */
+/** The server sends the whole enriched message; this names what the file uses,
+    rather than casting at the call site. */
 type BackgroundMessage = {
   sender_server_id: string;
   conversation_id?: string;
@@ -50,9 +45,8 @@ type BackgroundMessage = {
   text?: string | null;
   sealed?: string | null;
   attachments?: string[] | null;
-  /* Set on a reply posted in a thread. The server has always sent it — this
-     type simply never named it, so this handler could not tell a thread reply
-     from a channel message and badged the channel for both. */
+  /* The server always sent this; the type never named it, so a thread reply and
+     a channel message were badged the same. */
   thread_id?: string | null;
 };
 
@@ -94,10 +88,8 @@ export interface SocketEventDeps {
 export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
   const registeredRef = useRef<Set<string>>(new Set());
   const myVoiceStateByHostRef = useRef<Record<string, { hasJoinedChannel: boolean; voiceChannelId: string }>>({});
-  // How much of its recovery budget each server has spent, and the retry it has
-  // waiting. Refs rather than state: the handlers below are registered once per
-  // host and never re-registered, so anything they read has to survive renders
-  // without moving.
+  // Refs rather than state: the handlers below are registered once per host, so
+  // anything they read has to survive renders without moving.
   const revokedRecoveryRef = useRef<Record<string, RecoveryState>>({});
   const revokedTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
@@ -215,12 +207,8 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
         }));
       });
 
-      // The server has always emitted these and nothing has ever listened, so
-      // every moderation action was fire-and-forget: no confirmation, no error,
-      // nothing to tell a moderator whether the thing they just did happened.
-      //
-      // The member list is what actually shows the result, so these stay quiet
-      // and short rather than narrating what is already visible.
+      // Nothing listened, so every moderation action was fire-and-forget. Quiet
+      // and short, since the member list is what shows the result.
       type ModerationResult = { muted?: boolean; deafened?: boolean };
       const moderationResult = (event: string, message: (p: ModerationResult) => string) => {
         socket.on(event, (payload: ModerationResult) => toast.success(message(payload ?? {})));
@@ -249,9 +237,8 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
       // ---- Challenge-response identity authentication ----
 
       socket.on("server:challenge", async (challenge: { nonce: string; serverHost: string }) => {
-        // The assertion is bound to this host. Signing whatever the other end
-        // names would let a server we did not dial collect an assertion valid
-        // somewhere else.
+        // Bound to this host: signing whatever the other end names lets a server
+        // we did not dial collect an assertion valid elsewhere.
         if (!challengeHostMatches(host, challenge.serverHost)) {
           console.error(
             `[Auth:Socket] Refusing to sign for ${host}: challenge claims to be ` +
@@ -260,14 +247,8 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
           return;
         }
 
-        // Somebody signed this device out of this server, and nobody at this
-        // machine has said to come back. Refusing here rather than at each
-        // caller because this is the one thing every join needs: a dozen places
-        // emit `server:join`, and a thirteenth would quietly not be covered.
-        //
-        // The keypair is still on disk and the membership is still live, so
-        // answering would sign them straight back in -- which is exactly what
-        // happened on every restart before this. GRYT-987.
+        // Here rather than at each caller, since a dozen places emit
+        // `server:join`. The keypair is still on disk, so answering signs them in.
         if (isSignedOut(host)) {
           console.log(`[Auth:Socket] Not answering for ${host}: signed out on this device`);
           setFailedServerDetails(prev => ({
@@ -289,11 +270,8 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
           const msg = e instanceof Error ? e.message : String(e);
           console.error(`[Auth:Socket] Failed to answer challenge for ${host}:`, msg);
 
-          // Not answering ends the join, and the server has no reason to ask
-          // again — so this has to be said out loud. Logging it and returning
-          // left the socket connected with no data behind it, which the UI
-          // renders as a skeleton that never resolves, and only a reload got
-          // out of it (GRYT-10).
+          // Not answering ends the join and the server never asks again, which the
+          // UI renders as a skeleton only a reload gets out of.
           setFailedServerDetails(prev => ({
             ...prev,
             [host]: isSessionExpired(e)
@@ -315,23 +293,16 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
 
       // ---- Token lifecycle ----
 
-      // Recovering worked, so the budget goes back to full. A server that
-      // rotates its token counter twice in an afternoon is not the thing the
-      // cap is there for, and without this each of those would eat a retry that
-      // never came back until the quiet period elapsed.
-      //
-      // `server:joined` is handled in registerServerSocketEvents too. Two
-      // listeners for one event is fine, and it keeps the budget next to the
-      // code that spends it.
+      // Back to full, or a server rotating its counter twice in an afternoon eats
+      // retries that never come back. Handled elsewhere too, which is fine.
       const recoveryWorked = () => { delete revokedRecoveryRef.current[host]; };
       socket.on("server:joined", recoveryWorked);
 
       socket.on("token:refreshed", (refreshInfo: { accessToken: string; fileToken?: string }) => {
         recoveryWorked();
         setServerAccessToken(host, refreshInfo.accessToken);
-        // Re-stored with the access token. A file token lasts hours rather than
-        // minutes, so a session that keeps refreshing never reaches the point
-        // where its pictures start failing.
+        // With the access token: a file token lasts hours, so a session that keeps
+        // refreshing never reaches the point where pictures fail.
         if (refreshInfo.fileToken) setServerFileToken(host, refreshInfo.fileToken);
         onTokenRefreshedRef.current();
 
@@ -361,19 +332,13 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
         revokedRecoveryRef.current[host] = state;
 
         if (plan.act === "stop") {
-          // Both ways of stopping clear the refresh token as well, and both put
-          // the server into `failedServerDetails`. That is not only so the user
-          // sees something — it is what stops the client letting itself back
-          // in. `refreshIfStuck` in useSockets rejoins any connected server
-          // that has no details and no access token, on every window focus,
-          // unless the server is listed as failed. Without this the session
-          // came back the next time somebody clicked the app.
+          // `failedServerDetails` is what stops `refreshIfStuck` rejoining on the
+          // next window focus, not only what shows the user something.
           removeServerRefreshToken(host);
 
           if (plan.because === "deliberate") {
-            // Written down, so it survives the app closing. Without this the
-            // refusal lived only in `failedServerDetails` and the next launch
-            // rejoined with the keypair as if nothing had happened.
+            // Written down, or the refusal lives only in memory and the next launch
+            // rejoins with the keypair as if nothing happened.
             markSignedOut(host);
             toast.error(info?.message || `Your session on ${host} was ended.`);
             setFailedServerDetails(prev => ({
@@ -396,9 +361,8 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
           return;
         }
 
-        // Said once, on the first try, rather than on each. The server's message
-        // is about a session that is being replaced anyway, and five toasts
-        // saying so is worse than none.
+        // Once, on the first try: the message is about a session being replaced,
+        // and five toasts saying so is worse than none.
         if (plan.retry === 1 && info?.message) toast.error(info.message);
 
         const refreshToken = getServerRefreshToken(host);
@@ -423,11 +387,8 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
         console.error(`Token error for server ${host}:`, errorInfo);
         removeServerAccessToken(host);
 
-        // Errors the refresh token cannot fix. Retrying with it was an
-        // infinite loop: the server says the token is dead, we send the same
-        // dead token back, forever. It went unnoticed because only a leave on
-        // another device or an identity replace could revoke a token — until a
-        // kick started doing it, which is how a kick is made to stick.
+        // What the refresh token cannot fix: retrying with it is an infinite loop
+        // of sending the same dead token back.
         const TERMINAL = [
           "refresh_token_invalid",
           "refresh_token_expired",
@@ -478,20 +439,17 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
         if (host === currentlyViewingServerRef.current?.host) return;
         const myId = socket.id ? clientsRef.current[host]?.[socket.id]?.serverUserId : undefined;
         if (myId && msg.sender_server_id === myId) return;
-        // Counted against the thread now rather than dropped. Same change as
-        // the foreground handler in useChat — GRYT-999 went quiet because both
-        // trackers were keyed by conversation; this one is keyed by thread.
+        // Counted against the thread rather than dropped: both trackers were keyed
+        // by conversation, and this one is keyed by thread.
         if (msg.thread_id) {
-          /* Returns either way: a thread reply never counts against the
-             channel, and one that arrived without a conversation id is a
-             payload we cannot place rather than a channel message. */
+          /* Returns either way: a thread reply never counts against the channel,
+             and one with no conversation id cannot be placed. */
           if (msg.conversation_id) markThreadUnread(host, msg.conversation_id, msg.thread_id);
           return;
         }
 
-        /* Marked unread whatever the level says. Muting a channel is about not
-           being interrupted, not about pretending nothing happened there. The
-           dot is how somebody finds it later, on their own terms. */
+        /* Unread whatever the level says: muting is about not being interrupted,
+           not about pretending nothing happened. */
         if (msg.conversation_id) {
           markChannelUnread(host, msg.conversation_id);
         }
@@ -516,17 +474,9 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
         }
       });
 
-      /*
-       * Being named, which is what makes "mentions only" a level rather than a
-       * quieter way of saying none.
-       *
-       * A second listener on an event `registerServerSocketEvents` also handles.
-       * socket.io calls both, and they answer different questions: that one
-       * keeps the count, this one decides whether to make a noise.
-       *
-       * Silent at "all", because `chat:new` has already fired for the same
-       * message and two sounds for one arrival is worse than none.
-       */
+      /* A second listener on an event `registerServerSocketEvents` also handles:
+         that one keeps the count, this one decides whether to make a noise.
+         Silent at "all", where `chat:new` has already fired. */
       socket.on("mention:new", (payload: { conversationId?: string }) => {
         if (host === currentlyViewingServerRef.current?.host) return;
 

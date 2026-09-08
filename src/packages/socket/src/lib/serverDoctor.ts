@@ -1,11 +1,5 @@
-/**
- * Work out which hop between this client and a server is broken, so "chat works
- * and voice does not" does not mean reading an SFU log by hand.
- *
- * The checks run in the order the connection does, so the first failure is the
- * one to act on. **Anything after it is reported as untested**, never as
- * passing or failing.
- */
+/** The checks run in the order the connection does, so the first failure is the
+    one to act on and anything after it is reported as untested. */
 
 export type CheckId =
   | "server-http"
