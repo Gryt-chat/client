@@ -448,7 +448,7 @@ export function useChat({
          handlers on one socket, and which runs first is whichever subscribed
          first. */
       if (msg.thread_id) {
-        if (msg.sender_server_id !== currentUserId) markThreadUnread(serverHost, msg.thread_id);
+        if (msg.sender_server_id !== currentUserId) markThreadUnread(serverHost, msg.conversation_id, msg.thread_id);
         return;
       }
 

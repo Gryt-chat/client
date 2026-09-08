@@ -16,7 +16,20 @@ import { useCallback, useSyncExternalStore } from "react";
  * Counted from when this window connected, like the channel one and for the
  * same reason: no server-side read marker exists. GRYT-985.
  */
-type ThreadUnreadMap = Map<string, Map<string, number>>;
+interface ThreadUnread {
+  /**
+   * The channel the thread hangs off.
+   *
+   * Kept so "mark this channel read" can find the threads in it (GRYT-1030).
+   * Keyed by thread alone, the store can answer how many are unread in one
+   * thread and how many on a whole server, and nothing in between — which is
+   * the scope somebody most often wants.
+   */
+  conversationId: string;
+  count: number;
+}
+
+type ThreadUnreadMap = Map<string, Map<string, ThreadUnread>>;
 
 let unread: ThreadUnreadMap = new Map();
 const listeners = new Set<() => void>();
@@ -54,12 +67,12 @@ export function setOpenThread(host: string, threadId: string | null) {
   if (threadId) markThreadRead(host, threadId);
 }
 
-export function markThreadUnread(host: string, threadId: string) {
+export function markThreadUnread(host: string, conversationId: string, threadId: string) {
   if (openThread && openThread.host === host && openThread.threadId === threadId) return;
   const existing = unread.get(host);
   const next = new Map(unread);
   const counts = new Map(existing);
-  counts.set(threadId, (counts.get(threadId) ?? 0) + 1);
+  counts.set(threadId, { conversationId, count: (counts.get(threadId)?.count ?? 0) + 1 });
   next.set(host, counts);
   unread = next;
   emitChange();
@@ -72,6 +85,33 @@ export function markThreadRead(host: string, threadId: string) {
   const next = new Map(unread);
   const counts = new Map(existing);
   counts.delete(threadId);
+  if (counts.size === 0) next.delete(host);
+  else next.set(host, counts);
+  unread = next;
+  emitChange();
+}
+
+/**
+ * Every thread hanging off one channel, for a "mark as read" on it.
+ *
+ * A thread whose replies have not arrived in this window is not in here at
+ * all, which is the same limit the channel counts have: both are counted from
+ * when this window connected, because no server-side read marker exists.
+ */
+export function markConversationThreadsRead(host: string, conversationId: string) {
+  const existing = unread.get(host);
+  if (!existing) return;
+
+  const counts = new Map(existing);
+  let removed = false;
+  for (const [threadId, entry] of counts) {
+    if (entry.conversationId !== conversationId) continue;
+    counts.delete(threadId);
+    removed = true;
+  }
+  if (!removed) return;
+
+  const next = new Map(unread);
   if (counts.size === 0) next.delete(host);
   else next.set(host, counts);
   unread = next;
@@ -91,14 +131,39 @@ export function useThreadUnread() {
   const map = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
   const threadUnreadCount = useCallback(
-    (host: string, threadId: string): number => map.get(host)?.get(threadId) ?? 0,
+    (host: string, threadId: string): number => map.get(host)?.get(threadId)?.count ?? 0,
+    [map],
+  );
+
+  /** Unread replies across every thread hanging off one channel. */
+  const conversationThreadUnreadCount = useCallback(
+    (host: string, conversationId: string): number => {
+      const counts = map.get(host);
+      if (!counts) return 0;
+      let total = 0;
+      for (const entry of counts.values()) {
+        if (entry.conversationId === conversationId) total += entry.count;
+      }
+      return total;
+    },
+    [map],
+  );
+
+  /** Unread replies across every thread on one server. */
+  const serverThreadUnreadCount = useCallback(
+    (host: string): number => {
+      let total = 0;
+      for (const entry of map.get(host)?.values() ?? []) total += entry.count;
+      return total;
+    },
     [map],
   );
 
   const getThreadUnreadCounts = useCallback(
-    (host: string): Map<string, number> => map.get(host) ?? new Map(),
+    (host: string): Map<string, number> =>
+      new Map([...(map.get(host) ?? [])].map(([threadId, e]) => [threadId, e.count])),
     [map],
   );
 
-  return { threadUnreadCount, getThreadUnreadCounts };
+  return { threadUnreadCount, conversationThreadUnreadCount, serverThreadUnreadCount, getThreadUnreadCounts };
 }

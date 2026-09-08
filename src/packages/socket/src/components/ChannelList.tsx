@@ -19,6 +19,7 @@ import { ConnectedUser } from "./connectedUser";
 import { DirectMessageList } from "./DirectMessageList";
 import { EmojiText } from "./EmojiText";
 import { LabelledDivider } from "./LabelledDivider";
+import { MarkAsReadItem } from "./MarkAsReadItem";
 import type { AdminActions,MemberInfo } from "./MemberSidebar";
 import {
   buildReorderPayload,
@@ -557,6 +558,26 @@ export const ChannelList = ({
                   : { kind: "channel", id: item.channelId ?? item.id },
               )
             : null}
+
+          {/* Under how loud it is, because they are the same kind of thing:
+              this person's own view of the channel, not an admin action, and
+              offered to everybody for that reason (GRYT-1030). A folder has
+              nothing to read of its own, so it stands for its channels. */}
+          {notifiable ? (
+            <MarkAsReadItem
+              host={serverHost}
+              scope={
+                item.kind === "folder"
+                  ? {
+                    kind: "folder",
+                    channelIds: effectiveItems
+                      .filter((i) => i.parentItemId === item.id && i.kind === "channel")
+                      .map((i) => i.channelId ?? i.id),
+                  }
+                  : { kind: "conversation", id: item.channelId ?? item.id }
+              }
+            />
+          ) : null}
 
           {canManage ? (
             <>

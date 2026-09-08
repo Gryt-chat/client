@@ -6,6 +6,7 @@ import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 import { conversationTitle, type DirectConversation } from "../hooks/useDirectMessages";
 import { useSockets } from "../hooks/useSockets";
 import { EmojiText } from "./EmojiText";
+import { MarkAsReadItem } from "./MarkAsReadItem";
 import { UnreadIndicator } from "./UnreadIndicator";
 
 /**
@@ -166,6 +167,12 @@ export const DirectMessageList = ({
                     {conversationTitle(conversation)}
                   </ContextMenu.GroupLabel>
                 </ContextMenu.Group>
+                {/* A DM has no threads — `onStartThread` is undefined for one
+                    — so this is the conversation and nothing under it. */}
+                <MarkAsReadItem
+                  host={serverHost}
+                  scope={{ kind: "conversation", id: conversation.conversation_id }}
+                />
                 {onManage && (
                   <>
                     <ContextMenu.Separator />

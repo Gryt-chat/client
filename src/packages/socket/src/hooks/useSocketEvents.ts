@@ -482,7 +482,10 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
         // the foreground handler in useChat — GRYT-999 went quiet because both
         // trackers were keyed by conversation; this one is keyed by thread.
         if (msg.thread_id) {
-          markThreadUnread(host, msg.thread_id);
+          /* Returns either way: a thread reply never counts against the
+             channel, and one that arrived without a conversation id is a
+             payload we cannot place rather than a channel message. */
+          if (msg.conversation_id) markThreadUnread(host, msg.conversation_id, msg.thread_id);
           return;
         }
 
