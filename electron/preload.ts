@@ -43,6 +43,10 @@ ipcRenderer.on(
 contextBridge.exposeInMainWorld("electronAPI", {
   isElectron: true,
 
+  // False where the compositor manages windows itself, so the app draws no
+  // titlebar either. Set by main from --gryt-no-window-chrome. GRYT-1062.
+  drawsWindowChrome: !process.argv.includes("--gryt-no-window-chrome"),
+
   getAppVersion(): Promise<string> {
     return ipcRenderer.invoke("get-app-version");
   },

@@ -131,6 +131,8 @@ export interface WatchedProgram {
 
 export interface ElectronAPI {
   isElectron: true;
+  /** False where the compositor draws and places windows itself. */
+  drawsWindowChrome: boolean;
   getAppVersion(): Promise<string>;
   onHotkeyDown(callback: (action: HotkeyAction) => void): () => void;
   onHotkeyUp(callback: (action: HotkeyAction) => void): () => void;
@@ -306,6 +308,11 @@ declare global {
 
 export function isElectron(): boolean {
   return !!window.electronAPI?.isElectron;
+}
+
+/** False on a desktop that places windows itself, where Gryt draws no chrome. */
+export function drawsWindowChrome(): boolean {
+  return window.electronAPI?.drawsWindowChrome !== false;
 }
 
 export function getElectronAPI(): ElectronAPI | null {

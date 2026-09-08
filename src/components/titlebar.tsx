@@ -1,17 +1,19 @@
 import { useEffect } from "react";
 
-import { isElectron } from "../lib/electron";
+import { drawsWindowChrome, isElectron } from "../lib/electron";
 
 export const TITLEBAR_HEIGHT = 36;
 
 export function Titlebar() {
+  const chrome = isElectron() && drawsWindowChrome();
+
   useEffect(() => {
-    if (isElectron()) {
+    if (chrome) {
       document.documentElement.style.setProperty("--titlebar-inset", `${TITLEBAR_HEIGHT}px`);
     }
-  }, []);
+  }, [chrome]);
 
-  if (!isElectron()) return null;
+  if (!chrome) return null;
 
   return (
     <div

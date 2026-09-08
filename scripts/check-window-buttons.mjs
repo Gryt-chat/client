@@ -72,4 +72,37 @@ assert.match(
   "titleBarOverlay is not conditional on drawsWindowButtons(), so it is set everywhere",
 );
 
+// The renderer learns the same answer through a flag on argv, and the two
+// halves have to spell it identically or the titlebar silently stays.
+const flag = main.match(/const NO_WINDOW_CHROME_FLAG = "([^"]+)"/);
+
+assert.ok(flag, "main.ts no longer defines NO_WINDOW_CHROME_FLAG");
+
+assert.match(
+  main,
+  /additionalArguments: drawsWindowButtons\(\)\s*\n?\s*\?\s*\[\]\s*\n?\s*:\s*\[NO_WINDOW_CHROME_FLAG\]/,
+  "additionalArguments is not gated on drawsWindowButtons(), so the renderer is told the wrong thing",
+);
+
+const preload = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), "..", "electron", "preload.ts"),
+  "utf8",
+);
+
+assert.ok(
+  preload.includes(`process.argv.includes("${flag[1]}")`),
+  `preload.ts does not read ${flag[1]} off argv, so drawsWindowChrome cannot be right`,
+);
+
+const titlebar = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), "..", "src", "components", "titlebar.tsx"),
+  "utf8",
+);
+
+// Both the strip and the inset, or the layout keeps a 36px gap for a bar that
+// is not drawn.
+assert.match(titlebar, /if \(!chrome\) return null;/, "the titlebar still renders without chrome");
+assert.match(titlebar, /if \(chrome\) \{\s*\n\s*document\.documentElement\.style\.setProperty\(\s*\n?\s*"--titlebar-inset"/,
+  "--titlebar-inset is set regardless of chrome, so the gap survives the strip");
+
 console.log(`window buttons: ok, ${cases.length} desktops and 2 platforms`);
