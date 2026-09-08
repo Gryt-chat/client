@@ -78,6 +78,9 @@ jobs:
       # Confirmations drift when each one is hand-rolled: Cancel drawn as the
       # primary action, destructive confirms untoned, widths wherever.
       - run: yarn test:dialog-primitives
+      # Which native prebuild survives packaging. Pruning too eagerly leaves an
+      # app that starts and dies on the first global hotkey.
+      - run: yarn test:prebuild-pruning
       # The outage banner has to stay silent when nothing is wrong, and a
       # client with no internet must not invent an outage.
       - run: yarn test:service-status

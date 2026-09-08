@@ -5,6 +5,8 @@ const path = require("node:path");
 
 const yaml = require("js-yaml");
 
+const { prunePrebuilds } = require("./scripts/prune-prebuilds.cjs");
+
 /**
  * electron-builder.yml, plus the handful of things a slim build changes.
  *
@@ -49,5 +51,20 @@ if (SLIM) {
   // the full build publishes. electron/main.ts asks for the matching one.
   config.publish = { ...config.publish, channel: "slim" };
 }
+
+// Native prebuilds for platforms this package cannot run on. A hook rather than
+// a `files` exclude because app-builder-lib takes only `!` patterns for
+// node_modules -- see scripts/prune-prebuilds.cjs.
+config.afterPack = async (context) => {
+  const { Arch } = require("builder-util");
+  const { kept, removed } = prunePrebuilds(
+    context.appOutDir,
+    context.electronPlatformName,
+    Arch[context.arch],
+  );
+  if (removed.length > 0) {
+    console.log(`  • pruned prebuilds  kept=${kept.join(", ")} removed=${removed.join(", ")}`);
+  }
+};
 
 module.exports = config;
