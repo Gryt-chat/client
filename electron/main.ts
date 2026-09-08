@@ -1352,7 +1352,36 @@ const MIME_TYPES: Record<string, string> = {
   ".txt": "text/plain",
 };
 
-function startLocalServer(): Promise<string> {
+/**
+ * The only port this server may use.
+ *
+ * It serves the renderer, so it is also the origin every call to Keycloak goes
+ * out from, and Keycloak answers exactly one loopback origin. Checked against
+ * auth.gryt.chat on 2026-09-08: `http://127.0.0.1:15738` is accepted and every
+ * other port is rejected as an invalid redirect_uri, with no wildcard.
+ *
+ * So there is no such thing as a fallback port here. Serving on another one
+ * gives a window that looks fine and cannot sign in, and the failure surfaces
+ * as a CORS error on the token endpoint with nothing pointing back at the port.
+ * GRYT-1057.
+ */
+const AUTH_ORIGIN_PORT = 15738;
+
+/** Attempts before giving up on the port, and the gap between them. */
+const PORT_RETRIES = 5;
+const PORT_RETRY_MS = 300;
+
+export class AuthPortUnavailableError extends Error {
+  constructor(readonly port: number) {
+    super(
+      `Port ${port} is already in use. Gryt has to serve itself on this exact ` +
+        `port for signing in to work, so it cannot start on another one.`
+    );
+    this.name = "AuthPortUnavailableError";
+  }
+}
+
+async function startLocalServer(): Promise<string> {
   const distDir = join(__dirname, "../dist");
   const indexPath = join(distDir, "index.html");
 
@@ -1452,17 +1481,44 @@ function startLocalServer(): Promise<string> {
     });
   }
 
-  return tryListen(15738).catch(
-    (err: NodeJS.ErrnoException) => {
-      if (err.code === "EADDRINUSE") {
-        startupLog(
-          "Port 15738 in use, falling back to OS-assigned port"
-        );
-        return tryListen(0);
+  // Retried rather than swapped for another port. The usual holder is a copy of
+  // Gryt that has not finished exiting, and that clears in well under a second.
+  for (
+    let attempt = 1;
+    attempt <= PORT_RETRIES;
+    attempt++
+  ) {
+    try {
+      return await tryListen(
+        AUTH_ORIGIN_PORT
+      );
+    } catch (err) {
+      const code = (
+        err as NodeJS.ErrnoException
+      ).code;
+
+      if (code !== "EADDRINUSE") {
+        throw err;
       }
 
-      throw err;
+      if (attempt === PORT_RETRIES) {
+        throw new AuthPortUnavailableError(
+          AUTH_ORIGIN_PORT
+        );
+      }
+
+      startupLog(
+        `Port ${AUTH_ORIGIN_PORT} in use, retrying (${attempt}/${PORT_RETRIES})`
+      );
+
+      await new Promise((r) =>
+        setTimeout(r, PORT_RETRY_MS)
+      );
     }
+  }
+
+  throw new AuthPortUnavailableError(
+    AUTH_ORIGIN_PORT
   );
 }
 
@@ -2826,8 +2882,29 @@ if (!gotSingleInstanceLock) {
         !process.env
           .VITE_DEV_SERVER_URL
       ) {
-        localServerUrl =
-          await startLocalServer();
+        try {
+          localServerUrl =
+            await startLocalServer();
+        } catch (err) {
+          // Said here rather than left to fail later. Carrying on without the
+          // port produces a window that opens, looks right and cannot sign in.
+          if (
+            err instanceof
+            AuthPortUnavailableError
+          ) {
+            dialog.showErrorBox(
+              "Gryt is already running",
+              `${err.message}\n\nClose the other copy of Gryt and open it ` +
+                `again. If none is open, something else on this machine is ` +
+                `using port ${err.port}.`
+            );
+
+            app.quit();
+            return;
+          }
+
+          throw err;
+        }
 
         startupLog(
           `Local server started: ${localServerUrl}`
