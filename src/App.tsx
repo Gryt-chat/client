@@ -46,12 +46,8 @@ import { Welcome } from "./components/welcome";
 export function App() {
   const { isSignedIn } = useAccount();
 
-  // Waits for Keycloak to settle before mounting. It resolves to false quickly
-  // when there is no session, and mounting first would let a signed-in person's
-  // saved servers reconnect as a guest before their account was known.
-  //
-  // `isSignedIn` gates nothing else; it only decides what a server is told
-  // about you at the moment you join one (GRYT-170).
+  // Waits for Keycloak to settle before mounting: mounting first would let a
+  // signed-in person's saved servers reconnect as a guest (GRYT-170).
   const ready = isSignedIn !== undefined;
   const { showAddServer, setShowAddServer, addServer, hasServer, switchToServer } =
     useServerManagement();
@@ -93,9 +89,8 @@ export function App() {
     });
   }, []);
 
-  // Once in the app, show the invite acceptance modal instead of silently
-  // adding. Follows whichever way you got here — an invite link is just as
-  // likely to be the reason somebody opened Gryt without an account.
+  // Once in the app, show the invite acceptance modal instead of silently adding.
+  // An invite link is just as likely to be why somebody opened Gryt.
   useEffect(() => {
     if (!ready) return;
     const pending = readPendingInvite();

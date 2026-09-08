@@ -1,9 +1,6 @@
 /**
- * Backs localStorage with a JSON file in Electron's userData directory.
- *
- * Call `initGlobalStorage()` once **before** React renders: it patches
- * `localStorage.setItem` and `removeItem` to sync writes through, so anything
- * written before that never reaches the file store. A no-op on the web.
+ * Backs localStorage with a JSON file in Electron's userData directory. Call
+ * `initGlobalStorage()` **before** React renders. A no-op on the web.
  */
 
 import { getElectronAPI, isElectron } from "./electron";

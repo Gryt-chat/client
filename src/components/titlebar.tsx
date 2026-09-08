@@ -42,12 +42,9 @@ export function Titlebar() {
         borderBottom: "1px solid var(--gryt-neutral-a3)",
         flexShrink: 0,
         position: "relative",
-        // Above the overlay band, so a modal cannot cover the window chrome.
-        // -webkit-app-region is hit-tested against the topmost element at a
-        // point, so a backdrop over this strip does not just blur it, it takes
-        // the drag region and the back/forward buttons with it (GRYT-188).
-        //
-        // The rungs, and why chrome sits where it does, are in style.css.
+        // Above the overlay band, so a modal cannot cover the window chrome:
+        // -webkit-app-region is hit-tested against the topmost element, so a
+        // backdrop takes the drag region with it (GRYT-188).
         zIndex: "var(--gryt-z-chrome)",
         display: "flex",
         alignItems: "center",
