@@ -125,6 +125,9 @@ protocols:
       - gryt
 
 linux:
+  # A directory, not build/icon.png: electron-builder ships exactly what it is
+  # given, and one 1024x1024 is what the deb and snap carried before GRYT-1008.
+  icon: build/icons
   # Only Linux. On macOS this also renames the .app bundle, which produced
   # gryt-chat.app while CFBundleName and CFBundleDisplayName both correctly said
   # "Gryt Chat" — and the Dock falls back to the folder name, so it showed

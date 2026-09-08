@@ -20,6 +20,7 @@ const rootDir = process.cwd();
 const sourceSvg = path.join(rootDir, "public", "logo-square.svg");
 const buildDir = path.join(rootDir, "build");
 const sizesDir = path.join(buildDir, "icon-sizes");
+const linuxIconsDir = path.join(buildDir, "icons");
 
 const sizes = [16, 24, 32, 48, 64, 128, 256];
 
@@ -100,6 +101,19 @@ await (await roundedSource(1024))
 
 const icoBuffer = await pngToIco(pngFiles);
 await fs.writeFile(path.join(buildDir, "icon.ico"), icoBuffer);
+
+// electron-builder reads a linux icon set out of a directory, keyed by the
+// NxN.png filename. Pointed at a single PNG instead it ships that one file, so
+// the deb and the snap carried nothing but a 1024x1024 -- which every desktop
+// downscales at runtime, and which flatpak refuses outright above 512.
+// Separate from `sizes` because a .ico cannot hold 512.
+await fs.mkdir(linuxIconsDir, { recursive: true });
+
+for (const size of [...sizes, 512]) {
+  await (await roundedSource(size))
+    .png()
+    .toFile(path.join(linuxIconsDir, `${size}x${size}.png`));
+}
 
 /*
  * The macOS icon, which is a different shape from the other two.
