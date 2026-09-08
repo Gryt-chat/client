@@ -1,4 +1,4 @@
-import { AlertDialog, Button, Chip, IconButton, Spinner, TextField, Tooltip } from "@gryt/ui";
+import { Button, Chip, IconButton, Spinner, TextField, Tooltip } from "@gryt/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -12,6 +12,7 @@ import {
 } from "@/common";
 
 import { PiCheck, PiKeyFill, PiPencilSimpleFill, PiPlus, PiTrashFill, PiX } from "../../../../lib/icons";
+import { ConfirmDialog } from "../../../socket/src/components/ConfirmDialog";
 import { LocalIdentitySection } from "./localIdentitySection";
 import { MessageKeySection } from "./messageKeySection";
 import { SettingsContainer } from "./settingsComponents";
@@ -123,47 +124,22 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
         </span>
       </div>
 
-      <AlertDialog.Root open={confirmDelete} onOpenChange={setConfirmDelete}>
-        <Tooltip title="Remove passkey">
-          <IconButton tone="ghost" size="xsmall"
-            disabled={deleting}
-            onClick={() => setConfirmDelete(true)}
-          >
-            <PiTrashFill size={16} />
-          </IconButton>
-        </Tooltip>
-        <AlertDialog.Portal>
-          <AlertDialog.Backdrop />
-          <AlertDialog.Popup>
-          <AlertDialog.Title>Remove passkey?</AlertDialog.Title>
-          <AlertDialog.Description>
-            This passkey will be removed from your account. You won&apos;t be able to
-            use it to sign in anymore.
-          </AlertDialog.Description>
-          <div className="flex gap-3 mt-4 justify-end">
-            <AlertDialog.Close
-              render={
-                <Button size="small">
-                  Cancel
-                </Button>
-              }
-            />
-            <AlertDialog.Close
-              render={
-                <Button size="small"
-                  onClick={() => {
-                    onDelete(credential.id);
-                    setConfirmDelete(false);
-                  }}
-                >
-                  Remove
-                </Button>
-              }
-            />
-          </div>
-        </AlertDialog.Popup>
-        </AlertDialog.Portal>
-      </AlertDialog.Root>
+      <Tooltip title="Remove passkey">
+        <IconButton tone="ghost" size="xsmall"
+          disabled={deleting}
+          onClick={() => setConfirmDelete(true)}
+        >
+          <PiTrashFill size={16} />
+        </IconButton>
+      </Tooltip>
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title="Remove passkey?"
+        description="This passkey will be removed from your account. You won't be able to use it to sign in anymore."
+        confirmLabel="Remove"
+        onConfirm={() => onDelete(credential.id)}
+      />
     </div>
   );
 }

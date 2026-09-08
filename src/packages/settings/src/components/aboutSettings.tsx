@@ -1,4 +1,4 @@
-import { AlertDialog, Button, Chip, Divider, Surface, Switch } from "@gryt/ui";
+import { Button, Chip, Divider, Surface, Switch } from "@gryt/ui";
 import { useCallback, useEffect, useState } from "react";
 
 import { Wordmark } from "@/common";
@@ -7,6 +7,7 @@ import { FaGithub } from "../../../../lib/brandIcons";
 import { getElectronAPI, isElectron, UpdateStatus } from "../../../../lib/electron";
 import { PiArrowsClockwiseFill, PiArrowSquareOutFill, PiBugFill, PiChatCircleDotsFill, PiCheckCircleFill, PiClockClockwiseFill, PiDesktopFill, PiDownloadSimpleFill, PiXCircleFill } from "../../../../lib/icons";
 import { useReportForm } from "../../../../lib/reports/useReportForm";
+import { ConfirmDialog } from "../../../socket/src/components/ConfirmDialog";
 import { SettingsContainer } from "./settingsComponents";
 
 const GITHUB_URL = "https://github.com/Gryt-chat/gryt";
@@ -235,37 +236,19 @@ function UpdateControls() {
         </div>
       </div>
 
-      <AlertDialog.Root open={pendingSwitch !== null} onOpenChange={(open) => { if (!open) setPendingSwitch(null); }}>
-        <AlertDialog.Portal>
-          <AlertDialog.Backdrop />
-          <AlertDialog.Popup>
-          <AlertDialog.Title>
-            {switchingToBeta ? "Turn on beta releases?" : "Turn off beta releases?"}
-          </AlertDialog.Title>
-          <AlertDialog.Description>
-            {switchingToBeta
-              ? "Gryt will close and reopen to install the latest beta. Beta builds can have bugs and unfinished features."
-              : "Gryt will close and reopen to install the latest stable version. That is older than the beta you are on now, so anything added since will be gone until it reaches stable."}
-          </AlertDialog.Description>
-          <div className="flex gap-3 mt-4 justify-end">
-            <AlertDialog.Close
-              render={
-                <Button tone="neutral" size="small">Cancel</Button>
-              }
-            />
-            <AlertDialog.Close
-              render={
-                <Button size="small"
-                  onClick={confirmChannelSwitch}
-                >
-                  {switchingToBeta ? "Turn on beta" : "Turn off beta"}
-                </Button>
-              }
-            />
-          </div>
-        </AlertDialog.Popup>
-        </AlertDialog.Portal>
-      </AlertDialog.Root>
+      <ConfirmDialog
+        open={pendingSwitch !== null}
+        onOpenChange={(open) => { if (!open) setPendingSwitch(null); }}
+        title={switchingToBeta ? "Turn on beta releases?" : "Turn off beta releases?"}
+        description={
+          switchingToBeta
+            ? "Gryt will close and reopen to install the latest beta. Beta builds can have bugs and unfinished features."
+            : "Gryt will close and reopen to install the latest stable version. That is older than the beta you are on now, so anything added since will be gone until it reaches stable."
+        }
+        confirmLabel={switchingToBeta ? "Turn on beta" : "Turn off beta"}
+        confirmTone="primary"
+        onConfirm={confirmChannelSwitch}
+      />
     </>
   );
 }

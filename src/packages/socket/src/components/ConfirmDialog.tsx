@@ -16,10 +16,6 @@ import { phraseMatches } from "../lib/confirmPhrase";
  * `confirmPhrase` is compared case-insensitively and trimmed. The phrase worth
  * asking for is a name somebody is reading off the screen in front of them, and
  * being told to match its capitals is a puzzle rather than a check.
- *
- * Sixteen plain confirms elsewhere are still hand-rolled. They do not
- * disagree with anything, so moving them is tidying rather than a fix, and
- * it is GRYT-1002.
  */
 export function ConfirmDialog({
   open,
@@ -31,6 +27,8 @@ export function ConfirmDialog({
   confirmPhrase,
   confirmPhraseLabel,
   confirmDisabled = false,
+  cancelLabel = "Cancel",
+  width,
   onConfirm,
   children,
 }: {
@@ -45,6 +43,12 @@ export function ConfirmDialog({
   confirmPhraseLabel?: ReactNode;
   /** For a caller with a reason of its own -- a request already in flight. */
   confirmDisabled?: boolean;
+  cancelLabel?: string;
+  /**
+   * Left unset, the popup keeps AlertDialog's own 32rem. GRYT-996 hardcoded
+   * 26rem here and quietly narrowed six dialogs that had never asked to be.
+   */
+  width?: string;
   onConfirm: () => void;
   /** Extra fields -- a reason, a duration, a checkbox. */
   children?: ReactNode;
@@ -64,7 +68,7 @@ export function ConfirmDialog({
     <AlertDialog.Root open={open} onOpenChange={onOpenChange}>
       <AlertDialog.Portal>
         <AlertDialog.Backdrop />
-        <AlertDialog.Popup className="w-[26rem] max-w-[calc(100vw-2rem)]">
+        <AlertDialog.Popup style={width ? { width } : undefined}>
           <AlertDialog.Title>{title}</AlertDialog.Title>
           {description && (
             <AlertDialog.Description className="mt-2">{description}</AlertDialog.Description>
@@ -84,7 +88,7 @@ export function ConfirmDialog({
           )}
 
           <div className="flex gap-3 mt-4 justify-end">
-            <AlertDialog.Close render={<Button size="small" tone="neutral">Cancel</Button>} />
+            <AlertDialog.Close render={<Button size="small" tone="neutral">{cancelLabel}</Button>} />
             {/* Deliberately not wrapped in AlertDialog.Close: it has to be able
                 to stay disabled, and Close renders its own button. */}
             <Button

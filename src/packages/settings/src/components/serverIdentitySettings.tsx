@@ -1,4 +1,4 @@
-import { Alert, AlertDialog, Button, Chip, IconButton, Tooltip } from "@gryt/ui";
+import { Alert, Button, Chip, IconButton, Tooltip } from "@gryt/ui";
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -6,6 +6,7 @@ import type { BlockedServer, ServerPin } from "@/common";
 import { forgetPin, listBlocked, listHostExpectations, listPins, unblockServer } from "@/common";
 
 import { PiHardDrivesFill, PiShieldCheckFill, PiTrashFill, PiWarningFill } from "../../../../lib/icons";
+import { ConfirmDialog } from "../../../socket/src/components/ConfirmDialog";
 import { SettingsContainer } from "./settingsComponents";
 
 function formatDate(epoch: number): string {
@@ -100,46 +101,20 @@ function BlockedRow({
             : "If you downgraded this server to an older version, that would explain it. Otherwise treat it as suspicious."}
         </Alert>
 
-      <AlertDialog.Root open={confirm} onOpenChange={setConfirm}>
-        <Button tone="danger" size="xsmall"
-          style={{ alignSelf: "flex-start" }}
-          onClick={() => setConfirm(true)}
-        >
-          Unblock
-        </Button>
-        <AlertDialog.Portal>
-          <AlertDialog.Backdrop />
-          <AlertDialog.Popup>
-          <AlertDialog.Title>Unblock {entry.host}?</AlertDialog.Title>
-          <AlertDialog.Description>
-            Gryt will forget the identity it expected here and trust whatever
-            answers next time, the same as joining a server for the first time.
-            Only do this if you know why the identity changed.
-          </AlertDialog.Description>
-          <div className="flex gap-3 mt-4 justify-end">
-            <AlertDialog.Close
-              render={
-                <Button tone="neutral" size="small">
-                  Cancel
-                </Button>
-              }
-            />
-            <AlertDialog.Close
-              render={
-                <Button tone="danger" size="small"
-                  onClick={() => {
-                    onUnblock(entry);
-                    setConfirm(false);
-                  }}
-                >
-                  Unblock
-                </Button>
-              }
-            />
-          </div>
-        </AlertDialog.Popup>
-        </AlertDialog.Portal>
-      </AlertDialog.Root>
+      <Button tone="danger" size="xsmall"
+        style={{ alignSelf: "flex-start" }}
+        onClick={() => setConfirm(true)}
+      >
+        Unblock
+      </Button>
+      <ConfirmDialog
+        open={confirm}
+        onOpenChange={setConfirm}
+        title={`Unblock ${entry.host}?`}
+        description="Gryt will forget the identity it expected here and trust whatever answers next time, the same as joining a server for the first time. Only do this if you know why the identity changed."
+        confirmLabel="Unblock"
+        onConfirm={() => onUnblock(entry)}
+      />
     </div>
   );
 }
@@ -169,45 +144,19 @@ function KnownRow({ pin, onForget }: { pin: ServerPin; onForget: (keyId: string)
         <Fingerprint value={pin.keyId} />
       </div>
 
-      <AlertDialog.Root open={confirm} onOpenChange={setConfirm}>
-        <Tooltip title="Forget this server">
-          <IconButton tone="danger" size="xsmall" onClick={() => setConfirm(true)}>
-            <PiTrashFill size={16} />
-          </IconButton>
-        </Tooltip>
-        <AlertDialog.Portal>
-          <AlertDialog.Backdrop />
-          <AlertDialog.Popup>
-          <AlertDialog.Title>Forget {pin.lastHost}?</AlertDialog.Title>
-          <AlertDialog.Description>
-            Gryt will stop recognising this server&apos;s identity. The next time
-            you connect it will be treated as a server you have never joined, and
-            whatever answers will be trusted.
-          </AlertDialog.Description>
-          <div className="flex gap-3 mt-4 justify-end">
-            <AlertDialog.Close
-              render={
-                <Button tone="neutral" size="small">
-                  Cancel
-                </Button>
-              }
-            />
-            <AlertDialog.Close
-              render={
-                <Button tone="danger" size="small"
-                  onClick={() => {
-                    onForget(pin.keyId);
-                    setConfirm(false);
-                  }}
-                >
-                  Forget
-                </Button>
-              }
-            />
-          </div>
-        </AlertDialog.Popup>
-        </AlertDialog.Portal>
-      </AlertDialog.Root>
+      <Tooltip title="Forget this server">
+        <IconButton tone="danger" size="xsmall" onClick={() => setConfirm(true)}>
+          <PiTrashFill size={16} />
+        </IconButton>
+      </Tooltip>
+      <ConfirmDialog
+        open={confirm}
+        onOpenChange={setConfirm}
+        title={`Forget ${pin.lastHost}?`}
+        description="Gryt will stop recognising this server's identity. The next time you connect it will be treated as a server you have never joined, and whatever answers will be trusted."
+        confirmLabel="Forget"
+        onConfirm={() => onForget(pin.keyId)}
+      />
     </div>
   );
 }

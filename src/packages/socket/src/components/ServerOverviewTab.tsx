@@ -1,4 +1,4 @@
-import { AlertDialog, Avatar, Button, Select, Switch, TextField } from "@gryt/ui";
+import { Avatar, Button, Select, Switch, TextField } from "@gryt/ui";
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -8,6 +8,7 @@ import type { Channel } from "@/settings/src/types/server";
 
 import { PiCameraFill, PiTrashFill } from "../../../../lib/icons";
 import { useServerPermissions } from "../hooks/usePermissions";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 type ProfanityMode = "off" | "flag" | "censor" | "block";
 
@@ -519,36 +520,14 @@ export function ServerOverviewTab({
               <PiTrashFill size={16} />
               Clear icon
             </Button>
-            <AlertDialog.Root
+            <ConfirmDialog
               open={showClearIconConfirm}
               onOpenChange={(open) => { if (!open) setShowClearIconConfirm(false); }}
-            >
-              <AlertDialog.Portal>
-                <AlertDialog.Backdrop />
-                <AlertDialog.Popup>
-                <AlertDialog.Title>Clear server icon?</AlertDialog.Title>
-                <AlertDialog.Description>
-                  This will remove the current server icon. You can upload a new one at any time.
-                </AlertDialog.Description>
-                <div className="flex gap-3 mt-4 justify-end">
-                  <AlertDialog.Close
-                    render={
-                      <Button size="small">Cancel</Button>
-                    }
-                  />
-                  <AlertDialog.Close
-                    render={
-                      <Button size="small"
-                        onClick={() => { clearIcon(); setShowClearIconConfirm(false); }}
-                      >
-                        Clear icon
-                      </Button>
-                    }
-                  />
-                </div>
-              </AlertDialog.Popup>
-              </AlertDialog.Portal>
-            </AlertDialog.Root>
+              title="Clear server icon?"
+              description="This will remove the current server icon. You can upload a new one at any time."
+              confirmLabel="Clear icon"
+              onConfirm={clearIcon}
+            />
           </>
         ) : null}
         <input
