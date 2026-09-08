@@ -48,11 +48,8 @@ export function useChatScroll(
     isAtBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < AT_BOTTOM_THRESHOLD;
   }, []);
 
-  // Anchor-based scroll preservation: track the first visible message and
-  // its pixel offset from the scroll container top so we can restore position
-  // after older messages are prepended. This is more reliable than the
-  // scrollHeight-delta approach because content-visibility:auto makes
-  // scrollHeight estimates unreliable for off-screen elements.
+  // Anchor-based: track the first visible message and its offset, so prepends can
+  // be restored. content-visibility:auto makes scrollHeight estimates unreliable.
   const anchorRef = useRef<ScrollAnchor | null>(null);
 
   const updateAnchor = useCallback(() => {
@@ -130,25 +127,8 @@ export function useChatScroll(
   }, [chatMessages, scrollToBottom]);
 
   /**
-   * Hold the bottom while the content is still settling.
-   *
-   * Opening a channel scrolls to the bottom once, in the effect above. Two
-   * things grow the list after that frame: an image without stored dimensions
-   * occupies nothing until the file arrives, and every row carries
-   * `content-visibility: auto` with `contain-intrinsic-size: auto 60px`, so
-   * off-screen messages are 60px tall until the browser renders them. The
-   * second fires even when every image has correct dimensions, which is why
-   * this watches the rows rather than the images.
-   *
-   * Two guards. It does nothing unless the reader is already at the bottom.
-   * And it only writes when the position has actually drifted, which is what
-   * stops it looping: pinning realises more rows under `content-visibility`,
-   * those resize, and the observer fires again.
-   *
-   * `scrollTop` is set in the observer callback rather than inside a
-   * `requestAnimationFrame`. ResizeObserver already runs after layout and
-   * before paint, and rAF is throttled to nothing in a window that is not being
-   * painted — somebody opens Gryt, tabs away, and comes back.
+   * Hold the bottom while the content is still settling — images with no stored
+   * dimensions, and `content-visibility: auto` rows that are 60px until rendered.
    */
   useEffect(() => {
     const el = scrollRef.current;

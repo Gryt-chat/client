@@ -335,9 +335,8 @@ function useSocketsHook() {
           deliverPluginMessage(pluginId, { host, topic, data: payload?.data });
         });
 
-        /* The restored flags are only as new as the moment the connection broke,
-           and the emit above moves on neither. Here rather than on `connect`,
-           because this event is the server saying the stash has been applied. */
+        /* The restored flags are only as new as the moment the connection broke.
+           Here rather than on `connect`: this event says the stash was applied. */
         socket.on("voice:state:restored", () => {
           socket.emit("voice:state:update", voiceSelfStateRef.current);
           if (activityRef.current) {
@@ -613,8 +612,7 @@ function useSocketsHook() {
 
 /**
    * Removed on `server:left`, because removing it first closes the socket and the
-   * emit goes nowhere. A server that does not answer keeps its entry, or a leave
-   * quietly becomes a remove.
+   * emit goes nowhere. A server that does not answer keeps its entry.
    */
   const leaveServer = (host: string) => {
     const socket = sockets[host];

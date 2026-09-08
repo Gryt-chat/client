@@ -18,14 +18,8 @@ function fmt(v: string | Date): string {
 }
 
 /**
- * People waiting to be let in, on a server whose join policy is "request".
- *
- * The note is the only part they control, so it is rendered as text and never
- * as markup.
- *
- * Approving does not admit anybody on its own: the server records the decision
- * and they get in the next time they try, which is what they were told would
- * happen when they were turned away.
+ * People waiting to be let in. Approving does not admit anybody on its own: the
+ * server records the decision and they get in the next time they try.
  */
 export function ServerJoinRequestsTab({
   host,
@@ -52,9 +46,8 @@ export function ServerJoinRequestsTab({
     setDeciding(null);
   });
 
-  // The decision is answered on its own, not with a fresh list — and two
-  // moderators can be looking at the same queue, so ask for the list again
-  // rather than dropping the row locally.
+  // The decision is answered on its own, and two moderators can be looking at the
+  // same queue — so ask for the list again rather than dropping the row.
   useSocketEvent<{ grytUserId: string; decision: string }>(
     socket,
     "server:joinRequest:decided",

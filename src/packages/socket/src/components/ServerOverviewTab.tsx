@@ -17,8 +17,7 @@ type JoinPolicy = "invite" | "request" | "open";
 
 /**
  * Anything unrecognised reads as `invite`, matching the server's own
- * normaliseJoinPolicy. A value from a newer server must leave a server harder to
- * get into, never easier — so this fails shut on both sides of the wire.
+ * normaliseJoinPolicy. A newer value must leave a server harder to get into.
  */
 function normalizeJoinPolicy(v: unknown): JoinPolicy {
   return v === "open" ? "open" : v === "request" ? "request" : "invite";
@@ -71,12 +70,8 @@ export function ServerOverviewTab({
   const MAX_ICON_SIZE_BYTES = 25 * 1024 * 1024;
 
   /**
-   * Whether this member may change any of this.
-   *
-   * Was `canEdit`, off the settings payload. `manage_server` is owner-only by
-   * default, so for an untouched server the answer is the same — but an owner
-   * who grants it to a role should get a form that works rather than one that
-   * looks read-only and would have been accepted.
+   * Whether this member may change any of this. `manage_server` is owner-only by
+   * default, so an owner who grants it should get a form that works.
    */
   const { can } = useServerPermissions(host);
   const canEdit = can("manage_server");

@@ -10,15 +10,8 @@ export interface UploadedFile {
 }
 
 /**
- * Encrypt a file, if this conversation is being encrypted, and upload it.
- *
- * The seal happens here rather than in the caller so the `sealed=1` field and
- * the encryption cannot come apart — a file encrypted without the flag would be
- * validated as an image and refused, and one flagged without being encrypted
- * would be stored opaque and served as a download for no reason.
- *
- * `seal` returning null is the ordinary case: a channel. The file goes as
- * itself.
+ * Encrypt a file, if this conversation is being encrypted, and upload it. The seal
+ * happens here so `sealed=1` and the encryption cannot come apart.
  */
 export async function uploadChatFile(
   file: File,
@@ -45,9 +38,8 @@ export async function uploadChatFile(
   const form = new FormData();
 
   if (sealed) {
-    // Everything the picker knew about this file is inside `sealed.meta` now,
-    // and none of it goes on the wire: no name, no type, no dimensions. The
-    // server records a length and a time, which is what it can see anyway.
+    // Everything the picker knew is inside `sealed.meta` now, and none of it goes
+    // on the wire. The server records a length and a time.
     form.append(
       "file",
       new Blob([sealed.ciphertext as BlobPart], { type: "application/octet-stream" }),

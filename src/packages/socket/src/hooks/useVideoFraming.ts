@@ -8,12 +8,8 @@ import { useSettings } from "@/settings/src/hooks/useSettings";
 import { useSockets } from "./useSockets";
 
 /**
- * Republished this often, unchanged.
- *
- * Framing only moves when someone asks it to, so without this anyone who joins
- * after the last re-centre sees a centred crop until the sender happens to
- * press the button again. Two numbers on this interval keeps the server from
- * having to store anything.
+ * Republished this often, unchanged. Framing only moves when someone asks, so
+ * anyone joining after the last re-centre would see a centred crop.
  */
 const REPUBLISH_MS = 15000;
 
@@ -116,10 +112,8 @@ function useVideoFramingHook() {
 export const useVideoFraming = singletonHook(INITIAL, useVideoFramingHook);
 
 /**
- * The framing as a CSS object-position.
- *
- * Mirroring flips the picture, so an offset measured on the unmirrored frame
- * points at the wrong side once it is drawn — the X has to flip with it.
+ * The framing as a CSS object-position. Mirroring flips the picture, so an offset
+ * measured on the unmirrored frame has to flip with it.
  */
 export function toObjectPosition(
   framing: Framing | undefined,

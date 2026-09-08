@@ -151,9 +151,8 @@ export function useChat({
   const canViewVoiceChannelText = !isVoiceChannelTextChat || (isConnected && textInVoiceEnabled);
 
   /*
-   * A channel scope can take `send_messages` away or hand it out, and only
-   * `manage_channels` can read those rules. `undefined` reads as yes, or every
-   * channel on an older server looks locked.
+   * A channel scope can take `send_messages` away, and only `manage_channels` can
+   * read those rules. `undefined` reads as yes, or an older server looks locked.
    */
   const canSendHere = activeChannel?.canSend !== false;
 
@@ -389,9 +388,8 @@ export function useChat({
       }
       handleNewMessage(msg, activeConversationId, cacheKeyFor, setMessageCache, setChatMessages);
 
-      /* A thread reply is news about the thread, and badging the channel pointed
-         at something that looked empty. The store refuses to count the open
-         thread rather than this clearing it, since the handler order is arbitrary. */
+      /* A thread reply is news about the thread. The store refuses to count the
+         open thread rather than this clearing it: handler order is arbitrary. */
       if (msg.thread_id) {
         if (msg.sender_server_id !== currentUserId) markThreadUnread(serverHost, msg.conversation_id, msg.thread_id);
         return;

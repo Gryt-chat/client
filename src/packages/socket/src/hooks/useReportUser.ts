@@ -3,16 +3,8 @@ import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
 
 /**
- * Reporting a person to the moderators of the server you are both on.
- *
- * Separate from the message report in `useChat`, which fires and forgets: there
- * the message is on screen, so a report that quietly went nowhere still leaves
- * the thing that prompted it visible. Here the entire report is what somebody
- * just typed.
- *
- * So this waits for an answer. A server too old to know `user:report` sends
- * none — the event is simply not registered — and the timeout below is the only
- * way to tell that apart from a report that landed.
+ * Reporting a person to the moderators of the server you are both on. This waits
+ * for an answer: the entire report is what somebody just typed.
  */
 
 const NO_ANSWER_MS = 6_000;
@@ -63,8 +55,7 @@ export function useReportUser({
     };
   }, [socket, settle]);
 
-  /* Every outstanding timer is dropped when the socket goes, rather than left
-     to fire against a server nobody is talking to any more. A disconnect is not
+  /* Every outstanding timer is dropped when the socket goes. A disconnect is not
      evidence that the server is too old. */
   useEffect(() => {
     const timers = waiting.current;
