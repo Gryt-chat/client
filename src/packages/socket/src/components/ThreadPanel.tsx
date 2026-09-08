@@ -47,6 +47,14 @@ interface ThreadPanelProps {
   loadingOlder?: boolean;
   /** Ask for it. Called when the list is scrolled near its top. */
   onLoadOlder?: () => void;
+  /**
+   * "Ridge is typing…", for this thread rather than for the channel.
+   *
+   * Handed down like the rows and the composer are. It used to be neither
+   * drawn here nor filtered out of the channel's, so writing a reply put the
+   * line under a timeline nobody was writing in (GRYT-1020).
+   */
+  typingIndicator?: ReactNode;
   onClose: () => void;
   onSetStatus?: (status: "open" | "solved" | "closed") => void;
   /** The channel's tag palette. Empty on a plain chat thread. */
@@ -54,7 +62,7 @@ interface ThreadPanelProps {
   onSetTags?: (tagIds: string[]) => void;
 }
 
-export function ThreadPanel({ thread, root, messages, loading, renderMessage, renderComposer, hasOlder, loadingOlder, onLoadOlder, onClose, onSetStatus, forumTags = [], onSetTags }: ThreadPanelProps) {
+export function ThreadPanel({ thread, root, messages, loading, renderMessage, renderComposer, hasOlder, loadingOlder, onLoadOlder, typingIndicator, onClose, onSetStatus, forumTags = [], onSetTags }: ThreadPanelProps) {
   // Escape closes the panel. Without it the only way out is the ×, which sits
   // next to "Mark solved" — and a miss there changes the topic's state.
   useEffect(() => {
@@ -217,6 +225,7 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
           and the upload cap are the ones the channel already enforces rather
           than a second copy of them. */}
       <div className="shrink-0 border-t border-gryt-border px-3.5 pt-2.5 pb-3.5">
+        {typingIndicator}
         {renderComposer()}
       </div>
     </aside>
