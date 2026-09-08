@@ -25,6 +25,7 @@ import { MarkdownRenderer } from "./MarkdownRenderer";
 import { type MessageActions, MessageContextMenu } from "./MediaContextMenu";
 import { MemberIdentityCard } from "./MemberIdentityCard";
 import type { MemberInfo } from "./MemberSidebar";
+import { UnreadIndicator } from "./UnreadIndicator";
 
 export interface MessageMeta {
   isFirstInGroup: boolean;
@@ -94,6 +95,18 @@ interface MessageRowProps {
   onStartThread?: (msg: ChatMessage) => void;
   /** Open an existing thread by its root message id. */
   onOpenThread?: (rootMessageId: string) => void;
+  /**
+   * Replies in this message's thread that have not been read, and how many of
+   * those named you.
+   *
+   * Counted in ChatView rather than read from the store here. Both stores hand
+   * back a new map on every change, so a hook in this component would re-render
+   * every row in the channel each time any thread anywhere moved — and this
+   * component is memoised precisely so that does not happen. Two numbers change
+   * for one row instead (GRYT-1019).
+   */
+  threadUnread?: number;
+  threadMentions?: number;
   isNew?: boolean;
 }
 
@@ -125,6 +138,8 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
   unencrypted,
   onStartThread,
   onOpenThread,
+  threadUnread,
+  threadMentions,
   isNew,
 }, forwardedRef) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -400,6 +415,8 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                 replyPreviewText={replyPreviewText}
                 isFirstInGroup
                 messageActions={messageActions}
+                threadUnread={threadUnread}
+                threadMentions={threadMentions}
                 onReaction={onReaction}
                 onReply={onReply}
                 onDelete={onDelete}
@@ -438,6 +455,8 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                 replyPreviewText={replyPreviewText}
                 isFirstInGroup={false}
                 messageActions={messageActions}
+                threadUnread={threadUnread}
+                threadMentions={threadMentions}
                 onReaction={onReaction}
                 onReply={onReply}
                 onDelete={onDelete}
@@ -523,6 +542,8 @@ function MessageContent({
   onMouseLeave,
   onOpenReactionPicker,
   unencrypted,
+  threadUnread,
+  threadMentions,
 }: {
   m: ChatMessage;
   rowRef: React.RefObject<HTMLDivElement | null>;
@@ -555,6 +576,9 @@ function MessageContent({
   onOpenReactionPicker: (anchorEl?: HTMLElement) => void;
   /** Went out in the clear. */
   unencrypted?: boolean;
+  /** Unread replies in this message's thread, and how many named you. */
+  threadUnread?: number;
+  threadMentions?: number;
 }) {
   const hasReactions = !!(m.reactions && m.reactions.length > 0);
   const sealedNote = sealedPlaceholder(m);
@@ -751,6 +775,12 @@ function MessageContent({
         >
           <PiChatsFill size={14} />
           {messageActions.replyCount ?? 0} {(messageActions.replyCount ?? 0) === 1 ? "reply" : "replies"}
+          {/* The same badge a forum topic row draws, for the same reason. A
+              thread on a text channel had the counts and nowhere to put them:
+              the reply count says how big the thread is, not whether any of it
+              is new, so a reply naming you badged the channel and then left you
+              opening threads to find it (GRYT-1019). */}
+          <UnreadIndicator unread={threadUnread ?? 0} mentions={threadMentions ?? 0} />
         </button>
       )}
       <ReactionBadges

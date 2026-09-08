@@ -4,7 +4,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Socket } from "socket.io-client";
 
 import type { SealDecision } from "@/common";
-import { getUploadsFileUrl, resolveAvatarSrc, useTheme } from "@/common";
+import { getUploadsFileUrl, resolveAvatarSrc, useTheme, useThreadMentions, useThreadUnread } from "@/common";
 import { useSettings } from "@/settings";
 
 import { PiChatCircleFill, PiChatsFill, PiCloudArrowUpFill, PiLockOpen, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
@@ -270,6 +270,27 @@ export const ChatView = memo(({
     (socketConnection as Socket) ?? null,
     conversationKey ?? "",
     threads.open?.thread.thread_id ?? null,
+  );
+
+  /*
+   * What a thread's footer under its root message has to say.
+   *
+   * Subscribed here rather than in MessageRow: both stores hand back a new map
+   * on every change, so a hook down there would re-render every row in the
+   * channel whenever any thread moved, and the row is memoised to stop exactly
+   * that. Up here the numbers change for the one row that cares (GRYT-1019).
+   */
+  const { threadUnreadCount } = useThreadUnread();
+  const { threadMentionCount } = useThreadMentions();
+  const threadCountsFor = useCallback(
+    (threadId: string | undefined) =>
+      threadId
+        ? {
+          unread: threadUnreadCount(serverHost ?? "", threadId),
+          mentions: threadMentionCount(serverHost ?? "", threadId),
+        }
+        : { unread: 0, mentions: 0 },
+    [threadUnreadCount, threadMentionCount, serverHost],
   );
 
   // ── Custom emoji ──────────────────────────────────────────────
@@ -700,6 +721,8 @@ export const ChatView = memo(({
                       scrollToMessage={scrollToMessage}
                       onLightboxOpen={onLightboxOpen}
                       threadSummary={threads.summaries[m.message_id]}
+                      threadUnread={threadCountsFor(threads.summaries[m.message_id]?.thread_id).unread}
+                      threadMentions={threadCountsFor(threads.summaries[m.message_id]?.thread_id).mentions}
                       onStartThread={conversationKind === "dm" ? undefined : threads.startThread}
                       onOpenThread={threads.openThread}
                       /* Channels are never sealed, so the mark would be on every
