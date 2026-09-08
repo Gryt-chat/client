@@ -97,6 +97,12 @@ export function MemberIdentityCard({
   voiceChannelName?: string;
 }) {
   const { memberKeyStates } = useSockets();
+
+  // Every role, not only the one their name is coloured by. `roles` absent is an
+  // older server with no opinion, so it falls back to `role` (GRYT-748).
+  const rolePills = (member.roles ?? (member.role ? [member.role] : [])).filter(
+    (role) => role && role !== "member",
+  );
   // Only to redraw after marking one; the pin itself is the record.
   const [, setCompared] = useState(false);
   const [ownKeys, setOwnKeys] = useState<{ thumbprint: string; dmPublicKey: string } | null>(null);
@@ -230,11 +236,13 @@ export function MemberIdentityCard({
         </div>
       </div>
 
-      {((member.role && member.role !== "member") || tier?.amber) && (
+      {(rolePills.length > 0 || tier?.amber) && (
         <div className="flex flex-wrap gap-1.5">
-          {member.role && member.role !== "member" && (
-            <Chip tone="primary">{member.role}</Chip>
-          )}
+          {rolePills.map((role) => (
+            <Chip key={role} tone="primary">
+              {role}
+            </Chip>
+          ))}
           {/*
             Amber marks "no account" and nothing else. Spend it anywhere
             decorative and it stops meaning anything.
