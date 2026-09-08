@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
-import { getServerAccessToken } from "@/common";
+import { getServerAccessToken, setOpenThread } from "@/common";
 
 import type { ChatMessage } from "../components/chatUtils";
 import { uploadChatFile } from "./uploadChatFile";
@@ -99,10 +99,11 @@ export function useThreads(
   // to one channel.
   useEffect(() => {
     setSummaries({});
+    setOpenThread(serverHost || "", null);
     setOpen(null);
     openRef.current = null;
     pendingOpenRoot.current = null;
-  }, [conversationId]);
+  }, [conversationId, serverHost]);
 
   useEffect(() => {
     const socket = asSocket(socketConnection);
@@ -111,6 +112,7 @@ export function useThreads(
     const fetchThread = (thread: ThreadSummary) => {
       setOpen({ thread, root: null, messages: [], loading: true, hasOlder: false, loadingOlder: false });
       openRef.current = { thread, root: null, messages: [], loading: true, hasOlder: false, loadingOlder: false };
+      setOpenThread(serverHost || "", thread.thread_id);
       socket.emit("thread:fetch", { conversationId, threadId: thread.thread_id });
     };
 
@@ -144,7 +146,8 @@ export function useThreads(
         delete next[p.root_message_id];
         return next;
       });
-      if (openRef.current?.thread.thread_id === p.thread_id) setOpen(null);
+      if (openRef.current?.thread.thread_id === p.thread_id) setOpenThread(serverHost || "", null);
+      setOpen(null);
     };
 
     const onHistory = (p: {
@@ -272,7 +275,8 @@ export function useThreads(
       const cur = openRef.current;
       if (!cur) return;
       if (cur.root?.message_id === id) {
-        setOpen(null);
+        setOpenThread(serverHost || "", null);
+      setOpen(null);
         return;
       }
       patchOpen(id, (messages) => messages.filter((m) => m.message_id !== id));
@@ -321,7 +325,7 @@ export function useThreads(
       socket.off("chat:edited", onEdited as (p: never) => void);
       socket.off("chat:deleted", onMessageDeleted as (p: never) => void);
     };
-  }, [socketConnection, conversationId]);
+  }, [socketConnection, conversationId, serverHost]);
 
   const startThread = useCallback((message: ChatMessage) => {
     const socket = asSocket(socketConnection);
@@ -332,6 +336,7 @@ export function useThreads(
     if (existing) {
       setOpen({ thread: existing, root: null, messages: [], loading: true, hasOlder: false, loadingOlder: false });
       openRef.current = { thread: existing, root: null, messages: [], loading: true, hasOlder: false, loadingOlder: false };
+      setOpenThread(serverHost || "", existing.thread_id);
       socket.emit("thread:fetch", { conversationId, threadId: existing.thread_id });
       return;
     }
@@ -345,18 +350,23 @@ export function useThreads(
     if (!socket || !summary) return;
     setOpen({ thread: summary, root: null, messages: [], loading: true, hasOlder: false, loadingOlder: false });
     openRef.current = { thread: summary, root: null, messages: [], loading: true, hasOlder: false, loadingOlder: false };
+    setOpenThread(serverHost || "", summary.thread_id);
     socket.emit("thread:fetch", { conversationId, threadId: summary.thread_id });
-  }, [socketConnection, conversationId, summaries]);
+  }, [socketConnection, conversationId, summaries, serverHost]);
 
   const openSummary = useCallback((summary: ThreadSummary) => {
     const socket = asSocket(socketConnection);
     if (!socket) return;
     setOpen({ thread: summary, root: null, messages: [], loading: true, hasOlder: false, loadingOlder: false });
     openRef.current = { thread: summary, root: null, messages: [], loading: true, hasOlder: false, loadingOlder: false };
+    setOpenThread(serverHost || "", summary.thread_id);
     socket.emit("thread:fetch", { conversationId, threadId: summary.thread_id });
-  }, [socketConnection, conversationId]);
+  }, [socketConnection, conversationId, serverHost]);
 
-  const closeThread = useCallback(() => setOpen(null), []);
+  const closeThread = useCallback(() => {
+    setOpenThread(serverHost || "", null);
+    setOpen(null);
+  }, [serverHost]);
 
   const setTags = useCallback((tagIds: string[]) => {
     const socket = asSocket(socketConnection);

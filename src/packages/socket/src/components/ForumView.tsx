@@ -1,6 +1,7 @@
 import { Alert, Button, Chip, Dialog, IconButton, TextField, Toggle, ToggleGroup } from "@gryt/ui";
 import { useEffect, useMemo, useState } from "react";
 
+import { useThreadUnread } from "@/common";
 import type { ForumTag } from "@/settings/src/types/server";
 
 import { PiChatsFill, PiPlus, PiX } from "../../../../lib/icons";
@@ -8,6 +9,7 @@ import { type ForumFilter, type ForumTopic,useForum } from "../hooks/useForum";
 import type { ThreadSummary } from "../hooks/useThreads";
 import { EmojiText } from "./EmojiText";
 import { ForumTagChip } from "./ForumTagChip";
+import { UnreadIndicator } from "./UnreadIndicator";
 
 interface ForumViewProps {
   socketConnection: unknown;
@@ -66,6 +68,7 @@ function matchesFilter(t: ForumTopic, filter: ForumFilter, currentUserId?: strin
 export function ForumView({ socketConnection, conversationId, serverHost, currentUserId, forumTags, onOpenTopic }: ForumViewProps) {
   const { topics, loading, creating, createError, createdToken, clearCreateError, createTopic } = useForum(socketConnection, conversationId, serverHost);
   const [filter, setFilter] = useState<ForumFilter>("all");
+  const { threadUnreadCount } = useThreadUnread();
   const [composing, setComposing] = useState(false);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -199,6 +202,11 @@ export function ForumView({ socketConnection, conversationId, serverHost, curren
                 <span>·</span>
                 <span>{relativeTime(t.last_message_at)}</span>
               </div>
+              {/* Replies since this window connected. Sits with the solved
+                  chip on the right, so the row reads title, tags, who and when
+                  on the left and its state on the right. */}
+              <div style={{ gridRow: "1 / 3", gridColumn: 2 }} className="flex items-center gap-2 self-center">
+              <UnreadIndicator unread={threadUnreadCount(serverHost ?? "", t.thread_id)} />
               {t.status === "solved" && (
                 /* The success tone, rather than the #5cc79a it used to hardcode
                    — that green was picked against the dark theme and stayed put
@@ -206,10 +214,10 @@ export function ForumView({ socketConnection, conversationId, serverHost, curren
                 <Chip
                   tone="success"
                   label="✓ Solved"
-                  className="self-center px-2.5 py-0.5 text-[11px] whitespace-nowrap"
-                  style={{ gridRow: "1 / 3", gridColumn: 2 }}
+                  className="px-2.5 py-0.5 text-[11px] whitespace-nowrap"
                 />
               )}
+              </div>
             </button>
           ))
         )}
