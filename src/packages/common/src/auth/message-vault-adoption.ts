@@ -1,25 +1,6 @@
 /**
- * Whether to offer this device the account's message key (GRYT-783).
- *
- * The decision is separated from everything that performs it, and has no
- * imports, so it can be checked without a browser.
- *
- * ## Why a stored marker rather than a comparison
- *
- * The honest question is "does this device already hold the key the account
- * sealed", and it cannot be answered directly: the sealed copy can only be
- * opened with the secret, and asking for the secret is the very thing being
- * decided. So the device records that it has the key — set both when it seals
- * one (it was the source) and when it adopts one.
- *
- * The failure mode is deliberately the safe direction. A missing marker offers
- * a prompt to somebody who did not need it, which costs a dismissal. A marker
- * that wrongly claimed the key is here would hide the offer from the one person
- * who needed it, and they would go on writing messages their other devices
- * cannot read without ever being told why.
- *
- * Clearing site data therefore re-offers, which is correct: clearing site data
- * really does remove the key.
+ * Whether to offer this device the account's message key. A stored marker, because
+ * opening the sealed copy needs the secret being asked for (GRYT-783).
  */
 
 const PREFIX = "gryt_message_key_here:";
@@ -65,11 +46,8 @@ export interface MessageKeyOfferInput {
 }
 
 /**
- * Offer the prompt, or say nothing.
- *
- * Nothing is said while the answer is still being fetched. A prompt that
- * appears and then vanishes reads as a glitch, and this one is asking for a
- * password — the last thing that should flicker.
+ * Offer the prompt, or say nothing. Nothing while the answer is still being
+ * fetched: this one is asking for a password, and it must not flicker.
  */
 export function shouldOfferMessageKey({
   signedIn,

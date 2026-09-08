@@ -310,18 +310,8 @@ export async function startRegister(redirectUri?: string): Promise<void> {
 }
 
 /**
- * Hand somebody to Keycloak to do one thing to their own account, then bring
- * them back where they were.
- *
- * The alias is a required action registered and enabled on the realm. It runs
- * on the login pages, which are Gryt's own theme — so account management never
- * sends anybody to the stock Keycloak console, which is PatternFly and looks
- * nothing like the rest of this.
- *
- * **A disabled action fails quietly.** Keycloak ignores a `kc_action` it does
- * not recognise and simply completes the login, so the button appears to do
- * nothing at all rather than reporting an error. If one of these looks dead,
- * check the realm's required actions before looking at this file.
+ * Hand somebody to Keycloak to do one thing to their own account, then bring them
+ * back. **A disabled action fails quietly** — check the realm's required actions.
  */
 export async function startRequiredAction(
   action: string,
@@ -351,11 +341,8 @@ export async function startPasswordChange(redirectUri?: string): Promise<void> {
 }
 
 /**
- * Change the address on the account.
- *
- * The realm sets `registrationEmailAsUsername`, so this changes what somebody
- * signs in with, and Keycloak re-verifies the new address before it takes
- * effect. Needs the `update-email` feature flag as well as the required action.
+ * Change the address on the account. The realm sets `registrationEmailAsUsername`,
+ * so this changes what somebody signs in with. Needs the `update-email` flag.
  */
 export async function startEmailChange(redirectUri?: string): Promise<void> {
   return startRequiredAction('UPDATE_EMAIL', redirectUri);
@@ -372,15 +359,8 @@ export async function startTotpSetup(redirectUri?: string): Promise<void> {
 }
 
 /**
- * Delete the account, permanently.
- *
- * Keycloak asks for confirmation on its own page before doing anything, and
- * that page is styled here (auth#19). Because this arrives as an
- * application-initiated action it also offers a way back, which it would not if
- * somebody reached it any other way.
- *
- * This deletes the gryt.chat account. It does not delete anything on servers
- * other people run — those hold their own copy of what was said.
+ * Delete the account, permanently. This deletes the gryt.chat account; it does not
+ * delete anything on servers other people run.
  */
 export async function startAccountDeletion(redirectUri?: string): Promise<void> {
   return startRequiredAction('delete_account', redirectUri);
@@ -424,16 +404,12 @@ export async function getValidIdentityToken(minValiditySeconds: number = 30): Pr
     return undefined;
   }
   try {
-    // This is the refresh. updateToken resolves false when the token is still
-    // fresh enough and only rejects when it could not get a new one, so a
-    // rejection here means the session is genuinely over.
+    // This is the refresh. updateToken resolves false when the token is fresh
+    // enough and only rejects when it could not get a new one.
     await keycloak.updateToken(minValiditySeconds);
   } catch (e) {
-    // Returning keycloak.token here used to hand the caller the expired token
-    // it had just failed to renew. Every request made with it came back 401,
-    // which reads like the far end is broken rather than like the session
-    // ending, and the one place that mattered — the identity certificate the
-    // join handshake needs — failed in a way nothing retried (GRYT-10).
+    // Returning keycloak.token here handed the caller the expired token it had
+    // just failed to renew, and every request with it came back 401 (GRYT-10).
     console.warn("[Auth:KC] getValidIdentityToken: updateToken failed — session expired", e);
     throw new SessionExpiredError();
   }

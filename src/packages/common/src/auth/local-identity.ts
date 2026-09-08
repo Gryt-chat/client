@@ -94,9 +94,8 @@ export function isLocalIdentitySub(sub: string): boolean {
 const LINK_ISSUER = "gryt:link";
 
 /**
- * Prove that the account joining is the same person who was here without one.
- * Sent only when a local key for the host already exists — generating one to
- * prove ownership of it would prove nothing.
+ * Prove the account joining is the same person who was here without one. Sent only
+ * when a local key exists — making one to prove we hold it proves nothing.
  */
 export async function signIdentityLink(
   host: string,

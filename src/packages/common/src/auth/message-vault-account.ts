@@ -1,9 +1,6 @@
 /**
- * Reading and writing the sealed seed on the Keycloak account (GRYT-783).
- *
- * The merge lives in `message-vault` and is tested there. This is only the
- * request around it, kept apart so that the part which can lose data has no
- * dependency on the app's configuration and can be loaded on its own.
+ * Reading and writing the sealed seed on the Keycloak account. The merge lives in
+ * `message-vault` and is tested there; this is only the request around it.
  */
 
 import { getAccountRepresentation, putAccountRepresentation } from "./account-api.ts";
@@ -16,11 +13,8 @@ export async function readSealedVault(): Promise<SealedVault | null> {
 }
 
 /**
- * Store the sealed seed, or clear it with `null`.
- *
- * Read-modify-write, for the reason in `withSealedVault`. The read is not
- * cached: two devices can be signed in, and writing a stale representation
- * would revert whatever the other one changed.
+ * Store the sealed seed, or clear it with `null`. Read-modify-write, and the read
+ * is not cached: two devices can be signed in.
  */
 export async function writeSealedVault(vault: SealedVault | null): Promise<void> {
   const account = (await getAccountRepresentation()) as AccountRepresentation;

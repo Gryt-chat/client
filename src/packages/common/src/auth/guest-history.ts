@@ -1,7 +1,6 @@
 /**
- * Which servers this device has been a guest on. **It has to be local, because the
- * server cannot be asked without telling it the answer.** Stores scopes, not
- * addresses, and nothing here identifies a person (GRYT-285).
+ * Which servers this device has been a guest on. **It has to be local: the server
+ * cannot be asked without telling it the answer.** Scopes, not addresses.
  */
 
 import { asIdentityScope, type IdentityScope } from "./identity-seed.ts";
@@ -68,12 +67,8 @@ function write(history: History): void {
 }
 
 /**
- * Note that this device has been a guest under `scope`, and when.
- *
- * Writes every call rather than returning early on a scope already known,
- * because the date is the point of it. The caller is the guest key derivation,
- * which the in-memory key cache reduces to about once a session — so this reads
- * as "last used", not "last connected".
+ * Note that this device has been a guest under `scope`, and when. Writes every
+ * call, because the date is the point — it reads as "last used".
  */
 export function rememberGuestScope(scope: string): void {
   const history = read();
@@ -100,13 +95,7 @@ export function listGuestScopes(): IdentityScope[] {
 
 /**
  * How many guest identities are at stake, and whether that number is worth
- * printing. Here rather than beside the reset so a check can exercise it
- * without opening an IndexedDB to answer a question about localStorage.
- *
- * **A count of zero is never a promise.** `read` swallows every failure and
- * answers empty, and a device set up by restoring a 24-word phrase has no
- * history and may still have guest identities — which is exactly the person
- * reaching for a reset. So the warning says so rather than disappearing.
+ * printing. **A count of zero is never a promise**: `read` swallows failures.
  */
 export function guestScopeRisk(): { count: number; certain: boolean } {
   const history = read();
@@ -121,20 +110,8 @@ export function forgetGuestScope(scope: string): void {
 }
 
 /**
- * Take in scopes from somewhere that already knows them.
- *
- * Two callers. The backfill in `identity-keys.ts` reads the `local:*` entries
- * an existing install already has, so nobody who upgrades loses the offer to
- * carry an identity over. And restoring a backup file adds the scopes it lists,
- * since a file naming six servers is evidence of having been on six servers.
- *
- * A restored 24-word phrase brings nothing, because a phrase is a seed and a
- * seed knows nothing about where it has been. That case is why the claim has to
- * be reachable by hand as well as offered automatically.
- *
- * **These arrive with no date and must not be given one.** Neither source knows
- * when the membership was used, and a `Date.now()` here would show on the prompt
- * as "last used today", which is the one thing it is not.
+ * Take in scopes from somewhere that already knows them — the backfill, or a
+ * restored backup file. **These arrive with no date and must not be given one.**
  */
 export function rememberGuestScopes(scopes: Iterable<string>): void {
   const known = read();

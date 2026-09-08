@@ -24,9 +24,8 @@ export interface ChallengeAnswer {
 }
 
 /**
- * Answer a challenge from `host` with whichever identity we hold. **A token that
- * is there but whose certificate cannot be fetched fails rather than falling back**
- * — falling back would sign the assertion as somebody else.
+ * Answer a challenge from `host` with whichever identity we hold. **A token whose
+ * certificate cannot be fetched fails rather than falling back to the local key.**
  */
 export async function answerChallenge(
   host: string,
