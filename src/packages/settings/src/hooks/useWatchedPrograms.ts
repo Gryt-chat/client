@@ -16,6 +16,10 @@ export interface WatchedProgramsState {
   setWatched: (programs: WatchedProgram[]) => Promise<void>;
   /** Everything open, for picking from. Fetched on demand, never held. */
   listRunning: () => Promise<string[]>;
+  /** When reading the process list was allowed, null until it is. */
+  consentedAt: string | null;
+  /** Null clears the watch list too, which is what stops the watcher. */
+  setConsent: (allow: boolean) => Promise<void>;
 }
 
 export function useWatchedPrograms(): WatchedProgramsState {
@@ -23,6 +27,7 @@ export function useWatchedPrograms(): WatchedProgramsState {
   const supported = !!api?.getWatchedPrograms;
 
   const [watched, setWatchedState] = useState<WatchedProgram[]>([]);
+  const [consentedAt, setConsentedAt] = useState<string | null>(null);
 
   /*
    * What is running comes from `useSettings` rather than a second subscription:
@@ -36,6 +41,9 @@ export function useWatchedPrograms(): WatchedProgramsState {
     let cancelled = false;
     void api.getWatchedPrograms().then((list) => {
       if (!cancelled) setWatchedState(list);
+    });
+    void api.getProcessScanConsent?.().then((at) => {
+      if (!cancelled) setConsentedAt(at);
     });
 
     return () => {
@@ -58,5 +66,14 @@ export function useWatchedPrograms(): WatchedProgramsState {
     [api],
   );
 
-  return { supported, watched, running, setWatched, listRunning };
+  const setConsent = useCallback(
+    async (allow: boolean) => {
+      const at = (await api?.setProcessScanConsent?.(allow)) ?? null;
+      setConsentedAt(at);
+      if (!at) setWatchedState([]);
+    },
+    [api],
+  );
+
+  return { supported, watched, running, setWatched, listRunning, consentedAt, setConsent };
 }

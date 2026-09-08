@@ -9,22 +9,24 @@ import { useWatchedPrograms } from "../hooks/useWatchedPrograms";
  * what is running and tells anybody only about this list (GRYT-931).
  */
 export function WatchedPrograms() {
-  const { supported, watched, running, setWatched, listRunning } = useWatchedPrograms();
+  const { supported, watched, running, setWatched, listRunning, consentedAt, setConsent } =
+    useWatchedPrograms();
 
   const [open, setOpen] = useState<string[]>([]);
   const [picked, setPicked] = useState("");
   const [label, setLabel] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Only when the section is on screen, and only once — this spawns a `ps`.
+  // Only once the section is on screen and reading has been allowed — this
+  // spawns a `ps`, and used to do it before anybody had agreed to it.
   useEffect(() => {
-    if (!supported) return;
+    if (!supported || !consentedAt) return;
     setLoading(true);
     void listRunning().then((names) => {
       setOpen(names);
       setLoading(false);
     });
-  }, [supported, listRunning]);
+  }, [supported, consentedAt, listRunning]);
 
   if (!supported) {
     return (
@@ -59,6 +61,29 @@ export function WatchedPrograms() {
     setOpen(await listRunning());
     setLoading(false);
   };
+
+  if (!consentedAt) {
+    return (
+      <div className="flex flex-col gap-2">
+        <span className="text-sm font-bold">What you&rsquo;re playing</span>
+        <span className="text-xs text-gryt-muted">
+          Gryt can show other people what you&rsquo;re playing. To do that it
+          reads which programs are running on this machine, every ten seconds,
+          and checks them against a list you pick.
+        </span>
+        <span className="text-xs text-gryt-muted">
+          That list of running programs never leaves this machine. Other people
+          only ever see the name of something you added yourself. If you add
+          nothing, Gryt doesn&rsquo;t look at all.
+        </span>
+        <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
+          <Button size="small" onClick={() => void setConsent(true)}>
+            Allow
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-2">
@@ -132,6 +157,19 @@ export function WatchedPrograms() {
           Nothing came back. Start the program first, then Refresh.
         </span>
       )}
+      <div className="flex items-center gap-2" style={{ marginTop: 8 }}>
+        <Button
+          size="xsmall"
+          tone="neutral"
+          onClick={() => void setConsent(false)}
+        >
+          Stop and forget
+        </Button>
+        <span className="text-xs text-gryt-muted">
+          Stops the checking and clears the list.
+        </span>
+      </div>
+
     </div>
   );
 }

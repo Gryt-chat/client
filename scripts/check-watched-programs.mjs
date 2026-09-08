@@ -273,12 +273,19 @@ check("the watcher reports matches, never the list it read", () => {
 });
 
 check("only the settings screen can ask what is running", () => {
-  /* One handler hands over a list of programs, and the renderer calls it from the
-     settings screen. Anything else exposing it would need a line here. */
+  /* One handler hands over the list; the consent pair reads and writes a stored
+     timestamp. Anything else exposing the list would need a line here. */
   const handlers = [...main.matchAll(/ipcMain\.handle\(\s*"(processes-[^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(
     handlers.sort(),
-    ["processes-get-watched", "processes-list-running", "processes-running", "processes-set-watched"],
+    [
+      "processes-get-consent",
+      "processes-get-watched",
+      "processes-list-running",
+      "processes-running",
+      "processes-set-consent",
+      "processes-set-watched",
+    ],
     "the processes IPC surface changed",
   );
 });
