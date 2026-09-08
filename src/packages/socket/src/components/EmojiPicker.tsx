@@ -218,11 +218,8 @@ export function EmojiPickerContent({ onSelect, serverHost, autoFocusSearch = tru
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           /*
-           * This also renders inside a Base UI context menu, whose MenuRoot
-           * puts useTypeahead on the popup — that calls preventDefault on every
-           * single-character key while the menu is open, so the letters never
-           * reached the field. Bubble phase only; the overlay picker's Escape
-           * handler is a capture listener on document.
+           * Base UI's MenuRoot puts useTypeahead on the popup, which
+           * preventDefaults every single-character key. Bubble phase only.
            */
           onKeyDown={(e) => e.stopPropagation()}
           style={{

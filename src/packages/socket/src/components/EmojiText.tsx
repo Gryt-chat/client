@@ -11,10 +11,8 @@ interface EmojiTextProps {
 }
 
 /**
- * Lightweight inline renderer that converts :shortcode: patterns to
- * Unicode emojis (via gemoji) or custom emoji <img> tags. Intended for
- * channel names, separator labels, reactions, and other non-markdown
- * contexts where full MarkdownRenderer is overkill.
+ * Inline renderer turning :shortcode: into Unicode emoji or a custom `<img>`.
+ * For channel names, labels and reactions, where markdown is overkill.
  */
 export const EmojiText = memo(({ text, emojiSize, disableTooltip }: EmojiTextProps) => {
   const customEmojis = useSyncExternalStore(onCustomEmojisChange, getCustomEmojis);

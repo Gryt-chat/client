@@ -42,9 +42,8 @@ export const MemberSidebarPanel = ({
   adminActions, onOpenDm, onToggleBlock, isBlocked, onReport, pinned, onTogglePinned,
 }: MemberSidebarPanelProps) => (
   <div
-    // Named the way the other panels are, so a layout check can measure it.
-    // The member list is the one that used to leave the window, and "is it
-    // inside" was not a question anything could ask without this.
+    // Named the way the other panels are, so a layout check can measure it. The
+    // member list is the one that used to leave the window.
     data-gryt="member-sidebar"
     data-open={sidebarOpen || undefined}
     onMouseLeave={onMouseLeave}

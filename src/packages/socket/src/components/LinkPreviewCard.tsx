@@ -141,9 +141,8 @@ export const LinkPreviewCard = memo(({
     })
       .then((res) => {
         if (!res.ok) {
-          /* 4xx is the server's verdict and will not change. 5xx and a dropped
-             connection are worth another go, so they are not remembered. A 404
-             page comes back as a 200 carrying `status: 404`. */
+          /* 4xx is the server's verdict and will not change; 5xx and a dropped
+             connection are worth another go. A 404 page is a 200 carrying one. */
           if (res.status >= 400 && res.status < 500) previewRefused.add(url);
           throw new Error(`link preview refused: ${res.status}`);
         }

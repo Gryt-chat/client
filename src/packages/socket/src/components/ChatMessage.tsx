@@ -19,11 +19,8 @@ export const MessageHoverToolbar = ({
   onDelete?: () => void;
   canDelete?: boolean;
   /**
-   * The reactions this person uses most, already ordered and padded.
-   *
-   * Empty when they may not react here, which is why the toolbar takes a list
-   * rather than a permission — the caller knows about permissions and this
-   * does not.
+   * The reactions this person uses most, already ordered and padded. Empty when
+   * they may not react here, which is why this takes a list not a permission.
    */
   quickReactions?: string[];
   onQuickReaction?: (src: string) => void;
@@ -223,9 +220,7 @@ const ChannelIcon = ({ type, size }: { type: "text" | "voice"; size: number }) =
   type === "voice" ? <PiSpeakerHighFill size={size} /> : <PiChatCircleFill size={size} />;
 
 /* Hallmark · component: empty-chat-state · genre: playful · theme: Gryt UI
- * interaction: the existing composer remains the single primary action
- * pre-emit critique: P5 H5 E5 S5 R5 V5
- */
+ * interaction: the existing composer remains the single primary action */
 export const WelcomeMessage = ({
   channelName,
   channelType = "text",

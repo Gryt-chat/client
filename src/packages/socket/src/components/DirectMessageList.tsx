@@ -10,26 +10,13 @@ import { MarkAsReadItem } from "./MarkAsReadItem";
 import { UnreadIndicator } from "./UnreadIndicator";
 
 /**
- * Conversations on this server, under the channel list — one section per kind.
- *
- * Under the channels rather than above the server rail, because these
- * conversations belong to this server: the same person on another server is a
- * different conversation with different history.
- *
- * Direct messages and groups get a section each. A group has a name and a
- * picture of its own, and mixing the two would put a row you can rename next to
- * one you cannot.
+ * Conversations on this server, under the channel list — one section per kind,
+ * because a group has a name and a picture and a direct message does not.
  */
+
 /**
- * Which of these conversations has a call going on in it.
- *
- * Read off `clients` rather than held separately. The server sends
- * `voice:call:members` to everybody in the conversation, and the socket handler
- * writes the conversation id back onto those clients' `voiceChannelId` — so "is
- * there a call in here" is "is anybody's room this conversation".
- *
- * A server that predates calling sends no event, so the set is empty and there
- * is no dot.
+ * Which of these conversations has a call going on in it, read off `clients`:
+ * the socket handler writes the conversation id onto `voiceChannelId`.
  */
 function useConversationsInCall(serverHost: string): Set<string> {
   const { clients } = useSockets();
@@ -107,12 +94,8 @@ export const DirectMessageList = ({
                   <Avatar
                     size="small"
                     /* Seeded on the name, so renaming a group redraws it, and
-                       the same seed the mobile app hands `eggAvatarSvg` — one
-                       group has to be one picture wherever it is opened.
-
-                       A rounded square rather than the circle `Avatar` draws by
-                       default: a circle is a person here and in the sidebar,
-                       and a group is not one. */
+                       the same seed the mobile app hands `eggAvatarSvg`. A
+                       rounded square: a circle is a person, and a group is not. */
                     className="rounded-(--gryt-radius-md)"
                     eggSeed={conversationTitle(conversation)}
                     src={

@@ -14,12 +14,8 @@ import { EmojiText } from "./EmojiText";
 import type { MemberInfo } from "./MemberSidebar";
 
 /**
- * Starting a group, and managing one. The same dialog for both, because they
- * ask the same questions.
- *
- * There is no owner. Anybody in a group can rename it, add somebody, or leave;
- * nobody can remove anybody else. A conversation with no moderators does not
- * need a moderation model.
+ * Starting a group, and managing one. There is no owner: anybody can rename it,
+ * add somebody, or leave, and nobody can remove anybody else.
  */
 export const GroupDialog = ({
   open,
@@ -118,9 +114,8 @@ export const GroupDialog = ({
       if (!token) throw new Error("Not signed in to this server");
       const form = new FormData();
       form.append("file", file, file.name || "group.png");
-      /* The avatar endpoint, because a group picture is the same job: one
-         square image, resized and thumbnailed by the same worker. A second
-         endpoint doing that again is a second place for the limits to drift. */
+      /* The avatar endpoint, because a group picture is the same job. A second
+         endpoint is a second place for the limits to drift. */
       const response = await fetch(`${getServerHttpBase(serverHost)}/api/uploads/avatar`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },

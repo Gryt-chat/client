@@ -10,8 +10,7 @@ export interface ForumTagDraft {
 
 /**
  * A forum's tag palette, edited as chips. Shared by the create dialog and the
- * channel edit dialog, so tags can be set when a forum is made and changed
- * afterwards. GRYT-981 Stage 3.
+ * channel edit dialog, so tags can be set when a forum is made and changed after.
  */
 
 function slugifyTag(name: string): string {
