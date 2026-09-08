@@ -1352,19 +1352,8 @@ const MIME_TYPES: Record<string, string> = {
   ".txt": "text/plain",
 };
 
-/**
- * The only port this server may use.
- *
- * It serves the renderer, so it is also the origin every call to Keycloak goes
- * out from, and Keycloak answers exactly one loopback origin. Checked against
- * auth.gryt.chat on 2026-09-08: `http://127.0.0.1:15738` is accepted and every
- * other port is rejected as an invalid redirect_uri, with no wildcard.
- *
- * So there is no such thing as a fallback port here. Serving on another one
- * gives a window that looks fine and cannot sign in, and the failure surfaces
- * as a CORS error on the token endpoint with nothing pointing back at the port.
- * GRYT-1057.
- */
+// This server is the renderer's origin, and Keycloak's gryt-web client accepts
+// only this one. Another port serves a window that cannot sign in. GRYT-1057.
 const AUTH_ORIGIN_PORT = 15738;
 
 /** Attempts before giving up on the port, and the gap between them. */
