@@ -43,22 +43,17 @@ export interface MessageMeta {
   isBot?: boolean;
   /**
    * The member row behind the message, when the sender is still in the list.
-   *
-   * Absent for system messages, webhooks, and anyone who has since left — the
-   * message stays readable, it just has nothing to hover (GRYT-203).
+   * Absent for system messages, webhooks, and anyone who has left (GRYT-203).
    */
   sender?: MemberInfo;
   /**
-   * The colour this sender's role draws its names in, already made readable
-   * against the current theme. Undefined when the role sets no colour.
+   * The colour this sender's role draws names in, already made readable against
+   * the current theme. Undefined when the role sets no colour.
    */
   roleColor?: string;
   /**
-   * Somebody else in this server is currently displaying the same name.
-   *
-   * The one case where a reader genuinely cannot tell who wrote a message from
-   * looking at it, which is what makes it worth marking in the flow rather
-   * than leaving to a hover.
+   * Somebody else in this server is displaying the same name. The one case where
+   * a reader cannot tell who wrote a message from looking at it.
    */
   nameIsAmbiguous?: boolean;
 }
@@ -96,14 +91,8 @@ interface MessageRowProps {
   /** Open an existing thread by its root message id. */
   onOpenThread?: (rootMessageId: string) => void;
   /**
-   * Replies in this message's thread that have not been read, and how many of
-   * those named you.
-   *
-   * Counted in ChatView rather than read from the store here. Both stores hand
-   * back a new map on every change, so a hook in this component would re-render
-   * every row in the channel each time any thread anywhere moved — and this
-   * component is memoised precisely so that does not happen. Two numbers change
-   * for one row instead (GRYT-1019).
+   * Unread replies in this message's thread, and how many named you. Counted in
+   * ChatView: a store hook here would re-render every row on any thread's change.
    */
   threadUnread?: number;
   threadMentions?: number;
@@ -153,9 +142,8 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
   const { can } = useServerPermissions(serverHost || "");
   const isOwnMessage = !!currentUserId && m.sender_server_id === currentUserId;
 
-  // Editing and deleting your own message each have a permission now, so a role
-  // can be allowed to post and not to revise. `canDeleteAny` is the moderator
-  // side of the same question and is worked out where the server is known.
+  // Editing and deleting your own message each have a permission, so a role can
+  // post and not revise. `canDeleteAny` is worked out where the server is known.
   const canDelete = !!canDeleteAny || (isOwnMessage && can("delete_own_messages"));
   const canEdit = isOwnMessage && !!m.text && can("edit_own_messages");
   const canReport = can("report_messages");
@@ -179,21 +167,8 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
   };
 
   /**
-   * A system row's menu: Delete, and nothing else (GRYT-908).
-   *
-   * Not `messageActions`. A join or leave line has no author, so Reply, Edit
-   * and Report have nothing to act on, and Copy link and the quick reactions
-   * are the things GRYT-896 took away on purpose — being able to react to
-   * somebody joining is what the quiet row exists to stop.
-   *
-   * Deleting one is a different question, and the answer was already yes: the
-   * server's `chat:delete` looks a message up by id and takes anybody holding
-   * `manage_messages`, with no special case for these. There was simply no way
-   * to ask for it.
-   *
-   * Undefined rather than an empty object when there is nothing to offer, so
-   * `MessageContextMenu` renders no menu at all rather than an empty popup on
-   * every right-click for people who cannot moderate.
+   * A system row's menu: Delete, and nothing else. Not `messageActions` — a join
+   * line has no author, and reacting to one is what GRYT-896 removed (GRYT-908).
    */
   const systemActions: MessageActions | undefined = canDeleteAny
     ? { onDelete: () => onDelete(m), canDelete: true }
@@ -235,13 +210,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
 
   /*
    * The four this person reaches for most, read while the toolbar is going up.
-   *
-   * Read on hover rather than held in state: the list only changes when they
-   * react, the row re-renders on hover anyway, and a store this small is
-   * cheaper to read than to subscribe to. It also means the bar is current the
-   * next time they hover, without anything having to tell it.
-   *
-   * Empty for somebody who may not react, which leaves the toolbar as it was.
+   * Read on hover rather than held in state, so it is current without being told.
    */
   const quickReactions = showToolbar && can("add_reactions")
     ? getFrequentReactions(4, serverHost)
@@ -253,17 +222,8 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
       {meta.dayBreak && <DateSeparator date={meta.dayBreak} />}
 
       {meta.isSystem ? (
-        /* An event, not a message (GRYT-896). One quiet row: the avatar
-           column carries a small arrow rather than standing empty, there is no
-           name line because there is no author, and the time trails the text.
-
-           The left edge every message shares stays where it is. A centred rule
-           would break it, and a channel where people come and go is exactly
-           where a run of rules chops the conversation into fragments.
-
-           It does have a right-click, carrying Delete and nothing else, for
-           somebody who may moderate (GRYT-908). Still no hover toolbar: the
-           toolbar's job is reactions and a reply. */
+        /* An event, not a message: one quiet row keeping the left edge every
+           message shares, and a right-click carrying Delete only (GRYT-896, GRYT-908). */
         <MessageContextMenu messageActions={systemActions} onOpenChange={handleCtxMenuOpenChange}>
         <div
           className="flex gap-3 items-baseline"
@@ -354,12 +314,8 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                   {meta.senderName}
                 </span>
                 {meta.nameIsAmbiguous && (
-                  /* Only when the name is genuinely not enough to go on —
-                     somebody else in this server is using it right now. Not a
-                     mark on people without an account: Gryt's whole position is
-                     that an account is optional, and badging every guest as
-                     suspect would argue the opposite on every message they
-                     write. The hover card says which they are. */
+                  /* Only when the name is genuinely not enough to go on. Not a
+                     mark on people without an account — an account is optional. */
                   <Tooltip title="Someone else here is using this name too. Hover the avatar to check who this is.">
                     <Chip tone="warning">
                       shared name
@@ -675,11 +631,8 @@ function MessageContent({
           </span>
         )}
         {sealedNote ? (
-          /* An envelope this client has not opened has no words to draw, and
-             three of the four states never will (GRYT-729). Plain rather than
-             through the markdown renderer: this is the client talking, not
-             something anybody wrote, so it must not be parsed, linkified or
-             turned into an embed. */
+          /* An envelope this client has not opened has no words to draw. Plain
+             rather than through markdown: it must not be parsed or linkified. */
           <span style={{ color: "var(--gryt-neutral-8)", fontStyle: "italic" }}>
             {sealedNote}
           </span>
@@ -771,11 +724,8 @@ function MessageContent({
             userSelect: "none",
             background: "none", border: "none", cursor: "pointer", padding: "3px 7px",
             borderRadius: "var(--gryt-radius-sm)",
-            /* Accent only when there is something in there to read. It used to
-               be accent either way, so a channel with fifteen threads drew
-               fifteen accent lines and none of them meant anything — and the
-               forum's topic rows, which carry the same counts, are neutral
-               with the badge doing the talking (GRYT-1026). */
+            /* Accent only when there is something to read. Accent either way drew
+               fifteen lines in a channel with fifteen threads (GRYT-1026). */
             color: hasThreadNews ? "var(--gryt-accent-11)" : "var(--gryt-neutral-11)",
             fontSize: 12.5, fontWeight: 700,
           }}
@@ -824,9 +774,8 @@ function ReactionBadges({
   if (!hasReactions) return null;
 
   return (
-    /* Not part of the message, so not part of a copy of it.
-       A drag across a few rows used to come out with the counts and the plus
-       interleaved with what people actually said (Carlo, 2026-09-06). */
+    /* Not part of the message, so not part of a copy of it. A drag across rows
+       came out with the counts interleaved with what people said. */
     <div className="flex flex-wrap items-center" style={{
       userSelect: "none",
       position: "absolute",
