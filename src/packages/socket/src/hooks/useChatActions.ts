@@ -46,9 +46,8 @@ export function useChatActions({
     if (!socketConnection || !currentUserId) return;
     const accessToken = getServerAccessToken(serverHost || "");
     if (!accessToken) return;
-    // Refused here as well as by the server. The picker is left in place rather
-    // than hidden — it is reached from three separate menus, and a control that
-    // says why is better than three that quietly disappear.
+    // Refused here as well as by the server. The picker is left in place: it is
+    // reached from three menus, and one that says why beats three that vanish.
     if (!can("add_reactions")) {
       toast.error("You do not have permission to react here.");
       return;

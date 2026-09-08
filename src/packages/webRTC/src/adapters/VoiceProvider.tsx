@@ -11,12 +11,8 @@ import { useVoiceConfigFromSettings } from "./voiceConfig";
 import { electronVoiceHost } from "./voiceHost";
 
 /**
- * Everything the engine cannot work out for itself, in one place.
- *
- * The host is set at module scope rather than in an effect: it answers questions
- * about the runtime, which cannot change while the app is running, and setting it
- * during a render would leave the first connection asking a host that is not
- * there yet.
+ * Everything the engine cannot work out for itself, in one place. The host is set
+ * at module scope: setting it during a render leaves the first connection short.
  */
 setVoiceHost(electronVoiceHost);
 
@@ -28,22 +24,14 @@ function VoiceLifecycle() {
 }
 
 /**
- * What the engine noticed, written down.
- *
- * The engine reports the device it actually opened when that is not the one it
- * was asked for — either because nothing had been chosen, or because the chosen
- * one is not there any more. Only the first of those is worth recording.
- *
- * Recording the second would mean unplugging a headset quietly replaces the
- * stored choice with the built-in microphone, so plugging it back in does not
- * return to it. The camera is the same question with the same answer.
+ * What the engine noticed, written down — only when nothing had been chosen.
+ * Recording a fallback would let unplugging a headset replace the stored choice.
  */
 function useDeviceCallbacks(): VoiceConfigCallbacks {
   const settings = useSettings();
 
-  // Through a ref so the callbacks keep one identity for the life of the app.
-  // They are dependencies of the engine's device effects, and a new object on
-  // every settings change would reopen the microphone and the camera.
+  // Through a ref so the callbacks keep one identity for the life of the app: a
+  // new object per settings change would reopen the microphone and the camera.
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
 

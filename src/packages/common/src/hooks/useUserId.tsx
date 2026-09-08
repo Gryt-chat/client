@@ -11,9 +11,8 @@ function useUserIdHook(): string | null {
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Undefined means Keycloak has not answered yet, which is not the same as
-    // signed out. Handing back the device id here would load a guest's settings
-    // for a frame and then throw them away when the account arrived.
+    // Undefined means Keycloak has not answered yet, which is not signed out.
+    // The device id here would load a guest's settings for a frame.
     if (isSignedIn === undefined) {
       setUserId(null);
       return;

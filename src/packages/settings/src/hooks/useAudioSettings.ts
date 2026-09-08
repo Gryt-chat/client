@@ -38,11 +38,8 @@ export interface AudioSettingsData {
 export const AUDIO_DEFAULTS: AudioSettingsData = {
   micID: undefined,
   outputDeviceID: "",
-  // Half amplitude, about -6 dB, under the linear mapping in lib/audioVolume.
-  // Deliberately below unity: a first-time user with a hot mic joining a call
-  // is unpleasant for everyone else, and quiet is easier to notice and correct
-  // than loud. Auto gain is on by default and pulls quiet speech back up.
-  // Only new installs see this — an existing micVolume always wins.
+  // Half amplitude, about -6 dB. Deliberately below unity: quiet is easier to
+  // notice and correct than loud. Only new installs see this.
   micVolume: 50,
   outputVolume: 100,
   noiseGate: 1,
@@ -353,12 +350,8 @@ export function useAudioSettings() {
   }
 
   /*
-   * Turning it on in a browser is where the permission gets asked for.
-   *
-   * Chrome and Firefox both refuse a prompt that is not attached to something
-   * the person just clicked, so it cannot be done at startup and it cannot be
-   * done from the message handler. The desktop app skips all of it — the OS
-   * decides whether to show a notification and there is nothing to answer.
+   * Turning it on in a browser is where the permission gets asked for: both
+   * browsers refuse a prompt not attached to a click. The desktop skips it.
    */
   async function updateDesktopNotificationsEnabled(value: boolean) {
     if (value) {

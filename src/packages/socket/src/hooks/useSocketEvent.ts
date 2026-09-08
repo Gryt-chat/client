@@ -2,9 +2,8 @@ import { useEffect, useRef } from "react";
 import type { Socket } from "socket.io-client";
 
 /**
- * Subscribe to a single socket.io event with automatic cleanup.
- * Uses a ref for the handler so the subscription is only re-created
- * when `socket` or `event` changes, not on every render.
+ * Subscribe to a single socket.io event with automatic cleanup. The handler goes
+ * through a ref, so only `socket` or `event` changing re-subscribes.
  */
 export function useSocketEvent<T = unknown>(
   socket: Socket | undefined,

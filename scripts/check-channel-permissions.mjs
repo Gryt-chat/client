@@ -1,16 +1,8 @@
 /* eslint-env node */
 
 /**
- * The matrix on a channel scope, and what it sends.
- *
- * Three states per cell where the server stores two, so every case here is
- * about the third. Inherit is the absence of a row: a cell put back to inherit
- * has to delete its row, not write one saying "inherit", or the scope keeps
- * deciding something nobody asked it to decide.
- *
- * The other half is the dropdown. Custom and Everyone are not scope ids, and
- * confusing either for one would point a channel at a template that does not
- * exist.
+ * The matrix on a channel scope, and what it sends. Inherit is the absence of a
+ * row; Custom and Everyone are not scope ids.
  */
 
 import assert from "node:assert/strict";
@@ -83,9 +75,8 @@ assert.deepEqual(
   [EVERYONE_VALUE, "t1", "t2", CUSTOM_VALUE],
 );
 
-// A template with no name is a private scope that leaked into the list. It must
-// not be offered — picking it would point this channel at another channel's
-// rules.
+// A template with no name is a private scope that leaked into the list. Picking
+// it would point this channel at another channel's rules.
 assert.deepEqual(
   scopeOptions([{ id: "t1", name: null }, { id: "t2", name: "Staff" }]).map((o) => o.value),
   [EVERYONE_VALUE, "t2", CUSTOM_VALUE],

@@ -1,21 +1,8 @@
 /* eslint-env node */
 
 /**
- * What a server is allowed to put on this screen (GRYT-896).
- *
- * A server sends a directed notice as a kind plus values, and every word that
- * reaches the panel ships in the client. The reason is not tidiness: a panel
- * rendered in app furniture, carrying text the server chose, addressed to one
- * person, is a phishing message with a nice border — "Your Gryt session has
- * expired, sign in at …".
- *
- * The server already refuses to send a malformed notice. This checks the other
- * end, which is the end that matters: the server validating its own output
- * guards against a bug in the server, and this guards against the server, which
- * is somebody else's machine and may not be running our code at all.
- *
- * `parseServerNotice` is the only door in. Everything asserted here is about
- * what it lets through.
+ * What a server is allowed to put on this screen. Every word ships in the client:
+ * a panel carrying the server's text is phishing with a border (GRYT-896).
  */
 
 import assert from "node:assert/strict";
@@ -90,12 +77,8 @@ const panel = readFileSync(
 );
 
 /*
- * The panel may only ever build a URL from a constant it declares itself.
- *
- * This is the assertion that would have caught the whole class of bug: a panel
- * that interpolated a notice field into an href would typecheck, look
- * reasonable in review, and hand a server the ability to put its own link in
- * front of one person inside our chrome.
+ * The panel may only ever build a URL from a constant it declares itself. A
+ * notice field interpolated into an href would typecheck and look reasonable.
  */
 for (const smell of ["notice.url", "notice.href", "notice.link", "notice.message", "notice.text"]) {
   assert.ok(
@@ -106,10 +89,8 @@ for (const smell of ["notice.url", "notice.href", "notice.link", "notice.message
 }
 
 /*
- * And every destination it does use is a literal, on a host we own.
- *
- * Read out of the source rather than trusted, so adding a link to somewhere
- * else is a failing check rather than a thing somebody notices later.
+ * And every destination it does use is a literal, on a host we own. Read out of
+ * the source, so adding a link elsewhere is a failing check.
  */
 const hrefs = [...panel.matchAll(/https?:\/\/[^"'` )]+/g)].map((m) => m[0]);
 assert.ok(hrefs.length > 0, "expected the panel to carry at least one link of its own");

@@ -35,14 +35,8 @@ export interface EmbeddedServerState {
   serverUrl: string | null;
 }
 
-/**
- * One server, and the two processes that are only its own.
- *
- * The SFU is deliberately not in here. It is one process for the whole app —
- * it routes on the server id every message carries, which is how gryt.chat runs
- * three servers against one — so it lives beside this map and is reference
- * counted against the servers using it.
- */
+/** The SFU is not in here: it is one process for the whole app, routing on the
+    server id, so it lives beside this map and is reference counted. */
 interface Instance {
   config: EmbeddedServerConfig;
   server: ChildProcess | null;
@@ -65,20 +59,12 @@ function log(msg: string): void {
   console.log("[EmbeddedServer]", msg);
 }
 
-/**
- * Which server a line of output belongs to.
- *
- * `null` means the SFU, which belongs to all of them. The log pane needs this
- * to keep two servers apart — they used to be tagged only `server`/`worker`, so
- * a second one interleaved into the first one's pane with no way to tell which
- * line came from where.
- */
+/** `null` is the SFU, which belongs to all of them. Without this a second server
+    interleaves into the first one's pane. */
 export type LogOwner = string | null;
 
-// Both child processes explain themselves perfectly well on the way out — the
-// SFU prints "listen tcp :5005: bind: address already in use" — but that went
-// to the main process console while the user was shown "exited unexpectedly
-// (code 1)" and nothing else. Keep the tail so the error can say why.
+// The children explain themselves on the way out, but that went to the main
+// console while the user saw "exited unexpectedly (code 1)".
 const OUTPUT_TAIL = 12;
 const recentOutput = new Map<string, string[]>();
 
@@ -139,24 +125,14 @@ export type LogLine = {
   at: number;
 };
 
-/**
- * Enough history that opening the pane after something went wrong still shows
- * it. The children are quiet in normal operation and noisy exactly when you
- * want to read them, so the cap is generous — and it is now shared by every
- * server, so it scales with how many are running.
- */
+/** Generous, because the children are quiet normally and noisy exactly when you
+    want to read them. Shared across every server. */
 const LOG_HISTORY = 4000;
 const logHistory: LogLine[] = [];
 
 /**
- * The level, read out of the text, because none of the three emit one.
- *
- * The server and worker use consola, which prints a symbol and colour rather
- * than a level field. The SFU uses Go's log package with its own prefix. So
- * this is pattern matching, and it is wrong sometimes — a line containing the
- * word "error" in passing reads as an error. Structured output from each
- * component is the only real fix; this is the version that does not require
- * changing the SFU and the image worker to get a log pane at all.
+ * None of the three emit a level, so this is pattern matching and it is wrong
+ * sometimes. Structured output from each component is the only real fix.
  */
 function levelOf(source: LogSource, text: string): LogLevel {
   const t = text.trim();
@@ -208,13 +184,8 @@ function emitLog(owner: LogOwner, source: LogSource, data: string): void {
   }
 }
 
-/**
- * Everything retained so far, so an opening pane is not blank.
- *
- * Filtered to one server plus the SFU, because the SFU carries the reason voice
- * failed and it is shared — hiding it from a server's pane would hide the
- * answer to the question the pane is usually open for.
- */
+/** One server plus the SFU, which carries the reason voice failed and is shared,
+    so hiding it hides what the pane is usually open for. */
 export function getEmbeddedServerLogs(serverId?: string): LogLine[] {
   if (!serverId) return logHistory;
   return logHistory.filter(
@@ -251,14 +222,8 @@ function packagedRuntimeRoot(): string | null {
 }
 
 /**
- * Materialise the signed embedded runtime outside the application bundle.
- *
- * Shipping its dependency tree loose made Squirrel.Mac traverse roughly
- * 14,000 files while staging an update. Old Gryt clients force-quit four
- * seconds after handing the ZIP to Squirrel, so a busy machine could die
- * before ShipItState.plist was committed and relaunch the previous version.
- * The archive is one signed resource; extraction happens after the new app is
- * already installed and is cached per desktop version.
+ * A loose dependency tree made Squirrel.Mac traverse ~14,000 files while staging
+ * an update. One signed archive instead, extracted after the install.
  */
 export async function prepareEmbeddedServerRuntime(): Promise<void> {
   if (!app.isPackaged) return;
@@ -287,9 +252,8 @@ export async function prepareEmbeddedServerRuntime(): Promise<void> {
       strict: true,
     });
 
-    // These files deliberately remain outside the archive so electron-builder
-    // can sign them and Apple's notarizer can inspect them. Restore their
-    // original relative paths after the data/JS portion has been extracted.
+    // Outside the archive so electron-builder can sign them and the notarizer
+    // can inspect them, so their paths are restored after extraction.
     const nativeRoot = join(process.resourcesPath, "embedded-native");
     for (const component of ["server", "worker", "sfu"]) {
       const source = join(nativeRoot, component);
@@ -333,13 +297,8 @@ function getServerBundlePath(): string | null {
   return null;
 }
 
-/**
- * What the build put in the bundle, written by build-embedded-server.mjs.
- *
- * Without this the embedded server falls back to the hardcoded "1.0.0" in its
- * own config, and every desktop-hosted server reports that next to a real
- * latest-release number — so it looks permanently, wrongly out of date.
- */
+/** Without this the embedded server falls back to "1.0.0" and reports that
+    beside a real latest-release number, looking permanently out of date. */
 function readBundledVersions(): { server?: string; sfu?: string; worker?: string } {
   const runtimeRoot = packagedRuntimeRoot();
   const packaged = runtimeRoot ? join(runtimeRoot, "versions.json") : null;
@@ -398,13 +357,8 @@ function stateOf(inst: Instance): EmbeddedServerState {
   };
 }
 
-/**
- * Every server this machine has, running or not.
- *
- * Built from disk rather than from the map, so a server that has never been
- * started in this session still appears — the map only holds the ones that
- * have been touched.
- */
+/** From disk rather than the map, which only holds the ones touched this
+    session. */
 export function getAllStates(): EmbeddedServerState[] {
   const states: EmbeddedServerState[] = [];
 
@@ -442,13 +396,8 @@ export function getEmbeddedServerState(id: string): EmbeddedServerState | null {
   };
 }
 
-/**
- * Change a server's ports, and report the new state.
- *
- * Stopped only, like the advertised addresses: the running processes are
- * holding the old ports, so changing the file under them would only take
- * effect on a restart that then finds the numbers already in use.
- */
+/** Stopped only: the running processes hold the old ports, so a change would
+    take effect on a restart that finds the numbers in use. */
 export async function updateServerPortsFor(
   id: string,
   ports: { serverPort?: number; sfuPort?: number; mediaPort?: number },
@@ -516,14 +465,8 @@ function spawnSfu(config: EmbeddedServerConfig): ChildProcess | null {
   if (!binary) return null;
   const envVars = parseEnvFile(config.configPath);
 
-  // Spelled out rather than inherited. The SFU reads a config.env relative to
-  // its working directory, and it is not started in the server's directory, so
-  // anything not named here is a line in that file the SFU never sees.
-  //
-  // ICE_UDP_MUX_PORT is the one that mattered: without it the SFU fell back to
-  // its own default, and before it had one, to ephemeral ports picked at
-  // random. Either way the port the host was told to open and the port media
-  // arrived on had no reason to agree. GRYT-459.
+  // The SFU reads config.env relative to its own cwd, so anything not named here
+  // it never sees — ICE_UDP_MUX_PORT most of all, or media lands anywhere.
   const proc = spawn(binary, [], {
     env: {
       ...process.env,
@@ -554,9 +497,8 @@ function spawnSfu(config: EmbeddedServerConfig): ChildProcess | null {
     sfuPort = null;
     sfuMediaPort = null;
 
-    // The SFU is shared, so its death is everybody's. Any server still up is
-    // now a server whose voice cannot work, and saying nothing would leave
-    // them all looking healthy.
+    // The SFU is shared, so its death is everybody's: any server still up now has
+    // voice that cannot work.
     for (const inst of instances.values()) {
       if (inst.status === "running" || inst.status === "starting") {
         setStatus(inst.config.id, "error", explainExit(null, "sfu", code));
@@ -568,13 +510,8 @@ function spawnSfu(config: EmbeddedServerConfig): ChildProcess | null {
   return proc;
 }
 
-/**
- * Start the SFU if it is not already up, and report the port it is on.
- *
- * One process for every server. Starting a second would not just be wasteful:
- * the two would be competing for a port, and whichever lost would take the
- * server that spawned it down with it.
- */
+/** One process for every server: a second would compete for the port, and
+    whichever lost would take the server that spawned it down. */
 function ensureSfu(config: EmbeddedServerConfig): number | null {
   if (sfuProcess && sfuPort !== null) return sfuPort;
 
@@ -618,21 +555,15 @@ function spawnServer(
       ...envVars,
       NODE_ENV: "production",
       ...(versions.server ? { SERVER_VERSION: versions.server } : {}),
-      // The worker is a separate process, so the server has to ask it what it
-      // is. It cannot ask if it does not know where — and the port is picked
-      // here, which is why it is chosen before the server is forked rather than
-      // inside spawnWorker where it used to be.
+      // The server has to ask the worker what it is, so the port is picked before
+      // the fork rather than inside spawnWorker.
       ...(workerHealthPort
         ? { IMAGE_WORKER_URL: `http://127.0.0.1:${workerHealthPort}` }
         : {}),
     },
     stdio: ["ignore", "pipe", "pipe", "ipc"],
-    // Its own directory, not a shared one. The server calls dotenv's config()
-    // on "config.env" and ".env" relative to cwd, so two servers sharing a cwd
-    // would both read the first one's file. `override: false` means the env
-    // passed above still wins, but a key present in one config and absent from
-    // the other would leak across — and that is a bug that would only show up
-    // on the second server, months later.
+    // dotenv reads config.env relative to cwd, so a shared one has both servers
+    // reading the first's file, and a key absent from one leaks across.
     cwd: getServerDir(id),
     silent: true,
   });
@@ -694,25 +625,8 @@ function findFreePort(): Promise<number> {
 }
 
 /**
- * The image worker, as its own process.
- *
- * A server hosted from the desktop app queues image jobs like any other. Without
- * this, nothing ever reads them: no thumbnails, no dominant colours, and —
- * because the upload route skips the size limit for images on the assumption
- * something will shrink them later — uploads that stay at full size on the
- * host's own disk forever.
- *
- * Separate rather than folded into the server on purpose. It hands
- * stranger-uploaded bytes to libvips, and the reason the worker exists at all is
- * that a corrupt image should not be able to take down the process holding the
- * signing keys and every socket. Bundling it must not quietly undo that.
- *
- * One per server, unlike the SFU. A worker opens exactly one DATA_DIR and polls
- * exactly one gryt.db, so it cannot be shared the way the SFU can.
- *
- * Its failure is not the server's failure. If this dies the server keeps
- * running, images simply stop being processed — which is exactly the state
- * every desktop-hosted server was in before it existed.
+ * Separate on purpose: it hands stranger-uploaded bytes to libvips, and a corrupt
+ * image must not take down the process holding the signing keys.
  */
 function spawnWorker(
   config: EmbeddedServerConfig,
@@ -806,16 +720,8 @@ export async function startExistingServer(
     return stateOf(existing);
   }
 
-  // Check the ports before loading the config, and refuse rather than move.
-  //
-  // These used to be relocated on a collision. A server whose port had been
-  // taken then came up on a different one and looked healthy, which is fine on
-  // one machine and quietly fatal for anyone who had forwarded the old number
-  // on a router. GRYT-469.
-  //
-  // The SFU ports are pinned when one is already running, so a second server
-  // joins it rather than probing ports the running SFU is holding and finding
-  // a conflict with itself.
+  // Refuse rather than move: a relocated port looks healthy and is fatal for
+  // anybody who forwarded the old one. SFU ports are pinned when one is up.
   try {
     const conflicts = await checkPortsAvailable(
       id,
@@ -827,10 +733,8 @@ export async function startExistingServer(
       const message = describePortConflicts(conflicts);
       log(`${id}: ${message}`);
 
-      // Recorded against the instance so the card shows it. Without this the
-      // server sits at "stopped" with nothing said, which is the dead end that
-      // moving the ports was introduced to avoid — the difference now is that
-      // the message names the port and the ports can be changed.
+      // Recorded against the instance so the card shows it, or the server sits at
+      // "stopped" with nothing said.
       const conflicted = loadConfig(id);
       if (!conflicted) return null;
 
@@ -889,10 +793,8 @@ function startProcesses(id: string): EmbeddedServerState | null {
     const current = instances.get(id);
     if (!current || current.status !== "starting") return;
 
-    // The worker's health port is picked before the server is forked rather
-    // than when the worker starts, because the server has to be told where to
-    // find it and only exists once. Failing to find one costs the version
-    // readout, not the worker — see spawnWorker.
+    // Picked before the fork, because the server has to be told where to find it.
+    // Failing costs the version readout, not the worker.
     let workerHealthPort: number | null = null;
     try {
       workerHealthPort = await findFreePort();
@@ -908,9 +810,8 @@ function startProcesses(id: string): EmbeddedServerState | null {
     }
     log(`Server ${id} started (pid=${current.server.pid}, port=${config.serverPort})`);
 
-    // After the server, because it polls a database the server creates. Its
-    // absence is not fatal — see spawnWorker — so nothing here waits on it or
-    // fails the start over it.
+    // After the server, whose database it polls. Not fatal, so nothing waits on
+    // it or fails the start over it.
     try {
       current.worker = spawnWorker(config, workerHealthPort);
       if (current.worker) log(`Image worker for ${id} started (pid=${current.worker.pid})`);
@@ -971,14 +872,8 @@ export function stopServer(id: string): EmbeddedServerState | null {
   return stateOf(inst);
 }
 
-/**
- * Stop a server and delete it.
- *
- * Stops first and waits: SQLite holds its file open while the process is alive,
- * and removing the directory underneath it leaves a running server writing into
- * nothing. The auto-start entry goes too, or every launch would try to start
- * something that is no longer there.
- */
+/** Stops and waits, since SQLite holds its file open and removing the directory
+    leaves a server writing into nothing. The auto-start entry goes too. */
 export async function deleteServer(id: string): Promise<EmbeddedServerState[]> {
   const inst = instances.get(id);
 
@@ -1005,14 +900,8 @@ export function stopAllServers(): void {
   releaseSfu();
 }
 
-/**
- * Clear a failure the user has read, without touching the processes.
- *
- * Dismissing used to call stop, which cannot work: that guards
- * `if (status !== "error")` so a dying process does not overwrite the reason it
- * died with a bare "stopped". Correct for that job, but it meant the button
- * pressed to clear an error was the one call that refused to clear it.
- */
+/** Not stop, which guards `if (status !== "error")` so a dying process cannot
+    overwrite its reason — and so refused the one button meant to clear it. */
 export function dismissEmbeddedServerError(id: string): EmbeddedServerState | null {
   const inst = instances.get(id);
   if (!inst) return null;
@@ -1036,26 +925,16 @@ export function getEmbeddedServerInfo(): {
     hasExisting: hasExistingServer(),
     lanIp: getLanIp(),
     servers: getAllStates(),
-    // What this app ships, which is not what any server it is *connected* to
-    // is running. A bug report from somebody hosting their own server needs
-    // both, and the renderer has no other way to see this one.
+    // What this app ships, not what a server it is connected to runs. A bug
+    // report needs both, and the renderer cannot see this one otherwise.
     bundled: readBundledVersions(),
   };
 }
 
 const AUTO_START_KEY = "embeddedServer.autoStart";
 
-/**
- * Which servers start with the app, as a list of ids.
- *
- * This was one boolean, for the one server that could exist. Nothing reads the
- * old shape and nothing migrates it: when multi-server landed in August 2026
- * the embedded server was still beta, so the few configs on the old key were
- * dropped rather than carried forward — see generateConfig.
- *
- * That reasoning has expired. People host real servers from the desktop app
- * now, so a future change to this key needs a migration written for it.
- */
+/** Nothing migrates the old boolean, which was dropped while this was beta.
+    People host real servers now, so the next change to this key needs one. */
 function autoStartIds(): string[] {
   const store = loadGlobalStore();
   const raw = store[AUTO_START_KEY];
@@ -1082,9 +961,8 @@ export async function autoStartIfNeeded(window: BrowserWindow): Promise<void> {
 
   targetWindow = window;
 
-  // In sequence rather than in parallel. They contend for ports, and the first
-  // one to start is the one that decides which port the shared SFU is on — so
-  // the second must not be probing while that is still being settled.
+  // In sequence: they contend for ports, and the first to start decides which
+  // one the shared SFU is on.
   for (const id of wanted) {
     log(`Auto-starting ${id} from previous session...`);
     await startExistingServer(window, id);

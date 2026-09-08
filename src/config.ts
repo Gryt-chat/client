@@ -47,13 +47,8 @@ export function setCustomAuthIssuer(issuer: string | null): void {
 }
 
 /**
- * The identity service that signs certificates for the auth server above. A
- * different service on a different host, so there is nothing in an issuer URL
- * to derive it from.
- *
- * **Pointing at another Keycloak without also moving this** posts a token from
- * the custom issuer to Gryt's own CA, which rejects it with "no applicable key
- * found in the JWKS" — the symptom, not the cause (GRYT-156).
+ * The identity service that signs certificates for the auth server above. Moving
+ * one without the other gives "no applicable key found in the JWKS" (GRYT-156).
  */
 export function getCustomIdentityUrl(): string | null {
   try {
@@ -84,17 +79,8 @@ function readWindowConfig(): GrytRuntimeConfig | undefined {
 }
 
 /**
- * Which of the two configuration mechanisms wins. Production's nginx container
- * writes `/config.js` at startup and sets no `VITE_` variable; development
- * writes no `config.js`, so `ops/start_dev.sh`'s `VITE_` variables are all
- * there is.
- *
- * Read window-first, the tracked `public/config.js` — production defaults —
- * beat the local values, so a dev session signed in against production Keycloak
- * while the dev servers trusted only the local CA.
- *
- * **Gated on `DEV`, not on "is a VITE_ variable set"**, so adding build args to
- * the Dockerfile cannot quietly disable the container's runtime configuration.
+ * Which of the two configuration mechanisms wins. Read window-first, production's
+ * `/config.js` beat local values. **Gated on `DEV`, not on a set `VITE_`.**
  */
 function configValue(
   windowValue: string | undefined,
@@ -155,13 +141,8 @@ export function getGrytConfig(): Required<GrytRuntimeConfig> {
   );
 
   /**
-   * Where bug reports and feedback go.
-   *
-   * Not something a self-hoster points elsewhere: `reports.gryt.chat` is Gryt
-   * the product's inbox rather than part of a Gryt server, and nothing on a
-   * server's configuration reaches it. Configurable anyway because a dev box
-   * wants a local one, and because the web container has no build step to bake
-   * anything into.
+   * Where bug reports and feedback go. Not something a self-hoster points
+   * elsewhere; configurable anyway because a dev box wants a local one.
    */
   const reportsUrl = configValue(
     win?.GRYT_REPORTS_URL,

@@ -5,11 +5,8 @@ import { handleRateLimitError } from "@/socket/src/utils/rateLimitHandler";
 
 
 /**
- * What the server sends back on `voice:room:granted`.
- *
- * Declared here rather than imported from the engine, because it is the shape of
- * Gryt's socket payload rather than anything `@gryt/voice` knows about. The
- * engine takes `RoomAccess`, which this is translated into below.
+ * What the server sends back on `voice:room:granted`. Declared here rather than
+ * imported: it is Gryt's socket payload, not anything `@gryt/voice` knows.
  */
 interface RoomAccessData {
   room_id: string;
@@ -23,14 +20,8 @@ interface RoomAccessData {
 const ACCESS_TIMEOUT_MS = 15_000;
 
 /**
- * Gryt's half of joining a channel, over the socket the client already has.
- *
- * Who may enter and how many fit are the server's rules rather than WebRTC's,
- * so the engine asks and this answers.
- *
- * The rate-limit toast lives here rather than in the engine. `RoomAccess`
- * carries the reason and the retry delay, and deciding whether that is worth
- * saying out loud is the app's job.
+ * Gryt's half of joining a channel, over the socket the client already has. The
+ * rate-limit toast is here because saying it out loud is the app's job.
  */
 export function createRoomCoordinator(socket: Socket, host: string): RoomCoordinator {
   return {
@@ -100,10 +91,8 @@ export function createRoomCoordinator(socket: Socket, host: string): RoomCoordin
     },
 
     onReconnected(handler: () => void) {
-      // The client raises a `server_socket_reconnected` window event with the
-      // host in its detail, which is how this used to reach useSFU. It stays a
-      // window event here, where the DOM exists, and is filtered to this server
-      // before the engine hears about it.
+      // The client raises a `server_socket_reconnected` window event with the host
+      // in its detail. It stays a window event here, filtered to this server.
       const listener = (event: Event) => {
         const detail = (event as CustomEvent<{ host?: string }>).detail;
         if (detail?.host && detail.host !== host) return;

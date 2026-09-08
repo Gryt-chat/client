@@ -36,17 +36,15 @@ export const ServerConfirmDialogs = ({
   pendingKickUser, setPendingKickUser, onKickUser,
   pendingBanUser, setPendingBanUser, onBanUser, fetchMemberInvite,
 }: ServerConfirmDialogsProps) => {
-  // Optional on both, per Sivert: a moderator acting quickly should not be made
-  // to justify themselves first. When one is given the target sees it verbatim,
-  // and it goes into the audit log either way.
+  // Optional on both: a moderator acting quickly should not have to justify
+  // themselves first. Given, the target sees it verbatim; it is logged either way.
   const [kickReason, setKickReason] = useState("");
   const [banReason, setBanReason] = useState("");
   const [banDuration, setBanDuration] = useState<string>("permanent");
   const [banDeleteContent, setBanDeleteContent] = useState(true);
   const [banInvite, setBanInvite] = useState<MemberInviteInfo | null>(null);
-  // Defaults to off. Revoking takes the link away from everybody who has it,
-  // not just the person being banned, so it is a decision rather than a
-  // consequence.
+  // Defaults to off. Revoking takes the link away from everybody who has it, so
+  // it is a decision rather than a consequence.
   const [banRevokeInvite, setBanRevokeInvite] = useState(false);
 
   // Asked when the dialog opens, so the answer is there by the time somebody

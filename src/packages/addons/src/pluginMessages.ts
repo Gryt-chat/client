@@ -1,13 +1,6 @@
 /**
- * Routing a plugin's messages to the right plugin (GRYT-939).
- *
- * Two plugins can be installed at once, both listening, and neither can see the
- * other's manifest. Nothing but this keeps one from hearing the other's
- * messages, so it is its own module with nothing imported into it — the
- * capability gate lives in `pluginApi.ts`, and this is only the routing.
- *
- * Deliberately free of every other module here, so it can be driven by a check
- * script without a browser, a socket or a stubbed store.
+ * Routing a plugin's messages to the right plugin. Nothing but this keeps one of
+ * two installed plugins from hearing the other's, so it imports nothing (GRYT-939).
  */
 
 /** What a plugin's other half sent, from a server this person is on. */
@@ -16,9 +9,8 @@ export interface PluginMessage {
   host: string;
   topic: string;
   /**
-   * Whatever the server plugin sent. **Written by whoever runs that server.**
-   * The transport caps its size and its shape and nothing else; a plugin
-   * rendering this is rendering somebody else's bytes.
+   * Whatever the server plugin sent. **Written by whoever runs that server.** The
+   * transport caps its size and its shape and nothing else.
    */
   data: unknown;
 }
@@ -26,13 +18,8 @@ export interface PluginMessage {
 export type PluginMessageHandler = (message: PluginMessage) => void;
 
 /*
- * The same shape the server accepts, checked here as well.
- *
- * Two reasons rather than one. A plugin author sending on a topic the server
- * will refuse gets told at the call instead of watching messages disappear into
- * a socket. And the listener map is keyed on `addonId\ntopic`, so a topic
- * allowed to contain a newline would let one plugin register under another's
- * key — which is the sort of thing that only ever happens on purpose.
+ * The listener map is keyed on `addonId` and the topic with a newline between, so
+ * a topic allowed to contain one would let a plugin register under another's key.
  */
 const TOPIC = /^[a-z0-9][a-z0-9._:-]{0,63}$/i;
 
@@ -47,17 +34,8 @@ export function requireTopic(addonId: string, topic: unknown): string {
 }
 
 /**
- * A copy per handler, `data` included.
- *
- * Tidiness rather than safety — plugins share a page and can reach each other
- * whatever this does, which `capabilities.ts` says at length. What it buys is
- * that two handlers on the same topic see the same message, instead of the
- * second seeing whatever the first left behind. A shallow spread would protect
- * the envelope and share `data`, which is the half plugins actually touch.
- *
- * `structuredClone` can throw on something unclonable. Nothing arriving from a
- * socket is, so that path means the caller built the message by hand — and
- * delivering the original beats dropping it.
+ * A copy per handler, `data` included, so two handlers on one topic see the same
+ * message. `structuredClone` throwing means a hand-built message; send the original.
  */
 function copyFor(message: PluginMessage): PluginMessage {
   try {
@@ -78,29 +56,20 @@ export interface AnnouncedPlugin {
   /** Where to read about it. The server has already checked it is http(s). */
   homepage?: string;
   /**
-   * What it may do, in the server's own vocabulary — `messages:read`,
-   * `moderation` and so on.
-   *
-   * Here because it is the half a person can act on (GRYT-941). "This server
-   * runs automod" says nothing; "…which reads every message you send" is the
-   * sentence somebody decides on.
+   * What it may do, in the server's own vocabulary — `messages:read`, `moderation`.
+   * Here because it is the half a person can act on (GRYT-941).
    */
   capabilities: string[];
 }
 
 /*
- * No version, and that is the server's decision rather than an omission here.
- * A version number is which known problem applies, so it is the one thing in a
- * plugin list that narrows an attack rather than describing the plugin. A
- * plugin pair that needs to agree on one puts it in its own payloads.
+ * No version, and that is the server's decision. A version number is which known
+ * problem applies, so it narrows an attack rather than describing the plugin.
  */
 
 /**
- * Which plugins each server says it runs (GRYT-939, GRYT-941).
- *
- * Every plugin, not a chosen few: a server names all of them or it is running
- * an old build. Kept per host because a person is on several and the answer
- * differs per server.
+ * Which plugins each server says it runs. Every plugin, not a chosen few: a server
+ * names all of them or it is running an old build (GRYT-939, GRYT-941).
  */
 const announcedByHost = new Map<string, AnnouncedPlugin[]>();
 
@@ -117,9 +86,8 @@ export function setAnnouncedPlugins(
       author: p.author,
       description: p.description,
       homepage: p.homepage,
-      /* Copied rather than referenced. What a plugin may do is the half a
-         person decides on, and a list anything downstream can edit is not one
-         to decide on. */
+      /* Copied rather than referenced. What a plugin may do is the half a person
+         decides on, and a list anything downstream can edit is not one. */
       capabilities: [...(p.capabilities ?? [])],
     })),
   );
@@ -131,15 +99,8 @@ export function forgetAnnouncedPlugins(host: string): void {
 }
 
 /**
- * The servers running the other half of this plugin.
- *
- * A plugin asks this to decide whether to say anything at all. Sending anyway
- * is harmless — the server drops it — but a plugin that knows can stop polling,
- * stop drawing an empty panel, and tell somebody why nothing is happening.
- *
- * Hosts and nothing else. The server does not say which version it is running,
- * on purpose, so a pair that needs to agree on one says so in its own payloads
- * where it is between the two halves rather than on the doorstep.
+ * The servers running the other half of this plugin, so it can stop polling and say
+ * why nothing is happening. Hosts and nothing else — no version, on purpose.
  */
 export function serversRunning(addonId: string): string[] {
   const out: string[] = [];
@@ -150,12 +111,8 @@ export function serversRunning(addonId: string): string[] {
 }
 
 /**
- * Everything one server is running, for showing somebody what is between them
- * and the people they are talking to (GRYT-941).
- *
- * Not for plugins — this is the answer to "what is reading my messages here",
- * and the app is what should be drawing it. Empty from a server too old to say,
- * which is not the same as a server running nothing.
+ * Everything one server is running, for showing somebody what is between them and
+ * the people they talk to. Empty from a server too old to say (GRYT-941).
  */
 export function pluginsOn(host: string): AnnouncedPlugin[] {
   return (announcedByHost.get(host) ?? []).map((p) => ({
@@ -188,16 +145,8 @@ export function subscribe(
 }
 
 /**
- * One message in from a server.
- *
- * A handler that throws is caught and logged rather than left to take the
- * socket dispatch with it — one plugin's mistake must not stop the next
- * plugin's message, or the app's own handling of whatever came after.
- *
- * The capability is not re-checked here. A plugin forbidden since it subscribed
- * keeps hearing until its listeners are dropped, which is what
- * `dropListeners` is for — re-checking on delivery would put a lookup on every
- * message to close a window measured in the time it takes to click a switch.
+ * One message in from a server. A throwing handler is caught so one plugin's
+ * mistake does not stop the next. The capability is not re-checked on delivery.
  */
 export function deliverPluginMessage(addonId: string, message: PluginMessage): void {
   const handlers = listeners.get(key(addonId, message.topic));
@@ -213,11 +162,8 @@ export function deliverPluginMessage(addonId: string, message: PluginMessage): v
 }
 
 /**
- * Forget what an addon was listening for.
- *
- * Called when an addon is turned off or removed. Without it a disabled plugin
- * keeps receiving, and one reloaded from a changed file would have two
- * generations of handlers running at once.
+ * Forget what an addon was listening for. Without it a disabled plugin keeps
+ * receiving, and a reloaded one has two generations of handlers running.
  */
 export function dropListeners(addonId: string): void {
   const prefix = `${addonId}\n`;

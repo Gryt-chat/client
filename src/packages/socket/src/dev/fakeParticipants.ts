@@ -1,21 +1,6 @@
 /**
- * Fake voice participants, for looking at the grid at counts we cannot reach —
- * the server allows one voice connection per user, so a second tab is kicked.
- *
- * They go into the real `clients` record, so the real VoiceView renders them
- * with the real CSS. **It proves the layout and nothing about the plumbing**,
- * since the socket path that would populate that record is not exercised.
- *
- * Dev only, from Settings → Developer. The query string overrides it:
- *
- *   ?fake=7              seven fake participants alongside you
- *   ?fake=4&fakeshare=1  ...one of whom is sharing a screen
- *   ?fake=4&fakemuted=2  ...of whom the first two are muted
- *   ?fake=4&fakedeaf=1   ...and the last is deafened
- *   ?fake=4&fakespeak=0  ...none of whom talk
- *
- * The screen share is a real MediaStream off a canvas, so the tile takes the
- * same code path a real share does. Speech is the same idea, in fakeSpeech.ts.
+ * Fake voice participants for looking at the grid at counts we cannot reach.
+ * `?fake=7`, plus `fakeshare`, `fakemuted`, `fakedeaf` and `fakespeak`. Dev only.
  */
 import type { MemberInfo } from "../components/MemberSidebar";
 import type { Client, UserStatus } from "../types/clients";
@@ -23,10 +8,8 @@ import type { Client, UserStatus } from "../types/clients";
 const FAKE_PREFIX = "fake-";
 
 /**
- * **Ordered so the first eighteen owls are eighteen different colours**, and
- * check-fake-participants asserts it — the order looks arbitrary and would not
- * survive somebody tidying it alphabetically. Six names share a colour with
- * another, and the voice grid takes the front of this list.
+ * **Ordered so the first eighteen owls are eighteen different colours**, which
+ * check-fake-participants asserts. Do not tidy this alphabetically.
  */
 const NAMES = [
   "Astrid",
@@ -60,9 +43,8 @@ export interface FakeParticipantOptions {
   /** People in the voice channel with you. */
   count: number;
   /**
-   * People in the server who are not in voice — the rest of the member list.
-   * A real server is mostly this: a handful in a call and everyone else
-   * around, in various states of not being at their desk.
+   * People in the server who are not in voice — the rest of the member list. A
+   * real server is mostly this.
    */
   members: number;
   muted: number;
@@ -74,9 +56,8 @@ export interface FakeParticipantOptions {
 }
 
 /**
- * The most of each the name list can cover, given they do not share names.
- * The split is deliberate rather than even: a call is small, a member list is
- * not.
+ * The most of each the name list can cover, given they do not share names. The
+ * split is deliberate rather than even: a call is small, a member list is not.
  */
 export const MAX_FAKE_PARTICIPANTS = 12;
 export const MAX_FAKE_MEMBERS = NAMES.length - MAX_FAKE_PARTICIPANTS;
@@ -92,10 +73,8 @@ export function fakeAudioStreamId(id: string): string {
 }
 
 /**
- * A member who is in the server but not in the call, by index.
- *
- * Named from the back of the list so they never collide with the people in
- * voice, and given ids in their own range so nothing can confuse the two.
+ * A member in the server but not in the call, by index. Named from the back of
+ * the list and given ids in their own range, so the two cannot be confused.
  */
 function fakeMemberId(index: number): string {
   return `${FAKE_PREFIX}member-${index}`;
@@ -106,11 +85,8 @@ function fakeMemberName(index: number): string {
 }
 
 /**
- * How a member who is not in voice is doing.
- *
- * Fixed by index rather than random, so the list does not reshuffle on every
- * render — and weighted, because a server where a third of everyone is offline
- * looks like a server, and one where everybody is online looks like a fixture.
+ * How a member who is not in voice is doing. Fixed by index rather than random,
+ * so the list does not reshuffle on every render, and weighted to look real.
  */
 function fakeMemberStatus(index: number): UserStatus {
   const slot = index % 5;
@@ -176,11 +152,8 @@ export function fakeParticipantOptionsFromSettings(
 let screenStream: MediaStream | null = null;
 
 /**
- * A moving canvas as a stand-in for a shared screen.
- *
- * It has to move: a canvas that is never drawn to produces a track that stays
- * in "live" but delivers no frames, and the tile then sits on its pending
- * state forever, which looks exactly like a bug.
+ * A moving canvas as a stand-in for a shared screen. It has to move: a canvas
+ * never drawn to gives a live track with no frames, and the tile sits pending.
  */
 function fakeScreenStream(): MediaStream {
   if (screenStream) return screenStream;
@@ -259,10 +232,8 @@ export function withFakeParticipants(
 }
 
 /**
- * The member list: the people in the call, plus the rest of the server —
- * without the second half every member is in voice, which is not what a server
- * looks like. The rest are spread across online, AFK and offline by index,
- * because the panel groups by status.
+ * The people in the call plus the rest of the server — without the second half
+ * every member is in voice, which is not what a server looks like.
  */
 export function withFakeMembers(
   members: MemberInfo[],
@@ -281,9 +252,8 @@ export function withFakeMembers(
       serverUserId: id,
       nickname: NAMES[i],
       avatarFileId: null,
-      // Nothing has computed a colour for these, which is exactly the case a
-      // real member without an uploaded avatar is in — the tint comes from the
-      // generated avatar instead. See tileHue.
+      // Nothing has computed a colour for these, which is the case a real member
+      // without an uploaded avatar is in. See tileHue.
       avatarColor: null,
       role: "member",
       status: "in_voice",
@@ -307,9 +277,8 @@ export function withFakeMembers(
       avatarColor: null,
       role: "member",
       status: fakeMemberStatus(i),
-      // Mute state is a voice thing. Someone who is not in the call is neither,
-      // and showing them as muted in the member list would be inventing a state
-      // the real client never produces.
+      // Mute state is a voice thing. Showing somebody outside the call as muted
+      // would invent a state the real client never produces.
       isMuted: false,
       isDeafened: false,
       color: "var(--gryt-neutral-6)",
@@ -324,12 +293,8 @@ export function withFakeMembers(
 }
 
 /**
- * The invented people, as chat senders.
- *
- * Everyone the fixture made up, in voice or not — a server where only the
- * people currently in a call ever say anything is not a server. The ids match
- * the member list exactly, so a message resolves to a real member and gets
- * that member's avatar and name rather than falling back to "Unknown".
+ * The invented people, as chat senders. The ids match the member list exactly, so
+ * a message resolves to a real member rather than falling back to "Unknown".
  */
 export function fakeChatSendersFrom(
   options: FakeParticipantOptions | null,

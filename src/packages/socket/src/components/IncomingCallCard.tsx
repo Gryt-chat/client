@@ -17,16 +17,8 @@ interface IncomingCallCardProps {
 }
 
 /**
- * Somebody is ringing.
- *
- * A card in the corner rather than a dialog: a modal would take the whole app
- * away from somebody in the middle of typing, and a ringing phone must not make
- * everything else unusable for thirty seconds.
- *
- * It disappears on its own. The server withdraws every ring it starts — answer,
- * decline, cancellation or timeout — so this needs no dismiss of its own, and
- * should not have one: a ring you closed but did not answer would still be
- * ringing at the other end.
+ * Somebody is ringing. A card rather than a dialog, and it has no dismiss: the
+ * server withdraws every ring it starts, and a closed ring still rings.
  */
 export function IncomingCallCard({
   call,

@@ -1,22 +1,8 @@
 import type { GrytAppearance, GrytTheme } from "@gryt/ui";
 
 /**
- * The server view, at a tenth of size and with the text taken out.
- *
- * A row of colour swatches cannot answer the question people actually have,
- * which is what the app looks like wearing this. So this draws the real layout
- * — rail, channels, chat, members — in the theme's own colours, at its own
- * corner radius, with bars where the words go.
- *
- * Every measurement below came off the client rather than being chosen, and
- * they are scaled by one factor. That matters more than it sounds: the chat
- * avatar is 51px and the member avatar 32px, so drawing them the same size
- * makes the picture stop looking like Gryt even though the colours are right.
- *
- * The window it stands for is 1040x620 rather than a full-screen 1440. The two
- * sidebars are a fixed 240 either way, so on a smaller window they take more of
- * the frame, and that is what makes a 200px-wide picture legible instead of
- * four columns of grey.
+ * The server view, at a tenth of size and with the text taken out. Every
+ * measurement came off the client, and they are scaled by one factor.
  */
 
 const REAL = {

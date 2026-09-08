@@ -3,12 +3,8 @@ import { Button, Dialog } from "@gryt/ui";
 import { useServerManagement, useSockets } from "@/socket";
 
 /**
- * Confirms one of the two ways out of a server.
- *
- * They are worth keeping apart in the copy, because they look identical from
- * the rail and are not at all the same afterwards. Removing is local and
- * reversible by adding the server back. Leaving ends the membership, and if the
- * server admits people by invite there may be no way back in.
+ * Confirms one of the two ways out of a server. Removing is local and reversible;
+ * leaving ends the membership, and an invite-only server may have no way back.
  */
 export function LeaveServer() {
   const { removeServer, showRemoveServer, setShowRemoveServer, servers } =
@@ -34,10 +30,8 @@ export function LeaveServer() {
   const leaving = showRemoveServer?.mode === "leave";
 
   return (
-    /* Dismissing this is a cancel. The Radix AlertDialog it replaces had no
-       onOpenChange at all, so Esc and the backdrop did nothing and the only way
-       out was the button — which is worse than it sounds on a dialog whose
-       other option is destructive. */
+    /* Dismissing this is a cancel. The dialog it replaces had no onOpenChange, so
+       the only way out was the button — worse on a dialog with a destructive option. */
     <Dialog.Root
       open={!!showRemoveServer}
       onOpenChange={(open) => {

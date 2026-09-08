@@ -104,11 +104,8 @@ export function useEmoteImport({
         lastError: null,
       }));
 
-      // Where a source offers the same shortcode twice — a pack listing both a
-      // GIF and a still of one emoji is the common case — only the animated one
-      // starts selected. Both rows stay visible, so it is clear the other
-      // exists and can be picked instead, but the count matches what pressing
-      // Import will actually do.
+      // Where a source offers the same shortcode twice, only the animated one
+      // starts selected. Both rows stay visible so the other can be picked.
       const winners = new Map<string, ImportEmoteWithMeta>();
       for (const e of withMeta) {
         winners.set(e.name, preferredOfDuplicates(winners.get(e.name), e));
@@ -120,10 +117,8 @@ export function useEmoteImport({
 
       setEmotes(revalidateAll(deduped));
       setUsername(listing.title);
-      /* Emptied once the fetch has actually produced something, so the box is
-         ready for the next link. Not on a failed fetch: a link that was not
-         recognised is one somebody may want to correct rather than retype, and
-         the fetched list below already says which pack this was. */
+      /* Emptied once the fetch has produced something, so the box is ready for
+         the next link. Not on a failure: a bad link is worth correcting. */
       setUrl("");
       toast.success(`Found ${listing.emotes.length} emote(s)`);
       if (listing.note) toast(listing.note);
@@ -180,8 +175,7 @@ export function useEmoteImport({
     }
 
     // One import per shortcode, and the animated one wins — see
-    // preferredOfDuplicates. A pack that carries a still and a GIF of the same
-    // emoji used to import whichever happened to come last.
+    // preferredOfDuplicates. A pack used to import whichever came last.
     const byName = new Map<string, ImportEmoteWithMeta>();
     for (const e of toImportRaw) {
       byName.set(e.name, preferredOfDuplicates(byName.get(e.name), e));

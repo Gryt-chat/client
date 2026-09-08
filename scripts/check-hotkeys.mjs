@@ -1,12 +1,8 @@
 /* eslint-env node */
 
 /**
- * The combo grammar in src/lib/hotkeys.ts, checked without a browser.
- *
- * Three sides read these strings: the settings UI that writes them, the
- * renderer listeners that match them, and the Electron main process that hands
- * them to uiohook. They are also persisted, so a changed token silently
- * unbinds whatever people already had. Node 24 strips the types on import.
+ * The combo grammar in src/lib/hotkeys.ts, checked without a browser. These are
+ * persisted, so a changed token silently unbinds what people already had.
  */
 
 import assert from "node:assert/strict";
@@ -89,9 +85,8 @@ assert.equal(comboMouseButton(""), null);
 
 assert.deepEqual(HOTKEY_ACTIONS, ["ptt", "mute", "deafen", "disconnect"]);
 
-// The Electron main process parses stored combos with this and hands the
-// result to uiohook, so a key binding has to come back as a DOM code it can
-// look up and a mouse binding as a physical button number.
+// The main process parses stored combos with this and hands the result to
+// uiohook, so a key has to come back as a DOM code and a mouse as a number.
 assert.equal(parseCombo(""), null);
 assert.deepEqual(parseCombo("KeyM"), {
   code: "KeyM",

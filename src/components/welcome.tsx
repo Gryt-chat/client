@@ -1,8 +1,5 @@
 /* Hallmark · component: dialog · genre: modern-minimal · theme: @gryt/ui (design.md)
- * states: default · hover · focus · active · disabled · loading · error · success
- *   — carried by @gryt/ui Button, IconButton and Avatar; this file adds no new controls.
- * pre-emit critique: P5 H5 E5 S5 R5 V4
- */
+ * states carried by @gryt/ui Button, IconButton and Avatar; no new controls here. */
 import { Avatar, Button, Dialog, IconButton, MessageBubble } from "@gryt/ui";
 
 import { useSettings } from "@/settings";
@@ -10,26 +7,18 @@ import { useSettings } from "@/settings";
 import { PiSignpost, PiX } from "../lib/icons";
 
 /**
- * The first thing anybody sees, drawn as a message rather than a dialog — an
- * avatar, a name, a role and a bubble, so a first-run person learns the app's
- * main idiom by being greeted in it.
+ * The first thing anybody sees, drawn as a message rather than a dialog, so a
+ * first-run person learns the app's main idiom by being greeted in it.
  */
 export function Welcome() {
   const { hasSeenWelcome, settingsLoaded, completeWelcome } = useSettings();
 
   return (
-    /* Guarded on `open` rather than passed straight through. `completeWelcome`
-       marks the welcome seen whenever it runs, so wiring it directly to
-       `onOpenChange` would dismiss the dialog the instant it opened — a bug
-       this file has had before, hidden by a dialog library that only called
-       the handler on close. */
-    /* `settingsLoaded` and not a timer. Until the stored settings have been
-       read, "has this person seen the welcome" has no answer, and the default
-       of false made the app answer no — so a returning user got the welcome
-       flashed at them on every load while Keycloak was still being asked who
-       they were. Waiting a fixed second instead would be a guess in both
-       directions: still too short when auth is slow, and a second of nothing
-       for everybody when it is not. */
+    /* Guarded on `open` rather than passed straight through: `completeWelcome`
+       marks the welcome seen whenever it runs. */
+
+    /* `settingsLoaded` and not a timer. Until the settings are read, "has this
+       person seen the welcome" has no answer, and false flashed it at them. */
     <Dialog.Root
       open={settingsLoaded && !hasSeenWelcome}
       onOpenChange={(open) => {

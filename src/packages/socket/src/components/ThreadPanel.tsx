@@ -22,23 +22,13 @@ interface ThreadPanelProps {
   messages: ChatMessage[];
   loading: boolean;
   /**
-   * Draws one message, handed down rather than done here.
-   *
-   * The panel used to own a thirty-line renderer that read four fields off a
-   * message: a coloured letter for an avatar, the name, a clock time and the
-   * text. No markdown, no attachments, no reactions, no mentions — a reply from
-   * last week showed a bare time with no date anywhere. The channel's MessageRow
-   * does all of it, and needs a dozen things ChatView already holds, so ChatView
-   * builds the row and this renders where it goes. GRYT-1000.
+   * Draws one message, handed down rather than done here. The channel's
+   * MessageRow needs a dozen things ChatView already holds (GRYT-1000).
    */
   renderMessage: (message: ChatMessage) => ReactNode;
   /**
-   * The box you reply in, handed down for the same reason the rows are.
-   *
-   * It was a bare textarea, so there was no way to attach a file, no @mention
-   * autocomplete, no emoji picker and nothing telling anybody you were typing.
-   * The channel's ChatEditorBar does all of it and needs the member list, the
-   * permission gates and the upload limits — all of which ChatView holds.
+   * The box you reply in, handed down for the same reason the rows are. It was a
+   * bare textarea: no attachments, no mentions, no emoji picker, no typing.
    */
   renderComposer: () => ReactNode;
   /** There is a page older than the first reply shown. */
@@ -48,11 +38,8 @@ interface ThreadPanelProps {
   /** Ask for it. Called when the list is scrolled near its top. */
   onLoadOlder?: () => void;
   /**
-   * "Ridge is typing…", for this thread rather than for the channel.
-   *
-   * Handed down like the rows and the composer are. It used to be neither
-   * drawn here nor filtered out of the channel's, so writing a reply put the
-   * line under a timeline nobody was writing in (GRYT-1020).
+   * "Ridge is typing…", for this thread rather than the channel. It used to be
+   * neither drawn here nor filtered out of the channel's (GRYT-1020).
    */
   typingIndicator?: ReactNode;
   onClose: () => void;
@@ -74,12 +61,8 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
   }, [onClose]);
 
   /*
-   * Hold the anchor across a prepend.
-   *
-   * Older replies go in above what is on screen, so the browser keeps the same
-   * scrollTop and the content under the pointer jumps down by the height of
-   * whatever arrived. Measured before the paint and corrected after, which is
-   * what the channel's scroll hook does for the same reason.
+   * Hold the anchor across a prepend: older replies go in above, so the browser
+   * keeps scrollTop and the content under the pointer jumps down.
    */
   const scrollRef = useRef<HTMLDivElement>(null);
   const anchorRef = useRef<number | null>(null);

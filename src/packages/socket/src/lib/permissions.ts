@@ -1,26 +1,11 @@
 /**
- * The permissions a role can carry, and how to talk about them.
- *
- * The server is the authority on this list — it ships the catalogue with the
- * role editor payload, so an older client talking to a newer server still shows
- * every permission that server has. What lives here is the *presentation*: the
- * grouping, the labels and the one-line descriptions, none of which the server
- * has any business knowing.
- *
- * A permission the server sends that is not described here still renders, under
- * its own id. That is deliberately ugly rather than hidden: a permission the
- * editor silently dropped would be a permission the next save silently removed.
+ * The permissions a role can carry, and how to talk about them. The server owns
+ * the list; what lives here is the grouping, labels and descriptions.
  */
+
 /**
- * What a server knew about before it published a catalogue.
- *
- * A server from the first release of this feature sends the caller's
- * permissions and no list of what it has heard of, so an absence there is
- * ambiguous. This is the list it must have had, used as the catalogue it did
- * not send — anything outside it is a permission that build could not have been
- * withholding.
- *
- * Frozen. It describes a release that has already happened, so it never grows.
+ * What a server knew about before it published a catalogue, used as the one it
+ * did not send. Frozen: it describes a release that has already happened.
  */
 export const PERMISSIONS_BEFORE_CATALOGUE: readonly string[] = [
   "send_messages",
@@ -94,11 +79,8 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       { id: "change_nickname", label: "Change nickname", description: "Rename themselves on this server." },
       { id: "set_activity", label: "Set what you are doing", description: "Write a line about themselves under their name, which everybody here reads. A plugin can write it for them." },
       { id: "change_avatar", label: "Change avatar", description: "Set or clear their own picture." },
-      /* Split off `change_avatar` on the server in GRYT-866 and never given a
-         label here, so it was the one permission landing in the "Newer than
-         this client" group on a current build. It saved and applied correctly
-         the whole time; it just showed as a bare id with nothing said about it,
-         which reads as a client that is out of date. */
+      /* Split off `change_avatar` on the server in GRYT-866 and never labelled
+         here, so it landed in "Newer than this client" on a current build. */
       { id: "upload_avatar_image", label: "Upload an avatar image", description: "Use their own picture rather than an owl. Puts a file from them in front of everybody." },
       { id: "view_members", label: "See the member list", description: "Know who else is here." },
       { id: "create_invite", label: "Create invites", description: "Mint an invite code." },
@@ -148,10 +130,8 @@ export function describePermission(id: string): PermissionMeta {
 }
 
 /**
- * The catalogue the server sent, arranged for display.
- *
- * Anything the server knows about and this client does not ends up in a
- * trailing group rather than being dropped — see the note at the top.
+ * The catalogue the server sent, arranged for display. Anything this client does
+ * not know ends up in a trailing group rather than being dropped.
  */
 export function groupPermissions(available: string[]): PermissionGroup[] {
   const known = new Set(available);

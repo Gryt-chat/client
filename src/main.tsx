@@ -49,19 +49,14 @@ function ThemedApp() {
     chatFontSize,
   } = useTheme();
   const { activeTheme } = useCustomThemes();
-  /* While the editor is open the app wears the draft instead of the saved
-     theme. It goes through the same `activeTheme` path below, so the CSS
-     variables, the native titlebar strip and the plugin API all follow it
-     without knowing an editor exists. */
+  /* The draft goes through the same `activeTheme` path, so the variables, the
+     titlebar strip and the plugin API follow it without knowing. */
   const { draft: draftTheme } = useThemeEditor();
   const { googleFontsEnabled } = useSettings();
   const shownTheme = draftTheme ?? activeTheme;
 
-  /* Radix's <Theme appearance> put .light or .dark on its own wrapper, and the
-     app's light and dark blocks in style.css hang off those classes. With the
-     wrapper gone the class has to go somewhere, and the root element is the
-     right place: the overlays portal to document.body, which is outside
-     anything else we could put it on. */
+  /* style.css hangs its light and dark blocks off these classes, and the root is
+     where they have to go: overlays portal to document.body. */
   useEffect(() => {
     const root = document.documentElement;
     root.classList.toggle("dark", resolvedAppearance === "dark");
@@ -69,14 +64,8 @@ function ThemedApp() {
     root.style.colorScheme = resolvedAppearance;
   }, [resolvedAppearance]);
 
-  /* **The scale goes on the root, not on `.gryt-app`.** Base UI portals every
-     dialog, menu, popover and tooltip to document.body, so those are siblings
-     of `.gryt-app` rather than descendants — the slider scaled the sidebar and
-     the chat and left settings, menus and tooltips alone.
-
-     `--chat-font-size` moves with it, since the autocompletes are popovers.
-     Measured at 1440x900, a `fixed inset-0` element is 1440x900 at zoom 1, 1.5
-     and 0.75, so the backdrop is safe. */
+  /* On the root, not `.gryt-app`: Base UI portals every overlay to document.body,
+     so the slider scaled the chat and left menus and tooltips alone. */
   useEffect(() => {
     const root = document.documentElement;
     root.style.zoom = String(uiScale);
@@ -86,14 +75,8 @@ function ThemedApp() {
     root.style.setProperty("--chat-font-size", `${chatFontSize}px`);
   }, [uiScale, chatFontSize]);
 
-  /* An imported theme, painted onto the same element for the same reason: the
-     variables have to be somewhere every overlay can read them, and overlays
-     portal to document.body.
-
-     Every property is removed before the next set goes on, because a theme is
-     not guaranteed to declare what the one before it did — switching from a
-     theme with a split light hue set to one without would otherwise leave the
-     old light accent behind, on an element nothing else ever cleans. */
+  /* On the same element, so every overlay can read the variables. Cleared first,
+     because a theme need not declare what the one before it did. */
   useEffect(() => {
     const root = document.documentElement;
     if (shownTheme === null) return;
@@ -113,12 +96,8 @@ function ThemedApp() {
     };
   }, [shownTheme, resolvedAppearance]);
 
-  /* A face the theme names and this machine has agreed to fetch.
-     
-     Keyed on the fonts rather than the whole theme, so dragging a colour
-     slider does not re-ask Google for the same family on every frame. Nothing
-     happens at all unless the setting is on and the theme names something that
-     is not already here. */
+  /* Keyed on the fonts rather than the whole theme, so dragging a colour slider
+     does not re-ask Google for the same family every frame. */
   const wanted = shownTheme?.fonts;
   useEffect(() => {
     syncGoogleFonts(
@@ -127,13 +106,8 @@ function ThemedApp() {
     );
   }, [wanted, googleFontsEnabled]);
 
-  /* The native minimise/maximise/close buttons on Windows and Linux, which
-     the stylesheet cannot reach — they are painted by the OS into an overlay
-     strip (GRYT-288).
-
-     After the two effects above rather than before, and deliberately so: this
-     reads what the variables evaluate to on the root element, and the effect
-     that puts an imported theme there runs in source order. */
+  /* The OS paints these into an overlay strip the stylesheet cannot reach. After
+     the two effects above, since this reads what the variables evaluate to. */
   useEffect(() => {
     pushTitlebarOverlay();
   }, [shownTheme, resolvedAppearance]);
@@ -142,52 +116,42 @@ function ThemedApp() {
   useAddonLoader();
   setPluginHostTheme({ appearance: resolvedAppearance, accentColor });
 
-  /* A plugin's own manifest reaches its worker when it starts (GRYT-930), so
-     nothing global has to be kept in step with it any more. What is left here
+  /* A plugin's manifest reaches its worker at startup, so all that is left here
      is forgetting what an addon that has gone was allowed to do. */
   const { addons } = useAddons();
   /* Which ids were installed last time round, so a departure can be spotted.
      `addons` is the current list and says nothing about what left. */
   const listeningRef = useRef<string[]>([]);
   useEffect(() => {
-    /* And forget what an addon that is no longer here was allowed to do. An
-       id is a folder name, so a grant left behind would be inherited by the
-       next addon to use the same one. */
+    /* An id is a folder name, so a grant left behind is inherited by the next
+       addon to use it. */
     const installed = addons.map((addon) => addon.id);
     pruneGrants(installed);
 
-    /* Same for what it was listening to (GRYT-939). A plugin that has been
-       turned off keeps receiving until its handlers are dropped, and one
-       reloaded from a changed file would otherwise have two generations of
-       handlers running at once. */
+    /* A plugin turned off keeps receiving until its handlers are dropped, and one
+       reloaded would run two generations at once. */
     for (const id of listeningRef.current) {
       if (!installed.includes(id)) dropPluginApiListeners(id);
     }
     listeningRef.current = installed;
   }, [addons]);
 
-  /* The one thing a plugin can currently do. Wired here rather than inside the
-     API so `pluginApi.ts` stays free of the socket layer and can be tested
-     without one. */
+  /* Wired here rather than inside the API, so `pluginApi.ts` stays free of the
+     socket layer. */
   const { setActivity, playingNow } = useSettings();
   useEffect(() => {
     setPluginApiActivitySetter(setActivity);
   }, [setActivity]);
 
-  /* What the person's listed programs are doing, pushed to any plugin that
-     asked (GRYT-931). Wired here for the same reason the setter above is: the
-     host stays free of the settings layer. */
+  /* Wired here for the same reason as the setter above: the host stays free of
+     the settings layer. */
   useEffect(() => {
     setPluginApiRunningPrograms(playingNow);
   }, [playingNow]);
 
   return (
-    /* The <Theme> that used to sit here was Radix's, and it existed to define
-       --gray-*, --accent-* and --radius-*. Those come from @gryt/ui's
-       stylesheet now, which is imported once at the top of this file, so what
-       is left is the layout. The zoom and the chat font size it was also
-       carrying moved to the root element above, where the overlays can see
-       them. */
+  /* Radix's <Theme> defined the tokens @gryt/ui's stylesheet now carries, so what
+     is left here is the layout. */
     <div className="gryt-app flex min-h-0 flex-1 flex-col">
       <Titlebar />
       <ServiceStatusBanner />
@@ -226,10 +190,8 @@ captureLogs();
 
 setPluginHostVersion(__APP_VERSION__);
 
-/* One pass to teach the guest history what the stored keys already know
-   (GRYT-285). Only does anything on an install that predates it, and failing is
-   not worth blocking a render for — `hasLocalIdentity` heals each server on its
-   own the first time it is asked. */
+/* One pass, and only on an install that predates it. Failing is not worth
+   blocking a render for: `hasLocalIdentity` heals each server on its own. */
 void backfillGuestHistory()
   .then(migrateLegacyMergeChoice)
   .then(pruneReproducibleKeys);

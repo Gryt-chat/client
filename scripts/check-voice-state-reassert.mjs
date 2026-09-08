@@ -1,19 +1,8 @@
 /* eslint-env node */
 
 /**
- * The client re-asserts its own voice state after a reconnect (GRYT-644).
- *
- * `applyVoiceState` on the server restores a stashed mute, deafen and AFK onto
- * the new socket. Those three are the client's to decide, and the stash is only
- * as new as the moment the connection broke — so unless the client says
- * otherwise, the room sees a stale value while the client goes on transmitting
- * according to its own. Shown muted and still heard.
- *
- * Nothing corrected it, because the emit lives in an effect keyed on the three
- * flags and the sockets map and a reconnect moves neither: the flags are
- * unchanged, and socket.io reuses the same Socket instance across a reconnect
- * so the identity holds too. A source check, because the failure is an effect
- * that does not re-run, which no unit test of a pure function can see.
+ * The client re-asserts its own voice state after a reconnect: the stash is only
+ * as new as the break. A source check — the failure is an effect (GRYT-644).
  */
 
 import assert from "node:assert/strict";

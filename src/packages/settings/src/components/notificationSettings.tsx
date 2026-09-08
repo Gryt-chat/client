@@ -76,8 +76,7 @@ export function NotificationSettings() {
           value={[globalLevel]}
           onValueChange={(next) => {
             // Base UI hands back an array and clears it when the pressed one is
-            // pressed again. There is always a level, so an empty answer means
-            // "no change" rather than "none".
+            // pressed again. There is always a level, so empty means no change.
             const picked = next[0];
             if (picked) setGlobalLevel(picked as NotificationLevel);
           }}

@@ -1,18 +1,6 @@
 /**
- * Search index for the settings modal.
- *
- * The `id` is the anchor SettingGroup renders, derived from the title by the
- * same `settingAnchorId` below, so a search hit can always scroll to its
- * control. Entries flagged `panel: true` are whole panels rather than setting
- * rows, so they match by name.
- *
- * Titles here are the stable part only. Several settings render their value in
- * the title ("Microphone Volume: 50%"), so the anchor uses the text before the
- * colon and stays put as the value changes.
- *
- * Generated from the title/description props in the settings components. If a
- * title changes and this is not updated, SettingGroup logs a warning in dev
- * rather than letting the entry silently stop matching.
+ * Search index for the settings modal. The `id` is the anchor SettingGroup
+ * renders, and titles here are the stable part before any colon.
  */
 
 import { isElectron } from "../../../../lib/electron";
@@ -23,9 +11,8 @@ export interface SettingsIndexEntry {
   description: string;
   destination: string;
   /**
-   * The sub-page inside the destination, where one has sub-pages. Absent for a
-   * destination that is a single page — and absent is not the same as wrong: a
-   * hit with no page lands on the destination, which is the whole of it.
+   * The sub-page inside the destination, where one has sub-pages. Absent is not
+   * wrong: a hit with no page lands on the destination, which is the whole of it.
    */
   page?: string;
   section: string;
@@ -99,9 +86,8 @@ export const SETTINGS_INDEX: SettingsIndexEntry[] = [
   { id: "esports-mode", title: "eSports mode", description: "Lowest possible latency. Disables all audio processing, enables push-to-talk, caps bitrate at 128kbps (studio quality), and optimizes Opus packetization (10ms frames).", page: "voice", destination: "sound-video", section: "Voice" },
   { id: "warn-me-when-my-microphone-goes-silent", title: "Warn me when my microphone goes silent", description: "Says so if your microphone stops sending anything at all while you are in a voice channel. Some headsets mute their own noise floor between sentences, which looks the same from here.", page: "audio", destination: "sound-video", section: "Microphone" },
   { id: "experimental-screen-share", title: "Experimental screen share", description: "Unlock high frame rate options (144, 165, 240 FPS) for screen sharing. These require significant bandwidth and may not work on all hardware.", page: "screen", destination: "sound-video", section: "Screen share" },
-  // Dev builds only, the same way the Developer destination itself is. Without
-  // the gate a release would offer search results for a panel that is not in
-  // the bundle.
+  // Dev builds only, the same way the Developer destination is. Without the gate
+  // a release would offer results for a panel that is not in the bundle.
   ...(import.meta.env.DEV
     ? ([
         { id: "fake-participants", title: "Fake participants", description: "Invents people in the voice channel you are in and in the member list around it, so both can be seen at counts a single account cannot reach. They render through the real voice view and the real member list, so this proves layout and nothing about the socket path.", destination: "developer", section: "Developer" },
@@ -120,13 +106,8 @@ export const SETTINGS_INDEX: SettingsIndexEntry[] = [
 ];
 
 /**
- * Case-insensitive match across titles, descriptions and section names.
- *
- * Results come back in the order the settings appear on screen rather than by
- * how well each one matched, so scanning results feels like scanning the panel.
- * The trade-off is that a description-only match can appear above an exact
- * title match. SETTINGS_INDEX is stored in render order, so position in that
- * array is the sort key.
+ * Case-insensitive match across titles, descriptions and section names. Results
+ * come back in screen order, so a description match can outrank a title one.
  */
 export function searchSettings(query: string): SettingsIndexEntry[] {
   const q = query.trim().toLowerCase();

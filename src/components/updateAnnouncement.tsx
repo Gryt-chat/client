@@ -13,24 +13,15 @@ type Shown = {
   phase: Phase;
   percent?: number;
   message?: string;
-  /* The cross was pressed. `toast.dismiss` does not report that back, and
-     without a record of it every later status would put the toast up again —
-     a download that keeps going after somebody has said they are not
-     interested would reappear on every progress event. */
+  /* The cross was pressed. `toast.dismiss` does not report that back, so without
+     a record every later progress event would put the toast up again. */
   dismissed?: boolean;
 };
 
 
 /**
- * Telling somebody a release exists while they are using the app (GRYT-543), on
- * the `react-hot-toast` already in `main.tsx`.
- *
- * **`announced` raises it; the rest of the statuses only move it along** — the
- * others answer a check somebody pressed a button for, and Settings shows those.
- *
- * **No duration, no `toast.success`, and the action is a link.** Nobody did
- * anything here, so there is no tick; and restarting drops you out of a call,
- * so it is not the control in the corner people aim at to dismiss things.
+ * Telling somebody a release exists while they are using the app. **`announced`
+ * raises it; the rest of the statuses only move it along** (GRYT-543).
  */
 export function UpdateAnnouncement() {
   /* The toast currently on screen. A newer release during the same run has to
@@ -129,9 +120,8 @@ export function UpdateAnnouncement() {
               <Subtitle
                 shown={next}
                 onInstall={() => {
-                  /* Redrawn before the handoff, not after: `restartForUpdate`
-                     sets the quit flag and hands straight to the installer, so
-                     anything queued behind it never paints. */
+                  /* Redrawn before the handoff: `restartForUpdate` hands straight
+                     to the installer, so anything queued behind it never paints. */
                   render({ ...next, phase: "installing" });
                   getElectronAPI()?.restartForUpdate();
                 }}
@@ -156,10 +146,8 @@ export function UpdateAnnouncement() {
 
         const id = `update-${status.version}`;
 
-        /* Same release as the toast already up. Redrawn for a retry of a failed
-           download, and for anything the user asked for — pressing Check for
-           Updates or reloading the window. Otherwise this is the announcement
-           arriving twice. */
+        /* Same release as the toast already up. Redrawn for a retry and for
+           anything the user asked for; otherwise this is a duplicate. */
         if (shown.current?.id === id && !status.reannounce) {
           if (shown.current.dismissed) return;
           if (shown.current.phase !== "failed") return;
@@ -171,8 +159,7 @@ export function UpdateAnnouncement() {
           id,
           version: status.version,
           /* Announced with `autoDownload` means the bytes are already moving —
-             the main process only says so once electron-updater has accepted
-             the release and started fetching. */
+             the main process says so once electron-updater starts fetching. */
           phase: status.autoDownload ? "downloading" : "waiting",
         });
 
@@ -202,11 +189,8 @@ export function UpdateAnnouncement() {
       }
     });
 
-    /* The toast is state in this component, and the announcement was a message
-       sent once. A reload therefore lost it for good: the main process had
-       already recorded the version as announced, so nothing would send it again
-       until the app restarted (GRYT-633). Asking on mount covers the reload and
-       costs one message on a normal start, where there is nothing to replay. */
+    /* The toast is state here and the announcement was sent once, so a reload
+       lost it for good. Asking on mount covers that (GRYT-633). */
     api.replayUpdateStatus();
 
     return unsubscribe;
@@ -216,13 +200,8 @@ export function UpdateAnnouncement() {
 }
 
 /**
- * How far the download has got. Nothing until the first `download-progress`
- * event, which is a second or two away on a fast line and much longer on a slow
- * one — a bar sitting at zero reads as stuck, so there is no bar until there is
- * a number.
- *
- * Progress handles the indeterminate case itself with `value={null}`, but that
- * is a different thing from "no bar" and this wants the second one.
+ * How far the download has got. No bar until there is a number — a bar sitting at
+ * zero reads as stuck, and `value={null}` is a different thing from no bar.
  */
 function ProgressBar({ percent }: { percent?: number }) {
   if (percent == null) return null;
@@ -268,11 +247,8 @@ function Subtitle({
         </>
       );
 
-    /* The window is about to go, and on the way back the installer runs before
-       anything is drawn. That gap reads as Gryt having closed and failed to
-       reopen, and somebody who reads it that way opens it again, which is the
-       one thing that makes it worse (GRYT-646). Nothing can be shown during the
-       gap, because nothing is running, so this is the moment before it. */
+    /* The window is about to go, and the installer runs before anything is drawn
+       on the way back. Nothing can be shown in that gap (GRYT-646). */
     case "installing":
       return <>Installing… Gryt will restart on its own.</>;
 

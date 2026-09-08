@@ -19,14 +19,8 @@ import { useCustomThemes, useTheme } from "@/common";
 const GENERATOR = "https://ui.gryt.chat/theme/generator";
 
 /**
- * Take a theme somebody sent you.
- *
- * The whole exchange is a link. Build a theme on ui.gryt.chat, press Copy link,
- * paste it here — the same parser reads it in both places, so there is no
- * second definition of the format to fall behind.
- *
- * Nothing is saved until it has been looked at. A theme is a couple of dozen
- * hex values and reading them tells you nothing.
+ * Take a theme somebody sent you. The whole exchange is a link, read by the same
+ * parser both ends. Nothing is saved until it has been looked at.
  */
 export function ImportThemeDialog({
   open,
@@ -42,9 +36,8 @@ export function ImportThemeDialog({
   const [error, setError] = useState<string | null>(null);
   const [incoming, setIncoming] = useState<GrytTheme | null>(null);
   const [name, setName] = useState("");
-  // What the sender was looking at, which is worth previewing even when this
-  // app is in the other one — a theme that was designed light and only ever
-  // seen dark is the case this catches.
+  // What the sender was looking at, worth previewing even when this app is in the
+  // other one — a theme designed light and only seen dark is the case.
   const [preview, setPreview] = useState<GrytAppearance>(resolvedAppearance);
 
   function reset() {
@@ -68,10 +61,8 @@ export function ImportThemeDialog({
     setIncoming(decoded.theme);
     setPreview(decoded.appearance);
     setError(null);
-    // Whoever built it named it, and the name rides in the link. Asking again
-    // would be asking a question that has already been answered — so the field
-    // is filled in and stays editable, rather than being one more thing to
-    // type before this is allowed to be saved.
+    // Whoever built it named it, and the name rides in the link, so the field is
+    // filled in and stays editable rather than being one more thing to type.
     setName(decoded.theme.name ?? "Imported theme");
   }
 
@@ -178,11 +169,8 @@ export function ImportThemeDialog({
 }
 
 /**
- * The theme, on things that are actually in the app.
- *
- * Swatches would be smaller and would not answer the question. What people want
- * to know before they keep a theme is whether a message is readable in it and
- * whether the buttons still look like buttons.
+ * The theme, on things that are actually in the app. What people want to know is
+ * whether a message is readable and whether buttons still look like buttons.
  */
 function ThemePreview({
   theme,

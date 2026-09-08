@@ -1,18 +1,6 @@
 /**
  * Whether to tell a signed-in person that Gryt is having a problem, and what to
- * say.
- *
- * Two sources answering different questions. A probe of the OIDC issuer says
- * *whether* something is wrong. An announcement on status.gryt.chat says
- * *what*, in Sivert's words, and can go up before anything has failed.
- *
- * The announcements come from the status page's own API rather than a file
- * invented for this. Gatus already has the feature, the page already renders
- * them, and one place to post means the banner and the page cannot disagree.
- *
- * It runs on a VPS rather than at home. Everything it describes is served from
- * home through a Cloudflare tunnel, so a notice hosted alongside would be
- * unreachable at the one moment anybody wants it.
+ * say. A probe says whether; the status page's own API says what.
  */
 
 /** Gatus severities. `operational` is the all-clear, so it never raises a banner. */
@@ -81,14 +69,8 @@ function parseOne(raw: unknown): Announcement | null {
 }
 
 /**
- * The announcement worth showing, or null.
- *
- * Archived ones are the status page's history rather than something happening
- * now, and `operational` is the all-clear that closes an incident out — putting
- * either in a banner would interrupt somebody to tell them nothing is wrong.
- *
- * Newest wins when more than one is live, because that is the current word on
- * an incident that has been updated.
+ * The announcement worth showing, or null. Archived ones are history and
+ * `operational` is the all-clear. Newest wins when more than one is live.
  */
 export function pickAnnouncement(raw: unknown): Announcement | null {
   if (typeof raw !== "object" || raw === null) return null;
@@ -138,11 +120,8 @@ export async function fetchAnnouncement(
 }
 
 /**
- * Can the account services be reached?
- *
- * The OIDC issuer, which every signed-in client already depends on to refresh a
- * token. A 5xx counts the same as a timeout — from here the difference does not
- * change what to say.
+ * Can the account services be reached? The OIDC issuer, which every signed-in
+ * client already depends on. A 5xx counts the same as a timeout.
  */
 export async function probeAccountServices(issuerUrl: string): Promise<boolean> {
   const controller = new AbortController();
@@ -161,11 +140,8 @@ export async function probeAccountServices(issuerUrl: string): Promise<boolean> 
 }
 
 /**
- * What to show, given an announcement and how many probes have failed.
- *
- * An announcement wins even while everything is reachable — warning people
- * before taking something down is the case the status page exists for, and
- * nothing has failed yet at that point.
+ * What to show, given an announcement and how many probes have failed. An
+ * announcement wins even while everything is reachable.
  */
 export function decideBanner(
   announcement: Announcement | null,

@@ -14,9 +14,8 @@ import {
 import { useServerManagement, useSockets } from "@/socket";
 
 /**
- * "Default" is a real answer, not a synonym for Everything. A server set back
- * to default hears everything *unless* the global level says otherwise; one set
- * to Everything is asking for everything outright.
+ * "Default" is a real answer, not a synonym for Everything: a server set back to
+ * default hears everything *unless* the global level says otherwise.
  */
 const CHOICES: { label: string; value: string }[] = [
   { label: "Default", value: "default" },
@@ -26,11 +25,8 @@ const CHOICES: { label: string; value: string }[] = [
 ];
 
 /**
- * Every server in the rail, and how loud each one is.
- *
- * The levels have only ever been reachable by right-clicking a server icon,
- * one at a time, with no way to see the set of them. Somebody who muted four
- * servers over a month had no page that said which four.
+ * Every server in the rail, and how loud each one is. The levels were only ever
+ * reachable by right-clicking one icon at a time, with no way to see the set.
  */
 export function ServerNotificationList() {
   useSyncExternalStore(subscribeToPrefs, getStoredSnapshot, getStoredSnapshot);

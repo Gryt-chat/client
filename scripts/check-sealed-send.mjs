@@ -1,22 +1,8 @@
 /* eslint-env node */
 
 /**
- * Every path that sends a message goes through the seal (GRYT-765).
- *
- * `sendMessageWithToken` has sealed since GRYT-729. `performRetry` did not: it
- * put `text` straight on the payload and emitted, so a message the composer
- * said was encrypted went to the server in the clear the moment it was retried.
- *
- * Nothing looked different. The row was already on screen, the retry succeeded,
- * and the sender was looking at the words they typed either way — which is the
- * same reason the rest of this feature is checked the way it is. Being
- * rate-limited while sending a direct message was enough to reach it:
- * `chatEventHandlers` calls `onRetry` when the countdown ends, and again on a
- * 3s timer for any retryable `chat:error`.
- *
- * A source check, because `useChatSend.ts` imports React, socket.io, a toast
- * library and `@/common` through a Vite alias, so none of it loads in Node.
- * That is also why the bug lasted: nothing in this file has ever had a test.
+ * Every path that sends a message goes through the seal. `performRetry` did not,
+ * so a retried message went out in the clear and looked identical (GRYT-765).
  */
 
 import assert from "node:assert/strict";
@@ -48,9 +34,8 @@ for (const name of ["sendMessageWithToken", "performRetry"]) {
     `${name} emits without sealing. That is the bug: a conversation the composer says is encrypted sends plaintext, and nothing on screen says so.`,
   );
 
-  // `payload.text` only inside the `else` of a seal that answered null, never
-  // unconditionally. A payload carrying both is refused by the server anyway;
-  // one carrying only text, in a sealed conversation, is the leak.
+  // `payload.text` only inside the `else` of a seal that answered null. One
+  // carrying only text, in a sealed conversation, is the leak.
   const emits = body.slice(body.indexOf("seal("));
   assert.match(
     emits,

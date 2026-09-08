@@ -18,19 +18,14 @@ import {
 } from "../lib/icons";
 
 /**
- * How long the pane looks before admitting it has found nothing.
- *
- * Discovery never stops — this only decides when to stop saying "searching".
- * Servers that appear later still show up, replacing the empty state.
+ * How long the pane looks before admitting it has found nothing. Discovery never
+ * stops; servers that appear later replace the empty state.
  */
 const EMPTY_AFTER_MS = 4000;
 
 /**
- * Servers on this network, as a destination rather than a section of a modal.
- *
- * It used to sit inside the join dialog, which meant you only found out your
- * network had servers on it while you were already trying to join one by
- * address — and the list fought the address field for the same column.
+ * Servers on this network, as a destination rather than a section of a modal. In
+ * the join dialog the list fought the address field for the same column.
  */
 export function Discovery() {
   const { lanServers, rescan } = useLanDiscovery();
@@ -43,21 +38,12 @@ export function Discovery() {
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
   const [connecting, setConnecting] = useState<string | null>(null);
 
-  // Arriving here is the "look" the badge is counted against. Anything on
-  // screen right now stops being new, including servers that appear while the
-  // pane is open — they are being looked at as they arrive.
-  //
-  // Flattened to a string on purpose: useLanDiscovery builds a fresh array
-  // every render, so a dependency on the array itself would re-run this on
-  // every render of the pane.
+  // Arriving here is the "look" the badge counts against, servers arriving while
+  // it is open included. Flattened to a string: the array is fresh every render.
   const visibleKeys = lanServers.map(lanServerKey).join("|");
 
-  // Which of these were new when we got here.
-  //
-  // Read before the effect below marks them seen, and only ever added to, so a
-  // server keeps its mark for the rest of the visit. Deriving this from
-  // newLanServers during render instead would clear every mark the moment it
-  // appeared, since marking seen is what empties that list.
+  // Which of these were new when we got here. Read before the effect marks them
+  // seen and only added to, so a server keeps its mark for the visit.
   const newKeys = newLanServers.map(lanServerKey).join("|");
   const [newThisVisit, setNewThisVisit] = useState<ReadonlySet<string>>(new Set());
   useEffect(() => {
@@ -74,9 +60,8 @@ export function Discovery() {
     markLanServersSeen(visibleKeys.split("|"));
   }, [visibleKeys, markLanServersSeen]);
 
-  // A fresh scan on arrival rather than whatever was found at launch.
-  // Discovery announces each server once, so without this the list is only
-  // ever as current as the moment the app started.
+  // A fresh scan on arrival rather than whatever was found at launch: discovery
+  // announces each server once.
   useEffect(() => {
     rescan();
 
@@ -118,22 +103,12 @@ export function Discovery() {
 
   const busy = connecting !== null || joiningHost !== null;
 
-  // Servers already in the rail are not discoveries.
-  //
-  // They used to be listed with a "Joined" chip and an Open button, which put
-  // the six servers running on this machine permanently at the top of the
-  // thing whose job is to show what is new. Opening a server you have already
-  // joined is what the rail is for. GRYT-290.
+  // Servers already in the rail are not discoveries. Listed with a "Joined" chip
+  // they put six local servers at the top of the what-is-new pane (GRYT-290).
   const isJoined = useCallback(
     (server: LanServer) => {
-      // The address, and only the address.
-      //
-      // A second check here compared `server.serverId` — the TXT record's
-      // `server_id`, which is `SERVER_INSTANCE_ID || "default"` and almost
-      // nobody sets — against `/info`'s `serverId`. They share a name and
-      // nothing else. On the dgram path, which is what Windows and Linux use,
-      // that made a joined server reporting `serverId: "default"` hide every
-      // unjoined server on the network. GRYT-527.
+      // The address, and only the address. Comparing the TXT record's `server_id`
+      // with `/info`'s hid every unjoined server on Windows and Linux (GRYT-527).
       const host = normalizeHost(lanServerAddr(server));
       return !!servers[host];
     },

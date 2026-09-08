@@ -12,13 +12,8 @@ import { ConfirmDialog } from "../../../socket/src/components/ConfirmDialog";
 import { SettingsContainer } from "./settingsComponents";
 import { WatchedPrograms } from "./watchedPrograms";
 
-/**
- * How many servers the tab row still holds before it becomes a select.
- *
- * Counts servers, not tabs, so the All Servers tab is the sixth one on screen
- * at the switchover. Five is roughly where the row filled the panel at its
- * normal width — a seventh name was already running off the edge.
- */
+/** Counts servers, not tabs, so All Servers is the sixth on screen. Five is
+    where the row filled the panel at its normal width. */
 const SERVERS_BEFORE_DROPDOWN = 5;
 
 function extForMime(mime: string): string {
@@ -32,16 +27,8 @@ function extForMime(mime: string): string {
 }
 
 /**
- * What another server gave us, in a format this one will accept.
- *
- * A server stores whatever its image worker produced rather than what was
- * uploaded — ours re-encodes to AVIF — and the upload endpoint does not accept
- * everything it emits. Copying an avatar between servers therefore has to
- * decode and re-encode rather than pass the bytes along: `avatar.bin` with an
- * `image/avif` body comes back 400 invalid_file.
- *
- * Animated formats are passed through untouched. A canvas keeps the first frame
- * and throws the animation away.
+ * A server stores what its worker produced and the upload endpoint does not accept
+ * all of it, so this re-encodes. Animation passes through: a canvas keeps frame one.
  */
 async function asUploadableAvatar(blob: Blob): Promise<File> {
   const type = (blob.type || "").toLowerCase();
@@ -132,9 +119,8 @@ async function removeAvatarFromHost(host: string): Promise<void> {
 interface ProfileEditorProps {
   nickname: string;
   avatarUrl: string | null;
-  /** Shown when there is no uploaded avatar. Kept separate from avatarUrl so
-   *  "Remove avatar" still keys off whether one was actually uploaded — a
-   *  generated face is not something there is anything to remove. */
+  /** Separate from avatarUrl, so "Remove avatar" keys off whether one was
+      uploaded: a generated face is not something to remove. */
   generatedAvatarUrl?: string;
   /** The designed look, if there is one. Outranks `avatarUrl` — see `resolveAvatarSrc`. */
   worn?: string | null;
@@ -167,12 +153,8 @@ function ProfileEditor({
   const [draft, setDraft] = useState(nickname);
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
 
-  // Drawn from what is in the box, not from what is saved. The nickname is the
-  // seed, so typing a new one is the only way to see what you are about to look
-  // like — and finding that out after saving is a worse way to choose a name.
-  //
-  // A designed look is drawn on the draft name too. The look and the seed are
-  // separate — the hat stays on when you rename, and the bird under it changes.
+  // From the box, not what is saved: the nickname is the seed, so this is the
+  // only way to see what you are about to look like.
   const previewSrc = resolveAvatarSrc(avatarUrl, draft, worn) || generatedAvatarUrl;
 
   useEffect(() => {
@@ -292,15 +274,8 @@ function ProfileEditor({
 }
 
 /**
- * What you are doing, in your own words (GRYT-929).
- *
- * Above the server tabs and outside them, because it is not per server. The
- * nickname and the picture are — you can be "Sivert" on one and "S" on another
- * — but this is one line about you that goes everywhere you are joined, and a
- * copy of it per server would be a chore rather than a feature.
- *
- * Saved on blur like every other field here. A server whose role does not allow
- * it refuses quietly; the line simply does not appear there.
+ * Outside the server tabs, because the nickname and picture are per server and
+ * this is not. A server whose role refuses it simply does not show the line.
  */
 function ActivityField() {
   const { activity, setActivity } = useSettings();
@@ -323,9 +298,8 @@ function ActivityField() {
       </span>
       <TextField
         placeholder="Heads down until 3"
-        /* The server caps at 96 and truncates rather than refusing, so this is
-           the same number said earlier — a box that stops accepting text is
-           clearer than one that quietly loses the end of it. */
+        /* The server caps at 96 and truncates, so this says the same number
+           earlier: a box that stops is clearer than one that loses the end. */
         maxLength={96}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
@@ -367,23 +341,9 @@ export function ProfileSettings() {
     }, defaultMax);
   };
 
-  /*
-   * `worn` is the look the picture was rendered from, or null when this is a
-   * photograph somebody picked.
-   *
-   * Both paths upload a PNG — the editor renders one so a client too old to
-   * know about the string still shows the right owl, and so the server has
-   * something to take a dominant colour from. So the upload on its own cannot
-   * say which of the two happened. Null is not "leave it alone": it is what
-   * clears a designed look when somebody goes back to a photograph.
-   */
   /**
-   * Whether this server lets us put a picture on it.
-   *
-   * Applied per host because a profile change goes to several at once and they
-   * will not agree: an older server has never heard of `upload_avatar_image`,
-   * and a server that has simply not granted it is a no. Both look like an
-   * absence in the list, so the catalogue is what separates them.
+   * Per host, because a profile change goes to several at once and they will not
+   * agree. The catalogue separates an old server from a withheld permission.
    */
   const mayUploadPicture = (host: string): boolean => {
     const info = serverDetailsList[host]?.server_info;
@@ -416,17 +376,8 @@ export function ProfileSettings() {
       }
     }
 
-    /*
-     * An owl does not need the upload to have happened.
-     *
-     * It is a string on the profile and every client draws it, so on a server
-     * that does not allow pictures the owl still arrives — only the PNG that
-     * usually accompanies it is skipped. That is what makes
-     * `upload_avatar_image` a restriction on files rather than on having an
-     * avatar at all.
-     *
-     * A picture has nothing to fall back on, so those hosts are reported.
-     */
+    /* An owl is a string every client draws, so it arrives without the PNG:
+       `upload_avatar_image` restricts files, not having an avatar. */
     const permitted = hosts.filter(mayUploadPicture);
     const refused = hosts.filter((h) => !permitted.includes(h));
 
@@ -496,10 +447,8 @@ export function ProfileSettings() {
             },
           }));
         }
-        // Sent whether or not the upload returned a file id, and sent as an
-        // explicit null for a photograph. A member who had a designed owl and
-        // has just picked a picture needs the old string cleared; leaving it
-        // would keep drawing the owl over the picture they chose.
+        // An explicit null for a photograph: somebody who had a designed owl needs
+        // the old string cleared, or it draws over the picture they chose.
         sockets[host]?.emit("profile:update", { avatarWorn: worn });
         sockets[host]?.emit("avatar:updated");
         sockets[host]?.emit("members:fetch");
@@ -565,9 +514,8 @@ export function ProfileSettings() {
             avatarWorn: null,
           },
         }));
-        // Removing an avatar means going back to the owl the nickname draws.
-        // A designed look left behind would survive the removal and keep being
-        // drawn, which is not what "remove" says.
+        // Removing means going back to the owl the nickname draws, so a designed
+        // look left behind would survive it.
         sockets[host]?.emit("profile:update", { avatarWorn: null });
         sockets[host]?.emit("avatar:updated");
         sockets[host]?.emit("members:fetch");
@@ -626,14 +574,8 @@ export function ProfileSettings() {
     fileInputRef.current?.click();
   };
 
-  /*
-   * Clicking the avatar used to open a file picker. It asks first now, because
-   * a picture is no longer the only kind of avatar there is.
-   *
-   * The host is remembered across both dialogs: this screen edits either the
-   * account's avatar or one server's, and which one is decided by whichever
-   * avatar was clicked.
-   */
+  /* Asks first, since a picture is no longer the only kind of avatar. The host is
+     remembered across both dialogs, decided by whichever avatar was clicked. */
   const [choosingFor, setChoosingFor] = useState<string | null | undefined>(undefined);
   const [designingFor, setDesigningFor] = useState<string | null | undefined>(undefined);
 
@@ -644,18 +586,9 @@ export function ProfileSettings() {
     await processAndUpload(file, host ? [host] : serverHosts, worn);
   };
 
-  /**
-   * Take one server's avatar and use it everywhere — the other direction from
-   * the button next door.
-   *
-   * Owls and pictures are the same job here, which is worth saying because it
-   * looks like it should be two. A designed owl is stored as an uploaded PNG
-   * plus the string that draws it, so both cases are "fetch the bytes this
-   * server already has, and carry the worn string with them". Re-rendering the
-   * owl would be a second implementation of something that is already a file.
-   *
-   * The nickname is deliberately left alone. It is per-server for a reason, and
-   * quietly renaming somebody on five servers is not what this asked for.
+/**
+   * Owls and pictures are one job: a designed owl is a PNG plus the string that
+   * draws it. The nickname is left alone, being per-server for a reason.
    */
   const handleSyncFromServer = async (sourceHost: string) => {
     if (syncing || uploading || removing) return;
@@ -679,10 +612,8 @@ export function ProfileSettings() {
 
       const file = await asUploadableAvatar(await response.blob());
 
-      // Including the server it came from. Re-uploading there is a few hundred
-      // milliseconds and it keeps one path rather than two, which is worth
-      // more than the round trip — and it settles the case where that server's
-      // copy is the one that is out of date with its own worn string.
+      // Including the server it came from: one path rather than two, and it
+      // settles a copy that is out of date with its own worn string.
       await processAndUpload(file, connectedHosts, worn);
     } catch (error) {
       toast.error(
@@ -700,10 +631,8 @@ export function ProfileSettings() {
     try {
       const hosts = connectedHosts;
 
-      // The look goes with the nickname and the picture, because "sync to all"
-      // means this profile everywhere. Sent even when it is null — a server
-      // still holding a look this account has since dropped is exactly the
-      // disagreement the button exists to settle.
+      // Sent even when null: a server still holding a look this account dropped
+      // is exactly the disagreement the button exists to settle.
       const worn = getStoredWorn();
       hosts.forEach(host => {
         sockets[host]?.emit("profile:update", { nickname, avatarWorn: worn });
@@ -759,10 +688,8 @@ export function ProfileSettings() {
           toast.success(`Profile synced to ${hosts.length} server${hosts.length > 1 ? "s" : ""}`);
         }
       } else {
-        // No avatar here means every server should end up with none. Syncing
-        // only the nickname left servers holding an avatar this profile no
-        // longer has, and "sync" then quietly meant "sync some of it" — the
-        // one thing the button cannot mean.
+        // No avatar here means none anywhere: syncing only the nickname made
+        // "sync" quietly mean "sync some of it".
         const results = await Promise.allSettled(hosts.map(h => removeAvatarFromHost(h)));
 
         let removeFailed = 0;
@@ -799,9 +726,8 @@ export function ProfileSettings() {
 
   const allServerAvatarUrl = avatarDataUrl;
 
-  // Re-read rather than held in state, because every path that changes it
-  // already re-renders this screen: saving a design, uploading a picture and
-  // removing one all set `uploading` or `removing` on the way through.
+  // Re-read rather than held: every path that changes it already re-renders this
+  // screen through `uploading` or `removing`.
   const storedWorn = getStoredWorn();
 
   // One list, rendered two ways. Built here rather than inline so the tabs and
@@ -891,10 +817,8 @@ export function ProfileSettings() {
           const serverInitial = serverNickname?.[0]?.toUpperCase() || "?";
           const serverName = serverDetailsList?.[host]?.server_info?.name || servers[host]?.name || host;
 
-          /* Offered only when there is somewhere for it to go and something
-             to send. `avatarUrl` is null on a server you have never given an
-             avatar of its own, and the button would copy the account default
-             onto itself. */
+          /* `avatarUrl` is null on a server never given one of its own, where the
+             button would copy the account default onto itself. */
           const canCopyOutward =
             connectedHosts.length > 1 && Boolean(profile?.avatarUrl);
 
@@ -972,10 +896,8 @@ export function ProfileSettings() {
         onOpenChange={(next) => {
           if (!next) setChoosingFor(undefined);
         }}
-        /* Said rather than hidden. Hiding it would need a prop on
-           `AvatarChoiceDialog` and a @gryt/ui release, and "the option is gone"
-           reads as a broken build where "you cannot do this here, and here is
-           what still works" reads as a rule. */
+        /* Said rather than hidden: an option that is gone reads as a broken build
+           where a refusal with a reason reads as a rule. */
         onUpload={() => {
           const target = choosingFor ?? null;
           const hosts = target ? [target] : serverHosts;

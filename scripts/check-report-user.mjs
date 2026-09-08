@@ -1,18 +1,8 @@
 /* eslint-env node */
 
 /**
- * The wiring behind reporting a person (GRYT-746).
- *
- * This reads source rather than running anything. It cannot tell you the
- * feature works — the server tests do that, and a browser did the rest. What it
- * catches is the class of breakage that typechecks: a prop dropped somewhere in
- * the four components it passes through, or a button that stops asking for the
- * permission the server asks for.
- *
- * The last one is why this file exists. `manage_reports` is what opens the
- * queue; kicking and banning out of it are separately gated on both sides, and
- * a client that offers a button the server refuses teaches moderators that the
- * panel is broken.
+ * The wiring behind reporting a person. It reads source: what it catches is the
+ * class of breakage that typechecks — a dropped prop, a wrong gate (GRYT-746).
  */
 
 import assert from "node:assert/strict";
@@ -41,9 +31,8 @@ assert.match(
 );
 
 /*
- * Not `can`. `has` is false unless the server said so, and a server old enough
- * to send no permission list is also old enough not to have `user:report` —
- * offering it there produces a report that goes nowhere.
+ * Not `can`. `has` is false unless the server said so, and a server old enough to
+ * send no permission list has no `user:report` either.
  */
 assert.doesNotMatch(
   menu,

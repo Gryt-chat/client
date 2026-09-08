@@ -1,9 +1,8 @@
 /* eslint-env node */
+
 /**
- * Cross-platform script to build the embedded server resources for dev preview.
- * Only builds the SFU binary for the current platform (not all targets).
- *
- * Usage: node scripts/build-embedded-server.mjs [--skip-sfu] [--skip-server] [--skip-worker]
+ * Builds the embedded server resources, SFU for this platform only.
+ * Usage: node scripts/build-embedded-server.mjs [--skip-sfu|--skip-server|--skip-worker]
  */
 
 import { execSync } from "child_process";
@@ -23,28 +22,16 @@ import { describeVersion } from "./lib/describeVersion.mjs";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CLIENT_DIR = join(__dirname, "..");
 
-/**
- * The superproject this checkout belongs to, or null if it does not.
- *
- * A git worktree's `.git` is a file rather than a directory, and for a
- * submodule's worktree it points back through the superproject:
- *
- *   gitdir: /Users/sivert/dev/gryt/.git/modules/client/worktrees/GRYT-123
- *
- * so everything before `/.git/` is the superproject root. A plain checkout has
- * `.git` as a directory and gets null, which is right — it has no superproject
- * and the sibling lookup below is the answer there.
- */
+/** A worktree's `.git` is a file whose gitdir points back through the
+    superproject, so everything before `/.git/` is its root. */
 function superprojectRoot() {
   try {
     const pointer = readFileSync(join(CLIENT_DIR, ".git"), "utf8").trim();
     const named = /^gitdir:\s*(.+)$/.exec(pointer);
     if (!named) return null;
 
-    /* Resolved against the checkout first. A submodule in a normal clone writes
-       this relative — `gitdir: ../../.git/modules/client` — and slicing that
-       raw yields `../..`, which is a working directory away from meaning
-       anything. A worktree writes it absolute. Both end up absolute here. */
+    /* A submodule in a normal clone writes this relative and a worktree writes it
+       absolute, so both are resolved against the checkout first. */
     const gitDir = resolve(CLIENT_DIR, named[1]);
 
     const marker = `${sep}.git${sep}`;
@@ -57,17 +44,8 @@ function superprojectRoot() {
 }
 
 /**
- * Where a sibling package actually is.
- *
- * Beside the client in a normal checkout — `packages/client` next to
- * `packages/server`. In a worktree it is not: `.claude/worktrees/GRYT-123` has
- * no siblings, and this used to resolve to `.claude/worktrees/server` and fail
- * as `spawnSync /bin/sh ENOENT`, which names a shell rather than the missing
- * directory (GRYT-650). CLAUDE.md tells everybody to work in worktrees, so that
- * was the normal case failing, not an edge one.
- *
- * Falls back to the sibling path when neither exists, so the error names the
- * place somebody would look first.
+ * Beside the client in a normal checkout and nowhere near it in a worktree, where
+ * this used to fail as `spawnSync /bin/sh ENOENT` and name a shell.
  */
 function packageDir(name) {
   const sibling = join(CLIENT_DIR, "..", name);
@@ -88,12 +66,8 @@ const WORKER_DIR = packageDir("image-worker");
 const OUTDIR = join(CLIENT_DIR, "build", "embedded-server");
 
 
-/**
- * What the output on disk was built from, if anything.
- *
- * Written by this script at the end of every run, so it is the only record of
- * which submodule commit each artefact actually came from.
- */
+/** Written at the end of every run, so it is the only record of which submodule
+    commit each artefact came from. */
 function readBuiltVersions() {
   try {
     return JSON.parse(readFileSync(join(OUTDIR, "versions.json"), "utf8"));
@@ -106,9 +80,8 @@ const args = process.argv.slice(2);
 let skipSfu = args.includes("--skip-sfu");
 let skipServer = args.includes("--skip-server");
 let skipWorker = args.includes("--skip-worker");
-// Used by electron:dev, which wants the embedded server present but must not
-// fail or stall the dev loop over it. Skips the build when the output is
-// already there, and never blocks a dev session that cannot produce it.
+// electron:dev wants this present but must not stall on it, so a build is skipped
+// when the output is there and never blocks a session that cannot produce it.
 const ifMissing = args.includes("--if-missing");
 
 const platform = process.platform;
@@ -126,10 +99,8 @@ const goArch = arch === "arm64" ? "arm64" : "amd64";
 const sfuExt = platform === "win32" ? ".exe" : "";
 
 function run(command, options = {}) {
-  /* A cwd that is not there makes execSync report `spawnSync /bin/sh ENOENT`,
-     which reads as a missing shell and sends people looking at their PATH. Say
-     which directory instead — before GRYT-650 this was the entire symptom of a
-     worktree that could not find the other packages. */
+  /* A missing cwd makes execSync report `spawnSync /bin/sh ENOENT`, which reads
+     as a missing shell and sends people to their PATH. */
   if (options.cwd && !existsSync(options.cwd)) {
     throw new Error(
       `Cannot run \`${command}\`: ${options.cwd} does not exist.\n` +
@@ -158,21 +129,8 @@ if (ifMissing) {
   const haveWorker = existsSync(join(OUTDIR, "worker", "dist", "index.js"));
 
   /**
-   * Present is not the same as current.
-   *
-   * This used to skip whenever all three files existed, which meant the output
-   * was built once and then never again however far the submodules moved. A
-   * bundle four days and ten commits behind `server:main` survived that way: it
-   * still carried an identity CA that had been deleted, and knew nothing of
-   * GRYT_IDENTITY_TIERS, which the client writes into every config it creates.
-   * The app looked broken in exactly the area somebody was working on, and
-   * nothing said why — the hint to rebuild is printed in the branch that skips,
-   * where it scrolls past in dev-server output.
-   *
-   * So compare what is on disk against what the submodules are now. Only the
-   * ones that moved are rebuilt, because the Go build is the slow part and
-   * rebuilding all three to pick up a server change is most of the reason
-   * skipping looked attractive in the first place.
+   * Present is not current: skipping on existence alone built the output once and
+   * never again. Only what moved is rebuilt, because the Go build is slow.
    */
   const built = readBuiltVersions();
   const stale = (have, builtVersion, dir) =>
@@ -193,9 +151,8 @@ if (ifMissing) {
     ["worker", workerStale, haveWorker, WORKER_DIR, built.worker],
   ]) {
     if (!isStale) continue;
-    // Missing and out of date are different problems and the version pair only
-    // means anything for the second — printing "1.2.1 → 1.2.1" for a deleted
-    // file reads as a bug in the check rather than a missing artefact.
+    // Missing and out of date are different problems: "1.2.1 → 1.2.1" for a
+    // deleted file reads as a bug in the check.
     console.log(
       !have
         ? `Embedded ${name} is missing — building.`
@@ -208,10 +165,8 @@ if (ifMissing) {
   skipSfu = skipSfu || !sfuStale;
   skipWorker = skipWorker || !workerStale;
 
-  // Building needs Go and a working native toolchain. Plenty of people work on
-  // the UI without either, and hosting is optional, so a failure here must not
-  // take the dev server down with it — the app already copes with the embedded
-  // server being unavailable.
+  // Plenty of people work on the UI without Go or a native toolchain, and the app
+  // already copes with the embedded server being unavailable.
   process.on("uncaughtException", (err) => {
     console.warn();
     console.warn("Could not build the embedded server — continuing without it.");
@@ -253,19 +208,8 @@ if (skipServer) {
 
   cpSync(bundleSrc, join(serverOut, "bundle.js"));
 
-  // Install from the server's real manifest and its real lockfile, so the tree
-  // that ships is the tree yarn.lock pins.
-  //
-  // This used to copy a package-lock.json that has never existed — the server is
-  // a yarn project — log a warning, and run `npm install` anyway. Every release
-  // therefore resolved its dependencies fresh from the registry: two builds of
-  // the same commit could ship different transitive versions, and nothing
-  // recorded which ones went out. The warning was printed into a passing build,
-  // which is why it survived.
-  //
-  // The trimmed runtime package.json is written *after* the install, because
-  // --frozen-lockfile compares the manifest against the lockfile and a trimmed
-  // manifest does not match.
+  // The server's real manifest and lockfile, so the tree that ships is the one
+  // yarn.lock pins. Trimmed after the install, which --frozen-lockfile compares.
   const lockfileSrc = join(SERVER_DIR, "yarn.lock");
   assertExists(
     lockfileSrc,
@@ -274,13 +218,8 @@ if (skipServer) {
   cpSync(lockfileSrc, join(serverOut, "yarn.lock"));
   cpSync(join(SERVER_DIR, "package.json"), join(serverOut, "package.json"));
 
-  // No Electron ABI settings. The server moved from better-sqlite3 to
-  // node:sqlite, which is part of the runtime, so there is no node-gyp addon
-  // left to rebuild. sharp stays, but it is N-API and resolves its binary
-  // through per-platform optional dependencies that npm picks by os/cpu — the
-  // Electron settings never applied to it.
-  // --frozen-lockfile is the whole point: it fails rather than re-resolving if
-  // the manifest and the lockfile have drifted apart.
+  // No Electron ABI settings: node:sqlite leaves no addon to rebuild and sharp is
+  // N-API. --frozen-lockfile fails rather than re-resolving on a drift.
   console.log("  Installing production dependencies for embedded server...");
   run("yarn install --production --frozen-lockfile", { cwd: serverOut });
 
@@ -334,9 +273,8 @@ if (skipSfu) {
       CGO_ENABLED: "0",
     };
 
-    // Stamp the binary. Without this, cmd/sfu/main.go keeps its `var Version =
-    // "dev"` default and every embedded SFU reports itself as "vdev" in server
-    // settings — which is not a version anyone can compare against a release.
+    // Without this the SFU keeps its `var Version = "dev"` default and reports
+    // itself as "vdev", which nobody can compare against a release.
     const sfuVersion = describeVersion(SFU_DIR);
     run(
       `go build -C "${SFU_DIR}" -ldflags "-X main.Version=${sfuVersion}" -o "${sfuOutPath}" ./cmd/sfu/`,
@@ -357,26 +295,16 @@ if (skipSfu) {
 }
 
 // ── 3. Image worker ─────────────────────────────────────────────────
-// Bundled so a server hosted from the desktop app processes its image jobs.
-// Without it the server queues work nothing ever reads: no thumbnails, no
-// dominant colours, and — because the upload route skips the size limit for
-// images on the assumption something will shrink them later — uploads sitting
-// at full size on the host's disk forever.
-//
-// A separate process on purpose, as in a deployment. It hands stranger-uploaded
-// bytes to libvips, and the point of the worker existing at all is that a
-// corrupt image cannot take down the process holding the signing keys and every
-// socket. Bundling it must not quietly undo that.
+// Without it a hosted server queues image jobs nothing reads. A separate process
+// on purpose: it hands stranger-uploaded bytes to libvips.
 if (skipWorker) {
   console.log("[3/3] Skipping image worker (--skip-worker)");
 } else {
   console.log("[3/3] Bundling image worker...");
 
   if (!existsSync(WORKER_DIR)) {
-    // Loud, because the alternative is a release that quietly ships a client
-    // whose hosted servers queue image jobs nothing will ever read — with no
-    // error anywhere to say so. --if-missing is the dev path and downgrades
-    // this to a warning through its uncaughtException handler.
+    // Loud, or a release ships a client whose hosted servers queue image jobs
+    // nothing reads. --if-missing downgrades this to a warning.
     throw new Error(
       `Image worker not found at ${WORKER_DIR}. ` +
         `The submodule is probably not checked out — a release must not ship ` +
@@ -401,16 +329,8 @@ if (skipWorker) {
       readFileSync(join(WORKER_DIR, "package.json"), "utf8")
     );
 
-    // No Electron ABI settings here, unlike the server bundle below the fold.
-    // The worker has no node-gyp addon left to rebuild: it moved from
-    // better-sqlite3 to node:sqlite, which is part of the runtime, and sharp is
-    // N-API so its prebuilt binary loads under Electron unchanged. sharp also
-    // resolves its binary through per-platform optional dependencies, which npm
-    // picks by os/cpu — npm_config_runtime never applied to it.
-    // Same pinning as the server above: install from the worker's own manifest
-    // and lockfile, then write the trimmed runtime one over the top. This one
-    // never even tried to copy a lockfile, so it has been resolving fresh from
-    // the registry on every release since it was written.
+    // No Electron ABI settings, as above: no addon to rebuild and sharp is N-API.
+    // Same pinning, which this one never had at all.
     const workerLockfile = join(WORKER_DIR, "yarn.lock");
     assertExists(
       workerLockfile,
@@ -427,9 +347,8 @@ if (skipWorker) {
     workerPkg.name = "gryt-embedded-image-worker";
     workerPkg.private = true;
     workerPkg.main = "dist/index.js";
-    // The worker reads this as its fallback version, and the checked-in value
-    // is decorative — the worker releases by tag and never bumps the file. The
-    // copy that ships should say what was actually built.
+    // The checked-in value is decorative, since the worker releases by tag and
+    // never bumps the file. The copy that ships should say what was built.
     workerPkg.version = describeVersion(WORKER_DIR);
 
     writeFileSync(
@@ -451,21 +370,8 @@ if (skipWorker) {
 }
 
 /**
- * What actually went into this bundle.
- *
- * The embedded server had no way to know its own version, so it fell back to
- * the hardcoded "1.0.0" in its config and every desktop-hosted server reported
- * that — next to a real latest-release number, which made it look permanently
- * out of date. The manager reads this file and tells each process what it is.
- *
- * Written from the sources actually built rather than from the client's own
- * version, because these three move independently of it and of each other.
- */
-/**
- * Only what was actually built moves. A component that was skipped keeps the
- * version it was last built from, or the next run would read this file, believe
- * the old binary came from the current checkout, and skip it forever — which is
- * the bug this file exists to prevent.
+ * The embedded server fell back to "1.0.0" and looked out of date. Only what was
+ * built moves, or the next run believes an old binary is current.
  */
 const previous = readBuiltVersions();
 const versionFor = (skipped, dir, prior) => {

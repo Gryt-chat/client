@@ -15,12 +15,8 @@ import {
 import { PiKey } from "../../../../lib/icons";
 
 /**
- * Offering this device the message key the account already has (GRYT-783).
- * Above a direct message, because asking at sign-in asks for a password to
- * solve a problem nobody has met yet.
- *
- * Silent unless there is something to offer — including **while the answer is
- * still loading**, rather than flashing a password box and withdrawing it.
+ * Offering this device the message key the account already has. Above a direct
+ * message, and silent while the answer is still loading (GRYT-783).
  */
 export function MessageKeyPrompt() {
   const [grytUserId, setGrytUserId] = useState<string | null>(null);
@@ -34,9 +30,8 @@ export function MessageKeyPrompt() {
   useEffect(() => {
     let cancelled = false;
 
-    // Who is signed in, and whether they have a sealed copy. Both come from the
-    // account rather than from props, so this can be dropped in wherever a DM
-    // is drawn without threading auth state through the tree.
+    // Who is signed in, and whether they have a sealed copy. Both from the
+    // account, so this can be dropped in wherever a DM is drawn.
     void (async () => {
       let sub: string | null = null;
       try {

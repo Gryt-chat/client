@@ -1,13 +1,6 @@
 /*
- * What you are playing, over HTTP, so the plugin has something to ask.
- *
- * node source.mjs
- * node source.mjs "Deep Rock Galactic"
- *
- * Nothing here is Gryt. This exists because a plugin runs in a worker and
- * cannot read your processes, so the game name has to come from outside. Swap
- * it for whatever you actually have: a script that reads a window title, your
- * music player's API, a file you edit by hand.
+ * What you are playing, over HTTP, so the plugin has something to ask. Nothing
+ * here is Gryt — swap it for whatever you actually have.
  */
 
 import { createServer } from "node:http";

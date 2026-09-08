@@ -1,22 +1,8 @@
 import { useCallback, useSyncExternalStore } from "react";
 
 /**
- * How many times somebody has been named in a thread and not read it.
- *
- * The mention tracker next door is keyed by conversation, so a naming inside a
- * thread landed on the parent channel with nowhere to point. The server now
- * says which thread it was (GRYT-1012); this is where that goes.
- *
- * The channel count keeps counting it too, and that is deliberate rather than
- * double counting: the channel badge is how somebody notices, and this is how
- * they find it. Which is also why each entry carries its conversation. Opening
- * a channel clears the mentions in its timeline and leaves the threads, so the
- * client has to know how much of a channel's count is thread-shaped to clear
- * the right amount without waiting for the server to answer (GRYT-1014).
- *
- * Server-backed, unlike the thread unread count beside it. `mentions:list`
- * answers the whole set on connect, so this survives a reload and two windows
- * cannot disagree — which is why `set` replaces rather than merges.
+ * How many times somebody has been named in a thread and not read it. The channel
+ * count keeps counting it too: that badge is how somebody notices (GRYT-1012).
  */
 interface ThreadMention {
   conversationId: string;
@@ -47,13 +33,8 @@ export function getThreadMentionSnapshot(): ThreadMentionMap {
 }
 
 /**
- * Replace one server's counts from the server's own answer.
- *
- * Built from the mention rows rather than from the `threadCounts` beside them,
- * because those are keyed by thread alone and the conversation is needed here.
- * Replace rather than merge, like the conversation tracker: the server has just
- * said everything that is unseen, so anything held here it did not name has
- * been read somewhere else.
+ * Replace one server's counts from the server's own answer. Built from the
+ * mention rows, because `threadCounts` carries no conversation.
  */
 export function setThreadMentionCounts(
   host: string,
@@ -132,9 +113,7 @@ export function clearServerThreadMentions(host: string) {
 
 /**
  * How much of a conversation's mention count is sitting inside its threads.
- *
- * Opening the channel does not clear these, so this is what has to survive the
- * clear rather than what gets cleared.
+ * Opening the channel does not clear these, so this is what has to survive.
  */
 export function conversationThreadMentions(host: string, conversationId: string): number {
   const counts = mentions.get(host);

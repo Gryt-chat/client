@@ -20,10 +20,8 @@ import {
 import { singletonHook } from "./singletonHook";
 
 /**
- * Left behind by the version of Gryt that asked people to choose between an
- * account and a guest identity on first run. Nothing reads it now — being a
- * guest is simply what you are until you sign in — so it is cleared once to
- * keep it from sitting in storage looking meaningful.
+ * Left behind by the version that asked people to choose between an account and a
+ * guest identity. Cleared once, to stop it sitting in storage looking meaningful.
  */
 const STALE_LOCAL_IDENTITY_KEY = "gryt_use_local_identity";
 
@@ -161,10 +159,8 @@ function useAccountHook(): Account {
     // The next account gets asked for itself rather than inheriting a yes that
     // was meant for this one.
     clearClaimDecisions();
-    // Signing out drops back to being a guest rather than to a sign-in wall.
-    // Local identities are untouched, so the servers joined without an account
-    // are still there — signing out of an account is not a request to forget
-    // everything else.
+    // Signing out drops back to being a guest rather than a sign-in wall. Local
+    // identities are untouched: this is not a request to forget everything else.
     setIsSignedIn(false);
     try {
       await doLogout();

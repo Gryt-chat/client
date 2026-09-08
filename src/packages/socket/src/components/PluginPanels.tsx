@@ -3,22 +3,8 @@ import { useSyncExternalStore } from "react";
 import { shownPanels, subscribePanels } from "@/addons";
 
 /**
- * What plugins have asked to show, drawn under the member list (GRYT-951).
- *
- * Every string here came from a plugin, and a plugin's rows are usually built
- * out of what other people's clients sent it. Two things follow from that, and
- * both are the reason this component is as boring as it is:
- *
- * **Nothing is markup.** A title and rows of text, rendered as text. There is no
- * `dangerouslySetInnerHTML`, no style a plugin can set, no class it can name.
- * The alternative — handing a plugin a node, or an iframe — gives back most of
- * what putting plugins in a worker bought.
- *
- * **The plugin's name is beside the title, not optional.** A panel is somebody
- * else's words in Gryt's chrome, and a panel titled "Gryt" with nothing to say
- * otherwise is a phishing surface. `readPanel` caps the title and strips the
- * bidirectional overrides that would otherwise let a label render as something
- * other than what it says.
+ * What plugins have asked to show, drawn under the member list. **Nothing is
+ * markup**, and **the plugin's name is beside the title, not optional** (GRYT-951).
  */
 export const PluginPanels = () => {
   const panels = useSyncExternalStore(subscribePanels, shownPanels, shownPanels);
@@ -63,11 +49,8 @@ export const PluginPanels = () => {
             <ul className="flex flex-col gap-1 m-0 p-0 list-none">
               {panel.rows.map((row, index) => (
                 <li
-                  /* The index, because a plugin's rows have no id and two of
-                     them may legitimately read the same — two people playing
-                     the same game is the case this list exists for. The list is
-                     replaced whole on every update, so there is no reorder for
-                     a key to get wrong. */
+                  /* The index, because a plugin's rows have no id and two may
+                     read the same. The list is replaced whole on every update. */
                   key={index}
                   className="flex items-baseline gap-2 px-1 py-0.5 text-sm"
                   style={{ minWidth: 0 }}

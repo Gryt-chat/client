@@ -1,13 +1,8 @@
 /* eslint-env node */
 
 /**
- * The screen-share audio copy in src/lib/screenShareAudio.ts.
- *
- * The picker tells people what "include audio" is about to capture, and the
- * answer differs by platform and by whether a window or a whole screen is
- * selected. Getting it wrong is worse than saying nothing: the whole point is
- * that somebody sitting in another app's voice chat can tell, before they
- * share, whether that app's audio is going out with it.
+ * The screen-share audio copy in src/lib/screenShareAudio.ts. Somebody in another
+ * app's voice chat has to be able to tell, before sharing, what goes out.
  */
 
 import assert from "node:assert/strict";

@@ -93,16 +93,14 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
     saveRef.current();
   }, []);
 
-  // The scope has its own save because it has its own event. Same debounce
-  // shape as the channel fields, so a matrix that somebody clicks four times
-  // sends once.
+  // The scope has its own save because it has its own event. Same debounce shape
+  // as the channel fields, so a matrix clicked four times sends once.
   const scopeSaveRef = useRef(saveChannelScope);
   scopeSaveRef.current = saveChannelScope;
   const scopeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  /* `rules` is threaded through the timer for the same reason the dropdown
-     passes its choice: the matrix is only safe today because 600ms is long
-     enough for a render, which is a timing argument rather than a guarantee. */
+  /* `rules` is threaded through the timer for the same reason the dropdown passes
+     its choice: 600ms being long enough for a render is timing, not a guarantee. */
   const debouncedScopeSave = useCallback((rules?: ChannelRule[]) => {
     if (scopeTimerRef.current) clearTimeout(scopeTimerRef.current);
     scopeTimerRef.current = setTimeout(() => {
@@ -187,15 +185,12 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
                   disabled={scopeLoading}
                   onValueChange={(v) => {
                     /* Base UI hands back null when a Select clears, and
-                       `String(null)` is the truthy string "null" — which the
-                       server reads as a scope id it does not have. The role
-                       editor shipped that once already. */
+                       `String(null)` is the truthy string "null". */
                     if (v === null || v === undefined) return;
                     const next = String(v);
                     setSheetScopeChoice(next);
-                    /* The new value goes with the call. `scopeSaveRef.current`
-                       is the closure the last render built, so a save in this
-                       tick that reads state sends the choice being replaced. */
+                    /* The new value goes with the call: `scopeSaveRef.current` is
+                       the closure the last render built. */
                     scopeSaveRef.current(next);
                   }}
                   options={scopeChoiceOptions}
@@ -304,9 +299,8 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
                 onChange={(e) => setSheetSeparatorLabel(e.target.value)}
                 onBlur={flushSave}
                 onKeyDown={handleKeyEnter}
-                /* A separator with no label is a plain rule, which is a
-                   reasonable thing to want. A folder with no name is a row you
-                   cannot tell from the next one. */
+                /* A separator with no label is a plain rule, which is reasonable
+                   to want. A folder with no name is a row you cannot tell apart. */
                 placeholder={selectedSidebarItem.kind === "folder" ? "New folder" : "Optional"}
               />
             </div>

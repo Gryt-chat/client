@@ -79,11 +79,8 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
   const { isElectron } = useLanDiscovery();
 
   /**
-   * Which rail entries are servers this machine is running, and what the
-   * manager says they are doing.
-   *
-   * The connection status alone cannot tell "my server is booting" from "a
-   * stranger's server has not answered" (GRYT-314). Empty in a browser.
+   * Which rail entries are servers this machine is running. Connection status
+   * alone cannot tell "booting" from "a stranger's server has not answered".
    */
   const { servers: embeddedServers } = useEmbeddedServer();
   const embeddedStatusByHost = useMemo(() => {
@@ -104,9 +101,8 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
   const currentHost = currentlyViewingServer?.host;
   const activeProfile = currentHost ? serverProfiles[currentHost] : undefined;
   const displayNickname = activeProfile?.nickname || nickname;
-  // The same nickname shown under it, so your face here is the one everyone
-  // else sees — and it changes when you rename, which is the whole point of
-  // seeding from the nickname.
+  // The same nickname shown under it, so your face here is the one everyone else
+  // sees — and it changes when you rename.
   const displayAvatarUrl = resolveAvatarSrc(
     activeProfile?.avatarUrl || avatarDataUrl,
     displayNickname,
@@ -315,10 +311,8 @@ interface ServerItemProps {
 }
 
 /**
- * How long a server with no connection status yet is given before it is called
- * offline. Long enough to cover creating an embedded server and the socket
- * being set up, short enough that a genuinely dead host does not sit there
- * claiming to connect.
+ * How long a server with no connection status is given before it is called
+ * offline. Long enough to cover creating an embedded server and its socket.
  */
 const UNKNOWN_SETTLE_MS = 10_000;
 
@@ -341,14 +335,8 @@ function ServerItem({
   const { canClaim, claim } = useIdentityClaim();
   const [doctorOpen, setDoctorOpen] = useState(false);
   const [mergeOpen, setMergeOpen] = useState(false);
-  // No entry yet is not the same as down.
-  //
-  // A server added a moment ago has no status until useSockets gets round to
-  // creating its socket and sets "connecting". Falling back to "disconnected"
-  // rendered it greyed out with "• OFFLINE" beside it before anything had been
-  // attempted, so creating a server looked like it had failed (GRYT-290). An
-  // unknown host reads as connecting and only becomes offline once it has had
-  // SETTLE_MS to say otherwise.
+  // No entry yet is not the same as down: a server added a moment ago has no
+  // status until useSockets sets "connecting". Offline only after SETTLE_MS.
   const rawStatus = serverConnectionStatus[host];
   const [settleExpired, setSettleExpired] = useState(false);
   useEffect(() => {
@@ -366,9 +354,8 @@ function ServerItem({
   const isUnavailable = isOffline && !isConnecting;
 
   /**
-   * A server of ours that is still booting. Not a connection state — the
-   * socket has nothing to report yet either way — but it is the thing the
-   * person watching actually wants to know (GRYT-314).
+   * A server of ours that is still booting. Not a connection state — the socket
+   * has nothing to report — but it is what the person watching wants (GRYT-314).
    */
   const isStarting = embeddedStatus === "starting" && !isConnected;
 
@@ -429,9 +416,7 @@ function ServerItem({
                   fallback={<GeneratedServerIcon seed={servers[host]?.name || host} />}
                   style={{
                     // A server you just created keeps its colour. Greying it
-                    // would say "something is wrong here", and nothing is —
-                    // it is doing exactly what you asked. The ring carries
-                    // that it is not ready yet (GRYT-314).
+                    // would say something is wrong; the ring says not ready.
                     opacity:
                       currentlyViewingServer?.host === host || isStarting
                         ? 1
@@ -447,9 +432,8 @@ function ServerItem({
                       (isUnavailable || isReconnecting || awaitingApproval)
                         ? "grayscale(100%)"
                         : "none",
-                    // The reconnect pulse is gone: it and the connecting state
-                    // looked the same from across the room, and a ring says
-                    // which is which without dimming the artwork.
+                    // The reconnect pulse is gone: it and connecting looked the
+                    // same from across the room, and a ring says which is which.
                   }}
                   src={serverIconSrc(host, servers[host]?.name || "", serverDetailsList)}
                 />
@@ -542,11 +526,8 @@ function ServerItem({
               Server settings
             </ContextMenu.Item>
             {canClaim(host) && (
-              /* For a seed restored onto a device that has never been to this
-                 server: nothing local knows there is a membership to claim, and
-                 the server cannot be asked without proving the link, which is
-                 the disclosure itself. Saying so by hand is the consent
-                 (GRYT-285). */
+              /* For a seed restored onto a device new to this server: nothing
+                 local knows there is a membership, and asking is the disclosure. */
               <ContextMenu.Item onClick={() => claim(host)}>
                 I&rsquo;ve used this server before
               </ContextMenu.Item>
@@ -560,8 +541,7 @@ function ServerItem({
             </ContextMenu.Item>
             {duplicateHosts.length > 0 && (
               /* Offered, never done for you. Collapsing these deletes a rail
-                 entry, and silent is friendlier right up until it removes the
-                 one somebody actually uses. GRYT-317. */
+                 entry, and silent is friendlier until it removes the wrong one. */
               <ContextMenu.Item onClick={() => setMergeOpen(true)}>
                 {duplicateHosts.length === 1
                   ? "Merge with the other entry\u2026"
@@ -679,9 +659,8 @@ function ServerItem({
             </h2>
             <span className="text-xs text-gryt-muted">{host}</span>
             {duplicateHosts.length > 0 && (
-              /* Making the duplicate legible even for somebody who never
-                 merges it. Two entries with the same name and icon are
-                 otherwise indistinguishable on the rail. */
+              /* Making the duplicate legible even for somebody who never merges
+                 it. Two entries with the same name and icon look identical. */
               <div className="text-xs" style={{ color: "var(--gryt-warning-11)", marginTop: 4 }}>
                 Also in your list as {duplicateHosts.join(", ")}
               </div>

@@ -1,9 +1,6 @@
 /**
- * The four things a channel can be, as the person making one thinks of them,
- * and the mapping to the fields actually stored: `type` (text/voice) plus
- * `layout` and `automated` on a text channel. Kept out of the picker component
- * so both dialogs and the sidebar editor can import the mapping without
- * dragging a component along. GRYT-981 / GRYT-982 / GRYT-983.
+ * The four things a channel can be, and the fields they map to. Out of the picker
+ * so both dialogs and the sidebar editor can import the mapping.
  */
 export type ChannelKind = "chat" | "voice" | "forum" | "automated";
 

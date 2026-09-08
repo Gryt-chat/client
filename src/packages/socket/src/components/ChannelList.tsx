@@ -84,13 +84,8 @@ export const ChannelList = ({
   onEditItem?: (item: SidebarItem) => void;
   onDeleteItem?: (item: SidebarItem) => void;
   onMoveItem?: (item: SidebarItem, direction: "up" | "down") => void;
-  /**
-   * The new order, each entry naming the folder it belongs in.
-   *
-   * Used to be a bare `string[]`. A drag can move a channel into a folder as
-   * well as up the list, and the two arrive together, so the order alone can no
-   * longer describe what happened.
-   */
+  /** A drag moves a channel into a folder as well as up the list, and the two
+      arrive together, so an order alone cannot describe it. */
   onReorder?: (entries: SidebarReorderEntry[]) => void;
   onAddItem?: (kind: string) => void;
   onDisconnectUser?: (targetServerUserId: string) => void;
@@ -135,13 +130,8 @@ export const ChannelList = ({
     [channels],
   );
 
-  /*
-   * Which folders are shut, per server, on this device.
-   *
-   * Local because it is a view preference rather than a fact about the server:
-   * two people looking at the same sidebar can reasonably have different folders
-   * open, and an operator collapsing one should not fold it up for everybody.
-   */
+  /* Local, because it is a view preference: an operator collapsing a folder
+     should not fold it up for everybody. */
   const collapseKey = `gryt_sidebar_collapsed:${serverHost}`;
   const [collapsed, setCollapsed] = useState<Set<string>>(() => {
     try {
@@ -208,15 +198,8 @@ export const ChannelList = ({
     );
   };
 
-  /**
-   * A folder row, which is a header rather than a destination.
-   *
-   * Clicking it opens and shuts it and nothing else, so a folder never steals
-   * the selection from the channel you are reading. The count is of the
-   * channels this person can see, which is why it is taken from the drawn rows
-   * rather than from the item list: a folder of channels somebody may not read
-   * says nothing rather than promising six.
-   */
+  /** A header rather than a destination, so it never steals the selection. The
+      count comes from the drawn rows, not the item list. */
   const renderFolder = (item: SidebarItem) => {
     const isCollapsed = collapsed.has(item.id);
     const Caret = isCollapsed ? PiCaretRightFill : PiCaretDownFill;
@@ -286,15 +269,11 @@ export const ChannelList = ({
       channel && channel.id !== selectedChannelId
         ? unreadCounts?.get(channel.id) ?? 0
         : 0;
-    // Shown even for the channel you have open. Unread is suppressed there
-    // because you are reading it, and a mention is cleared by reading rather
-    // than by having it open — so if one is still counted, it has not been
-    // cleared yet and hiding it would lose it.
+    // Shown even for the open channel: a mention is cleared by reading rather
+    // than by having it open, so one still counted has not been cleared.
     const mentions = channel ? mentionCounts?.get(channel.id) ?? 0 : 0;
-    /* A voice room they may see and may not enter. Visibility is
-       `read_messages` and entry is `join_voice`, so this state has always been
-       expressible — the row simply never said so, and the refusal arrived from
-       the media stack after the press. */
+    /* Visible and not enterable has always been expressible; the row never said
+       so, and the refusal arrived from the media stack after the press. */
     const locked = channel?.type === "voice" && channel.canJoin === false;
 
     return (
@@ -309,9 +288,8 @@ export const ChannelList = ({
             width: "100%",
             justifyContent: "start",
             overflow: "hidden",
-            // Dimmed rather than disabled. The row is still worth pressing —
-            // it says why — and a disabled button says nothing and cannot be
-            // asked.
+            // Dimmed rather than disabled: the row is still worth pressing,
+            // because it says why.
             opacity: locked ? 0.55 : undefined,
           }}
           title={locked ? "You cannot join this voice channel." : undefined}
@@ -466,18 +444,8 @@ export const ChannelList = ({
     );
   };
 
-  /**
-   * What each folder has to say on behalf of the channels inside it.
-   *
-   * A shut folder is the only row its children have. `renderChannel` carries
-   * the note about "you are here" being the one thing the list stopped saying
-   * when every row looked selected; closing a folder around the open channel
-   * brings that back by removing the row entirely. So the folder wears it.
-   *
-   * Unread and mentions roll up for the same reason. Without it, collapsing a
-   * folder would quietly mute everything in it, which is a thing somebody would
-   * do by accident and then not be able to explain.
-   */
+  /** A shut folder is the only row its children have, so it wears their state.
+      Without the roll-up, collapsing one quietly mutes everything inside. */
   const folderRollup = useMemo(() => {
     const rollup = new Map<string, { children: number; unread: number; mentions: number; holdsSelected: boolean }>();
     for (const item of effectiveItems) {
@@ -503,10 +471,8 @@ export const ChannelList = ({
     return renderChannel(item);
   };
 
-  /**
-   * How loud one scope is. The menu itself lives in `common` — the server rail
-   * shows the same one, and the two copies had already started to differ.
-   */
+  /** The menu lives in `common`: the server rail shows the same one, and the two
+      copies had started to differ. */
   const notificationSubmenu = (scope: NotificationScope) => (
     <NotificationLevelMenu
       host={serverHost}
@@ -525,9 +491,8 @@ export const ChannelList = ({
   );
 
   const wrapWithContextMenu = (item: SidebarItem, index: number, content: React.ReactNode) => {
-    /* A separator and a spacer are decoration, so they carry nothing for
-       somebody who cannot rearrange them. A channel and a folder always do:
-       how loud they are is that person's own setting, not an admin action. */
+    /* A separator is decoration and carries nothing. A channel and a folder
+       always do: how loud they are is that person's own setting. */
     const notifiable = item.kind === "channel" || item.kind === "folder";
     if (!canManage && !notifiable) return content;
 
@@ -620,14 +585,8 @@ export const ChannelList = ({
   const [localItems, setLocalItems] = useState(() => rows.map((r) => r.item));
   const isDragging = useRef(false);
 
-  /**
-   * How far right the pointer has travelled, which is the whole gesture for
-   * folders.
-   *
-   * A ref rather than state: it changes on every pointer move and nothing is
-   * drawn from it except the indent preview below, which reads it through its
-   * own state so the render stays cheap.
-   */
+  /** A ref, since it changes on every pointer move and only the indent preview
+      reads it, through its own state. */
   const dragOffsetX = useRef(0);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [pendingParent, setPendingParent] = useState<string | null>(null);
@@ -664,12 +623,8 @@ export const ChannelList = ({
     return map;
   }, [rows]);
 
-  /**
-   * Where a row sits while it is being dragged, which is not always where it
-   * sits at rest — a channel held to the right of the threshold is drawn
-   * indented before the drop, so the folder it is about to join is visible
-   * rather than guessed at.
-   */
+  /** A channel held right of the threshold is drawn indented before the drop, so
+      the folder it is about to join is visible rather than guessed. */
   const indentFor = (item: SidebarItem): number => {
     if (draggingId === item.id) return pendingParent ? 1 : 0;
     return depthById.get(item.id) ?? 0;
@@ -677,11 +632,8 @@ export const ChannelList = ({
 
   const displayItems = canManage ? localItems : rows.map((r) => r.item);
 
-  /**
-   * Below the channels, and outside the reorder group above. These are not
-   * sidebar items an operator arranges, and dropping a channel into the middle
-   * of somebody's conversations is not a thing to offer.
-   */
+  /** Outside the reorder group: these are not sidebar items an operator
+      arranges, and a channel does not belong among them. */
   const directMessages = onSelectDm ? (
     <>
       <DirectMessageList
@@ -734,12 +686,8 @@ export const ChannelList = ({
     </LayoutGroup>
   );
 
-  /*
-   * Somebody who cannot rearrange the sidebar still gets a right-click, because
-   * how loud this server is belongs to them rather than to whoever runs it.
-   * Only the notification choice, since everything else in that menu is an
-   * admin action.
-   */
+  /* Still a right-click without `manage_channels`, because how loud a server is
+     belongs to them. Only the notification choice. */
   if (!canManage) {
     return (
       <ContextMenu.Root>
@@ -800,10 +748,8 @@ export const ChannelList = ({
               borderRadius: "var(--gryt-radius-md)",
             }}
             onDragStart={() => { isDragging.current = true; setDraggingId(item.id); }}
-            /* `axis="y"` pins the row to the column, but the pointer is not
-               pinned and `info.offset.x` still reports where it went. That is
-               what carries the folder half of the gesture: the row stays in
-               line while the cursor decides the depth. */
+            /* `axis="y"` pins the row and not the pointer, so `info.offset.x`
+               still reports the depth half of the gesture. */
             onDrag={(_event, info) => handleDrag(item, info.offset.x)}
             onDragEnd={() => handleDragEnd(item)}
           >

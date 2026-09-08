@@ -1,15 +1,6 @@
 /**
- * Working out which capture processes to stop and start when the set of
- * applications a share sends audio from changes.
- *
- * Kept apart from the process handling so it can be checked without Windows
- * (scripts/check-capture-set.mjs). Getting it wrong is not subtle: stop one
- * too many and the share goes silent, keep one too many and an application
- * somebody deselected is still going out.
- *
- * Keys are whatever the caller captures by, which for applications is the
- * process id: two windows of the same application share one, and capturing it
- * twice would send that application at double volume.
+ * Which capture processes to stop and start when the set of applications changes.
+ * Keys are the process id: two windows of one application would double its volume.
  */
 
 /** The capture that stands for "everything except Gryt". */

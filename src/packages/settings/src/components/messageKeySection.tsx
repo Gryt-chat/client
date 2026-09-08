@@ -18,19 +18,13 @@ import {
 import { phraseMatches } from "../../../socket/src/lib/confirmPhrase";
 
 /**
- * The message password, for signed-in accounts (GRYT-783). Signing in on a
- * second device made a fresh identity for messages, so the new device published
- * its key over the old one and the first then warned that the server was
- * showing a key that was not yours — a hostile-server warning raised by your
- * own laptop.
- *
- * **Guests are not offered this.** They already have the 24 words.
+ * The message password, for signed-in accounts. A second device used to publish
+ * its key over the first's, which then warned about the server (GRYT-783).
  */
 
 /**
- * Typed back before the key is replaced. Named once so the check and the
- * label above it cannot drift, which is how the label came to say one thing
- * while the comparison looked for another elsewhere in the app.
+ * Typed back before the key is replaced. Named once so the check and the label
+ * cannot drift, which is how they came to disagree.
  */
 const RESET_PHRASE = "start again";
 
@@ -83,11 +77,8 @@ export function MessageKeySection() {
   }, [secret, confirm, close]);
 
   /**
-   * Take on the identity the account already has.
-   *
-   * This is the half that makes the promise true. Without it a sealed copy is
-   * stored and never used, and "your conversations come with you" would be a
-   * sentence about something that had not been built.
+   * Take on the identity the account already has. Without it a sealed copy is
+   * stored and never used, and the promise would be about nothing.
    */
   const use = useCallback(async () => {
     if (!vault) return;

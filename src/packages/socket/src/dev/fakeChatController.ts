@@ -1,14 +1,6 @@
 /**
- * The on switch for fake chat, shared between the button and the thing it runs.
- *
- * The button lives in Settings → Developer and the messages are produced in the
- * server view, which are far enough apart that this would otherwise have to go
- * through the settings store. It deliberately does not: a persisted flag means
- * a fixture that survives a restart, and the first thing you would know about
- * it is fake messages arriving in a real conversation days later.
- *
- * So it is module state, and it resets when the app does. Stopping is one
- * click, quitting is the other.
+ * The on switch for fake chat. Deliberately module state rather than a setting: a
+ * persisted flag means fake messages arriving in a real conversation days later.
  */
 import { useSyncExternalStore } from "react";
 

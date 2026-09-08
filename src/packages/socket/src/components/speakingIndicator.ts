@@ -1,9 +1,6 @@
 /**
  * One implementation of "this person is talking", for every place that shows it.
- *
- * The voice tile and the sidebar's connected-user row read the same
- * `clientsSpeaking` record and used to draw it differently — a flush 2px accent
- * outline in the sidebar, a 2.5px one on the tile. The geometry lives here now.
+ * The tile and the sidebar row drew it differently; the geometry lives here now.
  */
 
 import { generatedAvatarColor, TILE_HUES } from "@/common";
@@ -11,12 +8,8 @@ import { generatedAvatarColor, TILE_HUES } from "@/common";
 export { TILE_HUES };
 
 /**
- * A stable hue per person, derived from their id.
- *
- * The server does send a per-user `color`, but the client overwrites every one
- * of them with a flat gray in the members:list handler, so there is nothing
- * usable to read. `avatarColor` on the member is the better source where it
- * exists — see hueFromAvatarColor.
+ * A stable hue per person, derived from their id. The server's per-user `color`
+ * is overwritten with grey in the members:list handler, so it is unusable.
  */
 export function hueFromId(id: string): number {
   let hash = 0;
@@ -37,19 +30,8 @@ export type { TileTint };
 export { hueFromAvatarColor, tintFromAvatarColor };
 
 /**
- * A person's hue, in the same order of precedence `resolveAvatarSrc` picks the
- * picture: the owl they designed, then a picture they uploaded, then the owl
- * their name draws, then the id hash.
- *
- * **The designed owl has to come first.** Saving a design uploads a PNG as
- * well, so anybody with a designed owl also has an `avatarFileId` and a
- * server-computed `dominant_color` sampled off that raster — which for an owl
- * lands on the large pale face rather than the hood: a red owl on a yellow
- * tile.
- *
- * `owl` takes a nickname and a worn string rather than reusing `id`. `id` is
- * the hash seed and callers pass a serverUserId for it; `generatedAvatarColor`
- * needs the nickname the avatar renderer actually drew from.
+ * A person's hue, in the same precedence `resolveAvatarSrc` picks the picture.
+ * **The designed owl comes first**: `dominant_color` samples the pale face.
  */
 export function tileTint(
   id: string,
@@ -66,8 +48,7 @@ export function tileTint(
   if (fromAvatar) return fromAvatar;
 
   /* No colour to respect — a grey avatar, or a caller with nothing to generate
-     from. The palette is the right answer here, and these are the numbers every
-     tile used before any of this. */
+     from. These are the numbers every tile used before any of this. */
   const hue = hueFromId(id);
   return { hue, sat: 48, light: Math.min(42, maxLightForWhiteText(hue, 48)) };
 }
@@ -82,23 +63,18 @@ export function tileHue(
 }
 
 /**
- * Meet's tiles are a lighter centre falling off to a deeper edge. Two stops of
- * the same hue rather than a flat fill — flat reads as a coloured rectangle,
- * the falloff reads as a tile with someone in it.
+ * Meet's tiles are a lighter centre falling off to a deeper edge. Flat reads as a
+ * coloured rectangle; the falloff reads as a tile with someone in it.
  */
+
 /**
- * The gradient for a tint that has already been worked out.
- *
- * Exists so a caller that needs the tile, the badge and the ring can derive all
- * three from one `tileTint` rather than calling it once per use. Three calls
- * meant three chances to pass a different id, and VoiceParticipantCard took two
- * of them (GRYT-648).
+ * The gradient for a tint already worked out, so one `tileTint` serves the tile,
+ * the badge and the ring. Three calls meant three chances at a different id.
  */
 export function tileGradientFrom({ hue, sat, light }: TileTint): string {
 
-  /* The edge keeps its old relationship to the centre — a little more
-     saturated, about half as light — so the falloff still reads as a tile with
-     someone in it rather than a flat rectangle. */
+  /* The edge keeps its old relationship to the centre — a little more saturated,
+     about half as light — so the falloff still reads as a tile. */
   const edgeSat = Math.min(100, sat + 7);
   const edgeLight = Math.round(light * 0.48);
 
@@ -114,21 +90,14 @@ export function tileGradient(
 }
 
 /**
- * The speaking ring's thickness, in px.
- *
- * On a video tile it is drawn with a negative outline-offset. A tile fills its
- * grid cell exactly, so an outline at the default offset is painted into the
- * 12px gap between tiles, or clipped away at the panel's edge. Pulling it
- * inward by its own width keeps it on the tile and follows the corner radius.
+ * The speaking ring's thickness, in px. Drawn with a negative outline-offset: at
+ * the default it lands in the 12px gap between tiles, or is clipped at the edge.
  */
 export const SPEAKING_RING = 2.5;
 
 /**
- * The ring itself, as a style for an avatar.
- *
- * Takes the person's hue rather than the accent, so it is their colour — which
- * since GRYT-65 is their avatar's. Offset by 2px so the ring sits just off the
- * image the way Meet's does, instead of looking like a border on it.
+ * The ring itself, as a style for an avatar. Takes the person's hue rather than
+ * the accent, and is offset by 2px so it sits off the image, not on it.
  */
 export function speakingRingStyle(
   hue: number,

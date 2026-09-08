@@ -19,12 +19,8 @@ export interface RetryEntry {
   text: string;
   attachments: string[] | null;
   /**
-   * The file keys, by the id the server gave each upload (GRYT-761).
-   *
-   * Carried on the retry entry so a resend seals the same message with the same
-   * files. Without it a retry would send a message whose `attachments` name
-   * uploads nobody has the key to, which draws as a broken file rather than as
-   * a failed send.
+   * The file keys, by the id the server gave each upload. Carried on the retry
+   * entry so a resend seals the same message with the same files (GRYT-761).
    */
   attachmentKeys?: Record<string, SealedAttachmentKey> | null;
   replyToMessageId?: string;
@@ -50,23 +46,16 @@ interface UseChatSendParams {
   nickname: string;
   currentUserId?: string;
   /**
-   * Seal a message for this conversation, or answer null for "send it as text"
-   * (GRYT-729).
-   *
-   * Passed in rather than worked out here, because whether a conversation can
-   * be sealed depends on every member's key and the composer has to be able to
-   * draw the same answer this uses.
+   * Seal a message for this conversation, or null for "send it as text". Passed
+   * in so the composer can draw the same answer this uses (GRYT-729).
    */
   seal: (
     plaintext: string,
     attachments?: Record<string, SealedAttachmentKey>,
   ) => Promise<string | null>;
   /**
-   * Encrypt one file, or answer null for "send it as it is" (GRYT-761).
-   *
-   * Same reasoning as `seal`, and the two have to agree: a file encrypted for a
-   * message that then goes out as plaintext is an upload nobody can open,
-   * sitting in the operator's storage forever.
+   * Encrypt one file, or null for "send it as it is". Has to agree with `seal`:
+   * a file sealed for a plaintext message is an upload nobody can open (GRYT-761).
    */
   sealFile: (
     bytes: Uint8Array,
@@ -82,8 +71,7 @@ interface UseChatSendReturn {
   markLatestPendingFailed: () => void;
   /**
    * Set when a send was held back because the conversation would go out in the
-   * clear, and carries who is blocking it so the dialog can say. Null the rest
-   * of the time.
+   * clear, and carries who is blocking it. Null the rest of the time.
    */
   plaintextPrompt: SealDecision | null;
   /** Send it unencrypted, and stop asking for this conversation. */
@@ -116,8 +104,7 @@ export function useChatSend({
 
   /**
    * A ref because `markLatestPendingFailed` is declared below this and
-   * `performRetry` needs it (GRYT-765). Reordering the two would work and be a
-   * bigger diff in a file where the order is already load-bearing.
+   * `performRetry` needs it (GRYT-765).
    */
   const markLatestPendingFailedRef = useRef<() => void>(() => {});
 
@@ -144,18 +131,12 @@ export function useChatSend({
     if (target.entry.replyToMessageId) payload.replyToMessageId = target.entry.replyToMessageId;
 
     /*
-     * Sealed, exactly as the first attempt was (GRYT-765).
-     *
-     * This used to put `text` straight on the payload and emit, so a message
-     * the composer said was encrypted went to the server in the clear the
-     * moment it was retried — and nothing looked different, because the row was
-     * already on screen and the retry succeeded. Being rate-limited while
-     * sending a direct message was enough to reach it.
+     * Sealed, exactly as the first attempt was. Putting `text` on the payload
+     * sent a message the composer called encrypted in the clear (GRYT-765).
      */
     const text = target.entry.text;
-    // With the same file keys, so a resend does not produce a message whose
-    // `attachments` name uploads nobody holds the key to — which draws as a
-    // broken file rather than as a failed send (GRYT-761).
+    // With the same file keys, so a resend does not name uploads nobody holds the
+    // key to, which draws as a broken file rather than a failed send (GRYT-761).
     void seal(text, target.entry.attachmentKeys ?? undefined)
       .then((sealed) => {
         if (sealed) payload.sealed = sealed;
@@ -216,13 +197,8 @@ export function useChatSend({
     if (nonce) payload.nonce = nonce;
 
     /*
-     * Sealed or in the clear, never both — the server refuses a payload
-     * carrying each, because whichever half it kept the other was already
-     * written down (GRYT-729).
-     *
-     * A failure to seal sends nothing rather than falling back. Somebody typing
-     * into a conversation the composer says is encrypted must not have it go
-     * out in the open because a derivation threw.
+     * Sealed or in the clear, never both — the server refuses a payload carrying
+     * each. A failure to seal sends nothing rather than falling back (GRYT-729).
      */
     void seal(messageText, attachmentKeys ?? undefined)
       .then((sealed) => {
@@ -257,9 +233,8 @@ export function useChatSend({
   currentUserIdRef.current = currentUserId;
 
   /*
-   * Asked once per conversation per blocking state, so a peer rotating again
-   * asks again rather than riding on an answer about a different key. A ref,
-   * not storage: a new session asking once more is the safe way to be wrong.
+   * Asked once per conversation per blocking state, so a peer rotating again asks
+   * again. A ref, not storage: asking once more is the safe way to be wrong.
    */
   const plaintextOkRef = useRef<Set<string>>(new Set());
   const pendingSendRef = useRef<{ text: string; files: File[]; replyToMessageId?: string } | null>(null);
@@ -288,10 +263,8 @@ export function useChatSend({
 
 
     if (!canSendRef.current) {
-      // Rate limiting has its own countdown on screen, so a toast would be
-      // saying it twice. Everything else has to say something: the composer
-      // clears either way, and a message that vanishes without a word reads
-      // as one that was sent.
+      // Rate limiting has its own countdown on screen. Everything else has to
+      // say something: a message that vanishes silently reads as one that sent.
       if (isRateLimitedRef.current) return;
       if (isVoiceChannelTextChatRef.current && !textInVoiceEnabledRef.current) {
         toast.error("Text chat is disabled in this voice channel");
@@ -394,9 +367,8 @@ export function useChatSend({
 
           fileIds = uploaded.map((u) => u.fileId);
 
-          // Keyed by the id the server assigned, which is only known now. The
-          // bytes were bound to a value the package chose — see
-          // `sealAttachment` — so nothing had to be agreed before the upload.
+          // Keyed by the id the server assigned, known only now. The bytes were
+          // bound to a value the package chose — see `sealAttachment`.
           const keyed = uploaded.filter((u) => u.meta);
           attachmentKeys = keyed.length
             ? Object.fromEntries(keyed.map((u) => [u.fileId, u.meta!]))
@@ -426,10 +398,8 @@ export function useChatSend({
     };
 
     doSend();
-    // `sealFile` is in here rather than behind a ref, unlike `canSend` and the
-    // others above. It closes over the sealing decision, and a stale one is not
-    // a stale flag — a conversation that has just become sealable would hand
-    // back null and the file would go up in the clear (GRYT-761).
+    // `sealFile` is in here rather than behind a ref: a stale one is not a stale
+    // flag — a newly sealable conversation sends the file in the clear (GRYT-761).
   }, [currentConnection, currentlyViewingServer?.host, activeConversationId, serverHost, cacheKeyFor, sealFile, sendMessageWithToken, setChatMessages, setMessageCache, plaintextGateKey]);
 
   const editMessage = useCallback((messageId: string, conversationId: string, newText: string) => {

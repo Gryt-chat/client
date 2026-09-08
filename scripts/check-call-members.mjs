@@ -1,17 +1,8 @@
 /* eslint-env node */
 
 /**
- * A call can see who is in it (GRYT-680).
- *
- * The server blanks a conversation id out of `members:list` and
- * `server:clients` on purpose — both go to every member of the server, and a
- * one-to-one id is a hash of the sorted pair. That also blanked it for the
- * people in the call, and since everything here groups participants by
- * `voiceChannelId`, a direct message call drew nobody in it, including
- * yourself. It shipped that way.
- *
- * `voice:call:members` is the repair, and these are the rules it has to keep.
- * Real assertions rather than a source check, because this one is a function.
+ * A call can see who is in it. The server blanks the conversation id out of the
+ * payloads that reach everybody, and `voice:call:members` is the repair (GRYT-680).
  */
 
 import assert from "node:assert/strict";

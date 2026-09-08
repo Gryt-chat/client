@@ -1,23 +1,8 @@
 /* eslint-env node */
 
 /**
- * A returning member says what key to encrypt to them (GRYT-758).
- *
- * `publishDmKey` ran from one place: the `server:joined` handler. The server
- * emits that from one place too — inside `server:verify` — and a client holding
- * a token never goes near it, because `useSockets` sends `session:restore` on
- * connect instead.
- *
- * So encrypted DMs worked for anybody who joined a server after the feature
- * shipped and for nobody who was already a member. Nothing errored, no key ever
- * left the device, and the composer correctly said the other side had published
- * nothing. It was found by wiring the same feature into the mobile app and
- * asking where the phone should publish.
- *
- * Two halves, checked two ways. The guard is arithmetic and is imported. The
- * wiring is in a module that pulls in React, a toast library and `@/common`
- * through a Vite alias, none of which load here — which is most of why this went
- * out — so it is read as source.
+ * A returning member says what key to encrypt to them. `publishDmKey` ran only
+ * from `server:joined`, which a client holding a token never reaches (GRYT-758).
  */
 
 import assert from "node:assert/strict";
@@ -47,17 +32,8 @@ import { firstTimeOnThisSocket } from "../src/packages/socket/src/utils/publishe
 
 {
   /*
-   * The half this check missed the first time (GRYT-759).
-   *
-   * It asserted that both handlers *call* `publishDmKey`, which they did, and
-   * stopped there. `publishDmKey` then returned early unless
-   * `identitySourceUsedFor(host)` had something — an in-memory map filled by
-   * answering a challenge. A returning member restores a session instead of
-   * answering one, so the map was empty and nothing was published: the event
-   * was fixed and the guard behind it was not.
-   *
-   * Asserting a call reaches a function is not the same as asserting the
-   * function does the thing. This reads the function.
+   * The half this check missed the first time: asserting a call reaches a
+   * function is not asserting the function does the thing (GRYT-759).
    */
   const publisherFile = readFileSync(
     new URL("../src/packages/socket/src/utils/dmKeys.ts", import.meta.url),

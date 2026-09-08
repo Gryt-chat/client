@@ -7,11 +7,8 @@ import {
 } from "../../../../lib/electron";
 
 /**
- * Every server this machine hosts, and the controls for each one.
- *
- * Was a single server's worth of state, because only one could exist. The list
- * is the shape now — one SFU serves all of them, so a second costs a server
- * process and an image worker rather than a whole stack.
+ * Every server this machine hosts, and the controls for each one. One SFU serves
+ * all of them, so a second costs a server process and an image worker.
  */
 export function useEmbeddedServer() {
   const api = getElectronAPI();
@@ -64,9 +61,8 @@ export function useEmbeddedServer() {
     const unsubStatus = api.onEmbeddedServerStatusChanged((next) => {
       setServers(next);
 
-      // Only when the set of servers changes, not on every status change. A
-      // server starting emits twice on its own and this is one IPC round trip
-      // per server — refetching an autostart flag that cannot have moved.
+      // Only when the set of servers changes, not on every status change: a
+      // server starting emits twice, and this is one IPC round trip each.
       setAutoStartState((prev) => {
         const known = Object.keys(prev);
         const missing = next.filter((s) => !known.includes(s.id));
@@ -159,11 +155,8 @@ export function useEmbeddedServer() {
   );
 
   /**
-   * Change a server's ports.
-   *
-   * Returns the error text rather than a boolean, because every way this fails
-   * is something the person can act on — a port in use, a number out of range,
-   * the server still running — and "didn't work" would waste that.
+   * Change a server's ports. Returns the error text rather than a boolean: every
+   * way this fails is something the person can act on.
    */
   const updatePorts = useCallback(
     async (

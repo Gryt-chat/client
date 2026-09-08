@@ -7,13 +7,8 @@ import type { ChatMessage } from "../components/chatUtils";
 import { uploadChatFile } from "./uploadChatFile";
 
 /**
- * A thread is a discussion that hangs off one root message. Its replies carry a
- * thread_id and are kept out of the channel's main list (see handleNewMessage);
- * this hook owns everything about them on the client: the per-root summaries
- * that draw the "N replies" line, and the one open thread panel.
- *
- * It reuses chat:send for replies — a reply is a normal message that carries a
- * threadId — so the server does no new work per reply. GRYT-981.
+ * A thread hangs off one root message; its replies carry a thread_id and stay out
+ * of the channel list. Replies reuse chat:send, so the server does no more work.
  */
 
 export interface ThreadSummary {
@@ -48,13 +43,8 @@ interface ThreadSocket {
 }
 
 /**
- * Opening a thread is reading it.
- *
- * Three things at once because they are one event and splitting them is how
- * they drift: the panel stops counting the thread unread, the mention count on
- * the topic row goes, and the server is told so it stays gone on the next
- * connect. Opening the channel does not cover the last one any more — it
- * clears the timeline and leaves the threads alone (GRYT-1014).
+ * Opening a thread is reading it: the unread count, the mention count and the
+ * server are done together because splitting them is how they drift (GRYT-1014).
  */
 function enterThread(
   socket: ThreadSocket,
@@ -145,9 +135,8 @@ export function useThreads(
       }
     };
 
-    // Merged, not replaced: thread:updated carries the counters and status that
-    // changed, not the whole thread. Overwriting dropped the title, so the panel
-    // header fell back to "Thread" the moment anybody replied.
+    // Merged, not replaced: thread:updated carries what changed. Overwriting
+    // dropped the title, so the header fell back to "Thread" on every reply.
     const onUpdated = (t: Partial<ThreadSummary> & { conversation_id: string; thread_id: string; root_message_id: string }) => {
       if (t.conversation_id !== conversationId) return;
       setSummaries((prev) => ({
@@ -186,9 +175,8 @@ export function useThreads(
         // tags the forum index already knew about.
         const thread = { ...o?.thread, ...p.thread } as ThreadSummary;
 
-        /* A page fetched with `before` goes in front of what is held; the
-           first page replaces it. Without the distinction, scrolling back
-           threw away everything newer than the page that just arrived. */
+        /* A page fetched with `before` goes in front of what is held; the first
+           page replaces it. Without that, scrolling back threw away the newer. */
         if (p.before && o) {
           const known = new Set(o.messages.map((m) => m.message_id));
           const older = items.filter((m) => !known.has(m.message_id));
@@ -234,20 +222,8 @@ export function useThreads(
     };
 
     /*
-     * The three things that happen to a message after it is posted.
-     *
-     * They arrive as ordinary chat events keyed on the message, not on the
-     * thread — `chat:react`, `chat:delete` and `chat:edit` have always worked
-     * on a thread message, because a thread message is an ordinary message
-     * with a thread id. Nothing here listened for the results, so a reaction
-     * somebody added, a moderator's delete, or an edit stayed invisible until
-     * the panel was closed and reopened. GRYT-1000 turned the UI for all three
-     * on, which is what made the gap worth closing.
-     *
-     * Guarded on the open thread rather than on `thread_id`: `chat:edited` and
-     * `chat:reaction` carry the whole message, so the id is there, but a delete
-     * carries only the conversation and the message. Matching on what is in
-     * the panel answers all three the same way.
+     * Reactions, deletes and edits arrive keyed on the message, not the thread.
+     * Guarded on the open thread because a delete carries no thread id.
      */
     const patchOpen = (
       messageId: string,
@@ -307,9 +283,8 @@ export function useThreads(
       if (message) toast.error(message);
     };
 
-    // A reply the server refused (too long, muted, thread closed) must stop
-    // looking like it sent. It is marked failed the way the main chat marks a
-    // failed message, instead of sitting in the panel until a reload.
+    // A reply the server refused must stop looking like it sent. Marked failed
+    // the way the main chat marks one, instead of sitting there until a reload.
     const onChatError = (e: { message?: string } | string) => {
       const nonce = pendingReply.current;
       if (!nonce) return;
@@ -405,16 +380,8 @@ export function useThreads(
   }, [socketConnection, conversationId, serverHost]);
 
   /**
-   * Post into the open thread.
-   *
-   * Files go up the same way a channel's do — `uploadChatFile` is the shared
-   * helper, and `chat:send` is the same event with a `threadId` alongside the
-   * attachments. Nothing here is sealed: sealing is a DM feature and a thread
-   * cannot be started in a DM, so the seal argument is left off rather than
-   * threaded through as null.
-   *
-   * The optimistic row carries local ids and object URLs like the channel's
-   * does, so an image appears while it uploads instead of after.
+   * Post into the open thread. Nothing here is sealed: a thread cannot be started
+   * in a DM, so the seal argument is left off rather than threaded through as null.
    */
   const sendReply = useCallback((text: string, files: File[] = [], replyToMessageId?: string) => {
     const socket = asSocket(socketConnection);
@@ -468,8 +435,7 @@ export function useThreads(
           const msg = err instanceof Error && err.message ? err.message : "Failed to upload file(s)";
           toast.error(msg);
           // The optimistic row is marked rather than removed, the same way a
-          // failed send is in a channel — a reply that vanishes reads as one
-          // that went.
+          // failed send is in a channel — a reply that vanishes reads as sent.
           setOpen((o) =>
             o
               ? {
@@ -496,15 +462,8 @@ export function useThreads(
   }, [socketConnection, conversationId, serverHost, currentUserId, currentUserNickname]);
 
   /**
-   * Ask for the page before the oldest reply held.
-   *
-   * A no-op while one is in flight or when the last page came back short — the
-   * scroll handler fires on every frame of a flick, and without the guard a
-   * fast scroll to the top would send a dozen identical fetches.
-   *
-   * Against a server that predates the cursor, `before` is ignored and the
-   * whole thread comes back as a first page. That is what happens today, so an
-   * old server is no worse off.
+   * Ask for the page before the oldest reply held. A no-op while one is in flight
+   * or after a short page: the scroll handler fires on every frame of a flick.
    */
   const loadOlder = useCallback(() => {
     const socket = asSocket(socketConnection);

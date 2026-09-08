@@ -1,16 +1,8 @@
 /* eslint-env node */
 
 /**
- * Where the sealed seed is stored on the account (GRYT-783).
- *
- * The interesting failure here is not cryptographic, it is destructive. The
- * Keycloak Account API *replaces* the representation rather than patching it,
- * so posting `{ attributes: { grytMessageVault } }` on its own is a request to
- * have no email address and none of whatever else the realm's profile declares.
- * A save that silently unsets somebody's email would look like it worked.
- *
- * So the merge is a pure function and this checks it directly. The request
- * around it is four lines and does not need mocking to be read.
+ * Where the sealed seed is stored on the account. The Keycloak Account API
+ * *replaces* the representation, so a naive post unsets the email (GRYT-783).
  */
 
 import assert from "node:assert/strict";
@@ -74,9 +66,8 @@ const account = () => ({
 
 // ── junk in the attribute is absence, not an exception ──────────────────────
 {
-  // Somebody else's data, or a half-written value. Reading it must not throw:
-  // the person still has to be able to use the device they are on, and the
-  // next save overwrites it.
+  // Somebody else's data, or a half-written value. Reading it must not throw, and
+  // the next save overwrites it.
   for (const junk of ["not json at all", "{}", '{"type":"something-else"}', "null", "[]"]) {
     assert.equal(
       sealedVaultFrom({ attributes: { [VAULT_ATTRIBUTE]: [junk] } }),

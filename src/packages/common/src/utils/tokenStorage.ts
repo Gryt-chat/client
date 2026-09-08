@@ -94,11 +94,8 @@ export function removeServerAccessToken(host: string): void {
 
 // ── File tokens ───────────────────────────────────────────────────
 //
-// Reads uploads on one server and nothing else, and it travels in the query
-// string of an `<img src>` because an image element cannot send a header. Kept
-// apart from the access token for exactly that reason: this one ends up in URLs,
-// in logs and in anything somebody pastes, and what leaks should be the weaker
-// of the two. See GRYT-740.
+// Reads uploads on one server and nothing else, and travels in the query string
+// of an `<img src>` — so what leaks is the weaker of the two (GRYT-740).
 
 export function getServerFileToken(host: string): string | null {
   return getStoredAccessToken(`fileToken_${host}`);
@@ -171,12 +168,8 @@ export function migrateAccessTokensToMode(mode: AccessTokenStorageMode): void {
 
 
 /**
- * Your own per-server user id, read out of the access token for that host.
- *
- * The member list is the usual source of a serverUserId, but it only ever tells
- * you about other people — nothing in it says which entry is you. The token is
- * the one place the client holds its own, and it is needed wherever your avatar
- * has to be seeded the same way everyone else's is.
+ * Your own per-server user id, read out of the access token for that host. The
+ * member list only tells you about other people; the token is the one place.
  */
 export function getOwnServerUserId(host: string | null | undefined): string | undefined {
   if (!host) return undefined;
@@ -191,18 +184,8 @@ export function getOwnServerUserId(host: string | null | undefined): string | un
 }
 
 /**
- * The seed to draw your own generated avatar from: the server you are looking
- * at, then any server you are on, and only then the account.
- *
- * It has to be the id the server knows you by, so other people see the same
- * face — but the global surfaces (the All Servers profile tab, the sidebar
- * before you open anything) have no server in scope, and seeding those on the
- * Gryt account drew you a second face right next to the first one.
- *
- * Nickname would match everywhere by construction and was rejected for it.
- * Nicknames are not unique, so two people called the same thing would share a
- * face in the member list the avatars exist to disambiguate — and a rename
- * would change the face people recognise you by.
+ * The seed to draw your own generated avatar from: this server, then any server
+ * you are on, then the account. Nickname would match but is not unique.
  */
 export function ownAvatarSeed(
   hosts: Array<string | null | undefined>,

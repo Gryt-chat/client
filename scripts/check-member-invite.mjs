@@ -1,16 +1,8 @@
 /* eslint-env node */
 
 /**
- * How a member's invite reads on the Members tab (GRYT-923).
- *
- * The row answers "how did this person get in, and is that door still open",
- * and somebody acts on the answer by revoking. So the failure that matters is
- * not a wrong label — it is a shut invite drawn as live, which puts a Revoke
- * button on a code the server no longer has, or a live one drawn as shut, which
- * leaves the actual door open.
- *
- * Run against the real module rather than a copy — Node strips the types on
- * import, which is why this lives in .mjs and the source stays .ts.
+ * How a member's invite reads on the Members tab. The failure that matters is a
+ * shut invite drawn as live, or a live one drawn as shut (GRYT-923).
  */
 
 import assert from "node:assert/strict";
@@ -59,9 +51,8 @@ for (const note of ["", "   ".trim()]) {
 /* ── deleted, which is the one a two-state version gets wrong ────────────── */
 
 /*
- * `revoked: null` means the invite row is gone — somebody deleted it after this
- * member arrived. Testing `revoked === true` would leave it drawn as live, with
- * a Revoke button acting on a code the server does not have.
+ * `revoked: null` means the invite row is gone. Testing `revoked === true` would
+ * leave it drawn as live, with a Revoke button on a code that does not exist.
  */
 {
   const s = inviteState({ ...base, revoked: null, note: null, usesConsumed: null, maxUses: null });

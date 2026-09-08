@@ -1,11 +1,5 @@
-/**
- * Work out which hop between this client and a server is broken, so "chat works
- * and voice does not" does not mean reading an SFU log by hand.
- *
- * The checks run in the order the connection does, so the first failure is the
- * one to act on. **Anything after it is reported as untested**, never as
- * passing or failing.
- */
+/** The checks run in the order the connection does, so the first failure is the
+    one to act on and anything after it is reported as untested. */
 
 export type CheckId =
   | "server-http"
@@ -51,11 +45,8 @@ const ICE_TIMEOUT_MS = 10000;
 const CALL_TIMEOUT_MS = 15000;
 
 /**
- * Whether this client is allowed to speak plain ws/http at all.
- *
- * The rule is the browser's, not ours: an HTTPS page may not open a plain
- * connection to anything but localhost. The desktop app serves its client from
- * http://127.0.0.1, so it is exempt; app.gryt.chat is not.
+ * Whether this client is allowed to speak plain ws/http at all. The rule is the
+ * browser's: the desktop app serves from 127.0.0.1 and is exempt, app.gryt.chat is not.
  */
 function isHttpsPage(): boolean {
   try {
@@ -66,12 +57,8 @@ function isHttpsPage(): boolean {
 }
 
 /**
- * One advertised address, as a WebSocket URL this client could actually use.
- *
- * Deliberately not the voice engine's version of this. That one caches a
- * choice for the session and falls back to the first address when everything
- * fails, which is the behaviour being diagnosed. Here each address is taken at
- * face value and tried on its own.
+ * One advertised address, as a WebSocket URL this client could use. Not the voice
+ * engine's version, which caches and falls back — the behaviour being diagnosed.
  */
 function sfuWsUrl(raw: string): string {
   const hasScheme = raw.startsWith("ws://") || raw.startsWith("wss://");
@@ -109,9 +96,8 @@ async function probe(
     await fetch(url, { method: "GET", signal: controller.signal, cache: "no-store" });
     return { ok: true, latencyMs: Math.round(performance.now() - started) };
   } catch (err) {
-    // An abort and a refused connection are different problems to the person
-    // reading this: one is a firewall swallowing packets, the other is nothing
-    // listening. The distinction survives into the message.
+    // An abort and a refused connection are different problems to the reader: a
+    // firewall swallowing packets, or nothing listening.
     const aborted = err instanceof Error && err.name === "AbortError";
     return {
       ok: false,
@@ -156,12 +142,8 @@ async function checkServerHttp(host: string): Promise<CheckResult> {
 }
 
 /**
- * Every advertised SFU address, tried separately.
- *
- * The one that matters most. `server:details` hands the client a list and it
- * picks whichever answers fastest, so a person whose LAN address is in that
- * list and whose public one is not sees "voice is broken" rather than "two of
- * these three are not reachable from here".
+ * Every advertised SFU address, tried separately. `server:details` hands over a
+ * list and the client picks the fastest, so one bad address reads as broken voice.
  */
 async function checkSfuHttp(sfuHosts: string[]): Promise<CheckResult> {
   if (sfuHosts.length === 0) {
@@ -214,9 +196,8 @@ async function checkSfuHttp(sfuHosts: string[]): Promise<CheckResult> {
     };
   }
 
-  // Some reachable and some not is normal rather than wrong: a server usually
-  // advertises a LAN address and a public one, and any given person is on one
-  // side or the other. Saying so stops a green tick looking like a lie.
+  // Some reachable and some not is normal: a server advertises a LAN address and
+  // a public one, and any given person is on one side or the other.
   return {
     id: "sfu-http",
     label: "Voice signalling reachable",
@@ -288,12 +269,8 @@ function checkSfuWebSocket(url: string): Promise<CheckResult> {
 }
 
 /**
- * Whether UDP leaves this machine at all. A renderer cannot send raw UDP, so
- * this gathers ICE candidates against the STUN servers instead, exercising the
- * same outbound path.
- *
- * **Narrower than it looks, and the wording says so.** A pass means UDP gets
- * out and a public address came back; it does not prove the SFU's port is open.
+ * Whether UDP leaves this machine. A renderer cannot send raw UDP, so this gathers
+ * ICE candidates instead. It does not prove the SFU's own port is open.
  */
 function checkMedia(stunHosts: string[]): Promise<CheckResult> {
   return new Promise((resolve) => {
@@ -381,10 +358,8 @@ function checkMedia(stunHosts: string[]): Promise<CheckResult> {
 }
 
 /**
- * The route media took. **Found through `selectedCandidatePairId`, not a pair
- * flagged `nominated`** — nomination is the SFU's job here, and Chrome reports
- * `nominated: false` on every pair including the one it is using, so filtering
- * on it degrades this line to "media flowed".
+ * The route media took. **Found through `selectedCandidatePairId`, not `nominated`**
+ * — Chrome reports `nominated: false` on every pair, including the one it uses.
  */
 function describeSelectedPair(stats: RTCStatsReport): string {
   const generic = "Connected to the voice server and media flowed.";
@@ -414,13 +389,8 @@ function describeSelectedPair(stats: RTCStatsReport): string {
 }
 
 /**
- * What the server hands back for a throwaway test room.
- *
- * `join_token` is not a token. It is the whole join payload the SFU expects —
- * room, server, server password and the user's own token — and it goes across
- * as the body of `client_join` unchanged. Sending anything else, including a
- * tidier object built out of its parts, gets the connection refused, because
- * the SFU validates the server id and password inside it.
+ * `join_token` is not a token. It is the whole join payload the SFU expects, and it
+ * goes across unchanged — a tidier object built from its parts is refused.
  */
 export interface DoctorRoomGrant {
   room_id: string;
@@ -436,9 +406,8 @@ export interface DoctorRoomGrant {
 }
 
 /**
- * Ask the SFU for a real connection into an empty room. The checks above prove
- * it is reachable; this proves media gets through, which a firewall passing TCP
- * 5005 and dropping UDP 3478 does not. The prize is `selectedPair`.
+ * Ask the SFU for a real connection into an empty room. This proves media gets
+ * through, which a firewall passing TCP 5005 and dropping UDP 3478 does not.
  */
 async function checkCall(
   grant: DoctorRoomGrant,
@@ -456,9 +425,8 @@ async function checkCall(
   });
   const ws = new WebSocket(url);
 
-  // Something to negotiate. A data channel rather than a microphone: this must
-  // not ask for a device, and a permission prompt in the middle of a
-  // diagnostic would be its own bug report.
+  // A data channel rather than a microphone: this must not ask for a device, and a
+  // permission prompt inside a diagnostic would be its own bug report.
   pc.createDataChannel("gryt-doctor");
 
   const cleanUp = () => {
@@ -527,10 +495,8 @@ async function checkCall(
         return;
       }
 
-      // Offer and candidates are the engine's protocol, not this one's, and
-      // repeating it here would be a second copy to keep in step. ICE state is
-      // enough for a yes or no, so the negotiation is left to the peer
-      // connection and only the outcome is read.
+      // Offer and candidates are the engine's protocol, and repeating it here would
+      // be a second copy to keep in step. ICE state is enough for a yes or no.
       if (message.event === "offer" && message.data) {
         void (async () => {
           try {
@@ -615,19 +581,15 @@ export interface DoctorInput {
   sfuHosts: string[];
   stunHosts: string[];
   /**
-   * Asks the server for a throwaway room, or null when the caller does not
-   * want a real call attempted. Left out, the Doctor stops at "the SFU is
-   * reachable" and says the last check was not run.
+   * Asks the server for a throwaway room, or null when the caller does not want a
+   * real call attempted. Left out, the Doctor stops at "the SFU is reachable".
    */
   requestDoctorRoom?: () => Promise<DoctorRoomGrant>;
 }
 
 /**
- * Run the checks in connection order, reporting each as it lands.
- *
- * `onUpdate` fires after every check so the modal fills in rather than sitting
- * blank: the SFU probes alone can take four seconds against an address that is
- * being dropped rather than refused.
+ * Run the checks in connection order, reporting each as it lands, so the modal
+ * fills in — the SFU probes alone take four seconds against a dropped address.
  */
 export async function runDoctor(
   input: DoctorInput,
@@ -703,10 +665,8 @@ export async function runDoctor(
 
   set("call", { status: "running" });
 
-  // The grant and the call are separate failures and used to share a message.
-  // A WebSocket this client could not construct was reported as the server
-  // refusing a room, which sends somebody to look at a server that did exactly
-  // what it was asked.
+  // The grant and the call are separate failures and used to share a message. A
+  // WebSocket this client could not construct read as the server refusing a room.
   let grant: DoctorRoomGrant;
   try {
     grant = await input.requestDoctorRoom();

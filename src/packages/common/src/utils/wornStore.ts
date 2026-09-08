@@ -1,15 +1,6 @@
 /**
- * The look this account is currently wearing, kept locally.
- *
- * The servers each hold their own copy — it is per-server the same way the
- * nickname and the avatar are. This is the account-level answer, and it exists
- * for the two moments where there is no server to ask: "Sync to all", which
- * needs a single source rather than whichever server answered last, and joining
- * a server for the first time, where the look has to come from somewhere before
- * that server has ever heard of it.
- *
- * Null means no designed look: the owl the nickname draws, or an uploaded
- * picture.
+ * The look this account is currently wearing, kept locally. The account-level
+ * answer, for the two moments where there is no server to ask.
  */
 
 const KEY = "avatarWorn";

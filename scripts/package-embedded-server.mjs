@@ -82,10 +82,8 @@ if (nativeEntries.size === 0) {
   throw new Error("Cannot package embedded server: no native runtime binaries found");
 }
 
-// One signed resource instead of ~14,000 loose files. Besides making the app
-// smaller on disk, this lets old Squirrel.Mac clients finish staging before
-// their legacy four-second forced-quit timer fires. Fixed timestamps and entry
-// order keep blockmap deltas stable when the embedded components did not move.
+// One signed resource instead of ~14,000 loose files, which also lets old
+// Squirrel.Mac clients finish staging. Fixed timestamps keep blockmaps stable.
 await create(
   {
     cwd: sourceDir,

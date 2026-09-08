@@ -3,25 +3,13 @@ import type { SealedAttachmentKey } from "@/common";
 import type { AttachmentMeta } from "../components/chatUtils";
 
 /**
- * Turning an encrypted upload back into something the message row can draw
- * (GRYT-761). The server holds ciphertext with no name and no dimensions;
- * everything a row needs came back inside the sealed message.
- *
- * `local_url` is the seam — it exists for the optimistic preview of a file
- * still uploading, and a blob URL of the decrypted bytes fits it exactly.
+ * Turning an encrypted upload back into something the message row can draw. The
+ * server holds ciphertext; everything a row needs came inside the message.
  */
 
 /**
- * What the row should show for one decrypted attachment.
- *
- * `has_thumbnail` is false and cannot be otherwise: a thumbnail is made by
- * decoding the picture, and the server was handed noise. An encrypted image
- * draws from the full file. GRYT-764 is the version with previews.
- *
- * `mime` and `original_name` are the sender's, from inside the envelope, and
- * are not verified by anybody. That is the same footing an unencrypted
- * `original_name` has always been on — it is a string somebody chose — and it
- * is why the renderer dispatches on it rather than sniffing the bytes.
+ * What the row should show for one decrypted attachment. `has_thumbnail` cannot
+ * be true: the server was handed noise. `mime` is the sender's, unverified.
  */
 export function sealedAttachmentMeta(
   fileId: string,
@@ -41,12 +29,8 @@ export function sealedAttachmentMeta(
 }
 
 /**
- * Fetch one attachment and open it.
- *
- * Downloaded with `credentials: "omit"` and no bearer token, deliberately. The
- * download route does not require one, and the bytes are useless without the
- * key — so sending a token here would put a credential on a request that does
- * not need it, in a URL that ends up in a blob the page holds.
+ * Fetch one attachment and open it. `credentials: "omit"` and no bearer token:
+ * the route needs none, and the bytes are useless without the key.
  */
 export async function fetchSealedAttachment({
   url,
@@ -62,9 +46,8 @@ export async function fetchSealedAttachment({
 
   const plain = openFile(new Uint8Array(await resp.arrayBuffer()), key);
 
-  // The sender's type, not the server's — the server only ever saw
-  // `application/octet-stream`. A blob with the right type is what lets an
-  // `<img>` or a `<video>` take the URL without anything else being told.
+  // The sender's type, not the server's — the server only saw
+  // `application/octet-stream`, and an `<img>` needs the real one.
   return new Blob([plain as BlobPart], {
     type: key.mime || "application/octet-stream",
   });

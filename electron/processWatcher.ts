@@ -1,37 +1,6 @@
 /**
- * Which of the programs you asked about are running (GRYT-931).
- *
- * ## The decision this file is
- *
- * A plugin wanting to say "playing Factorio" needs the process list, and the
- * renderer has no way to ask for one — `contextIsolation` is on, `nodeIntegration`
- * is off, and nothing process-shaped is on `electronAPI`. That is deliberate, so
- * the question was never "how do we expose the process list" but "what is the
- * smallest thing that makes a now-playing plugin possible".
- *
- * **It is not the process list.** The list of every program you have open is a
- * remarkably personal document: which bank, which browser, which chat app,
- * whether you are running a CV editor at eleven on a Tuesday. Handing that to a
- * plugin, or even to the renderer, to get one game name out of it is the wrong
- * trade by a distance.
- *
- * So this reads the list and never passes it on. You write down the programs you
- * want seen; Gryt reports which of *those* are running and nothing else. The
- * capability a plugin asks for can then honestly read "see when you are running
- * a program you have listed" rather than "read every program you have open",
- * because that is what it does.
- *
- * The one place the full list surfaces is `listRunningPrograms`, which the
- * settings screen calls so you can pick from what is open rather than guessing
- * at an executable name. That goes to the person about their own machine, on
- * demand, and never to a plugin.
- *
- * ## What it costs
- *
- * A spawn every `intervalMs`. There is no process list in Node, so this shells
- * out — `/proc` on Linux, `ps` on macOS, `tasklist` on Windows — and that is why
- * the interval is measured in seconds rather than milliseconds and why the
- * watcher stops itself when nothing is being watched for.
+ * Which of the programs you asked about are running. Reads the process list and
+ * never passes it on — a plugin gets "yes to one you listed", not the list.
  */
 
 import { execFile } from "child_process";
@@ -41,9 +10,8 @@ import { basename } from "path";
 /** One thing you asked to be told about. */
 export interface WatchedProgram {
   /**
-   * The executable, as you would name it: `factorio`, `Factorio.exe`,
-   * `/usr/games/factorio`. Normalised before it is compared, so all three are
-   * the same entry.
+   * The executable as you would name it. Normalised before comparing, so
+   * `factorio`, `Factorio.exe` and `/usr/games/factorio` are one entry.
    */
   match: string;
   /** What to call it on screen. `Factorio`, not `factorio.exe`. */
@@ -51,12 +19,8 @@ export interface WatchedProgram {
 }
 
 /**
- * How often to look.
- *
- * Ten seconds because this runs for as long as the app does and the thing it is
- * watching for changes on the scale of launching a game. A second would be
- * thirty-six hundred spawns an hour to notice something that takes a minute to
- * load.
+ * How often to look. Seconds rather than milliseconds because this spawns a
+ * process and the thing it watches for changes on the scale of launching a game.
  */
 export const DEFAULT_INTERVAL_MS = 10_000;
 
@@ -64,13 +28,8 @@ export const DEFAULT_INTERVAL_MS = 10_000;
 export const MAX_WATCHED = 32;
 
 /**
- * An executable as written, reduced to the thing worth comparing.
- *
- * A path becomes its last segment, a `.exe` loses it, and case goes — so
- * `C:\\Games\\Factorio.exe`, `Factorio.EXE` and `factorio` all land on the same
- * string. Windows is case-insensitive about this and macOS usually is; matching
- * case-sensitively would mean somebody typing `factorio` never matching the
- * `Factorio.exe` they actually run, and never finding out why.
+ * Path to last segment, `.exe` off, lowercased. Matching case-sensitively would
+ * mean `factorio` never matching the `Factorio.exe` somebody actually runs.
  */
 export function normaliseExecutable(raw: string): string {
   const trimmed = raw.trim().replace(/\\/g, "/");
@@ -79,12 +38,8 @@ export function normaliseExecutable(raw: string): string {
 }
 
 /**
- * Which watched programs are in this list of running executables.
- *
- * Pure, and separated from the reading so it can be tested without a machine
- * that happens to have Factorio open. Returns the names in the order they were
- * watched, deduplicated: two entries pointing at the same executable are one
- * answer, not two.
+ * Which watched programs are in this list of running executables. Names in
+ * watch order, deduplicated: two entries for one executable are one answer.
  */
 export function matchWatched(
   running: readonly string[],
@@ -107,12 +62,8 @@ export function matchWatched(
 }
 
 /**
- * A watch list as it comes back off disk, which is to say not to be trusted.
- *
- * `gryt-global.json` is a file on the person's own machine, so this is about
- * surviving an edit rather than about an attacker — but a `match` that is a
- * number, or a list of nine thousand entries, should produce a shorter list
- * rather than a crash on the next poll.
+ * A watch list off disk, which is to say not to be trusted. A `match` that is a
+ * number should give a shorter list rather than a crash on the next poll.
  */
 export function readWatchList(value: unknown): WatchedProgram[] {
   if (!Array.isArray(value)) return [];
@@ -162,35 +113,13 @@ function run(command: string, args: string[]): Promise<string> {
 }
 
 /**
- * Every running executable, as bare names.
- *
- * Linux reads `/proc` rather than spawning, which is both cheaper and the only
- * one of the three that can be done without a subprocess. The other two shell
- * out because there is no other way.
- *
- * A failure is an empty list, not a throw. This is on a timer for the life of
- * the app: a `ps` that fails once should mean one poll that found nothing, and
- * a watcher that stops on the first hiccup is worse than one that misses a
- * cycle. The cost is that "nothing matched" and "could not look" are the same
- * answer, which is why nothing here reports a game *stopping* as a fact — it
- * reports the list, and the caller sees it shrink.
+ * Every running executable, as bare names. A failure is an empty list, not a
+ * throw: this is on a timer, and one failed `ps` should cost one cycle.
  */
+
 /**
- * Linux, out of `/proc`.
- *
- * `comm` is what the kernel calls the task, and it is **truncated to fifteen
- * characters** — `at-spi2-registr` and `arch-update-tra` are what a real box
- * answers. That is survivable because the picker reads the same file, so
- * somebody chooses the truncated name and it matches the truncated name. What
- * it does mean is that typing a long executable in by hand will not match, and
- * that a long name reads oddly in the list. Measured on CachyOS: 389 processes,
- * 350 distinct.
- *
- * `userOnly` drops kernel threads, which have an empty `cmdline` and are more
- * than three quarters of that count. Only the picker wants it — the matching
- * path has a list to compare against and does not care what else is in there —
- * and it costs a second small read per process, which is why it is not the
- * default. On the same box it takes 350 down to 69.
+ * Linux, out of `/proc`. `comm` is truncated to fifteen characters, so a long
+ * executable typed by hand never matches. `userOnly` drops kernel threads.
  */
 async function listLinuxProcesses(userOnly: boolean): Promise<string[]> {
   try {
@@ -222,9 +151,8 @@ export async function listRunningExecutables(): Promise<string[]> {
   if (process.platform === "linux") return listLinuxProcesses(false);
 
   if (process.platform === "win32") {
-    /* CSV rather than the table, because the table pads with spaces and its
-       column widths depend on the longest row. The first field is the image
-       name; the quotes come off with the split. */
+  /* CSV rather than the table: the table pads with spaces and its column
+     widths depend on the longest row. */
     const out = await run("tasklist.exe", ["/nh", "/fo", "csv"]);
     return out
       .split(/\r?\n/)
@@ -232,9 +160,8 @@ export async function listRunningExecutables(): Promise<string[]> {
       .filter(Boolean);
   }
 
-  /* macOS and anything else with a `ps`. `comm=` is the executable path with no
-     header and no arguments — arguments would put whatever somebody typed on a
-     command line into this list, and none of it is wanted. */
+  /* `comm=` is the executable path with no header and no arguments — arguments
+     would put whatever somebody typed on a command line into this list. */
   const out = await run("ps", ["-axo", "comm="]);
   return out
     .split("\n")
@@ -243,15 +170,14 @@ export async function listRunningExecutables(): Promise<string[]> {
 }
 
 /*
- * Chromium and Electron apps run a handful of child processes each, all named
- * after the parent. Somebody picking a program wants Discord, not "Discord
- * Helper (Renderer)" three times.
+ * Chromium and Electron apps run child processes named after the parent.
+ * Somebody picking a program wants Discord, not "Discord Helper (Renderer)".
  */
 const HELPER = /\s(Helper|Renderer|Plugin|GPU|Crashpad)\b|\(Renderer\)|\(Plugin\)|\(GPU\)/i;
 
 /*
- * Windows service hosts. Every machine runs a dozen `svchost.exe` and none of
- * them is a thing a person launched or would recognise.
+ * Windows service hosts. Every machine runs a dozen and none of them is a thing
+ * a person launched.
  */
 const WINDOWS_NOISE = new Set([
   "svchost", "dllhost", "conhost", "runtimebroker", "sihost", "taskhostw",
@@ -261,18 +187,8 @@ const WINDOWS_NOISE = new Set([
 ]);
 
 /**
- * Whether this looks like something a person opened, rather than plumbing.
- *
- * Cannot be exact, and does not have to be: this only decides what is offered
- * in a picker. Anything filtered out too eagerly can still be typed in by hand,
- * which is why the settings screen keeps a text field beside the list.
- *
- * macOS is the one that can be answered well — a program somebody launched is
- * an `.app` bundle, and everything else under `/usr/libexec` and `/System` is
- * a daemon. 1178 processes come down to about 40 that way. Windows gets a deny
- * list because `tasklist` gives bare names with no path to judge by, and Linux
- * gets nothing, because `/proc/comm` is bare names too and there is no
- * convention to lean on.
+ * Whether this looks like something a person opened. Only decides what a picker
+ * offers, so anything dropped too eagerly can still be typed in by hand.
  */
 function looksLikeAnApp(raw: string): boolean {
   const name = basename(raw.replace(/\\/g, "/"));
@@ -292,12 +208,8 @@ function looksLikeAnApp(raw: string): boolean {
 }
 
 /**
- * What is running, for a person choosing what to watch.
- *
- * Deduplicated and sorted, because the raw list is one entry per process and a
- * browser is thirty of them. This is the only function here that hands a list
- * of programs anywhere, and it goes to the settings screen — the person, about
- * their own machine, when they asked for it. Never to a plugin.
+ * What is running, for a person choosing what to watch. The only function here
+ * that hands a list of programs anywhere, and it goes to the settings screen.
  */
 export async function listRunningPrograms(): Promise<string[]> {
   const running =
@@ -347,9 +259,8 @@ export function createProcessWatcher({
   let matched: string[] = [];
   let timer: NodeJS.Timeout | null = null;
   let stopped = false;
-  /* Set while a poll is in flight. `ps` on a loaded machine can take longer
-     than the interval, and two overlapping polls would spawn two processes to
-     answer the same question. */
+  /* `ps` on a loaded machine can take longer than the interval, and two
+     overlapping polls would spawn two processes for the same question. */
   let polling = false;
 
   function announce(next: string[]): void {

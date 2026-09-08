@@ -7,12 +7,7 @@ import { useSockets } from "@/socket";
 
 /**
  * Keeps the desktop tray in step with voice, and handles its menu commands.
- * Renders nothing: the main process cannot see any of this on its own.
- *
- * Mounted at the app root rather than inside the voice UI on purpose. Controls
- * only exists while you are looking at a voice channel, so publishing from
- * there would leave the tray showing a call that ended the moment you navigated
- * away.
+ * Mounted at the app root: Controls only exists while a voice channel is open.
  */
 export function TrayVoiceState() {
   const { isConnected, currentServerConnected } = useSFU();
@@ -26,9 +21,8 @@ export function TrayVoiceState() {
     setIsDeafened,
   } = useSettings();
 
-  // A server-side mute is still a mute as far as the tray is concerned — the
-  // question it answers is "is my microphone reaching anyone", not "who
-  // switched it off".
+  // A server-side mute is still a mute here: the question is "is my microphone
+  // reaching anyone", not "who switched it off".
   const muted = isMuted || isServerMuted;
   const deafened = isDeafened || isServerDeafened;
   const serverName =
@@ -48,9 +42,8 @@ export function TrayVoiceState() {
   useEffect(() => {
     return window.electronAPI?.onTrayVoiceCommand((command) => {
       if (command === "toggle-mute") {
-        // Deafened implies muted, so un-muting from the tray while deafened
-        // would put you back in a call you cannot hear. The menu disables the
-        // item in that state; this is the guard for a command arriving anyway.
+        // Deafened implies muted, so un-muting from the tray while deafened puts
+        // you in a call you cannot hear. The menu disables it; this is the guard.
         if (isDeafened) return;
         setIsMuted(!isMuted);
         return;

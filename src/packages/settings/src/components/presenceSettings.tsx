@@ -4,10 +4,8 @@ import { useSettings } from "@/settings";
 import { SettingsContainer, SliderSetting } from "./settingsComponents";
 
 /**
- * Presence, which is a behaviour rather than a device.
- *
- * This lived under Sound & video next to microphone gain and camera mirroring,
- * where it was the only control that changed nothing about either.
+ * Presence, which is a behaviour rather than a device. It lived under Sound &
+ * video, where it was the only control that changed nothing about either.
  */
 export function PresenceSettings() {
   const { afkTimeoutMinutes, setAfkTimeoutMinutes } = useSettings();

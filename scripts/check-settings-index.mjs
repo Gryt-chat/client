@@ -1,22 +1,8 @@
 /* eslint-env node */
 
 /**
- * The settings search index against the settings that exist (GRYT-1009).
- *
- * SettingGroup already checks this and logs to the console in dev. Four
- * settings were failing it and nobody had seen a single warning, which is what
- * a console.warn in a dev build is worth. The same check as a CI step is worth
- * something.
- *
- * Three ways the two halves drift apart, and the third is the one that bites:
- *
- * - A setting with no entry cannot be found by search at all. "Typefaces from
- *   Google" decides whether Gryt fetches fonts from Google, and it was in this
- *   state.
- * - An entry with no setting sends you to a page and scrolls to nothing.
- * - An entry naming a destination or page that does not exist sends you
- *   somewhere else entirely, silently. setSettingsTab("audio") matched no
- *   destination for months and dropped the missing-microphone toast on Profile.
+ * The settings search index against the settings that exist. SettingGroup logs
+ * this in dev and four settings were failing it unseen (GRYT-1009).
  */
 
 import assert from "node:assert/strict";
@@ -96,12 +82,8 @@ assert.deepEqual(
 
 /* ── every entry points at a setting that exists ─────────────────────────── */
 
-/* An anchor can arrive three ways, and only the first is a literal title.
-   HotkeyCapture takes a `label` and passes it straight into
-   `SettingGroup title={label}`, so the four hotkey rows are anchored by the
-   label at each call site. The Display sliders write `data-setting` by hand.
-   All three count, so this direction reads generously: a missed anchor here
-   would fail CI over a setting that is perfectly reachable. */
+/* An anchor can arrive three ways and only the first is a literal title, so this
+   direction reads generously: a missed anchor would fail CI over a reachable one. */
 const anchors = new Set(controls.map((control) => settingAnchorId(control.title)));
 for (const file of sources(COMPONENTS)) {
   const source = readFileSync(file, "utf8");
@@ -121,12 +103,7 @@ assert.deepEqual(
 /* ── every entry points at a destination and page that exist ─────────────── */
 
 /* A destination carries an icon and a page does not, which is the only thing
-   telling them apart in the source. Indentation is not: My servers and
-   Developer sit inside conditional spreads and are indented deeper than the
-   rest. The distinction has to survive, because collapsing the two into one
-   pool is what would let `destination: "audio"` pass — a page name in a
-   destination field, which is the bug that dropped the missing-microphone
-   toast on Profile. */
+   telling them apart. Collapsing the two would let `destination: "audio"` pass. */
 const settings = readFileSync(SETTINGS, "utf8");
 const destinations = new Set();
 const pages = new Set();

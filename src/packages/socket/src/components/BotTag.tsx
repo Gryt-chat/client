@@ -1,13 +1,6 @@
 /**
- * The mark that says a bot wrote this, or that a bot is in the room.
- *
- * Rendered from a flag the server derives from the identity itself, never from
- * anything the member controls — a person cannot spell their way into it, and a
- * bot cannot spell its way out.
- *
- * It sits beside the name on every message rather than only in the member list.
- * Somebody deciding whether to act on what a message says is looking at the
- * message, not at a sidebar.
+ * The mark that says a bot wrote this. Derived by the server from the identity,
+ * so a person cannot spell their way into it and a bot cannot spell its way out.
  */
 export function BotTag({ size = "normal" }: { size?: "normal" | "small" }) {
   return (

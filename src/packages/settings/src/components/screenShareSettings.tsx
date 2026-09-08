@@ -4,10 +4,8 @@ import { useSettings } from "@/settings";
 import { SettingsContainer, ToggleSetting } from "./settingsComponents";
 
 /**
- * Screen sharing, which is video.
- *
- * This was filed under Advanced, next to the debug overlays, where nothing
- * about the name told you it changed how capture works.
+ * Screen sharing, which is video. It was filed under Advanced, next to the debug
+ * overlays, where nothing about the name said it changed how capture works.
  */
 export function ScreenShareSettings() {
   const { experimentalScreenShare, setExperimentalScreenShare } = useSettings();

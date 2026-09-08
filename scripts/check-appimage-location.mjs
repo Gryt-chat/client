@@ -1,16 +1,7 @@
 #!/usr/bin/env node
 /**
- * Where the AppImage is, and what we offer to do about it (GRYT-965).
- *
- * The bug: an AppImage is the app rather than an installer, so people bin it
- * after running it. Linux keeps the process alive off the deleted inode, the
- * `gryt://` handler keeps pointing at the old path, and browser sign-in
- * silently never comes back.
- *
- * The part worth testing is the decision — present, trashed, or gone — because
- * each leads to a different dialog, and one of the three offers a button that
- * must not be shown when it cannot work. A real AppImage is not needed for any
- * of it: `appImageState` takes the path.
+ * Where the AppImage is, and what we offer to do about it. Present, trashed or
+ * gone, because one of the three offers a button that cannot work (GRYT-965).
  */
 
 import assert from "node:assert/strict";
@@ -59,8 +50,7 @@ check("gone, and nowhere we know to look, is missing", () => {
 /* ── The Trash case, which is the one that happened ──────────────────── */
 
 /* The real trash, because that is the path the code looks in. A uniquely named
-   file so this cannot collide with anything somebody actually binned, and it is
-   removed at the end either way. */
+   file, removed at the end either way. */
 const trashFiles = join(homedir(), ".local", "share", "Trash", "files");
 const trashInfo = join(homedir(), ".local", "share", "Trash", "info");
 const name = `Gryt-Chat-0.0.0-check-${process.pid}.AppImage`;

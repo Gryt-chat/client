@@ -9,11 +9,8 @@ import {
 import type { VoiceTileLayout, VoiceTwoPersonLayout } from "../hooks/settingsStorage";
 
 /**
- * Maximised proportions, which is where the two arrangements differ most.
- *
- * In the sidebar the equal layout stacks and the hero layout still has a
- * corner tile, so both are legible either way — but the side-by-side is the
- * thing somebody is choosing between, so that is what the swatch shows.
+ * Maximised proportions, which is where the two arrangements differ most. The
+ * side-by-side is the thing somebody is choosing between.
  */
 const REFERENCE = { width: 880, height: 495 };
 
@@ -22,11 +19,8 @@ const SWATCH = { width: 132, height: 74 };
 const PADDING = 12;
 
 /**
- * The arrangement, drawn from the layout code rather than by hand.
- *
- * Same reasoning as `LayoutSwatch` in the tile layout picker: this runs the
- * function the voice grid runs, so the picture cannot drift away from what you
- * get on screen.
+ * The arrangement, drawn from the layout code rather than by hand, so the picture
+ * cannot drift away from what you get on screen.
  */
 function TwoPersonSwatch({
   layout,
@@ -82,9 +76,8 @@ function TwoPersonSwatch({
               width: Math.max(2, PIP_WIDTH * scale),
               height: Math.max(2, PIP_HEIGHT * scale),
               ...tile,
-              // Against the hero rather than the panel, and ringed in the
-              // swatch background, which is the only way to see it at this
-              // size.
+              // Against the hero rather than the panel, and ringed in the swatch
+              // background, which is the only way to see it at this size.
               background: "var(--gryt-accent-11)",
               boxShadow: "0 0 0 1px var(--gryt-neutral-3)",
             }}
@@ -138,12 +131,8 @@ const OPTIONS: Array<{
 ];
 
 /**
- * Which of the two arrangements a one-to-one call uses.
- *
- * Both are defensible — hero plus corner is what most video callers do and
- * gives the other person more pixels; equal tiles are better when you are both
- * doing something rather than talking — which is the argument for a choice
- * rather than a hardcoded answer.
+ * Which of the two arrangements a one-to-one call uses. Both are defensible,
+ * which is the argument for a choice rather than a hardcoded answer.
  */
 export function TwoPersonLayoutPicker({
   value,

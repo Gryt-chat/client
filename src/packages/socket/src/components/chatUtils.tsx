@@ -37,9 +37,8 @@ export type ChatMessage = {
   reactions: Reaction[] | null;
   reply_to_message_id?: string | null;
   /**
-   * The thread this message belongs to, or absent for a normal channel message.
-   * Independent of reply_to_message_id. Thread replies are filtered out of the
-   * main list and shown only in the thread panel. GRYT-981.
+   * The thread this message belongs to, or absent for a channel message.
+   * Independent of reply_to_message_id; replies show only in the panel.
    */
   thread_id?: string | null;
   pending?: boolean;
@@ -47,32 +46,20 @@ export type ChatMessage = {
   nonce?: string;
   sender_nickname?: string;
   /**
-   * Whether a bot wrote this.
-   *
-   * Derived by the server from the sender's identity, so it is neither
-   * something a bot can shake off nor something a person can acquire.
+   * Whether a bot wrote this. Derived by the server from the sender's identity,
+   * so neither shakeable nor acquirable.
    */
   sender_is_bot?: boolean;
   sender_avatar_file_id?: string;
   profanity_matches?: ProfanityMatchRange[];
   /**
-   * The sealed envelope, when this message was encrypted (GRYT-729).
-   *
-   * Straight off the wire and never rendered. `text` is null while it is
-   * unopened, and {@link sealedState} says which of the three that is: still
-   * being opened, opened into `text`, or unreadable.
+   * The sealed envelope, when this message was encrypted. Straight off the wire
+   * and never rendered; {@link sealedState} says where it got to (GRYT-729).
    */
   sealed?: string | null;
   /**
-   * Where an encrypted message got to.
-   *
-   * `opening` is the moment between arriving and being read, and it is drawn
-   * rather than left blank — a bubble with nothing in it looks like somebody
-   * sent nothing.
-   *
-   * `locked` is having no wrapped key: a message sent before you joined the
-   * conversation, which is ordinary and permanent. `broken` is a key that is
-   * there and does not open, which is not.
+   * Where an encrypted message got to. `locked` is having no wrapped key, which
+   * is ordinary and permanent; `broken` is a key that does not open, which is not.
    */
   sealedState?: "opening" | "open" | "locked" | "broken";
 };

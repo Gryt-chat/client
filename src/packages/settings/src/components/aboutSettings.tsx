@@ -12,20 +12,14 @@ import { SettingsContainer } from "./settingsComponents";
 
 const GITHUB_URL = "https://github.com/Gryt-chat/gryt";
 
-/* Both stores want these reachable from inside the app rather than only from
-   the listing, and the desktop build has no listing to fall back on at all.
-   GRYT-829. */
+/* Both stores want these reachable from inside the app rather than only from the
+   listing, and the desktop build has no listing at all (GRYT-829). */
 const TERMS_URL = "https://gryt.chat/terms";
 const PRIVACY_URL = "https://gryt.chat/privacy";
 
 /*
- * "Get the desktop app" sent people to GitHub Releases, which is release notes
- * above a collapsed Assets list of a dozen files across three platforms. The
- * reader of that card has asked for the app, not for a file.
- *
- * /download resolves the build for them and starts it. No ?os= here, unlike the
- * server's reminder, because this card only renders in the browser build and
- * the user agent is the right answer.
+ * "Get the desktop app" sent people to GitHub Releases, which is a collapsed
+ * Assets list. /download resolves the build and starts it; no ?os= is needed here.
  */
 const DOWNLOAD_URL = "https://gryt.chat/download";
 
@@ -111,13 +105,10 @@ function UpdateControls() {
   const isChecking = status?.status === "checking";
   const isAvailable = status?.status === "available";
   // "downloaded" can still arrive from a check that ran before this build's
-  // change landed, or from the splash on a previous launch. Treat it the same
-  // as "available": either way the answer is to restart.
+  // change landed. Treat it as "available": either way, restart.
   const isReady = status?.status === "downloaded";
-  // Neither button helps while an install is already running. Restarting would
-  // start a second update cycle and destroy the first, and checking again can
-  // only report the same thing. Quitting is the whole remaining action, and the
-  // status line says so.
+  // Neither button helps while an install is running: restarting starts a second
+  // cycle and destroys the first. Quitting is the whole remaining action.
   const isPending = status?.status === "pending";
   const isBusy = isChecking;
 
@@ -366,12 +357,8 @@ export function AboutSettings() {
 }
 
 /**
- * Updates as a destination of its own, first in the sidebar.
- *
- * It used to sit at the bottom of About, which is where you look last. Checking
- * for an update is something people come to settings to do deliberately.
- *
- * In the browser there is no updater, so this offers the desktop app instead.
+ * Updates as a destination of its own, first in the sidebar — it used to sit at
+ * the bottom of About. In the browser there is no updater, so it offers the app.
  */
 export function UpdatesSettings() {
   const inElectron = isElectron();

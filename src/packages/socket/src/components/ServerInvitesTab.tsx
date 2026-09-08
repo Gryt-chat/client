@@ -71,12 +71,8 @@ export function ServerInvitesTab({
 }) {
   const { servers: embeddedServers } = useEmbeddedServer();
 
-  /* Roles an invite may be bound to. The server decides which those are — the
-     flag is off for every role until somebody ticks it, and admin, owner and
-     anything that can hand out permissions are refused outright. So this list
-     is whatever came back already filtered, not a judgement made here. An empty
-     list draws the label with an explanation under it rather than nothing —
-     see the note further down. */
+  /* Roles an invite may be bound to, already filtered by the server — admin,
+     owner and anything handing out permissions are refused outright. */
   const [grantableRoles, setGrantableRoles] = useState<
     { id: string; name: string }[]
   >([]);
@@ -97,9 +93,8 @@ export function ServerInvitesTab({
     );
   });
 
-  /* The embedded server this host is, if it is one. Matched on the port it
-     answers on, since a locally hosted server is only ever reached over
-     loopback and the port is what tells two of them apart. */
+  /* The embedded server this host is, if it is one. Matched on the port, since a
+     locally hosted server is only reached over loopback. */
   const advertised = useMemo(() => {
     if (!isLoopbackHost(host)) return null;
     const port = Number(host.split(":").pop());
@@ -204,10 +199,8 @@ export function ServerInvitesTab({
   };
 
   const copy = async (code: string) => {
-    // A server started from the desktop app is connected to on 127.0.0.1, and
-    // putting that in a link tells whoever receives it to connect to their own
-    // machine (GRYT-135). Nothing errors — the address is valid, it is just the
-    // wrong computer — so the sender has no reason to suspect the link.
+    // A server started from the desktop app is connected to on 127.0.0.1, and a
+    // link naming that tells the receiver to connect to their own machine (GRYT-135).
     const shareable = pickShareableHost(host, advertised);
 
     if (shareable.kind === "loopback-only") {

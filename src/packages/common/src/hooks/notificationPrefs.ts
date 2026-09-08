@@ -1,25 +1,6 @@
 /**
- * How loud each server, folder and channel is, on this device.
- *
- * **Local, and deliberately never sent anywhere.** A list of the channels
- * somebody has muted is a list of what they are avoiding, and the server has no
- * use for it: every notification this gates is produced by the client, from
- * events the server was going to send regardless. Keeping it here means muting
- * a channel tells nobody that you did.
- *
- * The cost is honest and worth stating: it does not follow you to another
- * machine or to the phone. Each device is set up once.
- *
- * Resolution is most-specific-wins. A channel's own setting beats its folder's,
- * which beats the server's, which falls back to hearing everything. Muting a
- * server therefore quietens it without deciding for a channel somebody has
- * already had an opinion about.
- *
- * Over all of that sits one global level, and it can only quieten. Set it to
- * "Only mentions" and a server asking for everything drops to mentions; a
- * server already muted stays muted. A global setting that could also make
- * things louder would un-mute the server somebody muted last week, which is not
- * what anybody means by turning the whole app down.
+ * How loud each server, folder and channel is, on this device. **Local, and never
+ * sent anywhere**; most-specific-wins, under a global level that can only quieten.
  */
 
 export type NotificationLevel = "all" | "mentions" | "none";
@@ -55,10 +36,8 @@ export function quieterOf(
 }
 
 /**
- * Whether the global level is the one actually deciding here.
- *
- * The menus say so where it is true, because a channel that reads "Everything"
- * and makes no sound is a bug report waiting to happen.
+ * Whether the global level is the one actually deciding here. The menus say so:
+ * a channel reading "Everything" and making no sound is a bug report waiting.
  */
 export function globalOverrules(
   global: NotificationLevel,
@@ -79,11 +58,8 @@ const isLevel = (v: unknown): v is NotificationLevel =>
   v === "all" || v === "mentions" || v === "none";
 
 /**
- * Reads what is stored, dropping anything unrecognised.
- *
- * Failing to "all" rather than to silence is deliberate. A corrupted file
- * should leave somebody hearing too much, which they will notice and can fix,
- * rather than hearing nothing, which looks exactly like a quiet day.
+ * Reads what is stored, dropping anything unrecognised. Failing to "all" rather
+ * than to silence: hearing nothing looks exactly like a quiet day.
  */
 export function parsePrefs(raw: unknown): NotificationPrefs {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
@@ -112,13 +88,8 @@ export function parsePrefs(raw: unknown): NotificationPrefs {
 }
 
 /**
- * The whole file, in either shape it has been written in.
- *
- * It used to be the servers map on its own. The global level needed somewhere
- * to live and a top-level key would have collided with a host, so the file is
- * now `{ global, servers }` — and anything without a `servers` object is read as
- * the old flat map. A host called "servers" would have to be a bare word with
- * no dot and no port to be confused for the new key, which is not a host.
+ * The whole file, in either shape it has been written in. Anything without a
+ * `servers` object is read as the old flat map, which no host can be taken for.
  */
 export function parseStored(raw: unknown): StoredNotificationPrefs {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
@@ -138,11 +109,8 @@ export function parseStored(raw: unknown): StoredNotificationPrefs {
 }
 
 /**
- * What this channel is set to, following the most specific answer there is.
- *
- * `placement` is where the channel sits, which is the only reason the folder
- * level can be consulted at all. A channel in no folder skips that step rather
- * than treating "no folder" as a scope of its own.
+ * What this channel is set to, following the most specific answer there is. A
+ * channel in no folder skips that step rather than treating it as a scope.
  */
 export function resolveLevel(
   prefs: NotificationPrefs,
@@ -178,9 +146,8 @@ export function shouldAnnounceMention(level: NotificationLevel): boolean {
 
 // ── The store ───────────────────────────────────────────────────────────────
 //
-// Module scope and useSyncExternalStore, the same shape as the mention tracker
-// next door, so a change made in the sidebar reaches the socket layer without
-// either one holding a reference to the other.
+// Module scope and useSyncExternalStore, like the mention tracker next door, so
+// the sidebar reaches the socket layer without either holding a reference.
 
 let stored: StoredNotificationPrefs = load();
 const listeners = new Set<() => void>();
@@ -218,12 +185,8 @@ export function getPrefsSnapshot(): NotificationPrefs {
 }
 
 /**
- * Both halves, as one object that is replaced on every write.
- *
- * `useSyncExternalStore` bails out when the snapshot is identical, so a
- * component watching only `getPrefsSnapshot` would never re-render when the
- * global level changed on its own. Anything that shows the global level
- * subscribes to this instead.
+ * Both halves, as one object replaced on every write. `useSyncExternalStore` bails
+ * on an identical snapshot, so watching only the servers map misses the global.
  */
 export function getStoredSnapshot(): StoredNotificationPrefs {
   return stored;
@@ -242,9 +205,8 @@ export function setGlobalLevel(level: NotificationLevel) {
 }
 
 /**
- * What a channel is actually set to once the ceiling is applied. This is the
- * answer the socket layer wants; `resolveLevel` on its own is the per-server
- * half of it.
+ * What a channel is actually set to once the ceiling is applied. `resolveLevel`
+ * on its own is the per-server half of it.
  */
 export function resolveAnnounceLevel(
   host: string,
@@ -254,11 +216,8 @@ export function resolveAnnounceLevel(
 }
 
 /**
- * Set one scope, or clear it by passing null so it inherits again.
- *
- * Clearing is a real answer rather than the same thing as "all": a channel set
- * back to default follows its folder afterwards, and a channel set to "all"
- * stops following it.
+ * Set one scope, or clear it by passing null so it inherits again. Clearing is not
+ * the same as "all": a cleared channel follows its folder, an "all" one does not.
  */
 export function setNotificationLevel(
   host: string,
@@ -290,13 +249,8 @@ export function setNotificationLevel(
 
 // ── Where each channel sits ─────────────────────────────────────────────────
 //
-// The folder level can only be consulted if something knows which folder a
-// channel is in, and the socket layer that decides whether to make a noise has
-// no sidebar. Rather than thread the whole `serverDetailsList` down to it, the
-// placement is recorded as `server:details` arrives and read back here.
-//
-// Not persisted. It is a copy of what the server just said, and a stale copy
-// read at launch would put a channel in a folder that had been deleted.
+// The socket layer deciding whether to make a noise has no sidebar, so placement
+// is recorded as `server:details` arrives. Not persisted: a stale copy would lie.
 
 let placements: Record<string, Record<string, ChannelPlacement>> = {};
 
@@ -317,9 +271,8 @@ export function rememberPlacements(
 }
 
 /**
- * Where a channel sits, or null if this client has not seen a sidebar naming
- * it. Null resolves to the server level, which is the right answer for a
- * message from a channel we know nothing else about.
+ * Where a channel sits, or null if this client has not seen a sidebar naming it.
+ * Null resolves to the server level.
  */
 export function getPlacement(host: string, channelId: string): ChannelPlacement | null {
   return placements[host]?.[channelId] ?? null;

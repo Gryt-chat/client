@@ -37,14 +37,7 @@ const init: ScreenAudioSources = {
 const SYSTEM_SOURCE_ID = "system";
 
 /**
- * Which applications a running screen share is taking audio from.
- *
- * A share starts on everything except Gryt. Picking applications swaps that for
- * one capture process each, which is the only way Windows will do it — a
- * process loopback client activates against a single PID. The main process owns
- * that set and sums what comes back.
- *
- * Windows only, and the UI is expected to ask `supported` before offering it:
+ * Which applications a running screen share is taking audio from. Windows only —
  * the macOS capture helper ignores the process it is handed.
  */
 function useScreenAudioSourcesHook(): ScreenAudioSources {
@@ -71,9 +64,8 @@ function useScreenAudioSourcesHook(): ScreenAudioSources {
     };
   }, []);
 
-  // The set belongs to a share, so it goes away with one. Reading it back from
-  // the main process rather than assuming keeps the two from drifting when a
-  // capture dies on its own.
+  // The set belongs to a share, so it goes away with one. Reading it back rather
+  // than assuming keeps the two from drifting when a capture dies.
   useEffect(() => {
     if (!screenShareActive) {
       setCapturedIds([]);

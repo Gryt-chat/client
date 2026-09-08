@@ -5,12 +5,8 @@ import { settingAnchorId,SETTINGS_INDEX } from "../hooks/settingsSearch";
 import { useSettings } from "../hooks/useSettings";
 
 /**
- * The colour advanced settings are titled in.
- *
- * Not the accent, which belongs to things you are meant to click, and not the
- * amber used for warnings — nothing here is dangerous, it is just further in.
- * Cyan at step 11, which is Radix's accessible-text step, so it holds contrast
- * against the panel in both themes.
+ * The colour advanced settings are titled in. Not the accent and not the warning
+ * amber; cyan at step 11, which holds contrast in both themes.
  */
 const ADVANCED_COLOR = "cyan" as const;
 
@@ -29,8 +25,7 @@ interface SettingGroupProps {
 export function SettingGroup({ title, description, children, advanced }: SettingGroupProps) {
   const { showAdvanced } = useSettings();
   // Anchor for search results to scroll to. Derived from the title by the same
-  // function the index uses, so the two cannot drift apart — and it ignores any
-  // ": value" suffix, so it stays put as the value changes.
+  // function the index uses, and it ignores any ": value" suffix.
   const anchor = settingAnchorId(title);
 
   if (import.meta.env.DEV) {

@@ -1,17 +1,8 @@
 /* eslint-env node */
 
 /**
- * The order of the server rail, and what the client opens on launch.
- *
- * Both read `orderServerHosts`. Until GRYT-642 the launch focus used
- * `Object.keys(servers)[0]` instead — the order servers were added in — so
- * dragging a server to the top of the rail changed where it appeared and not
- * what opened. The two answers have to come from one function, and this is
- * what says so.
- *
- * Node 24 strips the types on import, which is why a .ts module can be pulled
- * in from here. It is a pure function in its own file for the same reason:
- * importing the hook that used to hold it would drag React in.
+ * The order of the server rail, and what the client opens on launch. Both read
+ * `orderServerHosts`; the launch focus used insertion order until GRYT-642.
  */
 
 import assert from "node:assert/strict";

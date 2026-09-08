@@ -1,15 +1,6 @@
 /**
- * Where a plugin's panel lives between being sent and being drawn (GRYT-951).
- *
- * One panel per plugin. A second `gryt.ui.panel()` replaces the first rather
- * than stacking, so a plugin never has to hold a handle or remember to take an
- * old one down — the presence example calls it on every roster and would
- * otherwise leak a panel a minute.
- *
- * A plain store with subscribers rather than a React context, for the same
- * reason `pluginMessages.ts` next door is one: the plugin host is not a
- * component and cannot reach a hook, and the sidebar that draws these is four
- * levels down from anywhere a provider would sensibly go.
+ * Where a plugin's panel lives between being sent and being drawn. One panel per
+ * plugin, replaced rather than stacked, so nothing has to hold a handle.
  */
 
 import type { PluginPanel } from "./workerProtocol";
@@ -26,28 +17,15 @@ const panels = new Map<string, ShownPanel>();
 const listeners = new Set<() => void>();
 
 /*
- * Rebuilt on every change rather than sorted on read.
- *
- * `useSyncExternalStore` compares what `getSnapshot` returns by identity and
- * calls it on every render, so returning a fresh array each time is an infinite
- * loop. This is the cached one; it changes only when a panel does.
+ * Rebuilt on every change rather than sorted on read. `useSyncExternalStore`
+ * compares by identity, so a fresh array each render is an infinite loop.
  */
 let snapshot: ShownPanel[] = [];
 
 function republish(): void {
   /*
-   * By addon id, so two plugins do not swap places when one of them updates.
-   * These sit in a rail somebody's eye goes to, and things moving under it is
-   * worse than the order being arbitrary.
-   *
-   * Compared with `<` rather than `localeCompare`, which was the first version
-   * and was wrong in a way only running it showed: under this machine's `nb`
-   * locale Chrome answers -1 for `"zzz".localeCompare("aaa")`, so the list came
-   * out in an order nobody would call sorted — and would have come out in a
-   * different one on a machine set to something else. "Stable" has to mean the
-   * same everywhere or it is not worth claiming. An addon id is lower-case
-   * letters, digits, dot, dash and underscore, so there is no accented
-   * character here for a collator to have an opinion about anyway.
+   * By addon id, compared with `<` rather than `localeCompare`: under `nb` Chrome
+   * answers -1 for `"zzz".localeCompare("aaa")`, so the order was not sorted.
    */
   snapshot = [...panels.values()].sort((a, b) => (a.addonId < b.addonId ? -1 : a.addonId > b.addonId ? 1 : 0));
   for (const listener of listeners) listener();
@@ -74,10 +52,8 @@ export function subscribePanels(listener: () => void): () => void {
 }
 
 /**
- * Drop everything, for a sign-out or a reload of the addon list.
- *
- * Separate from `hidePanel` per plugin because stopping every plugin one at a
- * time would republish once each, and the sidebar would redraw as many times.
+ * Drop everything, for a sign-out or a reload of the addon list. Stopping each
+ * plugin in turn would republish once each and redraw the sidebar as often.
  */
 export function forgetPanels(): void {
   if (panels.size === 0) return;

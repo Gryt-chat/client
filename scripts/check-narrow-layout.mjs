@@ -1,24 +1,8 @@
 /* eslint-env node */
 
 /**
- * What a narrow window keeps, and what it drops.
- *
- * Two bugs are being fenced off here.
- *
- * The member list used to clip out of the window. `useIsCompact` is the window
- * width and nothing else, so with the voice panel open at 600 the row was asked
- * to fit a rail, a channel sidebar, that panel, a chat and a member sidebar
- * inside a window with room for four of the five. The member panel is last in
- * the row and does not shrink, so it went over the right edge rather than
- * getting out of the way.
- *
- * And a really small window used to be the same layout, squeezed. It is now one
- * channel and nothing else — but only where there is a mouse. A phone is under
- * any threshold worth picking, and a phone that lost its channel list has no way
- * back to another channel.
- *
- * Node 24 strips the types on import, which is why a .ts module can be pulled in
- * from here.
+ * What a narrow window keeps, and what it drops: the member list used to clip out
+ * of the window, and a small window is now one channel where there is a mouse.
  */
 
 import assert from "node:assert/strict";
@@ -42,18 +26,15 @@ assert.equal(hasRoomForMemberList({ windowWidth: 800, voicePanelWidth: 0 }), fal
 
 /* ── In voice, the panel has to be paid for ────────────────────────── */
 
-// The bug, stated as a number. A window that comfortably held the member list
-// out of voice cannot hold it with 600px of voice panel in the row, and this
-// is the width the old code said yes at.
+// The bug, stated as a number. A window that held the member list out of voice
+// cannot hold it with 600px of panel in the row, and the old code said yes.
 assert.equal(
   hasRoomForMemberList({ windowWidth: 1100, voicePanelWidth: VOICE_PANEL_WIDTH }),
   false,
 );
 
-// Rail 32, page padding 32, three 16px gaps, two 240px sidebars, 600 of voice
-// and 200 of chat is 1392. So the old rule was wrong over a 367px stretch —
-// every width from 1025 to 1391 said yes and could not pay for it — and a
-// 1400px window is the first common size that genuinely fits the lot.
+// Rail 32, padding 32, three 16px gaps, two 240px sidebars, 600 voice and 200
+// chat is 1392, so the old rule was wrong from 1025 to 1391.
 assert.equal(
   hasRoomForMemberList({ windowWidth: 1400, voicePanelWidth: VOICE_PANEL_WIDTH }),
   true,
@@ -68,8 +49,7 @@ assert.equal(
 );
 
 // A narrower panel costs less. The voice view is clamped to
-// `container - MIN_CHAT_WIDTH`, so this is the case where the chat's minimum
-// has already pushed the panel down.
+// `container - MIN_CHAT_WIDTH`, so the chat's minimum has pushed the panel down.
 assert.equal(hasRoomForMemberList({ windowWidth: 1200, voicePanelWidth: 400 }), true);
 assert.equal(hasRoomForMemberList({ windowWidth: 1100, voicePanelWidth: 400 }), false);
 
@@ -93,9 +73,8 @@ for (let w = 300; w <= 2000; w += 1) {
 assert.equal(hasRoomForVoicePanel(1160), true);
 assert.equal(hasRoomForVoicePanel(1159), false);
 
-// Measured before this rule existed: at 1030 the panel stayed at 600 and the
-// chat was squeezed to 118px, well under its minimum, and the row ran past the
-// window. The panel minimizes there now.
+// Measured before this rule existed: at 1030 the panel stayed at 600 and the chat
+// was squeezed to 118px. The panel minimizes there now.
 assert.equal(hasRoomForVoicePanel(1030), false);
 assert.equal(hasRoomForVoicePanel(1136), false);
 

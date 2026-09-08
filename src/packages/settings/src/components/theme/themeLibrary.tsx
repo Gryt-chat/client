@@ -27,16 +27,8 @@ const YOURS = "Yours";
 const PRESET_PREFIX = "preset:";
 
 /**
- * The themes on this machine, and the one in use.
- *
- * The built-in half comes from @gryt/ui rather than from a list here, so a
- * newer library brings new ones with it. They cannot be deleted — there has to
- * be something to go back to — but any of them opens in the generator.
- *
- * Collections are accordions because there are forty-seven presets now. Only
- * the collection holding the theme in use starts open: a list that long with
- * everything expanded is the same scroll it was before, and the row you want to
- * see is the one you are already wearing.
+ * The themes on this machine, and the one in use. The built-in half comes from
+ * @gryt/ui. Only the collection holding the theme in use starts open.
  */
 export function ThemeLibrary() {
   const { themes, activeId, setActiveTheme, deleteTheme } = useCustomThemes();
@@ -209,12 +201,8 @@ function copyLink(entry: SavedTheme) {
 }
 
 /**
- * The corner radius, drawn as a corner.
- *
- * The preview shows it truthfully and therefore almost invisibly: at a fifth of
- * size a 20px corner is four pixels, and Gryt and Solarized look equally square
- * there. This is the same value on a box standing in for a 44px panel, so the
- * shape is the theme's own ratio at a size you can see.
+ * The corner radius, drawn as a corner. The preview shows it truthfully and so
+ * almost invisibly; this is the same ratio at a size you can see.
  */
 function RadiusGlyph({ radius }: { radius: GrytTheme["radius"] }) {
   return (

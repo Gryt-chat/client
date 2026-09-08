@@ -37,9 +37,8 @@ const CardSite = memo(({
   favicon: string | null;
 }) => {
   const provider = getLinkProvider(url);
-  // Path data rather than a component, because the phone needs the same mark
-  // and cannot draw a react-icons one. The class already sets size and colour,
-  // so currentColor is all this has to say.
+  // Path data rather than a component, because the phone needs the same mark and
+  // cannot draw a react-icons one. The class sets size and colour.
   const logo = provider ? getProviderLogo(provider.id) : undefined;
   const [faviconFailed, setFaviconFailed] = useState(false);
 
@@ -103,12 +102,8 @@ export const LinkPreviewSkeleton = memo(({
 LinkPreviewSkeleton.displayName = "LinkPreviewSkeleton";
 
 /**
- * A link drawn as a card.
- *
- * The shape follows what the page actually gave us rather than one fixed
- * template — see `getLinkCardLayout`. The version before this always reserved a
- * picture slot and filled it with a grey rectangle, so a page with no
- * `og:image` came out as a hostname beside an empty box.
+ * A link drawn as a card. The shape follows what the page gave us rather than one
+ * fixed template — see `getLinkCardLayout`.
  */
 export const LinkPreviewCard = memo(({
   url,
@@ -146,13 +141,8 @@ export const LinkPreviewCard = memo(({
     })
       .then((res) => {
         if (!res.ok) {
-          /* 4xx is the server's verdict on this URL and will not change: it is
-             private, malformed, or not something it will fetch. 5xx and a
-             dropped connection are worth another go, so they are not remembered.
-
-             A page that 404s is not one of these. That comes back as a 200
-             carrying `status: 404`, because "this page is gone" is a preview
-             worth drawing rather than a refusal to make one. */
+          /* 4xx is the server's verdict and will not change; 5xx and a dropped
+             connection are worth another go. A 404 page is a 200 carrying one. */
           if (res.status >= 400 && res.status < 500) previewRefused.add(url);
           throw new Error(`link preview refused: ${res.status}`);
         }
@@ -186,8 +176,7 @@ export const LinkPreviewCard = memo(({
   const layout = getLinkCardLayout(data);
 
   /* Nothing came back and nothing can be said about why. A page that is merely
-     quiet does not earn a card, so it stays as the link it already was in the
-     message text — unless we recognise the site, which is worth showing. */
+     quiet does not earn a card, unless we recognise the site. */
   if (layout === "bare" && !failure && !provider) return null;
 
   const title = data.title || providerDetail;

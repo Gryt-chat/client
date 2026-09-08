@@ -1,23 +1,6 @@
 /*
- * The icons this app draws, over @phosphor-icons/react.
- *
- * These used to come from react-icons/pi, which is the same phosphor artwork
- * repackaged. Both were installed: react-icons at 82MB for these 129 icons, and
- * @phosphor-icons/react at 31MB underneath @gryt/ui, which needs it anyway. So
- * this draws from the one that was already there and react-icons is gone.
- *
- * Neither ever reached an installer — Vite inlines what is used and the asar
- * carries none of node_modules — so this is 82MB off every checkout and every
- * CI run, and nothing off what anybody downloads.
- *
- * The names are unchanged on purpose. react-icons puts the weight in the name
- * and phosphor puts it in a prop, so a rename would have meant editing 291 call
- * sites and getting the weight right at each one. Here it is written once per
- * icon, mechanically, from the name it already had. The Pi prefix is still
- * accurate: it was always phosphor.
- *
- * Adding an icon: import the base from @phosphor-icons/react and export it
- * here, wrapped if it needs a weight.
+ * The icons this app draws, over @phosphor-icons/react — the same artwork
+ * react-icons repackaged, at 31MB instead of 82. The Pi names are unchanged.
  */
 
 import type { Icon, IconProps } from "@phosphor-icons/react";
@@ -140,11 +123,8 @@ import {
 } from "@phosphor-icons/react";
 
 /**
- * A phosphor icon fixed at one weight.
- *
- * Fixed rather than defaulted, because these are passed around as values as
- * well as rendered — the settings tabs hold one per row — and a default would
- * only apply where somebody remembered to spread props.
+ * A phosphor icon fixed at one weight. Fixed rather than defaulted, because these
+ * are passed around as values and a default only applies where props are spread.
  */
 function weighted(Base: Icon, weight: IconProps["weight"], name: string): Icon {
   const Fixed = (props: IconProps) => <Base weight={weight} {...props} />;

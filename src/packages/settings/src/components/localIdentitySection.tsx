@@ -21,13 +21,8 @@ import {
 /* Hallmark · pre-emit critique: P5 H5 E4 S5 R5 V4 */
 
 /**
- * Saving and restoring an identity that has no account behind it. Clearing site
- * data takes the keypair and every server it was known on —
- * `replaceUserIdentity` needs somebody with a role to run it, which is no help
- * when the person who lost the key is the owner.
- *
- * The copy is 24 words since GRYT-255: the seed, which reproduces every
- * identity derived from it. Older encrypted backup files remain importable.
+ * Saving and restoring an identity that has no account behind it. The copy is 24
+ * words since GRYT-255; older encrypted backup files remain importable.
  */
 
 type Panel = "words" | "restore" | "unlock-file" | null;
@@ -43,10 +38,8 @@ export function LocalIdentitySection() {
   const [copied, setCopied] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
-  /* Whether this device has been a guest anywhere, rather than how many keys
-     are stored. Since GRYT-285 the keys are derived on demand and not written
-     down, so a count of them measured the wrong thing — and went stale the
-     moment somebody left a server. */
+  /* Whether this device has been a guest anywhere, rather than how many keys are
+     stored: since GRYT-285 the keys are derived on demand and not written down. */
   const refresh = useCallback(() => {
     setHasIdentity(listGuestScopes().length > 0);
   }, []);
@@ -80,8 +73,7 @@ export function LocalIdentitySection() {
       await restoreIdentityFromWords(wordsInput);
       toast.success("Identity restored. Reloading…", { duration: 4000 });
       // Reloaded for the same reason restoring a file is: anything that already
-      // read a key still holds it, and would keep signing as whoever this device
-      // was before — which looks like the restore silently not working.
+      // read a key still holds it, and keeps signing as whoever this device was.
       setTimeout(() => window.location.reload(), 1500);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not restore");
@@ -98,11 +90,8 @@ export function LocalIdentitySection() {
         `Restored ${restored.length} identit${restored.length === 1 ? "y" : "ies"}. Reloading…`,
         { duration: 4000 },
       );
-      // Reloaded rather than carried on with. A restore replaces the keys the
-      // running app has already read, and anything holding one keeps signing
-      // as whoever it was before — which looks like the restore silently not
-      // working. Verified: the identity comes back correctly on the far side
-      // of a reload and not before it.
+      // Reloaded rather than carried on with: anything holding a key keeps
+      // signing as whoever it was, which looks like the restore not working.
       setTimeout(() => window.location.reload(), 1500);
     },
     [refresh],

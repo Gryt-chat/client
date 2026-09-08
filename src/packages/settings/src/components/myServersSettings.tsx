@@ -22,14 +22,8 @@ import { EmbeddedServerLogs } from "./embeddedServerLogs";
 import { SettingsContainer } from "./settingsComponents";
 
 /**
- * The servers you run, as opposed to the ones you have joined.
- *
- * This was the other half of the add-server dialog: a running-server card
- * shown or not depending on state, under a heading that said "Add a server".
- *
- * A list of however many you host. They share one SFU — it routes on the server
- * id every message carries — so the second one costs a server process and an
- * image worker rather than a whole stack.
+ * The servers you run, as opposed to the ones you have joined. They share one
+ * SFU, so a second one costs a server process and an image worker.
  */
 export function MyServersSettings() {
   const {
@@ -114,8 +108,7 @@ export function MyServersSettings() {
                 onUpdatePorts={(ports) => updatePorts(server.id, ports)}
                 onDelete={() => {
                   // The rail entries go with it. Left behind they point at an
-                  // address nothing answers on, and look like a server that is
-                  // merely offline rather than one that no longer exists.
+                  // address nothing answers on, and look merely offline.
                   removeServers(railEntriesFor(server, joinedServers));
                   void deleteServer(server.id);
                 }}
@@ -139,18 +132,8 @@ export function MyServersSettings() {
 }
 
 /**
- * Every rail entry pointing at a server this machine hosts.
- *
- * Matched on id, not address. The rail keys an entry on whatever address you
- * joined at, and joining your own server from the LAN keys it on 192.168.x.x
- * rather than 127.0.0.1 — so deleting the server left the other entry behind,
- * still holding the tokens and the pinned identity. The next server created
- * takes the same preferred port, inherits them, and is refused by a server that
- * never issued them.
- *
- * The config id here is SERVER_INSTANCE_ID, which is what the server reports as
- * its serverId. The address stays as a fallback for an entry added before the
- * server ever answered with one.
+ * Every rail entry pointing at a server this machine hosts. Matched on id, not
+ * address: joining your own server from the LAN keys it on 192.168.x.x.
  */
 function railEntriesFor(
   server: EmbeddedServerState,
@@ -169,10 +152,8 @@ function railEntriesFor(
 }
 
 /**
- * Every control is passed in rather than pulled from useEmbeddedServer here.
- * The hook opens an IPC subscription and fetches the server list when it
- * mounts, so calling it per card would do both once per server on top of the
- * parent's — the same work, N+1 times, for a list that is already in scope.
+ * Every control is passed in rather than pulled from useEmbeddedServer here: the
+ * hook opens an IPC subscription and fetches the list when it mounts.
  */
 function HostedServerCard({
   server,

@@ -3,16 +3,8 @@ const MAX_STORED = 30;
 const DEFAULT_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "👎"];
 
 /**
- * One reaction somebody has used, carrying enough to answer either question.
- *
- * `count` answers "what do I reach for most", which is what the hover toolbar
- * wants: a bar that reshuffles after one stray reaction is a bar whose buttons
- * move out from under the pointer. `usedAt` answers "what did I just use",
- * which is what the picker's recents row wants.
- *
- * Per device, and it stays that way. This is a record of what somebody finds
- * funny, the server has no use for it, and it is keyed per host so a work
- * server and a group of friends do not share one row.
+ * One reaction somebody has used. `count` answers "what do I reach for most",
+ * `usedAt` "what did I just use". Per device, per host, and it stays that way.
  */
 interface ReactionUse {
   src: string;
@@ -25,12 +17,8 @@ function storageKey(serverHost: string | undefined): string {
 }
 
 /**
- * Reads either shape.
- *
- * Before counts this was a plain `string[]`, most-recent-first, and that is
- * what sits in every existing install. Those come back as one use each, ordered
- * so the old recency survives — nobody's row reshuffles on upgrade, and counts
- * build from there.
+ * Reads either shape. Before counts this was a plain `string[]`, most-recent
+ * first; those come back as one use each so nobody's row reshuffles on upgrade.
  */
 function readStorage(serverHost: string | undefined): ReactionUse[] {
   try {
@@ -79,11 +67,8 @@ export function getRecentReactions(count = 6, serverHost?: string): string[] {
 }
 
 /**
- * Most used first, with the more recent one winning a tie.
- *
- * The tiebreak earns its place: without it, everything on a single use sits in
- * whatever order the array happened to hold, and the toolbar's buttons trade
- * places between renders.
+ * Most used first, with the more recent one winning a tie. Without the tiebreak,
+ * everything on a single use trades places between renders.
  */
 export function getFrequentReactions(count = 4, serverHost?: string): string[] {
   const stored = [...readStorage(serverHost)].sort(

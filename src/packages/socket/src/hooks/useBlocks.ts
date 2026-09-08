@@ -2,17 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Socket } from "socket.io-client";
 
 /**
- * Who you have blocked on this server.
- *
- * A block is enforced entirely by the server — their messages are not
- * delivered, history comes back without them, and a conversation between the
- * two cannot be opened from either side. This list is not a filter: it exists
- * so a menu can say Unblock rather than offering Block on somebody who already
- * is.
- *
- * **Per server.** Dropped when the socket changes rather than merged: showing
- * the previous server's blocks while a new list is in flight would be wrong
- * about both.
+ * Who you have blocked on this server. Enforced by the server; this list exists
+ * so a menu can say Unblock. **Per server**, and dropped when the socket changes.
  */
 
 export interface BlockedPerson {
@@ -53,20 +44,16 @@ export function useBlocks({
       if (Array.isArray(payload?.blocked)) setBlocked(payload.blocked);
     };
 
-    /* The server answers a block or an unblock with the id it acted on rather
-     * than a whole list, so the list is asked for again. One round trip on
-     * something somebody does rarely, against keeping two copies of the same
-     * truth in step by hand. */
+    /* The server answers a block with the id it acted on rather than a whole
+     * list, so the list is asked for again. One round trip on a rare action. */
     const refetch = () => socket.emit("user:blocks:list", { accessToken });
 
     socket.on("user:blocks", onList);
     socket.on("user:blocked", refetch);
     socket.on("user:unblocked", refetch);
 
-    /* A server from before blocking existed answers none of these, which is
-     * why nothing here waits on a reply: the list stays empty, every row says
-     * Block, and pressing it is ignored. That is the same way `useDirectMessages`
-     * treats a server too old for conversations. */
+    /* A server from before blocking answers none of these, which is why nothing
+     * waits on a reply: the list stays empty and every row says Block. */
     socket.emit("user:blocks:list", { accessToken });
 
     return () => {

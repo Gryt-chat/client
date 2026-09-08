@@ -15,20 +15,12 @@ const HALO = 8;
 /** Gap between the cut-out and the card. */
 const OFFSET = 16;
 const CARD_WIDTH = 320;
-/**
- * How long a step is allowed to wait for a target that is on its way.
- *
- * A step that opens a modal has no target for a frame or two, which is
- * indistinguishable from a target that will never arrive. The ceiling keeps the
- * second case from stranding anybody on a step that cannot render.
- */
+/** A step that opens a modal has no target for a frame or two, which looks the
+    same as one that never arrives. */
 const TARGET_WAIT_MS = 2500;
 
-/**
- * The beats of a step change, and they are deliberately unhurried. "No
- * animations, no delay, the human brain cant watch that fast" — every one of
- * these is there to be followed by an eye rather than to be over quickly.
- */
+/** Deliberately unhurried: these are meant to be followed by an eye. */
+
 /** Focus off the old thing before anything moves. */
 const FADE_MS = 260;
 /** Long enough to be followed across the window. */
@@ -49,13 +41,8 @@ interface Rect {
 }
 
 /**
- * Presses a control for real, **with a click and nothing else**. Base UI opens
- * a menu on pointerdown, so sending the pointer pair and then a click toggles
- * it straight back shut — which read as the tour losing its place from step two
- * onwards.
- *
- * Measured against a real trigger and a real Menu.Item: pointer events alone
- * open the menu and never run an item's onClick; a click alone does both.
+ * A click and nothing else: Base UI opens a menu on pointerdown, so the pointer
+ * pair plus a click toggles it shut again. Measured against a real Menu.Item.
  */
 function pressControl(target: string): void {
   const node = document.querySelector<HTMLElement>(`[data-tour="${target}"]`);
@@ -116,60 +103,38 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
     y: typeof window === "undefined" ? 0 : window.innerHeight / 2
   }));
   const [focusShown, setFocusShown] = useState(false);
-  /**
-   * The step whose words are on the card right now.
-   *
-   * Kept behind the real step on purpose: the card used to swap its text the
-   * instant the step changed, so the next line was readable through a card
-   * that was still fading out. The words change while nothing is visible.
-   */
+  /** Kept behind the real step: swapping the text on the change made the next
+      line readable through a card that was still fading out. */
   const [shownStep, setShownStep] = useState(step);
   const [pressing, setPressing] = useState(false);
   const [cursorShown, setCursorShown] = useState(false);
 
   /** When the step's action ran. The wait for its target starts from there. */
   const stepEnteredAt = useRef(0);
-  /**
-   * Whether the current step has acted yet. The skip-on-missing-target clock
-   * used to start when the step became current, while the cursor spends over a
-   * second travelling — so steps were given up on before doing anything.
-   */
+  /** The skip clock used to start when the step became current, while the cursor
+      spends over a second travelling. */
   const stepHasActed = useRef(false);
-  /**
-   * True while the cursor is walking its route.
-   *
-   * The resting position below is driven by the target rect, and a step whose
-   * target is already on screen resolves it instantly — "Add a server" never
-   * goes away, so on the closing step the cursor jumped straight to it and the
-   * panel shut behind it with nothing having pressed the X. The route wins
-   * until it is finished.
-   */
+  /** The resting position is driven by the target rect, which for an always-there
+      target resolves instantly. The route wins until it is finished. */
   const walking = useRef(false);
   /** Which step that timestamp belongs to. */
   const timedStepId = useRef<string | null>(null);
 
-  // Started here rather than in the effect below because layout effects run
-  // before passive ones: measure() would otherwise read the *previous* step's
-  // timestamp, find the wait already expired, and skip a step whose target was
-  // still on its way. That skipped two of the five.
+  // Here rather than the effect below, because layout effects run first and
+  // measure() would read the previous step's timestamp as already expired.
   if (step && timedStepId.current !== step.id) {
     timedStepId.current = step.id;
     stepEnteredAt.current = Date.now();
     stepHasActed.current = false;
   }
 
-  /**
-   * The choreography, in order, once per step: fade the spotlight and card out,
-   * move the cursor, press, let the app respond, settle, then bring the focus
-   * back. Done at once it all happens on top of itself and none of it reads.
-   */
+  /** Fade out, move, press, let the app respond, settle, bring focus back. Done
+      at once it all happens on top of itself and none of it reads. */
   useEffect(() => {
     if (!step) return;
     let cancelled = false;
-    // Claimed before the first await. It used to be set after the fade, and in
-    // that 260ms gap the poll resolved the target and dragged both the cursor
-    // and the card off to it — visibly, on the step whose target is the
-    // always-present Add a server button.
+    // Before the first await: set after the fade, the poll resolved the target in
+    // that gap and dragged the cursor and card off to it.
     walking.current = true;
 
     const sleep = (ms: number) =>
@@ -191,9 +156,8 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
       for (const anchor of step.via ?? []) {
         const at = readRect(anchor);
         if (!at) {
-          // Skipping quietly is what made the Base UI press bug look like the
-          // tour losing its place: the hop vanished, the step timed out waiting
-          // for a panel nothing had opened, and it moved on two steps later.
+          // Skipping quietly made the press bug look like the tour losing its
+          // place, two steps later and with nothing said.
           console.warn(`[tour] no control for "${anchor}" — skipping this hop`);
           continue;
         }
@@ -217,12 +181,8 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
       stepEnteredAt.current = Date.now();
       stepHasActed.current = true;
 
-      // 4. Lead the eye to the thing before lighting it up.
-      //
-      //    The cursor used to fade out where it had just pressed, so after
-      //    opening Settings it vanished by the avatar and the spotlight lit up
-      //    somewhere across the window with nothing connecting the two. It
-      //    walks over first, and only then does the focus arrive.
+      // Lead the eye before lighting it up: the cursor used to fade out where it
+      // pressed while the spotlight lit somewhere across the window.
       await sleep(pause(SETTLE_MS));
       if (cancelled) return;
 
@@ -258,20 +218,14 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
     setCursor({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
   }, [rect]);
 
-  // Re-measure on anything that can move the target. A coach mark pointing at
-  // where a button used to be is worse than no coach mark.
-  //
-  // A target that is absent or zero-sized is waited for, then skipped: the
-  // voice controls are 0x0 until a connection exists and a step that can never
-  // render must not kill the tour, but a step that just opened a modal looks
-  // exactly the same for a frame or two, so it gets TARGET_WAIT_MS first.
+  // A mark pointing where a button used to be is worse than none. An absent or
+  // zero-sized target is waited for and then skipped.
   const measure = useCallback(() => {
     if (!step) {
       return;
     }
-    // The route owns the screen until it is done. Measuring mid-walk is what
-    // let the card slide to the next target while the cursor was still on its
-    // way to press something else.
+    // The route owns the screen until it is done: measuring mid-walk slid the card
+    // to the next target while the cursor was still travelling.
     if (walking.current) {
       return;
     }
@@ -304,13 +258,8 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
 
   useLayoutEffect(measure, [measure]);
 
-  // The observers below only fire on layout the app happens to do, and a target
-  // inside a modal moves without producing any: switching the settings
-  // destination re-flows the panel while the body stays exactly the same size,
-  // so the spotlight sat on "Addons" while pointing at the sign-in button.
-  //
-  // So this polls for as long as the tour does, not just while waiting for a
-  // target to appear. measure() only sets state when the rect has moved.
+  // A target inside a modal moves without producing layout the observers see, so
+  // this polls for as long as the tour runs. measure() only sets on a move.
   useEffect(() => {
     const id = window.setInterval(measure, TARGET_POLL_MS);
     return () => window.clearInterval(id);
@@ -343,11 +292,8 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
     return null;
   }
 
-  // No early return on a missing rect any more. It used to unmount the whole
-  // tour while a target was on its way — which is exactly when the cursor is
-  // travelling to press the button that produces it, so the journey the tour
-  // exists to show was the one thing never on screen. The scrim and card wait
-  // for a rect; the cursor does not.
+  // No early return on a missing rect: it used to unmount the tour while a target
+  // was on its way, which is exactly when the cursor is travelling to it.
 
   function advance() {
     if (isLast) {
@@ -365,9 +311,7 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
   };
 
   // Sitting to the right of the target only works while there is a right to sit
-  // in. Pointing into a modal put the target near the middle of the screen, and
-  // the card ran off the edge with its text cut in half, so it flips to the
-  // other side when it will not fit.
+  // in, so the card flips to the other side when it will not fit.
   const rightOfTarget = cut ? cut.left + cut.width + OFFSET : 0;
   const fitsOnTheRight = rightOfTarget + CARD_WIDTH + 16 <= window.innerWidth;
 
@@ -392,13 +336,10 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
         };
 
   // **Portaled to body, and it has to be.** The app renders inside
-  // `.radix-themes`, a stacking context, so anything within it is sealed under
-  // level zero however high its z-index — the tour at 40 lost to a dialog at 1,
-  // and no number would have fixed it. It opens modals now.
+  // `.radix-themes`, a stacking context, so no z-index would beat a dialog.
   return createPortal(
-    /* The layer itself stays transparent to the pointer so the control being
-       spotlighted is still clickable through it — that is the whole point of a
-       cut-out rather than a mask. Only the card takes clicks back. */
+    /* The layer stays transparent to the pointer so the spotlighted control is
+       still clickable through it. Only the card takes clicks back. */
     <div data-gryt="tour" className="pointer-events-none fixed inset-0 z-(--gryt-z-tour)">
       {/* One element does the whole scrim. An enormous spread shadow darkens
           everything outside the box, which leaves the control itself lit and
@@ -415,11 +356,8 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
         role="dialog"
         aria-modal="false"
         aria-labelledby={`tour-${shownStep.id}-title`}
-        /* pointer-events back on, and this is load-bearing rather than tidying.
-           A Radix modal sets pointer-events: none on the body so the rest of
-           the app goes inert, and this is portaled to body — so from the moment
-           a step opened Settings, Skip and Next went inert with everything
-           else. The tour became unclickable at step two and stayed that way. */
+        /* pointer-events back on, and load-bearing: a Radix modal sets
+           pointer-events: none on the body, and this is portaled to body. */
         className="fixed w-80 rounded-(--gryt-radius-xl) border border-gryt-border bg-gryt-surface p-4 transition-[top,left,opacity] duration-(--gryt-dur-spring) ease-spring motion-reduce:transition-none"
         style={{
           ...card,

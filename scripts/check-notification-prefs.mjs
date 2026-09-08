@@ -1,17 +1,8 @@
 /* eslint-env node */
 
 /**
- * Which scope wins, and what a corrupt file falls back to.
- *
- * Most specific first: a channel beats its folder, which beats the server. The
- * case that decides whether the whole thing is usable is the third one below —
- * muting a server has to leave a channel somebody has already had an opinion
- * about alone, or "mute this server" quietly overrules a decision that was made
- * more deliberately than it was.
- *
- * Everything unrecognised falls back to hearing more rather than less. Somebody
- * hearing too much notices and fixes it. Somebody hearing nothing cannot tell
- * that from a quiet day.
+ * Which scope wins, and what a corrupt file falls back to. Most specific first,
+ * and everything unrecognised falls back to hearing more rather than less.
  */
 
 import assert from "node:assert/strict";
@@ -59,10 +50,8 @@ assert.equal(
 );
 
 /*
- * Muting the server does not overrule a channel that was set on purpose. This
- * is the one somebody would notice: they turned one channel up, muted the
- * server on a busy afternoon, and the channel they cared about went quiet with
- * everything else.
+ * Muting the server does not overrule a channel that was set on purpose — the
+ * one somebody would notice, having turned that channel up first.
  */
 assert.equal(
   resolveLevel({ [HOST]: { server: "none", channels: { c2: "all" } } }, HOST, loose),
@@ -119,9 +108,8 @@ assert.deepEqual(parsePrefs(good), good);
 
 // ── The global ceiling ──────────────────────────────────────────────────────
 //
-// It only ever quietens. The case that matters is the last pair: a global of
-// "everything" must not un-mute a server somebody muted on purpose, which is
-// what a global that worked in both directions would do.
+// It only ever quietens: a global of "everything" must not un-mute a server
+// somebody muted on purpose.
 
 assert.equal(quieterOf("all", "mentions"), "mentions");
 assert.equal(quieterOf("mentions", "all"), "mentions");
@@ -148,9 +136,8 @@ assert.deepEqual(
   { global: "mentions", servers: { [HOST]: { server: "none" } } },
 );
 
-// The shape it used to be written in: the servers map on its own, no global.
-// Anybody upgrading has one of these on disk, and reading it as an empty file
-// would silently un-mute everything they had muted.
+// The shape it used to be written in: the servers map alone, no global. Reading
+// one as an empty file would silently un-mute everything.
 assert.deepEqual(parseStored({ [HOST]: { server: "none" } }), {
   global: "all",
   servers: { [HOST]: { server: "none" } },

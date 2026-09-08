@@ -10,17 +10,8 @@ import { useSocketEvent } from "../hooks/useSocketEvent";
 import { ChannelPermissionMatrix } from "./ChannelPermissionMatrix";
 
 /**
- * Permission templates: the answer several channels share.
- *
- * A channel can hold its own rules, and for one channel that is fine. Four that
- * were meant to match will drift — somebody edits one, forgets the others, and
- * six months later nobody can say which is right. That is why the count of
- * channels using a template is on the row rather than hidden: it is the
- * difference between an edit that changes one thing and one that changes nine.
- *
- * Needs `manage_roles` rather than `manage_channels`. A template is server-wide
- * policy; choosing one for a channel is the channel-level act, and the server
- * gates the two events that way.
+ * Permission templates: the answer several channels share. Needs `manage_roles`
+ * rather than `manage_channels` — a template is server-wide policy.
  */
 
 interface Template {
@@ -63,8 +54,7 @@ export function ServerPermissionTemplatesTab({
     if (!socket?.connected || !accessToken) return;
     socket.emit("server:permissions:templates:list", { accessToken });
     // The matrix needs the roles and what each already holds, so an inheriting
-    // cell can show what it is inheriting. The role editor is the only other
-    // place that asks, and both need `manage_roles` anyway.
+    // cell can show what it inherits. Both need `manage_roles` anyway.
     socket.emit("server:roles:definitions:list", { accessToken });
   };
 
@@ -74,9 +64,8 @@ export function ServerPermissionTemplatesTab({
     if (payload.permissions?.length) setPermissions(payload.permissions);
     setSaving(false);
 
-    // Somebody else saving while this is open replaces what is here rather
-    // than merging into it, the same way the role editor behaves. Merging two
-    // people's matrices would produce a policy neither of them chose.
+    // Somebody else saving while this is open replaces what is here rather than
+    // merging: merging two matrices produces a policy neither person chose.
     setSelectedId((current) => {
       if (current === NEW_TEMPLATE) return current;
       const still = payload.templates?.find((t) => t.id === current);
@@ -119,13 +108,11 @@ export function ServerPermissionTemplatesTab({
     socket.emit("server:permissions:template:save", {
       accessToken,
       // Absent for a new one, so the server mints the id. Sending NEW_TEMPLATE
-      // would create a template literally called __new__ and then reuse it for
-      // the next one.
+      // would create a template literally called __new__ and reuse it.
       templateId: isNew ? undefined : selectedId,
       name,
       // The whole matrix, not a patch. A cell put back to inherit is a rule
-      // absent from this list, and the server deletes what is not sent —
-      // patching would leave inherit unreachable once anything else was set.
+      // absent from this list, and the server deletes what is not sent.
       rules: draftRules,
     });
     setTimeout(refresh, 400);

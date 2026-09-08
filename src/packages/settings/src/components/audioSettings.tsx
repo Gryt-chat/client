@@ -15,35 +15,21 @@ import { SettingGroup, SettingsContainer, SliderSetting, ToggleSetting } from ".
 const VISUALIZER_INTERVAL_MS = 33;
 
 /**
- * Smoothing for the level indicator on the noise gate slider: the weights of an
- * exponential moving average, applied per sample.
- *
- * Attack is fast so a sudden peak still shows up almost immediately — the
- * indicator is for judging where to put the gate threshold, and one that
- * under-reports peaks would have you set it too low. Release is much slower so
- * it falls away smoothly instead of flickering down between words.
- *
- * At these weights and a 33 ms sample: a peak reads at 90 % within ~100 ms,
- * decays to 10 % over ~730 ms, and average frame-to-frame movement against
- * syllable-rate speech drops from about 22 % of the track to about 4 %.
+ * Smoothing for the level indicator: an exponential moving average per sample.
+ * Attack is fast so peaks show; release is slow so it does not flicker.
  */
 const LEVEL_ATTACK = 0.6;
 const LEVEL_RELEASE = 0.1;
 
 /**
- * Interpolates between the 33 ms samples. Kept below the sample interval so the
- * indicator stays roughly in step with the audio rather than trailing it, and
- * linear because an eased curve restarting every sample reads as stutter.
+ * Interpolates between the 33 ms samples. Below the sample interval so the
+ * indicator stays in step, and linear because an eased restart reads as stutter.
  */
 const LEVEL_TRANSITION = "60ms linear";
 
 /**
- * Drops options that repeat an id already in the list.
- *
- * Select keys its items by `value`, and the platform hands us a device whose id
- * is literally "default" alongside the real one — so the Default entry we add
- * ourselves and the enumerated one collide, and React warns about two children
- * with the same key. The first one wins, keeping our own plain "Default" label.
+ * Drops options that repeat an id already in the list. The platform hands us a
+ * device literally called "default" alongside the real one, colliding on key.
  */
 function dedupeByValue(options: SelectOption[]): SelectOption[] {
   const seen = new Set<string>();
@@ -196,9 +182,8 @@ export function AudioSettings() {
   const [visualizerData, setVisualizerData] = useState<Uint8Array | null>(null);
   const devicesLoadedRef = useRef(false);
 
-  // Smoothed copy of micRawVolume, used only for drawing the indicator. The raw
-  // value still drives the gate status text, which has to stay truthful — a
-  // smoothed reading would show the gate as open a moment after it closed.
+  // Smoothed copy of micRawVolume, for drawing only. The raw value drives the
+  // gate status text, which has to stay truthful.
   const [micDisplayVolume, setMicDisplayVolume] = useState(0);
   const micDisplayRef = useRef(0);
 
@@ -243,9 +228,8 @@ export function AudioSettings() {
         setMicRawVolume(Math.round(rawLevel));
         setIsMicLive(rawLevel > noiseGate);
 
-        // Rises quickly toward a peak, falls away slowly. Tracked in a ref so
-        // the next sample continues from the value actually drawn rather than
-        // from whatever React last committed.
+        // Rises quickly toward a peak, falls away slowly. Tracked in a ref so the
+        // next sample continues from what was drawn, not what React committed.
         const previous = micDisplayRef.current;
         const weight = rawLevel > previous ? LEVEL_ATTACK : LEVEL_RELEASE;
         const smoothed = previous + (rawLevel - previous) * weight;
@@ -254,9 +238,8 @@ export function AudioSettings() {
         setMicDisplayVolume(smoothed);
       }
 
-      // The monitor tap, not finalAnalyser: the meter should show what your
-      // processing is doing to your voice, which is a judgement about levels
-      // and has nothing to do with whether you happen to be muted.
+      // The monitor tap, not finalAnalyser: the meter shows what your processing
+      // does to your voice, which has nothing to do with being muted.
       const levelSource =
         microphoneBuffer.monitorAnalyser ?? microphoneBuffer.finalAnalyser;
       if (levelSource) {
@@ -379,9 +362,8 @@ export function AudioSettings() {
           options={dedupeByValue(
             devices.map((device, index) => ({
               label: device.label || `Microphone ${device.deviceId.slice(0, 8)}`,
-              // Before the permission prompt is answered every device comes
-              // back with an empty id and an empty label, so falling back to
-              // the label would give them all the same key too.
+              // Before the permission prompt is answered every device comes back
+              // with an empty id and label, so the label is no better a key.
               value: device.deviceId || `microphone-${index}`,
             })),
           )}

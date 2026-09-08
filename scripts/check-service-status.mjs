@@ -1,13 +1,7 @@
 #!/usr/bin/env node
 /**
- * The outage banner (GRYT-982).
- *
- * The failure that matters is a banner appearing when nothing is wrong, so
- * most of this is about staying quiet: an empty announcement list, an archived
- * one, the all-clear, a single failed probe, a machine with no internet.
- *
- * The announcements come from the status page's own API, which is written by a
- * person and could say anything, so what it renders is checked too.
+ * The outage banner. The failure that matters is a banner appearing when nothing
+ * is wrong, so most of this is about staying quiet (GRYT-982).
  */
 
 import assert from "node:assert/strict";
@@ -173,9 +167,8 @@ check("a non-string message is not rendered", () => {
 /* ── Where it reads from ─────────────────────────────────────────────── */
 
 check("it reads the status page, on the host that survives the outage", () => {
-  /* status.gryt.chat runs on a VPS. Everything it describes is served from
-     home through a Cloudflare tunnel, so a notice hosted alongside would be
-     unreachable at the one moment anybody wants it. */
+  /* status.gryt.chat runs on a VPS. A notice hosted alongside what it describes
+     would be unreachable at the one moment anybody wants it. */
   assert.equal(STATUS_API_URL, "https://status.gryt.chat/api/v1/config");
 });
 

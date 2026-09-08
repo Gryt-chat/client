@@ -1,15 +1,9 @@
-/* Hallmark · component: coach-mark tour · genre: modern-minimal · theme: @gryt/ui (locked)
- * states: default · hover · focus · active · disabled · loading · error · success
- * contrast: pass (40-41)
- */
+/* Hallmark · component: coach-mark tour · genre: modern-minimal · theme: @gryt/ui
+ * states: default · hover · focus · active · disabled · loading · error · success */
 
 /**
- * What a step is allowed to do to the app when it becomes current.
- *
- * The first version of this tour only pointed at things that were already on
- * screen, so it never had to open anything. Half of what a first-run person
- * needs is behind a modal, and telling somebody "it's in Settings" is the same
- * as not telling them.
+ * What a step is allowed to do to the app when it becomes current. Half of what a
+ * first-run person needs is behind a modal.
  */
 export interface TourControls {
   openSettings: (tab: string) => void;
@@ -26,32 +20,20 @@ export interface TourStep {
   /** Where the card sits relative to the target. */
   side: "right" | "top";
   /**
-   * Run when the step becomes current. Opens whatever this step points into.
-   * The target will not exist for a frame or two afterwards, which the tour
-   * waits out rather than treating as a missing control.
+   * Run when the step becomes current. Opens whatever this step points into; the
+   * target will not exist for a frame or two, which the tour waits out.
    */
   enter?: (app: TourControls) => void;
   /**
-   * Controls the cursor travels to and really presses, in order.
-   *
-   * These are genuine pointer events, not a mime: Radix opens its menus and
-   * dialogs from them, so the app does its own opening and the user watches it
-   * happen. Two hops is usually the honest route — press the avatar, the menu
-   * appears, press Settings in it.
-   *
-   * A step with `via` needs no `enter`; the presses are the action.
+   * Controls the cursor travels to and really presses, in order. Genuine pointer
+   * events, so the app does its own opening. A step with `via` needs no `enter`.
    */
   via?: string[];
 }
 
 /**
- * Five steps, in the order somebody actually needs them.
- *
- * Deliberately not a form. Each step points at the real control and says what
- * it is for; the user operates the app rather than a wizard standing in front
- * of it, and whatever they learn here still applies tomorrow. Where a control
- * lives behind a modal the tour opens it, so the route is shown once rather
- * than described.
+ * Five steps, in the order somebody actually needs them. Each points at the real
+ * control, so what they learn here still applies tomorrow.
  */
 export const tourSteps: TourStep[] = [
   {

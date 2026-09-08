@@ -20,22 +20,13 @@ import type { MemberInfo } from "./MemberSidebar";
 import { statusConfig } from "./memberStatus";
 
 /**
- * What a member list can say about somebody beyond their chosen name.
- *
- * Nicknames are not unique, so "Sivert" in the sidebar is a claim rather than a
- * fact. These are the parts nobody can pick: when the account first joined
- * *this* server, whether there is an account behind it at all, and a marker
- * that survives a rename. A member with no account shows the fingerprint on the
- * face of the card rather than in the drawer, because there the question on
- * hover really is identity.
+ * What a member list can say about somebody beyond their chosen name. Nicknames
+ * are not unique, so these are the parts nobody can pick.
  */
 
 /**
- * A rename described by when and how often, never by what it used to say.
- *
- * A recent rename is the thing worth noticing. Past names would answer a
- * question nobody is asking here, at the cost of publishing something somebody
- * may have had a good reason to change.
+ * A rename described by when and how often, never by what it used to say. Past
+ * names answer a question nobody is asking, at somebody else's cost.
  */
 function describeRenames(count?: number, at?: string | null): string | null {
   if (!count || count < 1) return null;
@@ -65,13 +56,8 @@ function describeRenames(count?: number, at?: string | null): string | null {
 }
 
 /**
- * Grouped in fours, and never shortened.
- *
- * A local identity is a keypair its holder makes, so a few characters could be
- * ground out to match somebody worth impersonating — the server keys the
- * fingerprint so that cannot be done offline, and the full value is what makes
- * comparing it mean anything. Four authoritative-looking characters invite a
- * comparison that does not hold. The groups are for reading it aloud.
+ * Grouped in fours, and never shortened. A few characters could be ground out to
+ * match somebody worth impersonating; the full value is what makes it mean anything.
  */
 function Fingerprint({ value }: { value: string }) {
   return (
@@ -100,21 +86,13 @@ export function MemberIdentityCard({
 }: {
   member: MemberInfo;
   /**
-   * Which server this member is being shown on, so their key state can be
-   * looked up (GRYT-728). Optional; without it the key section is absent, the
-   * same as a server too old to carry bindings at all.
-   *
-   * Read from the hook here rather than passed down, because both callers would
-   * otherwise have to thread it through components with no other use for it,
-   * and one of them forgetting is a card that quietly stops mentioning a
-   * changed key.
+   * Which server this member is shown on, so their key state can be looked up.
+   * Without it the key section is absent, as on a server too old for bindings.
    */
   serverHost?: string;
   /**
-   * Optional, because neither caller has channels in reach: the sidebar and the
-   * message list both pass a member and nothing else. Without it the status
-   * reads "In Voice" rather than "In Voice · General", which is the part that
-   * mattered anyway.
+   * Optional, because neither caller has channels in reach. Without it the status
+   * reads "In Voice" rather than "In Voice · General".
    */
   voiceChannelName?: string;
 }) {
@@ -127,9 +105,8 @@ export function MemberIdentityCard({
     : undefined;
 
   /*
-   * Our own half of the code. Both sides go into it, so this card cannot draw
-   * one until it knows what we published here — which is a derivation, not a
-   * fetch, so it lands almost immediately.
+   * Our own half of the code. Both sides go into it, so the card cannot draw one
+   * until it knows what we published here.
    */
   useEffect(() => {
     if (!serverHost) {
@@ -168,24 +145,19 @@ export function MemberIdentityCard({
 
   /*
    * Only a designed owl can be copied. Copying somebody's uploaded photograph
-   * would be impersonation, on the one card that exists to help people tell
-   * each other apart.
+   * would be impersonation, on the card that exists to tell people apart.
    */
   const worn = member.avatarWorn;
 
   /*
-   * The whole fingerprint on the face of the card when there is no account
-   * behind the name, in the drawer when there is. This is the one place the
-   * card stops being presence-first, and it is the case where the question on
-   * hover really is "is this who I think it is".
+   * The whole fingerprint on the face of the card when there is no account behind
+   * the name, in the drawer when there is.
    */
   const [open, setOpen] = useState(false);
 
   /*
-   * The key drawer inside the identity drawer. Shut whenever the outer one
-   * shuts, so opening "Who they are" again does not bring back the block of
-   * numbers somebody closed — the point of moving it was that it is not the
-   * default view.
+   * The key drawer inside the identity drawer. Shut whenever the outer one shuts,
+   * so reopening "Who they are" does not bring back the block of numbers.
    */
   const [verifyOpen, setVerifyOpen] = useState(false);
 
@@ -199,11 +171,8 @@ export function MemberIdentityCard({
   );
 
   return (
-    /* Full width of whatever it is dropped into, not a number of its own.
-       This was 260px inside a popup that is `w-64` with `p-4` — 256 less 32 of
-       padding, so 224 — and every row wider than that ran out past the card's
-       edge. A card that sets its own width has to know the padding of a
-       container it cannot see. */
+    /* Full width of whatever it is dropped into, not a number of its own. A card
+       that sets its own width has to know padding of a container it cannot see. */
     <div className="flex w-full min-w-0 flex-col gap-3">
       <div className="flex min-w-0 items-center gap-2.5">
         {/*
@@ -331,10 +300,8 @@ export function MemberIdentityCard({
             </dl>
             {keyState?.decision.kind === "changed" && (
               /*
-               * Inside the drawer with the rest of the identity facts, and
-               * deliberately not a toast. A toast for this would be gone before
-               * the person it concerns said anything, and there would be nothing
-               * to go back to.
+               * Inside the drawer, deliberately not a toast: a toast would be
+               * gone before the person it concerns said anything.
                */
               <div
                 className="flex flex-col gap-1.5 rounded p-2.5 text-xs leading-snug"
@@ -460,10 +427,8 @@ export function MemberIdentityCard({
                           },
                         )
                       ) {
-                        // Refused because the pin moved between reading the code
-                        // out and pressing this. Rare, and the honest answer is
-                        // to say the code is stale rather than to record a
-                        // comparison of keys nobody compared.
+                        // The pin moved between reading the code out and pressing
+                        // this, so say it is stale rather than record a false match.
                         toast.error("Their key changed while you were checking. Read the new code.");
                         return;
                       }

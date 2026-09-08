@@ -1,14 +1,8 @@
 /* eslint-env node */
 
 /**
- * The sidebar is stored flat and drawn with one level of nesting, and every
- * case that could lose a channel lives in the conversion between the two.
- *
- * A channel is only on screen if a row is drawn for it. So the failures worth
- * pinning are the ones that drop a row rather than misplace it: an orphan whose
- * folder is gone, a child of a collapsed folder that nobody dragged, a drag
- * that reparents the wrong item. Each of those looks like a deleted channel to
- * whoever is looking at the sidebar.
+ * The sidebar is stored flat and drawn with one level of nesting. The failures
+ * worth pinning are the ones that drop a row rather than misplace it.
  */
 
 import assert from "node:assert/strict";
@@ -48,9 +42,8 @@ const depths = (rows) => rows.map((r) => r.depth);
 }
 
 {
-  // An orphan goes to the top level rather than disappearing. The folder it
-  // names is not in the list, which is what a stale server:details looks like
-  // just after somebody else deleted one.
+  // An orphan goes to the top level rather than disappearing. The folder it names
+  // is gone, which is what a stale server:details looks like.
   const rows = flattenSidebar([channel("lost", 10, "gone")]);
   assert.deepEqual(ids(rows), ["lost"]);
   assert.deepEqual(depths(rows), [0]);
@@ -135,12 +128,8 @@ const order = [nestable[0], nestable[1]];
 
 {
   /*
-   * The one that would empty a folder without meaning to.
-   *
-   * `hidden` is inside a collapsed folder, so it was never drawn and is not in
-   * the visible order. Left out of the payload the server would renumber
-   * everything else around it; stated as top level it would fall out of the
-   * folder. It has to come back directly after its folder, with its folder.
+   * The one that would empty a folder without meaning to: `hidden` is inside a
+   * collapsed folder, so it has to come back after its folder, with its folder.
    */
   const items = [folder("f", 10), channel("hidden", 20, "f"), channel("c", 30)];
   const visible = [items[0], items[2]];

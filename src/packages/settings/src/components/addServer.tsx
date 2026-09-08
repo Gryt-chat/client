@@ -41,31 +41,16 @@ interface AddNewServerProps {
   setShowAddServer: (show: boolean) => void;
 }
 
-/**
- * How long to wait after the last keystroke before asking the server about
- * itself.
- *
- * The preview fetches on paste rather than on a button, which means it also
- * fetches on every character somebody types by hand. Long enough not to fire a
- * request per letter, short enough that a paste feels immediate.
- */
+/** The preview fetches on paste rather than a button, so it also fires on every
+    typed character. Long enough not to be one request per letter. */
 const LOOKUP_DEBOUNCE_MS = 450;
 
-/**
- * How long each example sits in the placeholder before the next one.
- *
- * Long enough to read one and glance away; short enough that somebody who
- * pauses sees more than one shape. It stops entirely once there is anything in
- * the field, because text moving under somebody who is typing is the thing this
- * must never do.
- */
+/** Long enough to read one, short enough that a pause shows two. Stops once the
+    field has anything in it: text must not move under somebody typing. */
 const PLACEHOLDER_ROTATE_MS = 3000;
 
-/**
- * What an invite looks like, as the placeholder — the question is "is the thing
- * on my clipboard one of these", which you have while the field is empty and
- * never after. Literal examples rather than a description of the format.
- */
+/** The question is whether what is on the clipboard is one of these, which you
+    have while the field is empty and never after. */
 const WEB_INPUT_EXAMPLES = [
   "gryt.chat/invite?host=…",
   "chat.example.com",
@@ -115,39 +100,22 @@ export function AddNewServer({
 
   const { openSettings, officialServerHidden, setOfficialServerHidden } =
     useSettings();
-  /* `isSignedIn` is undefined until Keycloak answers. Treated as "signed in"
-     for the button below, so a control does not flip from "Sign in to join" to
-     "Join" a beat after the dialog opens. */
+  /* Undefined until Keycloak answers, and read as signed in, so the button does
+     not flip a beat after the dialog opens. */
   const { isSignedIn, login } = useAccount();
   const { isAvailable: embeddedServerAvailable, servers: hostedServers } =
     useEmbeddedServer();
-  /**
-   * Whether this machine already hosts anything.
-   *
-   * Only decides how the first row is worded now. It used to decide whether the
-   * create step was reachable at all, because there could be one server and no
-   * more — so having one meant there was nothing left to create. There is now.
-   */
+  /** Only wording now: it used to decide whether create was reachable, back when
+      there could be one server and no more. */
   const hasOwnServer = hostedServers.length > 0;
   const { join, joiningHost } = useServerJoin();
 
-  /**
-   * The server we run, offered here so that an install with no invite in its
-   * clipboard has somewhere to go.
-   *
-   * Probed only while the dialog is open, and only shown once it has answered —
-   * an offer that fails is worse than no offer, and this is the first thing a
-   * new install sees.
-   */
+  /** Probed only while the dialog is open and shown once it answers: an offer
+      that fails is worse than none, and this is a new install's first sight. */
   const officialServer = useOfficialServer(showAddServer);
 
-  /**
-   * Which errand this dialog is on. Null means the choice has not been made.
-   *
-   * In a browser there is no embedded server to host with, so offering the
-   * choice would be offering one real option and one dead end — `step` sends
-   * those straight to Join.
-   */
+  /** Null means unchosen. A browser has no embedded server, so offering the
+      choice there is one real option and one dead end. */
   const [mode, setMode] = useState<"host" | "join" | null>(null);
   const step = embeddedServerAvailable ? mode : "join";
 
@@ -219,13 +187,8 @@ export function AddNewServer({
     setShowAddServer(false);
   }
 
-  /**
-   * Look the server up whenever the address changes, on a timer.
-   *
-   * The lookup owns everything downstream of it, so this is also where all of
-   * it is cleared — a preview left over from the last address is worse than an
-   * empty one, because it looks like an answer.
-   */
+  /** The lookup owns everything downstream, so this clears it too: a preview left
+      from the last address looks like an answer. */
   useEffect(() => {
     setServerInfo(null);
     setServerPrivate(false);
@@ -262,9 +225,8 @@ export function AddNewServer({
     };
   }, [serverHost, webAddressError]);
 
-  // Reopening starts from the top rather than from wherever the last visit
-  // left off. Somebody who closed this halfway through joining one server is
-  // not usually coming back to finish that.
+  // From the top rather than where the last visit stopped: somebody who closed
+  // this halfway is not usually coming back to finish.
   useEffect(() => {
     if (showAddServer) return;
     setMode(null);
@@ -294,11 +256,8 @@ export function AddNewServer({
     }
 
     if (outcome.kind === "approval_pending") {
-      // Not a failure and not something to retry — the answer comes from a
-      // person, so the dialog says so and stops offering the button that would
-      // just ask again. The server is on the list at this point (GRYT-289), so
-      // the message can send them there rather than asking them to remember the
-      // address and come back.
+      // Not a failure and not retryable: the answer comes from a person. The
+      // server is on the list by now, so the message can send them there.
       setAwaitingApproval(true);
       return;
     }
@@ -312,26 +271,16 @@ export function AddNewServer({
     openSettings("my-servers");
   }
 
-  /**
-   * Fills the field rather than joining outright.
-   *
-   * Everything the join needs — the preview, the account chip, the approval
-   * this server's `request` policy leads to — already hangs off the address in
-   * that field, and the person still gets to read who they are joining.
-   */
+  /** Everything the join needs already hangs off the address in that field, and
+      the person still gets to read who they are joining. */
   function pickOfficialServer(host: string) {
     setMode("join");
     setInviteInput(host);
   }
 
   /** Hidden once you are on it. It is a suggestion, not a shortcut. */
-  /**
-   * Whether to offer the server we run.
-   *
-   * Three things have to be true: it answered, they are not already on it, and
-   * they have not hidden it. The last is a per-device preference — see
-   * `officialServerHidden` in settings.
-   */
+
+  /** It answered, they are not on it, and they have not hidden it. */
   const showOfficial =
     !!officialServer && !servers[officialServer.host] && !officialServerHidden;
 
@@ -348,13 +297,8 @@ export function AddNewServer({
     return () => clearInterval(timer);
   }, [showAddServer, inviteInput.length, inputExamples.length]);
 
-  /**
-   * Whether this server will refuse the identity we have.
-   *
-   * Only claimed when the server said which tiers it takes. An older one sends
-   * none, and silence is better than telling somebody to sign in for a server
-   * that would have let them in.
-   */
+  /** Only claimed when the server said which tiers it takes: silence beats
+      telling somebody to sign in for a server that would have let them in. */
   const needsAccount =
     isSignedIn === false &&
     !!serverInfo?.identityTiers &&
@@ -370,14 +314,8 @@ export function AddNewServer({
     (!!serverInfo || serverPrivate) &&
     (!inviteRequired || normalizeCode(inviteCode).length > 0);
 
-  /**
-   * What the button says and does. A server needing an account gets "Sign in to
-   * join" rather than a disabled button and a tooltip — there is no hover on
-   * touch and no keyboard route to a tooltip, so that is a dead end.
-   *
-   * Genuinely disabled only when pressing could do nothing: nothing typed,
-   * nothing answered, or you are already there.
-   */
+  /** "Sign in to join" rather than a disabled button and a tooltip, which touch
+      and the keyboard cannot reach. Disabled only when a press does nothing. */
   const joinAction = alreadyMember
     ? { label: "Already joined", tone: "secondary" as const, disabled: true, run: () => {} }
     : needsAccount
@@ -389,12 +327,8 @@ export function AddNewServer({
   return (
     <Dialog.Root
       open={showAddServer}
-      /* Same as the settings dialog: a coach mark is not "outside" in any
-         sense the user cares about, and dismissing this on a Next click made
-         the tour's last step close the thing it had just opened.
-
-         Radix expressed this as onInteractOutside + preventDefault; Base UI
-         hands the reason and the event to onOpenChange and cancels there. */
+      /* A coach mark is not "outside" in any sense the user cares about, and
+         dismissing on a Next click closed what the tour had just opened. */
       onOpenChange={(open, details) => {
         if (open) return;
 
@@ -727,21 +661,9 @@ interface ServerPreviewProps {
   alreadyMember: boolean;
 }
 
-/**
- * The flat one-line preview that replaced the details card.
- *
- * Its height is the point of it: enough to tell you the address resolved to
- * the server you were expecting, and not enough to feel like a screen you have
- * to get through. Everything the old card carried that this drops — the
- * description, the join policy — is on the other side of the join anyway.
- */
-/**
- * The server we run, as a row you can press.
- *
- * Shaped like the create card above it on purpose. Both are ways into Gryt for
- * somebody who has nothing yet, and the old answer for that person was an empty
- * field and a format hint.
- */
+/** Shaped like the create card above it: both are ways in for somebody with
+    nothing yet. */
+
 /** One of the two doors on the first screen. */
 function EntryCard({
   icon,
@@ -852,13 +774,8 @@ function OfficialServerCard({
   );
 }
 
-/**
- * The offer, with the way to stop being offered it.
- *
- * "Hide forever" is text above the card rather than a cross inside it. A cross
- * on the row sits inside the target somebody is reaching for, so the press that
- * hides the server and the press that joins it would be a few pixels apart.
- */
+/** "Hide forever" is text above the card rather than a cross inside it, which
+    would put hiding and joining a few pixels apart. */
 function OfficialServerOffer({
   server,
   onPick,

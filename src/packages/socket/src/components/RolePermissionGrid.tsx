@@ -15,14 +15,7 @@ export type GridRole = {
 
 /**
  * The permissions that take something away from somebody rather than let the
- * holder do more of their own thing.
- *
- * Not a server concept — the server has one flat list and is right to. This is
- * presentation, like the grouping and the labels next door: a red edge on the
- * five rows where a mis-click is somebody else's problem.
- *
- * An id the server sends that is not in here draws plain, the same way an
- * undescribed permission behaves.
+ * holder do more. Presentation only — the server has one flat list.
  */
 const DESTRUCTIVE = new Set([
   "replace_identity",
@@ -33,18 +26,8 @@ const DESTRUCTIVE = new Set([
 ]);
 
 /**
- * The container's width, watched rather than read once.
- *
- * Two sources, and both are needed. The ResizeObserver catches the panel
- * changing size on its own, which the window never hears about. The window
- * listener catches what the observer misses: this box sits inside ancestors
- * with `overflow-x: auto`, so when the window shrinks the layout resolves by
- * letting content overflow rather than by resizing this element's content box,
- * and no observation fires. That pinned the measurement at its mount value —
- * 708 while the element was really 453 — and the narrow fallback never came.
- *
- * `getBoundingClientRect` on both paths, so the two cannot disagree about
- * whether padding counts.
+ * The container's width, watched rather than read once. Both sources are needed:
+ * ancestors with `overflow-x: auto` let content overflow without an observation.
  */
 function useContainerWidth(): [React.RefObject<HTMLDivElement | null>, number] {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -106,14 +89,8 @@ function PermissionName({ permission }: { permission: PermissionMeta }) {
 }
 
 /**
- * Every role's permissions at once.
- *
- * Roles across, permissions down, so the policy is one thing you read rather
- * than six things you hold in your head. The list this replaced showed one role
- * at a time with every description expanded.
- *
- * Below `hasRoomForPermissionMatrix` the same state draws as a ladder instead —
- * the component at the bottom of this file. Both edit the same drafts.
+ * Every role's permissions at once — roles across, permissions down. Below
+ * `hasRoomForPermissionMatrix` the same state draws as a ladder instead.
  */
 export function RolePermissionGrid({
   roles,
@@ -181,12 +158,8 @@ export function RolePermissionGrid({
   const roleOptions = roles.map((r) => ({ label: r.name, value: r.id }));
 
   return (
-    // min-w-0 is load-bearing. A flex child defaults to `min-width: auto`, which
-    // means "at least as wide as my content" — and the content here is a table
-    // wide enough for every role. Without it the container never shrinks below
-    // about 450px however narrow the window gets, the ResizeObserver keeps
-    // reporting that width, and the phone fallback never fires. Measured: at a
-    // 390px window this box still read 453.
+    // min-w-0 is load-bearing: a flex child defaults to `min-width: auto`, so the
+    // container never shrinks below about 450px and the phone fallback never fires.
     <div ref={containerRef} className="flex flex-col gap-3 min-w-0">
       <div className="flex items-center gap-2 flex-wrap">
         <div className="flex items-center gap-2 flex-1" style={{ minWidth: 180 }}>
@@ -386,12 +359,8 @@ function PermissionMatrix({
 }
 
 /**
- * The same state, one role at a time, for a container too narrow for a grid.
- *
- * Each role shows only what it adds to the rank below it. That is not a
- * different model of the data — `auto_grant` only ever promotes, and rank
- * ordering is what kicks and bans compare against — so "the one below, plus
- * this" is what a role already is.
+ * The same state, one role at a time, for a container too narrow for a grid. Each
+ * role shows only what it adds to the rank below it, which is what a role is.
  */
 function PermissionLadder({ groups, roles, held, onToggle, readOnlyRoleIds }: ViewProps) {
   const visible = new Set(groups.flatMap((g) => g.permissions.map((p) => p.id)));

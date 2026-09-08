@@ -1,19 +1,11 @@
 /**
- * Guards the audience of an identity assertion.
- *
- * The assertion carries `aud: serverHost`, which is what stops it being
- * replayed at a different server. That host arrives in the server's challenge,
- * so signing it unchecked means signing an audience the other end chose — and a
- * server that names a *different* host gets the client to mint an assertion
- * valid somewhere it never meant to authenticate.
+ * Guards the audience of an identity assertion. The host arrives in the server's
+ * challenge, so signing it unchecked signs an audience the other end chose.
  */
 
 /**
- * Normalises a `host` or `host:port` for comparison.
- *
- * Deliberately conservative — case, surrounding whitespace, and the trailing
- * dot of a fully qualified name. Ports are kept, because a different port
- * really is a different endpoint. IPv6 literals keep their brackets.
+ * Normalises a `host` or `host:port` for comparison. Case, whitespace and a
+ * trailing dot only. Ports are kept; IPv6 literals keep their brackets.
  */
 export function normalizeHostForComparison(value: string): string {
   const trimmed = (value || "").trim().toLowerCase();
@@ -32,10 +24,8 @@ export function normalizeHostForComparison(value: string): string {
 }
 
 /**
- * True when the host named in a challenge is the host we connected to.
- *
- * An empty or missing value never matches: a server that omits the host does not
- * get to skip the check.
+ * True when the host named in a challenge is the host we connected to. An empty
+ * value never matches: omitting the host does not skip the check.
  */
 export function challengeHostMatches(
   dialledHost: string,

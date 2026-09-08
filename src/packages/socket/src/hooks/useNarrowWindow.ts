@@ -3,12 +3,8 @@ import { useEffect, useState } from "react";
 import { hasRoomForMemberList, hasRoomForVoicePanel, isTinyWindow } from "../lib/narrowLayout";
 
 /**
- * The window's width, and whether the thing pointing at it is a mouse.
- *
- * One caller has to know how much of the row the voice panel has taken, and the
- * other has to know it is not on a phone. The decisions themselves are in
- * `lib/narrowLayout.ts`, so `check-narrow-layout.mjs` can assert them without a
- * browser.
+ * The window's width, and whether the thing pointing at it is a mouse. The
+ * decisions are in `lib/narrowLayout.ts`, so a check can assert them.
  */
 function useWindowWidth() {
   const [width, setWidth] = useState(() => window.innerWidth);
@@ -21,12 +17,8 @@ function useWindowWidth() {
 }
 
 /**
- * Whether a mouse or trackpad is the pointer.
- *
- * The guard on the tiny window. A phone in portrait is narrower than any
- * threshold worth picking, and a phone that lost its channel list would have no
- * way back — "make the window bigger" is not an answer there. Watched rather
- * than read once: a keyboard attached to a tablet changes this without a reload.
+ * Whether a mouse or trackpad is the pointer — the guard on the tiny window.
+ * Watched rather than read once: a keyboard on a tablet changes it.
  */
 function usePointerFine() {
   const [fine, setFine] = useState(
@@ -43,10 +35,8 @@ function usePointerFine() {
 }
 
 /**
- * Whether the member list fits, given what the voice panel has taken.
- *
- * Pass the width the panel is actually drawing at — 0 when it is minimized or
- * there is no call — not the width it would like.
+ * Whether the member list fits, given what the voice panel has taken. Pass the
+ * width the panel is drawing at, not the width it would like.
  */
 export function useRoomForMemberList(voicePanelWidth: number): boolean {
   const windowWidth = useWindowWidth();
@@ -54,10 +44,8 @@ export function useRoomForMemberList(voicePanelWidth: number): boolean {
 }
 
 /**
- * Whether the voice panel fits beside a channel list and a usable chat.
- *
- * Below this the voice view minimizes itself, the same way it does at the
- * compact breakpoint.
+ * Whether the voice panel fits beside a channel list and a usable chat. Below
+ * this the voice view minimizes itself.
  */
 export function useRoomForVoicePanel(): boolean {
   return hasRoomForVoicePanel(useWindowWidth());

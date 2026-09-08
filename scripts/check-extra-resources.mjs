@@ -1,19 +1,6 @@
 /**
  * Fails the build when something listed in extraResources is not on disk.
- *
- * electron-builder skips a missing extraResource silently. It does not warn and
- * it does not fail — it packages the app without the file and reports success.
- *
- * That shipped v1.4.0-beta.5 with no menu bar icon. build/trayTemplate*.png are
- * generated rather than authored, `build/*` is in .gitignore, so `git add -A`
- * skipped them and they were never committed. The local build worked because
- * the files happened to exist on the machine that generated them; CI had no such
- * files, packaged without them, and the released app had a tray with nothing in
- * it. Nothing anywhere said so.
- *
- * Wired in as electron-builder's beforeBuild hook, so it runs no matter how the
- * build was started — CI invokes `npx electron-builder` directly and never calls
- * the package.json build script.
+ * electron-builder skips a missing one silently and reports success.
  */
 import { readFileSync, existsSync, statSync } from "fs";
 import { join, dirname } from "path";
@@ -25,11 +12,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
 
 /**
- * The `from:` values out of electron-builder.yml's extraResources.
- *
- * Parsed by hand rather than with a YAML dependency: this runs inside
- * electron-builder's own hook, and adding a parser to the build's critical path
- * to read six lines is not a trade worth making.
+ * The `from:` values out of electron-builder.yml's extraResources. Parsed by hand:
+ * this runs inside electron-builder's own hook, to read six lines.
  */
 function extraResourceSources(yml) {
   const lines = yml.split("\n");
@@ -50,9 +34,8 @@ export default async function beforeBuild() {
   const yml = readFileSync(join(root, "electron-builder.yml"), "utf8");
   const slim = isSlimBuild();
 
-  // A slim build drops these from the config as well, so demanding them here
-  // would fail a build that is correct. Every other entry is still checked,
-  // which is the point — this skips two known names, not the whole check.
+  // A slim build drops these from the config too, so demanding them would fail a
+  // correct build. This skips two known names, not the whole check.
   const sources = extraResourceSources(yml).filter(
     (src) => !slim || !src.startsWith(EMBEDDED_RESOURCE_PREFIX),
   );

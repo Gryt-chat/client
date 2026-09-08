@@ -1,23 +1,8 @@
 /* eslint-env node */
 
 /**
- * The signature check that decides whether a Windows release is allowed out.
- *
- * `sign-windows.cjs` runs this over every artefact after the signing tool has
- * had its turn, and fails the build when a file came back unsigned. That is
- * the whole point of it: a cloud signing CLI that cannot find its credentials
- * tends to exit 0 having done nothing, and without this the release ships
- * unsigned and looks fine until somebody on Windows 11 is blocked by Smart App
- * Control.
- *
- * Headers are built here rather than read off a signed binary. A real one
- * would mean committing a several-megabyte fixture, or having a Windows
- * machine to hand, and the thing being tested is nine lines of offset
- * arithmetic against a layout that has not changed since the 1990s.
- *
- * The unsigned vector is not synthetic though. offset 0 / size 0 is what
- * Gryt-Chat-1.9.1-win-x64.exe reads today, checked against the published file
- * on 2026-09-02.
+ * The signature check that decides whether a Windows release is allowed out. A
+ * cloud signing CLI that cannot find its credentials exits 0 having done nothing.
  */
 
 import assert from "node:assert/strict";
@@ -26,7 +11,6 @@ import { parseCertificateTable } from "./windows-signature.mjs";
 
 /**
  * A PE header with the certificate table set to whatever is asked for.
- *
  * @param {{ plus?: boolean, offset?: number, size?: number }} opts
  */
 function header({ plus = false, offset = 0, size = 0 } = {}) {
@@ -52,15 +36,13 @@ function header({ plus = false, offset = 0, size = 0 } = {}) {
 // v1.9.1 installer looks like.
 assert.deepEqual(parseCertificateTable(header()), { signed: false, offset: 0, size: 0 });
 
-// A signed file, both header layouts. electron-builder emits PE32 for the
-// x64 installer today, so the PE32+ case is there to stop the arithmetic
-// rotting if that ever changes.
+// A signed file, both header layouts. electron-builder emits PE32 for the x64
+// installer today, so PE32+ is there to stop the arithmetic rotting.
 assert.equal(parseCertificateTable(header({ offset: 0x1000, size: 0x2000 })).signed, true);
 assert.equal(parseCertificateTable(header({ plus: true, offset: 0x1000, size: 0x2000 })).signed, true);
 
-// Half a table is not a signature. Either of these alone means something is
-// wrong with the file, and reading it as signed would be the one mistake this
-// check exists to prevent.
+// Half a table is not a signature. Either alone means something is wrong, and
+// reading it as signed is the one mistake this check exists to prevent.
 assert.equal(parseCertificateTable(header({ offset: 0x1000, size: 0 })).signed, false);
 assert.equal(parseCertificateTable(header({ offset: 0, size: 0x2000 })).signed, false);
 
@@ -98,9 +80,8 @@ const dir = mkdtempSync(join(tmpdir(), "gryt-sign-"));
 const unsigned = join(dir, "Gryt.exe");
 writeFileSync(unsigned, header());
 
-// Nothing configured: the artefact stays unsigned and the build carries on,
-// which is exactly what happens today. Failing here would break every release
-// until a certificate exists.
+// Nothing configured: the artefact stays unsigned and the build carries on.
+// Failing here would break every release until a certificate exists.
 delete process.env.GRYT_WIN_SIGN_TOOL;
 await signWindows({ path: unsigned });
 
@@ -122,18 +103,8 @@ await assert.rejects(() => signWindows({ path: unsigned }), /exited 1/);
 process.env.GRYT_WIN_SIGN_TOOL = "gryt-no-such-signing-tool";
 await assert.rejects(() => signWindows({ path: unsigned }), /could not run/);
 
-// A .node that is not a Windows binary. This is what broke the v1.9.4 release:
-// `uiohook-napi` ships prebuilds for every platform, so a Windows build carries
-// `prebuilds/linux-x64/node.napi.node` next to the one it loads. `signExts`
-// matches on extension, the ELF reached the reader, and "Not a PE file: no MZ
-// signature" took the release down after three retries.
-//
-// Skipped, not signed and not fatal: it is not a Windows binary, so Smart App
-// Control will never look at it and there is nothing to sign.
-//
-// No signing tool configured, which is the state every release has been in so
-// far — so a regression walks the same path the release did and throws the
-// same "no MZ signature" here instead of an hour into a build.
+// A .node that is not a Windows binary — `uiohook-napi` ships prebuilds for every
+// platform, and the ELF reaching the PE reader took the v1.9.4 release down.
 const elfNode = join(dir, "node.napi.node");
 writeFileSync(elfNode, Buffer.from([0x7f, 0x45, 0x4c, 0x46, ...Array(60).fill(0)]));
 delete process.env.GRYT_WIN_SIGN_TOOL;
@@ -158,21 +129,14 @@ delete process.env.GRYT_WIN_SIGN_ARGS;
 
 // --- the config and the hook have to agree about what a PE file is ---
 
-// Store policy 10.2.9 wants every PE file signed, not just the installer.
-// electron-builder decides which files to hand the hook from `signExts`, and
-// the hook decides which of those to actually sign. If those two lists drift,
-// something ships unsigned inside a signed installer and the only symptom is a
-// failed Store review weeks later. So they are compared here.
+// Store policy 10.2.9 wants every PE file signed. `signExts` picks what the hook
+// is handed and the hook picks what it signs; drift ships unsigned files inside.
 {
   const yaml = require("js-yaml");
   const { readFileSync } = await import("node:fs");
   const config = yaml.load(readFileSync(new URL("../electron-builder.yml", import.meta.url), "utf8"));
   // On `win`, not on `win.signtoolOptions`. This check asserted the nested path
-  // when it was written, which is why it passed while the config was wrong: a
-  // check built from the same misunderstanding as the code confirms the
-  // misunderstanding. check-builder-config.mjs is the answer to that, because
-  // the schema it validates against comes from electron-builder rather than
-  // from whoever wrote this.
+  // when it was written, so it passed while the config was wrong.
   const signExts = config?.win?.signExts;
 
   assert.ok(Array.isArray(signExts), "win.signExts must be set");
@@ -196,11 +160,8 @@ delete process.env.GRYT_WIN_SIGN_ARGS;
 // --- the MSIX package, which is a zip and not a PE file ---
 
 /**
- * A zip holding one stored, empty member, built by hand.
- *
- * `hasAppxSignature` only ever reads the central directory, so the members
- * themselves can be empty and the CRCs can be zero. What it has to get right
- * is the record layout, which is the part a real zip library would hide.
+ * A zip holding one stored, empty member, built by hand. `hasAppxSignature` only
+ * reads the central directory, so the members and CRCs can be empty.
  */
 function zipWith(name) {
   const nameBytes = Buffer.from(name, "latin1");
@@ -235,17 +196,14 @@ const unsignedPackage = join(dir, "unsigned.appx");
 writeFileSync(unsignedPackage, zipWith("AppxManifest.xml"));
 assert.equal(await hasAppxSignature(unsignedPackage), false);
 
-// The reason the central directory is walked rather than searched. A member of
-// the payload with that name is a file the app happens to ship, not a package
-// signature, and a substring search over the bytes cannot tell the two apart.
+// Why the central directory is walked rather than searched: a payload member with
+// that name is a file the app ships, and a substring search cannot tell them apart.
 const decoyPackage = join(dir, "decoy.appx");
 writeFileSync(decoyPackage, zipWith(String.raw`app\AppxSignature.p7x`));
 assert.equal(await hasAppxSignature(decoyPackage), false);
 
-// The hook has to route .appx away from the PE reader. Before it did, the
-// package fell through the extension test and the hook returned silently —
-// electron-builder said "signing with signtool.exe" and nothing was signed or
-// reported.
+// The hook has to route .appx away from the PE reader. Before it did, the package
+// fell through the extension test and the hook returned silently.
 delete process.env.GRYT_WIN_SIGN_TOOL;
 await signWindows({ path: unsignedPackage });
 await signWindows({ path: signedPackage });
@@ -262,9 +220,8 @@ await assert.rejects(
 delete process.env.GRYT_WIN_SIGN_TOOL;
 delete process.env.GRYT_WIN_SIGN_ARGS;
 
-// appx is a target in electron-builder.yml, so the hook must claim it. If the
-// target were dropped this assertion is the thing that says the hook branch is
-// now dead code.
+// appx is a target in electron-builder.yml, so the hook must claim it. Dropping
+// the target makes this assertion the thing that says the branch is dead.
 {
   const yaml = require("js-yaml");
   const { readFileSync } = await import("node:fs");

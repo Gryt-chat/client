@@ -39,11 +39,8 @@ interface LatencyDisplayStats {
   remoteAddress?: string | null;
 }
 
-/**
- * How long a tile waits for its stream before it stops calling itself
- * "connecting". Well past a slow negotiation — offer, answer, ICE and the first
- * RTP on a poor link is a few seconds — and well short of forever.
- */
+/** Well past a slow negotiation, where offer, answer, ICE and the first RTP on a
+    poor link is a few seconds, and well short of forever. */
 const VIDEO_PENDING_TIMEOUT_MS = 15_000;
 
 export function VideoCard({
@@ -78,10 +75,8 @@ export function VideoCard({
   const ref = useRef<HTMLVideoElement | null>(null);
   const [isStalled, setIsStalled] = useState(false);
 
-  // A tile with no stream used to say "Connecting video…" for as long as the
-  // window stayed open. When the media genuinely never arrives — the SFU never
-  // learned about the track, the subscription never produced RTP — that reads
-  // as slow rather than broken, and there is nothing to act on. Say so instead.
+  // A tile with no stream said "Connecting video…" forever, which reads as slow
+  // rather than broken when the media never arrives at all.
   useEffect(() => {
     if (stream) {
       setIsStalled(false);
@@ -127,9 +122,8 @@ export function VideoCard({
       style={{
         position: "relative",
         width: "100%",
-        // Fills the box the grid gives it. The old `aspectRatio: 16/9` is why
-        // tiles never filled the panel — they were letterboxed inside their
-        // cell regardless of how much room there was.
+        // Fills the box the grid gives it: `aspectRatio: 16/9` letterboxed every
+        // tile inside its cell however much room there was.
         height: "100%",
         borderRadius: radius,
         overflow: "hidden",
@@ -137,9 +131,8 @@ export function VideoCard({
         outline: isSpeaking
           ? `${SPEAKING_RING}px solid var(--gryt-accent-9)`
           : `${SPEAKING_RING}px solid transparent`,
-        // Inward, because the tile fills its cell exactly. An outline is drawn
-        // outside the border box, so at offset 0 the ring lands in the gap
-        // between tiles or gets clipped by the panel edge.
+        // Inward, because the tile fills its cell: an outline is drawn outside the
+        // border box and lands in the gap or gets clipped.
         outlineOffset: -SPEAKING_RING,
         transition: "outline-color 0.1s ease",
         cursor: stream && onClick ? "pointer" : undefined,
@@ -156,21 +149,16 @@ export function VideoCard({
             height: "100%",
             objectFit,
             objectPosition,
-            // Easing the crop rather than jumping it. The published value is
-            // already smoothed, but the first one after a reconnect can land
-            // a long way from centre.
+            // Eased rather than jumped: the published value is smoothed, but the
+            // first after a reconnect can land far from centre.
             transition: "object-position 400ms ease-out",
             transform: mirrored ? "scaleX(-1)" : undefined,
             pointerEvents: "none",
           }}
         />
       ) : (
-        // No background of its own: the tile underneath is #000 and stays that
-        // way in both themes, because a video surface with no picture is black.
-        // The placeholder used to paint var(--gryt-neutral-3) over it, which on
-        // the light theme is #f7f8fb — and the participant's name below is
-        // hardcoded white (GRYT-524). Everything in here is therefore
-        // light-on-dark and fixed, not themed.
+        // No background: the tile underneath is #000 in both themes, and the name
+        // below is hardcoded white. Everything here is light-on-dark and fixed.
         <div className="flex items-center justify-center px-2" style={{
             width: "100%",
             height: "100%",
@@ -178,9 +166,8 @@ export function VideoCard({
           <span
             className="text-xs text-center"
             style={{
-              // Warning 9 rather than 11: on black, 9 is the legible one. GRYT-32
-              // reached for 11 because the placeholder was light on a light theme,
-              // which it no longer is.
+              // 9 rather than 11: on black, 9 is the legible one. 11 was for a
+              // placeholder that was light on a light theme.
               color: isStalled ? "var(--gryt-warning-9)" : "rgba(255, 255, 255, 0.6)",
             }}
           >
@@ -193,10 +180,8 @@ export function VideoCard({
 
       <div className="flex items-center gap-1 px-2" style={{
           position: "absolute",
-          // 12px in, 9px up — measured off Meet. The dark scrim that used to
-          // sit behind this is gone: the tile's own colour carries the
-          // contrast, and the gradient was the most obviously un-Meet-like
-          // thing about the old tile.
+          // 12px in, 9px up, measured off Meet. No scrim: the tile's own colour
+          // carries the contrast.
           bottom: 9,
           left: 12,
           right: 12,
@@ -214,15 +199,8 @@ export function VideoCard({
 /** Measured off Meet. Overridable so the two-participant PiP can sit at 12. */
 export const TILE_RADIUS = 16;
 
-/**
- * The muted badge, top-right of the tile.
- *
- * Tinted to the tile's own hue so it reads as part of the tile. On a video tile
- * there is no hue to borrow, so it falls back to a dark translucent circle.
- *
- * The diameter is not measured. It steps at the same tile height as the avatar
- * buckets so the two stay in proportion.
- */
+/** Tinted to the tile's hue, falling back to a dark circle on video. The
+    diameter steps at the same heights as the avatar, so the two stay in step. */
 function MutedBadge({
   hueId,
   hueAvatarColor,
@@ -248,10 +226,8 @@ function MutedBadge({
         borderRadius: "50%",
         background: hueId
           ? (() => {
-              /* The badge sits on the tile, so it takes the tile's colour a
-                 step darker rather than a fixed lightness of its own — which
-                 on a dark owl used to come out lighter than the tile it was
-                 on. */
+              /* A step darker than the tile rather than a fixed lightness, which
+                 on a dark owl came out lighter than the tile. */
               const { hue, sat, light } = tileTint(hueId, hueAvatarColor, hueAvatarOwl);
               return `hsl(${hue} ${Math.round(Math.min(100, sat - 3))}% ${Math.round(light * 0.62)}%)`;
             })()
@@ -267,14 +243,8 @@ function MutedBadge({
   );
 }
 
-/**
- * Avatar diameter for a tile of this height.
- *
- * Measured off Meet, and it is stepped rather than proportional: a 468-wide
- * spanning tile and a 228-wide grid tile both showed 72px at the same 297px
- * height, which rules out scaling by width, and 24% / 16% / 36% of height for
- * the three observed sizes rules out a single ratio.
- */
+/** Stepped rather than proportional: two tiles of different widths showed 72px
+    at the same height, and the three observed sizes share no ratio. */
 function avatarSizeForHeight(height: number): number {
   if (height >= 450) return 96;
   if (height >= 170) return 72;
@@ -282,12 +252,8 @@ function avatarSizeForHeight(height: number): number {
   return 32;
 }
 
-/**
- * Below this height a tile cannot carry a centred avatar and a 16px name row
- * without the two overlapping. The two-participant picture-in-picture is the
- * case that hits it — at 16:9 in a sidebar-width panel it comes out around
- * 80px tall — so the avatar, the name and its inset all step down together.
- */
+/** Below this a centred avatar and a 16px name row overlap. The two-participant
+    picture-in-picture is what hits it, around 80px tall. */
 const SMALL_TILE_HEIGHT = 110;
 
 /** Tile height, so the avatar can pick its bucket. */
@@ -408,16 +374,13 @@ export function VoiceParticipantCard({
   const { framingByClient, localFraming } = useVideoFraming();
   const serverUserId: string | undefined = client?.serverUserId;
 
-  // Above the screen-tile branch below, which returns early. A hook after an
-  // early return only survives because a given card keeps the same itemId for
-  // its whole life, which is not something to rely on.
+  // Above the early return below: a hook after one only survives because a card
+  // keeps its itemId for life, which is not worth relying on.
   const tileRef = useRef<HTMLDivElement>(null);
   const tileHeight = useTileHeight(tileRef);
 
-  // Same reason: above the early return. The two analysers the speaking check
-  // reads — the post-gate microphone for yourself, the decoded remote stream
-  // for everyone else. Passing false takes no microphone handle; useMicrophone
-  // is a singleton, so this only reads what the voice connection already set up.
+  // Above the early return too. Passing false takes no microphone handle, so
+  // this only reads what the voice connection already set up.
   const { microphoneBuffer } = useMicrophone(false);
 
   if (isScreenTile) {
@@ -584,12 +547,8 @@ export function VoiceParticipantCard({
 
   const avatarPx = avatarSizeForHeight(tileHeight);
 
-  /* Worked out once and used for the tile, the badge and the ring.
-   *
-   * From the nickname, because that is what the avatar is drawn from. The tile
-   * below still passed `serverUserId`, which for a fake participant is
-   * `fake-0`, so it came out as the colour of an owl belonging to a person who
-   * does not exist. One value now, so the three cannot disagree again. */
+  /* From the nickname, which is what the avatar is drawn from: `serverUserId` is
+     `fake-0` for a fixture and coloured an owl nobody has. */
   const tint = tileTint(client.nickname, memberInfo?.avatarColor, {
     nickname: client.nickname,
     worn: memberInfo?.avatarWorn,
@@ -621,20 +580,16 @@ export function VoiceParticipantCard({
               padding: "4px 8px",
             }
           : {
-              // The tile itself, rather than an avatar floating on the panel
-              // background. This branch renders whenever someone has no video,
-              // which is most of the time, and it previously had no tile chrome
-              // at all — that is why the panel looked empty.
+              // The tile itself, not an avatar floating on the panel. This branch
+              // renders most of the time and had no chrome at all.
               position: "relative",
               width: "100%",
               height: "100%",
               borderRadius: tileRadius,
               overflow: "hidden",
               background: tileGradientFrom(tint),
-              // No stroke on the tile. Meet puts the whole speaking treatment
-              // on the avatar — a ring plus the halo behind it — and leaves the
-              // tile alone, so the card edge stays quiet however many people
-              // are talking.
+              // No stroke on the tile: the whole speaking treatment is on the
+              // avatar, so the card edge stays quiet however many are talking.
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -652,9 +607,8 @@ export function VoiceParticipantCard({
           src={resolveAvatarSrc(
             avatarFileId
               ? // No thumbnail here on purpose. The tile draws avatars up to
-                // ~96 CSS px, 192 on a 2x screen, which is past what the 128px
-                // thumbnail can carry — and it is the one place an animated
-                // avatar should still animate, which the thumbnail does not.
+                // ~96 CSS px, 192 on a 2x screen, past what the 128px thumbnail
+                // carries — and the one place an animated avatar should animate.
                 getUploadsFileUrl(serverHost, avatarFileId)
               : undefined,
             client.nickname,
@@ -766,9 +720,8 @@ export function VoiceParticipantCard({
     return (
       <div
         ref={tileRef}
-        // Height as well as width: the card fills the cell the grid gives it,
-        // and without a definite height here VideoCard's own `height: 100%`
-        // resolves against an auto-height parent and collapses.
+        // Height as well as width: without a definite one, VideoCard's own
+        // `height: 100%` resolves against an auto parent and collapses.
         style={{ width: "100%", height: "100%" }}
       >
         <VideoCard

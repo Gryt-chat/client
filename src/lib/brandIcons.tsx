@@ -1,15 +1,6 @@
 /*
- * Two marks that are not phosphor and not link providers.
- *
- * GitHub and Ko-fi appear in About and Support. Phosphor ships no brand logos,
- * and the table in @gryt/core is for sites a *message* links to, so borrowing
- * from it would tie a settings icon to whether a provider stays in that list.
- *
- * So the path data sits here, lifted from what react-icons drew before it was
- * removed. Two paths, about 2KB, against the 82MB that carried them.
- *
- * Sized in px like the icons beside them rather than the 1em react-icons
- * defaults to, because every call site already passes a number.
+ * Two marks that are not phosphor and not link providers. Path data lifted from
+ * react-icons before it was removed: two paths, about 2KB, against 82MB.
  */
 
 type BrandIconProps = { size?: number; className?: string };

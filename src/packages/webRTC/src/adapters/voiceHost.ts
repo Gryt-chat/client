@@ -3,11 +3,8 @@ import type { NativeAudioCapture, NativeScreenCapture, VoiceHost } from "@gryt/v
 import { getElectronAPI, isElectron } from "../../../../lib/electron";
 
 /**
- * What this client can do that a browser tab cannot.
- *
- * The engine used to ask `isElectron()` for two unrelated things. It now asks
- * two questions, and on the desktop both answers happen to be the same, which is
- * exactly why they were conflated in the first place.
+ * What this client can do that a browser tab cannot. Two questions rather than
+ * one `isElectron()`; on the desktop both answers happen to be the same.
  */
 export const electronVoiceHost: VoiceHost = {
   hasNativeCapture: () => isElectron(),
@@ -39,12 +36,8 @@ export const electronVoiceHost: VoiceHost = {
   },
 
   /**
-   * Whether a plain ws:// to a private address is allowed.
-   *
-   * Inside Electron there is no mixed-content rule, which is why LAN servers on
-   * plain ws:// are reachable from the desktop app and invisible from
-   * app.gryt.chat. The same expression as hasNativeCapture, and a different
-   * question: on React Native the two answers differ.
+   * Whether a plain ws:// to a private address is allowed. Inside Electron there
+   * is no mixed-content rule. On React Native the two answers differ.
    */
   allowsInsecureTransport: () => isElectron(),
 };

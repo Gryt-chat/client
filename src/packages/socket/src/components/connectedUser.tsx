@@ -126,10 +126,8 @@ export function ConnectedUser({
               src={avatarSrc}
               style={{
                 flexShrink: 0,
-                // Same ring the voice tile draws, at the width this row has
-                // room for. Sharing speakingRingStyle is the point: the two
-                // used to disagree about colour and thickness while reading
-                // the same clientsSpeaking record.
+                // Same ring the voice tile draws, at this row's width. Sharing
+                // speakingRingStyle is the point: the two used to disagree.
                 ...speakingRingStyle(hue, isSpeaking, SIDEBAR_RING),
               }}
             />

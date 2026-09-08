@@ -4,16 +4,8 @@ import { useEffect, useState } from "react";
 import { ConfirmDialog } from "./ConfirmDialog";
 
 /**
- * Reporting a person, as opposed to reporting one thing they said.
- *
- * A message report needs no explanation — the message is attached. This one has
- * nothing attached, so the reason is required and the button stays off until
- * there is one. A card saying only that somebody is unhappy cannot be acted on.
- *
- * **Blocking is offered here, and defaults to on.** The report goes to whoever
- * is awake to read it, which at three in the morning is nobody; the block takes
- * effect on the way out. It is per server and reversible from the same menu, so
- * defaulting it on costs a click to undo and defaulting it off costs the night.
+ * Reporting a person, as opposed to one thing they said: nothing is attached, so
+ * the reason is required. **Blocking is offered here, and defaults to on.**
  */
 export const REPORT_REASON_MAX = 1000;
 
@@ -33,9 +25,8 @@ export function ReportUserDialog({
   const [reason, setReason] = useState("");
   const [alsoBlock, setAlsoBlock] = useState(true);
 
-  /* Cleared when it opens rather than when it closes, so a reason half typed
-     is still there if the dialog is dismissed by accident and reopened — the
-     same way the kick and ban dialogs handle theirs. */
+  /* Cleared when it opens rather than when it closes, so a reason half typed is
+     still there if the dialog is dismissed by accident. */
   useEffect(() => {
     if (target) {
       setReason("");

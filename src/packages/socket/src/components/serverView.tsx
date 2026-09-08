@@ -62,12 +62,8 @@ const fakeParticipantOptionsFromUrl = readFakeParticipantOptions(
   window.location.search,
 );
 
-/**
- * The call fixtures, which start before the socket handler rather than after
- * it. `?fakering=1` rings the open conversation; `?fakepeer=1` puts somebody
- * in the call; `?fakepeer=1&fakecallmembers=0` reproduces the bug where a call
- * drew nobody. See `dev/fakeServerEvents.ts`.
- */
+/** `?fakering=1` rings the open conversation, `?fakepeer=1` puts somebody in the
+    call, and `&fakecallmembers=0` reproduces a call that drew nobody. */
 const fakeCallOptionsFromUrl = readFakeCallOptions(window.location.search);
 
 export const ServerView = () => {
@@ -118,37 +114,17 @@ export const ServerView = () => {
   const [createChannelType, setCreateChannelType] = useState<"chat" | "voice" | "forum" | "automated">("chat");
   const toggleFocusedChat = useCallback(() => setFocusedChatHidden((v) => !v), []);
 
-  /**
-   * The chat is out of the way because somebody put it out of the way.
-   *
-   * The button lives on the focused view's control row, so this only means
-   * anything while a stream is focused — but it is a press either way, which
-   * is the whole difference between this and what focus used to do on its own.
-   */
+  /** Only means anything while a stream is focused, but it is a press either
+      way — which is the difference from what focus used to do on its own. */
   const chatTakenOver = voiceFocused && focusedChatHidden;
 
-  /*
-   * What the voice panel is actually taking out of the row, which is what the
-   * member list has to be measured against.
-   *
-   * Zero in three cases: no call, the panel minimized, and the panel maximized
-   * — the last hides the chat entirely, so nothing is competing.
-   */
-  /*
-   * Whether the chat pane is drawn at all. The same condition the pane itself
-   * uses further down, named here because three other things need to ask it.
-   */
+  /* Whether the chat pane is drawn at all: the same condition the pane uses
+     further down, named because three other things ask it. */
   const chatPaneHidden =
     chatTakenOver || (isMaximized && showVoiceView && voiceWidth !== "0px");
 
-  /*
-   * What the person is actually looking at, which is not what was last clicked
-   * — a DM takes over the pane and a maximized call hides it.
-   *
-   * **Everything meaning "the thing you have open" reads this, not
-   * `selectedChannelId`**, or a covered channel stays lit and keeps being
-   * marked read.
-   */
+  /* Not what was last clicked: a DM takes over the pane and a maximized call
+     hides it. Read this, or a covered channel stays lit and marked read. */
   const visibleChannelId = chatPaneHidden || selectedDmId ? null : selectedChannelId;
   const visibleDmId = chatPaneHidden ? null : selectedDmId;
 
@@ -195,19 +171,8 @@ export const ServerView = () => {
   const { getUnreadCounts } = useUnreadTracker();
   const { conversationMentionCount, getMentionCounts } = useMentionTracker();
   const { conversationThreadMentionCount } = useThreadMentions();
-  /*
-   * Reading a conversation clears the mentions in it.
-   *
-   * Separate from the effect above because it also has to fire for a mention
-   * that lands while the conversation is already open — `mentionCount` changes
-   * then, and the conversation does not. Cleared here as well as on the server
-   * so the badge goes when they look at it rather than when the reply comes.
-   *
-   * Only the ones in the timeline, though. A thread reply is filtered out of
-   * the channel and rendered in the thread panel, so opening the channel never
-   * showed it; those clear when the thread opens (GRYT-1014). Both halves are
-   * needed here — the count to send for, and the count to leave behind.
-   */
+  /* Separate from the effect above, which does not fire for a mention landing in
+     an open conversation. Timeline only: a thread reply was never on screen. */
   const openConversation = visibleDmId || visibleChannelId || "";
   const openConversationThreadMentions = currentlyViewingServer
     ? conversationThreadMentionCount(currentlyViewingServer.host, openConversation)
@@ -228,11 +193,8 @@ export const ServerView = () => {
     ? clients[currentlyViewingServer.host]?.[currentConnection.id]?.serverUserId
     : undefined;
 
-  /*
-   * Ahead of `useChat`, which needs the conversation's members to know whether
-   * the next message can be encrypted (GRYT-729). Both are unconditional hook
-   * calls, so the order between them is free.
-   */
+  /* Ahead of `useChat`, which needs the members to know whether the next message
+     can be encrypted. Both unconditional, so the order is free. */
   const {
     conversations: directConversations,
     openDm,
@@ -288,14 +250,8 @@ export const ServerView = () => {
     conversationMembers,
   });
 
-  /**
-   * What is on screen, with anybody blocked taken out. The server already
-   * withholds their new messages and history, so this only covers what was
-   * already drawn when Block was pressed.
-   *
-   * Filtered here rather than in `useChat` because it is a view decision — the
-   * store still holds them, so unblocking puts them back without a refetch.
-   */
+  /** The server already withholds new messages, so this covers what was drawn
+      when Block was pressed. Filtered here, so unblocking needs no refetch. */
   const visibleChatMessages = useMemo(
     () => chatMessages.filter((m) => !isBlocked(m.sender_server_id)),
     [chatMessages, isBlocked],
@@ -331,12 +287,8 @@ export const ServerView = () => {
 
   const { reportsOpen, setReportsOpen, pendingReportCount, memberListMap } = useServerReports({
     currentConnection, accessToken, currentlyViewingServer, memberLists,
-    /* **`has`, not `can`.** `can` answers true while the server has not said
-     * otherwise, which is right for offering a button and wrong here: this
-     * drives an automatic `reports:list` on join, before `server:details`
-     * arrives, so it said yes to guests and the refusal was the first thing a
-     * new member saw. The cost is that a server too old to send a permission
-     * list gives nobody the badge count (GRYT-874). */
+    /* `has`, not `can`: this drives an automatic `reports:list` on join, before
+       `server:details` arrives, so `can` made a refusal a new member's first sight. */
     canViewReports: viewerPermissions.has("view_reports"),
   });
 
@@ -368,14 +320,8 @@ export const ServerView = () => {
     isConnected: currentConnectionStatus === "connected",
   });
 
-  /**
-   * Open a DM and read it.
-   *
-   * The server answers `dm:opened` whether it made one or found the existing
-   * one, so this waits for that rather than guessing the id. The id is
-   * derivable, but deriving it here would mean the client owning a rule the
-   * server also owns, and a conversation opening empty when the two drift.
-   */
+  /** Waits for `dm:opened` rather than deriving the id, which would mean the
+      client owning a rule the server owns and opening empty when they drift. */
   const handleOpenDm = useCallback((targetServerUserId: string) => {
     const existing = directConversations.find(
       (c) => c.other.server_user_id === targetServerUserId,
@@ -387,9 +333,8 @@ export const ServerView = () => {
     openDm(targetServerUserId);
   }, [directConversations, openDm, setSelectedDmId]);
 
-  // A conversation opened from the member list is one somebody asked for, so it
-  // is opened for reading too. One that arrives because the other person
-  // started it is not — that would yank the view out from under them.
+  // One opened from the member list was asked for, so it is read too. One the
+  // other person started is not, or the view is yanked out from under them.
   const pendingDmTargetRef = useRef<string | null>(null);
   useEffect(() => {
     const target = pendingDmTargetRef.current;
@@ -405,11 +350,8 @@ export const ServerView = () => {
     handleOpenDm(targetServerUserId);
   }, [handleOpenDm]);
 
-  /**
-   * Take a call. Answering is joining the conversation's voice room and nothing
-   * else — the server ends the ring when the join lands. The conversation is
-   * opened for reading too.
-   */
+  /** Answering is joining the conversation's voice room; the server ends the ring
+      when the join lands. */
   useFakeCallEvents(currentConnection, selectedDmId, fakeCallOptionsFromUrl);
 
   const handleAcceptCall = useCallback(() => {
@@ -427,25 +369,15 @@ export const ServerView = () => {
     setSelectedDmId(conversation.conversation_id);
   }, [setSelectedDmId]);
 
-  /* Hiding the one you are reading leaves the view pointing at a conversation
-     that is no longer in the list, so the selection goes back to the channels.
-     The conversation is still readable — re-open it from the member list — but
-     staying in it would be a screen with no way back to itself. */
+  /* Hiding the one being read points the view at a conversation no longer in the
+     list, so the selection goes back to the channels. */
   const handleHideDm = useCallback((conversation: { conversation_id: string }) => {
     setSelectedDmId((current) => (current === conversation.conversation_id ? null : current));
     setDmHidden(conversation.conversation_id, true);
   }, [setDmHidden, setSelectedDmId]);
 
-  // The conversation being read, when it is a DM rather than a channel. The
-  // chat header and the empty state both need the other person's name, and
-  // `useChat` only knows how to look up channels.
-  /**
-   * The group dialog, and what it is for.
-   *
-   * `null` is closed. A conversation means managing that one; an array of
-   * ids means starting a new group with those people ticked — which is how
-   * the button on a direct message hands over who you were talking to.
-   */
+  /** `null` is closed, a conversation is managing that one, and an array of ids
+      is a new group with those people ticked. */
   const [groupDialog, setGroupDialog] = useState<DirectConversation | string[] | null>(null);
 
   const activeDm = useMemo(
@@ -455,14 +387,8 @@ export const ServerView = () => {
     [selectedDmId, directConversations],
   );
 
-  /**
-   * Whether the connected room is a call rather than a channel, which decides
-   * whether being alone in it ends it (GRYT-711).
-   *
-   * **A lookup in the conversation list, not a test on the id** — a channel can
-   * be named to look like one. `currentChannelId` is the room joined rather
-   * than the one on screen, so this holds while reading during a call.
-   */
+  /** A lookup, not a test on the id, since a channel can be named to look like
+      one. `currentChannelId` is the room joined, not the one on screen. */
   const connectedToACall = useMemo(
     () => Boolean(currentChannelId)
       && directConversations.some((c) => c.conversation_id === currentChannelId),
@@ -478,21 +404,15 @@ export const ServerView = () => {
     connect, applyChannelSettings, setIsMuted, setIsDeafened,
   });
 
-  // Picking a channel closes whatever DM was open. Without this the DM would
-  // stay the active conversation and the channel would look selected while
-  // showing somebody else's messages.
+  // Without this the DM stays the active conversation and the channel looks
+  // selected while showing somebody else's messages.
   const handleChannelClickAndCloseDm = useCallback((channel: Parameters<typeof handleChannelClick>[0]) => {
     setSelectedDmId(null);
     handleChannelClick(channel);
   }, [handleChannelClick, setSelectedDmId]);
 
-  /**
-   * The caller's picture, from the member list.
-   *
-   * A ring carries a nickname and nothing else, deliberately — duplicating a
-   * person's appearance into the ring would be a second copy to go stale. A
-   * caller who is not in the list draws their owl from the nickname.
-   */
+  /** A ring carries a nickname and nothing else, or a person's appearance is a
+      second copy to go stale. A caller not in the list draws from the name. */
   const caller = incomingCall ? memberListMap[incomingCall.from.server_user_id] : undefined;
   const callerAvatarUrl =
     caller?.avatarFileId && viewingHost
@@ -500,28 +420,16 @@ export const ServerView = () => {
       : undefined;
   const callerAvatarWorn = caller?.avatarWorn ?? null;
 
-  /**
-   * What sits in the conversation header. Built once and used by both layouts,
-   * which each carried their own copy.
-   *
-   * Calling is offered whether or not one is going: joining and starting are
-   * the same act, and the server refuses a second ring.
-   *
-   * Gated on `start_calls` (GRYT-712), which is not the permission for
-   * answering — somebody without it still gets rung and can pick up. `can`
-   * reads an unknown permission as held, so an older server keeps the button.
-   */
+  /** Built once for both layouts. Calling is offered whether or not one is
+      going, and `start_calls` is not the permission for answering. */
   const dmHeaderActions = useMemo(() => {
     if (!activeDm || !viewerPermissions.can("send_direct_messages")) return undefined;
     const conversationId = activeDm.conversation_id;
     const ringing = outgoingCall?.conversation_id === conversationId;
     const mayCall = viewerPermissions.can("start_calls");
 
-    /**
-     * Ringing and joining are one act: the caller is in the room from the
-     * moment it rings, or answering joins a room with nobody in it. Giving up
-     * leaves again, and cancel is only offered while nobody has answered.
-     */
+    /** The caller is in the room from the moment it rings, or answering joins a
+        room with nobody in it. Cancel is offered until somebody answers. */
     const startCall = () => {
       ringConversation(conversationId);
       setShowVoiceView(true);
@@ -558,12 +466,8 @@ export const ServerView = () => {
   }, [activeDm, viewerPermissions, outgoingCall, cancelCall, ringConversation, setGroupDialog, connect, setShowVoiceView, handleVoiceDisconnect]);
 
   const currentAdminActions = useMemo(() => {
-    // One handler per permission, rather than one bundle per role name. This
-    // used to ask whether somebody was owner, admin or mod and hand over
-    // everything or nothing — so a role built to do exactly one of these got a
-    // context menu with none of them, whatever its permissions said. Passing a
-    // handler as undefined rather than relying on the menu alone means there is
-    // no way to reach an action the server would refuse.
+    // One handler per permission, not a bundle per role name, which gave a role
+    // built for one of these a menu with none. Undefined, not hidden.
     const can = viewerPermissions.can;
     const any =
       can("disconnect_members") ||
@@ -601,18 +505,16 @@ export const ServerView = () => {
   );
   const fakeSpeech = useFakeSpeech(fakeParticipantOptions);
 
-  // Dev only. The senders are the same invented people the voice fixture uses,
-  // so a message and a tile belong to one person rather than two sets of
-  // strangers. See fakeChat.ts.
+  // Dev only. The same invented people the voice fixture uses, so a message and a
+  // tile belong to one person.
   const fakeChatRunning = useFakeChatRunning();
   const fakeChatSenders = useMemo(
     () => fakeChatSendersFrom(fakeParticipantOptions),
     [fakeParticipantOptions],
   );
 
-  /* All of them, not just the first. The fixture reacts with these and sends
-     them on their own, and one emoji used for everything looks like a stuck
-     key rather than like a server with its own emoji. */
+  /* All of them: one emoji used for everything looks like a stuck key rather
+     than a server with its own. */
   const fakeChatEmojiNames = useMemo(
     () => getCustomEmojis().map((e) => e.name),
     [],
@@ -643,11 +545,8 @@ export const ServerView = () => {
         onReconnect={() => reconnectServer(currentlyViewingServer.host)}
         onSignIn={() => void login()}
         onResumeHere={() => {
-          // The one thing that lifts a sign-out, and it only ever comes from
-          // this button. Clearing has to come first: reconnecting triggers a
-          // challenge, and the handler refuses to answer while the note stands.
-          // The card goes on its own -- `server:details` landing clears the
-          // failure it is drawn from.
+          // Clearing comes first: reconnecting triggers a challenge, and the
+          // handler refuses to answer while the note stands.
           clearSignedOut(currentlyViewingServer.host);
           reconnectServer(currentlyViewingServer.host);
         }}
@@ -661,9 +560,8 @@ export const ServerView = () => {
   const isServerUnreachable = currentConnectionStatus === "disconnected" || currentConnectionStatus === "reconnecting";
   const isVoiceOnThisServer = isConnected && currentServerConnected === host;
   const currentUserRole = serverDetails?.server_info?.role;
-  // Two different questions that used to be one. Editing the sidebar is
-  // `manage_channels`; pulling somebody out of voice is voice moderation. A
-  // role built to do one and not the other could not say so before.
+  // Editing the sidebar is `manage_channels`; pulling somebody out of voice is
+  // voice moderation. One question could not tell a role built for one.
   const canManage = viewerPermissions.can("manage_channels");
   const canDisconnectFromVoice = viewerPermissions.can("disconnect_members");
   const canViewMembers = viewerPermissions.can("view_members");
@@ -695,27 +593,20 @@ export const ServerView = () => {
     window.dispatchEvent(new CustomEvent("server_settings_open", { detail: { host } }));
   };
 
-  /* Same modal, opened on the tab somebody asked for. The modal drops back to
-     overview if their permissions do not include this one, so asking for it
-     here does not need to check first. */
+  /* The modal drops back to overview when the permission is missing, so asking
+     for a tab here does not need to check first. */
   const onOpenInvites = () => {
     window.dispatchEvent(
       new CustomEvent("server_settings_open", { detail: { host, tab: "invites" } }),
     );
   };
 
-  /**
-   * The conversation, as one element used by two layouts.
-   *
-   * The tiny window renders this and nothing else, and it has to be the same
-   * chat with the same thirty props — a second copy is a second copy to keep in
-   * step, and the mobile layout already shows what that costs.
-   */
+  /** One element for two layouts: the tiny window renders this and nothing else,
+      and a second copy is thirty props to keep in step. */
   const chatView = (
       <ChatView
-        /* Under the channel header, not above it. Above the header is app
-           chrome, and this is somebody else's machine talking — putting it
-           there would undo the reason it is attributed at all (GRYT-896). */
+        /* Under the header, not above: above is app chrome, and this is somebody
+           else's machine talking. */
         underHeader={
           <ServerNoticePanel
             host={currentlyViewingServer?.host}
@@ -769,16 +660,8 @@ forumTags={activeDm ? [] : activeChannelForumTags}
           <ConnectionBanner connectionStatus={currentConnectionStatus} onReconnect={() => reconnectServer(host)} />
         )}
         {isTiny ? (
-          /*
-           * One channel and nothing else — `MainApp` drops the rail, the lists
-           * and the padding at this size. **No way to change channel from
-           * here**; the way out is a bigger window, and `useIsTinyWindow` is
-           * gated on a fine pointer so a phone never reaches this.
-           *
-           * A call is the exception: the voice panel is gone at this width, so
-           * the phone layout's floating button comes with it, or the microphone
-           * stays open with nothing on screen to close it.
-           */
+          /* One channel and no way to change it; the way out is a bigger window.
+             A call is the exception, or the microphone has no button to close it. */
           <div className="flex" style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
             {chatView}
             <VoiceSheetButton
@@ -938,10 +821,8 @@ forumTags={activeDm ? [] : activeChannelForumTags}
             <div className="flex grow" ref={voiceContainerRef} style={{ position: "relative", minWidth: 0 }}>
               <VoiceView
                 showVoiceView={showVoiceView && (!isCompact || voiceFocused)}
-                /* Focusing a stream does not change this. It makes that
-                 * stream the big one inside the panel and leaves the app where
-                 * it was (GRYT-110). Hiding the chat is a press of its own,
-                 * next to the focused view's controls. */
+                /* Focusing a stream makes it the big one inside the panel and
+                   leaves the app where it was. Hiding the chat is its own press. */
                 voiceWidth={
                   chatTakenOver
                     ? "100%"
@@ -989,9 +870,8 @@ forumTags={activeDm ? [] : activeChannelForumTags}
               </div>
             </div>
             <MemberSidebarPanel
-              // Closed for good, not just collapsed, when the role may not see
-              // who is here. The server stops sending the list as well, so an
-              // open panel would show whatever was last cached.
+              // Closed for good, not collapsed: the server stops sending the list,
+              // so an open panel would show whatever was last cached.
               sidebarOpen={rightSidebarOpen && canViewMembers}
               sidebarWidthPx={SIDEBAR_WIDTH_PX}
               hoverPx={SIDEBAR_HOVER_PX}
@@ -1023,10 +903,8 @@ forumTags={activeDm ? [] : activeChannelForumTags}
         <IncomingCallCard
           call={incomingCall}
           title={
-            // The conversation's own name when it is known, which for a group
-            // is the group rather than the one person ringing. Falls back to
-            // the caller: a call can arrive before `dm:list` has caught up with
-            // a conversation that was only just made.
+            // The conversation's name when known, which for a group is not the one
+            // person ringing. A call can arrive before `dm:list` catches up.
             directConversations.find((c) => c.conversation_id === incomingCall.conversation_id)
               ? conversationTitle(
                   directConversations.find((c) => c.conversation_id === incomingCall.conversation_id)!,
@@ -1066,10 +944,8 @@ forumTags={activeDm ? [] : activeChannelForumTags}
         isBlocked={isBlocked}
         onSubmit={({ serverUserId, reason, alsoBlock }) => {
           reportUser({ serverUserId, reason });
-          /* Blocking is the reporter's own act and needs no moderator, so it
-             does not wait on the report landing. On a server too old for
-             `user:report` the block still works, which is the better half of
-             the two to keep. */
+          /* The reporter's own act, so it does not wait on the report landing:
+             on a server too old for `user:report` the block still works. */
           if (alsoBlock) block(serverUserId);
         }}
       />

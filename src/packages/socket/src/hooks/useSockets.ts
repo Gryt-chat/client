@@ -39,9 +39,8 @@ function useSocketsHook() {
     isMuted,
     isDeafened,
     isAFK,
-    /* What a game says, or what you typed when none is running (GRYT-931).
-       `activity` is still the typed line and is what the settings field edits;
-       this is the one servers are told. */
+    /* `activity` is the typed line the settings field edits; this is the one
+       servers are told. */
     effectiveActivity: activity,
     connectSoundEnabled,
     disconnectSoundEnabled,
@@ -71,13 +70,8 @@ function useSocketsHook() {
   const [failedServerDetails, setFailedServerDetails] = useState<Record<string, { error: string; message: string; timestamp: number }>>({});
   const [clients, setClients] = useState<{ [host: string]: Clients }>({});
   const [memberLists, setMemberLists] = useState<{ [host: string]: MemberInfo[] }>({});
-  /**
-   * What to do about each member's published DM key, by host and member id.
-   *
-   * Beside the member list rather than inside it, because they are refreshed on
-   * different clocks: the list arrives from the server and this is worked out
-   * locally against pins, asynchronously, after it lands.
-   */
+  /** Beside the member list rather than inside it: the list arrives from the
+      server and this is worked out locally against pins, after it lands. */
   const [memberKeyStates, setMemberKeyStates] = useState<{
     [host: string]: Record<string, MemberKeyState>;
   }>({});
@@ -111,11 +105,8 @@ function useSocketsHook() {
   const currentlyViewingServerRef = useRef(currentlyViewingServer);
   useEffect(() => { currentlyViewingServerRef.current = currentlyViewingServer; }, [currentlyViewingServer]);
 
-  // Sockets are created as soon as Keycloak has initialised, and useUserId
-  // resolves the account's sub in an effect of its own — so a socket usually
-  // exists before there is a userId to go with it. Everything that needs one
-  // reads it from here when it runs, rather than from whatever it happened to
-  // be when the socket was made (GRYT-12).
+  // A socket usually exists before there is a userId, so everything that needs
+  // one reads it here when it runs rather than at socket creation.
   const userIdRef = useRef(userId);
   useEffect(() => { userIdRef.current = userId; }, [userId]);
 
@@ -130,14 +121,12 @@ function useSocketsHook() {
     }
   }, [sockets]);
 
-  /* The last self-state we told a server about, readable from a socket handler
-     that was wired once and would otherwise close over whatever these were at
-     the time (GRYT-644). */
+  /* Readable from a socket handler that was wired once and would otherwise close
+     over whatever these were at the time. */
   const voiceSelfStateRef = useRef({ isMuted, isDeafened, isAFK });
 
-  /* The same trick for the status line (GRYT-929). The server keeps it on the
-     connection rather than storing it, so every reconnect starts with nothing
-     and this is what puts it back. */
+  /* The server keeps the status on the connection, so every reconnect starts
+     with nothing and this is what puts it back. */
   const activityRef = useRef(activity);
 
   useEffect(() => {
@@ -152,10 +141,8 @@ function useSocketsHook() {
     });
   }, [isMuted, isDeafened, isAFK, sockets]);
 
-  /* Told to every server, because it is one line about you rather than
-     something you say per room. A server whose role does not allow it refuses
-     with `server:error`, which the settings panel is where somebody would find
-     out about — sending it anyway keeps this loop from having to know. */
+  /* Every server, since it is one line about you rather than per room. A refusal
+     surfaces in settings, so this loop does not have to know. */
   useEffect(() => {
     activityRef.current = activity;
     Object.keys(sockets).forEach((host) => {
@@ -163,14 +150,8 @@ function useSocketsHook() {
     });
   }, [activity, sockets]);
 
-  /* The outbound half of a plugin's pipe (GRYT-939). Wired here because this is
-     where the sockets and the tokens are; `pluginApi.ts` stays free of both so
-     it can be tested without either.
-
-     A server that runs no plugin with this id drops it silently, so sending to
-     every server is the right default rather than a waste — most plugin pairs
-     are about the person rather than about one room, and a plugin that cares
-     names a host. */
+  /* Here because this is where the sockets and tokens are. A server running no
+     plugin with this id drops it, so every server is the right default. */
   useEffect(() => {
     setPluginApiMessageSender((pluginId, topic, data, host) => {
       const hosts = host ? [host] : Object.keys(sockets);
@@ -187,9 +168,8 @@ function useSocketsHook() {
     return () => setPluginApiMessageSender(null);
   }, [sockets]);
 
-  // Merge incoming server:info updates into the saved list in a single write.
-  // Previously each iteration spread the same stale `servers` closure, so
-  // only the last server's update survived — silently dropping earlier ones.
+  // One write: spreading the same stale closure per iteration meant only the
+  // last server's update survived.
   useEffect(() => {
     if (newServerInfo.length === 0) return;
 
@@ -227,14 +207,8 @@ function useSocketsHook() {
     return () => { cancelled = true; };
   }, []);
 
-  // Both places that sync an avatar run at a moment that can arrive before
-  // there is a userId, and for the owner it never is: their join is the first
-  // thing that happens. Reading the ref stops them using a stale null but does
-  // not help when the answer is genuinely not known yet.
-  //
-  // So sync again when the userId does arrive. syncAvatarToHost compares the
-  // stored hash against what the host has, so a host already in sync costs one
-  // hash and no upload (GRYT-12).
+  // Both avatar syncs can run before there is a userId, so this runs again when
+  // one arrives. A host already in sync costs one hash and no upload.
   useEffect(() => {
     if (!userId) return;
 
@@ -301,11 +275,8 @@ function useSocketsHook() {
         const socket = io(`${getServerWsBase(host)}`, {
           transports: ["websocket"],
           auth: (cb: (data: Record<string, unknown>) => void) => {
-            // The access token is deliberately NOT here. Handshake auth reaches
-            // the server before we have checked who it is, so a server
-            // impersonating this one would collect a working bearer token and
-            // could replay it as this user. It goes out below, once the server
-            // has proved its identity (GRYT-51).
+            // Not the access token: handshake auth arrives before the server has
+            // proved itself, so an impostor would collect a working one.
             cb({ token: serverToken });
           },
         });
@@ -319,9 +290,8 @@ function useSocketsHook() {
 
         // Holds everything below until the server proves itself.
         guardSocket(socket, host, (decision) => {
-          // A distinct status, not 'disconnected'. This is not a network
-          // problem, and telling someone the server "may be offline" when we
-          // refused it on purpose sends them off debugging the wrong thing.
+          // Not 'disconnected': saying a server "may be offline" when we refused
+          // it on purpose sends somebody debugging the wrong thing.
           setServerConnectionStatus(prev => ({ ...prev, [host]: 'refused' }));
           setRefusalReason(prev => ({ ...prev, [host]: serverProofErrorMessage(decision) }));
           const helpUrl = serverProofHelpUrl(decision);
@@ -356,14 +326,8 @@ function useSocketsHook() {
           toast.loading(`Reconnecting to ${serverName}...`, { id: toastId });
         });
 
-        /* A message from the copy of a plugin running on this server
-           (GRYT-939). Routed by the id the server stamped, so one server's
-           plugin cannot deliver to another plugin's listeners.
-
-           Nothing here validates `data`. It was written by whoever runs this
-           server, the transport has already capped its size and its shape, and
-           what it means is the plugin's to decide — which is why the API type
-           calls it `unknown`. */
+        /* Routed by the id the server stamped, so one server's plugin cannot
+           reach another's listeners. `data` is unvalidated and typed `unknown`. */
         socket.on("plugin:message", (payload: { pluginId?: unknown; topic?: unknown; data?: unknown }) => {
           const pluginId = typeof payload?.pluginId === "string" ? payload.pluginId : "";
           const topic = typeof payload?.topic === "string" ? payload.topic : "";
@@ -371,16 +335,8 @@ function useSocketsHook() {
           deliverPluginMessage(pluginId, { host, topic, data: payload?.data });
         });
 
-        /* The server restored the mute, deafen and AFK flags it stashed when
-           this socket dropped, and its copy is only as new as the moment the
-           connection broke. Nothing corrected it before GRYT-644: the emit
-           above is keyed on the three flags and the sockets map, and a
-           reconnect moves neither, so somebody who had unmuted during the drop
-           showed as muted to the room while still being heard.
-         *
-         * Sent here rather than on `connect` because the stash is applied
-         * during `session:restore`, and this event is the server saying it has
-         * finished doing that. Sending earlier would race it and lose. */
+        /* The restored flags are only as new as the moment the connection broke.
+           Here rather than on `connect`: this event says the stash was applied. */
         socket.on("voice:state:restored", () => {
           socket.emit("voice:state:update", voiceSelfStateRef.current);
           if (activityRef.current) {
@@ -393,16 +349,11 @@ function useSocketsHook() {
           toast.success(`Reconnected to ${serverName}`, { id: toastId });
           socket.emit("server:details");
           socket.emit("members:fetch");
-          /* Also unconditionally, for the reconnect where there was no stash to
-             restore — one that outlived the grace window, or landed on a
-             restarted server. `voice:state:restored` never arrives in that
-             case, and the member list would otherwise show the server's
-             defaults rather than what this client is actually doing. */
+          /* Unconditionally too, for a reconnect with no stash to restore, where
+             `voice:state:restored` never arrives at all. */
           socket.emit("voice:state:update", voiceSelfStateRef.current);
-          /* And the status, for the same reason: it lives on the connection,
-             so a reconnect is a blank one until this says otherwise. Only when
-             there is one — an empty emit would be a needless round trip on
-             every reconnect for everybody who has never set a status. */
+          /* The status lives on the connection, so a reconnect is blank until
+             this. Only when there is one, or it is a round trip for nothing. */
           if (activityRef.current) {
             socket.emit("presence:activity", { activity: activityRef.current });
           }
@@ -416,16 +367,8 @@ function useSocketsHook() {
           toast.error(`Could not reconnect to ${serverName}`, { id: toastId });
         });
 
-        // Find out whether this host is http or https before anything fetches
-        // from it. Only the add-server flow ever recorded that, so a server
-        // already in the list still had the default — and on the desktop the
-        // default is plain http, which a proxied deployment answers with a
-        // redirect that a preflighted request may not follow.
-        //
-        // The socket does not wait for it: a proxy that redirects plain http
-        // will usually still take a plain WebSocket upgrade, so holding every
-        // connection back for a round trip would cost startup time to fix
-        // something that mostly is not broken.
+        // Only the add-server flow recorded the scheme, so an existing entry still
+        // has the default. The socket does not wait: the upgrade usually works.
         const schemeKnown = ensureSchemeKnown(host).catch(() => undefined);
 
         // Initial join / details fetch
@@ -452,12 +395,8 @@ function useSocketsHook() {
       }
     });
 
-    // Close sockets whose server has gone.
-    //
-    // This loop only ever added them, so a removed server kept a live socket
-    // that reconnected on its own and re-emitted server:join — which quietly
-    // undid the removal. Being kicked made that visible: the server vanished
-    // from the sidebar and came straight back.
+    // This loop only ever added them, so a removed server kept a socket that
+    // reconnected and re-emitted `server:join`, undoing the removal.
     Object.keys(newSockets).forEach((host) => {
       if (servers[host]) return;
       try {
@@ -481,16 +420,8 @@ function useSocketsHook() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [servers, identityReady]);
 
-  /* Ask again, on a timer, for servers waiting on a moderator (GRYT-289).
-
-     Approving happens in the moderator's client and the server tells nobody
-     else: `server:joinRequest:decided` goes back to whoever clicked it, and the
-     person waiting is not connected as a member to be told.
-
-     A minute, because approval is a human action. Each attempt is one
-     `server:join`, which the server answers from the join_requests row —
-     approved lets them in and clears the row, anything else replies
-     approval_pending again and nothing changes. */
+  /* The decision goes back to whoever clicked it, and the person waiting is not
+     connected to be told. A minute, because approval is a human action. */
   useEffect(() => {
     const waiting = Object.keys(serversRef.current).filter(
       (host) => serversRef.current[host]?.approvalRequestedAt,
@@ -513,9 +444,8 @@ function useSocketsHook() {
     return () => clearInterval(timer);
   }, [sockets, servers, nickname]);
 
-  // Retry server:join / server:details for sockets that are connected but
-  // haven't received details yet.  Runs 3 s after each connection-status
-  // change so we don't race the normal first-connect flow.
+  // For sockets connected without details. Three seconds after a status change,
+  // so it does not race the normal first-connect flow.
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
 
@@ -680,19 +610,9 @@ function useSocketsHook() {
     };
   }, [sockets, nickname, failedServerDetails]);
 
-  /**
-   * Actually leave: tell the server, and take the entry out of the sidebar once
-   * it says it heard.
-   *
-   * The entry is removed on `server:left` rather than straight away, because
-   * removing it first closes the socket and the emit goes nowhere. That was the
-   * shape of the bug this replaces — every Leave in the app called
-   * `removeServer`, which is local-only, so the server never heard and the
-   * person stayed a member with their picture still on it.
-   *
-   * A server that does not answer keeps its entry. Dropping it anyway would
-   * quietly turn a leave into a remove, and the two now mean different things:
-   * the toast says so and points at the other one.
+/**
+   * Removed on `server:left`, because removing it first closes the socket and the
+   * emit goes nowhere. A server that does not answer keeps its entry.
    */
   const leaveServer = (host: string) => {
     const socket = sockets[host];
@@ -723,13 +643,8 @@ function useSocketsHook() {
       window.dispatchEvent(new CustomEvent("server_force_remove", { detail: { host } }));
     };
 
-    // Listened for rather than left to the global handler, because that one
-    // reports everything as a join problem and this person is already in.
-    //
-    // `server:error` carries everything the server refuses, so anything that is
-    // not about leaving is left alone and the wait continues. Older servers send
-    // a bare string here and cannot be told apart, which is why one is taken at
-    // face value.
+    // The global handler reports everything as a join problem, and this person is
+    // already in. An older server sends a bare string, so one is taken as this.
     const LEAVE_ERRORS = ["owner_cannot_leave", "leave_failed", "not_registered"];
     const onError = (info: { error?: string; message?: string } | string) => {
       if (settled) return;

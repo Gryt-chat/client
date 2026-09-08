@@ -1,27 +1,14 @@
 /* eslint-env node */
 
 /**
- * What a plugin may do, and what it may not (GRYT-928).
- *
- * **This is not a sandbox and the module says so at length.** A plugin runs in
- * the app's own page and could go around all of it. What is checked here is
- * that the polite path answers correctly — so a plugin ignoring the answer has
- * to do it on purpose rather than by accident, and a grant somebody made means
- * what they thought it meant.
- *
- * The cases that matter are the ones where a grant should *not* apply: an
- * addon that stopped declaring a capability, a manifest that lists something
- * this build has never heard of, and storage that cannot be read.
- *
- * Run against the real module rather than a copy — Node strips the types on
- * import, which is why this lives in .mjs and the source stays .ts.
+ * What a plugin may do, and what it may not. Run against the real module rather
+ * than a copy — Node strips the types, which is why this is .mjs (GRYT-928).
  */
 
 import assert from "node:assert/strict";
 
-/* The module reaches for localStorage at call time, not at import time, so a
-   stand-in defined here is enough — and defining it is the only way to run this
-   outside a browser at all. */
+/* The module reaches for localStorage at call time, not import time, so a
+   stand-in here is enough, and the only way to run this outside a browser. */
 const store = new Map();
 globalThis.localStorage = {
   getItem: (k) => (store.has(k) ? store.get(k) : null),
@@ -76,14 +63,8 @@ for (const junk of [undefined, null, "status", 42, {}, [null], [{}], [["status"]
 assert.deepEqual(declaredCapabilities(["status", "status"]), ["status"]);
 
 /*
- * And in catalogue order whatever order it was written in.
- *
- * **This one cannot fail while there is a single capability**, which is worth
- * saying out loud rather than leaving as a test that looks like it covers
- * something. It is written against the catalogue rather than against "status"
- * so it starts being a real check the moment a second one is added — which is
- * exactly when two manifests listing the same pair in different orders could
- * start producing different strings.
+ * And in catalogue order whatever order it was written in. **This cannot fail
+ * while there is a single capability**; it is written to start working at two.
  */
 assert.deepEqual(
   declaredCapabilities([...ADDON_CAPABILITIES].reverse()),
@@ -112,9 +93,8 @@ assert.equal(addonMay("something-else", "status", ["status"]), false);
 /*
  * ── the case a two-sided check exists for ────────────────────────────────
  *
- * An addon that drops `status` from its manifest in an update, while keeping
- * the grant somebody made when it was there, would be using a permission
- * nobody agreed to for the version they are actually running.
+ * An addon that drops `status` from its manifest while keeping the grant would be
+ * using a permission nobody agreed to for the version they are running.
  */
 assert.equal(
   addonMay("nowplaying", "status", []),
@@ -161,10 +141,8 @@ assert.deepEqual(grantedCapabilities("nowplaying"), []);
 /*
  * ── what is already in storage, which the setter never saw ───────────────
  *
- * Everything above went in through `setGrantedCapabilities`, which cleans on
- * the way in — so it cannot tell whether reading is checked at all. These
- * write the key directly, the way another tab, an older build, or somebody
- * with the devtools open would.
+ * Everything above went in through `setGrantedCapabilities`, which cleans on the
+ * way in. These write the key directly, as another tab or an older build would.
  */
 for (const [written, expected] of [
   [JSON.stringify(["read-your-email"]), []],
@@ -191,10 +169,8 @@ assert.equal(
 );
 
 /*
- * The write side is checked separately rather than being taken on trust from
- * the read side. Both clean, deliberately: either one alone would make the
- * other's mutation survive, and a capability that only exists because one of
- * two guards is present is a guard nobody knows they are relying on.
+ * The write side is checked separately rather than taken on trust from the read
+ * side. Either one alone would make the other's mutation survive.
  */
 store.clear();
 setGrantedCapabilities("writecheck", ["status", "read-your-email"]);
@@ -207,10 +183,8 @@ assert.equal(
 /*
  * ── a grant must not outlive the addon ───────────────────────────────────
  *
- * An id is a folder name. A grant left behind after somebody deletes an addon
- * would be inherited by the next one to call itself the same thing — which is
- * the exact substitution these switches exist to prevent. Found by writing the
- * docs for this and trying to state what deleting a folder does.
+ * An id is a folder name, so a grant left behind would be inherited by the next
+ * addon to call itself the same thing.
  */
 store.clear();
 setGrantedCapabilities("stillhere", ["status"]);
@@ -227,11 +201,8 @@ assert.equal(
 );
 
 /*
- * An empty list means "not known yet", not "nothing installed".
- *
- * The installed set is empty for a moment at startup and while it is being
- * read. Pruning against that would wipe every grant on the device, which is a
- * far worse failure than the one orphaned key it would have cleaned up.
+ * An empty list means "not known yet", not "nothing installed". The installed set
+ * is empty at startup, and pruning against it would wipe every grant.
  */
 setGrantedCapabilities("stillhere", ["status"]);
 pruneGrants([]);

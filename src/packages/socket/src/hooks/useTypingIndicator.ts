@@ -33,12 +33,8 @@ const TYPING_THROTTLE_MS = 3_000;
 const CLIENT_TIMEOUT_MS = 8_000;
 
 /**
- * Who is typing in one place, and telling the room you are typing in it.
- *
- * A thread is one of those places (GRYT-1020). Called twice where a thread can
- * be open: once for the channel and once for the thread, on the same socket.
- * Both instances see every event and each keeps the ones addressed to it, so
- * writing a reply does not put "typing…" under the channel timeline.
+ * Who is typing in one place, and telling the room you are. Called twice where a
+ * thread can be open, and each instance keeps the events addressed to it.
  */
 export function useTypingIndicator(
   socket: Socket | null,

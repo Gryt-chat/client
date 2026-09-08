@@ -166,9 +166,8 @@ export function SecuritySettings() {
   }, []);
 
   useEffect(() => {
-    // Passkeys are a Keycloak credential, so without an account there is
-    // nothing to fetch and the request fails. Somebody using Gryt without one
-    // was being shown a section that could only ever say "Retry".
+    // Passkeys are a Keycloak credential, so without an account there is nothing
+    // to fetch. Somebody without one saw a section that could only say "Retry".
     if (!isSignedIn) {
       setLoading(false);
       return;

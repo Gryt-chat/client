@@ -9,31 +9,17 @@ import {
 import { BetaTag } from "./wordmark";
 
 /*
- * The mark, inlined.
- *
- * It is `public/logo.svg` written out as JSX rather than an <img>, because a
- * beta build recolours part of it and draws a wink — neither of which can be
- * done to a file the browser has already decoded.
- *
- * Keep this in step with public/logo.svg by hand. They are the same drawing and
- * nothing ties them together at build time; update one without the other and
- * the app shows a different owl from the one on every README and every favicon,
- * with nothing to say so.
- *
- * The beta tint moves the bird and the ground together. The rose is lighter
- * than the bird on it, so tinting one alone swaps figure and ground over.
+ * The mark, inlined as JSX because a beta build recolours part of it. **Keep this
+ * in step with public/logo.svg by hand** — nothing ties them together.
  */
 function LogoIcon({ size = 48, beta = false }: { size?: number; beta?: boolean }) {
   const body = beta ? BETA_ACCENT : "#A495E3";
   const ground = beta ? BETA_GROUND : "#2E2D5F";
-  /* The eyes, the beak and the wink. On the stable mark they are the ground's
-     own colour, which is why they were written as a literal — the ground is
-     dark and so are they. The beta ground is a light rose, so they need the
-     deep tone instead or they disappear into it. */
+  /* The eyes, the beak and the wink. On the stable mark they are the ground's own
+     colour; the beta ground is light, so they need the deep tone. */
   const ink = beta ? BETA_ACCENT_DEEP : "#2E2D5F";
-  // The bird is three tones — the face above the body, the wings below it —
-  // and all three have to move together. Tinting the body alone gave a beta
-  // build an amber owl with a violet face and violet wings.
+  // The bird is three tones — face above the body, wings below — and all three
+  // move together. Tinting the body alone gave an amber owl a violet face.
   const face = beta ? BETA_ACCENT_SOFT : "#B5A8E6";
   const wing = beta ? BETA_ACCENT_DEEP : "#7C6EC3";
 

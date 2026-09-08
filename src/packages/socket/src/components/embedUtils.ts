@@ -2,10 +2,8 @@ const IMAGE_EXT = /\.(jpe?g|png|gif|webp|svg|bmp|avif)(\?[^\s]*)?$/i;
 const VIDEO_EXT = /\.(mp4|webm|mov|ogv)(\?[^\s]*)?$/i;
 const AUDIO_EXT = /\.(mp3|wav|ogg|flac|aac|m4a|opus)(\?[^\s]*)?$/i;
 
-/* The preview payload, the card layout rule, the failure wording and the URL
-   scan live in @gryt/core, so the phone and this app cannot drift. What stays
-   here is only true of this app: which sites get a real player instead of a
-   card, and the dismissal and cache state a desktop session keeps. */
+/* The preview payload, the card rule, the failure wording and the URL scan live
+   in @gryt/core. What stays here is only true of this app. */
 export {
   describePreviewFailure,
   extractUrls,
@@ -250,13 +248,8 @@ export function parseRemoteImageMetadata(raw: unknown): RemoteImageMetadata | nu
 export const previewCache = new Map<string, LinkPreviewData>();
 
 /**
- * URLs the server has already refused, so we stop asking. `previewCache` only
- * holds successes, so a LAN address pasted into a channel produced a 400 on
- * every mount of the card, forever.
- *
- * A 400 is the server's SSRF guard working and that answer cannot change while
- * the process is up — session-lived, so a reload asks once more. **Only
- * refusals, not failures:** a 502 or a dropped connection lands in neither map.
+ * URLs the server has already refused, so we stop asking. Session-lived, and
+ * **only refusals**: a 502 or a dropped connection lands in neither map.
  */
 export const previewRefused = new Set<string>();
 
@@ -270,17 +263,8 @@ export function safeJsonParseOEmbed(raw: unknown): OEmbedPayload | null {
 }
 
 /**
- * The attribution line under a card: who made it, and when (GRYT-913).
- *
- * The server has carried `author` and `publishedAt` for as long as the card has
- * existed and nothing drew either, so an article with a byline and a MakerWorld
- * model with a creator both arrived with the two most human facts about them
- * thrown away.
- *
- * Pure and here rather than in the component, because the interesting parts are
- * the empty cases: a page with no author, a date that is not one, an author who
- * *is* the site — and each of those is a line that should not be drawn rather
- * than a line reading "null" or "Invalid Date".
+ * The attribution line under a card: who made it, and when. Pure and here rather
+ * than in the component, because the interesting parts are the empty cases.
  */
 export function cardByline(
   author: string | null | undefined,
@@ -290,9 +274,7 @@ export function cardByline(
   const who = typeof author === "string" ? author.trim() : "";
 
   /* A date only when it parses and is not absurd. `article:published_time` is
-     free text as far as anything here is concerned: pages ship empty strings,
-     Unix epochs from a broken template, and dates a century out. A card is not
-     the place to argue with them — it just says nothing. */
+     free text: empty strings, Unix epochs, dates a century out. */
   let when = "";
   if (typeof publishedAt === "string" && publishedAt.trim()) {
     const date = new Date(publishedAt);

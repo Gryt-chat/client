@@ -1,17 +1,8 @@
 /* eslint-env node */
 
 /**
- * A file that goes up encrypted and comes back readable (GRYT-761).
- *
- * The round trip is driven for real, through `@gryt/crypto` and the actual
- * curve library, because the failure it guards is silent in both directions: a
- * file that goes up in the clear from a conversation the composer says is
- * encrypted, and a file that comes back as an unnamed octet-stream because the
- * metadata from inside the envelope was never applied.
- *
- * The parts that need a browser — `fetch`, `Blob`, `URL.createObjectURL` — are
- * stubbed. What is checked here is what happens to the bytes and to the
- * metadata, which is where the mistakes live.
+ * A file that goes up encrypted and comes back readable. Driven for real through
+ * `@gryt/crypto`, because the failure is silent in both directions (GRYT-761).
  */
 
 import assert from "node:assert/strict";
@@ -95,9 +86,8 @@ const FILE = Uint8Array.from({ length: 3000 }, (_, i) => (i * 37) % 256);
 /* ── a file with nothing said about it still draws ───────────────────────── */
 
 {
-  // `name` and `mime` are optional in the envelope, and a picker can report
-  // neither. An `undefined` mime reaching the renderer would make it fall
-  // through every branch and draw nothing at all.
+  // `name` and `mime` are optional in the envelope. An `undefined` mime reaching
+  // the renderer falls through every branch and draws nothing.
   const { meta } = sealAttachment({ bytes: FILE, conversationId: CONVERSATION });
   const drawn = sealedAttachmentMeta("f", meta, "blob:fake");
 

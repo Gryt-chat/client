@@ -3,16 +3,8 @@ import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
 
 /**
- * Ringing, and only ringing.
- *
- * A call is not a thing the server keeps — it is an SFU room whose id is the
- * conversation id, joined the same way a voice channel is. So nothing here
- * tracks a call in progress: once you are in, the existing voice state is the
- * truth about it.
- *
- * Answering is not an event. It is `connect(conversationId)`, the ordinary
- * voice join, and the server ends the ring when the join lands — which is why
- * `accept` takes a callback rather than emitting anything.
+ * Ringing, and only ringing. A call is an SFU room whose id is the conversation
+ * id, so answering is `connect(conversationId)` rather than an event.
  */
 
 export interface IncomingCall {
@@ -102,20 +94,16 @@ export function useCalls({ socket, accessToken, isConnected }: UseCallsParams): 
     };
   }, [socket, accessToken, isConnected]);
 
-  // A server from before calls existed sends none of these, so both stay null
-  // and nothing appears. Switching servers must not leave the last one's ring
-  // on screen.
+  // A server from before calls sends none of these, so both stay null. Switching
+  // servers must not leave the last one's ring on screen.
   useEffect(() => {
     setIncoming(null);
     setOutgoing(null);
   }, [socket]);
 
   /**
-   * The server's own clock, kept locally as well.
-   *
-   * The withdrawal on a timeout is the real end and this is not a substitute
-   * for it — but a ring whose socket died would otherwise sit on screen for
-   * ever, and "answer" on it would join an empty room.
+   * The server's own clock, kept locally as well. Not a substitute for the
+   * withdrawal, but a ring whose socket died would otherwise sit there.
    */
   useEffect(() => {
     const call = incoming ?? outgoing;
@@ -145,9 +133,8 @@ export function useCalls({ socket, accessToken, isConnected }: UseCallsParams): 
 
   const decline = useCallback(
     (conversationId: string) => {
-      // Cleared here rather than waiting for the withdrawal, so the ringing
-      // stops the moment it is refused. The server's answer arrives either way
-      // and clearing twice costs nothing.
+      // Cleared here rather than waiting for the withdrawal, so ringing stops
+      // the moment it is refused. Clearing twice costs nothing.
       setIncoming((prev) => (prev?.conversation_id === conversationId ? null : prev));
       emit("call:decline", conversationId);
     },

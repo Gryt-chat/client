@@ -1,17 +1,8 @@
 /* eslint-env node */
 
 /**
- * The attribution line under a link card (GRYT-913).
- *
- * The server has carried `author` and `publishedAt` since the card existed and
- * nothing drew either. Drawing them is easy; the part worth a test is what
- * happens when they are not there, because `article:published_time` is free
- * text as far as this app is concerned. Pages ship empty strings, Unix epochs
- * out of a broken template, and dates a century out, and every one of those has
- * to come back as a line that is not drawn rather than "Invalid Date".
- *
- * Run against the real module rather than a copy — Node strips the types on
- * import, which is why this lives in .mjs and the source stays .ts.
+ * The attribution line under a link card. The part worth a test is what happens
+ * when the fields are missing or nonsense (GRYT-913).
  */
 
 import assert from "node:assert/strict";
@@ -51,8 +42,6 @@ for (const [author, published] of [
  * ── a date that is not one ───────────────────────────────────────────────
  *
  * Each of these is something a real page has put in `article:published_time`.
- * The line still draws when there is an author; what must never appear is the
- * date half.
  */
 for (const bad of [
   "not a date",

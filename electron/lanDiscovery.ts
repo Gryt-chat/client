@@ -8,17 +8,8 @@ interface LanServer {
   port: number;
   version: string | null;
   /**
-   * The TXT record's `server_id`, reported because it is what the wire carries.
-   *
-   * **Not an identity, despite the name.** The server publishes
-   * `SERVER_INSTANCE_ID || "default"`, which exists to tell two servers on one
-   * *host* apart — it is what keeps them from overwriting each other's avahi
-   * service file, GRYT-227 — and almost nobody sets it. Every server on a
-   * network that has not been told otherwise publishes `server_id=default`.
-   *
-   * It is also a different field from `/info`'s `serverId`, which is a real
-   * per-install identity. The two share a name and nothing else, so nothing
-   * should ever compare one against the other. GRYT-485.
+   * The TXT record's `server_id`. **Not an identity, despite the name** — it is
+   * `SERVER_INSTANCE_ID || "default"`, and not `/info`'s `serverId` (GRYT-485).
    */
   serverId: string | null;
 }
@@ -31,23 +22,8 @@ const QUERY_INTERVAL_MS = 15_000;
 
 /* ── Two records for one server ───────────────────────────────────────────
  *
- * Both browsers below merge on the **mDNS instance name**, and both of them
- * used to merge on `server_id` instead. With almost every server publishing
- * `server_id=default`, that collapsed every server on the network into one
- * entry and emitted removals for the rest: five services advertise
- * `_gryt._tcp` here and four publish the default, and the list showed one row.
- * It reads as discovery finding nothing rather than as discovery hiding
- * things, which is why it went unnoticed. GRYT-485.
- *
- * The instance name is the right key and the only one needed. It is unique on
- * a network by mDNS's own rules — a second server calling itself "Gryt" is
- * renamed by the responder rather than allowed to collide — so two records
- * sharing one are the same server answering on two interfaces.
- *
- * That is the case the `127.` preference is for, and it is worth keeping: a
- * server that resolved to loopback is genuinely less useful than the same one
- * on a LAN address. It just has to be a comparison between two records for one
- * name rather than for one id.
+ * Merged on the **mDNS instance name**, which is unique by mDNS's own rules.
+ * Merging on `server_id` collapsed every server publishing "default" (GRYT-485).
  */
 
 //
@@ -73,11 +49,8 @@ function startDnsSdBrowse(
     browseBuf = lines.pop() ?? "";
 
     for (const line of lines) {
-      // The leading group absorbs dns-sd's timestamp column. Current macOS
-      // prints "20:54:26.356  Add   3  15 local. _gryt._tcp. ws1", and this
-      // pattern was anchored straight at Add/Rmv, so every line missed and LAN
-      // discovery silently found nothing. Optional, since older dns-sd builds
-      // omit the timestamp.
+      // The leading group absorbs dns-sd's timestamp column. Anchored at Add/Rmv,
+      // every line missed and LAN discovery silently found nothing.
       const match = line.match(
         /^\s*(?:[\d:.]+\s+)?(Add|Rmv)\s+\d+\s+\d+\s+(\S+)\s+(\S+)\s+(.+?)\s*$/
       );
@@ -157,18 +130,8 @@ function lookupService(
     const lines = buf.split("\n");
     buf = lines.pop() ?? "";
 
-    /* Every line in the chunk is read before anything is emitted.
-     *
-     * `dns-sd -L` prints the reachable line first and the TXT record on the
-     * line after it. This used to emit from inside the loop, the moment it had
-     * a host and a port — so the record was stored with `version` and
-     * `serverId` still null, and the `resolved.has(key)` guard below stopped
-     * the next line from ever correcting it. Every server discovered on macOS
-     * reported both as null, while the dgram path used on Windows and Linux
-     * read them properly. GRYT-527.
-     *
-     * A record whose TXT arrives in a later chunk still emits without it,
-     * which is what happened to every record before. */
+    /* Every line in the chunk is read before anything is emitted: `dns-sd -L`
+       prints the TXT record after the reachable line, so emitting early lost it. */
     for (const line of lines) {
       const reachable = line.match(/can be reached at\s+(\S+?):(\d+)\s/);
       if (reachable) {
@@ -614,11 +577,8 @@ function handleMdnsResponse(
 //
 
 /**
- * Everything currently discovered, keyed by host:port.
- *
- * Discovery is event-driven: dns-sd only emits an Add the first time it sees a
- * service, so a renderer that subscribes later — or reloads — would otherwise
- * never learn about servers already found. This mirror lets it ask.
+ * Everything currently discovered, keyed by host:port. dns-sd emits an Add only
+ * the first time, so a renderer that subscribes later has to be able to ask.
  */
 const announced = new Map<string, LanServer>();
 
@@ -642,11 +602,7 @@ export function getDiscoveredLanServers(): LanServer[] {
 
 /**
  * Set by startLanDiscovery so the browse can be torn down and started again.
- *
- * dns-sd only announces a service the first time it sees it, so opening the
- * add-server modal has nothing to react to if discovery has been running since
- * launch. Restarting the browse makes it re-announce everything currently on
- * the network, which is what "search now" has to mean here.
+ * Restarting is what makes everything on the network re-announce.
  */
 let restart: (() => void) | null = null;
 

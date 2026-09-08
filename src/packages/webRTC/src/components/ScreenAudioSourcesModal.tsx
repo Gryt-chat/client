@@ -10,11 +10,8 @@ interface ScreenAudioSourcesModalProps {
 }
 
 /**
- * Which applications a running screen share takes audio from.
- *
- * Only reachable where the OS can do it, which today means Windows — the
- * button that opens this is hidden otherwise, so nothing here has to explain
- * the platform.
+ * Which applications a running screen share takes audio from. The button that
+ * opens this is hidden where the OS cannot do it, so nothing here explains that.
  */
 export function ScreenAudioSourcesModal({ open, onOpenChange }: ScreenAudioSourcesModalProps) {
   const { wholeMachine, apps, refresh, setCaptured, captureWholeMachine } = useScreenAudioSources();

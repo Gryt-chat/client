@@ -1,15 +1,6 @@
 /**
- * The app's side of a plugin (GRYT-930).
- *
- * One worker per plugin, and this is the only way into the app from inside one.
- * Every message that arrives is checked against what that addon declared and
- * was granted before anything happens — and unlike the arrangement this
- * replaced, refusing here is the end of it. A plugin has no `window`, no DOM
- * and none of the app's modules, so there is no second route to the thing it
- * was refused.
- *
- * The addon id is never read from a message. It comes from which worker the
- * message arrived on, so a plugin cannot act as another by saying it is one.
+ * The app's side of a plugin: one worker each, and the only way in. The addon id
+ * comes from which worker a message arrived on, never from the message (GRYT-930).
  */
 
 import { type AddonCapability, declaredCapabilities, grantedCapabilities } from "./capabilities";
@@ -31,9 +22,8 @@ import {
   type WorkerMessage,
 } from "./workerProtocol";
 
-/* Re-exported so the addons barrel has one door for the boundary, and so a
-   check can read the map and the decision from the same place it reads the
-   host. */
+/* Re-exported so the addons barrel has one door for the boundary, and a check can
+   read the map and the decision where it reads the host. */
 export { mayCall, METHOD_CAPABILITY };
 
 /** Set by the app, which owns the sockets. */
@@ -48,12 +38,8 @@ export function setPluginApiActivitySetter(setter: ActivitySetter | null): void 
 }
 
 /*
- * What the person's listed programs are doing (GRYT-931).
- *
- * Held here as a plain value rather than fetched, because the app already
- * knows: `useSettings` subscribes to the main process and pushes it in. A
- * plugin asking gets the last thing the app was told, which is the same thing
- * the member list is showing.
+ * What the person's listed programs are doing. A plain value rather than a fetch:
+ * `useSettings` subscribes to the main process and pushes it in (GRYT-931).
  */
 let runningPrograms: string[] = [];
 const processListeners = new Set<string>();
@@ -91,11 +77,8 @@ interface Running {
   worker: Worker;
   capabilities: AddonCapability[];
   /**
-   * The addon's `name` from its manifest.
-   *
-   * Carried because a panel is drawn with it beside the title (GRYT-951), and
-   * an id is not a name — "presence" is what the folder is called, "Presence"
-   * is what somebody agreed to install.
+   * The addon's `name` from its manifest, drawn beside a panel title. An id is not
+   * a name — "presence" is the folder, "Presence" is what somebody installed.
    */
   name: string;
   /** Dropped when the plugin stops, so a late message reaches nothing. */
@@ -126,11 +109,8 @@ export function runningPlugins(): string[] {
 class Refused extends Error {}
 
 /**
- * Serve one call, or refuse it.
- *
- * Every branch names the capability it needs. A refusal comes back as a
- * rejected promise inside the plugin rather than as silence, because a plugin
- * author who has forgotten a manifest line should find out at the call.
+ * Serve one call, or refuse it. Every branch names the capability it needs, and a
+ * refusal comes back as a rejected promise rather than as silence.
  */
 async function serve(
   addonId: string,
@@ -183,11 +163,8 @@ async function serve(
     }
 
     case "ui.panel": {
-      /* Read here rather than trusted. What arrives is a plugin's own object,
-         and a plugin's rows are usually built out of what other people's
-         clients sent it — the presence example fills them with nicknames
-         strangers chose. `readPanel` is the only thing between that and a
-         React tree. */
+      /* Read here rather than trusted: a plugin's rows are built out of what other
+         people's clients sent it, and `readPanel` is all that stands before React. */
       const verdict = readPanel(args[0]);
       if (!verdict.ok) throw new Refused(`"${addonId}" sent something that is not a panel: ${verdict.reason}`);
       showPanel(addonId, entry.name, verdict.panel);
@@ -209,19 +186,15 @@ async function serve(
     }
 
     default:
-      /* Unreachable: `mayCall` refuses anything not in METHOD_CAPABILITY, and
-         every entry there has a branch above. Here so adding one to the map and
-         forgetting the branch is a refusal rather than a silent undefined. */
+      /* Unreachable: `mayCall` refuses anything not in METHOD_CAPABILITY. Here so
+         adding an entry and forgetting the branch is a refusal, not undefined. */
       throw new Refused(`"${addonId}" called ${method}, which Gryt does not serve.`);
   }
 }
 
 /**
- * Start a plugin in its own worker.
- *
- * `url` is where the addon's entry point is served from — the Vite dev server
- * in development, the app's own local server when packaged. Both are the same
- * origin as the app, which is why the worker can import it directly.
+ * Start a plugin in its own worker. `url` is the Vite dev server in development and
+ * the app's local server when packaged — same origin as the app either way.
  */
 export function startPlugin(
   addonId: string,
@@ -231,10 +204,8 @@ export function startPlugin(
 ): void {
   stopPlugin(addonId);
 
-  /* The options object has to be a static literal: Vite reads it at build time
-     to work out that this is a module worker, and refuses to guess. So no
-     `name` with the addon id in it — every line a plugin produces already
-     carries its id, which is what the name would have been for. */
+  /* The options object has to be a static literal: Vite reads it at build time to
+     see this is a module worker. So no `name` carrying the addon id. */
   const worker = new Worker(new URL("./addonWorker.ts", import.meta.url), {
     type: "module",
   });
@@ -293,11 +264,8 @@ export function startPlugin(
 }
 
 /**
- * Stop one, whether or not it cooperates.
- *
- * It is asked first, so a plugin that cleared a status or a timer gets to. Then
- * it is terminated regardless — a plugin cannot stay running by never finishing
- * its cleanup, which is a thing that could only be promised from out here.
+ * Stop one, whether or not it cooperates. It is asked first, then terminated
+ * regardless — a plugin cannot stay running by never finishing its cleanup.
  */
 export function stopPlugin(addonId: string): void {
   const entry = running.get(addonId);
@@ -307,10 +275,8 @@ export function stopPlugin(addonId: string): void {
   for (const drop of entry.unsubscribes) drop();
   processListeners.delete(addonId);
 
-  /* Before the worker is asked to stop rather than after. A panel outliving the
-     plugin that drew it is the failure people notice: the addon is off in
-     Settings and its list is still sitting beside the member list, saying
-     something that was true a minute ago. */
+  /* Before the worker is asked to stop rather than after. A panel outliving its
+     plugin is the failure people notice: off in Settings, still on screen. */
   hidePanel(addonId);
 
   try {
@@ -324,8 +290,7 @@ export function stopPlugin(addonId: string): void {
 export function stopAllPlugins(): void {
   for (const addonId of [...running.keys()]) stopPlugin(addonId);
   /* `stopPlugin` already takes each plugin's panel down, so this is for a panel
-     whose plugin is somehow no longer in `running` — a start that half failed.
-     Cheap, and the alternative is a panel with nothing behind it. */
+     whose plugin is no longer in `running` — a start that half failed. */
   forgetPanels();
 }
 

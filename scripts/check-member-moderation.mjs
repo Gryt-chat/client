@@ -1,16 +1,8 @@
 /* eslint-env node */
 
 /**
- * The two things standing between a click in the members list and a ban.
- *
- * Rank decides who may be acted on. Permissions decide what the action is. Both
- * are enforced again by the server, so neither of these is the last line — but
- * a menu that offers a click the server refuses is a red toast at best, and one
- * that hides a click somebody is entitled to is a moderator who cannot moderate.
- *
- * And the typing gate, which is the whole of what makes the ban dialog more
- * than a confirm with a text box in it. Getting it wrong in the permissive
- * direction is silent: the button simply enables when it should not.
+ * The two things standing between a click in the members list and a ban: rank
+ * decides who, permissions decide what. And the ban dialog's typing gate.
  */
 
 import assert from "node:assert/strict";
@@ -58,9 +50,8 @@ const odd = makeRankOf([
 ]);
 assert.equal(odd("admin"), 5);
 
-// Roles stack, so somebody is ranked by the highest they hold. Ranking them by
-// whichever the server listed first would let a moderator ban an admin who is
-// also a contributor -- the same shape the members list computes per row.
+// Roles stack, so somebody is ranked by the highest they hold. Ranking by
+// whichever the server listed first would let a moderator ban an admin.
 {
   const rankOf = makeRankOf(ROLES);
   const held = ["member", "admin"];
@@ -103,9 +94,8 @@ assert.equal(phraseMatches("Kari2", "Kari"), false, "a near miss is a different 
 assert.equal(phraseMatches("", "Kari"), false, "an empty box must never unlock the button");
 assert.equal(phraseMatches("   ", "Kari"), false);
 
-// No phrase means the dialog was not asking. That is not the same as an empty
-// answer satisfying one that was, and confusing the two turns every typed
-// confirmation into a plain one.
+// No phrase means the dialog was not asking, which is not the same as an empty
+// answer satisfying one that was.
 assert.equal(phraseMatches("", undefined), true);
 assert.equal(phraseMatches("", ""), true);
 assert.equal(phraseMatches("", "   "), true);

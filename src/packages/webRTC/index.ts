@@ -1,9 +1,6 @@
 /**
- * What is left of the client's webRTC package.
- *
- * The engine is `@gryt/voice` now and call sites import it from there directly.
- * What remains is the client's half of the boundary — the things the engine is
- * given rather than the things it does — plus the UI.
+ * What is left of the client's webRTC package. The engine is `@gryt/voice` now;
+ * what remains is the client's half of the boundary, plus the UI.
  */
 export { createRoomCoordinator } from "./src/adapters/roomCoordinator";
 export { type ScreenAudioMute, useScreenAudioMute } from "./src/adapters/useScreenAudioMute";

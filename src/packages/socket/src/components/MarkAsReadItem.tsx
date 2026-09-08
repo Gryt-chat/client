@@ -17,11 +17,8 @@ import {
 import { useSockets } from "../hooks/useSockets";
 
 /**
- * What a "mark as read" covers.
- *
- * The same three the notification menu offers, plus a direct message, which
- * has a context menu of its own. A folder is its channels — there is nothing
- * to read in the folder itself.
+ * What a "mark as read" covers: the same three the notification menu offers,
+ * plus a direct message. A folder is its channels.
  */
 export type MarkReadScope =
   | { kind: "server" }
@@ -29,17 +26,8 @@ export type MarkReadScope =
   | { kind: "conversation"; id: string };
 
 /**
- * Say you are done with a server, a folder, a channel or a DM.
- *
- * Four counts sit behind one badge and they do not all live in the same place.
- * Unread and thread-unread are the client's, counted from when this window
- * connected because no server-side read marker exists; mentions and
- * thread-mentions are the server's, and it has to be told or they come back on
- * the next connect. So each scope clears both sides (GRYT-1030).
- *
- * Disabled when the scope has nothing in it. A row that does nothing when
- * pressed is worse than no row, and this one would otherwise be present on
- * every channel all day, saying nothing about whether it was worth pressing.
+ * Say you are done with a server, folder, channel or DM. Four counts sit behind
+ * one badge, two the client's and two the server's, so each scope clears both.
  */
 export function MarkAsReadItem({ host, scope }: { host: string; scope: MarkReadScope }) {
   const { sockets } = useSockets();

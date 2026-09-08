@@ -1,27 +1,6 @@
 /**
  * A generated avatar for anyone who has not set one, and an icon for any server
- * that has not either.
- *
- * People get an owl, from `@gryt/owl`: one drawn character, where the colour,
- * the expression, the ear tufts and whatever it is wearing are what vary. It is
- * a package rather than a directory in this repository because the mobile app
- * needs the same owls — two apps drawing one person as two different people is
- * the failure the whole arrangement exists to prevent, and a copied directory
- * is how that starts. Adding an accessory happens in the `ui` repository.
- *
- * Servers still get DiceBear's Planets. A server is not a person and should not
- * be drawn as one. Planets is CC0, so no deployment inherits an attribution
- * obligation it did not choose — several of the nicer DiceBear styles are CC BY,
- * which would have meant carrying a credit line into every deployment.
- *
- * Both render locally rather than through api.dicebear.com. The seed identifies
- * a person, so calling the API would send that to a third party on every render,
- * and would leave any deployment without internet access showing nothing.
- *
- * The Planets definition comes from @dicebear/styles rather than
- * @dicebear/collection. Collection stopped at 9.4.3 and pins core to ^9 — which
- * is why an earlier attempt at "just take the latest core" ended up with a
- * working library and zero styles.
+ * that has not either. People get an owl; servers get DiceBear's Planets (CC0).
  */
 
 import { Avatar, Style } from "@dicebear/core";
@@ -29,9 +8,8 @@ import planetsDefinition from "@dicebear/styles/planets.json";
 
 import { getServerHttpBase } from "./url";
 
-// Constructed once. A Style parses and validates its definition, and the docs
-// are explicit that it is meant to be reused across avatars rather than rebuilt
-// per render.
+// Constructed once. A Style parses and validates its definition, and the docs are
+// explicit that it is meant to be reused rather than rebuilt per render.
 const planets = new Style(planetsDefinition);
 
 // The owls live next door now, and are re-exported here so that every existing
@@ -41,26 +19,16 @@ export * from "./owlAvatar";
 const cache = new Map<string, string>();
 
 /**
- * The same idea for a server that has not set an icon, in a style that is not
- * a character.
- *
- * Seeded on the server's name, not the host. Rename it and the planet changes
- * with it, which is also what makes the create form able to draw a server's
- * icon before it exists. Two servers both called "My Server" now draw the same
- * planet; an address is not what anybody recognises a server by.
- *
- * Callers that have no name yet (an address pasted before /info answers, an
- * invite before it is fetched) pass the host, so there is still something to
- * draw; it re-seeds once the name arrives.
+ * The same idea for a server that has not set an icon. Seeded on the name, not
+ * the host — callers with no name yet pass the host and it re-seeds later.
  */
 export function generatedServerIconUrl(seed: string): string {
   const key = `server:${seed}`;
   const cached = cache.get(key);
   if (cached) return cached;
 
-  // No background palette here. Planets brings its own night sky, and forcing
-  // the tile hues onto it would light the sky the same colour as somebody's
-  // avatar for no reason.
+  // No background palette here. Planets brings its own night sky, and forcing the
+  // tile hues onto it would light the sky the colour of somebody's avatar.
   const svg = new Avatar(planets, { seed }).toString();
 
   const url = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
@@ -69,19 +37,8 @@ export function generatedServerIconUrl(seed: string): string {
 }
 
 /**
- * Where to point a server's icon, given what its details say.
- *
- * Three cases, and the middle one is the reason this is a function. Once the
- * server has told us it has no icon, asking for one anyway means the browser
- * can answer from cache — so clearing an icon leaves the old one on screen
- * until that entry expires, which reads as the server still serving it. Knowing
- * there is none, we draw the generated one and make no request at all. Before
- * details arrive we do not know either way, so we ask and let the Avatar's
- * fallback handle a 404.
- *
- * Lives here rather than in the sidebar that used to own it, because two
- * functions deciding this separately is how one of them ends up asking for an
- * icon that is known not to exist.
+ * Where to point a server's icon, given what its details say. Once the server has
+ * said it has none, asking anyway lets the browser answer from a stale cache.
  */
 export function serverIconSrc(
   host: string,
@@ -92,9 +49,8 @@ export function serverIconSrc(
   if (info?.icon_url) {
     return `${getServerHttpBase(host)}/icon?v=${encodeURIComponent(info.icon_url)}`;
   }
-  // The server's own name first: it is the one the server reports, so a rename
-  // reaches the rail as soon as details refresh. The locally stored name is
-  // what we had before it answered.
+  // The server's own name first: a rename reaches the rail as soon as details
+  // refresh. The locally stored name is what we had before it answered.
   if (info) return generatedServerIconUrl(info.name || name || host);
   return `${getServerHttpBase(host)}/icon`;
 }

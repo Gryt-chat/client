@@ -56,9 +56,8 @@ export function patchUser(userId: string, key: string, value: unknown): void {
 }
 
 /**
- * Flush any dirty snapshots to disk synchronously.
- * Called from the `will-quit` handler to guarantee data is persisted
- * before the process exits (important for auto-update flows).
+ * Flush any dirty snapshots to disk synchronously. Called from `will-quit` to
+ * guarantee data is persisted before the process exits.
  */
 export function flushUserStore(): void {
   if (dirtySnapshots.size === 0) return;

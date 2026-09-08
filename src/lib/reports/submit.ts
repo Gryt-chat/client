@@ -4,12 +4,8 @@ import { signReport } from "./assertion";
 import { reportsConfig } from "./config";
 
 /**
- * Sending a report to `Gryt-chat/reports`.
- *
- * `POST /v1/reports`, `202` with `{ id, receivedAt }`. The body is serialised
- * once and both signed and posted, which is not a tidiness point: the assertion
- * binds itself to the exact bytes through `bh`, and re-serialising between
- * signing and posting is a signature over a different body.
+ * Sending a report to `Gryt-chat/reports`. The body is serialised once and both
+ * signed and posted: `bh` binds the assertion to those exact bytes.
  */
 
 export interface Submitted {
@@ -18,11 +14,8 @@ export interface Submitted {
 }
 
 /**
- * A failure worth telling somebody about, in words rather than a code.
- *
- * The split that matters is whose problem it is. Rate limited and too long are
- * things the reporter can act on; a refused signature is the app's fault and
- * there is nothing useful to say beyond that it did not send.
+ * A failure worth telling somebody about, in words rather than a code. The split
+ * that matters is whose problem it is.
  */
 export class SubmitError extends Error {
   constructor(
@@ -75,9 +68,8 @@ export async function submitReport(report: Report): Promise<Submitted> {
 
   if (response.status === 202) {
     const received = (await response.json().catch(() => null)) as Submitted | null;
-    /* The id is for us, not for them, so a reply this app cannot parse is still
-     * a report that landed — the service already has it, and saying otherwise
-     * would invite a second copy. */
+    /* The id is for us, not for them, so a reply this app cannot parse is still a
+     * report that landed — saying otherwise would invite a second copy. */
     return received ?? { id: "", receivedAt: new Date().toISOString() };
   }
 
@@ -105,10 +97,8 @@ function explain(response: Response): SubmitError {
     return new SubmitError("Reports are not being accepted from this app.", false);
   }
 
-  /* 400, 401, and anything else. All of them mean this app got something
-   * wrong — an empty message the form should have caught, a key that does not
-   * match, a signature the service refused — and none of them are actionable by
-   * the person who just typed a paragraph. */
+  /* 400, 401, and anything else. All of them mean this app got something wrong,
+   * and none are actionable by the person who just typed a paragraph. */
   return new SubmitError("That did not send. Something on our side.", true);
 }
 

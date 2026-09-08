@@ -1,17 +1,8 @@
 /* eslint-env node */
 
 /**
- * Turning a server's plugin capabilities into something a person can act on
- * (GRYT-942).
- *
- * A server names every plugin it runs and what each may do. It says it in its
- * own vocabulary — `messages:read`, `moderation` — which is the substance of
- * the list and also useless to almost everybody reading it.
- *
- * The case worth guarding is the unrecognised one. A newer server is exactly
- * where a capability worth knowing about arrives, so hiding what this build
- * does not recognise would mean the scarier the capability, the less likely
- * somebody is to see it.
+ * Turning a server's plugin capabilities into something a person can act on. The
+ * case worth guarding is the unrecognised one, which a newer server brings.
  */
 
 import assert from "node:assert/strict";
@@ -46,9 +37,8 @@ const unknown = describeCapability("reads:your:mind");
 /* Shown rather than dropped. */
 assert.match(unknown, /reads:your:mind/, "an unrecognised capability was hidden");
 
-/* And marked as unrecognised, so it does not read as Gryt's own wording for
-   something — which would be a sentence Gryt did not write, about a capability
-   it does not know, presented as if it did. */
+/* And marked as unrecognised, so it does not read as Gryt's own wording for a
+   capability it does not know. */
 assert.match(unknown, /too old to say/);
 
 /* ── lists ───────────────────────────────────────────────────────────────── */
@@ -90,14 +80,8 @@ assert.match(NOTHING_NAMED, /not named/i);
 /* ── the half you do not have ────────────────────────────────────────────── */
 
 /*
- * A server plugin declaring `messaging` has a client half by definition — that
- * capability is exactly "talks to a copy of itself in people's Gryt apps". So
- * naming one with no addon of the same id installed here is something this
- * person is missing.
- *
- * Inferred rather than announced. A manifest field saying "I have a client
- * half" would be a second thing to keep true, and it would be wrong the first
- * time somebody forgot it.
+ * A server plugin declaring `messaging` has a client half by definition, so
+ * naming one with no addon of the same id here is something this person misses.
  */
 const announced = [
   { id: "presence", capabilities: ["messaging"] },
@@ -139,14 +123,8 @@ assert.equal(missingHalves(announced, [])[0].capabilities.includes("messaging"),
 /* ── who can reach it ────────────────────────────────────────────────────── */
 
 /*
- * The list is for the people whose messages a plugin reads, which is everybody
- * on the server. Server settings needs a permission and would put it in front
- * of the one person it is not for.
- *
- * Checked in the source because it is a placement rather than a behaviour, and
- * the way it would break is somebody tidying the menu by folding this row into
- * the `canManage &&` block above it — which type-checks, renders, and quietly
- * hides it from everybody it was written for.
+ * The list is for the people whose messages a plugin reads. Checked in the source
+ * because folding it into the `canManage &&` block type-checks and renders.
  */
 const header = readFileSync(
   new URL("../src/packages/socket/src/components/ServerHeader.tsx", import.meta.url),
@@ -165,13 +143,8 @@ assert.doesNotMatch(
   "the plugin list ended up behind a manage permission, where the people it is for cannot reach it",
 );
 
-/* And it is next to Leave, which is what somebody does about what they read.
-   Matched on the menu row rather than on `onLeave`, which also appears in the
-   props above and would make this pass wherever the row ended up.
-
-   `onLeave` takes a mode since GRYT-988 split leaving from removing, so the
-   anchor is the leave row specifically. Removing a server from the sidebar is
-   not what reading a plugin list makes somebody want to do. */
+/* And it is next to Leave, matched on the menu row rather than on `onLeave`,
+   which also appears in the props above and would pass wherever the row went. */
 const leaveRow = header.indexOf('onLeave("leave")');
 assert.ok(leaveRow > 0, "the Leave row is gone — this check needs rewriting");
 assert.ok(leaveRow > item, "the plugin list is no longer above Leave");

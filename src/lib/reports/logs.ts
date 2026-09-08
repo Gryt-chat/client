@@ -1,14 +1,6 @@
 /**
- * The tail of the renderer's own log, so a bug report can carry it — somebody
- * reporting that voice dropped has the reason in their console and no
- * reasonable way to get it into a form.
- *
- * The last few hundred lines, in memory, never on disk. `warn` and `error`
- * only, or routine chatter pushes out the line that mattered.
- *
- * **Nothing is redacted, and this is off unless the reporter ticks the box.** A
- * failed connection writes the server's address, and a self-hosted Gryt
- * server's address is frequently somebody's house.
+ * The tail of the renderer's own log, so a bug report can carry it. **Nothing is
+ * redacted, and this is off unless the reporter ticks the box.**
  */
 
 const MAX_LINES = 300;
@@ -17,12 +9,8 @@ const MAX_LINE_CHARS = 500;
 const lines: string[] = [];
 
 /**
- * Drop the styling from a `console.warn("%cthing", "color:…")` call.
- *
- * The voice layer logs almost everything this way, and without this every line
- * in the buffer arrives wearing a CSS declaration — which is most of its
- * length and none of its meaning, in the one field a bug report exists to
- * carry.
+ * Drop the styling from a `console.warn("%cthing", "color:…")` call. The voice
+ * layer logs almost everything that way, and the CSS is most of the length.
  */
 function unstyle(args: unknown[]): unknown[] {
   const [first, ...rest] = args;
@@ -57,11 +45,8 @@ function record(level: "warn" | "error", args: unknown[]): void {
 let installed = false;
 
 /**
- * Start recording. Called once, as early as `main.tsx` can manage.
- *
- * Wraps rather than replaces, so the console still shows everything it did
- * before — a devtools session that stopped printing warnings because of a bug
- * reporter would be a bad trade.
+ * Start recording. Called once, as early as `main.tsx` can manage. Wraps rather
+ * than replaces, so the console still shows everything it did before.
  */
 export function captureLogs(): void {
   if (installed) return;

@@ -1,20 +1,8 @@
 /* eslint-env node */
 
 /**
- * A message this client cannot read says so (GRYT-729, GRYT-758).
- *
- * `sealedState` was set on every sealed message from the start and drawn
- * nowhere, so three of its four states were a row with a name, a time and
- * nothing between them. Which reads as a bug in the app rather than as a
- * message this device cannot open — and one of the three is the ordinary case
- * of joining a group conversation that already had messages in it.
- *
- * The wording is checked here, and the fact that `MessageRow` draws it is read
- * as source: that file imports React, framer-motion and a markdown renderer,
- * none of which load in Node.
- *
- * The four answers have to match the mobile app's `src/chat/sealedText.ts`. Two
- * clients describing one state differently is worse than either wording.
+ * A message this client cannot read says so. The four answers have to match the
+ * mobile app's `src/chat/sealedText.ts` (GRYT-729, GRYT-758).
  */
 
 import assert from "node:assert/strict";
@@ -73,9 +61,8 @@ import { sealedPlaceholder } from "../src/packages/socket/src/utils/sealedText.t
   assert.match(row, /\{sealedNote \?/,
     "MessageRow works out a placeholder and does not draw it");
 
-  // Not through the markdown renderer. This is the client talking rather than
-  // something anybody wrote, so parsing it would linkify it, scan it for
-  // profanity and hand it to the embed loader.
+  // Not through the markdown renderer. This is the client talking, so parsing it
+  // would linkify it and hand it to the embed loader.
   const branch = row.slice(row.indexOf("{sealedNote ?"), row.indexOf("{sealedNote ?") + 600);
   assert.doesNotMatch(branch.slice(0, branch.indexOf(") : (")), /MarkdownRenderer/,
     "a placeholder must not be rendered as markdown");

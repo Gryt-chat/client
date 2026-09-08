@@ -1,29 +1,11 @@
 /**
- * What a client does when a server says the session is over.
- *
- * `token:revoked` covers two situations that want opposite answers. Sometimes
- * the server has moved on — its own token counter was rotated, a membership row
- * was rebuilt — and the client can quietly fetch a new token and carry on.
- * Sometimes a person deliberately ended this session, and quietly fetching a
- * new token is the one thing that must not happen: joining a Gryt server takes
- * no password, only the keypair already sitting on this machine, so a client
- * that rejoins by itself signs somebody back in on the device they just signed
- * out of.
- *
- * The recoverable half backs off and eventually stops. A server can send this
- * event as often as it likes, and a client that answers each one straight away
- * is a loop — it burns battery, and it makes the machine sign with its private
- * key on demand. A server with a bug does that as readily as one with a grudge,
- * so neither is worth telling apart here.
+ * What a client does when a server says the session is over. Recovering after a
+ * deliberate sign-out would sign somebody back in on the device they left.
  */
 
 /**
  * Reasons where recovering would undo what somebody just asked for.
- *
- * `signed_out_elsewhere` is the push from another device. The version mismatch
- * is the same event arriving through a gate instead — the socket that was
- * offline when it happened, or that reconnected afterwards and presented the
- * token it still had.
+ * `signed_out_elsewhere` is the push; the version mismatch is it through a gate.
  */
 const DELIBERATE = new Set(["signed_out_elsewhere", "user_token_version_mismatch"]);
 
@@ -32,12 +14,8 @@ export const MAX_RETRY_MS = 30_000;
 export const MAX_RETRIES = 5;
 
 /**
- * How long without a revocation counts as the trouble having passed.
- *
- * A loop hammers within seconds, so anything spaced wider than this is a fresh
- * occurrence rather than a continuation, and gets its own budget. It also caps
- * the long run: whatever a server does, it cannot get this client to sign more
- * than MAX_RETRIES times per quiet period.
+ * How long without a revocation counts as the trouble having passed. A loop
+ * hammers within seconds, so anything wider than this gets its own budget.
  */
 export const QUIET_PERIOD_MS = 120_000;
 
@@ -58,10 +36,7 @@ export function isDeliberateRevocation(reason: string | undefined): boolean {
 
 /**
  * Decides what to do about one `token:revoked`, and returns the state the next
- * one should be judged against.
- *
- * Pure, and given the clock rather than reading it, so the backoff can be
- * tested without waiting through it.
+ * one is judged against. Pure, and given the clock rather than reading it.
  */
 export function planRecovery(
   state: RecoveryState,
@@ -74,10 +49,8 @@ export function planRecovery(
 
   const spent = now - state.lastRetryAt >= QUIET_PERIOD_MS ? 0 : state.retries;
   if (spent >= MAX_RETRIES) {
-    // The state is left alone on purpose. `lastRetryAt` still marks the last
-    // time this client actually did something, so the quiet period is measured
-    // from that rather than from the server's most recent shove — otherwise a
-    // server that keeps sending this holds the budget shut forever.
+    // The state is left alone on purpose: `lastRetryAt` marks the last time this
+    // client did something, so a server shoving repeatedly cannot hold it shut.
     return { plan: { act: "stop", because: "out_of_retries" }, state };
   }
 

@@ -1,20 +1,8 @@
 /* eslint-env node */
 
 /**
- * Every layout that drops the voice panel still offers a way out of the call
- * (GRYT-716).
- *
- * Two layouts are too narrow to draw the panel. The phone layout below 768 has
- * always dropped it, and the one-channel window added by GRYT-714 drops it
- * below 520. Dropping the panel drops mute, deafen and leave with it, and none
- * of that ends the call — measured on the desktop app at 450px, the whole
- * window held five buttons and the microphone was still open. The way out was
- * to make the window bigger, which is not what you want to be looking for while
- * you are the one being heard.
- *
- * A source check, because the failure is a branch that renders one element too
- * few. There is nothing to call and no value to compare — the layout is either
- * wired to the button or it is not, and a pure function cannot see which.
+ * Every layout that drops the voice panel still offers a way out of the call.
+ * A source check, because the failure is a branch that renders one element too few.
  */
 
 import assert from "node:assert/strict";
@@ -40,11 +28,8 @@ assert.match(
   "the tiny window must render VoiceSheetButton — without it a call below 520 has no controls",
 );
 
-// It has to sit in the tiny branch specifically. `serverView` also renders the
-// phone layout and the full one, and both of those are already covered — the
-// full layout by the panel itself, the phone layout by `MobileServerView`. A
-// button that landed in either of those would satisfy the check above while
-// leaving the tiny window exactly as broken as it was.
+// It has to sit in the tiny branch specifically. A button landing in the phone or
+// full layout would satisfy the check above and leave the tiny window broken.
 const tinyBranch = serverView.slice(
   serverView.indexOf("{isTiny ? ("),
   serverView.indexOf(") : isMobile ? ("),
@@ -61,9 +46,8 @@ assert.match(
 
 /* ── One component, not two ─────────────────────────────────────────── */
 
-// The chat is shared between these layouts for the same reason: a second copy
-// is a second copy to keep in step. Call controls are worse than a chat to get
-// wrong, so neither layout is allowed to grow its own.
+// The chat is shared between these layouts for the same reason: a second copy is
+// a second copy to keep in step.
 for (const [name, source] of [
   ["serverView", serverView],
   ["MobileServerView", mobileView],
@@ -88,9 +72,8 @@ assert.match(
 assert.match(sheetButton, /<MobileSheet\b/, "VoiceSheetButton must render the sheet");
 assert.match(sheetButton, /<VoiceView\b/, "VoiceSheetButton must render VoiceView inside the sheet");
 
-// It is reachable by name. The first measurement of this bug missed the phone
-// layout's button entirely because it carried no label, and reported a working
-// layout as broken.
+// It is reachable by name. The first measurement missed the phone layout's button
+// because it carried no label, and reported a working layout as broken.
 assert.match(
   sheetButton,
   /aria-label="[^"]+"/,

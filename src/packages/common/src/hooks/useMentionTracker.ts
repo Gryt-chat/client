@@ -2,18 +2,7 @@ import { useCallback, useSyncExternalStore } from "react";
 
 /**
  * How many times somebody has been named in a conversation and not read it.
- *
- * Separate from the unread tracker next door, which answers a different
- * question: unread means something happened here, a mention means something
- * happened *to you*. On a server with a busy general channel the first is
- * always true and stops carrying information.
- *
- * A count rather than a flag, because the number is what the server stores
- * anyway.
- *
- * The store lives at module scope, like the unread one, so a mention that
- * arrives while the channel list is unmounted is still there when it comes
- * back.
+ * Unread means something happened here; a mention means it happened *to you*.
  */
 type MentionMap = Map<string, Map<string, number>>;
 
@@ -34,22 +23,16 @@ function getSnapshot(): MentionMap {
 }
 
 /**
- * The store as it stands, for a test that has no React to render into.
- *
- * Exported rather than reached for through the hook because the hook needs a
- * component, and what is worth checking here is the arithmetic rather than the
- * subscription.
+ * The store as it stands, for a test that has no React to render into. What is
+ * worth checking here is the arithmetic rather than the subscription.
  */
 export function getMentionSnapshot(): MentionMap {
   return mentionMap;
 }
 
 /**
- * Replace what one server's counts are, from the server's own answer.
- *
- * Replace rather than merge: the server has just told us everything that is
- * unseen, so anything held here that it did not mention has been read
- * elsewhere — on a phone, or in another window.
+ * Replace what one server's counts are, from the server's own answer. Replace
+ * rather than merge: anything it did not mention has been read elsewhere.
  */
 export function setMentionCounts(host: string, counts: Record<string, number>) {
   const next = new Map(mentionMap);
@@ -72,13 +55,8 @@ export function addMention(host: string, conversationId: string) {
 }
 
 /**
- * They have read this conversation.
- *
- * `keep` is what the server will not have cleared: mentions inside the
- * conversation's threads, which opening the channel does not read (GRYT-1014).
- * Without it the badge would drop to zero here and come back on the server's
- * reply a moment later, and the effect that fires this would see the count
- * change twice and send again.
+ * They have read this conversation. `keep` is what the server will not have
+ * cleared: mentions inside the conversation's threads (GRYT-1014).
  */
 export function clearMentions(host: string, conversationId: string, keep = 0) {
   const existing = mentionMap.get(host);

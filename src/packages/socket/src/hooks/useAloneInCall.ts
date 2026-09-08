@@ -1,27 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
- * Leaving a call once you are the only one left in it (GRYT-711).
- *
- * A voice channel is a place and sitting in one alone is ordinary. A call is an
- * event between named people, and being the last one in it means it is over.
- *
- * The SFU counts too, and that is the half that frees the resources: a client
- * that is closed, wedged or modified never runs this timer. This half exists so
- * the person who *is* there is told rather than having the call vanish on them.
- *
- * The stay button moves both clocks. `stay()` restarts this one; sending the
- * SFU's `still_here` (GRYT-715) is the caller's job, because the caller holds
- * that connection. Without it the button would hold the tile up for thirty
- * seconds and the socket would close anyway.
+ * Leaving a call once you are the only one left. The SFU counts too and is what
+ * frees the resources; this half is so the person there is told (GRYT-711).
  */
 
 /**
- * What to count down from when the SFU has not said.
- *
- * Matches `DefaultCallAloneTimeout` in the SFU's config. GRYT-715 gave
- * `room_joined` a value, so this is the fallback for an SFU too old to send one
- * rather than a guess made on every call.
+ * What to count down from when the SFU has not said. Matches
+ * `DefaultCallAloneTimeout`; a fallback for an SFU too old to send one.
  */
 export const ALONE_SECONDS = 120;
 
@@ -37,30 +23,22 @@ export interface Countdown {
 
 export interface AloneInCall extends Countdown {
   /**
-   * Start the count again, because somebody said they are still here.
-   *
-   * This is only the local half. The SFU has its own clock and has to be told
-   * separately, with `still_here` — the caller does that, because the caller is
-   * what holds the SFU connection.
+   * Start the count again. Only the local half — the SFU has its own clock and is
+   * told with `still_here` by the caller, which holds that connection.
    */
   stay: () => void;
 }
 
 /**
- * What to show after this many seconds alone, and whether to hang up.
- *
- * Pure and separate from the hook, because this is the part with the boundaries
- * in it: showing the notice a second too late, or counting down to one instead
- * of zero, is not something a type checker makes obvious.
- * `check-alone-in-call.mjs` walks it second by second.
+ * What to show after this many seconds alone, and whether to hang up. Pure and
+ * separate because the boundaries are the part a type checker cannot catch.
  */
 export function callCountdown(
   secondsAlone: number,
   aloneSeconds: number = ALONE_SECONDS,
 ): Countdown {
-  // The SFU's off switch, SFU_CALL_ALONE_TIMEOUT=0. Nothing is counting on the
-  // other end, so nothing should be counting here — a client that hung up after
-  // two minutes anyway was the disagreement GRYT-715 set out to remove.
+  // The SFU's off switch, SFU_CALL_ALONE_TIMEOUT=0. Nothing counts on the other
+  // end, so nothing counts here — the disagreement GRYT-715 removed.
   if (aloneSeconds <= 0) return { secondsLeft: null, ended: false };
 
   const remaining = aloneSeconds - secondsAlone;
@@ -81,9 +59,8 @@ export function useAloneInCall({
   /** Nobody else is here. */
   alone: boolean;
   /**
-   * What the SFU said its own timeout is, in seconds. Zero means it does not
-   * end calls at all. Undefined means it did not say, and {@link ALONE_SECONDS}
-   * is used.
+   * What the SFU said its own timeout is, in seconds. Zero means it does not end
+   * calls; undefined means it did not say, and {@link ALONE_SECONDS} is used.
    */
   aloneSeconds?: number | null;
   onEnd: () => void;
@@ -91,9 +68,8 @@ export function useAloneInCall({
   const [secondsAlone, setSecondsAlone] = useState<number | null>(null);
   const limit = aloneSeconds ?? ALONE_SECONDS;
 
-  // The callback is rebuilt on every render of the component holding it, and
-  // depending on it directly would restart the interval each time — a timer
-  // that resets every render never fires.
+  // The callback is rebuilt every render, and depending on it would restart the
+  // interval each time — a timer that resets every render never fires.
   const end = useRef(onEnd);
   useEffect(() => {
     end.current = onEnd;
@@ -117,17 +93,14 @@ export function useAloneInCall({
       ? { secondsLeft: null, ended: false }
       : callCountdown(secondsAlone, limit);
 
-  // Somebody said they are here. Back to zero, not back to the start of the
-  // warning window: the SFU restarts its whole clock on `still_here`, and a
-  // countdown that reappeared thirty seconds later would be counting down to
-  // nothing.
+  // Back to zero, not to the start of the warning window: the SFU restarts its
+  // whole clock on `still_here`, so a countdown reappearing counts to nothing.
   const stay = useCallback(() => {
     setSecondsAlone((previous) => (previous === null ? null : 0));
   }, []);
 
-  // Hanging up in an effect rather than inside the interval, so it happens
-  // after the render that drew "0s" — the alternative disconnects on the tick
-  // that would have shown it, and the countdown visibly skips the last second.
+  // Hanging up in an effect rather than in the interval, so it happens after the
+  // render that drew "0s" — otherwise the countdown skips the last second.
   useEffect(() => {
     if (countdown.ended) end.current();
   }, [countdown.ended]);

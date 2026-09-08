@@ -44,9 +44,8 @@ export function forceSignOutWithAccount(logout: () => void): void {
  * Check authentication on app launch and force sign out if missing required tokens
  */
 export function checkAuthenticationOnLaunch(): boolean {
-  // Do NOT force sign-out on app launch.
-  // With OIDC, the Keycloak adapter restores the session asynchronously (check-sso),
-  // so a synchronous localStorage check is both unreliable and harms UX.
+  // Do NOT force sign-out on app launch: the Keycloak adapter restores the
+  // session asynchronously, so a synchronous localStorage check is unreliable.
   return true;
 }
 

@@ -1,12 +1,5 @@
-// Message encryption is one implementation shared with the mobile app
-// (GRYT-732), re-exported one for one so nothing in the client had to change
-// its imports.
-//
-// Taken by subpath rather than as `export * from "@gryt/crypto"`, because the
-// package's own `peer-keys` exports the same names as `./src/auth/peer-keys`
-// below. Two star exports of one name is ambiguous, and TypeScript drops the
-// name rather than complaining — every call site would stop compiling with
-// nothing saying why.
+// Message encryption is one implementation shared with the mobile app, taken by
+// subpath because `export *` twice over one name silently drops it (GRYT-732).
 export * from "@gryt/crypto/attachments";
 export * from "@gryt/crypto/comparison-code";
 export * from "@gryt/crypto/conversation-encryption";
@@ -63,9 +56,8 @@ export * from "./src/utils/betaBuild";
 export * from "./src/utils/imageCompress";
 export * from "./src/utils/invite";
 export * from "./src/utils/preLoginUrl";
-/* The name pool moved to @gryt/core: the phone had the same 152 words and
-   both files said to keep the other in step by hand. Re-exported from here
-   so the consumers that import it from `@/common` do not all have to move. */
+/* The name pool moved to @gryt/core, and is re-exported from here so the
+   consumers that import it from `@/common` do not all have to move. */
 export * from "./src/utils/shareableHost";
 export * from "./src/utils/signedOut";
 export * from "./src/utils/tokenStorage";

@@ -8,15 +8,8 @@ import { useServerManagement, useSockets } from "@/socket";
 import { useVoiceSounds } from "./useVoiceSounds";
 
 /**
- * The parts of a voice call that are the app's business rather than the
- * engine's.
- *
- * All three of these used to live inside `useSFU`, and all three were left out
- * of the package deliberately: they need the server list, the DOM, or a
- * decision about what the person should hear.
- *
- * Rendered inside `VoiceProvider`, below `VoiceConfigProvider`, because it
- * consumes `useSFU`.
+ * The parts of a voice call that are the app's business rather than the engine's:
+ * they need the server list, the DOM, or a decision about what to hear.
  */
 export function useVoiceLifecycle() {
   const {
@@ -31,15 +24,11 @@ export function useVoiceLifecycle() {
   const { serverDetailsList } = useSockets();
   const { playConnect } = useVoiceSounds();
 
-  // The connect sound. The engine used to play this itself, partway through the
-  // flow — after the offer/answer exchange but before ICE and DTLS had
-  // finished. It now plays when the call is actually up, which is slightly later
-  // and arguably what it should always have meant.
+  // The connect sound. The engine used to play it partway through the flow; it
+  // now plays when the call is actually up.
   const wasConnected = useRef(false);
-  // Whether this call ever came up at all, which `wasConnected` cannot answer
-  // because it tracks the current state rather than the high-water mark. The
-  // give-up toast needs the high-water mark: "it dropped" and "it never
-  // connected" are different problems and want different words.
+  // Whether this call ever came up, which `wasConnected` cannot answer — it
+  // tracks the current state. "It dropped" and "it never connected" differ.
   const everConnected = useRef(false);
   useEffect(() => {
     const nowConnected = connectionState === SFUConnectionState.CONNECTED;
@@ -55,12 +44,8 @@ export function useVoiceLifecycle() {
   }, [connectionState]);
 
   /*
-   * Where the call was, kept because the engine forgets before the toast runs.
-   *
-   * Giving up clears the whole connection state — `serverId: null`,
-   * `roomId: null` — in the same update that sets "reconnect-failed", so by the
-   * time the effect below reads `currentServerConnected` it is "". These latch
-   * the last non-empty values instead.
+   * Where the call was, kept because the engine forgets before the toast runs:
+   * giving up clears `serverId` and `roomId` in the same update.
    */
   const lastHost = useRef("");
   const lastChannelId = useRef("");
@@ -70,16 +55,8 @@ export function useVoiceLifecycle() {
   }, [currentServerConnected, currentChannelConnected]);
 
   /*
-   * Telling somebody the call dropped, which the engine deliberately leaves to
-   * the app — it reports that it gave up.
-   *
-   * **Only once the engine has actually stopped trying** (GRYT-668).
-   * `connectionError` is set the moment the peer connection fails and the
-   * engine then retries five times, so a blip that healed 1.5 seconds later
-   * still blamed somebody's network for a late STUN response.
-   *
-   * DISCONNECTED is the engine saying it is done: FAILED moves on to
-   * RECONNECTING while a retry is possible, which is `useSFU`'s contract.
+   * Telling somebody the call dropped. **Only once the engine has stopped
+   * trying**: DISCONNECTED, not FAILED, which still has retries left (GRYT-668).
    */
   useEffect(() => {
     if (!connectionError) return;
@@ -93,13 +70,8 @@ export function useVoiceLifecycle() {
       : undefined;
 
     /*
-     * Which words. Whether the call ever came up is the difference between a
-     * network that cannot carry voice at all and one that dropped it, and the
-     * engine cannot say — "reconnect-failed" covers both.
-     *
-     * Gryt has no relay, on purpose, so a network that will not carry a direct
-     * path cannot carry a call — carrier-grade NAT on mobile data being the
-     * usual one. That guess is only fair after every attempt has failed.
+     * Which words. Gryt has no relay, so a network that will not carry a direct
+     * path cannot carry a call — a guess that is only fair after every attempt.
      */
     const message =
       connectionError === "reconnect-failed"
@@ -134,8 +106,7 @@ export function useVoiceLifecycle() {
   ]);
 
   // Leaving a server while in one of its voice channels should end the call.
-  // This reads the whole server map to notice the one we are on has gone, which
-  // is exactly what the engine is kept away from.
+  // This reads the whole server map, which is what the engine is kept away from.
   useEffect(() => {
     if (!isConnected || !currentServerConnected) return;
     if (currentlyViewingServer?.host === currentServerConnected) return;

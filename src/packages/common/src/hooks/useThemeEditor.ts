@@ -4,17 +4,8 @@ import { useCallback, useState } from "react";
 import { singletonHook } from "./singletonHook";
 
 /**
- * The theme being edited right now, over the top of the running app.
- *
- * Deliberately not part of `useCustomThemes`. What that hook holds is written
- * to localStorage; a draft is a colour somebody is dragging a slider through
- * and has not decided about, and writing every frame of that to disk would turn
- * an experiment into a saved theme nobody asked for. A draft lives for as long
- * as the panel is open.
- *
- * `openedWith` is what Revert goes back to. "Close without saving" is not the
- * same offer — somebody who has made four good changes and one bad one wants
- * the bad one gone, not all five.
+ * The theme being edited right now, over the top of the running app. Not part of
+ * `useCustomThemes`: a draft must not be written to disk on every frame.
  */
 
 export interface ThemeEditorState {

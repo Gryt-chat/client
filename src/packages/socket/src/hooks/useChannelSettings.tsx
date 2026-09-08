@@ -108,13 +108,8 @@ function useHandleChannelClick({
     if (!currentlyViewingServer) return;
     switch (channel.type) {
       case "voice": {
-        // The server refuses this too. Stopping here as well is so the answer
-        // reads as "you are not allowed in" rather than as whatever the media
-        // stack says when the room grant never arrives.
-        //
-        // Both answers, because they can differ: `can` is the role's
-        // server-wide permission and `canJoin` is this room's. Absent means the
-        // server is too old to say, which reads as allowed.
+        // The server refuses this too, but stopping here makes the answer read as
+        // "you are not allowed in". `can` is server-wide, `canJoin` this room's.
         if (!can("join_voice") || channel.canJoin === false) {
           const host = currentlyViewingServer.host;
           const name = currentlyViewingServer.name || host;
@@ -171,8 +166,7 @@ function useHandleChannelClick({
           }
 
           // Everything else is about a channel on a server, and saying which is
-          // the difference between a report somebody can act on and "voice
-          // broke". See ServerErrorToast.
+          // the difference between an actionable report and "voice broke".
           const host = currentlyViewingServer.host;
           const name = currentlyViewingServer.name || host;
           toast.error(

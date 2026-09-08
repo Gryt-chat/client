@@ -110,16 +110,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
 
   /*
-   * Watching for programs somebody listed (GRYT-931).
-   *
-   * Four calls, and the shape of them is the decision. `listRunningPrograms`
-   * hands over what is open — to the settings screen, so somebody can pick
-   * rather than guess at an executable name. Everything else deals only in the
-   * list they wrote and which of it is running.
-   *
-   * Nothing here reaches a plugin directly. A plugin sits behind the `gryt`
-   * worker API and gets matches only, which is why its capability can say "a
-   * program you have listed" and mean it.
+   * Watching for programs somebody listed. `listRunningPrograms` hands over what
+   * is open, to the settings screen; a plugin gets matches only (GRYT-931).
    */
   listRunningPrograms(): Promise<string[]> {
     return ipcRenderer.invoke("processes-list-running");
@@ -236,11 +228,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
 
   /**
-   * Repaint the native minimise/maximise/close buttons (GRYT-288).
-   *
-   * Colours rather than a theme name, because only the renderer can say what
-   * the theme variables currently evaluate to. Both must be `#rrggbb`; main
-   * refuses anything else.
+   * Repaint the native minimise/maximise/close buttons. Colours rather than a
+   * theme name: only the renderer knows what the variables evaluate to.
    */
   setTitlebarOverlay(colors: { color: string; symbolColor: string }) {
     ipcRenderer.send("set-titlebar-overlay", colors);

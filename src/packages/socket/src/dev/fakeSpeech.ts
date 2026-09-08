@@ -1,19 +1,6 @@
 /**
- * Speech for the fake voice participants, so a still of a voice channel shows
- * something happening.
- *
- * Real audio rather than a boolean, because the halo sizes itself from an
- * AnalyserNode frame by frame — a fake that only flipped a flag would draw a
- * ring with a dead circle behind it. Each fake gets noise through a gain node
- * ramped like speech, and the same analyser both drives the halo and answers
- * "is this person talking".
- *
- * Nothing is connected to the audio context's destination, so none of it is
- * audible.
- *
- * The speaking flags are polled here rather than in useServerState, whose loop
- * runs before the fakes are merged in. The poll below is the remote branch of
- * that loop — same isSpeaking, same threshold, same 100ms.
+ * Speech for the fake voice participants: real audio, because the halo sizes
+ * itself from an AnalyserNode. Nothing is connected to the destination.
  */
 import type { StreamSources } from "@gryt/voice";
 import { isSpeaking, useSharedAudioContext } from "@gryt/voice";
@@ -31,10 +18,7 @@ const SPEAKING_THRESHOLD = 0.1;
 
 /**
  * How long a turn lasts, and how long someone waits before taking another.
- *
- * Silence is the longer of the two so a still lands on two or three people
- * mid-sentence rather than the whole grid lit up, which is neither what a call
- * looks like nor a useful picture of the indicator.
+ * Silence is the longer, so a still lands on two or three people mid-sentence.
  */
 const TURN_MIN_MS = 900;
 const TURN_MAX_MS = 3200;
@@ -46,11 +30,8 @@ const SYLLABLE_MIN_MS = 90;
 const SYLLABLE_MAX_MS = 190;
 
 /**
- * Loudness range of a syllable.
- *
- * The halo runs from -55 to -12 dBFS, and noise at gain g lands around
- * 20·log10(0.58·g) — so this covers roughly -25 dB up to -12 dB, which moves
- * the halo across most of its travel without pinning it at full size.
+ * Loudness range of a syllable. The halo runs -55 to -12 dBFS and noise at gain g
+ * lands near 20·log10(0.58·g), so this covers about -25 to -12 dB.
  */
 const LEVEL_MIN = 0.1;
 const LEVEL_MAX = 0.45;
@@ -73,10 +54,8 @@ interface Voice {
 }
 
 /**
- * A couple of seconds of white noise, looped.
- *
- * Nobody hears it, so its spectrum does not matter — only that it has a steady
- * RMS for the envelope to shape.
+ * A couple of seconds of white noise, looped. Nobody hears it, so the spectrum
+ * does not matter — only a steady RMS for the envelope to shape.
  */
 function noiseBuffer(ctx: AudioContext): AudioBuffer {
   const buffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
@@ -95,9 +74,8 @@ function createVoice(ctx: AudioContext, clientId: string): Voice {
   const envelope = ctx.createGain();
   envelope.gain.value = 0;
 
-  // A stream destination rather than a bare analyser: it makes the subgraph
-  // something the context renders, and it means the participant is read
-  // through a MediaStreamAudioSourceNode, which is what a real one is.
+  // A stream destination rather than a bare analyser: the context renders the
+  // subgraph, and the participant is read through a MediaStreamAudioSourceNode.
   const sink = ctx.createMediaStreamDestination();
   noise.connect(envelope).connect(sink);
   noise.start();
@@ -141,10 +119,8 @@ export interface FakeSpeech {
 const NOTHING: FakeSpeech = { sources: {}, speaking: {} };
 
 /**
- * Voices for the fake participants that can talk.
- *
- * Muted and deafened ones are left out rather than given a silent voice — a
- * muted person has no audio arriving at all, and the tile should look like it.
+ * Voices for the fake participants that can talk. Muted and deafened ones are
+ * left out: a muted person has no audio arriving, and the tile should show it.
  */
 export function useFakeSpeech(options: FakeParticipantOptions | null): FakeSpeech {
   const { audioContext } = useSharedAudioContext();

@@ -1,23 +1,8 @@
 /* eslint-env node */
 
 /**
- * That a plugin runs somewhere it cannot reach the app (GRYT-930).
- *
- * The capability switches were a statement of intent until this landed: a
- * plugin was a `<script type="module">` on the app's own page, so it shared
- * `window`, the DOM, `localStorage`, the sockets, the message store and the
- * identity key. One that did not want to ask simply did not call `window.gryt`.
- *
- * Now it is a worker and the API is a message protocol, so a refusal is the end
- * of it. Two things hold that up, and both are the kind of thing a later tidy-up
- * undoes without noticing:
- *
- *   1. the loader must not put a plugin on the page
- *   2. the worker must not import anything that drags the app in behind it
- *
- * Neither is a behaviour a unit test can reach, so they are read out of the
- * source. The capability decision underneath is a function, and that half is
- * exercised properly.
+ * That a plugin runs somewhere it cannot reach the app. Two things hold it up:
+ * the loader must not put a plugin on the page, and the worker imports nothing.
  */
 
 import assert from "node:assert/strict";
@@ -25,9 +10,8 @@ import { readFileSync } from "node:fs";
 
 const read = (p) => readFileSync(new URL(`../src/packages/addons/src/${p}`, import.meta.url), "utf8");
 
-/* The comments in these files name the things a plugin no longer has, at
-   length and on purpose. Checking the prose for them finds the explanation
-   rather than the code. */
+/* The comments in these files name the things a plugin no longer has. Checking
+   the prose for them finds the explanation rather than the code. */
 const codeOnly = (src) => src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
 
 /* ── the loader must not put a plugin on the page ────────────────────────── */
@@ -40,9 +24,8 @@ assert.ok(
 );
 
 /*
- * Themes are still elements in the head — CSS cannot call anything, and the
- * worst a bad theme does is look wrong. So the assertion is not "no script
- * tags"; it is that nothing creates a script, which is what a plugin would need.
+ * Themes are still elements in the head — CSS cannot call anything. So the
+ * assertion is not "no script tags"; it is that nothing creates a script.
  */
 assert.doesNotMatch(
   codeOnly(loader),
@@ -89,13 +72,8 @@ for (const forbidden of ["localStorage", "document.", "window."]) {
 }
 
 /*
- * A worker has no DOM, but it does have origin storage — and origin storage is
- * the app's. `indexedDB` in a worker opens the same databases the app writes
- * to, so a plugin could read what it was refused by asking the browser instead
- * of asking Gryt.
- *
- * `Worker` is the one that makes the rest worth anything: a plugin that can
- * start one gets a fresh global with all of this back.
+ * A worker has no DOM but does have origin storage, and that is the app's.
+ * `Worker` is the one that matters: starting one gets a fresh global back.
  */
 for (const global of ["indexedDB", "caches", "Worker", "SharedWorker"]) {
   assert.match(
@@ -105,18 +83,16 @@ for (const global of ["indexedDB", "caches", "Worker", "SharedWorker"]) {
   );
 }
 
-/* Off the prototype chain, not off `globalThis`. These are getters on the
-   worker global's prototype, so deleting from the object does nothing at all —
-   which is what the first attempt did, and the plugin still had them. */
+/* Off the prototype chain, not off `globalThis`. These are getters on the worker
+   global's prototype, so deleting from the object does nothing at all. */
 assert.match(
   workerCode,
   /getPrototypeOf/,
   "the worker deletes from globalThis rather than walking the prototype chain, which does nothing",
 );
 
-/* And the network stays. A plugin that cannot reach Spotify is not a
-   now-playing plugin, and pretending otherwise here would be a lie the docs
-   would then have to repeat. */
+/* And the network stays. A plugin that cannot reach Spotify is not a now-playing
+   plugin, and pretending otherwise here would be a lie the docs repeat. */
 assert.doesNotMatch(
   workerCode,
   /["'](fetch|WebSocket)["']/,
@@ -141,16 +117,14 @@ const both = ["status", "messaging"];
 assert.deepEqual(mayCall(["status"], ["status"], "setActivity"), { allowed: true });
 assert.deepEqual(mayCall(both, both, "messaging.send"), { allowed: true });
 
-/* Declared but not granted, and granted but not declared, are both no. The
-   second is an addon that dropped a capability in an update while keeping the
-   agreement somebody made when it had one. */
+/* Declared but not granted, and granted but not declared, are both no. The second
+   is an addon that dropped a capability while keeping the agreement. */
 assert.deepEqual(mayCall(["status"], [], "setActivity"), { allowed: false, needs: "status" });
 assert.deepEqual(mayCall([], ["status"], "setActivity"), { allowed: false, needs: "status" });
 assert.deepEqual(mayCall(["status"], ["status"], "messaging.send"), { allowed: false, needs: "messaging" });
 
-/* A method nobody serves is refused rather than allowed. The worker is the only
-   caller, so this is a typo on the other side of the port — and refusing is
-   what turns it into an error instead of a promise that never settles. */
+/* A method nobody serves is refused rather than allowed: the worker is the only
+   caller, so refusing turns a typo into an error rather than a hung promise. */
 for (const method of ["", "eval", "setActivity ", "messaging", "__proto__", "constructor", "toString"]) {
   assert.deepEqual(
     mayCall(both, both, method),

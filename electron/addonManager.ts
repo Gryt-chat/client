@@ -88,11 +88,8 @@ function isValidManifest(data: unknown): data is AddonManifest {
   }
   if (obj.author != null && typeof obj.author !== "string") return false;
 
-  // Checked when the manifest is read rather than when the fetch happens. A
-  // manifest is a file anybody can drop in the addons folder, and this value
-  // decides what gets requested over the network — so the narrow shape is the
-  // check. Two path segments of the characters GitHub allows in a name: no
-  // scheme, no host, no `..`, no query string to point it somewhere else.
+  // Checked when the manifest is read rather than at fetch time. A manifest is a
+  // file anybody can drop in, and this value decides what is requested.
   if (obj.repository != null && !isValidRepository(obj.repository)) {
     return false;
   }
@@ -198,9 +195,8 @@ export function watchAddons(): void {
 }
 
 /**
- * Resolve a request path like `/addons/my-theme/theme.css` to a safe
- * absolute filesystem path inside the addons directory, or null if the
- * path escapes the directory or the file doesn't exist.
+ * Resolve a request path to a safe absolute path inside the addons directory, or
+ * null if it escapes the directory or the file does not exist.
  */
 export function resolveAddonFilePath(pathname: string): string | null {
   const dir = getAddonsDir();
@@ -231,16 +227,8 @@ export function resolveAddonFilePath(pathname: string): string | null {
 }
 
 /**
- * The newest release tag of a repository, without spending GitHub API quota.
- *
- * `/releases/latest` is a redirect to `/releases/tag/<tag>`, so the tag is in
- * the Location header of a request that never follows it. The same trick the
- * app's own update check uses, and for the same reason: api.github.com allows
- * 60 unauthenticated calls an hour per address, and somebody with a handful of
- * addons opening the page a few times would spend it.
- *
- * A repository with no releases redirects to `/releases` instead, which has no
- * tag in it, so that reads as "nothing to report" rather than an error.
+ * The newest release tag of a repository, without spending API quota:
+ * `/releases/latest` is a redirect, so the tag is in the Location header.
  */
 async function newestReleaseTag(
   repository: string,
@@ -270,16 +258,8 @@ async function newestReleaseTag(
 }
 
 /**
- * Which installed addons have a newer release than the version they declare.
- *
- * Only addons that named a repository, and only when the tag parses as a
- * version newer than the installed one. A tag that is not semver at all is
- * skipped rather than guessed at — "latest" and "v2-final" are real tag names
- * and neither says anything about ordering.
- *
- * Every repository is checked at once. They are independent, there are only
- * ever a handful, and doing them in sequence makes opening the page feel like
- * it hung on whichever one is slowest.
+ * Which installed addons have a newer release than the version they declare. A
+ * tag that is not semver is skipped rather than guessed at.
  */
 export async function checkAddonUpdates(): Promise<AddonUpdate[]> {
   const withRepos = getAddons().filter((addon) => addon.repository);

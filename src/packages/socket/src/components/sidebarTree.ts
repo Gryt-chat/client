@@ -1,13 +1,8 @@
 import type { SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
 
 /**
- * The sidebar is stored flat and drawn as one level of nesting, and this is the
- * piece that turns one into the other.
- *
- * Separate from `ChannelList` because it is the part with cases in it: what a
- * drag means, where an orphan goes, what a collapsed folder does to an order
- * that never saw its children. The component renders rows; this decides what
- * the rows are.
+ * The sidebar is stored flat and drawn as one level of nesting; this turns one
+ * into the other. The component renders rows, this decides what the rows are.
  */
 
 /** How far right a channel has to travel before it drops into the folder above. */
@@ -32,12 +27,7 @@ function folderIds(items: SidebarItem[]): Set<string> {
 
 /**
  * The parent this item actually has, which is not always the one it claims.
- *
- * A channel naming a folder that is not in this list is an orphan, and orphans
- * go to the top level. The server resolves the same way, but the client sees a
- * narrower list than the server stores: a folder is never hidden, but a client
- * can hold a stale `server:details` for a moment after one is deleted, and a
- * channel that vanished because its folder did would be the worse failure.
+ * Orphans go to the top level rather than vanishing with a stale folder.
  */
 function effectiveParent(item: SidebarItem, folders: Set<string>): string | null {
   if (item.kind !== "channel") return null;
@@ -47,12 +37,8 @@ function effectiveParent(item: SidebarItem, folders: Set<string>): string | null
 }
 
 /**
- * Flat list to drawn order: every top-level item in position order, and each
- * folder followed immediately by its own children.
- *
- * `collapsed` drops a folder's children from the output. They keep their parent
- * and are put back by `buildReorderPayload`, so collapsing a folder and
- * dragging something else does not empty it.
+ * Flat list to drawn order. `collapsed` drops a folder's children from the
+ * output; `buildReorderPayload` puts them back, so collapsing does not empty it.
  */
 export function flattenSidebar(
   items: SidebarItem[],
@@ -85,15 +71,8 @@ export function flattenSidebar(
 }
 
 /**
- * The folder a dragged item lands in, from where it was dropped and how far
- * right it travelled.
- *
- * Horizontal distance decides, because that is the gesture: right of the
- * threshold goes into the folder above, left of it comes back out. Between the
- * two is "no opinion", which keeps whatever membership the item already had —
- * so dragging a channel up and down inside its folder does not throw it out.
- *
- * `order` is the visible order after the drag, which is what the component has.
+ * The folder a dragged item lands in, from where it was dropped and how far right
+ * it travelled. Between the thresholds is "no opinion", which keeps membership.
  */
 export function resolveDropParent(
   order: SidebarItem[],
@@ -126,16 +105,8 @@ export function resolveDropParent(
 }
 
 /**
- * The full order to send, with every item's folder stated outright.
- *
- * Explicit rather than relying on the server's "keep what is stored" path,
- * because the client already knows the answer and a payload that says it cannot
- * be misread. The bare-id form still exists on the server for clients that
- * predate folders.
- *
- * Children of a collapsed folder are not in `visibleOrder` — nobody dragged
- * them and they were never drawn. They are put back directly after their folder
- * so the positions the server writes match what the next client will flatten.
+ * The full order to send, with every item's folder stated outright. Children of a
+ * collapsed folder are put back directly after it so positions still match.
  */
 export function buildReorderPayload(
   visibleOrder: SidebarItem[],

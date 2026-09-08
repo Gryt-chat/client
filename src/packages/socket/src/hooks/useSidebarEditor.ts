@@ -51,15 +51,8 @@ export function useSidebarEditor({
   const [sheetScopeRules, setSheetScopeRules] = useState<ChannelRule[]>([]);
   const [scopeLoading, setScopeLoading] = useState(false);
   /*
-   * What this channel could be pointed at, by name.
-   *
-   * Off `server:channels:scope`, which needs the same `manage_channels` as
-   * opening this dialog. It used to come from `server:permissions:templates`,
-   * which needs `manage_roles` — so a moderator who may arrange channels and
-   * not set policy had the list refused and was offered Everyone and Custom
-   * with no way to learn that any template existed.
-   *
-   * Names and ids only. What a template decides is still `manage_roles`.
+   * What this channel could be pointed at, by name. Off `server:channels:scope`,
+   * which needs the same `manage_channels` as opening this dialog.
    */
   const [permissionTemplates, setPermissionTemplates] = useState<
     { id: string; name: string | null; isSystem: boolean }[]
@@ -122,13 +115,8 @@ export function useSidebarEditor({
   }, [channelById, selectedSidebarItem]);
 
   /**
-   * The choices for the visibility gate, as "everyone" plus one per role.
-   *
-   * The stored value is a rank, not a role id, so several roles at the same
-   * rank collapse into one choice — picking either would store the same number.
-   * Showing both would offer a distinction the gate cannot keep.
-   *
-   * Sorted low to high, the direction somebody narrowing a channel is thinking.
+   * The choices for the visibility gate. The stored value is a rank, not a role id,
+   * so roles at the same rank collapse into one choice. Sorted low to high.
    */
   const scopeChoiceOptions = useMemo(
     () => scopeOptions(permissionTemplates.map((t) => ({ id: t.id, name: t.name }))),
@@ -142,18 +130,12 @@ export function useSidebarEditor({
   }, [currentlyViewingServer, serverDetailsList]);
 
   /**
-   * Ask the server for the templates and for this channel's own rules.
-   *
-   * Neither answer rides along on `server:details`: being allowed to see a
-   * channel is not the same as being allowed to read which roles cannot, and
-   * putting the matrix in the payload every member receives would hand that out
-   * to all of them.
+   * Ask the server for the templates and for this channel's own rules. Neither
+   * rides on `server:details`: that payload goes to every member.
    */
-  // The item is read through a ref rather than depended on. `selectedSidebarItem`
-  // is a fresh object whenever `serverDetailsList` changes identity, and this
-  // effect emits on every run — so depending on it made each reply re-run the
-  // effect, which emitted again. React caught that as "Maximum update depth
-  // exceeded" the moment the dialog opened. The deps below are all primitives.
+
+  // The item is read through a ref rather than depended on: `selectedSidebarItem`
+  // is a fresh object per render and this effect emits, so depending on it looped.
   const selectedItemRef = useRef(selectedSidebarItem);
   selectedItemRef.current = selectedSidebarItem;
 
@@ -163,14 +145,8 @@ export function useSidebarEditor({
       : null;
 
   /*
-   * Clear the scope when a different channel is opened, and only then.
-   *
-   * This used to sit in the effect below, which depends on
-   * `selectedSidebarItem` — a fresh object every time `serverDetailsList`
-   * changes identity. Saving a scope makes the server broadcast
-   * `server:details`, so the save reset the dropdown to Everyone a moment after
-   * setting it (GRYT-892). The channel id is a string, so it only changes when
-   * the channel does.
+   * Clear the scope when a different channel is opened, and only then. In the
+   * effect below it reset the dropdown a moment after a save (GRYT-892).
    */
   useEffect(() => {
     setSheetScopeChoice(EVERYONE_VALUE);
@@ -197,9 +173,8 @@ export function useSidebarEditor({
       rules?: ChannelRule[];
       templates?: { id: string; name: string | null; isSystem: boolean }[];
     }) => {
-      // The reply names the channel it is about. Without this check, opening
-      // one channel and quickly opening another paints the first one's rules
-      // into the second one's dialog — and then saves them.
+      // The reply names the channel it is about. Without this, opening one channel
+      // and quickly opening another paints the first one's rules into the second.
       if (cancelled || payload?.channelId !== channelId) return;
       setSheetScopeChoice(scopeChoiceValue(payload.scopeId ?? null, Boolean(payload.isTemplate)));
       setSheetScopeRules(payload.rules ?? []);
@@ -221,24 +196,13 @@ export function useSidebarEditor({
   }, [editDialogOpen, editingChannelId, currentlyViewingServer?.host, currentConnection]);
 
   /**
-   * Send the channel's scope choice.
-   *
-   * Separate from `saveSelectedSidebarItem` on purpose. That one renames and
-   * retunes the channel, and a rename must never be able to change who can see
-   * it — the server refuses a scope on `server:channels:upsert` for the same
-   * reason.
+   * Send the channel's scope choice. Separate from `saveSelectedSidebarItem`: a
+   * rename must never be able to change who can see the channel.
    */
+
   /*
-   * `choice` and `rules` are arguments rather than only state because a caller
-   * that changes one of them and saves in the same tick cannot wait for the
-   * state to arrive. This function is held in a ref that is reassigned during
-   * render, so an event handler runs the closure the *last* render built — with
-   * the value the control had before it was changed. The dropdown did that, and
-   * since the previous value is almost always `everyone`, every attempt to
-   * restrict a channel sent "clear the scope" (GRYT-892).
-   *
-   * The debounced callers still pass nothing and read state, which is correct
-   * for them: 600ms later the render has happened.
+   * `choice` and `rules` are arguments, not state: this is held in a ref reassigned
+   * during render, so a handler reads the value the control had before the change.
    */
   const saveChannelScope = useCallback((choice?: string, rules?: ChannelRule[]) => {
     const item = selectedItemRef.current;
@@ -265,11 +229,8 @@ export function useSidebarEditor({
   }, []);
 
   /**
-   * `order` carries the folder each item belongs in as well as its place.
-   *
-   * One drag can do both, so they travel together. The server still accepts a
-   * bare id per entry, meaning "leave the folder alone", which is what a client
-   * from before folders sends.
+   * `order` carries the folder each item belongs in as well as its place. A bare id
+   * per entry still means "leave the folder alone", which older clients send.
    */
   const reorderSidebar = useCallback(
     (order: SidebarReorderEntry[]) => {
@@ -332,10 +293,8 @@ export function useSidebarEditor({
         return;
       }
 
-      /* Named on creation rather than left blank and edited after. A folder
-         with no name draws as "Folder", which is a row nobody can tell from
-         the next one, and the sidebar is where they would be telling them
-         apart. */
+      /* Named on creation rather than left blank. A folder with no name draws as
+         "Folder", which is a row nobody can tell from the next one. */
       if (paletteKind === "folder") {
         const itemId = `sb_fold_${uuidv4().slice(0, 10)}`;
         currentConnection.emit("server:sidebar:item:upsert", {
@@ -503,11 +462,8 @@ export function useSidebarEditor({
         layout: kindFields.layout,
         automated: kindFields.automated,
         forumTags: sheetForumTags,
-        // Always sent, including as null. The server treats an *absent*
-        // viewMinRank as "leave it alone", which is what stops an older client
-        // reopening a hidden channel by saving an unrelated setting. This
-        // client knows about the field, so leaving it out here would make
-        // clearing a gate impossible.
+        // Always sent, including as null. The server treats an *absent* viewMinRank
+        // as "leave it alone", so leaving it out here cannot clear a gate.
       });
       return;
     }
@@ -527,11 +483,8 @@ export function useSidebarEditor({
       return;
     }
 
-    /* A folder is renamed through the same field a separator uses, because it
-       is the same edit: both carry one piece of text and nothing else. The one
-       difference is the empty case — a separator with no label is a plain rule,
-       which is a reasonable thing to want, while a folder with no name is a row
-       you cannot tell from the next one. So it keeps the name it had. */
+    /* A folder is renamed through the same field a separator uses. The difference is
+       the empty case: a nameless separator is a rule, a nameless folder is not. */
     if (selectedSidebarItem.kind === "separator" || selectedSidebarItem.kind === "folder") {
       const typed = sheetSeparatorLabel.trim();
       const label = typed.length

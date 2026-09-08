@@ -15,13 +15,8 @@ import { submitReport } from "../lib/reports/submit";
 import { useReportForm } from "../lib/reports/useReportForm";
 
 /**
- * Telling us something is broken, without leaving the app.
- *
- * It carries the Electron version, the bundled server's version and the tail of
- * the renderer log, which are the fields that make a voice bug diagnosable and
- * which the prefilled GitHub issue it replaced could not.
- *
- * The mobile app has the same form, posting to the same service.
+ * Telling us something is broken, without leaving the app. It carries the Electron
+ * version, the server's version and the log tail. Mobile has the same form.
  */
 export function ReportDialog() {
   const { openAs, close } = useReportForm();
@@ -48,8 +43,7 @@ export function ReportDialog() {
 
 /**
  * The same words the mobile form uses, deliberately. Two clients asking for the
- * same thing in different language reads as two features, and mobile's wording
- * is the considered one (GRYT-530).
+ * same thing in different language reads as two features (GRYT-530).
  */
 const COPY: Record<ReportType, { title: string; description: string; placeholder: string; send: string }> = {
   bug: {
@@ -75,20 +69,14 @@ function ReportForm({ type, onDone }: { type: ReportType; onDone: () => void }) 
   const [sent, setSent] = useState(false);
 
   /**
-   * The log tail, captured the moment it is asked for rather than at send.
-   *
-   * Otherwise a line arriving between reading the payload and pressing send
-   * would mean the thing reviewed is not the thing posted, which is the one
-   * property this whole panel exists to provide.
+   * The log tail, captured when it is asked for rather than at send. Otherwise the
+   * thing reviewed is not the thing posted.
    */
   const [logs, setLogs] = useState<string[] | null>(null);
 
   /**
-   * One report object, previewed and posted.
-   *
-   * Building it twice would let the two disagree — `sessionUptimeSec` alone
-   * moves between renders — and somebody who read the payload would have sent
-   * a different one.
+   * One report object, previewed and posted. Building it twice would let the two
+   * disagree — `sessionUptimeSec` alone moves between renders.
    */
   const report = useMemo(
     () => buildReport(type, { message }, { ...diagnostics, logs: logs ?? undefined }),
@@ -108,8 +96,7 @@ function ReportForm({ type, onDone }: { type: ReportType; onDone: () => void }) 
       setSent(true);
     } catch (e) {
       /* Deliberately keeps the message in the box. Somebody who typed three
-         paragraphs about a crash and lost them to a failed send does not type
-         them again. */
+         paragraphs and lost them to a failed send does not type them again. */
       setError(e instanceof Error ? e.message : "That did not send.");
     } finally {
       setSending(false);
@@ -167,12 +154,8 @@ function ReportForm({ type, onDone }: { type: ReportType; onDone: () => void }) 
 }
 
 /**
- * Everything that goes with what they wrote, and the payload itself.
- *
- * **The list is a summary; the JSON is the thing.** The exact object that will
- * be posted is one click away, and it is the same object rather than a second
- * one built for display. **The log tail is off unless asked for** — it is the
- * one field that describes the person rather than the build.
+ * **The list is a summary; the JSON is the thing** — the same object, not a second
+ * built for display. **The log tail is off unless asked for.**
  */
 function Attached({
   lines,
@@ -236,11 +219,8 @@ function Attached({
 }
 
 /**
- * It waits. Closing itself after 2.5 seconds flashes a paragraph at somebody
- * and takes it away while they are reading it.
- *
- * **The title is the words mobile's toast already uses.** Two clients saying
- * "received" and "sent" for one event reads as two different things happening.
+ * It waits. Closing after 2.5 seconds flashes a paragraph and takes it away.
+ * **The title is the words mobile's toast already uses.**
  */
 function Sent({ type, onDone }: { type: ReportType; onDone: () => void }) {
   const bug = type === "bug";

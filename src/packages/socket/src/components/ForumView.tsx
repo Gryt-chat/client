@@ -178,9 +178,8 @@ export function ForumView({ socketConnection, conversationId, serverHost, curren
                 textAlign: "left", background: "transparent", border: "none",
                 borderBottom: "1px solid var(--gryt-neutral-3)", padding: "11px 4px", cursor: "pointer",
               }}
-              /* Hover through CSS rather than by writing to style on every
-                 pointer event, which fought the row's own background and left
-                 it stuck whenever the pointer left during a re-render. */
+              /* Hover through CSS rather than writing to style on every pointer
+                 event, which left the row stuck on a re-render. */
               className="hover:bg-gryt-neutral-3"
             >
               <div style={{ fontWeight: 700, fontSize: 14.5, color: "var(--gryt-neutral-12)", gridColumn: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -212,9 +211,8 @@ export function ForumView({ socketConnection, conversationId, serverHost, curren
                 mentions={threadMentionCount(serverHost ?? "", t.thread_id)}
               />
               {t.status === "solved" && (
-                /* The success tone, rather than the #5cc79a it used to hardcode
-                   — that green was picked against the dark theme and stayed put
-                   on the light one. */
+                /* The success tone, rather than the #5cc79a it hardcoded — that
+                   green was picked against the dark theme. */
                 <Chip
                   tone="success"
                   label="✓ Solved"
