@@ -1519,6 +1519,8 @@ const TITLEBAR_OVERLAY_HEIGHT = 36;
 
 // Desktops that place windows themselves, where Electron's minimise and maximise
 // do nothing. XDG_CURRENT_DESKTOP is a colon-separated list by spec. GRYT-1060.
+const NO_WINDOW_CHROME_FLAG = "--gryt-no-window-chrome";
+
 const TILING_DESKTOPS = new Set([
   "hyprland",
   "sway",
@@ -1573,6 +1575,11 @@ function createMainWindow(): BrowserWindow {
         __dirname,
         "preload.cjs"
       ),
+      // Read off argv in preload rather than fetched over IPC: the titlebar has
+      // to know before its first paint, or it renders and then vanishes.
+      additionalArguments: drawsWindowButtons()
+        ? []
+        : [NO_WINDOW_CHROME_FLAG],
       contextIsolation: true,
       nodeIntegration: false,
       // The idle default only; a call turns it off. See setRendererThrottling.
