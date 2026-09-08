@@ -673,8 +673,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
         setMemberKeyStates((old) => ({ ...old, [host]: states }));
 
         /* Held back before it is shown, since our own publish races the first
-           member list and every join flashed it. A second device really does
-           mismatch, which is why the wording names that first. */
+           member list. A second device really does mismatch, so it is named first. */
         const myId = myServerUserIdByHost.get(host);
         const toastId = `dm-key-rewritten-${host}`;
         const pending = dmKeyWarningTimers.get(host);
