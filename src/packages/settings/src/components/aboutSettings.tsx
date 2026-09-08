@@ -296,7 +296,7 @@ export function AboutSettings() {
         <span className="text-gryt-muted">
           Licensed under{" "}
           <a
-            className="text-gryt-accent underline-offset-2 hover:underline"
+            className="gryt-link"
             href={`${GITHUB_URL}/blob/main/LICENSE`}
             target="_blank"
             rel="noopener noreferrer"
@@ -309,7 +309,7 @@ export function AboutSettings() {
             something somebody came to this panel to do. */}
         <span className="text-gryt-muted">
           <a
-            className="text-gryt-accent underline-offset-2 hover:underline"
+            className="gryt-link"
             href={TERMS_URL}
             target="_blank"
             rel="noopener noreferrer"
@@ -318,7 +318,7 @@ export function AboutSettings() {
           </a>
           {" · "}
           <a
-            className="text-gryt-accent underline-offset-2 hover:underline"
+            className="gryt-link"
             href={PRIVACY_URL}
             target="_blank"
             rel="noopener noreferrer"

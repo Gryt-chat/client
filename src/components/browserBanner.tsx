@@ -23,7 +23,7 @@ export function BrowserBanner() {
       <span className="text-xs" style={{ color: "var(--gryt-accent-11)" }}>
         You&apos;re using Gryt in your browser. Some features are limited.{" "}
         <a
-          className="font-medium text-gryt-accent underline-offset-2 hover:underline"
+          className="gryt-link font-medium"
           href="https://github.com/Gryt-chat/gryt/releases"
           target="_blank"
           rel="noreferrer"

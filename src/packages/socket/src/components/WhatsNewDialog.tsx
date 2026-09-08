@@ -138,7 +138,7 @@ export function WhatsNewDialog({
 
           <div className="whats-new-foot">
             <a
-              className="whats-new-link"
+              className="gryt-link whats-new-link"
               href={`https://gryt.chat/changelog/${version}`}
               target="_blank"
               rel="noreferrer"
