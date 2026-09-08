@@ -1,17 +1,8 @@
 /* eslint-env node */
 
 /**
- * Which native prebuilds survive packaging.
- *
- * `uiohook-napi` ships one binary per platform in a single package, so every
- * build carried all five: 303KB of Linux and Windows binaries inside the macOS
- * app, measured on 1.9.24.
- *
- * The dangerous outcome is not keeping too many, it is keeping none. node-gyp-build
- * resolves the binary the first time a global hotkey fires, so an over-eager
- * prune produces an app that starts, looks fine, and breaks later. That is why
- * the pruner throws on a missing match rather than removing everything, and why
- * that case is checked here.
+ * Which native prebuilds survive packaging. The dangerous outcome is keeping
+ * none: node-gyp-build resolves the binary the first time a hotkey fires.
  */
 
 import assert from "node:assert/strict";
@@ -61,8 +52,7 @@ for (const [platform, arch] of [["darwin", "x64"], ["darwin", "arm64"], ["win32"
 // ── against a real directory tree ──────────────────────────────────
 
 // appOutDir is the output directory, so the .app sits inside it. Getting that
-// wrong found nothing on macOS and pruned nothing, which is what a build caught
-// and this did not.
+// wrong found nothing on macOS and pruned nothing.
 function fakeApp(dirs, layout = "Gryt Chat.app/Contents/Resources/app.asar.unpacked/node_modules") {
   const root = mkdtempSync(join(tmpdir(), "gryt-prebuilds-"));
   const prebuilds = join(root, layout, "uiohook-napi/prebuilds");

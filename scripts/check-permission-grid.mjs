@@ -1,10 +1,6 @@
 /**
- * The permission grid's fallback threshold, asserted without a browser.
- *
- * The decision lives in lib/permissionGridLayout.ts so it can be checked here.
- * What this is guarding: a matrix drawn into a container too narrow for it does
- * not fail loudly — it draws two visible columns and puts the rest behind a
- * sideways scroll nobody finds, which reads as "the other roles are missing".
+ * The permission grid's fallback threshold, asserted without a browser. A matrix
+ * too narrow does not fail loudly — it hides roles behind a sideways scroll.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";

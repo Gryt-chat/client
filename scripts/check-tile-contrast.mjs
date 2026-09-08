@@ -1,19 +1,8 @@
 /* eslint-env node */
 
 /**
- * White text stays readable on every tile a person's avatar can produce.
- *
- * GRYT-648 stopped snapping the tile to a fixed palette at a fixed lightness
- * and let it take the avatar's own saturation and lightness instead. That is
- * the point — a dark owl should get a dark tile — but it also means the ceiling
- * of the lightness band is now a contrast decision rather than a taste one. The
- * nickname is white and sits directly on this.
- *
- * So the band is swept rather than argued about: every hue, at the lightest and
- * most saturated a tile is allowed to be, against white.
- *
- * 4.5:1 is WCAG AA for body text. The nickname is small and the tile is behind
- * it at full opacity, so there is no reason to aim lower.
+ * White text stays readable on every tile a person's avatar can produce. The band
+ * is swept rather than argued about: every hue at its lightest (GRYT-648).
  */
 
 import assert from "node:assert/strict";
@@ -50,12 +39,8 @@ function contrastWithWhite(h, s, l) {
 }
 
 /**
- * Every colour an avatar can be, through the real function.
- *
- * The first version of this check reimplemented the clamp and swept its own
- * maths, which passed with the clamp deleted from the module — it proved the
- * arithmetic was possible and nothing about the code. So this calls
- * `tintFromAvatarColor` and measures what it returns.
+ * Every colour an avatar can be, through the real function. Reimplementing the
+ * clamp passed with the clamp deleted from the module.
  */
 function contrastOf({ hue, sat, light }) {
   return contrastWithWhite(hue, sat, light);

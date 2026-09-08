@@ -1,16 +1,8 @@
 /* eslint-env node */
 
 /**
- * What the unread badge counts, checked without a browser.
- *
- * The badge is one number read out of this store, and the store is the whole
- * feature. It replaced a flag, so the case worth pinning down is that a second
- * message in the same channel now adds to the count rather than doing nothing —
- * which is what the flag did, and why a busy channel and a quiet one looked the
- * same.
- *
- * Reading is all-or-nothing per conversation. There is no "read three of the
- * seven": opening a channel clears it, because that is what opening it means.
+ * What the unread badge counts, checked without a browser. It replaced a flag, so
+ * a second message in one channel now adds rather than doing nothing.
  */
 
 import assert from "node:assert/strict";

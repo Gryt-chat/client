@@ -103,8 +103,7 @@ assert.deepEqual(
 /* ── every entry points at a destination and page that exist ─────────────── */
 
 /* A destination carries an icon and a page does not, which is the only thing
-   telling them apart. Collapsing the two is what would let `destination: "audio"`
-   pass. */
+   telling them apart. Collapsing the two would let `destination: "audio"` pass. */
 const settings = readFileSync(SETTINGS, "utf8");
 const destinations = new Set();
 const pages = new Set();
