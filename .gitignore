@@ -38,6 +38,12 @@ build/*
 !build/trayTemplate*.png
 !build/tray-*.png
 
+# build/icons/, the Linux icon set electron-builder reads by NxN.png filename.
+# Committed like the tiles above rather than left to `yarn icons:generate`, so a
+# local `electron:build` produces the same package CI does.
+!build/icons/
+!build/icons/*.png
+
 # build/appx/, the MSIX tiles. Tracked for the same reason as the icons, and
 # with a sharper edge: electron-builder does not skip a missing tile the way it
 # skips a missing extraResource. It reaches into its own vendor cache and

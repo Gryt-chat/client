@@ -20,7 +20,7 @@
  * release.
  */
 
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -117,6 +117,44 @@ if (!String(slim.artifactName).includes("slim")) {
 if (embeddedIn(loadVariant(undefined)).length === 0) {
   console.error("the default build has lost the embedded server.");
   process.exit(1);
+}
+
+// The Linux icon set. electron-builder ships exactly what `linux.icon` points
+// at: a single PNG means a single PNG in the package, which is what left the
+// deb and the snap carrying nothing but a 1024x1024 (GRYT-1008). Checked here
+// because the failure is silent -- the build succeeds and the icon is simply
+// wrong everywhere it is drawn.
+const linuxIcon = loadVariant(undefined).linux?.icon;
+
+if (linuxIcon !== "build/icons") {
+  console.error(
+    `linux.icon is ${JSON.stringify(linuxIcon)}, not the icon directory. ` +
+      "Pointed at one file, that file is the only icon the deb and snap get.",
+  );
+  process.exit(1);
+}
+
+const ICON_SIZES = [16, 24, 32, 48, 64, 128, 256, 512];
+
+for (const size of ICON_SIZES) {
+  const icon = join(here, "..", "build", "icons", `${size}x${size}.png`);
+  if (!existsSync(icon)) {
+    console.error(
+      `build/icons/${size}x${size}.png is missing. Run \`yarn icons:generate\`; ` +
+        "electron-builder reads the set by filename and skips what is not there.",
+    );
+    process.exit(1);
+  }
+}
+
+// A 1024 in here is what flatpak refuses outright and what every desktop then
+// downscales at runtime.
+for (const name of readdirSync(join(here, "..", "build", "icons"))) {
+  const size = Number(name.split("x")[0]);
+  if (size > 512) {
+    console.error(`build/icons/${name} is larger than 512x512, which some packagers refuse.`);
+    process.exit(1);
+  }
 }
 
 console.log("builder-config: ok, both variants");
