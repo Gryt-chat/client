@@ -100,6 +100,8 @@ export function useChatSend({
   seal,
   sealFile,
 }: UseChatSendParams): UseChatSendReturn {
+  const sealDecisionRef = useRef(sealDecision);
+
   const retryQueueRef = useRef<Map<string, RetryEntry>>(new Map());
 
   /**
@@ -140,7 +142,10 @@ export function useChatSend({
     void seal(text, target.entry.attachmentKeys ?? undefined)
       .then((sealed) => {
         if (sealed) payload.sealed = sealed;
-        else payload.text = text;
+        else if (sealDecisionRef.current?.kind === "seal") {
+          markLatestPendingFailedRef.current();
+          return;
+        } else payload.text = text;
         currentConnection.emit("chat:send", payload);
       })
       .catch(() => {
@@ -203,7 +208,12 @@ export function useChatSend({
     void seal(messageText, attachmentKeys ?? undefined)
       .then((sealed) => {
         if (sealed) payload.sealed = sealed;
-        else payload.text = messageText;
+        else if (sealDecisionRef.current?.kind === "seal") {
+          // The conversation is sealable and the seal did not happen. Sending
+          // the text would put in the clear what the composer called encrypted.
+          markLatestPendingFailed();
+          return;
+        } else payload.text = messageText;
         currentConnection!.emit("chat:send", payload);
       })
       .catch(() => {
@@ -214,7 +224,6 @@ export function useChatSend({
   markLatestPendingFailedRef.current = markLatestPendingFailed;
 
   const canSendRef = useRef(canSend);
-  const sealDecisionRef = useRef(sealDecision);
   sealDecisionRef.current = sealDecision;
   const activeConversationIdRef = useRef(activeConversationId);
   activeConversationIdRef.current = activeConversationId;
