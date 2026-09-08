@@ -79,11 +79,8 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
   const { isElectron } = useLanDiscovery();
 
   /**
-   * Which rail entries are servers this machine is running, and what the
-   * manager says they are doing.
-   *
-   * The connection status alone cannot tell "my server is booting" from "a
-   * stranger's server has not answered" (GRYT-314). Empty in a browser.
+   * Which rail entries are servers this machine is running. Connection status
+   * alone cannot tell "booting" from "a stranger's server has not answered".
    */
   const { servers: embeddedServers } = useEmbeddedServer();
   const embeddedStatusByHost = useMemo(() => {
@@ -104,9 +101,8 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
   const currentHost = currentlyViewingServer?.host;
   const activeProfile = currentHost ? serverProfiles[currentHost] : undefined;
   const displayNickname = activeProfile?.nickname || nickname;
-  // The same nickname shown under it, so your face here is the one everyone
-  // else sees — and it changes when you rename, which is the whole point of
-  // seeding from the nickname.
+  // The same nickname shown under it, so your face here is the one everyone else
+  // sees — and it changes when you rename.
   const displayAvatarUrl = resolveAvatarSrc(
     activeProfile?.avatarUrl || avatarDataUrl,
     displayNickname,
@@ -315,10 +311,8 @@ interface ServerItemProps {
 }
 
 /**
- * How long a server with no connection status yet is given before it is called
- * offline. Long enough to cover creating an embedded server and the socket
- * being set up, short enough that a genuinely dead host does not sit there
- * claiming to connect.
+ * How long a server with no connection status is given before it is called
+ * offline. Long enough to cover creating an embedded server and its socket.
  */
 const UNKNOWN_SETTLE_MS = 10_000;
 

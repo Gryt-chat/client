@@ -19,12 +19,8 @@ import { useServerManagement } from "../../../socket/src/hooks/useServerManageme
 import { useSettings } from "./useSettings";
 
 /**
- * What a server says about itself before anybody has joined it.
- *
- * Everything past `name` and `members` is optional because it is answered by
- * servers of different ages. A field that is absent is not a field that is
- * false — an older server sends no `identityTiers` at all, and claiming "no
- * account needed" on that basis is a guess that turns into a refusal.
+ * What a server says about itself before anybody has joined it. An absent field
+ * is not a false one — an older server sends no `identityTiers` at all.
  */
 export type FetchInfo = {
   serverId?: string;
@@ -37,12 +33,8 @@ export type FetchInfo = {
 };
 
 /**
- * Give up on /info after this long.
- *
- * Without a deadline the fetch runs until the OS gives up on the TCP connect,
- * which is over a minute on macOS. A server that advertises an address it does
- * not listen on — which the dev servers do, by binding loopback while
- * announcing their hostname — hits this every time.
+ * Give up on /info after this long. Without a deadline the fetch runs until the
+ * OS gives up on the TCP connect, which is over a minute on macOS.
  */
 export const INFO_TIMEOUT_MS = 8000;
 
@@ -56,11 +48,8 @@ export type InfoResult =
   | { kind: "error"; message: string };
 
 /**
- * Ask a server to describe itself.
- *
- * Separate from the hook below because Discovery fetches this for a row it is
- * about to join and the join modal fetches it for whatever was pasted, and
- * neither wants the other's state.
+ * Ask a server to describe itself. Separate from the hook below because Discovery
+ * and the join modal each fetch it and neither wants the other's state.
  */
 export async function fetchServerInfo(
   host: string,
@@ -87,10 +76,7 @@ export async function fetchServerInfo(
 
   try {
     // Plain is the default, so the first attempt at an unknown server is http.
-    // Except when there is a token to send: a bearer over plain http to a host
-    // that turns out to be public would leak it before the redirect that would
-    // have protected it, and a server we hold a token for has been reached
-    // before anyway.
+    // Except with a token: a bearer over http would leak before the redirect.
     const first: Scheme = storedToken
       ? "https"
       : schemeFor(normalizedHost);
@@ -102,10 +88,8 @@ export async function fetchServerInfo(
         headers,
       });
     } catch (reachErr) {
-      // Nothing answered. That says nothing about which scheme was wanted, so
-      // try the other rather than giving up. Only a transport failure retries:
-      // a server that replied with an error has been reached, and dialling it
-      // again differently would just be noise.
+      // Nothing answered, which says nothing about the scheme, so try the other.
+      // Only a transport failure retries: an error means the server was reached.
       if (controller.signal.aborted) throw reachErr;
       res = await fetch(
         `${getServerHttpBase(normalizedHost, otherScheme(first))}/info`,
@@ -113,10 +97,8 @@ export async function fetchServerInfo(
       );
     }
 
-    // Recorded from the reply rather than from what was asked for, because a
-    // proxy on port 80 answers a plain request with a redirect to https and
-    // `fetch` follows it. That succeeds while proving the opposite of what was
-    // guessed, and the WebSocket has no redirect to follow later.
+    // Recorded from the reply rather than from what was asked for: a proxy on
+    // port 80 redirects to https and `fetch` follows, but a WebSocket cannot.
     const served = schemeOfUrl(res.url);
     if (served) rememberScheme(normalizedHost, served);
 
@@ -135,9 +117,8 @@ export async function fetchServerInfo(
           "No response from this server. It may be advertising an address it is not reachable on.",
       };
     }
-    // A network-layer failure gives you "Failed to fetch" (or "Load failed" on
-    // WebKit), which describes the call rather than the situation and names no
-    // cause worth repeating. What is actually known is that nothing answered.
+    // A network-layer failure gives "Failed to fetch", which describes the call
+    // rather than the situation. What is known is that nothing answered.
     const message = err instanceof Error ? err.message : "";
     if (
       err instanceof TypeError ||
@@ -165,12 +146,8 @@ export type JoinOutcome =
   | { ok: false; kind: "error"; message: string };
 
 /**
- * Turn a join failure into a line somebody can act on.
- *
- * The generic branch is the last resort on purpose. Every case above it reads
- * as somebody's fault otherwise — most of all `identity_tier_refused`, where
- * nothing about the address or the code is wrong and the only useful thing to
- * say is that this server wants an account.
+ * Turn a join failure into a line somebody can act on. The generic branch is last
+ * on purpose: every case above it otherwise reads as somebody's fault.
  */
 function describeJoinError(error: { error: string; message?: string }): JoinOutcome {
   switch (error.error) {
@@ -242,11 +219,8 @@ export interface JoinRequest {
 }
 
 /**
- * Joining a server, in one place.
- *
- * Both the join modal and Discovery do exactly this, and the error mapping
- * above is the part worth not having two copies of — every branch in it was
- * added because some failure had been reading as the wrong thing.
+ * Joining a server, in one place. Both the join modal and Discovery do exactly
+ * this, and the error mapping above is the part worth not having twice.
  */
 export function useServerJoin() {
   const { addServer, servers, switchToServer } = useServerManagement();
@@ -297,10 +271,8 @@ export function useServerJoin() {
         });
 
         if (!result.ok) {
-          // A request that is with the moderators is not a failed join. The
-          // server goes on the list marked as waiting, so it is visible in the
-          // rail and rejoins itself once somebody approves it, rather than
-          // vanishing and needing to be added again from memory (GRYT-289).
+          // A request with the moderators is not a failed join. The server goes
+          // on the list marked as waiting and rejoins itself (GRYT-289).
           if (result.error.error === "approval_pending") {
             addServer(
               {

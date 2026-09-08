@@ -1,49 +1,19 @@
 /// <reference lib="webworker" />
 
 /**
- * The inside of a plugin (GRYT-930).
- *
- * One worker per plugin. This file is everything a plugin can see: a `gryt`
- * global whose every method is a message to the app, and the plugin's own code,
- * imported once this has been told where it is.
- *
- * What is deliberately absent is the point. There is no `window`, no `document`,
- * no `localStorage`, no socket, no identity key, and none of the app's modules.
- * A plugin that wants to do something it was not granted has nowhere to go —
- * which is what makes the capability list a boundary instead of a claim.
- *
- * There is no `addonId` argument on anything any more. It used to be a
- * parameter because one API served every plugin and each had to say who it was;
- * a plugin could say something else. The host stamps it now, from which worker
- * the message arrived on.
+ * The inside of a plugin: a `gryt` global whose every method is a message to the
+ * app. No `window`, no socket, no identity key, none of the app's modules.
  */
 
 import type { HostMessage, ThemeInfo, WorkerMessage } from "./workerProtocol";
 
 /*
- * Taken away before the plugin is imported, and it cannot get them back.
- *
- * A worker has no `window`, no `document` and no `localStorage`, which is most
- * of what moving plugins here was for. It does still have origin storage — and
- * origin storage is the app's: `indexedDB` in here opens the same databases the
- * app writes to, so a plugin could read what it was refused by asking the
- * browser instead of asking Gryt.
- *
- * `Worker` goes with them, and that one is the reason the rest is worth doing:
- * a plugin that can start a worker of its own gets a fresh global with all of
- * this back, and everything above becomes a speed bump. A plugin has no other
- * use for one.
- *
- * What stays is the network — `fetch` and `WebSocket` — because a plugin
- * talking to something on the internet is a plugin doing its job, and a
- * now-playing plugin that cannot reach Spotify is not a plugin. So the honest
- * shape of this: a plugin cannot read what it was refused, and can send
- * anywhere it likes whatever it was given. The docs say that in those words.
+ * Taken away before the plugin is imported. `indexedDB` opens the app's own
+ * databases, and a `Worker` would hand all of this back with a fresh global.
  */
 for (const name of ["indexedDB", "caches", "Worker", "SharedWorker"]) {
   /* Own property first, then up the chain: these are getters on the worker
-     global's prototype rather than properties of the object, so deleting from
-     `globalThis` alone does nothing at all. */
+     global's prototype, so deleting from `globalThis` alone does nothing. */
   let target: object | null = globalThis;
   while (target) {
     if (Object.prototype.hasOwnProperty.call(target, name)) {
@@ -61,17 +31,8 @@ for (const name of ["indexedDB", "caches", "Worker", "SharedWorker"]) {
 const post = (message: WorkerMessage) => self.postMessage(message);
 
 /*
- * Built rather than written, so the bundler cannot see it.
- *
- * A literal `import(url)` here is rewritten by Vite into
- * `import(__vite__injectQuery(url, "import"))`, which asks its dev server to
- * transform a file the dev server does not own — an addon is served from the
- * addons directory, not from source — and gets a 500. `@vite-ignore` does not
- * stop the query injection. The packaged build has no such transform, so the
- * failure only shows in development, which is the worst place for it to hide.
- *
- * Nothing is evaluated here beyond the importer itself: the plugin is still
- * fetched and run by the engine as a module, from the same origin as the app.
+ * Built rather than written, so the bundler cannot see it. Vite rewrites a literal
+ * `import(url)` into a dev-server transform that 500s on an addon.
  */
 const importPlugin = new Function("url", "return import(url)") as (
   url: string,
@@ -123,17 +84,12 @@ let theme: ThemeInfo = { appearance: "dark", accentColor: "violet" };
 let version = "";
 
 /*
- * The whole surface. Everything here is a message; nothing is a shortcut.
- *
- * `messaging.servers()` is a promise where it used to be a plain array. It has
- * to be: the answer lives in the app and this is the other side of a port.
- * Making it look synchronous would have meant caching it here and being wrong
- * whenever a server appeared or went away.
+ * The whole surface. Everything here is a message; nothing is a shortcut, and
+ * `messaging.servers()` is a promise because the answer lives in the app.
  */
 const gryt = {
-  /* Annotated, unlike an inferred `string`, because the generated API
-     reference reads this file as text and prints what it finds. Without it the
-     reference listed `version` with no type beside it. */
+  /* Annotated, unlike an inferred `string`, because the generated API reference
+     reads this file as text and printed `version` with no type beside it. */
   get version(): string {
     return version;
   },
@@ -141,12 +97,8 @@ const gryt = {
     return { ...theme };
   },
   /**
-   * Hear about something.
-   *
-   * `themeChange` when the app's appearance or accent changes, and `cleanup`
-   * when this plugin is being turned off — which is the only chance it gets to
-   * clear a status or stop a timer. Whatever it does not finish quickly enough
-   * happens anyway: the worker is terminated shortly after, from outside.
+   * Hear about something. `themeChange` when appearance changes, `cleanup` when
+   * this plugin is turned off — the worker is terminated shortly after.
    */
   on(
     event: "themeChange" | "cleanup",
@@ -155,11 +107,8 @@ const gryt = {
     return on(event, handler as Handler);
   },
   /**
-   * Say what the person running this is doing. Needs `status`.
-   *
-   * An empty string clears it. Rejects if the capability was not granted,
-   * rather than resolving quietly — a status that never appears is harder to
-   * work out than an error.
+   * Say what the person running this is doing. Needs `status`. An empty string
+   * clears it, and it rejects rather than resolving quietly when not granted.
    */
   setActivity(activity: string): Promise<unknown> {
     return call("setActivity", [activity]);
@@ -182,15 +131,7 @@ const gryt = {
   processes: {
     /**
      * Which of the programs the person listed are running. Needs `processes`.
-     *
-     * Their list, not their machine. Somebody who has written down two games
-     * gets an answer about those two games and nothing about the other two
-     * hundred things they have open — which is what makes the capability's
-     * wording true rather than a euphemism.
-     *
-     * Empty in a browser, and empty on the desktop until somebody lists
-     * something. Both look the same from here on purpose: a plugin should
-     * degrade rather than tell people to go and configure Gryt.
+     * Their list, not their machine. Empty in a browser and until one is listed.
      */
     running(): Promise<string[]> {
       return call("processes.running", []) as Promise<string[]>;
@@ -203,14 +144,8 @@ const gryt = {
   },
   ui: {
     /**
-     * Draw a panel beside the member list. Needs `display`.
-     *
-     * A title and rows of text, and nothing else — no markup, no colours, no
-     * node handed over. The app renders it with its own components, which is
-     * what lets a plugin be seen at all from inside a worker with no DOM.
-     *
-     * Calling it again replaces what is there. There is one panel per plugin,
-     * so a plugin does not have to track handles or clean up more than one.
+     * Draw a panel beside the member list. Needs `display`. A title and rows of
+     * text, nothing else; calling it again replaces the one panel per plugin.
      */
     panel(panel: { title: string; rows: { label: string; value?: string }[] }): Promise<unknown> {
       return call("ui.panel", [panel]);

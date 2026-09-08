@@ -1,16 +1,8 @@
 /* eslint-env node */
 
 /**
- * Routing a plugin's messages to the right plugin (GRYT-939).
- *
- * `pluginMessages.ts` imports nothing, which is why this can drive it without a
- * browser or a socket. The capability gate around it lives in `pluginApi.ts`
- * and is `addonMay`, covered by check-addon-capabilities.
- *
- * The cases that matter are the ones where a message reaches the wrong plugin.
- * Two plugins can be installed at once, both listening, and neither can see the
- * other's manifest — so nothing but this keeps one from hearing the other's
- * messages.
+ * Routing a plugin's messages to the right plugin. `pluginMessages.ts` imports
+ * nothing, which is why this can drive it without a browser or a socket (GRYT-939).
  */
 
 import assert from "node:assert/strict";
@@ -31,8 +23,7 @@ const {
 resetPluginMessageListeners();
 
 /* Captured rather than silenced, so "a handler that throws is logged" is an
-   assertion instead of an assumption — and so this check does not print a stack
-   trace that reads as a failure. */
+   assertion — and so this check does not print a stack that reads as a failure. */
 const logged = [];
 console.error = (...args) => logged.push(args.map(String).join(" "));
 
@@ -51,9 +42,8 @@ for (const topic of ["", "   ", "with space", "slash/es", 42, null, undefined, "
 }
 
 /*
- * The listener map is keyed `addonId\ntopic`. A topic allowed to contain a
- * newline would let one plugin register under another's key, which is the sort
- * of thing that only ever happens on purpose.
+ * The listener map is keyed on the addon id and the topic with a newline between.
+ * A topic allowed to contain one would let a plugin register under another's key.
  */
 assert.throws(() => requireTopic("presence", "a\nb"), /invalid topic/);
 assert.throws(() => subscribe("presence", "a\nb", () => {}), /invalid topic/);
@@ -71,9 +61,8 @@ heard.length = 0;
 deliverPluginMessage("presence", { host: "h", topic: "score", data: {} });
 assert.deepEqual(heard, []);
 
-/* And nothing for another plugin, which is the whole point of the namespace:
-   two plugins can be installed at once and neither can see the other's
-   manifest. */
+/* And nothing for another plugin, which is the point of the namespace: two can
+   be installed at once and neither can see the other's manifest. */
 heard.length = 0;
 subscribe("scoreboard", "playing", () => {});
 deliverPluginMessage("scoreboard", { host: "h", topic: "playing", data: {} });
@@ -105,8 +94,7 @@ assert.match(logged[0], /playing/);
 
 /* ── one handler cannot rewrite the message for the next ─────────────────── */
 
-/* Tidiness rather than safety: plugins share a page and can reach each other
-   whatever this does. What it buys is that two handlers on the same topic see
+/* Tidiness rather than safety. What it buys is that two handlers on one topic see
    the same message instead of the second seeing what the first left behind. */
 resetPluginMessageListeners();
 
@@ -137,9 +125,8 @@ deliverPluginMessage("presence", { host: "h", topic: "playing", data: {} });
 assert.deepEqual(heard, [], "unsubscribing did not stop delivery");
 
 /*
- * And the app can drop everything an addon was listening for, which is what
- * turning one off does. Without it a disabled plugin keeps receiving, and one
- * reloaded from a changed file runs two generations of handlers at once.
+ * And the app can drop everything an addon was listening for. Without it a
+ * disabled plugin keeps receiving and a reloaded one runs two generations.
  */
 const survivors = [];
 subscribe("presence", "playing", () => survivors.push(1));
@@ -159,10 +146,8 @@ assert.deepEqual(boardHeard, [1], "dropping one addon's listeners took another's
 /* ── which servers run the other half ────────────────────────────────────── */
 
 /*
- * A plugin asks this to decide whether to say anything at all. Sending anyway
- * is harmless — a server running no half drops it — but a plugin that knows can
- * stop polling, stop drawing an empty panel, and tell somebody why nothing is
- * happening.
+ * A plugin asks this to decide whether to say anything at all. Sending anyway is
+ * harmless, but a plugin that knows can stop polling and say why nothing happens.
  */
 resetAnnouncedPlugins();
 
@@ -186,9 +171,8 @@ setAnnouncedPlugins("three.example", [
   },
 ]);
 
-/* Hosts and nothing else: a server does not say which version it runs, because
-   a version number is which known problem applies. Sorted, so a plugin
-   iterating them does not get a different order each time the details arrive. */
+/* Hosts and nothing else: a version number is which known problem applies. Sorted,
+   so a plugin iterating them gets the same order each time details arrive. */
 assert.deepEqual(serversRunning("presence"), ["one.example", "three.example"]);
 
 assert.deepEqual(serversRunning("nobody-runs-this"), []);
@@ -198,10 +182,8 @@ assert.deepEqual(serversRunning("nobody-runs-this"), []);
 /* ── what is running on one server ───────────────────────────────────────── */
 
 /*
- * Not for plugins. This is the answer to "what is reading my messages here",
- * and the capabilities are the half somebody can act on — "this server runs
- * automod" says nothing, "…which reads every message you send" is the sentence
- * they decide on (GRYT-941).
+ * Not for plugins. This is the answer to "what is reading my messages here", and
+ * the capabilities are the half somebody can act on (GRYT-941).
  */
 assert.deepEqual(pluginsOn("three.example"), [
   { id: "presence", name: "Presence", author: undefined, description: undefined, homepage: undefined, capabilities: ["messaging"] },
@@ -223,9 +205,8 @@ assert.doesNotMatch(JSON.stringify(pluginsOn("three.example")), /version/i);
    knowing and not worth pretending otherwise about. */
 assert.deepEqual(pluginsOn("nobody.example"), []);
 
-/* Handed out as a copy, twice over: the caller cannot edit the stored list and
-   cannot edit the capabilities inside it either. A safety net whoever holds it
-   can rewrite is not one. */
+/* Handed out as a copy, twice over: the caller cannot edit the stored list or the
+   capabilities inside it. A safety net whoever holds it can rewrite is not one. */
 const held = pluginsOn("one.example");
 held[0].name = "Something Else";
 held[0].capabilities.push("moderation");

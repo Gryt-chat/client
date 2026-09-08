@@ -31,34 +31,13 @@ import { DisplaySettings } from "./theme/displaySettings";
 import { VoiceSettings } from "./voiceSettings";
 
 /**
- * Five destinations named for what you are trying to do rather than which
+ * Five destinations named for what you are trying to do rather than for which
  * subsystem owns the setting.
- *
- * `mountWhenActive` panels touch hardware — microphone analysers, camera
- * preview — so they mount only while their destination is open.
  */
+
 /**
- * Where things live, named with the word people already scan for.
- *
- * These used to read "How Gryt looks" and "How Gryt behaves". The pair was
- * accurate and it made you parse a sentence to find a row, which is the one
- * thing a settings rail must not do. Appearance and Behaviour say the same
- * and are caught at a glance.
- *
- * Icons are picked to separate rows rather than to decorate them. Profile and
- * Account were a person and a person-in-a-circle side by side, which told you
- * nothing about which held your passkeys; Appearance was a gear, which is what
- * the whole dialog is.
- *
- * A destination with `pages` is a category rather than a page: the rail nests
- * them under it and the pane shows one at a time. That replaces stacking four
- * panels behind dividers, where Sound & video was a single scroll holding the
- * microphone, voice, camera and screen share.
- *
- * `mountWhenActive` panels touch hardware — microphone analysers, camera
- * preview — so they mount only while you are on them. Splitting the category
- * made that finer: opening Sound & video no longer starts the camera because
- * you wanted the microphone.
+ * A destination with `pages` is a category: the rail nests them and the pane shows
+ * one. `mountWhenActive` panels touch hardware, so they mount only while in view.
  */
 interface SettingsPage {
   value: string;
@@ -147,9 +126,8 @@ const DESTINATIONS: SettingsDestination[] = [
     ],
   },
   {
-    /* Its own destination rather than a section inside "How Gryt behaves".
-       It had four settings there; it now carries the global level and a row
-       per server, which is a page rather than a paragraph. */
+    /* Its own destination rather than a section: it carries the global level and
+       a row per server, which is a page rather than a paragraph. */
     value: "notifications",
     label: "Notifications",
     icon: PiBellFill,
@@ -182,11 +160,8 @@ const DESTINATIONS: SettingsDestination[] = [
     : []),
   {
     value: "extensions",
-    // "Addons" everywhere else — the panel heading, the "Open Addons Folder"
-    // button, the useAddons hook, and the addon.json each one ships. The nav
-    // was the only place calling them extensions, so it is the one that moves.
-    // The tab's `value` stays "extensions" because it is persisted in settings
-    // and deep-linked to; renaming it would strand anyone mid-session.
+    // "Addons" everywhere else; the nav was the only place calling them
+    // extensions. The tab's `value` stays "extensions" because it is persisted.
     label: "Addons",
     icon: PiPuzzlePieceFill,
     content: <AddonsSettings />,
@@ -205,8 +180,7 @@ const DESTINATIONS: SettingsDestination[] = [
     label: "Support Gryt",
     icon: PiHeartFill,
     // Pinned to the bottom, below a spacer. It is not a setting, and burying a
-    // donation link inside "Extensions & about" made it findable only by
-    // accident.
+    // donation link inside "Extensions & about" made it findable by accident.
     pinBottom: true,
     content: <SupportSettings />,
   },
@@ -233,8 +207,7 @@ export function Settings() {
   const [highlighted, setHighlighted] = useState<string | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
   // Bumped on every jump. The scroll effect keys off this rather than the
-  // destination alone, so clicking a second result inside the destination you
-  // are already on still scrolls and highlights.
+  // destination, so a second result inside the same destination still scrolls.
   const [jump, setJump] = useState(0);
   const pendingScroll = useRef<string | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -242,15 +215,8 @@ export function Settings() {
   const results = useMemo(() => searchSettings(query), [query]);
   const searching = query.trim().length > 0;
 
-  /* Where the persisted value points, as a destination and a page inside it.
-     Stored as "sound-video/camera", and a bare "sound-video" still resolves —
-     both because that is every value written before this existed, and because
-     the callers that send you here mostly name a category.
-
-     A bare page name resolves too. useChannelSettings has always called
-     setSettingsTab("audio") when the microphone is missing, which matched no
-     destination, so the toast said "Settings → Audio" and the dialog opened on
-     Profile. Looking through the pages is what makes that land. */
+  /* Where the persisted value points, as a destination and a page inside it. A
+     bare "sound-video" resolves, and so does a bare page name like "audio". */
   const [active, activePage] = useMemo(() => {
     const [first, second] = (settingsTab ?? "").split("/");
 
@@ -290,9 +256,8 @@ export function Settings() {
       changeDestination(
         entry.page ? `${entry.destination}/${entry.page}` : entry.destination,
       );
-      // The query deliberately survives. Results stay put so you can click
-      // through several candidates to find the one you meant, rather than
-      // retyping the search after every guess.
+      // The query deliberately survives, so you can click through several
+      // candidates rather than retyping the search after every guess.
     },
     [changeDestination],
   );
@@ -303,9 +268,8 @@ export function Settings() {
     const id = pendingScroll.current;
     pendingScroll.current = null;
 
-    // Switching destination normally starts you at the top. Without this the
-    // new panel inherits the previous one's scroll position and opens partway
-    // down, which reads as a rendering glitch.
+    // Switching destination starts you at the top. Without this the new panel
+    // inherits the previous scroll position and opens partway down.
     if (!id) {
       contentRef.current?.scrollTo({ top: 0 });
       return;
@@ -346,13 +310,8 @@ export function Settings() {
   return (
     <Dialog.Root
       open={showSettings}
-      /* The tour lives in a portal of its own, so pressing Next on a coach mark
-         counts as a press outside this dialog and used to dismiss it. The panel
-         closed on every step change and the next step opened it again.
-
-         Radix took an onInteractOutside handler that could preventDefault. Base
-         UI routes every open change through one callback with the reason and a
-         cancel() on it, so the same exception is a check on the reason. */
+      /* The tour lives in its own portal, so pressing Next counts as a press
+         outside this dialog. Base UI gives the reason, so it can be excepted. */
       onOpenChange={(open, details) => {
         if (!open && details.reason === "outside-press") {
           const target = details.event?.target as HTMLElement | null;
@@ -575,9 +534,8 @@ export function Settings() {
             background: var(--gryt-accent-a3);
             color: var(--gryt-accent-11);
           }
-          /* Just the heart carries the colour. A filled button competes with
-             the active-item highlight and shouts in a settings sidebar; a red
-             heart against grey labels catches the eye on its own. */
+          /* Just the heart carries the colour. A filled button competes with the
+             active-item highlight and shouts in a settings sidebar. */
           .gryt-settings-nav-cta svg { color: var(--gryt-danger-9); }
           .gryt-settings-nav-cta:hover svg { color: var(--gryt-danger-10); }
           .gryt-settings-result {

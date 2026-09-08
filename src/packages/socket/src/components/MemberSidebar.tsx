@@ -23,34 +23,24 @@ export interface MemberInfo {
   /** Dominant colour of the avatar as #rrggbb. Null until it has been computed. */
   avatarColor?: string | null;
   /**
-   * What their owl is wearing, if they designed one — the string `@gryt/owl`
-   * encodes. Drawn here rather than fetched, so it stays sharp at any size and
-   * follows a palette change. Outranks `avatarFileId`; see `resolveAvatarSrc`
-   * for why both are set at once.
+   * What their owl is wearing, if they designed one. Drawn rather than fetched.
+   * Outranks `avatarFileId`; see `resolveAvatarSrc` for why both are set.
    */
   avatarWorn?: string | null;
   /**
-   * The role their name is coloured by: the highest ranked one they hold.
-   *
-   * Still a single id, and still what every list groups and colours by. A
-   * member can hold several since GRYT-748, and `roles` below is all of them.
+   * The role their name is coloured by: the highest ranked one they hold. Still a
+   * single id; `roles` below is all of them (GRYT-748).
    */
   role?: Role;
   /**
-   * Everything they hold, highest ranked first, with `role` at the front.
-   *
-   * Optional because a server from before GRYT-748 does not send it. Absent is
-   * not the same as empty: absent means the server has no opinion, and the
-   * places that draw the extra roles fall back to `role` alone.
+   * Everything they hold, highest ranked first, with `role` at the front. Absent
+   * is not empty — an older server has no opinion, so callers fall back to `role`.
    */
   roles?: Role[];
   status: UserStatus;
   /**
-   * What they say they are doing, in their own words (GRYT-929).
-   *
-   * Absent for anybody who has not set one, and for every server too old to
-   * send it. The server holds it on the connection, so somebody offline never
-   * has one.
+   * What they say they are doing, in their own words. The server holds it on the
+   * connection, so somebody offline never has one (GRYT-929).
    */
   activity?: string;
   lastSeen?: Date;
@@ -58,25 +48,18 @@ export interface MemberInfo {
   /** Whether there is a Gryt account behind this member, or only a device key. */
   identityTier?: "account" | "local" | "bot";
   /**
-   * Whether this member is a bot.
-   *
-   * The server derives it from the identity, so it cannot be spoofed by a name
-   * and cannot be shaken off by one either.
+   * Whether this member is a bot. The server derives it from the identity, so it
+   * cannot be spoofed by a name and cannot be shaken off by one either.
    */
   isBot?: boolean;
   /**
    * Server-scoped marker for the identity, stable across renames. Not the Gryt
-   * user id — that one is the same on every server, and this deliberately is
-   * not.
+   * user id — that one is the same on every server, and this deliberately is not.
    */
   identityFingerprint?: string;
   /**
-   * What this member says their DM public key is, signed by the identity key
-   * they joined with (GRYT-720). Verified and pinned client-side; the server
-   * carries it and has never read it.
-   *
-   * Absent for anybody who has published none, and for every server too old to
-   * carry the column. No binding means no encrypted messages with them.
+   * What this member says their DM public key is, signed by the identity key they
+   * joined with. Verified and pinned client-side; the server never reads it.
    */
   dmKeyBinding?: string | null;
   /**
@@ -114,10 +97,8 @@ interface MemberSidebarProps {
   serverHost: string;
   adminActions?: AdminActions;
   /**
-   * Open a direct message with a member of this server.
-   *
-   * Not part of `adminActions`: anybody may message anybody here, and the
-   * server decides whether they may rather than the menu guessing.
+   * Open a direct message with a member. Not part of `adminActions`: anybody may
+   * message anybody, and the server decides rather than the menu guessing.
    */
   onOpenDm?: (targetServerUserId: string) => void;
   onToggleBlock?: (targetServerUserId: string) => void;
@@ -306,11 +287,8 @@ export const MemberSidebar = ({
   const groups = useMemo(() => groupMembersByRole(members, roles), [members, roles]);
 
   /**
-   * The colour each role's names are drawn in, worked out once for the list
-   * rather than per row.
-   *
-   * Keyed by role id and not by group, because the Offline group holds people
-   * from every role and each of them keeps their own colour.
+   * The colour each role's names are drawn in, worked out once for the list.
+   * Keyed by role id, not group: Offline holds people from every role.
    */
   const roleColors = useMemo(() => {
     const map = new Map<string, string | undefined>();
@@ -360,8 +338,7 @@ export const MemberSidebar = ({
               key={group.key}
               aria-labelledby={`members-${group.key}`}
               /* Space above each heading rather than between every row, so the
-                 grouping is what the eye picks up. The first one sits flush at
-                 the top: there is nothing above it to be separated from. */
+                 grouping is what the eye picks up. The first sits flush. */
               className={index === 0 ? "" : "mt-4"}
             >
               {/* Sticky, because the whole point of a heading here is knowing

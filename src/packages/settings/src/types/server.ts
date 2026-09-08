@@ -23,34 +23,17 @@ export type Channel = {
   forumTags?: ForumTag[];
   /**
    * Which permission scope decides what each role may do here, or null when the
-   * channel has no opinion.
-   *
-   * A channel somebody may not read is not in this array at all — the server
-   * leaves it out of `server:details` rather than sending it with a flag. So
-   * nothing reads this to decide whether to draw a channel; it is here for the
-   * editor.
+   * channel has no opinion. For the editor — an unreadable channel is not sent.
    */
   permissionScopeId?: string | null;
   /**
-   * Whether this member may post here, resolved by the server for them.
-   *
-   * The scope rules that decide it are only readable with `manage_channels`, so
-   * a client cannot work this out — which is why a read-only channel used to
-   * draw an ordinary composer and refuse whatever was typed into it.
-   *
-   * Absent is not false: an unknown answer has to mean "try", or every channel
-   * on an older server would look read-only.
+   * Whether this member may post here, resolved by the server. Absent is not
+   * false: an unknown answer means "try", or every older server looks read-only.
    */
   canSend?: boolean;
   /**
-   * Whether this member may enter this voice channel, resolved by the server.
-   *
-   * Visibility and entry are different questions: a voice channel is visible to
-   * anybody who may read it, and `join_voice` decides who gets in. So a room
-   * can be visible and shut, which nothing drew — the row looked open and the
-   * refusal came out of the media stack.
-   *
-   * Absent from an older server, and absent reads as yes, as `canSend` does.
+   * Whether this member may enter this voice channel. Visibility and entry are
+   * different questions, so a room can be visible and shut. Absent reads as yes.
    */
   canJoin?: boolean;
 };
@@ -68,20 +51,15 @@ export type SidebarItem = {
   // For kind="separator" and kind="folder"
   label?: string | null;
   /**
-   * The folder this channel sits in, or absent for the top level.
-   *
-   * Only a channel ever has one. The server drops it for every other kind, so
-   * a folder inside a folder never comes back however it was sent.
+   * The folder this channel sits in, or absent for the top level. Only a channel
+   * ever has one, so a folder inside a folder never comes back.
    */
   parentItemId?: string | null;
 };
 
 /**
- * One line of a reorder.
- *
- * A bare id means "this position, whatever folder it is already in", which is
- * what a drag straight up or down sends. The object form is for a drag that
- * crossed the indent threshold and changed the folder as well.
+ * One line of a reorder. A bare id means "this position, whatever folder it is
+ * in"; the object form is for a drag that changed the folder as well.
  */
 export type SidebarReorderEntry = string | { itemId: string; parentItemId: string | null };
 
@@ -100,27 +78,18 @@ export type serverDetails = {
     icon_url?: string | null;
     is_owner?: boolean;
     /**
-     * A role id. Used to be one of four names; a server defines its own now, so
-     * anything that wants to *show* a role looks it up in `roles` below and
-     * anything that wants to gate on one reads `permissions`.
+     * A role id. A server defines its own, so anything showing a role looks it up
+     * in `roles` and anything gating on one reads `permissions`.
      */
     role?: string;
     /**
-     * What this client may do here, as the server sees it.
-     *
-     * Advisory. Every one of these is enforced server-side as well, and the UI
-     * uses them only to stop offering what would be refused — a client that
-     * ignores the list gets an error rather than an action.
+     * What this client may do here, as the server sees it. Advisory — all of it is
+     * enforced server-side, and this only stops the UI offering a refusal.
      */
     permissions?: string[];
     /**
-     * Every permission the *server* knows about, which is not the same list
-     * this build knows about.
-     *
-     * Without it an absence in `permissions` is ambiguous: a denial, or a
-     * permission this client has heard of and that server has not. Reading the
-     * second as a denial is how a client that learns about `read_messages`
-     * first blanks out every channel on a server not yet upgraded.
+     * Every permission the *server* knows about, which is not this build's list.
+     * Without it, an absence in `permissions` is a denial or an unknown word.
      */
     permission_catalogue?: string[];
     /** Every role this server has defined, for colouring and labelling people. */
@@ -138,18 +107,8 @@ export type serverDetails = {
     upload_max_bytes?: number | null;
     version?: string;
     /**
-     * Every plugin this server is running, and what each one may do
-     * (GRYT-939, GRYT-941).
-     *
-     * All of them — an operator cannot keep one off this list. A member is the
-     * one whose messages are being read, so what code sits between them and the
-     * people they are talking to is theirs to know.
-     *
-     * No version, on purpose: a version number is which known problem applies,
-     * and a server does not hand that to everybody who joins.
-     *
-     * Absent from a server too old to say, which is not the same as a server
-     * running nothing.
+     * Every plugin this server is running, and what each may do. All of them — an
+     * operator cannot keep one off the list. Absent from a server too old to say.
      */
     plugins?: {
       id: string;
@@ -174,14 +133,8 @@ export type Server = {
   token?: string;
   serverId?: string;
   /**
-   * When a request to join was made, for a server that admits people by
-   * approval (GRYT-289).
-   *
-   * Present means the request is outstanding. Set when the server answers a
-   * join with `approval_pending`, cleared the moment a join succeeds.
-   *
-   * A timestamp rather than a flag so the entry can say how long it has been
-   * waiting.
+   * When a request to join was made, for a server that admits by approval. Present
+   * means outstanding; a timestamp so the entry can say how long (GRYT-289).
    */
   approvalRequestedAt?: number;
 };
