@@ -4,18 +4,8 @@ import { type ReactNode, useEffect, useState } from "react";
 import { phraseMatches } from "../lib/confirmPhrase";
 
 /**
- * Every confirmation in the app, optionally one somebody types their way
- * through.
- *
- * There were six hand-rolled ones, and they disagreed with each other in ways
- * nobody chose: whether the confirm button carried a danger tone, whether Esc
- * was a cancel, and -- on the two that asked for a typed phrase -- whether case
- * mattered and whether a wrong answer disabled the button or raised a toast
- * after the click.
- *
- * `confirmPhrase` is compared case-insensitively and trimmed. The phrase worth
- * asking for is a name somebody is reading off the screen in front of them, and
- * being told to match its capitals is a puzzle rather than a check.
+ * Every confirmation in the app, optionally one somebody types their way through.
+ * `confirmPhrase` is compared case-insensitively and trimmed.
  */
 export function ConfirmDialog({
   open,
@@ -53,14 +43,8 @@ export function ConfirmDialog({
   width?: string;
   onConfirm: () => void;
   /**
-   * Run when the dialog closes any way other than confirming: the Cancel
-   * button, Esc, the backdrop.
-   *
-   * A caller whose confirm and cancel handlers each close the dialog themselves
-   * needs this rather than doing the cancelling from `onOpenChange`, which
-   * fires on the way out of a confirm too. serverView's plaintext prompt did
-   * exactly that, and a swap that kept it would have sent the message and
-   * cancelled it in one click.
+   * Run when the dialog closes any way other than confirming. A caller whose
+   * handlers close it themselves needs this rather than `onOpenChange`.
    */
   onCancel?: () => void;
   /** Extra fields -- a reason, a duration, a checkbox. */
@@ -68,9 +52,8 @@ export function ConfirmDialog({
 }) {
   const [typed, setTyped] = useState("");
 
-  // Cleared on open rather than on close, so a phrase typed for one person
-  // cannot still be sitting there for the next. That is the same reason the
-  // moderation dialogs clear their reason field on open.
+  // Cleared on open rather than on close, so a phrase typed for one person cannot
+  // still be sitting there for the next.
   useEffect(() => {
     if (open) setTyped("");
   }, [open]);

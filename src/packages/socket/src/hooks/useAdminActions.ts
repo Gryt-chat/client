@@ -34,14 +34,8 @@ export function useAdminActions({
   const [pendingBanUser, setPendingBanUser] = useState<PendingUser | null>(null);
 
   /**
-   * One way to send a moderation action, for all of them.
-   *
-   * There used to be two. Kick and ban went through `emitAuthenticated`, which
-   * refreshes an expiring token first; mute, deafen and role changes used a
-   * memoised `accessToken` that only re-read when `tokenRevision` changed, so
-   * an expired token made those three fail server-side with an error nothing
-   * surfaced. The returned promise was dropped too, so "no access token" meant
-   * the emit silently never happened.
+   * One way to send a moderation action, for all of them. There used to be two,
+   * and the memoised-token half failed silently on an expired token.
    */
   const send = useCallback(
     async (event: string, payload: Record<string, unknown>) => {
@@ -87,14 +81,8 @@ export function useAdminActions({
   );
 
   /**
-   * How a member got in, asked for when the ban dialog opens.
-   *
-   * Banning somebody who arrived on a still-live invite achieves less than it
-   * looks: an identity with no account behind it costs nothing to replace, so
-   * they can come back on a new key using the same code.
-   *
-   * Resolves to null rather than throwing. A dialog that cannot answer this
-   * should still let somebody be banned.
+   * How a member got in, asked for when the ban dialog opens: banning somebody on
+   * a live invite achieves less than it looks. Resolves to null rather than throwing.
    */
   const fetchMemberInvite = useCallback(
     (targetServerUserId: string): Promise<MemberInviteInfo | null> => {
@@ -130,12 +118,8 @@ export function useAdminActions({
   }, [send]);
 
   /**
-   * Give one role or take it away, leaving the rest.
-   *
-   * Was `handleChangeRole`, which sent `server:roles:set` — replace everything
-   * they hold with this one. That is still right for a demotion, and the wrong
-   * default now that roles stack: an operator giving somebody a second role
-   * would have silently taken away the first.
+   * Give one role or take it away, leaving the rest. `server:roles:set` replaces
+   * everything, which silently took away the first role when adding a second.
    */
   const handleToggleRole = useCallback((targetServerUserId: string, role: string, hold: boolean) => {
     void send(hold ? "server:roles:add" : "server:roles:remove", { serverUserId: targetServerUserId, role });

@@ -3,15 +3,8 @@ import type { SealDecision } from "@/common";
 import { PiLockOpen, PiLockSimpleFill } from "../../../../lib/icons";
 
 /**
- * What a direct message does and does not protect you from.
- *
- * A DM looks private either way, so which of the two it actually is belongs
- * above the box somebody is about to type into rather than in a document they
- * never open.
- *
- * **Quiet, and not dismissible.** It is a standing property rather than an
- * alert: shouting it every time teaches people to stop seeing it, and a fact
- * that stays true should not be something you agree never to be told again.
+ * What a direct message does and does not protect you from. **Quiet, and not
+ * dismissible**: it is a standing property rather than an alert.
  */
 
 /* The plaintext anchor names a section that contradicts the sealed sentence,
@@ -21,11 +14,8 @@ const SECURITY_DOC_PLAINTEXT =
 const SECURITY_DOC_SEALED = "https://docs.gryt.chat/docs/about/security";
 
 /**
- * Why it fell back, in the words somebody would use about a person.
- *
- * `blockedBy` names members, and naming them here would mean resolving
- * nicknames this component does not have. What matters to the reader is
- * whether this is something that will sort itself out.
+ * Why it fell back, in the words somebody would use about a person. What matters
+ * to the reader is whether this will sort itself out.
  */
 function plaintextReason(decision: SealDecision | undefined): string | null {
   if (!decision || decision.kind !== "plaintext") return null;
@@ -41,10 +31,8 @@ export function DirectMessagePrivacyNotice({ decision }: { decision?: SealDecisi
   const reason = plaintextReason(decision);
 
   /*
-   * Unknown reads as unencrypted on purpose. The decision is undefined while
-   * the member keys are still being fetched, and of the two ways to be wrong
-   * for that second, telling somebody they have less protection than they do
-   * is the one that costs them nothing.
+   * Unknown reads as unencrypted on purpose. Of the two ways to be wrong while
+   * the keys are fetched, understating the protection costs nothing.
    */
   const Icon = sealed ? PiLockSimpleFill : PiLockOpen;
 

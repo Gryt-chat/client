@@ -24,13 +24,8 @@ type BotEntry = {
 };
 
 /**
- * Bots, and what they have been allowed to do.
- *
- * **You are agreeing to a list, and the list is the bot's, not yours.** A bot
- * says what it wants when it turns up; every permission here is one it asked
- * for, and there is no way to add to that from this side. That is why a
- * compromised bot cannot talk its way into more later — it can ask again all it
- * likes, and the server hands back the question it asked the first time.
+ * Bots, and what they have been allowed to do. **You are agreeing to a list, and
+ * the list is the bot's** — there is no way to add to it from this side.
  */
 export function ServerBotsTab({
   host,
@@ -60,9 +55,8 @@ export function ServerBotsTab({
     setBots(list);
     setPolicy(payload?.policy === "request" ? "request" : "disabled");
     setBusy(false);
-    // Everything a pending bot asked for starts ticked. The operator is being
-    // asked to take things away, which is the direction that makes the shorter
-    // grant the easy one rather than the diligent one.
+    // Everything a pending bot asked for starts ticked. The operator takes things
+    // away, which makes the shorter grant the easy one.
     setTicked((prev) => {
       const next = { ...prev };
       for (const b of list) {
@@ -321,9 +315,8 @@ export function ServerBotsTab({
 }
 
 /**
- * Naming a bot that does not exist yet. Created with no permissions on purpose:
- * a half-filled form leaves a bot that can do nothing rather than one that can
- * do whatever was left ticked.
+ * Naming a bot that does not exist yet. Created with no permissions on purpose: a
+ * half-filled form leaves a bot that can do nothing.
  */
 function RegisterBot({ busy, onCreate }: { busy: boolean; onCreate: (nickname: string) => void }) {
   const [nickname, setNickname] = useState("");

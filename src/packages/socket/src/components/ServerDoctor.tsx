@@ -22,13 +22,8 @@ import {
 const ROOM_GRANT_TIMEOUT_MS = 8000;
 
 /**
- * What is broken between here and one server, in the order the connection
- * happens.
- *
- * The value is the per-address breakdown under voice signalling: a server
- * advertises several addresses and any given person can usually reach some of
- * them, so "none of these three answered" is a different problem from "the LAN
- * one did not, which is expected from outside".
+ * What is broken between here and one server, in connection order. The value is
+ * the per-address breakdown: "none answered" differs from "not the LAN one".
  */
 
 const ICON: Record<CheckStatus, ReactNode> = {
@@ -121,11 +116,8 @@ export function ServerDoctor({
   const socket = sockets[host];
 
   /**
-   * Ask the server for a room with nobody in it.
-   *
-   * Resolves to the grant or rejects with the server's own words, which are
-   * worth keeping: "you do not have permission to join voice on this server" is
-   * a different problem from a server that cannot reach its own SFU.
+   * Ask the server for a room with nobody in it. Rejects with the server's own
+   * words: refused permission is a different problem from an unreachable SFU.
    */
   const requestDoctorRoom = useCallback(
     () =>
@@ -188,8 +180,7 @@ export function ServerDoctor({
   }, [host, socketConnected, sfuHosts, stunHosts, requestDoctorRoom]);
 
   // Runs on open rather than behind a button. Somebody who chose "Doctor" has
-  // already said what they want, and a modal that opens to an idle list and
-  // asks again is a step for nothing.
+  // already said what they want.
   useEffect(() => {
     if (open) run();
   }, [open, run]);

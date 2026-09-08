@@ -49,12 +49,8 @@ type UseServerStateResult = {
   selectedChannelId: string | null;
   setSelectedChannelId: Dispatch<SetStateAction<string | null>>;
   /**
-   * The direct message being read, if one is.
-   *
-   * Kept apart from `selectedChannelId`. The effect below puts the selection
-   * back on a real channel whenever it is not one, so that a deleted channel
-   * does not leave the view pointing at nothing — a DM id stored there would be
-   * bounced out by that on the next render.
+   * The direct message being read, if one is. Kept apart from
+   * `selectedChannelId`, which the effect below bounces back to a real channel.
    */
   selectedDmId: string | null;
   setSelectedDmId: Dispatch<SetStateAction<string | null>>;
@@ -165,9 +161,8 @@ export function useServerState(): UseServerStateResult {
     currentServerConnected
   );
 
-  // A DM wins while one is open. The channel selection is left where it was
-  // underneath, so closing the DM returns to the channel you were reading
-  // rather than to whichever one happens to sort first.
+  // A DM wins while one is open. The channel selection is left underneath, so
+  // closing the DM returns to the channel you were reading.
   const activeConversationId = selectedDmId || selectedChannelId || currentChannelId || "";
 
   useEffect(() => {
@@ -267,9 +262,8 @@ export function useServerState(): UseServerStateResult {
     setSelectedChannelId(fallback?.id ?? null);
   }, [currentlyViewingServer, serverDetailsList, selectedChannelId]);
 
-  // Conversations belong to the server they were opened on, so switching
-  // servers closes the one being read. Without this the id would survive the
-  // switch and be asked for on a server that has never heard of it.
+  // Conversations belong to the server they were opened on. Without this the id
+  // survives the switch and is asked for on a server that never heard of it.
   useEffect(() => {
     setSelectedDmId(null);
   }, [currentlyViewingServer?.host]);

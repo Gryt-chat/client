@@ -30,21 +30,14 @@ export function buildMessageMetadata(
   getSenderAvatarUrl: (msg: ChatMessage) => string | undefined,
   memberList?: Record<string, MemberInfo>,
   /**
-   * Role id to the colour its members' names are drawn in, already made
-   * readable against the current theme.
-   *
-   * Passed in rather than worked out here, because the same map is what the
-   * member sidebar draws from — a name has to be the same colour in both, and
-   * two places computing it is two places for it to drift.
+   * Role id to the colour its members' names are drawn in. Passed in because the
+   * member sidebar draws from the same map and the two must not drift.
    */
   roleColors?: Map<string, string | undefined>,
 ): MessageMeta[] {
   /**
-   * Display names that more than one member is currently using.
-   *
-   * Built once per pass rather than per message: the member list is small, but
-   * this runs for every message in the channel and a scan inside the map would
-   * make it quadratic.
+   * Display names that more than one member is currently using. Built once per
+   * pass: a scan inside the map would make this quadratic.
    */
   const ambiguousNames = new Set<string>();
   if (memberList) {
@@ -76,17 +69,11 @@ export function buildMessageMetadata(
 
     const isSelf = !isSystem && !isWebhook && !!currentUserId && m.sender_server_id === currentUserId;
 
-    // Your own messages resolve their author exactly like everyone else's.
-    // They used to render from local settings instead, which meant the name
-    // above your messages could disagree with the one the member sidebar and
-    // every other participant saw — you read "Sivert" while the server, and so
-    // everybody else, had "Unknown". Hiding that made it look like a display
-    // quirk rather than the profile desync it was (GRYT-58).
-    /* Which arrow the event row draws. Read off the text the server posts
-       rather than a field, because the server sends these as ordinary message
-       rows and adding a column for two verbs is not worth a migration. An
-       unrecognised system message falls back to the "in" arrow, which is the
-       right guess for anything that is not a departure. */
+    // Your own messages resolve their author exactly like everyone else's. Local
+    // settings meant you read "Sivert" while everybody else had "Unknown" (GRYT-58).
+
+    /* Which arrow the event row draws, read off the text rather than a field:
+       the server sends these as ordinary message rows. */
     const systemEvent: "joined" | "left" | undefined = isSystem
       ? (/\bleft the server\b/.test(m.text ?? "") ? "left" : "joined")
       : undefined;

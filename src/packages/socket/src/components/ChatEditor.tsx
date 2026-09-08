@@ -17,12 +17,8 @@ import { EmojiPicker } from "./EmojiPicker";
 import { MentionAutocomplete, type MentionMember } from "./MentionAutocomplete";
 
 /**
- * The server's cap, mirrored so the counter and the send button can see it.
- *
- * There is no shared package to hold one copy — client and server are separate
- * repositories that meet over a socket. The server enforces it
- * (`utils/messageLimits.ts`); if this drifts low the composer nags early, and
- * if it drifts high the send is refused with `message_too_long`.
+ * The server's cap, mirrored so the counter and the send button can see it. Drift
+ * low and the composer nags early; drift high and the send is refused.
  */
 const MESSAGE_MAX_LENGTH = 4000;
 
@@ -48,11 +44,8 @@ interface ChatEditorProps {
   placeholder?: string;
   disabled?: boolean;
   /**
-   * Whether attaching is offered at all.
-   *
-   * Separate from `disabled`, because a role can be allowed to talk and not to
-   * upload. Hiding the clip is the whole of the client's part; the server
-   * refuses the upload and the message either way.
+   * Whether attaching is offered at all. Separate from `disabled`: a role can be
+   * allowed to talk and not to upload.
    */
   allowFiles?: boolean;
   maxFileSize?: number | null;
@@ -298,9 +291,8 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
       const files = pendingFilesRef.current.map((p) => p.file);
 
       if (!text && files.length === 0) return;
-      // The server refuses this too. Stopping here as well means the message
-      // stays in the box, where it can be edited down, instead of being sent
-      // and bounced with the text already cleared.
+      // The server refuses this too. Stopping here keeps the message in the box,
+      // where it can be edited down, rather than bounced with the text cleared.
       if (text.length > MESSAGE_MAX_LENGTH) return;
 
       onSendRef.current(text, files);
