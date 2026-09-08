@@ -160,10 +160,8 @@ const stateIcon = (name: string) =>
 
 const PROTOCOL = "gryt";
 const AUTO_START_ARG = "--gryt-autostart";
-/* Nothing sets this any more. It survives so the argument an older build
-   relaunches with is recognised and ignored rather than carried forward: a
-   1.6.x client takes "restart and update now" by relaunching with
-   --gryt-update, and the binary that starts next is this one. */
+/* Nothing sets this any more. Kept so a 1.6.x client relaunching with it is
+   recognised and ignored rather than carried forward. */
 const LEGACY_UPDATE_ARG = "--gryt-update";
 
 let pendingDeepLinkUrl: string | null = null;
@@ -172,13 +170,8 @@ let tray: Tray | null = null;
 let isQuitting = false;
 let closeToTray = true;
 
-/*
- * Watches for the programs somebody listed (GRYT-931).
- *
- * Null until the first window exists, because the only thing it does with an
- * answer is send it to a renderer. Started with whatever is in the global
- * store, so a match is known before anybody opens settings.
- */
+/* Null until the first window exists, since the only thing it does with an
+   answer is send it to a renderer. */
 let processWatcher: ProcessWatcher | null = null;
 
 type VoiceState = {
@@ -237,20 +230,16 @@ if (process.defaultApp) {
     ]);
   }
 } else if (process.platform === "linux" && process.env.APPIMAGE) {
-  // Electron's registration is a no-op on many AppImage setups: it points
-  // xdg-mime at a .desktop file that only exists inside the mounted AppImage,
-  // never in ~/.local/share/applications. So `xdg-mime query default
-  // x-scheme-handler/gryt` comes back empty and the browser has nowhere to hand
-  // the sign-in callback. Write and register the handler ourselves. GRYT-922.
+  // Electron points xdg-mime at a .desktop file inside the mounted AppImage, so
+  // the query comes back empty and the browser cannot hand back the sign-in.
   ensureLinuxAppImageProtocolHandler(process.env.APPIMAGE);
   app.setAsDefaultProtocolClient(PROTOCOL, process.env.APPIMAGE);
 } else {
   app.setAsDefaultProtocolClient(PROTOCOL);
 }
 
-// A cold protocol launch on Linux and Windows delivers the URL in argv, not
-// through `open-url` (macOS) or `second-instance` (already running). Capture it
-// now so the pending-link flush after the window loads still fires. GRYT-922.
+// A cold protocol launch on Linux and Windows delivers the URL in argv, so it is
+// captured here for the pending-link flush after the window loads.
 if (process.platform !== "darwin") {
   const argvDeepLink = process.argv.find((arg) =>
     arg.startsWith(`${PROTOCOL}://`)
@@ -258,18 +247,8 @@ if (process.platform !== "darwin") {
   if (argvDeepLink) pendingDeepLinkUrl = argvDeepLink;
 }
 
-/**
- * Stop a sign-in that cannot come back, and offer to fix the cause (GRYT-965).
- *
- * Returns whether to go ahead and open the browser. True for everything except
- * the one case worth interrupting: a Linux AppImage that is no longer at the
- * path its `gryt://` handler names.
- *
- * The offer is only made when it can actually be honoured. Nothing holds a
- * deleted AppImage open — every Gryt process resolves to the mounted squashfs,
- * and the launcher has exited — so when the file is not in the Trash either,
- * this says so instead of showing a button that would fail.
- */
+/** True unless the AppImage moved from the path its `gryt://` handler names.
+    The offer to fix it is only made when it can be honoured. */
 async function warnIfAppImageMoved(): Promise<boolean> {
   const state = appImageState(process.env.APPIMAGE);
   if (state.kind === "not-applicable" || state.kind === "present") return true;
@@ -351,26 +330,16 @@ async function warnIfAppImageMoved(): Promise<boolean> {
   return response === 0;
 }
 
-/**
- * Install a desktop entry so the OS knows this AppImage handles `gryt://`.
- *
- * An AppImage is a single file that was never "installed", so nothing copied a
- * .desktop file into ~/.local/share/applications or told xdg-mime about the
- * scheme. Without that, clicking "Open Gryt" after signing in resolves to no
- * handler and the login never gets back to the app. GRYT-922.
- *
- * Best-effort and idempotent: a failure here must never stop the app starting,
- * and the entry is rewritten each run so it follows the AppImage if it moves.
- */
+/** An AppImage was never installed, so nothing told xdg-mime about the scheme.
+    Rewritten each run, so it follows a move. */
 function ensureLinuxAppImageProtocolHandler(appImagePath: string): void {
   try {
     const home = app.getPath("home");
     const appsDir = join(home, ".local", "share", "applications");
     mkdirSync(appsDir, { recursive: true });
 
-    // resourcesPath lives inside the AppImage mount, which changes every launch,
-    // so copy the icon somewhere stable and reference that. Cosmetic — the
-    // handler works either way — so a failure just falls back to a theme name.
+    // resourcesPath is inside the mount and changes every launch, so the icon is
+    // copied somewhere stable. Cosmetic; a failure falls back to a theme name.
     let icon = "gryt-chat";
     try {
       const stableIcon = join(home, ".local", "share", "icons", "gryt-chat.png");
@@ -402,20 +371,8 @@ function ensureLinuxAppImageProtocolHandler(appImagePath: string): void {
       writeFileSync(desktopFile, entry);
     }
 
-    /*
-     * Register the association. execFile, not a shell, so a spaced AppImage path
-     * is never word-split.
-     *
-     * Still best-effort — neither failure should stop the app starting — but
-     * the outcome is written down now (GRYT-967). Throwing the exit code away
-     * meant a missing or broken `xdg-mime` produced no association, no sign-in
-     * and no explanation, which is the same silent shape as the bug in
-     * GRYT-965 from a different cause.
-     *
-     * `update-desktop-database` is absent on plenty of minimal systems and the
-     * scheme still resolves without it, so its failure is logged as a note
-     * rather than as the thing that broke.
-     */
+    /* execFile, not a shell, so a spaced path is never word-split. Best-effort,
+       but the outcome is logged: a broken `xdg-mime` was silent before. */
     execFile("update-desktop-database", [appsDir], (error) => {
       if (error) startupLog(`update-desktop-database did not run: ${error.message}`);
     });
@@ -424,9 +381,8 @@ function ensureLinuxAppImageProtocolHandler(appImagePath: string): void {
       "xdg-mime",
       ["default", "gryt-chat.desktop", "x-scheme-handler/gryt"],
       (error) => {
-        /* This one is the association. Without it the browser has nowhere to
-           hand the sign-in callback, so it is the line worth finding in the
-           log. */
+        /* This one is the association: without it the browser has nowhere to
+           hand the sign-in callback. */
         if (error) {
           startupLog(`xdg-mime failed, so gryt:// is not associated: ${error.message}`);
         } else {
@@ -435,11 +391,8 @@ function ensureLinuxAppImageProtocolHandler(appImagePath: string): void {
       }
     );
 
-    /* Deliberately not "Registered …" — that used to be logged here, which is
-       synchronously after dispatching both commands and before either had
-       returned, so the log said the handler was registered whether or not it
-       was. The one artefact somebody reads when this breaks was the thing
-       lying to them. */
+    /* Not "Registered": logged here it runs before either command returns, so
+       the one artefact somebody reads was the thing lying to them. */
     startupLog(`Wrote gryt:// desktop entry at ${desktopFile}`);
   } catch (error) {
     startupLog(`Could not register gryt:// handler: ${error}`);
@@ -498,23 +451,8 @@ function readBoolConfig(key: string, defaultValue: boolean): boolean {
 
 // ── Auto-updater config ─────────────────────────────────────────────────
 
-/**
- * Remove the rollback directory left behind by the one-time Windows NSIS
- * migration.
- *
- * The migration installer deliberately renames:
- *
- *   gryt-chat -> gryt-chat.old
- *
- * instead of deleting the old installation. If the new installer fails,
- * those files remain recoverable.
- *
- * Reaching this code in the new packaged Gryt process means the replacement
- * installation itself has successfully started. At that point the rollback
- * copy is no longer needed.
- *
- * User data lives under Electron's userData directory and is never touched.
- */
+/** The migration installer renames the old install aside. Reaching this means
+    the replacement started, so the copy is no longer needed. */
 function cleanupLegacyWindowsInstallBackup(): void {
   if (process.platform !== "win32" || !app.isPackaged) return;
 
@@ -549,26 +487,8 @@ function cleanupLegacyWindowsInstallBackup(): void {
   }
 }
 
-/**
- * Where the downloaded installer waits between the download and the install.
- *
- * electron-updater stages it in `%LOCALAPPDATA%\<app>-updater\pending` and
- * writes the file's checksum into an `update-info.json` beside it. At install
- * time it reads that back and re-verifies. If the two disagree it decides the
- * download is corrupt, discards it, and downloads again on the next check.
- *
- * That directory is not ours. Antivirus quarantines things in it, disk cleaners
- * empty it, and a download interrupted by a crash leaves a partial file that
- * fails the same check. Every one of those produces the symptom Gryt has had on
- * Windows for months: it downloads every release and installs none of them,
- * because the install step never sees a file it trusts.
- *
- * `sessionData` is inside the app's own data tree, where nothing else has a
- * reason to be. Borrowed from AFFiNE, whose entire Windows updater is this.
- *
- * Windows only — this is the NSIS staging path, and macOS and Linux do not use
- * it.
- */
+/** electron-updater stages into a directory antivirus and disk cleaners empty,
+    and a failed checksum there downloads every release and installs none. */
 class WindowsUpdater extends NsisUpdater {
   protected override downloadedUpdateHelper: DownloadedUpdateHelper =
     new DownloadedUpdateHelper(app.getPath("sessionData"));
@@ -577,25 +497,8 @@ class WindowsUpdater extends NsisUpdater {
 const autoUpdater =
   process.platform === "win32" ? new WindowsUpdater() : defaultAutoUpdater;
 
-/**
- * Whether this copy of Gryt was installed from the MSIX package.
- *
- * Electron sets `process.windowsStore` when the app runs from an .appx or
- * .msix. Nothing else in the build can tell the two apart: `app.isPackaged` is
- * true for the NSIS install as well, and both run the same `Gryt Chat.exe` out
- * of the same tree.
- *
- * It matters because the updater above is an NSIS updater and it does not know
- * it is inside a package. Left alone it finds the next release, downloads the
- * 180MB .exe, and runs the installer on quit — which does not update the
- * package. It installs a *second*, unpackaged Gryt beside it, and the MSIX one
- * stays on the version it was installed at forever. Two entries in the Start
- * menu, one of them permanently stale, and nothing anywhere saying so.
- *
- * Windows owns updates for a packaged app: the Store pushes them, or an
- * .appinstaller file does. Neither route comes through here, so the mechanism
- * is switched off rather than made quieter. GRYT-850.
- */
+/** `process.windowsStore` is the only thing telling MSIX from NSIS, and the NSIS
+    updater installs a second, unpackaged Gryt beside the packaged one. */
 const updatesAreManagedByWindows = process.windowsStore === true;
 
 autoUpdater.logger = {
@@ -605,110 +508,43 @@ autoUpdater.logger = {
   debug: (m: unknown) => startupLog(`Update debug: ${String(m)}`),
 };
 
-/*
- * Download in the background, the way Bitwarden does.
- *
- * `autoDownload` off meant nothing was fetched until somebody pressed a
- * button, and then they waited for the whole installer while a splash screen
- * counted at them. On means the bytes are already down by the time anyone is
- * told there is an update, and taking it is a restart rather than a download.
- *
- * A user-initiated check turns it off for the length of that check, so
- * "Check for Updates" reports what it found instead of silently fetching it.
- *
- * This is the library's own flag, and it only decides what a check the library
- * ran does next. Whether the background check runs one of those at all is
- * `autoUpdateEnabled` below.
- */
+/* On, so taking an update is a restart rather than a download. A user-initiated
+   check turns it off for its own length. */
 autoUpdater.autoDownload = true;
 
-// Windows is no longer the exception here.
-//
-// GRYT-67 turned this off because the old NSIS uninstaller could not complete
-// an electron-builder upgrade, and installing on quit walked straight into it.
-// installer.nsh moves that installation aside in customInit now, so the reason
-// is gone — and leaving it off meant the PowerShell helper was the only way a
-// Windows install could ever happen. When that helper failed to parse, there
-// was no second route, which is how v1.6.6 through v1.6.24 ended up unable to
-// update at all.
+// On for Windows too now that installer.nsh moves the old install aside: while
+// it was off the PowerShell helper was the only route, and it did not parse.
 autoUpdater.autoInstallOnAppQuit = !updatesAreManagedByWindows;
 
-/**
- * Whether Gryt fetches a release on its own.
- *
- * Off, nothing is downloaded until somebody presses the button in the toast:
- * the background check still runs and still says a release exists, because
- * being told is not the part anyone objects to. Installing a downloaded update
- * on quit stays on either way — off, the only way an update is on disk at all
- * is that somebody asked for it, and asking again on the way out would be
- * asking twice.
- */
+/** Off, the check still runs and still says a release exists; nothing is
+    downloaded until somebody presses the button. */
 let autoUpdateEnabled = readBoolConfig("autoUpdate", true);
 
-/*
- * The library's own staged-rollout check, kept so it can be put back.
- *
- * electron-updater compares `stagingPercentage` in the release yml against a
- * stable per-machine id, so a release can be handed to a fraction of people
- * first. Whatever a release does not set, this returns true for, which is why
- * holding on to it costs nothing while no release stages.
- *
- * Bitwarden's shape, apps/desktop/src/main/updater.main.ts: keep the original,
- * swap in an always-true one for a check somebody asked for, put it back
- * afterwards. Somebody who goes looking for an update should get it rather than
- * be told there is none because their id fell outside this release's slice.
- */
+/* Kept so it can be put back: a check somebody asked for swaps in an always-true
+   one, or a machine id outside the slice hides the release. */
 const defaultRolloutCheck = autoUpdater.isUserWithinRollout;
 
-/**
- * Only a `beta` identifier means beta. Any other prerelease tag — `-rc.1`,
- * `-slim` — would otherwise put somebody on the beta channel silently.
- *
- * The variant cannot live here for a different reason: semver treats any dash
- * as a prerelease, so `newestReleaseWithoutApi` would hide a stable `-slim`
- * release from everybody not on beta, and it sorts below the release it varies.
- * It lives in the update channel instead.
- */
+/** Only a `beta` identifier means beta, or `-rc.1` puts somebody on the channel
+    silently. The variant lives in the update channel, not in the version. */
 function isOnBetaChannel(): boolean {
   const identifiers = semver.prerelease(app.getVersion()) ?? [];
   return readBoolConfig("betaChannel", identifiers.includes("beta"));
 }
 
-/**
- * Whether this install is the build without the embedded server.
- *
- * Read off disk rather than from a value baked in at build time, because the
- * file is what actually differs: `embedded-server.tar.gz` is an extraResource
- * the slim config filters out, and everything else about the variant follows
- * from that. `isEmbeddedServerAvailable()` already decides the same way.
- *
- * A full build that somehow lost the archive would read as slim here. That is
- * the failure check-extra-resources.mjs exists to catch, and it fails the build
- * rather than shipping one — so absence means slim.
- *
- * Never slim unpackaged: there is no resourcesPath worth reading, and the
- * updater does not run in development.
- */
+/** Read off disk, because the missing `embedded-server.tar.gz` is what differs.
+    check-extra-resources.mjs catches a full build that lost it. */
 function isSlimInstall(): boolean {
   if (!app.isPackaged) return false;
   return !existsSync(join(process.resourcesPath, "embedded-server.tar.gz"));
 }
 
-/**
- * Defaults to what was installed, so a first launch changes nothing.
- */
+/** Defaults to what was installed, so a first launch changes nothing. */
 function prefersSlim(): boolean {
   return readBoolConfig("slimVariant", isSlimInstall());
 }
 
-/**
- * Both variants go into the same GitHub release, so they need separate
- * channel files or a slim install downloads the full installer. Assigned to
- * autoUpdater.channel so the setting wins over app-update.yml.
- *
- * Beta is a separate axis on allowPrerelease: that picks the release, this
- * picks the file inside it.
- */
+/** Both variants share a release, so separate channel files stop a slim install
+    downloading the full installer. Beta picks the release; this picks the file. */
 function updateChannel(): string {
   return prefersSlim() ? "slim" : "latest";
 }
@@ -716,25 +552,13 @@ function updateChannel(): string {
 autoUpdater.allowPrerelease = isOnBetaChannel();
 autoUpdater.channel = updateChannel();
 
-/**
- * Derived, so it clears itself once the installer has run.
- */
+/** Derived, so it clears itself once the installer has run. */
 function variantSwitchPending(): boolean {
   return app.isPackaged && prefersSlim() !== isSlimInstall();
 }
 
-/**
- * Both variants share a version, and electron-updater returns false on
- * eq(latest, current) before it looks at the channel — so a switch is
- * invisible to it without this. Lying about the version reuses its verified
- * download instead of reimplementing sha512, deltas and Windows elevation.
- *
- * Set both ways, not just on: toggling back has to put the real version
- * back, or every later check offers the release already installed.
- *
- * currentVersion is readonly in the types and a plain property at runtime,
- * which is why this is a cast.
- */
+/** electron-updater returns false on `eq(latest, current)` before it looks at
+    the channel, so a variant switch is invisible without this. */
 function applyVariantSwitchSpoof(): void {
   (autoUpdater as unknown as { currentVersion: semver.SemVer }).currentVersion =
     new semver.SemVer(variantSwitchPending() ? "0.0.0" : app.getVersion());
@@ -744,9 +568,8 @@ applyVariantSwitchSpoof();
 
 autoUpdater.allowDowngrade = true;
 
-// IMPORTANT:
-// Do not overwrite autoUpdater.logger with console here. The persistent
-// startup log above is what lets update failures survive process restarts.
+// Do not overwrite autoUpdater.logger with console: the persistent startup log
+// above is what lets update failures survive a restart.
 
 closeToTray = (readConfig().closeToTray ?? true) as boolean;
 
@@ -865,13 +688,8 @@ function releaseDownloadBase(tag: string): string {
   return `https://github.com/${UPDATE_OWNER}/${UPDATE_REPO}/releases/download/${tag}`;
 }
 
-/**
- * The installer this platform would download, read out of the channel yml.
- *
- * `path:` is the file name electron-updater will ask for. Nothing else in the
- * yml names it, and the name is not derivable from the version — the mac zip,
- * the NSIS exe and the AppImage are spelled three different ways.
- */
+/** `path:` is the name electron-updater asks for, and nothing else in the yml
+    names it: the three platforms spell it three different ways. */
 function installerFileName(yml: string): string | null {
   const named = yml.match(/^path:\s*(.+)$/m);
   if (!named) return null;
@@ -881,18 +699,8 @@ function installerFileName(yml: string): string | null {
     .replace(/^["']|["']$/g, "");
 }
 
-/**
- * Is this release's installer actually on the asset host yet.
- *
- * Release Client uploads from three runners over several minutes, so a release
- * whose yml is up and whose zip is not is a real state and not a rare one.
- * Pointing the updater at that gets a 404 mid-download.
- *
- * `releaseIsInstallable` answers the same question through `api.github.com`,
- * which the background check cannot spend (see `newestReleaseWithoutApi`).
- * This asks the asset host for one byte instead: free, and it proves the exact
- * URL the updater is about to use rather than an entry in a listing.
- */
+/** Three runners upload over minutes, so a yml without its zip is a real state.
+    One byte off the asset host proves the exact URL, for free. */
 async function releaseAssetsReady(tag: string): Promise<boolean> {
   const base = releaseDownloadBase(tag);
 
@@ -946,33 +754,8 @@ async function releaseIsInstallable(
   );
 }
 
-/**
- * Feed options shared by every place that pins the updater at one release.
- *
- * `useMultipleRangeRequest: false` is the whole differential download.
- *
- * A differential download asks for the blocks that changed. electron-updater
- * can do that as one request carrying many ranges, or as a sequence of single
- * range requests, and it decides from the provider: `GitHubProvider` sets
- * `isUseMultipleRangeRequest: false` outright because GitHub's asset host does
- * not support the multi-range form (providers/GitHubProvider.js). Pinning the
- * feed puts us on `generic` instead, and generic turns it *on* for any URL that
- * is not s3.amazonaws.com (providerFactory.js, isUrlProbablySupportMultiRange-
- * Requests). So pinning opted us into the one request shape GitHub refuses:
- *
- *   Range: bytes=0-1023           -> 206
- *   Range: bytes=0-1023,2048-3071 -> 501
- *
- * which surfaced as `Cannot download differentially, fallback to full download:
- * HttpError: 501` and 198 MB downloaded where 84 MB would have done.
- *
- * Off, the sequential path is used, every request is a single range, and GitHub
- * answers all of them. Slower per byte than one multi-range request and far
- * faster than downloading the whole app.
- *
- * This belongs with the URL rather than set once at startup: it is a fact about
- * the host being pointed at, and it has to move if the feed ever does.
- */
+/** GitHub's asset host answers 501 to a multi-range request, and pinning the
+    feed moves us to `generic`, which turns them on. */
 const FEED_SUPPORTS_MULTI_RANGE = false;
 
 async function pinFeedToNewestCompleteRelease(): Promise<void> {
@@ -1121,45 +904,15 @@ function friendlyUpdateError(err: Error): string {
 
 let pendingUpdateVersion: string | undefined;
 
-/**
- * How often a client that is already running looks for a release.
- *
- * Until GRYT-543 it never did. The three `checkForUpdates()` call sites are all
- * launch-time or the button in settings, so an app left open never saw a
- * release until it was restarted. Six went out on 2026-08-22 and a client open
- * across all of them stayed on the version it started the day with — including
- * through a privacy fix, which is not a thing to make somebody restart for.
- *
- * Affordable at any interval because this check spends no GitHub API quota at
- * all. See `newestReleaseWithoutApi`.
- *
- * It was an hour until GRYT-633, and an hour is long enough to miss a release
- * entirely while looking straight at the app. 1.6.48-beta.1 published fifteen
- * minutes after a client started; that client's next look was due forty-five
- * minutes later, so the person waiting for it gave up and installed from
- * Settings, and concluded the toast had been removed.
- */
+/** Affordable at any interval, since this spends no API quota. An hour was long
+    enough to miss a release while looking straight at the app. */
 const UPDATE_CHECK_INTERVAL_MS = 10 * 60 * 1000;
 
-/**
- * The soonest two background checks may be, whatever asked for them.
- *
- * Waking from sleep and focusing the window are both moments a machine has
- * plausibly been away long enough for a release to have happened, and both
- * happen far more often than a release does. Without a floor, ten lid-opens or
- * ten alt-tabs is ten checks.
- *
- * **Has to stay below `UPDATE_CHECK_INTERVAL_MS`.** The repeating timer goes
- * through the same floor, so a floor at or above the interval would have the
- * timer cancelling its own every other tick — which is what a 15 minute floor
- * did to a 10 minute interval before this was written down.
- *
- * A check somebody pressed a button for skips this entirely. See `force`.
- */
+/** Waking and focusing happen far more often than a release does. Stay below
+    `UPDATE_CHECK_INTERVAL_MS`, or the timer cancels its own tick. */
 const UPDATE_CHECK_FLOOR_MS = 5 * 60 * 1000;
 
-/* How long after the window appears to go looking for a release.
-   Launch used to do this before showing anything, which is what made starting
+/* Launch used to check before showing anything, which is what made starting
    Gryt on Windows take minutes. */
 const LAUNCH_UPDATE_CHECK_DELAY_MS = 10 * 1000;
 
@@ -1170,44 +923,15 @@ let updateIsDownloaded = false;
 /** The version already announced, so one release is toasted once per run. */
 let announcedVersion: string | null = null;
 
-/**
- * The release a download is running for, and nothing else.
- *
- * Set only by `startBackgroundDownload` and `downloadAnnouncedRelease`, so the
- * update events can tell a download nobody asked for from a check somebody
- * pressed a button for. Settings shows its own answer; only the first needs a
- * toast.
- */
+/** Set only by the two download starters, so the update events can tell one
+    nobody asked for from one somebody pressed a button for. */
 let pendingRelease: ReleaseRef | null = null;
 
 /** Whether `pendingRelease` should raise a toast when it starts downloading. */
 let announceDownload = false;
 
-/**
- * Is there a newer release, answered without spending API quota.
- *
- * `pinFeedToNewestCompleteRelease` asks `api.github.com`, which is capped at 60
- * an hour **per address** when unauthenticated. That is fine once per launch
- * and wrong every hour: a LAN party is one address, and a hundred clients
- * checking hourly is a hundred calls an hour against a ceiling of sixty — which
- * breaks the check and takes out anything else on that network using the API.
- *
- * Conditional requests do not rescue it. GitHub documents 304s as free, but
- * that is for authenticated calls; measured unauthenticated on 2026-08-23, a
- * 304 still moved `x-ratelimit-remaining` from 54 to 53.
- *
- * So this reads `releases.atom` instead. It is served from the web host rather
- * than the API, carries no rate-limit headers, and lists prereleases. Free at
- * any number of clients.
- *
- * **The feed includes drafts** — v1.6.33 was in it while still unpublished — so
- * the asset check below is not optional. A draft's assets are not
- * downloadable, which is what rejects it.
- *
- * The tag comes back with the version because the caller pins the feed to it.
- * `pinFeedToNewestCompleteRelease` is the same answer through the API, and the
- * background check cannot afford that call.
- */
+/** `releases.atom`, not the API, which is 60 an hour per address. The feed lists
+    drafts, so the asset check below is not optional. */
 async function newestReleaseWithoutApi(): Promise<ReleaseRef | null> {
   const res = await fetchWithTimeout(
     `https://github.com/${UPDATE_OWNER}/${UPDATE_REPO}/releases.atom`
@@ -1260,32 +984,8 @@ async function newestReleaseWithoutApi(): Promise<ReleaseRef | null> {
   return null;
 }
 
-/**
- * A check nobody asked for, so it stays quiet and gives up easily.
- *
- * It announces once per version per run. A failure is logged rather than shown:
- * somebody who did not press anything should not get an error about it.
- *
- * **Finding a release is not the end of this.** Until GRYT-625 it was: this
- * announced a version and stopped, and nothing downstream ever fetched
- * anything. `autoDownload` is a flag on a check the library runs, and the
- * library ran no check here — so the toast offered to restart into an update
- * that was not on disk, `restart-for-update` found `updateIsDownloaded` false
- * and did nothing, and the release installed on some later launch that
- * happened to take the settings path. Before GRYT-622 the splash did the
- * download when somebody pressed restart, which is what hid this.
- *
- * So the probe now hands its tag to `startBackgroundDownload`, and the
- * announcement moves to the point where a download is actually running.
- */
-/**
- * Put the toast back on screen for a version, whatever state it is in.
- *
- * Used by a check somebody pressed a button for, and by the renderer asking
- * what it missed after a reload. `reannounce` tells the renderer this was
- * asked for, so it redraws even over a toast that had been dismissed — a
- * dismissal means "not now", and pressing Check for Updates is a later now.
- */
+/** Puts the toast back for a version. `reannounce` says this was asked for, so
+    it redraws over one that had been dismissed. */
 function announceDownloaded(version?: string): void {
   if (!version) return;
 
@@ -1298,9 +998,8 @@ function announceDownloaded(version?: string): void {
     reannounce: true,
   });
 
-  /* Two messages rather than a field on the first: the renderer already turns
-     `downloaded` into the restart prompt, and a state the toast can reach only
-     one way is a state that cannot drift. */
+  /* Two messages rather than a field: the renderer already turns `downloaded`
+     into the restart prompt, and one route cannot drift. */
   if (updateIsDownloaded) {
     sendToMain("downloaded", { version });
   }
@@ -1310,28 +1009,22 @@ function checkForUpdatesInBackground(
   reason: string,
   force = false
 ): void {
-  /* Packaged as MSIX, where there is nothing useful this could do. Logged
-     rather than dropped silently, because a check that reports nothing is the
-     same shape as a broken one, and this is the line somebody will go looking
-     for. See `updatesAreManagedByWindows`. */
+  /* MSIX, where there is nothing useful to do. Logged rather than dropped: a
+     check reporting nothing is the same shape as a broken one. */
   if (updatesAreManagedByWindows) {
     startupLog(`Update: skipped (${reason}) — installed from the MSIX package`);
     return;
   }
 
-  /* Already downloaded, so the answer cannot change until this restarts.
-     Element hit the same thing on macOS and guards it the same way: re-checking
-     while Squirrel is holding a staged update wedges the install
-     (element-web#12433). */
+  /* Already downloaded, so the answer cannot change until a restart: re-checking
+     while Squirrel holds a staged update wedges the install. */
   if (updateIsDownloaded) {
     if (force) announceDownloaded(pendingUpdateVersion);
     return;
   }
 
-  /* A download is already running. A release published while one is in flight
-     would otherwise start a second `checkForUpdates` over the top of it, and
-     electron-updater has one download slot. The next tick picks the newer one
-     up once this has finished or failed. */
+  /* electron-updater has one download slot, so a release published mid-flight
+     would start a second check over the top of this one. */
   if (pendingRelease) {
     if (force) {
       sendToMain("downloading", {
@@ -1341,10 +1034,8 @@ function checkForUpdatesInBackground(
     return;
   }
 
-  /* A check somebody pressed a button for goes through regardless. The tray
-     item used to share this floor with the launch check, which set it ten
-     seconds after startup — so for the first fifteen minutes of every run,
-     pressing Check for Updates did nothing and said nothing (GRYT-633). */
+  /* A pressed button goes through regardless: sharing this floor with the launch
+     check made Check for Updates do nothing for the first fifteen minutes. */
   if (!force && Date.now() - lastUpdateCheckAt < UPDATE_CHECK_FLOOR_MS) return;
 
   lastUpdateCheckAt = Date.now();
@@ -1372,9 +1063,8 @@ function checkForUpdatesInBackground(
       );
 
       if (!autoUpdateEnabled) {
-        /* Told, not fetched. The toast's button calls `download-update`, which
-           is this same release with the rollout bypassed, because by then
-           somebody has asked for it. */
+        /* Told, not fetched: the toast's button calls `download-update`, which is
+           this release with the rollout bypassed. */
         announcedVersion = release.version;
 
         sendToMain("announced", {
@@ -1396,21 +1086,8 @@ function checkForUpdatesInBackground(
     });
 }
 
-/**
- * Point the updater at one release and let it download.
- *
- * The feed is pinned to the exact tag the probe verified rather than left on
- * the provider's own idea of latest, for the reason
- * `pinFeedToNewestCompleteRelease` exists: a release is published across
- * several minutes and the provider will happily hand back one that is halfway
- * up. The difference here is that the tag came from `releases.atom` and a
- * one-byte range request, so it costs no API quota.
- *
- * `announce` is what decides whether the download raises a toast. Only the
- * automatic path sets it: a download somebody pressed a button for is already
- * on a screen that shows it, and a second copy in the corner is telling them
- * what they are looking at.
- */
+/** Pinned to the verified tag, since the provider hands back releases that are
+    halfway up. `announce` decides whether a toast is raised. */
 function startBackgroundDownload(
   release: ReleaseRef,
   { bypassRollout = false, announce = false } = {}
@@ -1449,21 +1126,13 @@ function startBackgroundDownload(
     });
 }
 
-/**
- * Start the repeating check. Called once, from `initBackgroundUpdater`.
- *
- * That is the one place both non-dev launch paths pass through — the ordinary
- * one and the hidden auto-start one — and dev passes through neither, which is
- * the behaviour the launch-time check already has.
- */
+/** Called once from `initBackgroundUpdater`, the one place both non-dev launch
+    paths pass through and dev passes through neither. */
 function startPeriodicUpdateChecks(launchAlreadyChecked: boolean): void {
   if (updateCheckTimer) return;
 
-  /* Only when launch really did check. Seeding the clock stops a resume a
-     minute later from checking again — but the ordinary launch path does not
-     check any more, and seeding there would make the floor in
-     `checkForUpdatesInBackground` swallow the launch check that replaces it,
-     leaving the first look an hour away. */
+  /* Only when launch really did check: seeding otherwise makes the floor swallow
+     the launch check that replaces it, leaving the first look an hour away. */
   if (launchAlreadyChecked) lastUpdateCheckAt = Date.now();
 
   updateCheckTimer = setInterval(
@@ -1483,17 +1152,8 @@ function startPeriodicUpdateChecks(launchAlreadyChecked: boolean): void {
   });
 }
 
-/**
- * Undo what a check somebody asked for changed.
- *
- * `check-for-updates` turns background downloading off so the answer is
- * reported rather than silently fetched, and bypasses the rollout slice so the
- * person asking is not told there is nothing. Every path out of a check comes
- * through one of the three events below, including the failing ones, so
- * neither can stay that way.
- *
- * Bitwarden's `reset()`.
- */
+/** `check-for-updates` turns downloading off and bypasses the rollout slice, and
+    every path out of a check comes through the three events below. */
 function resumeAutoDownload(): void {
   autoUpdater.autoDownload = true;
   autoUpdater.isUserWithinRollout = defaultRolloutCheck;
@@ -1512,10 +1172,8 @@ function initBackgroundUpdater(launchAlreadyChecked: boolean) {
       version: info.version,
     });
 
-    /* The moment the toast is honest: the rollout slice let this machine
-       through, the assets are there, and `autoDownload` is about to fetch. A
-       release announced before this point is one that might still turn out not
-       to be coming. */
+    /* The first honest moment: the slice let this machine through, the assets
+       are there, and a fetch is about to start. */
     if (announceDownload && info.version !== announcedVersion) {
       announcedVersion = info.version;
 
@@ -1530,9 +1188,8 @@ function initBackgroundUpdater(launchAlreadyChecked: boolean) {
   });
 
   autoUpdater.on("update-not-available", (info) => {
-    /* A background download that ends here was held back by the rollout slice
-       — the probe found the release, so it exists. Nothing is said: this is
-       the one case where being quiet is the whole point of staging. */
+    /* Held back by the rollout slice, since the probe found the release. Being
+       quiet is the whole point of staging. */
     pendingRelease = null;
     announceDownload = false;
 
@@ -1557,15 +1214,8 @@ function initBackgroundUpdater(launchAlreadyChecked: boolean) {
     pendingRelease = null;
     announceDownload = false;
 
-    /* Announced here as well as at `update-available`, because the toast has to
-       stop depending on what started the download.
-     *
-     * GRYT-625 raised it only for downloads nobody asked for, reasoning that
-       somebody who pressed Check for Updates is already being shown the answer.
-       That holds while they are looking at Settings and stops the moment they
-       navigate away — the download finishes into an empty screen and there is
-       nothing anywhere saying a restart would help. The rule is now: a finished
-       download that has not been announced gets announced. */
+    /* A finished download that has not been announced gets announced: raising it
+       only for automatic ones lost the toast the moment somebody navigated away. */
     if (info.version !== announcedVersion) {
       announcedVersion = info.version;
 
@@ -1582,9 +1232,8 @@ function initBackgroundUpdater(launchAlreadyChecked: boolean) {
   });
 
   autoUpdater.on("error", (err) => {
-    /* Let the next hourly check try this release again. Without it one dropped
-       connection means no further attempt until Gryt restarts, because the
-       probe skips a version it has already announced. */
+    /* Let the next check try this release again: the probe skips a version it
+       has announced, so one dropped connection would end it until a restart. */
     if (pendingRelease && announceDownload) announcedVersion = null;
 
     pendingRelease = null;
@@ -1609,37 +1258,15 @@ function initBackgroundUpdater(launchAlreadyChecked: boolean) {
   startPeriodicUpdateChecks(launchAlreadyChecked);
 }
 
-/**
- * Install what has been downloaded, by quitting into it.
- *
- * This is Bitwarden's shape (apps/desktop/src/main/updater.main.ts): set the
- * quit flag, then hand off. There is no relaunch into a second process and no
- * splash — the bytes are already on disk by the time this is reachable,
- * because `autoDownload` fetched them while Gryt was running.
- *
- * The flag first, because `quitAndInstall` does not go through `before-quit`
- * and the main window's close handler reads it. Without it a window that is up
- * cancels the quit and hides, and on macOS Squirrel cannot swap the bundle
- * while the process lives (GRYT-621).
- */
+/** The flag first: `quitAndInstall` skips `before-quit`, so an open window
+    cancels the quit and hides, and Squirrel cannot swap the bundle. */
 function installDownloadedUpdate(): void {
   isQuitting = true;
   autoUpdater.quitAndInstall(true, true);
 }
 
-/**
- * Fetch the release the toast is currently showing, because somebody pressed
- * the button on it.
- *
- * This is the automatic download's other half: with automatic updates off, the
- * background check announces and stops, and this is what the announcement's
- * button reaches. The rollout slice is bypassed for the same reason the
- * Settings check bypasses it — somebody who goes looking should get it.
- *
- * Re-probing rather than trusting a tag from the renderer: the announcement may
- * have been sitting on screen for hours, and a newer release since then is the
- * one to fetch.
- */
+/** With automatic updates off the check announces and stops, and this is what
+    the button reaches. Re-probes, since a toast may be hours old. */
 function downloadAnnouncedRelease(): void {
   if (updateIsDownloaded) {
     sendToMain("downloaded", {
@@ -1680,12 +1307,8 @@ function downloadAnnouncedRelease(): void {
     });
 }
 
-/**
- * Restart Gryt as it is, carrying nothing over.
- *
- * Not an update path. Switching release channel needs a fresh process to pick
- * the new feed up, and that is all this does.
- */
+/** Not an update path: switching release channel needs a fresh process to pick
+    the new feed up, and that is all this does. */
 function relaunchApp(): void {
   isQuitting = true;
 
@@ -1845,14 +1468,8 @@ function startLocalServer(): Promise<string> {
 
 // ── Main window ─────────────────────────────────────────────────────────
 
-/**
- * Height of the native window-controls strip on Windows and Linux.
- *
- * Has to match TITLEBAR_HEIGHT in src/components/titlebar.tsx, which is the
- * strip the app draws its own back/forward buttons and title into. The two
- * halves sit side by side, so a disagreement shows up as a step in the middle
- * of the titlebar.
- */
+/** Has to match TITLEBAR_HEIGHT in src/components/titlebar.tsx: the two halves
+    sit side by side, so a disagreement is a step in the titlebar. */
 const TITLEBAR_OVERLAY_HEIGHT = 36;
 
 function createMainWindow(): BrowserWindow {
@@ -1865,14 +1482,8 @@ function createMainWindow(): BrowserWindow {
 
     titleBarStyle: "hidden",
 
-    // Only what the window opens with, before the renderer has read the
-    // theme and sent the real values (GRYT-288). These are the shipped dark
-    // palette's --gryt-neutral-1 and --gryt-neutral-12, so somebody on the
-    // default theme sees no change at all when the push arrives.
-    //
-    // The colour used to be #0d0f13, which is not a token and not what the
-    // titlebar beside it paints — so the strip was two shades of almost the
-    // same dark, with a seam down the middle.
+    // What the window opens with, before the renderer sends the real values.
+    // The shipped dark palette's tokens, so the default theme sees no change.
     titleBarOverlay: {
       color: "#111318",
       symbolColor: "#e0e0e6",
@@ -1890,10 +1501,7 @@ function createMainWindow(): BrowserWindow {
       ),
       contextIsolation: true,
       nodeIntegration: false,
-      // The idle default, and only the idle default — a call turns it off,
-      // see setRendererThrottling. Left on here because the app spends most of
-      // its life in the tray doing nothing, and throttling a renderer that is
-      // doing nothing is the behaviour worth having.
+      // The idle default only; a call turns it off. See setRendererThrottling.
       backgroundThrottling: true,
     },
 
@@ -1967,13 +1575,8 @@ function createMainWindow(): BrowserWindow {
     mainWindow = null;
   });
 
-  /*
-   * Start watching for whatever was listed last time (GRYT-931).
-   *
-   * Here rather than at app start because the only thing a match does is reach
-   * a renderer, and there is no renderer before this. Created once: a second
-   * window would otherwise mean two pollers asking the same question.
-   */
+  /* Here rather than at app start, since a match only reaches a renderer. Once,
+     or a second window means two pollers asking the same question. */
   if (!processWatcher) {
     processWatcher = createProcessWatcher({
       onChange: (running) => {
@@ -1999,10 +1602,8 @@ function createMainWindow(): BrowserWindow {
       true
     );
 
-    /* Coming back to the window is the moment somebody is most likely to act on
-       a release, and the cheapest signal that they are here. The floor keeps
-       alt-tabbing free: at most one check every five minutes however often this
-       fires. */
+    /* The cheapest signal that somebody is here. The floor keeps alt-tabbing
+       free at one check every five minutes. */
     checkForUpdatesInBackground("focus");
   });
 
@@ -2236,10 +1837,8 @@ interface HotkeyBinding {
 
 const hotkeyBindings = new Map<HotkeyAction, HotkeyBinding>();
 
-/**
- * Which bindings are currently held. Keeps key repeat from firing an action
- * twice, and lets a release be matched after the modifiers were let go.
- */
+/** Keeps key repeat from firing twice, and lets a release be matched after the
+    modifiers were let go. */
 const hotkeyHeld = new Set<HotkeyAction>();
 
 function parseBinding(combo: string): HotkeyBinding | null {
@@ -2301,11 +1900,8 @@ function matchPress(
   return null;
 }
 
-/**
- * A release ignores modifiers. Letting go of Shift before the key itself is
- * normal, and a push-to-talk that only closed on an exact match would leave
- * the microphone open.
- */
+/** A release ignores modifiers: letting go of Shift first is normal, and an
+    exact match would leave the microphone open. */
 function matchRelease(
   keycode: number | null,
   mouseButton: number | null
@@ -2367,8 +1963,7 @@ function ensureUiohook(): boolean {
   });
 
   // uiohook listens without swallowing, so every click in the OS arrives here.
-  // Left and right click are not bindable (src/lib/hotkeys.ts), which keeps
-  // this from keying the microphone on ordinary clicking.
+  // Left and right are not bindable, which keeps ordinary clicking out.
   uIOhook.on("mousedown", (event) => {
     onHotkeyPress(null, Number(event.button), event);
   });
@@ -2568,28 +2163,8 @@ function trayTooltip(): string {
 }
 
 /**
- * Chromium throttles a hidden window's timers. That is right for a chat client
- * sitting in the tray and wrong for one that is in a call.
- *
- * Minimise the window and the renderer's timers slow down; leave it hidden for
- * about five minutes and Chromium's intensive throttling takes over and they
- * fire roughly once a minute. Two things in the voice engine ride on a 15s
- * `setInterval` and both matter:
- *
- *   - the keep-alive that keeps the SFU WebSocket looking alive to whatever is
- *     between us and it, and
- *   - the check that notices the socket is no longer OPEN, which is what starts
- *     a reconnect.
- *
- * At one tick a minute the first is barely a keep-alive and the second means a
- * dropped call can go unnoticed for most of a minute. Audio itself is fine
- * either way — WebRTC runs below the renderer's timers and does not care — so
- * the failure is quiet: the call stays up, the socket does not, and nothing
- * looks wrong until the reconnect that should have happened does not.
- *
- * Off for the duration of a call, back on when it ends. Not off permanently:
- * the app starts hidden for a lot of people and spends most of its life in the
- * tray, and a renderer that is doing nothing should be throttled.
+ * A hidden window's timers fall to roughly one a minute, which starves the voice
+ * engine's 15s keep-alive and its dropped-socket check. Off for a call only.
  */
 function setRendererThrottling(allowed: boolean): void {
   const contents = mainWindow?.webContents;
@@ -2686,13 +2261,8 @@ if (!gotSingleInstanceLock) {
   app
     .whenReady()
     .then(async () => {
-      // macOS will not show the microphone or camera prompt for getUserMedia
-      // alone — an Electron app has to ask. Without this the renderer gets
-      // NotAllowedError forever and enumerateDevices returns nothing, which
-      // reads like broken audio rather than a missing permission.
-      //
-      // Safe to call every launch: once a decision is recorded, it resolves
-      // with that decision instead of prompting again.
+      // macOS will not prompt for getUserMedia alone, so without this the renderer
+      // gets NotAllowedError forever. Safe every launch; a decision sticks.
       if (process.platform === "darwin") {
         for (const kind of ["microphone", "camera"] as const) {
           try {
@@ -2706,9 +2276,8 @@ if (!gotSingleInstanceLock) {
 
       try {
         await prepareEmbeddedServerRuntime();
-        // prepareEmbeddedServerRuntime returns early when there is no archive,
-        // which is every slim build. Saying "ready" for that sent me looking
-        // for an extracted runtime that was never meant to exist.
+        // It returns early when there is no archive, which is every slim build,
+        // and saying "ready" sends somebody looking for a runtime that is not there.
         startupLog(
           isSlimInstall()
             ? "Embedded server runtime: not in this build"
@@ -2801,10 +2370,8 @@ if (!gotSingleInstanceLock) {
             autoUpdate: enabled,
           });
 
-          /* Turning it back on should not mean waiting up to an hour for the
-             next tick. Turning it off cancels nothing that is already running
-             — electron-updater has no cancel that leaves a usable cache, and
-             the bytes are half down. */
+          /* Turning it back on should not mean waiting for the next tick. Off
+             cancels nothing running: there is no cancel that leaves a cache. */
           if (enabled) {
             lastUpdateCheckAt = 0;
             announcedVersion = null;
@@ -2814,19 +2381,8 @@ if (!gotSingleInstanceLock) {
         }
       );
 
-      /*
-       * Watching for programs you listed (GRYT-931).
-       *
-       * The watch list lives in the global store rather than per user: it is
-       * about this machine — which executables are on it and what they are
-       * called — and the same person on a laptop and a desktop does not have
-       * the same games installed on both.
-       *
-       * `listRunningPrograms` is the only thing here that hands over a list of
-       * what is open, and it is answered on demand for the settings screen.
-       * The watcher itself only ever reports matches, which is what makes the
-       * capability a plugin asks for an honest one.
-       */
+      /* The list is per machine rather than per user, since it names executables.
+         Only `listRunningPrograms` hands over what is open, on demand. */
       ipcMain.handle("processes-list-running", () => listRunningPrograms());
 
       ipcMain.handle("processes-get-watched", () =>
@@ -2862,25 +2418,8 @@ if (!gotSingleInstanceLock) {
         }
       );
 
-      /**
-       * Repaint the native window controls when the theme changes
-       * (GRYT-288).
-       *
-       * On Windows and Linux the minimise, maximise and close buttons are
-       * drawn by the OS into an overlay strip, not by us — so they are the
-       * one part of the window the stylesheet cannot reach. They were set
-       * once at construction and stayed that colour, which meant picking a
-       * light theme left three dark-theme buttons sitting in the corner of
-       * a light titlebar.
-       *
-       * The renderer sends resolved colours rather than a theme name,
-       * because it is the only side that can read what the variables
-       * currently evaluate to — an imported theme supplies its own.
-       *
-       * macOS is excluded: the traffic lights belong to the OS and follow
-       * the system appearance, and setTitleBarOverlay is not implemented
-       * there.
-       */
+      /** The OS draws these, so the stylesheet cannot reach them. Resolved
+          colours, since only the renderer reads the variables. Not macOS. */
       ipcMain.on(
         "set-titlebar-overlay",
         (
@@ -2901,10 +2440,8 @@ if (!gotSingleInstanceLock) {
           )
             return;
 
-          // Anything but a plain hex string is refused rather than passed
-          // on. Electron throws on a colour it cannot parse, and the value
-          // arrives from the renderer, where a theme could carry oklch or
-          // a colour name.
+          // Electron throws on a colour it cannot parse, and a theme in the
+          // renderer could carry oklch or a colour name.
           const isHex = (v: unknown) =>
             typeof v === "string" &&
             /^#[0-9a-f]{6}$/i.test(v);
@@ -3158,10 +2695,8 @@ if (!gotSingleInstanceLock) {
         () => getAddons()
       );
 
-      // Asked for by the addons page when it opens, rather than on a timer.
-      // Nobody needs to know an addon is out of date while they are in a call,
-      // and a check that only runs when somebody is looking at the answer
-      // cannot spend anybody's rate limit in the background.
+      // On open rather than on a timer: a check that only runs when somebody is
+      // looking cannot spend a rate limit in the background.
       ipcMain.handle(
         "addons:check-updates",
         () => checkAddonUpdates()
@@ -3601,20 +3136,11 @@ if (!gotSingleInstanceLock) {
           );
         }
       } else {
-        /* Every launch, now that there is only one. Open the window and look
-           for updates behind it.
+        /* Open the window and look for updates behind it: a second path used to
+           relaunch into a splash and download before showing anything. */
 
-           An update downloads while Gryt is running and installs on restart,
-           so nothing about starting the app waits on the network. There used to
-           be a second path here that relaunched into a splash and downloaded
-           before showing anything, which is why installing an older build on
-           Windows took minutes to reach a login screen. */
-
-        /* Waited for rather than shown immediately. An empty frame that fills
-           in a second later is not fast, it just moves the wait somewhere more
-           visible — and until now the update check was incidentally giving the
-           renderer this time. The 20 second fallback in createMainWindow covers
-           a load that never finishes. */
+        /* Waited for: an empty frame that fills in a second later just moves the
+           wait somewhere more visible. createMainWindow has a 20s fallback. */
         if (
           mainWindow &&
           !mainWindow.webContents.isLoading()
@@ -3633,24 +3159,16 @@ if (!gotSingleInstanceLock) {
 
         initBackgroundUpdater(false);
 
-        /* Late enough to be out of the way of everything else starting, early
-           enough that somebody who opens Gryt, reads a message and closes it
-           still hears about a release. The periodic timer alone would not look
-           for an hour. */
+        /* Late enough to be out of the way, early enough that somebody who opens
+           Gryt and closes it still hears about a release. */
         setTimeout(
           () => checkForUpdatesInBackground("launch"),
           LAUNCH_UPDATE_CHECK_DELAY_MS
         );
       }
 
-      /**
-       * If this process is the first healthy launch after the one-time Windows
-       * installer migration, remove the rollback copy of the old installation.
-       *
-       * This is intentionally after the startup/update branching above.
-       * A process which immediately quits to install another update never gets
-       * here, while a process which reaches its usable startup state does.
-       */
+      /** After the startup branching on purpose: a process that quits to install
+          another update never reaches here, and a healthy one does. */
       cleanupLegacyWindowsInstallBackup();
 
       // ── Embedded server auto-start ─────────────────────────────────
@@ -3846,9 +3364,8 @@ if (!gotSingleInstanceLock) {
             })
             .then(
               (sources) => {
-                /* Wayland can return nothing: the compositor will not let an
-                   app enumerate screens. Calling back with an undefined source
-                   fails the request silently. */
+                /* Wayland can return nothing, and calling back with an undefined
+                   source fails the request silently. */
                 if (sources.length === 0) {
                   console.warn(
                     "[screen] no capture sources; session is",
@@ -3860,9 +3377,8 @@ if (!gotSingleInstanceLock) {
 
                 callback({
                   video: sources[0],
-                  /* Windows only, per Electron's typings. Asking for it
-                     elsewhere is a second capture request, and under
-                     xdg-desktop-portal that is a second permission dialog. */
+                  /* Windows only: elsewhere it is a second capture request, and
+                     under xdg-desktop-portal a second permission dialog. */
                   ...(process.platform === "win32"
                     ? { audio: "loopback" as const }
                     : {}),
@@ -3974,13 +3490,8 @@ if (!gotSingleInstanceLock) {
       ipcMain.on(
         "auth:open-external",
         (_event, url: string) => {
-          /*
-           * Sign-in leaves for the browser and comes back through `gryt://`,
-           * so if the AppImage is not where the handler points, this is a
-           * one-way trip (GRYT-965). Asked here rather than at startup: the
-           * handler is rewritten from `process.env.APPIMAGE` every launch, so
-           * at startup it has just been made correct and could never be stale.
-           */
+          /* Sign-in comes back through `gryt://`, so a moved AppImage makes this
+             one-way. Asked here, since at startup the handler is fresh. */
           void warnIfAppImageMoved().then((proceed) => {
             if (proceed) shell.openExternal(url);
           });
@@ -4033,12 +3544,8 @@ if (!gotSingleInstanceLock) {
             return;
           }
 
-          /* Somebody asked, so report rather than fetch, and let them past
-             this release's rollout slice. Bitwarden does both together:
-             `autoDownload` off and `isUserWithinRollout` forced true for the
-             length of a check with feedback, both restored in `reset()`.
-             Restored on the first event either way, so a failed check cannot
-             leave background downloads off or the rollout bypassed. */
+          /* Somebody asked, so report rather than fetch and let them past the
+             rollout slice. Both restored on the first event, failure included. */
           autoUpdater.autoDownload = false;
           autoUpdater.isUserWithinRollout = () => true;
 
@@ -4087,13 +3594,8 @@ if (!gotSingleInstanceLock) {
         () => downloadAnnouncedRelease()
       );
 
-      /* What the renderer missed.
-       *
-       * The toast is React state and the announcement is a one-shot message, so
-       * a reload cleared the toast and nothing ever sent it again —
-       * `announcedVersion` had already been set, so not even the next check
-       * would (GRYT-633). The renderer asks for this on mount instead of being
-       * told once and having to keep it. */
+      /* The toast is React state and the announcement a one-shot message, so a
+         reload cleared it for good. The renderer asks on mount instead. */
       ipcMain.on(
         "replay-update-status",
         () => {
@@ -4121,21 +3623,14 @@ if (!gotSingleInstanceLock) {
             return;
           }
 
-          /* Asked for before there is anything to install. Start the
-             download rather than restarting into nothing — with automatic
-             updates off there is no other way this ever begins, and
-             `update-downloaded` raises the prompt again the moment it lands.
-             `downloadAnnouncedRelease` reports the progress if one is already
-             running. */
+          /* Asked for before there is anything to install, so start the download
+             rather than restart into nothing. */
           downloadAnnouncedRelease();
         }
       );
 
-      // Answers with whether global capture is actually running. The renderer
-      // falls back to its own window listeners when it is not — uiohook is
-      // missing on some Linux setups and needs Accessibility on macOS, and a
-      // hotkey that works only while Gryt is focused beats one that does
-      // nothing.
+      // uiohook is missing on some Linux setups and needs Accessibility on macOS,
+      // so the renderer falls back to its own window listeners.
       ipcMain.handle(
         "hotkeys-set",
         (
@@ -4165,19 +3660,8 @@ if (!gotSingleInstanceLock) {
         }
       );
 
-      /*
-       * A desktop notification, raised by the renderer when a message arrives
-       * somewhere this person is not looking.
-       *
-       * `silent: true` always. The app plays its own message sound from the
-       * same event, and letting the OS play one as well is two noises for one
-       * message.
-       *
-       * The icon is passed explicitly because Linux will not guess it. A
-       * notification there is drawn by the desktop's own daemon, which looks
-       * the sender up by desktop entry, and an AppImage that has not been
-       * registered has no entry to find. Handing it the file works either way.
-       */
+      /* `silent` always, since the app plays its own sound from the same event.
+         The icon is explicit because an unregistered AppImage has no entry. */
       ipcMain.on(
         "show-notification",
         (
