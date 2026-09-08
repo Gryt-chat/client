@@ -46,14 +46,8 @@ export function CameraSettings() {
   const { cameraEnabled, cameraStream: globalStream, devices, getDevices } = useCamera();
 
   /**
-   * What peers are actually receiving, when there is a call to receive it.
-   *
-   * The chip below used to read `track.getSettings()`, which is the raw camera
-   * track — before the encoder gets to it. What goes out is whatever survives
-   * the outbound sender: the constraints, the encoding caps, and any bandwidth-
-   * or CPU-driven downscaling the encoder does on its own. Those are routinely
-   * different numbers, so somebody checking their own preview to judge quality
-   * got a confident wrong answer (GRYT-31).
+   * What peers are actually receiving. `track.getSettings()` is the raw camera
+   * track, before the encoder, and is routinely a different number (GRYT-31).
    */
   const { outbound } = useVideoStats(cameraEnabled);
   const sent = outbound.find((o) => o.label === "camera") ?? null;
@@ -261,8 +255,7 @@ export function CameraSettings() {
                       background: "rgba(0,0,0,0.65)",
                       backdropFilter: "blur(4px)",
                       // The tone prop cannot carry this: the inline background
-                      // overrides what a warning tone would paint, so the
-                      // difference has to be in the text.
+                      // overrides what a warning tone would paint.
                       color: differs ? "var(--gryt-warning-9)" : "#fff",
                       fontVariantNumeric: "tabular-nums",
                     }}

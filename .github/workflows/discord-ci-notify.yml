@@ -1,8 +1,7 @@
 name: Discord CI notification
 
 # Reports failed workflow runs to #ci in Discord, and the recovery. Shared
-# implementation in Gryt-chat/.github. **List new workflows here** — an
-# unlisted one notifies nobody.
+# implementation in Gryt-chat/.github. **List new workflows here.**
 
 on:
   workflow_run:

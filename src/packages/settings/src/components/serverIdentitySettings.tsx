@@ -19,8 +19,7 @@ function formatDate(epoch: number): string {
 
 /**
  * Key ids are 43 characters of base64url, which nobody reads. Grouping them the
- * way SSH does makes two of them comparable at a glance, which is the only
- * thing anyone actually needs to do with one.
+ * way SSH does makes two of them comparable at a glance.
  */
 function Fingerprint({ value }: { value: string }) {
   const grouped = (value.match(/.{1,8}/g) || [value]).join(" ");
@@ -178,14 +177,8 @@ export function ServerIdentitySettings() {
     (entry: BlockedServer) => {
       unblockServer(entry);
 
-      // Unblocking is someone saying "this server was replaced", so the
-      // identity it replaced is retired too. Without this the old pin lingers
-      // and Known servers shows two rows for the same address with different
-      // fingerprints, which reads as a problem rather than as history.
-      //
-      // Only when nothing else still expects that key: the same server
-      // legitimately answers at more than one address, and forgetting it would
-      // un-trust the others.
+      // Unblocking is someone saying "this server was replaced", so the identity
+      // it replaced is retired too — but only when nothing else expects that key.
       const stillInUse = Object.values(listHostExpectations()).includes(entry.expectedKeyId);
       if (!stillInUse) forgetPin(entry.expectedKeyId);
 

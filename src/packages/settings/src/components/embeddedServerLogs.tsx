@@ -22,11 +22,8 @@ const LEVEL_COLOR = {
 const LEVEL_RANK = { debug: 0, info: 1, warn: 2, error: 3 } as const;
 
 /**
- * What the three processes Gryt hosts are saying.
- *
- * They already write to the main process console, which is invisible from
- * inside the app — so when a hosted server misbehaved the only way to find out
- * why was to leave Gryt and read a log file.
+ * What the three processes Gryt hosts are saying. They write to the main process
+ * console, which is invisible from inside the app.
  */
 export function EmbeddedServerLogs({ serverId }: { serverId: string }) {
   const [lines, setLines] = useState<EmbeddedLogLine[]>([]);
@@ -45,9 +42,8 @@ export function EmbeddedServerLogs({ serverId }: { serverId: string }) {
 
     return api.onEmbeddedServerLog((entry) => {
       if (!entry.lines?.length) return;
-      // This server's lines, plus the SFU's — that one is shared, and it is
-      // where the reason voice failed shows up, so filtering it out would hide
-      // the answer to the question this pane is usually open for.
+      // This server's lines, plus the SFU's — that one is shared, and it is where
+      // the reason voice failed shows up.
       const mine = entry.lines.filter(
         (l) => l.serverId === serverId || l.serverId === null,
       );

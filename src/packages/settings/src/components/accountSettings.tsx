@@ -27,11 +27,8 @@ const DEFAULT_ISSUER = "https://auth.gryt.chat/realms/gryt";
 const DEFAULT_IDENTITY = "https://id.gryt.chat";
 
 /**
- * Something worth hiding until asked for.
- *
- * Settings gets opened while screen sharing, and an email address or an account
- * id sitting in plain view is the kind of thing somebody only notices after it
- * has been seen. Click to show, click again to put it away.
+ * Something worth hiding until asked for. Settings gets opened while screen
+ * sharing, and an email address in plain view is noticed too late.
  */
 function Revealable({ value }: { value: string }) {
   const [shown, setShown] = useState(false);
@@ -105,10 +102,8 @@ export function AccountSettings() {
     const issuer = issuerInput.trim().replace(/\/+$/, "");
     const identity = identityInput.trim().replace(/\/+$/, "");
 
-    // The two go together. An issuer on its own sends a token from one Keycloak
-    // to the certificate authority of another, and the rejection reads as a key
-    // problem rather than a configuration one — so refuse the half-set state
-    // instead of letting somebody discover it at sign-in.
+    // The two go together: an issuer on its own sends a token from one Keycloak
+    // to another's CA, and the rejection reads as a key problem.
     if (issuer.length > 0 && identity.length === 0) {
       toast.error(
         "Set the identity service too. Your auth server needs the one that signs for it, or signing in is rejected.",

@@ -22,9 +22,8 @@ const MAX_FAKE_PARTICIPANTS = 12;
 const MAX_FAKE_MEMBERS = 12;
 
 /**
- * Developer tools. Rendered only under `import.meta.env.DEV`, which Vite
- * constant-folds to false in a production build, so the whole panel and its
- * tab disappear from a release.
+ * Developer tools. Rendered only under `import.meta.env.DEV`, which Vite folds to
+ * false, so the whole panel and its tab disappear from a release.
  */
 export function DeveloperSettings() {
   const {

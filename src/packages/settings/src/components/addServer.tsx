@@ -279,8 +279,8 @@ export function AddNewServer({
   }
 
   /** Hidden once you are on it. It is a suggestion, not a shortcut. */
-  /** It answered, they are not on it, and they have not hidden it — the last a
-      per-device preference. */
+
+  /** It answered, they are not on it, and they have not hidden it. */
   const showOfficial =
     !!officialServer && !servers[officialServer.host] && !officialServerHidden;
 
@@ -662,7 +662,8 @@ interface ServerPreviewProps {
 }
 
 /** Shaped like the create card above it: both are ways in for somebody with
-    nothing yet, whose old answer was an empty field and a format hint. */
+    nothing yet. */
+
 /** One of the two doors on the first screen. */
 function EntryCard({
   icon,

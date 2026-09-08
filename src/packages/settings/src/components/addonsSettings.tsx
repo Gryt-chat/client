@@ -67,11 +67,8 @@ function useAddonAssetUrl(
 }
 
 /**
- * What each addon's repository says is newer, keyed by addon id.
- *
- * Checked when this screen opens rather than on a timer. Nobody needs to learn
- * an addon is out of date mid-call, and a check that only runs while somebody
- * is looking at the answer cannot quietly spend their rate limit.
+ * What each addon's repository says is newer, keyed by addon id. Checked when
+ * this screen opens rather than on a timer, so it cannot spend a rate limit.
  */
 function useAddonUpdates(): Record<string, AddonUpdate> {
   const [updates, setUpdates] = useState<Record<string, AddonUpdate>>({});
@@ -205,16 +202,8 @@ function AddonCard({
 }
 
 /**
- * What a plugin asked for, and whether it may have it (GRYT-928).
- *
- * **Not a sandbox, and the copy says so.** A plugin runs in the app's own page
- * and could go around every one of these — see `capabilities.ts`. What a switch
- * here buys is that the polite path refuses, so a plugin ignoring the answer
- * has to do it on purpose rather than by accident, and somebody has read the
- * list before enabling it.
- *
- * Drawn only for a plugin that asks for something. Most do not, and an empty
- * "Permissions" heading on every card would be a section about nothing.
+ * What a plugin asked for, and whether it may have it. Drawn only for a plugin
+ * that asks for something; most do not (GRYT-928).
  */
 function AddonCapabilities({ addon }: { addon: AddonManifest }) {
   const declared = declaredCapabilities(addon.capabilities);
