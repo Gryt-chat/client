@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
-import { getServerAccessToken, setOpenThread } from "@/common";
+import { clearThreadMentions, getServerAccessToken, setOpenThread } from "@/common";
 
 import type { ChatMessage } from "../components/chatUtils";
 import { uploadChatFile } from "./uploadChatFile";
@@ -45,6 +45,26 @@ interface ThreadSocket {
   emit: (event: string, data: unknown) => void;
   on: (event: string, cb: (payload: never) => void) => void;
   off: (event: string, cb: (payload: never) => void) => void;
+}
+
+/**
+ * Opening a thread is reading it.
+ *
+ * Three things at once because they are one event and splitting them is how
+ * they drift: the panel stops counting the thread unread, the mention count on
+ * the topic row goes, and the server is told so it stays gone on the next
+ * connect. Opening the channel does not cover the last one any more — it
+ * clears the timeline and leaves the threads alone (GRYT-1014).
+ */
+function enterThread(
+  socket: ThreadSocket,
+  host: string,
+  conversationId: string,
+  threadId: string,
+) {
+  setOpenThread(host, threadId);
+  clearThreadMentions(host, threadId);
+  socket.emit("mentions:seen", { conversationId, threadId });
 }
 
 function asSocket(s: unknown): ThreadSocket | null {
@@ -112,7 +132,7 @@ export function useThreads(
     const fetchThread = (thread: ThreadSummary) => {
       setOpen({ thread, root: null, messages: [], loading: true, hasOlder: false, loadingOlder: false });
       openRef.current = { thread, root: null, messages: [], loading: true, hasOlder: false, loadingOlder: false };
-      setOpenThread(serverHost || "", thread.thread_id);
+      enterThread(socket, serverHost || "", conversationId, thread.thread_id);
       socket.emit("thread:fetch", { conversationId, threadId: thread.thread_id });
     };
 
@@ -336,7 +356,7 @@ export function useThreads(
     if (existing) {
       setOpen({ thread: existing, root: null, messages: [], loading: true, hasOlder: false, loadingOlder: false });
       openRef.current = { thread: existing, root: null, messages: [], loading: true, hasOlder: false, loadingOlder: false };
-      setOpenThread(serverHost || "", existing.thread_id);
+      enterThread(socket, serverHost || "", conversationId, existing.thread_id);
       socket.emit("thread:fetch", { conversationId, threadId: existing.thread_id });
       return;
     }
@@ -350,7 +370,7 @@ export function useThreads(
     if (!socket || !summary) return;
     setOpen({ thread: summary, root: null, messages: [], loading: true, hasOlder: false, loadingOlder: false });
     openRef.current = { thread: summary, root: null, messages: [], loading: true, hasOlder: false, loadingOlder: false };
-    setOpenThread(serverHost || "", summary.thread_id);
+    enterThread(socket, serverHost || "", conversationId, summary.thread_id);
     socket.emit("thread:fetch", { conversationId, threadId: summary.thread_id });
   }, [socketConnection, conversationId, summaries, serverHost]);
 
@@ -359,7 +379,7 @@ export function useThreads(
     if (!socket) return;
     setOpen({ thread: summary, root: null, messages: [], loading: true, hasOlder: false, loadingOlder: false });
     openRef.current = { thread: summary, root: null, messages: [], loading: true, hasOlder: false, loadingOlder: false };
-    setOpenThread(serverHost || "", summary.thread_id);
+    enterThread(socket, serverHost || "", conversationId, summary.thread_id);
     socket.emit("thread:fetch", { conversationId, threadId: summary.thread_id });
   }, [socketConnection, conversationId, serverHost]);
 

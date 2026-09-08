@@ -1,7 +1,7 @@
 import { Alert, Button, Chip, Dialog, IconButton, TextField, Toggle, ToggleGroup } from "@gryt/ui";
 import { useEffect, useMemo, useState } from "react";
 
-import { useThreadUnread } from "@/common";
+import { useThreadMentions, useThreadUnread } from "@/common";
 import type { ForumTag } from "@/settings/src/types/server";
 
 import { PiChatsFill, PiPlus, PiX } from "../../../../lib/icons";
@@ -69,6 +69,7 @@ export function ForumView({ socketConnection, conversationId, serverHost, curren
   const { topics, loading, creating, createError, createdToken, clearCreateError, createTopic } = useForum(socketConnection, conversationId, serverHost);
   const [filter, setFilter] = useState<ForumFilter>("all");
   const { threadUnreadCount } = useThreadUnread();
+  const { threadMentionCount } = useThreadMentions();
   const [composing, setComposing] = useState(false);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -206,7 +207,10 @@ export function ForumView({ socketConnection, conversationId, serverHost, curren
                   chip on the right, so the row reads title, tags, who and when
                   on the left and its state on the right. */}
               <div style={{ gridRow: "1 / 3", gridColumn: 2 }} className="flex items-center gap-2 self-center">
-              <UnreadIndicator unread={threadUnreadCount(serverHost ?? "", t.thread_id)} />
+              <UnreadIndicator
+                unread={threadUnreadCount(serverHost ?? "", t.thread_id)}
+                mentions={threadMentionCount(serverHost ?? "", t.thread_id)}
+              />
               {t.status === "solved" && (
                 /* The success tone, rather than the #5cc79a it used to hardcode
                    — that green was picked against the dark theme and stayed put

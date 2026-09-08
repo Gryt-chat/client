@@ -6,6 +6,7 @@ import { Socket } from "socket.io-client";
 import { setAnnouncedPlugins } from "@/addons";
 import {
   addMention,
+  addThreadMention,
   getServerAccessToken,
   getServerRefreshToken,
   getStoredWorn,
@@ -19,6 +20,7 @@ import {
   setServerFileToken,
   setServerNotice,
   setServerRefreshToken,
+  setThreadMentionCounts,
 } from "@/common";
 import {
   evaluateMemberKeys,
@@ -148,12 +150,27 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
    * handler covers both, and two windows belonging to the same person cannot
    * disagree about what is left.
    */
-  socket.on("mentions:list", (payload: { counts?: Record<string, number> }) => {
-    setMentionCounts(host, payload?.counts ?? {});
-  });
+  socket.on(
+    "mentions:list",
+    (payload: {
+      counts?: Record<string, number>;
+      mentions?: Array<{ conversation_id?: string; thread_id?: string | null }>;
+    }) => {
+      setMentionCounts(host, payload?.counts ?? {});
+      /* A naming inside a thread counts on the channel as well, which is how
+         somebody notices it. This is the second half, keyed by thread, which is
+         how they find it (GRYT-1012).
+         Built from the rows rather than the `threadCounts` the server sends
+         beside them: those are keyed by thread alone, and the store needs the
+         conversation to know how much of a channel's count it is holding. */
+      setThreadMentionCounts(host, payload?.mentions ?? []);
+    },
+  );
 
-  socket.on("mention:new", (payload: { conversationId?: string }) => {
-    if (payload?.conversationId) addMention(host, payload.conversationId);
+  socket.on("mention:new", (payload: { conversationId?: string; threadId?: string | null }) => {
+    if (!payload?.conversationId) return;
+    addMention(host, payload.conversationId);
+    if (payload.threadId) addThreadMention(host, payload.conversationId, payload.threadId);
   });
 
   socket.on("server:details", (data: serverDetails) => {
