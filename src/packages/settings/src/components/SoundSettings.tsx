@@ -2,7 +2,7 @@ import { Button, IconButton, Slider, Switch, Tooltip } from "@gryt/ui";
 import { useEffect, useRef, useState } from "react";
 import useSound from "use-sound";
 
-import { PiArrowsClockwiseFill, PiPlayFill, PiStopFill } from "../../../../lib/icons";
+import { PiArrowsClockwiseFill, PiCheck, PiPlayFill, PiStopFill } from "../../../../lib/icons";
 
 interface SoundSettingsProps {
   label: string;
@@ -280,8 +280,9 @@ export function SoundSettings({
               </Tooltip>
             </div>
             {customSoundFile && (
-              <span className="text-xs text-gryt-success">
-                ✓ Custom sound file loaded
+              <span className="text-xs text-gryt-success inline-flex items-center gap-1">
+                <PiCheck size={12} />
+                Custom sound file loaded
               </span>
             )}
           </div>
