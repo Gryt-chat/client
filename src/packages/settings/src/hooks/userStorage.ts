@@ -362,4 +362,5 @@ export const SETTINGS_KEYS = [
   "pinMembersSidebar",
   "afkTimeoutMinutes",
   "chatMediaVolume",
+  "whatsNewSeenVersion",
 ] as const;

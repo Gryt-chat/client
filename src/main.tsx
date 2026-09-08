@@ -35,6 +35,7 @@ import { BrowserBanner } from "./components/browserBanner";
 import { ServiceStatusBanner } from "./components/serviceStatusBanner";
 import { Titlebar } from "./components/titlebar";
 import { UpdateAnnouncement } from "./components/updateAnnouncement";
+import { WhatsNew } from "./components/whatsNew";
 import { initGlobalStorage } from "./lib/globalStorage";
 import { syncGoogleFonts } from "./lib/googleFonts";
 import { captureLogs } from "./lib/reports/logs";
@@ -160,6 +161,7 @@ function ThemedApp() {
         <App />
       </div>
       <UpdateAnnouncement />
+      <WhatsNew />
       {/* Mounted once rather than per server view, because the two places a
           server menu is drawn — the sidebar and the mobile view — would
           otherwise each need the state and the dialog (GRYT-942). */}

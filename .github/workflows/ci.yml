@@ -30,6 +30,10 @@ jobs:
       - run: yarn test:reset-warning
       - run: yarn test:guest-history
 
+      # Fires once per version, so a mistake is a modal nobody sees again or one
+      # that greets a fresh install. Neither shows up in a build.
+      - run: yarn test:whats-new
+
       # The chat scroller has to give up height to anything drawn between it and
       # the composer, and re-pin. Otherwise the newest message sits behind it.
       - run: yarn test:chat-scroll-anchor
