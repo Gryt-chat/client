@@ -12,7 +12,7 @@ import { BetaTag } from "./wordmark";
  * The mark, inlined as JSX because a beta build recolours part of it. **Keep this
  * in step with public/logo.svg by hand** — nothing ties them together.
  */
-function LogoIcon({ size = 48, beta = false }: { size?: number; beta?: boolean }) {
+export function LogoIcon({ size = 48, beta = false }: { size?: number; beta?: boolean }) {
   const body = beta ? BETA_ACCENT : "#A495E3";
   const ground = beta ? BETA_GROUND : "#2E2D5F";
   /* The eyes, the beak and the wink. On the stable mark they are the ground's own

@@ -2,7 +2,10 @@ import { useEffect, useState } from "react";
 
 import { getUserValue, setUserValue } from "@/settings";
 
-import { NoticeDialog } from "../packages/socket/src/components/NoticeDialog";
+import {
+  type WhatsNewChange,
+  WhatsNewDialog,
+} from "../packages/socket/src/components/WhatsNewDialog";
 
 /** The site emits this on every build. See the site's emit-changelog-json.mjs. */
 const CHANGELOG_URL = "https://gryt.chat/changelog.json";
@@ -13,12 +16,13 @@ interface Entry {
   version: string;
   date: string;
   line: string;
+  changes?: WhatsNewChange[];
   note?: boolean;
 }
 
 /**
  * What changed, the first time somebody opens a version they have not seen. The
- * hand-written changelog line, not the release body of commit subjects.
+ * hand-written changelog lines, not the release body of commit subjects.
  */
 export function WhatsNew() {
   const version = __APP_VERSION__;
@@ -58,24 +62,12 @@ export function WhatsNew() {
   if (!entry) return null;
 
   return (
-    <NoticeDialog
-      open
+    <WhatsNewDialog
+      version={entry.version}
+      date={entry.date}
+      line={entry.line}
+      changes={entry.changes}
       onClose={() => setEntry(null)}
-      title={`What's new in Gryt ${entry.version}`}
-      message={
-        <>
-          <span style={{ display: "block" }}>{entry.line}</span>
-          <a
-            href={`https://gryt.chat/changelog/${entry.version}`}
-            target="_blank"
-            rel="noreferrer"
-            style={{ display: "inline-block", marginTop: 10 }}
-          >
-            {entry.note ? "Read the full notes" : "See every change"}
-          </a>
-        </>
-      }
-      closeLabel="Got it"
     />
   );
 }
