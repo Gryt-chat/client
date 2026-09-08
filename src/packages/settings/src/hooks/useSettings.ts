@@ -488,12 +488,8 @@ function useSettingsHook() {
   }
 
   /**
-   * The same thing, for code that is not in the React tree.
-   *
-   * The socket layer is plain modules and cannot reach this hook, so a warning
-   * raised there could only ever tell somebody to go and find the setting
-   * themselves. `server_settings_open` beside it already works this way for a
-   * server's own settings.
+   * The same thing, for code that is not in the React tree. The socket layer is
+   * plain modules; `server_settings_open` beside it already works this way.
    */
   useEffect(() => {
     const handler = (event: Event) => {

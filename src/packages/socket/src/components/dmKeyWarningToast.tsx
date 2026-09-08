@@ -2,22 +2,8 @@ import { Button } from "@gryt/ui";
 import toast from "react-hot-toast";
 
 /**
- * The warning that a server holds a message key this device did not publish
- * (GRYT-727), and what somebody can do about it.
- *
- * It used to be a bare `toast.error` with `duration: Infinity` and no way out.
- * Two problems, and the second is the one that made it a nuisance:
- *
- *   1. Nothing dismissed it. react-hot-toast puts no control on a default
- *      toast, so the only exit was the condition clearing on its own.
- *   2. Even dismissing it in code did not hold. The warning is re-armed from
- *      every `members:list`, which arrives whenever anybody joins or leaves, so
- *      it came back within seconds.
- *
- * It also told the reader to go and find something in Settings, which is the
- * least useful form of help an app can offer. The two real repairs are here as
- * buttons, and which one shows depends on whether the account already has a
- * sealed copy of the key.
+ * The warning that a server holds a message key this device did not publish, and
+ * what somebody can do about it. Which repair shows depends on the account.
  */
 
 /** What this device can actually do about the mismatch. */
@@ -32,10 +18,8 @@ export type DmKeyFix =
   | "none";
 
 /**
- * Open the person's own settings from outside React.
- *
- * The socket layer is plain modules with no access to the settings hook, and
- * `server_settings_open` next to it already does this for a server's settings.
+ * Open the person's own settings from outside React. The socket layer is plain
+ * modules, and `server_settings_open` next to it already does this.
  */
 export function openUserSettings(tab: string): void {
   window.dispatchEvent(new CustomEvent("user_settings_open", { detail: { tab } }));
@@ -73,11 +57,8 @@ export function showDmKeyWarning({
 }): void {
   const action = ACTION[fix];
 
-  /* `toast.error` for the red mark it draws, same as before. The body is a
-     render function so the buttons can sit inside it.
-
-     Stacked rather than in a row: a toast is around 350px wide, and three
-     sentences beside two buttons leaves the buttons a few characters each. */
+  /* `toast.error` for the red mark, with the body as a render function so the
+     buttons can sit inside it. Stacked: a toast is around 350px wide. */
   toast.error(
     () => (
       <div className="flex flex-col gap-2" style={{ minWidth: 0 }}>

@@ -99,14 +99,8 @@ const DM_KEY_WARNING_DELAY_MS = 5000;
 const dmKeyWarningTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 /**
- * A dismissal that holds.
- *
- * The warning is re-armed from every `members:list`, and one of those arrives
- * whenever anybody joins or leaves. Dismissing it therefore bought a few
- * seconds of quiet and no more, which is why it read as impossible to get rid
- * of. Cleared again the moment the mismatch stops, in the branch below.
- *
- * Per device rather than per account: the key it is about is this device's.
+ * A dismissal that holds. The warning is re-armed from every `members:list`, so
+ * dismissing it bought seconds. Per device: the key it is about is this device's.
  */
 const DM_KEY_DISMISSED_PREFIX = "gryt_dm_key_warning_dismissed:";
 
@@ -685,11 +679,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
               setTimeout(() => {
                 dmKeyWarningTimers.delete(host);
                 /* Which repair to offer depends on the account, so it is asked
-                   here rather than guessed: a sealed copy means this device can
-                   take it, and no sealed copy means there is nothing for a
-                   second device to take yet. A guest, or a request that fails,
-                   gets the warning with no button rather than one that leads
-                   somewhere useless. */
+                   here rather than guessed. A guest gets no button at all. */
                 void dmKeyFix().then((fix) => {
                   if (dmKeyWarningDismissed(host)) return;
                   showDmKeyWarning({
