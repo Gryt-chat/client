@@ -42,24 +42,13 @@ type EditorState = {
   roles: RoleDefinition[];
   permissions: string[];
   defaults: { account: string; local: string };
-  /**
-   * Which identities this server admits, from `GRYT_IDENTITY_TIERS`.
-   *
-   * Optional because a server older than GRYT-907 does not send it. Where it is
-   * absent the guest controls stay exactly as they were rather than being
-   * switched off on a guess.
-   */
+  /** Optional, because an older server does not send it. Absent, the guest
+      controls stay as they were rather than being switched off on a guess. */
   identityTiers?: string[];
 };
 
-/**
- * A role id, derived from the name somebody typed.
- *
- * Ids are not renameable — every membership row and both joining defaults point
- * at one — so this runs once, when the role is first saved, and never again.
- * It is why a new role is held locally until it has a name: creating it on the
- * button press would mint `new-role-1a2b` and then be stuck with it.
- */
+/** Ids are not renameable, so this runs once. It is why a new role is held
+    locally until it has a name rather than minted on the button press. */
 function slugify(name: string): string {
   return name
     .toLowerCase()
@@ -71,21 +60,12 @@ function slugify(name: string): string {
 /** Marks the draft as one that does not exist on the server yet. */
 const NEW_ROLE = "__new__";
 
-/**
- * Roles the grid draws but will not let you edit.
- *
- * `owner` is the only one, and the server refuses to save it — an editable
- * column would be one whose every change came back rejected. Shown rather than
- * hidden, because leaving it out would make the grid look like it was missing
- * a role.
- */
+/** `owner` only, which the server refuses to save. Shown rather than hidden, or
+    the grid looks like it is missing a role. */
 const READ_ONLY_ROLES = new Set(["owner"]);
 
-/**
- * One row of the role list, draggable. The handle is the whole row: a role list
- * is short and the rows are already one tap target each, and dnd-kit's pointer
- * sensor only starts a drag after 5px of movement, so a click still selects.
- */
+/** The handle is the whole row: dnd-kit only starts a drag after 5px, so a
+    click still selects. */
 function SortableRole({
   id,
   disabled,
@@ -116,12 +96,8 @@ function SortableRole({
   );
 }
 
-/**
- * Ten swatches, a picker and a Clear. Swatches first, because the answer is
- * nearly always "one that looks like the others" and these ten are one family
- * by construction. Marked with a ring rather than a tick: a tick has to be
- * drawn in some colour, and none reads on all ten.
- */
+/** Swatches first, since these ten are one family by construction. Marked with
+    a ring, because no tick colour reads on all ten. */
 function RoleColorField({
   value,
   onChange,
@@ -147,9 +123,8 @@ function RoleColorField({
             aria-pressed={active}
             title={preset.name}
             onClick={() => {
-              // Committed on the press rather than on blur: a swatch is a
-              // decision the moment it is pressed, and pressing one and
-              // closing the panel should not be the case that loses it.
+              // On the press rather than on blur: pressing a swatch and closing
+              // the panel should not be the case that loses it.
               onChange(preset.value);
               onCommit(preset.value);
             }}
@@ -208,14 +183,8 @@ function RoleColorField({
   );
 }
 
-/**
- * The role editor: what each role may do, and which role somebody lands on when
- * they arrive.
- *
- * **The permission catalogue comes from the server, not this file**, so a
- * client older than the server still shows every permission it has — see
- * lib/permissions.
- */
+/** The permission catalogue comes from the server, so a client older than it
+    still shows every permission it has. */
 export function ServerRoleEditorTab({
   host,
   socket,
@@ -230,25 +199,12 @@ export function ServerRoleEditorTab({
   const [draft, setDraft] = useState<RoleDefinition | null>(null);
   const [saving, setSaving] = useState(false);
 
-  /**
-   * Permission edits for every role, keyed by role id.
-   *
-   * The grid edits all of them at once and the save event takes one role with
-   * its whole permission list, so a matrix that changed three roles is three
-   * saves. `draft` above is still the *settings* of the one selected role, none
-   * of which the grid touches.
-   *
-   * Seeded from the server's answer and reset by it, so somebody else saving
-   * while this is open replaces what is here rather than merging into it.
-   */
+  /** The grid edits every role and the save event takes one, so three changed
+      roles is three saves. Reset by the server's answer, never merged. */
   const [permDrafts, setPermDrafts] = useState<Record<string, string[]>>({});
 
-  /**
-   * How many saves are still outstanding.
-   *
-   * A ref rather than state: the socket handler that decrements it is
-   * registered once, so it would close over the first value forever.
-   */
+  /** A ref, because the socket handler that decrements it is registered once and
+      would close over the first value forever. */
   const pendingSaves = useRef(0);
 
   const refresh = () => {
@@ -261,10 +217,8 @@ export function ServerRoleEditorTab({
     if (!payload?.roles) return;
     setState(payload);
     setSaving(false);
-    // Not while a write is still in the air. Ticking two boxes quickly sends
-    // two saves, and the list that comes back for the first does not know
-    // about the second yet — adopting it would un-tick the box that was just
-    // ticked until the second reply landed.
+    // Not while a write is in the air: the list coming back for the first save
+    // does not know about the second, and would un-tick it.
     if (pendingSaves.current === 0) {
       setPermDrafts(
         Object.fromEntries(payload.roles.map((r) => [r.id, [...r.permissions]])),
@@ -272,21 +226,17 @@ export function ServerRoleEditorTab({
     }
     setSelectedId((current) => {
       if (current && payload.roles.some((r) => r.id === current)) return current;
-      // Prefer something editable. Landing on the owner role — the one thing
-      // the server refuses to save — would make the first thing anybody sees a
-      // form that cannot be submitted.
+      // Prefer something editable: landing on the owner role makes the first
+      // thing anybody sees a form that cannot be submitted.
       return payload.roles.find((r) => r.id !== "owner")?.id ?? null;
     });
   });
 
-  // The server answers a save with the saved role and a broadcast, not with a
-  // fresh list — two people can have this screen open, so ask again rather than
-  // patching the copy in this tab.
+  // The server answers with the saved role, not a fresh list, and two people can
+  // have this open — so ask again rather than patch the copy here.
   useSocketEvent(socket, "server:roles:definition:updated", () => {
-    // No toast. Every edit here is its own save now, so one per reply would be
-    // a stack of them for a row of ticks — and a toast confirming a write is
-    // the wrong thing to spend a person's attention on anyway. The tick that
-    // stayed ticked is the confirmation.
+    // No toast: every edit is its own save, so one per reply is a stack of them
+    // for a row of ticks. The tick that stayed ticked is the confirmation.
     if (pendingSaves.current > 0) pendingSaves.current -= 1;
     if (pendingSaves.current > 0) return;
     refresh();
@@ -318,9 +268,8 @@ export function ServerRoleEditorTab({
     [state, selectedId],
   );
 
-  // The draft is reset whenever the selection changes, so switching roles
-  // discards half-finished edits rather than carrying them onto somebody else.
-  // A role being created has no `selected` to reset from, so it is left alone.
+  // Reset on a selection change, so half-finished edits are not carried onto
+  // another role. A role being created has no `selected` to reset from.
   useEffect(() => {
     if (selectedId === NEW_ROLE) return;
     setDraft(selected ? { ...selected, permissions: [...selected.permissions] } : null);
@@ -339,10 +288,7 @@ export function ServerRoleEditorTab({
     );
   }, [draft, selected, creating]);
 
-  /**
-   * The roles as the grid sees them: the server's list, with this tab's
-   * unsaved permission edits laid over the top.
-   */
+  /** The server's list, with this tab's unsaved permission edits over it. */
   const gridRoles: GridRole[] = useMemo(
     () =>
       (state?.roles ?? []).map((role) => ({
@@ -355,13 +301,8 @@ export function ServerRoleEditorTab({
     [state?.roles, permDrafts],
   );
 
-  /**
-   * The list, highest rank first.
-   *
-   * Sorted here rather than trusted from the server, because this is now the
-   * thing an operator arranges directly: a list that came back in a different
-   * order than it was dropped in would read as the drag having failed.
-   */
+  /** Sorted here rather than trusted, because an operator arranges this directly
+      and a different order coming back reads as the drag having failed. */
   const orderedRoles = useMemo(
     () => byRank(state?.roles ?? []) as EditorState["roles"],
     [state?.roles],
@@ -383,24 +324,13 @@ export function ServerRoleEditorTab({
     socket.emit(event, { accessToken, ...payload });
   };
 
-  /**
-   * Whether this server turns guests away at the door (GRYT-907).
-   *
-   * Only claimed when the server said which tiers it takes. A server too old to
-   * send them answers undefined, and undefined is not "no" — switching the
-   * control off on a guess would tell an operator their guest setting is dead
-   * when it may be the thing letting people in.
-   */
+  /** Only claimed when the server said which tiers it takes: undefined is not
+      "no", and guessing would call a live setting dead. */
   const guestsRefused =
     !!state?.identityTiers && !state.identityTiers.includes("local");
 
-  /**
-   * Write one role, whole.
-   *
-   * The server's save event takes a role and everything about it, so every
-   * commit below goes through here. `permissions` comes from the drafts because
-   * the grid may have moved them since the server last spoke.
-   */
+  /** The save event takes a role and everything about it. `permissions` comes
+      from the drafts, which the grid may have moved since. */
   const saveRole = (role: RoleDefinition, roleId: string, permissions?: string[]) => {
     pendingSaves.current += 1;
     setSaving(true);
@@ -416,39 +346,21 @@ export function ServerRoleEditorTab({
     });
   };
 
-  /**
-   * The owner role's colour, and only that (GRYT-906).
-   *
-   * Its own emit rather than `saveRole`, because the server's exception for the
-   * owner requires every other field to be *absent* — a payload carrying a rank
-   * beside the colour is refused whole. That is the right shape on the server,
-   * and it means the seven-field save above cannot be reused here.
-   */
+  /** Its own emit, because the server's exception needs every other field absent:
+      a payload carrying a rank beside the colour is refused whole. */
   const saveOwnerColor = (color: string | null) => {
     pendingSaves.current += 1;
     setSaving(true);
     emit("server:roles:definitions:save", { roleId: OWNER_ROLE, color });
   };
 
-  /**
-   * Commit on the way out of whichever field was being edited, like every other
-   * settings screen in Gryt. A Save button at the far end of a scrolling panel
-   * put a batch of role edits in the bin.
-   *
-   * A role being created cannot commit on every blur — its id comes from its
-   * name, so there is nothing to write until the name is there.
-   */
+  /** On the way out of a field, like every settings screen here. A role being
+      created cannot: its id comes from its name. */
   const commitSettings = (patch?: Partial<RoleDefinition>) => {
     if (!state || !draft) return;
 
-    /*
-     * A field that commits on blur has already told React about its change by
-     * the time focus leaves it, so `draft` is current. A swatch does both in one
-     * press — set the colour, then save — and `setDraft` has not landed when the
-     * save runs: reading `draft` there gives the colour from before the press,
-     * `dirty` comes back false, and the ring moves while the database does not.
-     * So the caller hands over what it just set.
-     */
+    /* A swatch sets and saves in one press, so `setDraft` has not landed and
+       `draft` still holds the old colour. The caller hands over what it set. */
     const next = patch ? { ...draft, ...patch } : draft;
     const changed = patch
       ? true
@@ -469,14 +381,8 @@ export function ServerRoleEditorTab({
     saveRole(next, roleId);
   };
 
-  /**
-   * The other way out of a field: closing the dialog.
-   *
-   * Blur covers moving between fields and clicking another role. It does not
-   * cover Escape or the X, because the input is unmounted rather than left. A
-   * ref, because the effect has to run on unmount only and would otherwise
-   * close over the first render's draft.
-   */
+  /** Blur does not cover Escape or the X, where the input is unmounted rather
+      than left. A ref, since the effect runs on unmount only. */
   const commitRef = useRef(commitSettings);
   commitRef.current = commitSettings;
   useEffect(() => () => commitRef.current(), []);
@@ -485,11 +391,8 @@ export function ServerRoleEditorTab({
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
 
-  /**
-   * Dropping a role somewhere writes the order back as ranks. **Spaced by
-   * ten** — see `ranksAfterMove`. Owner keeps 100 and never moves, since the
-   * server refuses to save it.
-   */
+  /** Writes the order back as ranks, spaced by ten. Owner keeps 100 and never
+      moves, since the server refuses to save it. */
   const handleReorder = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!state || !over) return;
@@ -501,17 +404,14 @@ export function ServerRoleEditorTab({
   };
 
   const createRole = () => {
-    // Held locally until it is saved, so the id can come from the name. Empty
-    // and at the bottom: a new role that arrived with permissions already
-    // ticked would be a role that did something before anybody looked at it.
+    // Held locally until saved, so the id comes from the name. Empty, or it is a
+    // role that did something before anybody looked at it.
     setSelectedId(NEW_ROLE);
     setDraft({
       id: NEW_ROLE,
       name: "",
-      // A colour rather than none. A role with no colour draws its members'
-      // names in the ordinary text colour, which is the same as every other
-      // role that never got one — so the list stops telling them apart at
-      // exactly the point somebody has bothered to make a second role.
+      // A colour rather than none: without one the names draw in ordinary text,
+      // the same as every other role that never got one.
       color: nextUnusedPreset((state?.roles ?? []).map((r) => r.color)),
       rank: 5,
       permissions: [],
@@ -536,13 +436,8 @@ export function ServerRoleEditorTab({
     });
   };
 
-  /**
-   * A tick in the grid is a save, on the spot.
-   *
-   * The draft is still kept, because it is what the grid draws from and the
-   * server's answer is a round trip away — without it the box a moment ago
-   * un-ticks itself and then re-ticks when the reply lands.
-   */
+  /** The draft is still kept, because the server's answer is a round trip away
+      and without it the box un-ticks and then re-ticks. */
   const togglePermission = (roleId: string, permission: string, on: boolean) => {
     const role = state?.roles.find((r) => r.id === roleId);
     const current = permDrafts[roleId] ?? role?.permissions ?? [];
@@ -647,9 +542,8 @@ export function ServerRoleEditorTab({
           {!draft ? (
             <span className="text-sm text-gryt-muted">Pick a role to edit.</span>
           ) : draft.id === OWNER_ROLE ? (
-            /* Everything but the colour (GRYT-906). The server takes a
-               colour-only save for this role and refuses the rest, so this
-               panel offers exactly that and says why the rest is missing. */
+            /* The server takes a colour-only save for this role and refuses the
+               rest, so this panel offers that and says why. */
             <div className="flex flex-col gap-4">
               <span className="text-sm text-gryt-muted">
                 The owner holds every permission, and its name, rank and permissions cannot

@@ -65,13 +65,8 @@ const CONTROLS_HEIGHT = 80;
 /** Not a client id — the "+N" tile standing in for everyone past the cap. */
 const OVERFLOW_ITEM_ID = "overflow:more";
 
-/**
- * Local speaking detector based on the final processed audio analyser.
- *
- * This must read microphoneBuffer.finalAnalyser, not the raw analyser,
- * so the ring reflects what is actually sent after RNNoise, AGC,
- * compressor, noise gate, mute, and final processing.
- */
+/** Reads `finalAnalyser`, not the raw one, so the ring reflects what is actually
+    sent after RNNoise, the gate, mute and the rest. */
 function useFinalProcessedSpeaking(
   finalAnalyser: AnalyserNode | undefined,
   enabled: boolean,
@@ -137,16 +132,8 @@ function useFinalProcessedSpeaking(
   return speaking;
 }
 
-/**
- * Detects a microphone that is open but producing nothing at all.
- *
- * **The raw analyser, tapped before RNNoise, the gate and muteGain**, so muting
- * yourself does not look like a dead device.
- *
- * **Digital silence rather than a low level.** A live microphone in a quiet
- * room still has a noise floor, so all bins reading exactly zero means no
- * samples are arriving. Anything looser warns people who are not talking.
- */
+/** The raw analyser, before RNNoise and mute, so muting is not a dead device.
+    Exactly zero bins, because a live microphone has a noise floor. */
 function useSustainedRawSilence(
   analyser: AnalyserNode | undefined,
   enabled: boolean,
@@ -169,9 +156,8 @@ function useSustainedRawSilence(
     let reported = false;
 
     const tick = () => {
-      // A suspended context reports all-zero bins too, and that is not the same
-      // thing as a dead microphone. Stop measuring rather than accumulate
-      // silence we cannot vouch for; useMicrophone resumes it on its own.
+      // A suspended context reports all-zero bins too, so stop measuring rather
+      // than accumulate silence we cannot vouch for.
       if (analyser.context.state !== "running") {
         silentSince = 0;
         return;
@@ -301,13 +287,8 @@ export const VoiceView = ({
   clientsSpeaking: Record<string, boolean>;
   isConnecting: boolean;
   currentConnectionId?: string;
-  /**
-   * This room is a call rather than a voice channel.
-   *
-   * Decided by the parent, which holds the conversation list, so it is a
-   * lookup rather than a guess at the shape of the id. Only a call is ended
-   * for having one person left in it — see `useAloneInCall`.
-   */
+  /** Decided by the parent, which holds the conversation list, so it is a lookup
+      rather than a guess at the id's shape. */
   isCall?: boolean;
   onDisconnect?: () => void;
   peerLatency?: Record<string, PeerLatencyStats>;
@@ -356,9 +337,8 @@ export const VoiceView = ({
     isInThisVoiceChannel,
   );
 
-  // Joining without a microphone is allowed on purpose — listening is useful on
-  // its own — but it used to look completely normal, so you could sit in a
-  // channel believing you were audible. Say it once, and point at the fix.
+  // Joining without a microphone is allowed, and used to look normal enough that
+  // you could sit in a channel believing you were audible.
   const warnedAboutMicRef = useRef(false);
 
   useEffect(() => {
@@ -403,22 +383,15 @@ export const VoiceView = ({
     );
   }, [isInThisVoiceChannel, micUnavailable, setSettingsTab, setShowSettings]);
 
-  // The other half of the same problem. micUnavailable covers a microphone that
-  // could not be opened; this covers one that opened fine and produces nothing,
-  // which looks completely healthy from the outside. Only worth saying when the
-  // device itself is otherwise fine, so it stays quiet while micUnavailable has
-  // already spoken.
+  // micUnavailable covers a microphone that would not open; this covers one that
+  // opened and produces nothing, which looks healthy from outside.
   const rawInputSilent = useSustainedRawSilence(
     microphoneBuffer.analyser,
     isInThisVoiceChannel && !micUnavailable,
   );
 
-  // Once per visit to the channel, the way micUnavailable already does it, and
-  // not once per silent stretch. A headset that gates its own noise floor sends
-  // digital silence between sentences, which is precisely what the detector
-  // looks for — so on that hardware this came back every time the room went
-  // quiet for eight seconds. Reported from the community server as "getting a
-  // little bit annoyed", which is fair.
+  // Once per visit, not per silent stretch: a headset that gates its own noise
+  // floor sends digital silence between sentences.
   const warnedAboutSilenceRef = useRef(false);
 
   useEffect(() => {
@@ -481,13 +454,8 @@ export const VoiceView = ({
     setShowSettings,
   ]);
 
-  /**
-   * A camera that will not start says so (GRYT-16). Without this the button
-   * turned itself back off with no reason, which reads as the app ignoring you.
-   *
-   * Not gated on being in a voice channel, unlike the microphone one: this is
-   * the direct result of pressing a button, including in settings.
-   */
+  /** Without this the button turns itself back off with no reason. Not gated on
+      being in a voice channel: this follows a press, settings included. */
   useEffect(() => {
     if (!cameraError) {
       toast.dismiss("camera-unavailable");
@@ -528,14 +496,8 @@ export const VoiceView = ({
 
   const panelRef = useRef<HTMLDivElement>(null);
 
-  /**
-   * Fullscreen is the maximised layout with a different container, so there is
-   * no separate layout code — the grid's ResizeObserver picks up the new size.
-   *
-   * State is read back from the document rather than tracked independently,
-   * because the browser can leave fullscreen without us: Escape, the window
-   * chrome, or another element taking it.
-   */
+  /** No separate layout code; the grid's ResizeObserver picks up the new size.
+      Read back from the document, since the browser can leave without us. */
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
@@ -596,22 +558,12 @@ export const VoiceView = ({
     currentChannelId,
   ]);
 
-  /**
-   * The other person hung up and nobody is left but you.
-   *
-   * Counting `visibleClients` rather than working it out again, because this
-   * has to mean the same thing as "the panel is drawing one tile", and the tile
-   * is what somebody is looking at when it says the call is ending.
-   *
-   * Not while connecting, when the only tile is your own placeholder.
-   */
+  /** Counts `visibleClients`, so this means the same as "the panel is drawing one
+      tile". Not while connecting, where the tile is your own placeholder. */
   const aloneInCall = Boolean(isCall) && !isConnecting && visibleClients.length === 1;
 
-  /**
-   * The SFU's own timeout, so the countdown is its clock rather than a copy of
-   * its default (GRYT-715). Undefined against an SFU older than that, and the
-   * hook falls back.
-   */
+  /** The SFU's own timeout, so the countdown is its clock rather than a copy of
+      its default. Undefined against an older SFU. */
   const { callAloneTimeoutSeconds, stillHere } = useSFU();
 
   const { secondsLeft, stay } = useAloneInCall({
@@ -621,11 +573,8 @@ export const VoiceView = ({
     onEnd: () => onDisconnect?.(),
   });
 
-  /**
-   * Both clocks, because there are two and they do not talk to each other.
-   * `stillHere` restarts the SFU's; `stay` restarts the one drawing this
-   * countdown. Missing either leaves a button that looks like it worked.
-   */
+  /** Two clocks that do not talk to each other, so missing either leaves a
+      button that looks like it worked. */
   const stayInCall = useCallback(() => {
     stillHere?.();
     stay();
@@ -829,14 +778,8 @@ export const VoiceView = ({
     [displayItems],
   );
 
-  /**
-   * Two people, one big and one in the corner.
-   *
-   * The default, because it gives the person you are talking to more pixels.
-   * Set to "equal" it falls through to the ordinary grid, which for two tiles
-   * stacks them in the sidebar and puts them side by side once there is width —
-   * the same aspect-ratio rule every other count goes through (GRYT-123).
-   */
+  /** The default, since it gives the person you are talking to more pixels.
+      "equal" falls through to the ordinary grid. */
   const isHeroPip =
     voiceTwoPersonLayout === "hero" &&
     !isFocused &&
@@ -850,8 +793,7 @@ export const VoiceView = ({
   const usableWidth = Math.max(0, gridWidth - 2 * GRID_PADDING);
 
   // A share is fitted to its own shape, so the layout needs the stream's real
-  // dimensions rather than an assumed 16:9. Meet's share measured 1.731
-  // against an intrinsic 1920x1108 — it follows the window being shared.
+  // dimensions: a shared window is not 16:9.
   const shareAspect = useMemo(() => {
     for (const itemId of screenItems) {
       const clientId = itemId.slice(7);
@@ -883,14 +825,8 @@ export const VoiceView = ({
     ? shareLayout.participants.height
     : availableHeight;
 
-  /**
-   * Who keeps a tile when there is not room for everyone.
-   *
-   * Anyone with a camera or a screen share outranks a plain avatar tile: an
-   * avatar is the same information the member list already gives you, video is
-   * not. Sorting is stable, so within a rank a manual drag is preserved.
-   * Dragging across ranks does not stick, which is the cost of ranking at all.
-   */
+  /** Video outranks an avatar tile, which is what the member list already gives
+      you. Stable, so a drag holds within a rank and not across one. */
   const prioritisedPeople = useMemo(() => {
     const rank = (itemId: string) => {
       const client = clientsForHost[itemId];
@@ -901,10 +837,8 @@ export const VoiceView = ({
     return [...peopleItems].sort((a, b) => rank(a) - rank(b));
   }, [peopleItems, clientsForHost]);
 
-  /**
-   * How many tiles fit before they stop being readable. A pinned share caps
-   * the strip at six slots instead, which is what Meet showed.
-   */
+  /** How many tiles fit before they stop being readable. A pinned share caps the
+      strip at six instead. */
   const capacity = useMemo(() => {
     if (shareLayout?.orientation === "strip-above")
       return SHARE_STRIP_MAX_SLOTS;
@@ -937,13 +871,8 @@ export const VoiceView = ({
     [visiblePeople, hiddenCount],
   );
 
-  /**
-   * The rows, each with its own tile size.
-   *
-   * With a share pinned at stage proportions the participants are a single
-   * strip whose height is set by the share split, so the grid search does not
-   * apply — the tiles just divide the width.
-   */
+  /** With a share pinned the participants are one strip whose height the share
+      split sets, so the grid search does not apply. */
   const gridRows = useMemo(() => {
     if (!laidOutItems.length) return [];
 
@@ -1136,11 +1065,8 @@ export const VoiceView = ({
     };
   };
 
-  /**
-   * The "+N" tile. Takes a real slot in its row rather than floating over the
-   * layout, so the geometry is unchanged. Not sortable — there is no
-   * participant behind it to reorder.
-   */
+  /** Takes a real slot rather than floating, so the geometry is unchanged. Not
+      sortable: there is no participant behind it. */
   const renderOverflowTile = (size: { width: number; height: number }) => (
     <motion.div
       key={OVERFLOW_ITEM_ID}
@@ -1166,13 +1092,8 @@ export const VoiceView = ({
     </motion.div>
   );
 
-  /**
-   * One tile, positioned by whatever box the region it lives in hands it.
-   *
-   * The regions differ — a pinned share, the hero, the PiP, a grid cell — but
-   * the card and its drag wrapper are identical in all of them, so only the
-   * outer box varies.
-   */
+  /** The regions differ, but the card and its drag wrapper are identical in all
+      of them, so only the outer box varies. */
   const renderTile = (
     itemId: string,
     style: CSSProperties,
@@ -1269,10 +1190,8 @@ export const VoiceView = ({
       }}
       style={{
         overflow: "hidden",
-        // Focus used to get its own branch here — flexGrow: 1 and no cap — so
-        // the panel ate the row the moment a tile was clicked. The width now
-        // comes from `voiceWidth` alone, which the parent works out from the
-        // voice view's own state, and focus does not touch it (GRYT-110).
+        // The width comes from `voiceWidth` alone: focus used to get its own
+        // branch here, so the panel ate the row the moment a tile was clicked.
         ...(isFullscreen
           ? { height: "100%", maxWidth: "none" }
           : {
@@ -1424,9 +1343,8 @@ export const VoiceView = ({
                         display: "flex",
                         flexDirection: "column",
                         gap: `${GRID_GAP}px`,
-                        // Extra room at the bottom: the controls float over
-                        // this area, and a tile running full height puts the
-                        // participant's name behind the mute button.
+                        // The controls float over this area, so a full-height tile
+                        // puts the name behind the mute button.
                         padding: `${GRID_PADDING}px ${GRID_PADDING}px ${CONTROLS_HEIGHT}px`,
                         height: "100%",
                         overflow: "hidden",
@@ -1509,12 +1427,8 @@ export const VoiceView = ({
                           position: "relative",
                           flex: 1,
                           minHeight: 0,
-                          // The hero is a capped, centred tile like any other —
-                          // Meet's 847x1136 is the 3:4 cap, not the full area.
-                          // The PiP anchors to this box's corner rather than the
-                          // hero's, which is why it straddles the hero's bottom
-                          // edge when the hero is capped and sits inside it when
-                          // the hero fills.
+                          // A capped, centred tile like any other. The PiP anchors
+                          // to this box rather than the hero's own corner.
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
@@ -1553,10 +1467,8 @@ export const VoiceView = ({
                     ) : shareLayout?.orientation === "strip-above" ? null : (
                       <div
                         style={{
-                          // Explicit rows. Each row has its own tile size, so
-                          // the old widths-sum-to-100% flex-wrap trick no
-                          // longer expresses the layout — nine people are a
-                          // 293-wide row above a 232-wide one.
+                          // Each row has its own tile size, so a flex-wrap trick no
+                          // longer expresses it: nine people are 293 above 232.
                           display: "flex",
                           flexDirection: "column",
                           gap: `${GRID_GAP}px`,
