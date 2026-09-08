@@ -108,14 +108,27 @@ async function getJson(url: string): Promise<unknown> {
   }
 }
 
-/** Null for a missing or broken response, and for nothing announced. Never throws. */
+/**
+ * What reading the feed came back with. A throw and a quiet day both arrived as
+ * `null` before, which is how this stayed invisible from day one (GRYT-1052).
+ */
+export type AnnouncementResult =
+  /** The feed answered. `announcement` is null when it had nothing live. */
+  | { ok: true; announcement: Announcement | null }
+  /** The feed could not be read at all. Not the same as nothing announced. */
+  | { ok: false; reason: string };
+
+/** Never throws. Callers decide what an unreadable feed means. */
 export async function fetchAnnouncement(
   url: string = STATUS_API_URL,
-): Promise<Announcement | null> {
+): Promise<AnnouncementResult> {
   try {
-    return pickAnnouncement(await getJson(url));
-  } catch {
-    return null;
+    return { ok: true, announcement: pickAnnouncement(await getJson(url)) };
+  } catch (err) {
+    return {
+      ok: false,
+      reason: err instanceof Error ? err.message : String(err),
+    };
   }
 }
 

@@ -12,6 +12,7 @@ import { fileURLToPath } from "node:url";
 import {
   decideBanner,
   FAILURES_BEFORE_BANNER,
+  fetchAnnouncement,
   pickAnnouncement,
   STATUS_API_URL,
 } from "../src/lib/serviceStatus.ts";
@@ -20,6 +21,17 @@ let failures = 0;
 function check(name, run) {
   try {
     run();
+    console.log(`  ok  ${name}`);
+  } catch (err) {
+    failures += 1;
+    console.error(`  FAIL  ${name}\n        ${err.message}`);
+  }
+}
+
+/** `check` for the ones that have to await something. */
+async function checkAsync(name, run) {
+  try {
+    await run();
     console.log(`  ok  ${name}`);
   } catch (err) {
     failures += 1;
@@ -200,6 +212,73 @@ check("being offline is not reported as an outage", () => {
   assert.ok(
     banner.includes("navigator.onLine"),
     "the banner no longer checks whether the machine is online",
+  );
+});
+
+/* ── A broken feed is not a quiet one ────────────────────────────────── */
+
+/* The feed answered without a CORS header, so every fetch threw — and a throw
+   came back as the `null` that also means "nothing announced" (GRYT-1052). */
+
+const realFetch = globalThis.fetch;
+
+await checkAsync("a rejected request does not read as silence", async () => {
+  /* What CORS looks like from inside fetch: a TypeError, no status to inspect. */
+  globalThis.fetch = async () => {
+    throw new TypeError("Failed to fetch");
+  };
+  const result = await fetchAnnouncement(STATUS_API_URL);
+  assert.equal(result.ok, false, "a failed read reported success");
+  assert.match(result.reason, /Failed to fetch/);
+});
+
+await checkAsync("a 5xx does not read as silence", async () => {
+  globalThis.fetch = async () => ({ ok: false, status: 503 });
+  const result = await fetchAnnouncement(STATUS_API_URL);
+  assert.equal(result.ok, false, "a 503 reported success");
+});
+
+await checkAsync("an empty feed is a success with nothing to say", async () => {
+  globalThis.fetch = async () => ({
+    ok: true,
+    json: async () => ({ announcements: [] }),
+  });
+  const result = await fetchAnnouncement(STATUS_API_URL);
+  assert.equal(result.ok, true, "a feed that answered reported failure");
+  assert.equal(result.announcement, null);
+});
+
+await checkAsync("a live notice comes back through the result", async () => {
+  globalThis.fetch = async () => ({
+    ok: true,
+    json: async () => ({ announcements: [at("2026-09-08T12:00:00Z")] }),
+  });
+  const result = await fetchAnnouncement(STATUS_API_URL);
+  assert.equal(result.ok && result.announcement?.type, "outage");
+});
+
+globalThis.fetch = realFetch;
+
+check("a feed that cannot be read is logged", () => {
+  /* Silence is what hid this for a day. */
+  assert.ok(
+    banner.includes("console.warn"),
+    "the banner no longer says anything when the feed cannot be read",
+  );
+});
+
+/* ── The glyph agrees with the severity ──────────────────────────────── */
+
+check("the icon is chosen per severity, not hardcoded", () => {
+  /* An `information` notice used to arrive as an accent-coloured warning
+     triangle: the colour said one thing and the shape said another. */
+  assert.ok(
+    banner.includes("ICON"),
+    "the banner draws one icon whatever the notice says",
+  );
+  assert.ok(
+    banner.includes("PiInfoFill"),
+    "information has no icon of its own",
   );
 });
 
