@@ -29,7 +29,7 @@ export interface CheckResult {
   help?: { label: string; href: string };
 }
 
-const DOCS = "https://docs.gryt.chat/docs/guide/troubleshooting";
+const DOCS = "https://docs.gryt.chat/docs/use/troubleshooting";
 
 const HELP = {
   server: {

@@ -54,11 +54,11 @@ not from here.
 
 ## Documentation
 
-Full docs at **[docs.gryt.chat/docs/client](https://docs.gryt.chat/docs/client)**:
+Full docs at **[docs.gryt.chat/docs/use](https://docs.gryt.chat/docs/use)**:
 
-- [Audio Processing](https://docs.gryt.chat/docs/client/audio-processing) — noise gate, volume control, visualization
-- [Voice Communication](https://docs.gryt.chat/docs/client/voice-communication) — WebRTC, SFU connection, mute/deafen
-- [User Interface](https://docs.gryt.chat/docs/client/user-interface) — components, theming, responsive design
+- [Audio Processing](https://docs.gryt.chat/docs/use/audio) — noise gate, volume control, visualization
+- [Voice Communication](https://docs.gryt.chat/docs/use/voice) — WebRTC, SFU connection, mute/deafen
+- [User Interface](https://docs.gryt.chat/docs/use/interface) — components, theming, responsive design
 
 ## Issues
 
