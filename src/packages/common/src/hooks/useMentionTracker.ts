@@ -71,13 +71,22 @@ export function addMention(host: string, conversationId: string) {
   emitChange();
 }
 
-/** They have read this conversation. */
-export function clearMentions(host: string, conversationId: string) {
+/**
+ * They have read this conversation.
+ *
+ * `keep` is what the server will not have cleared: mentions inside the
+ * conversation's threads, which opening the channel does not read (GRYT-1014).
+ * Without it the badge would drop to zero here and come back on the server's
+ * reply a moment later, and the effect that fires this would see the count
+ * change twice and send again.
+ */
+export function clearMentions(host: string, conversationId: string, keep = 0) {
   const existing = mentionMap.get(host);
   if (!existing?.has(conversationId)) return;
   const next = new Map(mentionMap);
   const counts = new Map(existing);
-  counts.delete(conversationId);
+  if (keep > 0) counts.set(conversationId, keep);
+  else counts.delete(conversationId);
   if (counts.size === 0) next.delete(host);
   else next.set(host, counts);
   mentionMap = next;

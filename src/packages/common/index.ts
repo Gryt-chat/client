@@ -50,6 +50,7 @@ export * from "./src/hooks/useMentionTracker";
 export * from "./src/hooks/useServerNotice";
 export * from "./src/hooks/useTheme";
 export * from "./src/hooks/useThemeEditor";
+export * from "./src/hooks/useThreadMentions";
 export * from "./src/hooks/useThreadUnread";
 export * from "./src/hooks/useUnreadBadge";
 export * from "./src/hooks/useUnreadTracker";

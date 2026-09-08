@@ -3,7 +3,7 @@ import { useSFU } from "@gryt/voice";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
-import { clearMentions, clearSignedOut, getUploadsFileUrl, markChannelRead, useAccount, useMentionTracker, useUnreadTracker } from "@/common";
+import { clearMentions, clearSignedOut, getUploadsFileUrl, markChannelRead, useAccount, useMentionTracker, useThreadMentions, useUnreadTracker } from "@/common";
 import { useIsCompact, useIsMobile } from "@/mobile";
 import { useSettings } from "@/settings";
 import { SidebarItem } from "@/settings/src/types/server";
@@ -194,6 +194,7 @@ export const ServerView = () => {
 
   const { getUnreadCounts } = useUnreadTracker();
   const { conversationMentionCount, getMentionCounts } = useMentionTracker();
+  const { conversationThreadMentionCount } = useThreadMentions();
   /*
    * Reading a conversation clears the mentions in it.
    *
@@ -201,19 +202,27 @@ export const ServerView = () => {
    * that lands while the conversation is already open — `mentionCount` changes
    * then, and the conversation does not. Cleared here as well as on the server
    * so the badge goes when they look at it rather than when the reply comes.
+   *
+   * Only the ones in the timeline, though. A thread reply is filtered out of
+   * the channel and rendered in the thread panel, so opening the channel never
+   * showed it; those clear when the thread opens (GRYT-1014). Both halves are
+   * needed here — the count to send for, and the count to leave behind.
    */
-  const openConversationMentions = currentlyViewingServer
-    ? conversationMentionCount(currentlyViewingServer.host, visibleDmId || visibleChannelId || "")
+  const openConversation = visibleDmId || visibleChannelId || "";
+  const openConversationThreadMentions = currentlyViewingServer
+    ? conversationThreadMentionCount(currentlyViewingServer.host, openConversation)
+    : 0;
+  const openTimelineMentions = currentlyViewingServer
+    ? conversationMentionCount(currentlyViewingServer.host, openConversation) -
+      openConversationThreadMentions
     : 0;
 
   useEffect(() => {
-    if (!currentlyViewingServer || openConversationMentions === 0) return;
-    const opened = visibleDmId || visibleChannelId;
-    if (!opened) return;
+    if (!currentlyViewingServer || openTimelineMentions <= 0 || !openConversation) return;
 
-    clearMentions(currentlyViewingServer.host, opened);
-    currentConnection?.emit("mentions:seen", { conversationId: opened });
-  }, [currentlyViewingServer, currentConnection, openConversationMentions, visibleChannelId, visibleDmId]);
+    clearMentions(currentlyViewingServer.host, openConversation, openConversationThreadMentions);
+    currentConnection?.emit("mentions:seen", { conversationId: openConversation });
+  }, [currentlyViewingServer, currentConnection, openTimelineMentions, openConversationThreadMentions, openConversation]);
 
   const currentServerUserId = currentlyViewingServer && currentConnection?.id
     ? clients[currentlyViewingServer.host]?.[currentConnection.id]?.serverUserId
