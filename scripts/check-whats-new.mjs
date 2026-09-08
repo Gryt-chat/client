@@ -1,30 +1,33 @@
 /* eslint-env node */
 
-// Runs whatsNew's own effect. It fires once per version, so getting it wrong is
-// a modal nobody sees again, or one that greets a fresh install. GRYT-1083.
+// Runs whatsNew's own effect and WhatsNewDialog's own grouping: a modal nobody
+// sees twice (GRYT-1083), and a kind it drops is a line nobody reads (1088).
 
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SOURCE = "src/components/whatsNew.tsx";
-const source = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", SOURCE), "utf8");
+const DIALOG = "src/packages/socket/src/components/WhatsNewDialog.tsx";
+const source = readFileSync(join(root, SOURCE), "utf8");
+const dialog = readFileSync(join(root, DIALOG), "utf8");
 
-/** The effect body, from its arrow's brace to the brace that closes it. */
-function effectBody(text) {
-  const OPENER = "useEffect(() => {";
-  const start = text.indexOf(OPENER) + OPENER.length - 1;
-  assert.ok(start > OPENER.length - 1, `${SOURCE} no longer has a useEffect`);
+/** Everything from `opener` to the brace that closes the block it opens. */
+function block(text, opener, what) {
+  const at = text.indexOf(opener);
+  assert.ok(at >= 0, `no longer has ${what}`);
+  const start = at + opener.length - 1;
   let depth = 0;
   for (let i = start; i < text.length; i++) {
     if (text[i] === "{") depth++;
     else if (text[i] === "}" && --depth === 0) return text.slice(start, i + 1);
   }
-  throw new Error(`unbalanced braces in the effect in ${SOURCE}`);
+  throw new Error(`unbalanced braces in ${what}`);
 }
 
-const body = effectBody(source)
+const body = block(source, "useEffect(() => {", "a useEffect")
   // Two bits of TypeScript: a generic on the read, and the fetch callback's type.
   .replace("getUserValue<string | null>(", "getUserValue(")
   .replace(/: \{ app\?: Entry\[\] \} \| null/, "");
@@ -118,4 +121,117 @@ const LINE = { version: "1.10.3", date: "2026-09-08", line: "Joining voice waits
   assert.deepEqual(r.shown, [LINE], "it showed a release that is not the one running");
 }
 
-console.log("what's new: ok, once per version, quiet on a fresh install and with no line");
+/* ── the grouping, run as the component's own code ───────────────────────── */
+
+/** The two helpers as themselves. `block` hands back the braces, so drop them. */
+const bodyOf = (opener, what) => block(dialog, opener, what).slice(1, -1);
+
+const KIND_ORDER = JSON.parse(dialog.match(/const KIND_ORDER = (\[[^\]]*\])/)?.[1] ?? "null");
+
+const grouper = new Function(
+  "changes",
+  "KIND_ORDER",
+  bodyOf(
+    "function group(changes: WhatsNewChange[]): [string, string[]][] {",
+    "a group function",
+  ),
+);
+/** The component closes over KIND_ORDER; here it is handed in. */
+const group = (changes) => grouper(changes, KIND_ORDER);
+
+const readableDate = new Function(
+  "iso",
+  bodyOf("function readableDate(iso: string): string {", "a readableDate function"),
+);
+
+assert.deepEqual(
+  KIND_ORDER,
+  ["security", "new", "changed", "fixed"],
+  "the kinds are drawn in a different order — security below the features is the half people scroll past",
+);
+
+// Security leads however the release was written, and each kind appears once.
+{
+  const g = group([
+    { kind: "fixed", text: "b" },
+    { kind: "security", text: "a" },
+    { kind: "fixed", text: "c" },
+  ]);
+  assert.deepEqual(
+    g,
+    [
+      ["security", ["a"]],
+      ["fixed", ["b", "c"]],
+    ],
+    "changes are not gathered under one heading per kind in KIND_ORDER",
+  );
+}
+
+// Order inside a kind is the order somebody wrote them in.
+{
+  const g = group([
+    { kind: "new", text: "first" },
+    { kind: "new", text: "second" },
+  ]);
+  assert.deepEqual(g, [["new", ["first", "second"]]], "a kind's own changes were reordered");
+}
+
+// A kind the site emits that this build has never heard of. Kept, on the end,
+// rather than filtered away — dropping it loses a line nobody would notice.
+{
+  const g = group([
+    { kind: "deprecated", text: "going away" },
+    { kind: "new", text: "here now" },
+  ]);
+  assert.deepEqual(
+    g,
+    [
+      ["new", ["here now"]],
+      ["deprecated", ["going away"]],
+    ],
+    "an unknown kind was dropped, so a change the site published never reaches anybody",
+  );
+}
+
+// Every change survives whatever the kinds are.
+{
+  const changes = ["security", "fixed", "new", "changed", "odd", "fixed"].map((kind, i) => ({
+    kind,
+    text: `change ${i}`,
+  }));
+  const flat = group(changes).flatMap(([, items]) => items);
+  assert.equal(flat.length, changes.length, "grouping lost or duplicated a change");
+  assert.deepEqual(
+    [...flat].sort(),
+    changes.map((c) => c.text).sort(),
+    "grouping changed the text of something",
+  );
+}
+
+/* `new Date("2026-09-08")` is UTC midnight, so west of Greenwich a release is
+   dated the day before it happened. */
+{
+  const withTZ = (tz, run) => {
+    const before = process.env.TZ;
+    process.env.TZ = tz;
+    try {
+      return run();
+    } finally {
+      if (before === undefined) delete process.env.TZ;
+      else process.env.TZ = before;
+    }
+  };
+
+  for (const tz of ["America/Los_Angeles", "Pacific/Kiritimati", "Europe/Oslo"]) {
+    const shown = withTZ(tz, () => readableDate("2026-09-08"));
+    assert.match(shown, /8/, `the date reads as ${shown} in ${tz}, and the release was the 8th`);
+  }
+
+  // Nothing usable in, the string back out, rather than "Invalid Date".
+  assert.equal(readableDate("not-a-date"), "not-a-date", "a bad date renders as Invalid Date");
+}
+
+console.log(
+  "what's new: ok, once per version, quiet on a fresh install and with no line; " +
+    "security first, unknown kinds kept, dates local",
+);

@@ -1557,3 +1557,140 @@ body {
   color: var(--gryt-danger-11);
   font-weight: 600;
 }
+
+/* ── What's new, the first launch after an update (GRYT-1088) ───────────────
+   The kind of a change is the structure rather than a badge on it: the label
+   sits in a gutter and the changes sit beside it, one hairline per group. */
+
+.whats-new-pad {
+  padding: 1.25rem 1.375rem 0.25rem;
+}
+
+.whats-new-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.whats-new-mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.375rem;
+  height: 2.375rem;
+  border: 1px solid var(--gryt-accent-a5);
+  border-radius: var(--gryt-radius-md);
+  background: var(--gryt-accent-a3);
+}
+
+.whats-new-mark svg {
+  display: block;
+  border-radius: 7px;
+}
+
+.whats-new-greet {
+  margin: 0;
+  font-size: 0.97rem;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+}
+
+.whats-new-meta {
+  margin: 0.1875rem 0 0;
+  font-family: var(--gryt-font-mono);
+  font-size: 0.72rem;
+  color: var(--gryt-muted);
+}
+
+/* The gutter is as wide as the widest Chip and no wider, so "Security" fits
+   without a number here that has to be kept in step with the Chip's padding. */
+.whats-new-groups {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: 0.875rem;
+  margin: 1rem 0 0;
+}
+
+.whats-new-groups dt {
+  grid-column: 1;
+  padding: 0.6875rem 0;
+  border-top: 1px solid var(--gryt-border);
+}
+
+.whats-new-groups dd {
+  display: flex;
+  flex-direction: column;
+  grid-column: 2;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.6875rem 0;
+  border-top: 1px solid var(--gryt-border);
+}
+
+.whats-new-groups dd p,
+.whats-new-plain {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.52;
+}
+
+/* A release nobody split into kinds. Everything before 1.10 is this. */
+.whats-new-plain {
+  margin-top: 1rem;
+  padding-top: 0.6875rem;
+  border-top: 1px solid var(--gryt-border);
+}
+
+/* Narrow enough that the gutter stops leaving room for a sentence beside it:
+   the chip goes above its group instead. On the card's own width rather than
+   the window's — the card is what has to hold the sentence, and on a phone the
+   two do not agree by the 3rem the popup keeps clear of the edges. */
+@container (max-width: 380px) {
+  .whats-new-groups {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .whats-new-groups dt {
+    padding-bottom: 0.4375rem;
+  }
+
+  .whats-new-groups dd {
+    grid-column: 1;
+    padding-top: 0;
+    border-top: 0;
+  }
+}
+
+.whats-new-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding: 0.875rem 1.375rem 1.125rem;
+  border-top: 1px solid var(--gryt-border);
+  background: var(--gryt-surface-raised);
+}
+
+/* Underlined, like every link in Gryt. Tinted at rest, solid on hover. */
+.whats-new-link {
+  border-radius: 4px;
+  font-size: 0.84rem;
+  color: var(--gryt-accent-11);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--gryt-accent-11) 40%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  transition: text-decoration-color 0.18s ease;
+}
+
+.whats-new-link:hover {
+  text-decoration-color: var(--gryt-accent-11);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .whats-new-link {
+    transition: none;
+  }
+}
