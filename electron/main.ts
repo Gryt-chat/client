@@ -1517,6 +1517,31 @@ async function startLocalServer(): Promise<string> {
     sit side by side, so a disagreement is a step in the titlebar. */
 const TITLEBAR_OVERLAY_HEIGHT = 36;
 
+// Desktops that place windows themselves, where Electron's minimise and maximise
+// do nothing. XDG_CURRENT_DESKTOP is a colon-separated list by spec. GRYT-1060.
+const TILING_DESKTOPS = new Set([
+  "hyprland",
+  "sway",
+  "i3",
+  "river",
+  "niri",
+  "bspwm",
+  "awesome",
+  "dwm",
+  "xmonad",
+  "qtile",
+  "wayfire",
+]);
+
+function drawsWindowButtons(): boolean {
+  if (process.platform !== "linux") return true;
+
+  return !(process.env.XDG_CURRENT_DESKTOP ?? "")
+    .toLowerCase()
+    .split(":")
+    .some((name) => TILING_DESKTOPS.has(name.trim()));
+}
+
 function createMainWindow(): BrowserWindow {
   mainWindow = new BrowserWindow({
     width: 1600,
@@ -1529,11 +1554,15 @@ function createMainWindow(): BrowserWindow {
 
     // What the window opens with, before the renderer sends the real values.
     // The shipped dark palette's tokens, so the default theme sees no change.
-    titleBarOverlay: {
-      color: "#111318",
-      symbolColor: "#e0e0e6",
-      height: TITLEBAR_OVERLAY_HEIGHT,
-    },
+    ...(drawsWindowButtons()
+      ? {
+          titleBarOverlay: {
+            color: "#111318",
+            symbolColor: "#e0e0e6",
+            height: TITLEBAR_OVERLAY_HEIGHT,
+          },
+        }
+      : {}),
 
     icon: appIcon,
 

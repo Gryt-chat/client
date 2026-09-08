@@ -1,27 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect } from "react";
 
 import { isElectron } from "../lib/electron";
-import { PiCaretLeftFill, PiCaretRightFill } from "../lib/icons";
 
 export const TITLEBAR_HEIGHT = 36;
 
 export function Titlebar() {
-  const [canGoBack, setCanGoBack] = useState(false);
-  const [canGoForward, setCanGoForward] = useState(false);
-
-  useEffect(() => {
-    const update = () => {
-      setCanGoBack(window.history.length > 1 && window.history.state !== null);
-      setCanGoForward(false);
-    };
-    window.addEventListener("popstate", update);
-    update();
-    return () => window.removeEventListener("popstate", update);
-  }, []);
-
-  const goBack = useCallback(() => window.history.back(), []);
-  const goForward = useCallback(() => window.history.forward(), []);
-
   useEffect(() => {
     if (isElectron()) {
       document.documentElement.style.setProperty("--titlebar-inset", `${TITLEBAR_HEIGHT}px`);
@@ -49,25 +32,6 @@ export function Titlebar() {
         alignItems: "center",
       } as React.CSSProperties}
     >
-      {/* Back / Forward */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 2,
-          appRegion: "no-drag",
-          WebkitAppRegion: "no-drag",
-          paddingLeft: 10,
-        } as React.CSSProperties}
-      >
-        <NavButton onClick={goBack} disabled={!canGoBack} label="Go back">
-          <PiCaretLeftFill size={18} />
-        </NavButton>
-        <NavButton onClick={goForward} disabled={!canGoForward} label="Go forward">
-          <PiCaretRightFill size={18} />
-        </NavButton>
-      </div>
-
       {/* Centered title */}
       <div
         style={{
@@ -92,47 +56,5 @@ export function Titlebar() {
         </span>
       </div>
     </div>
-  );
-}
-
-function NavButton({
-  onClick,
-  disabled,
-  label,
-  children,
-}: {
-  onClick: () => void;
-  disabled: boolean;
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={label}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: 28,
-        height: 24,
-        border: "none",
-        borderRadius: "var(--gryt-radius-sm)",
-        background: "transparent",
-        color: disabled ? "var(--gryt-neutral-a5)" : "var(--gryt-neutral-a11)",
-        cursor: disabled ? "default" : "pointer",
-        transition: "background 0.1s, color 0.1s",
-        opacity: disabled ? 0.4 : 1,
-      }}
-      onMouseEnter={(e) => {
-        if (!disabled) e.currentTarget.style.background = "var(--gryt-neutral-a3)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = "transparent";
-      }}
-    >
-      {children}
-    </button>
   );
 }

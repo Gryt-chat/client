@@ -103,6 +103,7 @@ jobs:
       # No comment runs past two lines. The script carries the list of paths
       # still to be swept, and that list only ever shrinks.
       - run: yarn test:comment-length
+      - run: yarn test:window-buttons
       # tsc -b and eslint with --max-warnings 0. client#115 merged with three
       # TS6133 errors and main did not compile until the next PR.
       - run: yarn lint
