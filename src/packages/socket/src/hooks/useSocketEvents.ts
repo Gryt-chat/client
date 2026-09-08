@@ -11,6 +11,7 @@ import {
   isSignedOut,
   markChannelUnread,
   markSignedOut,
+  markThreadUnread,
   removeServerAccessToken,
   removeServerRefreshToken,
   resolveAnnounceLevel,
@@ -477,10 +478,13 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
         if (host === currentlyViewingServerRef.current?.host) return;
         const myId = socket.id ? clientsRef.current[host]?.[socket.id]?.serverUserId : undefined;
         if (myId && msg.sender_server_id === myId) return;
-        // Same reason as the foreground handler in useChat: a thread reply is
-        // not news about the channel, and there is nowhere yet to say it is
-        // news about the thread. GRYT-999.
-        if (msg.thread_id) return;
+        // Counted against the thread now rather than dropped. Same change as
+        // the foreground handler in useChat — GRYT-999 went quiet because both
+        // trackers were keyed by conversation; this one is keyed by thread.
+        if (msg.thread_id) {
+          markThreadUnread(host, msg.thread_id);
+          return;
+        }
 
         /* Marked unread whatever the level says. Muting a channel is about not
            being interrupted, not about pretending nothing happened there. The

@@ -5,7 +5,7 @@ import useSound from "use-sound";
 
 import messageSoundMp3 from "@/audio/src/assets/universfield-computer-mouse-click-02-383961.mp3";
 import type { SealDecision } from "@/common";
-import { getServerAccessToken, getUploadsFileUrl, markChannelUnread, useUnreadBadge } from "@/common";
+import { getServerAccessToken, getUploadsFileUrl, markChannelUnread, markThreadUnread, useUnreadBadge } from "@/common";
 import { notificationBody, showDesktopNotification } from "@/lib/desktopNotification";
 import { useSettings } from "@/settings";
 import { type ForumTag,serverDetailsList as ServerDetailsList } from "@/settings/src/types/server";
@@ -436,19 +436,21 @@ export function useChat({
       }
       handleNewMessage(msg, activeConversationId, cacheKeyFor, setMessageCache, setChatMessages);
 
-      /* A thread reply is not news about the channel it hangs off.
-         `handleNewMessage` already drops it from that channel's list, and
-         everything below was firing anyway — so a reply in a thread badged the
-         channel, rang the sound and raised a notification, and opening the
-         channel showed nothing new. GRYT-986 made it louder rather than
-         causing it: the badge was a dot and is a count now, so the channel
-         could read "12 unread" with nothing in it.
+      /* A thread reply is news about the thread, not about the channel it
+         hangs off — `handleNewMessage` has already dropped it from that
+         channel's list, so badging the channel pointed at somewhere that
+         looked empty. GRYT-999 fixed that by saying nothing, because both
+         trackers were keyed by conversation and there was nowhere else to put
+         it. This is that somewhere.
 
-         Silence is not the end state — a thread you are in should be able to
-         tell you something. It needs somewhere to say it, and both trackers
-         are keyed by conversation. That is GRYT-1000. Being named still
-         arrives, because `mention:new` is its own event and is not gated here. */
-      if (msg.thread_id) return;
+         The store refuses to count the thread that is open rather than this
+         clearing it afterwards: the panel and this counter are two chat:new
+         handlers on one socket, and which runs first is whichever subscribed
+         first. */
+      if (msg.thread_id) {
+        if (msg.sender_server_id !== currentUserId) markThreadUnread(serverHost, msg.thread_id);
+        return;
+      }
 
       if (msg.conversation_id !== activeConversationId && msg.sender_server_id !== currentUserId) {
         markChannelUnread(serverHost, msg.conversation_id);
