@@ -35,12 +35,8 @@ type SetupRequiredDetail = {
 };
 
 /**
- * `tab` is a request, not an instruction.
- *
- * The tabs somebody sees depend on their permissions, so a caller asking for
- * one cannot know it exists for them. An unknown or hidden value would leave
- * the strip with nothing selected and no panel under it, so the effect below
- * drops back to overview instead.
+ * `tab` is a request, not an instruction. Which tabs exist depends on
+ * permissions, so an unknown value drops back to overview.
  */
 type SettingsOpenDetail = { host: string; tab?: string };
 
@@ -61,10 +57,8 @@ export function ServerSettingsModal() {
   const serverInfo = host ? serverDetailsList[host]?.server_info : undefined;
   const { has: hasPermission, known: permissionKnown } = useServerPermissions(host);
 
-  // Every tab needs one permission, and the modal opens if any of them do. It
-  // used to be "owner or admin", which was the same question asked of a fixed
-  // ladder — and it means a role built to do exactly one of these things, which
-  // is the point of the editor, could not reach the screen it lives on.
+  // Every tab needs one permission, and the modal opens if any of them do. The
+  // old "owner or admin" gate kept a purpose-built role off the screen it lives on.
   const canManage =
     !permissionKnown ||
     [
@@ -258,22 +252,16 @@ export function ServerSettingsModal() {
   ];
 
   // A tab whose events the server would refuse is not shown. Against a server
-  // that predates permissions nothing is filtered, because it sends no list and
-  // the old owner-or-admin gate above is what let this modal open at all.
+  // that predates permissions nothing is filtered, because it sends no list.
   const TAB_CONFIG = ALL_TABS.filter(
     (t) => !permissionKnown || !t.needs || t.needs.some((p) => hasPermission(p)),
   );
 
   /*
-   * Fall back when the selected tab is not one of the visible ones.
-   *
-   * A caller can ask to open on a tab, and whether that tab exists depends on
-   * permissions this modal has not necessarily heard about yet — the list
-   * arrives with the server details, so the first render after opening can be
-   * missing it. Left alone, the strip would show no selection and the body
-   * would be empty, which reads as a broken settings screen rather than as a
-   * tab somebody may not open.
+   * Fall back when the selected tab is not one of the visible ones: the list
+   * arrives with the server details, so the first render can be missing it.
    */
+
   // Keyed on the values rather than the array: TAB_CONFIG is rebuilt every
   // render, so depending on it directly would re-run this on every one.
   const visibleTabValues = TAB_CONFIG.map((t) => t.value).join(",");

@@ -4,12 +4,8 @@ import { computeGridLayout, GRID_GAP } from "@/socket/src/lib/voiceLayout";
 import type { VoiceTileLayout } from "../hooks/settingsStorage";
 
 /**
- * The size the arrangement is worked out at, before being scaled into the
- * swatch.
- *
- * Asking computeGridLayout for a 132px-wide grid would not answer the question:
- * MIN_TILE_WIDTH is 140, so every rule collapses to the same single column and
- * both previews would look identical.
+ * The size the arrangement is worked out at, before being scaled into the swatch.
+ * At 132px MIN_TILE_WIDTH collapses every rule to one column.
  */
 const REFERENCE = { width: 880, height: 495 };
 
@@ -19,11 +15,8 @@ const SAMPLE_COUNT = 9;
 const SWATCH = { width: 132, height: 74 };
 
 /**
- * What a layout rule actually does, drawn from the layout code itself.
- *
- * Deliberately not a hand-drawn picture: this is the same function the voice
- * grid runs, so the swatch cannot drift away from what you get on screen when
- * somebody changes the packing rules.
+ * What a layout rule actually does, drawn from the layout code itself — the same
+ * function the voice grid runs, so the swatch cannot drift.
  */
 function LayoutSwatch({ rule }: { rule: VoiceTileLayout }) {
   const layout = computeGridLayout(
@@ -33,9 +26,8 @@ function LayoutSwatch({ rule }: { rule: VoiceTileLayout }) {
     rule,
   );
 
-  // Scaled to fit, gaps included. Scaling by width alone overflows: the Meet
-  // rule puts five tiles in its second row, which comes to more than the
-  // swatch is wide once the gaps between them are counted.
+  // Scaled to fit, gaps included. Scaling by width alone overflows: the Meet rule
+  // puts five tiles in its second row, wider than the swatch once gapped.
   const naturalWidth = Math.max(
     ...layout.rows.map((r) => r.count * r.width + (r.count - 1) * GRID_GAP),
   );
@@ -95,12 +87,8 @@ const OPTIONS: Array<{
 ];
 
 /**
- * Pick a layout by looking at it.
- *
- * It used to be two radio labels and a paragraph each describing what happens
- * to nine people, so you had to read it, picture it, choose, and then go and
- * look. The pictures are of nine people, which is the count the descriptions
- * were describing.
+ * Pick a layout by looking at it. It used to be two radio labels and a paragraph
+ * each about nine people, which is the count the pictures show.
  */
 export function TileLayoutPicker({
   value,

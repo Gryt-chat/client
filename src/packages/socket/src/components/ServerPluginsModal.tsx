@@ -11,19 +11,8 @@ import {
 } from "../lib/pluginCapabilityWording";
 
 /**
- * What a server is running, for the people it is running it on (GRYT-942).
- *
- * A server plugin reads the messages people send through that server. Every one
- * of them is named to everybody who joins, along with what it may do, and this
- * is where that list is read.
- *
- * Reachable from the server menu, which every member has — not from server
- * settings, which needs a permission. A safety net only the operator can see is
- * not one.
- *
- * It sits next to Leave in that menu on purpose. Leaving is what somebody does
- * about what they read here, and putting the two together is the honest
- * arrangement rather than a coincidence of ordering.
+ * What a server is running, for the people it is running it on. Reachable from
+ * the server menu, not settings: a net only the operator sees is not one.
  */
 
 type OpenDetail = { host: string };
@@ -33,9 +22,8 @@ export function ServerPluginsModal() {
   const [host, setHost] = useState("");
   const [plugins, setPlugins] = useState<AnnouncedPlugin[]>([]);
 
-  /* What is installed here, so a plugin whose client half is missing can say
-     so. Read live rather than at open: somebody may install one and come back
-     without closing the app. */
+  /* What is installed here, so a plugin whose client half is missing can say so.
+     Read live: somebody may install one and come back without closing the app. */
   const { addons } = useAddons();
   const missing = missingHalves(plugins, addons.map((addon) => addon.id));
   const missingIds = new Set(missing.map((plugin) => plugin.id));
@@ -45,9 +33,8 @@ export function ServerPluginsModal() {
       const h = event.detail?.host;
       if (!h) return;
       setHost(h);
-      /* Read as it opens rather than kept in state. The list only changes when
-         the server restarts, and reading it here means it is whatever the last
-         `server:details` said instead of whatever this component saw first. */
+      /* Read as it opens rather than kept in state, so it is whatever the last
+         `server:details` said rather than what this component saw first. */
       setPlugins(pluginsOn(h));
       setIsOpen(true);
     };
@@ -153,9 +140,8 @@ export function ServerPluginsModal() {
                       ) : null}
 
                       {plugin.homepage ? (
-                        /* Checked to be http(s) on the server and again on the
-                           way in. It still goes somewhere nobody vetted, so it
-                           opens away from Gryt and carries no referrer. */
+                        /* Checked to be http(s) on the server and again here. It
+                           still opens away from Gryt and carries no referrer. */
                         <a
                           className="text-xs underline"
                           href={plugin.homepage}

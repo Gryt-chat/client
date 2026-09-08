@@ -1,21 +1,9 @@
-/* Hallmark · component: status-indicator · genre: modern-minimal · theme: project tokens (@gryt/ui)
- * states: idle · starting · settling · connecting · reconnecting · offline · approval · voice
- * contrast: pass
- * pre-emit critique: P5 H4 E4 S5 R5 V4
- */
+/* Hallmark · component: status-indicator · genre: modern-minimal · theme: @gryt/ui
+ * states: idle · starting · settling · connecting · reconnecting · offline · voice */
 
 /**
- * What a server is doing, drawn around its icon in the rail (GRYT-314). The
- * distinction is **whether waiting is the right thing to do**:
- *
- * - `starting` — your own embedded server is booting: the icon keeps its
- *   colour and the ring is drawn in the accent.
- * - `settling` — a remote server has a fixed budget before it is called
- *   offline, and the ring *empties* over it.
- * - `connecting` / `reconnecting` — no deadline. Indeterminate sweep, muted.
- *
- * **Two shapes, not two colours.** A sweep means working, a depleting ring
- * means time is running out, and both read the same at one second as at ten.
+ * What a server is doing, drawn around its icon in the rail. **Two shapes, not
+ * two colours**: a sweep means working, a depleting ring means time running out.
  */
 export type ServerRingState =
   | "none"
@@ -25,9 +13,8 @@ export type ServerRingState =
   | "reconnecting";
 
 /**
- * `pathLength` normalises the stroke's dash units to 0–100 regardless of the
- * real geometry, so the dash maths below does not have to know the perimeter
- * of a rounded rectangle at whatever size the rail happens to render.
+ * `pathLength` normalises the stroke's dash units to 0–100, so the dash maths
+ * does not have to know a rounded rectangle's perimeter at any size.
  */
 const PATH_LENGTH = 100;
 
@@ -52,10 +39,8 @@ export function ServerStatusRing({
       ? "var(--gryt-accent-9)"
       : state === "reconnecting"
         ? "var(--gryt-warning-9)"
-        // neutral-10, not the quieter neutral-8 it started as: measured 1.95:1
-        // against the rail surface, which is under the 3:1 a non-text
-        // indicator needs. neutral-10 clears it at 3.63:1 and is still
-        // obviously the quiet one next to the accent and the warning.
+        // neutral-10, not neutral-8: that measured 1.95:1 against the rail,
+        // under the 3:1 a non-text indicator needs. This clears it at 3.63:1.
         : "var(--gryt-neutral-10)";
 
   return (
