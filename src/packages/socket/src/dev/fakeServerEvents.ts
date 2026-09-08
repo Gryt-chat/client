@@ -3,19 +3,8 @@ import { useEffect, useRef } from "react";
 import type { Client } from "../types/clients";
 
 /**
- * Server events delivered to this client as if the server had sent them.
- *
- * `fakeParticipants.ts` writes fake people straight into the `clients` record,
- * which skips everything between the socket and that record — so a bug in the
- * handling cannot show up there. Two bugs shipped in calling behind that gap.
- * This one starts before the handler: `deliverServerEvent` calls the client's
- * own listeners for an event, so it is the same handler, the same state updates
- * and the same re-render. What it does not exercise is the wire and the server.
- *
- * **Dev only, and gated twice.** `import.meta.env.DEV` is compiled out of a
- * packaged build, and every entry point checks it again. A build that could
- * inject events into its own socket is a build that can be made to show
- * somebody a call that is not happening.
+ * Server events delivered to this client as if the server had sent them, through
+ * its own listeners. **Dev only, and gated twice** — `import.meta.env.DEV`.
  */
 
 /** Enough of a socket to deliver to, without depending on socket.io's types. */
@@ -24,14 +13,8 @@ export interface ListenerSource {
 }
 
 /**
- * Hand a payload to this client's handlers for `event`.
- *
- * `listeners` is the Emitter's, not the wire's — nothing here reaches the
- * server and the server never hears about it. Returns how many handlers ran, so
- * a fixture can tell "nothing is listening" from "it worked".
- *
- * A listener that throws does not take the rest of the batch with it. That is
- * the app's problem to show, not this fixture's to swallow.
+ * Hand a payload to this client's handlers for `event`. Nothing reaches the
+ * server. Returns how many handlers ran, so "nothing is listening" is visible.
  */
 export function deliverServerEvent(
   socket: ListenerSource | null | undefined,
@@ -59,11 +42,8 @@ export const FAKE_CALLER = {
 };
 
 /**
- * A ring, as the server sends one.
- *
- * The shape is copied from the server's `IncomingCall` rather than from what
- * the client happens to read, so a client that reads the wrong field shows the
- * wrong thing here too instead of quietly working.
+ * A ring, as the server sends one. The shape is copied from the server's
+ * `IncomingCall`, so a client reading the wrong field shows the wrong thing here.
  */
 export function fakeIncomingCall(conversationId: string, ttlMs = 30_000) {
   return {
@@ -74,17 +54,8 @@ export function fakeIncomingCall(conversationId: string, ttlMs = 30_000) {
 }
 
 /**
- * Somebody else in a call, as `server:clients` actually carries them.
- *
- * **`voiceChannelId` is deliberately blank.** That is not an oversight and must
- * not be "fixed": the server blanks a conversation id out of this payload
- * because it goes to every member of the server and a one-to-one id is a hash
- * of the sorted pair. A fixture that fills it in is a fixture that cannot
- * reproduce the bug where a call draws nobody — which is the bug that shipped.
- *
- * `voice:call:members` is what puts the id back, and only for the people in the
- * call. Deliver both to see a working call; deliver this one alone to see what
- * a client that ignores that event looks like.
+ * Somebody else in a call, as `server:clients` carries them. **`voiceChannelId`
+ * is deliberately blank** — the server blanks it, and filling it in hides a bug.
  */
 export function fakeCallPeer(serverUserId = "fake-peer", nickname = "Ingrid"): Client {
   return {
@@ -115,10 +86,8 @@ export interface FakeCallOptions {
   /** Put somebody else in the call, the way the server would. */
   peer: boolean;
   /**
-   * Whether to also send `voice:call:members`.
-   *
-   * Off reproduces the shipped bug on purpose: the peer arrives with a blank
-   * room and the call draws nobody. On is what a working server does.
+   * Whether to also send `voice:call:members`. Off reproduces the shipped bug:
+   * the peer arrives with a blank room and the call draws nobody.
    */
   members: boolean;
 }
@@ -141,14 +110,8 @@ export function readFakeCallOptions(search: string): FakeCallOptions | null {
 }
 
 /**
- * Drive the fixtures for the conversation on screen.
- *
- * Waits for a conversation, because both fixtures name one: a ring is a ring
- * *about* something, and a peer is in a particular call. Opening a DM is
- * therefore part of the recipe, which is the same as it is for real.
- *
- * Fires once per conversation. A ring that re-delivered on every render would
- * be impossible to decline.
+ * Drive the fixtures for the conversation on screen. Waits for one, because both
+ * fixtures name one. Fires once per conversation, so a ring can be declined.
  */
 export function useFakeCallEvents(
   socket: ListenerSource | null | undefined,

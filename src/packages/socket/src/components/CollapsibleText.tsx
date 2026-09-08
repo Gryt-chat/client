@@ -1,23 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
- * Folds a tall message down until somebody asks for the rest.
- *
- * Height rather than character count, because the two disagree in the case that
- * matters: two hundred newlines is four hundred characters and half a screen,
- * one unbroken paragraph is four thousand characters and six lines.
- *
- * Nothing is loaded when it opens — the whole message arrived with the message,
- * and the server's 4,000 cap is what bounds what it sends.
+ * Folds a tall message down until somebody asks for the rest. Height rather than
+ * character count: two hundred newlines is half a screen and 400 characters.
  */
 
 /** How tall a message may be before it is folded. About twelve lines. */
 const COLLAPSED_MAX_PX = 320;
 
 /*
- * Overflow this much and it is worth folding. Without it, a message one line
- * past the cap gets a control that reveals one line, which is a click for
- * nothing and a layout that jumps.
+ * Overflow this much and it is worth folding. Without it, a message one line past
+ * the cap gets a control that reveals one line and a layout that jumps.
  */
 const WORTH_FOLDING_PX = 80;
 
@@ -25,13 +18,8 @@ const WORTH_FOLDING_PX = 80;
 const ASSUMED_LINE_RATIO = 1.5;
 
 /*
- * Two paths rather than one path rotated.
- *
- * A CSS `transform` on this chevron computed to the identity matrix in the
- * running client — measured with an inline style, on both an `<svg>` and a
- * `<span>` wrapper, with no competing rule and reduced-motion off, while the
- * same declaration on a plain div beside it rotated fine. Two path strings
- * cannot fail, and there is nothing to animate away.
+ * Two paths rather than one path rotated: a CSS `transform` on this chevron
+ * computed to the identity matrix in the running client, measured several ways.
  */
 function Chevron({ up }: { up: boolean }) {
   return (
@@ -70,10 +58,8 @@ export function CollapsibleText({ children }: { children: React.ReactNode }) {
     }
 
     /*
-     * How many lines are behind the fold, so the control can say. `lineHeight`
-     * comes back as "normal" when nothing set it, which is not a number — hence
-     * the ratio. Rounded down and floored at 1: claiming "0 more lines" on a
-     * control that demonstrably has more is worse than being one out.
+     * How many lines are behind the fold. `lineHeight` comes back as "normal"
+     * when nothing set it, hence the ratio; floored at 1 rather than claiming 0.
      */
     const styles = getComputedStyle(el);
     const parsed = Number.parseFloat(styles.lineHeight);
@@ -87,16 +73,8 @@ export function CollapsibleText({ children }: { children: React.ReactNode }) {
   const folds = hiddenLines > 0;
 
   /*
-   * Measure directly, then observe for later changes. Both, not just the
-   * observer: ResizeObserver is specified to deliver an initial callback for an
-   * element with a box, and relying on that alone left a message that never
-   * folded when it did not arrive — a fresh observer on a 618x1440 element
-   * stayed silent for the better part of a second. The observer still earns its
-   * place for content that lands late: custom emoji, code blocks, an edit
-   * rewriting the text in place.
-   *
-   * `folds` is in the deps because the element is remounted when the wrapper
-   * appears — the observer would otherwise be left watching a detached node.
+   * Measure directly, then observe. ResizeObserver's initial callback did not
+   * arrive for a 618x1440 element, so a message never folded.
    */
   useEffect(() => {
     const el = inner.current;
@@ -138,9 +116,8 @@ export function CollapsibleText({ children }: { children: React.ReactNode }) {
         type="button"
         className="message-fold-toggle"
         onClick={() => setExpanded((open) => !open)}
-        // The message is not hidden from assistive technology when folded — it
-        // is all in the DOM and only clipped — so this reports a disclosure
-        // rather than claiming to fetch anything.
+        // The message is not hidden from assistive technology when folded — it is
+        // in the DOM and only clipped — so this reports a disclosure.
         aria-expanded={expanded}
       >
         {expanded ? (

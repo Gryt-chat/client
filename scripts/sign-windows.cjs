@@ -2,50 +2,7 @@
 
 /**
  * Signs the Windows artefacts, and refuses to let an unsigned one out quietly.
- *
- * Gryt has never signed its Windows builds. That is why people on Windows 11
- * report "An application control policy has blocked this file": Smart App
- * Control looks for a signature when it cannot otherwise vouch for a file, and
- * unsigned means untrusted. Unlike SmartScreen there is no way past it —
- * Microsoft offers no per-app bypass, and turning the feature off is one way,
- * because switching it back on needs a Windows reinstall. See GRYT-848.
- *
- * Two jobs here, and the second one works today.
- *
- * **Signing.** Nothing is configured yet, because a certificate has to be
- * issued to a legal entity and there is not one yet. Until `GRYT_WIN_SIGN_TOOL`
- * names something, this signs nothing and the build behaves exactly as it does
- * now. That is deliberate: a half-written signing step that fails the release
- * would be worse than the problem it is meant to fix.
- *
- * **Telling the truth about it.** Every artefact is checked afterwards for an
- * Authenticode certificate table. With signing configured, an unsigned result
- * fails the build. Without it, the build says plainly that what it just
- * produced will be blocked.
- *
- * The check is the point. Cloud signing CLIs are fond of exiting 0 having done
- * nothing at all — a credential that did not resolve, a keypair alias that
- * matched nothing — and the exit code alone would let that ship. Windows would
- * be the thing that noticed.
- *
- * ## Adding the certificate
- *
- * Set `GRYT_WIN_SIGN_TOOL` to the signing executable and `GRYT_WIN_SIGN_ARGS`
- * to its arguments as a JSON array, with `{file}` where the artefact path goes.
- * Everything else stays in the CA's own environment variables, which all of
- * these tools read directly, so no credential passes through here.
- *
- * DigiCert KeyLocker:
- *   GRYT_WIN_SIGN_TOOL=smctl
- *   GRYT_WIN_SIGN_ARGS=["sign","--keypair-alias","<alias>","--input","{file}"]
- *
- * SSL.com eSigner:
- *   GRYT_WIN_SIGN_TOOL=CodeSignTool
- *   GRYT_WIN_SIGN_ARGS=["sign","-input_file_path={file}","-override=true"]
- *
- * Neither has been run. Whichever is bought, run one release and read the log:
- * the check below reports the certificate table it found, so a signature that
- * did not happen is visible in the build rather than on somebody's desktop.
+ * Set `GRYT_WIN_SIGN_TOOL` and `GRYT_WIN_SIGN_ARGS` (JSON, `{file}`) to enable it.
  */
 
 const { spawnSync } = require("node:child_process");
@@ -54,14 +11,12 @@ const { spawnSync } = require("node:child_process");
 // script imports directly. electron-builder awaits what this returns.
 const signature = import("./windows-signature.mjs");
 
-/** Only these are worth signing. The rest of what electron-builder emits is
- *  metadata, and handing a .yml to a signing tool is how a build breaks for a
- *  reason nobody enjoys tracking down. */
+/** Only these are worth signing. Handing a .yml to a signing tool is how a build
+ *  breaks for a reason nobody enjoys tracking down. */
 const SIGNABLE = /\.(exe|dll|msi|node)$/i;
 
-/** The MSIX package. Signed the same way and verified differently — it is a
- *  zip with an AppxSignature.p7x member, not a PE file with a certificate
- *  table, so it cannot go down the path below. */
+/** The MSIX package. Signed the same way and verified differently — a zip with an
+ *  AppxSignature.p7x member, not a PE file with a certificate table. */
 const PACKAGE = /\.(appx|msix)$/i;
 
 module.exports = async function signWindows(configuration) {
@@ -71,16 +26,8 @@ module.exports = async function signWindows(configuration) {
 
   if (!SIGNABLE.test(file)) return;
 
-  // A .node that is not a Windows binary. `uiohook-napi` ships prebuilds for
-  // every platform it supports, so a Windows build contains
-  // `prebuilds/linux-x64/node.napi.node` and `prebuilds/darwin-arm64/...` next
-  // to the one it actually loads. `signExts` matches on extension and cannot
-  // tell them apart, so without this the first ELF reaches the reader below,
-  // which throws "Not a PE file: no MZ signature" and takes the release with
-  // it — which is what happened to v1.9.4 on 2026-09-02.
-  //
-  // Skipped rather than failed: these files are not Windows binaries, so
-  // Smart App Control will never look at them, and there is nothing to sign.
+  // A .node that is not a Windows binary. `uiohook-napi` ships prebuilds for every
+  // platform, and the first ELF reaching the reader took v1.9.4 down.
   const { isPortableExecutable } = await signature;
   if (!(await isPortableExecutable(file))) {
     console.log(`  • skipped ${file} (not a Windows binary)`);
@@ -126,9 +73,8 @@ module.exports = async function signWindows(configuration) {
 };
 
 /**
- * `{file}` is substituted rather than appended, because these tools disagree
- * about where the path goes: smctl wants it after --input, CodeSignTool wants
- * it inside -input_file_path=. Appending would work for one and not the other.
+ * `{file}` is substituted rather than appended: smctl wants it after --input,
+ * CodeSignTool inside -input_file_path=.
  */
 function parseArgs(raw, file) {
   if (!raw || !raw.trim()) {

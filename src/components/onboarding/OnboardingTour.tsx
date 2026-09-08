@@ -19,8 +19,8 @@ const CARD_WIDTH = 320;
     same as one that never arrives. */
 const TARGET_WAIT_MS = 2500;
 
-/** Deliberately unhurried: every one of these is there to be followed by an eye
-    rather than to be over quickly. */
+/** Deliberately unhurried: these are meant to be followed by an eye. */
+
 /** Focus off the old thing before anything moves. */
 const FADE_MS = 260;
 /** Long enough to be followed across the window. */
@@ -292,11 +292,8 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
     return null;
   }
 
-  // No early return on a missing rect any more. It used to unmount the whole
-  // tour while a target was on its way — which is exactly when the cursor is
-  // travelling to press the button that produces it, so the journey the tour
-  // exists to show was the one thing never on screen. The scrim and card wait
-  // for a rect; the cursor does not.
+  // No early return on a missing rect: it used to unmount the tour while a target
+  // was on its way, which is exactly when the cursor is travelling to it.
 
   function advance() {
     if (isLast) {
@@ -314,9 +311,7 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
   };
 
   // Sitting to the right of the target only works while there is a right to sit
-  // in. Pointing into a modal put the target near the middle of the screen, and
-  // the card ran off the edge with its text cut in half, so it flips to the
-  // other side when it will not fit.
+  // in, so the card flips to the other side when it will not fit.
   const rightOfTarget = cut ? cut.left + cut.width + OFFSET : 0;
   const fitsOnTheRight = rightOfTarget + CARD_WIDTH + 16 <= window.innerWidth;
 
@@ -341,13 +336,10 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
         };
 
   // **Portaled to body, and it has to be.** The app renders inside
-  // `.radix-themes`, a stacking context, so anything within it is sealed under
-  // level zero however high its z-index — the tour at 40 lost to a dialog at 1,
-  // and no number would have fixed it. It opens modals now.
+  // `.radix-themes`, a stacking context, so no z-index would beat a dialog.
   return createPortal(
-    /* The layer itself stays transparent to the pointer so the control being
-       spotlighted is still clickable through it — that is the whole point of a
-       cut-out rather than a mask. Only the card takes clicks back. */
+    /* The layer stays transparent to the pointer so the spotlighted control is
+       still clickable through it. Only the card takes clicks back. */
     <div data-gryt="tour" className="pointer-events-none fixed inset-0 z-(--gryt-z-tour)">
       {/* One element does the whole scrim. An enormous spread shadow darkens
           everything outside the box, which leaves the control itself lit and
@@ -364,11 +356,8 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
         role="dialog"
         aria-modal="false"
         aria-labelledby={`tour-${shownStep.id}-title`}
-        /* pointer-events back on, and this is load-bearing rather than tidying.
-           A Radix modal sets pointer-events: none on the body so the rest of
-           the app goes inert, and this is portaled to body — so from the moment
-           a step opened Settings, Skip and Next went inert with everything
-           else. The tour became unclickable at step two and stayed that way. */
+        /* pointer-events back on, and load-bearing: a Radix modal sets
+           pointer-events: none on the body, and this is portaled to body. */
         className="fixed w-80 rounded-(--gryt-radius-xl) border border-gryt-border bg-gryt-surface p-4 transition-[top,left,opacity] duration-(--gryt-dur-spring) ease-spring motion-reduce:transition-none"
         style={{
           ...card,

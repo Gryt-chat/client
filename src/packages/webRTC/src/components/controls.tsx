@@ -25,11 +25,8 @@ interface ControlsProps {
 }
 
 /**
- * A tooltip that is absent rather than empty when it has nothing to say.
- *
- * Radix renders the tooltip chrome even when `content` is undefined, so
- * `content={cond ? "..." : undefined}` produced a blank bubble on every hover
- * in the normal state — and left it anchored to the previously hovered control.
+ * A tooltip that is absent rather than empty when it has nothing to say. Radix
+ * renders the chrome even when `content` is undefined, leaving a blank bubble.
  */
 function MaybeTooltip({
   content,
@@ -157,18 +154,8 @@ export function Controls({ onDisconnect }: ControlsProps) {
             bitrate = Math.min(Math.round(bitrate * 1.5), 50_000_000);
           }
         }
-        /* **Asked for by name, not looked up by track.** `getSenders().find(s
-         * => s.track === videoTrack)` works on the first share, because addTrack
-         * sets `sender.track` synchronously — and fails silently on every one
-         * after, where the engine takes the replaceTrack path and `sender.track`
-         * is not set until the promise resolves.
-         *
-         * Which is GRYT-13: the encodings then keep the *previous* quality's
-         * maxBitrate, so going up a step leaves a cap far too small for the new
-         * frame size and participants get something unwatchable.
-         *
-         * `getScreenVideoSender` is the engine's own ref, set synchronously by
-         * both paths. */
+        /* **Asked for by name, not looked up by track.** A `getSenders()` lookup
+         * matches only on the first share, so the cap stays too small (GRYT-13). */
         const screenSender = getScreenVideoSender?.() ?? null;
         if (screenSender) {
           const params = screenSender.getParameters();
@@ -188,9 +175,8 @@ export function Controls({ onDisconnect }: ControlsProps) {
             voiceLog.warn("SCREEN", `setParameters failed: ${err}`);
           });
         } else {
-          // Worth a line rather than nothing: this is the state the bug used
-          // to sit in silently, and it is still reachable if the engine has
-          // no sender yet.
+          // Worth a line rather than nothing: this is the state the bug sat in
+          // silently, and it is still reachable if the engine has no sender yet.
           voiceLog.warn("SCREEN", "No screen video sender — encoding parameters not applied");
         }
       }
@@ -201,9 +187,8 @@ export function Controls({ onDisconnect }: ControlsProps) {
     }
   }, [screenShareActive, screenVideoStream, isConnected, addScreenVideoTrack, removeScreenVideoTrack, screenShareQuality, screenShareFps, screenShareGamingMode, screenShareCodec, screenShareMaxBitrate, screenShareScalabilityMode, getScreenVideoSender]);
 
-  // Attach Encoded Transform when native H.264 encoding is active.
-  // Injects pre-encoded H.264 NALs directly into the WebRTC pipeline,
-  // bypassing the browser's internal decode→re-encode cycle.
+  // Attach Encoded Transform when native H.264 encoding is active: injects
+  // pre-encoded NALs, bypassing the browser's decode-re-encode cycle.
   const encodedTransformRef = useRef<EncodedTransformHandle | null>(null);
 
   useEffect(() => {
@@ -304,9 +289,8 @@ export function Controls({ onDisconnect }: ControlsProps) {
     return () => clearTimeout(timer);
   }, [screenShareActive, screenVideoStream, getPeerConnection]);
 
-  /* The last camera and screen payloads this client sent, readable from a
-     listener that was wired once and would otherwise close over whatever they
-     were at the time (GRYT-644 hit the same thing with mute). */
+  /* The last camera and screen payloads this client sent, readable from a listener
+     wired once that would otherwise close over whatever they were then. */
   const lastCameraStateRef = useRef<{ enabled: boolean; streamId: string } | null>(null);
   const lastScreenStateRef = useRef<{ enabled: boolean; videoStreamId: string; audioStreamId: string } | null>(null);
 
@@ -343,19 +327,8 @@ export function Controls({ onDisconnect }: ControlsProps) {
     }
   }, [screenShareActive, screenVideoStream, screenAudioStream, isConnected, currentServerConnected, sockets]);
 
-  /* Re-announce camera and screen share after a reconnect that did not move
-     either (GRYT-612). `clientsInfo` is keyed by socket id, so a reconnect
-     hands this client a fresh entry with both back at their defaults while the
-     media never stopped.
-   *
-   * **Sent on `voice:room:granted`, not on the reconnect.** Both handlers are
-   * permission-gated and a just-reconnected socket has no cached permissions
-   * until `session:restore` finishes, so the server answers `forbidden` — the
-   * one error the client does not retry. The grant cannot be issued without
-   * `join_voice`, so by then the permissions are cached.
-   *
-   * One-shot, and armed only by a reconnect: a first join emits both states
-   * from the effects above anyway. */
+  /* Re-announce camera and screen after a reconnect, on `voice:room:granted` and
+     not on the reconnect itself: permissions are not cached yet (GRYT-612). */
   useEffect(() => {
     if (!currentServerConnected) return;
     const host = currentServerConnected;

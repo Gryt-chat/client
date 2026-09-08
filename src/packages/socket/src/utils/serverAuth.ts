@@ -9,13 +9,8 @@ import {
 } from "@/common";
 
 /**
- * Authenticate a server before we say anything else to it (GRYT-51).
- * **Connection-level rather than part of the join handshake** — a client with a
- * saved token reconnects without ever joining, which is the most common path.
- *
- * The gate holds the socket's outgoing traffic until the server has proved
- * itself, queuing and flushing on success or dropping on refusal, so new code
- * cannot forget to be covered by it.
+ * Authenticate a server before we say anything else to it. **Connection-level,
+ * not part of the join handshake** — a saved token reconnects without joining.
  */
 
 /** How long to wait for a proof before deciding the server isn't offering one. */
@@ -58,9 +53,8 @@ export function guardSocket(
   const refuse = (decision: ServerProofDecision & { action: "block" }) => {
     settled = true;
     queue = [];
-    // Stop reconnecting. Without this the refusal reads to the rest of the app
-    // as an ordinary dropped connection and it retries forever, showing "lost
-    // connection" instead of what actually happened.
+    // Stop reconnecting. Without this the refusal reads as an ordinary dropped
+    // connection and it retries forever, showing "lost connection".
     try {
       socket.io.opts.reconnection = false;
       socket.disconnect();
@@ -99,9 +93,8 @@ export function guardSocket(
       pendingNonce = createClientNonce();
       originalEmit("server:identify", { clientNonce: pendingNonce });
 
-      // An older server has no handler for that and will never answer. Treat
-      // silence as "offered no proof", which is fine for a server we have never
-      // pinned and a refusal for one we have.
+      // An older server has no handler and never answers. Silence means "offered
+      // no proof": fine for an unpinned server, a refusal for a pinned one.
       setTimeout(() => { void settle(undefined); }, IDENTITY_TIMEOUT_MS);
     });
 
@@ -143,11 +136,8 @@ function logDecision(host: string, decision: ServerProofDecision): void {
 }
 
 /**
- * A rough gap in words, because the exact figure is not the point.
- *
- * A minute out is a missing time sync; a day out is usually a machine that came
- * up without a battery-backed clock at all. Rounding to something sayable makes
- * that difference obvious and a stray hundred milliseconds invisible.
+ * A rough gap in words, because the exact figure is not the point. A minute out
+ * is a missing time sync; a day out is a machine with no battery-backed clock.
  */
 export function describeGap(ms: number): string {
   const seconds = Math.round(ms / 1000);
@@ -191,8 +181,7 @@ export function serverProofErrorMessage(
       );
     case "blocked": {
       // Reconnect attempts after the first refusal land here, and a bare "it's
-      // blocked" loses the reason at exactly the moment the user is deciding
-      // whether to unblock. Recover it from what was recorded.
+      // blocked" loses the reason. Recover it from what was recorded.
       const entry = listBlocked().find((b) => b.keyId === failure.keyId);
       if (entry?.reason === "key_mismatch") {
         return (
@@ -212,10 +201,8 @@ export function serverProofErrorMessage(
     case "nonce_mismatch":
       return "This server's identity proof answered a different request. Try again.";
     case "expired": {
-      // "Check the clock on both machines" asked the reader to inspect
-      // something they may not control, and made them work out which of the two
-      // was wrong. The client already knows: it compared the server's timestamp
-      // against its own to decide the proof had expired at all.
+      // The client already knows which clock is wrong: it compared the server's
+      // timestamp against its own to decide the proof had expired.
       const skew = failure.skewMs;
       if (skew === undefined) {
         return "This server's identity proof had expired, which usually means its clock is wrong.";

@@ -1,27 +1,8 @@
 /* eslint-env node */
 
 /**
- * Whether a Windows binary actually carries an Authenticode signature.
- *
- * This exists because the interesting failure is not a signing tool that
- * errors. It is a signing tool that exits 0 and signs nothing — a missing
- * credential that a CLI treats as "nothing to do", a keypair alias that does
- * not match, a file the tool silently skipped. The build goes green, the
- * release ships, and the first person to find out is somebody whose Windows
- * refuses to run it.
- *
- * So the signing hook asks this afterwards rather than trusting an exit code.
- *
- * The check is the same one Windows makes when it decides whether a file is
- * signed at all: the Certificate Table in the PE optional header's data
- * directory, entry 4. Unsigned files have offset 0 and size 0 there. It says
- * nothing about whether the signature is valid or who issued it, which is the
- * operating system's job and needs the whole certificate chain — this only
- * answers "is there one", which is exactly the question that separates
- * "blocked by Smart App Control every time" from "judged on its merits".
- *
- * Verified against the real thing on 2026-09-02: Gryt-Chat-1.9.1-win-x64.exe
- * from the v1.9.1 release reads offset 0, size 0.
+ * Whether a Windows binary carries an Authenticode signature. The interesting
+ * failure is a signing tool that exits 0 and signs nothing.
  */
 
 import { open } from "node:fs/promises";
@@ -34,11 +15,8 @@ const PE32_MAGIC = 0x10b;
 const PE32_PLUS_MAGIC = 0x20b;
 
 /**
- * Reads far enough into the file to find the data directory.
- *
- * 4096 bytes is generous. The PE header sits within the first few hundred on
- * everything electron-builder produces, and reading a fixed block keeps this
- * to one read rather than four seeks.
+ * Reads far enough into the file to find the data directory. 4096 bytes is
+ * generous, and a fixed block keeps this to one read rather than four seeks.
  */
 const HEADER_BYTES = 4096;
 
@@ -46,17 +24,10 @@ const HEADER_BYTES = 4096;
  * @param {string} path
  * @returns {Promise<{ signed: boolean, offset: number, size: number }>}
  */
+
 /**
- * Whether this file is a Windows binary at all.
- *
- * Extensions are not the answer. `.node` is a Node addon on every platform, and
- * a package that ships prebuilds — `uiohook-napi` does — carries the Linux and
- * macOS ones into a Windows build alongside the Windows one. Those are ELF and
- * Mach-O, and handing one to a signing tool, or to the reader below, is a
- * failed release rather than an unsigned file.
- *
- * @param {string} path
- * @returns {Promise<boolean>}
+ * Whether this file is a Windows binary at all: a `.node` prebuild can be ELF or
+ * Mach-O, and handing one to a signing tool is a failed release.
  */
 export async function isPortableExecutable(path) {
   const handle = await open(path, "r");
@@ -81,9 +52,7 @@ export async function readCertificateTable(path) {
 }
 
 /**
- * Split out from the file read so a check can drive it with bytes it built,
- * rather than needing a signed binary lying around to test against.
- *
+ * Split out from the file read so a check can drive it with bytes it built.
  * @param {Buffer} header
  */
 export function parseCertificateTable(header) {
@@ -128,17 +97,8 @@ export function parseCertificateTable(header) {
 }
 
 /*
- * Whether an MSIX package carries a signature.
- *
- * A .appx or .msix is a zip, not a PE file, so the reader above says nothing
- * useful about one. signtool signs it by writing an AppxSignature.p7x member
- * into the package, and Windows looks for exactly that: no member, no
- * signature, and the installer refuses the package outright rather than
- * warning about it the way it does for an unsigned .exe.
- *
- * The zip is walked rather than searched for the name as a substring. A member
- * called `app\AppxSignature.p7x` — inside the payload, where the app's own
- * files live — would match a substring search and is not a package signature.
+ * Whether an MSIX package carries a signature. A .appx is a zip: signtool writes
+ * an AppxSignature.p7x member, and the zip is walked, not substring-searched.
  */
 
 /** End of central directory record, and the most it can be preceded by. */
@@ -180,9 +140,8 @@ export async function hasAppxSignature(path) {
     let directorySize = tail.readUInt32LE(eocd + 12);
     let directoryOffset = tail.readUInt32LE(eocd + 16);
 
-    // Both fields saturate at 0xffffffff and move into the zip64 record when
-    // the package outgrows them. An MSIX with the embedded server in it is a
-    // quarter of a gigabyte, so this is closer than it looks.
+    // Both fields saturate at 0xffffffff and move into the zip64 record. An MSIX
+    // with the embedded server is a quarter of a gigabyte, so this is close.
     if (directorySize === 0xffffffff || directoryOffset === 0xffffffff) {
       let locator = -1;
       for (let i = eocd - 20; i >= 0; i--) {
