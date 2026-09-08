@@ -16,17 +16,8 @@ import { loadAudioFromCache, useAudioSettings } from "./useAudioSettings";
 import { getUserValue, loadForUser, setUserValue } from "./userStorage";
 
 /**
- * Whether the greeting has been shown, kept per device rather than per user.
- *
- * It was `setUserValue`, which sets its in-memory cache and then returns without
- * persisting when there is no user id yet. A guest dismissed the welcome, the
- * dialog closed, nothing reached disk, and the greeting was back on the next
- * launch. The id is absent for every guest, and in the browser build it can stay
- * absent for the whole session.
- *
- * Per device is also what it means. Being greeted is about this copy of the app
- * on this machine rather than about an account, and the phone has always stored
- * it that way under `gryt.welcome`.
+ * Per device, which is also what it means. `setUserValue` returns without
+ * persisting when there is no user id, so a guest was greeted on every launch.
  */
 const WELCOME_KEY = "gryt.hasSeenWelcome";
 
@@ -58,49 +49,27 @@ function useSettingsHook() {
   const [settingsTab, setSettingsTab] = useState("profile");
   const [showNickname, setShowNickname] = useState(false);
   const [hasSeenWelcome, setHasSeenWelcome] = useState(false);
-  /**
-   * Whether the stored settings have actually been read yet.
-   *
-   * Everything below defaults to something, and until the load has run those
-   * defaults are guesses. That is fine for most of them and wrong for anything
-   * deciding whether to show a first-run thing: `hasSeenWelcome` defaults to
-   * false, so without this the app is briefly certain that everybody is new.
-   *
-   * The window is not small. `useUserId` holds `userId` at null until Keycloak
-   * answers, so the effect below does not start until a round trip has finished.
-   */
+  /** Until the load runs, every default is a guess — and `hasSeenWelcome`
+      defaults to false, so the app is briefly certain everybody is new. */
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [showTour, setShowTour] = useState(false);
 
   const avatarObjectUrlRef = useRef<string | null>(null);
   const [avatarDataUrl, setAvatarDataUrlState] = useState<string | null>(null);
 
-  /**
-   * Whether settings show everything or only what most people need.
-   *
-   * Off by default: the panel had grown to the point where the essential
-   * controls sat between debug overlays and things nobody should touch without
-   * a reason. Turning it on reveals the rest in place rather than moving
-   * anything, so a setting somebody has been shown before does not wander off.
-   */
+  /** Off by default, because the essential controls sat between debug overlays.
+      Reveals in place, so nothing somebody has seen before moves. */
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showDebugOverlay, setShowDebugOverlay] = useState(false);
   const [showVideoDebugOverlay, setShowVideoDebugOverlay] = useState(false);
   const [nickname, setNickname] = useState("Unknown");
   const [activity, setActivity] = useState("");
-  /*
-   * The watched programs running right now (GRYT-931).
-   *
-   * Pushed from the main process, which is the only side that can look. Empty
-   * in a browser, and empty on the desktop until somebody lists something —
-   * the watcher does not poll at all with nothing to watch for.
-   */
+  /* Pushed from the main process, the only side that can look. Empty until
+     somebody lists something: the watcher does not poll for nothing. */
   const [playingNow, setPlayingNow] = useState<string[]>([]);
   const [showPeerLatency, setShowPeerLatency] = useState(true);
-  /* Whether a theme may fetch a typeface from Google.
-     Off, and the default is the decision. A toggle that starts on is not
-     consent, it is a setting somebody has to find out about and go and turn
-     off — which is the arrangement the toggle exists to avoid. */
+  /* Off, and the default is the decision: a toggle that starts on is not consent,
+     it is something somebody has to find out about and turn off. */
   const [googleFontsEnabled, setGoogleFontsEnabled] = useState(false);
   const [chatMediaVolume, setChatMediaVolume] = useState(50);
   const [blurProfanity, setBlurProfanityState] = useState(true);
@@ -162,14 +131,8 @@ function useSettingsHook() {
 
       applyAudioRef.current(loadAudioFromCache());
 
-      /**
-       * An install that has never been named gets one now, and keeps it.
-       *
-       * The old answer was "Unknown", which went out as the nickname on every
-       * join — so strangers arrived on other people's servers called Unknown,
-       * and since the generated avatar is seeded on the name, all of them had
-       * the same face. Written back rather than picked per load. GRYT-846.
-       */
+      /** "Unknown" went out as the nickname on every join, and the avatar is
+          seeded on the name, so all of them had one face. Written back. */
       const stored = getUserValue<string>("nickname", "");
       const name = stored || pickRandomName();
       if (!stored) setUserValue("nickname", name);
@@ -223,13 +186,8 @@ function useSettingsHook() {
 
       const seen = readSeenWelcome();
       setHasSeenWelcome(seen);
-      // A returning user who never picked a nickname used to have Settings
-      // opened on top of them here, with no explanation of why. They get the
-      // tour instead, which at least says what it is pointing at.
-      //
-      // Once, though. This ran on every load, so a guest who skipped the tour
-      // and never set a nickname was shown it again every time they opened
-      // Gryt — the app nagging somebody for declining, forever.
+      // The tour rather than Settings opening on top of somebody. Once: this ran
+      // on every load, so declining it was nagged at forever.
       if (
         seen &&
         !getUserValue<string>("nickname", "") &&
@@ -238,11 +196,8 @@ function useSettingsHook() {
         setShowTour(true);
       }
 
-      // Marked here rather than at the end of the effect. Everything the
-      // first-run decisions rest on has been read by this point, and the avatar
-      // below is a second await that has nothing to do with them — gating the
-      // welcome on it would hold the dialog back for an image nobody is waiting
-      // to see.
+      // Here rather than at the end: everything the first-run decisions rest on is
+      // read, and the avatar below is an await nobody is waiting on.
       setSettingsLoaded(true);
 
       const rec = await getStoredAvatar(userId).catch(() => null);
@@ -285,13 +240,8 @@ function useSettingsHook() {
     setAvatarDataUrlState(url);
   }
 
-  /*
-   * Follow what the main process is seeing.
-   *
-   * Read once as well as subscribed, because a window opened after a game
-   * started would otherwise wait for the next change to find out — and if the
-   * game is the only thing on the list, the next change is when it quits.
-   */
+  /* Read once as well as subscribed: a window opened after a game started would
+     otherwise wait for the next change, which is when it quits. */
   useEffect(() => {
     if (!isElectron()) return;
     const api = getElectronAPI();
@@ -504,16 +454,8 @@ function useSettingsHook() {
     });
   }
 
-  /**
-   * Close the welcome, and say whether the tour follows.
-   *
-   * Takes its answer in an options object rather than a bare boolean, which is
-   * defensive on purpose: this gets wired to `onOpenChange`, and a handler that
-   * receives an event where it expected a flag reads it as truthy. An event
-   * object here yields `startTour: undefined`, so the accident is a skip.
-   *
-   * The tour still only runs for somebody who has not picked a nickname.
-   */
+  /** An options object rather than a boolean: wired to `onOpenChange`, an event
+      where a flag was expected reads as truthy, and here it reads as a skip. */
   function completeWelcome(options?: { startTour?: boolean }) {
     setHasSeenWelcome(true);
     writeSeenWelcome();
@@ -528,21 +470,13 @@ function useSettingsHook() {
       return;
     }
 
-    // Anything that is not asking for the tour is declining it. The X, Esc, the
-    // backdrop and "I'll look myself" all say the same thing, and it has to be
-    // written down: the load path above offers the tour to anyone who has seen
-    // the welcome and has no nickname, which is exactly the person who just
-    // said no. Without this, declining bought nothing — the tour came back on
-    // the next reload, which is the same nagging the load path was already
-    // fixed once for.
+    // Anything that is not asking for the tour declines it, and that has to be
+    // written down: the load path offers it to exactly the person who said no.
     setUserValue("hasSeenTour", true);
   }
 
-  /**
-   * Called when the tour finishes and when it is skipped, because both are the
-   * same statement: I am done with this. Written down, so it is still true
-   * after a reload.
-   */
+  /** Finishing and skipping are the same statement. Written down, so it is still
+      true after a reload. */
   function dismissTour() {
     setShowTour(false);
     setUserValue("hasSeenTour", true);
@@ -598,9 +532,8 @@ function useSettingsHook() {
     setNickname: updateNickname,
     activity,
     setActivity: updateActivity,
-    /* A game wins while it is running, and hands the line back when it stops.
-       Only the first: two games at once is somebody testing, and a member list
-       row is one line. */
+    /* A game wins while running and hands the line back when it stops. Only the
+       first: a member list row is one line. */
     effectiveActivity: playingNow[0] ?? activity,
     playingNow,
     avatarDataUrl,
