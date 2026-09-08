@@ -159,6 +159,9 @@ export interface ElectronAPI {
    * hands over what is open, and it is for the settings screen (GRYT-931).
    */
   listRunningPrograms?(): Promise<string[]>;
+  /** When reading the process list was allowed, or null. */
+  getProcessScanConsent?(): Promise<string | null>;
+  setProcessScanConsent?(allow: boolean): Promise<string | null>;
   getWatchedPrograms?(): Promise<WatchedProgram[]>;
   setWatchedPrograms?(programs: WatchedProgram[]): Promise<WatchedProgram[]>;
   getRunningWatched?(): Promise<string[]>;

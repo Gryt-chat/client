@@ -174,6 +174,16 @@ let closeToTray = true;
    answer is send it to a renderer. */
 let processWatcher: ProcessWatcher | null = null;
 
+/** When the person allowed the process list to be read, or null. */
+function readScanConsent(): string | null {
+  const at = loadGlobalStore()["processScanConsent"];
+  return typeof at === "string" && at ? at : null;
+}
+
+function processScanAllowed(): boolean {
+  return readScanConsent() !== null;
+}
+
 type VoiceState = {
   inVoice: boolean;
   muted: boolean;
@@ -1657,7 +1667,11 @@ function createMainWindow(): BrowserWindow {
         mainWindow?.webContents.send("processes-changed", running);
       },
     });
-    processWatcher.watch(readWatchList(loadGlobalStore()["watchedPrograms"]));
+    processWatcher.watch(
+      processScanAllowed()
+        ? readWatchList(loadGlobalStore()["watchedPrograms"])
+        : [],
+    );
   }
 
   mainWindow.on(
@@ -2457,7 +2471,29 @@ if (!gotSingleInstanceLock) {
 
       /* The list is per machine rather than per user, since it names executables.
          Only `listRunningPrograms` hands over what is open, on demand. */
-      ipcMain.handle("processes-list-running", () => listRunningPrograms());
+
+      /* Gated here, not only in the panel, which used to read every running
+         process from an effect on mount. GRYT-1063. */
+      ipcMain.handle("processes-list-running", () =>
+        processScanAllowed() ? listRunningPrograms() : [],
+      );
+
+      ipcMain.handle("processes-get-consent", () => readScanConsent());
+
+      /* Withdrawing takes the list with it. Emptying the list already stops the
+         watcher, so this is the same off switch under one name. */
+      ipcMain.handle("processes-set-consent", (_event, allow: unknown) => {
+        if (allow === true) {
+          const at = new Date().toISOString();
+          setGlobalValue("processScanConsent", at);
+          return at;
+        }
+
+        setGlobalValue("processScanConsent", null);
+        setGlobalValue("watchedPrograms", []);
+        processWatcher?.watch([]);
+        return null;
+      });
 
       ipcMain.handle("processes-get-watched", () =>
         readWatchList(loadGlobalStore()["watchedPrograms"]),

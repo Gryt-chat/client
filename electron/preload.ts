@@ -117,6 +117,15 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return ipcRenderer.invoke("processes-list-running");
   },
 
+  /** When reading the process list was allowed, or null if it was not. */
+  getProcessScanConsent(): Promise<string | null> {
+    return ipcRenderer.invoke("processes-get-consent");
+  },
+
+  setProcessScanConsent(allow: boolean): Promise<string | null> {
+    return ipcRenderer.invoke("processes-set-consent", allow);
+  },
+
   getWatchedPrograms(): Promise<{ match: string; name: string }[]> {
     return ipcRenderer.invoke("processes-get-watched");
   },
