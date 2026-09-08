@@ -113,7 +113,7 @@ export function MiniControls({
                 style={isServerMuted ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
                 onClick={() => {
                   if (isServerMuted) {
-                    toast("You are server muted by an admin.", { icon: "🔇", id: "server-muted" });
+                    toast("You are server muted by an admin.", { icon: <PiMicrophoneSlashFill size={18} />, id: "server-muted" });
                     return;
                   }
                   setIsMuted(!isMuted);
@@ -128,7 +128,7 @@ export function MiniControls({
                 style={isServerDeafened ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
                 onClick={() => {
                   if (isServerDeafened) {
-                    toast("You are server deafened by an admin.", { icon: "🔇", id: "server-deafened" });
+                    toast("You are server deafened by an admin.", { icon: <PiSpeakerSlashFill size={18} />, id: "server-deafened" });
                     return;
                   }
                   setIsDeafened(!isDeafened);

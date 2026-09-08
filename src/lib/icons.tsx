@@ -28,6 +28,7 @@ import {
   Chats,
   Check,
   CheckCircle,
+  Circle,
   Clock,
   ClockClockwise,
   CloudArrowDown,
@@ -38,6 +39,7 @@ import {
   CornersIn,
   CornersOut,
   Desktop,
+  DotsSixVertical,
   DotsThreeVertical,
   DownloadSimple,
   Envelope,
@@ -55,6 +57,7 @@ import {
   Gauge,
   Gear,
   GearSix,
+  GlobeSimple,
   HandWaving,
   HardDrives,
   Heart,
@@ -162,6 +165,7 @@ export const PiCheckBold: Icon = weighted(Check, "bold", "PiCheckBold");
 export const PiCheckCircleFill: Icon = weighted(CheckCircle, "fill", "PiCheckCircleFill");
 export const PiClockClockwiseFill: Icon = weighted(ClockClockwise, "fill", "PiClockClockwiseFill");
 export const PiClockFill: Icon = weighted(Clock, "fill", "PiClockFill");
+export const PiCircleFill: Icon = weighted(Circle, "fill", "PiCircleFill");
 export const PiCloudArrowDownFill: Icon = weighted(CloudArrowDown, "fill", "PiCloudArrowDownFill");
 export const PiCloudArrowUpFill: Icon = weighted(CloudArrowUp, "fill", "PiCloudArrowUpFill");
 export const PiCode: Icon = Code;
@@ -172,6 +176,7 @@ export const PiCopySimpleBold: Icon = weighted(CopySimple, "bold", "PiCopySimple
 export const PiCornersInFill: Icon = weighted(CornersIn, "fill", "PiCornersInFill");
 export const PiCornersOutFill: Icon = weighted(CornersOut, "fill", "PiCornersOutFill");
 export const PiDesktopFill: Icon = weighted(Desktop, "fill", "PiDesktopFill");
+export const PiDotsSixVerticalFill: Icon = weighted(DotsSixVertical, "fill", "PiDotsSixVerticalFill");
 export const PiDotsThreeVerticalBold: Icon = weighted(DotsThreeVertical, "bold", "PiDotsThreeVerticalBold");
 export const PiDownloadSimpleFill: Icon = weighted(DownloadSimple, "fill", "PiDownloadSimpleFill");
 export const PiEnvelopeFill: Icon = weighted(Envelope, "fill", "PiEnvelopeFill");
@@ -189,6 +194,7 @@ export const PiGameControllerFill: Icon = weighted(GameController, "fill", "PiGa
 export const PiGaugeFill: Icon = weighted(Gauge, "fill", "PiGaugeFill");
 export const PiGearFill: Icon = weighted(Gear, "fill", "PiGearFill");
 export const PiGearSixFill: Icon = weighted(GearSix, "fill", "PiGearSixFill");
+export const PiGlobeSimpleFill: Icon = weighted(GlobeSimple, "fill", "PiGlobeSimpleFill");
 export const PiHandWavingFill: Icon = weighted(HandWaving, "fill", "PiHandWavingFill");
 export const PiHardDrivesFill: Icon = weighted(HardDrives, "fill", "PiHardDrivesFill");
 export const PiHeartFill: Icon = weighted(Heart, "fill", "PiHeartFill");

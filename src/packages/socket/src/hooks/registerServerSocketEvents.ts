@@ -1,5 +1,5 @@
 import { warmSfuSelection } from "@gryt/voice";
-import { Dispatch, MutableRefObject, SetStateAction } from "react";
+import { createElement, Dispatch, MutableRefObject, SetStateAction } from "react";
 import toast from "react-hot-toast";
 import { Socket } from "socket.io-client";
 
@@ -37,6 +37,7 @@ import {
   Servers,
 } from "@/settings/src/types/server";
 
+import { PiArrowsClockwiseFill, PiClockFill, PiInfoFill } from "../../../../lib/icons";
 import { type DmKeyFix, showDmKeyWarning } from "../components/dmKeyWarningToast";
 import { MemberInfo } from "../components/MemberSidebar";
 import {
@@ -416,7 +417,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
 
   socket.on("server:session:replaced", (data: { message?: string }) => {
     toast(data?.message || "You signed in from another device or tab.", {
-      icon: "🔄",
+      icon: createElement(PiArrowsClockwiseFill, { size: 18 }),
       duration: 8000,
     });
     removeServerAccessToken(host);
@@ -471,7 +472,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     if (errorInfo.error === "approval_pending") {
       const message =
         errorInfo.message || "This server admits people by request. Yours is with the moderators.";
-      toast(message, { duration: 8000, icon: "🖐" });
+      toast(message, { duration: 8000, icon: createElement(PiClockFill, { size: 18 }) });
       return;
     }
 
@@ -489,12 +490,12 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
         if (errorInfo.canReapply) {
           toast(
             `You can re-apply to join this server or remove it from your list. Check the server settings for more options.`,
-            { duration: 8000, icon: 'ℹ️' }
+            { duration: 8000, icon: createElement(PiInfoFill, { size: 18 }) }
           );
         } else {
           toast(
             `You can remove this server from your list if you no longer need access.`,
-            { duration: 6000, icon: 'ℹ️' }
+            { duration: 6000, icon: createElement(PiInfoFill, { size: 18 }) }
           );
         }
       }, 2000);

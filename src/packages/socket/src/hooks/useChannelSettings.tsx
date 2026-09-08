@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import { ServerErrorToast, serverIconSrc } from "@/common";
 import type { Channel } from "@/settings/src/types/server";
 
+import { PiClockClockwiseFill, PiFadersHorizontalFill } from "../../../../lib/icons";
 import { useServerPermissions } from "./usePermissions";
 import { useSockets } from "./useSockets";
 
@@ -51,7 +52,7 @@ function useChannelSettings({
         messages.push("RNNoise disabled");
       }
     }
-    toast(`Channel rules applied: ${messages.join(", ")}`, { icon: "⚡" });
+    toast(`Channel rules applied: ${messages.join(", ")}`, { icon: <PiFadersHorizontalFill size={18} /> });
   }, [inputMode, rnnoiseEnabled, eSportsModeEnabled, noiseGate, setInputMode, setRnnoiseEnabled, setESportsModeEnabled]);
 
   const restoreChannelSettings = useCallback(() => {
@@ -62,7 +63,7 @@ function useChannelSettings({
     setRnnoiseEnabled(prev.rnnoiseEnabled);
     setNoiseGate(prev.noiseGate);
     prevSettingsRef.current = null;
-    toast("Settings restored to your defaults", { icon: "↩" });
+    toast("Settings restored to your defaults", { icon: <PiClockClockwiseFill size={18} /> });
   }, [setInputMode, setRnnoiseEnabled, setESportsModeEnabled, setNoiseGate]);
 
   useEffect(() => {

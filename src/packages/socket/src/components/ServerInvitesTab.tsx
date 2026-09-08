@@ -6,7 +6,7 @@ import type { Socket } from "socket.io-client";
 import { isLoopbackHost, pickShareableHost } from "@/common";
 import { useEmbeddedServer } from "@/settings/src/hooks/useEmbeddedServer";
 
-import { PiCopyFill, PiPlus } from "../../../../lib/icons";
+import { PiCopyFill, PiInfoFill, PiPlus } from "../../../../lib/icons";
 import { useSocketEvent } from "../hooks/useSocketEvent";
 
 /** Stands in for "no role" so the row is not mistaken for the placeholder. */
@@ -207,7 +207,7 @@ export function ServerInvitesTab({
       toast.error("This server has no address anyone else can reach.", { duration: 7000 });
       toast(
         "Add a public IP or hostname under Settings → My servers, then copy the invite again.",
-        { duration: 10000, icon: "ℹ️" },
+        { duration: 10000, icon: <PiInfoFill size={18} /> },
       );
       return;
     }

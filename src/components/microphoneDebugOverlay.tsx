@@ -5,11 +5,16 @@ import { useEffect, useState } from "react";
 import { useSettings } from "@/settings";
 import { useServerManagement,useSockets } from "@/socket";
 
+import { PiCircleFill, PiMicrophoneFill } from "../lib/icons";
 import { DebugOverlay } from "./debugOverlay";
 
 interface MicrophoneDebugOverlayProps {
   isVisible: boolean;
 }
+
+const StateDot = ({ on }: { on: boolean }) => (
+  <PiCircleFill size={8} color={on ? "var(--gryt-success-11)" : "var(--gryt-danger-11)"} />
+);
 
 export function MicrophoneDebugOverlay({ isVisible }: MicrophoneDebugOverlayProps) {
   const { 
@@ -126,7 +131,7 @@ export function MicrophoneDebugOverlay({ isVisible }: MicrophoneDebugOverlayProp
     <DebugOverlay
       isVisible={isVisible}
       title="Microphone Debug"
-      icon="🎤"
+      icon={<PiMicrophoneFill size={16} />}
       status={{
         active: !!audioContext,
         label: audioContext?.state || "None"
@@ -163,8 +168,8 @@ export function MicrophoneDebugOverlay({ isVisible }: MicrophoneDebugOverlayProp
         <div style={{ marginLeft: "8px", fontSize: "11px" }}>
           <div>Volume: {micVolume}%</div>
           <div>Noise Gate: {noiseGate}%</div>
-          <div>Muted: {isMuted ? "🔇 Yes" : "🔊 No"}</div>
-          <div>Deafened: {isDeafened ? "🔇 Yes" : "🔊 No"}</div>
+          <div>Muted: {isMuted ? "Yes" : "No"}</div>
+          <div>Deafened: {isDeafened ? "Yes" : "No"}</div>
         </div>
       </div>
 
@@ -172,8 +177,13 @@ export function MicrophoneDebugOverlay({ isVisible }: MicrophoneDebugOverlayProp
       <div style={{ marginBottom: "8px" }}>
         <div style={{ color: "var(--gryt-secondary-11)", fontWeight: "bold" }}>Status:</div>
         <div style={{ marginLeft: "8px", fontSize: "11px" }}>
-          <div>Transmitting: {isTransmitting ? "🟢 Yes" : "🔴 No"}</div>
-          <div>Stream Active: {microphoneBuffer.mediaStream?.active ? "🟢 Yes" : "🔴 No"}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+            Transmitting: <StateDot on={isTransmitting} /> {isTransmitting ? "Yes" : "No"}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+            Stream Active: <StateDot on={!!microphoneBuffer.mediaStream?.active} />{" "}
+            {microphoneBuffer.mediaStream?.active ? "Yes" : "No"}
+          </div>
           <div>Context State: {audioContext?.state || "None"}</div>
         </div>
       </div>

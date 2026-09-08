@@ -1,3 +1,4 @@
+import { PiGlobeSimpleFill } from "../lib/icons";
 import { DebugOverlay } from "./debugOverlay";
 
 interface NetworkDebugOverlayProps {
@@ -12,7 +13,7 @@ export function NetworkDebugOverlay({ isVisible }: NetworkDebugOverlayProps) {
     <DebugOverlay
       isVisible={isVisible}
       title="Network Debug"
-      icon="🌐"
+      icon={<PiGlobeSimpleFill size={16} />}
       status={{
         active: true, // This would be determined by actual network status
         label: "Connected"

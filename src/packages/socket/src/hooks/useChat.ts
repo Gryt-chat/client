@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { Socket } from "socket.io-client";
 import useSound from "use-sound";
@@ -10,6 +10,7 @@ import { notificationBody, showDesktopNotification } from "@/lib/desktopNotifica
 import { useSettings } from "@/settings";
 import { type ForumTag,serverDetailsList as ServerDetailsList } from "@/settings/src/types/server";
 
+import { PiInfoFill } from "../../../../lib/icons";
 import type { ChatMessage } from "../components/chatUtils";
 import {
   fetchSealedAttachment,
@@ -436,7 +437,7 @@ export function useChat({
     };
 
     const onAlreadyReported = () => {
-      toast("You've already reported this message", { icon: "ℹ️" });
+      toast("You've already reported this message", { icon: createElement(PiInfoFill, { size: 18 }) });
     };
 
     const onPurgeUser = (payload: { sender_server_user_id: string; affected_conversations: string[] }) => {

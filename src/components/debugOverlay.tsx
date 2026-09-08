@@ -1,10 +1,12 @@
 import { motion, useDragControls } from "motion/react";
 import { ReactNode,useRef } from "react";
 
+import { PiCircleFill, PiDotsSixVerticalFill } from "../lib/icons";
+
 interface DebugOverlayProps {
   isVisible: boolean;
   title: string;
-  icon: string;
+  icon: ReactNode;
   status: {
     active: boolean;
     label: string;
@@ -100,10 +102,11 @@ export function DebugOverlay({
           }}
           onPointerDown={(e) => dragControls.start(e)}
         >
-          <h3 style={{ margin: 0, color: "var(--gryt-success-11)" }}>{icon} {title}</h3>
+          <h3 style={{ margin: 0, color: "var(--gryt-success-11)", display: "flex", alignItems: "center", gap: "6px" }}>{icon} {title}</h3>
           <div style={{ fontSize: "10px", color: "var(--gryt-neutral-9)", display: "flex", alignItems: "center", gap: "4px" }}>
-            <span>⋮⋮</span>
-            {status.active ? "🟢 Active" : "🔴 Inactive"} - {status.label}
+            <PiDotsSixVerticalFill size={12} />
+            <PiCircleFill size={8} color={status.active ? "var(--gryt-success-11)" : "var(--gryt-danger-11)"} />
+            {status.active ? "Active" : "Inactive"} - {status.label}
           </div>
         </div>
 
