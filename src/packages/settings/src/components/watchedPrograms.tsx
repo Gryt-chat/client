@@ -5,19 +5,8 @@ import type { WatchedProgram } from "../../../../lib/electron";
 import { useWatchedPrograms } from "../hooks/useWatchedPrograms";
 
 /**
- * The programs you want seen, under the line you type yourself (GRYT-931).
- *
- * The trade this screen exists to make legible: Gryt looks at what is running,
- * and only tells anybody about the things on this list. Nothing else you have
- * open is reported to a server, a plugin, or us — and the copy says so, because
- * "Gryt reads your process list" is the sentence somebody will otherwise assume.
- *
- * Picking from what is open rather than typing an executable name is the whole
- * usability of it. A person knows they are running Factorio; they do not know
- * whether the binary is `factorio`, `Factorio.exe` or `factorio-run`. The list
- * is filtered to things that look like applications — 1178 processes come down
- * to about 40 on a Mac — and there is still a text field beside it for anything
- * the filter was too eager about.
+ * The programs you want seen, under the line you type yourself. Gryt looks at
+ * what is running and tells anybody only about this list (GRYT-931).
  */
 export function WatchedPrograms() {
   const { supported, watched, running, setWatched, listRunning } = useWatchedPrograms();
@@ -112,8 +101,7 @@ export function WatchedPrograms() {
             value={picked}
             onValueChange={(value) => setPicked(String(value ?? ""))}
             /* Anything already listed is gone from the picker rather than shown
-               and refused — the list stops the duplicate anyway, and an option
-               that does nothing when you choose it is worse than no option. */
+               and refused: an option that does nothing is worse than none. */
             options={open
               .filter((name) => !watched.some((w) => w.match === name))
               .map((name) => ({ value: name, label: name }))}

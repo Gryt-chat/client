@@ -10,16 +10,8 @@ import { SettingGroup, SettingsContainer } from "../settingsComponents";
 import { ThemeLibrary } from "./themeLibrary";
 
 /**
- * The mode and the palette.
- *
- * A control that names a colour without showing it makes you apply it and look,
- * then come back — which is why the theme list draws each one rather than
- * listing its name.
- *
- * The heading matches the page in the rail. It read "Appearance" while the rail
- * said Theme, on a panel that also held the UI scale and the voice grid, so the
- * category, the page and the heading were three words for overlapping things.
- * The sizes are DisplaySettings now and the grid moved to Voice.
+ * The mode and the palette. A control that names a colour without showing it
+ * makes you apply it and look, so the theme list draws each one.
  */
 export function ThemeSettings() {
   const { appearancePreference, setAppearancePreference } = useTheme();

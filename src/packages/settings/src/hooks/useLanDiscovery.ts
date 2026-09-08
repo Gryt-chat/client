@@ -10,9 +10,8 @@ export function useLanDiscovery() {
   const [servers, setServers] = useState<Map<string, LanServer>>(new Map());
   const api = getElectronAPI();
 
-  // Seed from what the main process already knows. Discovery announces a
-  // server once, when it first appears, so a hook mounting later would
-  // otherwise show nothing until the network changed.
+  // Seed from what the main process already knows: discovery announces a server
+  // once, so a hook mounting later would show nothing.
   useEffect(() => {
     if (!api) return;
     let cancelled = false;

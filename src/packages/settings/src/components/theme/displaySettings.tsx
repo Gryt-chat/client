@@ -5,10 +5,8 @@ import { useTheme } from "@/common";
 import { SettingsContainer } from "../settingsComponents";
 
 /**
- * How big everything is drawn.
- *
- * Split out of the theme panel, which had grown to hold the mode, the palette,
- * three sizes and the voice grid under a single heading.
+ * How big everything is drawn. Split out of the theme panel, which had grown to
+ * hold the mode, the palette, three sizes and the voice grid.
  */
 export function DisplaySettings() {
   const {

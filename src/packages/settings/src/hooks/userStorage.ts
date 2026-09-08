@@ -99,20 +99,13 @@ function persistUnder(userId: string, values: UserData): void {
 }
 
 /**
- * Move what this device set up as a guest onto the account that just signed in
- * — without it, settings survive a reload and vanish the moment you sign in.
- *
- * Rides on the answer GRYT-173 already collects: carrying a guest's settings
- * onto an account is right on your own machine and wrong on a borrowed one.
+ * Move what this device set up as a guest onto the account that just signed in.
  * **Unanswered means no**, and only keys the account does not have are filled.
  */
+
 /**
- * Whether this device has been claimed as the signed-in person's own — one fact
- * about the machine, **not the per-server membership question GRYT-285 asks**.
- * Folding the two together would answer this by accident the first time
- * somebody claimed anything.
- *
- * Unanswered means settings stay on the device, which is the safe direction.
+ * Whether this device has been claimed as the signed-in person's own — **not the
+ * per-server membership question GRYT-285 asks**. Unanswered means no.
  */
 function deviceIsMine(): boolean {
   try {
@@ -223,9 +216,8 @@ export function clearUserCache(): void {
 }
 
 /**
- * Migrate data from global localStorage keys into the per-user store.
- * Only migrates keys that don't already exist in the user's store.
- * Called automatically on first sign-in after upgrade when no JSON file exists.
+ * Migrate data from global localStorage keys into the per-user store. Only keys
+ * that do not already exist there, on first sign-in after upgrade.
  */
 function migrateFromLocalStorage(userId: string, data: UserData): UserData {
   console.log("[UserStore] migrateFromLocalStorage: starting for", userId);

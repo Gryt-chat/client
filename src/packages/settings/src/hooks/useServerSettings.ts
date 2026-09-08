@@ -142,12 +142,8 @@ function useServerSettingsHook(): ServerSettings {
   }, []);
 
   /**
-   * Remember which discovered servers have been looked at.
-   *
-   * This is what the rail badge is counted against. It accumulates rather than
-   * being replaced, so a server that drops off the network and comes back is
-   * not announced twice — the badge is meant to say "there is something here
-   * you have not seen", and a machine rebooting is not that.
+   * Remember which discovered servers have been looked at. It accumulates, so a
+   * server that drops off the network and comes back is not announced twice.
    */
   const markLanServersSeen = useCallback((keys: string[]) => {
     setSeenLanServersRaw((prev) => {
@@ -160,14 +156,8 @@ function useServerSettingsHook(): ServerSettings {
   }, []);
 
   /**
-   * Open whatever is at the top of the rail (GRYT-642).
-   *
-   * This used to take `Object.keys(servers)[0]`, which is the order servers
-   * were added in. Dragging one to the top of the rail therefore changed where
-   * it appeared and not what opened.
-   *
-   * `pendingFocusServer` in useServerManagement runs after this and still wins,
-   * so a deep link opens what it names rather than the top of the rail.
+   * Open whatever is at the top of the rail. This took insertion order, so
+   * dragging a server up changed where it appeared and not what opened (GRYT-642).
    */
   useEffect(() => {
     if (hasAutoFocused.current) return;
