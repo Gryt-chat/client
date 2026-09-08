@@ -8,7 +8,7 @@ import {
 } from "react";
 import toast from "react-hot-toast";
 
-import { PiCode, PiFileAudioFill, PiFileFill, PiFileTextFill, PiFileVideoFill, PiFileZipFill, PiImageFill, PiPaperclipFill, PiPaperPlaneTiltFill, PiSmileyFill } from "../../../../lib/icons";
+import { PiCode, PiFileAudioFill, PiFileFill, PiFileTextFill, PiFileVideoFill, PiFileZipFill, PiImageFill, PiPaperclipFill, PiPaperPlaneTiltFill, PiSmileyFill, PiX } from "../../../../lib/icons";
 const FaFilePdf = PiFileTextFill;
 
 import { type EmojiEntry, getCustomEmojis, recordRecentEmoji } from "../utils/emojiData";
@@ -566,7 +566,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
                   type="button"
                   aria-label="Remove file"
                 >
-                  ✕
+                  <PiX size={11} />
                 </button>
               </div>
             ))}

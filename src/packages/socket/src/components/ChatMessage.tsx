@@ -1,6 +1,6 @@
 import { Skeleton } from "@gryt/ui";
 
-import { PiChatCircleFill, PiChatsFill, PiSmileyFill, PiSpeakerHighFill } from "../../../../lib/icons";
+import { PiArrowBendUpLeftFill, PiChatCircleFill, PiChatsFill, PiSmileyFill, PiSpeakerHighFill, PiTrashFill } from "../../../../lib/icons";
 import { EmojiText } from "./EmojiText";
 
 export const MessageHoverToolbar = ({
@@ -133,7 +133,7 @@ export const MessageHoverToolbar = ({
           onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gryt-neutral-4)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
         >
-          ↩
+          <PiArrowBendUpLeftFill size={14} />
         </button>
       )}
       {onThread && (
@@ -169,7 +169,7 @@ export const MessageHoverToolbar = ({
             background: "none",
             border: "none",
             padding: "4px 6px",
-            fontSize: "13px",
+            fontSize: "14px",
             lineHeight: 1,
             borderRadius: "var(--gryt-radius-md)",
             cursor: "pointer",
@@ -182,7 +182,7 @@ export const MessageHoverToolbar = ({
           onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gryt-danger-3)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
         >
-          🗑
+          <PiTrashFill size={14} />
         </button>
       )}
     </div>

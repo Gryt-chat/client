@@ -1,6 +1,7 @@
 import { Button } from "@gryt/ui";
 import type { RefObject } from "react";
 
+import { PiX } from "../../../../lib/icons";
 import { ChatEditor, type ChatEditorHandle } from "./ChatEditor";
 import type { ChatMessage } from "./chatUtils";
 import { getReplyPreview } from "./chatViewHelpers";
@@ -62,9 +63,10 @@ export function ChatEditorBar({
           </div>
           <Button tone="ghost" size="xsmall"
             onClick={onCancelReply}
+            aria-label="Cancel reply"
             style={{ padding: "2px 6px", minWidth: "auto", cursor: "pointer" }}
           >
-            ✕
+            <PiX size={14} />
           </Button>
         </div>
       )}
@@ -86,9 +88,10 @@ export function ChatEditorBar({
           </div>
           <Button tone="ghost" size="xsmall"
             onClick={onCancelEditing}
+            aria-label="Cancel editing"
             style={{ padding: "2px 6px", minWidth: "auto", cursor: "pointer" }}
           >
-            ✕
+            <PiX size={14} />
           </Button>
         </div>
       )}
