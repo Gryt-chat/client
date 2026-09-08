@@ -1,4 +1,4 @@
-import { AlertDialog, Avatar, Badge, Button, ContextMenu, IconButton, Menu, PreviewCard, Tooltip } from "@gryt/ui";
+import { Avatar, Badge, ContextMenu, IconButton, Menu, PreviewCard, Tooltip } from "@gryt/ui";
 import { useSFU } from "@gryt/voice";
 import { Reorder } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
@@ -23,6 +23,7 @@ import {
   Servers,
 } from "@/settings/src/types/server";
 import { useServerManagement, useSockets } from "@/socket";
+import { ConfirmDialog } from "@/socket/src/components/ConfirmDialog";
 import { ServerDoctor } from "@/socket/src/components/ServerDoctor";
 import type { ServerRingState } from "@/socket/src/components/ServerStatusRing";
 import { ServerStatusRing } from "@/socket/src/components/ServerStatusRing";
@@ -594,45 +595,26 @@ function ServerItem({
             </ContextMenu.Positioner>
           </ContextMenu.Portal>
         </ContextMenu.Root>
-        <AlertDialog.Root open={mergeOpen} onOpenChange={setMergeOpen}>
-          <AlertDialog.Portal>
-            <AlertDialog.Backdrop />
-            <AlertDialog.Popup>
-              <AlertDialog.Title>Merge into {host}?</AlertDialog.Title>
-              <AlertDialog.Description>
-                {duplicateHosts.length === 1
-                  ? `${duplicateHosts[0]} is the same server as ${host}, reached at a different address.`
-                  : `${duplicateHosts.join(", ")} are the same server as ${host}, reached at different addresses.`}{" "}
-                Keeping {host} removes the{" "}
-                {duplicateHosts.length === 1 ? "other entry" : "other entries"} from
-                your list. You stay a member either way \u2014 this is your list, not
-                the server. Your place in the list and the channel you were last in
-                are kept.
-              </AlertDialog.Description>
-              <div className="flex gap-3 mt-4 justify-end">
-                <AlertDialog.Close
-                  render={
-                    <Button tone="neutral" size="small">
-                      Cancel
-                    </Button>
-                  }
-                />
-                <AlertDialog.Close
-                  render={
-                    <Button size="small"
-                      onClick={() => {
-                        mergeDuplicates(host);
-                        setMergeOpen(false);
-                      }}
-                    >
-                      Keep {host}
-                    </Button>
-                  }
-                />
-              </div>
-            </AlertDialog.Popup>
-          </AlertDialog.Portal>
-        </AlertDialog.Root>
+        <ConfirmDialog
+          open={mergeOpen}
+          onOpenChange={setMergeOpen}
+          title={`Merge into ${host}?`}
+          description={
+            <>
+              {duplicateHosts.length === 1
+                ? `${duplicateHosts[0]} is the same server as ${host}, reached at a different address.`
+                : `${duplicateHosts.join(", ")} are the same server as ${host}, reached at different addresses.`}{" "}
+              Keeping {host} removes the{" "}
+              {duplicateHosts.length === 1 ? "other entry" : "other entries"} from
+              your list. You stay a member either way \u2014 this is your list, not
+              the server. Your place in the list and the channel you were last in
+              are kept.
+            </>
+          }
+          confirmLabel={`Keep ${host}`}
+          confirmTone="primary"
+          onConfirm={() => mergeDuplicates(host)}
+        />
         <ServerDoctor
           host={host}
           serverName={servers[host]?.name || host}

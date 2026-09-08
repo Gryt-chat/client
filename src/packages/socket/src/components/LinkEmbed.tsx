@@ -1,6 +1,7 @@
-import { AlertDialog, Button } from "@gryt/ui";
+import {  } from "@gryt/ui";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { ConfirmDialog } from "./ConfirmDialog";
 import {
   AudioEmbed,
   ImageEmbed,
@@ -99,29 +100,15 @@ export const MessageEmbeds = memo(({
         })}
       </div>
 
-      <AlertDialog.Root open={!!pendingDismissUrl} onOpenChange={(open) => { if (!open) setPendingDismissUrl(null); }}>
-        <AlertDialog.Portal>
-          <AlertDialog.Backdrop />
-          <AlertDialog.Popup className="max-w-100">
-          <AlertDialog.Title>Remove embed?</AlertDialog.Title>
-          <AlertDialog.Description>
-            This hides the embed for you. Edit the message to bring it back.
-          </AlertDialog.Description>
-          <div className="flex gap-3 mt-4 justify-end">
-            <AlertDialog.Close
-              render={
-                <Button tone="neutral" size="small">Cancel</Button>
-              }
-            />
-            <AlertDialog.Close
-              render={
-                <Button tone="danger" size="small" onClick={confirmDismiss}>Remove</Button>
-              }
-            />
-          </div>
-        </AlertDialog.Popup>
-        </AlertDialog.Portal>
-      </AlertDialog.Root>
+      <ConfirmDialog
+        open={!!pendingDismissUrl}
+        onOpenChange={(open) => { if (!open) setPendingDismissUrl(null); }}
+        title="Remove embed?"
+        description="This hides the embed for you. Edit the message to bring it back."
+        confirmLabel="Remove"
+        width="25rem"
+        onConfirm={confirmDismiss}
+      />
     </>
   );
 });

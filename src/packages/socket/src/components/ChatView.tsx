@@ -1,4 +1,4 @@
-import { AlertDialog, Button } from "@gryt/ui";
+import {  } from "@gryt/ui";
 import { AnimatePresence } from "motion/react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Socket } from "socket.io-client";
@@ -20,6 +20,7 @@ import { ChatEditorBar } from "./ChatEditorBar";
 import { MessageSkeleton, WelcomeMessage } from "./ChatMessage";
 import type { ChatMessage } from "./chatUtils";
 import { buildMessageMap, buildMessageMetadata, getReplyPreview } from "./chatViewHelpers";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { DirectMessagePrivacyNotice } from "./DirectMessagePrivacyNotice";
 import { EmojiText } from "./EmojiText";
 import { ForumView } from "./ForumView";
@@ -791,29 +792,14 @@ export const ChatView = memo(({
           onClose={() => setLightboxImage(null)}
         />
       )}
-      <AlertDialog.Root open={!!pendingDeleteMessage} onOpenChange={(open) => { if (!open) setPendingDeleteMessage(null); }}>
-        <AlertDialog.Portal>
-          <AlertDialog.Backdrop />
-          <AlertDialog.Popup>
-          <AlertDialog.Title>Delete message?</AlertDialog.Title>
-          <AlertDialog.Description>
-            This will permanently delete this message. This action cannot be undone.
-          </AlertDialog.Description>
-          <div className="flex gap-3 mt-4 justify-end">
-            <AlertDialog.Close
-              render={
-                <Button tone="neutral" size="small">Cancel</Button>
-              }
-            />
-            <AlertDialog.Close
-              render={
-                <Button tone="danger" size="small" onClick={confirmDelete}>Delete</Button>
-              }
-            />
-          </div>
-        </AlertDialog.Popup>
-        </AlertDialog.Portal>
-      </AlertDialog.Root>
+      <ConfirmDialog
+        open={!!pendingDeleteMessage}
+        onOpenChange={(open) => { if (!open) setPendingDeleteMessage(null); }}
+        title="Delete message?"
+        description="This will permanently delete this message. This action cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={confirmDelete}
+      />
     </>
   );
 });

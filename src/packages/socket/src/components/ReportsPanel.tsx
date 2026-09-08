@@ -1,4 +1,4 @@
-import { AlertDialog, Button, Chip, Dialog, IconButton, ScrollArea, Spinner, Tooltip } from "@gryt/ui";
+import { Button, Chip, Dialog, IconButton, ScrollArea, Spinner, Tooltip } from "@gryt/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
@@ -8,6 +8,7 @@ import { getServerAccessToken, getUploadsFileUrl } from "@/common";
 import { PiBootFill, PiCheck, PiProhibitFill, PiTrashFill, PiWarningCircle, PiWarningFill } from "../../../../lib/icons";
 import { useServerPermissions } from "../hooks/usePermissions";
 import type { AttachmentMeta } from "./chatUtils";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { FileCard } from "./FileCard";
 import { ImageLightbox } from "./ImageLightbox";
 
@@ -378,99 +379,65 @@ export function ReportsPanel({
         </Dialog.Portal>
       </Dialog.Root>
 
-      <AlertDialog.Root
+      <ConfirmDialog
         open={!!confirmAction}
         onOpenChange={(open) => !open && setConfirmAction(null)}
-      >
-        <AlertDialog.Portal>
-          <AlertDialog.Backdrop />
-          <AlertDialog.Popup>
-          <AlertDialog.Title>
-            {confirmAction?.action === "delete_all_and_ban"
-              ? "Delete all messages & ban user?"
-              : "Delete this message?"}
-          </AlertDialog.Title>
-          <AlertDialog.Description>
-            {confirmAction?.action === "delete_all_and_ban" ? (
-              <>
-                This will permanently delete <strong>all messages</strong> from{" "}
-                <strong>{confirmAction.report.senderNickname || "this user"}</strong> across
-                every channel and ban them from the server. This cannot be undone.
-              </>
-            ) : (
-              "This will permanently delete this reported message. This cannot be undone."
-            )}
-          </AlertDialog.Description>
-          <div className="flex gap-3 mt-4 justify-end">
-            <AlertDialog.Close
-              render={
-                <Button tone="neutral" size="small">
-                  Cancel
-                </Button>
-              }
-            />
-            <AlertDialog.Close
-              render={
-                <Button tone="danger" size="small"
-                  onClick={() => {
-                    if (!confirmAction) return;
-                    if (confirmAction.action === "delete_all_and_ban") {
-                      handleDeleteAllAndBan(confirmAction.report);
-                    } else {
-                      handleDelete(confirmAction.report);
-                    }
-                  }}
-                >
-                  {confirmAction?.action === "delete_all_and_ban"
-                    ? "Delete All & Ban"
-                    : "Delete Message"}
-                </Button>
-              }
-            />
-          </div>
-        </AlertDialog.Popup>
-        </AlertDialog.Portal>
-      </AlertDialog.Root>
+        title={
+          confirmAction?.action === "delete_all_and_ban"
+            ? "Delete all messages & ban user?"
+            : "Delete this message?"
+        }
+        description={
+          confirmAction?.action === "delete_all_and_ban" ? (
+            <>
+              This will permanently delete <strong>all messages</strong> from{" "}
+              <strong>{confirmAction.report.senderNickname || "this user"}</strong> across
+              every channel and ban them from the server. This cannot be undone.
+            </>
+          ) : (
+            "This will permanently delete this reported message. This cannot be undone."
+          )
+        }
+        confirmLabel={
+          confirmAction?.action === "delete_all_and_ban"
+            ? "Delete All & Ban"
+            : "Delete Message"
+        }
+        onConfirm={() => {
+          if (!confirmAction) return;
+          if (confirmAction.action === "delete_all_and_ban") {
+            handleDeleteAllAndBan(confirmAction.report);
+          } else {
+            handleDelete(confirmAction.report);
+          }
+        }}
+      />
 
-      <AlertDialog.Root
+      <ConfirmDialog
         open={!!confirmUserAction}
         onOpenChange={(open) => !open && setConfirmUserAction(null)}
-      >
-        <AlertDialog.Portal>
-          <AlertDialog.Backdrop />
-          <AlertDialog.Popup>
-            <AlertDialog.Title>
-              {confirmUserAction?.action === "ban" ? "Ban" : "Kick"}{" "}
-              {confirmUserAction?.report.reportedNickname ||
-                (confirmUserAction ? getNickname(confirmUserAction.report.reportedServerUserId) : "")}
-              ?
-            </AlertDialog.Title>
-            <AlertDialog.Description>
-              {confirmUserAction?.action === "ban"
-                ? "They are removed and cannot rejoin. Their messages stay where they are — delete those from the message queue or their profile if they should go too."
-                : "They are removed now and can rejoin. Their messages stay where they are."}{" "}
-              Every open report about them is closed either way.
-            </AlertDialog.Description>
-            <div className="flex gap-3 mt-4 justify-end">
-              <AlertDialog.Close render={<Button tone="neutral" size="small">Cancel</Button>} />
-              <AlertDialog.Close
-                render={
-                  <Button
-                    tone="danger"
-                    size="small"
-                    onClick={() => {
-                      if (!confirmUserAction) return;
-                      resolveUser(confirmUserAction.report, confirmUserAction.action);
-                    }}
-                  >
-                    {confirmUserAction?.action === "ban" ? "Ban" : "Kick"}
-                  </Button>
-                }
-              />
-            </div>
-          </AlertDialog.Popup>
-        </AlertDialog.Portal>
-      </AlertDialog.Root>
+        title={
+          <>
+            {confirmUserAction?.action === "ban" ? "Ban" : "Kick"}{" "}
+            {confirmUserAction?.report.reportedNickname ||
+              (confirmUserAction ? getNickname(confirmUserAction.report.reportedServerUserId) : "")}
+            ?
+          </>
+        }
+        description={
+          <>
+            {confirmUserAction?.action === "ban"
+              ? "They are removed and cannot rejoin. Their messages stay where they are — delete those from the message queue or their profile if they should go too."
+              : "They are removed now and can rejoin. Their messages stay where they are."}{" "}
+            Every open report about them is closed either way.
+          </>
+        }
+        confirmLabel={confirmUserAction?.action === "ban" ? "Ban" : "Kick"}
+        onConfirm={() => {
+          if (!confirmUserAction) return;
+          resolveUser(confirmUserAction.report, confirmUserAction.action);
+        }}
+      />
     </>
   );
 }

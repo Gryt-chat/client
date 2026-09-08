@@ -1,4 +1,4 @@
-import { AlertDialog, Avatar, Button, IconButton, Select, Tabs, TextField, Tooltip } from "@gryt/ui";
+import { Avatar, Button, IconButton, Select, Tabs, TextField, Tooltip } from "@gryt/ui";
 import { AvatarChoiceDialog, OwlDesignerDialog } from "@gryt/ui";
 import { useCallback,useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
@@ -8,6 +8,7 @@ import { useSettings } from "@/settings";
 import { useServerManagement, useSockets } from "@/socket";
 
 import { PiArrowsClockwiseFill, PiCameraFill, PiCheck, PiCopyFill } from "../../../../lib/icons";
+import { ConfirmDialog } from "../../../socket/src/components/ConfirmDialog";
 import { SettingsContainer } from "./settingsComponents";
 import { WatchedPrograms } from "./watchedPrograms";
 
@@ -241,29 +242,14 @@ function ProfileEditor({
           >
             Remove avatar
           </Button>
-          <AlertDialog.Root open={showRemoveConfirm} onOpenChange={(open) => { if (!open) setShowRemoveConfirm(false); }}>
-            <AlertDialog.Portal>
-              <AlertDialog.Backdrop />
-              <AlertDialog.Popup>
-              <AlertDialog.Title>Remove avatar?</AlertDialog.Title>
-              <AlertDialog.Description>
-                Your avatar will be removed{serverLabel ? ` from ${serverLabel}` : ""}. This action cannot be undone.
-              </AlertDialog.Description>
-              <div className="flex gap-3 mt-4 justify-end">
-                <AlertDialog.Close
-                  render={
-                    <Button size="small">Cancel</Button>
-                  }
-                />
-                <AlertDialog.Close
-                  render={
-                    <Button size="small" onClick={() => { onRemoveAvatar(); setShowRemoveConfirm(false); }}>Remove</Button>
-                  }
-                />
-              </div>
-            </AlertDialog.Popup>
-            </AlertDialog.Portal>
-          </AlertDialog.Root>
+          <ConfirmDialog
+            open={showRemoveConfirm}
+            onOpenChange={(open) => { if (!open) setShowRemoveConfirm(false); }}
+            title="Remove avatar?"
+            description={`Your avatar will be removed${serverLabel ? ` from ${serverLabel}` : ""}. This action cannot be undone.`}
+            confirmLabel="Remove"
+            onConfirm={onRemoveAvatar}
+          />
         </>
       ) : null}
 
