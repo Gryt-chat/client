@@ -1,5 +1,5 @@
 import { Avatar, IconButton, PreviewCard, Tooltip } from "@gryt/ui";
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { getUploadsFileUrl, resolveAvatarSrc, useTheme } from "@/common";
 
@@ -121,6 +121,8 @@ const MemberItem = ({
   onToggleBlock,
   isBlocked,
   onReport,
+  cardOpen,
+  onCardOpenChange,
 }: {
   member: MemberInfo;
   /** Already pulled into a readable band — see `readableRoleColor`. */
@@ -133,6 +135,9 @@ const MemberItem = ({
   onToggleBlock?: (targetServerUserId: string) => void;
   isBlocked?: (serverUserId: string) => boolean;
   onReport?: (target: { serverUserId: string; nickname: string }) => void;
+  /** Held by the list, not here. See the note on `openCardFor`. */
+  cardOpen: boolean;
+  onCardOpenChange: (open: boolean) => void;
 }) => {
   const isSelf = member.serverUserId === currentServerUserId;
   const { label: statusLabel, color: statusColor } = statusConfig[member.status];
@@ -172,7 +177,7 @@ const MemberItem = ({
           : undefined
       }
     >
-      <PreviewCard.Root>
+      <PreviewCard.Root open={cardOpen} onOpenChange={onCardOpenChange}>
         <PreviewCard.Trigger>
           <div
             style={{
@@ -286,6 +291,16 @@ export const MemberSidebar = ({
 
   const groups = useMemo(() => groupMembersByRole(members, roles), [members, roles]);
 
+  /* Whose card is open, held above the groups: a member going offline changes
+     their row's section, and a remounted row loses an uncontrolled card. */
+  const [openCardFor, setOpenCardFor] = useState<string | null>(null);
+
+  const setCardOpen = useCallback(
+    (serverUserId: string, open: boolean) =>
+      setOpenCardFor((current) => (open ? serverUserId : current === serverUserId ? null : current)),
+    [],
+  );
+
   /**
    * The colour each role's names are drawn in, worked out once for the list.
    * Keyed by role id, not group: Offline holds people from every role.
@@ -374,6 +389,8 @@ export const MemberSidebar = ({
                     onToggleBlock={onToggleBlock}
                     isBlocked={isBlocked}
                     onReport={onReport}
+                    cardOpen={openCardFor === member.serverUserId}
+                    onCardOpenChange={(open) => setCardOpen(member.serverUserId, open)}
                   />
                 ))}
               </div>
