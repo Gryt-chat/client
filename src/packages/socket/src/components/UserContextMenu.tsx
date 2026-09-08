@@ -14,13 +14,8 @@ type Role = string;
 interface UserContextMenuProps {
   children: ReactNode;
   /**
-   * Which server this menu belongs to, so the permissions and the role list can
-   * be looked up rather than assumed.
-   *
-   * Optional because two callers render this outside a server view. Without it
-   * the menu falls back to the built-in ladder — wrong for a custom role, and
-   * never wrong in the direction of offering something the server would refuse,
-   * since the built-in ranks are the highest any custom role can be given.
+   * Which server this menu belongs to, so permissions and roles can be looked up.
+   * Without it the built-in ladder is used, which never over-offers.
    */
   serverHost?: string;
   serverUserId?: string;
@@ -44,42 +39,25 @@ interface UserContextMenuProps {
   onServerMute?: (muted: boolean) => void;
   onServerDeafen?: (deafened: boolean) => void;
   /**
-   * Give this role or take it away, `hold` saying which.
-   *
-   * Replaced `onChangeRole`, which set the one role somebody had. Roles stack
-   * now, so "make them a moderator" and "stop them being an admin" are two
-   * different things and the menu has to be able to say which.
+   * Give this role or take it away, `hold` saying which. Roles stack, so "make
+   * them a moderator" and "stop them being an admin" are two different things.
    */
   onToggleRole?: (role: Role, hold: boolean) => void;
   onPopoutVideo?: () => void;
   /**
-   * Open a direct message with this person, on this server.
-   *
-   * Absent when the menu is rendered outside a server view, and on a server
-   * old enough not to have the events. The item is left out rather than
-   * shown and refused.
+   * Open a direct message with this person, on this server. Absent outside a
+   * server view and on a server too old for the events; the item is left out.
    */
   onOpenDm?: () => void;
   /**
-   * Stop hearing from this person, or start again.
-   *
-   * Deliberately outside the moderator section below. Blocking needs no
-   * permission and has to work against somebody who outranks you, which is the
-   * whole difference between it and a kick.
-   *
-   * Absent outside a server view, and on a server too old for the events.
+   * Stop hearing from this person, or start again. Outside the moderator section:
+   * blocking needs no permission and works against somebody who outranks you.
    */
   onToggleBlock?: () => void;
   isBlocked?: boolean;
   /**
-   * Put this person in front of the moderators.
-   *
-   * Beside Block rather than in the moderator section: reporting somebody who
-   * outranks you is the report that matters most, so it cannot live among the
-   * actions that check rank. It does check `report_messages`, the same
-   * permission reporting a message asks for.
-   *
-   * Absent outside a server view, and on a server too old for the event.
+   * Put this person in front of the moderators. Beside Block rather than among
+   * the actions that check rank, but it does check `report_messages`.
    */
   onReport?: () => void;
 }
@@ -179,9 +157,8 @@ export function UserContextMenu({
 
   const rankOf = makeRankOf(roles);
 
-  // Rank decides who may be acted on; permissions decide what the action is.
-  // They used to be the same question asked of a four-rung ladder, which is why
-  // a role built to do exactly one of these things could not be expressed.
+  // Rank decides who may be acted on; permissions decide what the action is. They
+  // used to be one question asked of a four-rung ladder.
   const outranksTarget = !!role && !!targetRole && rankOf(role) > rankOf(targetRole);
   const canMute = has("mute_members") && outranksTarget;
   const canDeafen = has("deafen_members") && outranksTarget;
@@ -199,11 +176,8 @@ export function UserContextMenu({
   const nameOfRole = (id: string) => roles.find((r) => r.id === id)?.name ?? id;
 
   /*
-   * Everything they hold, or the one role a server too old to say sends.
-   *
-   * The subtitle lists all of them, which is the only place outside settings
-   * that says a member is two things — the sidebar groups and colours by the
-   * highest ranked one.
+   * Everything they hold, or the one role a server too old to say sends. The
+   * subtitle is the only place outside settings that says a member is two things.
    */
   const heldRoles = targetRoles ?? (targetRole ? [targetRole] : []);
   const targetRoleName = heldRoles.length > 0 ? heldRoles.map(nameOfRole).join(", ") : null;

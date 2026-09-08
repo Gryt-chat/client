@@ -1,6 +1,5 @@
-/* The title and its two types moved to `@gryt/core` (GRYT-898). This file's
-   version was missing the empty-group case, so an unnamed group whose members
-   had not arrived drew a blank row. Core keeps the phone's, which has it. */
+/* The title and its two types moved to `@gryt/core`. This file's version missed
+   the empty-group case, so an unnamed group drew a blank row (GRYT-898). */
 import { type DirectConversation } from "@gryt/core";
 
 export { conversationTitle, type DirectConversation } from "@gryt/core";
@@ -10,16 +9,8 @@ import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
 
 /**
- * The direct messages open on one server.
- *
- * One server. A DM here has nothing to do with a DM with the same person on a
- * different server — separate conversations with separate history, and the
- * client cannot tell that the two members are the same person anyway. The
- * server withholds what would make that knowable, on purpose, so that two
- * servers cannot work out they share a member.
- *
- * So there is deliberately no merged view across servers, and adding one would
- * mean asking for the identifier that exists to not be handed out.
+ * The direct messages open on one server. A DM here has nothing to do with one
+ * with the same person elsewhere: the server withholds what would link them.
  */
 
 interface DmErrorPayload {
@@ -44,19 +35,13 @@ interface UseDirectMessagesResult {
   /** Open one, or bring the existing one forward. Resolves when the server answers. */
   openDm: (targetServerUserId: string) => void;
   /**
-   * Take a conversation out of your own list, or put it back.
-   *
-   * Yours alone — the other person's list does not change and they are not
-   * told. A message arriving brings it back, which is why this tidies a
-   * sidebar rather than stopping somebody talking to you.
+   * Take a conversation out of your own list, or put it back. Yours alone, and a
+   * message arriving brings it back — this tidies a sidebar, nothing more.
    */
   setHidden: (conversationId: string, hidden: boolean) => void;
   /**
-   * Start a group with these people, optionally named.
-   *
-   * Never converts a one-to-one. The pair conversation those people already
-   * had stays exactly as it is — what two people said should not become
-   * readable by a third because somebody made a group.
+   * Start a group with these people, optionally named. Never converts a
+   * one-to-one: what two people said must not become readable by a third.
    */
   createGroup: (memberIds: string[], name?: string, iconFileId?: string | null) => void;
   /** Change a group's name, its picture, or both. `null` means the drawn one. */
@@ -77,9 +62,8 @@ export function useDirectMessages({
   const [conversations, setConversations] = useState<DirectConversation[]>([]);
   const [dmsDisabled, setDmsDisabled] = useState(false);
 
-  // A server from before direct messages existed answers neither `dm:list` nor
-  // `dm:opened`, so the list simply stays empty and the section never appears.
-  // Nothing here needs to know the server's version.
+  // A server from before direct messages answers neither `dm:list` nor
+  // `dm:opened`, so the list stays empty and the section never appears.
   useEffect(() => {
     if (!socket || !accessToken || !isConnected) return;
 
@@ -95,9 +79,8 @@ export function useDirectMessages({
       });
     };
 
-    /* The server's answer, which is also what another device hears. Dropping
-       the row on the click would look right here and leave it on the phone
-       until something else refreshed the list. */
+    /* The server's answer, which is also what another device hears. Dropping the
+       row on the click would leave it on the phone until a refresh. */
     const onHidden = (payload: { conversation_id?: string; hidden?: boolean }) => {
       if (!payload?.conversation_id || payload.hidden !== true) return;
       setConversations((prev) =>
@@ -209,11 +192,8 @@ export function useDirectMessages({
 }
 
 /**
- * Move a conversation to the top when something arrives in it.
- *
- * The server stamps `last_message_at` and the list is ordered on it, but the
- * list is only fetched on connect — without this a conversation would stay
- * wherever it was until the next reconnect.
+ * Move a conversation to the top when something arrives in it. The list is
+ * ordered on `last_message_at` but only fetched on connect.
  */
 export function withConversationTouched(
   conversations: DirectConversation[],

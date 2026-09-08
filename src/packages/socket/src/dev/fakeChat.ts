@@ -1,19 +1,6 @@
 /**
- * Chat from the fake participants, for looking at messages you cannot easily
- * make yourself, and at a channel that looks used (GRYT-649). The server allows
- * one connection per user; this invents the second person.
- *
- * Delivered by calling the client's own `chat:new` listeners rather than by
- * appending to the rendered list. That is the difference between seeing a
- * message and exercising one: the real handler is what plays the sound, marks
- * the channel unread, bumps the badge and writes the cache. Nothing is sent to
- * the server, so nobody else sees any of it and nothing is stored.
- *
- * It plays scripted conversations rather than firing random lines on a fixed
- * interval, so the gaps come from what is being said. The old templates are
- * still here as one-line scripts: they exist to exercise code blocks, link
- * previews, mentions and wrapping, and a prettier conversation that stopped
- * covering those would be a downgrade.
+ * Chat from the fake participants, delivered through the client's own `chat:new`
+ * listeners so the real handler runs. Nothing is sent to the server (GRYT-649).
  */
 import { useEffect, useRef } from "react";
 
@@ -29,9 +16,8 @@ export interface FakeChatSender {
 /** What one person does at one moment in a script. */
 interface Beat {
   /**
-   * Which of the script's cast is acting, as an index. The cast is drawn from
-   * the fake participants when the script starts, so the same three people play
-   * it through rather than a new stranger per line.
+   * Which of the script's cast is acting, as an index. The cast is drawn when the
+   * script starts, so the same people play it through.
    */
   who: number;
   /** What they say. Omitted when the beat is only a reaction. */
@@ -45,8 +31,7 @@ interface Beat {
   reactWith?: (ctx: BeatContext) => string;
   /**
    * Land on top of the previous beat rather than after it. Two people typing at
-   * once is most of what makes a channel feel busy, and no amount of varying
-   * one gap produces it.
+   * once is most of what makes a channel feel busy.
    */
   together?: boolean;
 }
@@ -65,15 +50,8 @@ function customOr(emoji: string | null, fallback: string): string {
 }
 
 /**
- * The conversations.
- *
- * Each is a short exchange that ends. Between them the fixture goes quiet for
- * longer than any gap inside one, which is what makes the channel read as
- * having lulls rather than as a stream.
- *
- * The single-beat ones at the bottom are the old templates. They are what
- * covers a code block, a link preview and a wall of text, and they still fire
- * on their own so those layouts keep being exercised.
+ * The conversations. Each is a short exchange that ends. The single-beat ones at
+ * the bottom cover a code block, a link preview and a wall of text.
  */
 const SCRIPTS: Beat[][] = [
   [
@@ -136,11 +114,8 @@ function jitter(ms: number, spread = 0.35): number {
 }
 
 /**
- * How long this line takes to arrive.
- *
- * Reading the previous line, then typing this one. Neither is precise and it
- * does not need to be — what it has to avoid is every message landing on the
- * same beat, which is the tell that produced this change.
+ * How long this line takes to arrive: reading the previous line, then typing this
+ * one. What it has to avoid is every message landing on the same beat.
  */
 function gapFor(text: string | undefined, together: boolean): number {
   if (together) return jitter(260, 0.7);
@@ -243,8 +218,7 @@ export function useFakeChat({
         created_at: new Date().toISOString(),
         reactions: null,
         // Answering the line before this one, when there is one and it was
-        // somebody else. Replies render a quoted preview, which is its own
-        // layout and worth seeing filled in.
+        // somebody else. Replies render a quoted preview, its own layout.
         reply_to_message_id:
           sent.length > 0 &&
           sent[sent.length - 1].sender_server_id !== sender.serverUserId &&
@@ -290,10 +264,8 @@ export function useFakeChat({
         const beat = script[index++];
         const said = playBeat(beat, cast);
 
-        /* Sized from what was just said rather than from what is coming: the
-           next person has to read this before they answer it, and the text of
-           the next beat is only known by calling its template, which would then
-           be called twice. */
+        /* Sized from what was just said rather than what is coming: the text of
+           the next beat is only known by calling its template twice. */
         const next = script[index];
         timer = setTimeout(step, gapFor(said, Boolean(next?.together)));
       };

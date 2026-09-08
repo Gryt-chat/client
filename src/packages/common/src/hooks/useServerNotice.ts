@@ -1,20 +1,8 @@
 import { useCallback, useSyncExternalStore } from "react";
 
 /**
- * Something a server needs one particular person to see.
- *
- * **The server sends a kind and some values. Every word on screen is here.**
- *
- * That is the whole security property. A panel rendered in app furniture,
- * carrying text a server chose, addressed to one person, is a phishing message
- * with a nice border — "Your Gryt session has expired, sign in at …". Taking
- * the text away entirely makes that impossible rather than harder. The cost is
- * a client release whenever there is something new to say; a server with
- * something bespoke to tell people has the ordinary system-message path, which
- * is public, attributable and deletable.
- *
- * Adding a kind means adding it here *and* to `ClientNotice` on the server. A
- * kind this client does not know is dropped rather than rendered as anything.
+ * Something a server needs one person to see. **The server sends a kind and some
+ * values. Every word on screen is here** — otherwise it is phishing with a border.
  */
 export type ServerNotice = {
   kind: "outdated_client";
@@ -26,22 +14,16 @@ export type ServerNotice = {
 const KNOWN_KINDS = new Set<ServerNotice["kind"]>(["outdated_client"]);
 
 /**
- * `x.y.z` and nothing else — the same shape the server checks on the way out.
- *
- * Checked again on the way in rather than trusted. The server validating its
- * own output protects against a bug in the server; this protects against the
- * server, which is somebody else's machine.
+ * `x.y.z` and nothing else. Checked again on the way in rather than trusted: the
+ * server's own check protects against a bug, this protects against the server.
  */
 function isPlainVersion(value: unknown): value is string {
   return typeof value === "string" && /^\d{1,4}\.\d{1,4}\.\d{1,4}$/.test(value);
 }
 
 /**
- * Whether an arriving payload is a notice this build will render.
- *
- * Anything else is dropped in silence. A malformed notice is a server bug or a
- * server trying something, and neither is worth a message to the person using
- * the app.
+ * Whether an arriving payload is a notice this build will render. Anything else
+ * is dropped in silence — it is a server bug or a server trying something.
  */
 export function parseServerNotice(payload: unknown): ServerNotice | null {
   if (!payload || typeof payload !== "object") return null;
@@ -62,10 +44,8 @@ export function parseServerNotice(payload: unknown): ServerNotice | null {
 }
 
 /**
- * At most one notice per server.
- *
- * A second replaces the first rather than stacking, so there is no arrangement
- * of them that builds a wall in front of the conversation.
+ * At most one notice per server. A second replaces the first rather than
+ * stacking, so no arrangement of them builds a wall over the conversation.
  */
 type NoticeMap = Map<string, ServerNotice>;
 
@@ -91,11 +71,8 @@ export function getNoticeSnapshot(): NoticeMap {
 }
 
 /**
- * What somebody has already said they do not want to see.
- *
- * Per device and per kind, and the server does not get to undo it: a notice
- * arriving for a kind already dismissed is dropped on the way in. Keyed on the
- * host as well, so dismissing one server's reminder does not silence another's.
+ * What somebody has already said they do not want to see. Per device, per kind
+ * and per host, and the server does not get to undo it.
  */
 const DISMISS_KEY = "gryt.dismissedNotices";
 
@@ -113,11 +90,8 @@ function dismissKey(host: string, kind: ServerNotice["kind"]): string {
 }
 
 /**
- * Take a notice off the screen for good.
- *
- * Nothing is told about this. It is a preference about what this device shows,
- * and a server learning which of its notices somebody has silenced is the
- * beginning of working around it.
+ * Take a notice off the screen for good. Nothing is told about this: a server
+ * learning which notices are silenced is the beginning of working around it.
  */
 export function dismissServerNotice(host: string, kind: ServerNotice["kind"]) {
   const set = dismissedSet();
@@ -142,10 +116,8 @@ export function isNoticeDismissed(host: string, kind: ServerNotice["kind"]): boo
 }
 
 /**
- * Hold what a server just sent, if it is something to show.
- *
- * Returns whether it was kept, which is what a test asserts on — the store is
- * a module, and "did this reach the screen" is the question worth asking.
+ * Hold what a server just sent, if it is something to show. Returns whether it
+ * was kept, which is what a test asserts on.
  */
 export function setServerNotice(host: string, payload: unknown): boolean {
   const notice = parseServerNotice(payload);

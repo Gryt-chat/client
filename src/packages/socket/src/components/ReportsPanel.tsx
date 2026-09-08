@@ -13,11 +13,8 @@ import { FileCard } from "./FileCard";
 import { ImageLightbox } from "./ImageLightbox";
 
 /**
- * A person somebody reported, with every open report about them folded in.
- *
- * One card per person rather than per report, so a queue does not fill with six
- * rows when six people report the same person on the same evening. The reasons
- * are all here because they are the only evidence.
+ * A person somebody reported, with every open report about them folded in. One
+ * card per person, so six reports about one person is one row.
  */
 export interface AggregatedUserReport {
   reportedServerUserId: string;
@@ -66,12 +63,8 @@ export function ReportsPanel({
   const [userReports, setUserReports] = useState<AggregatedUserReport[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   /**
-   * Why the queue is not here, when it is not here.
-   *
-   * The spinner used to be the only state between asking and answering, and it
-   * was cleared in exactly one place — the reply. A stopped server, a socket
-   * part-way through reconnecting, or a refusal arriving as `server:error` all
-   * left it turning, which a moderator cannot tell from still loading.
+   * Why the queue is not here, when it is not here. The spinner was cleared in
+   * one place — the reply — so a refusal or a dead socket left it turning.
    */
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -88,17 +81,15 @@ export function ReportsPanel({
     action: "kick" | "ban";
   } | null>(null);
 
-  /* The buttons follow the same permissions the server checks, so a role that
-     may work the queue but not ban is not shown a button that answers
-     "forbidden". `manage_reports` is what got this panel open at all. */
+  /* The buttons follow the same permissions the server checks, so a role that may
+     work the queue but not ban is not shown a button that answers "forbidden". */
   const { has } = useServerPermissions(serverHost || "");
 
   const fetchReports = useCallback(() => {
     setLoadError(null);
 
     /* Said rather than shown as an empty queue. There is nothing to wait for
-       here — no socket, or no token — so starting a spinner would be waiting
-       for a reply nobody asked for. */
+       here — no socket, or no token — so a spinner would wait for nothing. */
     if (!socket || !socket.connected || !serverHost) {
       setIsLoading(false);
       setLoadError("Not connected to this server.");
@@ -123,20 +114,16 @@ export function ReportsPanel({
       userReports?: AggregatedUserReport[];
     }) => {
       setReports(payload.reports || []);
-      /* Absent on a server that predates user reports, which is not the same
-         as an empty queue — but it renders the same, and the section is left
-         out either way. */
+      /* Absent on a server that predates user reports, which is not the same as
+         an empty queue — but it renders the same, and the section is left out. */
       setUserReports(payload.userReports || []);
       setIsLoading(false);
       setLoadError(null);
     };
 
     /*
-     * A refusal, or the socket going away, ends the wait.
-     *
-     * `server:error` is the server's one error channel, so this only listens
-     * while something is actually being waited for — otherwise an unrelated
-     * failure elsewhere in the app would put a message in this panel.
+     * A refusal, or the socket going away, ends the wait. `server:error` is the
+     * one error channel, so this listens only while something is being waited for.
      */
     const onServerError = (payload?: { message?: string }) => {
       if (!loadingRef.current) return;
@@ -295,9 +282,8 @@ export function ReportsPanel({
               <Spinner size={24} />
             </div>
           ) : loadError ? (
-            /* Not the empty state. An empty queue is good news and this is
-               not news at all — it is the panel admitting it does not know,
-               which is the one thing the spinner could never say. */
+            /* Not the empty state. An empty queue is good news; this is the
+               panel admitting it does not know. */
             <div className="flex flex-col items-center justify-center py-12 gap-3">
               <PiWarningCircle size={32} style={{ color: "var(--gryt-warning-9)" }} />
               <span className="text-base text-gryt-muted">{loadError}</span>

@@ -10,11 +10,8 @@ export type JoinServerOnceRequest = {
   nickname?: string;
   inviteCode?: string;
   /**
-   * A line for whoever decides, on a server that admits people by request.
-   *
-   * Sent with the assertion rather than with the join, because the challenge
-   * binds what must not change between the two steps, and a note is a message
-   * to a person that nothing downstream trusts.
+   * A line for whoever decides, on a server that admits people by request. Sent
+   * with the assertion, because the challenge binds what must not change.
    */
   note?: string;
 };
@@ -38,11 +35,8 @@ export type JoinServerOnceError = {
   maxScore?: number;
   canReapply?: boolean;
   /**
-   * Which half of the identity exchange the server refused.
-   *
-   * The server has always sent this and this type has never had a field for it,
-   * so it was read off the wire and dropped — which is why a clock an hour out
-   * was reported as the server trusting a different identity service.
+   * Which half of the identity exchange the server refused. Read off the wire and
+   * dropped before this field existed, so a wrong clock read as a wrong issuer.
    */
   reason?: "certificate_rejected" | "assertion_rejected" | "nonce_mismatch" | "unknown";
   /**
@@ -94,15 +88,7 @@ function describeConnectError(err: unknown, host: string): JoinServerOnceError {
 
 /**
  * Join, and if the server rejects our identity, renew the certificate and try
- * once more.
- *
- * getValidCertificate() already refuses to hand back a certificate that names a
- * key we no longer hold. This is for the rest: one the identity service has
- * rotated away from, or one signed by a key the server no longer trusts.
- * Neither is visible from here, and both are fixed by asking for a new one.
- *
- * Exactly one retry, and only for this error. A ban, a bad invite or an
- * unreachable host is not helped by a new certificate.
+ * once more. Exactly one retry, and only for this error.
  */
 export async function joinServerOnce(
   req: JoinServerOnceRequest,
@@ -114,9 +100,8 @@ export async function joinServerOnce(
     return first;
   }
 
-  // A clock is not something a certificate fixes, and the retry would sign the
-  // second assertion from the same wrong clock as the first. Answer now, with
-  // the number, rather than after a round trip that cannot change the outcome.
+  // A clock is not something a certificate fixes: the retry would sign from the
+  // same wrong clock. Answer now, with the number.
   if (first.error.skewMs !== undefined) {
     return { ok: false, error: clockSkewError(req.host, first.error.skewMs) };
   }
@@ -133,9 +118,8 @@ export async function joinServerOnce(
       return { ok: false, error: clockSkewError(req.host, second.error.skewMs) };
     }
 
-    // A fresh certificate did not help, so this is not something the client can
-    // repair. Say what was tried and what to do, rather than repeating advice
-    // that has already failed twice.
+    // A fresh certificate did not help, so the client cannot repair this. Say
+    // what was tried rather than repeating advice that has failed twice.
     return {
       ok: false,
       error: {
@@ -154,11 +138,8 @@ export async function joinServerOnce(
 }
 
 /**
- * The clock is wrong, and by how much.
- *
- * Worded from this machine's side, which is the one the reader can do something
- * about. The mirror of `serverProofErrorMessage`'s "expired" case, which
- * carries the note about why naming the direction beats comparing two clocks.
+ * The clock is wrong, and by how much. Worded from this machine's side, which is
+ * the one the reader can do something about.
  */
 function clockSkewError(host: string, skewMs: number): JoinServerOnceError {
   const direction = skewMs > 0 ? "behind" : "ahead of";
@@ -232,9 +213,8 @@ async function attemptJoin(
     });
 
     socket.on("server:challenge", async (challenge: { nonce: string; serverHost: string }) => {
-      // The assertion is bound to this host. Signing whatever the other end
-      // names would let a server we did not dial collect an assertion valid
-      // somewhere else.
+      // The assertion is bound to this host. Signing whatever the other end names
+      // would let a server we did not dial collect one valid elsewhere.
       if (!challengeHostMatches(req.host, challenge.serverHost)) {
         console.error(
           `[JoinServer] Refusing to sign for ${req.host}: challenge claims to be ` +

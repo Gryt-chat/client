@@ -1,9 +1,5 @@
 /* Hallmark · component: overlay · genre: modern-minimal · theme: @gryt/ui (design.md)
- * states: verifying · slow · exiting · reduced-motion
- *   — a splash has no interactive controls, so the 8-state checklist does not
- *     apply; these are the four it actually has.
- * pre-emit critique: P5 H5 E5 S5 R5 V4
- */
+ * states: verifying · slow · exiting · reduced-motion · critique: P5 H5 E5 S5 R5 V4 */
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useState } from "react";
 
@@ -13,31 +9,14 @@ import { isElectron } from "../lib/electron";
 import { TITLEBAR_HEIGHT } from "./titlebar";
 
 /**
- * How long before the wait is acknowledged out loud.
- *
- * useAccount gives Keycloak 12 seconds and then forces signed-out, so the worst
- * case here was twelve seconds of a spinner and no explanation, followed by
- * being dropped into the app as a guest. Five is long enough that a normal
- * start never sees it.
+ * How long before the wait is acknowledged out loud. useAccount gives Keycloak 12
+ * seconds; five is long enough that a normal start never sees this.
  */
 const SLOW_AFTER_MS = 5_000;
 
 /**
- * How long after being dismissed this gives up on the fade and just goes
- * (GRYT-911).
- *
- * The overlay used to be removed by `AnimatePresence`, once the exit animation
- * finished. That is fine while the animation runs, and it does not run in a
- * background tab: browsers pause `requestAnimationFrame` there, so the fade
- * stops wherever it got to and the element it was fading is never unmounted.
- *
- * The result was an app that had decided somebody was signed out, rendered
- * itself behind, and stayed behind a half-transparent sheet — measured at 48
- * seconds, and it would have stayed forever. Starting Gryt and looking at
- * something else while it loads is the whole of what it takes.
- *
- * `setTimeout` is throttled in a hidden tab rather than paused, which is why
- * the backstop is one and the animation is not.
+ * How long after being dismissed this gives up on the fade and just goes. A
+ * background tab pauses rAF, so `AnimatePresence` never unmounted it (GRYT-911).
  */
 const FADE_GIVE_UP_SLACK_MS = 400;
 
@@ -49,17 +28,15 @@ export function AuthLoadingOverlay({
   fadeDurationMs?: number;
 }) {
   // Left uncovered on purpose, so the window stays draggable and closable while
-  // this is up. It is the one piece of chrome that must never be behind a
-  // loading screen.
+  // this is up.
   const titlebarHeight = isElectron() ? TITLEBAR_HEIGHT : 0;
 
   const reduceMotion = useReducedMotion();
   const [slow, setSlow] = useState(false);
 
   /*
-   * Whether the fade has been given long enough. Nothing to do with how the
-   * fade is going — this deliberately does not ask, because the case it exists
-   * for is the one where the fade is not going at all.
+   * Whether the fade has been given long enough. Deliberately does not ask how
+   * the fade is going: the case it exists for is the fade not going at all.
    */
   const [faded, setFaded] = useState(false);
 
@@ -111,20 +88,16 @@ export function AuthLoadingOverlay({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            /* Dropped the moment this is dismissed, before the fade has
-               finished and whether or not it ever does. Somebody who can see
-               the app behind a half-faded sheet should be able to use it, and
-               a sheet that is on its way out has no business swallowing a
-               click. */
+            /* Dropped the moment this is dismissed, whether or not the fade ever
+               finishes. A sheet on its way out must not swallow a click. */
             pointerEvents: open ? "all" : "none",
             userSelect: "none"
           }}
           role="status"
           aria-label="Checking whether you are signed in"
           aria-live="polite"
-          /* Not busy once it is leaving, and hidden from a screen reader
-             entirely — a sheet mid-exit is decoration, and announcing it again
-             on the way out is announcing something that is no longer true. */
+          /* Not busy once it is leaving, and hidden from a screen reader — a
+             sheet mid-exit is decoration. */
           aria-busy={open}
           aria-hidden={!open}
         >
