@@ -1,5 +1,7 @@
-import { AlertDialog, Button, Checkbox, TextField } from "@gryt/ui";
+import { Checkbox, TextField } from "@gryt/ui";
 import { useEffect, useState } from "react";
+
+import { ConfirmDialog } from "./ConfirmDialog";
 
 /**
  * Reporting a person, as opposed to reporting one thing they said.
@@ -46,66 +48,53 @@ export function ReportUserDialog({
   const alreadyBlocked = target ? isBlocked(target.serverUserId) : false;
 
   return (
-    <AlertDialog.Root
+    <ConfirmDialog
       open={!!target}
-      onOpenChange={(open) => {
-        if (!open) onClose();
+      onOpenChange={(open) => { if (!open) onClose(); }}
+      title={`Report ${target?.nickname}?`}
+      description={
+        <>
+          This goes to the moderators of this server, who can see that it came
+          from you. {target?.nickname} is told nothing.
+        </>
+      }
+      confirmLabel="Report"
+      confirmTone="primary"
+      confirmDisabled={!canSubmit}
+      onConfirm={() => {
+        if (!target || !canSubmit) return;
+        onSubmit({
+          serverUserId: target.serverUserId,
+          reason: trimmed,
+          alsoBlock: alsoBlock && !alreadyBlocked,
+        });
+        onClose();
       }}
     >
-      <AlertDialog.Portal>
-        <AlertDialog.Backdrop />
-        <AlertDialog.Popup>
-          <AlertDialog.Title>Report {target?.nickname}?</AlertDialog.Title>
-          <AlertDialog.Description>
-            This goes to the moderators of this server, who can see that it came
-            from you. {target?.nickname} is told nothing.
-          </AlertDialog.Description>
+      <div className="flex flex-col gap-1">
+        <span className="text-xs">What happened?</span>
+        <TextField
+          multiline
+          minRows={3}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="Following me between channels and repeating it after I asked them to stop"
+          maxLength={REPORT_REASON_MAX}
+        />
+        <span className="text-xs text-gryt-muted">
+          {trimmed.length}/{REPORT_REASON_MAX}
+        </span>
+      </div>
 
-          <div className="flex flex-col gap-1 mt-3">
-            <span className="text-xs">What happened?</span>
-            <TextField
-              multiline
-              minRows={3}
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Following me between channels and repeating it after I asked them to stop"
-              maxLength={REPORT_REASON_MAX}
-            />
-            <span className="text-xs text-gryt-muted">
-              {trimmed.length}/{REPORT_REASON_MAX}
-            </span>
-          </div>
-
-          {!alreadyBlocked && (
-            <label className="text-sm mt-3" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Checkbox
-                checked={alsoBlock}
-                onCheckedChange={(v) => setAlsoBlock(v === true)}
-              />
-              Block them as well, so they cannot reach you while this is looked at
-            </label>
-          )}
-
-          <div className="flex gap-3 mt-4 justify-end">
-            <AlertDialog.Close render={<Button size="small">Cancel</Button>} />
-            <Button
-              size="small"
-              disabled={!canSubmit}
-              onClick={() => {
-                if (!target || !canSubmit) return;
-                onSubmit({
-                  serverUserId: target.serverUserId,
-                  reason: trimmed,
-                  alsoBlock: alsoBlock && !alreadyBlocked,
-                });
-                onClose();
-              }}
-            >
-              Report
-            </Button>
-          </div>
-        </AlertDialog.Popup>
-      </AlertDialog.Portal>
-    </AlertDialog.Root>
+      {!alreadyBlocked && (
+        <label className="text-sm" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Checkbox
+            checked={alsoBlock}
+            onCheckedChange={(v) => setAlsoBlock(v === true)}
+          />
+          Block them as well, so they cannot reach you while this is looked at
+        </label>
+      )}
+    </ConfirmDialog>
   );
 }

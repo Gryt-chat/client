@@ -1,11 +1,5 @@
 import type { GrytTheme } from "@gryt/ui";
-import {
-  Accordion,
-  AlertDialog,
-  Button,
-  encodeGrytTheme,
-  grytPresetsByCollection,
-} from "@gryt/ui";
+import { Accordion, Button, encodeGrytTheme, grytPresetsByCollection } from "@gryt/ui";
 import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -18,6 +12,7 @@ import {
   PiPencilSimpleBold,
   PiTrashBold,
 } from "../../../../../lib/icons";
+import { ConfirmDialog } from "../../../../socket/src/components/ConfirmDialog";
 import { ImportThemeDialog } from "./importThemeDialog";
 import { ThemePreview } from "./themePreview";
 
@@ -323,7 +318,7 @@ function ThemeRow({
       ) : null}
 
       {onDelete ? (
-        <AlertDialog.Root open={confirming} onOpenChange={setConfirming}>
+        <>
           <Button
             aria-label={`Delete ${name}`}
             size="xsmall"
@@ -332,35 +327,17 @@ function ThemeRow({
           >
             <PiTrashBold />
           </Button>
-          <AlertDialog.Portal>
-            <AlertDialog.Backdrop />
-            <AlertDialog.Popup className="max-w-[420px]">
-              <AlertDialog.Title>Delete {name}?</AlertDialog.Title>
-              <AlertDialog.Description>
-                The theme is only on this machine. If you have the link it came
-                from you can import it again; if you do not, this is the only
-                copy.
-              </AlertDialog.Description>
-              <div className="mt-4 flex justify-end gap-3">
-                <AlertDialog.Close render={<span />}>
-                  <Button size="small" tone="neutral">
-                    Keep it
-                  </Button>
-                </AlertDialog.Close>
-                <Button
-                  size="small"
-                  tone="danger"
-                  onClick={() => {
-                    setConfirming(false);
-                    onDelete();
-                  }}
-                >
-                  Delete
-                </Button>
-              </div>
-            </AlertDialog.Popup>
-          </AlertDialog.Portal>
-        </AlertDialog.Root>
+          <ConfirmDialog
+            open={confirming}
+            onOpenChange={setConfirming}
+            title={`Delete ${name}?`}
+            description="The theme is only on this machine. If you have the link it came from you can import it again; if you do not, this is the only copy."
+            confirmLabel="Delete"
+            cancelLabel="Keep it"
+            width="420px"
+            onConfirm={onDelete}
+          />
+        </>
       ) : null}
     </div>
   );

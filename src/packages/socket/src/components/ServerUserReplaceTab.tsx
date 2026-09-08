@@ -1,4 +1,4 @@
-import { AlertDialog, Avatar, Button, Surface, TextField } from "@gryt/ui";
+import { Avatar, Button, Surface, TextField } from "@gryt/ui";
 import { useCallback, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
@@ -8,6 +8,7 @@ import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 import { useSocketEvent } from "../hooks/useSocketEvent";
 import { useSockets } from "../hooks/useSockets";
 import { formatJoined } from "../lib/memberFacts";
+import { ConfirmDialog } from "./ConfirmDialog";
 import type { MemberInfo } from "./MemberSidebar";
 
 interface ReplaceSuccessPayload {
@@ -177,6 +178,7 @@ export function ServerUserReplaceTab({
   const [targetServerUserId, setTargetServerUserId] = useState("");
   const [newGrytUserId, setNewGrytUserId] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [confirmReplace, setConfirmReplace] = useState(false);
 
   const refresh = () => {
     if (!socket?.connected) return;
@@ -257,40 +259,28 @@ export function ServerUserReplaceTab({
           </div>
 
           <div className="flex justify-end mt-2">
-            <AlertDialog.Root>
-              <AlertDialog.Trigger>
-                <Button size="small" disabled={submitting || !targetServerUserId || !newGrytUserId.trim()}>
-                  {submitting ? "Replacing…" : "Replace identity"}
-                </Button>
-              </AlertDialog.Trigger>
-              <AlertDialog.Portal>
-                <AlertDialog.Backdrop />
-                <AlertDialog.Popup>
-                <AlertDialog.Title>Replace user identity?</AlertDialog.Title>
-                <AlertDialog.Description>
+            <Button
+              size="small"
+              disabled={submitting || !targetServerUserId || !newGrytUserId.trim()}
+              onClick={() => setConfirmReplace(true)}
+            >
+              {submitting ? "Replacing…" : "Replace identity"}
+            </Button>
+            <ConfirmDialog
+              open={confirmReplace}
+              onOpenChange={setConfirmReplace}
+              title="Replace user identity?"
+              description={
+                <>
                   This will permanently re-bind{" "}
                   <strong>{selectedMember?.nickname ?? targetServerUserId}</strong>&apos;s server identity to a new
                   Keycloak account. The old account will lose access and any active sessions will be revoked.
-                </AlertDialog.Description>
-                <div className="flex gap-3 mt-4 justify-end">
-                  <AlertDialog.Close
-                    render={
-                      <Button size="small">
-                        Cancel
-                      </Button>
-                    }
-                  />
-                  <AlertDialog.Close
-                    render={
-                      <Button size="small" onClick={handleReplace} disabled={submitting}>
-                        Confirm replace
-                      </Button>
-                    }
-                  />
-                </div>
-              </AlertDialog.Popup>
-              </AlertDialog.Portal>
-            </AlertDialog.Root>
+                </>
+              }
+              confirmLabel="Confirm replace"
+              confirmDisabled={submitting}
+              onConfirm={handleReplace}
+            />
           </div>
         </div>
       </Surface>

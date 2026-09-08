@@ -1,10 +1,11 @@
-import { AlertDialog, Button, Divider } from "@gryt/ui";
+import { Divider } from "@gryt/ui";
 import { useState } from "react";
 
 import connectMp3 from "@/audio/src/assets/connect.mp3";
 import disconnectMp3 from "@/audio/src/assets/disconnect.mp3";
 import { useSettings } from "@/settings";
 
+import { NoticeDialog } from "../../../socket/src/components/NoticeDialog";
 import { SettingGroup, SettingsContainer, ToggleSetting } from "./settingsComponents";
 import { SoundSettings } from "./SoundSettings";
 import { TileLayoutPicker } from "./tileLayoutPicker";
@@ -101,38 +102,12 @@ export function VoiceSettings() {
       </div>
 
 
-      {alertDialog.open && (
-        <AlertDialog.Root
-          open={alertDialog.open}
-          onOpenChange={() =>
-            setAlertDialog({ ...alertDialog, open: false })
-          }
-        >
-          <AlertDialog.Portal>
-            <AlertDialog.Backdrop />
-            <AlertDialog.Popup>
-            <AlertDialog.Title>{alertDialog.title}</AlertDialog.Title>
-            <AlertDialog.Description>
-              {alertDialog.message}
-            </AlertDialog.Description>
-
-            <div className="flex gap-3 mt-4 justify-end">
-              <AlertDialog.Close
-                render={
-                  <Button tone="neutral" size="small"
-                    onClick={() =>
-                      setAlertDialog({ ...alertDialog, open: false })
-                    }
-                  >
-                    OK
-                  </Button>
-                }
-              />
-            </div>
-          </AlertDialog.Popup>
-          </AlertDialog.Portal>
-        </AlertDialog.Root>
-      )}
+      <NoticeDialog
+        open={alertDialog.open}
+        onClose={() => setAlertDialog({ ...alertDialog, open: false })}
+        title={alertDialog.title}
+        message={alertDialog.message}
+      />
       <SettingGroup
         title="Tile layout"
         description="How the voice grid arranges people once it is maximised or fullscreen. Both were measured against Google Meet; which you prefer is a matter of taste. The sidebar looks the same either way."

@@ -1,4 +1,4 @@
-import { AlertDialog, Button, Divider, Toggle, ToggleGroup } from "@gryt/ui";
+import { Divider, Toggle, ToggleGroup } from "@gryt/ui";
 import { useState, useSyncExternalStore } from "react";
 
 import messageSoundMp3 from "@/audio/src/assets/universfield-computer-mouse-click-02-383961.mp3";
@@ -10,6 +10,7 @@ import {
 } from "@/common";
 import { useSettings } from "@/settings";
 
+import { NoticeDialog } from "../../../socket/src/components/NoticeDialog";
 import { ServerNotificationList } from "./serverNotificationList";
 import { SettingGroup, SettingsContainer, ToggleSetting } from "./settingsComponents";
 import { SoundSettings } from "./SoundSettings";
@@ -133,38 +134,12 @@ export function NotificationSettings() {
         showAlert={showAlert}
       />
 
-      {alertDialog.open && (
-        <AlertDialog.Root
-          open={alertDialog.open}
-          onOpenChange={() =>
-            setAlertDialog({ ...alertDialog, open: false })
-          }
-        >
-          <AlertDialog.Portal>
-            <AlertDialog.Backdrop />
-            <AlertDialog.Popup>
-            <AlertDialog.Title>{alertDialog.title}</AlertDialog.Title>
-            <AlertDialog.Description>
-              {alertDialog.message}
-            </AlertDialog.Description>
-
-            <div className="flex gap-3 mt-4 justify-end">
-              <AlertDialog.Close
-                render={
-                  <Button tone="neutral" size="small"
-                    onClick={() =>
-                      setAlertDialog({ ...alertDialog, open: false })
-                    }
-                  >
-                    OK
-                  </Button>
-                }
-              />
-            </div>
-          </AlertDialog.Popup>
-          </AlertDialog.Portal>
-        </AlertDialog.Root>
-      )}
+      <NoticeDialog
+        open={alertDialog.open}
+        onClose={() => setAlertDialog({ ...alertDialog, open: false })}
+        title={alertDialog.title}
+        message={alertDialog.message}
+      />
     </SettingsContainer>
   );
 }
