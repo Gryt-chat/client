@@ -1673,24 +1673,38 @@ body {
   background: var(--gryt-surface-raised);
 }
 
-/* Underlined, like every link in Gryt. Tinted at rest, solid on hover. */
 .whats-new-link {
-  border-radius: 4px;
   font-size: 0.84rem;
+}
+
+/* ── Every link in running text (GRYT-1093) ─────────────────────────────────
+   Underlined at rest, tinted, solid on hover. Underlining only on hover leaves
+   a link that reads as coloured text, and on a touch screen never resolves.
+
+   Not for a nav item, a card or a button that happens to be an `a` — those are
+   read by their position and shape, and an underline makes them worse.
+
+   accent-11 rather than the accent itself: #968ff8 lands around 2.8:1 on the
+   light theme's white, which is fine as a fill behind dark text and not as text.
+
+   The decoration is mixed from currentColor, so a link that sets its own colour
+   — the status banner takes the tone it is warning in — keeps a matching rule. */
+.gryt-link {
+  border-radius: 4px;
   color: var(--gryt-accent-11);
   text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, var(--gryt-accent-11) 40%, transparent);
+  text-decoration-color: color-mix(in srgb, currentColor 42%, transparent);
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
   transition: text-decoration-color 0.18s ease;
 }
 
-.whats-new-link:hover {
-  text-decoration-color: var(--gryt-accent-11);
+.gryt-link:hover {
+  text-decoration-color: currentColor;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .whats-new-link {
+  .gryt-link {
     transition: none;
   }
 }

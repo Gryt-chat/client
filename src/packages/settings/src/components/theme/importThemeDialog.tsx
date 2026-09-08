@@ -105,7 +105,7 @@ export function ImportThemeDialog({
                 Read it
               </Button>
               <a
-                className="text-xs text-gryt-accent-11 hover:underline"
+                className="gryt-link text-xs"
                 href={GENERATOR}
                 rel="noreferrer"
                 target="_blank"

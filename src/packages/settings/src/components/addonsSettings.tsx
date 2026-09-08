@@ -274,7 +274,7 @@ export function AddonsSettings() {
               ? "Addons are folders in your addons directory, each with an addon.json manifest."
               : "Addons load from a mounted addons directory. The desktop app can open that folder for you."}
           </span>
-          <a className="text-gryt-accent underline-offset-2 hover:underline"
+          <a className="gryt-link"
             href="https://docs.gryt.chat/docs"
             target="_blank"
             rel="noreferrer"

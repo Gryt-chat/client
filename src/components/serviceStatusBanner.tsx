@@ -156,7 +156,7 @@ export function ServiceStatusBanner() {
       <span className="text-xs" style={{ color: `var(--gryt-${tone}-11)` }}>
         {message}{" "}
         <a
-          className="font-medium underline-offset-2 hover:underline"
+          className="gryt-link font-medium"
           style={{ color: `var(--gryt-${tone}-11)` }}
           href={STATUS_PAGE}
           target="_blank"
