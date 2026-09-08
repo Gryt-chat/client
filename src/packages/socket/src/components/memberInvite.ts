@@ -1,10 +1,6 @@
 /**
- * How a member's invite reads on the Members tab (GRYT-923).
- *
- * Pure and on its own because the states are easy to get subtly wrong and
- * impossible to check by looking: an invite that was deleted and one that was
- * revoked both mean "this door is shut", but they are different sentences, and
- * a live one must never be drawn as either.
+ * How a member's invite reads on the Members tab. Deleted and revoked both mean
+ * the door is shut, but they are different sentences (GRYT-923).
  */
 
 export interface MemberInvite {
@@ -14,8 +10,7 @@ export interface MemberInvite {
   note: string | null;
   /**
    * Whether it has been revoked, or null when the invite no longer exists at
-   * all. Three states rather than two, and the difference is worth keeping —
-   * see `inviteState`.
+   * all. Three states rather than two — see `inviteState`.
    */
   revoked: boolean | null;
   usesConsumed: number | null;
@@ -34,20 +29,15 @@ export interface InviteState {
 }
 
 /**
- * `revoked !== false` rather than `revoked === true`.
- *
- * Null means the invite row is gone — somebody deleted it after this member
- * arrived — and that is every bit as shut as a revoked one. Testing for `true`
- * would leave a deleted invite drawn as live, with a Revoke button that acts on
- * a code the server no longer has.
+ * `revoked !== false` rather than `revoked === true`. Null means the row is gone,
+ * which is every bit as shut, and would otherwise draw as live.
  */
 export function inviteState(invite: MemberInvite): InviteState {
   const dead = invite.revoked !== false;
 
   return {
-    // The note is what an operator recognises. "Kari's friends" beats a random
-    // string, and the code stays in `hint` because that is what the Invites tab
-    // lists it under.
+    // The note is what an operator recognises. The code stays in `hint` because
+    // that is what the Invites tab lists it under.
     label: invite.note || invite.code,
     dead,
     reason: dead ? (invite.revoked === null ? "deleted" : "revoked") : null,

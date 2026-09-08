@@ -2,30 +2,15 @@ import type { Clients } from "../types/clients";
 
 /**
  * Putting the conversation id back onto the clients the server would not name.
- *
- * The server blanks it out of `members:list` and `server:clients` deliberately:
- * both go to every member of the server, and a one-to-one id is a hash of the
- * sorted pair, so anybody holding a member list could read back who is talking
- * to whom. Blanked, nothing downstream matches on `voiceChannelId` and a call
- * drew nobody in it, including yourself.
- *
- * `voice:call:members` closes that. The server sends it only into the call's
- * own socket.io room, so receiving it is itself the proof of being allowed to
- * know.
- *
- * The memberships are remembered so they survive the next `server:clients`
- * re-blanking them, and a member who has since left the room has their id taken
- * away again rather than left behind.
+ * `voice:call:members` goes only into the call's room, so receiving it is proof.
  */
 
 /** Who is in each conversation call, as this client last heard. */
 export type CallMemberships = Record<string, string[]>;
 
 /**
- * The clients map with each known call's id written back on.
- *
- * Returns the same object when nothing changed, so this can sit in the
- * `server:clients` path without making every update a new reference.
+ * The clients map with each known call's id written back on. Returns the same
+ * object when nothing changed, so `server:clients` does not churn references.
  */
 export function applyCallMemberships(
   clients: Clients,
@@ -48,8 +33,7 @@ export function applyCallMemberships(
       : undefined;
 
     // Only somebody the server says is in a call, and only while it still says
-    // they have joined one. Writing an id onto a client who has left would keep
-    // them in the call view after they hung up.
+    // so. Writing an id onto a client who left keeps them in the call view.
     if (conversationId && client.hasJoinedChannel && client.voiceChannelId !== conversationId) {
       next[clientId] = { ...client, voiceChannelId: conversationId };
       changed = true;
@@ -62,11 +46,8 @@ export function applyCallMemberships(
 }
 
 /**
- * The memberships after one `voice:call:members`.
- *
- * An empty list drops the conversation rather than storing nothing under it —
- * a call that ended should stop being remembered, or the ids would be written
- * back onto whoever next connects with those member ids.
+ * The memberships after one `voice:call:members`. An empty list drops the
+ * conversation, so ids are not written back onto whoever next connects.
  */
 export function rememberCallMembers(
   memberships: CallMemberships,
