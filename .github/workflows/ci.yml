@@ -75,6 +75,9 @@ jobs:
       # A device somebody signed out has to stay signed out across a restart,
       # and the note that makes that happen is not visible from anywhere else.
       - run: yarn test:signed-out
+      # Confirmations drift when each one is hand-rolled: Cancel drawn as the
+      # primary action, destructive confirms untoned, widths wherever.
+      - run: yarn test:dialog-primitives
       # The outage banner has to stay silent when nothing is wrong, and a
       # client with no internet must not invent an outage.
       - run: yarn test:service-status

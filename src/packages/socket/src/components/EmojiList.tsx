@@ -1,4 +1,4 @@
-import { AlertDialog, Button, IconButton, TextField } from "@gryt/ui";
+import { Button, IconButton, TextField } from "@gryt/ui";
 import { type ChangeEvent, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -8,6 +8,7 @@ import { PiCheck, PiPencilSimpleFill, PiTrashFill, PiX } from "../../../../lib/i
 import { getCustomEmojiUrl } from "../utils/emojiData";
 import type { EmojiItem } from "../utils/emojiFileUtils";
 import { EMOJI_NAME_RE } from "../utils/emojiFileUtils";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 interface EmojiListProps {
   host: string;
@@ -28,6 +29,7 @@ export function EmojiList({
 }: EmojiListProps) {
   const [deletingName, setDeletingName] = useState<string | null>(null);
   const [deletingAll, setDeletingAll] = useState(false);
+  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   const [editingEmoji, setEditingEmoji] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
   const [editingError, setEditingError] = useState<string | null>(null);
@@ -158,37 +160,20 @@ export function EmojiList({
           Custom emojis {!loading && `(${emojis.length})`}
         </span>
         {emojis.length > 0 && (
-          <AlertDialog.Root>
-            <AlertDialog.Trigger>
-              <Button size="xsmall" disabled={deletingAll}>
-                <PiTrashFill size={14} />
-                {deletingAll ? "Deleting..." : "Delete all"}
-              </Button>
-            </AlertDialog.Trigger>
-            <AlertDialog.Portal>
-              <AlertDialog.Backdrop />
-              <AlertDialog.Popup>
-              <AlertDialog.Title>Delete all emojis?</AlertDialog.Title>
-              <AlertDialog.Description>
-                This will permanently delete all {emojis.length} custom emoji{emojis.length !== 1 ? "s" : ""} from this server. This cannot be undone.
-              </AlertDialog.Description>
-              <div className="flex gap-3 mt-4 justify-end">
-                <AlertDialog.Close
-                  render={
-                    <Button size="small">Cancel</Button>
-                  }
-                />
-                <AlertDialog.Close
-                  render={
-                    <Button size="small" onClick={handleDeleteAll}>
-                      Delete all
-                    </Button>
-                  }
-                />
-              </div>
-            </AlertDialog.Popup>
-            </AlertDialog.Portal>
-          </AlertDialog.Root>
+          <>
+            <Button size="xsmall" disabled={deletingAll} onClick={() => setConfirmDeleteAll(true)}>
+              <PiTrashFill size={14} />
+              {deletingAll ? "Deleting..." : "Delete all"}
+            </Button>
+            <ConfirmDialog
+              open={confirmDeleteAll}
+              onOpenChange={setConfirmDeleteAll}
+              title="Delete all emojis?"
+              description={`This will permanently delete all ${emojis.length} custom emoji${emojis.length !== 1 ? "s" : ""} from this server. This cannot be undone.`}
+              confirmLabel="Delete all"
+              onConfirm={handleDeleteAll}
+            />
+          </>
         )}
       </div>
 

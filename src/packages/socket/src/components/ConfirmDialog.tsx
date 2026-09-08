@@ -30,10 +30,12 @@ export function ConfirmDialog({
   cancelLabel = "Cancel",
   width,
   onConfirm,
+  onCancel,
   children,
 }: {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
+  /** Optional when onConfirm and onCancel both close the dialog themselves. */
+  onOpenChange?: (open: boolean) => void;
   title: ReactNode;
   description?: ReactNode;
   confirmLabel: string;
@@ -50,6 +52,17 @@ export function ConfirmDialog({
    */
   width?: string;
   onConfirm: () => void;
+  /**
+   * Run when the dialog closes any way other than confirming: the Cancel
+   * button, Esc, the backdrop.
+   *
+   * A caller whose confirm and cancel handlers each close the dialog themselves
+   * needs this rather than doing the cancelling from `onOpenChange`, which
+   * fires on the way out of a confirm too. serverView's plaintext prompt did
+   * exactly that, and a swap that kept it would have sent the message and
+   * cancelled it in one click.
+   */
+  onCancel?: () => void;
   /** Extra fields -- a reason, a duration, a checkbox. */
   children?: ReactNode;
 }) {
@@ -65,7 +78,13 @@ export function ConfirmDialog({
   const matches = phraseMatches(typed, confirmPhrase);
 
   return (
-    <AlertDialog.Root open={open} onOpenChange={onOpenChange}>
+    <AlertDialog.Root
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onCancel?.();
+        onOpenChange?.(next);
+      }}
+    >
       <AlertDialog.Portal>
         <AlertDialog.Backdrop />
         <AlertDialog.Popup style={width ? { width } : undefined}>
@@ -89,6 +108,8 @@ export function ConfirmDialog({
 
           <div className="flex gap-3 mt-4 justify-end">
             <AlertDialog.Close render={<Button size="small" tone="neutral">{cancelLabel}</Button>} />
+            {/* Close above routes through onOpenChange, so onCancel runs there
+                rather than on this button. */}
             {/* Deliberately not wrapped in AlertDialog.Close: it has to be able
                 to stay disabled, and Close renders its own button. */}
             <Button
@@ -97,7 +118,7 @@ export function ConfirmDialog({
               disabled={confirmDisabled || !matches}
               onClick={() => {
                 onConfirm();
-                onOpenChange(false);
+                onOpenChange?.(false);
               }}
             >
               {confirmLabel}
