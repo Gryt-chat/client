@@ -1,14 +1,7 @@
 import { base64Url as sharedBase64Url, base64UrlDecode as sharedBase64UrlDecode } from "@gryt/crypto";
 /**
- * Trust-on-first-use pinning of server identity keys (GRYT-51). Nothing else
- * authenticates a *server* to us — on a LAN there is no TLS, and **`server_id`
- * from an mDNS advertisement is a discovery hint, never a credential**.
- *
- * A server proves itself by signing a nonce we chose with a key we pinned the
- * first time. **Pins are filed under the key, not under host:port**, so a
- * server that moves is still recognisably the same server.
- *
- * This module decides; the socket layer applies the decision.
+ * Trust-on-first-use pinning of server identity keys. **`server_id` from mDNS is a
+ * discovery hint, never a credential; pins are filed under the key, not host:port.**
  */
 
 const PINS_KEY = "serverIdentityPins";
@@ -26,12 +19,8 @@ export interface ServerPin {
   /** Most recent address this key answered on. Display only — never a key. */
   lastHost: string;
   /**
-   * The key this server was *first* pinned under, carried across rotations, so
-   * it names the server rather than its current key — `identityScopeFor` files
-   * a guest identity under it.
-   *
-   * Optional, because pins written before this do not have one. Absent means
-   * today's key is the origin, which is the most that can be recovered.
+   * The key this server was *first* pinned under, carried across rotations, so it
+   * names the server. Absent on older pins, where today's key is the origin.
    */
   originKeyId?: string;
 }
@@ -59,9 +48,7 @@ export type ServerProofFailure =
       detail: string;
       /**
        * How far the server's clock sits behind ours, negative if ahead. From
-       * `iat` rather than `exp`, the one instant both sides describe — the gap
-       * is skew plus a round trip, and a round trip is milliseconds against a
-       * window of a minute.
+       * `iat`, the one instant both sides describe.
        */
       skewMs?: number;
     }
@@ -120,9 +107,8 @@ export function getPin(keyId: string): ServerPin | null {
 }
 
 /**
- * Which key we last saw at an address. A hint for spotting a *substitution* —
- * a different server answering where a known one used to. The pin itself is
- * filed under the key, so this index going stale costs recognition, not safety.
+ * Which key we last saw at an address — a hint for spotting a *substitution*. The
+ * pin is filed under the key, so this going stale costs recognition, not safety.
  */
 function readHostIndex(): Record<string, string> {
   return readJson<Record<string, string>>(HOST_INDEX_KEY, {});
@@ -133,9 +119,8 @@ export function getExpectedKeyIdForHost(host: string): string | null {
 }
 
 /**
- * A name for the server at an address that survives both moving and rotating —
- * neither is a different server, so neither should look like one to anything
- * filed per-server. Null when the server offered no proof.
+ * A name for the server at an address that survives both moving and rotating.
+ * Null when the server offered no proof.
  */
 export function getOriginKeyIdForHost(host: string): string | null {
   const keyId = getExpectedKeyIdForHost(host);
@@ -144,9 +129,8 @@ export function getOriginKeyIdForHost(host: string): string | null {
 }
 
 /**
- * Every address we currently expect a key at. Read-only; the settings screen
- * uses it to tell an orphaned pin from one still in use at another address,
- * which matters because the same key legitimately answers at several.
+ * Every address we currently expect a key at. Read-only: the settings screen tells
+ * an orphaned pin from one still in use at another address.
  */
 export function listHostExpectations(): Record<string, string> {
   return readHostIndex();
@@ -173,13 +157,8 @@ export function savePin(keyId: string, jwk: JsonWebKey, host: string): void {
 }
 
 /**
- * Succeed one pinned key with another after a proven rotation (GRYT-54).
- * **Every address that expected the old key moves**, not just the connected
- * one — the same server answers at several, and leaving the rest on a retired
- * key downgrades them to first-join and loses the substitution check.
- *
- * `firstSeenAt` carries over: a key change does not reset when this *server*
- * was first trusted.
+ * Succeed one pinned key with another after a proven rotation. **Every address
+ * that expected the old key moves**, or the rest drop to first-join (GRYT-54).
  */
 export function replacePin(
   oldKeyId: string,
@@ -198,10 +177,8 @@ export function replacePin(
     firstSeenAt: previous?.firstSeenAt ?? now,
     lastSeenAt: now,
     lastHost: host,
-    // Carries over for the same reason `firstSeenAt` does: a key change is not
-    // a different server. Anything filed under the lineage — a guest identity,
-    // and its roles and history with it — survives the rotation because of this
-    // line.
+    // Carries over for the same reason `firstSeenAt` does: a key change is not a
+    // different server, and anything filed under the lineage survives.
     originKeyId: previous?.originKeyId ?? oldKeyId,
   };
   writeJson(PINS_KEY, pins);
@@ -229,16 +206,7 @@ export function forgetPin(keyId: string): void {
 
 /**
  * Forget everything this client knows about one address — what leaving a server
- * should do. A pin protects an ongoing relationship; once you have left,
- * rejoining is the same fresh trust decision you made the first time.
- *
- * **Deliberately not `forgetPin`**, which deletes the key and every address
- * expecting it. One key legitimately answers at several hosts, and leaving one
- * must not un-pin the others — so the expectation for this host goes, and the
- * pin only once no address still expects it.
- *
- * Any block against this address goes too: it describes a refusal that can no
- * longer happen.
+ * should do. **Deliberately not `forgetPin`**: one key answers at several hosts.
  */
 export function forgetHost(host: string): void {
   const index = readHostIndex();
@@ -281,11 +249,8 @@ export function blockServer(entry: BlockedServer): void {
 }
 
 /**
- * Lift a block, for the self-hoster who really did rebuild their server.
- *
- * Also drops the stale expectation for that address, so the next join is a
- * clean first join rather than an immediate second refusal by the same rule.
- * Without this the unblock button would appear not to work.
+ * Lift a block, for the self-hoster who really did rebuild their server. Also
+ * drops the stale expectation, or the next join is refused by the same rule.
  */
 export function unblockServer(entry: BlockedServer): void {
   writeJson(
@@ -300,9 +265,8 @@ export function unblockServer(entry: BlockedServer): void {
 
 // ── JWT verification ────────────────────────────────────────────────
 
-/* Both are @gryt/crypto's now (GRYT-898). Its decoder takes either alphabet
-   and padding or none of it, so the padding this one added by hand is no
-   longer the caller's problem. */
+/* Both are @gryt/crypto's now. Its decoder takes either alphabet and padding or
+   none of it (GRYT-898). */
 const base64UrlToBytes = sharedBase64UrlDecode;
 
 function base64UrlEncode(buf: ArrayBuffer | Uint8Array): string {
@@ -310,10 +274,8 @@ function base64UrlEncode(buf: ArrayBuffer | Uint8Array): string {
 }
 
 /**
- * RFC 7638 thumbprint. The member order below is required, not stylistic: the
- * hash is taken over a canonical JSON object with keys in lexicographic order
- * and no whitespace. Get it wrong and every thumbprint silently disagrees with
- * the server's.
+ * RFC 7638 thumbprint. The member order below is required, not stylistic: the hash
+ * is over canonical JSON with keys in lexicographic order and no whitespace.
  */
 export async function jwkThumbprint(jwk: JsonWebKey): Promise<string> {
   if (jwk.kty !== "EC" || !jwk.crv || !jwk.x || !jwk.y) {
@@ -400,9 +362,8 @@ async function parseProof(proof: string): Promise<ParsedProof | ServerProofFailu
     return { reason: "malformed", detail: String(e) };
   }
 
-  // kid and iss are the server's claims about its own key. They have to agree
-  // with the key actually present, or the identity we file it under is not the
-  // one that signed.
+  // kid and iss are the server's claims about its own key. They have to agree with
+  // the key actually present, or we file it under an identity that did not sign.
   if (header.kid && header.kid !== keyId) {
     return { reason: "malformed", detail: "Header kid does not match the key" };
   }
@@ -460,9 +421,8 @@ async function parseVouch(vouch: string): Promise<ParsedVouch | null> {
   if (!payload.jwk) return null;
   if (typeof payload.exp === "number" && payload.exp * 1000 < Date.now()) return null;
 
-  // The successor key travels in the payload so we can check it hashes to the
-  // key id being claimed. Without that a valid statement could name one key and
-  // carry another.
+  // The successor key travels in the payload so we can check it hashes to the key
+  // id being claimed. Otherwise a valid statement could name one and carry another.
   let nextThumbprint: string;
   try {
     nextThumbprint = await jwkThumbprint(payload.jwk);
@@ -482,11 +442,7 @@ async function parseVouch(vouch: string): Promise<ParsedVouch | null> {
 
 /**
  * Walk succession statements from the key we pinned to the key now answering.
- *
- * Every hop is verified against the key the *previous* hop established, starting
- * from our own pin — never against a key the chain supplied for itself. That is
- * the whole security of this: an attacker can offer any statements they like,
- * but cannot produce one signed by a key they do not hold.
+ * **Every hop is verified against the key the previous hop established.**
  */
 async function followVouchChain(
   vouches: string[],
@@ -539,10 +495,8 @@ export function createClientNonce(): string {
 }
 
 /**
- * Decide whether to go on talking to whatever answered at `host`.
- *
- * Deliberately does not write anything — the caller applies the outcome, so a
- * decision can be tested and logged without a pin appearing as a side effect.
+ * Decide whether to go on talking to whatever answered at `host`. Deliberately
+ * writes nothing, so a decision can be tested without a pin as a side effect.
  */
 export async function evaluateServerProof(args: {
   host: string;
@@ -555,10 +509,8 @@ export async function evaluateServerProof(args: {
   const expectedKeyId = getExpectedKeyIdForHost(host);
 
   if (!proof) {
-    // A server that proved itself here before and now offers nothing is either
-    // an impostor stripping the proof or a genuine downgrade. Both need to be
-    // refused: accepting silently would make the whole thing optional for an
-    // attacker.
+    // A server that proved itself here before and now offers nothing is either an
+    // impostor stripping the proof or a downgrade. Both have to be refused.
     if (expectedKeyId) {
       return {
         action: "block",
@@ -593,10 +545,8 @@ export async function evaluateServerProof(args: {
   }
 
   if (expectedKeyId && expectedKeyId !== parsed.keyId) {
-    // The server may have rotated its key on purpose. It can prove that by
-    // producing a statement signed by the key we pinned which names its
-    // replacement (GRYT-54). Anything that doesn't chain back to our pin is
-    // still a refusal.
+    // The server may have rotated on purpose, and can prove it with a statement
+    // signed by the key we pinned. Anything not chaining back is a refusal.
     const succession = await followVouchChain(args.vouches ?? [], expectedKeyId, parsed.keyId);
     if (succession) {
       return {
@@ -623,9 +573,7 @@ export async function evaluateServerProof(args: {
 
   if (pin) {
     // Check against the stored key, not the one the proof carried. They are
-    // provably the same key here — equal thumbprints mean equal crv/kty/x/y —
-    // but verifying against the pin is the property we actually want, and it
-    // should not depend on the reader reconstructing that argument.
+    // provably equal here, but verifying against the pin is the property wanted.
     const valid = await verifySignature(pin.jwk, parsed.signingInput, parsed.signature);
     if (!valid) {
       return {
@@ -641,9 +589,7 @@ export async function evaluateServerProof(args: {
   }
 
   // First time we have seen this key. The signature can only be checked against
-  // the key the proof carried, which proves nothing on its own — an impostor
-  // signs its own key just as validly. This is the trust-on-first-use moment,
-  // and the same assumption SSH makes on a first connection.
+  // the key the proof carried, which proves nothing — this is the TOFU moment.
   const valid = await verifySignature(parsed.jwk, parsed.signingInput, parsed.signature);
   if (!valid) {
     return {
@@ -673,12 +619,8 @@ export function applyServerProofDecision(
       break;
     }
     case "block":
-      // Every failure refuses *this* connection. Only the two that mean
-      // "something else is answering where a known server used to" become a
-      // standing block. A malformed or expired proof is far more likely to be
-      // a bug or a clock than an attack, and permanently blocking on one would
-      // turn a transient fault into a server the user cannot reach again
-      // without finding a settings screen.
+      // Every failure refuses *this* connection. Only the two meaning "something
+      // else is answering where a known server used to" become a standing block.
       if (decision.failure.reason === "key_mismatch") {
         blockServer({
           host,

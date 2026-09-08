@@ -1,13 +1,6 @@
 /**
- * Passphrase-locking an identity backup (GRYT-255).
- *
- * The file holds the seed and every key the seed cannot reproduce, which is to
- * say it holds the person. Before this it was written as plain JSON and then sat
- * in Downloads, unprotected, until somebody moved it somewhere safe. Locking it
- * before it leaves means the copy on disk is worth nothing on its own.
- *
- * This is for the *file*. The 24 words are not locked, because the thing you
- * paste them into is a password manager, which is already the encryption.
+ * Passphrase-locking an identity backup: the file holds the person, and it sits in
+ * Downloads. The 24 words are not locked — a password manager is the encryption.
  */
 
 import {
@@ -90,9 +83,8 @@ export async function unlockBackup(raw: string, passphrase: string): Promise<str
     );
     return new TextDecoder().decode(plain);
   } catch {
-    // AES-GCM fails the same way for a wrong password and for a damaged file,
-    // and there is no way to tell them apart from here. The wrong password is
-    // overwhelmingly the likely one, so it leads.
+    // AES-GCM fails the same way for a wrong password and a damaged file. The
+    // wrong password is overwhelmingly the likely one, so it leads.
     throw new Error("Wrong password, or the backup file is damaged.");
   }
 }

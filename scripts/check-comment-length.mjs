@@ -7,9 +7,8 @@ import { join } from "node:path";
 const LIMIT = 2;
 const EMPTY = /^(\/\*+|\*+\/?|\/\/|#)$|[─=]{3,}\s*\*?\/?$/;
 
-/* Paths not swept yet: auth holds the user's private key and is review-required,
-   so it is its own PR. Delete an entry once that directory is clean. */
-const NOT_YET = ["src/packages/common/src/auth/"];
+/* Paths not swept yet. Delete an entry once that directory is clean. */
+const NOT_YET = [];
 
 const ROOTS = ["src", "electron", "scripts", "examples", ".github/workflows"];
 const SKIP = new Set(["node_modules", "dist", "build", "out", "coverage", ".git"]);

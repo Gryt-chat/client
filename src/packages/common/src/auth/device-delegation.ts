@@ -1,19 +1,8 @@
 import { base64Url as encodeBase64Url } from "@gryt/crypto";
 
 /**
- * Being yourself on a new device without moving your key to it.
- *
- * Restoring a saved identity copies the private key into a second browser, so
- * it exists in two places and the second one is as much "you" as the first,
- * forever. Authorising is the other way round: the saved key signs a statement
- * that *this* device's key is you, and then goes back in the drawer. The key
- * touches memory once and is never stored here.
- *
- * The saved file holds a separate key per server, so this works per server too.
- * For each host in the file, the key that was your identity there vouches for
- * the key this device just generated for that same host — which is why your
- * servers come back with the roles and ownership you had, rather than as a
- * stranger with a familiar name.
+ * Being yourself on a new device without moving your key to it: the saved key signs
+ * a statement that this device's key is you. Per server, as the file is.
  */
 import { getPublicKeyJwk, parseIdentityBackup } from "./identity-keys";
 import { decodeJwt } from "./jwt";
@@ -25,14 +14,8 @@ const DELEGATED_ISSUER = "gryt:delegated";
 const LOCAL_SUB_PREFIX = "key:";
 
 /**
- * How long a delegation is good for.
- *
- * Expiry is the only revocation there is — the server keeps no list — so this
- * is really the answer to "how long does a stolen laptop stay me?". Thirty days
- * is short enough that the answer is not "forever" and long enough that
- * re-authorising is not a weekly chore. Re-authorising needs the identity file
- * again, so making this very short would punish the careful more than the
- * unlucky.
+ * How long a delegation is good for. **Expiry is the only revocation there is** —
+ * the server keeps no list — so this is how long a stolen laptop stays you.
  */
 const DELEGATION_LIFETIME_SECONDS = 30 * 24 * 60 * 60;
 
@@ -104,10 +87,8 @@ export function isDelegationExpired(certificate: string): boolean {
 }
 
 /**
- * The identity a delegation grants, which is the key that *signed* it.
- *
- * Derived here the same way the server derives it, so the assertion can claim
- * the right `sub` without a round trip to be told what it is.
+ * The identity a delegation grants, which is the key that *signed* it. Derived the
+ * same way the server derives it, so no round trip is needed to learn the `sub`.
  */
 export async function delegationSub(certificate: string): Promise<string | null> {
   const issJwk = decodePayload(certificate)?.iss_jwk;
@@ -126,12 +107,8 @@ function base64Url(buf: ArrayBuffer | Uint8Array): string {
 
 
 /**
- * Use a saved identity to vouch for this device, once, and keep only the
- * result.
- *
- * The imported key is deliberately not put anywhere: not IndexedDB, not the
- * keypair cache, not a module variable that outlives this call. It signs and is
- * dropped. That is the entire difference between this and restoring.
+ * Use a saved identity to vouch for this device, once, and keep only the result.
+ * **The imported key is not put anywhere** — it signs and is dropped.
  */
 export async function authoriseDeviceFromBackup(raw: string): Promise<string[]> {
   const authorised: string[] = [];
@@ -139,9 +116,8 @@ export async function authoriseDeviceFromBackup(raw: string): Promise<string[]> 
   for (const entry of parseIdentityBackup(raw).identities) {
     if (!entry.privateJwk) continue;
 
-    // A delegation is filed per address, which is where `getStoredDelegation`
-    // looks for it. Entries from before identities carried a display label have
-    // the address as their scope, so that is the fallback.
+    // A delegation is filed per address. Entries from before identities carried a
+    // display label have the address as their scope.
     const host = entry.host ?? entry.scope;
 
     // Not extractable. Nothing here needs to read it back, and a key that

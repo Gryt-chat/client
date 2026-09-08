@@ -1,10 +1,6 @@
 /**
- * The one place a server's join challenge is answered.
- *
- * This lived twice — in `joinServerOnce.ts` and in `useSocketEvents.ts` — as
- * two copies of the same four lines. Adding a second kind of identity to one
- * copy would have left the other silently answering the old way, on the path
- * that handles every reconnect.
+ * The one place a server's join challenge is answered. It lived twice, and adding
+ * a second kind of identity to one copy would have left the other answering old.
  */
 
 import { getCertificateSub, getValidCertificate } from "./identity-certificate";
@@ -21,35 +17,15 @@ export interface ChallengeAnswer {
   assertion: string;
   tier: "account" | "local";
   /**
-   * Proof that this account is the same person who was here before without
-   * one. Present only when this device already holds a local identity for the
-   * host — see `signIdentityLink`.
+   * Proof that this account is the same person who was here before without one.
+   * Present only when this device already holds a local identity for the host.
    */
   link?: string;
 }
 
 /**
- * Answer a challenge from `host` with whichever identity we hold.
- *
- * Holding a Keycloak token means the account certificate, which is what a
- * server asking for a Gryt account wants. Otherwise the host's own local key
- * vouches for itself.
- *
- * The choice is made by asking for the token rather than by being handed a
- * flag, because the token is the thing that actually decides whether an account
- * certificate can be fetched at all. A flag would have to be kept in step with
- * it from two call sites.
- *
- * Note what this does *not* do: if the token is there but the certificate
- * cannot be fetched, it fails rather than quietly falling back to a local
- * identity. Falling back would sign the assertion as somebody else — a
- * different `sub`, so a different member with different roles and history —
- * while looking to the user like a slow join.
- *
- * The server says which tiers it takes in the challenge itself, so the choice
- * is made knowing the answer rather than guessing and being refused. An older
- * server sends no list, and then we fall back to preferring the account — which
- * is what every server accepted before the tiers existed.
+ * Answer a challenge from `host` with whichever identity we hold. **A token whose
+ * certificate cannot be fetched fails rather than falling back to the local key.**
  */
 export async function answerChallenge(
   host: string,
@@ -62,11 +38,8 @@ export async function answerChallenge(
   const accepts = (tier: ChallengeAnswer["tier"]) =>
     !challenge.identityTiers || challenge.identityTiers.includes(tier);
 
-  // A lapsed session is deliberately not caught. Everything else is: failing
-  // to read a token we never had is what a guest looks like, and guests join
-  // fine. A session that has ended is different — falling through to the local
-  // tier would answer as this device rather than as the account, and the server
-  // would see somebody it has never met (GRYT-10).
+  // A lapsed session is deliberately not caught: falling through to the local tier
+  // would answer as this device rather than as the account (GRYT-10).
   const token = accepts("account")
     ? await getValidIdentityToken().catch((e) => {
         if (isSessionExpired(e)) throw e;
@@ -85,19 +58,11 @@ export async function answerChallenge(
       { kind: "account" },
     );
 
-    // If this device was here before without an account, say so and prove it,
-    // so the server carries that membership over instead of treating a
-    // returning person as a new one. Only when a key already exists — making
-    // one in order to prove we hold it would prove nothing.
-    //
-    // And only once somebody has agreed to it. The proof is what lets an
-    // account absorb an identity, so offering it unasked would mean signing in
-    // on a borrowed machine quietly takes over whatever the last person joined
-    // as. Unanswered counts as no.
+    // If this device was here before without an account, say so and prove it, so
+    // the server carries that membership over. Only on an explicit yes.
     let link: string | undefined;
-    // Per server, and only on an explicit yes (GRYT-285). Signing this tells
-    // the server the account and the guest are the same person, and nothing
-    // undoes that afterwards, so an unanswered server sends nothing.
+    // Per server, and only on an explicit yes. Signing this tells the server the
+    // account and the guest are one person, and nothing undoes it (GRYT-285).
     if (!mayClaim(identityScopeFor(host))) {
       return { certificate, assertion, tier: "account", link: undefined };
     }
@@ -114,9 +79,8 @@ export async function answerChallenge(
   }
 
   if (!accepts("local")) {
-    // Signing a certificate this server has already said it will not take
-    // would spend a round trip to be told so, and the refusal that came back
-    // would read like something went wrong rather than like an answer.
+    // Signing a certificate this server has said it will not take spends a round
+    // trip, and the refusal reads like something went wrong.
     throw new Error("This server requires a Gryt account to join.");
   }
 

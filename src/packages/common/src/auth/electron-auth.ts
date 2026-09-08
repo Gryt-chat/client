@@ -44,11 +44,8 @@ async function generatePKCE(): Promise<{
 // ── Token storage ────────────────────────────────────────────────────────
 
 /**
- * Tokens sealed by the OS keychain (GRYT-264).
- *
- * The refresh token is the valuable half — it renews a session rather than
- * being one — and both used to sit in the app's data folder as plain text,
- * readable by anything that could read the folder.
+ * Tokens sealed by the OS keychain. The refresh token is the valuable half — it
+ * renews a session rather than being one (GRYT-264).
  */
 interface SealedTokens {
   sealed: string;
@@ -98,9 +95,8 @@ export async function getStoredTokens(): Promise<ElectronTokens | null> {
       }
       tokens = JSON.parse(await api.unsealSecret(parsed.sealed)) as ElectronTokens;
     } else {
-      // Written before this shipped, or by the web client. Read as-is rather
-      // than rejected, so an upgrade does not sign everybody out; the next
-      // write seals them.
+      // Written before this shipped, or by the web client. Read as-is rather than
+      // rejected, so an upgrade does not sign everybody out.
       tokens = parsed as ElectronTokens;
     }
 
@@ -108,12 +104,8 @@ export async function getStoredTokens(): Promise<ElectronTokens | null> {
     console.log("[Auth:Electron] Loaded stored tokens — expires in", Math.round(ttl / 1000), "s");
     return tokens;
   } catch (e) {
-    // Thrown away rather than kept, which is the opposite of what `readSeed`
-    // does with an identity seed it cannot open — and deliberately so. A token
-    // that will not open costs one sign-in. A seed that will not open is every
-    // identity on every server, so that one has to fail loudly and leave the
-    // value alone to be recovered. Here there is nothing to recover, and
-    // leaving unreadable tokens in place would retry and fail on every launch.
+    // Thrown away rather than kept, unlike a seed `readSeed` cannot open: a token
+    // that will not open costs one sign-in, and there is nothing to recover.
     console.warn("[Auth:Electron] Could not read stored tokens, signing out:", e);
     clearStoredTokens();
     return null;
@@ -322,21 +314,8 @@ export async function electronLogin(): Promise<ElectronTokens> {
 }
 
 /**
- * Send somebody out to Keycloak to perform one required action, and come back
- * with fresh tokens.
- *
- * `kc_action` is Keycloak's application-initiated action mechanism: the alias
- * of a required action that is registered and enabled on the realm. It runs on
- * the *login* pages, which are Gryt's own theme, so nobody meets the stock
- * account console on the way.
- *
- * The realm has to have the action enabled or Keycloak ignores the parameter
- * and just logs the person in, which looks like the button doing nothing.
- * `UPDATE_EMAIL` and `CONFIGURE_RECOVERY_AUTHN_CODES` additionally need their
- * feature flags in KC_FEATURES — see auth#20.
- *
- * This was three copies of the same forty lines before, one per action, and a
- * fourth was about to be written.
+ * Send somebody out to Keycloak to perform one required action, and come back with
+ * fresh tokens. **The realm has to have the action enabled** or Keycloak ignores it.
  */
 export async function electronRequiredAction(action: string): Promise<ElectronTokens> {
   const api = getElectronAPI();
@@ -435,10 +414,8 @@ export async function getValidElectronToken(): Promise<string | undefined> {
       const refreshed = await refreshTokens(tokens.refresh_token);
       return refreshed.access_token;
     } catch (e) {
-      // Not undefined. Undefined means "no account", and answerChallenge reads
-      // it that way — it would answer as this device's local identity, so a
-      // signed-in person whose session lapsed would silently arrive as a
-      // stranger on servers they are already a member of (GRYT-10).
+      // Not undefined. Undefined means "no account", and answerChallenge would
+      // answer as this device's local identity instead (GRYT-10).
       console.error("[Auth:Electron] getValidElectronToken: refresh failed — session expired", e);
       throw new SessionExpiredError();
     }

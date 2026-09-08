@@ -1,17 +1,6 @@
 /**
- * Identity with no account behind it.
- *
- * The mirror of `identity-certificate.ts`, which fetches a certificate the Gryt
- * CA has signed for you. Here nothing is fetched and nobody vouches: the
- * certificate is signed by the very key it describes, and the identity *is* the
- * key. The server accepts it when its `GRYT_IDENTITY_TIERS` includes `local`.
- *
- * That is enough to join, because joining only ever needed proof that the same
- * person came back, and the challenge-response proves that on its own. What an
- * account adds on top is a durable id and a way back in after losing the
- * device, which is worth having and is not what every server needs.
- *
- * One key per host, never shared between servers — see `IdentitySource`.
+ * Identity with no account behind it: the certificate is signed by the very key it
+ * describes. One key per host, never shared between servers.
  */
 
 import {
@@ -24,9 +13,8 @@ import { getPublicKeyJwk, signJwt } from "./identity-keys";
 import { jwkThumbprint } from "./server-pins";
 
 /**
- * The `iss` the server dispatches on. It must match `SELF_ISSUER` in the
- * server's `auth/identity.ts`; a certificate naming anything else is sent down
- * the CA path instead and rejected for having an untrusted issuer.
+ * The `iss` the server dispatches on. It must match `SELF_ISSUER` in the server's
+ * `auth/identity.ts`, or the certificate goes down the CA path and is rejected.
  */
 const SELF_ISSUER = "gryt:self";
 
@@ -45,26 +33,19 @@ export interface LocalIdentity {
 }
 
 /**
- * Build a self-signed certificate for this host's key.
- *
- * Not cached. Signing is a single ECDSA operation over a small payload, and a
- * certificate that lives only as long as the join that used it cannot go stale
- * against a regenerated key — which is the failure the account path needs
- * `certificateMatchesKey` to dig itself out of.
+ * Build a self-signed certificate for this host's key. Not cached: signing is one
+ * ECDSA operation, and a short-lived certificate cannot go stale against the key.
  */
 export async function getLocalIdentity(host: string): Promise<LocalIdentity> {
   const source = { kind: "local", host } as const;
 
-  // A delegation, if this device was authorised rather than restored. It says
-  // the identity is somebody else's key, so it has to win over the self-signed
-  // certificate below — which would otherwise quietly claim a different one.
+  // A delegation, if this device was authorised rather than restored. It names
+  // somebody else's key, so it has to win over the self-signed certificate.
   const delegation = getStoredDelegation(host);
   if (delegation) {
     if (isDelegationExpired(delegation)) {
-      // Deliberately fatal rather than falling back. Signing self-signed here
-      // would join as this device's own key: a different `sub`, so a different
-      // member with none of the roles or history, while looking to the user
-      // like an ordinary join. Better to stop and say what to do.
+      // Deliberately fatal rather than falling back: self-signing here joins as
+      // this device's own key, a different `sub` with none of the history.
       clearDelegation(host);
       throw new Error(
         `This device's authorisation for ${host} has expired. ` +
@@ -91,10 +72,8 @@ export async function getLocalIdentity(host: string): Promise<LocalIdentity> {
   const certificate = await signJwt(
     {
       iss: SELF_ISSUER,
-      // The server derives `sub` from the key and ignores this one, on the
-      // grounds that a self-signed certificate could otherwise claim any
-      // identity at all. Sent anyway so the certificate is readable on its own
-      // terms, and it is the same value either way.
+      // The server derives `sub` from the key and ignores this one, since a
+      // self-signed certificate could claim any identity at all.
       sub,
       jwk: publicJwk,
       iat: now,
@@ -115,16 +94,8 @@ export function isLocalIdentitySub(sub: string): boolean {
 const LINK_ISSUER = "gryt:link";
 
 /**
- * Prove that the account joining is the same person who was here before
- * without one.
- *
- * Signed by this host's local key, which is the only thing that can say so: the
- * account certificate carries a Keycloak id and knows nothing about the
- * identity that came before it. Bound to the same nonce and audience as the
- * assertion, so it is good for exactly this join at exactly this server.
- *
- * Sent only when a local key for the host already exists. Generating one to
- * prove ownership of it would prove nothing.
+ * Prove the account joining is the same person who was here without one. Sent only
+ * when a local key exists — making one to prove we hold it proves nothing.
  */
 export async function signIdentityLink(
   host: string,

@@ -1,15 +1,6 @@
 /**
- * Where this client keeps the people it has pinned (GRYT-726, GRYT-732).
- *
- * The deciding is in `@gryt/crypto`, which does not know what storage is. This
- * is the half that does: a `localStorage` store and the same functions with it
- * already supplied, so every call site in the client reads the way it did
- * before the package existed.
- *
- * Mobile writes its own eight lines against the same interface. That is the
- * only difference between the two clients on this — a phone has no
- * `localStorage`, and everything above the store is one implementation now
- * rather than two that agree until they do not.
+ * Where this client keeps the people it has pinned. The deciding is in
+ * `@gryt/crypto`, which does not know what storage is; this is the half that does.
  */
 
 import {
@@ -30,16 +21,8 @@ import {
 export type { PeerKeyDecision, PeerPin, PeerPinStore } from "@gryt/crypto";
 
 /**
- * Reads and writes swallow their errors, which is deliberate on both sides.
- *
- * An unreadable store is not the same as no pins, and returning an empty map
- * here makes every peer read as `first` and get re-pinned — the exact swap this
- * module exists to refuse. There is no better answer available and no way to
- * tell the two apart from in here, so it takes the same trade `server-pins.ts`
- * has taken since GRYT-51.
- *
- * A failed write loses the memory of a decision rather than the decision, which
- * has already been returned by the time this runs.
+ * Reads and writes swallow their errors. An unreadable store is not no pins, but
+ * an empty map makes every peer read as `first` — the swap this refuses.
  */
 export const localPeerPinStore: PeerPinStore = {
   read() {
