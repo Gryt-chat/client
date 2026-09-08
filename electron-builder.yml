@@ -163,9 +163,21 @@ mac:
   # Windows and for anything the platform masks itself; the Dock masks nothing,
   # so it wants Apple's rounded rectangle with its margin. See generate-icons.
   icon: build/icon-macos.png
+  # Both arches, from one arm64 runner. GitHub retired every Intel macOS image,
+  # so x64 is cross-compiled -- which works because Electron ships prebuilt
+  # binaries for both and uiohook-napi carries every prebuild in one package,
+  # picked at runtime by node-gyp-build rather than at install time by host arch.
+  #
+  # Separate artifacts rather than one universal binary. Universal would put
+  # both slices in every download: measured on 1.9.24, 195.7MB of the 244MB
+  # bundle is Mach-O and would double, taking the slim DMG from 105MB to about
+  # 188MB for everyone. electron-updater re-downloads the whole zip per release,
+  # so that is paid again every time.
   target:
-    - dmg
-    - zip
+    - target: dmg
+      arch: [arm64, x64]
+    - target: zip
+      arch: [arm64, x64]
   category: public.app-category.social-networking
   extendInfo:
     NSMicrophoneUsageDescription: "Gryt Chat uses your microphone for voice chat."
