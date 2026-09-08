@@ -100,6 +100,36 @@ export function clearThreadMentions(host: string, threadId: string) {
   emitChange();
 }
 
+/** Every thread hanging off one channel, for a "mark as read" on it. */
+export function clearConversationThreadMentions(host: string, conversationId: string) {
+  const existing = mentions.get(host);
+  if (!existing) return;
+
+  const counts = new Map(existing);
+  let removed = false;
+  for (const [threadId, entry] of counts) {
+    if (entry.conversationId !== conversationId) continue;
+    counts.delete(threadId);
+    removed = true;
+  }
+  if (!removed) return;
+
+  const next = new Map(mentions);
+  if (counts.size === 0) next.delete(host);
+  else next.set(host, counts);
+  mentions = next;
+  emitChange();
+}
+
+/** Leaving a server, or marking everything in it read. */
+export function clearServerThreadMentions(host: string) {
+  if (!mentions.has(host)) return;
+  const next = new Map(mentions);
+  next.delete(host);
+  mentions = next;
+  emitChange();
+}
+
 /**
  * How much of a conversation's mention count is sitting inside its threads.
  *

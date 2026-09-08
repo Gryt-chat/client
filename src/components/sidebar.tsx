@@ -24,6 +24,7 @@ import {
 } from "@/settings/src/types/server";
 import { useServerManagement, useSockets } from "@/socket";
 import { ConfirmDialog } from "@/socket/src/components/ConfirmDialog";
+import { MarkAsReadItem } from "@/socket/src/components/MarkAsReadItem";
 import { ServerDoctor } from "@/socket/src/components/ServerDoctor";
 import type { ServerRingState } from "@/socket/src/components/ServerStatusRing";
 import { ServerStatusRing } from "@/socket/src/components/ServerStatusRing";
@@ -514,11 +515,12 @@ function ServerItem({
               invite, then how loud it is, then settings, then what you make,
               then leaving, then the identifier.
 
-              What Gryt has no equivalent for is absent rather than greyed \u2014
+              What Gryt has no equivalent for is absent rather than greyed —
               boosting, insights, events, threads, privacy settings, per-server
-              profiles and raid tools. "Mark as read" and "Hide muted channels"
-              are absent for a different reason: both are real ideas Gryt could
-              have, and neither exists yet, so there is nothing to wire a row to.
+              profiles and raid tools. "Hide muted channels" is absent for a
+              different reason: it is a real idea Gryt could have and does not
+              yet, so there is nothing to wire a row to. "Mark as read" was in
+              that sentence too until GRYT-1030 built it.
 
               Three rows went the other way. Edit, Share and "Add to new group"
               were `<ContextMenu.Item>` with no `onClick` \u2014 they have never done
@@ -533,6 +535,7 @@ function ServerItem({
             {/* The same three levels the channel list offers per channel and
                 per folder, at the scope above them. Device-local, like those. */}
             <NotificationLevelMenu host={host} scope={{ kind: "server" }} />
+            <MarkAsReadItem host={host} scope={{ kind: "server" }} />
             <ContextMenu.Separator />
 
             <ContextMenu.Item onClick={() => openServerSettings(host)}>
