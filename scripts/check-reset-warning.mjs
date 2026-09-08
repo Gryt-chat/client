@@ -1,22 +1,8 @@
 /* eslint-env node */
 
 /**
- * The warning shown before a message-key reset never says "nothing to lose"
- * unless it knows that.
- *
- * A reset replaces the seed, and on a server joined without an account the
- * signing key is derived from the seed — so a new seed is a new person there,
- * with the roles and ownership gone and no way back. The count of those servers
- * is the only thing standing between that and it happening quietly.
- *
- * The first version of this had a guard for "could not tell" that could never
- * fire: `guestIdentitiesAtRisk` caught exceptions and returned -1, but
- * `listGuestScopes` had already caught its own and returned an empty list. An
- * unreadable store came back as a confident zero, and the UI printed nothing
- * at all. Nothing failed; the guard was simply unreachable.
- *
- * So this checks the property rather than the shape: for every way the store
- * can answer, is the count either right or explicitly uncertain?
+ * The warning shown before a message-key reset never says "nothing to lose" unless
+ * it knows that. An unreadable store used to come back as a confident zero.
  */
 
 import assert from "node:assert/strict";
@@ -36,10 +22,8 @@ function installStore(behaviour) {
 }
 
 installStore({ raw: null });
-// guest-history rather than message-key: the reset module pulls in
-// identity-keys and an IndexedDB it has no business opening to answer a
-// question about localStorage. `guestIdentitiesAtRisk` is a try/catch around
-// this, and the UI calls that.
+// guest-history rather than message-key: the reset module pulls in identity-keys
+// and an IndexedDB it has no business opening to answer a localStorage question.
 const { guestScopeRisk } = await import(
   "../src/packages/common/src/auth/guest-history.ts"
 );
@@ -62,16 +46,13 @@ assert.deepEqual(riskWith({ raw: JSON.stringify(["local:a.example.com"]) }), {
   certain: true,
 });
 
-// Nothing on record. Honest most of the time, but a device set up from a
-// 24-word phrase has no history and may still have guest identities — which is
-// exactly the person reaching for a reset. So: not certain.
+// Nothing on record. Honest most of the time, but a device set up from a phrase
+// has no history and may still have guest identities. So: not certain.
 assert.equal(riskWith({ raw: null }).certain, false, "an empty history is not proof of none");
 assert.equal(riskWith({ raw: "[]" }).certain, false);
 
-// The store cannot be read at all. Private mode, disabled site data, quota.
-// `read` turns that into an empty list on purpose, which is why the caller
-// must not treat empty as proof — this is the case the old guard was written
-// for and could never actually catch.
+// The store cannot be read at all. `read` turns that into an empty list, which is
+// why the caller must not treat empty as proof.
 assert.equal(riskWith({ throwOnRead: true }).certain, false);
 
 // Present but not a list. Somebody overwrote it; that is not the same as never
@@ -79,9 +60,8 @@ assert.equal(riskWith({ throwOnRead: true }).certain, false);
 assert.equal(riskWith({ raw: '"nonsense"' }).certain, false);
 assert.equal(riskWith({ raw: "{ not json" }).certain, false);
 
-// The property that matters, stated once: `certain` is true only when the
-// warning can name a real number. Every other answer has to send the reader to
-// the general form.
+// The property that matters: `certain` is true only when the warning can name a
+// real number. Every other answer sends the reader to the general form.
 for (const behaviour of [
   { raw: null },
   { raw: "[]" },

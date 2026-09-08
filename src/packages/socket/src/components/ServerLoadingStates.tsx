@@ -12,12 +12,8 @@ interface ServerLoadingStatesProps {
   onReconnect?: () => void;
   onSignIn?: () => void;
   /**
-   * Let this device back into a server it was signed out of.
-   *
-   * Separate from `onSignIn`, which starts a Gryt account sign-in. A device
-   * signed out from somewhere else is still signed in to Gryt, and still a
-   * member here -- what it is missing is somebody at this machine saying to
-   * come back. GRYT-987.
+   * Let this device back into a server it was signed out of. Separate from
+   * `onSignIn`: it is still signed in to Gryt and still a member (GRYT-987).
    */
   onResumeHere?: () => void;
 }
@@ -33,11 +29,8 @@ const cardStyle: React.CSSProperties = {
 };
 
 /**
- * Failures where the server answered and said no.
- *
- * "Failed to load server" and a Retry button are wrong for all of them: nothing
- * failed to load, and pressing Retry asks the same question and gets the same
- * answer. What changes the outcome is signing in, or a moderator.
+ * Failures where the server answered and said no. Retry asks the same question
+ * and gets the same answer; signing in or a moderator is what changes it.
  */
 const REFUSALS = new Set([
   "identity_tier_refused",
@@ -47,12 +40,8 @@ const REFUSALS = new Set([
 ]);
 
 /**
- * Failures where signing in again is the whole fix.
- *
- * A token running out and a session somebody ended leave the same hole and want
- * the same button. They differ in the heading only, because "expired" is the
- * wrong word for a session that was ended on purpose from another device — that
- * person wants to see that it worked, not read that something timed out.
+ * Failures where signing in again is the whole fix. They differ in the heading
+ * only: "expired" is the wrong word for a session ended on purpose.
  */
 const SIGN_IN_AGAIN: Record<string, string> = {
   session_expired: "Your session has expired",
@@ -80,9 +69,8 @@ export const ServerLoadingStates = ({
   onSignIn,
   onResumeHere,
 }: ServerLoadingStatesProps) => {
-  // The session ending is not a loading failure and Retry is the wrong verb for
-  // it — reloading asks the same expired session the same question. Signing in
-  // is the only thing that changes the answer, so that is the only button.
+  // The session ending is not a loading failure and Retry is the wrong verb.
+  // Signing in is the only thing that changes the answer, so it is the only button.
   const signInHeading = serverFailure ? SIGN_IN_AGAIN[serverFailure.error] : undefined;
   if (signInHeading) {
     return (
@@ -182,10 +170,8 @@ export const ServerLoadingStates = ({
     );
   }
 
-  // Refused on identity grounds, not a network fault. Saying "the server may be
-  // offline" here would send someone off checking their wifi over what is
-  // meant to be a security warning — and there is deliberately no Reconnect
-  // button, because retrying is not the answer.
+  // Refused on identity grounds, not a network fault. "The server may be offline"
+  // would send someone to check their wifi over a security warning.
   if (connectionStatus === 'refused') {
     return (
       <div className="flex w-full h-full items-center justify-center p-4">

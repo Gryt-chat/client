@@ -1,23 +1,11 @@
 /**
- * The hotkey combo grammar, shared by the settings UI, the renderer's listeners
- * and the Electron main process. Zero or more modifiers and one base token,
- * joined with "+":
- *
- *   Ctrl+Shift+KeyM   a keyboard key, named by DOM `KeyboardEvent.code`
- *   Alt+Mouse4        a mouse button
- *
- * **Mouse buttons are numbered physically** — Mouse1 left, Mouse2 right, Mouse3
- * middle — which is what mice, games and libuiohook do. The DOM numbers them
- * differently and gets translated here.
- *
- * **Combos are persisted as these strings**, so changing a token changes what
- * people already have bound.
+ * The hotkey combo grammar — modifiers and one base token joined with "+", e.g.
+ * `Ctrl+Shift+KeyM` or `Alt+Mouse4`. **Mouse buttons are numbered physically.**
  */
 
 /**
- * The event shapes this works on, spelled out rather than taken from the DOM.
- * The Electron main process reads the same grammar and compiles without the
- * DOM lib, and uiohook's events are not DOM events anyway.
+ * The event shapes this works on, spelled out rather than taken from the DOM: the
+ * main process compiles without the DOM lib, and uiohook's are not DOM events.
  */
 export interface KeyLike {
   code: string;
@@ -58,8 +46,7 @@ const DOM_BUTTON_TO_MOUSE: Record<number, number> = { 0: 1, 1: 3, 2: 2, 3: 4, 4:
 
 /**
  * Left and right click are deliberately not bindable. uiohook listens without
- * swallowing the event, so a left-click binding would key the microphone on
- * every click anywhere in the OS — including the click that binds it.
+ * swallowing, so a left-click binding keys the microphone on every click.
  */
 export const BINDABLE_MOUSE_BUTTONS = [3, 4, 5];
 
@@ -147,9 +134,8 @@ export function matchesMouseEvent(e: MouseLike, combo: string): boolean {
 }
 
 /**
- * A release is matched on the base alone. Someone who lets go of Shift before
- * the key would otherwise never release the binding, and the microphone would
- * stay open.
+ * A release is matched on the base alone. Letting go of Shift first would
+ * otherwise never release the binding, and the microphone would stay open.
  */
 export function releasesKeyEvent(e: KeyLike, combo: string): boolean {
   if (!combo) return false;
@@ -163,9 +149,8 @@ export function releasesMouseEvent(e: MouseLike, combo: string): boolean {
 }
 
 /**
- * A binding taken apart, for a listener that has to compare the pieces itself.
- * The Electron main process uses this to turn a stored combo into something
- * uiohook can be matched against.
+ * A binding taken apart, for a listener that compares the pieces itself. The main
+ * process uses this to turn a stored combo into something uiohook matches.
  */
 export interface ParsedCombo {
   /** `KeyboardEvent.code` this is bound to, or null for a mouse binding. */

@@ -1,24 +1,11 @@
 /**
- * Which address an invite to a locally hosted server should name (GRYT-135).
- *
- * The invite dialog builds its link from whatever address the client is
- * connected on. For a server started from the desktop app that is
- * `127.0.0.1:<port>`, so the link tells whoever receives it to connect to their
- * own machine. Nothing errors, it just does not find the server, and the person
- * who sent it has no reason to suspect the link.
- *
- * Since GRYT-277 an embedded server knows the addresses it advertises. Where
- * there is nothing better, the honest answer is to say so rather than hand
- * somebody a link that cannot work.
+ * Which address an invite to a locally hosted server should name. Built from the
+ * connected address, that is `127.0.0.1` and points at the reader (GRYT-135).
  */
 
 /**
- * Bare host with any port removed, lowercased, brackets stripped.
- *
- * The bracket form is handled first and on its own, because an IPv6 address is
- * mostly colons and a blanket "strip `:<digits>` from the end" turns `::1` into
- * `:`. Outside brackets, a colon is only a port separator when there is exactly
- * one of them — `192.168.1.1:5001` has a port, `::1` does not.
+ * Bare host with any port removed, lowercased, brackets stripped. The bracket
+ * form goes first: a blanket strip of `:<digits>` turns `::1` into `:`.
  */
 function hostname(host: string): string {
   const trimmed = host.trim();
@@ -35,10 +22,8 @@ function hostname(host: string): string {
 }
 
 /**
- * Whether this address only means anything on the machine that used it.
- *
- * The whole 127/8 block, not just 127.0.0.1: `127.0.0.2` is just as loopback
- * and turns up when somebody has bound a second service locally.
+ * Whether this address only means anything on the machine that used it. The whole
+ * 127/8 block, not just 127.0.0.1.
  */
 export function isLoopbackHost(host: string): boolean {
   const name = hostname(host);
@@ -69,18 +54,8 @@ export type ShareableHost =
   | { kind: "loopback-only" };
 
 /**
- * Pick the address to put in an invite.
- *
- * Anything that is not loopback is already shareable and is returned unchanged,
- * so this cannot make an ordinary invite worse.
- *
- * For a loopback address the host's own typed-in addresses come first —
- * somebody who went to Settings and entered a public IP was answering exactly
- * this question. Detected addresses come next, the machine's LAN addresses: not
- * reachable from the internet, but correct for what an embedded server is
- * usually used for, which is people in the same building.
- *
- * One address rather than several, because the invite format carries one host.
+ * Pick the address to put in an invite. Anything not loopback is returned
+ * unchanged; for loopback, typed-in addresses beat detected LAN ones.
  */
 export function pickShareableHost(
   host: string,
@@ -96,8 +71,7 @@ export function pickShareableHost(
   if (!candidate) return { kind: "loopback-only" };
 
   // The advertised list holds bare addresses, because the SFU appends its own
-  // port to them. An invite needs the address people connect to, which is the
-  // server's.
+  // port. An invite needs the address people connect to, which is the server's.
   const bare = candidate.trim();
   const needsBrackets = bare.includes(":") && !bare.startsWith("[");
   return {

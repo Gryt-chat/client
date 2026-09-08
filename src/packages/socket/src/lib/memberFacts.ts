@@ -1,18 +1,13 @@
 /**
- * The few things every surface showing a member has to answer the same way.
- *
- * Each of these had two or three copies before, one per component, which is how
- * they drift: the hover card knew what to call an account and the members list
- * did not, and two join-date formatters disagreed about what to print for a
- * missing value. What a member *is* should not depend on which screen is open.
+ * The few things every surface showing a member has to answer the same way. Each
+ * had two or three copies before, which is how the hover card and the list drift.
  */
 
 import type { ServerRoleSummary } from "../hooks/usePermissions";
 
 /**
  * The ranks the built-in roles ship with, for a server that has not told us
- * otherwise -- one that predates editable roles, or a menu rendered where the
- * host is not known.
+ * otherwise — one predating editable roles, or a menu with no known host.
  */
 export const BUILT_IN_RANK: Record<string, number> = {
   owner: 100,
@@ -23,11 +18,8 @@ export const BUILT_IN_RANK: Record<string, number> = {
 };
 
 /**
- * Who may act on whom.
- *
- * Rank decides that; permissions decide what the action is. They used to be one
- * question asked of a four-rung ladder, which is why a role built to do exactly
- * one of these things could not be expressed.
+ * Who may act on whom. Rank decides that; permissions decide what the action is.
+ * They used to be one question asked of a four-rung ladder.
  */
 export function makeRankOf(roles: ServerRoleSummary[]) {
   return (roleId?: string): number =>
@@ -49,8 +41,7 @@ export type IdentityTier = "account" | "local" | "bot";
 
 /**
  * Amber marks "no account" and nothing else, so it stays worth noticing. An
- * account and a bot are both ordinary, in the sense that neither is a stranger
- * who can be replaced for free.
+ * account and a bot are both ordinary.
  */
 export const TIER_LABEL: Record<string, { label: string; amber: boolean }> = {
   account: { label: "Gryt account", amber: false },
@@ -59,11 +50,8 @@ export const TIER_LABEL: Record<string, { label: string; amber: boolean }> = {
 };
 
 /**
- * When somebody joined, or null when the server did not say.
- *
- * Null rather than "Unknown", so each caller decides whether an absent date is
- * worth a row of its own. `createdAt` on a member is the join date: the row is
- * created when they first arrive and survives them leaving.
+ * When somebody joined, or null when the server did not say. `createdAt` on a
+ * member is the join date: the row survives them leaving.
  */
 export function formatJoined(value?: string | Date): string | null {
   if (!value) return null;

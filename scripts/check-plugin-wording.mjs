@@ -1,17 +1,8 @@
 /* eslint-env node */
 
 /**
- * Turning a server's plugin capabilities into something a person can act on
- * (GRYT-942).
- *
- * A server names every plugin it runs and what each may do. It says it in its
- * own vocabulary — `messages:read`, `moderation` — which is the substance of
- * the list and also useless to almost everybody reading it.
- *
- * The case worth guarding is the unrecognised one. A newer server is exactly
- * where a capability worth knowing about arrives, so hiding what this build
- * does not recognise would mean the scarier the capability, the less likely
- * somebody is to see it.
+ * Turning a server's plugin capabilities into something a person can act on. The
+ * case worth guarding is the unrecognised one, which a newer server brings.
  */
 
 import assert from "node:assert/strict";
@@ -46,9 +37,8 @@ const unknown = describeCapability("reads:your:mind");
 /* Shown rather than dropped. */
 assert.match(unknown, /reads:your:mind/, "an unrecognised capability was hidden");
 
-/* And marked as unrecognised, so it does not read as Gryt's own wording for
-   something — which would be a sentence Gryt did not write, about a capability
-   it does not know, presented as if it did. */
+/* And marked as unrecognised, so it does not read as Gryt's own wording for a
+   capability it does not know. */
 assert.match(unknown, /too old to say/);
 
 /* ── lists ───────────────────────────────────────────────────────────────── */
