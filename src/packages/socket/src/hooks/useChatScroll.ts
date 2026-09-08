@@ -140,6 +140,9 @@ export function useChatScroll(
       if (drift > 1) el.scrollTop = el.scrollHeight;
     });
 
+    // The container itself, not only the rows: anything appearing between the
+    // messages and the composer shrinks it without resizing one. GRYT-1067.
+    observer.observe(el);
     for (const row of el.querySelectorAll<HTMLElement>("[data-message-id]")) {
       observer.observe(row);
     }
