@@ -1,13 +1,8 @@
 /* eslint-env node */
 
 /**
- * What the mention badge counts, checked without a browser.
- *
- * The store is the whole feature: the badge is one number read out of it, and
- * every way that number can be wrong is a way somebody is told they were asked
- * something when they were not, or not told when they were. The two that would
- * actually happen are here — a server answer that arrives after a mention has
- * already been read somewhere else, and reading a conversation on this machine.
+ * What the mention badge counts, checked without a browser. Every way the number
+ * can be wrong tells somebody they were asked something, or fails to.
  */
 
 import assert from "node:assert/strict";
@@ -36,9 +31,8 @@ setMentionCounts(HOST, { general: 2, help: 1 });
 assert.equal((await counts(HOST)).get("general"), 2);
 assert.equal((await counts(HOST)).get("help"), 1);
 
-// Replaces rather than merges. The server has just said what is unseen, so a
-// conversation it did not name has been read somewhere else — on a phone, or
-// in another window — and merging would keep a badge nothing can clear.
+// Replaces rather than merges. The server has just said what is unseen, so
+// merging would keep a badge nothing can clear.
 setMentionCounts(HOST, { general: 1 });
 assert.equal((await counts(HOST)).has("help"), false, "help was read elsewhere");
 assert.equal((await counts(HOST)).get("general"), 1);

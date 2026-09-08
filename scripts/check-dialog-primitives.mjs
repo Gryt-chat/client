@@ -1,13 +1,8 @@
 /* eslint-env node */
 
 /**
- * Confirmations are drawn by one component, alerts by one other.
- *
- * They were hand-rolled twenty-two times, and drifted: Cancel rendered as the
- * primary action in six of them, destructive confirms came out untoned in
- * others, two type-a-phrase gates disagreed about case, and popup widths landed
- * wherever the file happened to leave them. None of that was chosen. Each new
- * copy is a place it starts again, so this fails on the next one.
+ * Confirmations are drawn by one component, alerts by one other. Twenty-two
+ * hand-rolled copies drifted; each new one is where it starts again.
  */
 
 import assert from "node:assert/strict";

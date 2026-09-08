@@ -1,22 +1,8 @@
 /* eslint-env node */
 
 /**
- * The half of pinning that is this client's (GRYT-732).
- *
- * Deciding whether a key is the one seen before lives in `@gryt/crypto` and is
- * checked there, against a store held in a variable. What is left here is the
- * store itself and the wrappers that supply it — small enough to look right and
- * still be wrong in a way nothing else would notice.
- *
- * Two failures in particular are silent. A wrapper that builds a fresh store
- * per call reads and writes an empty map, so every peer is `first` forever and
- * a substituted key is never refused — and every assertion inside one call still
- * passes. A store that writes under a different key than `PEER_PINS_KEY` loses
- * every pin on reload and looks identical until then. So the assertions go
- * through raw `localStorage` rather than through the module that wrote it.
- *
- * `localStorage` is faked because Node has none. Node 24 strips the types on
- * import.
+ * The half of pinning that is this client's: the store and its wrappers. The
+ * assertions go through raw `localStorage`, because both failures are silent.
  */
 
 import assert from "node:assert/strict";
@@ -110,9 +96,8 @@ const stored = () => JSON.parse(localStorage.getItem(PEER_PINS_KEY) ?? "{}");
 /* ── and reads what a previous run of the app wrote ─────────────────────── */
 
 {
-  // A reload is only this: the module's own memory is gone and localStorage is
-  // not. Faked here by writing the map directly and reading it back through the
-  // module, which is the direction a stale in-memory cache would fail in.
+  // A reload is only this: the module's memory is gone and localStorage is not.
+  // Faked by writing the map directly and reading it back through the module.
   const raw = stored();
   const key = Object.keys(raw)[0];
   backing.set(PEER_PINS_KEY, JSON.stringify({

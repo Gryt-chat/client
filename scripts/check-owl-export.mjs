@@ -1,15 +1,8 @@
 /* eslint-env node */
 
 /**
- * Exporting an owl to a file, checked without a browser.
- *
- * The SVG path and the filename are pure and are checked here. The raster paths
- * need a canvas, so they are checked in a real headless Chromium by
- * `scripts/check-owl-export-raster.mjs` — this one is the part that can run in
- * CI on every push without a browser download.
- *
- * The code under test ships in @gryt/ui as of GRYT-641, so this checks the
- * copy the client actually installs rather than a file in this repository.
+ * Exporting an owl to a file, without a browser. The raster paths need a canvas
+ * and are checked by `check-owl-export-raster.mjs`. The code ships in @gryt/ui.
  */
 
 import assert from "node:assert/strict";

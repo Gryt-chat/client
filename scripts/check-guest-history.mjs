@@ -1,20 +1,8 @@
 /* eslint-env node */
 
 /**
- * The guest history reads what earlier versions of itself wrote, and only
- * claims a date it actually has.
- *
- * This stored a bare array of scope strings until the prompt needed something
- * to show. Anybody mid-membership at the moment they upgrade has that array on
- * disk, and dropping it would take away the offer to convert a guest user on
- * every server they had already joined — silently, because a missing offer
- * looks exactly like having nothing to convert.
- *
- * The other half is the date not being invented. `rememberGuestScopes` takes
- * scopes from the backfill and from a restored backup file, neither of which
- * knows when the membership was used. A `Date.now()` there would print "last
- * used today" on the prompt for a server somebody last touched a year ago,
- * which is worse than printing nothing: it is evidence, and it is wrong.
+ * The guest history reads what earlier versions of itself wrote, and only claims
+ * a date it actually has — an invented one is evidence, and it is wrong.
  */
 
 import assert from "node:assert/strict";

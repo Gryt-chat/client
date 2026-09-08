@@ -1,17 +1,8 @@
 /* eslint-env node */
 
 /**
- * Which cosmetics read as new, checked without a browser.
- *
- * The whole feature turns on the first-run case rather than on anything about
- * drawing dots: a fresh install has no record, and treating "not in the record"
- * as "new" would light up every cosmetic on the first open. A badge on
- * everything is a badge on nothing, and it teaches somebody to ignore the dot
- * before it has ever meant anything.
- *
- * The code under test ships in @gryt/ui as of GRYT-641; this checks the copy
- * the client actually installs. localStorage is stubbed because that is
- * the only browser API the module touches.
+ * Which cosmetics read as new. The whole feature turns on the first run: treating
+ * "not in the record" as new would badge everything, which badges nothing.
  */
 
 import assert from "node:assert/strict";

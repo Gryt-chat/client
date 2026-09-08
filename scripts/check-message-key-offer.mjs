@@ -1,19 +1,8 @@
 /* eslint-env node */
 
 /**
- * When to offer a device the account's message key (GRYT-783).
- *
- * The two failures worth guarding are opposites and only one of them is
- * survivable.
- *
- * Offering when it was not needed costs a dismissal. Staying quiet when it was
- * needed means somebody goes on writing messages their other devices cannot
- * read, and nothing ever tells them why — which is the exact complaint that
- * started GRYT-783, arrived at from the other direction.
- *
- * So the table below is mostly about the second one: while the answer is still
- * loading, say nothing; once it is known, do not go quiet for any reason except
- * the key genuinely being here.
+ * When to offer a device the account's message key. Offering needlessly costs a
+ * dismissal; staying quiet means unreadable messages nobody explains (GRYT-783).
  */
 
 import assert from "node:assert/strict";
@@ -49,8 +38,7 @@ for (const vaultExists of [true, false, null]) {
 // ── silence while loading, not a flicker ────────────────────────────────────
 {
   // vaultExists starts null. Offering on null would flash a password prompt on
-  // every DM open and then take it away, which reads as a glitch — and this is
-  // the last thing that should flicker.
+  // every DM open and take it away, which reads as a glitch.
   assert.equal(offer({ signedIn: true, vaultExists: null, keyIsHere: false }), false);
   assert.equal(offer({ signedIn: true, vaultExists: null, keyIsHere: true }), false);
 }

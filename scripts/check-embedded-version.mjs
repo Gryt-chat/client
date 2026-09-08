@@ -1,29 +1,8 @@
 /* eslint-env node */
 
 /**
- * The version stamped on an embedded artefact is the highest tag on the commit
- * (GRYT-725).
- *
- * `git tag --sort=-v:refname` is a version sort but not semver precedence: it
- * does not know a prerelease is lower than the release it leads to unless
- * `versionsort.suffix` says which suffixes mean that. On git 2.50.1, with both
- * tags on one commit, the default order is
- *
- *     v1.6.15-beta.1
- *     v1.6.15
- *
- * so an artefact built from that commit would be stamped `1.6.15-beta.1` while
- * the release it is actually sitting on is `1.6.15`. Every desktop-hosted
- * server would then compare a prerelease against the newest release and be
- * offered an update to something it is already running.
- *
- * Harmless while `release-client.yml` embedded stable tags only, because a
- * prerelease tag was never checked out. GRYT-724 made the beta channel embed
- * prereleases, which is what put this in reach.
- *
- * Built as a real git repository rather than asserted against the source,
- * because the thing being checked is git's ordering, and a source check would
- * only prove the flags are spelled right.
+ * The version stamped on an embedded artefact is the highest tag on the commit.
+ * Built as a real git repository, because what is checked is git's ordering.
  */
 
 import assert from "node:assert/strict";
