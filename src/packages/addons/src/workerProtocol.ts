@@ -1,18 +1,6 @@
 /**
- * What a plugin and the app say to each other (GRYT-930).
- *
- * A plugin runs in a worker now, so this is the whole of its reach. Everything
- * it can do is a message the host either serves or refuses, and there is no
- * second door — no `window`, no DOM, no `localStorage`, no module the app has
- * already imported, and no identity keypair.
- *
- * That is the difference between this and what came before. `capabilities.ts`
- * used to open by saying, at length, that a granted capability was a claim
- * rather than a boundary, because a plugin that did not want to ask simply did
- * not call `window.gryt`. There is nothing else to call now.
- *
- * Kept free of every other module on purpose: both sides import it, and one of
- * those sides is a worker that must not pull the app in behind it.
+ * What a plugin and the app say to each other. A plugin runs in a worker, so this
+ * is its whole reach. Free of every other module: both sides import it (GRYT-930).
  */
 
 /** Host → worker. */
@@ -25,9 +13,8 @@ export type HostMessage =
   /** Something happened. Pushed rather than polled. */
   | { kind: "event"; event: string; payload: unknown }
   /**
-   * Wind up. The worker is given a moment to run its cleanup handlers and is
-   * then terminated whether or not it did — a plugin cannot refuse to stop by
-   * never finishing.
+   * Wind up. The worker gets a moment to run its cleanup handlers and is then
+   * terminated whether or not it did.
    */
   | { kind: "stop" };
 
@@ -47,25 +34,14 @@ export interface ThemeInfo {
 }
 
 /**
- * How long a plugin gets to finish its cleanup after being told to stop.
- *
- * Long enough for a handler that clears a timer and sends a last message,
- * short enough that turning an addon off never feels like it hung. A plugin
- * that ignores it is terminated anyway, which is the point of doing this from
- * outside rather than asking nicely.
+ * How long a plugin gets to finish its cleanup after being told to stop. One that
+ * ignores it is terminated anyway, which is the point of doing it from outside.
  */
 export const STOP_GRACE_MS = 150;
 
 /**
- * What each call costs, and the list of calls there are (GRYT-930).
- *
- * Here rather than beside the code that serves them, because the check that
- * reads it has to be able to import this file — and this file imports nothing,
- * which is the property that makes the worker worth having.
- *
- * Capabilities are plain strings here for the same reason. The typed union
- * lives in `capabilities.ts`; a wire protocol that reached for it would stop
- * being a leaf to gain a type it does not need.
+ * What each call costs, and the list of calls there are. Here because the check
+ * that reads it imports this file, and this file imports nothing (GRYT-930).
  */
 export const METHOD_CAPABILITY: Record<string, string> = {
   setActivity: "status",

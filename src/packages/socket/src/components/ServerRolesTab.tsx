@@ -81,8 +81,7 @@ export function ServerRolesTab({
 
   /*
    * `roles` is what a server that knows about more than one per member sends;
-   * `role` is what one from before that sends, and what this used to read. A
-   * server still on the old build keeps working, showing the one role it has.
+   * `role` is what an older one sends, and it keeps working with the one it has.
    */
   useSocketEvent<{ roles: { serverUserId: string; role: Role; roles?: Role[] }[] }>(
     socket,
@@ -126,9 +125,8 @@ export function ServerRolesTab({
     },
   );
 
-  /* Repaint on a revoke from anywhere — this tab, the Invites tab, or somebody
-     else's client. The row says whether the door is still open, so it has to
-     stop saying "live" the moment it is not. */
+  /* Repaint on a revoke from anywhere. The row says whether the door is still
+     open, so it has to stop saying "live" the moment it is not. */
   useSocketEvent<{ code?: string }>(socket, "server:invite:revoked", (payload) => {
     const code = payload?.code;
     if (!code) return;
@@ -156,14 +154,8 @@ export function ServerRolesTab({
 
   // ── Kicking and banning ──────────────────────────────────────────
   //
-  // Emitted from here rather than through useAdminActions, which is mounted
-  // under serverView and bound to whichever server is being looked at. The
-  // settings modal is a sibling with its own socket, so reaching that hook
-  // would mean lifting it above both. The events are the same two.
-  //
-  // `emitAuthenticated` rather than this tab's `accessToken`, because it
-  // refreshes a token that is about to expire first. Settings is a window
-  // somebody leaves open.
+  // Emitted here rather than through useAdminActions, which is bound to the server
+  // being looked at. `emitAuthenticated` refreshes a token about to expire.
   const [pendingKick, setPendingKick] = useState<{ id: string; nickname: string } | null>(null);
   const [pendingBan, setPendingBan] = useState<{ id: string; nickname: string } | null>(null);
   const [reason, setReason] = useState("");
@@ -190,22 +182,16 @@ export function ServerRolesTab({
   const mayBan = has("ban_members");
 
   /*
-   * Add and remove rather than replace.
-   *
-   * `server:roles:set` still exists and still replaces the whole set — it is
-   * what a demotion means — but this screen is where somebody is given a second
-   * role, and sending the whole intended set would make every change a chance
-   * to drop one by accident.
+   * Add and remove rather than replace. `server:roles:set` still replaces the
+   * whole set, but sending it here makes every change a chance to drop one.
    */
   const send = (event: string, serverUserId: string, role: Role) => {
     if (!socket || !socket.connected) return toast.error("Not connected to the server yet.");
     if (!accessToken) return toast.error("Join the server first.");
     setSubmitting(true);
     try {
-      // No success toast here. It used to fire unconditionally, before any
-      // acknowledgement, so the owner-only and self-change cases the server
-      // rejects still reported "Role updated". server:role:updated above is
-      // the actual confirmation; a refusal arrives as server:error.
+      // No success toast. It used to fire before any acknowledgement, so cases
+      // the server rejects still reported "Role updated".
       socket.emit(event, { accessToken, serverUserId, role });
     } finally {
       setSubmitting(false);
@@ -251,13 +237,10 @@ export function ServerRolesTab({
             const joined = formatJoined(m.createdAt);
 
             // Rank decides who may be acted on, permissions decide what the
-            // action is. Same rule as the right-click menu in the sidebar, and
-            // the server enforces it again -- offering a click that comes back
-            // refused is worse than not offering it.
-            // The highest they hold, not the first. Roles stack here, so
-            // ranking somebody by whichever one the server happened to list
-            // first would let a moderator ban an admin who is also a
-            // contributor.
+            // action is. The server enforces it again.
+
+            // The highest they hold, not the first: ranking by whichever the
+            // server listed first would let a moderator ban an admin.
             const theirRank = held.reduce((top, r) => Math.max(top, rankOf(r)), -1);
             const outranked = myRank > theirRank;
             const canKick = mayKick && outranked;
@@ -339,9 +322,8 @@ export function ServerRolesTab({
 
                   <div className="flex items-center gap-2 flex-wrap justify-end">
                     {held.length === 0 && (
-                      // Not an error. Somebody with no role falls back to
-                      // whatever the server gives a new arrival, so saying
-                      // "none" would be wrong about what they can do.
+                      // Not an error. Somebody with no role falls back to what
+                      // the server gives a new arrival, so "none" would be wrong.
                       <span className="text-sm text-gryt-muted">Same as a new member</span>
                     )}
 
@@ -350,9 +332,8 @@ export function ServerRolesTab({
                         key={r}
                         label={nameOf(r)}
                         tone={r === OWNER_ROLE ? "primary" : "neutral"}
-                        // The owner's chip has no remove: the server refuses to
-                        // take it away here, because ownership lives in the
-                        // server's own configuration rather than in this list.
+                        // The owner's chip has no remove: ownership lives in the
+                        // server's configuration rather than in this list.
                         onDelete={
                           r === OWNER_ROLE || submitting
                             ? undefined
@@ -365,11 +346,8 @@ export function ServerRolesTab({
                       <Select
                         value=""
                         onValueChange={(v) => {
-                          // Checked before String(), not after. The select
-                          // clears itself once the role is given and fires this
-                          // again with null — and `String(null)` is "null",
-                          // which is truthy, so a second request went out
-                          // asking for a role called "null".
+                          // Checked before String(), not after: the select fires
+                          // again with null, and `String(null)` is truthy.
                           if (v === null || v === undefined || v === "") return;
                           send("server:roles:add", m.serverUserId, String(v));
                         }}
