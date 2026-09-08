@@ -255,10 +255,8 @@ function setupPopupWindow(
 }
 
 /**
- * A popup that has been closed leaves its `<video>` behind as a detached
- * element: still a live JS object, but with no window attached to its
- * document. Writing into one of those takes the renderer down rather than
- * throwing something catchable, so every write checks this first (GRYT-108).
+ * A closed popup leaves its `<video>` behind as a detached element. Writing into
+ * one takes the renderer down rather than throwing, so every write checks first.
  */
 function isAttached(videoEl: HTMLVideoElement): boolean {
   return videoEl.ownerDocument.defaultView !== null;
@@ -305,9 +303,8 @@ export function popoutStream(
     let open = true;
     let activeStream = stream;
 
-    // One controller per stream, so replacing the stream drops the listeners
-    // belonging to the old one instead of stacking a second set on top. The
-    // stale ones used to keep firing after the window had gone.
+    // One controller per stream, so replacing the stream drops the old listeners
+    // instead of stacking a second set on top.
     let trackListeners = new AbortController();
 
     const markClosed = () => {
@@ -343,9 +340,8 @@ export function popoutStream(
       if (popup.closed) markClosed();
     }, 500);
 
-    // The poll is a backstop. These fire the moment the window goes, which
-    // closes the gap where the handle still counts as live and a stream update
-    // can land in a document that no longer exists.
+    // The poll is a backstop. These fire the moment the window goes, closing the
+    // gap where the handle still counts as live.
     popup.addEventListener("beforeunload", markClosed);
     popup.addEventListener("pagehide", markClosed);
 

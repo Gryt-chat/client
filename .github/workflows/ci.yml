@@ -9,10 +9,8 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     env:
-      # Only the web bundle is linted and built here, and the Electron binary is
-      # a ~100MB download that nothing in this job runs. Skipping it also keeps a
-      # flaky download from failing a job that has nothing to do with it.
-      # Packaging the desktop app is release.yml's problem, not this one.
+      # Only the web bundle is linted and built here, and the Electron binary is a
+      # ~100MB download nothing in this job runs. Packaging is release.yml's job.
       ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
     steps:
       - uses: actions/checkout@v4
@@ -101,19 +99,15 @@ jobs:
       - run: yarn test:fake-server-events
       - run: yarn test:channel-permissions
       - run: yarn test:report-user
-      # tsc -b and eslint with --max-warnings 0. This is the check that was
-      # missing: client#115 merged with three TS6133 errors and main did not
-      # compile until the next PR happened to supply the code that used them.
+      # tsc -b and eslint with --max-warnings 0. client#115 merged with three
+      # TS6133 errors and main did not compile until the next PR.
       - run: yarn lint
-      # lint already runs tsc, so this is really vite build — it catches what
-      # type-checking cannot, like an import that resolves for TypeScript and
-      # not for the bundler.
+      # lint already runs tsc, so this is really vite build — it catches an import
+      # that resolves for TypeScript and not for the bundler.
       - run: yarn build
 
-  # The capture helpers are C++ and only compile on Windows, so until now a
-  # mistake in them surfaced during a release rather than on the PR that made
-  # it. This does not run them — process loopback needs real audio devices —
-  # it only proves they still build.
+  # The capture helpers are C++ and only compile on Windows, so a mistake in them
+  # used to surface during a release. This proves they build, and runs nothing.
   native:
     runs-on: windows-latest
     steps:
