@@ -1,14 +1,6 @@
 /**
- * Fetching a typeface a theme asked for, when this machine has agreed to. A
- * font request to Google hands them an address and a picture of who is running
- * Gryt, so it happens only behind the Appearance setting.
- *
- * **The theme says which face it wants; this machine says whether it will go
- * and get one.** In the theme, a link somebody was sent could switch on network
- * access for whoever opened it.
- *
- * Only families a theme names and the machine lacks. Atkinson ships with the
- * app, so the default theme asks for nothing.
+ * Fetching a typeface a theme asked for, when this machine has agreed to. **The
+ * theme says which face; this machine says whether it will go and get one.**
  */
 
 /** Families that ship with Gryt or come from the OS. Never fetched. */
@@ -33,11 +25,7 @@ const LINK_ID = "gryt-google-fonts";
 
 /**
  * A family name Google's API will accept, and that cannot carry anything else.
- *
- * The name comes out of a theme, which came out of a link somebody was sent,
- * and goes into a URL. Letters, digits and spaces only — every family Google
- * serves is spelled that way, and anything else is somebody trying to make
- * this build a different URL than it looks like it is building.
+ * Letters, digits and spaces only — the name came out of a link somebody sent.
  */
 function isFamilyName(value: string): boolean {
   return /^[A-Za-z0-9 ]{1,60}$/.test(value.trim());
@@ -49,11 +37,8 @@ function primary(stack: string): string {
 }
 
 /**
- * Point the document at whatever the current theme needs, or at nothing.
- *
- * Rewrites one link element rather than accumulating them: a theme changes on
- * every keystroke while somebody is dragging through the editor, and a
- * stylesheet per keystroke would be a hundred requests and a hundred elements.
+ * Point the document at whatever the current theme needs, or at nothing. Rewrites
+ * one link element: a theme changes on every keystroke in the editor.
  */
 export function syncGoogleFonts(stacks: string[], enabled: boolean): void {
   const existing = document.getElementById(LINK_ID);
@@ -80,8 +65,7 @@ export function syncGoogleFonts(stacks: string[], enabled: boolean): void {
   }
 
   /* One request for all of them. Weights 400..700 because the interface uses
-     regular, medium and semibold, and asking for the whole variable range
-     would fetch more than anything renders. */
+     regular, medium and semibold; the whole variable range fetches more. */
   const href = `https://fonts.googleapis.com/css2?${families
     .map(
       (name) =>

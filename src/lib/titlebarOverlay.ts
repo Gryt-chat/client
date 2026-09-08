@@ -1,10 +1,8 @@
 import { getElectronAPI } from "./electron";
 
 /**
- * Keep the native window controls in the app's colours (GRYT-288). On Windows
- * and Linux they are drawn by the OS into an overlay strip the stylesheet
- * cannot reach, set once when the window was built — so a light theme left
- * three dark buttons in the corner. macOS ignores this.
+ * Keep the native window controls in the app's colours. On Windows and Linux the
+ * OS draws them into a strip the stylesheet cannot reach (GRYT-288).
  */
 
 /** The two tokens the titlebar itself paints with. Kept in step with titlebar.tsx. */
@@ -20,21 +18,16 @@ function getProbe(): CanvasRenderingContext2D | null {
   canvas.height = 1;
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   if (!ctx) return null;
-  // `copy` rather than the default, so a value that carries alpha replaces the
-  // pixel instead of blending with whatever the last read left behind. Both
-  // tokens read here are opaque, but a theme is somebody else's file.
+  // `copy` rather than the default, so a value carrying alpha replaces the pixel
+  // instead of blending with what the last read left behind.
   ctx.globalCompositeOperation = "copy";
   probe = ctx;
   return ctx;
 }
 
 /**
- * A CSS custom property as `#rrggbb`.
- *
- * Via a canvas pixel rather than by reading the string back, because the string
- * is whatever the theme author wrote — `oklch()`, `color()` and plain colour
- * names all serialise differently, and Electron throws on anything it cannot
- * parse. Painting one pixel and reading it back gives sRGB bytes.
+ * A CSS custom property as `#rrggbb`. Via a canvas pixel rather than the string:
+ * `oklch()` and colour names serialise differently and Electron throws.
  */
 function resolveToHex(variable: string): string | null {
   const raw = getComputedStyle(document.documentElement)
@@ -60,11 +53,8 @@ function resolveToHex(variable: string): string | null {
 }
 
 /**
- * Send the current titlebar colours to the main process.
- *
- * Call after the theme variables are on the root element, not before — this
- * reads what they evaluate to right now. Does nothing outside Electron, and
- * nothing on a build whose preload predates the bridge.
+ * Send the current titlebar colours to the main process. Call after the theme
+ * variables are on the root element — this reads what they evaluate to now.
  */
 export function pushTitlebarOverlay(): void {
   const api = getElectronAPI();

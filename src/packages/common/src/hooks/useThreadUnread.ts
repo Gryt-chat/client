@@ -1,29 +1,13 @@
 import { useCallback, useSyncExternalStore } from "react";
 
 /**
- * How many replies have arrived in a thread that nobody has read.
- *
- * Its own store rather than a third key on the unread tracker next door, which
- * is `(host, conversationId)` all the way down. A thread hangs off a
- * conversation but is not one, and threading a second id through that map would
- * make every call site say which kind of thing it was asking about.
- *
- * This is why GRYT-999 had to go silent. A reply in a thread was badging the
- * parent channel and then being filtered out of it, so the badge pointed at
- * something that looked empty; the honest fix was to say nothing until there
- * was somewhere to say it. This is that somewhere.
- *
- * Counted from when this window connected, like the channel one and for the
- * same reason: no server-side read marker exists. GRYT-985.
+ * How many replies have arrived in a thread that nobody has read. Its own store:
+ * a thread hangs off a conversation but is not one. Counted from connect.
  */
 interface ThreadUnread {
   /**
-   * The channel the thread hangs off.
-   *
-   * Kept so "mark this channel read" can find the threads in it (GRYT-1030).
-   * Keyed by thread alone, the store can answer how many are unread in one
-   * thread and how many on a whole server, and nothing in between — which is
-   * the scope somebody most often wants.
+   * The channel the thread hangs off, kept so "mark this channel read" can find
+   * the threads in it (GRYT-1030).
    */
   conversationId: string;
   count: number;
@@ -53,12 +37,8 @@ export function getThreadUnreadSnapshot(): ThreadUnreadMap {
 }
 
 /**
- * The thread on screen, if any.
- *
- * Held here rather than answered by whoever is counting, because the count and
- * the panel are two `chat:new` handlers on one socket and which runs first is
- * whichever subscribed first. Clearing on arrival raced the increment and lost
- * about half the time; refusing to count the open one cannot race anything.
+ * The thread on screen, if any. Held here because the count and the panel are two
+ * `chat:new` handlers on one socket, and clearing on arrival raced.
  */
 let openThread: { host: string; threadId: string } | null = null;
 
@@ -92,11 +72,8 @@ export function markThreadRead(host: string, threadId: string) {
 }
 
 /**
- * Every thread hanging off one channel, for a "mark as read" on it.
- *
- * A thread whose replies have not arrived in this window is not in here at
- * all, which is the same limit the channel counts have: both are counted from
- * when this window connected, because no server-side read marker exists.
+ * Every thread hanging off one channel, for a "mark as read" on it. A thread
+ * whose replies have not arrived in this window is not in here at all.
  */
 export function markConversationThreadsRead(host: string, conversationId: string) {
   const existing = unread.get(host);

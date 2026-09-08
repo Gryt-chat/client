@@ -5,18 +5,8 @@ import { useCallback, useState } from "react";
 import { singletonHook } from "./singletonHook";
 
 /**
- * Themes somebody brought with them.
- *
- * A Gryt theme is a couple of dozen hex values, which is small enough to fit in
- * a link — that is what the generator on ui.gryt.chat produces, and what this
- * keeps. The palette itself is not stored as CSS: a theme is the anchors, and
- * createGrytTheme regenerates the twelve-step scales from them, so a theme
- * saved today still gets whatever the scales learn to do later.
- *
- * Not the addon system. Addons are files on disk with a manifest, loaded by
- * Electron, and asking somebody to write one to change their colours was the
- * gap this fills. If the two should meet — a saved theme written out as a theme
- * addon — that is a button, not a different design.
+ * Themes somebody brought with them, as a link. Stored as the anchors, not CSS,
+ * so a theme saved today gets whatever the scales learn to do later.
  */
 
 const THEMES_KEY = "theme.custom.themes";
@@ -42,10 +32,8 @@ function readThemes(): SavedTheme[] {
   try {
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    // Each theme goes back through the library's parser rather than being
-    // trusted as-is. localStorage is editable, an old entry may predate a key,
-    // and a half-valid theme applied to the whole app is worse than one that
-    // is quietly dropped.
+    // Each theme goes back through the library's parser rather than being trusted:
+    // localStorage is editable, and a half-valid theme is worse than none.
     return parsed.flatMap((entry: unknown) => {
       if (typeof entry !== "object" || entry === null) return [];
       const row = entry as Record<string, unknown>;
@@ -123,8 +111,7 @@ function useCustomThemesImpl(): CustomThemesState {
           id,
           name: label,
           // The name goes into the document as well as beside it, so a link
-          // copied back out of here carries what this install calls it rather
-          // than what it was called when it arrived.
+          // copied back out carries what this install calls it.
           theme: { ...theme, name: label },
           savedAt: Date.now()
         }
@@ -166,12 +153,8 @@ function useCustomThemesImpl(): CustomThemesState {
   );
 
   /**
-   * A preset the library ships, or one somebody saved.
-   *
-   * Presets are stored as "preset:<id>" rather than copied into the saved list,
-   * so a newer @gryt/ui brings its corrections with it — a palette that gets a
-   * contrast fix should not be frozen on this machine because somebody clicked
-   * it once.
+   * A preset the library ships, or one somebody saved. Presets are stored as
+   * "preset:<id>", so a newer @gryt/ui brings its corrections with it.
    */
   const activeTheme =
     activeId === null
