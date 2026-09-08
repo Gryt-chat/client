@@ -17,8 +17,8 @@ import { PiLockOpen, PiLockSimpleFill } from "../../../../lib/icons";
 /* The plaintext anchor names a section that contradicts the sealed sentence,
    so that case links to the guide root. */
 const SECURITY_DOC_PLAINTEXT =
-  "https://docs.gryt.chat/docs/guide/security#direct-messages-are-not-private-from-the-server";
-const SECURITY_DOC_SEALED = "https://docs.gryt.chat/docs/guide/security";
+  "https://docs.gryt.chat/docs/about/security#direct-messages-are-not-private-from-the-server";
+const SECURITY_DOC_SEALED = "https://docs.gryt.chat/docs/about/security";
 
 /**
  * Why it fell back, in the words somebody would use about a person.

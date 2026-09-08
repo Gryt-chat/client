@@ -165,7 +165,7 @@ export function serverProofHelpUrl(
   decision: ServerProofDecision & { action: "block" },
 ): string | null {
   return decision.failure.reason === "expired"
-    ? "https://docs.gryt.chat/docs/guide/troubleshooting#server-clock-is-wrong"
+    ? "https://docs.gryt.chat/docs/use/troubleshooting#server-clock-is-wrong"
     : null;
 }
 

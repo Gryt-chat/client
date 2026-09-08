@@ -39,6 +39,6 @@ messages wherever they end up.
 
 ## Writing your own
 
-[Addons](https://docs.gryt.chat/docs/client/addons) covers the manifest, the
+[Addons](https://docs.gryt.chat/docs/build/addons) covers the manifest, the
 API and the capabilities. [Plugin
-pairs](https://docs.gryt.chat/docs/guide/plugin-pairs) covers the two halves.
+pairs](https://docs.gryt.chat/docs/build/plugin-pairs) covers the two halves.

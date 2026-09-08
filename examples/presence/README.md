@@ -11,7 +11,7 @@ half.
 
 Not from your machine. A plugin runs in a worker with no view of your
 processes, so it can't tell what you have open — [the addons
-page](https://docs.gryt.chat/docs/client/addons) says why, and it's a real
+page](https://docs.gryt.chat/docs/build/addons) says why, and it's a real
 thing Gryt doesn't do rather than something this example skipped.
 
 So something outside has to say. This one asks an HTTP endpoint on your own

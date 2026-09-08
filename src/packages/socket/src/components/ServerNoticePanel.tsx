@@ -17,7 +17,7 @@ import { PiWarningFill, PiX } from "../../../../lib/icons";
  * platform in the query and starts the download on arrival.
  */
 const INSTALLER_URL = "https://gryt.chat/download?os=windows";
-const INSTRUCTIONS_URL = "https://docs.gryt.chat/docs/client/updates";
+const INSTRUCTIONS_URL = "https://docs.gryt.chat/docs/use/updates";
 
 /**
  * Every word a notice can put on screen.

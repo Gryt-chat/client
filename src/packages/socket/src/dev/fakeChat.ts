@@ -104,7 +104,7 @@ const SCRIPTS: Beat[][] = [
     { who: 0, say: () => "hehe" },
   ],
   [
-    { who: 0, say: () => "se her: https://docs.gryt.chat/docs/guide/ai" },
+    { who: 0, say: () => "se her: https://docs.gryt.chat/docs/about/ai" },
     { who: 1, reactTo: 0, reactWith: () => "👀" },
   ],
   [
