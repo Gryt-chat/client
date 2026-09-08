@@ -12,13 +12,8 @@ export interface EmbeddedServerConfig {
   serverName: string;
   serverPort: number;
   sfuPort: number;
-  /**
-   * The one UDP port every participant's audio and video actually travels on.
-   *
-   * Separate from `sfuPort`, which only carries signalling over TCP, and the
-   * one people miss: chat and the join both work without it, so a server with
-   * this port shut looks healthy right up until somebody joins voice.
-   */
+  /** Separate from `sfuPort`, which is signalling over TCP. Chat and joining both
+      work without this, so a server with it shut looks healthy. */
   mediaPort: number;
   dataDir: string;
   configPath: string;
@@ -44,13 +39,8 @@ function getConfigPathFor(id: string): string {
   return join(getServerDir(id), "config.env");
 }
 
-/**
- * A directory name derived from what the server is called.
- *
- * Readable on disk and in logs, which a bare uuid is not, but the random suffix
- * is what actually keeps two servers apart — names are free text and two of
- * them called "My Server" is the expected case, not the odd one.
- */
+/** Readable on disk, which a bare uuid is not, but the random suffix is what
+    keeps two servers apart: two called "My Server" is the expected case. */
 function makeServerId(serverName: string): string {
   const slug = serverName
     .toLowerCase()
@@ -92,19 +82,9 @@ function canBind(port: number, host: string): Promise<boolean> {
 }
 
 /**
- * Is this port genuinely free — on the wildcard *and* on loopback?
- *
- * Both, and both matter, because they are different bindings. A process can
- * hold 127.0.0.1:5001 while another binds 0.0.0.0:5001 and neither call fails.
- * Connections to 127.0.0.1:5001 then go to the more specific of the two, which
- * is the other process — and 127.0.0.1 is exactly how the client reaches an
- * embedded server, since EXTERNAL_HOST is a loopback address.
- *
- * Checking only the wildcard produced a server that started cleanly, reported
- * its own port, and answered with somebody else's `/info`. Checking only
- * loopback is the other half of the same mistake: node sets SO_REUSEADDR, so
- * that probe succeeds against a port already held on every interface, which is
- * how a new server was once handed 5005 with a dev SFU sitting on it.
+ * Wildcard and loopback are different bindings and both can succeed, with the
+ * more specific one winning the connection. Checking either alone handed a new
+ * server a port another process was already answering on.
  */
 async function portIsFree(port: number): Promise<boolean> {
   if (!(await canBind(port, "0.0.0.0"))) return false;
@@ -139,14 +119,8 @@ async function findFreePortFrom(preferred: number): Promise<number> {
   throw new Error("No free port");
 }
 
-/**
- * Where media goes when nothing says otherwise, matching the SFU's own default
- * and the number in every deployment guide.
- *
- * 3478 is the IANA STUN port. It needs no privileged bind, and it is the UDP
- * port a locked-down network is most likely to have opened already, because
- * Microsoft Teams requires outbound 3478-3481 and Zoom uses it too.
- */
+/** 3478 is the IANA STUN port: no privileged bind, and the UDP port a locked-down
+    network is most likely to have open, since Teams and Zoom need it. */
 export const DEFAULT_MEDIA_PORT = 3478;
 
 /** Whether a UDP port can be bound. TCP and UDP are separate sockets. */
@@ -162,15 +136,8 @@ function udpPortIsFree(port: number): Promise<boolean> {
   });
 }
 
-/**
- * A free UDP port for media, starting from the one the guides name.
- *
- * Walks upward rather than asking the OS for anything free, for the same
- * reason `suggestServerPort` does: this is a number somebody may have to type
- * into a router, and 3479 beats 54162 for that. It also keeps the fallback
- * near the documented port, so a host who forwarded 3478 and then hit a
- * collision is one off rather than somewhere unrecognisable.
- */
+/** Walks upward rather than asking the OS for anything free: this is a number
+    somebody types into a router, and 3479 beats 54162 for that. */
 async function findFreeMediaPortFrom(preferred: number): Promise<number> {
   const start = preferred > 0 && preferred <= 65535 ? preferred : DEFAULT_MEDIA_PORT;
 
@@ -178,9 +145,8 @@ async function findFreeMediaPortFrom(preferred: number): Promise<number> {
     if (await udpPortIsFree(port)) return port;
   }
 
-  // Nothing in the run was free, which is unusual enough that keeping the
-  // documented port is better than picking a random one: the SFU will fail to
-  // bind and say so, rather than coming up on a port nobody has forwarded.
+  // Nothing in the run was free, so keep the documented port: the SFU fails to
+  // bind and says so, rather than coming up somewhere nobody forwarded.
   return start;
 }
 
