@@ -1,16 +1,7 @@
 #!/usr/bin/env node
 /**
- * What Gryt looks at, and what it passes on (GRYT-931).
- *
- * The whole design is one claim: Gryt reads the process list and reports only
- * the programs somebody wrote down. If that stops being true, the capability a
- * plugin asks for — "see when you are running a program you have listed" —
- * becomes a lie, and nothing else would notice.
- *
- * So this asserts the matching, and then reads the sources to assert the shape
- * of what leaves the main process. The second half is crude and worth it: the
- * failure it exists for is somebody adding a convenient
- * `ipcMain.handle("processes-all")` in six months.
+ * What Gryt looks at, and what it passes on. The whole design is one claim: Gryt
+ * reads the process list and reports only the programs somebody wrote down.
  */
 
 import assert from "node:assert/strict";
@@ -40,8 +31,7 @@ function check(name, run) {
 }
 
 /* Comments out first. A check a comment can trip is also a check a comment can
-   satisfy, and this file is about to search for strings its own neighbours
-   describe in prose. */
+   satisfy, and this file searches for strings its neighbours describe in prose. */
 function withoutComments(source) {
   return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
 }
@@ -232,8 +222,7 @@ check("a plugin needs the capability declared and granted", () => {
 
 check("the capability is worded as the list, not the machine", () => {
   /* "Read what you are running" would be the wrong sentence: Gryt reads the
-     process list, a plugin is told about the person's own list, and somebody
-     agreeing to this should not think they agreed to the first thing. */
+     process list, a plugin is told about the person's own list. */
   const capabilities = readFileSync(`${ROOT}/src/packages/addons/src/capabilities.ts`, "utf8");
   const label = capabilities.match(/processes:\s*"([^"]+)"/)?.[1] ?? "";
   assert.ok(label, "the processes capability has no label");
@@ -274,9 +263,8 @@ const main = read("electron/main.ts");
 const preload = read("electron/preload.ts");
 
 check("the watcher reports matches, never the list it read", () => {
-  /* `onChange` is the only thing the watcher pushes, and it is handed the
-     result of `matchWatched`. If that ever becomes the raw list, every plugin
-     with the capability gets everything somebody has open. */
+  /* `onChange` is the only thing the watcher pushes, and it is handed the result
+     of `matchWatched`. Raw, every plugin gets everything somebody has open. */
   const poll = watcher.slice(watcher.indexOf("async function poll"));
   assert.ok(
     /announce\(matchWatched\(await list\(\), watched\)\)/.test(poll),
@@ -285,9 +273,8 @@ check("the watcher reports matches, never the list it read", () => {
 });
 
 check("only the settings screen can ask what is running", () => {
-  /* One handler hands over a list of programs, and the renderer calls it from
-     the settings screen. Anything else exposing the same thing would need a
-     line here saying why. */
+  /* One handler hands over a list of programs, and the renderer calls it from the
+     settings screen. Anything else exposing it would need a line here. */
   const handlers = [...main.matchAll(/ipcMain\.handle\(\s*"(processes-[^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(
     handlers.sort(),
@@ -307,8 +294,7 @@ check("what is pushed to the renderer is the matched list", () => {
 });
 
 check("the preload exposes no way to read the raw process list", () => {
-  /* `listRunningPrograms` is the filtered, deduplicated picker list and is the
-     only one of these that hands over programs at all. `listRunningExecutables`
+  /* `listRunningPrograms` is the filtered picker list. `listRunningExecutables`
      is the raw read and must stay inside the main process. */
   assert.ok(!preload.includes("listRunningExecutables"), "the raw read reached the preload");
   assert.ok(preload.includes("processes-list-running"), "the picker list went missing");

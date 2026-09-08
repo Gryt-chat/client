@@ -1,19 +1,8 @@
 /* eslint-env node */
 
 /**
- * The embedded server can be built from a worktree.
- *
- * `build-embedded-server.mjs` used to find the server, SFU and worker as
- * siblings of the client directory. That is true in `packages/client` and false
- * in `.claude/worktrees/<name>`, which has no siblings — so every client
- * worktree started without an embedded server, and said so as
- * `spawnSync /bin/sh ENOENT`, which names a shell rather than the missing
- * directory. CLAUDE.md tells everybody to work in worktrees, so that was the
- * normal case (GRYT-650).
- *
- * The resolution is reimplemented here rather than imported, because the module
- * runs the whole build on import. What is tested is the rule, against real
- * paths on this machine, plus the source keeping the parts the rule needs.
+ * The embedded server can be built from a worktree. Sibling resolution is false in
+ * `.claude/worktrees/<name>`, and failed as `spawnSync /bin/sh ENOENT` (GRYT-650).
  */
 
 import assert from "node:assert/strict";
@@ -32,9 +21,8 @@ assert.match(source, /const sibling = join\(CLIENT_DIR, "\.\.", name\)/);
 assert.match(source, /function superprojectRoot\(\)/);
 assert.match(source, /join\(root, "packages", name\)/);
 
-// Resolved against the checkout before slicing. A submodule in a normal clone
-// writes `gitdir:` relative — `../../.git/modules/client` — and slicing that raw
-// gives `../..`, which means nothing once the working directory moves.
+// Resolved against the checkout before slicing. A submodule writes `gitdir:`
+// relative, and slicing that raw gives `../..`, which moves with the cwd.
 assert.match(source, /resolve\(CLIENT_DIR, named\[1\]\)/);
 
 // A cwd that does not exist must name itself rather than the shell.
@@ -66,28 +54,15 @@ function packageDir(dir, name) {
 }
 
 /*
- * Whether this checkout has the other packages anywhere at all.
- *
- * Two of the three places the client gets checked out do: `packages/client` in
- * the superproject, where they are siblings, and `.claude/worktrees/<name>`,
- * where the superproject is one `.git` pointer away. The third does not — this
- * repository's own CI clones the client alone into
- * `/home/runner/work/client/client`, with no siblings and no superproject,
- * because nothing there builds an embedded server.
- *
- * That third case is why this is a branch rather than a straight assertion. The
- * loop below used to run unconditionally and asserted that all three packages
- * exist on this machine, which is a fact about the checkout rather than about
- * the resolution rule — so it failed every CI run from the day it was added
- * (GRYT-650) and took main red with it.
+ * Whether this checkout has the other packages anywhere at all. A branch rather
+ * than an assertion: this repo's own CI clones the client alone (GRYT-650).
  */
 const attached =
   existsSync(join(clientDir, "..", "server")) || superprojectRoot(clientDir) !== null;
 
 if (attached) {
-  // Whichever of the two this checkout is, all three have to resolve to
-  // somewhere that exists. This is the property the build actually needs, and
-  // it is only meaningful where the packages could be found.
+  // Whichever of the two this checkout is, all three have to resolve to somewhere
+  // that exists. That is the property the build actually needs.
   for (const name of ["server", "sfu", "image-worker"]) {
     const found = packageDir(clientDir, name);
     assert.ok(
@@ -97,18 +72,15 @@ if (attached) {
     );
   }
 } else {
-  // A checkout on its own. Nothing to resolve to, so the rule that matters is
-  // the fallback: name the sibling path, so whoever hits this looks where they
-  // would have looked anyway. Same property the /tmp case below asserts, held
-  // here against the real checkout.
+  // A checkout on its own. Nothing to resolve to, so the rule is the fallback:
+  // name the sibling path, so whoever hits this looks where they would have.
   for (const name of ["server", "sfu", "image-worker"]) {
     assert.equal(packageDir(clientDir, name), join(clientDir, "..", name));
   }
 }
 
-// Nothing to go on: no siblings and no superproject. It falls back to the
-// sibling path so the error names where somebody would look first, rather than
-// throwing somewhere less obvious.
+// Nothing to go on: no siblings and no superproject. It falls back to the sibling
+// path so the error names where somebody would look first.
 assert.equal(
   packageDir("/tmp/gryt-not-a-checkout", "server"),
   join("/tmp/gryt-not-a-checkout", "..", "server"),

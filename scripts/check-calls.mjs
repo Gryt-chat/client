@@ -1,17 +1,8 @@
 /* eslint-env node */
 
 /**
- * The shape of calling, which is easy to undo by accident (GRYT-680).
- *
- * A call is not state. It is an SFU room whose id is the conversation id,
- * joined through the same path a voice channel is, and the server ends the ring
- * when that join lands. Every assertion here guards one consequence of that
- * decision — each of them is a line somebody could reasonably add, and none of
- * them would fail to compile.
- *
- * A source check rather than a unit test because what is being guarded is an
- * absence: an event that must not be sent, a button that must not exist. There
- * is nothing to call and assert on.
+ * The shape of calling, which is easy to undo by accident. A source check rather
+ * than a unit test because what is guarded is an absence (GRYT-680).
  */
 
 import assert from "node:assert/strict";
@@ -25,9 +16,8 @@ const view = read("../src/packages/socket/src/components/serverView.tsx");
 
 /* ── Answering is joining, and nothing else ──────────────────────────────── */
 
-// The server has no `call:accept` and must not grow one here. A second message
-// claiming "I am in" can disagree with the join, and the join is the one that
-// is true when media starts flowing.
+// The server has no `call:accept` and must not grow one. A second message claiming
+// "I am in" can disagree with the join, and the join is what is true.
 for (const [name, source] of [["the hook", hook], ["the card", card], ["serverView", view]]) {
   assert.equal(
     source.includes("call:accept"),
@@ -54,10 +44,8 @@ assert.match(
 
 /* ── Ringing and joining are one act ─────────────────────────────────────── */
 
-// The caller has to be in the room from the moment it rings. Without this the
-// person answering joins a room with nobody in it: the ring says somebody wants
-// to talk to you, you say yes, and there is silence. Shipped that way once —
-// the button rang and did not connect.
+// The caller has to be in the room from the moment it rings, or the person
+// answering joins a room with nobody in it. Shipped that way once.
 const start = view.slice(view.indexOf("const startCall"), view.indexOf("const stopCall"));
 assert.match(
   start,
@@ -72,10 +60,8 @@ assert.match(
 
 /* ── Starting a call is a permission; answering one is not ───────────────── */
 
-// `start_calls` exists so a server owner can say who may place a call without
-// saying anything about who may take one (GRYT-712). Gating the card as well
-// would leave somebody unable to answer a call placed to them, and the person
-// who placed it looking at a phone nobody picks up.
+// `start_calls` says who may place a call, not who may take one. Gating the card
+// would leave somebody unable to answer a call placed to them (GRYT-712).
 assert.match(
   view,
   /viewerPermissions\.can\("start_calls"\)/,
@@ -95,8 +81,7 @@ assert.equal(
 /* ── Every ring ends, and ending it clears both sides ────────────────────── */
 
 // `call:withdrawn` is the server's one way of saying a ring stopped, whichever
-// of the four endings it was. Clearing only one of these leaves a card on
-// screen for a call that is over.
+// ending it was. Clearing only one of these leaves a card on screen.
 const withdrawn = hook.slice(hook.indexOf("const onWithdrawn"), hook.indexOf("const onError"));
 assert.match(withdrawn, /setIncoming\(/, "call:withdrawn must clear an incoming ring");
 assert.match(withdrawn, /setOutgoing\(/, "call:withdrawn must clear an outgoing ring");
@@ -110,9 +95,8 @@ assert.match(
 
 /* ── The card cannot be dismissed without answering ──────────────────────── */
 
-// A ring you closed but did not answer would still be ringing at the other end,
-// and the caller would be looking at a phone nobody is picking up. The only
-// ways out are Answer, Decline, and the server withdrawing it.
+// A ring you closed but did not answer would still be ringing at the other end.
+// The only ways out are Answer, Decline, and the server withdrawing it.
 assert.equal(
   /onDismiss|onClose|onOpenChange/.test(card),
   false,
