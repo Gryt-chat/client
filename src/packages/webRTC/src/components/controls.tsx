@@ -10,8 +10,7 @@ import { useSockets } from "@/socket";
 import { useVideoFraming } from "@/socket/src/hooks/useVideoFraming";
 
 import { isElectron } from "../../../../lib/electron";
-import { PiScanSmileyFill, PiSlidersHorizontalFill } from "../../../../lib/icons";
-import { PiMicrophoneFill, PiMicrophoneSlashFill, PiMonitorArrowUpFill, PiPhoneDisconnectFill, PiScreencastFill, PiSpeakerHighFill, PiSpeakerSimpleHighFill, PiSpeakerSimpleSlashFill, PiSpeakerSlashFill, PiVideoCameraFill, PiVideoCameraSlashFill } from "../../../../lib/icons";
+import { PiMicrophoneFill, PiMicrophoneSlashFill, PiMonitorArrowUpFill, PiPhoneDisconnectFill, PiScanSmileyFill, PiScreencastFill, PiSlidersHorizontalFill, PiSpeakerHighFill, PiSpeakerSimpleHighFill, PiSpeakerSimpleSlashFill, PiSpeakerSlashFill, PiVideoCameraFill, PiVideoCameraSlashFill } from "../../../../lib/icons";
 import { useScreenAudioMute } from "../adapters/useScreenAudioMute";
 import { useScreenAudioSources } from "../adapters/useScreenAudioSources";
 import { useVoiceSounds } from "../adapters/useVoiceSounds";
@@ -382,7 +381,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
 
   function handleMute() {
     if (isServerMuted) {
-      toast("You are server muted by an admin.", { icon: "🔇", id: "server-muted" });
+      toast("You are server muted by an admin.", { icon: <PiMicrophoneSlashFill size={18} />, id: "server-muted" });
       return;
     }
     setIsMuted(!isMuted);
@@ -390,7 +389,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
 
   function handleDeafen() {
     if (isServerDeafened) {
-      toast("You are server deafened by an admin.", { icon: "🔇", id: "server-deafened" });
+      toast("You are server deafened by an admin.", { icon: <PiSpeakerSlashFill size={18} />, id: "server-deafened" });
       return;
     }
     setIsDeafened(!isDeafened);

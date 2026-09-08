@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useRef } from "react";
+import { createElement, useCallback, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
+
+import { PiInfoFill } from "../../../../lib/icons";
 
 /**
  * Reporting a person to the moderators of the server you are both on. This waits
@@ -42,7 +44,7 @@ export function useReportUser({
     const onAlready = (payload: { serverUserId?: string }) => {
       if (!payload?.serverUserId) return;
       if (settle(payload.serverUserId)) {
-        toast("You already have an open report about them", { icon: "ℹ️" });
+        toast("You already have an open report about them", { icon: createElement(PiInfoFill, { size: 18 }) });
       }
     };
 

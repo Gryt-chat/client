@@ -6,6 +6,7 @@ import {
   useVideoStats,
 } from "@gryt/voice";
 
+import { PiVideoCameraFill } from "../lib/icons";
 import { DebugOverlay } from "./debugOverlay";
 
 interface VideoDebugOverlayProps {
@@ -100,7 +101,7 @@ export function VideoDebugOverlay({ isVisible }: VideoDebugOverlayProps) {
     <DebugOverlay
       isVisible={isVisible}
       title="Video Debug"
-      icon="📹"
+      icon={<PiVideoCameraFill size={16} />}
       status={{
         active: isConnected && hasVideo,
         label: isConnected ? (hasVideo ? "Streaming" : "No video") : "Disconnected",

@@ -1,5 +1,5 @@
 import { useMicrophone } from "@gryt/voice";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { createElement, useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
 import { useSettings } from "@/settings";
@@ -14,6 +14,7 @@ import {
   releasesKeyEvent,
   releasesMouseEvent,
 } from "../../../../lib/hotkeys";
+import { PiMicrophoneSlashFill, PiSpeakerSlashFill } from "../../../../lib/icons";
 
 function isInputFocused(): boolean {
   const el = document.activeElement;
@@ -103,7 +104,7 @@ export function useGlobalHotkeys(onDisconnect?: () => void) {
 
       case "mute":
         if (s.isServerMuted) {
-          toast("You are server muted by an admin.", { icon: "🔇", id: "server-muted" });
+          toast("You are server muted by an admin.", { icon: createElement(PiMicrophoneSlashFill, { size: 18 }), id: "server-muted" });
           return;
         }
         s.setIsMuted(!s.isMuted);
@@ -111,7 +112,7 @@ export function useGlobalHotkeys(onDisconnect?: () => void) {
 
       case "deafen":
         if (s.isServerDeafened) {
-          toast("You are server deafened by an admin.", { icon: "🔇", id: "server-deafened" });
+          toast("You are server deafened by an admin.", { icon: createElement(PiSpeakerSlashFill, { size: 18 }), id: "server-deafened" });
           return;
         }
         s.setIsDeafened(!s.isDeafened);

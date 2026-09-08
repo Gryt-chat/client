@@ -1,4 +1,4 @@
-import { Dispatch, MutableRefObject, SetStateAction, useEffect, useRef } from "react";
+import { createElement, Dispatch, MutableRefObject, SetStateAction, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import { Socket } from "socket.io-client";
 
@@ -27,6 +27,7 @@ import {
   Servers,
 } from "@/settings/src/types/server";
 
+import { PiMicrophoneFill, PiMicrophoneSlashFill, PiSpeakerHighFill, PiSpeakerSlashFill } from "../../../../lib/icons";
 import { MemberInfo } from "../components/MemberSidebar";
 import { Clients, ServerProfile } from "../types/clients";
 import { challengeHostMatches } from "../utils/challengeHost";
@@ -223,14 +224,14 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
       socket.on("server:muted", (data: { muted: boolean }) => {
         setIsServerMuted(data.muted);
         toast(data.muted ? "You have been server muted by an admin." : "Your server mute has been removed.", {
-          icon: data.muted ? "🔇" : "🔊",
+          icon: createElement(data.muted ? PiMicrophoneSlashFill : PiMicrophoneFill, { size: 18 }),
         });
       });
 
       socket.on("server:deafened", (data: { deafened: boolean }) => {
         setIsServerDeafened(data.deafened);
         toast(data.deafened ? "You have been server deafened by an admin." : "Your server deafen has been removed.", {
-          icon: data.deafened ? "🔇" : "🔊",
+          icon: createElement(data.deafened ? PiSpeakerSlashFill : PiSpeakerHighFill, { size: 18 }),
         });
       });
 
