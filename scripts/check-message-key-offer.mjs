@@ -1,35 +1,42 @@
 /* eslint-env node */
 
 /**
- * When to offer a device the account's message key. Offering needlessly costs a
- * dismissal; staying quiet means unreadable messages nobody explains (GRYT-783).
+ * Which message-key offer a device gets, if any. Offering needlessly costs a
+ * dismissal; staying quiet costs everyone's encryption (GRYT-783, GRYT-1130).
  */
 
 import assert from "node:assert/strict";
 
-import {
-  shouldOfferMessageKey,
-} from "../src/packages/common/src/auth/message-vault-adoption.ts";
+import { shouldOfferMessageKey } from "../src/packages/common/src/auth/message-vault-adoption.ts";
 
 const offer = (o) => shouldOfferMessageKey(o);
 
-// ── the case the feature exists for ─────────────────────────────────────────
+// ── the account has a sealed copy this device has not taken ─────────────────
 assert.equal(
   offer({ signedIn: true, vaultExists: true, keyIsHere: false }),
-  true,
-  "signed in, a sealed copy exists, this device lacks it — this is the whole point",
+  "adopt",
+  "signed in, a sealed copy exists, this device lacks it",
 );
 
-// ── quiet when there is nothing to offer ────────────────────────────────────
-assert.equal(offer({ signedIn: true, vaultExists: true, keyIsHere: true }), false, "already here");
-assert.equal(offer({ signedIn: true, vaultExists: false, keyIsHere: false }), false, "none sealed");
+// ── no sealed copy anywhere ─────────────────────────────────────────────────
+/* The window that does the damage. Nothing to adopt, and one sign-in away from
+   every peer refusing to encrypt, so this is the one that has to speak up. */
+assert.equal(offer({ signedIn: true, vaultExists: false, keyIsHere: false }), "protect");
+assert.equal(
+  offer({ signedIn: true, vaultExists: false, keyIsHere: true }),
+  "protect",
+  "holding a key locally is not the same as the account having a copy of it",
+);
 
-// ── guests are never offered it ─────────────────────────────────────────────
+// ── quiet once this device holds the account's copy ─────────────────────────
+assert.equal(offer({ signedIn: true, vaultExists: true, keyIsHere: true }), null, "already here");
+
+// ── guests are never offered either ─────────────────────────────────────────
 for (const vaultExists of [true, false, null]) {
   for (const keyIsHere of [true, false]) {
     assert.equal(
       offer({ signedIn: false, vaultExists, keyIsHere }),
-      false,
+      null,
       "a guest has the 24 words and needs nothing stored",
     );
   }
@@ -37,19 +44,28 @@ for (const vaultExists of [true, false, null]) {
 
 // ── silence while loading, not a flicker ────────────────────────────────────
 {
-  // vaultExists starts null. Offering on null would flash a password prompt on
-  // every DM open and take it away, which reads as a glitch.
-  assert.equal(offer({ signedIn: true, vaultExists: null, keyIsHere: false }), false);
-  assert.equal(offer({ signedIn: true, vaultExists: null, keyIsHere: true }), false);
+  /* vaultExists starts null. Answering on null would flash a password prompt on
+     every DM open and take it away, which reads as a glitch. */
+  assert.equal(offer({ signedIn: true, vaultExists: null, keyIsHere: false }), null);
+  assert.equal(offer({ signedIn: true, vaultExists: null, keyIsHere: true }), null);
 }
 
-// ── the marker is the only thing that silences a real offer ─────────────────
+// ── every input maps to exactly one of the three ────────────────────────────
 {
-  // Guarding the direction of the fallback: everything except keyIsHere being
-  // true should still offer.
-  const base = { signedIn: true, vaultExists: true };
-  assert.equal(offer({ ...base, keyIsHere: false }), true);
-  assert.equal(offer({ ...base, keyIsHere: true }), false);
+  const seen = new Set();
+  for (const signedIn of [true, false]) {
+    for (const vaultExists of [true, false, null]) {
+      for (const keyIsHere of [true, false]) {
+        const answer = offer({ signedIn, vaultExists, keyIsHere });
+        assert.ok(
+          answer === "adopt" || answer === "protect" || answer === null,
+          `${JSON.stringify({ signedIn, vaultExists, keyIsHere })} answered ${answer}`,
+        );
+        seen.add(answer);
+      }
+    }
+  }
+  assert.deepEqual([...seen].sort(), ["adopt", "protect", null].sort(), "an answer is unreachable");
 }
 
-console.log("check-message-key-offer: ok");
+console.log("check-message-key-offer: adopt, protect, and quiet, over every input");

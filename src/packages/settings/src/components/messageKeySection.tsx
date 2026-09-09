@@ -179,8 +179,9 @@ export function MessageKeySection() {
       {vault === null && !open && (
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs text-gryt-muted">
-            Not set. Signing in on another device will start a new conversation
-            history there rather than continuing this one.
+            Not set. Sign in somewhere else and that device makes its own
+            message key, which stops the people you talk to from encrypting to
+            you until you set a password here and use it there.
           </span>
           <Button size="small" onClick={() => setOpen("set")}>
             Set a message password

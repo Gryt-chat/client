@@ -46,15 +46,26 @@ export interface MessageKeyOfferInput {
 }
 
 /**
- * Offer the prompt, or say nothing. Nothing while the answer is still being
- * fetched: this one is asking for a password, and it must not flicker.
+ * "adopt" takes the account's copy onto this device. "protect" makes one, on an
+ * account that has none and is one sign-in away from breaking (GRYT-1130).
+ */
+export type MessageKeyOffer = "adopt" | "protect" | null;
+
+/**
+ * Which offer to make, or none. None while the answer is still being fetched:
+ * both of these ask for a password, and neither must flicker.
  */
 export function shouldOfferMessageKey({
   signedIn,
   vaultExists,
   keyIsHere,
-}: MessageKeyOfferInput): boolean {
-  if (!signedIn) return false;
-  if (vaultExists !== true) return false;
-  return !keyIsHere;
+}: MessageKeyOfferInput): MessageKeyOffer {
+  if (!signedIn) return null;
+  if (vaultExists === null) return null;
+
+  /* No sealed copy anywhere. The next device to sign in makes its own key, and
+     everyone who pinned this one stops encrypting to it (GRYT-1117). */
+  if (!vaultExists) return "protect";
+
+  return keyIsHere ? null : "adopt";
 }
