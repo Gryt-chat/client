@@ -126,6 +126,9 @@ export interface Settings {
    * Per device, because a headset gating its noise floor is what triggers it.
    */
   micSilentWarningDismissed: boolean;
+  /** Off by default: an embed is another company's page, so it waits to be asked. */
+  autoLoadEmbeds: boolean;
+  setAutoLoadEmbeds: (value: boolean) => void;
   setMicSilentWarningDismissed: (value: boolean) => void;
 
   pinChannelsSidebar: boolean;
@@ -313,6 +316,9 @@ export const settingsInit: Settings = {
 
   micSilentWarningDismissed: false,
   setMicSilentWarningDismissed: noop,
+
+  autoLoadEmbeds: false,
+  setAutoLoadEmbeds: noop,
 
   pinChannelsSidebar: true,
   setPinChannelsSidebar: noop,

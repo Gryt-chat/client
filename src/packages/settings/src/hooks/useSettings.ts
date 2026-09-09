@@ -108,6 +108,7 @@ function useSettingsHook() {
 
   const [officialServerHidden, setOfficialServerHiddenState] = useState(false);
 
+  const [autoLoadEmbeds, setAutoLoadEmbedsState] = useState(false);
   const [micSilentWarningDismissed, setMicSilentWarningDismissedState] =
     useState(false);
 
@@ -179,6 +180,9 @@ function useSettingsHook() {
       setOfficialServerHiddenState(getUserValue("officialServerHidden", false));
       setMicSilentWarningDismissedState(
         getUserValue("micSilentWarningDismissed", false),
+      );
+      setAutoLoadEmbedsState(
+        getUserValue("autoLoadEmbeds", false),
       );
       setPinChannelsSidebarState(getUserValue("pinChannelsSidebar", true));
       setPinMembersSidebarState(getUserValue("pinMembersSidebar", true));
@@ -507,6 +511,11 @@ function useSettingsHook() {
     setUserValue("officialServerHidden", hidden);
   }
 
+  function updateAutoLoadEmbeds(value: boolean) {
+    setAutoLoadEmbedsState(value);
+    setUserValue("autoLoadEmbeds", value);
+  }
+
   function updateMicSilentWarningDismissed(dismissed: boolean) {
     setMicSilentWarningDismissedState(dismissed);
     setUserValue("micSilentWarningDismissed", dismissed);
@@ -552,6 +561,8 @@ function useSettingsHook() {
     officialServerHidden,
     setOfficialServerHidden: updateOfficialServerHidden,
 
+    autoLoadEmbeds,
+    setAutoLoadEmbeds: updateAutoLoadEmbeds,
     micSilentWarningDismissed,
     setMicSilentWarningDismissed: updateMicSilentWarningDismissed,
 

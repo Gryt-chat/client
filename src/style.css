@@ -1708,3 +1708,42 @@ body {
     transition: none;
   }
 }
+
+/*
+ * Link embeds ask before they load (GRYT-1128).
+ *
+ * Sized to sit where the embed itself will, so pressing Load does not shove
+ * the rest of the conversation down the screen.
+ */
+.embed-consent {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--gryt-neutral-6);
+  border-radius: var(--gryt-radius-md);
+  background: var(--gryt-neutral-2);
+}
+
+.embed-consent-icon {
+  flex-shrink: 0;
+  color: var(--gryt-neutral-11);
+}
+
+.embed-consent-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.embed-consent-title {
+  font-size: 13.5px;
+  font-weight: 550;
+}
+
+.embed-consent-host {
+  color: var(--gryt-neutral-11);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
