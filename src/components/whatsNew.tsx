@@ -20,6 +20,12 @@ interface Entry {
   note?: boolean;
 }
 
+/** Whether this install has ever joined a server, which a fresh one has not. */
+function hasJoinedAnything(): boolean {
+  const servers = getUserValue<Record<string, unknown> | null>("servers", null);
+  return !!servers && Object.keys(servers).length > 0;
+}
+
 /**
  * What changed, the first time somebody opens a version they have not seen. The
  * hand-written changelog lines, not the release body of commit subjects.
@@ -39,9 +45,9 @@ export function WhatsNew() {
     const seen = getUserValue<string | null>(SEEN_KEY, null);
     if (seen === version) return;
 
-    /* A fresh install has nothing to compare against. Announcing the version
-       somebody just chose to install reads as a bug, so record and stay quiet. */
-    if (seen === null) {
+    /* Nothing recorded: a fresh install, or one that ran 1.11.0 or 1.11.1 and
+       never got to write it (GRYT-1101). Only the first should stay quiet. */
+    if (seen === null && !hasJoinedAnything()) {
       setUserValue(SEEN_KEY, version);
       return;
     }

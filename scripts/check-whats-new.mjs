@@ -44,13 +44,13 @@ assert.match(
 );
 
 /** One run of the effect, with the store and the network faked. */
-async function run({ seen, version, app, offline, storeUser }) {
+async function run({ seen, version, app, offline, storeUser, joined }) {
   const store = { value: seen };
   const shown = [];
   const fetched = [];
 
   const fn = new Function(
-    "getUserValue", "setUserValue", "fetch", "setEntry", "version", "AbortController", "SEEN_KEY", "CHANGELOG_URL", "storeUser",
+    "getUserValue", "setUserValue", "fetch", "setEntry", "version", "AbortController", "SEEN_KEY", "CHANGELOG_URL", "storeUser", "hasJoinedAnything",
     `return (async () => { const cleanup = (() => ${body})(); await new Promise(r => setTimeout(r, 0)); return cleanup; })();`,
   );
 
@@ -72,6 +72,7 @@ async function run({ seen, version, app, offline, storeUser }) {
     SEEN_KEY,
     CHANGELOG_URL,
     storeUser === undefined ? "user_1" : storeUser,
+    () => joined ?? false,
   );
 
   return { seen: store.value, shown, fetched };
@@ -95,7 +96,7 @@ const LINE = { version: "1.10.3", date: "2026-09-08", line: "Joining voice waits
 
 // A fresh install announces nothing, and records so the next update does.
 {
-  const r = await run({ seen: null, version: "1.10.3", app: [LINE] });
+  const r = await run({ seen: null, version: "1.10.3", app: [LINE], joined: false });
   assert.deepEqual(r.shown, [], "a fresh install is greeted with a what's-new modal");
   assert.deepEqual(r.fetched, [], "a fresh install fetches the changelog for nothing");
   assert.equal(r.seen, "1.10.3", "a fresh install did not record its version");
@@ -231,6 +232,31 @@ assert.deepEqual(
 
   // Nothing usable in, the string back out, rather than "Invalid Date".
   assert.equal(readableDate("not-a-date"), "not-a-date", "a bad date renders as Invalid Date");
+}
+
+/* An install that has joined a server and has nothing recorded ran a build
+   where the recording never happened. It is not new. GRYT-1102. */
+{
+  const r = await run({ seen: null, version: "1.10.3", app: [LINE], joined: true });
+  assert.deepEqual(
+    r.shown,
+    [LINE],
+    "an install that has joined servers was treated as fresh, so the release that fixed this says nothing",
+  );
+  assert.equal(r.seen, "1.10.3", "it showed the line without recording the version");
+}
+
+// And the two cases are told apart by what the helper actually reads.
+{
+  const fn = new Function(
+    "getUserValue",
+    block(source, "function hasJoinedAnything(): boolean {", "hasJoinedAnything")
+      .slice(1, -1)
+      .replace("<Record<string, unknown> | null>", ""),
+  );
+  assert.equal(fn(() => null), false, "no servers entry reads as having joined something");
+  assert.equal(fn(() => ({})), false, "an empty servers entry reads as having joined something");
+  assert.equal(fn(() => ({ "host:1": {} })), true, "a joined server reads as a fresh install");
 }
 
 /* ── it waits for the per-user store ─────────────────────────────────────── */
