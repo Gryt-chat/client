@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer, webFrame } from "electron";
 
 type EmbeddedServerConfigShape = {
   id: string;
@@ -46,6 +46,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // False where the compositor manages windows itself, so the app draws no
   // titlebar either. Set by main from --gryt-no-window-chrome. GRYT-1062.
   drawsWindowChrome: !process.argv.includes("--gryt-no-window-chrome"),
+
+  /* Chromium's own zoom, which keeps rects and the viewport in one coordinate
+     space. CSS zoom does not, and put every menu off screen (GRYT-1127). */
+  setZoomFactor(factor: number): void {
+    webFrame.setZoomFactor(factor);
+  },
 
   getAppVersion(): Promise<string> {
     return ipcRenderer.invoke("get-app-version");
