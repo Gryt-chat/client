@@ -227,6 +227,14 @@ assert.ok(RETRY_DELAYS_MS[0] >= 1000, "the first retry is immediate enough to be
   assert.deepEqual(r.shown, [], "it showed a dialog for a component that had gone");
 }
 
+// And an answer that arrives after the window closed is dropped, rather than
+// recorded as seen by a component that never drew it.
+{
+  const r = await run({ seen: "1.10.2", version: "1.10.3", app: [LINE], abortOn: 1 });
+  assert.deepEqual(r.shown, [], "a line found after the component had gone was still shown");
+  assert.equal(r.seen, "1.10.2", "the version was recorded by a dialog nobody saw");
+}
+
 // The wait itself ends on abort. Left out, a closed window holds a two-minute
 // timer and the loop only stops when it fires.
 {
