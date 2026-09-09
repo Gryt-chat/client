@@ -26,15 +26,24 @@ function plaintextReason(decision: SealDecision | undefined): string | null {
   return null;
 }
 
-export function DirectMessagePrivacyNotice({ decision }: { decision?: SealDecision }) {
+export function DirectMessagePrivacyNotice({
+  decision,
+  peerInClear,
+}: {
+  decision?: SealDecision;
+  /* Who sent the newest message without encrypting it, while we can. Their app
+     has decided it cannot seal to us, and nothing else here would say so. */
+  peerInClear?: string | null;
+}) {
   const sealed = decision?.kind === "seal";
+  const oneWay = sealed && !!peerInClear;
   const reason = plaintextReason(decision);
 
   /*
    * Unknown reads as unencrypted on purpose. Of the two ways to be wrong while
    * the keys are fetched, understating the protection costs nothing.
    */
-  const Icon = sealed ? PiLockSimpleFill : PiLockOpen;
+  const Icon = sealed && !oneWay ? PiLockSimpleFill : PiLockOpen;
 
   return (
     <div
@@ -50,7 +59,13 @@ export function DirectMessagePrivacyNotice({ decision }: { decision?: SealDecisi
         className="m-0 text-xs"
         style={{ color: "var(--gryt-neutral-11)", lineHeight: 1.5 }}
       >
-        {sealed ? (
+        {oneWay ? (
+          <>
+            You are encrypting, {peerInClear} isn&rsquo;t. Whoever runs this
+            server can&rsquo;t read what you send, and can read what they
+            send.{" "}
+          </>
+        ) : sealed ? (
           <>
             This conversation is encrypted. Whoever runs this server can&rsquo;t
             read it.{" "}
@@ -63,7 +78,7 @@ export function DirectMessagePrivacyNotice({ decision }: { decision?: SealDecisi
         )}
         <a
           className="underline"
-          href={sealed ? SECURITY_DOC_SEALED : SECURITY_DOC_PLAINTEXT}
+          href={sealed && !oneWay ? SECURITY_DOC_SEALED : SECURITY_DOC_PLAINTEXT}
           rel="noreferrer"
           style={{ color: "var(--gryt-neutral-12)" }}
           target="_blank"
