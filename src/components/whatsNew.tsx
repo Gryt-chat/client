@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { getUserValue, setUserValue } from "@/settings";
+import { getUserValue, loadedUserId, onUserStoreLoaded, setUserValue } from "@/settings";
 
 import {
   type WhatsNewChange,
@@ -27,8 +27,15 @@ interface Entry {
 export function WhatsNew() {
   const version = __APP_VERSION__;
   const [entry, setEntry] = useState<Entry | null>(null);
+  /* Read on mount this saw an empty store every launch, called that a fresh
+     install, and wrote a version nobody was loaded to write against. */
+  const [storeUser, setStoreUser] = useState<string | null>(loadedUserId);
+
+  useEffect(() => onUserStoreLoaded(setStoreUser), []);
 
   useEffect(() => {
+    if (!storeUser) return;
+
     const seen = getUserValue<string | null>(SEEN_KEY, null);
     if (seen === version) return;
 
@@ -57,7 +64,7 @@ export function WhatsNew() {
       });
 
     return () => abort.abort();
-  }, [version]);
+  }, [version, storeUser]);
 
   if (!entry) return null;
 

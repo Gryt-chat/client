@@ -27,7 +27,8 @@ function block(text, opener, what) {
   throw new Error(`unbalanced braces in ${what}`);
 }
 
-const body = block(source, "useEffect(() => {", "a useEffect")
+/* The second useEffect is the one that decides; the first only subscribes. */
+const body = block(source.slice(source.indexOf("onUserStoreLoaded(setStoreUser)")), "useEffect(() => {", "the deciding useEffect")
   // Two bits of TypeScript: a generic on the read, and the fetch callback's type.
   .replace("getUserValue<string | null>(", "getUserValue(")
   .replace(/: \{ app\?: Entry\[\] \} \| null/, "");
@@ -43,13 +44,13 @@ assert.match(
 );
 
 /** One run of the effect, with the store and the network faked. */
-async function run({ seen, version, app, offline }) {
+async function run({ seen, version, app, offline, storeUser }) {
   const store = { value: seen };
   const shown = [];
   const fetched = [];
 
   const fn = new Function(
-    "getUserValue", "setUserValue", "fetch", "setEntry", "version", "AbortController", "SEEN_KEY", "CHANGELOG_URL",
+    "getUserValue", "setUserValue", "fetch", "setEntry", "version", "AbortController", "SEEN_KEY", "CHANGELOG_URL", "storeUser",
     `return (async () => { const cleanup = (() => ${body})(); await new Promise(r => setTimeout(r, 0)); return cleanup; })();`,
   );
 
@@ -70,6 +71,7 @@ async function run({ seen, version, app, offline }) {
     },
     SEEN_KEY,
     CHANGELOG_URL,
+    storeUser === undefined ? "user_1" : storeUser,
   );
 
   return { seen: store.value, shown, fetched };
@@ -231,7 +233,52 @@ assert.deepEqual(
   assert.equal(readableDate("not-a-date"), "not-a-date", "a bad date renders as Invalid Date");
 }
 
+/* ── it waits for the per-user store ─────────────────────────────────────── */
+
+// Read on mount, the store is empty every launch: a fresh install that says
+// nothing, and a write with no user loaded to write against. GRYT-1101.
+{
+  const r = await run({ seen: "1.10.2", version: "1.11.0", app: [LINE], storeUser: null });
+  assert.deepEqual(r.shown, [], "it decided before the user store had loaded");
+  assert.deepEqual(r.fetched, [], "it fetched the changelog before the store had loaded");
+  assert.equal(r.seen, "1.10.2", "it wrote a version before there was a user to write it against");
+}
+
+// And the component subscribes rather than reading once.
+assert.match(
+  source,
+  /useEffect\(\(\) => onUserStoreLoaded\(setStoreUser\), \[\]\)/,
+  `${SOURCE} no longer subscribes to the user store loading`,
+);
+assert.match(
+  source,
+  /\}, \[version, storeUser\]\)/,
+  `${SOURCE}'s effect no longer re-runs when the store loads`,
+);
+
+/* ── and the store actually says so ──────────────────────────────────────── */
+
+/* Half the fix lives in userStorage. Without it the dialog waits forever. */
+const STORE = "src/packages/settings/src/hooks/userStorage.ts";
+const store = readFileSync(join(root, STORE), "utf8");
+
+assert.match(
+  block(store, "export async function loadForUser(userId: string): Promise<UserData> {", "loadForUser"),
+  /markLoaded\(userId\)/,
+  `${STORE} fills the cache without telling anybody, so the dialog waits forever`,
+);
+
+// And markLoaded does the telling, rather than only being called.
+const notified = [];
+new Function(
+  "userId", "loadedListeners", "setLoadedFor",
+  block(store, "function markLoaded(userId: string): void {", "markLoaded")
+    .slice(1, -1)
+    .replace("loadedFor = userId;", "setLoadedFor(userId);"),
+)("user_1", [(id) => notified.push(id)], () => {});
+assert.deepEqual(notified, ["user_1"], "markLoaded does not tell its listeners");
+
 console.log(
-  "what's new: ok, once per version, quiet on a fresh install and with no line; " +
-    "security first, unknown kinds kept, dates local",
+  "what's new: ok, waits for the store, once per version, quiet on a fresh " +
+    "install and with no line; security first, unknown kinds kept, dates local",
 );
