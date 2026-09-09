@@ -21,6 +21,7 @@ jobs:
       - run: yarn install --frozen-lockfile
       - run: yarn test:updater-bridge
       - run: yarn test:voice-presence
+      - run: yarn test:reconnect-limit
       - run: yarn test:server-notice
       - run: yarn test:auth-outage
       - run: yarn test:focus-steal
