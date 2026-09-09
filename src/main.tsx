@@ -37,6 +37,7 @@ import { Titlebar } from "./components/titlebar";
 import { UpdateAnnouncement } from "./components/updateAnnouncement";
 import { WhatsNew } from "./components/whatsNew";
 import { installAiToolkit } from "./devtools/aiToolkit";
+import { setNativeZoom } from "./lib/electron";
 import { initGlobalStorage } from "./lib/globalStorage";
 import { syncGoogleFonts } from "./lib/googleFonts";
 import { captureLogs } from "./lib/reports/logs";
@@ -66,14 +67,19 @@ function ThemedApp() {
     root.style.colorScheme = resolvedAppearance;
   }, [resolvedAppearance]);
 
-  /* On the root, not `.gryt-app`: Base UI portals every overlay to document.body,
-     so the slider scaled the chat and left menus and tooltips alone. */
+  /* Chromium's zoom where there is one: it scales rects and the viewport
+     together, and CSS zoom does not, which put menus off screen (GRYT-1127). */
   useEffect(() => {
     const root = document.documentElement;
-    root.style.zoom = String(uiScale);
+    const native = setNativeZoom(uiScale);
+
+    /* A browser has no way to set its own zoom, so it keeps the CSS one and the
+       misplacement that comes with it. Ctrl and plus is the accurate way there. */
+    root.style.zoom = native ? "" : String(uiScale);
+
     // body sizes itself off this. Viewport units are not divided by a zoom on
     // the root, so without it the window and the layout disagree by the scale.
-    root.style.setProperty("--gryt-ui-scale", String(uiScale));
+    root.style.setProperty("--gryt-ui-scale", native ? "1" : String(uiScale));
     root.style.setProperty("--chat-font-size", `${chatFontSize}px`);
   }, [uiScale, chatFontSize]);
 

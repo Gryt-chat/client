@@ -133,6 +133,8 @@ export interface ElectronAPI {
   isElectron: true;
   /** False where the compositor draws and places windows itself. */
   drawsWindowChrome: boolean;
+  /** Chromium's zoom, rather than CSS zoom. See setNativeZoom below. */
+  setZoomFactor(factor: number): void;
   getAppVersion(): Promise<string>;
   onHotkeyDown(callback: (action: HotkeyAction) => void): () => void;
   onHotkeyUp(callback: (action: HotkeyAction) => void): () => void;
@@ -308,6 +310,17 @@ declare global {
 
 export function isElectron(): boolean {
   return !!window.electronAPI?.isElectron;
+}
+
+/**
+ * Scale the whole window the way Ctrl and plus does, and say whether it could.
+ * False in a browser, where the app has to fall back to CSS zoom (GRYT-1127).
+ */
+export function setNativeZoom(factor: number): boolean {
+  const api = getElectronAPI();
+  if (!api?.setZoomFactor) return false;
+  api.setZoomFactor(factor);
+  return true;
 }
 
 /** False on a desktop that places windows itself, where Gryt draws no chrome. */
