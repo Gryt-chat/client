@@ -6,7 +6,7 @@ import useSound from "use-sound";
 import messageSoundMp3 from "@/audio/src/assets/universfield-computer-mouse-click-02-383961.mp3";
 import type { SealDecision } from "@/common";
 import { getServerAccessToken, getUploadsFileUrl, markChannelUnread, markThreadUnread, useUnreadBadge } from "@/common";
-import { notificationBody, showDesktopNotification } from "@/lib/desktopNotification";
+import { showDesktopNotification } from "@/lib/desktopNotification";
 import { useSettings } from "@/settings";
 import { type ForumTag,serverDetailsList as ServerDetailsList } from "@/settings/src/types/server";
 
@@ -16,6 +16,7 @@ import {
   fetchSealedAttachment,
   sealedAttachmentMeta,
 } from "../utils/sealedAttachments";
+import { sealedNotificationBody } from "../utils/sealedNotification";
 import {
   ChatErrorPayload,
   handleChatErrorEvent,
@@ -285,8 +286,8 @@ export function useChat({
       for (const o of opened) openingRef.current.delete(o.id);
       if (!mountedRef.current) return;
       const byId = new Map(opened.map((o) => [o.id, o]));
-      setChatMessages((prev) =>
-        prev.map((m) => {
+      const apply = (list: ChatMessage[]) =>
+        list.map((m) => {
           const result = byId.get(m.message_id);
           if (!result) return m;
           return {
@@ -295,11 +296,20 @@ export function useChat({
             sealedState: result.state,
             ...(result.enriched ? { enriched_attachments: result.enriched } : null),
           };
-        }),
-      );
+        });
+
+      setChatMessages(apply);
+      /* The cache too. It holds what arrived on the wire, and the effect that
+         replays it into the list runs on every new message — so without this the
+         whole conversation went back to ciphertext and decrypted again each
+         time somebody typed. GRYT-1114. */
+      const key = cacheKeyFor(activeConversationId);
+      if (key) {
+        setMessageCache((prev) => (prev[key] ? { ...prev, [key]: apply(prev[key]) } : prev));
+      }
     });
 
-  }, [chatMessages, sealing, setChatMessages, serverHost]);
+  }, [chatMessages, sealing, setChatMessages, serverHost, activeConversationId, cacheKeyFor, setMessageCache]);
 
   /** A blob URL pins its bytes for the document's life, and on the desktop the
       document is the session. */
@@ -402,11 +412,10 @@ export function useChat({
       if (msg.sender_server_id !== currentUserId && !document.hasFocus()) {
         if (notificationBadgeEnabledRef.current) incrementUnread();
         if (desktopNotificationsEnabledRef.current) {
-          /* Says so rather than showing ciphertext or a blank body: opening happens
-             in the effect above, after this. */
-          showDesktopNotification(
-            msg.sender_nickname || "New message",
-            notificationBody(msg),
+          /* Opened here rather than waited for: the row's own decrypt is a
+             separate effect, and a notification cannot hold for it. */
+          void sealedNotificationBody(msg, { host: serverHost, memberId: currentUserId }).then(
+            (body) => showDesktopNotification(msg.sender_nickname || "New message", body),
           );
         }
         if (messageSoundEnabledRef.current) {

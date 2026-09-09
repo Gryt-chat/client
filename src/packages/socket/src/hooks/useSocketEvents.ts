@@ -19,7 +19,7 @@ import {
   setServerFileToken,
   shouldAnnounceMessage,
 } from "@/common";
-import { notificationBody, showDesktopNotification } from "@/lib/desktopNotification";
+import { showDesktopNotification } from "@/lib/desktopNotification";
 import { playNotificationSound, preloadNotificationSound } from "@/lib/notificationSound";
 import {
   Server,
@@ -31,6 +31,7 @@ import { PiMicrophoneFill, PiMicrophoneSlashFill, PiSpeakerHighFill, PiSpeakerSl
 import { MemberInfo } from "../components/MemberSidebar";
 import { Clients, ServerProfile } from "../types/clients";
 import { challengeHostMatches } from "../utils/challengeHost";
+import { sealedNotificationBody } from "../utils/sealedNotification";
 import { idleRecovery, planRecovery, type RecoveryState } from "../utils/sessionRecovery";
 import { registerServerSocketEvents } from "./registerServerSocketEvents";
 
@@ -466,12 +467,11 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
         }
         if (notificationBadgeEnabledRef.current) {
           incrementUnreadRef.current();
-        if (desktopNotificationsEnabledRef.current) {
-          showDesktopNotification(
-            msg.sender_nickname || "New message",
-            notificationBody(msg),
-          );
         }
+        if (desktopNotificationsEnabledRef.current) {
+          void sealedNotificationBody(msg, { host, memberId: myId }).then((body) =>
+            showDesktopNotification(msg.sender_nickname || "New message", body),
+          );
         }
       });
 
