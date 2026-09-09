@@ -24,9 +24,9 @@ export function UnreadIndicator({
   return (
     <Badge
       badgeContent={count}
-      /* Red for anything unread, accent for a message that named you. Neutral
-         was grey on a grey sidebar, and people missed messages over it. */
-      tone={mentions > 0 ? "primary" : "danger"}
+      /* Unread for anything waiting, accent for a message that named you.
+         Its own token, so a theme can move it and danger stays destructive. */
+      tone={mentions > 0 ? "primary" : "unread"}
       title={title}
       className="shrink-0"
     />
