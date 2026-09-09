@@ -26,6 +26,47 @@ function hasJoinedAnything(): boolean {
   return !!servers && Object.keys(servers).length > 0;
 }
 
+/* A desktop app opens before the wifi is up, and the site rebuilds on a timer
+   after a release. One attempt at launch missed both (GRYT-1110). */
+const RETRY_DELAYS_MS = [5_000, 30_000, 120_000];
+
+/** Waits, or gives up early once the component has gone. */
+function sleep(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    signal.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+      { once: true },
+    );
+  });
+}
+
+/** The line for this version, once the site has one to give. */
+async function findEntry(version: string, signal: AbortSignal): Promise<Entry | null> {
+  for (let attempt = 0; !signal.aborted; attempt++) {
+    try {
+      /* no-cache, not the default. nginx sends max-age=600, and the ten
+         minutes after an update are the ten that matter. */
+      const res = await fetch(CHANGELOG_URL, { cache: "no-cache", signal });
+      const data = res.ok ? ((await res.json()) as { app?: Entry[] } | null) : null;
+      const found = data?.app?.find((e) => e.version === version);
+      if (found) return found;
+    } catch {
+      // Offline, or the site is down. Nothing to tell anybody about, and the
+      // next attempt is coming.
+    }
+
+    if (attempt >= RETRY_DELAYS_MS.length) break;
+    await sleep(RETRY_DELAYS_MS[attempt], signal);
+  }
+
+  return null;
+}
+
 /**
  * What changed, the first time somebody opens a version they have not seen. The
  * hand-written changelog lines, not the release body of commit subjects.
@@ -54,20 +95,13 @@ export function WhatsNew() {
 
     const abort = new AbortController();
 
-    fetch(CHANGELOG_URL, { signal: abort.signal })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: { app?: Entry[] } | null) => {
-        const found = data?.app?.find((e) => e.version === version);
-        if (!found) return;
-        setEntry(found);
-        /* Only once it has actually been shown. A line written twenty minutes
-           after the release would otherwise be missed for good. */
-        setUserValue(SEEN_KEY, version);
-      })
-      .catch(() => {
-        // Offline, or the site is down. There is nothing to tell somebody about
-        // that, and the next launch tries again.
-      });
+    void findEntry(version, abort.signal).then((found) => {
+      if (!found || abort.signal.aborted) return;
+      setEntry(found);
+      /* Only once it has actually been shown. A line written twenty minutes
+         after the release would otherwise be missed for good. */
+      setUserValue(SEEN_KEY, version);
+    });
 
     return () => abort.abort();
   }, [version, storeUser]);

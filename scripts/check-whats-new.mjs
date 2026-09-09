@@ -43,39 +43,80 @@ assert.match(
   "the changelog is fetched from somewhere other than the site's emitted file",
 );
 
-/** One run of the effect, with the store and the network faked. */
-async function run({ seen, version, app, offline, storeUser, joined }) {
+/** The delays between attempts, which the fake sleep records rather than waits. */
+const RETRY_DELAYS_MS = JSON.parse(
+  source.match(/const RETRY_DELAYS_MS = (\[[^\]]*\])/)?.[1].replaceAll("_", "") ?? "null",
+);
+assert.ok(Array.isArray(RETRY_DELAYS_MS) && RETRY_DELAYS_MS.length > 0, `${SOURCE} no longer retries`);
+
+/** `new Function` builds a sync function, and findEntry awaits. */
+const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+
+/** findEntry as itself: the real loop, with the wait and the network faked. */
+const findEntryBody = block(
+  source,
+  "async function findEntry(version: string, signal: AbortSignal): Promise<Entry | null> {",
+  "findEntry",
+)
+  .slice(1, -1)
+  .replace(" as { app?: Entry[] } | null", "");
+
+/** One run of the effect, with the store, the network and the waiting faked. */
+async function run({ seen, version, app, offline, storeUser, joined, attempts, abortOn }) {
   const store = { value: seen };
   const shown = [];
   const fetched = [];
+  const slept = [];
+  const controller = new AbortController();
+
+  /* Each attempt's answer in turn, the last one repeating. `app`/`offline`
+     describe a site that always says the same thing. */
+  const answers = attempts ?? [offline ? { offline: true } : { app }];
+
+  const fetch = (url, init) => {
+    fetched.push({ url, cache: init?.cache, aborted: init?.signal?.aborted });
+    if (fetched.length === abortOn) controller.abort();
+    const answer = answers[Math.min(fetched.length - 1, answers.length - 1)];
+    if (answer.offline) return Promise.reject(new Error("offline"));
+    if (answer.ok === false) return Promise.resolve({ ok: false });
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({ app: answer.app }) });
+  };
+
+  const findEntry = new AsyncFunction(
+    "fetch", "sleep", "CHANGELOG_URL", "RETRY_DELAYS_MS", "version", "signal",
+    findEntryBody,
+  ).bind(null, fetch, (ms) => {
+    slept.push(ms);
+    return Promise.resolve();
+  }, CHANGELOG_URL, RETRY_DELAYS_MS);
 
   const fn = new Function(
-    "getUserValue", "setUserValue", "fetch", "setEntry", "version", "AbortController", "SEEN_KEY", "CHANGELOG_URL", "storeUser", "hasJoinedAnything",
-    `return (async () => { const cleanup = (() => ${body})(); await new Promise(r => setTimeout(r, 0)); return cleanup; })();`,
+    "getUserValue", "setUserValue", "findEntry", "setEntry", "version", "AbortController", "SEEN_KEY", "storeUser", "hasJoinedAnything",
+    `return (async () => {
+       const cleanup = (() => ${body})();
+       for (let i = 0; i < 40; i++) await new Promise(r => setTimeout(r, 0));
+       return cleanup;
+     })();`,
   );
 
   await fn(
     () => store.value,
     (_k, v) => (store.value = v),
-    (url) => {
-      fetched.push(url);
-      return offline
-        ? Promise.reject(new Error("offline"))
-        : Promise.resolve({ ok: true, json: () => Promise.resolve({ app }) });
-    },
+    findEntry,
     (e) => shown.push(e),
     version,
     class {
-      signal = null;
-      abort() {}
+      signal = controller.signal;
+      abort() {
+        controller.abort();
+      }
     },
     SEEN_KEY,
-    CHANGELOG_URL,
     storeUser === undefined ? "user_1" : storeUser,
     () => joined ?? false,
   );
 
-  return { seen: store.value, shown, fetched };
+  return { seen: store.value, shown, fetched, slept, urls: fetched.map((f) => f.url) };
 }
 
 const LINE = { version: "1.10.3", date: "2026-09-08", line: "Joining voice waits." };
@@ -91,14 +132,14 @@ const LINE = { version: "1.10.3", date: "2026-09-08", line: "Joining voice waits
 {
   const r = await run({ seen: "1.10.3", version: "1.10.3", app: [LINE] });
   assert.deepEqual(r.shown, [], "the modal opens again on a version already seen");
-  assert.deepEqual(r.fetched, [], "it fetches the changelog for a version already seen");
+  assert.deepEqual(r.urls, [], "it fetches the changelog for a version already seen");
 }
 
 // A fresh install announces nothing, and records so the next update does.
 {
   const r = await run({ seen: null, version: "1.10.3", app: [LINE], joined: false });
   assert.deepEqual(r.shown, [], "a fresh install is greeted with a what's-new modal");
-  assert.deepEqual(r.fetched, [], "a fresh install fetches the changelog for nothing");
+  assert.deepEqual(r.urls, [], "a fresh install fetches the changelog for nothing");
   assert.equal(r.seen, "1.10.3", "a fresh install did not record its version");
 }
 
@@ -122,6 +163,92 @@ const LINE = { version: "1.10.3", date: "2026-09-08", line: "Joining voice waits
   const newer = { version: "1.11.0", date: "2026-09-09", line: "Something else." };
   const r = await run({ seen: "1.10.2", version: "1.10.3", app: [newer, LINE] });
   assert.deepEqual(r.shown, [LINE], "it showed a release that is not the one running");
+}
+
+/* ── it asks again, and asks the server ──────────────────────────────────── */
+
+// nginx sends max-age=600 and Chromium's disk cache outlives a restart, so the
+// default cache mode reads a copy fetched before the release (GRYT-1110).
+{
+  const r = await run({ seen: "1.10.2", version: "1.10.3", app: [LINE] });
+  assert.deepEqual(
+    r.fetched.map((f) => f.cache),
+    ["no-cache"],
+    "the changelog is fetched from the cache, so a just-updated app reads the copy from before the release",
+  );
+}
+
+// The wifi is not up yet at launch. The next attempt finds it.
+{
+  const r = await run({
+    seen: "1.10.2",
+    version: "1.10.3",
+    attempts: [{ offline: true }, { app: [LINE] }],
+  });
+  assert.deepEqual(r.shown, [LINE], "a first attempt that failed was the only attempt");
+  assert.equal(r.seen, "1.10.3");
+}
+
+// The site rebuilt between attempts, so the line appeared late.
+{
+  const r = await run({
+    seen: "1.10.2",
+    version: "1.10.3",
+    attempts: [{ app: [] }, { ok: false }, { app: [LINE] }],
+  });
+  assert.deepEqual(r.shown, [LINE], "it stopped asking before the line was published");
+  assert.deepEqual(r.slept, RETRY_DELAYS_MS.slice(0, 2), "it did not wait between attempts");
+}
+
+// And it stops, rather than asking forever.
+{
+  const r = await run({ seen: "1.10.2", version: "1.10.3", app: [] });
+  assert.equal(
+    r.fetched.length,
+    RETRY_DELAYS_MS.length + 1,
+    "it asks a different number of times than the delays allow for",
+  );
+  assert.deepEqual(r.slept, RETRY_DELAYS_MS, "the waits are not the ones written down");
+  assert.equal(r.seen, "1.10.2", "it recorded the version after giving up, so the line is lost");
+}
+
+// Delays climb, so a site that is down is not asked four times in a row.
+assert.deepEqual(
+  [...RETRY_DELAYS_MS].sort((a, b) => a - b),
+  RETRY_DELAYS_MS,
+  "the retry delays do not climb",
+);
+assert.ok(RETRY_DELAYS_MS[0] >= 1000, "the first retry is immediate enough to be a second request");
+
+// A closed window stops it, rather than fetching on into a dead component.
+{
+  const r = await run({ seen: "1.10.2", version: "1.10.3", app: [], abortOn: 1 });
+  assert.equal(r.fetched.length, 1, "it kept fetching after the component had gone");
+  assert.deepEqual(r.shown, [], "it showed a dialog for a component that had gone");
+}
+
+// And an answer that arrives after the window closed is dropped, rather than
+// recorded as seen by a component that never drew it.
+{
+  const r = await run({ seen: "1.10.2", version: "1.10.3", app: [LINE], abortOn: 1 });
+  assert.deepEqual(r.shown, [], "a line found after the component had gone was still shown");
+  assert.equal(r.seen, "1.10.2", "the version was recorded by a dialog nobody saw");
+}
+
+// The wait itself ends on abort. Left out, a closed window holds a two-minute
+// timer and the loop only stops when it fires.
+{
+  const sleepFn = new Function(
+    "ms",
+    "signal",
+    block(source, "function sleep(ms: number, signal: AbortSignal): Promise<void> {", "sleep").slice(1, -1),
+  );
+  const controller = new AbortController();
+  const started = Date.now();
+  const waiting = sleepFn(60_000, controller.signal);
+  controller.abort();
+  await waiting;
+  assert.ok(Date.now() - started < 1_000, "aborting does not cut the wait short");
 }
 
 /* ── the grouping, run as the component's own code ───────────────────────── */
@@ -266,7 +393,7 @@ assert.deepEqual(
 {
   const r = await run({ seen: "1.10.2", version: "1.11.0", app: [LINE], storeUser: null });
   assert.deepEqual(r.shown, [], "it decided before the user store had loaded");
-  assert.deepEqual(r.fetched, [], "it fetched the changelog before the store had loaded");
+  assert.deepEqual(r.urls, [], "it fetched the changelog before the store had loaded");
   assert.equal(r.seen, "1.10.2", "it wrote a version before there was a user to write it against");
 }
 
@@ -306,5 +433,6 @@ assert.deepEqual(notified, ["user_1"], "markLoaded does not tell its listeners")
 
 console.log(
   "what's new: ok, waits for the store, once per version, quiet on a fresh " +
-    "install and with no line; security first, unknown kinds kept, dates local",
+    "install and with no line; revalidates and retries " +
+    `${RETRY_DELAYS_MS.length} times; security first, unknown kinds kept, dates local`,
 );
