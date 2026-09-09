@@ -9,6 +9,8 @@ export function ChatSettings() {
   const {
     blurProfanity,
     setBlurProfanity,
+    autoLoadEmbeds,
+    setAutoLoadEmbeds,
   } = useSettings();
 
   return (
@@ -22,6 +24,13 @@ export function ChatSettings() {
         description="Blurs profane words when the server has profanity filtering set to flag. Click a blurred word to reveal it."
         checked={blurProfanity}
         onCheckedChange={setBlurProfanity}
+      />
+
+      <ToggleSetting
+        title="Load link embeds automatically"
+        description="A YouTube, Spotify, Twitch, SoundCloud, TikTok, Instagram, Vimeo or X embed is that company's own page running inside Gryt, and it can see that you opened it. Off, they wait for you to press Load."
+        checked={autoLoadEmbeds}
+        onCheckedChange={setAutoLoadEmbeds}
       />
 
       <Divider />
