@@ -28,15 +28,8 @@ import {
 } from "./embedUtils";
 import { LinkPreviewCard } from "./LinkPreviewCard";
 
-/**
- * The embeds that are somebody else's web page, and where it comes from
- * (GRYT-1128).
- *
- * Everything not in here is ours: `link` previews are unfurled by the Gryt
- * server, and image, video and audio are files rather than running code. Only
- * these eight put another company's JavaScript on the screen, so only these
- * eight wait to be asked.
- */
+/* The embeds that run another company's JavaScript, so the only ones held back.
+   `link` is unfurled by our server; image, video and audio are files. */
 const THIRD_PARTY: Partial<Record<EmbedType, EmbedProvider>> = {
   youtube: { name: "YouTube video", host: "youtube-nocookie.com" },
   vimeo: { name: "Vimeo video", host: "player.vimeo.com" },
@@ -48,14 +41,8 @@ const THIRD_PARTY: Partial<Record<EmbedType, EmbedProvider>> = {
   x: { name: "Post on X", host: "platform.twitter.com" },
 };
 
-/**
- * Holds an embed back until the reader asks for it.
- *
- * Per embed rather than per provider, and not remembered: agreeing to hear one
- * track is not agreeing to be counted by Spotify for the rest of the week.
- * Somebody who would rather not be asked at all turns on "Load link embeds
- * automatically" in Settings, which is the whole of the old behaviour.
- */
+/* Per embed and not remembered: agreeing to one track is not agreeing to a
+   week of them. Settings → Chat turns the asking off. */
 function AskFirst({
   provider,
   onDismiss,
