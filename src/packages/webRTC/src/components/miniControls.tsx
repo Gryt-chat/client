@@ -10,6 +10,7 @@ import { useServerManagement } from "@/socket";
 
 import { PiMicrophoneFill, PiMicrophoneSlashFill, PiMonitorArrowUpFill, PiPhoneDisconnectFill, PiScreencastFill, PiSpeakerHighFill, PiSpeakerSimpleHighFill, PiSpeakerSimpleSlashFill, PiSpeakerSlashFill, PiVideoCameraFill, PiVideoCameraSlashFill } from "../../../../lib/icons";
 import { useScreenAudioMute } from "../adapters/useScreenAudioMute";
+import { useVoicePresence } from "../adapters/useVoicePresence";
 import { CameraPreviewModal } from "./CameraPreviewModal";
 import { ScreenSharePickerModal } from "./ScreenSharePickerModal";
 
@@ -46,11 +47,8 @@ export function MiniControls({
     currentlyViewingServer,
   } = useServerManagement();
 
-  const {
-    currentServerConnected,
-    disconnect,
-    isConnected,
-  } = useSFU();
+  const { disconnect } = useSFU();
+  const voice = useVoicePresence();
 
   const { cameraEnabled, setCameraEnabled } = useCamera();
   const { screenShareActive, nativeScreenCaptureAvailable, startScreenShare, stopScreenShare } = useScreenShare();
@@ -88,9 +86,10 @@ export function MiniControls({
   return (
     <>
     <AnimatePresence>
-      {isConnected &&
-        (currentlyViewingServer?.host !== currentServerConnected ||
-          !showVoiceView) && (
+      {/* Shown for a call that is coming up or coming back too, not only one
+          that is up. Hang up is here, and that is when you want it most. */}
+      {voice.inCall &&
+        (currentlyViewingServer?.host !== voice.host || !showVoiceView) && (
           <motion.div
             variants={buttonAnimations}
             initial="hidden"
@@ -102,7 +101,11 @@ export function MiniControls({
               alignItems: "center",
               gap: isColumn ? "4px" : "8px",
               ...(isColumn ? {
-                background: "var(--gryt-neutral-a3)",
+                // Tinted while the call is not up yet, so the controls being
+                // there is not read as the call being there.
+                background: voice.live
+                  ? "var(--gryt-neutral-a3)"
+                  : "var(--gryt-warning-a3)",
                 borderRadius: "9999px",
                 padding: "2px",
               } : {}),

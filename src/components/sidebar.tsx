@@ -1,5 +1,5 @@
 import { Avatar, Badge, ContextMenu, IconButton, Menu, PreviewCard, Tooltip } from "@gryt/ui";
-import { useSFU } from "@gryt/voice";
+import { SFUConnectionState } from "@gryt/voice";
 import { Reorder } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
@@ -28,11 +28,12 @@ import { MarkAsReadItem } from "@/socket/src/components/MarkAsReadItem";
 import { ServerDoctor } from "@/socket/src/components/ServerDoctor";
 import type { ServerRingState } from "@/socket/src/components/ServerStatusRing";
 import { ServerStatusRing } from "@/socket/src/components/ServerStatusRing";
+import { useVoicePresence,type VoicePresence } from "@/webRTC";
 import { MiniControls } from "@/webRTC/src/components/miniControls";
 
 import { useIdentityClaim } from "../hooks/useIdentityClaim";
 import { PiChatsFill } from "../lib/icons";
-import { PiBroadcastFill, PiBugFill, PiChatCircleDotsFill, PiGearFill, PiMicrophoneFill, PiPlus, PiSignInFill } from "../lib/icons";
+import { PiBroadcastFill, PiBugFill, PiChatCircleDotsFill, PiGearFill, PiMicrophoneFill, PiMicrophoneSlashFill, PiPlus, PiSignInFill } from "../lib/icons";
 import { useReportForm } from "../lib/reports/useReportForm";
 
 
@@ -93,7 +94,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
     return map;
   }, [embeddedServers]);
 
-  const { currentServerConnected, isConnected } = useSFU();
+  const voice = useVoicePresence();
   const { serverConnectionStatus, serverProfiles, serverDetailsList } =
     useSockets();
   const { serverUnreadCount } = useUnreadTracker();
@@ -158,8 +159,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
               currentlyViewingServer={showDiscovery ? null : currentlyViewingServer}
               serverConnectionStatus={serverConnectionStatus}
               serverDetailsList={serverDetailsList}
-              isConnected={isConnected}
-              currentServerConnected={currentServerConnected}
+              voice={voice}
               serverUnreadCount={serverUnreadCount}
               serverMentionCount={serverMentionCount}
               switchToServer={switchToServer}
@@ -320,8 +320,8 @@ interface ServerItemProps {
   currentlyViewingServer: Server | null;
   serverConnectionStatus: Record<string, string>;
   serverDetailsList: ServerDetailsListType;
-  isConnected: boolean;
-  currentServerConnected: string | null;
+  /** Where the call is, if there is one. Shared by every voice mark below. */
+  voice: VoicePresence;
   serverUnreadCount: (host: string) => number;
   serverMentionCount: (host: string) => number;
   switchToServer: (host: string) => void;
@@ -331,6 +331,17 @@ interface ServerItemProps {
   mergeDuplicates: (keepHost: string) => void;
   /** The embedded manager's status, when this rail entry is a server we run. */
   embeddedStatus?: string;
+}
+
+/* What the call is doing here, in the words somebody would use for it. Muted
+   is worth saying: the call is up and nothing is going out. */
+function voiceLabel(voice: VoicePresence): string {
+  if (!voice.live) {
+    return voice.state === SFUConnectionState.RECONNECTING
+      ? "Reconnecting to voice"
+      : "Joining voice";
+  }
+  return voice.muted ? "In voice, muted" : "Connected to voice";
 }
 
 /**
@@ -345,8 +356,7 @@ function ServerItem({
   currentlyViewingServer,
   serverConnectionStatus,
   serverDetailsList,
-  isConnected,
-  currentServerConnected,
+  voice,
   serverUnreadCount,
   serverMentionCount,
   switchToServer,
@@ -380,7 +390,7 @@ function ServerItem({
    * A server of ours that is still booting. Not a connection state — the socket
    * has nothing to report — but it is what the person watching wants (GRYT-314).
    */
-  const isStarting = embeddedStatus === "starting" && !isConnected;
+  const isStarting = embeddedStatus === "starting" && !voice.live;
 
   /**
    * Nothing has come back yet and the clock is running. This is the one
@@ -463,17 +473,26 @@ function ServerItem({
 
                 <ServerStatusRing state={ringState} settleMs={UNKNOWN_SETTLE_MS} />
 
-                {isConnected && currentServerConnected === host && (
+                {/* Whether you are in a call here, and whether sound is leaving
+                    this machine. It used to appear only once the call was up,
+                    so a call stuck coming up showed nothing at all. */}
+                {voice.inCall && voice.host === host && (
                   <div className="absolute" style={{ top: "-2px", right: "-2px", width: "16px",
                       height: "16px",
                       borderRadius: "50%",
-                      backgroundColor: "var(--gryt-accent-9)",
+                      backgroundColor: voice.live
+                        ? "var(--gryt-accent-9)"
+                        : "var(--gryt-warning-9)",
                       border: "2px solid var(--gryt-neutral-1)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       zIndex: 1 }}>
-                    <PiMicrophoneFill size={8} color="var(--gryt-on-accent)" />
+                    {voice.transmitting ? (
+                      <PiMicrophoneFill size={8} color="var(--gryt-on-accent)" />
+                    ) : (
+                      <PiMicrophoneSlashFill size={8} color="var(--gryt-on-accent)" />
+                    )}
                   </div>
                 )}
                 {/* A count, not a dot. The dot said "something happened in
@@ -641,9 +660,14 @@ function ServerItem({
           <div>
             <h2 className="text-xs">
               {servers[host].name}
-              {isConnected && currentServerConnected === host && (
-                <span style={{ color: "var(--gryt-accent-9)", marginLeft: "8px" }}>
-                  • Connected to voice
+              {voice.inCall && voice.host === host && (
+                <span
+                  style={{
+                    color: voice.live ? "var(--gryt-accent-9)" : "var(--gryt-warning-9)",
+                    marginLeft: "8px",
+                  }}
+                >
+                  • {voiceLabel(voice)}
                 </span>
               )}
               {awaitingApproval && (
