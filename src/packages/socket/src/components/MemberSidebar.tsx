@@ -4,6 +4,8 @@ import { useCallback, useMemo, useState } from "react";
 import { getUploadsFileUrl, resolveAvatarSrc, useTheme } from "@/common";
 
 import { PiPushPinFill, PiPushPinSlashFill } from "../../../../lib/icons";
+import { useDirectory } from "../hooks/dmDirectory";
+import { useDirectoryUnread } from "../hooks/useDirectoryUnread";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { UserStatus } from "../types/clients";
 import { BotTag } from "./BotTag";
@@ -11,6 +13,7 @@ import { groupMembersByRole, readableRoleColor } from "./memberGroups";
 import { MemberIdentityCard } from "./MemberIdentityCard";
 import { statusConfig } from "./memberStatus";
 import { PluginPanels } from "./PluginPanels";
+import { UnreadIndicator } from "./UnreadIndicator";
 import { UserContextMenu } from "./UserContextMenu";
 
 /** A role id. The server defines its own; these only pass one along. */
@@ -123,6 +126,7 @@ const MemberItem = ({
   onReport,
   cardOpen,
   onCardOpenChange,
+  dmUnreadFor,
 }: {
   member: MemberInfo;
   /** Already pulled into a readable band — see `readableRoleColor`. */
@@ -138,8 +142,12 @@ const MemberItem = ({
   /** Held by the list, not here. See the note on `openCardFor`. */
   cardOpen: boolean;
   onCardOpenChange: (open: boolean) => void;
+  /** Unread in the conversation with this person, or nothing if there is none. */
+  dmUnreadFor?: (serverUserId: string) => number;
 }) => {
   const isSelf = member.serverUserId === currentServerUserId;
+  const canOpenDm = Boolean(onOpenDm) && !isSelf;
+  const dmUnread = dmUnreadFor?.(member.serverUserId) ?? 0;
   const { label: statusLabel, color: statusColor } = statusConfig[member.status];
   const isOffline = member.status === "offline";
   const showStatusLine = member.status === "in_voice" || member.status === "afk";
@@ -179,12 +187,26 @@ const MemberItem = ({
     >
       <PreviewCard.Root open={cardOpen} onOpenChange={onCardOpenChange}>
         <PreviewCard.Trigger>
+          {/* Clicking opens the conversation. The card is still on hover and in
+              the context menu, so the fingerprint keeps its way in (GRYT-1120). */}
           <div
+            role={canOpenDm ? "button" : undefined}
+            tabIndex={canOpenDm ? 0 : undefined}
+            onClick={canOpenDm ? () => onOpenDm!(member.serverUserId) : undefined}
+            onKeyDown={
+              canOpenDm
+                ? (e) => {
+                    if (e.key !== "Enter" && e.key !== " ") return;
+                    e.preventDefault();
+                    onOpenDm!(member.serverUserId);
+                  }
+                : undefined
+            }
             style={{
               background: "var(--gryt-neutral-4)",
               borderRadius: "var(--gryt-radius-xl)",
               padding: "8px 12px",
-              cursor: 'default',
+              cursor: canOpenDm ? "pointer" : "default",
             }}
           >
         <div className="flex items-center gap-2 w-full">
@@ -259,6 +281,9 @@ const MemberItem = ({
             )}
           </div>
         </div>
+          {/* Their conversation's unread, on their row: the sidebar is the way
+              into it now, so the count belongs where the way in is. */}
+          <UnreadIndicator unread={dmUnread} />
           </div>
         </PreviewCard.Trigger>
         <PreviewCard.Portal>
@@ -288,6 +313,23 @@ export const MemberSidebar = ({
 }: MemberSidebarProps) => {
   const { roles } = useServerPermissions(serverHost);
   const { resolvedAppearance } = useTheme();
+  const directory = useDirectory();
+  const { countFor } = useDirectoryUnread();
+
+  /* Their conversation on this server, if there is one. A person on another
+     server is a different conversation and does not belong on this row. */
+  const dmUnreadFor = useCallback(
+    (serverUserId: string) => {
+      const entry = directory.find(
+        (e) =>
+          e.host === serverHost &&
+          e.conversation.kind === "dm" &&
+          e.conversation.other.server_user_id === serverUserId,
+      );
+      return entry ? countFor(serverHost, entry.conversation.conversation_id) : 0;
+    },
+    [countFor, directory, serverHost],
+  );
 
   const groups = useMemo(() => groupMembersByRole(members, roles), [members, roles]);
 
@@ -384,6 +426,7 @@ export const MemberSidebar = ({
                     currentServerUserId={currentServerUserId}
                     currentUserRole={currentUserRole}
                     serverHost={serverHost}
+                    dmUnreadFor={dmUnreadFor}
                     adminActions={adminActions}
                     onOpenDm={onOpenDm}
                     onToggleBlock={onToggleBlock}
