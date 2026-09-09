@@ -194,6 +194,36 @@ async function exchangeCodeForTokens(
   };
 }
 
+/** The refresh token itself is finished: revoked, expired, or already used. */
+export class RefreshRejectedError extends Error {
+  constructor(readonly status: number) {
+    super(`Refresh token rejected (${status})`);
+    this.name = "RefreshRejectedError";
+  }
+}
+
+/** Nobody answered usefully. The tokens are still good; try again later. */
+export class RefreshUnavailableError extends Error {
+  constructor(readonly status?: number) {
+    super(`Token refresh unavailable${status ? ` (${status})` : ""}`);
+    this.name = "RefreshUnavailableError";
+  }
+}
+
+/**
+ * Whether the response means this grant is over rather than that the provider
+ * is having a bad day. OAuth says `invalid_grant`; a bare 401 means the same.
+ */
+function isGrantRejected(status: number, body: string): boolean {
+  if (status === 401) return true;
+  if (status !== 400) return false;
+  try {
+    return (JSON.parse(body) as { error?: string }).error === "invalid_grant";
+  } catch {
+    return /invalid_grant/.test(body);
+  }
+}
+
 export async function refreshTokens(
   refreshToken: string,
 ): Promise<ElectronTokens> {
@@ -214,8 +244,15 @@ export async function refreshTokens(
   if (!res.ok) {
     const errBody = await res.text().catch(() => "");
     console.error("[Auth:Electron] Token refresh failed:", res.status, errBody);
-    clearStoredTokens();
-    throw new Error(`Token refresh failed (${res.status})`);
+
+    /* Only a dead grant costs a session. Clearing on our own outage leaves
+       nothing to retry with once it comes back (GRYT-1104). */
+    if (isGrantRejected(res.status, errBody)) {
+      clearStoredTokens();
+      throw new RefreshRejectedError(res.status);
+    }
+
+    throw new RefreshUnavailableError(res.status);
   }
 
   const data = await res.json();
