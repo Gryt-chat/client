@@ -36,6 +36,7 @@ import { ServiceStatusBanner } from "./components/serviceStatusBanner";
 import { Titlebar } from "./components/titlebar";
 import { UpdateAnnouncement } from "./components/updateAnnouncement";
 import { WhatsNew } from "./components/whatsNew";
+import { installAiToolkit } from "./devtools/aiToolkit";
 import { initGlobalStorage } from "./lib/globalStorage";
 import { syncGoogleFonts } from "./lib/googleFonts";
 import { captureLogs } from "./lib/reports/logs";
@@ -197,6 +198,10 @@ setPluginHostVersion(__APP_VERSION__);
 void backfillGuestHistory()
   .then(migrateLegacyMergeChoice)
   .then(pruneReproducibleKeys);
+
+/* Folds out of a release: `import.meta.env.DEV` is a literal false there, so
+   the import and everything it pulls in go with it (GRYT-1115). */
+if (import.meta.env.DEV) installAiToolkit();
 
 initGlobalStorage().then(() => {
   ReactDOM.createRoot(document.getElementById("root")!).render(

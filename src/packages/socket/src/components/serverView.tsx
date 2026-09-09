@@ -350,6 +350,23 @@ export const ServerView = () => {
     handleOpenDm(targetServerUserId);
   }, [handleOpenDm]);
 
+  /* `window.gryt.dm(nickname)`. The member card this normally starts from does
+     not answer a synthetic click, so there is no other way in (GRYT-1115). */
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const open = (event: Event) => {
+      const wanted = (event as CustomEvent<{ nickname?: string }>).detail?.nickname;
+      const id = Object.entries(memberNames).find(([, name]) => name === wanted)?.[0];
+      if (!id) {
+        console.warn(`[dev] nobody here is called ${wanted}. Have:`, Object.values(memberNames));
+        return;
+      }
+      requestOpenDm(id);
+    };
+    window.addEventListener("dev_open_dm", open);
+    return () => window.removeEventListener("dev_open_dm", open);
+  }, [memberNames, requestOpenDm]);
+
   /** Answering is joining the conversation's voice room; the server ends the ring
       when the join lands. */
   useFakeCallEvents(currentConnection, selectedDmId, fakeCallOptionsFromUrl);

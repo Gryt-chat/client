@@ -107,7 +107,8 @@
     "test:role-pills": "node scripts/check-role-pills.mjs",
     "test:link-underline": "node scripts/check-link-underline.mjs",
     "test:auth-outage": "node scripts/check-auth-outage.mjs",
-    "test:focus-steal": "node scripts/check-focus-steal.mjs"
+    "test:focus-steal": "node scripts/check-focus-steal.mjs",
+    "test:ai-toolkit": "node scripts/check-ai-toolkit.mjs"
   },
   "dependencies": {
     "electron-updater": "^6.8.3",
