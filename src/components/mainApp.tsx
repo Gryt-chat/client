@@ -1,7 +1,7 @@
 import { Button } from "@gryt/ui";
 
 import { useSettings } from "@/settings";
-import { DirectMessagesSpace, DmFeeds, useDmSpaceOpen, useServerManagement } from "@/socket";
+import { DmFeeds, useDmSpaceOpen, useServerManagement } from "@/socket";
 import { ServerView } from "@/socket/src/components/serverView";
 import { useIsTinyWindow } from "@/socket/src/hooks/useNarrowWindow";
 
@@ -36,8 +36,8 @@ export function MainApp() {
           conversations, not just the one being looked at. */}
       <DmFeeds />
 
-      {dmSpaceOpen ? (
-        <DirectMessagesSpace />
+      {dmSpaceOpen && Object.keys(servers).length > 0 ? (
+        <ServerView dmSpace />
       ) : showDiscovery ? (
         <Discovery />
       ) : Object.keys(servers).length > 0 ? (

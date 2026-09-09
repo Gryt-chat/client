@@ -14,32 +14,40 @@ import { useSockets } from "../hooks/useSockets";
 
 /* One host. A component rather than a loop, because the thing underneath is a
    hook and the number of servers changes while the app is running. */
-function HostFeed({ host, socket }: { host: string; socket: Socket }) {
+function HostFeed({ host, socket, isConnected }: { host: string; socket: Socket; isConnected: boolean }) {
   const { conversations } = useDirectMessages({
     socket,
     accessToken: getServerAccessToken(host),
-    isConnected: socket.connected,
+    isConnected,
   });
 
+  /* Publish and forget in one effect. Split in two, StrictMode's cleanup ran
+     the forget while the publish saw unchanged deps and never re-fired. */
   useEffect(() => {
     setHostConversations(host, conversations);
+    return () => forgetHost(host);
   }, [host, conversations]);
-
-  /* Leaving a server should take its rows with it, rather than leaving a list
-     that offers conversations on something no longer connected. */
-  useEffect(() => () => forgetHost(host), [host]);
 
   return null;
 }
 
 /** Mounted once, above whichever server happens to be on screen. */
 export function DmFeeds() {
-  const { sockets } = useSockets();
+  const { sockets, serverConnectionStatus } = useSockets();
 
   return (
     <>
       {Object.entries(sockets).map(([host, socket]) =>
-        socket ? <HostFeed key={host} host={host} socket={socket} /> : null,
+        socket ? (
+          <HostFeed
+            key={host}
+            host={host}
+            socket={socket}
+            /* The status, not `socket.connected`: that is read once at render
+               and never says so when the socket comes up. */
+            isConnected={serverConnectionStatus[host] === "connected"}
+          />
+        ) : null,
       )}
     </>
   );

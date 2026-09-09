@@ -10,7 +10,6 @@ export * from "./src/utils/joinServerOnce";
 
 // Components
 export { DeviceSwitchModal } from "./src/components/DeviceSwitchModal";
-export { DirectMessagesSpace } from "./src/components/DirectMessagesSpace";
 export { DmFeeds } from "./src/components/DmFeeds";
 export { InviteAcceptModal } from "./src/components/InviteAcceptModal";
 export { ServerDoctor } from "./src/components/ServerDoctor";
