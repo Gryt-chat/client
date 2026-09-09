@@ -238,7 +238,9 @@ export const ChannelList = ({
             "flex w-full items-center gap-2 rounded-(--gryt-radius-md) px-2 py-1 text-left",
             "text-xs font-semibold tracking-wide transition-colors",
             "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gryt-accent-light",
-            holdsSelected ? "text-gryt-accent" : "text-gryt-muted hover:text-gryt-text active:text-gryt-text",
+            holdsSelected ? "text-gryt-accent"
+              : unread > 0 || mentions > 0 ? "text-gryt-text"
+              : "text-gryt-muted hover:text-gryt-text active:text-gryt-text",
           ].join(" ")}
         >
           <span className="min-w-0 shrink truncate">
@@ -307,7 +309,12 @@ export const ChannelList = ({
               : channel?.layout === "forum" ? <PiChatsFill size={16} />
               : channel?.type === "voice" ? <PiSpeakerHighFill size={16} /> : <PiChatCircleFill size={16} />}
           </div>
-          <span className="truncate" style={{ flex: 1, minWidth: 0, textAlign: "left", display: "block" }}>
+          {/* A ghost row's label is muted, so an unread channel looked exactly
+              like a read one until you found the badge at the far end. */}
+          <span
+            className={`truncate${unread > 0 || mentions > 0 ? " font-semibold text-gryt-text" : ""}`}
+            style={{ flex: 1, minWidth: 0, textAlign: "left", display: "block" }}
+          >
             <EmojiText text={channel?.name || "(missing channel)"} />
           </span>
           {hasIndicators && (

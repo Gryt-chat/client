@@ -118,7 +118,7 @@ export const DirectMessageList = ({
                 )}
               </div>
               <span
-                className="truncate"
+                className={`truncate${unread > 0 || mentions > 0 ? " font-semibold text-gryt-text" : ""}`}
                 style={{ flex: 1, minWidth: 0, textAlign: "left", display: "block" }}
               >
                 <EmojiText text={conversationTitle(conversation)} />
