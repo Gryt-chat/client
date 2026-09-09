@@ -299,10 +299,8 @@ export function useChat({
         });
 
       setChatMessages(apply);
-      /* The cache too. It holds what arrived on the wire, and the effect that
-         replays it into the list runs on every new message — so without this the
-         whole conversation went back to ciphertext and decrypted again each
-         time somebody typed. GRYT-1114. */
+      /* The cache too: the effect that replays it runs on every new message, so
+         without this the conversation re-decrypted on each keystroke (GRYT-1114). */
       const key = cacheKeyFor(activeConversationId);
       if (key) {
         setMessageCache((prev) => (prev[key] ? { ...prev, [key]: apply(prev[key]) } : prev));
