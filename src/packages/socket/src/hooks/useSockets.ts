@@ -18,11 +18,17 @@ import {
   Servers,
 } from "@/settings/src/types/server";
 
+import { showReconnectGaveUpToast, showReconnectingToast } from "../components/connectionToasts";
 import { MemberInfo } from "../components/MemberSidebar";
 import { Clients, ServerProfile } from "../types/clients";
 import { guardSocket, serverProofErrorMessage, serverProofHelpUrl } from "../utils/serverAuth";
 import { syncAvatarToHost } from "../utils/syncAvatarToHost";
 import { useSocketEvents } from "./useSocketEvents";
+
+/* About two minutes of trying before a server is left alone. Getting back to it
+   is the network returning, the window coming forward, or the Reconnect button. */
+const RECONNECT_ATTEMPTS = 15;
+const RECONNECT_DELAY_MAX_MS = 10_000;
 
 type Sockets = { [host: string]: Socket };
 
@@ -274,6 +280,10 @@ function useSocketsHook() {
 
         const socket = io(`${getServerWsBase(host)}`, {
           transports: ["websocket"],
+          /* socket.io retries forever unless told otherwise, which on a server
+             that is gone is an attempt every five seconds all day. */
+          reconnectionAttempts: RECONNECT_ATTEMPTS,
+          reconnectionDelayMax: RECONNECT_DELAY_MAX_MS,
           auth: (cb: (data: Record<string, unknown>) => void) => {
             // Not the access token: handshake auth arrives before the server has
             // proved itself, so an impostor would collect a working one.
@@ -323,7 +333,7 @@ function useSocketsHook() {
 
         socket.on("disconnect", () => {
           setServerConnectionStatus(prev => ({ ...prev, [host]: 'reconnecting' }));
-          toast.loading(`Reconnecting to ${serverName}...`, { id: toastId });
+          showReconnectingToast(toastId, serverName);
         });
 
         /* Routed by the id the server stamped, so one server's plugin cannot
@@ -362,9 +372,11 @@ function useSocketsHook() {
           }));
         });
 
+        /* Reachable now that the attempts are capped. It never fired before, so
+           the rail sat on "reconnecting" for a server that was never coming back. */
         socket.io.on("reconnect_failed", () => {
           setServerConnectionStatus(prev => ({ ...prev, [host]: 'disconnected' }));
-          toast.error(`Could not reconnect to ${serverName}`, { id: toastId });
+          showReconnectGaveUpToast(toastId, serverName);
         });
 
         // Only the add-server flow recorded the scheme, so an existing entry still
@@ -598,14 +610,34 @@ function useSocketsHook() {
       });
     };
 
-    const onVisibilityChange = () => {
-      if (!document.hidden) refreshIfStuck();
+    /* A socket that ran out of attempts stays down until something asks it to
+       try again. Coming back to the app, or the network returning, both count. */
+    const retryGaveUp = () => {
+      Object.entries(sockets).forEach(([host, socket]) => {
+        if (!socket || socket.connected || socket.active) return;
+        // A server that failed to prove itself was put down on purpose, and
+        // serverAuth turns reconnection off to keep it there.
+        if (socket.io.opts.reconnection === false) return;
+        setServerConnectionStatus((prev) => ({ ...prev, [host]: "connecting" }));
+        socket.connect();
+      });
     };
 
-    window.addEventListener("focus", refreshIfStuck);
+    const wakeUp = () => {
+      retryGaveUp();
+      refreshIfStuck();
+    };
+
+    const onVisibilityChange = () => {
+      if (!document.hidden) wakeUp();
+    };
+
+    window.addEventListener("focus", wakeUp);
+    window.addEventListener("online", retryGaveUp);
     document.addEventListener("visibilitychange", onVisibilityChange);
     return () => {
-      window.removeEventListener("focus", refreshIfStuck);
+      window.removeEventListener("focus", wakeUp);
+      window.removeEventListener("online", retryGaveUp);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [sockets, nickname, failedServerDetails]);

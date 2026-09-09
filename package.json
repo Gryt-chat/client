@@ -23,6 +23,7 @@
     "lint": "tsc -b && eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "test:updater-bridge": "node scripts/check-updater-bridge.mjs",
     "test:voice-presence": "node scripts/check-voice-presence.mjs",
+    "test:reconnect-limit": "node scripts/check-reconnect-limit.mjs",
     "test:identity-vault": "node scripts/check-identity-vault.mjs",
     "test:identity-restart": "node scripts/check-identity-restart.mjs",
     "test:identity-certificate": "node scripts/check-identity-certificate.mjs",
