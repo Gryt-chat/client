@@ -609,17 +609,13 @@ function applyStartWithWindowsSetting(enabled: boolean) {
   }
 }
 
-/* Raised to the front once, then allowed to behave like a window again. */
+/* No setAlwaysOnTop: it cleared the splash window, which is gone, and it is
+   the part that lands on top of a fullscreen game (GRYT-1105). */
 function showMain(): void {
   if (!mainWindow) return;
 
-  mainWindow.setAlwaysOnTop(true);
   mainWindow.show();
   mainWindow.focus();
-
-  setTimeout(() => {
-    mainWindow?.setAlwaysOnTop(false);
-  }, 1000);
 }
 
 function sendToMain(status: string, info?: Record<string, unknown>) {
