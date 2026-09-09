@@ -6,6 +6,13 @@ import { useUserId } from "@/common";
 import { orderServerHosts } from "../serverOrder";
 import { Server, Servers } from "../types/server";
 import {
+  dismissedLanServers as readDismissed,
+  forgetLanServerDismissed as forgetDismissed,
+  rememberLanServerDismissed as rememberDismissed,
+  rememberLanServersSeen as rememberSeen,
+  seenLanServers as readSeen,
+} from "./lanServerMemory";
+import {
   getUserValue,
   loadForUser,
   setUserValue,
@@ -36,8 +43,10 @@ function useServerSettingsHook(): ServerSettings {
   const [currentlyViewingServer, setCurrentlyViewingServer] = useState<Server | null>(null);
   const [lastSelectedChannels, setLastSelectedChannelsRaw] = useState<Record<string, string>>({});
   const [serverOrder, setServerOrderRaw] = useState<string[]>([]);
-  const [dismissedLanServers, setDismissedLanServersRaw] = useState<string[]>([]);
-  const [seenLanServers, setSeenLanServersRaw] = useState<string[]>([]);
+  /* Read straight from the device rather than waiting for a user id. These two
+     do not belong to an account, and the id changes during a launch. */
+  const [dismissedLanServers, setDismissedLanServersRaw] = useState<string[]>(readDismissed);
+  const [seenLanServers, setSeenLanServersRaw] = useState<string[]>(readSeen);
   const hasAutoFocused = useRef(false);
 
   useEffect(() => {
@@ -56,8 +65,6 @@ function useServerSettingsHook(): ServerSettings {
       setServersRaw(loaded);
       setLastSelectedChannelsRaw(getUserValue<Record<string, string>>("lastSelectedChannels", {}));
       setServerOrderRaw(getUserValue<string[]>("serverOrder", []));
-      setDismissedLanServersRaw(getUserValue<string[]>("dismissedLanServers", []));
-      setSeenLanServersRaw(getUserValue<string[]>("seenLanServers", []));
     })();
 
     return () => { cancelled = true; };
@@ -124,21 +131,11 @@ function useServerSettingsHook(): ServerSettings {
   }, []);
 
   const dismissLanServer = useCallback((key: string) => {
-    setDismissedLanServersRaw((prev) => {
-      if (prev.includes(key)) return prev;
-      const next = [...prev, key];
-      if (userIdRef.current) setUserValue("dismissedLanServers", next);
-      return next;
-    });
+    setDismissedLanServersRaw(rememberDismissed(key));
   }, []);
 
   const undismissLanServer = useCallback((key: string) => {
-    setDismissedLanServersRaw((prev) => {
-      if (!prev.includes(key)) return prev;
-      const next = prev.filter((k) => k !== key);
-      if (userIdRef.current) setUserValue("dismissedLanServers", next);
-      return next;
-    });
+    setDismissedLanServersRaw(forgetDismissed(key));
   }, []);
 
   /**
@@ -147,11 +144,8 @@ function useServerSettingsHook(): ServerSettings {
    */
   const markLanServersSeen = useCallback((keys: string[]) => {
     setSeenLanServersRaw((prev) => {
-      const missing = keys.filter((key) => !prev.includes(key));
-      if (missing.length === 0) return prev;
-      const next = [...prev, ...missing];
-      if (userIdRef.current) setUserValue("seenLanServers", next);
-      return next;
+      if (keys.every((key) => prev.includes(key))) return prev;
+      return rememberSeen(keys);
     });
   }, []);
 
