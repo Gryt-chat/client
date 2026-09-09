@@ -1,10 +1,12 @@
-import { conversationTitle, type DirectConversation } from "@gryt/core";
-import { Avatar } from "@gryt/ui";
+import { Avatar, Button } from "@gryt/ui";
 
-import { GeneratedServerIcon } from "@/common";
+import { GeneratedServerIcon, getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 
 import type { DirectoryEntry } from "../hooks/dmDirectory";
+import { conversationTitle, type DirectConversation } from "../hooks/useDirectMessages";
 import { useServerManagement } from "../hooks/useServerManagement";
+import { EmojiText } from "./EmojiText";
+import { UnreadIndicator } from "./UnreadIndicator";
 
 /**
  * One row per conversation. Never grouped by person: the client is not told
@@ -31,69 +33,69 @@ function ConversationRow({
   selected: boolean;
   onOpen: () => void;
 }) {
-  const { conversation } = entry;
-  const isGroup = conversation.kind === "group";
+  const { host, conversation } = entry;
   const title = conversationTitle(conversation);
+  const isGroup = conversation.kind === "group";
 
   return (
-    <button
-      type="button"
+    <Button
+      tone={selected ? "primary" : "ghost"}
+      style={{ width: "100%", justifyContent: "start", overflow: "hidden", gap: "10px" }}
       onClick={onOpen}
-      className="flex w-full items-center gap-3 rounded-(--gryt-radius-sm) px-2 py-2 text-left"
-      style={{
-        background: selected ? "var(--gryt-neutral-4)" : "transparent",
-        border: "none", cursor: "pointer",
-      }}
-      onMouseEnter={(e) => { if (!selected) e.currentTarget.style.background = "var(--gryt-neutral-3)"; }}
-      onMouseLeave={(e) => { if (!selected) e.currentTarget.style.background = "transparent"; }}
     >
-      <Avatar
-        size="small"
-        className={isGroup ? "rounded-(--gryt-radius-sm)" : ""}
-        fallback={<GeneratedServerIcon seed={title} />}
-      />
+      {isGroup ? (
+        <Avatar
+          size="small"
+          className="rounded-(--gryt-radius-md)"
+          eggSeed={title}
+          src={
+            conversation.icon_file_id
+              ? getUploadsFileUrl(host, conversation.icon_file_id, { thumb: true })
+              : undefined
+          }
+        />
+      ) : (
+        <Avatar
+          size="small"
+          fallback={conversation.other.nickname[0]}
+          src={resolveAvatarSrc(
+            conversation.other.avatar_file_id
+              ? getUploadsFileUrl(host, conversation.other.avatar_file_id, { thumb: true })
+              : undefined,
+            conversation.other.nickname,
+            conversation.other.avatar_worn,
+          )}
+        />
+      )}
 
-      <span className="flex min-w-0 flex-col" style={{ gap: "1px" }}>
-        <span className="flex items-center gap-2" style={{ minWidth: 0 }}>
-          <span
-            className="truncate text-sm"
-            style={{ fontWeight: 600, color: unread > 0 ? "#fff" : "var(--gryt-neutral-12)" }}
-          >
-            {title}
+      <span className="flex min-w-0 flex-1 items-center" style={{ gap: "8px", textAlign: "left" }}>
+        <span className={`truncate${unread > 0 ? " font-semibold text-gryt-text" : ""}`}>
+          <EmojiText text={title} />
+        </span>
+        {/* The server is half the identity: two rows can carry one name and be
+            two different people, and its own icon points back at the rail. */}
+        <span
+          className="flex shrink-0 items-center gap-1 text-xs"
+          style={{ color: "var(--gryt-neutral-10)" }}
+        >
+          <span style={{ width: 12, height: 12, borderRadius: 3, overflow: "hidden", display: "block" }}>
+            <GeneratedServerIcon seed={serverName} />
           </span>
-          {/* The server is half the identity here, not a footnote: two rows can
-              carry the same name and be different people. */}
-          <span
-            className="flex shrink-0 items-center gap-1 text-xs"
-            style={{ color: "var(--gryt-neutral-10)" }}
-          >
-            <span style={{ width: 12, height: 12, borderRadius: 3, overflow: "hidden", display: "block" }}>
-              <GeneratedServerIcon seed={serverName} />
-            </span>
-            {serverName}
-            {isGroup ? ` · ${conversation.members.length + 1}` : ""}
-          </span>
+          {serverName}
+          {isGroup ? ` · ${conversation.members.length + 1}` : ""}
         </span>
       </span>
 
-      <span className="ml-auto flex shrink-0 flex-col items-end" style={{ gap: "4px" }}>
-        <span className="text-xs" style={{ color: "var(--gryt-neutral-10)", fontVariantNumeric: "tabular-nums" }}>
+      <span className="ml-auto flex shrink-0 items-center" style={{ gap: "8px" }}>
+        <span
+          className="text-xs"
+          style={{ color: "var(--gryt-neutral-10)", fontVariantNumeric: "tabular-nums" }}
+        >
           {when(conversation.last_message_at)}
         </span>
-        {unread > 0 && (
-          <span
-            className="grid place-items-center text-xs"
-            style={{
-              minWidth: 18, height: 18, padding: "0 5px", borderRadius: 999,
-              background: "var(--gryt-unread-9, var(--gryt-accent-9))",
-              color: "var(--gryt-neutral-1)", fontWeight: 700, fontVariantNumeric: "tabular-nums",
-            }}
-          >
-            {unread > 99 ? "99+" : unread}
-          </span>
-        )}
+        <UnreadIndicator unread={unread} />
       </span>
-    </button>
+    </Button>
   );
 }
 

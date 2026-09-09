@@ -1,6 +1,6 @@
-import type { DirectConversation } from "@gryt/core";
-import { Button } from "@gryt/ui";
-import { useState } from "react";
+import { conversationTitle, type DirectConversation } from "@gryt/core";
+import { Button, TextField } from "@gryt/ui";
+import { useMemo, useState } from "react";
 
 import { useDirectory } from "../hooks/dmDirectory";
 import { requestConversation, setDmSpaceOpen } from "../hooks/dmSpace";
@@ -38,6 +38,19 @@ export function DirectMessagesSpace() {
   const { countFor } = useDirectoryUnread();
   const { servers, switchToServer } = useServerManagement();
   const [selected, setSelected] = useState<{ host: string; conversationId: string } | null>(null);
+  const [query, setQuery] = useState("");
+
+  /* Matched on the name and on the server, since the server is the thing that
+     tells two rows with one name apart. */
+  const shown = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return entries;
+    return entries.filter((entry) => {
+      const name = conversationTitle(entry.conversation).toLowerCase();
+      const server = (servers[entry.host]?.name || entry.host).toLowerCase();
+      return name.includes(needle) || server.includes(needle);
+    });
+  }, [entries, query, servers]);
 
   /* Handed to the server it belongs to, which already holds the connection and
      the keys. The space is the way in, not a second copy of the reader. */
@@ -67,13 +80,28 @@ export function DirectMessagesSpace() {
           </h1>
         </div>
 
+        {entries.length > 0 && (
+          <div className="px-3 pb-2">
+            <TextField
+              size="small"
+              placeholder="Search conversations"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
+        )}
+
         {entries.length === 0 ? (
           <p className="px-4 text-xs" style={{ color: "var(--gryt-neutral-10)" }}>
             No conversations yet.
           </p>
+        ) : shown.length === 0 ? (
+          <p className="px-4 text-xs" style={{ color: "var(--gryt-neutral-10)" }}>
+            Nothing matches &ldquo;{query}&rdquo;.
+          </p>
         ) : (
           <DmSpaceList
-            entries={entries}
+            entries={shown}
             selected={selected}
             unreadFor={countFor}
             onOpen={open}
