@@ -8,15 +8,17 @@ import {
   hasMessageKeyHere,
   readSealedVault,
   rememberMessageKeyHere,
+  sealCurrentIdentity,
   type SealedVault,
   shouldOfferMessageKey,
+  writeSealedVault,
 } from "@/common";
 
 import { PiKey } from "../../../../lib/icons";
 
 /**
- * Offering this device the message key the account already has. Above a direct
- * message, and silent while the answer is still loading (GRYT-783).
+ * The message key, above a direct message. Either taking the account's copy, or
+ * making one on an account that has none (GRYT-783, GRYT-1130).
  */
 export function MessageKeyPrompt() {
   const [grytUserId, setGrytUserId] = useState<string | null>(null);
@@ -63,17 +65,24 @@ export function MessageKeyPrompt() {
   }, []);
 
   const unlock = useCallback(async () => {
-    if (!vault || !grytUserId) return;
+    if (!grytUserId) return;
     if (!secret) return toast.error("Enter your message password.");
 
     setBusy(true);
     try {
-      await adoptSealedIdentity(vault, secret);
+      if (vault) {
+        await adoptSealedIdentity(vault, secret);
+        toast.success("This device has your message key now. Reload to read older conversations.");
+      } else {
+        const sealed = await sealCurrentIdentity(secret, "password");
+        await writeSealedVault(sealed);
+        setVault(sealed);
+        toast.success("Saved. Use this password on your other devices.");
+      }
       rememberMessageKeyHere(grytUserId);
       setKeyIsHere(true);
       setOpen(false);
       setSecret("");
-      toast.success("This device has your message key now. Reload to read older conversations.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not open the sealed key.");
     } finally {
@@ -102,16 +111,26 @@ export function MessageKeyPrompt() {
       <div className="flex items-start gap-2">
         <PiKey aria-hidden="true" size={14} style={{ color: "var(--gryt-accent)", flexShrink: 0, marginTop: "2px" }} />
         <p className="m-0 text-xs" style={{ color: "var(--gryt-neutral-11)", lineHeight: 1.5 }}>
-          Your account has a message key this device doesn&rsquo;t hold, so
-          conversations from your other devices won&rsquo;t open here. Enter your
-          message password to bring them across.
+          {offer === "adopt" ? (
+            <>
+              Your account has a message key this device doesn&rsquo;t hold, so
+              conversations from your other devices won&rsquo;t open here. Enter
+              your message password to bring them across.
+            </>
+          ) : (
+            <>
+              This account has no message password. Sign in somewhere else and
+              that device makes its own key, which stops the people you talk to
+              from encrypting to you until you set one and use it there.
+            </>
+          )}
         </p>
       </div>
 
       {!open ? (
         <div className="flex gap-2">
           <Button size="xsmall" onClick={() => setOpen(true)}>
-            Enter it
+            {offer === "adopt" ? "Enter it" : "Set a password"}
           </Button>
           {/* For the session only. Not persisted: it is still true tomorrow,
               and quietly agreeing never to mention it again is how somebody
@@ -126,12 +145,12 @@ export function MessageKeyPrompt() {
             type="password"
             size="small"
             label="Message password"
-            autoComplete="current-password"
+            autoComplete={offer === "adopt" ? "current-password" : "new-password"}
             value={secret}
             onChange={(e) => setSecret(e.target.value)}
           />
           <Button size="small" onClick={unlock} disabled={busy}>
-            {busy ? "Opening…" : "Unlock"}
+            {busy ? "Working…" : offer === "adopt" ? "Unlock" : "Save"}
           </Button>
           <Button tone="ghost" size="small" onClick={() => { setOpen(false); setSecret(""); }} disabled={busy}>
             Cancel
