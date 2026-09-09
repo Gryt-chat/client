@@ -4,6 +4,7 @@
  */
 export { createRoomCoordinator } from "./src/adapters/roomCoordinator";
 export { type ScreenAudioMute, useScreenAudioMute } from "./src/adapters/useScreenAudioMute";
+export { useVoicePresence,type VoicePresence } from "./src/adapters/useVoicePresence";
 export { useVoiceSounds } from "./src/adapters/useVoiceSounds";
 export { useVoiceConfigFromSettings } from "./src/adapters/voiceConfig";
 export { electronVoiceHost } from "./src/adapters/voiceHost";

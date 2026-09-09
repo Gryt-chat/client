@@ -1,8 +1,8 @@
-import { useSFU } from "@gryt/voice";
 import { useEffect } from "react";
 
 import { useSettings } from "@/settings";
 import { useSockets } from "@/socket";
+import { useVoicePresence } from "@/webRTC";
 
 
 /**
@@ -10,7 +10,7 @@ import { useSockets } from "@/socket";
  * Mounted at the app root: Controls only exists while a voice channel is open.
  */
 export function TrayVoiceState() {
-  const { isConnected, currentServerConnected } = useSFU();
+  const voice = useVoicePresence();
   const { serverDetailsList } = useSockets();
   const {
     isMuted,
@@ -26,18 +26,18 @@ export function TrayVoiceState() {
   const muted = isMuted || isServerMuted;
   const deafened = isDeafened || isServerDeafened;
   const serverName =
-    (currentServerConnected &&
-      serverDetailsList[currentServerConnected]?.server_info?.name) ||
-    null;
+    (voice.host && serverDetailsList[voice.host]?.server_info?.name) || null;
 
   useEffect(() => {
     window.electronAPI?.setVoiceState({
-      inVoice: isConnected,
+      // In a call the tray says so, including while it is coming up. The tray
+      // is the only voice control left once the window is closed.
+      inVoice: voice.inCall,
       muted,
       deafened,
       serverName,
     });
-  }, [isConnected, muted, deafened, serverName]);
+  }, [voice.inCall, muted, deafened, serverName]);
 
   useEffect(() => {
     return window.electronAPI?.onTrayVoiceCommand((command) => {
