@@ -25,6 +25,7 @@ jobs:
       - run: yarn test:focus-steal
       - run: yarn test:peer-in-clear
       - run: yarn test:ai-toolkit
+      - run: yarn test:empty-dm-copy
       - run: yarn test:identity-vault
       - run: yarn test:identity-restart
       - run: yarn test:identity-certificate
