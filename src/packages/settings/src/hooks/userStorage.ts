@@ -12,6 +12,31 @@ function webKey(userId: string, key: string): string {
   return `user:${userId}:${key}`;
 }
 
+/**
+ * Who to tell once a user's data is actually in `cache`. Anything reading a
+ * value on mount would otherwise read an empty store and act on it (GRYT-1101).
+ */
+const loadedListeners = new Set<(userId: string) => void>();
+
+/** The user whose data is loaded, or null while nothing has been. */
+export function loadedUserId(): string | null {
+  return loadedFor;
+}
+
+export function onUserStoreLoaded(fn: (userId: string) => void): () => void {
+  loadedListeners.add(fn);
+  return () => {
+    loadedListeners.delete(fn);
+  };
+}
+
+let loadedFor: string | null = null;
+
+function markLoaded(userId: string): void {
+  loadedFor = userId;
+  for (const fn of loadedListeners) fn(userId);
+}
+
 export async function loadForUser(userId: string): Promise<UserData> {
   if (cachedUserId === userId && pendingLoad) {
     console.log("[UserStore] loadForUser: returning pending load for", userId);
@@ -45,6 +70,7 @@ export async function loadForUser(userId: string): Promise<UserData> {
 
     cache = data;
     pendingLoad = null;
+    markLoaded(userId);
     return data;
   })();
 
@@ -212,6 +238,7 @@ export function clearUserCache(): void {
   console.log("[UserStore] clearUserCache: clearing cache for", cachedUserId, "had", Object.keys(cache).length, "keys");
   cache = {};
   cachedUserId = null;
+  loadedFor = null;
   pendingLoad = null;
 }
 
