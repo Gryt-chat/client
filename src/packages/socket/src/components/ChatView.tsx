@@ -610,7 +610,7 @@ export const ChatView = memo(({
             </div>
           ) : chatMessages.length === 0 ? (
             <div className="flex grow items-center justify-center" style={{ paddingBottom: "16px" }}>
-              <WelcomeMessage channelName={channelName} channelType={channelType} conversationKind={conversationKind} serverName={serverName} automated={automated} />
+              <WelcomeMessage channelName={channelName} channelType={channelType} conversationKind={conversationKind} serverName={serverName} automated={automated} sealing={sealing} />
             </div>
           ) : showMessages ? (
             <div

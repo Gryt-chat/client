@@ -109,7 +109,8 @@
     "test:auth-outage": "node scripts/check-auth-outage.mjs",
     "test:focus-steal": "node scripts/check-focus-steal.mjs",
     "test:peer-in-clear": "node scripts/check-peer-in-clear.mjs",
-    "test:ai-toolkit": "node scripts/check-ai-toolkit.mjs"
+    "test:ai-toolkit": "node scripts/check-ai-toolkit.mjs",
+    "test:empty-dm-copy": "node scripts/check-empty-dm-copy.mjs"
   },
   "dependencies": {
     "electron-updater": "^6.8.3",

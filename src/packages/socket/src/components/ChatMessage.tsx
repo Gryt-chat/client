@@ -1,5 +1,7 @@
 import { Skeleton } from "@gryt/ui";
 
+import type { SealDecision } from "@/common";
+
 import { PiArrowBendUpLeftFill, PiChatCircleFill, PiChatsFill, PiSmileyFill, PiSpeakerHighFill, PiTrashFill } from "../../../../lib/icons";
 import { EmojiText } from "./EmojiText";
 
@@ -227,6 +229,7 @@ export const WelcomeMessage = ({
   conversationKind = "channel",
   serverName,
   automated = false,
+  sealing,
 }: {
   channelName?: string;
   channelType?: "text" | "voice";
@@ -234,6 +237,9 @@ export const WelcomeMessage = ({
   serverName?: string;
   /** An automated channel has no "say something" — nobody here can. GRYT-982. */
   automated?: boolean;
+  /* Unknown reads as unencrypted, the same way the banner above this treats it:
+     of the two ways to be wrong while the keys load, understating is free. */
+  sealing?: SealDecision;
 }) => (
   <div className="flex w-full max-w-xl flex-col px-6 py-12 sm:px-8">
     <div className="flex items-start gap-4 sm:items-center sm:gap-6">
@@ -268,7 +274,9 @@ export const WelcomeMessage = ({
         </h2>
         <p className="mt-2 text-lg text-gryt-muted" style={{ maxWidth: "45ch", lineHeight: 1.5 }}>
           {conversationKind === "dm"
-            ? "Only the two of you can read this. Whoever runs the server can too."
+            ? sealing?.kind === "seal"
+              ? "Nothing here yet. What you send is encrypted on this device, so the server stores something it can\u2019t open."
+              : "Nothing here yet. This one isn\u2019t encrypted, so whoever runs the server can read it."
             : automated
               ? "Nothing here yet. This one fills up when a bot or the system posts."
               : "There\u2019s nothing to catch up on. Start wherever you like."}
