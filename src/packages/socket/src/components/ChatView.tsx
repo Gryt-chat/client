@@ -310,6 +310,18 @@ export const ChatView = memo(({
     return msg.sender_nickname || "Unknown User";
   }, [memberList]);
 
+  /* Their app deciding it cannot encrypt to us. We only see our own half of the
+     decision, so the newest message they sent is the only evidence (GRYT-1124). */
+  const peerInClear = useMemo(() => {
+    if (conversationKind !== "dm" || sealing?.kind !== "seal") return null;
+    for (let i = chatMessages.length - 1; i >= 0; i--) {
+      const message = chatMessages[i];
+      if (message.sender_server_id === currentUserId) continue;
+      return message.sealed ? null : getSenderName(message);
+    }
+    return null;
+  }, [chatMessages, conversationKind, currentUserId, getSenderName, sealing?.kind]);
+
   const getSenderAvatarUrl = useCallback((msg: ChatMessage): string | undefined => {
     const fileId = memberList?.[msg.sender_server_id]?.avatarFileId || msg.sender_avatar_file_id;
     const uploaded = fileId && serverHost ? getUploadsFileUrl(serverHost, fileId) : undefined;
@@ -575,7 +587,7 @@ export const ChatView = memo(({
           {/* Above the messages rather than under the header, so it is the
               first thing read on the way down to the composer, and so it
               scrolls with a long conversation instead of sitting over it. */}
-          {conversationKind === "dm" && <DirectMessagePrivacyNotice decision={sealing} />}
+          {conversationKind === "dm" && <DirectMessagePrivacyNotice decision={sealing} peerInClear={peerInClear} />}
           {conversationKind === "dm" && <MessageKeyPrompt />}
 
           {isVoiceChannelTextChat && !canViewVoiceChannelText && (
