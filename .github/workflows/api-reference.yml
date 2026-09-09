@@ -1,0 +1,24 @@
+name: API reference
+
+# The addon reference page in `docs` is generated from the doc comments in
+# src/packages/addons/src, so editing one leaves that page describing what is gone.
+
+# Runs the superproject's check here, on the pull request that causes it, rather
+# than leaving it to the nightly sweep over there. GRYT-1100.
+
+on:
+  pull_request:
+    paths:
+      - src/packages/addons/src/**
+      - .github/workflows/api-reference.yml
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reference:
+    uses: Gryt-chat/.github/.github/workflows/api-reference.yml@main
+    with:
+      component: client
