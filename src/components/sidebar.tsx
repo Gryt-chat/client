@@ -22,7 +22,7 @@ import {
   serverDetailsList as ServerDetailsListType,
   Servers,
 } from "@/settings/src/types/server";
-import { useServerManagement, useSockets } from "@/socket";
+import { setDmSpaceOpen, useDirectoryUnread, useDmSpaceOpen, useServerManagement, useSockets } from "@/socket";
 import { ConfirmDialog } from "@/socket/src/components/ConfirmDialog";
 import { MarkAsReadItem } from "@/socket/src/components/MarkAsReadItem";
 import { ServerDoctor } from "@/socket/src/components/ServerDoctor";
@@ -31,6 +31,7 @@ import { ServerStatusRing } from "@/socket/src/components/ServerStatusRing";
 import { MiniControls } from "@/webRTC/src/components/miniControls";
 
 import { useIdentityClaim } from "../hooks/useIdentityClaim";
+import { PiChatsFill } from "../lib/icons";
 import { PiBroadcastFill, PiBugFill, PiChatCircleDotsFill, PiGearFill, PiMicrophoneFill, PiPlus, PiSignInFill } from "../lib/icons";
 import { useReportForm } from "../lib/reports/useReportForm";
 
@@ -108,9 +109,31 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
     displayNickname,
     activeProfile?.avatarWorn,
   );
+  const dmSpaceOpen = useDmSpaceOpen();
+  const { total: dmUnread } = useDirectoryUnread();
+
   return (
     <div className="flex flex-col h-full gap-4 items-center justify-between" data-gryt="sidebar">
       <div className="flex flex-col gap-4 pt-2">
+        {/* Above the servers, because a conversation is not one of them. The
+            count is every unread direct message anywhere (GRYT-1134). */}
+        <Tooltip title="Direct messages" side="right">
+          <div className="relative">
+            <IconButton
+              aria-label="Direct messages"
+              tone={dmSpaceOpen ? "primary" : "ghost"}
+              onClick={() => setDmSpaceOpen(!dmSpaceOpen)}
+            >
+              <PiChatsFill size={20} />
+            </IconButton>
+            {dmUnread > 0 && (
+              <span className="pointer-events-none absolute -top-1 -right-1">
+                <Badge tone="unread">{dmUnread > 99 ? "99+" : dmUnread}</Badge>
+              </span>
+            )}
+          </div>
+        </Tooltip>
+        <div style={{ width: 26, height: 1, background: "var(--gryt-neutral-6)", alignSelf: "center" }} />
         <Reorder.Group
           axis="y"
           values={orderedServerHosts}

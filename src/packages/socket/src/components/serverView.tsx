@@ -19,6 +19,7 @@ import {
 } from "../dev/fakeParticipants";
 import { readFakeCallOptions, useFakeCallEvents } from "../dev/fakeServerEvents";
 import { useFakeSpeech } from "../dev/fakeSpeech";
+import { conversationFor, conversationOpened, usePendingConversation } from "../hooks/dmSpace";
 import { useAdminActions } from "../hooks/useAdminActions";
 import { useBlocks } from "../hooks/useBlocks";
 import { useCalls } from "../hooks/useCalls";
@@ -42,6 +43,7 @@ import { ChatView } from "./ChatView";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { ConnectionBanner } from "./ConnectionBanner";
 import { CreateChannelDialog } from "./CreateChannelDialog";
+import { DmSpaceSidebar } from "./DmSpaceSidebar";
 import { GroupDialog } from "./GroupDialog";
 import { IncomingCallCard } from "./IncomingCallCard";
 import { MemberSidebarPanel } from "./MemberSidebarPanel";
@@ -66,7 +68,11 @@ const fakeParticipantOptionsFromUrl = readFakeParticipantOptions(
     call, and `&fakecallmembers=0` reproduces a call that drew nobody. */
 const fakeCallOptionsFromUrl = readFakeCallOptions(window.location.search);
 
-export const ServerView = () => {
+/**
+ * `dmSpace` swaps the channel sidebar for every server's conversations and drops
+ * the member panel. The rest is the same view, keys and all (GRYT-1134).
+ */
+export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   const isMobile = useIsMobile();
   const isCompact = useIsCompact();
   const isTiny = useIsTinyWindow();
@@ -344,6 +350,18 @@ export const ServerView = () => {
     pendingDmTargetRef.current = null;
     setSelectedDmId(match.conversation_id);
   }, [directConversations, setSelectedDmId]);
+
+  /* A conversation the direct messages space asked for. Claimed on arrival,
+     because that space replaced this view and no event would have landed. */
+  const pendingConversation = usePendingConversation();
+  useEffect(() => {
+    const host = currentlyViewingServer?.host;
+    if (!host) return;
+    const wanted = conversationFor(host);
+    if (!wanted) return;
+    if (selectedDmId === wanted) conversationOpened(wanted);
+    else setSelectedDmId(wanted);
+  }, [currentlyViewingServer?.host, pendingConversation, selectedDmId, setSelectedDmId]);
 
   const requestOpenDm = useCallback((targetServerUserId: string) => {
     pendingDmTargetRef.current = targetServerUserId;
@@ -786,6 +804,13 @@ forumTags={activeDm ? [] : activeChannelForumTags}
               ...(isServerUnreachable && !isVoiceOnThisServer && { opacity: 0.5, pointerEvents: "none" as const }),
               transition: "opacity 0.3s ease",
             }}>
+            {dmSpace ? (
+              <DmSpaceSidebar
+                host={host}
+                selectedConversationId={visibleDmId}
+                onOpen={handleSelectDm}
+              />
+            ) : (
             <ServerSidebar
               sidebarOpen={leftSidebarOpen}
               sidebarWidthPx={SIDEBAR_WIDTH_PX}
@@ -835,6 +860,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
               mentionCounts={mentionCounts}
               streamSources={voiceStreamSources}
             />
+            )}
             <div className="flex grow" ref={voiceContainerRef} style={{ position: "relative", minWidth: 0 }}>
               <VoiceView
                 showVoiceView={showVoiceView && (!isCompact || voiceFocused)}
@@ -889,7 +915,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
             <MemberSidebarPanel
               // Closed for good, not collapsed: the server stops sending the list,
               // so an open panel would show whatever was last cached.
-              sidebarOpen={rightSidebarOpen && canViewMembers}
+              sidebarOpen={rightSidebarOpen && canViewMembers && !dmSpace}
               sidebarWidthPx={SIDEBAR_WIDTH_PX}
               hoverPx={SIDEBAR_HOVER_PX}
               contentRef={rightSidebarContentRef}

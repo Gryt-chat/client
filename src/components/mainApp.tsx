@@ -1,7 +1,7 @@
 import { Button } from "@gryt/ui";
 
 import { useSettings } from "@/settings";
-import { useServerManagement } from "@/socket";
+import { DmFeeds, useDmSpaceOpen, useServerManagement } from "@/socket";
 import { ServerView } from "@/socket/src/components/serverView";
 import { useIsTinyWindow } from "@/socket/src/hooks/useNarrowWindow";
 
@@ -17,6 +17,7 @@ export function MainApp() {
   /* A window this small is one channel, so the shell around it goes: at 300px the
      padding and the rail are a fifth of it. `ServerView` drops the rest. */
   const isTiny = useIsTinyWindow();
+  const dmSpaceOpen = useDmSpaceOpen();
 
   /* What a bug report calls "where you were". Recorded here rather than in the
      report form, which would always answer "the report form". */
@@ -31,7 +32,13 @@ export function MainApp() {
     >
       {!isTiny && <Sidebar setShowAddServer={setShowAddServer} />}
 
-      {showDiscovery ? (
+      {/* Mounted whatever is on screen: the space needs every server's
+          conversations, not just the one being looked at. */}
+      <DmFeeds />
+
+      {dmSpaceOpen && Object.keys(servers).length > 0 ? (
+        <ServerView dmSpace />
+      ) : showDiscovery ? (
         <Discovery />
       ) : Object.keys(servers).length > 0 ? (
         <ServerView />
