@@ -10,6 +10,7 @@ import {
   electronRequiredAction,
   getStoredTokens,
   getValidElectronToken,
+  RefreshRejectedError,
   refreshTokens,
   storeTokens,
 } from './electron-auth';
@@ -75,6 +76,17 @@ function scheduleProactiveRefresh(keycloak: Keycloak): void {
   refreshTimerHandle = setTimeout(() => doProactiveRefresh(keycloak), refreshIn * 1000);
 }
 
+let refreshFailures = 0;
+
+/**
+ * How long to wait after a failed refresh: 30s doubling to five minutes, with
+ * jitter so every client does not come back at the same instant.
+ */
+function retryDelayMs(failures: number): number {
+  const base = Math.min(30_000 * 2 ** (failures - 1), 300_000);
+  return base * (0.75 + Math.random() * 0.5);
+}
+
 async function doProactiveRefresh(keycloak: Keycloak): Promise<void> {
   console.log("[Auth:KC] Proactive token refresh triggered");
   try {
@@ -84,10 +96,25 @@ async function doProactiveRefresh(keycloak: Keycloak): Promise<void> {
       await keycloak.updateToken(70);
       console.log("[Auth:KC] Proactive refresh (browser) succeeded — new exp:", keycloak.tokenParsed?.exp);
     }
+    refreshFailures = 0;
     scheduleProactiveRefresh(keycloak);
   } catch (e) {
     console.error("[Auth:KC] Proactive refresh failed:", e);
-    refreshTimerHandle = setTimeout(() => doProactiveRefresh(keycloak), 30_000);
+
+    /* A rejected grant is gone and already cleared. Anything else ends, so
+       back off and keep the session (GRYT-1104). */
+    if (e instanceof RefreshRejectedError) {
+      console.error("[Auth:KC] Refresh token rejected — this session is over");
+      refreshFailures = 0;
+      return;
+    }
+
+    refreshFailures += 1;
+    const wait = retryDelayMs(refreshFailures);
+    console.warn(
+      `[Auth:KC] Provider unreachable (attempt ${refreshFailures}) — retrying in ${Math.round(wait / 1000)}s`,
+    );
+    refreshTimerHandle = setTimeout(() => doProactiveRefresh(keycloak), wait);
   }
 }
 

@@ -21,6 +21,7 @@ jobs:
       - run: yarn install --frozen-lockfile
       - run: yarn test:updater-bridge
       - run: yarn test:server-notice
+      - run: yarn test:auth-outage
       - run: yarn test:identity-vault
       - run: yarn test:identity-restart
       - run: yarn test:identity-certificate
