@@ -166,6 +166,9 @@ export const ServerSidebar = ({
               padding: "2px 6px",
             }}>
               <ChannelList
+                /* The rail has a button for them, and clicking a member opens
+                   one, so the sidebar stops carrying a copy (GRYT-1120). */
+                showDirectMessages={false}
                 channels={channels}
                 items={sidebarItems}
                 serverHost={serverHost}

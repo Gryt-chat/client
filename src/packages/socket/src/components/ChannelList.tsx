@@ -65,6 +65,7 @@ export const ChannelList = ({
   onSelectDm,
   onHideDm,
   onManageGroup,
+  showDirectMessages = true,
 }: {
   channels: Channel[];
   items?: SidebarItem[];
@@ -101,6 +102,9 @@ export const ChannelList = ({
   onHideDm?: (conversation: DirectConversation) => void;
   /** Open the settings for a group. Absent means no group management. */
   onManageGroup?: (conversation: DirectConversation) => void;
+  /* False on desktop since GRYT-1120: conversations live in their own space,
+     and a member row opens one. Mobile has no rail, so it keeps them. */
+  showDirectMessages?: boolean;
 }) => {
   // The same analyser source the voice tile uses, so the row's ring and the
   // tile's agree. false takes no handle; useMicrophone is a singleton.
@@ -641,7 +645,7 @@ export const ChannelList = ({
 
   /** Outside the reorder group: these are not sidebar items an operator
       arranges, and a channel does not belong among them. */
-  const directMessages = onSelectDm ? (
+  const directMessages = onSelectDm && showDirectMessages ? (
     <>
       <DirectMessageList
         title="Direct messages"
