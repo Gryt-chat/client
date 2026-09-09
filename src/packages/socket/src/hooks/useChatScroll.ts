@@ -48,8 +48,8 @@ export function useChatScroll(
     isAtBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < AT_BOTTOM_THRESHOLD;
   }, []);
 
-  // Anchor-based: track the first visible message and its offset, so prepends can
-  // be restored. content-visibility:auto makes scrollHeight estimates unreliable.
+  // Anchor-based: track the first visible message and its offset, so a prepend of
+  // older messages can be undone. Their combined height is not known in advance.
   const anchorRef = useRef<ScrollAnchor | null>(null);
 
   const updateAnchor = useCallback(() => {
@@ -127,8 +127,8 @@ export function useChatScroll(
   }, [chatMessages, scrollToBottom]);
 
   /**
-   * Hold the bottom while the content is still settling — images with no stored
-   * dimensions, and `content-visibility: auto` rows that are 60px until rendered.
+   * Hold the bottom while the content is still settling — an image the server
+   * stored no dimensions for, so the row it is in grows once it loads.
    */
   useEffect(() => {
     const el = scrollRef.current;

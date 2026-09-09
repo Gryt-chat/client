@@ -695,12 +695,6 @@ body {
   margin-bottom: 12px;
 }
 
-/* Let the browser skip layout/paint for off-screen messages */
-.chat-scroll-container > [data-message-id] {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 60px;
-}
-
 /* ── Attachment images in messages ─────────────────────────── */
 
 .chat-attachment-image-wrapper {
