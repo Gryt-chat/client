@@ -19,6 +19,7 @@ import {
 } from "../dev/fakeParticipants";
 import { readFakeCallOptions, useFakeCallEvents } from "../dev/fakeServerEvents";
 import { useFakeSpeech } from "../dev/fakeSpeech";
+import { conversationFor, conversationOpened, usePendingConversation } from "../hooks/dmSpace";
 import { useAdminActions } from "../hooks/useAdminActions";
 import { useBlocks } from "../hooks/useBlocks";
 import { useCalls } from "../hooks/useCalls";
@@ -344,6 +345,18 @@ export const ServerView = () => {
     pendingDmTargetRef.current = null;
     setSelectedDmId(match.conversation_id);
   }, [directConversations, setSelectedDmId]);
+
+  /* A conversation the direct messages space asked for. Claimed on arrival,
+     because that space replaced this view and no event would have landed. */
+  const pendingConversation = usePendingConversation();
+  useEffect(() => {
+    const host = currentlyViewingServer?.host;
+    if (!host) return;
+    const wanted = conversationFor(host);
+    if (!wanted) return;
+    if (selectedDmId === wanted) conversationOpened(wanted);
+    else setSelectedDmId(wanted);
+  }, [currentlyViewingServer?.host, pendingConversation, selectedDmId, setSelectedDmId]);
 
   const requestOpenDm = useCallback((targetServerUserId: string) => {
     pendingDmTargetRef.current = targetServerUserId;

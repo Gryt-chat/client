@@ -1,11 +1,9 @@
+import type { DirectConversation } from "@gryt/core";
 import { useSyncExternalStore } from "react";
 
-import type { DirectConversation } from "@gryt/core";
-
 /**
- * Every direct conversation this client can see, across every server it is
- * connected to. The list in the direct messages space is the only thing that
- * needs all of them at once (GRYT-1134).
+ * Every direct conversation, across every connected server. Only the direct
+ * messages space needs all of them at once (GRYT-1134).
  */
 
 /** A conversation and the server it belongs to. Never merged across hosts. */

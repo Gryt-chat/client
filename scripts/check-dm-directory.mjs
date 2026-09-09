@@ -24,8 +24,7 @@ resetDirectory();
 setHostConversations("a:1", [conv("dm_1", "2026-09-09T10:00:00Z")]);
 assert.deepEqual(ids(), ["a:1/dm_1"]);
 
-/* ── the same nickname on two servers is two rows ───────────────────────────
-   The client cannot tell whether they are one person, so nothing is merged. */
+/* Two servers, two rows: the client cannot tell whether they are one person. */
 setHostConversations("b:2", [conv("dm_9", "2026-09-09T12:00:00Z")]);
 assert.deepEqual(ids(), ["b:2/dm_9", "a:1/dm_1"], "not newest first across hosts");
 assert.equal(getDirectorySnapshot().length, 2, "two hosts collapsed into one row");
@@ -37,7 +36,7 @@ setHostConversations("a:1", [
 ]);
 assert.deepEqual(ids(), ["a:1/dm_2", "b:2/dm_9", "a:1/dm_1"]);
 
-/* ── a conversation with nothing in it sorts last rather than vanishing ───── */
+/* A conversation with nothing in it sorts last rather than vanishing. */
 setHostConversations("c:3", [conv("dm_new", null)]);
 assert.equal(ids().at(-1), "c:3/dm_new", "an empty conversation was dropped or floated");
 
@@ -49,9 +48,8 @@ assert.deepEqual(ids(), ["a:1/dm_2", "b:2/dm_9", "c:3/dm_new"]);
 setHostConversations("c:3", []);
 assert.deepEqual(ids(), ["a:1/dm_2", "b:2/dm_9"]);
 
-/* And saying it again changes nothing. A host holding nothing and a host that
-   was never there are the same answer, and a rebuild on each repeat repaints
-   the list for no reason. */
+/* Saying it again changes nothing: a host holding nothing and a host that was
+   never there are the same answer. */
 {
   const before = getDirectorySnapshot();
   setHostConversations("c:3", []);
@@ -59,9 +57,8 @@ assert.deepEqual(ids(), ["a:1/dm_2", "b:2/dm_9"]);
   setHostConversations("never-seen:9", []);
   assert.equal(getDirectorySnapshot(), before, "an empty answer from a new host rebuilt the list");
 
-  /* And it is not being kept. Invisible in the list either way, so the count is
-     the only thing that can say the map is not growing for every server that
-     ever answered with nothing. */
+  /* Invisible in the list either way, so the count is the only thing that can
+     say the map is not growing per server that answered with nothing. */
   assert.equal(directoryHostCount(), 2, "a host holding nothing is still in the map");
 }
 

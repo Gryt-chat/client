@@ -1,4 +1,7 @@
 // Hooks
+export * from "./src/hooks/dmDirectory";
+export * from "./src/hooks/dmSpace";
+export * from "./src/hooks/useDirectoryUnread";
 export * from "./src/hooks/useServerManagement";
 export * from "./src/hooks/useSockets";
 
@@ -7,6 +10,8 @@ export * from "./src/utils/joinServerOnce";
 
 // Components
 export { DeviceSwitchModal } from "./src/components/DeviceSwitchModal";
+export { DirectMessagesSpace } from "./src/components/DirectMessagesSpace";
+export { DmFeeds } from "./src/components/DmFeeds";
 export { InviteAcceptModal } from "./src/components/InviteAcceptModal";
 export { ServerDoctor } from "./src/components/ServerDoctor";
 export { ServerPluginsModal } from "./src/components/ServerPluginsModal";
