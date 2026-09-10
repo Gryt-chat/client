@@ -1596,7 +1596,12 @@ body {
    The kind of a change is the structure rather than a badge on it: the label
    sits in a gutter and the changes sit beside it, one hairline per group. */
 
+/* Scrolls, and shrinks before the footer does. `min-height: 0` because a flex
+   child refuses to shrink below its content without it, and then nothing scrolls. */
 .whats-new-pad {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   padding: 1.25rem 1.375rem 0.25rem;
 }
 
@@ -1697,6 +1702,8 @@ body {
 }
 
 .whats-new-foot {
+  /* Never shrinks. It holds the way out, so it is the last thing that gives. */
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;

@@ -4,6 +4,7 @@ export * from "./src/hooks/dmSpace";
 export * from "./src/hooks/useDirectoryUnread";
 export * from "./src/hooks/useServerManagement";
 export * from "./src/hooks/useSockets";
+export * from "./src/hooks/whatsNewRequest";
 
 // Utils
 export * from "./src/utils/joinServerOnce";

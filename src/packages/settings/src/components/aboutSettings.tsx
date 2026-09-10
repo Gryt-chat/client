@@ -2,6 +2,7 @@ import { Button, Chip, Divider, Surface, Switch } from "@gryt/ui";
 import { useCallback, useEffect, useState } from "react";
 
 import { Wordmark } from "@/common";
+import { requestWhatsNew } from "@/socket";
 
 import { FaGithub } from "../../../../lib/brandIcons";
 import { getElectronAPI, isElectron, UpdateStatus } from "../../../../lib/electron";
@@ -122,6 +123,9 @@ function UpdateControls() {
         <div className="flex items-center gap-3">
           <span className="font-medium">Running</span>
           <Chip tone="neutral">v{appVersion}</Chip>
+          <Button tone="ghost" size="xsmall" onClick={requestWhatsNew}>
+            What&rsquo;s new
+          </Button>
           {betaChannel && <Chip tone="warning" label="Beta" />}
           {/* What is installed, not what has been asked for: a pending switch
               is described by the toggle below. */}
