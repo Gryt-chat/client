@@ -721,6 +721,8 @@ forumTags={activeDm ? [] : activeChannelForumTags}
           </div>
         ) : isMobile ? (
           <MobileServerView
+            dmSpace={dmSpace}
+            onOpenDm={requestOpenDm}
             serverName={serverName}
             serverRole={currentUserRole}
             isServerUnreachable={isServerUnreachable}

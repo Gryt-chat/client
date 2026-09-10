@@ -1,17 +1,20 @@
-import { IconButton } from "@gryt/ui";
+import { Badge, Button, IconButton } from "@gryt/ui";
 import type { StreamSources } from "@gryt/voice";
 import { useCallback, useState } from "react";
 
 import type { SealDecision } from "@/common";
 import type { Channel, SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
 
-import { PiList, PiUsersFill } from "../../../../lib/icons";
+import { PiChatsFill, PiList, PiUsersFill } from "../../../../lib/icons";
+import { setDmSpaceOpen } from "../hooks/dmSpace";
 import type { DirectConversation } from "../hooks/useDirectMessages";
+import { useDirectoryUnread } from "../hooks/useDirectoryUnread";
 import type { PeerLatencyStats } from "../hooks/usePeerLatency";
 import type { Client } from "../types/clients";
 import { ChannelList } from "./ChannelList";
 import type { ChatMessage } from "./chatUtils";
 import { ChatView } from "./ChatView";
+import { DmSpaceSidebar } from "./DmSpaceSidebar";
 import type { AdminActions, MemberInfo } from "./MemberSidebar";
 import { MemberSidebar } from "./MemberSidebar";
 import { MobileSheet } from "./MobileSheet";
@@ -22,6 +25,9 @@ import { VoiceSheetButton } from "./VoiceSheetButton";
 type Role = string;
 
 interface MobileServerViewProps {
+  /** The direct messages space, in place of this server's own channels. */
+  dmSpace?: boolean;
+  onOpenDm?: (targetServerUserId: string) => void;
   serverName?: string;
   serverRole?: Role;
   isServerUnreachable: boolean;
@@ -67,7 +73,7 @@ interface MobileServerViewProps {
   mentionCounts?: Map<string, number>;
   directConversations?: DirectConversation[];
   selectedDmId?: string | null;
-  onSelectDm?: (conversation: DirectConversation) => void;
+  onSelectDm?: (conversation: { conversation_id: string }) => void;
   onHideDm?: (conversation: DirectConversation) => void;
   /** Open the settings for a group. Absent means no group management. */
   onManageGroup?: (conversation: DirectConversation) => void;
@@ -118,6 +124,7 @@ interface MobileServerViewProps {
 export const MobileServerView = (props: MobileServerViewProps) => {
   const { onChannelClick } = props;
   const [channelsOpen, setChannelsOpen] = useState(false);
+  const { total: dmUnread } = useDirectoryUnread();
   const [membersOpen, setMembersOpen] = useState(false);
 
   const handleChannelClick = useCallback(
@@ -126,6 +133,24 @@ export const MobileServerView = (props: MobileServerViewProps) => {
       setChannelsOpen(false);
     },
     [onChannelClick],
+  );
+
+  /* The sheet covers the conversation it just opened, so it closes with it. */
+  const onOpenDm = props.onOpenDm;
+  const handleOpenDm = useCallback(
+    (targetServerUserId: string) => {
+      onOpenDm?.(targetServerUserId);
+      setMembersOpen(false);
+    },
+    [onOpenDm],
+  );
+
+  const handleSelectDmHere = useCallback(
+    (conversation: { conversation_id: string }) => {
+      props.onSelectDm?.(conversation);
+      setChannelsOpen(false);
+    },
+    [props],
   );
 
   return (
@@ -154,12 +179,18 @@ export const MobileServerView = (props: MobileServerViewProps) => {
           {props.channelName ?? props.serverName ?? ""}
         </span>
 
-        <IconButton tone="ghost" size="xsmall"
-          onClick={() => setMembersOpen(true)}
-          aria-label="Open members"
-        >
-          <PiUsersFill size={22} />
-        </IconButton>
+        {props.dmSpace ? (
+          /* No member list belongs to a list of conversations across servers, so
+             the button goes rather than opening something empty. */
+          <span style={{ width: 22 }} />
+        ) : (
+          <IconButton tone="ghost" size="xsmall"
+            onClick={() => setMembersOpen(true)}
+            aria-label="Open members"
+          >
+            <PiUsersFill size={22} />
+          </IconButton>
+        )}
       </div>
 
       {/* Chat (main content) */}
@@ -212,8 +243,17 @@ export const MobileServerView = (props: MobileServerViewProps) => {
         />
       </div>
 
-      {/* Channels sheet (left) */}
+      {/* Channels sheet (left), or every server's conversations in the space */}
       <MobileSheet open={channelsOpen} onClose={() => setChannelsOpen(false)} side="left">
+        {props.dmSpace ? (
+          <div style={{ height: "100%", overflow: "hidden" }}>
+            <DmSpaceSidebar
+              host={props.serverHost}
+              selectedConversationId={props.selectedDmId ?? null}
+              onOpen={handleSelectDmHere}
+            />
+          </div>
+        ) : (
         <div className="flex flex-col" style={{ height: "100%", overflow: "hidden" }}>
           <div className="p-3" style={{ flexShrink: 0 }}>
             <ServerHeader
@@ -230,6 +270,23 @@ export const MobileServerView = (props: MobileServerViewProps) => {
               onLeave={props.onLeave}
             />
           </div>
+          {/* The rail's button, for the widths that have no rail. */}
+          <div className="px-3 pb-2" style={{ flexShrink: 0 }}>
+            <Button
+              tone="ghost"
+              size="small"
+              style={{ width: "100%", justifyContent: "flex-start", gap: 8 }}
+              onClick={() => {
+                setDmSpaceOpen(true);
+                setChannelsOpen(false);
+              }}
+            >
+              <PiChatsFill size={18} />
+              <span style={{ flex: 1, textAlign: "left" }}>Direct messages</span>
+              {dmUnread > 0 && <Badge tone="unread">{dmUnread > 99 ? "99+" : dmUnread}</Badge>}
+            </Button>
+          </div>
+
           <div style={{ flex: 1, overflowY: "auto", padding: "0 12px 12px" }}>
             <ChannelList
               channels={props.channels}
@@ -262,9 +319,11 @@ export const MobileServerView = (props: MobileServerViewProps) => {
               onSelectDm={props.onSelectDm}
               onHideDm={props.onHideDm}
               onManageGroup={props.onManageGroup}
+              showDirectMessages={false}
             />
           </div>
         </div>
+        )}
       </MobileSheet>
 
       {/* Members sheet (right) */}
@@ -278,6 +337,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
             currentServerConnected={props.currentServerConnected}
             serverHost={props.serverHost}
             adminActions={props.adminActions}
+            onOpenDm={handleOpenDm}
           />
         </div>
       </MobileSheet>
