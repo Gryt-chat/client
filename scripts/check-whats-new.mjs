@@ -62,7 +62,7 @@ const findEntryBody = block(
   .replace(" as { app?: Entry[] } | null", "");
 
 /** One run of the effect, with the store, the network and the waiting faked. */
-async function run({ seen, version, app, offline, storeUser, joined, attempts, abortOn }) {
+async function run({ seen, version, app, offline, storeUser, joined, attempts, abortOn, asked }) {
   const store = { value: seen };
   const shown = [];
   const fetched = [];
@@ -91,7 +91,7 @@ async function run({ seen, version, app, offline, storeUser, joined, attempts, a
   }, CHANGELOG_URL, RETRY_DELAYS_MS);
 
   const fn = new Function(
-    "getUserValue", "setUserValue", "findEntry", "setEntry", "version", "AbortController", "SEEN_KEY", "storeUser", "hasJoinedAnything",
+    "getUserValue", "setUserValue", "findEntry", "setEntry", "version", "AbortController", "SEEN_KEY", "storeUser", "hasJoinedAnything", "asked",
     `return (async () => {
        const cleanup = (() => ${body})();
        for (let i = 0; i < 40; i++) await new Promise(r => setTimeout(r, 0));
@@ -114,6 +114,9 @@ async function run({ seen, version, app, offline, storeUser, joined, attempts, a
     SEEN_KEY,
     storeUser === undefined ? "user_1" : storeUser,
     () => joined ?? false,
+    /* How many times the About page has asked. Zero is a launch nobody asked for,
+       which is every case below that does not say otherwise. */
+    asked ?? 0,
   );
 
   return { seen: store.value, shown, fetched, slept, urls: fetched.map((f) => f.url) };
@@ -126,6 +129,19 @@ const LINE = { version: "1.10.3", date: "2026-09-08", line: "Joining voice waits
   const r = await run({ seen: "1.10.2", version: "1.10.3", app: [LINE] });
   assert.deepEqual(r.shown, [LINE], "the line for the running version was not shown");
   assert.equal(r.seen, "1.10.3", "the version was not recorded, so it would show again");
+}
+
+/* Asked for from the About page. The version already seen is the only one that
+   button is ever pressed on, so this is the case it exists for (GRYT-1145). */
+{
+  const r = await run({ seen: "1.10.3", version: "1.10.3", app: [LINE], asked: 1 });
+  assert.deepEqual(r.shown, [LINE], "asking to see the note again showed nothing, on the version already seen");
+}
+
+// Asked on a fresh install, which otherwise stays quiet on purpose.
+{
+  const r = await run({ seen: null, version: "1.10.3", app: [LINE], joined: false, asked: 1 });
+  assert.deepEqual(r.shown, [LINE], "asking to see the note on a fresh install showed nothing");
 }
 
 // Same version again: nothing fetched, nothing shown.
@@ -403,9 +419,11 @@ assert.match(
   /useEffect\(\(\) => onUserStoreLoaded\(setStoreUser\), \[\]\)/,
   `${SOURCE} no longer subscribes to the user store loading`,
 );
+/* That storeUser is a dependency, not that it is the only one. The About page's
+   request is one too (GRYT-1145), and an exact list broke when it arrived. */
 assert.match(
   source,
-  /\}, \[version, storeUser\]\)/,
+  /\}, \[version, storeUser(, [a-zA-Z]+)*\]\)/,
   `${SOURCE}'s effect no longer re-runs when the store loads`,
 );
 
