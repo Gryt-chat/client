@@ -1,7 +1,7 @@
 import { Button } from "@gryt/ui";
 
 import { useSettings } from "@/settings";
-import { DmFeeds, useDmSpaceOpen, useServerManagement } from "@/socket";
+import { DmFeeds, useDmSpaceOpen, useRememberView, useServerManagement } from "@/socket";
 import { ServerView } from "@/socket/src/components/serverView";
 import { useIsTinyWindow } from "@/socket/src/hooks/useNarrowWindow";
 
@@ -11,7 +11,7 @@ import { OnboardingTour } from "./onboarding/OnboardingTour";
 import { Sidebar } from "./sidebar";
 
 export function MainApp() {
-  const { servers, setShowAddServer, showDiscovery } = useServerManagement();
+  const { servers, setShowAddServer, showDiscovery, setShowDiscovery, currentlyViewingServer } = useServerManagement();
   const { showTour, dismissTour } = useSettings();
 
   /* A window this small is one channel, so the shell around it goes: at 300px the
@@ -24,6 +24,16 @@ export function MainApp() {
   useRememberPlace(
     showDiscovery ? "discovery" : Object.keys(servers).length > 0 ? "server" : "empty",
   );
+
+  /* The page to reopen on the next launch. Not the one above, which is only what
+     a bug report says and is never read back. */
+  useRememberView({
+    ready: Boolean(currentlyViewingServer),
+    host: currentlyViewingServer?.host ?? null,
+    dmSpaceOpen,
+    showDiscovery,
+    setShowDiscovery,
+  });
 
   return (
     <div

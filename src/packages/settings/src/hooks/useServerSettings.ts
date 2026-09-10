@@ -12,6 +12,7 @@ import {
   rememberLanServersSeen as rememberSeen,
   seenLanServers as readSeen,
 } from "./lanServerMemory";
+import { lastViewHost, readLastView } from "./lastView";
 import {
   getUserValue,
   loadForUser,
@@ -150,16 +151,20 @@ function useServerSettingsHook(): ServerSettings {
   }, []);
 
   /**
-   * Open whatever is at the top of the rail. This took insertion order, so
-   * dragging a server up changed where it appeared and not what opened (GRYT-642).
+   * Open where you were when Gryt last closed, or the top of the rail when there
+   * is nowhere to go back to. Rail order rather than insertion order (GRYT-642).
    */
   useEffect(() => {
     if (hasAutoFocused.current) return;
 
+    /* Read here, before anything has had a chance to write the launch's own
+       default over it. A server since removed falls through to the rail. */
+    const remembered = lastViewHost(readLastView());
     const [topHost] = orderServerHosts(servers, serverOrder);
-    if (!topHost) return;
+    const host = remembered && servers[remembered] ? remembered : topHost;
+    if (!host) return;
 
-    const server = servers[topHost];
+    const server = servers[host];
     if (!server) return;
 
     setCurrentlyViewingServer(server);

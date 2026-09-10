@@ -128,4 +128,80 @@ const dms = read("src/packages/socket/src/hooks/useDirectMessages.ts");
   assert.ok(/openDmSpace\(\)/.test(mobile), "the phone opens the space without restoring, so it disagrees with the rail");
 }
 
+/* ── surviving a restart ─────────────────────────────────────────────────── */
+
+/* lastView's own functions, with the store import swapped for a fake. The module
+   is one import and plain TypeScript, so Node's stripper makes it runnable. */
+const { stripTypeScriptTypes } = await import("node:module");
+const lastViewSource = read("src/packages/settings/src/hooks/lastView.ts");
+function loadLastView(store) {
+  const body = stripTypeScriptTypes(
+    lastViewSource.replace(/^import .*userStorage";\n/m, ""),
+  ).replace(/^export /gm, "");
+  return new Function(
+    "getUserValue",
+    "setUserValue",
+    `${body}\nreturn { readLastView, writeLastView, lastViewHost };`,
+  )(
+    (key, fallback) => (key in store ? store[key] : fallback),
+    (key, value) => { store[key] = value; },
+  );
+}
+
+// Each kind of page goes to disk and comes back the same.
+{
+  for (const view of [
+    { kind: "server", host: "a.example" },
+    { kind: "dm", host: "a.example", conversationId: "dm-1" },
+    { kind: "dm", host: "a.example", conversationId: null },
+    { kind: "discovery" },
+  ]) {
+    const store = {};
+    const lv = loadLastView(store);
+    lv.writeLastView(view);
+    assert.deepEqual(loadLastView(store).readLastView(), view, `${JSON.stringify(view)} did not survive a restart`);
+  }
+}
+
+/* Rubbish on disk is nothing, so a launch falls back to the top of the rail rather
+   than crashing on, or opening, whatever an older build wrote there. */
+{
+  for (const bad of [null, "server", 7, {}, { kind: "server" }, { kind: "dm", host: 3 }, { kind: "dm", host: "a", conversationId: 5 }, { kind: "channel", host: "a" }]) {
+    assert.equal(loadLastView({ lastView: bad }).readLastView(), null, `${JSON.stringify(bad)} was read as a page`);
+  }
+}
+
+// The server underneath, for launch focus: a server or a conversation, never Discovery.
+{
+  const { lastViewHost } = loadLastView({});
+  assert.equal(lastViewHost({ kind: "server", host: "a.example" }), "a.example");
+  assert.equal(lastViewHost({ kind: "dm", host: "b.example", conversationId: null }), "b.example");
+  assert.equal(lastViewHost({ kind: "discovery" }), null, "Discovery named a server to open");
+  assert.equal(lastViewHost(null), null);
+}
+
+/* Launch focus prefers where you were, and only while that server is still yours.
+   A server removed since falls through to the rail rather than opening nothing. */
+{
+  const settings = read("src/packages/settings/src/hooks/useServerSettings.ts");
+  assert.ok(
+    /remembered && servers\[remembered\] \? remembered : topHost/.test(settings),
+    "launch opens the top of the rail even when it knows where you were, or opens a removed server",
+  );
+}
+
+/* Read before any write. The launch's own default page would otherwise be saved
+   over the one that was open, and every restart would land on the rail's top. */
+{
+  const remember = read("src/packages/socket/src/hooks/useRememberView.ts");
+  assert.ok(
+    /if \(!ready \|\| !restored\.current \|\| !host\) return;/.test(remember),
+    "the page is written before the last one has been read back",
+  );
+  assert.ok(
+    /conversationId: written \? conversation!\.conversationId : null/.test(remember),
+    "an empty conversation is saved to reopen, though the list drops it on the way out",
+  );
+}
+
 console.log("dm destination: ok, a place you go, and empty only while you are there");

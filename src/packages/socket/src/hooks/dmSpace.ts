@@ -25,11 +25,26 @@ let last: { host: string; conversationId: string } | null = null;
 
 /** The space showed this one, so it is where to come back to. */
 export function rememberConversation(host: string, conversationId: string): void {
+  // The same place again is not news, and a fresh object would re-render readers.
+  if (last && last.host === host && last.conversationId === conversationId) return;
   last = { host, conversationId };
+  emit();
 }
 
 export function lastConversation(): { host: string; conversationId: string } | null {
   return last;
+}
+
+/** Re-renders when the space moves, which the plain read above cannot. */
+export function useLastConversation(): { host: string; conversationId: string } | null {
+  return useSyncExternalStore(
+    (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    lastConversation,
+    lastConversation,
+  );
 }
 
 export function setDmSpaceOpen(next: boolean): void {
