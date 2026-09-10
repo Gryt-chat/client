@@ -19,6 +19,19 @@ function emit() {
    listed only while it is this one, so clicking through people leaves no rows. */
 let visiting: string | null = null;
 
+/* Where the space was, kept here rather than in the view: leaving unmounts the
+   view, so state inside it is gone on the way back. GRYT-1146. */
+let last: { host: string; conversationId: string } | null = null;
+
+/** The space showed this one, so it is where to come back to. */
+export function rememberConversation(host: string, conversationId: string): void {
+  last = { host, conversationId };
+}
+
+export function lastConversation(): { host: string; conversationId: string } | null {
+  return last;
+}
+
 export function setDmSpaceOpen(next: boolean): void {
   if (open === next) return;
   open = next;
@@ -86,6 +99,7 @@ export function usePendingConversation(): { host: string; conversationId: string
 export function resetDmSpace(): void {
   open = false;
   visiting = null;
+  last = null;
   pending = null;
   emit();
 }

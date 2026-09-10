@@ -2,6 +2,7 @@
 export * from "./src/hooks/dmDirectory";
 export * from "./src/hooks/dmSpace";
 export * from "./src/hooks/useDirectoryUnread";
+export * from "./src/hooks/useOpenDmSpace";
 export * from "./src/hooks/useServerManagement";
 export * from "./src/hooks/useSockets";
 export * from "./src/hooks/whatsNewRequest";

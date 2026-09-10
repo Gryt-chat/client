@@ -6,9 +6,9 @@ import type { SealDecision } from "@/common";
 import type { Channel, SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
 
 import { PiChatsFill, PiList, PiUsersFill } from "../../../../lib/icons";
-import { setDmSpaceOpen } from "../hooks/dmSpace";
 import type { DirectConversation } from "../hooks/useDirectMessages";
 import { useDirectoryUnread } from "../hooks/useDirectoryUnread";
+import { useOpenDmSpace } from "../hooks/useOpenDmSpace";
 import type { PeerLatencyStats } from "../hooks/usePeerLatency";
 import type { Client } from "../types/clients";
 import { ChannelList } from "./ChannelList";
@@ -125,6 +125,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
   const { onChannelClick } = props;
   const [channelsOpen, setChannelsOpen] = useState(false);
   const { total: dmUnread } = useDirectoryUnread();
+  const openDmSpace = useOpenDmSpace();
   const [membersOpen, setMembersOpen] = useState(false);
 
   const handleChannelClick = useCallback(
@@ -277,7 +278,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
               size="small"
               style={{ width: "100%", justifyContent: "flex-start", gap: 8 }}
               onClick={() => {
-                setDmSpaceOpen(true);
+                openDmSpace();
                 setChannelsOpen(false);
               }}
             >

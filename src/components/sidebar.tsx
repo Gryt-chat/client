@@ -21,7 +21,7 @@ import {
   serverDetailsList as ServerDetailsListType,
   Servers,
 } from "@/settings/src/types/server";
-import { setDmSpaceOpen, useDirectoryUnread, useDmSpaceOpen, useServerChannelUnread, useServerManagement, useSockets } from "@/socket";
+import { useDirectoryUnread, useDmSpaceOpen, useOpenDmSpace, useServerChannelUnread, useServerManagement, useSockets } from "@/socket";
 import { ConfirmDialog } from "@/socket/src/components/ConfirmDialog";
 import { MarkAsReadItem } from "@/socket/src/components/MarkAsReadItem";
 import { ServerDoctor } from "@/socket/src/components/ServerDoctor";
@@ -112,6 +112,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
     activeProfile?.avatarWorn,
   );
   const dmSpaceOpen = useDmSpaceOpen();
+  const openDmSpace = useOpenDmSpace();
   const { total: dmUnread } = useDirectoryUnread();
 
   return (
@@ -124,9 +125,9 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
             <IconButton
               aria-label="Direct messages"
               tone={dmSpaceOpen ? "primary" : "ghost"}
-              /* A destination, not a toggle. Pressing it while it is open should
-                 leave you where you are, the way a server icon does. */
-              onClick={() => setDmSpaceOpen(true)}
+              /* A destination, not a toggle, and it puts you back where you were
+                 rather than on the overview, the way a server icon does. */
+              onClick={openDmSpace}
             >
               <PiChatsFill size={20} />
             </IconButton>

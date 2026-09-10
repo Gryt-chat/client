@@ -40,15 +40,25 @@ const space = await import("../src/packages/socket/src/hooks/dmSpace.ts");
   assert.equal(space.visitingConversation(), "dm-2", "the second person clicked did not replace the first");
 }
 
-/* Coming back through the rail is a fresh visit with nothing asked for, which is
-   the overview. Opening again must not resurrect the last conversation. */
+/* Where the space was outlives leaving it. The view unmounts on the way to a
+   server, so this memory has to live in the store or it is gone. */
 {
   space.resetDmSpace();
-  space.requestConversation("a.example", "dm-1");
+  assert.equal(space.lastConversation(), null, "a fresh space remembers somewhere");
+  space.rememberConversation("a.example", "dm-1");
   space.setDmSpaceOpen(true);
   space.setDmSpaceOpen(false);
-  space.setDmSpaceOpen(true);
-  assert.equal(space.visitingConversation(), null, "reopening from the rail brought the old conversation back");
+  assert.deepEqual(
+    space.lastConversation(),
+    { host: "a.example", conversationId: "dm-1" },
+    "leaving the space forgot where you were",
+  );
+  space.rememberConversation("b.example", "dm-2");
+  assert.deepEqual(space.lastConversation(), { host: "b.example", conversationId: "dm-2" }, "the newer place did not replace the older");
+
+  // A reset forgets it too, or one test's conversation leaks into the next.
+  space.resetDmSpace();
+  assert.equal(space.lastConversation(), null, "resetting the space kept where it had been");
 }
 
 const sidebar = read("src/packages/socket/src/components/DmSpaceSidebar.tsx");
@@ -75,7 +85,7 @@ const dms = read("src/packages/socket/src/hooks/useDirectMessages.ts");
   const switchBody = manage.slice(manage.indexOf("const switchToServer"), manage.indexOf("const viewServerBehindDmSpace"));
   assert.ok(/setDmSpaceOpen\(false\)/.test(switchBody), "picking a server leaves you in the direct messages space");
   assert.ok(!/setDmSpaceOpen\(!dmSpaceOpen\)/.test(rail), "the rail button toggles again");
-  assert.ok(/setDmSpaceOpen\(true\)/.test(rail), "the rail button no longer opens the space");
+  assert.ok(/onClick=\{openDmSpace\}/.test(rail), "the rail button does not go through the opener that restores");
 }
 
 /* The space changes the server underneath itself without leaving. switchToServer
@@ -101,6 +111,21 @@ const dms = read("src/packages/socket/src/hooks/useDirectMessages.ts");
 {
   assert.ok(/socket\.on\("chat:new", onMessage\)/.test(dms), "the client does not watch messages to learn a conversation is real");
   assert.ok(/last_message_at !== null\) return prev/.test(dms), "a conversation already written in is rewritten on every message");
+}
+
+/* The opener restores only a conversation somebody has written in. An empty one
+   drops out of the list when you leave, and restoring it would undo that. */
+{
+  const opener = read("src/packages/socket/src/hooks/useOpenDmSpace.ts");
+  assert.ok(/lastConversation\(\)/.test(opener), "the opener does not look at where the space was");
+  assert.ok(
+    /last_message_at !== null/.test(opener),
+    "the opener brings back an empty conversation, which the list had dropped",
+  );
+  assert.ok(/viewServerBehindDmSpace\(was\.host\)/.test(opener), "restoring a conversation on another server leaves the space");
+  assert.ok(/rememberConversation\(host, visibleDmId\)/.test(view), "the space never records where it is");
+  const mobile = read("src/packages/socket/src/components/MobileServerView.tsx");
+  assert.ok(/openDmSpace\(\)/.test(mobile), "the phone opens the space without restoring, so it disagrees with the rail");
 }
 
 console.log("dm destination: ok, a place you go, and empty only while you are there");

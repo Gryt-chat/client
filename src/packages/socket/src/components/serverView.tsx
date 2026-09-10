@@ -19,7 +19,7 @@ import {
 } from "../dev/fakeParticipants";
 import { readFakeCallOptions, useFakeCallEvents } from "../dev/fakeServerEvents";
 import { useFakeSpeech } from "../dev/fakeSpeech";
-import { conversationFor, conversationOpened, requestConversation, setDmSpaceOpen, usePendingConversation } from "../hooks/dmSpace";
+import { conversationFor, conversationOpened, rememberConversation, requestConversation, setDmSpaceOpen, usePendingConversation } from "../hooks/dmSpace";
 import { useAdminActions } from "../hooks/useAdminActions";
 import { useBlocks } from "../hooks/useBlocks";
 import { useCalls } from "../hooks/useCalls";
@@ -359,6 +359,13 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     pendingDmTargetRef.current = null;
     goToConversation(match.conversation_id);
   }, [directConversations, goToConversation]);
+
+  /* The space's own memory of where it was, which outlives this view unmounting
+     on the way to a server and back. The server view already has lastSelectedChannel. */
+  useEffect(() => {
+    const host = currentlyViewingServer?.host;
+    if (dmSpace && host && visibleDmId) rememberConversation(host, visibleDmId);
+  }, [dmSpace, currentlyViewingServer?.host, visibleDmId]);
 
   /* A conversation the direct messages space asked for. Claimed on arrival,
      because that space replaced this view and no event would have landed. */
