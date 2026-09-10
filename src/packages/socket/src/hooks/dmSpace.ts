@@ -23,6 +23,27 @@ let visiting: string | null = null;
    view, so state inside it is gone on the way back. GRYT-1146. */
 let last: { host: string; conversationId: string } | null = null;
 
+/** What was on screen before the space, so the button can go back to it. */
+export type DmSpaceOrigin = { kind: "server"; host: string } | { kind: "discovery" };
+
+/* Kept from the moment you went in. The server underneath moves to whichever one a
+   conversation lives on, so it can't be read back off the view. GRYT-1148. */
+let origin: DmSpaceOrigin | null = null;
+
+export function dmSpaceOrigin(): DmSpaceOrigin | null {
+  return origin;
+}
+
+/**
+ * Where the button goes from inside. A server removed while you were in here, and a
+ * launch straight into the space, both fall back to the server underneath.
+ */
+export function wayBack(servers: Record<string, unknown>, underneath: string | null): DmSpaceOrigin | null {
+  if (origin?.kind === "discovery") return origin;
+  if (origin && servers[origin.host]) return origin;
+  return underneath ? { kind: "server", host: underneath } : null;
+}
+
 /** The space showed this one, so it is where to come back to. */
 export function rememberConversation(host: string, conversationId: string): void {
   // The same place again is not news, and a fresh object would re-render readers.
@@ -47,9 +68,11 @@ export function useLastConversation(): { host: string; conversationId: string } 
   );
 }
 
-export function setDmSpaceOpen(next: boolean): void {
+/** `from` is kept only on the way in. Asking again from inside changes nothing. */
+export function setDmSpaceOpen(next: boolean, from: DmSpaceOrigin | null = null): void {
   if (open === next) return;
   open = next;
+  origin = next ? from : null;
   /* Leaving forgets it. Coming back through the rail is a fresh visit and shows
      the overview, which is what "click it and you see the dms overview" means. */
   if (!next) visiting = null;
@@ -59,6 +82,19 @@ export function setDmSpaceOpen(next: boolean): void {
 /** Which conversation is worth listing even with nothing in it. */
 export function visitingConversation(): string | null {
   return visiting;
+}
+
+/**
+ * An empty conversation an earlier visit left selected. The list dropped it on the
+ * way out, so the space counts it as nothing open rather than show a row you can't find.
+ */
+export function leftOver(
+  conversation: { conversation_id: string; last_message_at: string | null } | undefined,
+  visitingNow: string | null,
+): boolean {
+  return conversation !== undefined
+    && conversation.last_message_at === null
+    && conversation.conversation_id !== visitingNow;
 }
 
 export function useVisitingConversation(): string | null {
@@ -115,6 +151,7 @@ export function resetDmSpace(): void {
   open = false;
   visiting = null;
   last = null;
+  origin = null;
   pending = null;
   emit();
 }
