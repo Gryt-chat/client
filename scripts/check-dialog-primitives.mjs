@@ -12,14 +12,11 @@ import { fileURLToPath } from "node:url";
 
 const src = join(dirname(fileURLToPath(import.meta.url)), "..", "src");
 
-/**
- * The ones allowed to reach for AlertDialog, being what it is for. The third
- * draws a shape the other two cannot carry, not another notice (GRYT-1088).
- */
+/* The ones allowed to reach for AlertDialog, being what it is for. WhatsNewDialog
+   left the list in GRYT-1145: it closes on an outside click now, so it is a Dialog. */
 const PRIMITIVES = [
   "packages/socket/src/components/ConfirmDialog.tsx",
   "packages/socket/src/components/NoticeDialog.tsx",
-  "packages/socket/src/components/WhatsNewDialog.tsx",
 ];
 
 function walk(dir) {
