@@ -61,6 +61,59 @@ const space = await import("../src/packages/socket/src/hooks/dmSpace.ts");
   assert.equal(space.lastConversation(), null, "resetting the space kept where it had been");
 }
 
+/* The button from inside goes back to what was on screen on the way in. The server
+   underneath moves to whichever one a conversation is on, so it's kept here. GRYT-1148. */
+{
+  const servers = { "a.example": {}, "b.example": {} };
+  space.resetDmSpace();
+  assert.equal(space.dmSpaceOrigin(), null, "a fresh space remembers where it was opened from");
+
+  space.setDmSpaceOpen(true, { kind: "server", host: "a.example" });
+  assert.deepEqual(space.dmSpaceOrigin(), { kind: "server", host: "a.example" }, "going in forgot where you came from");
+  space.setDmSpaceOpen(true, { kind: "server", host: "b.example" });
+  assert.deepEqual(
+    space.dmSpaceOrigin(),
+    { kind: "server", host: "a.example" },
+    "asking for the space again from inside replaced where you came in from",
+  );
+  assert.deepEqual(
+    space.wayBack(servers, "b.example"),
+    { kind: "server", host: "a.example" },
+    "the button goes to the server underneath instead of the one you came from",
+  );
+  assert.deepEqual(
+    space.wayBack({ "b.example": {} }, "b.example"),
+    { kind: "server", host: "b.example" },
+    "a server removed while you were in the space is still gone back to",
+  );
+
+  space.setDmSpaceOpen(false);
+  assert.equal(space.dmSpaceOrigin(), null, "leaving kept where you came in from, so a later visit goes back there");
+
+  // A launch straight into the space came from nowhere: out is the server underneath.
+  space.setDmSpaceOpen(true);
+  assert.deepEqual(space.wayBack(servers, "b.example"), { kind: "server", host: "b.example" }, "a launch into the space has no way out");
+  assert.equal(space.wayBack(servers, null), null, "with no server at all the button invented one");
+  space.setDmSpaceOpen(false);
+
+  space.setDmSpaceOpen(true, { kind: "discovery" });
+  assert.deepEqual(space.wayBack(servers, "b.example"), { kind: "discovery" }, "going in from Discovery comes back to a server");
+
+  space.resetDmSpace();
+  assert.equal(space.dmSpaceOrigin(), null, "resetting the space kept where it was opened from");
+}
+
+/* An empty conversation an earlier visit left selected is not open. The list dropped
+   it on the way out, and reopening it showed a row nobody could find. GRYT-1148. */
+{
+  const empty = { conversation_id: "dm-1", last_message_at: null };
+  const written = { conversation_id: "dm-2", last_message_at: "2026-09-10T12:00:00Z" };
+  assert.equal(space.leftOver(empty, null), true, "an empty conversation from an earlier visit counts as open");
+  assert.equal(space.leftOver(empty, "dm-1"), false, "the empty conversation this visit asked for counts as left over");
+  assert.equal(space.leftOver(written, null), false, "a conversation somebody wrote in counts as left over");
+  assert.equal(space.leftOver(undefined, null), false, "a selection not in the directory yet counts as left over");
+}
+
 const sidebar = read("src/packages/socket/src/components/DmSpaceSidebar.tsx");
 const manage = read("src/packages/socket/src/hooks/useServerManagement.ts");
 const rail = read("src/components/sidebar.tsx");
@@ -79,13 +132,44 @@ const dms = read("src/packages/socket/src/hooks/useDirectMessages.ts");
   );
 }
 
-/* A destination, not a toggle. Picking a server leaves it, the way it already
-   leaves Discovery, and the rail button only ever opens it. */
+/* A destination, not a toggle: picking a server leaves it. From inside, the rail button
+   goes back to where you came in from, "back to where I was previously". GRYT-1148. */
 {
   const switchBody = manage.slice(manage.indexOf("const switchToServer"), manage.indexOf("const viewServerBehindDmSpace"));
   assert.ok(/setDmSpaceOpen\(false\)/.test(switchBody), "picking a server leaves you in the direct messages space");
-  assert.ok(!/setDmSpaceOpen\(!dmSpaceOpen\)/.test(rail), "the rail button toggles again");
-  assert.ok(/onClick=\{openDmSpace\}/.test(rail), "the rail button does not go through the opener that restores");
+  assert.ok(
+    !/setDmSpaceOpen\(!dmSpaceOpen\)/.test(rail),
+    "the rail button only toggles, so a second press lands on whichever server is underneath",
+  );
+  assert.ok(
+    /onClick=\{dmSpaceOpen \? leaveDmSpace : openDmSpace\}/.test(rail),
+    "the rail button does not go back from inside, or goes in without the opener that restores",
+  );
+  assert.ok(/aria-pressed=\{dmSpaceOpen\}/.test(rail), "the rail button does not say it is on, so nothing announces a second press goes back");
+}
+
+/* The opener takes where you are before restoring a conversation moves the server
+   underneath. The way back goes through wayBack, which the store tests above run. */
+{
+  const opener = read("src/packages/socket/src/hooks/useOpenDmSpace.ts");
+  const openBody = opener.slice(opener.indexOf("export function useOpenDmSpace"), opener.indexOf("export function useLeaveDmSpace"));
+  const took = openBody.indexOf("const from");
+  const moved = openBody.indexOf("viewServerBehindDmSpace(was.host)");
+  assert.ok(took !== -1 && moved !== -1 && took < moved, "the opener reads where you are after a conversation moved the server underneath");
+  assert.ok(/setDmSpaceOpen\(true, from\)/.test(openBody), "the opener does not say where you came in from");
+  assert.ok(/setShowDiscovery\(false\)/.test(openBody), "going in from Discovery leaves it lit underneath the space");
+
+  const leaveBody = opener.slice(opener.indexOf("export function useLeaveDmSpace"));
+  assert.ok(/wayBack\(servers, underneath\)/.test(leaveBody), "the button from inside does not ask where to go back to");
+  assert.ok(/switchToServer\(to\.host\)/.test(leaveBody), "going back to a server skips switchToServer, which is what leaves the space");
+  assert.ok(/setShowDiscovery\(true\)/.test(leaveBody), "going back to Discovery does not open it");
+}
+
+/* Discovery is drawn only while the space is closed, so opening it closes the space,
+   or the rail's Discovery button did nothing from inside. */
+{
+  const wrapper = manage.slice(manage.indexOf("const setShowDiscovery = useCallback"), manage.indexOf("const [pendingFocusServer"));
+  assert.ok(/if \(show\) setDmSpaceOpen\(false\);/.test(wrapper), "opening Discovery leaves the space open, drawn in its place");
 }
 
 /* The space changes the server underneath itself without leaving. switchToServer
@@ -98,11 +182,13 @@ const dms = read("src/packages/socket/src/hooks/useDirectMessages.ts");
   assert.ok(!/switchToServer\(rowHost\)/.test(sidebar), "the space still calls switchToServer to change host");
 }
 
-// Clicking somebody goes to the space rather than opening a conversation in place.
+/* Clicking somebody goes to the space rather than opening a conversation in place,
+   and says which server you clicked them on, so the button comes back to it. */
 {
+  const go = view.slice(view.indexOf("const goToConversation"), view.indexOf("const handleOpenDm"));
   assert.ok(
-    /requestConversation\(host, conversationId\);\s*setDmSpaceOpen\(true\);/.test(view),
-    "clicking somebody opens the conversation beside the channels instead of in the space",
+    /requestConversation\(host, conversationId\);/.test(go) && /setDmSpaceOpen\(true, \{ kind: "server", host \}\);/.test(go),
+    "clicking somebody opens the conversation beside the channels, or the button forgets the server you were on",
   );
 }
 
@@ -243,10 +329,15 @@ function loadLastView(store) {
 /* Opening the space with nothing to go back to opens the most recent conversation,
    and only one somebody has written in. */
 {
+  const auto = view.slice(view.indexOf("const visiting = useVisitingConversation();"), view.indexOf("const requestOpenDm"));
   assert.ok(
-    /if \(!dmSpace \|\| selectedDmId\) return;/.test(view)
-      && /\.filter\(\(entry\) => entry\.conversation\.last_message_at !== null\)\s*\.sort\(/.test(view),
+    /if \(selectedDmId && !stale\) return;/.test(auto)
+      && /\.filter\(\(entry\) => entry\.conversation\.last_message_at !== null\)\s*\.sort\(/.test(auto),
     "the space opens on nothing, or on an empty conversation, instead of the most recent",
+  );
+  assert.ok(
+    /const stale = leftOver\(selected\?\.conversation, visiting\);/.test(auto),
+    "an empty conversation from an earlier visit still counts as open, so it comes back",
   );
   assert.ok(
     /dmSpace && !activeDm \? \(/.test(view),

@@ -20,7 +20,7 @@ import {
 import { readFakeCallOptions, useFakeCallEvents } from "../dev/fakeServerEvents";
 import { useFakeSpeech } from "../dev/fakeSpeech";
 import { useDirectory } from "../hooks/dmDirectory";
-import { conversationFor, conversationOpened, rememberConversation, requestConversation, setDmSpaceOpen, usePendingConversation } from "../hooks/dmSpace";
+import { conversationFor, conversationOpened, leftOver, rememberConversation, requestConversation, setDmSpaceOpen, usePendingConversation, useVisitingConversation } from "../hooks/dmSpace";
 import { useAdminActions } from "../hooks/useAdminActions";
 import { useBlocks } from "../hooks/useBlocks";
 import { useCalls } from "../hooks/useCalls";
@@ -340,7 +340,8 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     const host = currentlyViewingServer?.host;
     if (!host) return;
     requestConversation(host, conversationId);
-    setDmSpaceOpen(true);
+    // This server, so the rail's button comes back here. From inside, it's ignored.
+    setDmSpaceOpen(true, { kind: "server", host });
   }, [currentlyViewingServer?.host]);
 
   /** Waits for `dm:opened` rather than deriving the id, which would mean the
@@ -392,18 +393,28 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
 
   /* Nothing asked for and nothing open: open the most recent conversation. An
      empty pane under the space's header reads as a server's channel. */
+  const visiting = useVisitingConversation();
   useEffect(() => {
-    if (!dmSpace || selectedDmId) return;
+    if (!dmSpace) return;
     const host = currentlyViewingServer?.host;
     if (!host || conversationFor(host)) return;
+    // An empty one an earlier visit left selected counts as nothing open. GRYT-1148.
+    const selected = selectedDmId
+      ? directory.find((entry) => entry.host === host && entry.conversation.conversation_id === selectedDmId)
+      : undefined;
+    const stale = leftOver(selected?.conversation, visiting);
+    if (selectedDmId && !stale) return;
     const recent = directory
       .filter((entry) => entry.conversation.last_message_at !== null)
       .sort((a, b) =>
         (b.conversation.last_message_at ?? "").localeCompare(a.conversation.last_message_at ?? ""))[0];
-    if (!recent) return;
+    if (!recent) {
+      if (stale) setSelectedDmId(null);
+      return;
+    }
     requestConversation(recent.host, recent.conversation.conversation_id);
     if (recent.host !== host) viewServerBehindDmSpace(recent.host);
-  }, [dmSpace, selectedDmId, currentlyViewingServer?.host, directory, viewServerBehindDmSpace]);
+  }, [dmSpace, selectedDmId, visiting, currentlyViewingServer?.host, directory, viewServerBehindDmSpace, setSelectedDmId]);
 
   const requestOpenDm = useCallback((targetServerUserId: string) => {
     pendingDmTargetRef.current = targetServerUserId;

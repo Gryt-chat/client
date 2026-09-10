@@ -124,7 +124,13 @@ function useServerManagementHook(): ServerManagement {
 
   const [showAddServer, setShowAddServer] = useState(false);
   const [showRemoveServer, setShowRemoveServer] = useState<ServerExit | null>(null);
-  const [showDiscovery, setShowDiscovery] = useState(false);
+  const [showDiscovery, setShowDiscoveryState] = useState(false);
+  /* Opening Discovery leaves the direct messages space. The space is drawn in its
+     place whenever it's open, so otherwise the rail's button did nothing there. */
+  const setShowDiscovery = useCallback((show: boolean) => {
+    if (show) setDmSpaceOpen(false);
+    setShowDiscoveryState(show);
+  }, []);
   const [pendingFocusServer, setPendingFocusServer] = useState<string | null>(
     null
   );
@@ -192,7 +198,7 @@ function useServerManagementHook(): ServerManagement {
     (incomingServer: Server, focusNewServer: boolean = true) => {
       // Joining from Discovery is the common route now, and landing on the
       // server you just joined is the point of it.
-      if (focusNewServer) setShowDiscovery(false);
+      if (focusNewServer) setShowDiscoveryState(false);
 
       const normalizedHost = normalizeHost(incomingServer.host);
       // Adding a server is somebody at this machine asking for it, which is the
@@ -491,7 +497,7 @@ function useServerManagementHook(): ServerManagement {
 
       /* Discovery and direct messages are destinations in the same rail, so
          picking a server leaves them, or the highlight lies about the pane. */
-      setShowDiscovery(false);
+      setShowDiscoveryState(false);
       setDmSpaceOpen(false);
       setCurrentlyViewingServer(normalizedHost);
     },

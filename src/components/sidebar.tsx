@@ -21,7 +21,7 @@ import {
   serverDetailsList as ServerDetailsListType,
   Servers,
 } from "@/settings/src/types/server";
-import { useDirectoryUnread, useDmSpaceOpen, useOpenDmSpace, useServerChannelUnread, useServerManagement, useSockets } from "@/socket";
+import { useDirectoryUnread, useDmSpaceOpen, useLeaveDmSpace, useOpenDmSpace, useServerChannelUnread, useServerManagement, useSockets } from "@/socket";
 import { ConfirmDialog } from "@/socket/src/components/ConfirmDialog";
 import { MarkAsReadItem } from "@/socket/src/components/MarkAsReadItem";
 import { ServerDoctor } from "@/socket/src/components/ServerDoctor";
@@ -113,6 +113,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
   );
   const dmSpaceOpen = useDmSpaceOpen();
   const openDmSpace = useOpenDmSpace();
+  const leaveDmSpace = useLeaveDmSpace();
   const { total: dmUnread } = useDirectoryUnread();
 
   return (
@@ -124,10 +125,11 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
           <div className="relative">
             <IconButton
               aria-label="Direct messages"
+              aria-pressed={dmSpaceOpen}
               tone={dmSpaceOpen ? "primary" : "ghost"}
-              /* A destination, not a toggle, and it puts you back where you were
-                 rather than on the overview, the way a server icon does. */
-              onClick={openDmSpace}
+              /* In, to the conversation you were last in. Again from inside, back to
+                 whatever you went in from. GRYT-1146, GRYT-1148. */
+              onClick={dmSpaceOpen ? leaveDmSpace : openDmSpace}
             >
               <PiChatsFill size={20} />
             </IconButton>
