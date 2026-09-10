@@ -204,4 +204,54 @@ function loadLastView(store) {
   );
 }
 
+/* ── the two views never show each other's ────────────────────────────────── */
+
+/* The space shows conversations and a server shows channels. Deciding by "is a DM
+   selected" put a DM in a server's chat pane and a channel in the space. */
+{
+  assert.ok(
+    /const visibleChannelId = dmSpace \|\| chatPaneHidden \? null : selectedChannelId;/.test(view),
+    "the space can show a channel, which is how an empty space looked like a server",
+  );
+  assert.ok(
+    /const visibleDmId = !dmSpace \|\| chatPaneHidden \? null : selectedDmId;/.test(view),
+    "a server can show a conversation, which is how Carlo turned up in a server",
+  );
+  assert.ok(
+    /const activeConversationId = dmSpace\s*\?\s*\(selectedDmId \?\? ""\)\s*:\s*\(selectedChannelId \|\| currentChannelId \|\| ""\)/.test(view),
+    "the chat loads from a fallback shared by both views, so whichever was set leaks into the other",
+  );
+  assert.ok(
+    !/currentConnection, accessToken, activeConversationId,/.test(view),
+    "the shared activeConversationId from useServerState is read again",
+  );
+  assert.ok(
+    /dmSpace && selectedDmId\s*\?\s*directConversations\.find/.test(view),
+    "a server's header can name a conversation",
+  );
+}
+
+// Only the space claims a requested conversation.
+{
+  const claim = view.slice(view.indexOf("const pendingConversation = usePendingConversation();"));
+  assert.ok(
+    /if \(!dmSpace\) return;\s*const host = currentlyViewingServer\?\.host;\s*if \(!host\) return;\s*const wanted = conversationFor\(host\);/.test(claim),
+    "a server view claims the conversation the space asked for, and shows it",
+  );
+}
+
+/* Opening the space with nothing to go back to opens the most recent conversation,
+   and only one somebody has written in. */
+{
+  assert.ok(
+    /if \(!dmSpace \|\| selectedDmId\) return;/.test(view)
+      && /\.filter\(\(entry\) => entry\.conversation\.last_message_at !== null\)\s*\.sort\(/.test(view),
+    "the space opens on nothing, or on an empty conversation, instead of the most recent",
+  );
+  assert.ok(
+    /dmSpace && !activeDm \? \(/.test(view),
+    "the space with nothing open renders a bare chat, which reads as a channel",
+  );
+}
+
 console.log("dm destination: ok, a place you go, and empty only while you are there");
