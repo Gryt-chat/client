@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { getUserValue, loadedUserId, onUserStoreLoaded, setUserValue } from "@/settings";
+import { useWhatsNewRequested } from "@/socket";
 
 import {
   type WhatsNewChange,
@@ -74,6 +75,7 @@ async function findEntry(version: string, signal: AbortSignal): Promise<Entry | 
 export function WhatsNew() {
   const version = __APP_VERSION__;
   const [entry, setEntry] = useState<Entry | null>(null);
+  const asked = useWhatsNewRequested();
   /* Read on mount this saw an empty store every launch, called that a fresh
      install, and wrote a version nobody was loaded to write against. */
   const [storeUser, setStoreUser] = useState<string | null>(loadedUserId);
@@ -83,12 +85,13 @@ export function WhatsNew() {
   useEffect(() => {
     if (!storeUser) return;
 
+    /* Asked for from the About page, so what has been seen does not apply. */
     const seen = getUserValue<string | null>(SEEN_KEY, null);
-    if (seen === version) return;
+    if (!asked && seen === version) return;
 
     /* Nothing recorded: a fresh install, or one that ran 1.11.0 or 1.11.1 and
        never got to write it (GRYT-1101). Only the first should stay quiet. */
-    if (seen === null && !hasJoinedAnything()) {
+    if (!asked && seen === null && !hasJoinedAnything()) {
       setUserValue(SEEN_KEY, version);
       return;
     }
@@ -104,7 +107,7 @@ export function WhatsNew() {
     });
 
     return () => abort.abort();
-  }, [version, storeUser]);
+  }, [version, storeUser, asked]);
 
   if (!entry) return null;
 

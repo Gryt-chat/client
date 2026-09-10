@@ -1,4 +1,4 @@
-import { AlertDialog, Button, Chip, type ChipProps } from "@gryt/ui";
+import { Button, Chip, type ChipProps, Dialog } from "@gryt/ui";
 import { Fragment } from "react";
 
 import { LogoIcon } from "@/common";
@@ -82,20 +82,25 @@ export function WhatsNewDialog({
   const groups = changes?.length ? group(changes) : null;
 
   return (
-    <AlertDialog.Root
+    <Dialog.Root
       open
       onOpenChange={(next) => {
         if (!next) onClose();
       }}
     >
-      <AlertDialog.Portal>
-        <AlertDialog.Backdrop />
-        <AlertDialog.Popup
+      <Dialog.Portal>
+        <Dialog.Backdrop />
+        <Dialog.Popup
           /* A container, so the groups collapse on the card's width rather
              than the window's. The width is explicit, so nothing depends on it. */
           style={{
             containerType: "inline-size",
+            display: "flex",
+            flexDirection: "column",
             gap: 0,
+            /* The body scrolls inside this, so the greeting and Done stay put.
+               A note long enough to run off the screen took Done with it. */
+            maxHeight: "min(38rem, calc(100vh - 4rem))",
             overflow: "hidden",
             padding: 0,
             width: "min(28.75rem, calc(100vw - 3rem))",
@@ -107,9 +112,9 @@ export function WhatsNewDialog({
                 <LogoIcon size={26} />
               </span>
               <span>
-                <AlertDialog.Title className="whats-new-greet">
+                <Dialog.Title className="whats-new-greet">
                   Here&rsquo;s what&rsquo;s new in Gryt Chat
-                </AlertDialog.Title>
+                </Dialog.Title>
                 <p className="whats-new-meta">
                   {version} · {readableDate(date)}
                 </p>
@@ -145,10 +150,10 @@ export function WhatsNewDialog({
             >
               Read more
             </a>
-            <AlertDialog.Close render={<Button size="small">Done</Button>} />
+            <Dialog.Close render={<Button size="small">Done</Button>} />
           </div>
-        </AlertDialog.Popup>
-      </AlertDialog.Portal>
-    </AlertDialog.Root>
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
