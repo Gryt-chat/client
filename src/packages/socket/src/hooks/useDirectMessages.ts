@@ -104,8 +104,23 @@ export function useDirectMessages({
       if (payload?.message) toast.error(payload.message);
     };
 
+    /* Read off the message, not the server: one older than 1.10.1 never says a
+       conversation got its first message, and it would drop out of the list. */
+    const onMessage = (msg: { conversation_id?: string; created_at?: string }) => {
+      const id = msg?.conversation_id;
+      if (!id) return;
+      setConversations((prev) => {
+        const i = prev.findIndex((c) => c.conversation_id === id);
+        if (i === -1 || prev[i].last_message_at !== null) return prev;
+        const next = [...prev];
+        next[i] = { ...prev[i], last_message_at: msg.created_at ?? new Date().toISOString() };
+        return next;
+      });
+    };
+
     socket.on("dm:list", onList);
     socket.on("dm:opened", onOpened);
+    socket.on("chat:new", onMessage);
     socket.on("dm:hidden", onHidden);
     socket.on("dm:left", onLeft);
     socket.on("dm:error", onError);
@@ -114,6 +129,7 @@ export function useDirectMessages({
     return () => {
       socket.off("dm:list", onList);
       socket.off("dm:opened", onOpened);
+      socket.off("chat:new", onMessage);
       socket.off("dm:hidden", onHidden);
       socket.off("dm:left", onLeft);
       socket.off("dm:error", onError);

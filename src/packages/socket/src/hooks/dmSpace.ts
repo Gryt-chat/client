@@ -15,10 +15,33 @@ function emit() {
   for (const listener of listeners) listener();
 }
 
+/* The conversation this visit asked for. A conversation nobody has written in is
+   listed only while it is this one, so clicking through people leaves no rows. */
+let visiting: string | null = null;
+
 export function setDmSpaceOpen(next: boolean): void {
   if (open === next) return;
   open = next;
+  /* Leaving forgets it. Coming back through the rail is a fresh visit and shows
+     the overview, which is what "click it and you see the dms overview" means. */
+  if (!next) visiting = null;
   emit();
+}
+
+/** Which conversation is worth listing even with nothing in it. */
+export function visitingConversation(): string | null {
+  return visiting;
+}
+
+export function useVisitingConversation(): string | null {
+  return useSyncExternalStore(
+    (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    visitingConversation,
+    visitingConversation,
+  );
 }
 
 export function isDmSpaceOpen(): boolean {
@@ -28,6 +51,7 @@ export function isDmSpaceOpen(): boolean {
 /** Ask for a conversation, then leave. The view claims it once it is there. */
 export function requestConversation(host: string, conversationId: string): void {
   pending = { host, conversationId };
+  visiting = conversationId;
   emit();
 }
 
@@ -61,6 +85,7 @@ export function usePendingConversation(): { host: string; conversationId: string
 /** For a test, so one case cannot leak into the next. */
 export function resetDmSpace(): void {
   open = false;
+  visiting = null;
   pending = null;
   emit();
 }

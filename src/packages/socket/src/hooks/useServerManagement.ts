@@ -16,6 +16,7 @@ import { orderServerHosts } from "@/settings/src/serverOrder";
 import { Server, Servers } from "@/settings/src/types/server";
 
 import { type LanServer } from "../../../../lib/electron";
+import { setDmSpaceOpen } from "./dmSpace";
 import { useSockets } from "./useSockets";
 
 /**
@@ -49,6 +50,8 @@ interface ServerManagement {
   removeServer: (host: string) => void;
   removeServers: (hosts: string[]) => void;
   switchToServer: (host: string) => void;
+  /** Change the server under the direct messages space, staying in it. */
+  viewServerBehindDmSpace: (host: string) => void;
   reconnectServer: (host: string) => void;
   reorderServers: (orderedHosts: string[]) => void;
   setShowAddServer: (show: boolean) => void;
@@ -486,12 +489,24 @@ function useServerManagementHook(): ServerManagement {
         return;
       }
 
-      // Discovery is a destination in the same rail, so picking a server has to
-      // leave it, or the rail highlight lies about what the pane is showing.
+      /* Discovery and direct messages are destinations in the same rail, so
+         picking a server leaves them, or the highlight lies about the pane. */
       setShowDiscovery(false);
+      setDmSpaceOpen(false);
       setCurrentlyViewingServer(normalizedHost);
     },
     [setCurrentlyViewingServer, servers]
+  );
+
+  /* Move the server underneath the direct messages space without leaving it. A
+     conversation on another server needs that server's connection to read it. */
+  const viewServerBehindDmSpace = useCallback(
+    (host: string) => {
+      const normalizedHost = normalizeHost(host);
+      if (!servers[normalizedHost]) return;
+      setCurrentlyViewingServer(normalizedHost);
+    },
+    [setCurrentlyViewingServer, servers],
   );
 
   const getServer = useCallback(
@@ -561,6 +576,7 @@ function useServerManagementHook(): ServerManagement {
     removeServer,
     removeServers,
     switchToServer,
+    viewServerBehindDmSpace,
     reconnectServer,
     reorderServers,
     setShowAddServer,
@@ -595,6 +611,7 @@ const init: ServerManagement = {
   removeServer: () => {},
   removeServers: () => {},
   switchToServer: () => {},
+  viewServerBehindDmSpace: () => {},
   reconnectServer: () => {},
   reorderServers: () => {},
   setShowAddServer: () => {},

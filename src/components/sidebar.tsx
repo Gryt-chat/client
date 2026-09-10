@@ -124,7 +124,9 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
             <IconButton
               aria-label="Direct messages"
               tone={dmSpaceOpen ? "primary" : "ghost"}
-              onClick={() => setDmSpaceOpen(!dmSpaceOpen)}
+              /* A destination, not a toggle. Pressing it while it is open should
+                 leave you where you are, the way a server icon does. */
+              onClick={() => setDmSpaceOpen(true)}
             >
               <PiChatsFill size={20} />
             </IconButton>
