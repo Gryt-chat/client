@@ -19,6 +19,7 @@ import {
 } from "../dev/fakeParticipants";
 import { readFakeCallOptions, useFakeCallEvents } from "../dev/fakeServerEvents";
 import { useFakeSpeech } from "../dev/fakeSpeech";
+import { useDirectory } from "../hooks/dmDirectory";
 import { conversationFor, conversationOpened, rememberConversation, requestConversation, setDmSpaceOpen, usePendingConversation } from "../hooks/dmSpace";
 import { useAdminActions } from "../hooks/useAdminActions";
 import { useBlocks } from "../hooks/useBlocks";
@@ -86,7 +87,8 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     devFakeParticipants, devFakeMuted, devFakeScreenShare,
     devFakeDeafened, devFakeSpeaking, devFakeMembers, devFakeChatSeconds,
   } = useSettings();
-  const { currentlyViewingServer, setShowRemoveServer, setLastSelectedChannelForServer } = useServerManagement();
+  const { currentlyViewingServer, setShowRemoveServer, setLastSelectedChannelForServer, viewServerBehindDmSpace } = useServerManagement();
+  const directory = useDirectory();
   const { connect, currentServerConnected, isConnected, isConnecting, videoStreams, streamSources } = useSFU();
   const { serverDetailsList, clients, memberLists, serverProfiles } = useSockets();
   const { login } = useAccount();
@@ -96,7 +98,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     selectedChannelId, setSelectedChannelId,
     selectedDmId, setSelectedDmId,
     handleVoiceDisconnect, setPendingChannelId, currentChannelId,
-    currentConnection, accessToken, activeConversationId, serverFailure, hasTimedOut,
+    currentConnection, accessToken, serverFailure, hasTimedOut,
     currentConnectionStatus, currentRefusalReason, currentRefusalHelpUrl, reconnectServer,
   } = useServerState();
 
@@ -129,10 +131,16 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   const chatPaneHidden =
     chatTakenOver || (isMaximized && showVoiceView && voiceWidth !== "0px");
 
-  /* Not what was last clicked: a DM takes over the pane and a maximized call
-     hides it. Read this, or a covered channel stays lit and marked read. */
-  const visibleChannelId = chatPaneHidden || selectedDmId ? null : selectedChannelId;
-  const visibleDmId = chatPaneHidden ? null : selectedDmId;
+  /* The space shows conversations and a server shows channels, never the other.
+     Deciding by "is a DM selected" put Carlo in a server and a channel in the space. */
+  const visibleChannelId = dmSpace || chatPaneHidden ? null : selectedChannelId;
+  const visibleDmId = !dmSpace || chatPaneHidden ? null : selectedDmId;
+
+  /* What the chat loads, by the same rule. The shared fallback was selectedDmId,
+     then the channel, so whichever was set last leaked into the other view. */
+  const activeConversationId = dmSpace
+    ? (selectedDmId ?? "")
+    : (selectedChannelId || currentChannelId || "");
 
   useEffect(() => {
     if (!currentlyViewingServer) return;
@@ -371,13 +379,31 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
      because that space replaced this view and no event would have landed. */
   const pendingConversation = usePendingConversation();
   useEffect(() => {
+    /* The space only. A server view claiming it is how a conversation opened in
+       the space turned up in the server's own chat pane. */
+    if (!dmSpace) return;
     const host = currentlyViewingServer?.host;
     if (!host) return;
     const wanted = conversationFor(host);
     if (!wanted) return;
     if (selectedDmId === wanted) conversationOpened(wanted);
     else setSelectedDmId(wanted);
-  }, [currentlyViewingServer?.host, pendingConversation, selectedDmId, setSelectedDmId]);
+  }, [dmSpace, currentlyViewingServer?.host, pendingConversation, selectedDmId, setSelectedDmId]);
+
+  /* Nothing asked for and nothing open: open the most recent conversation. An
+     empty pane under the space's header reads as a server's channel. */
+  useEffect(() => {
+    if (!dmSpace || selectedDmId) return;
+    const host = currentlyViewingServer?.host;
+    if (!host || conversationFor(host)) return;
+    const recent = directory
+      .filter((entry) => entry.conversation.last_message_at !== null)
+      .sort((a, b) =>
+        (b.conversation.last_message_at ?? "").localeCompare(a.conversation.last_message_at ?? ""))[0];
+    if (!recent) return;
+    requestConversation(recent.host, recent.conversation.conversation_id);
+    if (recent.host !== host) viewServerBehindDmSpace(recent.host);
+  }, [dmSpace, selectedDmId, currentlyViewingServer?.host, directory, viewServerBehindDmSpace]);
 
   const requestOpenDm = useCallback((targetServerUserId: string) => {
     pendingDmTargetRef.current = targetServerUserId;
@@ -432,10 +458,10 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   const [groupDialog, setGroupDialog] = useState<DirectConversation | string[] | null>(null);
 
   const activeDm = useMemo(
-    () => (selectedDmId
+    () => (dmSpace && selectedDmId
       ? directConversations.find((c) => c.conversation_id === selectedDmId)
       : undefined),
-    [selectedDmId, directConversations],
+    [dmSpace, selectedDmId, directConversations],
   );
 
   /** A lookup, not a test on the id, since a channel can be named to look like
@@ -654,7 +680,18 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
 
   /** One element for two layouts: the tiny window renders this and nothing else,
       and a second copy is thirty props to keep in step. */
-  const chatView = (
+  const chatView = dmSpace && !activeDm ? (
+    /* The space with nothing open, for the moment before the most recent one is
+       picked or when there are none. A bare ChatView here was read as a channel. */
+    <div
+      className="flex grow items-center justify-center text-sm"
+      style={{ color: "var(--gryt-muted)", padding: "2rem", textAlign: "center" }}
+    >
+      {directory.some((entry) => entry.conversation.last_message_at !== null)
+        ? "Choose a conversation."
+        : "No conversations yet. Click somebody in a server\u2019s member list to start one."}
+    </div>
+  ) : (
       <ChatView
         /* Under the header, not above: above is app chrome, and this is somebody
            else's machine talking. */
