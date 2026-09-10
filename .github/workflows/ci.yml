@@ -20,6 +20,7 @@ jobs:
           cache: yarn
       - run: yarn install --frozen-lockfile
       - run: yarn test:updater-bridge
+      - run: yarn test:unread-split
       - run: yarn test:lan-server-memory
       - run: yarn test:voice-presence
       - run: yarn test:reconnect-limit

@@ -12,7 +12,6 @@ import {
   serverIconSrc,
   useAccount,
   useMentionTracker,
-  useUnreadTracker,
 } from "@/common";
 import { useSettings } from "@/settings";
 import { useEmbeddedServer } from "@/settings/src/hooks/useEmbeddedServer";
@@ -22,7 +21,7 @@ import {
   serverDetailsList as ServerDetailsListType,
   Servers,
 } from "@/settings/src/types/server";
-import { setDmSpaceOpen, useDirectoryUnread, useDmSpaceOpen, useServerManagement, useSockets } from "@/socket";
+import { setDmSpaceOpen, useDirectoryUnread, useDmSpaceOpen, useServerChannelUnread, useServerManagement, useSockets } from "@/socket";
 import { ConfirmDialog } from "@/socket/src/components/ConfirmDialog";
 import { MarkAsReadItem } from "@/socket/src/components/MarkAsReadItem";
 import { ServerDoctor } from "@/socket/src/components/ServerDoctor";
@@ -97,7 +96,9 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
   const voice = useVoicePresence();
   const { serverConnectionStatus, serverProfiles, serverDetailsList } =
     useSockets();
-  const { serverUnreadCount } = useUnreadTracker();
+  /* Channels only. A direct message belongs to the rail's own button, and
+     counting it here as well marked two badges for one message. */
+  const serverUnreadCount = useServerChannelUnread();
   const { serverMentionCount } = useMentionTracker();
 
   const currentHost = currentlyViewingServer?.host;
