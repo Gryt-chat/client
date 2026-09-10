@@ -3,7 +3,7 @@ import { TextField } from "@gryt/ui";
 import { useMemo, useState } from "react";
 
 import { useDirectory } from "../hooks/dmDirectory";
-import { requestConversation } from "../hooks/dmSpace";
+import { requestConversation, useVisitingConversation } from "../hooks/dmSpace";
 import { useDirectoryUnread } from "../hooks/useDirectoryUnread";
 import { useServerManagement } from "../hooks/useServerManagement";
 import { DmSpaceList } from "./DmSpaceList";
@@ -22,20 +22,30 @@ export function DmSpaceSidebar({
 }) {
   const entries = useDirectory();
   const { countFor } = useDirectoryUnread();
-  const { servers, switchToServer } = useServerManagement();
+  const { servers, viewServerBehindDmSpace } = useServerManagement();
   const [query, setQuery] = useState("");
+
+  /* A conversation nobody has written in is listed only while this visit asked
+     for it, so clicking through a member list leaves no rows behind. */
+  const visiting = useVisitingConversation();
+  const listed = useMemo(
+    () => entries.filter((entry) =>
+      entry.conversation.last_message_at !== null
+      || entry.conversation.conversation_id === visiting),
+    [entries, visiting],
+  );
 
   /* Matched on the name and on the server, since the server is what tells two
      rows carrying one name apart. */
   const shown = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    if (!needle) return entries;
-    return entries.filter((entry) => {
+    if (!needle) return listed;
+    return listed.filter((entry) => {
       const name = conversationTitle(entry.conversation).toLowerCase();
       const server = (servers[entry.host]?.name || entry.host).toLowerCase();
       return name.includes(needle) || server.includes(needle);
     });
-  }, [entries, query, servers]);
+  }, [listed, query, servers]);
 
   /* A row on this server opens here. One on another switches first, and the
      view that arrives claims it. */
@@ -44,8 +54,10 @@ export function DmSpaceSidebar({
       onOpen(conversation);
       return;
     }
+    /* Not switchToServer: that is somebody choosing a destination, and it leaves
+       the space. This moves the server underneath and stays here. */
     requestConversation(rowHost, conversation.conversation_id);
-    switchToServer(rowHost);
+    viewServerBehindDmSpace(rowHost);
   }
 
   return (
@@ -57,7 +69,7 @@ export function DmSpaceSidebar({
         Messages
       </h1>
 
-      {entries.length > 0 && (
+      {listed.length > 0 && (
         <div className="px-3 pb-2">
           <TextField
             size="small"
@@ -68,7 +80,7 @@ export function DmSpaceSidebar({
         </div>
       )}
 
-      {entries.length === 0 ? (
+      {listed.length === 0 ? (
         <p className="px-4 text-xs" style={{ color: "var(--gryt-neutral-10)" }}>
           No conversations yet.
         </p>

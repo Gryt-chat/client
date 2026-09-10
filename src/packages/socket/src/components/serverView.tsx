@@ -19,7 +19,7 @@ import {
 } from "../dev/fakeParticipants";
 import { readFakeCallOptions, useFakeCallEvents } from "../dev/fakeServerEvents";
 import { useFakeSpeech } from "../dev/fakeSpeech";
-import { conversationFor, conversationOpened, usePendingConversation } from "../hooks/dmSpace";
+import { conversationFor, conversationOpened, rememberConversation, requestConversation, setDmSpaceOpen, usePendingConversation } from "../hooks/dmSpace";
 import { useAdminActions } from "../hooks/useAdminActions";
 import { useBlocks } from "../hooks/useBlocks";
 import { useCalls } from "../hooks/useCalls";
@@ -326,6 +326,15 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     isConnected: currentConnectionStatus === "connected",
   });
 
+  /* Conversations are read in the direct messages space, so clicking somebody
+     goes there rather than opening one beside this server's channels. */
+  const goToConversation = useCallback((conversationId: string) => {
+    const host = currentlyViewingServer?.host;
+    if (!host) return;
+    requestConversation(host, conversationId);
+    setDmSpaceOpen(true);
+  }, [currentlyViewingServer?.host]);
+
   /** Waits for `dm:opened` rather than deriving the id, which would mean the
       client owning a rule the server owns and opening empty when they drift. */
   const handleOpenDm = useCallback((targetServerUserId: string) => {
@@ -333,11 +342,11 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
       (c) => c.other.server_user_id === targetServerUserId,
     );
     if (existing) {
-      setSelectedDmId(existing.conversation_id);
+      goToConversation(existing.conversation_id);
       return;
     }
     openDm(targetServerUserId);
-  }, [directConversations, openDm, setSelectedDmId]);
+  }, [directConversations, openDm, goToConversation]);
 
   // One opened from the member list was asked for, so it is read too. One the
   // other person started is not, or the view is yanked out from under them.
@@ -348,8 +357,15 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     const match = directConversations.find((c) => c.other.server_user_id === target);
     if (!match) return;
     pendingDmTargetRef.current = null;
-    setSelectedDmId(match.conversation_id);
-  }, [directConversations, setSelectedDmId]);
+    goToConversation(match.conversation_id);
+  }, [directConversations, goToConversation]);
+
+  /* The space's own memory of where it was, which outlives this view unmounting
+     on the way to a server and back. The server view already has lastSelectedChannel. */
+  useEffect(() => {
+    const host = currentlyViewingServer?.host;
+    if (dmSpace && host && visibleDmId) rememberConversation(host, visibleDmId);
+  }, [dmSpace, currentlyViewingServer?.host, visibleDmId]);
 
   /* A conversation the direct messages space asked for. Claimed on arrival,
      because that space replaced this view and no event would have landed. */
