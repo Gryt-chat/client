@@ -597,6 +597,30 @@ body {
   transition: color 0.15s ease, background 0.15s ease;
 }
 
+/* No fill at rest, so names sit on the rail. Clickable rows get one on hover
+   and focus to show they open a conversation (GRYT-1168). */
+.member-row {
+  border-radius: var(--gryt-radius-xl);
+  padding: 8px 12px;
+  cursor: default;
+  transition: background 0.15s ease;
+}
+
+.member-row-clickable {
+  cursor: pointer;
+}
+
+.member-row-clickable:hover,
+.member-row-clickable:focus-visible,
+.member-row[data-card-open] {
+  background: var(--gryt-neutral-4);
+}
+
+.member-row-clickable:focus-visible {
+  outline: 2px solid var(--gryt-accent-8);
+  outline-offset: -2px;
+}
+
 .chat-editor-attach-btn:hover {
   color: var(--gryt-neutral-12);
   background: var(--gryt-neutral-4);

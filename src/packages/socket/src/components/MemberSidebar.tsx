@@ -202,12 +202,8 @@ const MemberItem = ({
                   }
                 : undefined
             }
-            style={{
-              background: "var(--gryt-neutral-4)",
-              borderRadius: "var(--gryt-radius-xl)",
-              padding: "8px 12px",
-              cursor: canOpenDm ? "pointer" : "default",
-            }}
+            className={canOpenDm ? "member-row member-row-clickable" : "member-row"}
+            data-card-open={cardOpen || undefined}
           >
         <div className="flex items-center gap-2 w-full">
           <Avatar
