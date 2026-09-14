@@ -13,7 +13,6 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (path) => readFileSync(join(root, path), "utf8");
 
 const HOOK = "src/packages/socket/src/hooks/useStableFileUrl.ts";
-const ERRORS = "src/packages/socket/src/hooks/useMediaErrors.ts";
 const ROW = "src/packages/socket/src/components/MessageRow.tsx";
 const ATTACHMENT = "src/packages/socket/src/components/MessageAttachment.tsx";
 const PLAYER = "src/packages/socket/src/components/ChatMediaPlayer.tsx";
@@ -147,42 +146,21 @@ for (const wire of ["onError={local ? undefined : refreshUrl}", "onPosterError={
 
 /* ── a failed video or poster reaches the refresh ──────────────────────── */
 
-const errorsSource = stripTypeScriptTypes(read(ERRORS)).replace(/^import .*$/gm, "").replace(/^export /gm, "");
-const useMediaErrors = new Function("useEffect", `${errorsSource}\nreturn useMediaErrors;`);
-
-{
-  const calls = [];
-  const listeners = [];
-  const root = {
-    addEventListener: (type, fn, capture) => listeners.push({ type, fn, capture }),
-    removeEventListener: (type, fn, capture) => {
-      const i = listeners.findIndex((l) => l.type === type && l.fn === fn && l.capture === capture);
-      if (i !== -1) listeners.splice(i, 1);
-    },
-  };
-  let cleanup;
-  const hook = useMediaErrors((effect) => { cleanup = effect(); });
-  hook({ current: root }, () => calls.push("video"), () => calls.push("image"));
-
-  assert.equal(listeners.length, 1, `${ERRORS} does not listen for errors`);
-  assert.equal(listeners[0].type, "error");
-  assert.equal(listeners[0].capture, true, `${ERRORS} listens in the bubble phase, where load errors never arrive`);
-  for (const tagName of ["VIDEO", "IMG", "DIV"]) listeners[0].fn({ target: { tagName } });
-  assert.deepEqual(calls, ["video", "image"], `${ERRORS} sends errors to the wrong handler`);
-  cleanup();
-  assert.equal(listeners.length, 0, `${ERRORS} leaves its listener behind on unmount`);
+const player = read(PLAYER);
+const embeds = read(EMBEDS);
+const videoPlayer = player.match(/<VideoPlayer\b[\s\S]*?\/>/)?.[0];
+assert.ok(videoPlayer, `${PLAYER} no longer draws VideoPlayer`);
+for (const wire of ["onError={onError}", "onPosterError={onPosterError}"]) {
+  assert.ok(videoPlayer.includes(wire), `${PLAYER} lost ${wire} on VideoPlayer, so a stale token never recovers`);
 }
+assert.doesNotMatch(player, /addEventListener\("error"/, `${PLAYER} listens for load errors by hand again; VideoPlayer reports them`);
 
 /* ── nothing loads a video before the click ─────────────────────────────── */
 
-const player = read(PLAYER);
-const embeds = read(EMBEDS);
 for (const [path, source] of [[PLAYER, player], [EMBEDS, embeds]]) {
   assert.doesNotMatch(source, /<video\b/, `${path} draws its own <video> again, next to VideoPlayer`);
   assert.doesNotMatch(source, /autoLoad/, `${path} sets autoLoad, which fetches the video before anybody presses play`);
 }
-assert.match(player, /useMediaErrors\(ref, onError, onPosterError\)/, `${PLAYER} no longer passes load errors up`);
-assert.match(player, /<div ref=\{ref\}[^>]*>\s*<VideoPlayer\b/, `${PLAYER}'s error listener is not around VideoPlayer`);
 const embed = embeds.slice(embeds.indexOf("export const VideoEmbed"), embeds.indexOf("export const TwitchEmbed"));
 assert.match(embed, /<VideoPlayer\b/, `${EMBEDS}'s VideoEmbed no longer uses VideoPlayer`);
 

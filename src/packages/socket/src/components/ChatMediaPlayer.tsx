@@ -1,7 +1,6 @@
 import { VideoPlayer } from "@gryt/ui";
 import { useCallback, useEffect, useRef } from "react";
 
-import { useMediaErrors } from "../hooks/useMediaErrors";
 import { formatFileSize } from "../utils/formatFileSize";
 
 export const ChatMediaPlayer = ({
@@ -66,11 +65,17 @@ function ChatVideo({
   onError?: () => void;
   onPosterError?: () => void;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useMediaErrors(ref, onError, onPosterError);
   return (
-    <div ref={ref} className="chat-video-player">
-      <VideoPlayer src={src} poster={poster} fileName={label} volume={volume} onVolumeChange={onVolumeChange} />
+    <div className="chat-video-player">
+      <VideoPlayer
+        src={src}
+        poster={poster}
+        fileName={label}
+        volume={volume}
+        onVolumeChange={onVolumeChange}
+        onError={onError}
+        onPosterError={onPosterError}
+      />
     </div>
   );
 }
