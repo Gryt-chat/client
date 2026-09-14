@@ -5,14 +5,16 @@
 
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { stripTypeScriptTypes } from "node:module";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SOURCE = "src/components/whatsNew.tsx";
 const DIALOG = "src/packages/socket/src/components/WhatsNewDialog.tsx";
 const source = readFileSync(join(root, SOURCE), "utf8");
 const dialog = readFileSync(join(root, DIALOG), "utf8");
+const { releasesToShow } = await import(pathToFileURL(join(root, "src/components/whatsNewSince.ts")).href);
 
 /** Everything from `opener` to the brace that closes the block it opens. */
 function block(text, opener, what) {
@@ -27,11 +29,13 @@ function block(text, opener, what) {
   throw new Error(`unbalanced braces in ${what}`);
 }
 
+/** A function body's types stripped by Node. A bare block holding `return` does not parse alone. */
+const strip = (braces) => stripTypeScriptTypes(`async () => ${braces}`).slice("async () => ".length);
+
 /* The second useEffect is the one that decides; the first only subscribes. */
-const body = block(source.slice(source.indexOf("onUserStoreLoaded(setStoreUser)")), "useEffect(() => {", "the deciding useEffect")
-  // Two bits of TypeScript: a generic on the read, and the fetch callback's type.
-  .replace("getUserValue<string | null>(", "getUserValue(")
-  .replace(/: \{ app\?: Entry\[\] \} \| null/, "");
+const body = strip(
+  block(source.slice(source.indexOf("onUserStoreLoaded(setStoreUser)")), "useEffect(() => {", "the deciding useEffect"),
+);
 
 /** The two module constants the effect closes over. */
 const SEEN_KEY = source.match(/const SEEN_KEY = "([^"]+)"/)?.[1];
@@ -49,22 +53,22 @@ const RETRY_DELAYS_MS = JSON.parse(
 );
 assert.ok(Array.isArray(RETRY_DELAYS_MS) && RETRY_DELAYS_MS.length > 0, `${SOURCE} no longer retries`);
 
-/** `new Function` builds a sync function, and findEntry awaits. */
+/** `new Function` builds a sync function, and findReleases awaits. */
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
 
-/** findEntry as itself: the real loop, with the wait and the network faked. */
-const findEntryBody = block(
-  source,
-  "async function findEntry(version: string, signal: AbortSignal): Promise<Entry | null> {",
-  "findEntry",
-)
-  .slice(1, -1)
-  .replace(" as { app?: Entry[] } | null", "");
+/** findReleases as itself: the real loop, with the wait and the network faked. */
+const findReleasesBody = strip(
+  block(
+    source,
+    "async function findReleases(version: string, signal: AbortSignal): Promise<Release[] | null> {",
+    "findReleases",
+  ),
+).slice(1, -1);
 
 /** One run of the effect, with the store, the network and the waiting faked. */
-async function run({ seen, version, app, offline, storeUser, joined, attempts, abortOn, asked }) {
+async function run({ seen, version, app, offline, storeUser, joined, attempts, abortOn, asked, beta }) {
   const store = { value: seen };
-  const shown = [];
+  const picks = [];
   const fetched = [];
   const slept = [];
   const controller = new AbortController();
@@ -82,16 +86,16 @@ async function run({ seen, version, app, offline, storeUser, joined, attempts, a
     return Promise.resolve({ ok: true, json: () => Promise.resolve({ app: answer.app }) });
   };
 
-  const findEntry = new AsyncFunction(
+  const findReleases = new AsyncFunction(
     "fetch", "sleep", "CHANGELOG_URL", "RETRY_DELAYS_MS", "version", "signal",
-    findEntryBody,
+    findReleasesBody,
   ).bind(null, fetch, (ms) => {
     slept.push(ms);
     return Promise.resolve();
   }, CHANGELOG_URL, RETRY_DELAYS_MS);
 
   const fn = new Function(
-    "getUserValue", "setUserValue", "findEntry", "setEntry", "version", "AbortController", "SEEN_KEY", "storeUser", "hasJoinedAnything", "asked",
+    "getUserValue", "setUserValue", "findReleases", "setShown", "version", "AbortController", "SEEN_KEY", "storeUser", "hasJoinedAnything", "asked", "releasesToShow", "IS_BETA_BUILD",
     `return (async () => {
        const cleanup = (() => ${body})();
        for (let i = 0; i < 40; i++) await new Promise(r => setTimeout(r, 0));
@@ -102,8 +106,8 @@ async function run({ seen, version, app, offline, storeUser, joined, attempts, a
   await fn(
     () => store.value,
     (_k, v) => (store.value = v),
-    findEntry,
-    (e) => shown.push(e),
+    findReleases,
+    (picked) => picks.push(picked),
     version,
     class {
       signal = controller.signal;
@@ -117,9 +121,13 @@ async function run({ seen, version, app, offline, storeUser, joined, attempts, a
     /* How many times the About page has asked. Zero is a launch nobody asked for,
        which is every case below that does not say otherwise. */
     asked ?? 0,
+    releasesToShow,
+    beta ?? false,
   );
 
-  return { seen: store.value, shown, fetched, slept, urls: fetched.map((f) => f.url) };
+  /* `shown` is every release drawn, across however many dialogs opened. */
+  const shown = picks.flatMap((p) => p.releases);
+  return { seen: store.value, shown, picks, fetched, slept, urls: fetched.map((f) => f.url) };
 }
 
 const LINE = { version: "1.10.3", date: "2026-09-08", line: "Joining voice waits." };
@@ -265,6 +273,52 @@ assert.ok(RETRY_DELAYS_MS[0] >= 1000, "the first retry is immediate enough to be
   controller.abort();
   await waiting;
   assert.ok(Date.now() - started < 1_000, "aborting does not cut the wait short");
+}
+
+/* ── every release since the last one seen (GRYT-1160) ───────────────────── */
+
+const R9 = { version: "1.11.9", date: "2026-09-10", line: "Nine." };
+const R10 = { version: "1.11.10", date: "2026-09-14", line: "Ten." };
+const R11 = { version: "1.11.11", date: "2026-09-14", line: "Eleven." };
+const BETA = { version: "1.12.0-beta.1", date: "2026-09-15", line: "Beta.", channel: "beta" };
+
+// Two updates at once: both releases, newest first, and the running one recorded.
+{
+  const r = await run({ seen: "1.11.9", version: "1.11.11", app: [R11, R10, R9] });
+  assert.deepEqual(r.shown, [R11, R10], "skipping a version hid the release in between");
+  assert.equal(r.picks[0].since, "1.11.9", "the dialog is not told which version it covers since");
+  assert.equal(r.seen, "1.11.11", "the running version was not recorded after showing the range");
+}
+
+// From About it is the running version alone, even with older ones unseen.
+{
+  const r = await run({ seen: "1.11.9", version: "1.11.11", app: [R11, R10, R9], asked: 1 });
+  assert.deepEqual(r.shown, [R11], "asking from About showed a range instead of the running version");
+}
+
+// A stable build is not told about beta lines.
+{
+  const r = await run({ seen: "1.11.11", version: "1.12.0", app: [{ ...R11, version: "1.12.0" }, BETA, R11] });
+  assert.deepEqual(r.shown.map((e) => e.version), ["1.12.0"], "a stable build was shown a beta line");
+}
+
+// A beta build is told what the beta brought.
+{
+  const running = { ...BETA, version: "1.12.0-beta.2" };
+  const r = await run({ seen: "1.11.10", version: "1.12.0-beta.2", app: [running, BETA, R11, R10], beta: true });
+  assert.deepEqual(
+    r.shown.map((e) => e.version),
+    ["1.12.0-beta.2", "1.12.0-beta.1", "1.11.11"],
+    "a beta build did not see the beta lines since its last version",
+  );
+}
+
+// The older lines are there but the running one is not: still nothing, still unrecorded.
+{
+  const r = await run({ seen: "1.11.9", version: "1.11.11", app: [R10, R9] });
+  assert.deepEqual(r.shown, [], "the older lines were shown before the running version had one");
+  assert.equal(r.seen, "1.11.9", "the range was recorded as seen before any of it was shown");
+  assert.equal(r.fetched.length, RETRY_DELAYS_MS.length + 1, "it stopped retrying once older lines arrived");
 }
 
 /* ── the grouping, run as the component's own code ───────────────────────── */

@@ -1,25 +1,16 @@
 import { useEffect, useState } from "react";
 
+import { IS_BETA_BUILD } from "@/common";
 import { getUserValue, loadedUserId, onUserStoreLoaded, setUserValue } from "@/settings";
 import { useWhatsNewRequested } from "@/socket";
 
-import {
-  type WhatsNewChange,
-  WhatsNewDialog,
-} from "../packages/socket/src/components/WhatsNewDialog";
+import { WhatsNewDialog } from "../packages/socket/src/components/WhatsNewDialog";
+import { type Release, type ReleasesToShow, releasesToShow } from "./whatsNewSince";
 
 /** The site emits this on every build. See the site's emit-changelog-json.mjs. */
 const CHANGELOG_URL = "https://gryt.chat/changelog.json";
 
 const SEEN_KEY = "whatsNewSeenVersion";
-
-interface Entry {
-  version: string;
-  date: string;
-  line: string;
-  changes?: WhatsNewChange[];
-  note?: boolean;
-}
 
 /** Whether this install has ever joined a server, which a fresh one has not. */
 function hasJoinedAnything(): boolean {
@@ -46,16 +37,15 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
   });
 }
 
-/** The line for this version, once the site has one to give. */
-async function findEntry(version: string, signal: AbortSignal): Promise<Entry | null> {
+/** Every app release, once the site has a line for this version. */
+async function findReleases(version: string, signal: AbortSignal): Promise<Release[] | null> {
   for (let attempt = 0; !signal.aborted; attempt++) {
     try {
       /* no-cache, not the default. nginx sends max-age=600, and the ten
          minutes after an update are the ten that matter. */
       const res = await fetch(CHANGELOG_URL, { cache: "no-cache", signal });
-      const data = res.ok ? ((await res.json()) as { app?: Entry[] } | null) : null;
-      const found = data?.app?.find((e) => e.version === version);
-      if (found) return found;
+      const data = res.ok ? ((await res.json()) as { app?: Release[] } | null) : null;
+      if (data?.app?.some((e) => e.version === version)) return data.app;
     } catch {
       // Offline, or the site is down. Nothing to tell anybody about, and the
       // next attempt is coming.
@@ -74,7 +64,7 @@ async function findEntry(version: string, signal: AbortSignal): Promise<Entry | 
  */
 export function WhatsNew() {
   const version = __APP_VERSION__;
-  const [entry, setEntry] = useState<Entry | null>(null);
+  const [shown, setShown] = useState<ReleasesToShow | null>(null);
   const asked = useWhatsNewRequested();
   /* Read on mount this saw an empty store every launch, called that a fresh
      install, and wrote a version nobody was loaded to write against. */
@@ -98,9 +88,12 @@ export function WhatsNew() {
 
     const abort = new AbortController();
 
-    void findEntry(version, abort.signal).then((found) => {
-      if (!found || abort.signal.aborted) return;
-      setEntry(found);
+    void findReleases(version, abort.signal).then((app) => {
+      if (!app || abort.signal.aborted) return;
+      /* From About it is this version alone, whatever was seen before. */
+      const picked = releasesToShow(app, asked ? null : seen, version, IS_BETA_BUILD);
+      if (!picked.releases.length) return;
+      setShown(picked);
       /* Only once it has actually been shown. A line written twenty minutes
          after the release would otherwise be missed for good. */
       setUserValue(SEEN_KEY, version);
@@ -109,15 +102,14 @@ export function WhatsNew() {
     return () => abort.abort();
   }, [version, storeUser, asked]);
 
-  if (!entry) return null;
+  if (!shown) return null;
 
   return (
     <WhatsNewDialog
-      version={entry.version}
-      date={entry.date}
-      line={entry.line}
-      changes={entry.changes}
-      onClose={() => setEntry(null)}
+      releases={shown.releases}
+      since={shown.since}
+      capped={shown.capped}
+      onClose={() => setShown(null)}
     />
   );
 }
