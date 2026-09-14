@@ -188,18 +188,6 @@ function useSettingsHook() {
       setPinMembersSidebarState(getUserValue("pinMembersSidebar", true));
       setAfkTimeoutMinutes(getUserValue("afkTimeoutMinutes", 5));
 
-      const seen = readSeenWelcome();
-      setHasSeenWelcome(seen);
-      // The tour rather than Settings opening on top of somebody. Once: this ran
-      // on every load, so declining it was nagged at forever.
-      if (
-        seen &&
-        !getUserValue<string>("nickname", "") &&
-        !getUserValue<boolean>("hasSeenTour", false)
-      ) {
-        setShowTour(true);
-      }
-
       // Here rather than at the end: everything the first-run decisions rest on is
       // read, and the avatar below is an await nobody is waiting on.
       setSettingsLoaded(true);
@@ -471,8 +459,7 @@ function useSettingsHook() {
       return;
     }
 
-    // Anything that is not asking for the tour declines it, and that has to be
-    // written down: the load path offers it to exactly the person who said no.
+    // Anything that is not asking for the tour declines it, and that is written down.
     setUserValue("hasSeenTour", true);
   }
 
