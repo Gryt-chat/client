@@ -8,6 +8,13 @@ export interface WhatsNewChange {
   text: string;
 }
 
+export interface WhatsNewRelease {
+  version: string;
+  date: string;
+  line: string;
+  changes?: WhatsNewChange[];
+}
+
 /**
  * The order the groups are drawn in, which is not the order they are written in.
  * Security leads wherever it appears: below the features it is what gets skipped.
@@ -60,26 +67,49 @@ function readableDate(iso: string): string {
   });
 }
 
-/**
- * What a release changed, the first time somebody opens it. The third dialog
- * this app draws, and the only one with a shape ConfirmDialog cannot carry.
- */
-export function WhatsNewDialog({
-  version,
-  date,
-  line,
-  changes,
-  onClose,
-}: {
-  version: string;
-  date: string;
-  line: string;
-  changes?: WhatsNewChange[];
-  onClose: () => void;
-}) {
+/** One release's changes by kind, or its one sentence where it was never split. */
+function ReleaseBody({ line, changes }: { line: string; changes?: WhatsNewChange[] }) {
   /* Releases before 1.10 carry a line and no kinds, so there is nothing to
      group. Their one sentence is shown as it is written. */
   const groups = changes?.length ? group(changes) : null;
+
+  if (!groups) return <p className="whats-new-plain">{line}</p>;
+
+  return (
+    <dl className="whats-new-groups">
+      {groups.map(([kind, items]) => (
+        <Fragment key={kind}>
+          <dt>
+            <Chip tone={TONES[kind] ?? "neutral"}>{LABELS[kind] ?? kind}</Chip>
+          </dt>
+          <dd>
+            {items.map((text) => (
+              <p key={text}>{text}</p>
+            ))}
+          </dd>
+        </Fragment>
+      ))}
+    </dl>
+  );
+}
+
+/**
+ * What changed since somebody last opened Gryt, newest release first. The third
+ * dialog this app draws, and the only one with a shape ConfirmDialog cannot carry.
+ */
+export function WhatsNewDialog({
+  releases,
+  since,
+  capped,
+  onClose,
+}: {
+  releases: WhatsNewRelease[];
+  since: string | null;
+  capped: boolean;
+  onClose: () => void;
+}) {
+  const [newest] = releases;
+  const several = releases.length > 1;
 
   return (
     <Dialog.Root
@@ -113,42 +143,46 @@ export function WhatsNewDialog({
               </span>
               <span>
                 <Dialog.Title className="whats-new-greet">
-                  Here&rsquo;s what&rsquo;s new in Gryt Chat
+                  {several && since ? (
+                    <>What&rsquo;s new since {since}</>
+                  ) : (
+                    <>Here&rsquo;s what&rsquo;s new in Gryt Chat</>
+                  )}
                 </Dialog.Title>
                 <p className="whats-new-meta">
-                  {version} · {readableDate(date)}
+                  {!several
+                    ? `${newest.version} · ${readableDate(newest.date)}`
+                    : capped
+                      ? `The ${releases.length} newest releases`
+                      : `${releases.length} releases`}
                 </p>
               </span>
             </div>
 
-            {groups ? (
-              <dl className="whats-new-groups">
-                {groups.map(([kind, items]) => (
-                  <Fragment key={kind}>
-                    <dt>
-                      <Chip tone={TONES[kind] ?? "neutral"}>{LABELS[kind] ?? kind}</Chip>
-                    </dt>
-                    <dd>
-                      {items.map((text) => (
-                        <p key={text}>{text}</p>
-                      ))}
-                    </dd>
-                  </Fragment>
+            {several ? (
+              <div className="whats-new-releases">
+                {releases.map((release) => (
+                  <section key={release.version} className="whats-new-release">
+                    <h3 className="whats-new-version">
+                      {release.version} · {readableDate(release.date)}
+                    </h3>
+                    <ReleaseBody line={release.line} changes={release.changes} />
+                  </section>
                 ))}
-              </dl>
+              </div>
             ) : (
-              <p className="whats-new-plain">{line}</p>
+              <ReleaseBody line={newest.line} changes={newest.changes} />
             )}
           </div>
 
           <div className="whats-new-foot">
             <a
               className="gryt-link whats-new-link"
-              href={`https://gryt.chat/changelog/${version}`}
+              href={several ? "https://gryt.chat/changelog" : `https://gryt.chat/changelog/${newest.version}`}
               target="_blank"
               rel="noreferrer"
             >
-              Read more
+              {several ? "Full changelog" : "Read more"}
             </a>
             <Dialog.Close render={<Button size="small">Done</Button>} />
           </div>

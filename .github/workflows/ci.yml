@@ -47,6 +47,7 @@ jobs:
       # Fires once per version, so a mistake is a modal nobody sees again or one
       # that greets a fresh install. Neither shows up in a build.
       - run: yarn test:whats-new
+      - run: yarn test:whats-new-since
       - run: yarn test:whats-new-reachable
       - run: yarn test:link-underline
 

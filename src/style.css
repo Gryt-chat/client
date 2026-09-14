@@ -1681,11 +1681,48 @@ body {
   border-top: 1px solid var(--gryt-border);
 }
 
+/* Several releases share one gutter through subgrid, so each release's text
+   starts at the same place whichever chips it happens to have. */
+.whats-new-releases {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: 0.875rem;
+}
+
+.whats-new-release,
+.whats-new-release > .whats-new-groups {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+}
+
+.whats-new-release > * {
+  grid-column: 1 / -1;
+}
+
+.whats-new-release + .whats-new-release {
+  margin-top: 0.5rem;
+}
+
+.whats-new-version {
+  margin: 1.25rem 0 0;
+  font-family: var(--gryt-font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--gryt-muted);
+}
+
+.whats-new-version + .whats-new-groups,
+.whats-new-version + .whats-new-plain {
+  margin-top: 0.5rem;
+}
+
 /* Narrow enough that the gutter stops leaving room for a sentence beside it:
    the chip goes above its group instead. On the card's own width rather than
    the window's — the card is what has to hold the sentence, and on a phone the
    two do not agree by the 3rem the popup keeps clear of the edges. */
 @container (max-width: 380px) {
+  .whats-new-releases,
   .whats-new-groups {
     grid-template-columns: minmax(0, 1fr);
   }
