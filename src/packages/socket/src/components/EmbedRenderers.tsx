@@ -1,10 +1,10 @@
-import { Skeleton } from "@gryt/ui";
+import { Skeleton, VideoPlayer } from "@gryt/ui";
 import { useEffect, useState } from "react";
 
 import { getServerAccessToken, getServerHttpBase, useTheme } from "@/common";
+import { useSettings } from "@/settings/src/hooks/useSettings";
 
 import { PiX } from "../../../../lib/icons";
-import { VideoPoster } from "./ChatMediaPlayer";
 import {
   getInstagramEmbedSrc,
   getSpotifyEmbed,
@@ -80,15 +80,11 @@ export const ImageEmbed = ({ url, serverHost, onDismiss }: { url: string; server
 };
 
 export const VideoEmbed = ({ url, onDismiss }: { url: string; onDismiss: () => void }) => {
-  const [started, setStarted] = useState(false);
+  const { chatMediaVolume, setChatMediaVolume } = useSettings();
   return (
-    <div className="link-embed-container">
+    <div className="link-embed-container link-embed-video">
       <DismissButton onDismiss={onDismiss} />
-      {started ? (
-        <video src={url} controls autoPlay playsInline className="link-embed-video" />
-      ) : (
-        <VideoPoster className="chat-video-poster link-embed-video-poster" onPlay={() => setStarted(true)} />
-      )}
+      <VideoPlayer src={url} volume={chatMediaVolume} onVolumeChange={setChatMediaVolume} />
     </div>
   );
 };

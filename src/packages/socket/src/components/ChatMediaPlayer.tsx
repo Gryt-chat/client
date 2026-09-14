@@ -1,47 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { VideoPlayer } from "@gryt/ui";
+import { useCallback, useEffect, useRef } from "react";
 
-import { PiPlayFill } from "../../../../lib/icons";
 import { formatFileSize } from "../utils/formatFileSize";
-
-/** Stands in for a video until it is clicked, so no video bytes load before then. */
-export const VideoPoster = ({
-  poster,
-  onPlay,
-  onPosterError,
-  className = "chat-video-poster",
-}: {
-  poster?: string;
-  onPlay: () => void;
-  onPosterError?: () => void;
-  className?: string;
-}) => {
-  const [ratio, setRatio] = useState<string | undefined>(undefined);
-  return (
-    <button
-      type="button"
-      className={className}
-      aria-label="Play video"
-      style={ratio ? { aspectRatio: ratio } : undefined}
-      onClick={onPlay}
-    >
-      {poster && (
-        <img
-          src={poster}
-          alt=""
-          draggable={false}
-          onLoad={(e) => {
-            const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
-            if (w > 0 && h > 0) setRatio(`${w} / ${h}`);
-          }}
-          onError={onPosterError}
-        />
-      )}
-      <span className="chat-video-poster-play">
-        <PiPlayFill size={26} />
-      </span>
-    </button>
-  );
-};
 
 export const ChatMediaPlayer = ({
   src,
@@ -53,7 +13,6 @@ export const ChatMediaPlayer = ({
   onVolumeChange,
   onError,
   onPosterError,
-  onStart,
 }: {
   src: string;
   type: "audio" | "video";
@@ -62,16 +21,81 @@ export const ChatMediaPlayer = ({
   size?: number | null;
   volume: number;
   onVolumeChange: (v: number) => void;
-  /** The load failed. The owner may hand back a new `src`, and playback picks up where it was. */
+  /** The load failed. The owner may hand back a new `src`. */
   onError?: () => void;
   onPosterError?: () => void;
-  /** Called on the click that loads a video, before `src` is first used. */
-  onStart?: () => void;
 }) => {
-  const mediaRef = useRef<HTMLAudioElement | HTMLVideoElement | null>(null);
+  const label = fileName
+    ? `${fileName}${size != null ? ` · ${formatFileSize(size)}` : ""}`
+    : null;
+
+  if (type === "video") {
+    return (
+      <ChatVideo
+        src={src}
+        poster={poster}
+        label={label}
+        volume={volume}
+        onVolumeChange={onVolumeChange}
+        onError={onError}
+        onPosterError={onPosterError}
+      />
+    );
+  }
+
+  return (
+    <ChatAudio src={src} label={label} volume={volume} onVolumeChange={onVolumeChange} onError={onError} />
+  );
+};
+
+function ChatVideo({
+  src,
+  poster,
+  label,
+  volume,
+  onVolumeChange,
+  onError,
+  onPosterError,
+}: {
+  src: string;
+  poster?: string;
+  label: string | null;
+  volume: number;
+  onVolumeChange: (v: number) => void;
+  onError?: () => void;
+  onPosterError?: () => void;
+}) {
+  return (
+    <div className="chat-video-player">
+      <VideoPlayer
+        src={src}
+        poster={poster}
+        fileName={label}
+        volume={volume}
+        onVolumeChange={onVolumeChange}
+        onError={onError}
+        onPosterError={onPosterError}
+      />
+    </div>
+  );
+}
+
+function ChatAudio({
+  src,
+  label,
+  volume,
+  onVolumeChange,
+  onError,
+}: {
+  src: string;
+  label: string | null;
+  volume: number;
+  onVolumeChange: (v: number) => void;
+  onError?: () => void;
+}) {
+  const mediaRef = useRef<HTMLAudioElement | null>(null);
   const suppressNextEvent = useRef(false);
   const resumeAt = useRef<number | null>(null);
-  const [started, setStarted] = useState(false);
 
   useEffect(() => {
     if (mediaRef.current) {
@@ -81,7 +105,7 @@ export const ChatMediaPlayer = ({
         mediaRef.current.volume = linear;
       }
     }
-  }, [volume, started]);
+  }, [volume]);
 
   const handleVolumeChange = useCallback(() => {
     if (suppressNextEvent.current) {
@@ -108,52 +132,19 @@ export const ChatMediaPlayer = ({
     void el.play().catch(() => {});
   }, []);
 
-  const start = useCallback(() => {
-    onStart?.();
-    setStarted(true);
-  }, [onStart]);
-
-  const label = fileName
-    ? `${fileName}${size != null ? ` · ${formatFileSize(size)}` : ""}`
-    : null;
-
-  if (type === "audio") {
-    return (
-      <div className="chat-audio-player">
-        {label && <span className="chat-media-filename">{label}</span>}
-        <audio
-          ref={mediaRef as React.RefObject<HTMLAudioElement>}
-          controls
-          preload="metadata"
-          src={src}
-          onVolumeChange={handleVolumeChange}
-          onError={handleError}
-          onLoadedMetadata={handleLoadedMetadata}
-          onContextMenu={(e) => e.preventDefault()}
-        />
-      </div>
-    );
-  }
-
   return (
-    <div className="chat-video-player">
+    <div className="chat-audio-player">
       {label && <span className="chat-media-filename">{label}</span>}
-      {started ? (
-        <video
-          ref={mediaRef as React.RefObject<HTMLVideoElement>}
-          controls
-          autoPlay
-          playsInline
-          poster={poster}
-          src={src}
-          onVolumeChange={handleVolumeChange}
-          onError={handleError}
-          onLoadedMetadata={handleLoadedMetadata}
-          onContextMenu={(e) => e.preventDefault()}
-        />
-      ) : (
-        <VideoPoster poster={poster} onPlay={start} onPosterError={onPosterError} />
-      )}
+      <audio
+        ref={mediaRef}
+        controls
+        preload="metadata"
+        src={src}
+        onVolumeChange={handleVolumeChange}
+        onError={handleError}
+        onLoadedMetadata={handleLoadedMetadata}
+        onContextMenu={(e) => e.preventDefault()}
+      />
     </div>
   );
-};
+}
