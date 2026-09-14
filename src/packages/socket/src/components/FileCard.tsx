@@ -6,6 +6,7 @@ const FaFilePdf = PiFileTextFill;
 import { getUploadsFileUrl } from "@/common";
 
 import { triggerDownload } from "../utils/downloadFile";
+import { formatFileSize } from "../utils/formatFileSize";
 
 function getFileIcon(mime: string | null) {
   if (!mime) return <PiFileFill size={24} />;
@@ -17,14 +18,6 @@ function getFileIcon(mime: string | null) {
   if (mime.includes("javascript") || mime.includes("json") || mime.includes("xml") || mime.includes("html") || mime.includes("css") || mime.includes("typescript")) return <PiCode size={24} />;
   if (mime.startsWith("text/")) return <PiFileTextFill size={24} />;
   return <PiFileFill size={24} />;
-}
-
-function formatFileSize(bytes: number | null): string {
-  if (bytes == null) return "";
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
 }
 
 function mimeToLabel(mime: string | null): string {

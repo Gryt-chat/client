@@ -102,6 +102,7 @@
     "test:scan-consent": "node scripts/check-scan-consent.mjs",
     "test:card-byline": "node scripts/check-card-byline.mjs",
     "test:link-preview-retry": "node scripts/check-link-preview-retry.mjs",
+    "test:stable-attachment-urls": "node --disable-warning=ExperimentalWarning scripts/check-stable-attachment-urls.mjs",
     "test:examples": "node --test examples/examples.test.mjs",
     "test:member-invite": "node scripts/check-member-invite.mjs",
     "test:addon-capabilities": "node scripts/check-addon-capabilities.mjs",

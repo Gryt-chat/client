@@ -8,6 +8,7 @@ interface ImageAttachmentProps {
   width: number | null | undefined;
   height: number | null | undefined;
   onClick: () => void;
+  onError?: () => void;
 }
 
 export const ImageAttachment = memo(({
@@ -16,6 +17,7 @@ export const ImageAttachment = memo(({
   width,
   height,
   onClick,
+  onError,
 }: ImageAttachmentProps) => {
   const [loaded, setLoaded] = useState(false);
   const handleLoad = useCallback(() => setLoaded(true), []);
@@ -53,6 +55,7 @@ export const ImageAttachment = memo(({
           transition: "opacity 0.2s ease",
         }}
         onLoad={handleLoad}
+        onError={onError}
         onClick={onClick}
       />
     </div>

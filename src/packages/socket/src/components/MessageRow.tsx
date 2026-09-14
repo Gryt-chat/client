@@ -2,8 +2,6 @@ import { Avatar, Chip, PreviewCard, Tooltip } from "@gryt/ui";
 import { AnimatePresence, motion } from "motion/react";
 import { forwardRef, memo, useCallback, useRef, useState } from "react";
 
-import { getUploadsFileUrl } from "@/common";
-
 import { PiChatsFill, PiLockOpen, PiSignInBold, PiSignOutBold } from "../../../../lib/icons";
 import { useServerPermissions } from "../hooks/usePermissions";
 import type { ThreadSummary } from "../hooks/useThreads";
@@ -11,20 +9,18 @@ import { getFrequentReactions } from "../utils/recentReactions";
 import type { CustomEmojiEntry } from "../utils/remarkEmoji";
 import { sealedPlaceholder } from "../utils/sealedText";
 import { BotTag } from "./BotTag";
-import { ChatMediaPlayer } from "./ChatMediaPlayer";
 import { MessageHoverToolbar } from "./ChatMessage";
-import type { AttachmentMeta, ChatMessage, Reaction } from "./chatUtils";
+import type { ChatMessage, Reaction } from "./chatUtils";
 import { DateSeparator, MessageTimestamp, NewMessagesDivider, toDate } from "./chatUtils";
 import { CollapsibleText } from "./CollapsibleText";
 import { EmojiPicker } from "./EmojiPicker";
 import { EmojiText } from "./EmojiText";
-import { FileCard } from "./FileCard";
-import { ImageAttachment } from "./ImageAttachment";
 import { MessageEmbeds } from "./LinkEmbed";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { type MessageActions, MessageContextMenu } from "./MediaContextMenu";
 import { MemberIdentityCard } from "./MemberIdentityCard";
 import type { MemberInfo } from "./MemberSidebar";
+import { MessageAttachment } from "./MessageAttachment";
 import { UnreadIndicator } from "./UnreadIndicator";
 
 export interface MessageMeta {
@@ -663,51 +659,18 @@ function MessageContent({
         )}
         {m.attachments && m.attachments.length > 0 && serverHost && (
           <div className="flex gap-2 flex-wrap flex-col" style={{ marginTop: "4px" }}>
-            {m.attachments.map((fileId, attIdx) => {
-              const attachMeta: AttachmentMeta | undefined = m.enriched_attachments?.[attIdx];
-              const url = getUploadsFileUrl(serverHost, fileId);
-              const thumbUrl = attachMeta?.has_thumbnail ? getUploadsFileUrl(serverHost, fileId, { thumb: true }) : undefined;
-              const mime = attachMeta?.mime || "";
-
-              if (mime.startsWith("image/")) {
-                const imgSrc = attachMeta?.local_url || url;
-                return (
-                  <MessageContextMenu key={fileId} media={{ src: url, fileName: attachMeta?.original_name, isImage: true }} messageActions={messageActions}>
-                    <ImageAttachment
-                      src={imgSrc}
-                      alt={attachMeta?.original_name || "Attachment"}
-                      width={attachMeta?.width}
-                      height={attachMeta?.height}
-                      onClick={() => onLightboxOpen(imgSrc, attachMeta?.original_name || "Attachment")}
-                    />
-                  </MessageContextMenu>
-                );
-              }
-              if (mime.startsWith("audio/")) {
-                return (
-                  <MessageContextMenu key={fileId} media={{ src: url, fileName: attachMeta?.original_name }} messageActions={messageActions}>
-                    <ChatMediaPlayer src={url} type="audio" fileName={attachMeta?.original_name} volume={chatMediaVolume} onVolumeChange={setChatMediaVolume} />
-                  </MessageContextMenu>
-                );
-              }
-              if (mime.startsWith("video/")) {
-                return (
-                  <MessageContextMenu key={fileId} media={{ src: url, fileName: attachMeta?.original_name }} messageActions={messageActions}>
-                    <ChatMediaPlayer src={url} type="video" poster={thumbUrl} fileName={attachMeta?.original_name} volume={chatMediaVolume} onVolumeChange={setChatMediaVolume} />
-                  </MessageContextMenu>
-                );
-              }
-              return (
-                <FileCard
-                  key={fileId}
-                  fileId={fileId}
-                  mime={attachMeta?.mime ?? null}
-                  size={attachMeta?.size ?? null}
-                  originalName={attachMeta?.original_name ?? null}
-                  serverHost={serverHost}
-                />
-              );
-            })}
+            {m.attachments.map((fileId, attIdx) => (
+              <MessageAttachment
+                key={fileId}
+                fileId={fileId}
+                meta={m.enriched_attachments?.[attIdx]}
+                serverHost={serverHost}
+                messageActions={messageActions}
+                onLightboxOpen={onLightboxOpen}
+                chatMediaVolume={chatMediaVolume}
+                setChatMediaVolume={setChatMediaVolume}
+              />
+            ))}
           </div>
         )}
         {m.failed && (
