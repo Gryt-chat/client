@@ -52,6 +52,7 @@
     "test:unread-tracker": "node scripts/check-unread-tracker.mjs",
     "test:owl-export": "node scripts/check-owl-export.mjs",
     "test:owl-seen": "node scripts/check-owl-seen.mjs",
+    "test:welcome-tour": "node --disable-warning=ExperimentalWarning scripts/check-welcome-tour.mjs",
     "test:windows-signature": "node scripts/check-windows-signature.mjs",
     "test:builder-config": "node scripts/check-builder-config.mjs",
     "test:server-order": "node scripts/check-server-order.mjs",

@@ -464,13 +464,10 @@ function useSettingsHook() {
     setHasSeenWelcome(true);
     writeSeenWelcome();
 
+    // Unconditional: the load seeds a random nickname first, so a guard on it
+    // made this button do nothing for everyone.
     if (options?.startTour === true) {
-      if (
-        !getUserValue<string>("nickname", "") &&
-        !getUserValue<boolean>("hasSeenTour", false)
-      ) {
-        setShowTour(true);
-      }
+      setShowTour(true);
       return;
     }
 
