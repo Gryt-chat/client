@@ -66,6 +66,7 @@ jobs:
       - run: yarn test:audio-mixer
       - run: yarn test:capture-set
       - run: yarn test:capture-health
+      - run: yarn test:screen-audio-state
       - run: yarn test:avatar-precedence
       - run: yarn test:mention-tracker
       - run: yarn test:unread-tracker

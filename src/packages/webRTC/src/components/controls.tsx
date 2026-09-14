@@ -11,7 +11,7 @@ import { useVideoFraming } from "@/socket/src/hooks/useVideoFraming";
 
 import { getElectronAPI, isElectron } from "../../../../lib/electron";
 import { PiMicrophoneFill, PiMicrophoneSlashFill, PiMonitorArrowUpFill, PiPhoneDisconnectFill, PiScanSmileyFill, PiScreencastFill, PiSlidersHorizontalFill, PiSpeakerHighFill, PiSpeakerSimpleHighFill, PiSpeakerSimpleSlashFill, PiSpeakerSlashFill, PiVideoCameraFill, PiVideoCameraSlashFill } from "../../../../lib/icons";
-import { screenAudioProblemMessage } from "../../../../lib/screenShareAudio";
+import { screenAudioProblemMessage, screenAudioStreamId } from "../../../../lib/screenShareAudio";
 import { useScreenAudioMute } from "../adapters/useScreenAudioMute";
 import { useScreenAudioSources } from "../adapters/useScreenAudioSources";
 import { useVoiceSounds } from "../adapters/useVoiceSounds";
@@ -316,7 +316,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
       const payload = {
         enabled: screenShareActive,
         videoStreamId: (screenShareActive && webrtcScreenVideoStreamId.current) || screenVideoStream?.id || "",
-        audioStreamId: (screenShareActive && webrtcScreenAudioStreamId.current) || screenAudioStream?.id || "",
+        audioStreamId: screenAudioStreamId(screenShareActive, screenAudioStream, webrtcScreenAudioStreamId.current),
       };
       lastScreenStateRef.current = payload;
       voiceLog.info("SCREEN", `controls: emitting voice:screen:state`, payload);
