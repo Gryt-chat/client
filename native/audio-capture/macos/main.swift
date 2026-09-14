@@ -14,7 +14,7 @@ import ScreenCaptureKit
 // MARK: - Stream output delegate
 
 @available(macOS 13.0, *)
-class AudioOutputHandler: NSObject, SCStreamOutput {
+class AudioOutputHandler: NSObject, SCStreamOutput, SCStreamDelegate {
     private let sampleRate: Double = 48000
     private let channels: Int = 2
 
@@ -65,7 +65,21 @@ class AudioOutputHandler: NSObject, SCStreamOutput {
         }
         fflush(stdout)
     }
+
+    func stream(_ stream: SCStream, didStopWithError error: Error) {
+        reportError(error)
+        exit(1)
+    }
 }
+
+// electron/captureHealth.ts reads the bracketed domain and code to spot a refused permission.
+func reportError(_ error: Error) {
+    let ns = error as NSError
+    fputs("Error: \(ns.localizedDescription) [\(ns.domain) \(ns.code)]\n", stderr)
+}
+
+// SCStream holds its outputs weakly, so a handler kept only by a local is freed and no audio arrives.
+var keepAlive: [AnyObject] = []
 
 // MARK: - Stdin watcher
 
@@ -104,8 +118,9 @@ if #available(macOS 13.0, *) {
             config.height = 2
             config.minimumFrameInterval = CMTime(value: 1, timescale: 1)
 
-            let stream = SCStream(filter: filter, configuration: config, delegate: nil)
             let handler = AudioOutputHandler()
+            let stream = SCStream(filter: filter, configuration: config, delegate: handler)
+            keepAlive = [handler, stream]
             try stream.addStreamOutput(handler, type: .audio, sampleHandlerQueue: .global(qos: .userInteractive))
             try await stream.startCapture()
 
@@ -116,7 +131,7 @@ if #available(macOS 13.0, *) {
                 }
             }
         } catch {
-            fputs("Error: \(error.localizedDescription)\n", stderr)
+            reportError(error)
             exit(1)
         }
     }

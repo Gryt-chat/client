@@ -1,6 +1,7 @@
 import { AddonManifest, AddonUpdate } from "@/addons";
 
 import type { HotkeyAction, HotkeyBindings } from "./hotkeys";
+import type { ScreenAudioProblem } from "./screenShareAudio";
 
 /** One thing a screen share is taking audio from. */
 export interface AudioCaptureSource {
@@ -217,6 +218,8 @@ export interface ElectronAPI {
   onNativeAudioData(callback: (pcm: ArrayBuffer) => void): () => void;
   onNativeAudioStopped(callback: () => void): () => void;
   onNativeAudioDiagnostic(callback: (msg: string) => void): () => void;
+  /** A macOS share whose audio is not getting through. Absent on builds before it was added. */
+  onNativeAudioProblem?(callback: (problem: ScreenAudioProblem) => void): () => void;
   isNativeScreenCaptureAvailable(): Promise<boolean>;
   startNativeScreenCapture(
     monitorIndex: number,
