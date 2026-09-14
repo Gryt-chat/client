@@ -61,4 +61,44 @@ const card = (() => {
   assert.ok(/candidateType: selfLatency\.candidateType/.test(view), "the voice view no longer hands the tile the route");
 }
 
-console.log("server hover address: the rail's hover card and the voice tile's tooltip name no address");
+/* Settings -> Advanced shows the SFU endpoint and both ICE addresses. Settings gets
+   opened while screen sharing, so they stay hidden until you ask. */
+{
+  const PANEL = "src/packages/settings/src/components/latencyPanel.tsx";
+  const panel = read(PANEL);
+  const row = (() => {
+    const at = panel.indexOf("function AddressRow");
+    assert.notEqual(at, -1, `${PANEL} no longer has AddressRow, so this check reads nothing`);
+    return panel.slice(at, panel.indexOf("\nfunction ", at + 1));
+  })();
+  const body = panel.slice(panel.indexOf("export function LatencyPanel"));
+
+  assert.ok(/\{shown \? \(/.test(row), "AddressRow renders the address without checking whether it was revealed");
+  assert.equal(row.match(/\{address\}/g)?.length, 1, "AddressRow renders the address more than once, or not at all");
+  assert.ok(row.indexOf("{address}") < row.indexOf(") : ("), "AddressRow renders the address on the hidden side");
+  assert.ok(/\) : \(\s*<span[^>]*>Hidden<\/span>/.test(row), "a hidden address no longer says Hidden");
+
+  assert.ok(/const \[addressesShown, setAddressesShown\] = useState\(false\)/.test(body), "addresses are not hidden when the panel opens");
+  assert.ok(!/localStorage|sessionStorage|useSettings/.test(panel), "the reveal is persisted, so it survives leaving the page");
+  assert.ok(/setAddressesShown\(\(s\) => !s\)/.test(body), "nothing reveals the addresses any more");
+
+  for (const field of ["sfuEndpoint", "remoteAddress", "localAddress"]) {
+    const uses = [...body.matchAll(new RegExp(`latency\\.${field}\\b(?!\\)?\\s*(?:&&|\\|\\|))`, "g"))];
+    assert.ok(uses.length > 0, `the panel no longer shows ${field}, so this check reads nothing`);
+    for (const use of uses) {
+      const start = body.lastIndexOf("<", use.index);
+      assert.ok(
+        body.startsWith("<AddressRow", start) && /shown=\{addressesShown\}/.test(body.slice(start, body.indexOf("/>", use.index))),
+        `the panel renders ${field} outside a hidden AddressRow`,
+      );
+    }
+  }
+
+  const settings = read("src/packages/settings/src/components/settings.tsx");
+  assert.ok(
+    /value: "advanced",[^}]*mountWhenActive: true/.test(settings),
+    "Advanced stays mounted while you are elsewhere in settings, so a revealed address stays revealed",
+  );
+}
+
+console.log("server hover address: the rail's hover card, the voice tile's tooltip and the latency panel name no address unasked");
