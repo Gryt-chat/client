@@ -102,6 +102,7 @@ import {
   startNativeScreenCapture,
   stopNativeScreenCapture,
 } from "./screenCaptureManager";
+import { chooseFeedRelease } from "./updateFeedPin";
 import {
   flushUserStore,
   initUserStore,
@@ -764,61 +765,51 @@ async function releaseIsInstallable(
     feed moves us to `generic`, which turns them on. */
 const FEED_SUPPORTS_MULTI_RANGE = false;
 
-async function pinFeedToNewestCompleteRelease(): Promise<void> {
+/** `nothing-to-install` means a check can only fail: unpinned, the updater uses the
+    github provider, which on the beta channel finds no release at all (GRYT-1050). */
+type FeedPinResult = "pinned" | "nothing-to-install" | "unknown";
+
+async function pinFeedToNewestCompleteRelease(): Promise<FeedPinResult> {
   const res = await fetchWithTimeout(
     `https://api.github.com/repos/${UPDATE_OWNER}/${UPDATE_REPO}/releases?per_page=20`
   );
 
-  if (!res) return;
+  if (!res) return "unknown";
 
   let releases: GhRelease[];
 
   try {
     releases = (await res.json()) as GhRelease[];
   } catch {
-    return;
+    return "unknown";
   }
 
-  if (!Array.isArray(releases)) return;
+  if (!Array.isArray(releases)) return "unknown";
 
-  const current = app.getVersion();
-  const wantPrerelease = isOnBetaChannel();
+  const choice = await chooseFeedRelease(releases, {
+    current: app.getVersion(),
+    wantPrerelease: isOnBetaChannel(),
+    variantSwitchPending: variantSwitchPending(),
+    isInstallable: releaseIsInstallable,
+  });
 
-  const candidates = releases
-    .filter(
-      (release) =>
-        !release.draft &&
-        (wantPrerelease || !release.prerelease)
-    )
-    .map((release) => ({
-      release,
-      version: (release.tag_name || "").replace(/^v/, ""),
-    }))
-    .filter(
-      ({ version }) =>
-        semver.valid(version) &&
-        semver.gt(version, current)
-    )
-    .sort((a, b) =>
-      semver.rcompare(a.version, b.version)
-    );
-
-  for (const { release, version } of candidates) {
-    if (await releaseIsInstallable(release)) {
-      autoUpdater.setFeedURL({
-        provider: "generic",
-        url: `https://github.com/${UPDATE_OWNER}/${UPDATE_REPO}/releases/download/${release.tag_name}`,
-        useMultipleRangeRequest: FEED_SUPPORTS_MULTI_RANGE,
-      });
-
-      startupLog(`Update: feed pinned to ${release.tag_name}`);
-      return;
-    }
-
-    startupLog(
-      `Update: skipping ${version}, assets incomplete`
-    );
+  for (const version of "skipped" in choice ? choice.skipped : []) {
+    startupLog(`Update: skipping ${version}, assets incomplete`);
   }
+
+  if (choice.kind !== "pinned") {
+    startupLog(`Update: no feed pinned (${choice.kind})`);
+    return "nothing-to-install";
+  }
+
+  autoUpdater.setFeedURL({
+    provider: "generic",
+    url: releaseDownloadBase(choice.release.tag_name),
+    useMultipleRangeRequest: FEED_SUPPORTS_MULTI_RANGE,
+  });
+
+  startupLog(`Update: feed pinned to ${choice.release.tag_name}`);
+  return "pinned";
 }
 
 let lastUpdateFailure = {
@@ -3261,13 +3252,14 @@ if (!gotSingleInstanceLock) {
         initBackgroundUpdater(true);
 
         if (!updatesAreManagedByWindows) {
-          pinFeedToNewestCompleteRelease().finally(
-            () => {
+          void pinFeedToNewestCompleteRelease()
+            .catch((): FeedPinResult => "unknown")
+            .then((pin) => {
+              if (pin === "nothing-to-install") return;
               autoUpdater
                 .checkForUpdates()
                 .catch(() => {});
-            }
-          );
+            });
         }
       } else {
         /* Open the window and look for updates behind it: a second path used to
@@ -3683,8 +3675,19 @@ if (!gotSingleInstanceLock) {
           autoUpdater.autoDownload = false;
           autoUpdater.isUserWithinRollout = () => true;
 
-          pinFeedToNewestCompleteRelease().finally(
-            () => {
+          void pinFeedToNewestCompleteRelease()
+            .catch((): FeedPinResult => "unknown")
+            .then((pin) => {
+              /* Answered here: a check with nothing to install used to reach the
+                 github provider and come back as an error. */
+              if (pin === "nothing-to-install") {
+                resumeAutoDownload();
+                sendToMain("not-available", {
+                  version: app.getVersion(),
+                });
+                return;
+              }
+
               autoUpdater
                 .checkForUpdates()
                 .catch((err) => {
@@ -3718,8 +3721,7 @@ if (!gotSingleInstanceLock) {
                     }
                   );
                 });
-            }
-          );
+            });
         }
       );
 
