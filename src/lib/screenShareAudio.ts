@@ -34,6 +34,19 @@ export function screenAudioProblemMessage(problem: string): string | null {
   }
 }
 
+/**
+ * The audio stream id a screen share announces. Empty once capture has stopped, even mid-share.
+ * The first stream's id wins after that, since replaceTrack leaves the transceiver's msid on it.
+ */
+export function screenAudioStreamId(
+  shareActive: boolean,
+  audioStream: { id: string } | null | undefined,
+  transceiverStreamId: string | null,
+): string {
+  if (!shareActive || !audioStream) return "";
+  return transceiverStreamId || audioStream.id;
+}
+
 /** The platform, as coarsely as the user agent states it. */
 export function currentPlatform(): string {
   const ua = typeof navigator === "undefined" ? "" : navigator.userAgent;
