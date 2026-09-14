@@ -20,7 +20,7 @@ import {
 import { readFakeCallOptions, useFakeCallEvents } from "../dev/fakeServerEvents";
 import { useFakeSpeech } from "../dev/fakeSpeech";
 import { useDirectory } from "../hooks/dmDirectory";
-import { conversationFor, conversationOpened, leftOver, rememberConversation, requestConversation, setDmSpaceOpen, usePendingConversation, useVisitingConversation } from "../hooks/dmSpace";
+import { conversationFor, conversationOpened, leftOver, rememberConversation, requestConversation, setDmSpaceOpen, usePendingConversation, useVisitingConversation, visitConversation } from "../hooks/dmSpace";
 import { useAdminActions } from "../hooks/useAdminActions";
 import { useBlocks } from "../hooks/useBlocks";
 import { useCalls } from "../hooks/useCalls";
@@ -445,13 +445,14 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   const handleAcceptCall = useCallback(() => {
     const call = acceptCall();
     if (!call) return;
+    if (dmSpace) visitConversation(call.conversation_id);
     setSelectedDmId(call.conversation_id);
     setShowVoiceView(true);
     connect(call.conversation_id).catch((error) => {
       console.error("Could not join the call:", error);
       toast.error(error instanceof Error ? error.message : "Could not join the call");
     });
-  }, [acceptCall, connect, setSelectedDmId, setShowVoiceView]);
+  }, [acceptCall, connect, dmSpace, setSelectedDmId, setShowVoiceView]);
 
   const handleSelectDm = useCallback((conversation: { conversation_id: string }) => {
     setSelectedDmId(conversation.conversation_id);

@@ -2,8 +2,8 @@ import { conversationTitle, type DirectConversation } from "@gryt/core";
 import { TextField } from "@gryt/ui";
 import { useMemo, useState } from "react";
 
-import { useDirectory } from "../hooks/dmDirectory";
-import { requestConversation, useVisitingConversation } from "../hooks/dmSpace";
+import { listedConversations, useDirectory } from "../hooks/dmDirectory";
+import { requestConversation, useVisitingConversation, visitConversation } from "../hooks/dmSpace";
 import { useDirectoryUnread } from "../hooks/useDirectoryUnread";
 import { useServerManagement } from "../hooks/useServerManagement";
 import { DmSpaceList } from "./DmSpaceList";
@@ -25,15 +25,10 @@ export function DmSpaceSidebar({
   const { servers, viewServerBehindDmSpace } = useServerManagement();
   const [query, setQuery] = useState("");
 
-  /* A conversation nobody has written in is listed only while this visit asked
-     for it, so clicking through a member list leaves no rows behind. */
+  /* A conversation nobody has written in is listed only while it is the open one,
+     so clicking through a member list leaves no rows behind. */
   const visiting = useVisitingConversation();
-  const listed = useMemo(
-    () => entries.filter((entry) =>
-      entry.conversation.last_message_at !== null
-      || entry.conversation.conversation_id === visiting),
-    [entries, visiting],
-  );
+  const listed = useMemo(() => listedConversations(entries, visiting), [entries, visiting]);
 
   /* Matched on the name and on the server, since the server is what tells two
      rows carrying one name apart. */
@@ -51,6 +46,7 @@ export function DmSpaceSidebar({
      view that arrives claims it. */
   function open(rowHost: string, conversation: DirectConversation) {
     if (rowHost === host) {
+      visitConversation(conversation.conversation_id);
       onOpen(conversation);
       return;
     }

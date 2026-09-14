@@ -1050,7 +1050,7 @@ export const VoiceView = ({
         networkRttMs: selfLatency.networkRttMs,
         jitterMs: selfLatency.jitterMs,
         codec: selfLatency.codec,
-        remoteAddress: selfLatency.remoteAddress,
+        candidateType: selfLatency.candidateType,
       };
     }
 

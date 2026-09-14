@@ -40,6 +40,30 @@ const space = await import("../src/packages/socket/src/hooks/dmSpace.ts");
   assert.equal(space.visitingConversation(), "dm-2", "the second person clicked did not replace the first");
 }
 
+/* Opening a row on the server already underneath skips requestConversation, so it
+   has to move the visit itself, or the empty one you left stays listed. */
+{
+  space.resetDmSpace();
+  space.setDmSpaceOpen(true);
+  space.requestConversation("a.example", "dm-empty");
+  space.conversationOpened("dm-empty");
+  space.visitConversation("dm-2");
+  assert.equal(space.visitingConversation(), "dm-2", "opening another conversation here kept the empty one as the visit");
+  assert.equal(space.conversationFor("a.example"), null, "moving the visit asked the view to open something");
+
+  const { listedConversations } = await import("../src/packages/socket/src/hooks/dmDirectory.ts");
+  const entries = [
+    { host: "a.example", conversation: { conversation_id: "dm-empty", last_message_at: null } },
+    { host: "a.example", conversation: { conversation_id: "dm-2", last_message_at: "2026-09-10T12:00:00Z" } },
+  ];
+  assert.deepEqual(
+    listedConversations(entries, space.visitingConversation()).map((e) => e.conversation.conversation_id),
+    ["dm-2"],
+    "the empty conversation you moved away from is still listed",
+  );
+  space.resetDmSpace();
+}
+
 /* Where the space was outlives leaving it. The view unmounts on the way to a
    server, so this memory has to live in the store or it is gone. */
 {
@@ -123,8 +147,20 @@ const dms = read("src/packages/socket/src/hooks/useDirectMessages.ts");
 // The list reads the visit and the messages, not the selection.
 {
   assert.ok(
-    /last_message_at !== null/.test(sidebar) && /=== visiting/.test(sidebar),
+    /listedConversations\(entries, visiting\)/.test(sidebar),
     "the list does not hide a conversation nobody has written in",
+  );
+  /* Every way in moves the visit: a row here, a row on another server, and a call
+     answered from inside the space. */
+  const here = sidebar.slice(sidebar.indexOf("if (rowHost === host) {"), sidebar.indexOf("return;", sidebar.indexOf("if (rowHost === host) {")));
+  assert.ok(
+    /visitConversation\(conversation\.conversation_id\);\s*onOpen\(conversation\);/.test(here),
+    "opening a row on this server leaves the visit on the empty conversation you came from",
+  );
+  const accept = view.slice(view.indexOf("const handleAcceptCall"), view.indexOf("const handleSelectDm"));
+  assert.ok(
+    /if \(dmSpace\) visitConversation\(call\.conversation_id\);/.test(accept),
+    "answering a call inside the space opens it without moving the visit",
   );
   assert.ok(
     /listed\.length === 0/.test(sidebar),
@@ -196,7 +232,12 @@ const dms = read("src/packages/socket/src/hooks/useDirectMessages.ts");
    which a server older than 1.10.1 never does. */
 {
   assert.ok(/socket\.on\("chat:new", onMessage\)/.test(dms), "the client does not watch messages to learn a conversation is real");
-  assert.ok(/last_message_at !== null\) return prev/.test(dms), "a conversation already written in is rewritten on every message");
+  /* Every newer message, not only the first: the server says nothing after the
+     first, and the list is sorted on this. */
+  assert.ok(
+    /if \(!isNewer\(at, prev\[i\]\.last_message_at\)\) return prev;/.test(dms),
+    "a new message in a conversation already written in does not move it up the list",
+  );
 }
 
 /* The opener restores only a conversation somebody has written in. An empty one
@@ -212,6 +253,24 @@ const dms = read("src/packages/socket/src/hooks/useDirectMessages.ts");
   assert.ok(/rememberConversation\(host, visibleDmId\)/.test(view), "the space never records where it is");
   const mobile = read("src/packages/socket/src/components/MobileServerView.tsx");
   assert.ok(/openDmSpace\(\)/.test(mobile), "the phone opens the space without restoring, so it disagrees with the rail");
+}
+
+/* The server beside a conversation is the rail's icon, from the rail's source. The
+   generated one is only for a server with none, or the row shows a planet. */
+{
+  const list = read("src/packages/socket/src/components/DmSpaceList.tsx");
+  assert.ok(
+    /serverIcon=\{serverIconSrc\(entry\.host, servers\[entry\.host\]\?\.name \|\| "", serverDetailsList\)\}/.test(list),
+    "the conversation row does not take the server's icon from where the rail does",
+  );
+  assert.ok(/<ServerMark src=\{serverIcon\} seed=\{serverName\} \/>/.test(list), "the row draws something other than the server's icon");
+  const mark = list.slice(list.indexOf("function ServerMark"), list.indexOf("function ConversationRow"));
+  assert.ok(
+    /if \(failed === src\) return <GeneratedServerIcon seed=\{seed\} \/>;/.test(mark) && /onError=\{\(\) => setFailed\(src\)\}/.test(mark),
+    "a server with no icon draws a broken image instead of the generated one",
+  );
+  const row = list.slice(list.indexOf("function ConversationRow"));
+  assert.ok(!/<GeneratedServerIcon/.test(row), "the row draws the generated icon whether or not the server has its own");
 }
 
 /* ── surviving a restart ─────────────────────────────────────────────────── */

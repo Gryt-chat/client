@@ -710,12 +710,13 @@ function ServerItem({
                 </span>
               )}
             </h2>
-            <span className="text-xs text-gryt-muted">{host}</span>
+            {/* No address in the hover card. It shows on a stream, and a private
+                server's address is not for the audience. The right-click menu has it. */}
             {duplicateHosts.length > 0 && (
-              /* Making the duplicate legible even for somebody who never merges
-                 it. Two entries with the same name and icon look identical. */
               <div className="text-xs" style={{ color: "var(--gryt-warning-11)", marginTop: 4 }}>
-                Also in your list as {duplicateHosts.join(", ")}
+                {duplicateHosts.length === 1
+                  ? "Also in your list under another address"
+                  : `Also in your list under ${duplicateHosts.length} other addresses`}
               </div>
             )}
           </div>
