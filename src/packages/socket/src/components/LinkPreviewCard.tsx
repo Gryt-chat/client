@@ -22,6 +22,7 @@ import {
   previewCache,
   previewRefused,
 } from "./embedUtils";
+import { nextPreviewStep, type PreviewFailure } from "./linkPreviewRetry";
 
 /**
  * The line above the title: a logo where we have one, the site's own favicon
@@ -128,37 +129,66 @@ export const LinkPreviewCard = memo(({
     // Asked before and refused. Nothing about the answer can have changed.
     if (previewRefused.has(url)) { setFailed(true); return; }
 
-    let cancelled = false;
     const accessToken = getServerAccessToken(serverHost);
     if (!accessToken) {
       setFailed(true);
       return;
     }
 
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const base = getServerHttpBase(serverHost);
-    fetch(`${base}/api/link-preview?url=${encodeURIComponent(url)}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    })
-      .then((res) => {
-        if (!res.ok) {
-          /* 4xx is the server's verdict and will not change; 5xx and a dropped
-             connection are worth another go. A 404 page is a 200 carrying one. */
-          if (res.status >= 400 && res.status < 500) previewRefused.add(url);
-          throw new Error(`link preview refused: ${res.status}`);
-        }
-        return res.json();
-      })
-      .then((d: LinkPreviewData) => {
+
+    const settle = (attempt: number, failure: PreviewFailure) => {
+      const step = nextPreviewStep(failure, attempt);
+      if (step.action === "retry") {
+        timer = setTimeout(() => void request(attempt + 1), step.delayMs);
+        return;
+      }
+      if (step.action === "refuse") previewRefused.add(url);
+      setFailed(true);
+    };
+
+    const request = async (attempt: number) => {
+      let res: Response;
+      try {
+        res = await fetch(`${base}/api/link-preview?url=${encodeURIComponent(url)}`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+      } catch {
+        if (!cancelled) settle(attempt, { kind: "network" });
+        return;
+      }
+      if (cancelled) return;
+
+      if (!res.ok) {
+        // Retry-After is not CORS-exposed, so cross-origin the body's retryAfterMs is what we get.
+        const body = res.status === 429 ? await res.json().catch(() => null) : null;
+        if (cancelled) return;
+        settle(attempt, {
+          kind: "status",
+          status: res.status,
+          retryAfter: res.headers.get("Retry-After"),
+          retryAfterMs: (body as { retryAfterMs?: unknown } | null)?.retryAfterMs,
+        });
+        return;
+      }
+
+      try {
+        const d = (await res.json()) as LinkPreviewData;
         if (cancelled) return;
         previewCache.set(url, d);
         setData(d);
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) setFailed(true);
-      });
+      }
+    };
+
+    void request(0);
 
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
   }, [url, serverHost, data]);
 

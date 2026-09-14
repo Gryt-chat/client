@@ -249,7 +249,7 @@ export const previewCache = new Map<string, LinkPreviewData>();
 
 /**
  * URLs the server has already refused, so we stop asking. Session-lived, and
- * **only refusals**: a 502 or a dropped connection lands in neither map.
+ * **only refusals**: a 429, a 502 or a dropped connection lands in neither map.
  */
 export const previewRefused = new Set<string>();
 
