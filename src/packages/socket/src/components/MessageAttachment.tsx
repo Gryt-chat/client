@@ -58,7 +58,6 @@ export function MessageAttachment({
           onVolumeChange={setChatMediaVolume}
           onError={local ? undefined : refreshUrl}
           onPosterError={refreshThumb}
-          onStart={local ? undefined : refreshUrl}
         />
       </MessageContextMenu>
     );

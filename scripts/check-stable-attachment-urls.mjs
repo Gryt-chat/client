@@ -1,7 +1,7 @@
 /* eslint-env node */
 
 // An attachment's URL carries the file token, which changes on every refresh. The URL has to
-// stay put while the attachment is mounted, and a video must not load until clicked. GRYT-1166.
+// stay put while the attachment is mounted, and a video must not load until clicked. GRYT-1166, GRYT-1174.
 
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -13,6 +13,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (path) => readFileSync(join(root, path), "utf8");
 
 const HOOK = "src/packages/socket/src/hooks/useStableFileUrl.ts";
+const ERRORS = "src/packages/socket/src/hooks/useMediaErrors.ts";
 const ROW = "src/packages/socket/src/components/MessageRow.tsx";
 const ATTACHMENT = "src/packages/socket/src/components/MessageAttachment.tsx";
 const PLAYER = "src/packages/socket/src/components/ChatMediaPlayer.tsx";
@@ -140,42 +141,67 @@ const attachment = read(ATTACHMENT);
 assert.doesNotMatch(attachment, /getUploadsFileUrl\(/, `${ATTACHMENT} builds a URL outside useStableFileUrl`);
 assert.match(attachment, /useStableFileUrl\(serverHost, fileId\)/, `${ATTACHMENT} no longer holds the file URL`);
 assert.match(attachment, /useStableFileUrl\(serverHost, fileId, true\)/, `${ATTACHMENT} no longer holds the thumbnail URL`);
-for (const wire of ["onError={local ? undefined : refreshUrl}", "onPosterError={refreshThumb}", "onStart={local ? undefined : refreshUrl}"]) {
+for (const wire of ["onError={local ? undefined : refreshUrl}", "onPosterError={refreshThumb}"]) {
   assert.ok(attachment.includes(wire), `${ATTACHMENT} lost ${wire}, so a stale token never recovers`);
+}
+
+/* ── a failed video or poster reaches the refresh ──────────────────────── */
+
+const errorsSource = stripTypeScriptTypes(read(ERRORS)).replace(/^import .*$/gm, "").replace(/^export /gm, "");
+const useMediaErrors = new Function("useEffect", `${errorsSource}\nreturn useMediaErrors;`);
+
+{
+  const calls = [];
+  const listeners = [];
+  const root = {
+    addEventListener: (type, fn, capture) => listeners.push({ type, fn, capture }),
+    removeEventListener: (type, fn, capture) => {
+      const i = listeners.findIndex((l) => l.type === type && l.fn === fn && l.capture === capture);
+      if (i !== -1) listeners.splice(i, 1);
+    },
+  };
+  let cleanup;
+  const hook = useMediaErrors((effect) => { cleanup = effect(); });
+  hook({ current: root }, () => calls.push("video"), () => calls.push("image"));
+
+  assert.equal(listeners.length, 1, `${ERRORS} does not listen for errors`);
+  assert.equal(listeners[0].type, "error");
+  assert.equal(listeners[0].capture, true, `${ERRORS} listens in the bubble phase, where load errors never arrive`);
+  for (const tagName of ["VIDEO", "IMG", "DIV"]) listeners[0].fn({ target: { tagName } });
+  assert.deepEqual(calls, ["video", "image"], `${ERRORS} sends errors to the wrong handler`);
+  cleanup();
+  assert.equal(listeners.length, 0, `${ERRORS} leaves its listener behind on unmount`);
 }
 
 /* ── nothing loads a video before the click ─────────────────────────────── */
 
-/** The JSX of `<tag ... />`, from the tag to its self-closing end. */
-function elements(source, tag) {
-  return [...source.matchAll(new RegExp(`<${tag}\\b[\\s\\S]*?/>`, "g"))].map((m) => ({ at: m.index, jsx: m[0] }));
-}
-
 const player = read(PLAYER);
-const videos = elements(player, "video");
-assert.equal(videos.length, 1, `${PLAYER} should draw exactly one <video>`);
-const gate = player.lastIndexOf("{started ? (", videos[0].at);
-assert.ok(
-  gate !== -1 && !player.slice(gate, videos[0].at).includes(") : ("),
-  `${PLAYER} renders <video> outside the started branch, so it loads before anybody clicks`,
-);
-assert.match(player, /const \[started, setStarted\] = useState\(false\)/, `${PLAYER} starts a video already loaded`);
-assert.doesNotMatch(player, /preload="auto"/, `${PLAYER} preloads whole files again`);
-const audio = elements(player, "audio");
-assert.equal(audio.length, 1);
-assert.match(audio[0].jsx, /preload="metadata"/, `${PLAYER}'s audio preload changed. "none" leaves no duration shown.`);
-
-const poster = player.slice(player.indexOf("export const VideoPoster"), player.indexOf("export const ChatMediaPlayer"));
-assert.doesNotMatch(poster, /<video/, `${PLAYER}'s VideoPoster draws a <video>`);
-
 const embeds = read(EMBEDS);
+for (const [path, source] of [[PLAYER, player], [EMBEDS, embeds]]) {
+  assert.doesNotMatch(source, /<video\b/, `${path} draws its own <video> again, next to VideoPlayer`);
+  assert.doesNotMatch(source, /autoLoad/, `${path} sets autoLoad, which fetches the video before anybody presses play`);
+}
+assert.match(player, /useMediaErrors\(ref, onError, onPosterError\)/, `${PLAYER} no longer passes load errors up`);
+assert.match(player, /<div ref=\{ref\}[^>]*>\s*<VideoPlayer\b/, `${PLAYER}'s error listener is not around VideoPlayer`);
 const embed = embeds.slice(embeds.indexOf("export const VideoEmbed"), embeds.indexOf("export const TwitchEmbed"));
-assert.ok(embed.length > 0, `${EMBEDS} no longer has VideoEmbed`);
-const embedVideo = elements(embed, "video");
-assert.equal(embedVideo.length, 1, `${EMBEDS}'s VideoEmbed should draw exactly one <video>`);
-assert.ok(
-  embed.lastIndexOf("{started ? (", embedVideo[0].at) !== -1,
-  `${EMBEDS}'s VideoEmbed loads the linked video before anybody clicks`,
+assert.match(embed, /<VideoPlayer\b/, `${EMBEDS}'s VideoEmbed no longer uses VideoPlayer`);
+
+const audio = [...player.matchAll(/<audio\b[\s\S]*?\/>/g)];
+assert.equal(audio.length, 1);
+assert.match(audio[0][0], /preload="metadata"/, `${PLAYER}'s audio preload changed. "none" leaves no duration shown.`);
+
+// The installed VideoPlayer itself: idle, it must hold no src and one play button.
+const { createElement } = await import("react");
+const { renderToStaticMarkup } = await import("react-dom/server");
+const { VideoPlayer } = await import("@gryt/ui");
+const html = renderToStaticMarkup(
+  createElement(VideoPlayer, { src: "http://chat.example/api/uploads/files/f1?t=A", poster: "http://chat.example/p.jpg", fileName: "clip.mp4" }),
 );
+const video = html.match(/<video\b[^>]*>/)?.[0];
+assert.ok(video, "@gryt/ui VideoPlayer no longer renders a <video>");
+assert.doesNotMatch(video, /\ssrc=/, "@gryt/ui VideoPlayer puts src on the video before play, so it downloads");
+assert.match(video, /preload="none"/, "@gryt/ui VideoPlayer preloads before play");
+assert.doesNotMatch(html, /files\/f1/, "@gryt/ui VideoPlayer uses the file URL somewhere before play");
+assert.equal(html.match(/aria-label="Play video"/g)?.length, 1, "an idle VideoPlayer should show exactly one play button");
 
 console.log("stable attachment URLs: ok");
