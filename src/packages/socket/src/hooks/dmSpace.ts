@@ -112,6 +112,16 @@ export function isDmSpaceOpen(): boolean {
   return open;
 }
 
+/**
+ * The conversation now open in the space. Every way of opening one comes through
+ * here, so an empty conversation you moved away from drops out of the list.
+ */
+export function visitConversation(conversationId: string): void {
+  if (visiting === conversationId) return;
+  visiting = conversationId;
+  emit();
+}
+
 /** Ask for a conversation, then leave. The view claims it once it is there. */
 export function requestConversation(host: string, conversationId: string): void {
   pending = { host, conversationId };

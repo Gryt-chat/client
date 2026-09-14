@@ -23,9 +23,35 @@ function rebuild() {
   for (const [host, conversations] of byHost) {
     for (const conversation of conversations) next.push({ host, conversation });
   }
-  next.sort((a, b) => lastActivity(b.conversation) - lastActivity(a.conversation));
+  next.sort(newestFirst);
   flat = next;
   for (const listener of listeners) listener();
+}
+
+/* Ties go by server and id rather than by arrival, which moves whenever a host
+   drops out and answers again. */
+function newestFirst(a: DirectoryEntry, b: DirectoryEntry): number {
+  return lastActivity(b.conversation) - lastActivity(a.conversation)
+    || compare(a.host, b.host)
+    || compare(a.conversation.conversation_id, b.conversation.conversation_id);
+}
+
+function compare(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/**
+ * The rows the space lists, newest message first. An empty conversation shows only
+ * while it is the open one, and then on top, since that is where you are.
+ */
+export function listedConversations(entries: DirectoryEntry[], visiting: string | null): DirectoryEntry[] {
+  const open: DirectoryEntry[] = [];
+  const written: DirectoryEntry[] = [];
+  for (const entry of entries) {
+    if (entry.conversation.last_message_at !== null) written.push(entry);
+    else if (entry.conversation.conversation_id === visiting) open.push(entry);
+  }
+  return [...open, ...written.sort(newestFirst)];
 }
 
 /** When something last happened here, or 0 for a conversation with nothing in it. */

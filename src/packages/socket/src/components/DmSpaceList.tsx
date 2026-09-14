@@ -1,10 +1,12 @@
 import { Avatar, Button } from "@gryt/ui";
+import { useState } from "react";
 
-import { GeneratedServerIcon, getUploadsFileUrl, resolveAvatarSrc } from "@/common";
+import { GeneratedServerIcon, getUploadsFileUrl, resolveAvatarSrc, serverIconSrc } from "@/common";
 
 import type { DirectoryEntry } from "../hooks/dmDirectory";
 import { conversationTitle, type DirectConversation } from "../hooks/useDirectMessages";
 import { useServerManagement } from "../hooks/useServerManagement";
+import { useSockets } from "../hooks/useSockets";
 import { EmojiText } from "./EmojiText";
 import { UnreadIndicator } from "./UnreadIndicator";
 
@@ -24,11 +26,27 @@ function when(iso: string | null): string {
   return at.toLocaleDateString(undefined, { day: "numeric", month: "short" });
 }
 
+/* The rail's icon, from the same source, so the row points back at it. A server
+   with no icon answers 404 and gets the generated one. */
+function ServerMark({ src, seed }: { src: string; seed: string }) {
+  const [failed, setFailed] = useState<string | null>(null);
+  if (failed === src) return <GeneratedServerIcon seed={seed} />;
+  return (
+    <img
+      src={src}
+      alt=""
+      onError={() => setFailed(src)}
+      style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "inherit" }}
+    />
+  );
+}
+
 function ConversationRow({
-  entry, serverName, unread, selected, onOpen,
+  entry, serverName, serverIcon, unread, selected, onOpen,
 }: {
   entry: DirectoryEntry;
   serverName: string;
+  serverIcon: string;
   unread: number;
   selected: boolean;
   onOpen: () => void;
@@ -79,7 +97,7 @@ function ConversationRow({
           style={{ color: "var(--gryt-neutral-10)" }}
         >
           <span style={{ width: 12, height: 12, borderRadius: 3, overflow: "hidden", display: "block" }}>
-            <GeneratedServerIcon seed={serverName} />
+            <ServerMark src={serverIcon} seed={serverName} />
           </span>
           {serverName}
           {isGroup ? ` · ${conversation.members.length + 1}` : ""}
@@ -108,6 +126,7 @@ export function DmSpaceList({
   onOpen: (host: string, conversation: DirectConversation) => void;
 }) {
   const { servers } = useServerManagement();
+  const { serverDetailsList } = useSockets();
 
   return (
     <div className="flex flex-col gap-[2px] overflow-y-auto px-2 pb-2">
@@ -116,6 +135,7 @@ export function DmSpaceList({
           key={`${entry.host}/${entry.conversation.conversation_id}`}
           entry={entry}
           serverName={servers[entry.host]?.name || entry.host}
+          serverIcon={serverIconSrc(entry.host, servers[entry.host]?.name || "", serverDetailsList)}
           unread={unreadFor(entry.host, entry.conversation.conversation_id)}
           selected={
             selected?.host === entry.host &&

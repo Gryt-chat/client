@@ -11,6 +11,7 @@ import {
   directoryHostCount,
   forgetHost,
   getDirectorySnapshot,
+  listedConversations,
   resetDirectory,
   setHostConversations,
 } from "../src/packages/socket/src/hooks/dmDirectory.ts";
@@ -83,6 +84,62 @@ assert.deepEqual(ids(), ["a:1/dm_2"], "forgetting twice changed something");
   const before = getDirectorySnapshot();
   setHostConversations("a:1", [conv("dm_2", "2026-09-10T01:00:00Z")]);
   assert.notEqual(getDirectorySnapshot(), before, "a newer message did not update the list");
+}
+
+/* ── ties go by server and id, not by which host answered first ─────────────
+   Arrival order moves whenever a host drops and answers again. */
+{
+  resetDirectory();
+  const same = "2026-09-11T08:00:00Z";
+  setHostConversations("b:2", [conv("dm_b", same)]);
+  setHostConversations("a:1", [conv("dm_z", same), conv("dm_a", same)]);
+  assert.deepEqual(ids(), ["a:1/dm_a", "a:1/dm_z", "b:2/dm_b"], "a tie sorted by arrival");
+  forgetHost("a:1");
+  setHostConversations("a:1", [conv("dm_a", same), conv("dm_z", same)]);
+  assert.deepEqual(ids(), ["a:1/dm_a", "a:1/dm_z", "b:2/dm_b"], "a host that answered again moved its tied rows");
+  resetDirectory();
+}
+
+/* ── what the space lists ───────────────────────────────────────────────────
+   Newest message on top. An empty conversation only while it is the open one,
+   and then above everything, since it is where you are. */
+{
+  const entry = (host, id, at) => ({ host, conversation: conv(id, at) });
+  const listed = (entries, visiting) =>
+    listedConversations(entries, visiting).map((e) => `${e.host}/${e.conversation.conversation_id}`);
+
+  const entries = [
+    entry("a:1", "dm_old", "2026-09-01T10:00:00Z"),
+    entry("b:2", "dm_empty", null),
+    entry("a:1", "dm_new", "2026-09-12T10:00:00Z"),
+    entry("c:3", "dm_other_empty", null),
+    entry("b:2", "dm_mid", "2026-09-05T10:00:00Z"),
+  ];
+  assert.deepEqual(listed(entries, null), ["a:1/dm_new", "b:2/dm_mid", "a:1/dm_old"], "not newest first, or an empty conversation nobody has open is listed");
+  assert.deepEqual(
+    listed(entries, "dm_empty"),
+    ["b:2/dm_empty", "a:1/dm_new", "b:2/dm_mid", "a:1/dm_old"],
+    "the empty conversation you have open is not on top",
+  );
+  assert.deepEqual(listed(entries, "dm_mid"), ["a:1/dm_new", "b:2/dm_mid", "a:1/dm_old"], "visiting a written conversation moved it");
+
+  const tied = [entry("b:2", "dm_1", "2026-09-12T10:00:00Z"), entry("a:1", "dm_9", "2026-09-12T10:00:00Z"), entry("a:1", "dm_2", "2026-09-12T10:00:00Z")];
+  assert.deepEqual(listed(tied, null), ["a:1/dm_2", "a:1/dm_9", "b:2/dm_1"], "a tie is not broken by server and id");
+  assert.deepEqual(listed([...tied].reverse(), null), listed(tied, null), "a tie depends on the order rows came in");
+
+  const input = entries.map((e) => e);
+  listedConversations(entries, "dm_empty");
+  assert.deepEqual(entries, input, "listing sorted the directory's own array in place");
+}
+
+/* ── a new message moves a conversation that was already written in ─────────
+   The server only says so for the first one, so the client bumps it. */
+{
+  const { isNewer } = await import("../src/packages/socket/src/hooks/useDirectMessages.ts");
+  assert.equal(isNewer("2026-09-12T10:00:00Z", null), true, "a first message did not make the conversation real");
+  assert.equal(isNewer("2026-09-12T10:00:01Z", "2026-09-12T10:00:00Z"), true, "a later message did not move the conversation");
+  assert.equal(isNewer("2026-09-12T09:00:00Z", "2026-09-12T10:00:00Z"), false, "an older message, say a late echo, moved it back");
+  assert.equal(isNewer("2026-09-12T10:00:00Z", "2026-09-12T10:00:00Z"), false, "the same message twice rewrote the conversation");
 }
 
 console.log("dm directory: one row per conversation per host, newest first, stable when unchanged");

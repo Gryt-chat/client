@@ -54,6 +54,14 @@ interface UseDirectMessagesResult {
   dmsDisabled: boolean;
 }
 
+/** Whether a message at `at` moves a conversation last written at `last`. */
+export function isNewer(at: string, last: string | null): boolean {
+  if (last === null) return true;
+  const next = Date.parse(at);
+  const prev = Date.parse(last);
+  return Number.isNaN(prev) || next > prev;
+}
+
 export function useDirectMessages({
   socket,
   accessToken,
@@ -105,15 +113,17 @@ export function useDirectMessages({
     };
 
     /* Read off the message, not the server: one older than 1.10.1 never says a
-       conversation got its first message, and it would drop out of the list. */
+       conversation got its first message, and the list sorts on this. */
     const onMessage = (msg: { conversation_id?: string; created_at?: string }) => {
       const id = msg?.conversation_id;
       if (!id) return;
       setConversations((prev) => {
         const i = prev.findIndex((c) => c.conversation_id === id);
-        if (i === -1 || prev[i].last_message_at !== null) return prev;
+        if (i === -1) return prev;
+        const at = msg.created_at ?? new Date().toISOString();
+        if (!isNewer(at, prev[i].last_message_at)) return prev;
         const next = [...prev];
-        next[i] = { ...prev[i], last_message_at: msg.created_at ?? new Date().toISOString() };
+        next[i] = { ...prev[i], last_message_at: at };
         return next;
       });
     };
