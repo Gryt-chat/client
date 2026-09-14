@@ -1,6 +1,9 @@
-import { Chip } from "@gryt/ui";
+import { Button, Chip } from "@gryt/ui";
 import type { LatencyBreakdown } from "@gryt/voice";
 import { useVoiceLatency } from "@gryt/voice";
+import { useState } from "react";
+
+import { PiEyeFill } from "../../../../lib/icons";
 
 function ms(value: number | null): string {
   if (value === null) return "—";
@@ -79,6 +82,21 @@ function LatencyBar({ latency }: { latency: LatencyBreakdown }) {
   );
 }
 
+function AddressRow({ label, address, shown }: { label: string; address: string; shown: boolean }) {
+  return (
+    <div className="flex justify-between items-center py-1">
+      <span className="text-xs text-gryt-muted">{label}</span>
+      {shown ? (
+        <span className="text-xs font-medium" style={{ fontFamily: "var(--code-font-family)", maxWidth: "60%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "right" }}>
+          {address}
+        </span>
+      ) : (
+        <span className="text-xs text-gryt-muted">Hidden</span>
+      )}
+    </div>
+  );
+}
+
 function ratingColor(estimatedMs: number | null): string {
   if (estimatedMs === null) return "var(--gryt-neutral-11)";
   if (estimatedMs < 30) return "var(--gryt-success-11)";
@@ -99,6 +117,8 @@ export function LatencyPanel() {
   const { latency, modeLabel } = useVoiceLatency(true);
 
   const hasNetworkData = latency.networkRttMs !== null;
+  // Settings gets opened while screen sharing. The page unmounts when you leave it, which hides these again.
+  const [addressesShown, setAddressesShown] = useState(false);
 
   return (
     <div className="flex flex-col gap-3">
@@ -170,30 +190,21 @@ export function LatencyPanel() {
       {/* Connection info */}
       {hasNetworkData && (latency.sfuEndpoint || latency.remoteAddress) && (
         <div className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-gryt-muted">Connection</span>
+          <div className="flex justify-between items-center">
+            <span className="text-xs font-bold text-gryt-muted">Connection</span>
+            <Button tone="ghost" size="xsmall" aria-pressed={addressesShown} onClick={() => setAddressesShown((s) => !s)}>
+              <PiEyeFill size={14} />
+              {addressesShown ? "Hide addresses" : "Show addresses"}
+            </Button>
+          </div>
           {latency.sfuEndpoint && (
-            <div className="flex justify-between items-center py-1">
-              <span className="text-xs text-gryt-muted">SFU endpoint</span>
-              <span className="text-xs font-medium" style={{ fontFamily: "var(--code-font-family)", maxWidth: "60%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "right" }}>
-                {latency.sfuEndpoint.replace(/^wss?:\/\//, "")}
-              </span>
-            </div>
+            <AddressRow label="SFU endpoint" address={latency.sfuEndpoint.replace(/^wss?:\/\//, "")} shown={addressesShown} />
           )}
           {latency.remoteAddress && (
-            <div className="flex justify-between items-center py-1">
-              <span className="text-xs text-gryt-muted">ICE remote</span>
-              <span className="text-xs font-medium" style={{ fontFamily: "var(--code-font-family)" }}>
-                {latency.remoteAddress}
-              </span>
-            </div>
+            <AddressRow label="ICE remote" address={latency.remoteAddress} shown={addressesShown} />
           )}
           {latency.localAddress && (
-            <div className="flex justify-between items-center py-1">
-              <span className="text-xs text-gryt-muted">ICE local</span>
-              <span className="text-xs font-medium" style={{ fontFamily: "var(--code-font-family)" }}>
-                {latency.localAddress}
-              </span>
-            </div>
+            <AddressRow label="ICE local" address={latency.localAddress} shown={addressesShown} />
           )}
           {latency.candidateType && (
             <div className="flex justify-between items-center py-1">

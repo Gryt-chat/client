@@ -38,13 +38,13 @@ import { VoiceSettings } from "./voiceSettings";
 
 /**
  * A destination with `pages` is a category: the rail nests them and the pane shows
- * one. `mountWhenActive` panels touch hardware, so they mount only while in view.
+ * one. `mountWhenActive` panels hold hardware or revealed addresses, so they mount only in view.
  */
 interface SettingsPage {
   value: string;
   label: string;
   content: ReactNode;
-  /** Mount only while you are on it. For panels that hold hardware open. */
+  /** Mount only while you are on it. Leaving drops what it holds: a device, a revealed address. */
   mountWhenActive?: boolean;
 }
 
@@ -144,7 +144,7 @@ const DESTINATIONS: SettingsDestination[] = [
       ...(isElectron()
         ? [{ value: "desktop", label: "Desktop", content: <DesktopSettings /> }]
         : []),
-      { value: "advanced", label: "Advanced", content: <AdvancedSettings /> },
+      { value: "advanced", label: "Advanced", mountWhenActive: true, content: <AdvancedSettings /> },
     ],
   },
   // Dev builds only. `import.meta.env.DEV` folds to false in a release, so
