@@ -1193,6 +1193,18 @@ body {
   object-fit: contain;
 }
 
+/* Without a poster the idle player is the same grey as the message behind it. */
+.chat-video-player .gryt-video-player[data-state="idle"]:not(:focus-visible),
+.link-embed-video .gryt-video-player[data-state="idle"]:not(:focus-visible) {
+  outline: 1px solid var(--gryt-neutral-5);
+  outline-offset: -1px;
+}
+
+/* A poster that failed to load has no size of its own, and the player would collapse to nothing. */
+.chat-video-player .gryt-video-player > img {
+  aspect-ratio: auto 16 / 9;
+}
+
 .chat-media-filename {
   display: block;
   font-size: 12px;
