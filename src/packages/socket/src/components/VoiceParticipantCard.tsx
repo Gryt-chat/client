@@ -36,7 +36,7 @@ interface LatencyDisplayStats {
   networkRttMs?: number | null;
   jitterMs?: number | null;
   codec?: string | null;
-  remoteAddress?: string | null;
+  candidateType?: string | null;
 }
 
 /** Well past a slow negotiation, where offer, answer, ICE and the first RTP on a
@@ -298,8 +298,10 @@ function LatencyBadge({
     stats?.codec ?? "—",
   ];
 
-  if (isSelf && stats?.remoteAddress) {
-    tooltipParts.push(`ICE: ${stats.remoteAddress}`);
+  /* The route, never the address: a tile is on screen during a stream, and the
+     address is the server's. */
+  if (isSelf && stats?.candidateType) {
+    tooltipParts.push(`Route: ${stats.candidateType}`);
   }
 
   return (

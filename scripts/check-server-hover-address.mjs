@@ -41,4 +41,24 @@ const card = (() => {
   assert.ok(/title=\{`Merge into \$\{host\}\?`\}/.test(rail), "the merge dialog stopped naming the address it keeps");
 }
 
-console.log("server hover address: the rail's hover card names a server without its address");
+/* Your own voice tile's latency tooltip named the SFU's address and port. It says how
+   media got there instead, which carries no address. */
+{
+  const CARD = "src/packages/socket/src/components/VoiceParticipantCard.tsx";
+  const tile = read(CARD);
+  const badge = (() => {
+    const at = tile.indexOf("function LatencyBadge");
+    assert.notEqual(at, -1, `${CARD} no longer has LatencyBadge, so this check reads nothing`);
+    return tile.slice(at, tile.indexOf("export function VoiceParticipantCard", at));
+  })();
+  assert.ok(/<Tooltip title=\{tooltipParts\.join/.test(badge), "the latency tooltip is built some other way, so the slice is reading the wrong thing");
+  assert.ok(!/remoteAddress|localAddress|sfuEndpoint/.test(badge), "the latency tooltip shows the server's address");
+  assert.ok(!/remoteAddress|localAddress/.test(tile), "the voice tile still carries an ICE address to show");
+  assert.ok(/tooltipParts\.push\(`Route: \$\{stats\.candidateType\}`\)/.test(badge), "the latency tooltip stopped saying how media is routed");
+
+  const view = read("src/packages/socket/src/components/VoiceView.tsx");
+  assert.ok(!/remoteAddress: selfLatency\.remoteAddress/.test(view), "the voice view hands the tile your ICE address");
+  assert.ok(/candidateType: selfLatency\.candidateType/.test(view), "the voice view no longer hands the tile the route");
+}
+
+console.log("server hover address: the rail's hover card and the voice tile's tooltip name no address");
