@@ -87,6 +87,23 @@ const firstRun = { nickname: "Iron" };
   assert.equal(after.hasSeenTour, true);
 }
 
+// Only the button starts the tour. Nobody asked for one on launch, and it would
+// land on existing users out of nowhere.
+{
+  assert.match(
+    plain,
+    /\[showTour, setShowTour\] = useState\(false\)/,
+    "the tour should start closed",
+  );
+  const outside = plain.replace(completeWelcome, "");
+  const opens = [...outside.matchAll(/setShowTour\(\s*([^)]*?)\s*\)/g)].filter((m) => m[1] !== "false");
+  assert.deepEqual(
+    opens.map((m) => m[0]),
+    [],
+    "only completeWelcome({ startTour: true }) should open the tour, not the settings load",
+  );
+}
+
 // The button has to be wired to the path above.
 {
   const welcome = readFileSync(join(root, "src/components/welcome.tsx"), "utf8");
