@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { Account } from "@/common";
 import { clearClaimDecisions, signOut } from "@/common";
 import { clearUserCache } from "@/settings/src/hooks/userStorage";
 
 import { getElectronAPI, isElectron } from "../../../../lib/electron";
+import { accountsCameBack, subscribeLaunchTrouble } from "../../../../lib/serviceStatus";
+import { startSignInRetry } from "../../../../lib/signInRetry";
 import {
   cancelPendingLogin,
   handleAuthCallback,
@@ -14,6 +16,7 @@ import {
   doLogout,
   fetchRegistrationAllowed,
   initKeycloak,
+  retrySignIn,
   startLogin,
   startRegister,
 } from "../auth/keycloak";
@@ -37,6 +40,8 @@ function useAccountHook(): Account {
   const [isSignedIn, setIsSignedIn] = useState<boolean | undefined>(undefined);
   const [loginInProgress, setLoginInProgress] = useState(false);
   const [registrationAllowed, setRegistrationAllowed] = useState(false);
+  /* Set once the retry has its answer or somebody signs out, so it never starts twice. */
+  const retryDone = useRef(false);
 
   useEffect(() => {
     if (isSignedIn == null) return;
@@ -117,6 +122,32 @@ function useAccountHook(): Account {
     };
   }, []);
 
+  /* Launch couldn't reach accounts. Once a later check can, quietly try the kept session again. */
+  useEffect(() => {
+    if (isSignedIn !== false || loginInProgress || retryDone.current) return;
+
+    let stop: (() => void) | null = null;
+    const start = () => {
+      if (stop || retryDone.current || !accountsCameBack()) return;
+      console.log("[Auth:Hook] Accounts are back after a failed launch — retrying sign-in");
+      fetchRegistrationAllowed().then(setRegistrationAllowed).catch(() => {});
+      stop = startSignInRetry({
+        attempt: retrySignIn,
+        onFinished: (result) => {
+          retryDone.current = true;
+          if (result === "signed-in") setIsSignedIn(true);
+        },
+      });
+    };
+
+    start();
+    const unsubscribe = subscribeLaunchTrouble(start);
+    return () => {
+      unsubscribe();
+      stop?.();
+    };
+  }, [isSignedIn, loginInProgress]);
+
   function cancelLogin() {
     cancelPendingLogin();
     setLoginInProgress(false);
@@ -154,6 +185,7 @@ function useAccountHook(): Account {
 
   async function logout() {
     console.log("[Auth:Hook] logout() called", new Error().stack);
+    retryDone.current = true;
     signOut();
     clearUserCache();
     // The next account gets asked for itself rather than inheriting a yes that
