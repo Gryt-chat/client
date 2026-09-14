@@ -1,11 +1,13 @@
 /* Hallmark · component: overlay · genre: modern-minimal · theme: @gryt/ui (design.md)
- * states: verifying · slow · exiting · reduced-motion · critique: P5 H5 E5 S5 R5 V4 */
+ * states: verifying · slow · accounts-down · offline · exiting · reduced-motion · critique: P5 H5 E5 S5 R5 V4 */
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useState } from "react";
 
 import { Logo } from "@/common";
 
+import { getGrytConfig } from "../config";
 import { isElectron } from "../lib/electron";
+import { type AccountsReach, checkAccountsAtLaunch } from "../lib/serviceStatus";
 import { TITLEBAR_HEIGHT } from "./titlebar";
 
 /**
@@ -19,6 +21,13 @@ const SLOW_AFTER_MS = 5_000;
  * background tab pauses rAF, so `AnimatePresence` never unmounted it (GRYT-911).
  */
 const FADE_GIVE_UP_SLACK_MS = 400;
+
+const SPLASH_COPY = {
+  "accounts-down":
+    "Can't reach Gryt accounts right now. You can keep using Gryt without signing in.",
+  offline: "You're offline, so Gryt can't check your account. It'll open without signing you in.",
+  slow: "This is taking longer than it should. Gryt will carry on without an account in a moment.",
+} as const;
 
 export function AuthLoadingOverlay({
   open,
@@ -39,6 +48,28 @@ export function AuthLoadingOverlay({
    * the fade is going: the case it exists for is the fade not going at all.
    */
   const [faded, setFaded] = useState(false);
+
+  /* Asked in parallel with the sign-in check, so a dead account service is named rather than waited out. */
+  const [reach, setReach] = useState<AccountsReach | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    let live = true;
+    void checkAccountsAtLaunch(getGrytConfig().GRYT_OIDC_ISSUER).then((r) => {
+      if (live) setReach(r);
+    });
+    return () => {
+      live = false;
+    };
+  }, [open]);
+
+  const message =
+    reach === "unreachable"
+      ? "accounts-down"
+      : reach === "offline"
+        ? "offline"
+        : slow
+          ? "slow"
+          : "normal";
 
   useEffect(() => {
     if (!open) {
@@ -155,17 +186,16 @@ export function AuthLoadingOverlay({
                 moment the wait becomes worth mentioning. */}
             <div style={{ minHeight: 40, maxWidth: "22rem" }}>
               <AnimatePresence mode="wait">
-                {slow ? (
+                {message !== "normal" ? (
                   <motion.div
-                    key="slow"
+                    key={message}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.25 }}
                   >
                     <p className="text-sm text-gryt-muted text-center" style={{ margin: 0, lineHeight: 1.5 }}>
-                      This is taking longer than it should. Gryt will carry on
-                      without an account in a moment.
+                      {SPLASH_COPY[message]}
                     </p>
                   </motion.div>
                 ) : (

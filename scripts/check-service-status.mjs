@@ -10,10 +10,17 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  checkAccountsAtLaunch,
+  checkAccountServices,
+  classifyReach,
   decideBanner,
   FAILURES_BEFORE_BANNER,
   fetchAnnouncement,
+  getLaunchTrouble,
+  INTERNET_CHECK_URLS,
   pickAnnouncement,
+  resetLaunchCheck,
+  settleLaunchTrouble,
   STATUS_API_URL,
 } from "../src/lib/serviceStatus.ts";
 
@@ -189,11 +196,16 @@ const banner = readFileSync(`${ROOT}/src/components/serviceStatusBanner.tsx`, "u
   .replace(/\/\*[\s\S]*?\*\//g, "")
   .replace(/\/\/[^\n]*/g, "");
 
-check("the banner is gated on being signed in", () => {
-  assert.ok(banner.includes("isSignedIn"), "the banner no longer checks isSignedIn");
+check("the banner is gated on being signed in or on trouble at launch", () => {
+  /* A guest on a normal day gets nothing. A launch that couldn't check the account is not a normal day. */
+  assert.match(
+    banner,
+    /const watching = !!isSignedIn \|\| launchTrouble !== null;/,
+    "the banner watches for somebody other than the signed in or the launched-into-an-outage",
+  );
   assert.ok(
-    banner.includes("if (!isSignedIn)"),
-    "the signed-in check is no longer the first thing the effect does",
+    banner.includes("if (!watching)"),
+    "the watching check is no longer the first thing the effect does",
   );
 });
 
@@ -280,6 +292,137 @@ check("the icon is chosen per severity, not hardcoded", () => {
     banner.includes("PiInfoFill"),
     "information has no icon of its own",
   );
+});
+
+/* ── Accounts down, offline, or fine (the 2026-09-14 PSU swap) ────────── */
+
+const ISSUER = "https://auth.gryt.chat/realms/gryt";
+
+/** A fetch that answers per host: "ok", "502", "throw", or "hang" until aborted. */
+function network(hosts) {
+  const calls = [];
+  const fetchImpl = async (url, init = {}) => {
+    calls.push(String(url));
+    const host = new URL(url).host;
+    const behaviour = hosts[host] ?? "throw";
+    if (behaviour === "ok") return { ok: true, status: init.mode === "no-cors" ? 0 : 200 };
+    if (behaviour === "502") {
+      /* Cloudflare's 502 carries no CORS header, so a cors fetch throws and a no-cors one resolves. */
+      if (init.mode === "no-cors") return { ok: false, status: 0 };
+      throw new TypeError("Failed to fetch");
+    }
+    if (behaviour === "hang") {
+      return new Promise((_, reject) =>
+        init.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError"))),
+      );
+    }
+    throw new TypeError("Failed to fetch");
+  };
+  return { calls, fetchImpl };
+}
+
+async function withNetwork(hosts, run) {
+  const { calls, fetchImpl } = network(hosts);
+  globalThis.fetch = fetchImpl;
+  try {
+    return await run(calls);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+}
+
+check("offline, down and fine are three different answers", () => {
+  assert.equal(classifyReach(true, false, false), "offline");
+  assert.equal(classifyReach(true, true, true), "offline", "the OS saying offline is believed");
+  assert.equal(classifyReach(false, true, false), "reachable");
+  assert.equal(classifyReach(false, false, true), "unreachable");
+  assert.equal(classifyReach(false, false, false), "offline", "nothing answering is this machine's connection");
+});
+
+check("the internet check does not lean on the box that runs Keycloak", () => {
+  /* dev.lan went down with Keycloak, ws1, reports and Vikunja on it. */
+  for (const url of INTERNET_CHECK_URLS) {
+    const host = new URL(url).host;
+    assert.ok(!/auth\.gryt\.chat|sivert\.io|reports\./.test(host), `${host} is on the box that goes down with accounts`);
+  }
+  assert.ok(INTERNET_CHECK_URLS.length >= 2, "one host is a single point of failure for telling offline from down");
+});
+
+await checkAsync("a Cloudflare 502 from the issuer, with the internet up, is accounts down", async () => {
+  const reach = await withNetwork(
+    { "auth.gryt.chat": "502", "status.gryt.chat": "ok", "gryt.chat": "ok" },
+    () => checkAccountServices(ISSUER, 200),
+  );
+  assert.equal(reach, "unreachable");
+});
+
+await checkAsync("an issuer that never answers, with the internet up, is accounts down", async () => {
+  const reach = await withNetwork(
+    { "auth.gryt.chat": "hang", "status.gryt.chat": "ok", "gryt.chat": "hang" },
+    () => checkAccountServices(ISSUER, 200),
+  );
+  assert.equal(reach, "unreachable");
+});
+
+await checkAsync("nothing answering is offline, not an outage", async () => {
+  const reach = await withNetwork({}, () => checkAccountServices(ISSUER, 200));
+  assert.equal(reach, "offline");
+});
+
+await checkAsync("a normal start asks the issuer and nothing else", async () => {
+  await withNetwork({ "auth.gryt.chat": "ok" }, async (calls) => {
+    assert.equal(await checkAccountServices(ISSUER, 200), "reachable");
+    assert.deepEqual(calls, [ISSUER], "a healthy launch paid for an internet check it didn't need");
+  });
+});
+
+await checkAsync("the launch check runs once, and trouble clears when accounts come back", async () => {
+  resetLaunchCheck();
+  await withNetwork({ "auth.gryt.chat": "502", "gryt.chat": "ok" }, async (calls) => {
+    const [a, b] = await Promise.all([checkAccountsAtLaunch(ISSUER), checkAccountsAtLaunch(ISSUER)]);
+    assert.equal(a, "unreachable");
+    assert.equal(b, "unreachable");
+    assert.equal(calls.filter((c) => c === ISSUER).length, 1, "the issuer was probed twice at launch");
+  });
+  assert.equal(getLaunchTrouble(), "unreachable");
+  assert.equal(decideBanner(null, 0, getLaunchTrouble()).kind, "unreachable", "launch trouble waited for a second failure");
+
+  settleLaunchTrouble("offline");
+  assert.equal(decideBanner(null, 0, getLaunchTrouble()).kind, "offline", "losing the connection still reads as down");
+
+  settleLaunchTrouble("reachable");
+  assert.equal(getLaunchTrouble(), null);
+  assert.equal(decideBanner(null, 0, getLaunchTrouble()), null, "the banner outlived the outage");
+
+  settleLaunchTrouble("unreachable");
+  assert.equal(getLaunchTrouble(), null, "a later check invented launch trouble after it had cleared");
+  resetLaunchCheck();
+});
+
+await checkAsync("a healthy launch leaves nothing behind", async () => {
+  resetLaunchCheck();
+  await withNetwork({ "auth.gryt.chat": "ok" }, () => checkAccountsAtLaunch(ISSUER));
+  assert.equal(getLaunchTrouble(), null);
+  settleLaunchTrouble("unreachable");
+  assert.equal(getLaunchTrouble(), null, "launch trouble appeared on a launch that went fine");
+  resetLaunchCheck();
+});
+
+check("an announcement still wins over launch trouble", () => {
+  assert.equal(decideBanner(NOTICE, 0, "unreachable").kind, "announced");
+});
+
+const splash = readFileSync(`${ROOT}/src/components/AuthLoadingOverlay.tsx`, "utf8");
+
+check("the splash names an accounts outage and offline, not just a slow start", () => {
+  assert.ok(splash.includes("checkAccountsAtLaunch"), "the splash no longer checks the account services");
+  assert.match(splash, /Can't reach Gryt accounts right now/, "the splash has no words for accounts being down");
+  assert.match(splash, /You're offline/, "the splash has no words for being offline");
+});
+
+check("the banner has words for offline that don't claim an outage", () => {
+  assert.match(banner, /You're offline/);
+  assert.ok(banner.includes('banner.kind !== "offline"'), "the offline banner links a status page it can't open");
 });
 
 console.log(

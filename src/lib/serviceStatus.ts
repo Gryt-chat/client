@@ -21,7 +21,12 @@ export type ServiceBanner =
   /** Sivert posted something. His words win. */
   | { kind: "announced"; announcement: Announcement }
   /** Nothing posted, and the account services did not answer. */
-  | { kind: "unreachable" };
+  | { kind: "unreachable" }
+  /** Launched with no internet, so the account could not be checked. */
+  | { kind: "offline" };
+
+/** What a check of the account services found, with offline kept apart from down. */
+export type AccountsReach = "reachable" | "unreachable" | "offline";
 
 export const STATUS_API_URL = "https://status.gryt.chat/api/v1/config";
 
@@ -136,9 +141,12 @@ export async function fetchAnnouncement(
  * Can the account services be reached? The OIDC issuer, which every signed-in
  * client already depends on. A 5xx counts the same as a timeout.
  */
-export async function probeAccountServices(issuerUrl: string): Promise<boolean> {
+export async function probeAccountServices(
+  issuerUrl: string,
+  timeoutMs: number = FETCH_TIMEOUT_MS,
+): Promise<boolean> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(issuerUrl, {
       signal: controller.signal,
@@ -153,14 +161,120 @@ export async function probeAccountServices(issuerUrl: string): Promise<boolean> 
 }
 
 /**
- * What to show, given an announcement and how many probes have failed. An
- * announcement wins even while everything is reachable.
+ * Hosts that say whether the internet works: the status page's VPS and the Pi.
+ * Neither runs on the box that runs Keycloak, so one outage can't take out both.
+ */
+export const INTERNET_CHECK_URLS = ["https://status.gryt.chat/", "https://gryt.chat/"];
+
+/** Shorter than the probe above, so the splash can say something before it goes. */
+export const STARTUP_TIMEOUT_MS = 6_000;
+
+/** True when any of the hosts answers at all. `no-cors`, so a CORS header is not needed. */
+export async function internetReachable(
+  urls: string[] = INTERNET_CHECK_URLS,
+  timeoutMs: number = FETCH_TIMEOUT_MS,
+): Promise<boolean> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await new Promise<boolean>((resolve) => {
+      let failed = 0;
+      for (const url of urls) {
+        fetch(url, { mode: "no-cors", cache: "no-store", signal: controller.signal }).then(
+          () => resolve(true),
+          () => {
+            if (++failed === urls.length) resolve(false);
+          },
+        );
+      }
+      if (urls.length === 0) resolve(false);
+    });
+  } finally {
+    clearTimeout(timer);
+    controller.abort();
+  }
+}
+
+/** The OS saying there is no network. Undefined outside a browser, which is not offline. */
+function osSaysOffline(): boolean {
+  return typeof navigator !== "undefined" && navigator.onLine === false;
+}
+
+/**
+ * Down only when the issuer fails and another host answers. When nothing
+ * answers, the problem is this machine's connection.
+ */
+export function classifyReach(
+  osOffline: boolean,
+  issuerOk: boolean,
+  internetOk: boolean,
+): AccountsReach {
+  if (osOffline) return "offline";
+  if (issuerOk) return "reachable";
+  return internetOk ? "unreachable" : "offline";
+}
+
+/** The second host is only asked once the issuer has failed, so a normal start costs one request. */
+export async function checkAccountServices(
+  issuerUrl: string,
+  timeoutMs: number = FETCH_TIMEOUT_MS,
+): Promise<AccountsReach> {
+  if (osSaysOffline()) return "offline";
+  if (await probeAccountServices(issuerUrl, timeoutMs)) return "reachable";
+  return classifyReach(osSaysOffline(), false, await internetReachable(INTERNET_CHECK_URLS, timeoutMs));
+}
+
+/* What the launch check found, kept until a later check says accounts are back. */
+let launchReach: AccountsReach | null = null;
+let launchCheck: Promise<AccountsReach> | null = null;
+const launchListeners = new Set<() => void>();
+
+/** Null when launch went fine, or once accounts have come back since. */
+export function getLaunchTrouble(): AccountsReach | null {
+  return launchReach === "reachable" ? null : launchReach;
+}
+
+export function subscribeLaunchTrouble(listener: () => void): () => void {
+  launchListeners.add(listener);
+  return () => launchListeners.delete(listener);
+}
+
+/** Called with every later check. Only ever moves toward the truth, never invents trouble. */
+export function settleLaunchTrouble(reach: AccountsReach): void {
+  if (launchReach === null || launchReach === "reachable" || launchReach === reach) return;
+  launchReach = reach;
+  launchListeners.forEach((l) => l());
+}
+
+/** Runs once per launch however many times it is asked. */
+export function checkAccountsAtLaunch(issuerUrl: string): Promise<AccountsReach> {
+  launchCheck ??= checkAccountServices(issuerUrl, STARTUP_TIMEOUT_MS).then((reach) => {
+    launchReach = reach;
+    launchListeners.forEach((l) => l());
+    return reach;
+  });
+  return launchCheck;
+}
+
+/** For tests. */
+export function resetLaunchCheck(): void {
+  launchReach = null;
+  launchCheck = null;
+}
+
+/**
+ * What to show, given an announcement, how many probes have failed and what
+ * launch found. An announcement wins even while everything is reachable.
  */
 export function decideBanner(
   announcement: Announcement | null,
   consecutiveFailures: number,
+  launchTrouble: AccountsReach | null = null,
 ): ServiceBanner | null {
   if (announcement) return { kind: "announced", announcement };
+  /* Launch already waited out the splash on this, so there's no second failure to wait for. */
+  if (launchTrouble === "unreachable") return { kind: "unreachable" };
+  if (launchTrouble === "offline") return { kind: "offline" };
   if (consecutiveFailures >= FAILURES_BEFORE_BANNER) return { kind: "unreachable" };
   return null;
 }

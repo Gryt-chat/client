@@ -1,6 +1,6 @@
 import { IconButton } from "@gryt/ui";
 import type { Icon } from "@phosphor-icons/react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { getGrytConfig } from "../config";
 import {
@@ -12,11 +12,14 @@ import {
 } from "../lib/icons";
 import {
   type AnnouncementType,
+  checkAccountServices,
   decideBanner,
   fetchAnnouncement,
+  getLaunchTrouble,
   POLL_INTERVAL_MS,
-  probeAccountServices,
   type ServiceBanner,
+  settleLaunchTrouble,
+  subscribeLaunchTrouble,
 } from "../lib/serviceStatus";
 import { useAccount } from "../packages/common/src/hooks/useAccount";
 
@@ -25,7 +28,7 @@ const DISMISSED_KEY = "serviceStatusDismissed";
 const STATUS_PAGE = "https://status.gryt.chat";
 
 const GENERIC =
-  "Can't reach Gryt's account services. You can keep using servers you're already in, but signing in or out won't work until this clears.";
+  "Can't reach Gryt accounts right now. Servers you're already in still work. You can't sign in or out until accounts are back.";
 
 /**
  * A glyph per severity. It was a triangle whatever the notice said, so an
@@ -48,21 +51,27 @@ const TONE: Record<AnnouncementType, string> = {
   none: "warning",
 };
 
+const OFFLINE =
+  "You're offline, so Gryt couldn't check your account. It'll check again once you're back online.";
+
 /**
- * Signed in only. Somebody who isn't signed in has nothing that breaks when the
- * account services go down, so a banner would be noise.
+ * Signed in, or launched while accounts couldn't be checked. A guest on a normal
+ * day has nothing that breaks when the account services go down.
  */
 export function ServiceStatusBanner() {
   const { isSignedIn } = useAccount();
   const [banner, setBanner] = useState<ServiceBanner | null>(null);
+  const launchTrouble = useSyncExternalStore(subscribeLaunchTrouble, getLaunchTrouble);
 
   /* Keyed on the text, so dismissing one notice does not hide the next. */
   const [dismissed, setDismissed] = useState<string | null>(() =>
     localStorage.getItem(DISMISSED_KEY),
   );
 
+  const watching = !!isSignedIn || launchTrouble !== null;
+
   useEffect(() => {
-    if (!isSignedIn) {
+    if (!watching) {
       setBanner(null);
       return;
     }
@@ -73,12 +82,16 @@ export function ServiceStatusBanner() {
        week should say so, not sixty times an hour. */
     let loggedReason = "";
 
+    /* The splash already had its answer, so say it now rather than after another probe. */
+    setBanner(decideBanner(null, 0, getLaunchTrouble()));
+
     const check = async () => {
       /* The OS knows better than a failed fetch does. Someone on a train with
          no signal should not be told Gryt is having an outage. */
       if (!navigator.onLine) {
         failures = 0;
-        if (!cancelled) setBanner(null);
+        settleLaunchTrouble("offline");
+        if (!cancelled) setBanner(decideBanner(null, 0, getLaunchTrouble()));
         return;
       }
 
@@ -99,13 +112,15 @@ export function ServiceStatusBanner() {
       /* Only probe when nothing is announced — an announcement wins either
          way, so the request would change nothing. */
       if (!announcement) {
-        const reachable = await probeAccountServices(getGrytConfig().GRYT_OIDC_ISSUER);
-        failures = reachable ? 0 : failures + 1;
+        /* A connection that is down without the OS noticing is not an outage either. */
+        const reach = await checkAccountServices(getGrytConfig().GRYT_OIDC_ISSUER);
+        failures = reach === "unreachable" ? failures + 1 : 0;
+        settleLaunchTrouble(reach);
       } else {
         failures = 0;
       }
 
-      if (!cancelled) setBanner(decideBanner(announcement, failures));
+      if (!cancelled) setBanner(decideBanner(announcement, failures, getLaunchTrouble()));
     };
 
     check();
@@ -125,17 +140,25 @@ export function ServiceStatusBanner() {
       window.removeEventListener("online", recheck);
       document.removeEventListener("visibilitychange", recheck);
     };
-  }, [isSignedIn]);
+  }, [watching]);
 
   if (!banner) return null;
 
   const message =
-    banner.kind === "announced" ? banner.announcement.message : GENERIC;
+    banner.kind === "announced"
+      ? banner.announcement.message
+      : banner.kind === "offline"
+        ? OFFLINE
+        : GENERIC;
   const tone =
     banner.kind === "announced" ? TONE[banner.announcement.type] : "warning";
-  /* Not reachable is a warning whatever else is going on. */
+  /* Not reachable is a warning whatever else is going on. Offline is just a fact. */
   const Glyph =
-    banner.kind === "announced" ? ICON[banner.announcement.type] : PiWarningFill;
+    banner.kind === "announced"
+      ? ICON[banner.announcement.type]
+      : banner.kind === "offline"
+        ? PiInfoFill
+        : PiWarningFill;
 
   if (message === dismissed) return null;
 
@@ -154,16 +177,22 @@ export function ServiceStatusBanner() {
         style={{ flexShrink: 0, color: `var(--gryt-${tone}-11)` }}
       />
       <span className="text-xs" style={{ color: `var(--gryt-${tone}-11)` }}>
-        {message}{" "}
-        <a
-          className="gryt-link font-medium"
-          style={{ color: `var(--gryt-${tone}-11)` }}
-          href={STATUS_PAGE}
-          target="_blank"
-          rel="noreferrer"
-        >
-          Status page
-        </a>
+        {message}
+        {/* No status page to open without a connection. */}
+        {banner.kind !== "offline" && (
+          <>
+            {" "}
+            <a
+              className="gryt-link font-medium"
+              style={{ color: `var(--gryt-${tone}-11)` }}
+              href={STATUS_PAGE}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Status page
+            </a>
+          </>
+        )}
       </span>
       <IconButton
         tone="ghost"
