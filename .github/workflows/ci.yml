@@ -27,6 +27,7 @@ jobs:
       - run: yarn test:lan-server-memory
       - run: yarn test:voice-presence
       - run: yarn test:reconnect-limit
+      - run: yarn test:token-refresh-schedule
       - run: yarn test:server-notice
       - run: yarn test:auth-outage
       - run: yarn test:focus-steal
