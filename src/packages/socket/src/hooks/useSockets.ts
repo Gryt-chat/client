@@ -23,6 +23,8 @@ import { MemberInfo } from "../components/MemberSidebar";
 import { Clients, ServerProfile } from "../types/clients";
 import { guardSocket, serverProofErrorMessage, serverProofHelpUrl } from "../utils/serverAuth";
 import { syncAvatarToHost } from "../utils/syncAvatarToHost";
+import { getTokenExpiryTime } from "../utils/tokenManager";
+import { refreshDelayMs, RETRY_DELAY_MS } from "../utils/tokenRefreshSchedule";
 import { useSocketEvents } from "./useSocketEvents";
 
 /* About two minutes of trying before a server is left alone. Getting back to it
@@ -495,42 +497,41 @@ function useSocketsHook() {
     return () => clearInterval(interval);
   }, [sockets]);
 
-  // Proactive access token refresh: run once shortly after startup, then every 4 minutes
+  // Each server on its own timer, planned from its token's expiry. A new token on
+  // any server re-plans them all, which moves nothing that is not yet due.
   useEffect(() => {
-    const refreshServerTokens = () => {
-      Object.keys(sockets).forEach((host) => {
-        const socket = sockets[host];
-        if (!socket?.connected) return;
-        const accessToken = getServerAccessToken(host);
-
-        if (!accessToken) {
-          const refreshToken = getServerRefreshToken(host);
-          if (refreshToken) {
-            socket.emit("token:refresh", { refreshToken });
-          } else {
-            const inviteCode = serversRef.current[host]?.token || undefined;
-            socket.emit("server:join", { nickname, inviteCode });
-          }
-          return;
-        }
-
-        const refreshToken = getServerRefreshToken(host);
-        if (refreshToken) {
-          socket.emit("token:refresh", { refreshToken });
-        } else {
-          socket.emit("token:refresh", { accessToken });
-        }
-      });
+    const timers: Record<string, ReturnType<typeof setTimeout>> = {};
+    const plan = (host: string, delayMs: number) => {
+      timers[host] = setTimeout(() => refreshServerToken(host), delayMs);
     };
 
-    const initialTimeout = setTimeout(refreshServerTokens, 3_000);
-    const interval = setInterval(refreshServerTokens, 4 * 60 * 1000);
-    return () => {
-      clearTimeout(initialTimeout);
-      clearInterval(interval);
+    const refreshServerToken = (host: string) => {
+      const socket = sockets[host];
+      if (!socket) return;
+      // Answered or not, look again later. An answer re-plans before this is due.
+      plan(host, RETRY_DELAY_MS);
+      if (!socket.connected) return;
+      const accessToken = getServerAccessToken(host);
+      const refreshToken = getServerRefreshToken(host);
+
+      if (refreshToken) {
+        socket.emit("token:refresh", { refreshToken });
+      } else if (accessToken) {
+        socket.emit("token:refresh", { accessToken });
+      } else {
+        const inviteCode = serversRef.current[host]?.token || undefined;
+        socket.emit("server:join", { nickname, inviteCode });
+      }
     };
+
+    const now = Date.now();
+    for (const host of Object.keys(sockets)) {
+      const accessToken = getServerAccessToken(host);
+      plan(host, refreshDelayMs(host, accessToken ? getTokenExpiryTime(accessToken) : null, now));
+    }
+    return () => Object.values(timers).forEach(clearTimeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sockets]);
+  }, [sockets, tokenRevision]);
 
   // Retry join when an invite token is updated or a socket reconnects
   useEffect(() => {

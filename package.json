@@ -28,6 +28,7 @@
     "test:lan-server-memory": "node scripts/check-lan-server-memory.mjs",
     "test:voice-presence": "node scripts/check-voice-presence.mjs",
     "test:reconnect-limit": "node scripts/check-reconnect-limit.mjs",
+    "test:token-refresh-schedule": "node scripts/check-token-refresh-schedule.mjs",
     "test:identity-vault": "node scripts/check-identity-vault.mjs",
     "test:identity-restart": "node scripts/check-identity-restart.mjs",
     "test:identity-certificate": "node scripts/check-identity-certificate.mjs",
