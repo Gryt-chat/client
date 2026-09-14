@@ -80,6 +80,7 @@ jobs:
       - run: yarn test:server-order
       - run: yarn test:tile-contrast
       - run: yarn test:card-byline
+      - run: yarn test:link-preview-retry
       - run: yarn test:member-invite
       - run: yarn test:addon-capabilities
       - run: yarn test:actor-name
