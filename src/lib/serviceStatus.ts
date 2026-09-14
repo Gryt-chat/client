@@ -227,6 +227,7 @@ export async function checkAccountServices(
 /* What the launch check found, kept until a later check says accounts are back. */
 let launchReach: AccountsReach | null = null;
 let launchCheck: Promise<AccountsReach> | null = null;
+let cameBack = false;
 const launchListeners = new Set<() => void>();
 
 /** Null when launch went fine, or once accounts have come back since. */
@@ -239,10 +240,16 @@ export function subscribeLaunchTrouble(listener: () => void): () => void {
   return () => launchListeners.delete(listener);
 }
 
+/** True once a later check reached accounts after launch couldn't. Stays true. */
+export function accountsCameBack(): boolean {
+  return cameBack;
+}
+
 /** Called with every later check. Only ever moves toward the truth, never invents trouble. */
 export function settleLaunchTrouble(reach: AccountsReach): void {
   if (launchReach === null || launchReach === "reachable" || launchReach === reach) return;
   launchReach = reach;
+  if (reach === "reachable") cameBack = true;
   launchListeners.forEach((l) => l());
 }
 
@@ -260,6 +267,7 @@ export function checkAccountsAtLaunch(issuerUrl: string): Promise<AccountsReach>
 export function resetLaunchCheck(): void {
   launchReach = null;
   launchCheck = null;
+  cameBack = false;
 }
 
 /**

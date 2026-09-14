@@ -10,6 +10,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  accountsCameBack,
   checkAccountsAtLaunch,
   checkAccountServices,
   classifyReach,
@@ -386,17 +387,22 @@ await checkAsync("the launch check runs once, and trouble clears when accounts c
   });
   assert.equal(getLaunchTrouble(), "unreachable");
   assert.equal(decideBanner(null, 0, getLaunchTrouble()).kind, "unreachable", "launch trouble waited for a second failure");
+  assert.equal(accountsCameBack(), false, "the sign-in retry was told accounts are back during the outage");
 
   settleLaunchTrouble("offline");
   assert.equal(decideBanner(null, 0, getLaunchTrouble()).kind, "offline", "losing the connection still reads as down");
+  assert.equal(accountsCameBack(), false, "offline was taken for accounts coming back");
 
   settleLaunchTrouble("reachable");
   assert.equal(getLaunchTrouble(), null);
+  assert.equal(accountsCameBack(), true, "nothing tells the sign-in retry that accounts answered again");
   assert.equal(decideBanner(null, 0, getLaunchTrouble()), null, "the banner outlived the outage");
 
   settleLaunchTrouble("unreachable");
   assert.equal(getLaunchTrouble(), null, "a later check invented launch trouble after it had cleared");
+  assert.equal(accountsCameBack(), true, "a later blip took back the signal the retry already acted on");
   resetLaunchCheck();
+  assert.equal(accountsCameBack(), false);
 });
 
 await checkAsync("a healthy launch leaves nothing behind", async () => {
@@ -404,7 +410,9 @@ await checkAsync("a healthy launch leaves nothing behind", async () => {
   await withNetwork({ "auth.gryt.chat": "ok" }, () => checkAccountsAtLaunch(ISSUER));
   assert.equal(getLaunchTrouble(), null);
   settleLaunchTrouble("unreachable");
+  settleLaunchTrouble("reachable");
   assert.equal(getLaunchTrouble(), null, "launch trouble appeared on a launch that went fine");
+  assert.equal(accountsCameBack(), false, "a healthy launch would retry a sign-in that never failed");
   resetLaunchCheck();
 });
 

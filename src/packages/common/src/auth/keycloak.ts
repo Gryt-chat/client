@@ -2,6 +2,7 @@ import Keycloak from 'keycloak-js';
 
 import { getGrytConfig } from '../../../../config';
 import { isElectron } from '../../../../lib/electron';
+import { retryDelayMs, type SignInAttempt } from '../../../../lib/signInRetry';
 import { consumePreLoginUrl } from '../utils/preLoginUrl';
 import {
   electronLogin,
@@ -20,6 +21,8 @@ import { SessionExpiredError } from './session-expired';
 type KeycloakInitResult = {
   keycloak: Keycloak;
   authenticated: boolean;
+  /** Browser only: the silent check failed or timed out, rather than finding no session. */
+  unreachable?: boolean;
 };
 
 function deriveKeycloakBaseUrl(issuer: string): string {
@@ -33,6 +36,8 @@ let initPromise: Promise<KeycloakInitResult> | null = null;
 let handlersInstalled = false;
 let refreshTimerHandle: ReturnType<typeof setTimeout> | null = null;
 let cachedPromiseLogCount = 0;
+/* Bumped by resetKeycloakInit, so an init that outlived its reset can't touch the new one. */
+let initGeneration = 0;
 
 function clearRefreshTimer(): void {
   if (refreshTimerHandle) {
@@ -77,15 +82,6 @@ function scheduleProactiveRefresh(keycloak: Keycloak): void {
 }
 
 let refreshFailures = 0;
-
-/**
- * How long to wait after a failed refresh: 30s doubling to five minutes, with
- * jitter so every client does not come back at the same instant.
- */
-function retryDelayMs(failures: number): number {
-  const base = Math.min(30_000 * 2 ** (failures - 1), 300_000);
-  return base * (0.75 + Math.random() * 0.5);
-}
 
 async function doProactiveRefresh(keycloak: Keycloak): Promise<void> {
   console.log("[Auth:KC] Proactive token refresh triggered");
@@ -193,6 +189,7 @@ function installKeycloakEventHandlers(keycloak: Keycloak, context: string): void
 
 async function initKeycloakForElectron(): Promise<KeycloakInitResult> {
   console.log("[Auth:KC] initKeycloakForElectron starting…");
+  const generation = initGeneration;
   const keycloak = getKeycloak();
   const stored = await getStoredTokens();
 
@@ -223,10 +220,12 @@ async function initKeycloakForElectron(): Promise<KeycloakInitResult> {
         "tokenParsed.exp:", keycloak.tokenParsed?.exp,
         "now:", Math.floor(Date.now() / 1000));
 
+      if (generation !== initGeneration) return { keycloak, authenticated: !!keycloak.authenticated };
       installKeycloakEventHandlers(keycloak, 'electron');
       return { keycloak, authenticated: !!keycloak.authenticated };
     } catch (e) {
       console.warn("[Auth:KC] Init with stored tokens failed, falling through to unauthenticated:", e);
+      if (generation !== initGeneration) throw e;
       keycloakInstance = null;
     }
   } else {
@@ -246,11 +245,13 @@ async function initKeycloakForElectron(): Promise<KeycloakInitResult> {
 
 // ── Standard browser init ────────────────────────────────────────────────
 
-async function initKeycloakForBrowser(): Promise<KeycloakInitResult> {
+/** `silentOnly` keeps a browser that blocks third-party cookies from redirecting the page to check. */
+async function initKeycloakForBrowser(silentOnly = false): Promise<KeycloakInitResult> {
   console.log("[Auth:KC] initKeycloakForBrowser starting…");
   const keycloak = getKeycloak();
 
   const SSO_TIMEOUT_MS = 8_000;
+  let unreachable = false;
 
   const authenticated = await Promise.race([
     keycloak.init({
@@ -258,12 +259,14 @@ async function initKeycloakForBrowser(): Promise<KeycloakInitResult> {
       pkceMethod: 'S256',
       checkLoginIframe: false,
       silentCheckSsoRedirectUri: `${window.location.origin}/silent-check-sso.html`,
+      ...(silentOnly ? { silentCheckSsoFallback: false } : {}),
     }),
     new Promise<boolean>((_, reject) =>
       setTimeout(() => reject(new Error('SSO check timed out')), SSO_TIMEOUT_MS),
     ),
   ]).catch((err) => {
     console.warn('[Auth:KC] Silent SSO check failed, continuing as unauthenticated:', err);
+    unreachable = true;
     return false;
   });
 
@@ -272,7 +275,7 @@ async function initKeycloakForBrowser(): Promise<KeycloakInitResult> {
     "now:", Math.floor(Date.now() / 1000));
 
   installKeycloakEventHandlers(keycloak, 'browser');
-  return { keycloak, authenticated };
+  return { keycloak, authenticated, unreachable };
 }
 
 // ── Public API ───────────────────────────────────────────────────────────
@@ -300,10 +303,37 @@ export async function initKeycloak(): Promise<KeycloakInitResult> {
 export function resetKeycloakInit(): void {
   console.log("[Auth:KC] resetKeycloakInit — clearing instance and handlers");
   clearRefreshTimer();
+  initGeneration += 1;
   initPromise = null;
   handlersInstalled = false;
   keycloakInstance = null;
   cachedPromiseLogCount = 0;
+}
+
+/**
+ * One quiet try at the session launch couldn't restore (GRYT-1178). Never opens a
+ * login page, and only a rejected grant clears the tokens.
+ */
+export async function retrySignIn(): Promise<SignInAttempt> {
+  if (isElectron()) {
+    const stored = await getStoredTokens();
+    if (!stored) return "signed-out";
+    try {
+      await refreshTokens(stored.refresh_token);
+    } catch (e) {
+      console.warn("[Auth:KC] Sign-in retry: refresh failed:", e);
+      return e instanceof RefreshRejectedError ? "signed-out" : "unavailable";
+    }
+    resetKeycloakInit();
+    const { keycloak, authenticated } = await initKeycloak();
+    return authenticated && keycloak.token ? "signed-in" : "unavailable";
+  }
+
+  resetKeycloakInit();
+  initPromise = initKeycloakForBrowser(true);
+  const { keycloak, authenticated, unreachable } = await initPromise;
+  if (authenticated && keycloak.token) return "signed-in";
+  return unreachable ? "unavailable" : "signed-out";
 }
 
 export async function startLogin(redirectUri?: string): Promise<void> {
