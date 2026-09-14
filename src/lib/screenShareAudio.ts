@@ -17,6 +17,23 @@ export function audioScopeHint(platform: string, sourceId: string | null): strin
   return "Shares every sound on this machine except Gryt, including any other voice app you are in.";
 }
 
+/** Mirrors CaptureProblem in electron/captureHealth.ts. */
+export type ScreenAudioProblem = "permission" | "failed" | "no-audio";
+
+/** What to tell somebody whose share is going out without its sound. */
+export function screenAudioProblemMessage(problem: string): string | null {
+  switch (problem) {
+    case "permission":
+      return "Your screen share has no sound. macOS hasn't let Gryt record the screen. Turn on Gryt Chat in System Settings > Privacy & Security > Screen & System Audio Recording, then share again.";
+    case "failed":
+      return "Your screen share has no sound. Gryt couldn't record it. Try sharing again.";
+    case "no-audio":
+      return "Your screen share has no sound. Gryt isn't getting any audio from macOS, so people only see your screen. Try sharing again.";
+    default:
+      return null;
+  }
+}
+
 /** The platform, as coarsely as the user agent states it. */
 export function currentPlatform(): string {
   const ua = typeof navigator === "undefined" ? "" : navigator.userAgent;

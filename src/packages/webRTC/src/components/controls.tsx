@@ -9,8 +9,9 @@ import { useSettings } from "@/settings";
 import { useSockets } from "@/socket";
 import { useVideoFraming } from "@/socket/src/hooks/useVideoFraming";
 
-import { isElectron } from "../../../../lib/electron";
+import { getElectronAPI, isElectron } from "../../../../lib/electron";
 import { PiMicrophoneFill, PiMicrophoneSlashFill, PiMonitorArrowUpFill, PiPhoneDisconnectFill, PiScanSmileyFill, PiScreencastFill, PiSlidersHorizontalFill, PiSpeakerHighFill, PiSpeakerSimpleHighFill, PiSpeakerSimpleSlashFill, PiSpeakerSlashFill, PiVideoCameraFill, PiVideoCameraSlashFill } from "../../../../lib/icons";
+import { screenAudioProblemMessage } from "../../../../lib/screenShareAudio";
 import { useScreenAudioMute } from "../adapters/useScreenAudioMute";
 import { useScreenAudioSources } from "../adapters/useScreenAudioSources";
 import { useVoiceSounds } from "../adapters/useVoiceSounds";
@@ -360,6 +361,13 @@ export function Controls({ onDisconnect }: ControlsProps) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected]);
+
+  useEffect(() => {
+    return getElectronAPI()?.onNativeAudioProblem?.((problem) => {
+      const message = screenAudioProblemMessage(problem);
+      if (message) toast.error(message, { id: "screen-audio-problem", duration: 12000 });
+    });
+  }, []);
 
   const handleCameraClick = useCallback(() => {
     if (cameraEnabled) {

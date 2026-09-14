@@ -9,6 +9,7 @@ import { existsSync } from "fs";
 import { join } from "path";
 
 import { AudioMixer } from "./audioMixer";
+import { type CaptureProblem, NO_AUDIO_TIMEOUT_MS, problemFromExit, problemFromSilence } from "./captureHealth";
 import { type CapturePlan, planCaptureChange, SYSTEM_AUDIO_SOURCE_ID } from "./captureSet";
 
 interface Capture {
@@ -42,6 +43,11 @@ function sendDiag(msg: string): void {
     // Window might be mid-destruction
   }
   console.log("[NativeAudioCapture]", msg);
+}
+
+function reportProblem(window: BrowserWindow, id: string, problem: CaptureProblem): void {
+  sendDiag(`${id} problem: ${problem}`);
+  if (!window.isDestroyed()) window.webContents.send("native-audio-problem", problem);
 }
 
 function getNativeBinaryPath(): string | null {
@@ -171,6 +177,14 @@ function spawnCapture(
   startStats();
 
   let firstDataLogged = false;
+  let stderr = "";
+  const startedAt = Date.now();
+
+  const silenceTimer = setTimeout(() => {
+    if (captures.get(id) !== capture) return;
+    const problem = problemFromSilence(process.platform, capture.chunks, Date.now() - startedAt);
+    if (problem) reportProblem(window, id, problem);
+  }, NO_AUDIO_TIMEOUT_MS);
 
   proc.stdout?.on("data", (chunk: Buffer) => {
     if (window.isDestroyed()) {
@@ -191,13 +205,16 @@ function spawnCapture(
   });
 
   proc.stderr?.on("data", (data: Buffer) => {
-    sendDiag(`[${id} stderr] ${data.toString().trimEnd()}`);
+    const text = data.toString();
+    stderr = (stderr + text).slice(-4096);
+    sendDiag(`[${id} stderr] ${text.trimEnd()}`);
   });
 
   // Both handlers check the entry is still this process: reselecting inside the
   // half second a stop is given spawns a new capture under the same id.
   proc.on("error", (err) => {
     sendDiag(`spawn error for ${id}: ${err.message}`);
+    clearTimeout(silenceTimer);
     if (captures.get(id) === capture) forget(id);
   });
 
@@ -206,7 +223,15 @@ function spawnCapture(
       `${id} exited code=${code} signal=${signal} totalBytes=${capture.bytes} chunks=${capture.chunks}`,
     );
 
-    if (captures.get(id) === capture) forget(id);
+    clearTimeout(silenceTimer);
+    const unexpected = captures.get(id) === capture;
+    if (unexpected) forget(id);
+
+    // stderr can still be arriving when "exit" fires, and a refused permission is only in stderr.
+    proc.once("close", () => {
+      const problem = problemFromExit({ platform: process.platform, code, chunks: capture.chunks, stderr, unexpected });
+      if (problem) reportProblem(window, id, problem);
+    });
 
     // The renderer's capture is over when nothing is left feeding it. One
     // application of several going away is not that.

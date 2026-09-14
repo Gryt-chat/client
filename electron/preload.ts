@@ -313,6 +313,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return () => ipcRenderer.removeListener("native-audio-stopped", handler);
   },
 
+  onNativeAudioProblem(callback: (problem: string) => void) {
+    const handler = (_event: Electron.IpcRendererEvent, problem: string) =>
+      callback(problem);
+    ipcRenderer.on("native-audio-problem", handler);
+    return () => ipcRenderer.removeListener("native-audio-problem", handler);
+  },
+
   onNativeAudioDiagnostic(callback: (msg: string) => void) {
     const handler = (_event: Electron.IpcRendererEvent, msg: string) =>
       callback(msg);
