@@ -137,4 +137,28 @@ const limited = (extra = {}) => ({ kind: "status", status: 429, ...extra });
   );
 }
 
-console.log("link preview retry: ok, a 429 waits and a 502 tries again");
+/* ── XEmbed's oembed fetch goes through it too ──────────────────────────── */
+{
+  const embeds = readFileSync(join(root, "src/packages/socket/src/components/EmbedRenderers.tsx"), "utf8");
+  const x = embeds.slice(embeds.indexOf("export const XEmbed"));
+  const start = x.indexOf("if (html || failed) return;");
+  const end = x.indexOf("}, [url, serverHost, html, failed, resolvedAppearance]);");
+  assert.ok(start !== -1 && end > start, "the fetch effect in XEmbed moved; update this check");
+  const effect = x.slice(start, end);
+
+  assert.ok(/\/api\/oembed\?/.test(effect), "the XEmbed block no longer holds the oembed fetch");
+  assert.ok(/nextPreviewStep\(failure, attempt\)/.test(effect), "XEmbed hides on any failure instead of asking nextPreviewStep");
+  assert.ok(!/r\.ok \? r\.json\(\) : Promise\.reject/.test(effect), "XEmbed still turns every non-ok answer into a failure");
+  assert.ok(!/status\s*(>=|<|===)\s*(400|500)/.test(effect), "XEmbed sorts statuses itself instead of asking the module");
+  assert.ok(/settle\(attempt, \{ kind: "network" \}\)/.test(effect), "a dropped connection in XEmbed skips the module");
+  const settle = effect.slice(effect.indexOf("const settle"), effect.indexOf("const request"));
+  assert.ok(
+    /if \(step\.action === "retry"\) \{\s*timer = setTimeout\([^\n]*\n\s*return;\s*\}/.test(settle)
+      && settle.indexOf("setFailed(true)") > settle.indexOf("return;"),
+    "XEmbed hides its skeleton while a retry is pending",
+  );
+  assert.ok(/retryAfterMs: \(body as/.test(effect) && /res\.headers\.get\("Retry-After"\)/.test(effect), "XEmbed does not pass the server's wait along");
+  assert.ok(/clearTimeout\(timer\)/.test(effect) && /cancelled = true/.test(effect), "unmounting XEmbed leaves a retry timer running");
+}
+
+console.log("link preview retry: ok, a 429 waits and a 502 tries again, for link cards and X embeds");

@@ -15,6 +15,7 @@ import {
   parseRemoteImageMetadata,
   safeJsonParseOEmbed,
 } from "./embedUtils";
+import { nextPreviewStep, type PreviewFailure } from "./linkPreviewRetry";
 
 export const DismissButton = ({ onDismiss }: { onDismiss: () => void }) => (
   <button
@@ -263,18 +264,58 @@ export const XEmbed = ({ url, serverHost, onDismiss }: { url: string; serverHost
     if (!accessToken) { setFailed(true); return; }
     const base = getServerHttpBase(serverHost);
     let cancelled = false;
-    fetch(`${base}/api/oembed?url=${encodeURIComponent(url)}&theme=${resolvedAppearance}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("oembed_failed"))))
-      .then((j: unknown) => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    // No refused set here: a refusal and giving up both hide the embed for this mount.
+    const settle = (attempt: number, failure: PreviewFailure) => {
+      const step = nextPreviewStep(failure, attempt);
+      if (step.action === "retry") {
+        timer = setTimeout(() => void request(attempt + 1), step.delayMs);
+        return;
+      }
+      setFailed(true);
+    };
+
+    const request = async (attempt: number) => {
+      let res: Response;
+      try {
+        res = await fetch(`${base}/api/oembed?url=${encodeURIComponent(url)}&theme=${resolvedAppearance}`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+      } catch {
+        if (!cancelled) settle(attempt, { kind: "network" });
+        return;
+      }
+      if (cancelled) return;
+
+      if (!res.ok) {
+        const body = res.status === 429 ? await res.json().catch(() => null) : null;
         if (cancelled) return;
-        const parsed = safeJsonParseOEmbed(j);
+        settle(attempt, {
+          kind: "status",
+          status: res.status,
+          retryAfter: res.headers.get("Retry-After"),
+          retryAfterMs: (body as { retryAfterMs?: unknown } | null)?.retryAfterMs,
+        });
+        return;
+      }
+
+      try {
+        const parsed = safeJsonParseOEmbed(await res.json());
+        if (cancelled) return;
         if (!parsed) { setFailed(true); return; }
         setHtml(parsed.html);
-      })
-      .catch(() => { if (!cancelled) setFailed(true); });
-    return () => { cancelled = true; };
+      } catch {
+        if (!cancelled) setFailed(true);
+      }
+    };
+
+    void request(0);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [url, serverHost, html, failed, resolvedAppearance]);
 
   if (failed) return null;
