@@ -19,6 +19,11 @@ const exit = (over) => ({ platform: "darwin", code: 1, chunks: 0, stderr: "", un
 assert.equal(problemFromExit(exit({ stderr: refused })), "permission");
 assert.equal(problemFromExit(exit({ stderr: refused, code: 0 })), "permission");
 
+// Either half is enough, since the wording and the code can each change between macOS releases.
+assert.equal(problemFromExit(exit({ stderr: "Error: Denied [com.apple.ScreenCaptureKit.SCStreamErrorDomain -3801]" })), "permission");
+assert.equal(problemFromExit(exit({ stderr: "Error: The user declined TCCs for display capture" })), "permission");
+assert.equal(problemFromExit(exit({ stderr: "Error: Failed [com.apple.ScreenCaptureKit.SCStreamErrorDomain -3802]" })), "failed");
+
 // Any other early death, a crash by signal included, is a plain failure.
 assert.equal(problemFromExit(exit({ stderr: "Error: No display found\n" })), "failed");
 assert.equal(problemFromExit(exit({ code: null })), "failed");
