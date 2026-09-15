@@ -274,6 +274,56 @@ export function ServerSettingsModal() {
     setTab(values[0]);
   }, [isOpen, tab, visibleTabValues]);
 
+  // One set of lines for both layouts: under the rail when it fits, under the picker when it does not.
+  const versionLines = (
+    <>
+      {serverInfo?.version && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gryt-muted" style={{ opacity: 0.5 }}>
+            Server v{serverInfo.version}
+          </span>
+          {versionLoading && <Spinner size={16} />}
+          {versionStatus?.server.updateAvailable && (
+            <Chip tone="warning">
+              v{versionStatus.server.latest}
+            </Chip>
+          )}
+        </div>
+      )}
+      {versionStatus?.sfu && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gryt-muted" style={{ opacity: 0.5 }}>
+            SFU {versionStatus.sfu.current ? `v${versionStatus.sfu.current}` : "—"}
+          </span>
+          {versionStatus.sfu.updateAvailable && (
+            <Chip tone="warning">
+              v{versionStatus.sfu.latest}
+            </Chip>
+          )}
+        </div>
+      )}
+      {/* Absent, not dashed, when there is no worker to ask.
+          A server without one is a normal deployment, and a
+          permanent "—" would read as something being broken. */}
+      {versionStatus?.worker && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gryt-muted" style={{ opacity: 0.5 }}>
+            Image worker{" "}
+            {versionStatus.worker.current
+              ? `v${versionStatus.worker.current}`
+              : "—"}
+          </span>
+          {versionStatus.worker.updateAvailable && (
+            <Chip tone="warning">
+              v{versionStatus.worker.latest}
+            </Chip>
+          )}
+        </div>
+      )}
+    </>
+  );
+  const hasVersionLines = Boolean(serverInfo?.version || versionStatus?.sfu || versionStatus?.worker);
+
   return (
     <Dialog.Root open={isOpen} onOpenChange={handleDialogChange}>
       <Dialog.Portal>
@@ -340,6 +390,15 @@ export function ServerSettingsModal() {
                       }))}
                     />
                   )}
+                  {!railFits && hasVersionLines && (
+                    <div
+                      data-settings-versions="narrow"
+                      className="flex flex-wrap gap-x-4 gap-y-1"
+                      style={{ marginTop: "-8px", padding: "0 4px", fontFamily: "var(--code-font-family)" }}
+                    >
+                      {versionLines}
+                    </div>
+                  )}
                   <div hidden={!railFits} style={{ minWidth: "200px", flexShrink: 0, overflowY: "auto" }}>
                     <Tabs.List aria-label="Server settings" className="gap-1">
                       {TAB_CONFIG.map(({ value, label, icon: Icon }) => (
@@ -351,49 +410,7 @@ export function ServerSettingsModal() {
                       <Tabs.Indicator />
                     </Tabs.List>
                     <div className="flex flex-col gap-1" style={{ padding: "12px 16px", fontFamily: "var(--code-font-family)" }}>
-                      {serverInfo?.version && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gryt-muted" style={{ opacity: 0.5 }}>
-                            Server v{serverInfo.version}
-                          </span>
-                          {versionLoading && <Spinner size={16} />}
-                          {versionStatus?.server.updateAvailable && (
-                            <Chip tone="warning">
-                              v{versionStatus.server.latest}
-                            </Chip>
-                          )}
-                        </div>
-                      )}
-                      {versionStatus?.sfu && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gryt-muted" style={{ opacity: 0.5 }}>
-                            SFU {versionStatus.sfu.current ? `v${versionStatus.sfu.current}` : "—"}
-                          </span>
-                          {versionStatus.sfu.updateAvailable && (
-                            <Chip tone="warning">
-                              v{versionStatus.sfu.latest}
-                            </Chip>
-                          )}
-                        </div>
-                      )}
-                      {/* Absent, not dashed, when there is no worker to ask.
-                          A server without one is a normal deployment, and a
-                          permanent "—" would read as something being broken. */}
-                      {versionStatus?.worker && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gryt-muted" style={{ opacity: 0.5 }}>
-                            Image worker{" "}
-                            {versionStatus.worker.current
-                              ? `v${versionStatus.worker.current}`
-                              : "—"}
-                          </span>
-                          {versionStatus.worker.updateAvailable && (
-                            <Chip tone="warning">
-                              v{versionStatus.worker.latest}
-                            </Chip>
-                          )}
-                        </div>
-                      )}
+                      {versionLines}
                     </div>
                   </div>
 
