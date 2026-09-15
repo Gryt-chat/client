@@ -2,7 +2,7 @@ import { ContextMenu } from "@gryt/ui";
 import React, { type ReactNode, useCallback, useMemo } from "react";
 
 import { PiArrowBendUpLeftFill, PiArrowSquareOutFill, PiChatsFill, PiCloudArrowDownFill, PiCopyFill, PiFlagFill, PiImageFill, PiPencilSimpleFill, PiSmileyFill, PiTrashFill } from "../../../../lib/icons";
-import { triggerDownload } from "../utils/downloadFile";
+import { saveOpenedFile, triggerDownload } from "../utils/downloadFile";
 import { copyImageToClipboard } from "../utils/mediaClipboard";
 import { getRecentReactions } from "../utils/recentReactions";
 import { EmojiPickerContent } from "./EmojiPicker";
@@ -25,11 +25,14 @@ export interface MessageActions {
   unreadCount?: number;
 }
 
-interface MediaProps {
-  src: string;
+type MediaProps = {
   fileName?: string | null;
   isImage?: boolean;
-}
+} & (
+  | { src: string }
+  /** Here already, decrypted or not sent yet. The server copy is ciphertext or missing, so nothing links to it. */
+  | { open: () => Promise<Blob> }
+);
 
 interface MessageContextMenuProps {
   children: ReactNode;
@@ -57,35 +60,46 @@ async function copyToClipboard(text: string) {
 }
 
 function MediaItems({ media }: { media: MediaProps }) {
+  const copyImage = "open" in media
+    ? () => media.open().then(copyImageToClipboard)
+    : () => copyImageToClipboard(media.src);
+  const save = "open" in media
+    ? () => saveOpenedFile(media.open, media.fileName)
+    : () => triggerDownload(media.src, media.fileName);
+  const src = "src" in media ? media.src : null;
   return (
     <>
       {media.isImage && (
-        <ContextMenu.Item onClick={() => copyImageToClipboard(media.src)}>
+        <ContextMenu.Item onClick={() => void copyImage()}>
           <div className="flex items-center gap-1">
             <PiImageFill size={14} />
             Copy Image
           </div>
         </ContextMenu.Item>
       )}
-      <ContextMenu.Item onClick={() => void triggerDownload(media.src, media.fileName)}>
+      <ContextMenu.Item onClick={() => void save()}>
         <div className="flex items-center gap-1">
           <PiCloudArrowDownFill size={14} />
           Save As
         </div>
       </ContextMenu.Item>
-      <ContextMenu.Item onClick={() => copyToClipboard(media.src)}>
-        <div className="flex items-center gap-1">
-          <PiCopyFill size={14} />
-          Copy Link
-        </div>
-      </ContextMenu.Item>
-      <ContextMenu.Separator />
-      <ContextMenu.Item onClick={() => window.open(media.src, "_blank", "noopener,noreferrer")}>
-        <div className="flex items-center gap-1">
-          <PiArrowSquareOutFill size={14} />
-          Open in Browser
-        </div>
-      </ContextMenu.Item>
+      {src !== null && (
+        <>
+          <ContextMenu.Item onClick={() => copyToClipboard(src)}>
+            <div className="flex items-center gap-1">
+              <PiCopyFill size={14} />
+              Copy Link
+            </div>
+          </ContextMenu.Item>
+          <ContextMenu.Separator />
+          <ContextMenu.Item onClick={() => window.open(src, "_blank", "noopener,noreferrer")}>
+            <div className="flex items-center gap-1">
+              <PiArrowSquareOutFill size={14} />
+              Open in Browser
+            </div>
+          </ContextMenu.Item>
+        </>
+      )}
     </>
   );
 }

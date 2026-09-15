@@ -1,0 +1,2 @@
+Notes for the encrypted attachment test.
+Bytes above 0x7f, so an encoding slip shows: æøå, 日本語, and a tab	here.

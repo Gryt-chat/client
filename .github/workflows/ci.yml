@@ -89,6 +89,8 @@ jobs:
       - run: yarn test:sealed-send
       - run: yarn test:sealed-fallback
       - run: yarn test:sealed-attachments
+      # Save As on an encrypted file used the server copy, which is ciphertext.
+      - run: yarn test:sealed-save
       - run: yarn test:member-key-wording
       - run: yarn test:owl-export
       - run: yarn test:owl-seen

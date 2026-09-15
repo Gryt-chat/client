@@ -1,16 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { readBlobUrl } from "../utils/downloadFile";
+
 export type SealedVideoPhase = "idle" | "opening" | "failed";
+
+export type SealedVideo = {
+  src: string | null;
+  phase: SealedVideoPhase;
+  start: () => void;
+  /** The decrypted file, for Save As: the copy made for play, or a new one that doesn't start playback. */
+  file: () => Promise<Blob>;
+};
 
 /**
  * A sealed video's blob URL, made on `start` and revoked on unmount. Until then
  * `src` is null and nothing has been fetched (GRYT-1171).
  */
-export function useSealedVideo(open: () => Promise<Blob>): {
-  src: string | null;
-  phase: SealedVideoPhase;
-  start: () => void;
-} {
+export function useSealedVideo(open: () => Promise<Blob>): SealedVideo {
   const [src, setSrc] = useState<string | null>(null);
   const [phase, setPhase] = useState<SealedVideoPhase>("idle");
   const busy = useRef(false);
@@ -48,5 +54,7 @@ export function useSealedVideo(open: () => Promise<Blob>): {
     );
   }, [open]);
 
-  return { src, phase, start };
+  const file = useCallback(() => (src ? readBlobUrl(src) : open()), [src, open]);
+
+  return { src, phase, start, file };
 }

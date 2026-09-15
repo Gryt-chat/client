@@ -1,26 +1,15 @@
-import { fileURLToPath } from "node:url";
+import { readFileSync } from "node:fs";
 
-import type { Page, Request } from "@playwright/test";
+import type { Request } from "@playwright/test";
 
-import { channelComposer, CONFIRMED_ROW } from "../support/app";
+import { attachAndSend, clipboardHoldsImage, CONFIRMED_ROW, fixture, savedFile, sha256 } from "../support/app";
 import { expect, test } from "../support/fixtures";
-
-const fixture = (name: string) => fileURLToPath(new URL(`../fixtures/${name}`, import.meta.url));
-
-async function attachAndSend(page: Page, file: string) {
-  const chooser = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "Attach file" }).click();
-  await (await chooser).setFiles(file);
-  await expect(page.getByRole("button", { name: "Remove file" })).toBeVisible();
-  await channelComposer(page).press("Enter");
-  await expect(page.getByRole("button", { name: "Remove file" })).toBeHidden();
-}
 
 test("an uploaded image loads for the sender and the other members", async ({ newMember, gryt }) => {
   const alice = await newMember();
   const bob = await newMember();
 
-  await attachAndSend(alice.page, fixture("gradient.png"));
+  await attachAndSend(alice.page, [fixture("gradient.png")]);
 
   for (const page of [alice.page, bob.page]) {
     const image = page.locator(`${CONFIRMED_ROW} img[alt="gradient.png"]`);
@@ -29,6 +18,29 @@ test("an uploaded image loads for the sender and the other members", async ({ ne
   }
   const src = await bob.page.locator(`${CONFIRMED_ROW} img[alt="gradient.png"]`).getAttribute("src");
   expect(src).toContain(`${gryt.server.httpBase}/api/uploads/files/`);
+});
+
+test("an uploaded image's menu saves it, copies it and still links to it", async ({ newMember, gryt }) => {
+  const alice = await newMember();
+  const bob = await newMember();
+  await bob.context.grantPermissions(["clipboard-read", "clipboard-write"]);
+
+  await attachAndSend(alice.page, [fixture("gradient.png")]);
+  const image = bob.page.locator(`${CONFIRMED_ROW} img[alt="gradient.png"]`).last();
+  await expect.poll(() => image.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBe(96);
+
+  await image.click({ button: "right" });
+  await expect(bob.page.getByRole("menuitem", { name: "Open in Browser" })).toBeVisible();
+  const saved = await savedFile(bob.page, () => bob.page.getByRole("menuitem", { name: "Save As" }).click());
+  expect(saved).toEqual({ name: "gradient.png", sha256: sha256(readFileSync(fixture("gradient.png"))) });
+
+  await image.click({ button: "right" });
+  await bob.page.getByRole("menuitem", { name: "Copy Image" }).click();
+  await expect.poll(() => clipboardHoldsImage(bob.page, "gradient.png")).toBe(true);
+
+  await image.click({ button: "right" });
+  await bob.page.getByRole("menuitem", { name: "Copy Link" }).click();
+  await expect.poll(() => bob.page.evaluate(() => navigator.clipboard.readText())).toContain(`${gryt.server.httpBase}/api/uploads/files/`);
 });
 
 test("a video attachment doesn't download until play is pressed", async ({ newMember, gryt }) => {
@@ -48,7 +60,7 @@ test("a video attachment doesn't download until play is pressed", async ({ newMe
     if (isVideoFetch(request)) fetches.push(request.url());
   });
 
-  await attachAndSend(alice.page, fixture("clip.webm"));
+  await attachAndSend(alice.page, [fixture("clip.webm")]);
 
   const player = bob.page.locator(`${CONFIRMED_ROW} .gryt-video-player`).filter({ hasText: "clip.webm" });
   await expect(player).toBeVisible();

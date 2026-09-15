@@ -1,6 +1,11 @@
+import { readFileSync } from "node:fs";
+
 import type { Page } from "@playwright/test";
 
-import { composer, CONFIRMED_ROW, type Member, membersPanel, messageRow, sendMessage, unique } from "../support/app";
+import {
+  attachAndSend, clipboardHoldsImage, composer, CONFIRMED_ROW, fixture, type Member, membersPanel, messageRow, savedFile,
+  sendMessage, sha256, unique,
+} from "../support/app";
 import { expect, test } from "../support/fixtures";
 
 const ENCRYPTED = "This conversation is encrypted.";
@@ -87,4 +92,72 @@ test("messages that arrive before a DM's history loads go below it", async ({ ne
     return rows.map((row) => texts.findIndex((text) => row.includes(text))).filter((i) => i >= 0);
   };
   await expect.poll(order).toEqual([0, 1, 2, 3, 4]);
+});
+
+test("an encrypted DM's files save and copy as the files that were sent, with no link to the ciphertext", async ({ newMember, gryt }) => {
+  const alice = await newMember();
+  const bob = await newMember();
+  const hashOf = (name: string) => sha256(readFileSync(fixture(name)));
+
+  await openDmFromMembers(bob, alice);
+  await expect(bob.page.getByText(ENCRYPTED)).toBeVisible();
+  await attachAndSend(bob.page, [fixture("gradient.png"), fixture("notes.txt"), fixture("clip.webm")], composer(bob.page, `Message ${alice.name}`));
+
+  const page = alice.page;
+  await alice.context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  const fileFetches: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().startsWith(`${gryt.server.httpBase}/api/uploads/files/`)) fileFetches.push(request.url());
+  });
+  await openDmFromList(page, bob.name);
+
+  const image = page.locator(`${CONFIRMED_ROW} img[alt="gradient.png"]`);
+  await expect(image).toHaveAttribute("src", /^blob:/);
+  await expect.poll(() => image.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBe(96);
+
+  await image.click({ button: "right" });
+  await expect(page.getByRole("menuitem", { name: "Save As" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "Copy Link" })).toHaveCount(0);
+  await expect(page.getByRole("menuitem", { name: "Open in Browser" })).toHaveCount(0);
+  expect(await savedFile(page, () => page.getByRole("menuitem", { name: "Save As" }).click())).toEqual({
+    name: "gradient.png",
+    sha256: hashOf("gradient.png"),
+  });
+
+  await image.click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Copy Image" }).click();
+  await expect.poll(() => clipboardHoldsImage(page, "gradient.png")).toBe(true);
+
+  await image.click();
+  const lightboxSave = page.getByRole("button", { name: "Save image" });
+  expect(await savedFile(page, () => lightboxSave.click())).toEqual({ name: "gradient.png", sha256: hashOf("gradient.png") });
+  await page.keyboard.press("Escape");
+  await expect(lightboxSave).toBeHidden();
+
+  const card = page.locator(".chat-file-card").filter({ hasText: "notes.txt" });
+  expect(await savedFile(page, () => card.getByRole("button", { name: "Download" }).click())).toEqual({
+    name: "notes.txt",
+    sha256: hashOf("notes.txt"),
+  });
+
+  const player = page.locator(`${CONFIRMED_ROW} .chat-video-player`).filter({ hasText: "clip.webm" });
+  await player.click({ button: "right" });
+  await expect(page.getByRole("menuitem", { name: "Copy Link" })).toHaveCount(0);
+  expect(await savedFile(page, () => page.getByRole("menuitem", { name: "Save As" }).click())).toEqual({
+    name: "clip.webm",
+    sha256: hashOf("clip.webm"),
+  });
+  const video = player.locator("video");
+  await expect(video, "Save As started the video").not.toHaveAttribute("src", /.+/);
+
+  // The encrypted player's own button, over the inert one inside it.
+  await player.locator(':scope > button[aria-label="Play video"]').click();
+  await expect(video).toHaveAttribute("src", /^blob:/);
+  const fetchesAfterPlay = fileFetches.length;
+  await player.click({ button: "right" });
+  expect(await savedFile(page, () => page.getByRole("menuitem", { name: "Save As" }).click())).toEqual({
+    name: "clip.webm",
+    sha256: hashOf("clip.webm"),
+  });
+  expect(fileFetches.length, "Save As downloaded a video that was already decrypted for play").toBe(fetchesAfterPlay);
 });

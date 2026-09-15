@@ -1,3 +1,7 @@
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
 import { type BrowserContext, expect, type Locator, type Page } from "@playwright/test";
 
 export interface Member {
@@ -89,6 +93,50 @@ export async function sendMessage(page: Page, text: string, channel = "General")
   await expect(row).toBeVisible();
   await expect(page.locator('[data-message-id^="pending-"]').filter({ hasText: text })).toHaveCount(0);
   return row;
+}
+
+/** A file in e2e/fixtures, as a path a file chooser takes. */
+export function fixture(name: string): string {
+  return fileURLToPath(new URL(`../fixtures/${name}`, import.meta.url));
+}
+
+export function sha256(bytes: Buffer): string {
+  return createHash("sha256").update(bytes).digest("hex");
+}
+
+/** Attaches files with the paperclip and sends them with one Enter in `box`. */
+export async function attachAndSend(page: Page, files: string[], box: Locator = channelComposer(page)): Promise<void> {
+  const chooser = page.waitForEvent("filechooser");
+  await page.getByRole("button", { name: "Attach file" }).click();
+  await (await chooser).setFiles(files);
+  await expect(page.getByRole("button", { name: "Remove file" })).toHaveCount(files.length);
+  await box.press("Enter");
+  await expect(page.getByRole("button", { name: "Remove file" })).toHaveCount(0);
+}
+
+/** Runs `press`, waits for the download it starts, and returns its name and the hash of what landed. */
+export async function savedFile(page: Page, press: () => Promise<void>): Promise<{ name: string; sha256: string }> {
+  const [download] = await Promise.all([page.waitForEvent("download"), press()]);
+  return { name: download.suggestedFilename(), sha256: sha256(readFileSync(await download.path())) };
+}
+
+/** Whether the clipboard holds a PNG with the same pixels as the fixture `name`. */
+export async function clipboardHoldsImage(page: Page, name: string): Promise<boolean | string> {
+  return page.evaluate(async (expectedBase64) => {
+    const item = (await navigator.clipboard.read()).find((it) => it.types.includes("image/png"));
+    if (!item) return "no image on the clipboard";
+    const pixels = async (blob: Blob) => {
+      const bitmap = await createImageBitmap(blob);
+      const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+      const context = canvas.getContext("2d")!;
+      context.drawImage(bitmap, 0, 0);
+      return { width: bitmap.width, height: bitmap.height, data: context.getImageData(0, 0, bitmap.width, bitmap.height).data };
+    };
+    const expected = await pixels(new Blob([Uint8Array.from(atob(expectedBase64), (c) => c.charCodeAt(0))]));
+    const copied = await pixels(await item.getType("image/png"));
+    if (copied.width !== expected.width || copied.height !== expected.height) return `copied ${copied.width}x${copied.height}`;
+    return copied.data.every((value, i) => value === expected.data[i]);
+  }, readFileSync(fixture(name)).toString("base64"));
 }
 
 export function membersPanel(page: Page): Locator {

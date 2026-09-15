@@ -2,7 +2,7 @@ import { Button, Spinner, VideoPlayer } from "@gryt/ui";
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 
 import { PiWarningCircle } from "../../../../lib/icons";
-import { useSealedVideo } from "../hooks/useSealedVideo";
+import type { SealedVideo } from "../hooks/useSealedVideo";
 import { formatFileSize } from "../utils/formatFileSize";
 
 function mediaLabel(fileName?: string | null, size?: number | null): string | null {
@@ -89,19 +89,20 @@ function ChatVideo({
  * inert until then, so the press lands on the button here and not on the player's own.
  */
 export function ChatSealedVideo({
-  open,
+  video,
   fileName,
   size,
   volume,
   onVolumeChange,
 }: {
-  open: () => Promise<Blob>;
+  /** From useSealedVideo, held by the attachment so its menu can save the same file. */
+  video: SealedVideo;
   fileName?: string | null;
   size?: number | null;
   volume: number;
   onVolumeChange: (v: number) => void;
 }) {
-  const { src, phase, start } = useSealedVideo(open);
+  const { src, phase, start } = video;
   const box = useRef<HTMLDivElement | null>(null);
   const focused = useRef(false);
 
