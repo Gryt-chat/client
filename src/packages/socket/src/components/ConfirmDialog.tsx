@@ -89,7 +89,7 @@ export function ConfirmDialog({
             </div>
           )}
 
-          <div className="flex gap-3 mt-4 justify-end">
+          <div className="flex flex-wrap gap-3 mt-4 justify-end">
             <AlertDialog.Close render={<Button size="small" tone="neutral">{cancelLabel}</Button>} />
             {/* Close above routes through onOpenChange, so onCancel runs there
                 rather than on this button. */}

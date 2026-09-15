@@ -26,7 +26,7 @@ export function ScreenAudioSourcesModal({ open, onOpenChange }: ScreenAudioSourc
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Backdrop />
-        <Dialog.Popup style={{ maxWidth: 460 }}>
+        <Dialog.Popup className="w-[28.75rem]">
           <Dialog.Title>Audio you&apos;re sharing</Dialog.Title>
           <Dialog.Description>
             Pick the applications to send. Anything you leave out stays out of the share,

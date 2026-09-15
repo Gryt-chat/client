@@ -234,7 +234,7 @@ export function ScreenSharePickerModal({
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Backdrop />
-        <Dialog.Popup style={{ maxWidth: 640 }}>
+        <Dialog.Popup className="w-[40rem]">
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -248,7 +248,7 @@ export function ScreenSharePickerModal({
             </Dialog.Close>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button size="xsmall"
               onClick={() => setTab("screens")}
             >
@@ -359,22 +359,24 @@ export function ScreenSharePickerModal({
               </label>
             </Tooltip>
 
-            <div className="flex items-center gap-2 ml-auto">
+            <div className="flex min-w-0 items-center gap-2 ml-auto">
               <Tooltip title="Capture resolution. Lower values use less bandwidth.">
                 <span className="text-sm" style={{ cursor: "help", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}>Quality</span>
               </Tooltip>
               <Select
+                className="min-w-0"
                 value={quality}
                 onValueChange={(v) => onQualityChange(v as ScreenShareQuality)}
                 options={qualityOptions.map((o) => ({ label: o.label, value: o.value }))}
               />
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               <Tooltip title="Frames per second. Values above 60 use native DXGI screen capture (Windows desktop app only) to bypass browser FPS limits.">
                 <span className="text-sm" style={{ cursor: "help", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}>FPS</span>
               </Tooltip>
               <Select
+                className="min-w-0"
                 value={String(fps)}
                 onValueChange={(v) => onFpsChange(Number(v))}
                 options={fpsOptions.map((o) => ({
@@ -499,7 +501,7 @@ export function ScreenSharePickerModal({
             </div>
           )}
 
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
             <Button tone="neutral" size="small" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>

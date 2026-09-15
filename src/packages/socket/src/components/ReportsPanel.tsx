@@ -263,7 +263,7 @@ export function ReportsPanel({
       <Dialog.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <Dialog.Portal>
           <Dialog.Backdrop />
-          <Dialog.Popup style={{ maxWidth: 700, maxHeight: "80vh" }}>
+          <Dialog.Popup className="w-[43.75rem] max-h-[80vh]">
           <Dialog.Title>
             <div className="flex items-center gap-2">
               <PiWarningFill size={16} />

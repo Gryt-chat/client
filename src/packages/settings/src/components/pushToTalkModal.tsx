@@ -82,7 +82,7 @@ export function PushToTalkModal() {
           )}
         </div>
 
-        <div className="flex gap-3 justify-end">
+        <div className="flex flex-wrap gap-3 justify-end">
           <Button tone="neutral" size="small" onClick={handleCancel}>
             Cancel
           </Button>

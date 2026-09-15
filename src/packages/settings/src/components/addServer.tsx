@@ -608,7 +608,7 @@ export function AddNewServer({
                   )}
                 </AnimatePresence>
 
-                <Dialog.Footer className="justify-between">
+                <Dialog.Footer className="flex-wrap justify-between">
                   {/* Only offered when there is a step behind this one. In a
                       browser Join *is* the first step, and a Back that lands on
                       a choice between one real option and a dead end is worse

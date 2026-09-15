@@ -76,7 +76,7 @@ export function ImportThemeDialog({
     >
       <Dialog.Portal>
         <Dialog.Backdrop />
-        <Dialog.Popup className="max-w-[560px]">
+        <Dialog.Popup>
           <Dialog.Title>Import a theme</Dialog.Title>
           <Dialog.Description>
             Paste a link from the theme generator, or the JSON it exports.
@@ -143,7 +143,7 @@ export function ImportThemeDialog({
             ) : null}
           </div>
 
-          <Dialog.Footer className="justify-between">
+          <Dialog.Footer className="flex-wrap justify-between">
             <Dialog.Close render={<span />}>
               <Button size="small" tone="ghost">
                 Cancel

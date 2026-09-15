@@ -86,7 +86,7 @@ export function InviteAcceptModal({
     >
       <Dialog.Portal>
         <Dialog.Backdrop />
-        <Dialog.Popup style={{ maxWidth: 420 }}>
+        <Dialog.Popup className="w-[26.25rem]">
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -161,7 +161,7 @@ export function InviteAcceptModal({
             <Alert severity="error" role="alert"><span className="inline-flex items-start gap-2"><PiWarningFill size={16} />{joinError}</span></Alert>
           ) : null}
 
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
             <Button tone="neutral" size="small"
               disabled={joining}
               onClick={() => {

@@ -173,7 +173,7 @@ export const GroupDialog = ({
                 }}
               />
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   size="small"
                   tone="ghost"
@@ -254,7 +254,7 @@ export const GroupDialog = ({
             </div>
           </div>
 
-          <Dialog.Footer className="justify-between">
+          <Dialog.Footer className="flex-wrap justify-between">
             {managing && existing ? (
               <Button
                 tone="danger"
@@ -268,7 +268,7 @@ export const GroupDialog = ({
             ) : (
               <span />
             )}
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button tone="ghost" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>

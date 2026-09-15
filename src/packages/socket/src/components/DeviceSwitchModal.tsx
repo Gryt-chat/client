@@ -37,7 +37,7 @@ export function DeviceSwitchModal() {
     <Dialog.Root open={isOpen} onOpenChange={setIsOpen}>
       <Dialog.Portal>
         <Dialog.Backdrop />
-        <Dialog.Popup style={{ maxWidth: 450 }}>
+        <Dialog.Popup className="w-[28.125rem]">
         <div className="flex flex-col gap-4 items-center p-4">
           <div className="flex items-center gap-3 mb-2">
             <PiWarningFill 

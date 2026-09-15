@@ -286,7 +286,7 @@ export function ForumView({ socketConnection, conversationId, serverHost, curren
                 </Alert>
               )}
 
-              <div className="flex justify-end gap-3">
+              <div className="flex flex-wrap justify-end gap-3">
                 <Dialog.Close>
                   <Button tone="neutral" size="small">Cancel</Button>
                 </Dialog.Close>

@@ -263,7 +263,7 @@ export function CameraPreviewModal({
     <Dialog.Root open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
       <Dialog.Portal>
         <Dialog.Backdrop />
-        <Dialog.Popup style={{ maxWidth: 520 }}>
+        <Dialog.Popup>
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -390,7 +390,7 @@ export function CameraPreviewModal({
             </label>
           </div>
 
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
             <Button tone="neutral" size="small" onClick={handleClose}>
               Cancel
             </Button>

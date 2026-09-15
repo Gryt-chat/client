@@ -341,7 +341,6 @@ export function ServerSettingsModal() {
             The widest thing in here decides the size, so these are its
             numbers now. */}
         <Dialog.Popup
-          className="max-w-none"
           style={{
             width: "min(1320px, calc(100vw - 4rem))",
             height: "min(860px, calc(100vh - 4rem))",
