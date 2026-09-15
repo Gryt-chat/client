@@ -9,11 +9,13 @@ test("a webhook post with a card shows the card", async ({ owner, newMember, req
   const dialog = owner.page.getByRole("dialog", { name: "Server settings" });
   await dialog.getByRole("tab", { name: "Webhooks", exact: true }).click();
   const panel = dialog.getByRole("tabpanel", { name: "Webhooks" });
-  const urls = panel.getByText(new RegExp(`^${gryt.server.httpBase}/api/webhooks/[^/]+/[^/]+$`));
-  const before = await urls.count();
+  const created = owner.page.waitForResponse(
+    (res) => res.url() === `${gryt.server.httpBase}/api/webhooks` && res.request().method() === "POST",
+  );
   await panel.getByRole("button", { name: "Create webhook" }).click();
-  await expect(urls).toHaveCount(before + 1);
-  const url = (await urls.first().textContent()) ?? "";
+  const { url } = (await (await created).json()) as { url: string };
+  expect(url).toMatch(new RegExp(`^${gryt.server.httpBase}/api/webhooks/[^/]+/[^/]+$`));
+  await expect(panel.getByText(url, { exact: true })).toBeVisible();
 
   const title = unique("Deploy finished");
   const response = await request.post(url, {
