@@ -608,7 +608,7 @@ export function ServerOverviewTab({
           Controls how profane messages are handled on this server.
         </span>
         <div className="flex gap-2 flex-wrap">
-          <div style={{ flex: "1 1 180px" }}>
+          <div style={{ flex: "1 1 180px", minWidth: 0 }}>
             <Select
               value={profanityMode}
               onValueChange={(v) => {
@@ -629,7 +629,7 @@ export function ServerOverviewTab({
             />
           </div>
           {profanityMode === "censor" && (
-            <div style={{ flex: "1 1 180px" }}>
+            <div style={{ flex: "1 1 180px", minWidth: 0 }}>
               <Select
                 value={censorStyle}
                 onValueChange={(v) => {

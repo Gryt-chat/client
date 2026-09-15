@@ -146,4 +146,25 @@ for (const line of ["Server v{serverInfo.version}", "SFU {versionStatus.sfu.curr
   assert.ok(modal.slice(modal.indexOf("const versionLines")).includes(line), `versionLines lost "${line}"`);
 }
 
+// GRYT-1201: since @gryt/ui 0.34.1 a Select label stays on one line, so a Select in a
+// flex row needs min-w-0 on its flex item. Flag in the profanity filter overflowed 21px at 390.
+const overview = readFileSync(
+  new URL("../src/packages/socket/src/components/ServerOverviewTab.tsx", import.meta.url),
+  "utf8",
+);
+const profanityBoxes = overview.match(/style=\{\{ flex: "1 1 180px"[^}]*\}\}/g) ?? [];
+assert.equal(profanityBoxes.length, 2, "expected two profanity filter boxes in ServerOverviewTab");
+for (const box of profanityBoxes) {
+  assert.match(box, /minWidth: 0/, "a profanity filter box lost minWidth: 0");
+}
+const cameraPreview = readFileSync(
+  new URL("../src/packages/webRTC/src/components/CameraPreviewModal.tsx", import.meta.url),
+  "utf8",
+);
+assert.match(
+  cameraPreview,
+  />Camera<\/span>\s*<Select\s+className="[^"]*\bmin-w-0\b/,
+  "the camera Select in the preview lost min-w-0",
+);
+
 console.log("narrow layout ok: member list yields to the voice panel, tiny window is desktop-only, settings fit");

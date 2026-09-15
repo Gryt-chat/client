@@ -332,7 +332,7 @@ export function CameraPreviewModal({
             <div className="flex items-center gap-3">
               <span className="text-sm" style={{ minWidth: 60 }}>Camera</span>
               <Select
-                className="flex-1"
+                className="flex-1 min-w-0"
                 value={localCameraID}
                 onValueChange={(v) => setLocalCameraID(String(v))}
                 options={
