@@ -107,7 +107,7 @@ function fakeSfu(env) {
   proc.stdout = new EventEmitter();
   proc.stderr = new EventEmitter();
   proc.ready = Promise.all(
-    [["Control", env.SFU_CONTROL_PORT, env.SFU_CONTROL_HOST], ["Metrics", env.SFU_METRICS_PORT]].map(async ([name, value, host]) => {
+    [["Control", env.SFU_CONTROL_PORT, env.SFU_CONTROL_HOST], ["Metrics", env.SFU_METRICS_PORT, env.SFU_METRICS_HOST]].map(async ([name, value, host]) => {
       const port = Number(value);
       if (!Number.isInteger(port) || port <= 0) return;
       const srv = await listen(port, host || "0.0.0.0");
@@ -159,8 +159,12 @@ function loadManager(app, { onSpawn = () => {} } = {}) {
     fork, spawn, app, fs.existsSync, fs.readFileSync, null, null, null, null,
     null, null, createServer, join, null, () => store, (key, value) => { store[key] = value; },
     timer, clearTimeout,
-    // The Electron process can carry the SFU's own variables, and the config's ports have to win.
-    { ...process, env: { ...process.env, SFU_CONTROL_PORT: "9092", SFU_CONTROL_HOST: "0.0.0.0", SFU_METRICS_PORT: "9091" }, resourcesPath: join(scratch, "none") },
+    // The Electron process can carry the SFU's and the server's own variables, and the manager's values have to win.
+    {
+      ...process,
+      env: { ...process.env, SFU_CONTROL_PORT: "9092", SFU_CONTROL_HOST: "0.0.0.0", SFU_METRICS_PORT: "9091", SFU_METRICS_HOST: "0.0.0.0", METRICS_PORT: "9091" },
+      resourcesPath: join(scratch, "none"),
+    },
     quiet,
     ...CONFIG_EXPORTS.map((name) => config[name]),
   );
@@ -190,14 +194,14 @@ async function serverStarted(spawned, count) {
 
 /* ── the reported case: another app's SFU holds 9091 and 9092 ─────────── */
 
-// An SFU from before SFU_CONTROL_HOST holds control on every interface. A newer one holds it on
-// loopback only, which a wildcard probe alone can miss.
-for (const controlHeldOn of ["0.0.0.0", "127.0.0.1"]) {
-  const release = [await hold(9091), await hold(9092, controlHeldOn)];
+// An SFU from before SFU_CONTROL_HOST and SFU_METRICS_HOST holds both on every interface. A newer one
+// holds them on loopback only, which a wildcard probe alone can miss.
+for (const heldOn of ["0.0.0.0", "127.0.0.1"]) {
+  const release = [await hold(9091, heldOn), await hold(9092, heldOn)];
   const { manager, spawned, stopAll } = loadManager(newApp());
 
   const state = await manager.createAndStartServer(window, "Second app", false);
-  assert.ok(state, `createAndStartServer failed with 9091 and ${controlHeldOn}:9092 taken`);
+  assert.ok(state, `createAndStartServer failed with ${heldOn}:9091 and ${heldOn}:9092 taken`);
   assert.equal(spawned.sfu.length, 1, "no SFU was started");
 
   const sfu = spawned.sfu[0];
@@ -206,7 +210,7 @@ for (const controlHeldOn of ["0.0.0.0", "127.0.0.1"]) {
   const config = manager.getEmbeddedServerState(state.id).config;
   for (const [name, port] of Object.entries(ports)) {
     assert.ok(Number.isInteger(port) && port > 0, `the SFU was started without SFU_${name.toUpperCase()}_PORT, so it takes the default`);
-    assert.ok(![9091, 9092].includes(port), `the SFU was told to take ${name} on ${port}, which another app holds on ${controlHeldOn}`);
+    assert.ok(![9091, 9092].includes(port), `the SFU was told to take ${name} on ${port}, which another app holds on ${heldOn}`);
   }
   assert.notEqual(ports.control, ports.metrics, "control and metrics were given the same port");
   assert.ok(![config.serverPort, config.sfuPort].includes(ports.control), "control landed on a port this server uses");
@@ -215,12 +219,14 @@ for (const controlHeldOn of ["0.0.0.0", "127.0.0.1"]) {
   assert.equal(sfu.env.SFU_PORT, String(config.sfuPort));
   assert.equal(sfu.env.PORT, String(config.sfuPort));
   assert.equal(sfu.env.SFU_CONTROL_HOST, "127.0.0.1", "the SFU takes registration from other machines, or kept the Electron process's own value");
+  assert.equal(sfu.env.SFU_METRICS_HOST, "127.0.0.1", "the SFU serves metrics to other machines, or kept the Electron process's own value");
 
   // The server dials this SFU's signalling port, and that SFU's refusal names the control port it was given.
   const server = await serverStarted(spawned, 1);
   assert.equal(server.env.SFU_WS_HOST, `ws://127.0.0.1:${sfu.env.SFU_PORT}`, "the server is pointed somewhere other than the SFU this app started");
   assert.equal(server.env.SFU_CONTROL_PORT, String(ports.control));
   assert.equal(registersOn(server), sfu.env.SFU_CONTROL_HOST, "the server registers on an address the SFU's control port does not listen on");
+  assert.equal(server.env.METRICS_PORT, "0", "the server serves metrics of its own, on every interface, or kept the Electron process's port");
 
   await stopAll();
   for (const r of release) await r();
@@ -249,7 +255,9 @@ for (const controlHeldOn of ["0.0.0.0", "127.0.0.1"]) {
     assert.deepEqual(started(spawned.sfu[0]), { control: controlPort, metrics: metricsPort }, `restart ${restart} moved ports that were free`);
     assert.equal(fs.readFileSync(configPath, "utf8"), raw, `restart ${restart} rewrote config.env with nothing taken`);
     assert.equal(spawned.sfu[0].env.SFU_CONTROL_HOST, "127.0.0.1", `restart ${restart} started an SFU that takes registration from other machines`);
-    await serverStarted(spawned, 1);
+    assert.equal(spawned.sfu[0].env.SFU_METRICS_HOST, "127.0.0.1", `restart ${restart} started an SFU that serves metrics to other machines`);
+    const server = await serverStarted(spawned, 1);
+    assert.equal(server.env.METRICS_PORT, "0", `restart ${restart} started a server that serves metrics of its own`);
     await stopAll();
   }
 
@@ -274,6 +282,7 @@ for (const controlHeldOn of ["0.0.0.0", "127.0.0.1"]) {
     assert.deepEqual(recorded(joined.configPath), moved);
     const joinedServer = await serverStarted(spawned, 2);
     assert.equal(registersOn(joinedServer), spawned.sfu[0].env.SFU_CONTROL_HOST, "a server joining the running SFU registers somewhere its control port does not listen");
+    assert.equal(joinedServer.env.METRICS_PORT, "0", "a second server serves metrics of its own, on the port the first one would have asked for");
     await stopAll();
   }
   await release();
@@ -311,7 +320,9 @@ if (defaultsFree) {
   const { manager, spawned, stopAll } = loadManager(newApp());
   await manager.createAndStartServer(window, "Defaults", false);
   assert.deepEqual(started(spawned.sfu[0]), { control: 9092, metrics: 9091 }, "a lone app moved off the SFU's defaults while they were free");
-  await serverStarted(spawned, 1);
+  // GRYT-1230: the server's own metrics default is 9091 too, which this app's SFU now holds.
+  const server = await serverStarted(spawned, 1);
+  assert.equal(server.env.METRICS_PORT, "0", "the server asks for metrics on 9091 beside an SFU that holds it, and logs a warning every start");
   await stopAll();
 } else {
   console.log("  9091 or 9092 is in use on this machine, so the free-defaults case is left to CI");
@@ -340,4 +351,4 @@ if (defaultsFree) {
   await sfu.released;
 }
 
-console.log("embedded SFU ports: each app's SFU gets free control and metrics ports, kept while free, control on loopback, and its servers go to it");
+console.log("embedded SFU ports: each app's SFU gets free control and metrics ports, kept while free, both on loopback, and its servers go to it without serving metrics of their own");
