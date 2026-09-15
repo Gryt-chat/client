@@ -495,6 +495,9 @@ function spawnSfu(config: EmbeddedServerConfig): ChildProcess | null {
       SFU_PORT: String(config.sfuPort),
       ICE_UDP_MUX_PORT: String(config.mediaPort),
       SFU_CONTROL_PORT: String(config.controlPort),
+      // Registration from this machine only; the servers dial 127.0.0.1. An SFU
+      // older than SFU_CONTROL_HOST ignores it and listens everywhere, as before.
+      SFU_CONTROL_HOST: "127.0.0.1",
       SFU_METRICS_PORT: String(config.metricsPort),
       ICE_ADVERTISE_IP: envVars.ICE_ADVERTISE_IP || "",
       ...(envVars.STUN_SERVERS ? { STUN_SERVERS: envVars.STUN_SERVERS } : {}),
