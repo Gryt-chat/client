@@ -6,10 +6,12 @@
  */
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import {
   COMPACT_MAX_WIDTH,
   hasRoomForMemberList,
+  hasRoomForSettingsRail,
   hasRoomForVoicePanel,
   isTinyWindow,
   TINY_MAX_WIDTH,
@@ -111,4 +113,26 @@ for (let w = 300; w <= TINY_MAX_WIDTH; w += 1) {
   );
 }
 
-console.log("narrow layout ok: member list yields to the voice panel, tiny window is desktop-only");
+/* ── Server settings ───────────────────────────────────────────────── */
+
+// The rail keeps 400px of page beside it: 2rem margins, 21px padding, 200 rail, 16 gap.
+assert.equal(hasRoomForSettingsRail(1400), true);
+assert.equal(hasRoomForSettingsRail(768), true);
+assert.equal(hasRoomForSettingsRail(722), true);
+assert.equal(hasRoomForSettingsRail(721), false);
+
+// A phone gets the picker. With the rail it had 68px of page at 390.
+assert.equal(hasRoomForSettingsRail(390), false);
+
+// GRYT-1199: Tabs is a flex row, so the row inside it needs min-w-0 or the widest
+// page sets the width. A webhook URL put Create webhook past the dialog's edge.
+const modal = readFileSync(
+  new URL("../src/packages/socket/src/components/ServerSettingsModal.tsx", import.meta.url),
+  "utf8",
+);
+const insideTabs = modal.slice(modal.indexOf("<Tabs\n")).match(/<div className=\{?[`"]([^`"]*)/);
+assert.ok(insideTabs, "no row found inside the settings Tabs");
+assert.match(insideTabs[1], /\bmin-w-0\b/, "the settings row inside Tabs lost min-w-0");
+assert.match(insideTabs[1], /\bflex-1\b/, "the settings row inside Tabs lost flex-1");
+
+console.log("narrow layout ok: member list yields to the voice panel, tiny window is desktop-only, settings fit");

@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 
-import { hasRoomForMemberList, hasRoomForVoicePanel, isTinyWindow } from "../lib/narrowLayout";
+import {
+  hasRoomForMemberList,
+  hasRoomForSettingsRail,
+  hasRoomForVoicePanel,
+  isTinyWindow,
+} from "../lib/narrowLayout";
 
 /**
  * The window's width, and whether the thing pointing at it is a mouse. The
@@ -56,4 +61,9 @@ export function useIsTinyWindow(): boolean {
   const windowWidth = useWindowWidth();
   const pointerFine = usePointerFine();
   return isTinyWindow({ windowWidth, pointerFine });
+}
+
+/** Whether server settings can keep its tab rail. */
+export function useRoomForSettingsRail(): boolean {
+  return hasRoomForSettingsRail(useWindowWidth());
 }
