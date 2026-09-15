@@ -104,6 +104,7 @@
     "test:link-preview-retry": "node scripts/check-link-preview-retry.mjs",
     "test:stable-attachment-urls": "node --disable-warning=ExperimentalWarning scripts/check-stable-attachment-urls.mjs",
     "test:group-picture-upload": "node --disable-warning=ExperimentalWarning scripts/check-group-picture-upload.mjs",
+    "test:webhook-avatar-upload": "node --disable-warning=ExperimentalWarning scripts/check-webhook-avatar-upload.mjs",
     "test:examples": "node --test examples/examples.test.mjs",
     "test:member-invite": "node scripts/check-member-invite.mjs",
     "test:addon-capabilities": "node scripts/check-addon-capabilities.mjs",
