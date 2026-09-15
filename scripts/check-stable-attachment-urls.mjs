@@ -17,6 +17,8 @@ const ROW = "src/packages/socket/src/components/MessageRow.tsx";
 const ATTACHMENT = "src/packages/socket/src/components/MessageAttachment.tsx";
 const PLAYER = "src/packages/socket/src/components/ChatMediaPlayer.tsx";
 const EMBEDS = "src/packages/socket/src/components/EmbedRenderers.tsx";
+const REPORTS = "src/packages/socket/src/components/ReportsPanel.tsx";
+const SEALED_HOOK = "src/packages/socket/src/hooks/useSealedVideo.ts";
 
 /* ── the hook, run with a tiny useState ─────────────────────────────────── */
 
@@ -163,6 +165,144 @@ for (const [path, source] of [[PLAYER, player], [EMBEDS, embeds]]) {
 }
 const embed = embeds.slice(embeds.indexOf("export const VideoEmbed"), embeds.indexOf("export const TwitchEmbed"));
 assert.match(embed, /<VideoPlayer\b/, `${EMBEDS}'s VideoEmbed no longer uses VideoPlayer`);
+
+/* ── the reports panel draws attachments the same way ───────────────────── */
+
+const reports = read(REPORTS);
+assert.doesNotMatch(reports, /getUploadsFileUrl\(/, `${REPORTS} builds an upload URL during render again`);
+assert.doesNotMatch(reports, /<video\b/, `${REPORTS} draws its own <video> again, which loads before play`);
+assert.match(reports, /useStableFileUrl\(serverHost, fileId\)/, `${REPORTS} no longer holds the file URL`);
+assert.match(reports, /useStableFileUrl\(serverHost, fileId, true\)/, `${REPORTS} no longer holds the thumbnail URL`);
+const reportVideo = reports.match(/<ChatMediaPlayer\b[\s\S]*?\/>/)?.[0];
+assert.ok(reportVideo, `${REPORTS} no longer plays videos through ChatMediaPlayer`);
+for (const wire of ['type="video"', "src={url}", "onError={refreshUrl}", "onPosterError={refreshThumb}"]) {
+  assert.ok(reportVideo.includes(wire), `${REPORTS} lost ${wire} on its video player`);
+}
+assert.match(reports, /<img\b[^>]*?onError=\{refreshUrl\}/, `${REPORTS}'s image lost onError, so a stale token never recovers`);
+// The player is 480px wide, and content sized to fit it pushed Dismiss, Delete and Ban out of view.
+assert.match(reports, /<ScrollArea\.Content style=\{\{ minWidth: 0 \}\}>/, `${REPORTS} lets its content grow past the dialog again`);
+
+/* ── an encrypted video fetches and decrypts on the press ───────────────── */
+
+assert.match(
+  attachment,
+  /if \(mime\.startsWith\("video\/"\) && meta\?\.open_sealed\) \{\s*return \([\s\S]*?<ChatSealedVideo\b[^>]*?open=\{meta\.open_sealed\}/,
+  `${ATTACHMENT} no longer hands an unopened encrypted video to ChatSealedVideo`,
+);
+const sealedPlayer = player.slice(player.indexOf("export function ChatSealedVideo"));
+assert.match(sealedPlayer, /<div inert=\{!src\}>\s*<VideoPlayer\s+src=\{src \?\? ""\}/,
+  `${PLAYER}'s encrypted player can be started before there is anything to play`);
+
+const sealedHookSource = stripTypeScriptTypes(read(SEALED_HOOK)).replace(/^import .*$/gm, "").replace(/^export /gm, "");
+const useSealedVideo = new Function("useState", "useRef", "useEffect", "useCallback", `${sealedHookSource}\nreturn useSealedVideo;`);
+
+/** Enough of React to run one hook: state, refs, callbacks, effects with cleanups, and unmounting. */
+function mountHook(makeHook, args) {
+  const slots = [];
+  let slot = 0;
+  let dirty = false;
+  let result;
+  let pending = [];
+  const same = (a, b) => a && b && a.length === b.length && a.every((v, i) => Object.is(v, b[i]));
+  const hook = makeHook(
+    (init) => {
+      const i = slot++;
+      if (!(i in slots)) slots[i] = { value: typeof init === "function" ? init() : init };
+      const cell = slots[i];
+      return [cell.value, (next) => {
+        const value = typeof next === "function" ? next(cell.value) : next;
+        if (!Object.is(value, cell.value)) { cell.value = value; dirty = true; }
+      }];
+    },
+    (init) => {
+      const i = slot++;
+      if (!(i in slots)) slots[i] = { current: init };
+      return slots[i];
+    },
+    (fn, deps) => {
+      const i = slot++;
+      if (slots[i] && same(slots[i].deps, deps)) return;
+      pending.push({ i, fn, deps });
+    },
+    (fn, deps) => {
+      const i = slot++;
+      if (!slots[i] || !same(slots[i].deps, deps)) slots[i] = { fn, deps };
+      return slots[i].fn;
+    },
+  );
+  const render = () => {
+    do {
+      dirty = false;
+      slot = 0;
+      result = hook(...args);
+    } while (dirty);
+    for (const { i, fn, deps } of pending) {
+      slots[i]?.cleanup?.();
+      slots[i] = { deps, cleanup: fn() };
+    }
+    pending = [];
+    return result;
+  };
+  render();
+  return {
+    get now() { return result; },
+    render,
+    unmount() { for (const cell of slots) cell?.cleanup?.(); },
+  };
+}
+
+const revoked = [];
+const realRevoke = URL.revokeObjectURL;
+URL.revokeObjectURL = (url) => { revoked.push(url); realRevoke(url); };
+const later = () => { let settle; const promise = new Promise((resolve, reject) => { settle = { resolve, reject }; }); return { promise, ...settle }; };
+const clip = new Blob(["frames"], { type: "video/webm" });
+
+{
+  let calls = 0;
+  let wait = later();
+  const video = mountHook(useSealedVideo, [() => { calls++; return wait.promise; }]);
+  assert.equal(calls, 0, "an encrypted video was fetched before anybody pressed play");
+  assert.deepEqual([video.now.src, video.now.phase], [null, "idle"]);
+
+  video.now.start();
+  video.render();
+  video.now.start();
+  assert.equal(calls, 1, "a second press while it decrypts fetched the file again");
+  assert.equal(video.now.phase, "opening", "nothing shows the file is on its way");
+
+  wait.reject(new Error("503"));
+  await wait.promise.catch(() => {});
+  video.render();
+  assert.deepEqual([video.now.src, video.now.phase], [null, "failed"], "a failed fetch is not shown as one");
+
+  wait = later();
+  video.now.start();
+  video.render();
+  assert.equal(calls, 2, "Try again did not fetch again");
+  wait.resolve(clip);
+  await wait.promise;
+  video.render();
+  assert.match(video.now.src ?? "", /^blob:/, "the decrypted video never reached the player");
+  const src = video.now.src;
+  video.now.start();
+  assert.equal(calls, 2, "a press after it opened fetched it again");
+  video.unmount();
+  assert.ok(revoked.includes(src), "the decrypted video's blob URL outlives its player");
+}
+
+{
+  const wait = later();
+  const video = mountHook(useSealedVideo, [() => wait.promise]);
+  video.now.start();
+  video.render();
+  video.unmount();
+  revoked.length = 0;
+  wait.resolve(clip);
+  await wait.promise;
+  await Promise.resolve();
+  assert.equal(revoked.length, 1, "a video that finished decrypting after its player went keeps its blob URL forever");
+}
+URL.revokeObjectURL = realRevoke;
 
 const audio = [...player.matchAll(/<audio\b[\s\S]*?\/>/g)];
 assert.equal(audio.length, 1);

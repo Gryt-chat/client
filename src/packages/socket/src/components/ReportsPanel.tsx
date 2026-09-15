@@ -3,10 +3,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
 
-import { getServerAccessToken, getUploadsFileUrl } from "@/common";
+import { getServerAccessToken } from "@/common";
+import { useSettings } from "@/settings";
 
 import { PiBootFill, PiCheck, PiProhibitFill, PiTrashFill, PiWarningCircle, PiWarningFill } from "../../../../lib/icons";
 import { useServerPermissions } from "../hooks/usePermissions";
+import { useStableFileUrl } from "../hooks/useStableFileUrl";
+import { ChatMediaPlayer } from "./ChatMediaPlayer";
 import type { AttachmentMeta } from "./chatUtils";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { FileCard } from "./FileCard";
@@ -301,7 +304,8 @@ export function ReportsPanel({
           ) : (
             <ScrollArea.Root className="max-h-[55vh]">
               <ScrollArea.Viewport className="max-h-[55vh]">
-               <ScrollArea.Content>
+               {/* Base UI lets content grow past the viewport, and a 480px player pushed the moderation buttons out of view. */}
+               <ScrollArea.Content style={{ minWidth: 0 }}>
               <div className="flex flex-col gap-3">
                 {/* People first. A report about a person is the one with a
                     reader waiting on it — there is no message sitting in a
@@ -546,6 +550,69 @@ function UserReportCard({
   );
 }
 
+/** One attachment on a reported message. Its own component so its URLs survive a file token refresh. */
+function ReportAttachment({
+  fileId,
+  meta,
+  serverHost,
+  onOpenImage,
+}: {
+  fileId: string;
+  meta: AttachmentMeta | undefined;
+  serverHost: string;
+  onOpenImage: (src: string, alt: string) => void;
+}) {
+  const { chatMediaVolume, setChatMediaVolume } = useSettings();
+  const [url, refreshUrl] = useStableFileUrl(serverHost, fileId);
+  const [thumbUrl, refreshThumb] = useStableFileUrl(serverHost, fileId, true);
+  const mime = meta?.mime || "";
+  const name = meta?.original_name || "Attachment";
+
+  if (mime.startsWith("image/")) {
+    return (
+      <img
+        src={url}
+        alt={name}
+        style={{
+          maxWidth: "100%",
+          maxHeight: 200,
+          borderRadius: "var(--gryt-radius-md)",
+          cursor: "pointer",
+          objectFit: "contain",
+        }}
+        onError={refreshUrl}
+        onClick={() => onOpenImage(url, name)}
+      />
+    );
+  }
+
+  if (mime.startsWith("video/")) {
+    return (
+      <ChatMediaPlayer
+        src={url}
+        type="video"
+        poster={meta?.has_thumbnail ? thumbUrl : undefined}
+        fileName={meta?.original_name}
+        size={meta?.size}
+        volume={chatMediaVolume}
+        onVolumeChange={setChatMediaVolume}
+        onError={refreshUrl}
+        onPosterError={refreshThumb}
+      />
+    );
+  }
+
+  return (
+    <FileCard
+      fileId={fileId}
+      mime={meta?.mime ?? null}
+      size={meta?.size ?? null}
+      originalName={meta?.original_name ?? null}
+      serverHost={serverHost}
+    />
+  );
+}
+
 function ReportCard({
   report,
   getNickname,
@@ -600,53 +667,15 @@ function ReportCard({
 
               {report.attachments && report.attachments.length > 0 && serverHost && (
                 <div className="flex gap-2 flex-wrap flex-col" style={{ marginTop: report.messageText ? "8px" : undefined }}>
-                  {report.attachments.map((fileId, idx) => {
-                    const meta = report.enrichedAttachments?.[idx];
-                    const url = getUploadsFileUrl(serverHost, fileId);
-                    const mime = meta?.mime || "";
-
-                    if (mime.startsWith("image/")) {
-                      return (
-                        <img
-                          key={fileId}
-                          src={url}
-                          alt={meta?.original_name || "Attachment"}
-                          style={{
-                            maxWidth: "100%",
-                            maxHeight: 200,
-                            borderRadius: "var(--gryt-radius-md)",
-                            cursor: "pointer",
-                            objectFit: "contain",
-                          }}
-                          onClick={() => setLightboxImage({ src: url, alt: meta?.original_name || "Attachment" })}
-                        />
-                      );
-                    }
-
-                    if (mime.startsWith("video/")) {
-                      const thumbUrl = meta?.has_thumbnail ? getUploadsFileUrl(serverHost, fileId, { thumb: true }) : undefined;
-                      return (
-                        <video
-                          key={fileId}
-                          src={url}
-                          poster={thumbUrl}
-                          controls
-                          style={{ maxWidth: "100%", maxHeight: 200, borderRadius: "var(--gryt-radius-md)" }}
-                        />
-                      );
-                    }
-
-                    return (
-                      <FileCard
-                        key={fileId}
-                        fileId={fileId}
-                        mime={meta?.mime ?? null}
-                        size={meta?.size ?? null}
-                        originalName={meta?.original_name ?? null}
-                        serverHost={serverHost}
-                      />
-                    );
-                  })}
+                  {report.attachments.map((fileId, idx) => (
+                    <ReportAttachment
+                      key={fileId}
+                      fileId={fileId}
+                      meta={report.enrichedAttachments?.[idx]}
+                      serverHost={serverHost}
+                      onOpenImage={(src, alt) => setLightboxImage({ src, alt })}
+                    />
+                  ))}
                 </div>
               )}
 
