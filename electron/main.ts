@@ -102,7 +102,12 @@ import {
   startNativeScreenCapture,
   stopNativeScreenCapture,
 } from "./screenCaptureManager";
-import { chooseFeedRelease } from "./updateFeedPin";
+import {
+  clockTime,
+  findFeedRelease,
+  lookupFailedMessage,
+  type ReleaseLookupFailed,
+} from "./updateFeedPin";
 import {
   flushUserStore,
   initUserStore,
@@ -665,19 +670,28 @@ function channelYmlName(): string {
   return `${channel}-linux.yml`;
 }
 
+/** Hands back every status, so a caller can read why GitHub said no. */
+function requestWithTimeout(
+  url: string,
+  ms = 8000,
+  headers: Record<string, string> = {}
+): Promise<Response> {
+  return fetch(url, {
+    signal: AbortSignal.timeout(ms),
+    headers: {
+      "User-Agent": `Gryt/${app.getVersion()}`,
+      ...headers,
+    },
+  });
+}
+
 async function fetchWithTimeout(
   url: string,
   ms = 8000,
   headers: Record<string, string> = {}
 ): Promise<Response | null> {
   try {
-    const res = await fetch(url, {
-      signal: AbortSignal.timeout(ms),
-      headers: {
-        "User-Agent": `Gryt/${app.getVersion()}`,
-        ...headers,
-      },
-    });
+    const res = await requestWithTimeout(url, ms, headers);
 
     return res.ok ? res : null;
   } catch {
@@ -765,33 +779,36 @@ async function releaseIsInstallable(
     feed moves us to `generic`, which turns them on. */
 const FEED_SUPPORTS_MULTI_RANGE = false;
 
-/** `nothing-to-install` means a check can only fail: unpinned, the updater uses the
-    github provider, which on the beta channel finds no release at all (GRYT-1050). */
-type FeedPinResult = "pinned" | "nothing-to-install" | "unknown";
+/** Only `pinned` may go on to a check. Unpinned, the updater uses the github provider,
+    which on the beta channel finds no release at all (GRYT-1050, GRYT-1170). */
+type FeedPinResult =
+  | { kind: "pinned" }
+  | { kind: "nothing-to-install" }
+  | ReleaseLookupFailed;
 
 async function pinFeedToNewestCompleteRelease(): Promise<FeedPinResult> {
-  const res = await fetchWithTimeout(
-    `https://api.github.com/repos/${UPDATE_OWNER}/${UPDATE_REPO}/releases?per_page=20`
+  const choice = await findFeedRelease<GhRelease>(
+    () =>
+      requestWithTimeout(
+        `https://api.github.com/repos/${UPDATE_OWNER}/${UPDATE_REPO}/releases?per_page=20`
+      ),
+    {
+      current: app.getVersion(),
+      wantPrerelease: isOnBetaChannel(),
+      variantSwitchPending: variantSwitchPending(),
+      isInstallable: releaseIsInstallable,
+    }
   );
 
-  if (!res) return "unknown";
+  if (choice.kind === "lookup-failed") {
+    const status = choice.status ? `HTTP ${choice.status}` : "no response";
+    const reset = choice.retryAt
+      ? `, resets ${new Date(choice.retryAt).toISOString()}`
+      : "";
 
-  let releases: GhRelease[];
-
-  try {
-    releases = (await res.json()) as GhRelease[];
-  } catch {
-    return "unknown";
+    startupLog(`Update: release list unavailable (${status}${reset})`);
+    return choice;
   }
-
-  if (!Array.isArray(releases)) return "unknown";
-
-  const choice = await chooseFeedRelease(releases, {
-    current: app.getVersion(),
-    wantPrerelease: isOnBetaChannel(),
-    variantSwitchPending: variantSwitchPending(),
-    isInstallable: releaseIsInstallable,
-  });
 
   for (const version of "skipped" in choice ? choice.skipped : []) {
     startupLog(`Update: skipping ${version}, assets incomplete`);
@@ -799,7 +816,7 @@ async function pinFeedToNewestCompleteRelease(): Promise<FeedPinResult> {
 
   if (choice.kind !== "pinned") {
     startupLog(`Update: no feed pinned (${choice.kind})`);
-    return "nothing-to-install";
+    return { kind: "nothing-to-install" };
   }
 
   autoUpdater.setFeedURL({
@@ -809,7 +826,17 @@ async function pinFeedToNewestCompleteRelease(): Promise<FeedPinResult> {
   });
 
   startupLog(`Update: feed pinned to ${choice.release.tag_name}`);
-  return "pinned";
+  return { kind: "pinned" };
+}
+
+/** A throw from the pin is an asset probe failing partway, which is GitHub not answering too. */
+function pinFailed(err: unknown): FeedPinResult {
+  logUpdateFailure(
+    "Update feed pin failed",
+    err instanceof Error ? err : undefined
+  );
+
+  return { kind: "lookup-failed" };
 }
 
 let lastUpdateFailure = {
@@ -3253,9 +3280,11 @@ if (!gotSingleInstanceLock) {
 
         if (!updatesAreManagedByWindows) {
           void pinFeedToNewestCompleteRelease()
-            .catch((): FeedPinResult => "unknown")
+            .catch(pinFailed)
             .then((pin) => {
-              if (pin === "nothing-to-install") return;
+              /* A failed lookup waits for the interval check, which reads
+                 releases.atom and spends none of the API's hourly 60. */
+              if (pin.kind !== "pinned") return;
               autoUpdater
                 .checkForUpdates()
                 .catch(() => {});
@@ -3676,15 +3705,25 @@ if (!gotSingleInstanceLock) {
           autoUpdater.isUserWithinRollout = () => true;
 
           void pinFeedToNewestCompleteRelease()
-            .catch((): FeedPinResult => "unknown")
+            .catch(pinFailed)
             .then((pin) => {
-              /* Answered here: a check with nothing to install used to reach the
-                 github provider and come back as an error. */
-              if (pin === "nothing-to-install") {
+              /* Answered here: an unpinned check reaches the github provider,
+                 which on beta says "No published versions on GitHub". */
+              if (pin.kind !== "pinned") {
                 resumeAutoDownload();
-                sendToMain("not-available", {
-                  version: app.getVersion(),
-                });
+
+                if (pin.kind === "nothing-to-install") {
+                  sendToMain("not-available", {
+                    version: app.getVersion(),
+                  });
+                } else {
+                  sendToMain("error", {
+                    message: lookupFailedMessage(pin, Date.now(), (at) =>
+                      clockTime(at, app.getLocale())
+                    ),
+                  });
+                }
+
                 return;
               }
 
