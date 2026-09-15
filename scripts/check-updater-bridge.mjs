@@ -107,10 +107,67 @@ const backgroundCheck = bodyOf("checkForUpdatesInBackground");
 
 assert.match(backgroundCheck, /startBackgroundDownload\(/);
 
+// startBackgroundDownload offers the release to `updates`, which calls startDownload once
+// the slot is free (check-update-supersede.mjs), and that is downloadRelease's real check.
+assert.match(bodyOf("startBackgroundDownload"), /updates\.offer\(release, options\)/);
+
+assert.match(main, /createPendingUpdate\(\{\s*startDownload: downloadRelease,/);
+
 assert.match(
-  bodyOf("startBackgroundDownload"),
-  /autoUpdater\s*\.checkForUpdates\(\)/,
+  bodyOf("downloadRelease"),
+  /autoUpdater\.checkForUpdates\(\);[\s\S]*return check;/,
 );
+
+// The floor is what is held, so a newer release replaces it and the same one is never
+// fetched twice. The probe passes it on to the filter the feed pin test covers (GRYT-1213).
+assert.match(backgroundCheck, /const held = updates\.held\(\);\s*void newestReleaseWithoutApi\(held\?\.version\)/);
+
+assert.match(bodyOf("newestReleaseWithoutApi"), /newerReleaseTags\(tags, \{\s*floor,/);
+
+assert.match(main, /findNewer: \(floor\) => newestReleaseWithoutApi\(floor\),/);
+
+// Every install button looks once more before installing. Before, the tray and the toast
+// handed a stale download straight to quitAndInstall.
+assert.match(main, /ipcMain\.on\(\s*"restart-for-update",\s*\(\) => installNewestUpdate\(\)\s*\)/);
+
+assert.match(main, /label: `Restart and install \$\{updates\.ready\(\)\}`,\s*click: installNewestUpdate,/);
+
+assert.match(bodyOf("installNewestUpdate"), /switch \(updates\.requestInstall\(\)\)/);
+
+assert.match(bodyOf("installNewestUpdate"), /case "nothing":\s*downloadAnnouncedRelease\(\{ installWhenReady: true \}\);/);
+
+// Only `updates` installs, after it has looked, with the toast told first.
+assert.equal(main.match(/installDownloadedUpdate/g)?.length, 2);
+
+assert.match(
+  main,
+  /install: \(\) => \{\s*sendToMain\("installing", [^\n]*\);\s*setTimeout\(installDownloadedUpdate, INSTALL_PAINT_DELAY_MS\);/,
+);
+
+// Each updater event reaches `updates`, which is what knows a download was replaced.
+for (const [event, sink] of [
+  ["update-available", /updates\.available\(info\.version\)/],
+  ["update-not-available", /updates\.notAvailable\(\)/],
+  ["update-downloaded", /updates\.downloaded\(info\.version\)/],
+  ["error", /updates\.failed\(\)/],
+]) {
+  const start = main.indexOf(`autoUpdater.on("${event}"`);
+  assert.notEqual(start, -1, `the ${event} handler is gone`);
+  assert.match(main.slice(start, main.indexOf("\n  });\n", start)), sink, `${event} does not reach updates`);
+}
+
+// Squirrel.Mac installs what it staged last, so an install waits for it to stage the newest.
+assert.match(main, /waitForStaging:\s*process\.platform === "darwin" && autoUpdater\.autoInstallOnAppQuit,/);
+
+assert.match(
+  main,
+  /if \(process\.platform === "darwin"\) \{\s*nativeAutoUpdater\.on\("update-downloaded", \(\) => updates\.staged\(true\)\);\s*nativeAutoUpdater\.on\("error", \(\) => updates\.staged\(false\)\);/,
+);
+
+// A check started anywhere else still hands its download over, so it can be replaced too.
+assert.equal(main.match(/\.checkForUpdates\(\)/g)?.length, 4);
+
+assert.equal(main.match(/\.checkForUpdates\(\)\s*\.then\(updates\.track\)/g)?.length, 3);
 
 // Announcing is the update-available handler's job: that is the first moment the
 // release is known to be coming. Announcing from the probe promised nothing real.
@@ -127,7 +184,7 @@ assert.match(main, /ipcMain\.on\(\s*"download-update"/);
 
 assert.match(
   bodyOf("downloadAnnouncedRelease"),
-  /startBackgroundDownload\(release, \{ bypassRollout: true \}\)/,
+  /startBackgroundDownload\(release, \{ bypassRollout: true, installWhenReady \}\)/,
 );
 
 // Every pinned feed asks for one range at a time. Pinning puts the updater on the
@@ -186,6 +243,25 @@ assert.match(
   /render\(\{ \.\.\.next, phase: "installing" \}\);\s*\n\s*getElectronAPI\(\)\?\.restartForUpdate\(\);/,
   "the toast must redraw before handing off to the installer",
 );
+
+// One toast id for every release, so a newer one redraws the toast instead of stacking a
+// second beside it. The states it moves through are in check-update-supersede.mjs.
+const toastState = readFileSync(
+  new URL("../src/components/updateToastState.ts", import.meta.url),
+  "utf8",
+);
+
+assert.match(toastState, /export const UPDATE_TOAST_ID = "update";/);
+
+assert.match(toast, /\{ duration: Infinity, id: UPDATE_TOAST_ID \}/);
+
+assert.equal(toast.match(/\bid: /g)?.length, 2, "the update toast and the up-to-date answer only");
+
+assert.doesNotMatch(toast, /`update-\$\{/);
+
+assert.doesNotMatch(toast, /toast\.dismiss\((?!t\.id\))/, "only the cross dismisses the update toast");
+
+assert.match(toast, /const next = nextShown\(shown\.current, status\);\s*if \(next\) render\(next\);/);
 
 // The off switch reads from config, so it survives a restart.
 assert.match(main, /readBoolConfig\("autoUpdate", true\)/);

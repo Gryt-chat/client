@@ -12,6 +12,7 @@ import {
   clockTime,
   findFeedRelease,
   lookupFailedMessage,
+  newerReleaseTags,
   rateLimitResetAt,
 } from "../electron/updateFeedPin.ts";
 
@@ -112,6 +113,34 @@ await check("leaving beta pins the newest stable, though it is older", async () 
   const choice = await pick({ current: "1.11.0-beta.1" });
   assert.equal(choice.kind, "pinned");
   assert.equal(choice.release.tag_name, "v1.10.1");
+});
+
+/* ── What the background probe reads from releases.atom (GRYT-1213) ─── */
+
+/* A feed lists each tag more than once, newest first, drafts and prereleases included. */
+const atomTags = [
+  "v1.11.22", "v1.11.22", "v1.12.0-beta.1", "v1.11.21", "v1.11.21-rc.1", "nightly", "v1.11.20",
+];
+
+const tagsAbove = (floor, wantPrerelease = false) =>
+  newerReleaseTags(atomTags, { floor, wantPrerelease }).map(({ version }) => version);
+
+await check("the probe starts above what is held, so the download it has is not fetched again", () => {
+  assert.deepEqual(tagsAbove("1.11.21"), ["1.11.22"]);
+  assert.deepEqual(tagsAbove("1.11.22"), []);
+  assert.deepEqual(tagsAbove("1.11.20"), ["1.11.22", "1.11.21"]);
+});
+
+await check("the probe keeps prereleases to the beta channel, newest first", () => {
+  assert.deepEqual(tagsAbove("1.11.20", true), ["1.12.0-beta.1", "1.11.22", "1.11.21", "1.11.21-rc.1"]);
+  assert.deepEqual(tagsAbove("1.12.0-beta.1", true), []);
+});
+
+await check("the probe hands back the tag it read, once, and skips one that is not a version", () => {
+  const found = newerReleaseTags(atomTags, { floor: "0.0.0", wantPrerelease: false });
+  assert.deepEqual(found[0], { tag: "v1.11.22", version: "1.11.22" });
+  assert.equal(new Set(found.map(({ tag }) => tag)).size, found.length);
+  assert.ok(!found.some(({ tag }) => tag === "nightly"));
 });
 
 /* ── When the release list does not come back (GRYT-1170) ───────────── */

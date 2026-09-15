@@ -80,6 +80,8 @@ function UpdateControls() {
         return "Gryt is up to date";
       case "pending":
         return `v${status.version} will finish installing when you quit Gryt`;
+      case "installing":
+        return `Installing v${status.version}…`;
       case "error":
         return `Update error: ${status.message}`;
       default:
@@ -95,6 +97,7 @@ function UpdateControls() {
         return "blue" as const;
       case "downloaded":
       case "pending":
+      case "installing":
         return "green" as const;
       case "error":
         return "red" as const;
@@ -110,7 +113,7 @@ function UpdateControls() {
   const isReady = status?.status === "downloaded";
   // Neither button helps while an install is running: restarting starts a second
   // cycle and destroys the first. Quitting is the whole remaining action.
-  const isPending = status?.status === "pending";
+  const isPending = status?.status === "pending" || status?.status === "installing";
   const isBusy = isChecking;
 
   return (
