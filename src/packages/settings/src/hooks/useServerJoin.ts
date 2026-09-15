@@ -11,6 +11,7 @@ import {
   schemeFor,
   schemeOfUrl,
   setServerAccessToken,
+  setServerFileToken,
   setServerRefreshToken,
 } from "@/common";
 import { joinServerOnce } from "@/socket";
@@ -288,6 +289,8 @@ export function useServerJoin() {
         }
 
         setServerAccessToken(normalizedHost, result.joinInfo.accessToken);
+        // Stored here like the invite path does, or every picture on the server is broken until a rejoin.
+        if (result.joinInfo.fileToken) setServerFileToken(normalizedHost, result.joinInfo.fileToken);
         if (result.joinInfo.refreshToken) {
           setServerRefreshToken(normalizedHost, result.joinInfo.refreshToken);
         }

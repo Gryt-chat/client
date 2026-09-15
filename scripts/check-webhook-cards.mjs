@@ -142,4 +142,25 @@ const readers = files(join(root, "src"))
   .sort();
 assert.deepEqual(readers, [ROW], "something other than MessageRow reads a message's cards");
 
+/* ── who a webhook message is from ──────────────────────────────────────── */
+
+// One webhook can post as "Build runner" and then as "Uptime check". Grouped, the second has no header.
+const helpers = read("src/packages/socket/src/components/chatViewHelpers.ts");
+assert.match(
+  helpers,
+  /isWebhook && !!prev &&\s*\(prev\.sender_nickname !== m\.sender_nickname \|\| prev\.sender_avatar_file_id !== m\.sender_avatar_file_id\)/,
+  "a webhook message posted under another name is grouped under the previous one's header",
+);
+assert.match(helpers, /const isFirstInGroup = isSystem \|\| webhookIdentityChanged \|\|/);
+
+/* ── the file token on first join ───────────────────────────────────────── */
+
+// Joining from Add a server kept the access token but not the file token, so every picture broke.
+const joinHook = read("src/packages/settings/src/hooks/useServerJoin.ts");
+assert.match(
+  joinHook,
+  /if \(result\.joinInfo\.fileToken\) setServerFileToken\(normalizedHost, result\.joinInfo\.fileToken\);/,
+  "useServerJoin drops the file token, so a card's pictures don't load until a rejoin",
+);
+
 console.log("webhook cards: ok");

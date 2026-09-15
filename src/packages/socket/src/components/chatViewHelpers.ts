@@ -62,7 +62,10 @@ export function buildMessageMetadata(
     const isWebhook = m.sender_server_id.startsWith(WEBHOOK_PREFIX);
 
     const timeSincePrev = prev ? d.getTime() - toDate(prev.created_at).getTime() : Infinity;
-    const isFirstInGroup = isSystem ||
+    // A webhook can post under a different name or picture each time, and each one gets its own header.
+    const webhookIdentityChanged = isWebhook && !!prev &&
+      (prev.sender_nickname !== m.sender_nickname || prev.sender_avatar_file_id !== m.sender_avatar_file_id);
+    const isFirstInGroup = isSystem || webhookIdentityChanged ||
       !prev || prev.sender_server_id !== m.sender_server_id || timeSincePrev > GROUP_GAP_MS || needsDayBreak;
 
     const showNewMessageDivider = !!(newMessageMarkerId && prev && prev.message_id === newMessageMarkerId);
