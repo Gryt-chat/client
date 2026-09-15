@@ -1259,6 +1259,19 @@ body {
   width: auto !important;
 }
 
+/* A card sets its own type scale, and remark-breaks already turns newlines into <br>,
+   so the card's pre-line would draw each one twice. */
+.gryt-webhook-card .markdown-message,
+.gryt-webhook-card .markdown-message.emoji-only {
+  font-size: inherit;
+  line-height: inherit;
+  white-space: normal;
+}
+
+.gryt-webhook-card .markdown-message.emoji-only .inline-emoji {
+  height: 1.4em !important;
+}
+
 /* ── Code highlighting (highlight.js compatible) ───────────── */
 
 .hljs {

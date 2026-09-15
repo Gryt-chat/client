@@ -15,6 +15,7 @@ import { useThreads } from "../hooks/useThreads";
 import { useTypingIndicator } from "../hooks/useTypingIndicator";
 import { fetchCustomEmojis, getCustomEmojis, onCustomEmojisChange, setCustomEmojis } from "../utils/emojiData";
 import type { CustomEmojiEntry } from "../utils/remarkEmoji";
+import { mentionsViewer } from "../utils/webhookCards";
 import type { ChatEditorHandle } from "./ChatEditor";
 import { ChatEditorBar } from "./ChatEditorBar";
 import { MessageSkeleton, WelcomeMessage } from "./ChatMessage";
@@ -424,9 +425,7 @@ export const ChatView = memo(({
           replyPreviewText={
             m.reply_to_message_id ? getReplyPreview(replyOriginal ?? null, 100) : null
           }
-          isMentioned={
-            !!(currentUserId && m.text && m.text.includes(`mention:${currentUserId}`))
-          }
+          isMentioned={mentionsViewer(m, currentUserId)}
           customEmojiList={customEmojiList}
           memberNicknames={memberNicknames}
           blurProfanity={blurProfanity}
@@ -630,7 +629,7 @@ export const ChatView = memo(({
 
                   const replyOriginal = m.reply_to_message_id ? messageMap.get(m.reply_to_message_id) : undefined;
                   const replyPreviewText = m.reply_to_message_id ? getReplyPreview(replyOriginal ?? null, 100) : null;
-                  const isMentioned = !!(currentUserId && m.text && m.text.includes(`mention:${currentUserId}`));
+                  const isMentioned = mentionsViewer(m, currentUserId);
 
                   const isNew = !seenMessageIdsRef.current.has(m.message_id) && i >= chatMessages.length - 10;
                   seenMessageIdsRef.current.add(m.message_id);

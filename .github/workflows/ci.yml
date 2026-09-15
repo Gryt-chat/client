@@ -91,6 +91,7 @@ jobs:
       - run: yarn test:stable-attachment-urls
       - run: yarn test:group-picture-upload
       - run: yarn test:webhook-avatar-upload
+      - run: yarn test:webhook-cards
       - run: yarn test:member-invite
       - run: yarn test:addon-capabilities
       - run: yarn test:actor-name
