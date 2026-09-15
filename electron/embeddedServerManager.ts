@@ -499,6 +499,9 @@ function spawnSfu(config: EmbeddedServerConfig): ChildProcess | null {
       // older than SFU_CONTROL_HOST ignores it and listens everywhere, as before.
       SFU_CONTROL_HOST: "127.0.0.1",
       SFU_METRICS_PORT: String(config.metricsPort),
+      // Nothing off this machine reads them. An SFU older than SFU_METRICS_HOST
+      // ignores it and serves them on every interface, as before.
+      SFU_METRICS_HOST: "127.0.0.1",
       ICE_ADVERTISE_IP: envVars.ICE_ADVERTISE_IP || "",
       ...(envVars.STUN_SERVERS ? { STUN_SERVERS: envVars.STUN_SERVERS } : {}),
     },
@@ -587,6 +590,9 @@ function spawnServer(
       ...process.env,
       ...envVars,
       NODE_ENV: "production",
+      // Off. Nothing reads a hosted server's metrics, and this app's SFU usually has
+      // 9091, the server's default, so every start logged a warning about it.
+      METRICS_PORT: "0",
       ...(versions.server ? { SERVER_VERSION: versions.server } : {}),
       // The server has to ask the worker what it is, so the port is picked before
       // the fork rather than inside spawnWorker.
