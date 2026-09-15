@@ -16,6 +16,7 @@ import {
 import { useSettings } from "@/settings";
 import { useEmbeddedServer } from "@/settings/src/hooks/useEmbeddedServer";
 import { useLanDiscovery } from "@/settings/src/hooks/useLanDiscovery";
+import { hostedServerAt, manageServerTab } from "@/settings/src/hostedServers";
 import {
   Server,
   serverDetailsList as ServerDetailsListType,
@@ -61,7 +62,7 @@ async function copyServerAddress(host: string): Promise<void> {
 
 export function Sidebar({ setShowAddServer }: SidebarProps) {
   const { isSignedIn, login, logout } = useAccount();
-  const { nickname, avatarDataUrl, setShowSettings } = useSettings();
+  const { nickname, avatarDataUrl, setShowSettings, openSettings } = useSettings();
   const { open: openReport } = useReportForm();
 
   const {
@@ -92,6 +93,12 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
     }
     return map;
   }, [embeddedServers]);
+
+  /** Manage server, for a rail entry this app hosts. It works while stopped, too. */
+  const manageServerFor = (host: string) => {
+    const hosted = hostedServerAt(host, embeddedServers);
+    return hosted ? () => openSettings(manageServerTab(hosted.id)) : undefined;
+  };
 
   const voice = useVoicePresence();
   const { serverConnectionStatus, serverProfiles, serverDetailsList } =
@@ -173,6 +180,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
               duplicateHosts={duplicatesOf(host)}
               mergeDuplicates={mergeDuplicates}
               embeddedStatus={embeddedStatusByHost[host]}
+              onManageServer={manageServerFor(host)}
             />
           ))}
         </Reorder.Group>
@@ -337,6 +345,8 @@ interface ServerItemProps {
   mergeDuplicates: (keepHost: string) => void;
   /** The embedded manager's status, when this rail entry is a server we run. */
   embeddedStatus?: string;
+  /** Opens this app's controls for the server. Absent unless this app hosts it. */
+  onManageServer?: () => void;
 }
 
 /* What the call is doing here, in the words somebody would use for it. Muted
@@ -370,6 +380,7 @@ function ServerItem({
   duplicateHosts,
   mergeDuplicates,
   embeddedStatus,
+  onManageServer,
 }: ServerItemProps) {
   const { canClaim, claim } = useIdentityClaim();
   const [doctorOpen, setDoctorOpen] = useState(false);
@@ -571,6 +582,11 @@ function ServerItem({
             <ContextMenu.Item onClick={() => openServerSettings(host)}>
               Server settings
             </ContextMenu.Item>
+            {/* Here too: the header menu needs the server open, and the rail won't open
+                one that has gone offline, so this is how a stopped server gets started. */}
+            {onManageServer && (
+              <ContextMenu.Item onClick={onManageServer}>Manage server</ContextMenu.Item>
+            )}
             {canClaim(host) && (
               /* For a seed restored onto a device new to this server: nothing
                  local knows there is a membership, and asking is the disclosure. */

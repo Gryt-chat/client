@@ -6,6 +6,8 @@ import toast from "react-hot-toast";
 import { clearMentions, clearSignedOut, getUploadsFileUrl, markChannelRead, useAccount, useMentionTracker, useThreadMentions, useUnreadTracker } from "@/common";
 import { useIsCompact, useIsMobile } from "@/mobile";
 import { useSettings } from "@/settings";
+import { useEmbeddedServer } from "@/settings/src/hooks/useEmbeddedServer";
+import { hostedServerAt, manageServerTab } from "@/settings/src/hostedServers";
 import { SidebarItem } from "@/settings/src/types/server";
 
 import { useFakeChat } from "../dev/fakeChat";
@@ -78,7 +80,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   const isCompact = useIsCompact();
   const isTiny = useIsTinyWindow();
   const {
-    showVoiceView, setShowVoiceView, nickname, setShowSettings, setSettingsTab,
+    showVoiceView, setShowVoiceView, nickname, setShowSettings, setSettingsTab, openSettings,
     inputMode, setInputMode, rnnoiseEnabled, setRnnoiseEnabled,
     eSportsModeEnabled, setESportsModeEnabled, noiseGate, setNoiseGate,
     pinChannelsSidebar, setPinChannelsSidebar,
@@ -92,6 +94,8 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   const { connect, currentServerConnected, isConnected, isConnecting, videoStreams, streamSources } = useSFU();
   const { serverDetailsList, clients, memberLists, serverProfiles } = useSockets();
   const { login } = useAccount();
+  /** Servers this app hosts, for Manage server. Empty in a browser. */
+  const { servers: hostedServers } = useEmbeddedServer();
 
   const {
     clientsSpeaking, voiceWidth,
@@ -690,6 +694,11 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     );
   };
 
+  const hostedHere = hostedServerAt(host, hostedServers);
+  const onManageServer = hostedHere
+    ? () => openSettings(manageServerTab(hostedHere.id))
+    : undefined;
+
   /** One element for two layouts: the tiny window renders this and nothing else,
       and a second copy is thirty props to keep in step. */
   const chatView = dmSpace && !activeDm ? (
@@ -794,6 +803,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
             isConnectedToVoiceOnThisServer={isVoiceOnThisServer}
             onOpenSettings={onOpenSettings}
             onOpenInvites={onOpenInvites}
+            onManageServer={onManageServer}
             onOpenReports={() => setReportsOpen(true)}
             pendingReportCount={pendingReportCount}
             updateAvailable={updateAvailable}
@@ -892,6 +902,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
               onTogglePinned={() => setPinChannelsSidebar(!pinChannelsSidebar)}
               onOpenSettings={onOpenSettings}
               onOpenInvites={onOpenInvites}
+              onManageServer={onManageServer}
               onOpenReports={() => setReportsOpen(true)}
               pendingReportCount={pendingReportCount}
               updateAvailable={updateAvailable}

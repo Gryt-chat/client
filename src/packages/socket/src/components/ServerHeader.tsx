@@ -11,6 +11,7 @@ export const ServerHeader = ({
   onCreateFolder,
   onOpenInvites,
   onOpenSettings,
+  onManageServer,
   onOpenReports,
   role,
   pendingReportCount,
@@ -30,6 +31,8 @@ export const ServerHeader = ({
   onCreateFolder?: () => void;
   onOpenInvites?: () => void;
   onOpenSettings?: () => void;
+  /** This app's controls for the server. Only passed when this app hosts it. */
+  onManageServer?: () => void;
   onOpenReports?: () => void;
   role?: string;
   pendingReportCount?: number;
@@ -38,6 +41,7 @@ export const ServerHeader = ({
   onTogglePinned?: () => void;
 }) => {
   const canManage = role === "owner" || role === "admin";
+  const hasTopGroup = Boolean((canManage && (onOpenInvites || onOpenSettings)) || onManageServer);
 
   const copyHost = async () => {
     if (!serverHost) return;
@@ -119,8 +123,13 @@ export const ServerHeader = ({
                   </div>
                 </Menu.Item>
               )}
+              {/* Not gated on role. It is this machine's process, which the server's
+                  roles have no say over. */}
+              {onManageServer && (
+                <Menu.Item onClick={onManageServer}>Manage server</Menu.Item>
+              )}
 
-              {canManage && (onOpenInvites || onOpenSettings) && (onCreateChannel || onCreateFolder) && (
+              {hasTopGroup && canManage && (onCreateChannel || onCreateFolder) && (
                 <Menu.Separator />
               )}
 
