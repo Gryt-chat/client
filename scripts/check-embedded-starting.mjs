@@ -64,7 +64,19 @@ const statusLines = (() => {
   return sidebar.slice(start, sidebar.indexOf(";", ring) + 1).replace(/: ServerRingState/g, "");
 })();
 
+/* The hover card's connection words, each with the condition it is drawn under. A new one
+   fails here until somebody adds it to the list. */
+const CARD_LABELS = ["Offline", "Reconnecting", "Starting your server", "No answer yet", "Connecting"];
+const cardLabels = (() => {
+  const found = [...sidebar.matchAll(/\{([^{}]+?) && \(\s*<span[^>]*>\s*• ([A-Z][^<{\n]*?)\s*<\/span>/g)]
+    .map((m) => ({ condition: m[1].trim(), label: m[2] }))
+    .filter(({ label }) => label !== "Requested access");
+  assert.deepEqual(found.map((f) => f.label), CARD_LABELS, `${SIDEBAR}'s hover card words changed. Decide what each one means here.`);
+  return found;
+})();
+
 function rail({ embedded, voice, socket, settleExpired = false }) {
+  const labels = cardLabels.map(({ condition, label }) => `(${condition}) && ${JSON.stringify(label)}`);
   return new Function(
     "serverConnectionStatus",
     "host",
@@ -73,7 +85,8 @@ function rail({ embedded, voice, socket, settleExpired = false }) {
     "useState",
     "useEffect",
     "UNKNOWN_SETTLE_MS",
-    `${statusLines}\nreturn { isStarting, isSettling, ringState, isUnavailable };`,
+    "awaitingApproval",
+    `${statusLines}\nconst labels = [${labels.join(", ")}].filter(Boolean);\nreturn { isStarting, isSettling, ringState, isUnavailable, labels };`,
   )(
     socket === undefined ? {} : { [HOST]: socket },
     HOST,
@@ -82,6 +95,7 @@ function rail({ embedded, voice, socket, settleExpired = false }) {
     () => [settleExpired, () => {}],
     () => {},
     10_000,
+    false,
   );
 }
 
@@ -111,6 +125,28 @@ for (const [call, voice] of Object.entries(CALLS)) {
   assert.equal(fresh.ringState, "settling", `a remote server with no answer yet and ${call} draws "${fresh.ringState}"`);
 }
 
+/* A socket that gave up while the server was stopped, then Start: the card said Offline and
+   Starting your server at once, and the icon took no click. GRYT-1207. */
+for (const socket of SOCKET) {
+  for (const settleExpired of [false, true]) {
+    const got = rail({ embedded: "starting", voice: CALLS["no call"], socket, settleExpired });
+    const where = `a booting server with socket ${socket ?? "unset"}${settleExpired ? ", settle expired" : ""}`;
+    assert.equal(got.isUnavailable, false, `${where} is unavailable, so its icon takes no click`);
+    assert.deepEqual(got.labels, ["Starting your server"], `${where} says ${got.labels.join(" and ")}`);
+  }
+}
+
+// Once the manager is not booting it, the card says what the socket says, and that is still Offline.
+for (const embedded of ["running", "stopped", "error", undefined]) {
+  const said = (socket, settleExpired = false) => rail({ embedded, voice: CALLS["no call"], socket, settleExpired }).labels;
+  assert.deepEqual(said("disconnected"), ["Offline"], `a ${embedded ?? "remote"} server with a socket that gave up is not Offline`);
+  assert.deepEqual(said(undefined, true), ["Offline"], `a ${embedded ?? "remote"} server that never answered is not Offline`);
+  assert.equal(rail({ embedded, voice: CALLS["no call"], socket: "disconnected" }).isUnavailable, true, `a ${embedded ?? "remote"} server that is offline takes a click`);
+  assert.deepEqual(said("reconnecting"), ["Reconnecting"]);
+  assert.deepEqual(said("connecting"), ["Connecting"]);
+  assert.deepEqual(said("connected"), []);
+}
+
 // The whole grid. Starting follows the manager exactly, and voice changes nothing at all.
 for (const embedded of [...LIFECYCLE, undefined]) {
   for (const socket of SOCKET) {
@@ -118,6 +154,7 @@ for (const embedded of [...LIFECYCLE, undefined]) {
       const quiet = rail({ embedded, voice: CALLS["no call"], socket, settleExpired });
       const where = `embedded ${embedded ?? "(not ours)"}, socket ${socket ?? "unset"}${settleExpired ? ", settle expired" : ""}`;
       assert.equal(quiet.isStarting, embedded === "starting", `${where}: starting does not follow the manager`);
+      assert.ok(quiet.labels.length <= 1, `${where}: the card says ${quiet.labels.join(" and ")} at once`);
       if (quiet.isStarting) assert.equal(quiet.ringState, "starting", `${where}: starting draws another ring`);
       for (const [call, voice] of Object.entries(CALLS)) {
         assert.deepEqual(rail({ embedded, voice, socket, settleExpired }), quiet, `${where}: ${call} changes the rail`);

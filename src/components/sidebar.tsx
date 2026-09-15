@@ -401,11 +401,13 @@ function ServerItem({
   const isOffline = connectionStatus === "disconnected";
   const isConnecting = connectionStatus === "connecting";
   const isReconnecting = connectionStatus === "reconnecting";
-  const isUnavailable = isOffline && !isConnecting;
 
   /* The embedded manager's word alone. A call says nothing about whether a server is
      booting, and the socket cannot tell booting from not answering. */
   const isStarting = embeddedStatus === "starting";
+
+  // A socket that gave up while its server was stopped is not offline once it is starting.
+  const isUnavailable = isOffline && !isStarting;
 
   /**
    * Nothing has come back yet and the clock is running. This is the one
@@ -700,7 +702,7 @@ function ServerItem({
                   • Offline
                 </span>
               )}
-              {isReconnecting && (
+              {isReconnecting && !isStarting && (
                 <span style={{ color: "var(--gryt-warning-9)", marginLeft: "8px" }}>
                   • Reconnecting
                 </span>

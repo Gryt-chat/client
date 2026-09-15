@@ -31,3 +31,23 @@ export function railEntriesFor(
 
   return [...hosts];
 }
+
+/**
+ * The rail entries of every server running now that was something else when last seen.
+ * One never seen before is left out, since nothing says it has only just come up.
+ */
+export function railEntriesJustStarted(
+  lastSeen: ReadonlyMap<string, string>,
+  now: EmbeddedServerState[],
+  joined: Servers,
+): string[] {
+  const hosts = new Set<string>();
+
+  for (const server of now) {
+    const before = lastSeen.get(server.id);
+    if (server.status !== "running" || before === undefined || before === "running") continue;
+    for (const host of railEntriesFor(server, joined)) hosts.add(host);
+  }
+
+  return [...hosts];
+}

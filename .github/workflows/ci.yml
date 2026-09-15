@@ -155,6 +155,7 @@ jobs:
       - run: yarn test:manage-server
       - run: yarn test:hosted-server-rail
       - run: yarn test:same-server
+      - run: yarn test:hosted-server-reconnect
       - run: yarn test:voice-state
       - run: yarn test:media-state
       - run: yarn test:calls

@@ -84,6 +84,7 @@
     "test:manage-server": "node --disable-warning=ExperimentalWarning scripts/check-manage-server.mjs",
     "test:hosted-server-rail": "node scripts/check-hosted-server-rail.mjs",
     "test:same-server": "node scripts/check-same-server.mjs",
+    "test:hosted-server-reconnect": "node --disable-warning=ExperimentalWarning scripts/check-hosted-server-reconnect.mjs",
     "preview": "vite preview",
     "e2e": "vite build && playwright test --config e2e/playwright.config.ts",
     "build:native": "node -e \"const{execSync:r}=require('child_process');if(process.platform==='win32'){r('native\\\\build.bat',{stdio:'inherit'})}else{r('bash native/audio-capture/build.sh',{stdio:'inherit'})}\"",

@@ -12,15 +12,18 @@ import { ensureSchemeKnown, getServerAccessToken, getServerRefreshToken, getServ
 import { initKeycloak } from "@/common/src/auth/keycloak";
 import { useSettings } from "@/settings";
 import { useServerSettings } from "@/settings/src/hooks/useServerSettings";
+import { railEntriesJustStarted } from "@/settings/src/hostedServerRail";
 import {
   Server,
   serverDetailsList,
   Servers,
 } from "@/settings/src/types/server";
 
+import { type EmbeddedServerState, getElectronAPI } from "../../../../lib/electron";
 import { showReconnectGaveUpToast, showReconnectingToast } from "../components/connectionToasts";
 import { MemberInfo } from "../components/MemberSidebar";
 import { Clients, ServerProfile } from "../types/clients";
+import { replayReconnect, retryNow } from "../utils/retryNow";
 import { guardSocket, serverProofErrorMessage, serverProofHelpUrl } from "../utils/serverAuth";
 import { syncAvatarToHost } from "../utils/syncAvatarToHost";
 import { getTokenExpiryTime } from "../utils/tokenManager";
@@ -92,10 +95,15 @@ function useSocketsHook() {
   const [refusalHelpUrl, setRefusalHelpUrl] = useState<Record<string, string>>({});
   const wasEverConnectedRef = useRef<Record<string, boolean>>({});
   const serverDetailsListRef = useRef(serverDetailsList);
+  const socketsRef = useRef<Sockets>({});
 
   useEffect(() => {
     serversRef.current = servers;
   }, [servers]);
+
+  useEffect(() => {
+    socketsRef.current = sockets;
+  }, [sockets]);
 
   useEffect(() => {
     serverDetailsListRef.current = serverDetailsList;
@@ -559,6 +567,12 @@ function useSocketsHook() {
     });
   }, [servers, sockets, nickname, serverConnectionStatus]);
 
+  /** A token, and the details it fetched: what a socket coming back picks up again. */
+  const hasSession = useCallback(
+    (host: string) => Boolean(getServerAccessToken(host) && serverDetailsListRef.current[host]),
+    [],
+  );
+
   const reconnectServer = useCallback((host: string) => {
     const socket = sockets[host];
     if (!socket) return;
@@ -583,11 +597,48 @@ function useSocketsHook() {
     }
 
     setServerConnectionStatus((prev) => ({ ...prev, [host]: "connecting" }));
-    socket.connect();
-    socket.once("connect", () => {
-      void requestServerState();
+    retryNow(socket, (reconnectRan) => {
+      /* With a session, this is what socket.io's reconnect handles, and voice recovery
+         waits on that event. Without one, requestServerState joins again. */
+      if (!hasSession(host)) void requestServerState();
+      else if (!reconnectRan) replayReconnect(socket);
     });
-  }, [sockets, nickname]);
+  }, [sockets, nickname, hasSession]);
+
+  /* The same retry as the Reconnect button, minus joining again: a socket that never
+     connected already has its first requests queued. */
+  const retryHostedServer = useCallback((host: string) => {
+    const socket = socketsRef.current[host];
+    // Connected needs nothing, and a server refused on purpose stays refused.
+    if (!socket || socket.connected || socket.io.opts.reconnection === false) return;
+
+    setServerConnectionStatus((prev) => ({ ...prev, [host]: "connecting" }));
+    retryNow(socket, (reconnectRan) => {
+      if (!reconnectRan && hasSession(host)) replayReconnect(socket);
+    });
+  }, [hasSession]);
+
+  /* A server this app hosts has just come up, and its socket may be ten seconds from
+     trying again, or have given up while it was stopped. GRYT-1207. */
+  useEffect(() => {
+    const api = getElectronAPI();
+    if (!api) return;
+
+    let lastSeen: Map<string, string> | null = null;
+    const see = (states: EmbeddedServerState[]) => {
+      lastSeen = new Map(states.map((server) => [server.id, server.status]));
+    };
+
+    api.getEmbeddedServerStatus().then((states) => {
+      if (!lastSeen) see(states);
+    }).catch(() => {});
+
+    return api.onEmbeddedServerStatusChanged((states) => {
+      const hosts = railEntriesJustStarted(lastSeen ?? new Map(), states, serversRef.current);
+      see(states);
+      for (const host of hosts) retryHostedServer(host);
+    });
+  }, [retryHostedServer]);
 
   // When returning to the app after being idle, re-request server details if we are connected
   // but never received details (prevents being stuck on the skeleton forever).
