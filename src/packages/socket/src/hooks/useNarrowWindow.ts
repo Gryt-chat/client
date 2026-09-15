@@ -63,7 +63,7 @@ export function useIsTinyWindow(): boolean {
   return isTinyWindow({ windowWidth, pointerFine });
 }
 
-/** Whether server settings can keep its tab rail. */
-export function useRoomForSettingsRail(): boolean {
-  return hasRoomForSettingsRail(useWindowWidth());
+/** Whether a settings dialog can keep its tab rail. `chrome` is its `*_SETTINGS_CHROME` from `lib/narrowLayout.ts`. */
+export function useRoomForSettingsRail(chrome: number): boolean {
+  return hasRoomForSettingsRail(useWindowWidth(), chrome);
 }

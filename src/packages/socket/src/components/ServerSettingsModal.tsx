@@ -1,4 +1,4 @@
-import { Chip, Dialog, IconButton, Select, Spinner, Tabs } from "@gryt/ui";
+import { Chip, Dialog, IconButton, Spinner, Tabs } from "@gryt/ui";
 import { type ReactNode,useEffect, useMemo, useState } from "react";
 
 import { getServerAccessToken } from "@/common";
@@ -8,6 +8,7 @@ import { useRoomForSettingsRail } from "../hooks/useNarrowWindow";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { useSockets } from "../hooks/useSockets";
 import { useVersionStatus } from "../hooks/useVersionStatus";
+import { SERVER_SETTINGS_CHROME } from "../lib/narrowLayout";
 import { ServerAuditTab } from "./ServerAuditTab";
 import { ServerBansTab } from "./ServerBansTab";
 import { ServerBotsTab } from "./ServerBotsTab";
@@ -23,6 +24,7 @@ import { ServerRoleEditorTab } from "./ServerRoleEditorTab";
 import { ServerRolesTab } from "./ServerRolesTab";
 import { ServerUserReplaceTab } from "./ServerUserReplaceTab";
 import { ServerWebhooksTab } from "./ServerWebhooksTab";
+import { SettingsPicker } from "./SettingsPicker";
 
 type SetupRequiredDetail = {
   host: string;
@@ -78,7 +80,7 @@ export function ServerSettingsModal() {
       "manage_bots",
     ].some((p) => hasPermission(p));
   const allowTabs = canManage;
-  const railFits = useRoomForSettingsRail();
+  const railFits = useRoomForSettingsRail(SERVER_SETTINGS_CHROME);
 
 
   function handleDialogChange(open: boolean) {
@@ -374,21 +376,7 @@ export function ServerSettingsModal() {
                 {/* min-w-0 because Tabs is a flex row: without it the widest page
                     set the width, and a webhook URL pushed everything off the edge. */}
                 <div className={`flex gap-4 h-full min-w-0 flex-1 ${railFits ? "" : "flex-col"}`}>
-                  {!railFits && (
-                    <Select
-                      value={tab}
-                      onValueChange={(v) => setTab(String(v))}
-                      options={TAB_CONFIG.map(({ value, label, icon: Icon }) => ({
-                        value,
-                        label: (
-                          <span className="flex items-center gap-2">
-                            <Icon size={16} />
-                            {label}
-                          </span>
-                        ),
-                      }))}
-                    />
-                  )}
+                  {!railFits && <SettingsPicker value={tab} onValueChange={setTab} options={TAB_CONFIG} />}
                   {!railFits && hasVersionLines && (
                     <div
                       data-settings-versions="narrow"

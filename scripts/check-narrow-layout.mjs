@@ -8,13 +8,16 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
+import { tourSteps } from "../src/components/onboarding/steps.ts";
 import {
   COMPACT_MAX_WIDTH,
   hasRoomForMemberList,
   hasRoomForSettingsRail,
   hasRoomForVoicePanel,
   isTinyWindow,
+  SERVER_SETTINGS_CHROME,
   TINY_MAX_WIDTH,
+  USER_SETTINGS_CHROME,
   VOICE_PANEL_WIDTH,
 } from "../src/packages/socket/src/lib/narrowLayout.ts";
 
@@ -116,13 +119,13 @@ for (let w = 300; w <= TINY_MAX_WIDTH; w += 1) {
 /* ── Server settings ───────────────────────────────────────────────── */
 
 // The rail keeps 400px of page beside it: 2rem margins, 21px padding, 200 rail, 16 gap.
-assert.equal(hasRoomForSettingsRail(1400), true);
-assert.equal(hasRoomForSettingsRail(768), true);
-assert.equal(hasRoomForSettingsRail(722), true);
-assert.equal(hasRoomForSettingsRail(721), false);
+assert.equal(hasRoomForSettingsRail(1400, SERVER_SETTINGS_CHROME), true);
+assert.equal(hasRoomForSettingsRail(768, SERVER_SETTINGS_CHROME), true);
+assert.equal(hasRoomForSettingsRail(722, SERVER_SETTINGS_CHROME), true);
+assert.equal(hasRoomForSettingsRail(721, SERVER_SETTINGS_CHROME), false);
 
 // A phone gets the picker. With the rail it had 68px of page at 390.
-assert.equal(hasRoomForSettingsRail(390), false);
+assert.equal(hasRoomForSettingsRail(390, SERVER_SETTINGS_CHROME), false);
 
 // GRYT-1199: Tabs is a flex row, so the row inside it needs min-w-0 or the widest
 // page sets the width. A webhook URL put Create webhook past the dialog's edge.
@@ -146,6 +149,11 @@ for (const line of ["Server v{serverInfo.version}", "SFU {versionStatus.sfu.curr
   assert.ok(modal.slice(modal.indexOf("const versionLines")).includes(line), `versionLines lost "${line}"`);
 }
 
+// SERVER_SETTINGS_CHROME is the dialog's margins and rail, so changing either has to change it.
+assert.match(modal, /useRoomForSettingsRail\(SERVER_SETTINGS_CHROME\)/, "server settings measures its rail with another dialog's numbers");
+assert.match(modal, /calc\(100vw - 4rem\)/, "server settings' margins moved, so SERVER_SETTINGS_CHROME is wrong");
+assert.match(modal, /minWidth: "200px"/, "server settings' rail changed width, so SERVER_SETTINGS_CHROME is wrong");
+
 // GRYT-1201: since @gryt/ui 0.34.1 a Select label stays on one line, so a Select in a
 // flex row needs min-w-0 on its flex item. Flag in the profanity filter overflowed 21px at 390.
 const overview = readFileSync(
@@ -167,4 +175,41 @@ assert.match(
   "the camera Select in the preview lost min-w-0",
 );
 
-console.log("narrow layout ok: member list yields to the voice panel, tiny window is desktop-only, settings fit");
+/* ── User settings ─────────────────────────────────────────────────── */
+
+// GRYT-1222: the same rail, 220px wide in a dialog with 1.5rem margins, so it keeps 400px of page from 726.
+assert.equal(USER_SETTINGS_CHROME, 48 + 42 + 220 + 16);
+assert.equal(hasRoomForSettingsRail(1280, USER_SETTINGS_CHROME), true);
+assert.equal(hasRoomForSettingsRail(726, USER_SETTINGS_CHROME), true);
+assert.equal(hasRoomForSettingsRail(725, USER_SETTINGS_CHROME), false);
+
+// With the rail at 390 the page had 64px, and Notifications cut its Nothing button off by 217px.
+assert.equal(hasRoomForSettingsRail(390, USER_SETTINGS_CHROME), false);
+
+const userSettings = readFileSync(
+  new URL("../src/packages/settings/src/components/settings.tsx", import.meta.url),
+  "utf8",
+);
+assert.match(userSettings, /useRoomForSettingsRail\(USER_SETTINGS_CHROME\)/, "user settings measures its rail with another dialog's numbers");
+assert.match(userSettings, /max-w-\[calc\(100vw-3rem\)\]/, "user settings' margins moved, so USER_SETTINGS_CHROME is wrong");
+assert.match(userSettings, /width: railFits \? "220px"/, "user settings' rail changed width, or stopped giving way to the picker");
+
+// Both dialogs draw their picker with one component, so the two can't drift apart.
+for (const [name, source] of [["ServerSettingsModal", modal], ["settings.tsx", userSettings]]) {
+  assert.match(source, /\{!railFits && [^{}]*?<SettingsPicker\b/, `${name} lost the picker it shows without a rail`);
+}
+
+// The page column scrolls sideways. Clipped, a page too wide for the window lost its buttons,
+// and the e2e measurement had nothing to see: a clipped element never reaches the dialog's edge.
+const pageColumn = userSettings.slice(userSettings.indexOf("<div ref={contentRef}"));
+assert.match(pageColumn, /^<div ref=\{contentRef\}[^>]*overflow: "auto"/, "the user settings page column stopped scrolling");
+assert.doesNotMatch(pageColumn.slice(0, pageColumn.indexOf(">")), /overflowX/, "the user settings page column clips sideways again");
+
+// The tour presses the rail's Account button, which a narrow window doesn't have, so the step opens the page itself.
+const accountStep = tourSteps.find((step) => step.id === "account");
+assert.ok(accountStep?.via?.includes("settings-account"), "the tour's account step no longer presses the rail");
+const opened = [];
+accountStep.enter?.({ openSettings: (tab) => opened.push(tab), closeSettings() {}, setShowAddServer() {} });
+assert.deepEqual(opened, ["account"], "the tour's account step has no way to Account without the rail");
+
+console.log("narrow layout ok: member list yields to the voice panel, tiny window is desktop-only, both settings dialogs fit");
