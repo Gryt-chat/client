@@ -77,6 +77,7 @@
     "test:embedded-server-paths": "node scripts/check-embedded-server-paths.mjs",
     "test:embedded-version": "node scripts/check-embedded-version.mjs",
     "test:embedded-starting": "node scripts/check-embedded-starting.mjs",
+    "test:embedded-sfu-ports": "node --disable-warning=ExperimentalWarning scripts/check-embedded-sfu-ports.mjs",
     "test:manage-server": "node --disable-warning=ExperimentalWarning scripts/check-manage-server.mjs",
     "test:hosted-server-rail": "node scripts/check-hosted-server-rail.mjs",
     "preview": "vite preview",

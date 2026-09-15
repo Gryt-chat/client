@@ -140,6 +140,7 @@ jobs:
       - run: yarn test:embedded-server-paths
       - run: yarn test:embedded-version
       - run: yarn test:embedded-starting
+      - run: yarn test:embedded-sfu-ports
       - run: yarn test:manage-server
       - run: yarn test:hosted-server-rail
       - run: yarn test:voice-state

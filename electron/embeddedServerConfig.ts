@@ -15,6 +15,9 @@ export interface EmbeddedServerConfig {
   /** Separate from `sfuPort`, which is signalling over TCP. Chat and joining both
       work without this, so a server with it shut looks healthy. */
   mediaPort: number;
+  /** Where servers register with the SFU, which names it when refusing one on `sfuPort`. */
+  controlPort: number;
+  metricsPort: number;
   dataDir: string;
   configPath: string;
   jwtSecret: string;
@@ -160,11 +163,67 @@ function existingMediaPort(): number | null {
  * Walks upward rather than taking an ephemeral port: these are numbers somebody
  * types into a router, and ports no longer move after a server picks one.
  */
-async function findFriendlyPortFrom(preferred: number): Promise<number> {
+async function findFriendlyPortFrom(preferred: number, avoid: number[] = []): Promise<number> {
   for (let port = preferred; port < preferred + 50 && port <= 65535; port++) {
-    if (await portIsFree(port)) return port;
+    if (!avoid.includes(port) && (await portIsFree(port))) return port;
   }
-  return findFreePortFrom(0);
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const port = await findFreePortFrom(0);
+    if (!avoid.includes(port)) return port;
+  }
+  throw new Error("No free port");
+}
+
+/** The SFU's own defaults. Nothing outside this machine connects to either, so a
+    taken one is replaced rather than reported. */
+const DEFAULT_SFU_CONTROL_PORT = 9092;
+const DEFAULT_SFU_METRICS_PORT = 9091;
+
+export interface SfuLocalPorts {
+  controlPort: number;
+  metricsPort: number;
+}
+
+/** Only a taken port moves, so neither walks onto the other's. Both are still unbound
+    here, so a probe alone would hand them the same number. */
+async function findSfuLocalPorts(
+  preferred: SfuLocalPorts,
+  avoid: number[],
+): Promise<SfuLocalPorts> {
+  const controlPort = await findFriendlyPortFrom(preferred.controlPort, [
+    ...avoid,
+    preferred.metricsPort,
+  ]);
+  const metricsPort = await findFriendlyPortFrom(preferred.metricsPort, [...avoid, controlPort]);
+  return { controlPort, metricsPort };
+}
+
+/**
+ * Run just before the SFU starts. An SFU that cannot bind its control port still
+ * points registration at it, so whoever holds it would get this app's servers.
+ */
+export async function claimSfuLocalPorts(
+  id: string,
+  /** The SFU already running, whose ports are held by it rather than taken. */
+  running?: SfuLocalPorts,
+): Promise<EmbeddedServerConfig | null> {
+  const current = loadConfig(id);
+  if (!current) return null;
+
+  const next =
+    running ??
+    (await findSfuLocalPorts(
+      { controlPort: current.controlPort, metricsPort: current.metricsPort },
+      [current.serverPort, current.sfuPort],
+    ));
+
+  const raw = readFileSync(current.configPath, "utf-8");
+  let updated = setEnvValue(raw, "SFU_CONTROL_PORT", String(next.controlPort));
+  updated = setEnvValue(updated, "SFU_METRICS_PORT", String(next.metricsPort));
+  if (updated === raw) return current;
+
+  writeFileSync(current.configPath, updated, "utf-8");
+  return loadConfig(id);
 }
 
 /** A free port to offer in the create form. */
@@ -564,6 +623,14 @@ function existingSfuPort(): number | null {
   return null;
 }
 
+function existingSfuLocalPorts(): SfuLocalPorts | null {
+  for (const id of listServerIds()) {
+    const config = loadConfig(id);
+    if (config) return { controlPort: config.controlPort, metricsPort: config.metricsPort };
+  }
+  return null;
+}
+
 export async function generateConfig(
   serverName: string,
   lanDiscoverable: boolean,
@@ -586,6 +653,11 @@ export async function generateConfig(
   // One SFU per app, so a second server shares the first one's media port the
   // same way it shares its signalling port.
   const mediaPort = existingMediaPort() ?? (await findFreeMediaPortFrom(DEFAULT_MEDIA_PORT));
+  // Not probed here: claimSfuLocalPorts moves a taken one when the server starts.
+  const localPorts = existingSfuLocalPorts() ?? {
+    controlPort: DEFAULT_SFU_CONTROL_PORT,
+    metricsPort: DEFAULT_SFU_METRICS_PORT,
+  };
   const jwtSecret = randomBytes(32).toString("hex");
   const advertisedAddresses = getAdvertisedAddresses();
   const lanIp = advertisedAddresses[0] || "127.0.0.1";
@@ -609,6 +681,10 @@ export async function generateConfig(
       // The UDP port voice travels on and the one opened by hand; SFU_PORT above
       // is signalling over TCP. Without it pion picks ephemeral ports at random.
       `ICE_UDP_MUX_PORT=${mediaPort}`,
+      // Local only, and moved when taken. On the SFU's defaults, a second app's SFU can't
+      // bind them and its servers end up registered with the first app's SFU instead.
+      `SFU_CONTROL_PORT=${localPorts.controlPort}`,
+      `SFU_METRICS_PORT=${localPorts.metricsPort}`,
       `EMBEDDED_SERVER_CUSTOM_ADDRESSES=`,
       `SFU_PUBLIC_HOST=${advertisedAddresses.map((address) => `${address}:${sfuPort}`).join(",") || `${lanIp}:${sfuPort}`}`,
       `ICE_ADVERTISE_IP=${advertisedAddresses.join(",")}`,
@@ -634,6 +710,7 @@ export async function generateConfig(
     serverPort,
     sfuPort,
     mediaPort,
+    ...localPorts,
     dataDir,
     configPath,
     jwtSecret,
@@ -667,6 +744,8 @@ export function loadConfig(id: string): EmbeddedServerConfig | null {
     // Older configs have no line for this, so they report the SFU's own default —
     // which is what those servers are really using.
     mediaPort: parseInt(env.ICE_UDP_MUX_PORT || "", 10) || DEFAULT_MEDIA_PORT,
+    controlPort: parseInt(env.SFU_CONTROL_PORT || "", 10) || DEFAULT_SFU_CONTROL_PORT,
+    metricsPort: parseInt(env.SFU_METRICS_PORT || "", 10) || DEFAULT_SFU_METRICS_PORT,
     dataDir: env.DATA_DIR || join(getServerDir(id), "data"),
     configPath,
     jwtSecret: env.JWT_SECRET || "",
