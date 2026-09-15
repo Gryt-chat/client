@@ -34,11 +34,11 @@ const settle = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /* ── ports ─────────────────────────────────────────────────────────────── */
 
-function listen(port) {
+function listen(port, host = "0.0.0.0") {
   return new Promise((resolve) => {
     const srv = createServer();
     srv.once("error", () => resolve(null));
-    srv.listen(port, "0.0.0.0", () => resolve(srv));
+    srv.listen(port, host, () => resolve(srv));
   });
 }
 const close = (srv) => new Promise((resolve) => (srv ? srv.close(() => resolve()) : resolve()));
@@ -54,9 +54,9 @@ async function canListen(port, host = "0.0.0.0") {
 }
 
 /* Holds a port the way another app's SFU does. Something on this machine already holding it counts too. */
-async function hold(port) {
-  const srv = await listen(port);
-  assert.equal(await canListen(port), false, `could not make ${port} unavailable for this check`);
+async function hold(port, host = "0.0.0.0") {
+  const srv = await listen(port, host);
+  assert.equal(await canListen(port, host), false, `could not make ${host}:${port} unavailable for this check`);
   return () => close(srv);
 }
 
@@ -107,10 +107,10 @@ function fakeSfu(env) {
   proc.stdout = new EventEmitter();
   proc.stderr = new EventEmitter();
   proc.ready = Promise.all(
-    [["Control", env.SFU_CONTROL_PORT], ["Metrics", env.SFU_METRICS_PORT]].map(async ([name, value]) => {
+    [["Control", env.SFU_CONTROL_PORT, env.SFU_CONTROL_HOST], ["Metrics", env.SFU_METRICS_PORT]].map(async ([name, value, host]) => {
       const port = Number(value);
       if (!Number.isInteger(port) || port <= 0) return;
-      const srv = await listen(port);
+      const srv = await listen(port, host || "0.0.0.0");
       if (srv) proc.sockets.push(srv);
       else proc.stdout.emit("data", Buffer.from(`❌ ${name} listener stopped: listen tcp :${port}: bind: address already in use`));
     }),
@@ -160,7 +160,7 @@ function loadManager(app, { onSpawn = () => {} } = {}) {
     null, null, createServer, join, null, () => store, (key, value) => { store[key] = value; },
     timer, clearTimeout,
     // The Electron process can carry the SFU's own variables, and the config's ports have to win.
-    { ...process, env: { ...process.env, SFU_CONTROL_PORT: "9092", SFU_METRICS_PORT: "9091" }, resourcesPath: join(scratch, "none") },
+    { ...process, env: { ...process.env, SFU_CONTROL_PORT: "9092", SFU_CONTROL_HOST: "0.0.0.0", SFU_METRICS_PORT: "9091" }, resourcesPath: join(scratch, "none") },
     quiet,
     ...CONFIG_EXPORTS.map((name) => config[name]),
   );
@@ -174,6 +174,8 @@ function loadManager(app, { onSpawn = () => {} } = {}) {
 
 const window = { isDestroyed: () => false, webContents: { send: () => {} } };
 const started = (sfu) => ({ control: Number(sfu.env.SFU_CONTROL_PORT), metrics: Number(sfu.env.SFU_METRICS_PORT) });
+/* The server keeps SFU_WS_HOST's host when the SFU sends it to the control port, so that is where it registers. */
+const registersOn = (server) => new URL(server.env.SFU_WS_HOST).hostname;
 const recorded = (path) => {
   const text = fs.readFileSync(path, "utf8");
   const line = (key) => Number(text.match(new RegExp(`^${key}=(.*)$`, "m"))?.[1]);
@@ -188,12 +190,14 @@ async function serverStarted(spawned, count) {
 
 /* ── the reported case: another app's SFU holds 9091 and 9092 ─────────── */
 
-{
-  const release = [await hold(9091), await hold(9092)];
+// An SFU from before SFU_CONTROL_HOST holds control on every interface. A newer one holds it on
+// loopback only, which a wildcard probe alone can miss.
+for (const controlHeldOn of ["0.0.0.0", "127.0.0.1"]) {
+  const release = [await hold(9091), await hold(9092, controlHeldOn)];
   const { manager, spawned, stopAll } = loadManager(newApp());
 
   const state = await manager.createAndStartServer(window, "Second app", false);
-  assert.ok(state, "createAndStartServer failed with 9091 and 9092 taken");
+  assert.ok(state, `createAndStartServer failed with 9091 and ${controlHeldOn}:9092 taken`);
   assert.equal(spawned.sfu.length, 1, "no SFU was started");
 
   const sfu = spawned.sfu[0];
@@ -202,7 +206,7 @@ async function serverStarted(spawned, count) {
   const config = manager.getEmbeddedServerState(state.id).config;
   for (const [name, port] of Object.entries(ports)) {
     assert.ok(Number.isInteger(port) && port > 0, `the SFU was started without SFU_${name.toUpperCase()}_PORT, so it takes the default`);
-    assert.ok(![9091, 9092].includes(port), `the SFU was told to take ${name} on ${port}, which another app holds`);
+    assert.ok(![9091, 9092].includes(port), `the SFU was told to take ${name} on ${port}, which another app holds on ${controlHeldOn}`);
   }
   assert.notEqual(ports.control, ports.metrics, "control and metrics were given the same port");
   assert.ok(![config.serverPort, config.sfuPort].includes(ports.control), "control landed on a port this server uses");
@@ -210,11 +214,13 @@ async function serverStarted(spawned, count) {
   assert.deepEqual(recorded(config.configPath), ports, "config.env does not record the ports the SFU was given");
   assert.equal(sfu.env.SFU_PORT, String(config.sfuPort));
   assert.equal(sfu.env.PORT, String(config.sfuPort));
+  assert.equal(sfu.env.SFU_CONTROL_HOST, "127.0.0.1", "the SFU takes registration from other machines, or kept the Electron process's own value");
 
   // The server dials this SFU's signalling port, and that SFU's refusal names the control port it was given.
   const server = await serverStarted(spawned, 1);
   assert.equal(server.env.SFU_WS_HOST, `ws://127.0.0.1:${sfu.env.SFU_PORT}`, "the server is pointed somewhere other than the SFU this app started");
   assert.equal(server.env.SFU_CONTROL_PORT, String(ports.control));
+  assert.equal(registersOn(server), sfu.env.SFU_CONTROL_HOST, "the server registers on an address the SFU's control port does not listen on");
 
   await stopAll();
   for (const r of release) await r();
@@ -242,6 +248,7 @@ async function serverStarted(spawned, count) {
     assert.equal(spawned.sfu.length, 1, `restart ${restart} started no SFU`);
     assert.deepEqual(started(spawned.sfu[0]), { control: controlPort, metrics: metricsPort }, `restart ${restart} moved ports that were free`);
     assert.equal(fs.readFileSync(configPath, "utf8"), raw, `restart ${restart} rewrote config.env with nothing taken`);
+    assert.equal(spawned.sfu[0].env.SFU_CONTROL_HOST, "127.0.0.1", `restart ${restart} started an SFU that takes registration from other machines`);
     await serverStarted(spawned, 1);
     await stopAll();
   }
@@ -265,6 +272,8 @@ async function serverStarted(spawned, count) {
     const joined = manager.getEmbeddedServerState(second.id).config;
     assert.deepEqual({ control: joined.controlPort, metrics: joined.metricsPort }, moved, "the second server recorded ports the running SFU is not on");
     assert.deepEqual(recorded(joined.configPath), moved);
+    const joinedServer = await serverStarted(spawned, 2);
+    assert.equal(registersOn(joinedServer), spawned.sfu[0].env.SFU_CONTROL_HOST, "a server joining the running SFU registers somewhere its control port does not listen");
     await stopAll();
   }
   await release();
@@ -331,4 +340,4 @@ if (defaultsFree) {
   await sfu.released;
 }
 
-console.log("embedded SFU ports: each app's SFU gets free control and metrics ports, kept while free, and its servers go to it");
+console.log("embedded SFU ports: each app's SFU gets free control and metrics ports, kept while free, control on loopback, and its servers go to it");
