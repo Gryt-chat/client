@@ -15,6 +15,8 @@ export type UpdateCheck = {
 
 export type DownloadOptions = {
   bypassRollout?: boolean;
+  /** Download or install was pressed, so it downloads with Automatic updates off too. */
+  asked?: boolean;
   /** Raise the toast once the download starts. */
   announce?: boolean;
   /** Install was pressed, so this installs as soon as it lands. */
@@ -28,6 +30,10 @@ export type PendingUpdateDeps = {
   findNewer(floor: string): Promise<UpdateRelease | null>;
   /** Hands the downloaded update to the installer. */
   install(): void;
+  /** The Automatic updates switch, read at every offer from where Settings saves it (GRYT-1206). */
+  automatic(): boolean;
+  /** Says a release is out without downloading it, for when Automatic updates are off. */
+  report(release: UpdateRelease): void;
   /** Squirrel.Mac stages a download after electron-updater reports it, and installs what it staged. */
   waitForStaging: boolean;
   /** How long a press waits for the lookup before installing what is downloaded. */
@@ -43,6 +49,9 @@ export type CheckOutcome =
   | { kind: "none"; announced: boolean };
 
 export type InstallRequest = "looking" | "downloading" | "installing" | "nothing";
+
+/** What became of a release a check found: fetched, only reported, or left alone for what is held. */
+export type OfferOutcome = "downloading" | "reported" | "ignored";
 
 type Downloading = { version: string; announce: boolean; installWhenReady: boolean };
 
@@ -63,6 +72,7 @@ export function createPendingUpdate(deps: PendingUpdateDeps) {
   let stagesRunning = 0;
   let installWhenStaged = false;
   let installing = false;
+  let lastReported: UpdateRelease | null = null;
 
   const heldVersion = () => wanted?.release.version ?? downloading?.version ?? downloaded;
 
@@ -139,12 +149,20 @@ export function createPendingUpdate(deps: PendingUpdateDeps) {
     driving = false;
   }
 
-  /** Fetch `release` in place of whatever is held. Anything not newer than that is left alone. */
-  function offer(release: UpdateRelease, options: DownloadOptions = {}): boolean {
-    if (installing) return false;
+  /** Every release a check finds comes here. It replaces what is held only if newer, and downloads
+      only with Automatic updates on or when somebody asked (GRYT-1218). */
+  function offer(release: UpdateRelease, options: DownloadOptions = {}): OfferOutcome {
+    if (installing) return "ignored";
 
     const floor = heldVersion();
-    if (floor && !semver.gt(release.version, floor)) return false;
+    if (floor && !semver.gt(release.version, floor)) return "ignored";
+
+    if (!options.asked && !deps.automatic()) {
+      deps.log(`Update: ${release.version} is out, not downloading it with automatic updates off`);
+      lastReported = release;
+      deps.report(release);
+      return "reported";
+    }
 
     const installWhenReady = Boolean(
       options.installWhenReady ||
@@ -160,7 +178,7 @@ export function createPendingUpdate(deps: PendingUpdateDeps) {
 
     wanted = { release, options: { ...options, installWhenReady } };
     if (!driving) void drive();
-    return true;
+    return "downloading";
   }
 
   function installNow(): void {
@@ -207,9 +225,8 @@ export function createPendingUpdate(deps: PendingUpdateDeps) {
       looking = false;
 
       const newer = release && semver.gt(release.version, floor) ? release : null;
-      if (newer && offer(newer, { bypassRollout: true, announce: true, installWhenReady: true })) {
-        return;
-      }
+      const pressed = { bypassRollout: true, asked: true, announce: true, installWhenReady: true };
+      if (newer && offer(newer, pressed) === "downloading") return;
       installNow();
     };
 
@@ -227,7 +244,7 @@ export function createPendingUpdate(deps: PendingUpdateDeps) {
     return "looking";
   }
 
-  /** A check nobody offered, like the pressed one in Settings: its download can be replaced too. */
+  /** A check nobody offered, like the variant switch's: its download can be replaced too. */
   function track(result: UpdateCheck): UpdateCheck {
     if (!slot) occupy(Promise.resolve(result), downloading);
     return result;
@@ -302,6 +319,9 @@ export function createPendingUpdate(deps: PendingUpdateDeps) {
     held,
     ready,
     installPending,
+    /** The last release reported and not fetched. A press takes it when the probe can't see it:
+        an older stable after leaving beta, or this version in the other variant. */
+    reported: () => lastReported,
     offer,
     requestInstall,
     track,

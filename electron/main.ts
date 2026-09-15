@@ -531,19 +531,21 @@ autoUpdater.logger = {
   debug: (m: unknown) => startupLog(`Update debug: ${String(m)}`),
 };
 
-/* On, so taking an update is a restart rather than a download. A user-initiated
-   check turns it off for its own length. */
+/* Always on. electron-updater reads it only after the `update-available` handlers have run, so it
+   can't be flipped per check (GRYT-1218). A check that shouldn't download stops before the updater. */
 autoUpdater.autoDownload = true;
 
 // On for Windows too now that installer.nsh moves the old install aside: while
 // it was off the PowerShell helper was the only route, and it did not parse.
 autoUpdater.autoInstallOnAppQuit = !updatesAreManagedByWindows;
 
-/** Off, the check still runs and still says a release exists; nothing is
-    downloaded until somebody presses the button. */
-let autoUpdateEnabled = readBoolConfig("autoUpdate", true);
+/** Read from the file Settings writes, at every check. Off, a check still says a
+    release is out, and nothing downloads until somebody presses the button. */
+function automaticUpdatesOn(): boolean {
+  return readBoolConfig("autoUpdate", true);
+}
 
-/* Kept so it can be put back: a check somebody asked for swaps in an always-true
+/* Kept so it can be put back: a download somebody asked for swaps in an always-true
    one, or a machine id outside the slice hides the release. */
 const defaultRolloutCheck = autoUpdater.isUserWithinRollout;
 
@@ -789,7 +791,7 @@ const FEED_SUPPORTS_MULTI_RANGE = false;
 /** Only `pinned` may go on to a check. Unpinned, the updater uses the github provider,
     which on the beta channel finds no release at all (GRYT-1050, GRYT-1170). */
 type FeedPinResult =
-  | { kind: "pinned" }
+  | { kind: "pinned"; release: ReleaseRef }
   | { kind: "nothing-to-install" }
   | ReleaseLookupFailed;
 
@@ -833,7 +835,10 @@ async function pinFeedToNewestCompleteRelease(): Promise<FeedPinResult> {
   });
 
   startupLog(`Update: feed pinned to ${choice.release.tag_name}`);
-  return { kind: "pinned" };
+  return {
+    kind: "pinned",
+    release: { tag: choice.release.tag_name, version: choice.version },
+  };
 }
 
 /** A throw from the pin is an asset probe failing partway, which is GitHub not answering too. */
@@ -966,6 +971,8 @@ const updates = createPendingUpdate({
     sendToMain("installing", { version: updates.ready() ?? undefined });
     setTimeout(installDownloadedUpdate, INSTALL_PAINT_DELAY_MS);
   },
+  automatic: automaticUpdatesOn,
+  report: (release) => reportRelease(release.version),
   waitForStaging:
     process.platform === "darwin" && autoUpdater.autoInstallOnAppQuit,
   lookupTimeoutMs: INSTALL_LOOKUP_TIMEOUT_MS,
@@ -1016,21 +1023,41 @@ async function newestReleaseWithoutApi(
   return null;
 }
 
-/** Puts the toast back for a version. `reannounce` says this was asked for, so
-    it redraws over one that had been dismissed. */
-function announceDownloaded(version?: string): void {
-  if (!version) return;
-
+/** A release that's out and not downloading. The toast offers the download and Settings says
+    it's there. `reannounce` says this was asked for, so it redraws a toast that was dismissed. */
+function reportRelease(version: string, reannounce = false): void {
   announcedVersion = version;
 
+  sendToMain("announced", {
+    version,
+    from: app.getVersion(),
+    autoDownload: false,
+    reannounce,
+  });
+
+  sendToMain("available", { version });
+}
+
+/** Puts the toast back for a version. A release that's only reported keeps its download
+    button, since announcing it as a download would draw a bar that never moves. */
+function announceRelease(version?: string): void {
+  if (!version) return;
+
   const held = updates.held();
+
+  if (held?.version !== version) {
+    reportRelease(version, true);
+    return;
+  }
+
+  announcedVersion = version;
 
   sendToMain("announced", {
     version,
     from: app.getVersion(),
     autoDownload: true,
     reannounce: true,
-    installWhenReady: held?.version === version && held.installWhenReady,
+    installWhenReady: held.installWhenReady,
   });
 
   /* Two messages rather than a field: the renderer already turns `downloaded`
@@ -1074,7 +1101,7 @@ function checkForUpdatesInBackground(
         /* Somebody asked, so say so. Silence is the same shape as a broken
            button. */
         if (held?.downloaded) {
-          announceDownloaded(held.version);
+          announceRelease(held.version);
         } else if (held) {
           sendToMain("downloading", { version: held.version });
         } else {
@@ -1086,7 +1113,7 @@ function checkForUpdatesInBackground(
       }
 
       if (release.version === announcedVersion) {
-        if (force) announceDownloaded(release.version);
+        if (force) announceRelease(release.version);
         return;
       }
 
@@ -1094,21 +1121,9 @@ function checkForUpdatesInBackground(
         `Update: ${release.version} available (background check, ${reason})`
       );
 
-      if (!autoUpdateEnabled) {
-        /* Told, not fetched: the toast's button calls `download-update`, which is
-           this release with the rollout bypassed. */
-        announcedVersion = release.version;
-
-        sendToMain("announced", {
-          version: release.version,
-          from: app.getVersion(),
-          autoDownload: false,
-        });
-
-        return;
-      }
-
-      startBackgroundDownload(release, { announce: true });
+      /* With automatic updates off it is reported, and the toast's button calls
+         `download-update`, which is this release with the rollout bypassed. */
+      offerRelease(release, { announce: true });
     })
     .catch((err) => {
       logUpdateFailure(
@@ -1118,9 +1133,9 @@ function checkForUpdatesInBackground(
     });
 }
 
-/** `announce` decides whether a toast is raised. A newer release replaces what is
-    held, cancelling a download still running, and an older one is ignored. */
-function startBackgroundDownload(
+/** Every check hands what it found here, and `updates.offer` decides whether it downloads.
+    A newer release replaces what is held, cancelling a download still running. */
+function offerRelease(
   release: ReleaseRef,
   options: DownloadOptions = {}
 ): void {
@@ -1129,7 +1144,7 @@ function startBackgroundDownload(
     return;
   }
 
-  if (!updates.offer(release, options)) {
+  if (updates.offer(release, options) === "ignored") {
     startupLog(
       `Update: kept ${updates.held()?.version ?? "the install"} over ${release.version}`
     );
@@ -1137,7 +1152,7 @@ function startBackgroundDownload(
 }
 
 /** Pinned to the verified tag, since the provider hands back releases that are
-    halfway up. Only `updates` calls this, once the download slot is free. */
+    halfway up. Only `updates` calls this, once it has decided to download. */
 function downloadRelease(
   release: ReleaseRef,
   { bypassRollout = false }: DownloadOptions
@@ -1148,7 +1163,6 @@ function downloadRelease(
     useMultipleRangeRequest: FEED_SUPPORTS_MULTI_RANGE,
   });
 
-  autoUpdater.autoDownload = true;
   autoUpdater.isUserWithinRollout = bypassRollout
     ? () => true
     : defaultRolloutCheck;
@@ -1191,10 +1205,9 @@ function startPeriodicUpdateChecks(launchAlreadyChecked: boolean): void {
   });
 }
 
-/** `check-for-updates` turns downloading off and bypasses the rollout slice, and
-    every path out of a check comes through the three events below. */
-function resumeAutoDownload(): void {
-  autoUpdater.autoDownload = true;
+/** A download somebody asked for bypasses the rollout slice, and every path out of its
+    check comes through the three events below. The slice has been read by then. */
+function restoreRolloutCheck(): void {
   autoUpdater.isUserWithinRollout = defaultRolloutCheck;
 }
 
@@ -1225,7 +1238,7 @@ function initBackgroundUpdater(launchAlreadyChecked: boolean) {
       });
     }
 
-    resumeAutoDownload();
+    restoreRolloutCheck();
   });
 
   autoUpdater.on("update-not-available", (info) => {
@@ -1233,7 +1246,7 @@ function initBackgroundUpdater(launchAlreadyChecked: boolean) {
        quiet is the whole point of staging. */
     const outcome = updates.notAvailable();
 
-    resumeAutoDownload();
+    restoreRolloutCheck();
 
     if (outcome.kind === "installing") return;
 
@@ -1291,7 +1304,7 @@ function initBackgroundUpdater(launchAlreadyChecked: boolean) {
        has announced, so one dropped connection would end it until a restart. */
     if (outcome.kind === "none" && outcome.announced) announcedVersion = null;
 
-    resumeAutoDownload();
+    restoreRolloutCheck();
 
     logUpdateFailure("Update failed", err);
 
@@ -1338,7 +1351,7 @@ function installNewestUpdate(): void {
       return;
 
     case "downloading":
-      announceDownloaded(updates.held()?.version);
+      announceRelease(updates.held()?.version);
       return;
 
     default:
@@ -1346,8 +1359,8 @@ function installNewestUpdate(): void {
   }
 }
 
-/** With automatic updates off the check announces and stops, and this is what
-    the button reaches. Re-probes, since a toast may be hours old. */
+/** With automatic updates off a check reports and stops, and this is what the
+    button reaches. Re-probes, since a toast may be hours old. */
 function downloadAnnouncedRelease({ installWhenReady = false } = {}): void {
   const held = updates.held();
 
@@ -1359,9 +1372,13 @@ function downloadAnnouncedRelease({ installWhenReady = false } = {}): void {
   }
 
   void newestReleaseWithoutApi(held?.version)
-    .then((release) => {
+    .then((newer) => {
+      /* The probe only finds newer releases. Leaving beta or switching variant reports one
+         that isn't, and the press was for that one. */
+      const release = newer ?? (held ? null : updates.reported());
+
       if (release) {
-        startBackgroundDownload(release, { bypassRollout: true, installWhenReady });
+        offerRelease(release, { bypassRollout: true, asked: true, installWhenReady });
         return;
       }
 
@@ -2472,8 +2489,8 @@ if (!gotSingleInstanceLock) {
         })
       );
 
-      /* No relaunch: channel and version are properties, and the check that
-         follows is what the person is waiting for. */
+      /* No relaunch, since channel and version are properties. The check downloads with
+         automatic updates off too, because flipping the switch is asking for the other build. */
       ipcMain.on(
         "set-slim-variant",
         (_event, slim: boolean) => {
@@ -2524,14 +2541,12 @@ if (!gotSingleInstanceLock) {
 
       ipcMain.handle(
         "get-auto-update",
-        () => autoUpdateEnabled
+        () => automaticUpdatesOn()
       );
 
       ipcMain.on(
         "set-auto-update",
         (_event, enabled: boolean) => {
-          autoUpdateEnabled = enabled;
-
           writeConfig({
             autoUpdate: enabled,
           });
@@ -3342,10 +3357,10 @@ if (!gotSingleInstanceLock) {
               /* A failed lookup waits for the interval check, which reads
                  releases.atom and spends none of the API's hourly 60. */
               if (pin.kind !== "pinned") return;
-              autoUpdater
-                .checkForUpdates()
-                .then(updates.track)
-                .catch(() => {});
+
+              /* Through `offer` like every other check, so it downloads only with
+                 automatic updates on (GRYT-1206). */
+              offerRelease(pin.release);
             });
         }
       } else {
@@ -3757,19 +3772,12 @@ if (!gotSingleInstanceLock) {
             return;
           }
 
-          /* Somebody asked, so report rather than fetch and let them past the
-             rollout slice. Both restored on the first event, failure included. */
-          autoUpdater.autoDownload = false;
-          autoUpdater.isUserWithinRollout = () => true;
-
           void pinFeedToNewestCompleteRelease()
             .catch(pinFailed)
             .then((pin) => {
               /* Answered here: an unpinned check reaches the github provider,
                  which on beta says "No published versions on GitHub". */
               if (pin.kind !== "pinned") {
-                resumeAutoDownload();
-
                 if (pin.kind === "nothing-to-install") {
                   sendToMain("not-available", {
                     version: app.getVersion(),
@@ -3785,40 +3793,9 @@ if (!gotSingleInstanceLock) {
                 return;
               }
 
-              autoUpdater
-                .checkForUpdates()
-                .then(updates.track)
-                .catch((err) => {
-                  logUpdateFailure(
-                    "Update check failed",
-                    err
-                  );
-
-                  if (
-                    isReleaseNotReadyYet(
-                      err
-                    )
-                  ) {
-                    sendToMain(
-                      "not-available",
-                      {
-                        version:
-                          app.getVersion(),
-                      }
-                    );
-                    return;
-                  }
-
-                  sendToMain(
-                    "error",
-                    {
-                      message:
-                        friendlyUpdateError(
-                          err
-                        ),
-                    }
-                  );
-                });
+              /* Past the rollout slice, since somebody asked. With automatic updates off
+                 it's only reported, and a download answers through its own events. */
+              offerRelease(pin.release, { bypassRollout: true });
             });
         }
       );
@@ -3836,12 +3813,12 @@ if (!gotSingleInstanceLock) {
           const held = updates.held();
 
           if (held) {
-            announceDownloaded(held.version);
+            announceRelease(held.version);
             return;
           }
 
           if (announcedVersion) {
-            announceDownloaded(announcedVersion);
+            announceRelease(announcedVersion);
           }
         }
       );

@@ -7,6 +7,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
+import { createPendingUpdate } from "../electron/pendingUpdate.ts";
 import {
   chooseFeedRelease,
   clockTime,
@@ -15,6 +16,7 @@ import {
   newerReleaseTags,
   rateLimitResetAt,
 } from "../electron/updateFeedPin.ts";
+import { CHECKS, PRESSES } from "./lib/updateEntryPoints.mjs";
 
 let failures = 0;
 async function check(name, run) {
@@ -327,33 +329,111 @@ await check("a throw while pinning is a failed lookup, on both paths", () => {
   assert.equal(main.match(/pinFeedToNewestCompleteRelease\(\)\s*\.catch\(pinFailed\)/g)?.length, 2);
 });
 
-await check("a pressed check answers every unpinned result and only checks a pinned feed", () => {
+await check("a pressed check answers every unpinned result and only offers a pinned release", () => {
   const start = main.indexOf('"check-for-updates",');
   assert.notEqual(start, -1, "the check-for-updates handler is gone");
   const handler = main.slice(start, main.indexOf('"download-update"', start));
 
-  const guard = handler.match(/if \(pin\.kind !== "pinned"\) \{([\s\S]*?)\n\s*return;\s*\}\s*autoUpdater\s*\.checkForUpdates\(\)/);
-  assert.ok(guard, "an unpinned result has to return before the check");
+  const guard = handler.match(/if \(pin\.kind !== "pinned"\) \{([\s\S]*?)\n\s*return;\s*\}\s*(?:\/\*[\s\S]*?\*\/\s*)?offerRelease\(pin\.release, \{ bypassRollout: true \}\);/);
+  assert.ok(guard, "an unpinned result has to return before the release is offered");
 
   const unpinned = guard[1];
-  assert.match(unpinned, /^\s*resumeAutoDownload\(\);/);
-  assert.match(unpinned, /if \(pin\.kind === "nothing-to-install"\) \{\s*sendToMain\("not-available"/);
+  assert.match(unpinned, /^\s*if \(pin\.kind === "nothing-to-install"\) \{\s*sendToMain\("not-available"/);
   assert.match(unpinned, /\} else \{\s*sendToMain\("error", \{\s*message: lookupFailedMessage\(pin, Date\.now\(\), \(at\) =>\s*clockTime\(at, app\.getLocale\(\)\)/);
-  assert.equal(handler.match(/\.checkForUpdates\(\)/g)?.length, 1);
+
+  /* Reporting stays out of electron-updater, whose handlers ran before it read autoDownload (GRYT-1218). */
+  assert.doesNotMatch(handler, /\.checkForUpdates\(\)|autoDownload|isUserWithinRollout|resumeAutoDownload/);
 });
 
 await check("an error from the pinned feed itself still shows", () => {
-  const start = main.indexOf('"check-for-updates",');
-  const handler = main.slice(start, main.indexOf('"download-update"', start));
-  const afterCheck = handler.slice(handler.indexOf(".checkForUpdates()"));
+  const start = main.indexOf('autoUpdater.on("error"');
+  assert.notEqual(start, -1, "the updater's error handler is gone");
+  const handler = main.slice(start, main.indexOf("\n  });\n", start));
 
-  assert.match(afterCheck, /\.catch\(\(err\) => \{[\s\S]*isReleaseNotReadyYet\([\s\S]*sendToMain\(\s*"error",\s*\{\s*message:\s*friendlyUpdateError\(/);
+  assert.match(handler, /if \(isReleaseNotReadyYet\(err\)\) \{\s*sendToMain\("not-available"/);
+  assert.match(handler, /sendToMain\("error", \{\s*message: friendlyUpdateError\(err\),/);
 });
 
-await check("the hidden launch only checks a pinned feed", () => {
+await check("the hidden launch only offers a pinned release", () => {
   const start = main.indexOf("initBackgroundUpdater(true);");
   const launch = main.slice(start, main.indexOf("} else {", start));
-  assert.match(launch, /if \(pin\.kind !== "pinned"\) return;\s*autoUpdater\s*\.checkForUpdates\(\)/);
+  assert.match(launch, /if \(pin\.kind !== "pinned"\) return;\s*(?:\/\*[\s\S]*?\*\/\s*)?offerRelease\(pin\.release\);/);
+  assert.doesNotMatch(launch, /\.checkForUpdates\(\)/, "Gryt started at login downloaded with automatic updates off (GRYT-1206)");
+});
+
+await check("the pin hands back the release it pointed the feed at", () => {
+  const pin = bodyOf("async function pinFeedToNewestCompleteRelease(");
+  assert.match(pin, /url: releaseDownloadBase\(choice\.release\.tag_name\),/);
+  assert.match(pin, /return \{\s*kind: "pinned",\s*release: \{ tag: choice\.release\.tag_name, version: choice\.version \},\s*\};/);
+});
+
+/* ── The two pinned checks, with Automatic updates on and off (GRYT-1206, GRYT-1218) ── */
+
+/* The pin's choice goes through the same `updates.offer` main.ts builds, with each entry
+   point's options from scripts/lib/updateEntryPoints.mjs. */
+const pinned = ["Gryt started at login", "Check for Updates in Settings"];
+
+async function pinAndOffer({ automatic, entry, channel, served = listed, yml = variants.full }) {
+  const downloads = [];
+  const reports = [];
+  const updates = createPendingUpdate({
+    startDownload: async (release, options) => {
+      downloads.push({ release, options });
+      return null;
+    },
+    findNewer: async () => null,
+    install() {},
+    automatic: () => automatic,
+    report: (release) => reports.push(release),
+    waitForStaging: false,
+    lookupTimeoutMs: 5000,
+    log() {},
+  });
+
+  const choice = await find(async () => Response.json(served), channel, yml);
+  assert.equal(choice.kind, "pinned");
+
+  const outcome = updates.offer({ tag: choice.release.tag_name, version: choice.version }, CHECKS[entry].options);
+  await new Promise((resolve) => setImmediate(resolve));
+  return { outcome, downloads, reports, updates };
+}
+
+for (const entry of pinned) {
+  for (const [channelName, channel] of Object.entries(channels)) {
+    await check(`${entry} on ${channelName}, automatic updates on: the pinned release downloads`, async () => {
+      const { outcome, downloads, reports } = await pinAndOffer({ automatic: true, entry, channel });
+      assert.equal(outcome, "downloading");
+      assert.equal(downloads.length, 1);
+      assert.equal(downloads[0].release.tag, channelName === "beta" ? "v1.11.0-beta.1" : "v1.10.2");
+      assert.deepEqual(reports, []);
+    });
+
+    await check(`${entry} on ${channelName}, automatic updates off: the pinned release is only reported`, async () => {
+      const { outcome, downloads, reports } = await pinAndOffer({ automatic: false, entry, channel });
+      assert.equal(outcome, "reported");
+      assert.deepEqual(downloads, [], "nothing may download until somebody presses");
+      assert.equal(reports.length, 1);
+      assert.equal(reports[0].tag, channelName === "beta" ? "v1.11.0-beta.1" : "v1.10.2");
+    });
+  }
+}
+
+await check("leaving beta with automatic updates off reports the older stable, and a press downloads it", async () => {
+  const { outcome, downloads, updates } = await pinAndOffer({
+    automatic: false,
+    entry: "Check for Updates in Settings",
+    channel: { current: "1.11.0-beta.1", wantPrerelease: false },
+  });
+  assert.equal(outcome, "reported");
+  assert.deepEqual(downloads, []);
+
+  /* The probe's floor is the running beta, so the press takes what the check reported. */
+  const reported = updates.reported();
+  assert.equal(reported.tag, "v1.10.2");
+  assert.equal(updates.offer(reported, PRESSES["download now, or install with nothing downloaded"].options), "downloading");
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(downloads.length, 1);
+  assert.equal(downloads[0].release.tag, "v1.10.2");
 });
 
 await check("the settings panel reads not-available as up to date and shows an error's message", () => {
