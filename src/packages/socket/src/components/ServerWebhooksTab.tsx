@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { getServerAccessToken, getServerHttpBase, getUploadsFileUrl } from "@/common";
 
 import { PiCopyFill, PiPlus, PiTrashFill } from "../../../../lib/icons";
+import { uploadWebhookAvatar } from "../utils/uploadWebhookAvatar";
 
 type WebhookItem = {
   webhook_id: string;
@@ -167,7 +168,7 @@ function WebhookCard({
   const webhookUrl = webhook.url ?? `${getServerHttpBase(host)}/api/webhooks/${webhook.webhook_id}/${webhook.token}`;
 
   const save = useCallback(
-    async (updates: Record<string, unknown>) => {
+    async (updates: Record<string, unknown>): Promise<boolean> => {
       try {
         const res = await fetch(`${apiBase}/${webhook.webhook_id}`, {
           method: "PATCH",
@@ -177,8 +178,10 @@ function WebhookCard({
         if (!res.ok) throw new Error("Failed to update webhook");
         const updated = await res.json() as WebhookItem;
         onUpdate({ ...webhook, ...updated });
+        return true;
       } catch {
         toast.error("Failed to save webhook");
+        return false;
       }
     },
     [apiBase, webhook, authHeaders, onUpdate],
@@ -225,19 +228,10 @@ function WebhookCard({
       const file = e.target.files?.[0];
       if (!file) return;
       try {
-        const formData = new FormData();
-        formData.append("file", file);
-        const uploadRes = await fetch(`${getServerHttpBase(host)}/api/uploads`, {
-          method: "POST",
-          headers: authHeaders(),
-          body: formData,
-        });
-        if (!uploadRes.ok) throw new Error("Upload failed");
-        const uploadData = await uploadRes.json() as { file_id: string };
-        await save({ avatar_file_id: uploadData.file_id });
-        toast.success("Avatar updated");
-      } catch {
-        toast.error("Failed to upload avatar");
+        const fileId = await uploadWebhookAvatar(getServerHttpBase(host), authHeaders(), file, file.name);
+        if (await save({ avatar_file_id: fileId })) toast.success("Avatar updated");
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Failed to upload avatar");
       }
       if (fileInputRef.current) fileInputRef.current.value = "";
     },
