@@ -25,6 +25,9 @@ export interface UpdateStatus {
     // A check somebody pressed found nothing. Only ever sent for a forced
     // check, because it is an answer to a question rather than news.
     | "up-to-date"
+    // The main process is handing this version to the installer, and the
+    // window goes with it.
+    | "installing"
     | "error";
   version?: string;
   /** On "announced", the version being run right now. */
@@ -39,6 +42,8 @@ export interface UpdateStatus {
    * toast stays dismissed for news; a later ask redraws it.
    */
   reannounce?: boolean;
+  /** On "announced", that install was pressed and this newer release installs once it lands. */
+  installWhenReady?: boolean;
   percent?: number;
   message?: string;
 }
@@ -141,7 +146,7 @@ export interface ElectronAPI {
   onHotkeyUp(callback: (action: HotkeyAction) => void): () => void;
   setHotkeys(bindings: HotkeyBindings): Promise<boolean>;
   checkForUpdates(): void;
-  /** Quit and come back, letting the splash download and install. */
+  /** Install the newest release. Looks once more first, and fetches a newer one before restarting. */
   restartForUpdate(): void;
   /** Fetch the announced release now. No-op while one is already downloading. */
   downloadUpdate(): void;

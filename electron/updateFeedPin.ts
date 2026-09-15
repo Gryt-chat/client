@@ -72,6 +72,21 @@ export async function chooseFeedRelease<R extends PinnableRelease>(
   return { kind: "none-installable", skipped };
 }
 
+/** Tags from releases.atom newer than `floor`, newest first. The floor is whatever is held,
+    so a release already downloaded is never fetched a second time (GRYT-1213). */
+export function newerReleaseTags(
+  tags: string[],
+  opts: { floor: string; wantPrerelease: boolean }
+): { tag: string; version: string }[] {
+  return [...new Set(tags)]
+    .map((tag) => ({ tag, version: tag.replace(/^v/, "") }))
+    .filter(({ version }) => semver.valid(version) && semver.gt(version, opts.floor))
+    /* The beta channel ships 1.2.3-beta.N, so the version says whether it is a
+       prerelease and the feed does not have to. */
+    .filter(({ version }) => opts.wantPrerelease || semver.prerelease(version) === null)
+    .sort((a, b) => semver.rcompare(a.version, b.version));
+}
+
 /** `retry-after` comes with GitHub's secondary limit, `x-ratelimit-reset` once the
     hour's 60 requests are spent. When both are there, the later one holds. */
 export function rateLimitResetAt(headers: Headers, now: number): number | undefined {

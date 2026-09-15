@@ -1,6 +1,7 @@
 import { execFile } from "child_process";
 import {
   app,
+  autoUpdater as nativeAutoUpdater,
   BrowserWindow,
   desktopCapturer,
   dialog,
@@ -92,6 +93,11 @@ import {
   startLanDiscovery,
 } from "./lanDiscovery";
 import {
+  createPendingUpdate,
+  type DownloadOptions,
+  type UpdateCheck,
+} from "./pendingUpdate";
+import {
   createProcessWatcher,
   listRunningPrograms,
   type ProcessWatcher,
@@ -106,6 +112,7 @@ import {
   clockTime,
   findFeedRelease,
   lookupFailedMessage,
+  newerReleaseTags,
   type ReleaseLookupFailed,
 } from "./updateFeedPin";
 import {
@@ -926,8 +933,6 @@ function friendlyUpdateError(err: Error): string {
   return msg;
 }
 
-let pendingUpdateVersion: string | undefined;
-
 /** Affordable at any interval, since this spends no API quota. An hour was long
     enough to miss a release while looking straight at the app. */
 const UPDATE_CHECK_INTERVAL_MS = 10 * 60 * 1000;
@@ -940,23 +945,38 @@ const UPDATE_CHECK_FLOOR_MS = 5 * 60 * 1000;
    Gryt on Windows take minutes. */
 const LAUNCH_UPDATE_CHECK_DELAY_MS = 10 * 1000;
 
+/** How long a pressed install waits to hear whether a newer release is out. Past it,
+    what is downloaded installs, as it did before anything looked. */
+const INSTALL_LOOKUP_TIMEOUT_MS = 5 * 1000;
+
+/** Time for the toast to say it is installing: the installer takes the window with it. */
+const INSTALL_PAINT_DELAY_MS = 300;
+
 let updateCheckTimer: NodeJS.Timeout | null = null;
 let lastUpdateCheckAt = 0;
-let updateIsDownloaded = false;
 
 /** The version already announced, so one release is toasted once per run. */
 let announcedVersion: string | null = null;
 
-/** Set only by the two download starters, so the update events can tell one
-    nobody asked for from one somebody pressed a button for. */
-let pendingRelease: ReleaseRef | null = null;
-
-/** Whether `pendingRelease` should raise a toast when it starts downloading. */
-let announceDownload = false;
+/** What is downloading or downloaded, and which release an install lands on. */
+const updates = createPendingUpdate({
+  startDownload: downloadRelease,
+  findNewer: (floor) => newestReleaseWithoutApi(floor),
+  install: () => {
+    sendToMain("installing", { version: updates.ready() ?? undefined });
+    setTimeout(installDownloadedUpdate, INSTALL_PAINT_DELAY_MS);
+  },
+  waitForStaging:
+    process.platform === "darwin" && autoUpdater.autoInstallOnAppQuit,
+  lookupTimeoutMs: INSTALL_LOOKUP_TIMEOUT_MS,
+  log: startupLog,
+});
 
 /** `releases.atom`, not the API, which is 60 an hour per address. The feed lists
     drafts, so the asset check below is not optional. */
-async function newestReleaseWithoutApi(): Promise<ReleaseRef | null> {
+async function newestReleaseWithoutApi(
+  floor = app.getVersion()
+): Promise<ReleaseRef | null> {
   const res = await fetchWithTimeout(
     `https://github.com/${UPDATE_OWNER}/${UPDATE_REPO}/releases.atom`
   );
@@ -976,22 +996,10 @@ async function newestReleaseWithoutApi(): Promise<ReleaseRef | null> {
     ...feed.matchAll(/\/releases\/tag\/([^"'<>\s]+)/g),
   ].map((match) => match[1]);
 
-  const current = app.getVersion();
-  const wantPrerelease = isOnBetaChannel();
-
-  const candidates = tags
-    .map((tag) => ({ tag, version: tag.replace(/^v/, "") }))
-    .filter(
-      ({ version }) =>
-        semver.valid(version) && semver.gt(version, current)
-    )
-    /* The beta channel ships 1.2.3-beta.N, so the version says whether it is a
-       prerelease and the feed does not have to. */
-    .filter(
-      ({ version }) =>
-        wantPrerelease || semver.prerelease(version) === null
-    )
-    .sort((a, b) => semver.rcompare(a.version, b.version));
+  const candidates = newerReleaseTags(tags, {
+    floor,
+    wantPrerelease: isOnBetaChannel(),
+  });
 
   for (const { tag, version } of candidates) {
     /* fetchWithTimeout returns null on any non-2xx, so a draft's 404 lands
@@ -1015,17 +1023,22 @@ function announceDownloaded(version?: string): void {
 
   announcedVersion = version;
 
+  const held = updates.held();
+
   sendToMain("announced", {
     version,
     from: app.getVersion(),
     autoDownload: true,
     reannounce: true,
+    installWhenReady: held?.version === version && held.installWhenReady,
   });
 
   /* Two messages rather than a field: the renderer already turns `downloaded`
      into the restart prompt, and one route cannot drift. */
-  if (updateIsDownloaded) {
-    sendToMain("downloaded", { version });
+  if (updates.ready() === version) {
+    sendToMain(updates.installPending() ? "installing" : "downloaded", {
+      version,
+    });
   }
 }
 
@@ -1040,23 +1053,8 @@ function checkForUpdatesInBackground(
     return;
   }
 
-  /* Already downloaded, so the answer cannot change until a restart: re-checking
-     while Squirrel holds a staged update wedges the install. */
-  if (updateIsDownloaded) {
-    if (force) announceDownloaded(pendingUpdateVersion);
-    return;
-  }
-
-  /* electron-updater has one download slot, so a release published mid-flight
-     would start a second check over the top of this one. */
-  if (pendingRelease) {
-    if (force) {
-      sendToMain("downloading", {
-        version: pendingRelease.version,
-      });
-    }
-    return;
-  }
+  /* An install button was pressed, and that press is already looking again. */
+  if (updates.installPending()) return;
 
   /* A pressed button goes through regardless: sharing this floor with the launch
      check made Check for Updates do nothing for the first fifteen minutes. */
@@ -1064,12 +1062,22 @@ function checkForUpdatesInBackground(
 
   lastUpdateCheckAt = Date.now();
 
-  void newestReleaseWithoutApi()
+  /* The probe never touches Squirrel. Only a release newer than the one held reaches
+     the updater, and a check that ends in a download is one Squirrel.Mac copes with. */
+  const held = updates.held();
+
+  void newestReleaseWithoutApi(held?.version)
     .then((release) => {
       if (!release) {
+        if (!force) return;
+
         /* Somebody asked, so say so. Silence is the same shape as a broken
            button. */
-        if (force) {
+        if (held?.downloaded) {
+          announceDownloaded(held.version);
+        } else if (held) {
+          sendToMain("downloading", { version: held.version });
+        } else {
           sendToMain("up-to-date", {
             version: app.getVersion(),
           });
@@ -1110,22 +1118,30 @@ function checkForUpdatesInBackground(
     });
 }
 
-/** Pinned to the verified tag, since the provider hands back releases that are
-    halfway up. `announce` decides whether a toast is raised. */
+/** `announce` decides whether a toast is raised. A newer release replaces what is
+    held, cancelling a download still running, and an older one is ignored. */
 function startBackgroundDownload(
   release: ReleaseRef,
-  { bypassRollout = false, announce = false } = {}
+  options: DownloadOptions = {}
 ): void {
-  pendingRelease = release;
-  announceDownload = announce;
-
   if (updatesAreManagedByWindows) {
     startupLog("Update: not downloading — installed from the MSIX package");
-    pendingRelease = null;
-    announceDownload = false;
     return;
   }
 
+  if (!updates.offer(release, options)) {
+    startupLog(
+      `Update: kept ${updates.held()?.version ?? "the install"} over ${release.version}`
+    );
+  }
+}
+
+/** Pinned to the verified tag, since the provider hands back releases that are
+    halfway up. Only `updates` calls this, once the download slot is free. */
+function downloadRelease(
+  release: ReleaseRef,
+  { bypassRollout = false }: DownloadOptions
+): Promise<UpdateCheck> {
   autoUpdater.setFeedURL({
     provider: "generic",
     url: releaseDownloadBase(release.tag),
@@ -1137,17 +1153,16 @@ function startBackgroundDownload(
     ? () => true
     : defaultRolloutCheck;
 
-  autoUpdater
-    .checkForUpdates()
-    .catch((err) => {
-      pendingRelease = null;
-      announceDownload = false;
+  const check = autoUpdater.checkForUpdates();
 
-      logUpdateFailure(
-        "Background update download failed",
-        err instanceof Error ? err : undefined
-      );
-    });
+  check.catch((err) => {
+    logUpdateFailure(
+      "Background update download failed",
+      err instanceof Error ? err : undefined
+    );
+  });
+
+  return check;
 }
 
 /** Called once from `initBackgroundUpdater`, the one place both non-dev launch
@@ -1190,7 +1205,7 @@ function initBackgroundUpdater(launchAlreadyChecked: boolean) {
   );
 
   autoUpdater.on("update-available", (info) => {
-    pendingUpdateVersion = info.version;
+    const download = updates.available(info.version);
 
     sendToMain("available", {
       version: info.version,
@@ -1198,13 +1213,15 @@ function initBackgroundUpdater(launchAlreadyChecked: boolean) {
 
     /* The first honest moment: the slice let this machine through, the assets
        are there, and a fetch is about to start. */
-    if (announceDownload && info.version !== announcedVersion) {
+    if (download.announce && (info.version !== announcedVersion || download.installWhenReady)) {
       announcedVersion = info.version;
 
       sendToMain("announced", {
         version: info.version,
         from: app.getVersion(),
         autoDownload: true,
+        reannounce: download.installWhenReady,
+        installWhenReady: download.installWhenReady,
       });
     }
 
@@ -1214,19 +1231,25 @@ function initBackgroundUpdater(launchAlreadyChecked: boolean) {
   autoUpdater.on("update-not-available", (info) => {
     /* Held back by the rollout slice, since the probe found the release. Being
        quiet is the whole point of staging. */
-    pendingRelease = null;
-    announceDownload = false;
+    const outcome = updates.notAvailable();
+
+    resumeAutoDownload();
+
+    if (outcome.kind === "installing") return;
+
+    if (outcome.kind === "kept") {
+      sendToMain("downloaded", { version: outcome.version });
+      return;
+    }
 
     sendToMain("not-available", {
       version: info.version,
     });
-
-    resumeAutoDownload();
   });
 
   autoUpdater.on("download-progress", (progress) => {
     sendToMain("downloading", {
-      version: pendingUpdateVersion,
+      version: updates.held()?.version,
       percent: Math.round(progress.percent),
       transferred: progress.transferred,
       total: progress.total,
@@ -1234,10 +1257,6 @@ function initBackgroundUpdater(launchAlreadyChecked: boolean) {
   });
 
   autoUpdater.on("update-downloaded", (info) => {
-    updateIsDownloaded = true;
-    pendingRelease = null;
-    announceDownload = false;
-
     /* A finished download that has not been announced gets announced: raising it
        only for automatic ones lost the toast the moment somebody navigated away. */
     if (info.version !== announcedVersion) {
@@ -1250,22 +1269,39 @@ function initBackgroundUpdater(launchAlreadyChecked: boolean) {
       });
     }
 
-    sendToMain("downloaded", {
+    /* Install was pressed before this landed, so it goes straight in. */
+    const next = updates.downloaded(info.version);
+
+    sendToMain(next === "installing" ? "installing" : "downloaded", {
       version: info.version,
     });
   });
 
+  /* Squirrel.Mac stages a download after electron-updater reports it and installs
+     what it staged, so an install waits for this. */
+  if (process.platform === "darwin") {
+    nativeAutoUpdater.on("update-downloaded", () => updates.staged(true));
+    nativeAutoUpdater.on("error", () => updates.staged(false));
+  }
+
   autoUpdater.on("error", (err) => {
+    const outcome = updates.failed();
+
     /* Let the next check try this release again: the probe skips a version it
        has announced, so one dropped connection would end it until a restart. */
-    if (pendingRelease && announceDownload) announcedVersion = null;
-
-    pendingRelease = null;
-    announceDownload = false;
+    if (outcome.kind === "none" && outcome.announced) announcedVersion = null;
 
     resumeAutoDownload();
 
     logUpdateFailure("Update failed", err);
+
+    /* The newer release never began downloading, so the older one is still there. */
+    if (outcome.kind === "installing") return;
+
+    if (outcome.kind === "kept") {
+      sendToMain("downloaded", { version: outcome.version });
+      return;
+    }
 
     if (isReleaseNotReadyYet(err)) {
       sendToMain("not-available", {
@@ -1289,33 +1325,54 @@ function installDownloadedUpdate(): void {
   autoUpdater.quitAndInstall(true, true);
 }
 
+/** Every install button: the tray, the toast and Settings. Looks once more first, so
+    one press lands on the newest release even when the download is stale (GRYT-1213). */
+function installNewestUpdate(): void {
+  switch (updates.requestInstall()) {
+    case "nothing":
+      downloadAnnouncedRelease({ installWhenReady: true });
+      return;
+
+    case "looking":
+      sendToMain("checking");
+      return;
+
+    case "downloading":
+      announceDownloaded(updates.held()?.version);
+      return;
+
+    default:
+      return;
+  }
+}
+
 /** With automatic updates off the check announces and stops, and this is what
     the button reaches. Re-probes, since a toast may be hours old. */
-function downloadAnnouncedRelease(): void {
-  if (updateIsDownloaded) {
-    sendToMain("downloaded", {
-      version: pendingUpdateVersion,
-    });
-    return;
-  }
+function downloadAnnouncedRelease({ installWhenReady = false } = {}): void {
+  const held = updates.held();
 
-  if (pendingRelease) {
+  if (held && !held.downloaded) {
     sendToMain("downloading", {
-      version: pendingRelease.version,
+      version: held.version,
     });
     return;
   }
 
-  void newestReleaseWithoutApi()
+  void newestReleaseWithoutApi(held?.version)
     .then((release) => {
-      if (!release) {
-        sendToMain("not-available", {
-          version: app.getVersion(),
-        });
+      if (release) {
+        startBackgroundDownload(release, { bypassRollout: true, installWhenReady });
         return;
       }
 
-      startBackgroundDownload(release, { bypassRollout: true });
+      if (held) {
+        sendToMain("downloaded", { version: held.version });
+        return;
+      }
+
+      sendToMain("not-available", {
+        version: app.getVersion(),
+      });
     })
     .catch((err) => {
       logUpdateFailure(
@@ -2141,11 +2198,11 @@ function buildTrayContextMenu(): Menu {
         ]
       : []),
 
-    ...(updateIsDownloaded
+    ...(updates.ready()
       ? [
           {
-            label: `Restart and install ${pendingUpdateVersion ?? "update"}`,
-            click: installDownloadedUpdate,
+            label: `Restart and install ${updates.ready()}`,
+            click: installNewestUpdate,
           } as const,
 
           {
@@ -2427,7 +2484,7 @@ if (!gotSingleInstanceLock) {
           autoUpdater.channel = updateChannel();
           applyVariantSwitchSpoof();
 
-          void autoUpdater.checkForUpdates().catch(() => {
+          void autoUpdater.checkForUpdates().then(updates.track).catch(() => {
             /* The renderer hears about failures through update-status; a
                rejection here is the same event twice. */
           });
@@ -3287,6 +3344,7 @@ if (!gotSingleInstanceLock) {
               if (pin.kind !== "pinned") return;
               autoUpdater
                 .checkForUpdates()
+                .then(updates.track)
                 .catch(() => {});
             });
         }
@@ -3692,10 +3750,10 @@ if (!gotSingleInstanceLock) {
       ipcMain.on(
         "check-for-updates",
         () => {
-          if (updateIsDownloaded) {
-            sendToMain("downloaded", {
-              version: pendingUpdateVersion,
-            });
+          /* Something is held already, so the question is whether a newer release
+             replaces it. The background check answers that without the API. */
+          if (updates.held()) {
+            checkForUpdatesInBackground("settings", true);
             return;
           }
 
@@ -3729,6 +3787,7 @@ if (!gotSingleInstanceLock) {
 
               autoUpdater
                 .checkForUpdates()
+                .then(updates.track)
                 .catch((err) => {
                   logUpdateFailure(
                     "Update check failed",
@@ -3774,13 +3833,10 @@ if (!gotSingleInstanceLock) {
       ipcMain.on(
         "replay-update-status",
         () => {
-          if (updateIsDownloaded) {
-            announceDownloaded(pendingUpdateVersion);
-            return;
-          }
+          const held = updates.held();
 
-          if (pendingRelease) {
-            announceDownloaded(pendingRelease.version);
+          if (held) {
+            announceDownloaded(held.version);
             return;
           }
 
@@ -3790,18 +3846,11 @@ if (!gotSingleInstanceLock) {
         }
       );
 
+      /* Asked for before there is anything to install, this starts the download and
+         installs once it lands, rather than restart into nothing. */
       ipcMain.on(
         "restart-for-update",
-        () => {
-          if (updateIsDownloaded) {
-            installDownloadedUpdate();
-            return;
-          }
-
-          /* Asked for before there is anything to install, so start the download
-             rather than restart into nothing. */
-          downloadAnnouncedRelease();
-        }
+        () => installNewestUpdate()
       );
 
       // uiohook is missing on some Linux setups and needs Accessibility on macOS,

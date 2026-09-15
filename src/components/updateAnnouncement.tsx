@@ -3,26 +3,9 @@ import { useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 
 import { getElectronAPI } from "../lib/electron";
+import { nextShown, type Shown, UPDATE_TOAST_ID } from "./updateToastState";
 
-/** What the toast is showing about the release it named. */
-type Phase = "waiting" | "downloading" | "ready" | "installing" | "failed";
-
-type Shown = {
-  id: string;
-  version: string;
-  phase: Phase;
-  percent?: number;
-  message?: string;
-  /* The cross was pressed. `toast.dismiss` does not report that back, so without
-     a record every later progress event would put the toast up again. */
-  dismissed?: boolean;
-};
-
-
-/**
- * Telling somebody a release exists while they are using the app. **`announced`
- * raises it; the rest of the statuses only move it along** (GRYT-543).
- */
+/** Telling somebody a release exists while they are using the app. */
 export function UpdateAnnouncement() {
   /* The toast currently on screen. A newer release during the same run has to
      replace it — with no duration, two would stack and sit there. */
@@ -129,7 +112,7 @@ export function UpdateAnnouncement() {
             </span>
           </span>
         ),
-        { duration: Infinity, id: next.id },
+        { duration: Infinity, id: UPDATE_TOAST_ID },
       );
     };
 
@@ -141,52 +124,8 @@ export function UpdateAnnouncement() {
         return;
       }
 
-      if (status.status === "announced") {
-        if (!status.version) return;
-
-        const id = `update-${status.version}`;
-
-        /* Same release as the toast already up. Redrawn for a retry and for
-           anything the user asked for; otherwise this is a duplicate. */
-        if (shown.current?.id === id && !status.reannounce) {
-          if (shown.current.dismissed) return;
-          if (shown.current.phase !== "failed") return;
-        } else if (shown.current && shown.current.id !== id) {
-          toast.dismiss(shown.current.id);
-        }
-
-        render({
-          id,
-          version: status.version,
-          /* Announced with `autoDownload` means the bytes are already moving —
-             the main process says so once electron-updater starts fetching. */
-          phase: status.autoDownload ? "downloading" : "waiting",
-        });
-
-        return;
-      }
-
-      /* Everything below only edits a toast that is already up. A check run
-         from Settings sends the same statuses and must not raise one. */
-      const current = shown.current;
-      if (!current || current.dismissed) return;
-
-      switch (status.status) {
-        case "downloading":
-          render({ ...current, percent: status.percent, phase: "downloading" });
-          break;
-
-        case "downloaded":
-          render({ ...current, percent: undefined, phase: "ready" });
-          break;
-
-        case "error":
-          render({ ...current, message: status.message, phase: "failed" });
-          break;
-
-        default:
-          break;
-      }
+      const next = nextShown(shown.current, status);
+      if (next) render(next);
     });
 
     /* The toast is state here and the announcement was sent once, so a reload
@@ -232,10 +171,12 @@ function Subtitle({
         </>
       );
 
-    case "downloading":
-      return shown.percent == null
-        ? <>Downloading…</>
-        : <>{`Downloading… ${shown.percent}%`}</>;
+    /* Install was pressed and a newer release turned up. It installs on its own
+       once it lands, and "first" is what says so. */
+    case "downloading": {
+      const doing = shown.newerAfterPress ? "Getting the newer version first…" : "Downloading…";
+      return shown.percent == null ? <>{doing}</> : <>{`${doing} ${shown.percent}%`}</>;
+    }
 
     case "ready":
       return (
