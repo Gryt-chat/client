@@ -14,6 +14,7 @@ const FaFilePdf = PiFileTextFill;
 import { type EmojiEntry, getCustomEmojis, recordRecentEmoji } from "../utils/emojiData";
 import { EmojiAutocomplete } from "./EmojiAutocomplete";
 import { EmojiPicker } from "./EmojiPicker";
+import { emojiQueryAt } from "./emojiQuery";
 import { MentionAutocomplete, type MentionMember } from "./MentionAutocomplete";
 
 /**
@@ -115,20 +116,7 @@ function getEmojiQueryAtCursor(): string | null {
   const node = range.startContainer;
   if (node.nodeType !== Node.TEXT_NODE) return null;
 
-  const text = node.textContent || "";
-  const offset = range.startOffset;
-  const before = text.slice(0, offset);
-
-  const match = before.match(/:([a-zA-Z0-9_+-]*)$/);
-  if (!match) return null;
-
-  const afterCursor = text.slice(offset);
-  if (afterCursor.length > 0 && /^[a-zA-Z0-9_+-]/.test(afterCursor)) return null;
-
-  const query = match[1];
-  if (query.length < 2) return null;
-
-  return query;
+  return emojiQueryAt(node.textContent || "", range.startOffset)?.name ?? null;
 }
 
 function getMentionQueryAtCursor(): string | null {
@@ -201,17 +189,12 @@ function replaceEmojiQueryAtCursor(entry: EmojiEntry): void {
   const node = range.startContainer;
   if (node.nodeType !== Node.TEXT_NODE) return;
 
-  const text = node.textContent || "";
   const offset = range.startOffset;
-  const before = text.slice(0, offset);
-
-  const match = before.match(/:([a-zA-Z0-9_+-]*)$/);
-  if (!match) return;
-
-  const colonStart = offset - match[0].length;
+  const query = emojiQueryAt(node.textContent || "", offset);
+  if (!query) return;
 
   const replaceRange = document.createRange();
-  replaceRange.setStart(node, colonStart);
+  replaceRange.setStart(node, query.start);
   replaceRange.setEnd(node, offset);
   replaceRange.deleteContents();
 
@@ -328,7 +311,8 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
 
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent<HTMLDivElement>) => {
-        if (showAutocomplete || showMentionAutocomplete) return;
+        // A suggestion list that used the key prevented it first. An empty one lets it through.
+        if (e.nativeEvent.defaultPrevented) return;
         if (e.key === "Enter" && !e.shiftKey) {
           e.preventDefault();
           handleSend();
@@ -348,7 +332,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
           }
         }
       },
-      [handleSend, showAutocomplete, showMentionAutocomplete, isEditing, onCancel, onArrowUpEmpty]
+      [handleSend, isEditing, onCancel, onArrowUpEmpty]
     );
 
     const handlePaste = useCallback(

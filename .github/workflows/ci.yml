@@ -57,6 +57,10 @@ jobs:
       # the composer, and re-pin. Otherwise the newest message sits behind it.
       - run: yarn test:chat-scroll-anchor
 
+      # Enter sends unless a suggestion list shows something to pick. A port in a
+      # pasted URL used to open an empty emoji list that swallowed it.
+      - run: yarn test:composer-enter
+
       # A member changing group moves their row to another section, which remounts
       # it. The open hover card has to survive that.
       - run: yarn test:member-card-state
