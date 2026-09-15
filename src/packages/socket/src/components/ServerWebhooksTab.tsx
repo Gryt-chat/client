@@ -291,9 +291,7 @@ function WebhookCard({
 
             <div className="flex flex-col gap-1" style={{ flex: 1, minWidth: 160, maxWidth: 320 }}>
               <span className="text-xs font-medium">Channel</span>
-              {/* The trigger's label span has no min-w-0, so a long channel name would set the row's width. */}
               <Select
-                className="min-w-0 [&_[role=combobox]>span:first-child]:min-w-0 [&_[role=combobox]>span:first-child]:truncate"
                 value={webhook.channel_id}
                 onValueChange={(v) => handleChannelChange(String(v))}
                 placeholder="Select channel"
