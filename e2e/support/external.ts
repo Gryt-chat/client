@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 
-import type { BrowserContext, Route } from "@playwright/test";
+import type { BrowserContext, Page, Route } from "@playwright/test";
 
 const FIXTURES = new URL("../fixtures/", import.meta.url);
 const APP_VERSION = (
@@ -54,6 +54,14 @@ function fixtureFor(route: Route, url: URL) {
     default:
       return null;
   }
+}
+
+/** The fixture changelog with these security notices in it, for one page. A page's routes win over its context's. */
+export async function serveSecurityNotices(page: Page, notices: unknown[]) {
+  const url = "https://gryt.chat/changelog.json";
+  const body = JSON.stringify({ ...(JSON.parse(changelog()) as object), securityNotices: notices });
+  await page.unroute(url);
+  await page.route(url, (route) => route.fulfill({ status: 200, contentType: "application/json", headers: CORS, body }));
 }
 
 /** Stands in for every live site the app calls, and blocks and reports anything it doesn't know. */

@@ -53,6 +53,7 @@ import { MemberSidebarPanel } from "./MemberSidebarPanel";
 import { MobileServerView } from "./MobileServerView";
 import { ReportsPanel } from "./ReportsPanel";
 import { ReportUserDialog } from "./ReportUserDialog";
+import { SecurityNoticeBanner } from "./SecurityNoticeBanner";
 import { ServerConfirmDialogs } from "./ServerConfirmDialogs";
 import { ServerLoadingStates } from "./ServerLoadingStates";
 import { ServerNoticePanel } from "./ServerNoticePanel";
@@ -767,6 +768,10 @@ forumTags={activeDm ? [] : activeChannelForumTags}
       <div className="flex w-full h-full gap-4 flex-col" data-gryt="server-view">
         {isServerUnreachable && (
           <ConnectionBanner connectionStatus={currentConnectionStatus} onReconnect={() => reconnectServer(host)} />
+        )}
+        {/* Not in the direct messages space, where the server behind it isn't what's on screen. */}
+        {!dmSpace && currentConnectionStatus === "connected" && (
+          <SecurityNoticeBanner host={host} serverInfo={serverDetails.server_info} hostedHere={!!hostedHere} />
         )}
         {isTiny ? (
           /* One channel and no way to change it; the way out is a bigger window.
