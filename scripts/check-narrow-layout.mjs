@@ -135,4 +135,15 @@ assert.ok(insideTabs, "no row found inside the settings Tabs");
 assert.match(insideTabs[1], /\bmin-w-0\b/, "the settings row inside Tabs lost min-w-0");
 assert.match(insideTabs[1], /\bflex-1\b/, "the settings row inside Tabs lost flex-1");
 
+// GRYT-1202: the version lines sat under the rail and went with it. The narrow
+// branch has to render them under the picker, and the rail has to keep them.
+const narrowBranch = modal.match(/\{!railFits && hasVersionLines && \(([\s\S]*?)\n {18}\)\}/);
+assert.ok(narrowBranch, "no narrow version block under the settings picker");
+assert.match(narrowBranch[1], /\{versionLines\}/, "the narrow settings layout stopped rendering the versions");
+const rail = modal.slice(modal.indexOf("<div hidden={!railFits}"), modal.indexOf("{TAB_CONFIG.map(({ value, content })"));
+assert.match(rail, /\{versionLines\}/, "the settings rail stopped rendering the versions");
+for (const line of ["Server v{serverInfo.version}", "SFU {versionStatus.sfu.current", "Image worker"]) {
+  assert.ok(modal.slice(modal.indexOf("const versionLines")).includes(line), `versionLines lost "${line}"`);
+}
+
 console.log("narrow layout ok: member list yields to the voice panel, tiny window is desktop-only, settings fit");
