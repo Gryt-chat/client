@@ -1,9 +1,9 @@
 import type { Locator } from "@playwright/test";
 
 export interface Overflow {
-  /** Elements whose visible part ends past the page column, and by how much. */
+  /** Elements whose visible part ends past the dialog's edge, and by how much. */
   pastEdge: string[];
-  /** Containers between the page and the column that scroll sideways. */
+  /** Containers inside the dialog that scroll sideways. */
   scrollsSideways: string[];
 }
 
@@ -25,8 +25,8 @@ export async function settled(scope: Locator) {
 }
 
 /**
- * The GRYT-1199 measurement: every element's right edge against the page column,
- * and nothing in between allowed to scroll sideways. Clipped parts don't count.
+ * GRYT-1199's measurement: every element's right edge against the dialog, from the
+ * tab panel up to it, and nothing inside allowed to scroll sideways.
  */
 export function measureOverflow(panel: Locator): Promise<Overflow> {
   return panel.evaluate((root) => {
@@ -37,36 +37,42 @@ export function measureOverflow(panel: Locator): Promise<Overflow> {
     };
     const clips = (el: Element) => getComputedStyle(el).overflowX !== "visible";
     const scrolls = (el: Element) => ["auto", "scroll"].includes(getComputedStyle(el).overflowX);
-    const formControl = (el: Element) => el.matches("input, textarea, select");
 
-    let column = root.parentElement;
-    while (column && column !== document.body && !scrolls(column)) column = column.parentElement;
-    if (!column || column === document.body) throw new Error("no scrolling page column around the tab panel");
-    const edge = column.getBoundingClientRect();
+    const dialog = root.closest('[role="dialog"]');
+    if (!dialog) throw new Error("the tab panel is not inside a dialog");
+    const box = dialog.getBoundingClientRect();
+    const edge = { left: box.left + dialog.clientLeft, right: box.left + dialog.clientLeft + dialog.clientWidth };
+
+    const between: Element[] = [];
+    for (let up = root.parentElement; up && up !== dialog; up = up.parentElement) between.push(up);
 
     const pastEdge: string[] = [];
     const scrollsSideways: string[] = [];
-    for (const el of [column, ...root.querySelectorAll("*")]) {
+    const flagged = new Set<Element>();
+    for (const el of [dialog, ...between.reverse(), root, ...root.querySelectorAll("*")]) {
       const style = getComputedStyle(el);
       if (style.display === "none" || style.visibility === "hidden") continue;
-      if (scrolls(el) && !formControl(el) && el.scrollWidth > el.clientWidth + 1) {
+      if (scrolls(el) && !el.matches("input, textarea, select") && el.scrollWidth > el.clientWidth + 1) {
         scrollsSideways.push(`${describe(el)} by ${el.scrollWidth - el.clientWidth}px`);
       }
-      if (el === column) continue;
+      if (el === dialog) continue;
 
       const rect = el.getBoundingClientRect();
       if (rect.width <= 1 || rect.height <= 1) continue;
       let right = rect.right;
       let left = rect.left;
-      for (let up: Element | null = el.parentElement; up && up !== column; up = up.parentElement) {
+      for (let up: Element | null = el.parentElement; up && up !== dialog; up = up.parentElement) {
         if (!clips(up)) continue;
-        const box = up.getBoundingClientRect();
-        right = Math.min(right, box.right);
-        left = Math.max(left, box.left);
+        const clip = up.getBoundingClientRect();
+        right = Math.min(right, clip.right);
+        left = Math.max(left, clip.left);
       }
       if (right <= left) continue;
       const over = Math.max(right - edge.right, edge.left - left);
-      if (over > 1) pastEdge.push(`${describe(el)} by ${Math.round(over)}px`);
+      if (over <= 1) continue;
+      flagged.add(el);
+      // The outermost offender is the one to fix, and its children would bury it.
+      if (!el.parentElement || !flagged.has(el.parentElement)) pastEdge.push(`${describe(el)} by ${Math.round(over)}px`);
     }
     return { pastEdge, scrollsSideways };
   });
