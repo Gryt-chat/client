@@ -18,8 +18,8 @@ import { ConfirmDialog } from "../../../socket/src/components/ConfirmDialog";
 import { useServerManagement } from "../../../socket/src/hooks/useServerManagement";
 import { useEmbeddedServer } from "../hooks/useEmbeddedServer";
 import { useSettings } from "../hooks/useSettings";
+import { railEntriesFor } from "../hostedServerRail";
 import { serverToManage } from "../hostedServers";
-import type { Servers } from "../types/server";
 import { EmbeddedServerLogs } from "./embeddedServerLogs";
 import { HIGHLIGHT_MS, SettingsContainer } from "./settingsComponents";
 
@@ -183,26 +183,6 @@ function ManageTarget({
       {children}
     </div>
   );
-}
-
-/**
- * Every rail entry pointing at a server this machine hosts. Matched on id, not
- * address: joining your own server from the LAN keys it on 192.168.x.x.
- */
-function railEntriesFor(
-  server: EmbeddedServerState,
-  joined: Servers,
-): string[] {
-  const hosts = new Set<string>();
-
-  for (const [host, entry] of Object.entries(joined)) {
-    if (entry.serverId && entry.serverId === server.id) hosts.add(host);
-  }
-
-  const loopback = server.serverUrl ? normalizeHost(server.serverUrl) : "";
-  if (loopback && joined[loopback]) hosts.add(loopback);
-
-  return [...hosts];
 }
 
 /**
