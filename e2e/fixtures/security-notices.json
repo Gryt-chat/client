@@ -1,0 +1,18 @@
+[
+  {
+    "id": "e2e-later",
+    "surface": "server",
+    "fixedIn": "998.0.0",
+    "title": "A fix made up for the end-to-end tests, published second",
+    "url": "https://gryt.chat/blog/e2e-later-fix",
+    "published": "2026-09-15"
+  },
+  {
+    "id": "e2e-first",
+    "surface": "server",
+    "fixedIn": "999.0.0",
+    "title": "A fix made up for the end-to-end tests, published first",
+    "url": "https://gryt.chat/blog/e2e-first-fix",
+    "published": "2026-09-01"
+  }
+]

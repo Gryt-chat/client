@@ -11,10 +11,16 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SOURCE = "src/components/whatsNew.tsx";
+const FEED = "src/lib/changelogFeed.ts";
 const DIALOG = "src/packages/socket/src/components/WhatsNewDialog.tsx";
 const source = readFileSync(join(root, SOURCE), "utf8");
 const dialog = readFileSync(join(root, DIALOG), "utf8");
 const { releasesToShow } = await import(pathToFileURL(join(root, "src/components/whatsNewSince.ts")).href);
+/* The fetch and its retries are shared with the security notice now, so they run as
+   the feed's own code, with the network and the waiting faked. */
+const { CHANGELOG_URL, RETRY_DELAYS_MS, loadChangelog, resetChangelogFeed, sleep } = await import(
+  pathToFileURL(join(root, FEED)).href
+);
 
 /** Everything from `opener` to the brace that closes the block it opens. */
 function block(text, opener, what) {
@@ -37,9 +43,8 @@ const body = strip(
   block(source.slice(source.indexOf("onUserStoreLoaded(setStoreUser)")), "useEffect(() => {", "the deciding useEffect"),
 );
 
-/** The two module constants the effect closes over. */
+/** The module constant the effect closes over. */
 const SEEN_KEY = source.match(/const SEEN_KEY = "([^"]+)"/)?.[1];
-const CHANGELOG_URL = source.match(/const CHANGELOG_URL = "([^"]+)"/)?.[1];
 assert.ok(SEEN_KEY, `${SOURCE} no longer names the key it remembers the version under`);
 assert.match(
   CHANGELOG_URL ?? "",
@@ -47,16 +52,13 @@ assert.match(
   "the changelog is fetched from somewhere other than the site's emitted file",
 );
 
-/** The delays between attempts, which the fake sleep records rather than waits. */
-const RETRY_DELAYS_MS = JSON.parse(
-  source.match(/const RETRY_DELAYS_MS = (\[[^\]]*\])/)?.[1].replaceAll("_", "") ?? "null",
-);
-assert.ok(Array.isArray(RETRY_DELAYS_MS) && RETRY_DELAYS_MS.length > 0, `${SOURCE} no longer retries`);
+assert.ok(Array.isArray(RETRY_DELAYS_MS) && RETRY_DELAYS_MS.length > 0, `${FEED} no longer retries`);
+assert.match(source, /from "\.\.\/lib\/changelogFeed"/, `${SOURCE} fetches the changelog some other way than the shared feed`);
 
 /** `new Function` builds a sync function, and findReleases awaits. */
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
 
-/** findReleases as itself: the real loop, with the wait and the network faked. */
+/** findReleases as itself, calling the real feed with the wait and the network faked. */
 const findReleasesBody = strip(
   block(
     source,
@@ -67,6 +69,9 @@ const findReleasesBody = strip(
 
 /** One run of the effect, with the store, the network and the waiting faked. */
 async function run({ seen, version, app, offline, storeUser, joined, attempts, abortOn, asked, beta }) {
+  /* The feed keeps the last copy for everyone, so each run starts from an app that
+     has fetched nothing yet. */
+  resetChangelogFeed();
   const store = { value: seen };
   const picks = [];
   const fetched = [];
@@ -86,13 +91,14 @@ async function run({ seen, version, app, offline, storeUser, joined, attempts, a
     return Promise.resolve({ ok: true, json: () => Promise.resolve({ app: answer.app }) });
   };
 
-  const findReleases = new AsyncFunction(
-    "fetch", "sleep", "CHANGELOG_URL", "RETRY_DELAYS_MS", "version", "signal",
-    findReleasesBody,
-  ).bind(null, fetch, (ms) => {
+  const fakeSleep = (ms) => {
     slept.push(ms);
     return Promise.resolve();
-  }, CHANGELOG_URL, RETRY_DELAYS_MS);
+  };
+  const findReleases = new AsyncFunction("loadChangelog", "version", "signal", findReleasesBody).bind(
+    null,
+    (signal, options) => loadChangelog(signal, { ...options, fetch, sleep: fakeSleep }),
+  );
 
   const fn = new Function(
     "getUserValue", "setUserValue", "findReleases", "setShown", "version", "AbortController", "SEEN_KEY", "storeUser", "hasJoinedAnything", "asked", "releasesToShow", "IS_BETA_BUILD",
@@ -262,14 +268,9 @@ assert.ok(RETRY_DELAYS_MS[0] >= 1000, "the first retry is immediate enough to be
 // The wait itself ends on abort. Left out, a closed window holds a two-minute
 // timer and the loop only stops when it fires.
 {
-  const sleepFn = new Function(
-    "ms",
-    "signal",
-    block(source, "function sleep(ms: number, signal: AbortSignal): Promise<void> {", "sleep").slice(1, -1),
-  );
   const controller = new AbortController();
   const started = Date.now();
-  const waiting = sleepFn(60_000, controller.signal);
+  const waiting = sleep(60_000, controller.signal);
   controller.abort();
   await waiting;
   assert.ok(Date.now() - started < 1_000, "aborting does not cut the wait short");

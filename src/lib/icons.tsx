@@ -98,6 +98,7 @@ import {
   ScanSmiley,
   Screencast,
   ShieldCheck,
+  ShieldWarning,
   SignIn,
   SignOut,
   Signpost,
@@ -241,6 +242,7 @@ export const PiRobotFill: Icon = weighted(Robot, "fill", "PiRobotFill");
 export const PiScanSmileyFill: Icon = weighted(ScanSmiley, "fill", "PiScanSmileyFill");
 export const PiScreencastFill: Icon = weighted(Screencast, "fill", "PiScreencastFill");
 export const PiShieldCheckFill: Icon = weighted(ShieldCheck, "fill", "PiShieldCheckFill");
+export const PiShieldWarningFill: Icon = weighted(ShieldWarning, "fill", "PiShieldWarningFill");
 export const PiSignInBold: Icon = weighted(SignIn, "bold", "PiSignInBold");
 export const PiSignInFill: Icon = weighted(SignIn, "fill", "PiSignInFill");
 export const PiSignOutBold: Icon = weighted(SignOut, "bold", "PiSignOutBold");

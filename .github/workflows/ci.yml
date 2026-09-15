@@ -55,6 +55,9 @@ jobs:
       - run: yarn test:whats-new
       - run: yarn test:whats-new-since
       - run: yarn test:whats-new-reachable
+      # Owners and admins of a server below a published security fix. The list ships empty,
+      # so this and the e2e test are the only places the notice is drawn at all.
+      - run: yarn test:security-notice
       - run: yarn test:link-underline
 
       # The chat scroller has to give up height to anything drawn between it and
