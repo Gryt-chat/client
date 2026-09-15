@@ -30,6 +30,8 @@ interface ServerSidebarProps {
   onOpenSettings: () => void;
   /** Settings, opened straight on the invites tab. */
   onOpenInvites: () => void;
+  /** This app's controls for the server. Absent unless this app hosts it. */
+  onManageServer?: () => void;
   onOpenReports: () => void;
   pendingReportCount: number;
   updateAvailable: boolean;
@@ -77,7 +79,7 @@ export const ServerSidebar = ({
   isUnreachableWhileConnected,
   onMouseEnter, onMouseLeave,
   serverName, serverRole, pinned, onTogglePinned,
-  onOpenSettings, onOpenInvites, onOpenReports, pendingReportCount, updateAvailable, onLeave,
+  onOpenSettings, onOpenInvites, onManageServer, onOpenReports, pendingReportCount, updateAvailable, onLeave,
   channels, sidebarItems, serverHost, clients, members,
   currentChannelId, currentServerConnected, showVoiceView,
   isConnecting, currentConnectionId, selectedChannelId,
@@ -133,6 +135,7 @@ export const ServerSidebar = ({
               onCreateFolder={() => onAddItem("folder")}
               onOpenInvites={onOpenInvites}
               onOpenSettings={onOpenSettings}
+              onManageServer={onManageServer}
               onOpenReports={onOpenReports}
               pendingReportCount={pendingReportCount}
               updateAvailable={updateAvailable}

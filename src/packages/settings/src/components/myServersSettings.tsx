@@ -1,5 +1,6 @@
 import { Accordion, Alert, Avatar, Button, Checkbox, Chip, Spinner, Surface, TextField } from "@gryt/ui";
-import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { GeneratedServerIcon, normalizeHost } from "@/common";
 
@@ -17,9 +18,10 @@ import { ConfirmDialog } from "../../../socket/src/components/ConfirmDialog";
 import { useServerManagement } from "../../../socket/src/hooks/useServerManagement";
 import { useEmbeddedServer } from "../hooks/useEmbeddedServer";
 import { useSettings } from "../hooks/useSettings";
+import { serverToManage } from "../hostedServers";
 import type { Servers } from "../types/server";
 import { EmbeddedServerLogs } from "./embeddedServerLogs";
-import { SettingsContainer } from "./settingsComponents";
+import { HIGHLIGHT_MS, SettingsContainer } from "./settingsComponents";
 
 /**
  * The servers you run, as opposed to the ones you have joined. They share one
@@ -40,9 +42,12 @@ export function MyServersSettings() {
     isBusy,
     dismissError,
   } = useEmbeddedServer();
-  const { setShowSettings } = useSettings();
+  const { setShowSettings, settingsTab, setSettingsTab } = useSettings();
   const { setShowAddServer, servers: joinedServers, removeServers } =
     useServerManagement();
+  /** The server Manage server was pressed on, until its card has been shown. */
+  const managing = serverToManage(settingsTab);
+  const managingShown = useCallback(() => setSettingsTab("my-servers"), [setSettingsTab]);
 
   function hostAServer() {
     setShowSettings(false);
@@ -89,33 +94,39 @@ export function MyServersSettings() {
         ) : (
           <>
             {servers.map((server) => (
-              <HostedServerCard
+              <ManageTarget
                 key={server.id}
-                server={server}
-                lanIp={lanIp}
-                autoStart={autoStart[server.id] ?? false}
-                busy={isBusy(server.id)}
-                onAutoStart={(enabled) => setAutoStart(server.id, enabled)}
-                onStart={() => {
-                  void startServer(server.id);
-                }}
-                onStop={() => {
-                  void stopServer(server.id);
-                }}
-                onUpdateAdvertisedAddresses={(addresses) =>
-                  updateAdvertisedAddresses(server.id, addresses)
-                }
-                onUpdatePorts={(ports) => updatePorts(server.id, ports)}
-                onDelete={() => {
-                  // The rail entries go with it. Left behind they point at an
-                  // address nothing answers on, and look merely offline.
-                  removeServers(railEntriesFor(server, joinedServers));
-                  void deleteServer(server.id);
-                }}
-                onDismissError={() => {
-                  void dismissError(server.id);
-                }}
-              />
+                id={server.id}
+                managing={server.id === managing}
+                onShown={managingShown}
+              >
+                <HostedServerCard
+                  server={server}
+                  lanIp={lanIp}
+                  autoStart={autoStart[server.id] ?? false}
+                  busy={isBusy(server.id)}
+                  onAutoStart={(enabled) => setAutoStart(server.id, enabled)}
+                  onStart={() => {
+                    void startServer(server.id);
+                  }}
+                  onStop={() => {
+                    void stopServer(server.id);
+                  }}
+                  onUpdateAdvertisedAddresses={(addresses) =>
+                    updateAdvertisedAddresses(server.id, addresses)
+                  }
+                  onUpdatePorts={(ports) => updatePorts(server.id, ports)}
+                  onDelete={() => {
+                    // The rail entries go with it. Left behind they point at an
+                    // address nothing answers on, and look merely offline.
+                    removeServers(railEntriesFor(server, joinedServers));
+                    void deleteServer(server.id);
+                  }}
+                  onDismissError={() => {
+                    void dismissError(server.id);
+                  }}
+                />
+              </ManageTarget>
             ))}
 
             <div className="flex w-fit">
@@ -128,6 +139,49 @@ export function MyServersSettings() {
         )}
       </div>
     </SettingsContainer>
+  );
+}
+
+/**
+ * Where Manage server lands. The card is brought into view and flashed the way a
+ * settings search hit is, which needs data-setting; the radius matches the card's.
+ */
+function ManageTarget({
+  id,
+  managing,
+  onShown,
+  children,
+}: {
+  id: string;
+  managing: boolean;
+  onShown: () => void;
+  children: ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [flash, setFlash] = useState(false);
+
+  useEffect(() => {
+    if (!managing) return;
+    ref.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    setFlash(true);
+    onShown();
+  }, [managing, onShown]);
+
+  useEffect(() => {
+    if (!flash) return;
+    const timer = window.setTimeout(() => setFlash(false), HIGHLIGHT_MS);
+    return () => window.clearTimeout(timer);
+  }, [flash]);
+
+  return (
+    <div
+      ref={ref}
+      data-setting={`hosted-server-${id}`}
+      className={flash ? "gryt-setting-hit" : undefined}
+      style={{ borderRadius: "var(--gryt-radius-surface)", scrollMargin: 16 }}
+    >
+      {children}
+    </div>
   );
 }
 

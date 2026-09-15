@@ -26,6 +26,7 @@ import { ProfileSettings } from "./profileSettings";
 import { ScreenShareSettings } from "./screenShareSettings";
 import { SecuritySettings } from "./securitySettings";
 import { ServerIdentitySettings } from "./serverIdentitySettings";
+import { HIGHLIGHT_MS } from "./settingsComponents";
 import { SupportSettings } from "./supportSettings";
 import { ThemeSettings } from "./theme/appearanceSettings";
 import { DisplaySettings } from "./theme/displaySettings";
@@ -191,9 +192,6 @@ const MAIN_DESTINATIONS = DESTINATIONS.filter((d) => !d.pinBottom);
 const PINNED_DESTINATIONS = DESTINATIONS.filter((d) => d.pinBottom);
 
 const DEFAULT_DESTINATION = "profile";
-
-/** How long a jumped-to setting stays highlighted. */
-const HIGHLIGHT_MS = 1600;
 
 export function Settings() {
   const {

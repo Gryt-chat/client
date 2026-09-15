@@ -99,6 +99,9 @@ export function ToggleSetting({ title, description, checked, onCheckedChange, st
   );
 }
 
+/** How long a jumped-to setting stays highlighted. */
+export const HIGHLIGHT_MS = 1600;
+
 // Global settings container with consistent spacing
 interface SettingsContainerProps {
   children: React.ReactNode;
