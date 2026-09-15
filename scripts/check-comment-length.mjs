@@ -11,7 +11,7 @@ const EMPTY = /^(\/\*+|\*+\/?|\/\/|#)$|[─=]{3,}\s*\*?\/?$/;
 const NOT_YET = [];
 
 const ROOTS = ["src", "electron", "scripts", "examples", "e2e", ".github/workflows"];
-const SKIP = new Set(["node_modules", "dist", "build", "out", "coverage", ".git"]);
+const SKIP = new Set(["node_modules", "dist", "build", "out", "coverage", ".git", "test-results", "playwright-report"]);
 const CODE = /\.(ts|tsx|js|mjs|cjs|jsx)$/;
 const HASH = /\.(ya?ml|sh)$/;
 
