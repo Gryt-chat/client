@@ -1,5 +1,4 @@
 import { Button, Chip, type ChipProps, Dialog } from "@gryt/ui";
-import { Fragment } from "react";
 
 import { LogoIcon } from "@/common";
 
@@ -16,7 +15,7 @@ export interface WhatsNewRelease {
 }
 
 /**
- * The order the groups are drawn in, which is not the order they are written in.
+ * The order the kinds are drawn in, which is not the order they are written in.
  * Security leads wherever it appears: below the features it is what gets skipped.
  */
 const KIND_ORDER = ["security", "new", "changed", "fixed"];
@@ -38,20 +37,17 @@ const TONES: Record<string, ChipProps["tone"]> = {
 };
 
 /**
- * The changes by kind, in KIND_ORDER, with anything the site has started
- * emitting that this build does not know about kept on the end.
+ * The changes in KIND_ORDER, as written within a kind, with anything the site
+ * has started emitting that this build does not know about kept on the end.
  */
-function group(changes: WhatsNewChange[]): [string, string[]][] {
+function ordered(changes: WhatsNewChange[]): WhatsNewChange[] {
   const kinds = [...new Set(changes.map((c) => c.kind))];
-  const ordered = [
+  const order = [
     ...KIND_ORDER.filter((k) => kinds.includes(k)),
     ...kinds.filter((k) => !KIND_ORDER.includes(k)),
   ];
 
-  return ordered.map((kind) => [
-    kind,
-    changes.filter((c) => c.kind === kind).map((c) => c.text),
-  ]);
+  return order.flatMap((kind) => changes.filter((c) => c.kind === kind));
 }
 
 /**
@@ -67,29 +63,23 @@ function readableDate(iso: string): string {
   });
 }
 
-/** One release's changes by kind, or its one sentence where it was never split. */
+/** One release's changes, a pill on each, or its one sentence where it was never split. */
 function ReleaseBody({ line, changes }: { line: string; changes?: WhatsNewChange[] }) {
   /* Releases before 1.10 carry a line and no kinds, so there is nothing to
-     group. Their one sentence is shown as it is written. */
-  const groups = changes?.length ? group(changes) : null;
-
-  if (!groups) return <p className="whats-new-plain">{line}</p>;
+     label. Their one sentence is shown as it is written. */
+  if (!changes?.length) return <p className="whats-new-plain">{line}</p>;
 
   return (
-    <dl className="whats-new-groups">
-      {groups.map(([kind, items]) => (
-        <Fragment key={kind}>
-          <dt>
-            <Chip tone={TONES[kind] ?? "neutral"}>{LABELS[kind] ?? kind}</Chip>
-          </dt>
-          <dd>
-            {items.map((text) => (
-              <p key={text}>{text}</p>
-            ))}
-          </dd>
-        </Fragment>
+    <ul className="whats-new-changes">
+      {ordered(changes).map((change, i) => (
+        <li key={i} className="whats-new-change">
+          <Chip className="whats-new-kind" tone={TONES[change.kind] ?? "neutral"}>
+            {LABELS[change.kind] ?? change.kind}
+          </Chip>
+          <p>{change.text}</p>
+        </li>
       ))}
-    </dl>
+    </ul>
   );
 }
 
@@ -121,8 +111,8 @@ export function WhatsNewDialog({
       <Dialog.Portal>
         <Dialog.Backdrop />
         <Dialog.Popup
-          /* A container, so the groups collapse on the card's width rather
-             than the window's. The width is explicit, so nothing depends on it. */
+          /* A container, so the pills stack on the card's width rather than
+             the window's. The width is explicit, so nothing depends on it. */
           style={{
             containerType: "inline-size",
             display: "flex",
