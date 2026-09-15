@@ -104,6 +104,7 @@ test("user settings on a 390px phone: the keyboard and search still reach a page
   await expect(picker).toBeHidden();
   await result.click();
   await expect(picker).toHaveText("Notifications");
+  await expect(dialog.locator('[data-setting="unread-message-badge"]')).toBeInViewport();
 
   // The query stays, so going back to the field brings the same results back.
   await expect(result).toBeHidden();

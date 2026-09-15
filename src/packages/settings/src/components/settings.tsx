@@ -280,8 +280,9 @@ export function Settings() {
   // Runs after the destination has rendered, since neither the scroll target
   // nor the new content exists in the DOM until then.
   useEffect(() => {
+    // Cleared in the frame, not here: useSettings is a singleton, so this runs once for
+    // `jump` and again a render later for the destination, which cancels the first frame.
     const id = pendingScroll.current;
-    pendingScroll.current = null;
 
     // Switching destination starts you at the top. Without this the new panel
     // inherits the previous scroll position and opens partway down.
@@ -295,6 +296,7 @@ export function Settings() {
     setHighlighted(null);
 
     const frame = requestAnimationFrame(() => {
+      pendingScroll.current = null;
       const el = contentRef.current?.querySelector<HTMLElement>(
         `[data-setting="${id}"]`,
       );
