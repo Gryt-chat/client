@@ -109,7 +109,7 @@ export function CreateChannelDialog({ open, onOpenChange, initialType = "chat", 
               />
             </div>
 
-            <div className="flex justify-end gap-3" style={{ marginTop: 4 }}>
+            <div className="flex flex-wrap justify-end gap-3" style={{ marginTop: 4 }}>
               <Button tone="neutral" size="small" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>

@@ -61,7 +61,7 @@ export function LeaveServer() {
             )}
           </Dialog.Description>
 
-          <Dialog.Footer>
+          <Dialog.Footer className="flex-wrap">
             <Button tone="ghost" onClick={close}>
               Cancel
             </Button>

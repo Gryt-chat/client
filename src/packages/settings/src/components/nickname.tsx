@@ -30,7 +30,7 @@ export function Nickname() {
     <Dialog.Root open={showNickname} onOpenChange={handleDialogChange}>
       <Dialog.Portal>
         <Dialog.Backdrop />
-        <Dialog.Popup className="max-w-150">
+        <Dialog.Popup>
         <Dialog.Close
           style={{
             position: "absolute",

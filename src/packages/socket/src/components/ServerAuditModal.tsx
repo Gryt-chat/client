@@ -71,7 +71,7 @@ export function ServerAuditModal() {
     <Dialog.Root open={isOpen} onOpenChange={(o) => (o ? setIsOpen(true) : close())}>
       <Dialog.Portal>
         <Dialog.Backdrop />
-        <Dialog.Popup style={{ maxWidth: 860 }}>
+        <Dialog.Popup className="w-[53.75rem] max-h-[calc(100dvh-3rem)] overflow-y-auto">
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <Dialog.Title>Audit log</Dialog.Title>

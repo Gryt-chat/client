@@ -30,7 +30,7 @@ export function ReportDialog() {
     >
       <Dialog.Portal>
         <Dialog.Backdrop />
-        <Dialog.Popup className="max-w-[560px]">
+        <Dialog.Popup>
           {/* Keyed on the type so switching rows starts a clean form rather
               than reusing the last one's state, and unmounting on close throws
               away a sent report's "thanks" screen. */}

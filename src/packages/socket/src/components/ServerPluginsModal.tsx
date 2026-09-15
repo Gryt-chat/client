@@ -52,7 +52,7 @@ export function ServerPluginsModal() {
     <Dialog.Root open={isOpen} onOpenChange={(o) => (o ? setIsOpen(true) : close())}>
       <Dialog.Portal>
         <Dialog.Backdrop />
-        <Dialog.Popup style={{ maxWidth: 640 }}>
+        <Dialog.Popup className="w-[40rem] max-h-[calc(100dvh-3rem)] overflow-y-auto">
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <Dialog.Title>What {host || "this server"} runs</Dialog.Title>

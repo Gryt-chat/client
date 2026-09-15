@@ -191,7 +191,7 @@ export function ServerDoctor({
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Backdrop />
-        <Dialog.Popup className="max-w-150">
+        <Dialog.Popup>
           <Dialog.Close style={{ position: "absolute", top: "8px", right: "8px" }}>
             <IconButton tone="neutral" size="xsmall">
               <PiX size={16} />
