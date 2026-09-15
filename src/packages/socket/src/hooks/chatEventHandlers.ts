@@ -2,6 +2,7 @@ import { Dispatch, MutableRefObject, SetStateAction } from "react";
 
 import type { ChatMessage } from "../components/chatUtils";
 import { handleRateLimitError } from "../utils/rateLimitHandler";
+import { mergeMessages } from "./mergeMessages";
 
 export const CHAT_CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
 
@@ -25,6 +26,7 @@ export function handleNewMessage(
   getCacheKey: CacheKeyFn,
   setMessageCache: Dispatch<SetStateAction<MessageCache>>,
   setChatMessages: Dispatch<SetStateAction<ChatMessage[]>>,
+  deleted?: ReadonlySet<string>,
 ): void {
   if (!msg || !msg.conversation_id) return;
   // A thread reply carries a thread_id and belongs in the thread panel, not the
@@ -38,19 +40,12 @@ export function handleNewMessage(
     (msg.nonce ? m.nonce === msg.nonce : m.text === msg.text);
 
   setMessageCache((prev) => {
-    const existing = prev[key] || [];
-    const filtered = existing.filter((m) => !isPendingMatch(m));
-    const existingIds = new Set(filtered.map((m) => m.message_id));
-    const merged = existingIds.has(msg.message_id) ? filtered : [...filtered, msg];
-    return { ...prev, [key]: merged };
+    const existing = (prev[key] || []).filter((m) => !isPendingMatch(m));
+    return { ...prev, [key]: mergeMessages(existing, [msg], deleted) };
   });
 
   if (msg.conversation_id === activeConversationId) {
-    setChatMessages((prev) => {
-      const filtered = prev.filter((m) => !isPendingMatch(m));
-      const existingIds = new Set(filtered.map((m) => m.message_id));
-      return existingIds.has(msg.message_id) ? filtered : [...filtered, msg];
-    });
+    setChatMessages((prev) => mergeMessages(prev.filter((m) => !isPendingMatch(m)), [msg], deleted));
   }
 }
 
@@ -73,6 +68,7 @@ export function handleHistoryPayload(
   setIsLoadingMessages: (v: boolean) => void,
   setHasOlderMessages?: (v: boolean) => void,
   setIsLoadingOlder?: (v: boolean) => void,
+  deleted?: ReadonlySet<string>,
 ): void {
   if (!payload || !payload.conversation_id || !Array.isArray(payload.items)) return;
   const key = getCacheKey(payload.conversation_id);
@@ -90,21 +86,13 @@ export function handleHistoryPayload(
     setHasOlderMessages?.(payload.hasMore);
   }
 
-  setMessageCache((prev) => {
-    const existing = prev[key] || [];
-    const existingIds = new Set(existing.map((m) => m.message_id));
-    const newItems = payload.items.filter((it) => !existingIds.has(it.message_id));
-    const merged = isPrepend ? [...newItems, ...existing] : [...existing, ...newItems];
-    return { ...prev, [key]: merged };
-  });
+  // One order however they arrived: live messages can be cached before the first page,
+  // and appending the page after them drew the history below them (GRYT-1217).
+  setMessageCache((prev) => ({ ...prev, [key]: mergeMessages(prev[key] || [], payload.items, deleted) }));
 
   if (payload.conversation_id !== activeConversationId) return;
 
-  setChatMessages((prev) => {
-    const existingIds = new Set(prev.map((m) => m.message_id));
-    const newItems = payload.items.filter((it) => !existingIds.has(it.message_id));
-    return isPrepend ? [...newItems, ...prev] : [...prev, ...newItems];
-  });
+  setChatMessages((prev) => mergeMessages(prev, payload.items, deleted));
 
   if (!isPrepend) {
     setIsLoadingMessages(false);
@@ -181,10 +169,13 @@ export function handleMessageDeleted(
   getCacheKey: CacheKeyFn,
   setMessageCache: Dispatch<SetStateAction<MessageCache>>,
   setChatMessages: Dispatch<SetStateAction<ChatMessage[]>>,
+  deleted?: Set<string>,
 ): void {
   if (!payload || !payload.conversation_id || !payload.message_id) return;
   const key = getCacheKey(payload.conversation_id);
   if (!key) return;
+  // Remembered, so a history page the server read before the delete can't bring it back.
+  deleted?.add(payload.message_id);
 
   setMessageCache((prev) => {
     const existing = prev[key] || [];
