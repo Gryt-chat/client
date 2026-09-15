@@ -139,7 +139,9 @@ export const test = base.extend<
     for (const server of started) await server.stop();
   },
 
-  newMember: async ({ browser, gryt, problems }, provide) => {
+  // Needs freshServer so those servers stop after these pages close. Stopped sooner, a page's reconnect logs an error.
+  newMember: async ({ browser, gryt, problems, freshServer }, provide) => {
+    void freshServer;
     const contexts: BrowserContext[] = [];
     await provide(async (options = {}) => {
       const label = options.label ?? `guest ${contexts.length + 1}`;
