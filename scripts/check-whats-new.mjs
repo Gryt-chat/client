@@ -1,6 +1,6 @@
 /* eslint-env node */
 
-// Runs whatsNew's own effect and WhatsNewDialog's own grouping: a modal nobody
+// Runs whatsNew's own effect and WhatsNewDialog's own rows: a modal nobody
 // sees twice (GRYT-1083), and a kind it drops is a line nobody reads (1088).
 
 import assert from "node:assert/strict";
@@ -321,28 +321,31 @@ const BETA = { version: "1.12.0-beta.1", date: "2026-09-15", line: "Beta.", chan
   assert.equal(r.fetched.length, RETRY_DELAYS_MS.length + 1, "it stopped retrying once older lines arrived");
 }
 
-/* ── the grouping, run as the component's own code ───────────────────────── */
+/* ── the dialog, run as its own code ─────────────────────────────────────── */
 
-/** The two helpers as themselves. `block` hands back the braces, so drop them. */
-const bodyOf = (opener, what) => block(dialog, opener, what).slice(1, -1);
-
-const KIND_ORDER = JSON.parse(dialog.match(/const KIND_ORDER = (\[[^\]]*\])/)?.[1] ?? "null");
-
-const grouper = new Function(
-  "changes",
-  "KIND_ORDER",
-  bodyOf(
-    "function group(changes: WhatsNewChange[]): [string, string[]][] {",
-    "a group function",
-  ),
+// Compiled with the TypeScript the client already has. @gryt/ui and the owl are
+// stubbed, so a Chip shows its tone as an attribute and the portal draws inline.
+const ts = (await import("typescript")).default;
+const moduleUrl = (text) => `data:text/javascript;base64,${Buffer.from(text).toString("base64")}`;
+const STUBS = {
+  "@gryt/ui": moduleUrl(`
+    import { createElement as h, Fragment } from ${JSON.stringify(import.meta.resolve("react"))};
+    const pass = ({ children }) => h(Fragment, null, children);
+    export const Chip = ({ tone, className, children }) => h("span", { className, "data-tone": tone }, children);
+    export const Button = pass;
+    export const Dialog = { Root: pass, Portal: pass, Backdrop: () => null, Popup: pass, Title: pass, Close: () => null };
+  `),
+  "@/common": moduleUrl("export const LogoIcon = () => null;"),
+};
+const compiled = ts
+  .transpileModule(dialog, {
+    compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+  })
+  .outputText.replace(/from "([^"]+)"/g, (_, spec) => `from "${STUBS[spec] ?? import.meta.resolve(spec)}"`);
+const { KIND_ORDER, ReleaseBody, WhatsNewDialog, ordered, readableDate } = await import(
+  moduleUrl(`${compiled}\nexport { KIND_ORDER, ReleaseBody, ordered, readableDate };`)
 );
-/** The component closes over KIND_ORDER; here it is handed in. */
-const group = (changes) => grouper(changes, KIND_ORDER);
-
-const readableDate = new Function(
-  "iso",
-  bodyOf("function readableDate(iso: string): string {", "a readableDate function"),
-);
+const c = (kind, text) => ({ kind, text });
 
 assert.deepEqual(
   KIND_ORDER,
@@ -350,62 +353,124 @@ assert.deepEqual(
   "the kinds are drawn in a different order — security below the features is the half people scroll past",
 );
 
-// Security leads however the release was written, and each kind appears once.
-{
-  const g = group([
-    { kind: "fixed", text: "b" },
-    { kind: "security", text: "a" },
-    { kind: "fixed", text: "c" },
-  ]);
-  assert.deepEqual(
-    g,
-    [
-      ["security", ["a"]],
-      ["fixed", ["b", "c"]],
-    ],
-    "changes are not gathered under one heading per kind in KIND_ORDER",
-  );
-}
+// Security leads however the release was written.
+assert.deepEqual(
+  ordered([c("fixed", "b"), c("security", "a"), c("fixed", "c")]),
+  [c("security", "a"), c("fixed", "b"), c("fixed", "c")],
+  "the changes are not in KIND_ORDER",
+);
 
 // Order inside a kind is the order somebody wrote them in.
-{
-  const g = group([
-    { kind: "new", text: "first" },
-    { kind: "new", text: "second" },
-  ]);
-  assert.deepEqual(g, [["new", ["first", "second"]]], "a kind's own changes were reordered");
-}
+assert.deepEqual(
+  ordered([c("new", "first"), c("fixed", "x"), c("new", "second")]),
+  [c("new", "first"), c("new", "second"), c("fixed", "x")],
+  "a kind's own changes were reordered",
+);
 
 // A kind the site emits that this build has never heard of. Kept, on the end,
 // rather than filtered away — dropping it loses a line nobody would notice.
+assert.deepEqual(
+  ordered([c("deprecated", "going away"), c("new", "here now")]),
+  [c("new", "here now"), c("deprecated", "going away")],
+  "an unknown kind was dropped, so a change the site published never reaches anybody",
+);
+
+// Two unknown kinds each stay together, in the order they first appear.
+assert.deepEqual(
+  ordered([c("odd", "1"), c("removed", "2"), c("odd", "3")]),
+  [c("odd", "1"), c("odd", "3"), c("removed", "2")],
+  "an unknown kind's changes were split up around another one",
+);
+
+// Every change survives whatever the kinds are, still paired with its own kind.
 {
-  const g = group([
-    { kind: "deprecated", text: "going away" },
-    { kind: "new", text: "here now" },
-  ]);
+  const changes = ["security", "fixed", "new", "changed", "odd", "fixed"].map((kind, i) => c(kind, `change ${i}`));
+  const out = ordered(changes);
+  assert.equal(out.length, changes.length, "ordering lost or duplicated a change");
+  const pairs = (list) => list.map((x) => `${x.kind}:${x.text}`).sort();
+  assert.deepEqual(pairs(out), pairs(changes), "ordering changed a change, or gave its text another kind");
+}
+
+/* ── a pill on every change (GRYT-1214) ──────────────────────────────────── */
+
+const { createElement } = await import("react");
+const { renderToStaticMarkup } = await import("react-dom/server");
+
+/** Each list row drawn: the pills in it, and the text beside them. */
+function rows(html) {
+  const pill = /<span class="whats-new-kind" data-tone="([^"]*)">([^<]*)<\/span>/g;
+  return [...html.matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/g)].map(([, row]) => ({
+    pills: [...row.matchAll(pill)].map(([, tone, label]) => `${label}/${tone}`),
+    text: row.replace(pill, "").replace(/<[^>]+>/g, ""),
+  }));
+}
+
+const SEVERAL_FIXES = {
+  version: "1.11.22",
+  date: "2026-09-15",
+  line: "Six things.",
+  changes: [
+    c("fixed", "Updates said there were none"),
+    c("fixed", "A hosted server said reconnecting"),
+    c("changed", "Webhook avatars are resized"),
+    c("fixed", "The desktop entry listed gryt five times"),
+    c("new", "Webhooks post cards"),
+    c("security", "Uploads are checked"),
+  ],
+};
+
+// Three fixes are three rows with three Fixed pills, not one pill over three lines.
+{
+  const html = renderToStaticMarkup(
+    createElement(WhatsNewDialog, { releases: [SEVERAL_FIXES], since: null, capped: false, onClose() {} }),
+  );
   assert.deepEqual(
-    g,
+    rows(html),
     [
-      ["new", ["here now"]],
-      ["deprecated", ["going away"]],
+      { pills: ["Security/warning"], text: "Uploads are checked" },
+      { pills: ["New/primary"], text: "Webhooks post cards" },
+      { pills: ["Changed/neutral"], text: "Webhook avatars are resized" },
+      { pills: ["Fixed/neutral"], text: "Updates said there were none" },
+      { pills: ["Fixed/neutral"], text: "A hosted server said reconnecting" },
+      { pills: ["Fixed/neutral"], text: "The desktop entry listed gryt five times" },
     ],
-    "an unknown kind was dropped, so a change the site published never reaches anybody",
+    "a change is not its own row with its own pill, in KIND_ORDER with its label and tone",
+  );
+  assert.doesNotMatch(html, /whats-new-plain/, "a release with changes also drew its one-sentence line");
+}
+
+// A kind this build cannot name is labelled with the kind itself, and stays neutral.
+{
+  const html = renderToStaticMarkup(createElement(ReleaseBody, { line: "x", changes: [c("deprecated", "Going away")] }));
+  assert.deepEqual(rows(html), [{ pills: ["deprecated/neutral"], text: "Going away" }], "an unknown kind lost its pill");
+}
+
+// Several releases: every release's changes get their pills, and an old release keeps its sentence.
+{
+  const OLD = { version: "1.9.4", date: "2026-08-20", line: "Joining voice waits for the microphone." };
+  const html = renderToStaticMarkup(
+    createElement(WhatsNewDialog, { releases: [SEVERAL_FIXES, OLD], since: "1.9.3", capped: false, onClose() {} }),
+  );
+  const drawn = rows(html);
+  assert.equal(drawn.length, SEVERAL_FIXES.changes.length, "the rows across several releases do not match their changes");
+  assert.ok(drawn.every((row) => row.pills.length === 1), "a row across several releases has other than one pill");
+  assert.match(
+    html,
+    /<p class="whats-new-plain">Joining voice waits for the microphone\.<\/p>/,
+    "a release from before 1.10 lost its one sentence",
   );
 }
 
-// Every change survives whatever the kinds are.
+// The rows share one pill column, so every change's text starts at the same place.
 {
-  const changes = ["security", "fixed", "new", "changed", "odd", "fixed"].map((kind, i) => ({
-    kind,
-    text: `change ${i}`,
-  }));
-  const flat = group(changes).flatMap(([, items]) => items);
-  assert.equal(flat.length, changes.length, "grouping lost or duplicated a change");
-  assert.deepEqual(
-    [...flat].sort(),
-    changes.map((c) => c.text).sort(),
-    "grouping changed the text of something",
-  );
+  const style = readFileSync(join(root, "src/style.css"), "utf8");
+  const rule = (selector) => {
+    const at = style.indexOf(`\n${selector} {`);
+    assert.notEqual(at, -1, `src/style.css no longer has ${selector}. Move this check with it.`);
+    return style.slice(at, style.indexOf("}", at));
+  };
+  assert.match(rule(".whats-new-changes"), /grid-template-columns:\s*max-content minmax\(0, 1fr\)/, "the pill column is not sized to the widest pill");
+  assert.match(rule(".whats-new-change"), /grid-template-columns:\s*subgrid/, "a row sizes its own pill column, so the text no longer lines up");
 }
 
 /* `new Date("2026-09-08")` is UTC midnight, so west of Greenwich a release is
@@ -506,5 +571,5 @@ assert.deepEqual(notified, ["user_1"], "markLoaded does not tell its listeners")
 console.log(
   "what's new: ok, waits for the store, once per version, quiet on a fresh " +
     "install and with no line; revalidates and retries " +
-    `${RETRY_DELAYS_MS.length} times; security first, unknown kinds kept, dates local`,
+    `${RETRY_DELAYS_MS.length} times; a pill on every change, security first, unknown kinds kept, dates local`,
 );
