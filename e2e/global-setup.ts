@@ -1,24 +1,12 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
-import { createServer } from "node:net";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { ensureImage, removeRunContainersSync } from "./support/server";
+import { ensureImage, freePort, removeRunContainersSync } from "./support/server";
 
 const CLIENT_ROOT = fileURLToPath(new URL("..", import.meta.url));
-
-function freePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const probe = createServer();
-    probe.once("error", reject);
-    probe.listen(0, "127.0.0.1", () => {
-      const address = probe.address();
-      probe.close(() => (typeof address === "object" && address ? resolve(address.port) : reject()));
-    });
-  });
-}
 
 async function waitForApp(url: string, preview: ChildProcess): Promise<void> {
   const deadline = Date.now() + 60_000;

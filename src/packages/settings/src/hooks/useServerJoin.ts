@@ -17,6 +17,7 @@ import {
 import { joinServerOnce } from "@/socket";
 
 import { useServerManagement } from "../../../socket/src/hooks/useServerManagement";
+import { sameServer } from "../serverId";
 import { useSettings } from "./useSettings";
 
 /**
@@ -247,8 +248,9 @@ export function useServerJoin() {
       }
 
       if (info?.serverId) {
-        const existingById = Object.entries(servers).find(
-          ([, server]) => !!server.serverId && server.serverId === info.serverId,
+        const joining = { host: normalizedHost, serverId: info.serverId };
+        const existingById = Object.entries(servers).find(([storedHost, server]) =>
+          sameServer({ host: storedHost, serverId: server.serverId }, joining),
         );
         if (existingById) {
           switchToServer(existingById[0]);
