@@ -4,7 +4,7 @@ appId: com.gryt.chat
 # menu bar icon.
 beforeBuild: ./scripts/prepare-electron-build.mjs
 productName: Gryt Chat
-copyright: "Copyright © 2024-2026 Gryt Chat. All rights reserved."
+copyright: "Copyright © 2022-2026 Gryt Chat"
 artifactName: "Gryt-Chat-${version}-${os}-${arch}.${ext}"
 
 # Gryt's UI owns its translations. Keep the native Electron resources for
