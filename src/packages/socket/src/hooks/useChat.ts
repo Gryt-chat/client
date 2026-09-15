@@ -12,6 +12,7 @@ import { type ForumTag,serverDetailsList as ServerDetailsList } from "@/settings
 
 import { PiInfoFill } from "../../../../lib/icons";
 import type { ChatMessage } from "../components/chatUtils";
+import { mergeSenders } from "../utils/mergeSender";
 import { openSealedAttachment } from "../utils/sealedAttachments";
 import { sealedNotificationBody } from "../utils/sealedNotification";
 import {
@@ -477,6 +478,24 @@ export function useChat({
       });
     };
 
+    const onMergeUser = (payload: { from_server_user_id?: string; to_server_user_id?: string }) => {
+      const from = payload?.from_server_user_id;
+      const to = payload?.to_server_user_id;
+      if (!from || !to) return;
+      setChatMessages((prev) => mergeSenders(prev, from, to));
+      setMessageCache((prev) => {
+        let changed = false;
+        const next = { ...prev };
+        for (const key of Object.keys(next)) {
+          const merged = mergeSenders(next[key], from, to);
+          if (merged === next[key]) continue;
+          next[key] = merged;
+          changed = true;
+        }
+        return changed ? next : prev;
+      });
+    };
+
     // socket.io reuses the same Socket, so neither effect re-runs on a reconnect.
     // Clearing the guard and bumping the nonce sends the fetch round again.
     const onConnect = () => {
@@ -493,6 +512,7 @@ export function useChat({
     currentConnection.on("report:submitted", onReportSubmitted);
     currentConnection.on("report:already_reported", onAlreadyReported);
     currentConnection.on("chat:purge_user", onPurgeUser);
+    currentConnection.on("chat:merge_user", onMergeUser);
     return () => {
       currentConnection.off("connect", onConnect);
       currentConnection.off("chat:new", onNew);
@@ -503,6 +523,7 @@ export function useChat({
       currentConnection.off("report:submitted", onReportSubmitted);
       currentConnection.off("report:already_reported", onAlreadyReported);
       currentConnection.off("chat:purge_user", onPurgeUser);
+      currentConnection.off("chat:merge_user", onMergeUser);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentConnection, activeConversationId, cacheKeyFor]);

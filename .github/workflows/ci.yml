@@ -48,6 +48,7 @@ jobs:
       - run: yarn test:message-key-offer
       - run: yarn test:reset-warning
       - run: yarn test:guest-history
+      - run: yarn test:identity-claim
 
       # Fires once per version, so a mistake is a modal nobody sees again or one
       # that greets a fresh install. Neither shows up in a build.

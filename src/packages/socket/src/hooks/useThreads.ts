@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import { clearThreadMentions, getServerAccessToken, setOpenThread } from "@/common";
 
 import type { ChatMessage } from "../components/chatUtils";
+import { mergeSender, mergeSenders } from "../utils/mergeSender";
 import { uploadChatFile } from "./uploadChatFile";
 
 /**
@@ -278,6 +279,18 @@ export function useThreads(
       patchOpen(id, (messages) => messages.filter((m) => m.message_id !== id));
     };
 
+    const onMergeUser = (payload: { from_server_user_id?: string; to_server_user_id?: string }) => {
+      const from = payload?.from_server_user_id;
+      const to = payload?.to_server_user_id;
+      if (!from || !to) return;
+      setOpen((o) => {
+        if (!o) return o;
+        const root = o.root ? mergeSender(o.root, from, to) : o.root;
+        const messages = mergeSenders(o.messages, from, to);
+        return root === o.root && messages === o.messages ? o : { ...o, root, messages };
+      });
+    };
+
     const onError = (e: { message?: string } | string) => {
       const message = typeof e === "string" ? e : e?.message;
       if (message) toast.error(message);
@@ -308,6 +321,7 @@ export function useThreads(
     socket.on("chat:reaction", onReaction as (p: never) => void);
     socket.on("chat:edited", onEdited as (p: never) => void);
     socket.on("chat:deleted", onMessageDeleted as (p: never) => void);
+    socket.on("chat:merge_user", onMergeUser as (p: never) => void);
     return () => {
       socket.off("thread:created", onCreated as (p: never) => void);
       socket.off("thread:updated", onUpdated as (p: never) => void);
@@ -319,6 +333,7 @@ export function useThreads(
       socket.off("chat:reaction", onReaction as (p: never) => void);
       socket.off("chat:edited", onEdited as (p: never) => void);
       socket.off("chat:deleted", onMessageDeleted as (p: never) => void);
+      socket.off("chat:merge_user", onMergeUser as (p: never) => void);
     };
   }, [socketConnection, conversationId, serverHost]);
 

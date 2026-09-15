@@ -319,6 +319,9 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
 
       socket.on("token:revoked", (info: { reason?: string; message?: string }) => {
         removeServerAccessToken(host);
+        // Another tab moved this guest into the account. Its refresh token names a
+        // membership that is gone, so the retry below has to be a fresh join.
+        if (info?.reason === "identity_merged") removeServerRefreshToken(host);
 
         const pending = revokedTimersRef.current[host];
         if (pending) {
@@ -514,6 +517,10 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
         setIsServerMuted,
         setIsServerDeafened,
       });
+
+      // After the handler above has stored it. A join mints a new token too, and a
+      // hook still holding the old one acts as whoever this socket used to be.
+      socket.on("server:joined", () => onTokenRefreshedRef.current());
     });
 
     for (const host of registeredRef.current) {
