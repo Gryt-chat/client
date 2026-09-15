@@ -132,6 +132,7 @@ jobs:
       - run: yarn test:call-controls
       - run: yarn test:embedded-server-paths
       - run: yarn test:embedded-version
+      - run: yarn test:embedded-starting
       - run: yarn test:voice-state
       - run: yarn test:media-state
       - run: yarn test:calls
