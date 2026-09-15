@@ -59,7 +59,9 @@ you:
   `{ join: false }` to stop at the empty app.
 - `owner`: A page for the guest that joined first and owns the server.
 - `gryt.server`: The server's `host` and `httpBase`.
-- `freshServer()`: Another server, for a test that has to own one from a phone.
+- `freshServer()`: Another server, for a test that has to own one from a phone. Pass
+  `{ instanceId }` for a server whose /info gives an id. It listens on the same port inside
+  the container and out, like a server you host.
 
 `support/app.ts` has helpers for joining, sending a message and finding its row. When a
 second test needs a helper, move it there.

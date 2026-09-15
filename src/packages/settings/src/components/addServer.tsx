@@ -32,6 +32,7 @@ import {
   useServerJoin,
 } from "../hooks/useServerJoin";
 import { useSettings } from "../hooks/useSettings";
+import { sameServer } from "../serverId";
 import { CreateServerPanel } from "./createServer";
 
 export type { FetchInfo };
@@ -157,13 +158,13 @@ export function AddNewServer({
   const existingServer = servers[serverHost];
   const existingById = useMemo(() => {
     if (!serverInfo?.serverId) return null;
+    const lookup = { host: serverHost, serverId: serverInfo.serverId };
     return (
-      Object.entries(servers).find(
-        ([, server]) =>
-          !!server.serverId && server.serverId === serverInfo.serverId,
+      Object.entries(servers).find(([storedHost, server]) =>
+        sameServer({ host: storedHost, serverId: server.serverId }, lookup),
       ) ?? null
     );
-  }, [serverInfo?.serverId, servers]);
+  }, [serverHost, serverInfo?.serverId, servers]);
   const alreadyMember = !!existingServer || !!existingById;
 
   function resetJoinState() {

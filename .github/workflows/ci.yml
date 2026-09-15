@@ -148,6 +148,7 @@ jobs:
       - run: yarn test:embedded-runtime-cleanup
       - run: yarn test:manage-server
       - run: yarn test:hosted-server-rail
+      - run: yarn test:same-server
       - run: yarn test:voice-state
       - run: yarn test:media-state
       - run: yarn test:calls

@@ -1,5 +1,6 @@
 import { execFile, execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
+import { createServer } from "node:net";
 import { promisify } from "node:util";
 
 const run = promisify(execFile);
@@ -20,9 +21,25 @@ export interface GrytServer {
   stop(): Promise<void>;
 }
 
+export interface ServerOptions {
+  /** Published by /info. The port is then the same inside the container and out, like a server you host. */
+  instanceId?: string;
+}
+
 async function docker(args: string[]): Promise<string> {
   const { stdout } = await run("docker", args, { maxBuffer: 16 * 1024 * 1024 });
   return stdout.trim();
+}
+
+export function freePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const probe = createServer();
+    probe.once("error", reject);
+    probe.listen(0, "127.0.0.1", () => {
+      const address = probe.address();
+      probe.close(() => (typeof address === "object" && address ? resolve(address.port) : reject()));
+    });
+  });
 }
 
 export async function ensureImage(): Promise<void> {
@@ -67,10 +84,12 @@ async function openJoin(adminBase: string, token: string): Promise<void> {
 }
 
 /** A fresh server in its own container: guest identities, open join, files on its own disk. */
-export async function startServer(appOrigin: string, runId: string): Promise<GrytServer> {
+export async function startServer(appOrigin: string, runId: string, options: ServerOptions = {}): Promise<GrytServer> {
   const adminToken = randomBytes(24).toString("hex");
-  const env = {
-    PORT: "5000",
+  // The socket's server id carries the port inside the container, and a match on /info's id needs the address to agree.
+  const serverPort = options.instanceId ? await freePort() : 5000;
+  const env: Record<string, string> = {
+    PORT: String(serverPort),
     HOST: "0.0.0.0",
     SERVER_NAME: "Gryt E2E",
     GRYT_IDENTITY_TIERS: "local",
@@ -83,9 +102,11 @@ export async function startServer(appOrigin: string, runId: string): Promise<Gry
     GRYT_ADMIN_TOKEN: adminToken,
     GRYT_ADMIN_PORT: "5099",
   };
+  if (options.instanceId) env.SERVER_INSTANCE_ID = options.instanceId;
 
   const args = ["run", "--detach", "--label", `${RUN_LABEL}=${runId}`];
-  args.push("--publish", "127.0.0.1::5000", "--publish", "127.0.0.1::5099");
+  const published = options.instanceId ? `127.0.0.1:${serverPort}:${serverPort}` : "127.0.0.1::5000";
+  args.push("--publish", published, "--publish", "127.0.0.1::5099");
   for (const [key, value] of Object.entries(env)) args.push("--env", `${key}=${value}`);
   const containerId = await docker([...args, SERVER_IMAGE]);
 
@@ -94,7 +115,7 @@ export async function startServer(appOrigin: string, runId: string): Promise<Gry
   };
 
   try {
-    const port = await hostPort(containerId, 5000);
+    const port = await hostPort(containerId, serverPort);
     const adminPort = await hostPort(containerId, 5099);
     const httpBase = `http://127.0.0.1:${port}`;
     await waitForHealth(httpBase, containerId);

@@ -12,6 +12,7 @@ import {
 } from "@/common";
 import { useLanDiscovery } from "@/settings/src/hooks/useLanDiscovery";
 import { useServerSettings } from "@/settings/src/hooks/useServerSettings";
+import { sameServer } from "@/settings/src/serverId";
 import { orderServerHosts } from "@/settings/src/serverOrder";
 import { Server, Servers } from "@/settings/src/types/server";
 
@@ -136,11 +137,12 @@ function useServerManagementHook(): ServerManagement {
   );
 
   const findServerById = useCallback(
-    (serverId?: string): [string, Server] | null => {
+    (host: string, serverId?: string): [string, Server] | null => {
       if (!serverId) return null;
 
-      const entry = Object.entries(servers).find(
-        ([, server]) => !!server.serverId && server.serverId === serverId
+      const incoming = { host, serverId };
+      const entry = Object.entries(servers).find(([storedHost, server]) =>
+        sameServer({ host: storedHost, serverId: server.serverId }, incoming)
       );
 
       return entry ?? null;
@@ -246,7 +248,7 @@ function useServerManagementHook(): ServerManagement {
         return;
       }
 
-      const existingById = findServerById(normalizedIncoming.serverId);
+      const existingById = findServerById(normalizedHost, normalizedIncoming.serverId);
       if (existingById) {
         const [existingHost, existingServer] = existingById;
 

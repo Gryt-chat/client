@@ -6,7 +6,7 @@ import { type BrowserContext, type BrowserContextOptions, expect, test as base }
 import { channelComposer, joinServer, type Member, membersPanel, nicknameOf, recordFrames } from "./app";
 import { routeExternal } from "./external";
 import { ProblemLog } from "./problems";
-import { externalServer, type GrytServer, startServer } from "./server";
+import { externalServer, type GrytServer, type ServerOptions, startServer } from "./server";
 
 interface Gryt {
   server: GrytServer;
@@ -75,7 +75,7 @@ export const test = base.extend<
     problems: ProblemLog;
     newMember: (options?: MemberOptions) => Promise<Member>;
     owner: Member;
-    freshServer: () => Promise<GrytServer>;
+    freshServer: (options?: ServerOptions) => Promise<GrytServer>;
   },
   { gryt: Gryt }
 >({
@@ -130,9 +130,9 @@ export const test = base.extend<
   // eslint-disable-next-line no-empty-pattern -- Playwright reads fixture needs from this pattern.
   freshServer: async ({}, provide) => {
     const started: GrytServer[] = [];
-    await provide(async () => {
+    await provide(async (options) => {
       if (process.env.GRYT_E2E_SERVER) throw new Error("This test needs a server of its own, so it can't use GRYT_E2E_SERVER.");
-      const server = await startServer(new URL(appUrl()).origin, process.env.GRYT_E2E_RUN_ID ?? "local");
+      const server = await startServer(new URL(appUrl()).origin, process.env.GRYT_E2E_RUN_ID ?? "local", options);
       started.push(server);
       return server;
     });
