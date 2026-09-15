@@ -8,6 +8,7 @@ import { extract } from "tar";
 
 import {
   checkPortsAvailable,
+  claimSfuLocalPorts,
   deleteServerFiles,
   describePortConflicts,
   type EmbeddedServerConfig,
@@ -19,6 +20,7 @@ import {
   listServerConfigs,
   listServerIds,
   loadConfig,
+  type SfuLocalPorts,
   suggestServerPort,
   updateCustomAdvertisedAddresses,
   updateServerPorts,
@@ -52,6 +54,7 @@ const instances = new Map<string, Instance>();
 let sfuProcess: ChildProcess | null = null;
 let sfuPort: number | null = null;
 let sfuMediaPort: number | null = null;
+let sfuLocalPorts: SfuLocalPorts | null = null;
 let targetWindow: BrowserWindow | null = null;
 let extractedRuntimeRoot: string | null = null;
 
@@ -473,6 +476,8 @@ function spawnSfu(config: EmbeddedServerConfig): ChildProcess | null {
       PORT: String(config.sfuPort),
       SFU_PORT: String(config.sfuPort),
       ICE_UDP_MUX_PORT: String(config.mediaPort),
+      SFU_CONTROL_PORT: String(config.controlPort),
+      SFU_METRICS_PORT: String(config.metricsPort),
       ICE_ADVERTISE_IP: envVars.ICE_ADVERTISE_IP || "",
       ...(envVars.STUN_SERVERS ? { STUN_SERVERS: envVars.STUN_SERVERS } : {}),
     },
@@ -485,6 +490,9 @@ function spawnSfu(config: EmbeddedServerConfig): ChildProcess | null {
       rememberOutput(null, "sfu", msg);
       log(`[SFU] ${msg}`);
       emitLog(null, "sfu", msg);
+      // An SFU that couldn't bind its control port still names it to servers, which
+      // then register with whoever holds it. Killing it fails the start instead.
+      if (/Control listener stopped/.test(msg)) killProcess(proc);
     }
   };
 
@@ -496,6 +504,7 @@ function spawnSfu(config: EmbeddedServerConfig): ChildProcess | null {
     sfuProcess = null;
     sfuPort = null;
     sfuMediaPort = null;
+    sfuLocalPorts = null;
 
     // The SFU is shared, so its death is everybody's: any server still up now has
     // voice that cannot work.
@@ -520,8 +529,10 @@ function ensureSfu(config: EmbeddedServerConfig): number | null {
 
   sfuPort = config.sfuPort;
   sfuMediaPort = config.mediaPort;
+  sfuLocalPorts = { controlPort: config.controlPort, metricsPort: config.metricsPort };
   log(
-    `SFU started (pid=${sfuProcess.pid}, signalling=tcp/${sfuPort}, media=udp/${sfuMediaPort})`,
+    `SFU started (pid=${sfuProcess.pid}, signalling=tcp/${sfuPort}, media=udp/${sfuMediaPort}, ` +
+      `control=tcp/${config.controlPort}, metrics=tcp/${config.metricsPort})`,
   );
   return sfuPort;
 }
@@ -536,6 +547,7 @@ function releaseSfu(): void {
   sfuProcess = null;
   sfuPort = null;
   sfuMediaPort = null;
+  sfuLocalPorts = null;
 }
 
 function spawnServer(
@@ -701,7 +713,7 @@ export async function createAndStartServer(
     });
     setAutoStart(config.id, true);
     emitStatus();
-    return startProcesses(config.id);
+    return await startProcesses(config.id);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     log(`Create failed: ${msg}`);
@@ -774,9 +786,16 @@ export async function startExistingServer(
   return startProcesses(id);
 }
 
-function startProcesses(id: string): EmbeddedServerState | null {
+async function startProcesses(id: string): Promise<EmbeddedServerState | null> {
   const inst = instances.get(id);
   if (!inst) return null;
+
+  try {
+    inst.config = (await claimSfuLocalPorts(id, sfuLocalPorts ?? undefined)) ?? inst.config;
+  } catch (err) {
+    log(`Could not check the SFU's local ports: ${err instanceof Error ? err.message : err}`);
+  }
+  if (inst.status !== "starting") return stateOf(inst);
 
   const config = inst.config;
 
