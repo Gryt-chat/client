@@ -226,7 +226,7 @@ for (const tab of ["my-servers", "profile", "sound-video/audio", "audio", ""]) {
   assert.match(page, /managing=\{server\.id === managing\}/, `${MY_SERVERS} does not tell the asked-for card`);
   assert.match(page, /useCallback\(\(\) => setSettingsTab\("my-servers"\), \[setSettingsTab\]\)/, `${MY_SERVERS} leaves the request in place, so reopening settings flashes the card again`);
 
-  const target = page.slice(page.indexOf("function ManageTarget"), page.indexOf("function railEntriesFor"));
+  const target = page.slice(page.indexOf("function ManageTarget"), page.indexOf("function HostedServerCard"));
   assert.ok(target.length > 0, `${MY_SERVERS} no longer has ManageTarget, so this reads nothing`);
   assert.match(target, /if \(!managing\) return;\s*ref\.current\?\.scrollIntoView\(/, "the asked-for card is not brought into view");
   assert.match(target, /className=\{flash \? "gryt-setting-hit" : undefined\}/, "the asked-for card is not flashed");
