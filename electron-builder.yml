@@ -119,6 +119,8 @@ publish:
 
 afterSign: scripts/notarize.cjs
 
+# Also what puts x-scheme-handler/gryt in the Linux desktop entries. Leave
+# linux.mimeTypes unset: each Linux target adds the scheme to it again (GRYT-976).
 protocols:
   - name: Gryt
     schemes:
@@ -141,8 +143,6 @@ linux:
   category: Network
   synopsis: "Real-time voice chat"
   description: "Gryt Chat — real-time voice chat desktop client"
-  mimeTypes:
-    - x-scheme-handler/gryt
   desktop:
     entry:
       X-AppImage-Payload-License: "AGPL-3.0-or-later"

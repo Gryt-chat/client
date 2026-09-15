@@ -5,10 +5,11 @@
  * validates the whole object, so a Windows-only mistake fails all three builds.
  */
 
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { dirname, extname, join } from "node:path";
 
 const require = createRequire(import.meta.url);
 const here = dirname(fileURLToPath(import.meta.url));
@@ -133,4 +134,65 @@ for (const name of readdirSync(join(here, "..", "build", "icons"))) {
   }
 }
 
-console.log("builder-config: ok, both variants");
+// The desktop entries as electron-builder writes them. The repeated MimeType never
+// showed in the config, only in the built deb (GRYT-976).
+const linuxTargets = loadVariant(undefined).linux?.target ?? [];
+const work = mkdtempSync(join(tmpdir(), "gryt-desktop-entries-"));
+const stubApp = join(work, "linux-unpacked");
+mkdirSync(join(stubApp, "resources"), { recursive: true });
+writeFileSync(join(stubApp, "gryt-chat"), "");
+
+const entries = [];
+
+try {
+  const { build } = require("electron-builder");
+  await build({
+    projectDir: join(here, ".."),
+    linux: linuxTargets,
+    x64: true,
+    publish: "never",
+    // Nothing is packaged: the stub stands in for the app, and returning true
+    // from the hook stops each target once its desktop entry is written.
+    prepackaged: stubApp,
+    config: { extends: "electron-builder.config.cjs", directories: { output: join(work, "out") } },
+    effectiveOptionComputed: async (computed) => {
+      if (Array.isArray(computed)) {
+        const [args, desktopFile] = computed;
+        const target = extname(args[args.indexOf("--package") + 1]).slice(1);
+        entries.push({ target, text: readFileSync(desktopFile, "utf8") });
+      } else if (computed?.desktopFile != null) {
+        entries.push({ target: "snap", text: readFileSync(computed.desktopFile, "utf8") });
+      } else if (computed?.desktop != null) {
+        entries.push({ target: "AppImage", text: computed.desktop });
+      }
+      return true;
+    },
+  });
+} finally {
+  rmSync(work, { recursive: true, force: true });
+}
+
+if (entries.length !== linuxTargets.length) {
+  console.error(
+    `Expected a desktop entry from each of ${linuxTargets.join(", ")} and got ${entries.length}, ` +
+      "so the MimeType check below did not see all of them.",
+  );
+  process.exit(1);
+}
+
+for (const { target, text } of entries) {
+  const mimeTypes = (/^MimeType=(.*)$/m.exec(text)?.[1] ?? "").split(";").filter(Boolean);
+  const gryt = mimeTypes.filter((type) => type === "x-scheme-handler/gryt").length;
+
+  if (gryt !== 1 || new Set(mimeTypes).size !== mimeTypes.length) {
+    const found = mimeTypes.length > 0 ? `MimeType=${mimeTypes.join(";")}` : "no MimeType";
+    console.error(
+      `The ${target} desktop entry has ${found}. It should list x-scheme-handler/gryt once. ` +
+        "That line is how an installed package gets gryt:// links, sign-in included. Repeats " +
+        "come from setting linux.mimeTypes, which electron-builder adds to once per target.",
+    );
+    process.exit(1);
+  }
+}
+
+console.log(`builder-config: ok, both variants, ${entries.length} Linux desktop entries`);
