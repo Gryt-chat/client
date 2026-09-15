@@ -453,6 +453,8 @@ function ServerItem({
                   render={
                     <button
                       type="button"
+                      // The icon is the only content, so without this every server is an unnamed button.
+                      aria-label={servers[host]?.name || host}
                       style={{
                         cursor: isUnavailable ? "not-allowed" : "pointer",
                       }}

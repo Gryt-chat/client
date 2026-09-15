@@ -65,9 +65,15 @@ export async function serveSecurityNotices(page: Page, notices: unknown[]) {
 }
 
 /** Stands in for every live site the app calls, and blocks and reports anything it doesn't know. */
-export async function routeExternal(context: BrowserContext, report: (problem: string) => void) {
+export async function routeExternal(
+  context: BrowserContext,
+  report: (problem: string) => void,
+  /** Hosts the test means to reach for real, such as the nightly suite's server. */
+  allowHosts: string[] = [],
+) {
   await context.route(OFF_MACHINE, (route) => {
     const url = new URL(route.request().url());
+    if (allowHosts.includes(url.host)) return route.continue();
     const handled = fixtureFor(route, url);
     if (handled) return handled;
     report(`Request to a live site with no fixture: ${route.request().method()} ${url.href}`);
