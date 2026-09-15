@@ -8,6 +8,7 @@ import {
   setClaimDecision,
   useAccount,
 } from "@/common";
+import { expectClaimOutcome } from "@/lib/identityClaimOutcome";
 import { useSockets } from "@/socket";
 
 /**
@@ -28,13 +29,10 @@ export function useIdentityClaim() {
     [isSignedIn],
   );
 
-  /**
-   * Agree to it, and make it happen. Dropping the session puts the next connect
-   * back on the join path, where the link is signed (GRYT-286).
-   */
-  const claim = useCallback(
+  /** Without a stored session the next connect takes the join path, which answers
+      as the account and signs the link only after a yes. */
+  const rejoinAsAccount = useCallback(
     (host: string) => {
-      setClaimDecision(identityScopeFor(host), "yes");
       removeServerAccessToken(host);
       removeServerRefreshToken(host);
       reconnectServer(host);
@@ -42,10 +40,24 @@ export function useIdentityClaim() {
     [reconnectServer],
   );
 
-  /** Decline, and stop being asked about this server. */
-  const decline = useCallback((host: string) => {
-    setClaimDecision(identityScopeFor(host), "no");
-  }, []);
+  const claim = useCallback(
+    (host: string) => {
+      setClaimDecision(identityScopeFor(host), "yes");
+      expectClaimOutcome(host);
+      rejoinAsAccount(host);
+    },
+    [rejoinAsAccount],
+  );
+
+  /** The guest stays as it is on the server and this device stops using it there.
+      Its keys are kept, so the server menu can still move it later. */
+  const decline = useCallback(
+    (host: string) => {
+      setClaimDecision(identityScopeFor(host), "no");
+      rejoinAsAccount(host);
+    },
+    [rejoinAsAccount],
+  );
 
   return { canClaim, claim, decline };
 }

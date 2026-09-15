@@ -39,6 +39,7 @@
     "test:message-key-offer": "node scripts/check-message-key-offer.mjs",
     "test:reset-warning": "node scripts/check-reset-warning.mjs",
     "test:guest-history": "node scripts/check-guest-history.mjs",
+    "test:identity-claim": "node scripts/check-identity-claim.mjs",
     "test:whats-new": "node --disable-warning=ExperimentalWarning scripts/check-whats-new.mjs",
     "test:whats-new-since": "node scripts/check-whats-new-since.mjs",
     "test:whats-new-reachable": "node scripts/check-whats-new-reachable.mjs",

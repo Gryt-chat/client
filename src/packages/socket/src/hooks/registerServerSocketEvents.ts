@@ -30,6 +30,7 @@ import {
   ownDmPublicKey,
   readSealedVault,
 } from "@/common";
+import { claimOutcomeToast, takeClaimOutcome } from "@/lib/identityClaimOutcome";
 import {
   Server,
   serverDetails,
@@ -286,7 +287,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     });
   });
 
-  socket.on("server:joined", (joinInfo: { accessToken: string; fileToken?: string; refreshToken?: string; nickname: string; avatarFileId?: string | null; avatarWorn?: string | null }) => {
+  socket.on("server:joined", (joinInfo: { accessToken: string; fileToken?: string; refreshToken?: string; nickname: string; avatarFileId?: string | null; avatarWorn?: string | null; identityClaim?: unknown }) => {
     setServerAccessToken(host, joinInfo.accessToken);
     // Before anything renders. Every avatar and every picture reaches for this,
     // so storing it late means a screen of broken images on the first join.
@@ -298,6 +299,11 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     if (joinInfo.refreshToken) {
       setServerRefreshToken(host, joinInfo.refreshToken);
     }
+
+    const claimed = takeClaimOutcome(host) ? claimOutcomeToast(joinInfo.identityClaim) : null;
+    if (claimed?.tone === "success") toast.success(claimed.message, { duration: 6000 });
+    else if (claimed?.tone === "error") toast.error(claimed.message, { duration: 8000 });
+    else if (claimed) toast(claimed.message, { duration: 6000, icon: createElement(PiInfoFill, { size: 18 }) });
 
     // Said out loud, because the request was made in a dialog that has long since
     // closed and grey going to normal is a change nobody is watching for.
