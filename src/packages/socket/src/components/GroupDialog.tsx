@@ -10,6 +10,7 @@ import {
 } from "@/common";
 
 import { conversationTitle, type DirectConversation } from "../hooks/useDirectMessages";
+import { uploadGroupPicture } from "../utils/uploadGroupPicture";
 import { EmojiText } from "./EmojiText";
 import type { MemberInfo } from "./MemberSidebar";
 
@@ -112,23 +113,9 @@ export const GroupDialog = ({
     try {
       const token = getServerAccessToken(serverHost);
       if (!token) throw new Error("Not signed in to this server");
-      const form = new FormData();
-      form.append("file", file, file.name || "group.png");
-      /* The avatar endpoint, because a group picture is the same job. A second
-         endpoint is a second place for the limits to drift. */
-      const response = await fetch(`${getServerHttpBase(serverHost)}/api/uploads/avatar`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: form,
-      });
-      const data = (await response.json().catch(() => ({}))) as {
-        avatarFileId?: string;
-        message?: string;
-      };
-      if (!response.ok || !data.avatarFileId) {
-        throw new Error(data.message || "The server would not take that picture");
-      }
-      setIconFileId(data.avatarFileId);
+      setIconFileId(
+        await uploadGroupPicture(getServerHttpBase(serverHost), token, file, file.name || "group.png"),
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not upload that");
     } finally {
