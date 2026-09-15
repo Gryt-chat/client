@@ -6,6 +6,7 @@ import { createServer } from "net";
 import { join } from "path";
 import { extract } from "tar";
 
+import { pruneEmbeddedRuntimes } from "./embeddedRuntimeCleanup";
 import {
   checkPortsAvailable,
   claimSfuLocalPorts,
@@ -224,11 +225,21 @@ function packagedRuntimeRoot(): string | null {
   return existsSync(legacy) ? legacy : null;
 }
 
+function embeddedProcessesRunning(): boolean {
+  if (sfuProcess) return true;
+  for (const inst of instances.values()) {
+    if (inst.server || inst.worker) return true;
+  }
+  return false;
+}
+
 /**
  * A loose dependency tree made Squirrel.Mac traverse ~14,000 files while staging
  * an update. One signed archive instead, extracted after the install.
  */
-export async function prepareEmbeddedServerRuntime(): Promise<void> {
+export async function prepareEmbeddedServerRuntime(
+  report: (msg: string) => void = log,
+): Promise<void> {
   if (!app.isPackaged) return;
 
   const archive = join(process.resourcesPath, "embedded-server.tar.gz");
@@ -242,6 +253,8 @@ export async function prepareEmbeddedServerRuntime(): Promise<void> {
     return;
   }
 
+  // A server already up started before this folder existed, so it runs from somewhere else.
+  const safeToPrune = !embeddedProcessesRunning();
   const temporary = `${destination}.tmp-${process.pid}`;
   await mkdir(runtimeParent, { recursive: true });
   await rm(temporary, { recursive: true, force: true });
@@ -287,6 +300,11 @@ export async function prepareEmbeddedServerRuntime(): Promise<void> {
   } catch (error) {
     await rm(temporary, { recursive: true, force: true });
     throw error;
+  }
+
+  // Not awaited: sixty old versions can take a minute to delete, and startup shouldn't wait for it.
+  if (safeToPrune) {
+    pruneEmbeddedRuntimes(runtimeParent, app.getVersion(), report).catch(() => undefined);
   }
 }
 

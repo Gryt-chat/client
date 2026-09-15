@@ -2441,7 +2441,7 @@ if (!gotSingleInstanceLock) {
       }
 
       try {
-        await prepareEmbeddedServerRuntime();
+        await prepareEmbeddedServerRuntime(startupLog);
         // It returns early when there is no archive, which is every slim build,
         // and saying "ready" sends somebody looking for a runtime that is not there.
         startupLog(
