@@ -538,7 +538,7 @@ export function ServerRoleEditorTab({
           </Button>
         </div>
 
-        <Surface style={{ flex: "1 1 380px", minWidth: 320 }}>
+        <Surface style={{ flex: "1 1 380px", minWidth: "min(320px, 100%)" }}>
           {!draft ? (
             <span className="text-sm text-gryt-muted">Pick a role to edit.</span>
           ) : draft.id === OWNER_ROLE ? (

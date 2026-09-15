@@ -99,3 +99,12 @@ export function isTinyWindow({
 }
 
 export { COMPACT_MAX_WIDTH, TINY_MAX_WIDTH };
+
+/** The server settings dialog's 2rem margins, 21px padding, 200px tab rail and its gap. */
+const SETTINGS_CHROME = 64 + 42 + 200 + 16;
+const MIN_SETTINGS_CONTENT = 400;
+
+/** Whether the settings tabs fit as a rail beside the page. Below this they are a picker. */
+export function hasRoomForSettingsRail(windowWidth: number): boolean {
+  return windowWidth - SETTINGS_CHROME >= MIN_SETTINGS_CONTENT;
+}

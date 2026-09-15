@@ -100,7 +100,7 @@ export function ServerWebhooksTab({
         Each webhook gets a unique URL that can be used to send messages.
       </span>
 
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center gap-2 flex-wrap">
         <span className="text-base font-bold">Webhooks</span>
         <Button size="small" onClick={createWebhook} disabled={textChannels.length === 0}>
           <PiPlus size={16} />
@@ -289,9 +289,11 @@ function WebhookCard({
               />
             </div>
 
-            <div className="flex flex-col gap-1" style={{ minWidth: 160 }}>
+            <div className="flex flex-col gap-1" style={{ flex: 1, minWidth: 160, maxWidth: 320 }}>
               <span className="text-xs font-medium">Channel</span>
+              {/* The trigger's label span has no min-w-0, so a long channel name would set the row's width. */}
               <Select
+                className="min-w-0 [&_[role=combobox]>span:first-child]:min-w-0 [&_[role=combobox]>span:first-child]:truncate"
                 value={webhook.channel_id}
                 onValueChange={(v) => handleChannelChange(String(v))}
                 placeholder="Select channel"

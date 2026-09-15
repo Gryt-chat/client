@@ -1,9 +1,10 @@
-import { Chip, Dialog, IconButton, Spinner, Tabs } from "@gryt/ui";
+import { Chip, Dialog, IconButton, Select, Spinner, Tabs } from "@gryt/ui";
 import { type ReactNode,useEffect, useMemo, useState } from "react";
 
 import { getServerAccessToken } from "@/common";
 
 import { PiArrowsLeftRightFill, PiGearFill, PiHandWavingFill, PiLinkFill, PiListChecksFill, PiProhibitFill, PiRobotFill, PiShieldCheckFill, PiSmileyFill, PiUsersFill, PiWebhooksLogoFill, PiX } from "../../../../lib/icons";
+import { useRoomForSettingsRail } from "../hooks/useNarrowWindow";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { useSockets } from "../hooks/useSockets";
 import { useVersionStatus } from "../hooks/useVersionStatus";
@@ -77,6 +78,7 @@ export function ServerSettingsModal() {
       "manage_bots",
     ].some((p) => hasPermission(p));
   const allowTabs = canManage;
+  const railFits = useRoomForSettingsRail();
 
 
   function handleDialogChange(open: boolean) {
@@ -317,11 +319,28 @@ export function ServerSettingsModal() {
               <Tabs
                 value={tab}
                 onValueChange={(v) => setTab(String(v))}
-                orientation="vertical"
+                orientation={railFits ? "vertical" : "horizontal"}
                 style={{ flex: 1, minHeight: 0 }}
               >
-                <div className="flex gap-4 h-full">
-                  <div style={{ minWidth: "200px", flexShrink: 0, overflowY: "auto" }}>
+                {/* min-w-0 because Tabs is a flex row: without it the widest page
+                    set the width, and a webhook URL pushed everything off the edge. */}
+                <div className={`flex gap-4 h-full min-w-0 flex-1 ${railFits ? "" : "flex-col"}`}>
+                  {!railFits && (
+                    <Select
+                      value={tab}
+                      onValueChange={(v) => setTab(String(v))}
+                      options={TAB_CONFIG.map(({ value, label, icon: Icon }) => ({
+                        value,
+                        label: (
+                          <span className="flex items-center gap-2">
+                            <Icon size={16} />
+                            {label}
+                          </span>
+                        ),
+                      }))}
+                    />
+                  )}
+                  <div hidden={!railFits} style={{ minWidth: "200px", flexShrink: 0, overflowY: "auto" }}>
                     <Tabs.List aria-label="Server settings" className="gap-1">
                       {TAB_CONFIG.map(({ value, label, icon: Icon }) => (
                         <Tabs.Tab key={value} value={value}>
@@ -378,7 +397,7 @@ export function ServerSettingsModal() {
                     </div>
                   </div>
 
-                  <div style={{ flex: 1, overflow: "auto", minWidth: 0 }}>
+                  <div style={{ flex: 1, overflow: "auto", minWidth: 0, minHeight: 0 }}>
                     {!permissionKnown ? (
                       <span className="text-sm text-gryt-muted" style={{ marginBottom: 12 }}>
                         Loading permissions…
