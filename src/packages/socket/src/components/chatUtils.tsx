@@ -18,6 +18,8 @@ export type AttachmentMeta = {
   has_thumbnail: boolean;
   /** Blob URL for local preview while the message is pending upload. */
   local_url?: string;
+  /** A sealed file not fetched yet. Calling it fetches and decrypts it. */
+  open_sealed?: () => Promise<Blob>;
 };
 
 /** A webhook card as the server stores it. Pictures are uploads on this server, never remote URLs. */

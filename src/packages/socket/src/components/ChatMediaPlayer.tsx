@@ -1,7 +1,13 @@
-import { VideoPlayer } from "@gryt/ui";
-import { useCallback, useEffect, useRef } from "react";
+import { Button, Spinner, VideoPlayer } from "@gryt/ui";
+import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 
+import { PiWarningCircle } from "../../../../lib/icons";
+import { useSealedVideo } from "../hooks/useSealedVideo";
 import { formatFileSize } from "../utils/formatFileSize";
+
+function mediaLabel(fileName?: string | null, size?: number | null): string | null {
+  return fileName ? `${fileName}${size != null ? ` · ${formatFileSize(size)}` : ""}` : null;
+}
 
 export const ChatMediaPlayer = ({
   src,
@@ -25,9 +31,7 @@ export const ChatMediaPlayer = ({
   onError?: () => void;
   onPosterError?: () => void;
 }) => {
-  const label = fileName
-    ? `${fileName}${size != null ? ` · ${formatFileSize(size)}` : ""}`
-    : null;
+  const label = mediaLabel(fileName, size);
 
   if (type === "video") {
     return (
@@ -76,6 +80,82 @@ function ChatVideo({
         onError={onError}
         onPosterError={onPosterError}
       />
+    </div>
+  );
+}
+
+/**
+ * An encrypted video, fetched and decrypted when play is pressed (GRYT-1171). The player is
+ * inert until then, so the press lands on the button here and not on the player's own.
+ */
+export function ChatSealedVideo({
+  open,
+  fileName,
+  size,
+  volume,
+  onVolumeChange,
+}: {
+  open: () => Promise<Blob>;
+  fileName?: string | null;
+  size?: number | null;
+  volume: number;
+  onVolumeChange: (v: number) => void;
+}) {
+  const { src, phase, start } = useSealedVideo(open);
+  const box = useRef<HTMLDivElement | null>(null);
+  const focused = useRef(false);
+
+  const press = useCallback(() => {
+    focused.current = box.current?.contains(document.activeElement) ?? false;
+    start();
+  }, [start]);
+
+  // Once decrypted, press the player's own play button, so it starts the way a click would start it.
+  useLayoutEffect(() => {
+    const root = box.current?.querySelector<HTMLElement>(".gryt-video-player");
+    if (!src || !root) return;
+    root.querySelector<HTMLButtonElement>('button[aria-label="Play video"]')?.click();
+    if (focused.current) root.focus();
+  }, [src]);
+
+  return (
+    <div ref={box} className="chat-video-player relative" data-sealed={src ? undefined : phase}>
+      <div inert={!src}>
+        <VideoPlayer
+          src={src ?? ""}
+          fileName={mediaLabel(fileName, size)}
+          volume={volume}
+          onVolumeChange={onVolumeChange}
+        />
+      </div>
+      {!src && phase !== "failed" && (
+        <button
+          type="button"
+          aria-label={phase === "opening" ? "Loading video" : "Play video"}
+          aria-disabled={phase === "opening" || undefined}
+          onClick={phase === "opening" ? undefined : press}
+          className="absolute inset-0 grid cursor-pointer place-items-center rounded-(--gryt-radius-md) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gryt-accent-light aria-disabled:cursor-progress"
+        >
+          {/* Drawn over the player's play button, the same size and colour, so the button turns into the spinner. */}
+          {phase === "opening" && (
+            <span className="grid h-14 w-14 place-items-center rounded-(--gryt-radius-control) bg-gryt-accent">
+              <Spinner size={28} aria-label="Loading video" className="text-gryt-on-accent" />
+            </span>
+          )}
+        </button>
+      )}
+      {phase === "failed" && (
+        <div
+          role="alert"
+          className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-(--gryt-radius-md) bg-gryt-surface-raised p-4 text-center text-gryt-text"
+        >
+          <PiWarningCircle size={32} aria-hidden />
+          <p className="m-0 text-sm">This video couldn't be played.</p>
+          <Button size="xsmall" tone="neutral" onClick={press}>
+            Try again
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

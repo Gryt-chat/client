@@ -12,10 +12,7 @@ import { type ForumTag,serverDetailsList as ServerDetailsList } from "@/settings
 
 import { PiInfoFill } from "../../../../lib/icons";
 import type { ChatMessage } from "../components/chatUtils";
-import {
-  fetchSealedAttachment,
-  sealedAttachmentMeta,
-} from "../utils/sealedAttachments";
+import { openSealedAttachment } from "../utils/sealedAttachments";
 import { sealedNotificationBody } from "../utils/sealedNotification";
 import {
   ChatErrorPayload,
@@ -239,14 +236,13 @@ export function useChat({
               // sent before this shipped.
               if (!key) return null;
 
-              const blob = await fetchSealedAttachment({
-                url: getUploadsFileUrl(serverHost, fileId),
+              return openSealedAttachment({
+                fileId,
                 key,
+                fileUrl: () => getUploadsFileUrl(serverHost, fileId),
                 openFile: sealing.openFile,
+                keepUrl: (url) => objectUrlsRef.current.add(url),
               });
-              const objectUrl = URL.createObjectURL(blob);
-              objectUrlsRef.current.add(objectUrl);
-              return sealedAttachmentMeta(fileId, key, objectUrl);
             }),
           );
 

@@ -1,5 +1,5 @@
 import { useStableFileUrl } from "../hooks/useStableFileUrl";
-import { ChatMediaPlayer } from "./ChatMediaPlayer";
+import { ChatMediaPlayer, ChatSealedVideo } from "./ChatMediaPlayer";
 import type { AttachmentMeta } from "./chatUtils";
 import { FileCard } from "./FileCard";
 import { ImageAttachment } from "./ImageAttachment";
@@ -40,6 +40,19 @@ export function MessageAttachment({
           height={meta?.height}
           onError={local ? undefined : refreshUrl}
           onClick={() => onLightboxOpen(imgSrc, meta?.original_name || "Attachment")}
+        />
+      </MessageContextMenu>
+    );
+  }
+  if (mime.startsWith("video/") && meta?.open_sealed) {
+    return (
+      <MessageContextMenu media={{ src: url, fileName: meta.original_name }} messageActions={messageActions}>
+        <ChatSealedVideo
+          open={meta.open_sealed}
+          fileName={meta.original_name}
+          size={meta.size}
+          volume={chatMediaVolume}
+          onVolumeChange={setChatMediaVolume}
         />
       </MessageContextMenu>
     );

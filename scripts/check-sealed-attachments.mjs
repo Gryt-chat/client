@@ -6,6 +6,7 @@
  */
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import {
   deriveDmKeyPair,
@@ -16,7 +17,12 @@ import {
   asIdentityScope,
 } from "@gryt/crypto";
 
-import { sealedAttachmentMeta, fetchSealedAttachment } from "../src/packages/socket/src/utils/sealedAttachments.ts";
+import {
+  fetchSealedAttachment,
+  openSealedAttachment,
+  opensOnPlay,
+  sealedAttachmentMeta,
+} from "../src/packages/socket/src/utils/sealedAttachments.ts";
 
 const SCOPE = asIdentityScope("srv:attachments");
 const CONVERSATION = "dm_g0123456789abcdef0123456789abcdef";
@@ -128,6 +134,67 @@ const FILE = Uint8Array.from({ length: 3000 }, (_, i) => (i * 37) % 256);
   assert.equal(seen[0].init.headers, undefined, "a bearer token went on the download");
 }
 
+/* ── a video waits for play; everything else opens with the message ──────── */
+
+{
+  const video = sealAttachment({ bytes: FILE, conversationId: CONVERSATION, name: "clip.webm", mime: "video/webm" });
+  const image = sealAttachment({ bytes: FILE, conversationId: CONVERSATION, mime: "image/png" });
+  const unnamed = sealAttachment({ bytes: FILE, conversationId: CONVERSATION });
+  const stored = { video: video.ciphertext, image: image.ciphertext, unnamed: unnamed.ciphertext };
+
+  const seen = [];
+  globalThis.fetch = async (url) => {
+    seen.push(url);
+    const bytes = stored[new URL(url).pathname.split("/").pop()];
+    return { ok: true, arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) };
+  };
+  let token = "A";
+  const kept = [];
+  const openOne = (fileId, meta) =>
+    openSealedAttachment({
+      fileId,
+      key: meta,
+      fileUrl: () => `https://gryt.test/api/uploads/files/${fileId}?t=${token}`,
+      openFile: (bytes, m) => openAttachment({ ciphertext: bytes, conversationId: CONVERSATION, meta: m }),
+      keepUrl: (url) => kept.push(url),
+    });
+
+  assert.equal(opensOnPlay({ mime: "video/mp4" }), true);
+  for (const mime of ["image/png", "audio/ogg", "application/pdf", undefined]) {
+    assert.equal(opensOnPlay({ mime }), false, `${mime} would wait for a play button it does not have`);
+  }
+
+  const drawn = await openOne("video", video.meta);
+  assert.deepEqual(seen, [], "an encrypted video was downloaded when its message opened, before anybody pressed play");
+  assert.equal(drawn.local_url, undefined);
+  assert.equal(kept.length, 0);
+  assert.equal(drawn.mime, "video/webm", "a waiting video has to draw as a video, or it gets no play button");
+  assert.equal(drawn.original_name, "clip.webm");
+  assert.equal(typeof drawn.open_sealed, "function");
+
+  token = "B";
+  const blob = await drawn.open_sealed();
+  assert.deepEqual(seen, ["https://gryt.test/api/uploads/files/video?t=B"],
+    "pressing play did not fetch once, with the token current at the press");
+  assert.equal(blob.type, "video/webm");
+  assert.deepEqual(Array.from(new Uint8Array(await blob.arrayBuffer())), Array.from(FILE));
+
+  seen.length = 0;
+  for (const [fileId, meta] of [["image", image.meta], ["unnamed", unnamed.meta]]) {
+    const opened = await openOne(fileId, meta);
+    assert.equal(opened.open_sealed, undefined, `${fileId} was left for a press that nothing draws`);
+    assert.ok(opened.local_url?.startsWith("blob:"), `${fileId} did not open with its message`);
+    assert.ok(kept.includes(opened.local_url), `${fileId}'s blob URL is not handed back to be revoked`);
+  }
+  assert.equal(seen.length, 2);
+  for (const url of kept) URL.revokeObjectURL(url);
+
+  // The hook has to use the function above, or all of this tests something the app never calls.
+  const useChat = readFileSync(new URL("../src/packages/socket/src/hooks/useChat.ts", import.meta.url), "utf8");
+  assert.match(useChat, /openSealedAttachment\(\{/, "useChat no longer opens attachments through openSealedAttachment");
+  assert.doesNotMatch(useChat, /fetchSealedAttachment/, "useChat fetches sealed files itself again, videos included");
+}
+
 /* ── a refused download is an error, not an empty file ───────────────────── */
 
 {
@@ -146,5 +213,5 @@ const FILE = Uint8Array.from({ length: 3000 }, (_, i) => (i * 37) % 256);
 }
 
 console.log(
-  "sealed attachments: a file goes up encrypted, comes back with the sender's name and type, and draws as itself",
+  "sealed attachments: a file goes up encrypted, comes back with the sender's name and type, and draws as itself; a video waits for play",
 );

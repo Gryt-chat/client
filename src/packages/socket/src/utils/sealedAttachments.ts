@@ -14,7 +14,7 @@ import type { AttachmentMeta } from "../components/chatUtils";
 export function sealedAttachmentMeta(
   fileId: string,
   key: SealedAttachmentKey,
-  objectUrl: string,
+  source: string | (() => Promise<Blob>),
 ): AttachmentMeta {
   return {
     file_id: fileId,
@@ -24,7 +24,7 @@ export function sealedAttachmentMeta(
     width: key.width ?? null,
     height: key.height ?? null,
     has_thumbnail: false,
-    local_url: objectUrl,
+    ...(typeof source === "string" ? { local_url: source } : { open_sealed: source }),
   };
 }
 
@@ -51,4 +51,35 @@ export async function fetchSealedAttachment({
   return new Blob([plain as BlobPart], {
     type: key.mime || "application/octet-stream",
   });
+}
+
+/** Decrypting needs the whole file, so a video waits for play instead of downloading with its message (GRYT-1171). */
+export function opensOnPlay(key: SealedAttachmentKey): boolean {
+  return (key.mime ?? "").startsWith("video/");
+}
+
+/**
+ * One attachment of a message that just opened. `fileUrl` is called when the fetch
+ * happens, so a video played later asks with the token current by then.
+ */
+export async function openSealedAttachment({
+  fileId,
+  key,
+  fileUrl,
+  openFile,
+  keepUrl,
+}: {
+  fileId: string;
+  key: SealedAttachmentKey;
+  fileUrl: () => string;
+  openFile: (ciphertext: Uint8Array, meta: SealedAttachmentKey) => Uint8Array;
+  /** Takes the blob URL made for anything opened now, to revoke it later. */
+  keepUrl: (url: string) => void;
+}): Promise<AttachmentMeta> {
+  const fetchOpened = () => fetchSealedAttachment({ url: fileUrl(), key, openFile });
+  if (opensOnPlay(key)) return sealedAttachmentMeta(fileId, key, fetchOpened);
+
+  const objectUrl = URL.createObjectURL(await fetchOpened());
+  keepUrl(objectUrl);
+  return sealedAttachmentMeta(fileId, key, objectUrl);
 }
