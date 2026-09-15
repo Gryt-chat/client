@@ -1,0 +1,125 @@
+name: Nightly
+
+# Voice, screen share and the desktop app, which the PR suite can't reach. The nightly
+# section of e2e/README.md has the server, the secrets and how to run it by hand.
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+  # A change to the suite itself runs it before it merges.
+  pull_request:
+    paths:
+      - e2e/nightly/**
+      - .github/workflows/nightly.yml
+
+permissions:
+  contents: read
+
+jobs:
+  # A call on test.gryt.chat, through the tunnel and the SFU's public address.
+  call:
+    # A fork gets no secrets, and without them there's no server to call.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # One run at a time on the shared server. A queued run waits instead of cancelling this one.
+    concurrency:
+      group: nightly-test-server
+      cancel-in-progress: false
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - id: playwright
+        run: echo "version=$(node -p 'require("@playwright/test/package.json").version')" >> "$GITHUB_OUTPUT"
+      - id: browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-chromium-headless-shell
+      - if: steps.browsers.outputs.cache-hit != 'true'
+        run: yarn playwright install chromium --only-shell
+      - run: yarn vite build
+      - run: yarn playwright test --config e2e/nightly/playwright.config.ts --project call
+        env:
+          GRYT_TEST_SERVER_URL: ${{ secrets.GRYT_TEST_SERVER_URL }}
+          GRYT_TEST_INVITE_CODE: ${{ secrets.GRYT_TEST_INVITE_CODE }}
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-call-report
+          path: |
+            e2e/nightly/playwright-report
+            e2e/nightly/test-results
+          retention-days: 14
+
+  # The Electron app from this commit, hosting a server built from the newest releases.
+  electron:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: client
+      # Release Client embeds the newest release of each, and build-embedded-server.mjs finds them beside the client.
+      - name: Check out the newest server, SFU and image worker releases
+        run: |
+          for repo in server sfu image-worker; do
+            url="https://github.com/Gryt-chat/$repo.git"
+            tag=$(git ls-remote --tags --refs "$url" 'v*' | sed 's#.*refs/tags/##' | grep -Ex 'v[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -1)
+            git -c advice.detachedHead=false clone --quiet --depth 1 --branch "$tag" "$url" "$repo"
+            echo "$repo $tag"
+          done
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: yarn
+          cache-dependency-path: |
+            client/yarn.lock
+            server/yarn.lock
+            image-worker/yarn.lock
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: sfu/go.mod
+          cache-dependency-path: sfu/go.sum
+      - run: yarn install --frozen-lockfile
+        working-directory: client
+      - run: yarn install --frozen-lockfile --ignore-engines
+        working-directory: server
+      - run: yarn install --frozen-lockfile --ignore-engines
+        working-directory: image-worker
+      - run: yarn build:embedded-server
+        working-directory: client
+      - run: yarn vite build
+        working-directory: client
+        env:
+          ELECTRON: "1"
+      - id: playwright
+        working-directory: client
+        run: echo "version=$(node -p 'require("@playwright/test/package.json").version')" >> "$GITHUB_OUTPUT"
+      - id: browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-chromium-headless-shell
+      - if: steps.browsers.outputs.cache-hit != 'true'
+        working-directory: client
+        run: yarn playwright install chromium --only-shell
+      - name: Make sure xvfb and lsof are there
+        run: command -v xvfb-run lsof || (sudo apt-get update && sudo apt-get install -y xvfb lsof)
+      - run: xvfb-run --auto-servernum yarn playwright test --config e2e/nightly/playwright.config.ts --project electron
+        working-directory: client
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-electron-report
+          path: |
+            client/e2e/nightly/playwright-report
+            client/e2e/nightly/test-results
+          retention-days: 14

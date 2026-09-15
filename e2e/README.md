@@ -83,3 +83,52 @@ second test needs a helper, move it there.
 
 CI retries a failed test once. One that only passes on the retry shows up as flaky in the
 report.
+
+## Nightly
+
+`e2e/nightly` covers what a throwaway server can't: a call through a real SFU on a public
+address, screen share, and the desktop app hosting a server. `.github/workflows/nightly.yml`
+runs it at 03:17 UTC, when somebody starts it by hand, and on pull requests that change the
+suite. It uses the same helpers as the suite above.
+
+- **The call** (`voice.spec.ts`, `screen-share.spec.ts`). Two guests join `test.gryt.chat`
+  with the invite and go into Voice Chat, with Chrome's fake microphone, camera and screen.
+  The tests read `getStats` in each page. Audio keeps arriving on both sides, the candidate
+  pair ICE picked ends at an address the SFU offered and not a private one, and the other
+  guest decodes frames from the camera and from the shared screen.
+- **The desktop app** (`electron.spec.ts`). It starts the app with a user data directory of
+  its own and creates a server from Add a server. The rail has to offer Manage server for it.
+  The test holds the SFU's default registration and metrics ports first, like a second app
+  on the machine would. Then one process under the app has to hold the SFU's signalling,
+  registration, metrics and media ports, with registration on 127.0.0.1 only. A browser
+  joins last, with an invite made in the app.
+
+Every guest leaves the call and then the server when its test ends, so `test.gryt.chat`
+doesn't gain a member each night. The "joined" and "left" lines in General stay, because a
+guest can't delete them.
+
+### The server
+
+`test.gryt.chat` is described in `ops/deploy/compose/TEST.md` in the superproject. CI has its
+address and invite as the `GRYT_TEST_SERVER_URL` and `GRYT_TEST_INVITE_CODE` secrets. Its
+CORS list names origins one by one, so the suite serves the client on `127.0.0.1:4173`,
+which is on it.
+
+### Running it by hand
+
+```bash
+yarn vite build
+GRYT_TEST_SERVER_URL=https://test.gryt.chat GRYT_TEST_INVITE_CODE=… \
+  yarn playwright test --config e2e/nightly/playwright.config.ts --project call
+```
+
+Off CI the browser keeps its own ICE candidates from the SFU. On the same network as the
+test server, the call would otherwise go straight over the LAN and fail the address check.
+`GRYT_E2E_SEND_LOCAL_CANDIDATES=1` sends them anyway. A server on this machine or the LAN
+works too, and then the check only asks for an address the SFU offered.
+
+The desktop app test needs `yarn build:embedded-server` and `ELECTRON=1 yarn vite build`
+first. The build script looks for the server, SFU and image worker beside the client or in
+the superproject. CI runs it on Linux under `xvfb-run`. It skips itself on macOS, where the
+app asks for camera access every time it starts until Electron has an answer in System
+Settings. Set `GRYT_E2E_ELECTRON_ON_MAC=1` once it does.

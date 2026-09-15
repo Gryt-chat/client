@@ -14,6 +14,10 @@ const ALLOWED: Allowed[] = [
   // The Audio settings page asks for a microphone when it opens, and headless Chromium has none (NotSupportedError
   // on macOS, NotFoundError on CI's Linux). Fake devices keep the level meter moving, so settled() never returns.
   { text: /^Error enumerating devices: (NotSupportedError: Not supported|NotFoundError: Requested device not found)$/ },
+  // A page on http asks a new host for /info over http first. A proxy's redirect to https carries
+  // no CORS headers, so Chrome logs a block, and ensureSchemeKnown moves on to https.
+  { text: /^Access to fetch at 'http:\/\/[^/']+\/info' from origin '[^']+' has been blocked by CORS policy/ },
+  { text: /^Failed to load resource: net::ERR_FAILED$/, url: /^http:\/\/[^/]+\/info$/ },
 ];
 
 /** Everything that should fail a test without an assertion asking: console errors, crashes, live sites. */

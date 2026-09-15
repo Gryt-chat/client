@@ -36,17 +36,17 @@ const PHONE: BrowserContextOptions = {
 };
 
 /** Digits only: the server's profanity filter is on, and a random run of letters can spell something. */
-function uniqueName(prefix: string): string {
+export function uniqueName(prefix: string): string {
   return `${prefix}-${Math.floor(Math.random() * 1e6)}`;
 }
 
 /** The app picks from 152 names, so members of one worker's server would soon share one. */
-async function prepare(
+export async function prepare(
   context: BrowserContext,
   report: (problem: string) => void,
-  { nickname, welcome = false }: { nickname: string; welcome?: boolean },
+  { nickname, welcome = false, allowHosts }: { nickname: string; welcome?: boolean; allowHosts?: string[] },
 ) {
-  await routeExternal(context, report);
+  await routeExternal(context, report, allowHosts);
   await context.addInitScript(
     ({ nickname, welcome }) => {
       try {

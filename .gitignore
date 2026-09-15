@@ -75,4 +75,6 @@ public/mediapipe/
 # Playwright output: traces, videos and the HTML report of the last e2e run.
 e2e/test-results/
 e2e/playwright-report/
+e2e/nightly/test-results/
+e2e/nightly/playwright-report/
 
