@@ -8,6 +8,7 @@ import assert from "node:assert/strict";
 
 import { createPendingUpdate } from "../electron/pendingUpdate.ts";
 import { nextShown } from "../src/components/updateToastState.ts";
+import { CHECKS, PRESSES } from "./lib/updateEntryPoints.mjs";
 
 let failures = 0;
 async function check(name, run) {
@@ -27,13 +28,15 @@ const flush = async () => {
 const release = (version) => ({ tag: `v${version}`, version });
 
 /*
- * Stands in for electron-updater the way main.ts drives it. It has one download slot, like
- * the real one: a check started while a download is still settling gets that download back.
+ * Stands in for electron-updater the way main.ts drives it, with one download slot like the real
+ * one. `setting.automatic` is the Automatic updates switch, which a test can flip between offers.
  */
-function harness({ waitForStaging = false, findNewer = async () => null } = {}) {
+function harness({ waitForStaging = false, findNewer = async () => null, automatic = true } = {}) {
   const jobs = [];
   const lookups = [];
   const timers = [];
+  const reports = [];
+  const setting = { automatic };
   const state = { installs: 0, overlaps: 0, busy: false };
 
   const updates = createPendingUpdate({
@@ -53,6 +56,12 @@ function harness({ waitForStaging = false, findNewer = async () => null } = {}) 
     },
     install() {
       state.installs += 1;
+    },
+    automatic() {
+      return setting.automatic;
+    },
+    report(rel) {
+      reports.push(rel);
     },
     waitForStaging,
     lookupTimeoutMs: 5000,
@@ -117,7 +126,7 @@ function harness({ waitForStaging = false, findNewer = async () => null } = {}) 
   }
 
   async function downloadAndLand(version, options = { announce: true }) {
-    assert.equal(updates.offer(release(version), options), true, `offer ${version}`);
+    assert.equal(updates.offer(release(version), options), "downloading", `offer ${version}`);
     await flush();
     const job = jobs.at(-1);
     assert.equal(job.release.version, version);
@@ -130,7 +139,7 @@ function harness({ waitForStaging = false, findNewer = async () => null } = {}) 
 
   const fireTimers = () => timers.splice(0).forEach((timer) => timer.run());
 
-  return { updates, jobs, lookups, state, begin, failCheck, holdBack, downloadAndLand, fireTimers };
+  return { updates, jobs, lookups, reports, setting, state, begin, failCheck, holdBack, downloadAndLand, fireTimers };
 }
 
 console.log("update supersede");
@@ -214,8 +223,8 @@ await check("the same version is not downloaded again, and installs straight awa
   const h = harness({ findNewer: async () => release("1.11.21") });
   await h.downloadAndLand("1.11.21");
 
-  assert.equal(h.updates.offer(release("1.11.21"), { announce: true }), false);
-  assert.equal(h.updates.offer(release("1.11.20"), { announce: true }), false);
+  assert.equal(h.updates.offer(release("1.11.21"), { announce: true }), "ignored");
+  assert.equal(h.updates.offer(release("1.11.20"), { announce: true }), "ignored");
 
   h.updates.requestInstall();
   await flush();
@@ -305,7 +314,7 @@ await check("a newer release during a download cancels it, and starts only once 
   h.begin(h.jobs[0]);
   await flush();
 
-  assert.equal(h.updates.offer(release("1.11.22"), { announce: true }), true);
+  assert.equal(h.updates.offer(release("1.11.22"), { announce: true }), "downloading");
   await flush();
 
   assert.equal(h.jobs[0].cancelled, true, "the stale download is cancelled");
@@ -368,7 +377,7 @@ await check("a newer release replaces a finished download that is waiting", asyn
   const h = harness();
   await h.downloadAndLand("1.11.21");
 
-  assert.equal(h.updates.offer(release("1.11.22"), { announce: true }), true);
+  assert.equal(h.updates.offer(release("1.11.22"), { announce: true }), "downloading");
   await flush();
   assert.equal(h.jobs.length, 2);
 
@@ -428,6 +437,114 @@ await check("a download from a check nobody offered can be replaced too", async 
   settle.reject(new Error("cancelled"));
   await flush();
   assert.equal(h.jobs.length, 1);
+});
+
+/* ── Automatic updates on and off (GRYT-1206, GRYT-1218) ────────────── */
+
+for (const [name, { options }] of Object.entries(CHECKS)) {
+  await check(`${name}, automatic updates on: the release downloads`, async () => {
+    const h = harness({ automatic: true });
+    assert.equal(h.updates.offer(release("1.11.22"), options), "downloading");
+    await flush();
+
+    assert.equal(h.jobs.length, 1);
+    assert.deepEqual(h.jobs[0].options, { ...options, installWhenReady: false });
+    assert.deepEqual(h.reports, []);
+  });
+
+  await check(`${name}, automatic updates off: the release is reported and nothing downloads`, async () => {
+    const h = harness({ automatic: false });
+    assert.equal(h.updates.offer(release("1.11.22"), options), "reported");
+    await flush();
+
+    assert.equal(h.jobs.length, 0, "nothing may reach the updater");
+    assert.deepEqual(h.reports, [release("1.11.22")]);
+    assert.equal(h.updates.held(), null);
+    assert.deepEqual(h.updates.reported(), release("1.11.22"));
+  });
+}
+
+for (const [name, { options }] of Object.entries(PRESSES)) {
+  for (const automatic of [true, false]) {
+    await check(`${name}, automatic updates ${automatic ? "on" : "off"}: the press downloads`, async () => {
+      const h = harness({ automatic });
+      assert.equal(h.updates.offer(release("1.11.22"), options), "downloading");
+      await flush();
+
+      assert.equal(h.jobs.length, 1);
+      assert.equal(h.jobs[0].options.bypassRollout, true);
+      assert.deepEqual(h.reports, []);
+      h.begin(h.jobs[0]);
+      await flush();
+      assert.equal(h.jobs[0].land(), "ready");
+      assert.equal(h.updates.ready(), "1.11.22");
+    });
+  }
+}
+
+await check("the switch is read at each offer, so turning it off holds from the next check", async () => {
+  const h = harness({ automatic: true });
+  await h.downloadAndLand("1.11.21", CHECKS["Gryt started at login"].options);
+
+  h.setting.automatic = false;
+  assert.equal(h.updates.offer(release("1.11.22"), { announce: true }), "reported");
+  await flush();
+  assert.equal(h.jobs.length, 1);
+  assert.equal(h.updates.ready(), "1.11.21", "a report keeps the download that is there");
+
+  h.setting.automatic = true;
+  assert.equal(h.updates.offer(release("1.11.22"), { announce: true }), "downloading");
+  await flush();
+  assert.equal(h.jobs.length, 2);
+});
+
+await check("a report after a pressed download leaves that download ready to install", async () => {
+  const h = harness({ automatic: false });
+  await h.downloadAndLand("1.11.21", PRESSES["download now, or install with nothing downloaded"].options);
+
+  assert.equal(h.updates.offer(release("1.11.22"), CHECKS["Check for Updates in Settings"].options), "reported");
+  assert.equal(h.updates.offer(release("1.11.21"), { announce: true }), "ignored", "not reported twice");
+  await flush();
+
+  assert.deepEqual(h.reports, [release("1.11.22")]);
+  assert.equal(h.updates.ready(), "1.11.21");
+  assert.equal(h.jobs.length, 1);
+});
+
+for (const automatic of [true, false]) {
+  await check(`install finds a newer release, automatic updates ${automatic ? "on" : "off"}: it downloads and installs`, async () => {
+    const h = harness({ automatic, findNewer: async () => release("1.11.22") });
+    await h.downloadAndLand("1.11.21", PRESSES["download now, or install with nothing downloaded"].options);
+
+    assert.equal(h.updates.requestInstall(), "looking");
+    await flush();
+
+    assert.deepEqual(h.reports, [], "the press is the ask, so nothing is only reported");
+    assert.equal(h.state.installs, 0, "the stale 1.11.21 must not install");
+    assert.equal(h.jobs.length, 2);
+    assert.equal(h.jobs[1].options.asked, true);
+    assert.equal(h.jobs[1].options.installWhenReady, true);
+
+    h.begin(h.jobs[1]);
+    await flush();
+    assert.equal(h.jobs[1].land(), "installing");
+    assert.equal(h.state.installs, 1);
+    assert.equal(h.updates.ready(), "1.11.22");
+  });
+}
+
+await check("a press can take the release a check reported, when the probe finds nothing newer", async () => {
+  const h = harness({ automatic: false });
+
+  /* Leaving beta pins an older stable, which the probe's floor never lets through. */
+  h.updates.offer(release("1.11.20"), CHECKS["Check for Updates in Settings"].options);
+  const pressed = h.updates.reported();
+  assert.deepEqual(pressed, release("1.11.20"));
+
+  assert.equal(h.updates.offer(pressed, PRESSES["download now, or install with nothing downloaded"].options), "downloading");
+  await flush();
+  assert.equal(h.jobs.length, 1);
+  assert.equal(h.jobs[0].release.version, "1.11.20");
 });
 
 /* ── macOS ──────────────────────────────────────────────────────────── */
@@ -538,6 +655,25 @@ await check("progress for a replacement renames the toast rather than keep the o
   ]).current;
   assert.equal(up.version, "1.11.22");
   assert.equal(up.phase, "downloading");
+});
+
+await check("a reported release offers the download, and the same toast follows it once pressed", () => {
+  const { renders } = play([
+    { status: "announced", version: "1.11.25", from: "1.11.24", autoDownload: false },
+    { status: "available", version: "1.11.25" },
+    { status: "downloading", version: "1.11.25", percent: 10 },
+    { status: "downloaded", version: "1.11.25" },
+  ]);
+
+  assert.deepEqual(renders.map((shown) => shown.phase), ["waiting", "downloading", "ready"]);
+});
+
+await check("asking again redraws a dismissed report with its button, not a bar", () => {
+  const up = play([{ status: "announced", version: "1.11.25", autoDownload: false }]).current;
+  up.dismissed = true;
+
+  const again = nextShown(up, { status: "announced", version: "1.11.25", autoDownload: false, reannounce: true });
+  assert.equal(again.phase, "waiting");
 });
 
 await check("statuses with no toast up raise nothing", () => {

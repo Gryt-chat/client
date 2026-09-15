@@ -3,6 +3,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
+import { CHECKS, PRESSES } from "./lib/updateEntryPoints.mjs";
+
 const installer = readFileSync(
   new URL("../build/installer.nsh", import.meta.url),
   "utf8",
@@ -105,11 +107,11 @@ function bodyOf(name) {
 
 const backgroundCheck = bodyOf("checkForUpdatesInBackground");
 
-assert.match(backgroundCheck, /startBackgroundDownload\(/);
+assert.match(backgroundCheck, /offerRelease\(/);
 
-// startBackgroundDownload offers the release to `updates`, which calls startDownload once
-// the slot is free (check-update-supersede.mjs), and that is downloadRelease's real check.
-assert.match(bodyOf("startBackgroundDownload"), /updates\.offer\(release, options\)/);
+// offerRelease hands the release to `updates`, which calls startDownload once the slot is
+// free (check-update-supersede.mjs), and that is downloadRelease's real check.
+assert.match(bodyOf("offerRelease"), /updates\.offer\(release, options\) === "ignored"/);
 
 assert.match(main, /createPendingUpdate\(\{\s*startDownload: downloadRelease,/);
 
@@ -164,10 +166,16 @@ assert.match(
   /if \(process\.platform === "darwin"\) \{\s*nativeAutoUpdater\.on\("update-downloaded", \(\) => updates\.staged\(true\)\);\s*nativeAutoUpdater\.on\("error", \(\) => updates\.staged\(false\)\);/,
 );
 
-// A check started anywhere else still hands its download over, so it can be replaced too.
-assert.equal(main.match(/\.checkForUpdates\(\)/g)?.length, 4);
+// Two checks reach electron-updater: the download `updates` decided on, and the variant
+// switch, which hands its download over so it can be replaced too.
+assert.equal(main.match(/\.checkForUpdates\(\)/g)?.length, 2);
 
-assert.equal(main.match(/\.checkForUpdates\(\)\s*\.then\(updates\.track\)/g)?.length, 3);
+assert.equal(main.match(/\.checkForUpdates\(\)\s*\.then\(updates\.track\)/g)?.length, 1);
+
+assert.match(
+  main.slice(main.indexOf('"set-slim-variant"'), main.indexOf('"get-beta-channel"')),
+  /autoUpdater\.checkForUpdates\(\)\.then\(updates\.track\)/,
+);
 
 // Announcing is the update-available handler's job: that is the first moment the
 // release is known to be coming. Announcing from the probe promised nothing real.
@@ -184,7 +192,14 @@ assert.match(main, /ipcMain\.on\(\s*"download-update"/);
 
 assert.match(
   bodyOf("downloadAnnouncedRelease"),
-  /startBackgroundDownload\(release, \{ bypassRollout: true, installWhenReady \}\)/,
+  /offerRelease\(release, \{ bypassRollout: true, asked: true, installWhenReady \}\)/,
+);
+
+// The probe only finds newer releases, so a press on a reported older stable or the other
+// variant falls back to what the check reported. Only with nothing held, which is newer.
+assert.match(
+  bodyOf("downloadAnnouncedRelease"),
+  /const release = newer \?\? \(held \? null : updates\.reported\(\)\);\s*if \(release\) \{\s*offerRelease\(release,/,
 );
 
 // Every pinned feed asks for one range at a time. Pinning puts the updater on the
@@ -212,7 +227,7 @@ assert.ok(
 // Sharing it made the tray item a no-op for the first fifteen minutes of a run.
 assert.match(main, /checkForUpdatesInBackground\("tray", true\)/);
 
-assert.match(bodyOf("checkForUpdatesInBackground"), /if \(force\) announceDownloaded/);
+assert.match(bodyOf("checkForUpdatesInBackground"), /if \(force\) announceRelease/);
 
 assert.match(bodyOf("checkForUpdatesInBackground"), /sendToMain\("up-to-date"/);
 
@@ -263,9 +278,72 @@ assert.doesNotMatch(toast, /toast\.dismiss\((?!t\.id\))/, "only the cross dismis
 
 assert.match(toast, /const next = nextShown\(shown\.current, status\);\s*if \(next\) render\(next\);/);
 
-// The off switch reads from config, so it survives a restart.
-assert.match(main, /readBoolConfig\("autoUpdate", true\)/);
+// ── Automatic updates, at every check (GRYT-1206, GRYT-1218) ────────────
 
-assert.match(backgroundCheck, /if \(!autoUpdateEnabled\)/);
+// electron-updater reads autoDownload after `update-available` fires. The handler put it
+// back to true before the read, so the Settings check downloaded what it meant to report.
+assert.equal(main.match(/\.autoDownload\s*=/g)?.length, 1, "autoDownload is set once, and never flipped");
+
+assert.match(main, /^autoUpdater\.autoDownload = true;$/m);
+
+assert.doesNotMatch(bodyOf("restoreRolloutCheck"), /autoDownload/);
+
+for (const event of ["update-available", "update-not-available", "error"]) {
+  const start = main.indexOf(`autoUpdater.on("${event}"`);
+  assert.match(main.slice(start, main.indexOf("\n  });\n", start)), /restoreRolloutCheck\(\);/, `${event} puts the rollout check back`);
+}
+
+// Read from the file Settings writes, when asked. A copy read at startup is what the login
+// launch never looked at.
+assert.match(bodyOf("automaticUpdatesOn"), /return readBoolConfig\("autoUpdate", true\);/);
+
+assert.equal(main.match(/"autoUpdate"/g)?.length, 1, "nothing else keeps its own copy of the switch");
+
+assert.doesNotMatch(main, /autoUpdateEnabled/);
+
+assert.match(main, /"get-auto-update",\s*\(\) => automaticUpdatesOn\(\)/);
+
+assert.match(main, /"set-auto-update",\s*\(_event, enabled: boolean\) => \{\s*writeConfig\(\{\s*autoUpdate: enabled,/);
+
+// `updates.offer` applies the switch, so it has to be given the live reading and a way to report.
+assert.match(main, /automatic: automaticUpdatesOn,\s*report: \(release\) => reportRelease\(release\.version\),/);
+
+// The launch, the timer, waking, focus, turning the switch on, the tray and Settings with
+// something held all go through the background check, which is the first entry below.
+for (const call of ['"launch"', '"interval"', '"resume"', '"focus"', '"setting"', '"tray", true', '"settings", true']) {
+  assert.ok(main.includes(`checkForUpdatesInBackground(${call})`), `checkForUpdatesInBackground(${call}) is gone`);
+}
+
+// Every check that finds a release hands it to offerRelease with the options the supersede
+// test runs. A new one has to be listed in scripts/lib/updateEntryPoints.mjs.
+const entryPoints = { ...CHECKS, ...PRESSES };
+
+for (const [name, { from, to, call }] of Object.entries(entryPoints)) {
+  const start = main.indexOf(from);
+  assert.notEqual(start, -1, `${name}: ${from} is gone`);
+
+  const slice = main.slice(start, main.indexOf(to, start + from.length));
+  assert.ok(slice.includes(call), `${name} has to call ${call}`);
+  assert.doesNotMatch(slice, /\.checkForUpdates\(\)|autoDownload\s*=/, `${name} must not reach the updater itself`);
+}
+
+assert.equal(
+  main.match(/offerRelease\(/g)?.length,
+  Object.keys(entryPoints).length + 1,
+  "a call to offerRelease that scripts/lib/updateEntryPoints.mjs doesn't list",
+);
+
+// Reported rather than fetched: the toast gets a button, and Settings gets "available".
+assert.match(
+  bodyOf("reportRelease"),
+  /sendToMain\("announced", \{\s*version,\s*from: app\.getVersion\(\),\s*autoDownload: false,\s*reannounce,\s*\}\);\s*sendToMain\("available", \{ version \}\);/,
+);
+
+// Putting a toast back for a release that is only reported keeps its button. Announced as a
+// download, a second press of Check for Updates drew a progress bar that never moved.
+assert.match(
+  bodyOf("announceRelease"),
+  /if \(held\?\.version !== version\) \{\s*reportRelease\(version, true\);\s*return;\s*\}[\s\S]*autoDownload: true,/,
+);
 
 console.log("Updater bridge packaging checks passed");
