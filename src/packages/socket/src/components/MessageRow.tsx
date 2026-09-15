@@ -8,6 +8,7 @@ import type { ThreadSummary } from "../hooks/useThreads";
 import { getFrequentReactions } from "../utils/recentReactions";
 import type { CustomEmojiEntry } from "../utils/remarkEmoji";
 import { sealedPlaceholder } from "../utils/sealedText";
+import { drawsMessageText } from "../utils/webhookCards";
 import { BotTag } from "./BotTag";
 import { MessageHoverToolbar } from "./ChatMessage";
 import type { ChatMessage, Reaction } from "./chatUtils";
@@ -21,6 +22,7 @@ import { type MessageActions, MessageContextMenu } from "./MediaContextMenu";
 import { MemberIdentityCard } from "./MemberIdentityCard";
 import type { MemberInfo } from "./MemberSidebar";
 import { MessageAttachment } from "./MessageAttachment";
+import { MessageCards } from "./MessageCards";
 import { UnreadIndicator } from "./UnreadIndicator";
 
 export interface MessageMeta {
@@ -536,6 +538,7 @@ function MessageContent({
   const hasReactions = !!(m.reactions && m.reactions.length > 0);
   const hasThreadNews = (threadUnread ?? 0) > 0 || (threadMentions ?? 0) > 0;
   const sealedNote = sealedPlaceholder(m);
+  const drawsText = drawsMessageText(m);
   return (
     <motion.div
       animate={{ marginBottom: hasReactions ? 30 : 0, background: bgColor }}
@@ -633,19 +636,21 @@ function MessageContent({
             {sealedNote}
           </span>
         ) : (
-          <CollapsibleText>
-            <MarkdownRenderer
-              content={m.text}
-              customEmojis={customEmojiList}
-              memberNicknames={memberNicknames}
-              mentionMembersById={memberList}
-              serverHost={serverHost}
-              profanityMatches={m.profanity_matches}
-              blurProfanity={blurProfanity}
-              smileyConversion={smileyConversion}
-              disabledSmileys={disabledSmileys}
-            />
-          </CollapsibleText>
+          drawsText && (
+            <CollapsibleText>
+              <MarkdownRenderer
+                content={m.text}
+                customEmojis={customEmojiList}
+                memberNicknames={memberNicknames}
+                mentionMembersById={memberList}
+                serverHost={serverHost}
+                profanityMatches={m.profanity_matches}
+                blurProfanity={blurProfanity}
+                smileyConversion={smileyConversion}
+                disabledSmileys={disabledSmileys}
+              />
+            </CollapsibleText>
+          )
         )}
         {m.edited_at && !isFirstInGroup && (
           <Tooltip title={`Edited ${new Date(m.edited_at).toLocaleString()}`}>
@@ -654,7 +659,7 @@ function MessageContent({
             </span>
           </Tooltip>
         )}
-        {serverHost && !m.pending && (
+        {serverHost && !m.pending && drawsText && (
           <MessageEmbeds messageId={m.message_id} text={m.text} serverHost={serverHost} />
         )}
         {m.attachments && m.attachments.length > 0 && serverHost && (
@@ -672,6 +677,18 @@ function MessageContent({
               />
             ))}
           </div>
+        )}
+        {m.cards && m.cards.length > 0 && serverHost && (
+          <MessageCards
+            cards={m.cards}
+            serverHost={serverHost}
+            customEmojiList={customEmojiList}
+            memberNicknames={memberNicknames}
+            memberList={memberList}
+            smileyConversion={smileyConversion}
+            disabledSmileys={disabledSmileys}
+            onLightboxOpen={onLightboxOpen}
+          />
         )}
         {m.failed && (
           <span className="text-xs" style={{ color: "var(--gryt-danger-9)", marginTop: "2px" }}>

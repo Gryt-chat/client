@@ -20,6 +20,20 @@ export type AttachmentMeta = {
   local_url?: string;
 };
 
+/** A webhook card as the server stores it. Pictures are uploads on this server, never remote URLs. */
+export type StoredWebhookCard = {
+  title?: string;
+  url?: string;
+  description?: string;
+  color?: string;
+  author?: { name: string; url?: string; icon_file_id?: string };
+  fields?: { name: string; value: string; inline: boolean }[];
+  image_file_id?: string;
+  thumbnail_file_id?: string;
+  footer?: { text: string; icon_file_id?: string };
+  timestamp?: string;
+};
+
 export interface ProfanityMatchRange {
   startIndex: number;
   endIndex: number;
@@ -52,6 +66,13 @@ export type ChatMessage = {
   sender_is_bot?: boolean;
   sender_avatar_file_id?: string;
   profanity_matches?: ProfanityMatchRange[];
+  /** Cards a webhook posted, drawn under the text (GRYT-1186). */
+  cards?: StoredWebhookCard[] | null;
+  /**
+   * `text` is a line the server wrote for clients that cannot draw cards.
+   * Not drawn in the row, and never a mention.
+   */
+  text_fallback?: boolean;
   /**
    * The sealed envelope, when this message was encrypted. Straight off the wire
    * and never rendered; {@link sealedState} says where it got to (GRYT-729).
