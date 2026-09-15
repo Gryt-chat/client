@@ -67,6 +67,8 @@ export const tourSteps: TourStep[] = [
     side: "right",
     // Already inside Settings, so this is one press on the destination itself.
     via: ["settings-account"],
+    // A narrow window has a picker instead of that button, so the hop is skipped and this opens the page.
+    enter: (app) => app.openSettings("account"),
   },
   {
     id: "server",

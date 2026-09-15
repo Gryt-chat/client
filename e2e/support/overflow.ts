@@ -25,11 +25,11 @@ export async function settled(scope: Locator) {
 }
 
 /**
- * GRYT-1199's measurement: every element's right edge against the dialog, from the
- * tab panel up to it, and nothing inside allowed to scroll sideways.
+ * GRYT-1199's measurement: every element's right edge against the dialog, from `scope`
+ * up to it, and nothing inside allowed to scroll sideways. `scope` can be the dialog itself.
  */
-export function measureOverflow(panel: Locator): Promise<Overflow> {
-  return panel.evaluate((root) => {
+export function measureOverflow(scope: Locator): Promise<Overflow> {
+  return scope.evaluate((root) => {
     const describe = (el: Element) => {
       const text = (el.textContent ?? "").trim().replace(/\s+/g, " ").slice(0, 40);
       const label = el.getAttribute("aria-label") ?? el.getAttribute("placeholder");
@@ -39,17 +39,18 @@ export function measureOverflow(panel: Locator): Promise<Overflow> {
     const scrolls = (el: Element) => ["auto", "scroll"].includes(getComputedStyle(el).overflowX);
 
     const dialog = root.closest('[role="dialog"]');
-    if (!dialog) throw new Error("the tab panel is not inside a dialog");
+    if (!dialog) throw new Error("what was measured is not inside a dialog");
     const box = dialog.getBoundingClientRect();
     const edge = { left: box.left + dialog.clientLeft, right: box.left + dialog.clientLeft + dialog.clientWidth };
 
+    // `scope` and its ancestors below the dialog, outermost first. None when `scope` is the dialog.
     const between: Element[] = [];
-    for (let up = root.parentElement; up && up !== dialog; up = up.parentElement) between.push(up);
+    for (let up: Element | null = root; up && up !== dialog; up = up.parentElement) between.unshift(up);
 
     const pastEdge: string[] = [];
     const scrollsSideways: string[] = [];
     const flagged = new Set<Element>();
-    for (const el of [dialog, ...between.reverse(), root, ...root.querySelectorAll("*")]) {
+    for (const el of [dialog, ...between, ...root.querySelectorAll("*")]) {
       const style = getComputedStyle(el);
       if (style.display === "none" || style.visibility === "hidden") continue;
       if (scrolls(el) && !el.matches("input, textarea, select") && el.scrollWidth > el.clientWidth + 1) {

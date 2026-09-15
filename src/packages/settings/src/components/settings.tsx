@@ -7,6 +7,9 @@ import { useSettings } from "@/settings";
 
 import { isElectron } from "../../../../lib/electron";
 import { PiBellFill, PiFadersHorizontalFill, PiFlaskFill, PiHardDrivesFill, PiHeartFill, PiInfoFill, PiMagnifyingGlassFill, PiMicrophoneFill, PiPaletteFill, PiPuzzlePieceFill, PiShieldCheckFill, PiUserFill, PiX } from "../../../../lib/icons";
+import { SettingsPicker } from "../../../socket/src/components/SettingsPicker";
+import { useRoomForSettingsRail } from "../../../socket/src/hooks/useNarrowWindow";
+import { USER_SETTINGS_CHROME } from "../../../socket/src/lib/narrowLayout";
 import type { SettingsIndexEntry } from "../hooks/settingsSearch";
 import { searchSettings } from "../hooks/settingsSearch";
 import { AboutSettings, UpdatesSettings } from "./aboutSettings";
@@ -191,6 +194,13 @@ const DESTINATIONS: SettingsDestination[] = [
 const MAIN_DESTINATIONS = DESTINATIONS.filter((d) => !d.pinBottom);
 const PINNED_DESTINATIONS = DESTINATIONS.filter((d) => d.pinBottom);
 
+/** The rail as one Select, for a window too narrow for it. A category's pages are a group. */
+const PICKER_OPTIONS = DESTINATIONS.map(({ value, label, icon, pages }) =>
+  pages
+    ? { label, options: pages.map((page) => ({ value: `${value}/${page.value}`, label: page.label, icon })) }
+    : { value, label, icon },
+);
+
 const DEFAULT_DESTINATION = "profile";
 
 export function Settings() {
@@ -213,6 +223,11 @@ export function Settings() {
 
   const results = useMemo(() => searchSettings(query), [query]);
   const searching = query.trim().length > 0;
+
+  const railFits = useRoomForSettingsRail(USER_SETTINGS_CHROME);
+  // Without the rail the results take the page's place, so picking one hides them until the field is used again.
+  const [resultsOpen, setResultsOpen] = useState(true);
+  const resultsInPage = searching && !railFits && resultsOpen;
 
   /* Where the persisted value points, as a destination and a page inside it. A
      bare "sound-video" resolves, and so does a bare page name like "audio". */
@@ -251,6 +266,7 @@ export function Settings() {
       // Panels have no anchor of their own — landing on the panel is the result.
       pendingScroll.current = entry.panel ? null : entry.id;
       setPicked(entry.id);
+      setResultsOpen(false);
       setJump((n) => n + 1);
       changeDestination(
         entry.page ? `${entry.destination}/${entry.page}` : entry.destination,
@@ -264,8 +280,9 @@ export function Settings() {
   // Runs after the destination has rendered, since neither the scroll target
   // nor the new content exists in the DOM until then.
   useEffect(() => {
+    // Cleared in the frame, not here: useSettings is a singleton, so this runs once for
+    // `jump` and again a render later for the destination, which cancels the first frame.
     const id = pendingScroll.current;
-    pendingScroll.current = null;
 
     // Switching destination starts you at the top. Without this the new panel
     // inherits the previous scroll position and opens partway down.
@@ -279,6 +296,7 @@ export function Settings() {
     setHighlighted(null);
 
     const frame = requestAnimationFrame(() => {
+      pendingScroll.current = null;
       const el = contentRef.current?.querySelector<HTMLElement>(
         `[data-setting="${id}"]`,
       );
@@ -376,9 +394,9 @@ export function Settings() {
           </Dialog.Title>
 
           {showSettings && (
-            <div className="flex gap-4 h-full" style={{ flex: 1, minHeight: 0 }}>
+            <div className={`flex gap-4 h-full min-w-0 ${railFits ? "" : "flex-col"}`} style={{ flex: 1, minHeight: 0 }}>
               <div style={{
-                  width: "220px",
+                  width: railFits ? "220px" : undefined,
                   flexShrink: 0,
                   display: "flex",
                   flexDirection: "column",
@@ -398,7 +416,12 @@ export function Settings() {
                     className="px-10"
                     placeholder="Search settings"
                     value={query}
-                    onChange={(e) => setQuery(e.currentTarget.value)}
+                    onChange={(e) => {
+                      setQuery(e.currentTarget.value);
+                      setResultsOpen(true);
+                    }}
+                    onFocus={() => setResultsOpen(true)}
+                    onClick={() => setResultsOpen(true)}
                     onKeyDown={(e) => {
                       // Clear the query first; only close the dialog once the
                       // search is already empty.
@@ -426,8 +449,16 @@ export function Settings() {
                   )}
                 </div>
 
-                <div style={{ overflowY: "auto", minHeight: 0, flex: 1 }}>
-                  {searching ? (
+                {!railFits && !resultsInPage && (
+                  <SettingsPicker
+                    value={activePage ? `${active}/${activePage}` : active}
+                    onValueChange={changeDestination}
+                    options={PICKER_OPTIONS}
+                  />
+                )}
+
+                <div hidden={!railFits} style={{ overflowY: "auto", minHeight: 0, flex: 1 }}>
+                  {searching && railFits ? (
                     <SearchResults results={results} onPick={jumpTo} picked={picked} />
                   ) : (
                     <div className="flex flex-col gap-1 h-full">
@@ -498,11 +529,19 @@ export function Settings() {
                 </div>
               </div>
 
-              <div ref={contentRef} style={{
+              {resultsInPage && (
+                <div style={{ overflowY: "auto", minHeight: 0, flex: 1 }}>
+                  <SearchResults results={results} onPick={jumpTo} picked={picked} />
+                </div>
+              )}
+
+              {/* A page too wide for the window scrolls sideways. It used to be
+                  clipped, which cut buttons off where nobody could reach them. */}
+              <div ref={contentRef} hidden={resultsInPage} style={{
                   flex: 1,
-                  overflowY: "auto",
-                  overflowX: "hidden",
+                  overflow: "auto",
                   minWidth: 0,
+                  minHeight: 0,
                 }}>
                 {DESTINATIONS.map(({ value, content, pages }) => (
                   <div key={value} hidden={value !== active}>

@@ -11,6 +11,9 @@ const ALLOWED: Allowed[] = [
   // The server won't preview private addresses and answers 400. The paste test
   // sends a LAN address on purpose, and Chrome logs the refusal.
   { text: /status of 400 \(Bad Request\)/, url: /\/api\/link-preview\?url=http%3A%2F%2F192\.168\./ },
+  // The Audio settings page asks for a microphone when it opens, and headless Chromium has none (NotSupportedError
+  // on macOS, NotFoundError on CI's Linux). Fake devices keep the level meter moving, so settled() never returns.
+  { text: /^Error enumerating devices: (NotSupportedError: Not supported|NotFoundError: Requested device not found)$/ },
 ];
 
 /** Everything that should fail a test without an assertion asking: console errors, crashes, live sites. */

@@ -101,10 +101,12 @@ export function isTinyWindow({
 export { COMPACT_MAX_WIDTH, TINY_MAX_WIDTH };
 
 /** The server settings dialog's 2rem margins, 21px padding, 200px tab rail and its gap. */
-const SETTINGS_CHROME = 64 + 42 + 200 + 16;
+export const SERVER_SETTINGS_CHROME = 64 + 42 + 200 + 16;
+/** User settings: 1.5rem margins, 21px padding, a 220px rail and its gap. */
+export const USER_SETTINGS_CHROME = 48 + 42 + 220 + 16;
 const MIN_SETTINGS_CONTENT = 400;
 
-/** Whether the settings tabs fit as a rail beside the page. Below this they are a picker. */
-export function hasRoomForSettingsRail(windowWidth: number): boolean {
-  return windowWidth - SETTINGS_CHROME >= MIN_SETTINGS_CONTENT;
+/** Whether a settings dialog's tabs fit as a rail beside the page. Below this they are a picker. */
+export function hasRoomForSettingsRail(windowWidth: number, chrome: number): boolean {
+  return windowWidth - chrome >= MIN_SETTINGS_CONTENT;
 }
