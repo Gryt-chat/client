@@ -392,11 +392,9 @@ function ServerItem({
   const isReconnecting = connectionStatus === "reconnecting";
   const isUnavailable = isOffline && !isConnecting;
 
-  /**
-   * A server of ours that is still booting. Not a connection state — the socket
-   * has nothing to report — but it is what the person watching wants (GRYT-314).
-   */
-  const isStarting = embeddedStatus === "starting" && !voice.live;
+  /* The embedded manager's word alone. A call says nothing about whether a server is
+     booting, and the socket cannot tell booting from not answering. */
+  const isStarting = embeddedStatus === "starting";
 
   /**
    * Nothing has come back yet and the clock is running. This is the one
