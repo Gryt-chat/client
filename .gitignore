@@ -72,3 +72,7 @@ build/*
 # 12MB of MediaPipe WASM, copied from node_modules by scripts/copy-mediapipe.mjs
 public/mediapipe/
 
+# Playwright output: traces, videos and the HTML report of the last e2e run.
+e2e/test-results/
+e2e/playwright-report/
+

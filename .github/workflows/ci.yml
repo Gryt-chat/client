@@ -183,3 +183,77 @@ jobs:
             if (-not (Test-Path $path)) { throw "missing $path" }
             Write-Host "$exe $((Get-Item $path).Length) bytes"
           }
+
+  # Whether a pull request can change what the web client does. A skipped job still
+  # reports, so a required check doesn't wait on it. Pushes to main always run.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      web: ${{ steps.filter.outputs.web }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - id: filter
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" != "pull_request" ]; then
+            echo "web=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # electron/ only skips while nothing in the web build imports from it.
+          electron=skip
+          if git grep -qE "(\.\./)+electron/" -- src index.html; then electron=web; fi
+          files=$(git diff --name-only HEAD^1 HEAD)
+          web=false
+          if [ -z "$files" ]; then web=true; fi
+          while IFS= read -r file; do
+            case "$file" in
+              "") continue ;;
+              src/*|public/*|e2e/*|package.json|yarn.lock|vite.config.ts|index.html|.github/workflows/ci.yml) hit=web ;;
+              electron/*) hit=$electron ;;
+              docs/*|*.md|build/*|appimagehub/*|electron-builder.yml|electron-builder.config.cjs|scripts/check-*.mjs) hit=skip ;;
+              *) hit=web ;;
+            esac
+            echo "$hit  $file"
+            if [ "$hit" = web ]; then web=true; fi
+          done <<< "$files"
+          echo "web=$web" >> "$GITHUB_OUTPUT"
+
+  # The client in a real browser against a real server. e2e/README.md has the how and the rules.
+  e2e:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - id: playwright
+        run: echo "version=$(node -p 'require("@playwright/test/package.json").version')" >> "$GITHUB_OUTPUT"
+      - id: browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-chromium-headless-shell
+      - if: steps.browsers.outputs.cache-hit != 'true'
+        run: yarn playwright install chromium --only-shell
+      - run: docker pull --quiet ghcr.io/gryt-chat/server:latest
+      - run: yarn tsc -p e2e
+      - run: yarn vite build
+      - run: yarn playwright test --config e2e/playwright.config.ts
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+          retention-days: 14

@@ -1,0 +1,19 @@
+{
+  "app": [
+    {
+      "version": "current",
+      "date": "2026-09-15",
+      "line": "A release made up for the end-to-end tests.",
+      "changes": [
+        { "kind": "fixed", "text": "The first Enter after a pasted address sends it." },
+        { "kind": "new", "text": "Every change in this dialog gets its own pill." },
+        { "kind": "fixed", "text": "Server settings fit on a phone." }
+      ]
+    },
+    {
+      "version": "1.10.0",
+      "date": "2026-09-01",
+      "line": "The release the test pretends was seen last."
+    }
+  ]
+}
