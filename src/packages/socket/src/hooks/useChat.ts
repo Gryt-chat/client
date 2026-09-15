@@ -111,6 +111,8 @@ export function useChat({
   }>({});
   const fetchDebounceRef = useRef<number | null>(null);
   const inFlightFetchRef = useRef<Set<string>>(new Set());
+  /** Message ids `chat:deleted` took out. Kept for the session, so no later merge puts one back. */
+  const deletedIdsRef = useRef<Set<string>>(new Set());
   /** socket.io reuses the same Socket across a reconnect, so nothing keyed on it
       re-runs and a failed fetch stays failed until a reload. */
   const [reconnectNonce, setReconnectNonce] = useState(0);
@@ -391,7 +393,7 @@ export function useChat({
           break;
         }
       }
-      handleNewMessage(msg, activeConversationId, cacheKeyFor, setMessageCache, setChatMessages);
+      handleNewMessage(msg, activeConversationId, cacheKeyFor, setMessageCache, setChatMessages, deletedIdsRef.current);
 
       /* A thread reply is news about the thread. The store refuses to count the
          open thread rather than this clearing it: handler order is arbitrary. */
@@ -423,14 +425,14 @@ export function useChat({
         const key = cacheKeyFor(payload.conversation_id);
         if (key) setHasOlderMap((prev) => ({ ...prev, [key]: v }));
       };
-      handleHistoryPayload(payload, activeConversationId, cacheKeyFor, inFlightFetchRef, setMessageCache, setChatMessages, setIsLoadingMessages, setHasOlder, setIsLoadingOlder);
+      handleHistoryPayload(payload, activeConversationId, cacheKeyFor, inFlightFetchRef, setMessageCache, setChatMessages, setIsLoadingMessages, setHasOlder, setIsLoadingOlder, deletedIdsRef.current);
     };
 
     const onReaction = (updatedMessage: ChatMessage) =>
       handleReactionUpdate(updatedMessage, activeConversationId, cacheKeyFor, setMessageCache, setChatMessages);
 
     const onDeleted = (payload: { conversation_id: string; message_id: string }) =>
-      handleMessageDeleted(payload, activeConversationId, cacheKeyFor, setMessageCache, setChatMessages);
+      handleMessageDeleted(payload, activeConversationId, cacheKeyFor, setMessageCache, setChatMessages, deletedIdsRef.current);
 
     const onEdited = (updatedMessage: ChatMessage) =>
       handleMessageEdited(updatedMessage, activeConversationId, cacheKeyFor, setMessageCache, setChatMessages);

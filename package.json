@@ -139,7 +139,8 @@
     "test:peer-in-clear": "node scripts/check-peer-in-clear.mjs",
     "test:ai-toolkit": "node scripts/check-ai-toolkit.mjs",
     "test:empty-dm-copy": "node scripts/check-empty-dm-copy.mjs",
-    "test:composer-enter": "node --disable-warning=ExperimentalWarning scripts/check-composer-enter.mjs"
+    "test:composer-enter": "node --disable-warning=ExperimentalWarning scripts/check-composer-enter.mjs",
+    "test:history-merge": "node --disable-warning=ExperimentalWarning scripts/check-history-merge.mjs"
   },
   "dependencies": {
     "electron-updater": "^6.8.3",

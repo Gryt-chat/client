@@ -60,6 +60,10 @@ jobs:
       # the composer, and re-pin. Otherwise the newest message sits behind it.
       - run: yarn test:chat-scroll-anchor
 
+      # History and live messages share one order. Messages that reached a DM before
+      # its history loaded were drawn above all of it.
+      - run: yarn test:history-merge
+
       # Enter sends unless a suggestion list shows something to pick. A port in a
       # pasted URL used to open an empty emoji list that swallowed it.
       - run: yarn test:composer-enter

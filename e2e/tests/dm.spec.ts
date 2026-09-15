@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 
-import { composer, type Member, membersPanel, messageRow, unique } from "../support/app";
+import { composer, CONFIRMED_ROW, type Member, membersPanel, messageRow, sendMessage, unique } from "../support/app";
 import { expect, test } from "../support/fixtures";
 
 const ENCRYPTED = "This conversation is encrypted.";
@@ -58,4 +58,33 @@ test("an encrypted DM: each side reads the other's message", async ({ newMember 
     const leaked = member.frames.filter((frame) => frame.includes(question) || frame.includes(answer));
     expect(leaked, `${member.name} sent or got a DM in plain text over the socket`).toEqual([]);
   }
+});
+
+test("messages that arrive before a DM's history loads go below it", async ({ newMember }) => {
+  const alice = await newMember();
+  const bob = await newMember();
+
+  const older = [unique("older one"), unique("older two"), unique("older three")];
+  const newer = [unique("newer one"), unique("newer two")];
+
+  await openDmFromMembers(bob, alice);
+  for (const text of older) await send(bob.page, alice.name, text);
+
+  // A reload empties alice's cache, so the older messages are only on the server now.
+  await alice.page.reload();
+  // A confirmed row means her socket is joined again, so she hears what bob sends next.
+  await sendMessage(alice.page, unique("back from a reload"));
+
+  for (const text of newer) await send(bob.page, alice.name, text);
+  // Unread counts start at the reload, so 2 is both newer messages reaching the closed DM.
+  const dmButton = alice.page.getByRole("button", { name: "Direct messages" });
+  await expect(dmButton.locator("xpath=..")).toContainText("2");
+
+  await openDmFromList(alice.page, bob.name);
+  const texts = [...older, ...newer];
+  const order = async () => {
+    const rows = await alice.page.locator(CONFIRMED_ROW).allTextContents();
+    return rows.map((row) => texts.findIndex((text) => row.includes(text))).filter((i) => i >= 0);
+  };
+  await expect.poll(order).toEqual([0, 1, 2, 3, 4]);
 });
