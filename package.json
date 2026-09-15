@@ -102,6 +102,7 @@
     "test:sealed-send": "node scripts/check-sealed-send.mjs",
     "test:sealed-fallback": "node scripts/check-sealed-fallback.mjs",
     "test:sealed-attachments": "node scripts/check-sealed-attachments.mjs",
+    "test:sealed-save": "node --disable-warning=ExperimentalWarning scripts/check-sealed-save.mjs",
     "test:channel-permissions": "node scripts/check-channel-permissions.mjs",
     "test:report-user": "node scripts/check-report-user.mjs",
     "test:comment-length": "node scripts/check-comment-length.mjs",

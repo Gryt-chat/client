@@ -186,8 +186,13 @@ assert.match(reports, /<ScrollArea\.Content style=\{\{ minWidth: 0 \}\}>/, `${RE
 
 assert.match(
   attachment,
-  /if \(mime\.startsWith\("video\/"\) && meta\?\.open_sealed\) \{\s*return \([\s\S]*?<ChatSealedVideo\b[^>]*?open=\{meta\.open_sealed\}/,
-  `${ATTACHMENT} no longer hands an unopened encrypted video to ChatSealedVideo`,
+  /if \(mime\.startsWith\("video\/"\) && meta\?\.open_sealed\) \{\s*return \(\s*<SealedVideoAttachment\s+open=\{meta\.open_sealed\}/,
+  `${ATTACHMENT} no longer hands an unopened encrypted video to SealedVideoAttachment`,
+);
+assert.match(
+  attachment.slice(attachment.indexOf("function SealedVideoAttachment")),
+  /const video = useSealedVideo\(open\);[\s\S]*?<ChatSealedVideo\s+video=\{video\}/,
+  `${ATTACHMENT} no longer plays an encrypted video through useSealedVideo`,
 );
 const sealedPlayer = player.slice(player.indexOf("export function ChatSealedVideo"));
 assert.match(sealedPlayer, /<div inert=\{!src\}>\s*<VideoPlayer\s+src=\{src \?\? ""\}/,

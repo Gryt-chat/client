@@ -5,7 +5,7 @@ const FaFilePdf = PiFileTextFill;
 
 import { getUploadsFileUrl } from "@/common";
 
-import { triggerDownload } from "../utils/downloadFile";
+import { saveOpenedFile, triggerDownload } from "../utils/downloadFile";
 import { formatFileSize } from "../utils/formatFileSize";
 
 function getFileIcon(mime: string | null) {
@@ -41,19 +41,22 @@ export const FileCard = ({
   size,
   originalName,
   serverHost,
+  open,
 }: {
   fileId: string;
   mime: string | null;
   size: number | null;
   originalName: string | null;
   serverHost: string;
+  /** The file itself, when it is here already. Encrypted, the server copy is ciphertext. */
+  open?: () => Promise<Blob>;
 }) => {
   const fileUrl = getUploadsFileUrl(serverHost, fileId);
   const displayName = originalName || `${fileId.slice(0, 8)}...`;
 
   const handleDownload = useCallback(() => {
-    void triggerDownload(fileUrl, originalName);
-  }, [fileUrl, originalName]);
+    void (open ? saveOpenedFile(open, originalName) : triggerDownload(fileUrl, originalName));
+  }, [fileUrl, originalName, open]);
 
   return (
     <div className="flex items-center gap-3 chat-file-card">

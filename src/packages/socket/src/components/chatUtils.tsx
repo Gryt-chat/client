@@ -16,7 +16,7 @@ export type AttachmentMeta = {
   width: number | null;
   height: number | null;
   has_thumbnail: boolean;
-  /** Blob URL for local preview while the message is pending upload. */
+  /** Blob URL of the file itself, when it is decrypted or still being sent. */
   local_url?: string;
   /** A sealed file not fetched yet. Calling it fetches and decrypts it. */
   open_sealed?: () => Promise<Blob>;

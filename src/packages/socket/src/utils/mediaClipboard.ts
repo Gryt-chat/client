@@ -9,14 +9,18 @@ function convertToPng(blob: Blob): Promise<Blob> {
       canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob failed"))), "image/png");
       URL.revokeObjectURL(img.src);
     };
-    img.onerror = () => reject(new Error("Image load failed"));
+    img.onerror = () => {
+      URL.revokeObjectURL(img.src);
+      reject(new Error("Image load failed"));
+    };
     img.src = URL.createObjectURL(blob);
   });
 }
 
-export async function copyImageToClipboard(url: string) {
-  const res = await fetch(url);
-  const blob = await res.blob();
+/** `source` is a URL to fetch, or the image itself when the client already holds it. */
+export async function copyImageToClipboard(source: string | Blob) {
+  // Not from the cache: the <img> left an entry without CORS headers there, and this fetch fails on it.
+  const blob = typeof source === "string" ? await (await fetch(source, { cache: "no-store" })).blob() : source;
   const pngBlob = blob.type === "image/png"
     ? blob
     : await convertToPng(blob);

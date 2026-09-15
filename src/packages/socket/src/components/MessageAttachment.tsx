@@ -1,4 +1,6 @@
+import { useSealedVideo } from "../hooks/useSealedVideo";
 import { useStableFileUrl } from "../hooks/useStableFileUrl";
+import { readBlobUrl } from "../utils/downloadFile";
 import { ChatMediaPlayer, ChatSealedVideo } from "./ChatMediaPlayer";
 import type { AttachmentMeta } from "./chatUtils";
 import { FileCard } from "./FileCard";
@@ -28,11 +30,17 @@ export function MessageAttachment({
   const mime = meta?.mime || "";
   // A sealed or still-sending attachment is already here as a blob; only the server copy has a token.
   const local = meta?.local_url;
+  // So Save As and Copy Image use that blob. The server copy is ciphertext or not there yet.
+  const openLocal = local ? () => readBlobUrl(local) : undefined;
+  const fileName = meta?.original_name;
 
   if (mime.startsWith("image/")) {
     const imgSrc = local || url;
     return (
-      <MessageContextMenu media={{ src: url, fileName: meta?.original_name, isImage: true }} messageActions={messageActions}>
+      <MessageContextMenu
+        media={openLocal ? { open: openLocal, fileName, isImage: true } : { src: url, fileName, isImage: true }}
+        messageActions={messageActions}
+      >
         <ImageAttachment
           src={imgSrc}
           alt={meta?.original_name || "Attachment"}
@@ -46,21 +54,20 @@ export function MessageAttachment({
   }
   if (mime.startsWith("video/") && meta?.open_sealed) {
     return (
-      <MessageContextMenu media={{ src: url, fileName: meta.original_name }} messageActions={messageActions}>
-        <ChatSealedVideo
-          open={meta.open_sealed}
-          fileName={meta.original_name}
-          size={meta.size}
-          volume={chatMediaVolume}
-          onVolumeChange={setChatMediaVolume}
-        />
-      </MessageContextMenu>
+      <SealedVideoAttachment
+        open={meta.open_sealed}
+        fileName={fileName}
+        size={meta.size}
+        messageActions={messageActions}
+        volume={chatMediaVolume}
+        onVolumeChange={setChatMediaVolume}
+      />
     );
   }
   if (mime.startsWith("audio/") || mime.startsWith("video/")) {
     const isVideo = mime.startsWith("video/");
     return (
-      <MessageContextMenu media={{ src: url, fileName: meta?.original_name }} messageActions={messageActions}>
+      <MessageContextMenu media={openLocal ? { open: openLocal, fileName } : { src: url, fileName }} messageActions={messageActions}>
         <ChatMediaPlayer
           src={local || url}
           type={isVideo ? "video" : "audio"}
@@ -82,6 +89,37 @@ export function MessageAttachment({
       size={meta?.size ?? null}
       originalName={meta?.original_name ?? null}
       serverHost={serverHost}
+      open={openLocal}
     />
+  );
+}
+
+/** An encrypted video. Its menu saves the copy decrypted for play, or decrypts one without playing. */
+function SealedVideoAttachment({
+  open,
+  fileName,
+  size,
+  messageActions,
+  volume,
+  onVolumeChange,
+}: {
+  open: () => Promise<Blob>;
+  fileName?: string | null;
+  size?: number | null;
+  messageActions: MessageActions;
+  volume: number;
+  onVolumeChange: (v: number) => void;
+}) {
+  const video = useSealedVideo(open);
+  return (
+    <MessageContextMenu media={{ open: video.file, fileName }} messageActions={messageActions}>
+      <ChatSealedVideo
+        video={video}
+        fileName={fileName}
+        size={size}
+        volume={volume}
+        onVolumeChange={onVolumeChange}
+      />
+    </MessageContextMenu>
   );
 }
