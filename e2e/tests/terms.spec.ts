@@ -22,6 +22,7 @@ test("the first message waits until you agree to the terms, and a reload doesn't
     "https://gryt.chat/community-guidelines",
   );
   await expect(prompt).toContainText("Abusive content and abusive people aren’t tolerated.");
+  await expect(prompt.getByRole("button", { name: "Not now" }), "a second Enter should say no, not open a link").toBeFocused();
 
   await prompt.getByRole("button", { name: "Not now" }).click();
   await expect(prompt).toBeHidden();

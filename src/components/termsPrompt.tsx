@@ -32,6 +32,7 @@ export function TermsPrompt() {
         </>
       }
       cancelLabel="Not now"
+      focusCancel
       confirmLabel="Agree"
       confirmTone="primary"
       onConfirm={termsGate.agree}
