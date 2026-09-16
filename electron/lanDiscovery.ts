@@ -1,6 +1,7 @@
 import { type ChildProcess, spawn } from "child_process";
 import { createSocket, type Socket as DgramSocket } from "dgram";
 import type { BrowserWindow } from "electron";
+import { networkInterfaces } from "os";
 
 interface LanServer {
   name: string;
@@ -17,6 +18,7 @@ interface LanServer {
 type CleanupFn = () => void;
 
 const MDNS_ADDR = "224.0.0.251";
+const MDNS_ADDR_V6 = "ff02::fb";
 const MDNS_PORT = 5353;
 const QUERY_INTERVAL_MS = 15_000;
 
@@ -27,7 +29,7 @@ const QUERY_INTERVAL_MS = 15_000;
  */
 
 //
-// macOS: native dns-sd CLI
+// macOS outside the App Store: native dns-sd CLI
 //
 
 function startDnsSdBrowse(
@@ -214,10 +216,11 @@ function lookupService(
 }
 
 //
-// Windows / Linux: raw dgram mDNS
+// Windows, Linux and the Mac App Store build: raw dgram mDNS
 //
 
-function buildPtrQuery(): Buffer {
+/** On macOS a unicast reply goes to mDNSResponder's socket on 5353, not this one, so it asks for multicast. */
+export function buildPtrQuery(unicastReply: boolean): Buffer {
   const labels = ["_gryt", "_tcp", "local"];
   let nameLen = 1;
 
@@ -253,7 +256,7 @@ function buildPtrQuery(): Buffer {
   buf.writeUInt8(0, off++);
   buf.writeUInt16BE(12, off);
   off += 2;
-  buf.writeUInt16BE(0x8001, off);
+  buf.writeUInt16BE(unicastReply ? 0x8001 : 0x0001, off);
 
   return buf;
 }
@@ -360,28 +363,46 @@ const TYPE_SRV = 33;
 const TYPE_TXT = 16;
 const TYPE_A = 1;
 
+/** Interfaces with an IPv6 link-local address. mDNS over IPv6 has to name the interface it asks on. */
+function ipv6Interfaces(): string[] {
+  return Object.entries(networkInterfaces())
+    .filter(([, addresses]) =>
+      addresses?.some((a) => a.family === "IPv6" && !a.internal && a.address.startsWith("fe80:")),
+    )
+    .map(([name]) => name);
+}
+
 function startDgramBrowse(
   win: BrowserWindow,
-  log: (msg: string) => void
+  log: (msg: string) => void,
+  family: "udp4" | "udp6" = "udp4",
+  discovered = new Map<string, LanServer>(),
+  discoveredByName = new Map<string, string>(),
 ): CleanupFn {
-  const discovered = new Map<string, LanServer>();
-  const discoveredByName = new Map<string, string>();
-
   let sock: DgramSocket | null = null;
   let timer: ReturnType<typeof setInterval> | null = null;
 
-  const query = buildPtrQuery();
+  const query = buildPtrQuery(!process.mas);
+  const interfaces = family === "udp6" ? ipv6Interfaces() : [];
+  const label = family === "udp6" ? " (IPv6)" : "";
 
   function sendQuery() {
     try {
-      sock?.send(query, 0, query.length, MDNS_PORT, MDNS_ADDR);
+      if (family === "udp4") {
+        sock?.send(query, 0, query.length, MDNS_PORT, MDNS_ADDR);
+      } else {
+        // With a callback, an interface that can't send reports nothing rather than closing the socket.
+        for (const name of interfaces) {
+          sock?.send(query, 0, query.length, MDNS_PORT, `${MDNS_ADDR_V6}%${name}`, () => undefined);
+        }
+      }
     } catch {
       // best-effort
     }
   }
 
   try {
-    sock = createSocket({ type: "udp4", reuseAddr: true });
+    sock = createSocket({ type: family, reuseAddr: true });
 
     sock.on("error", (err) => {
       log(`mDNS socket error: ${err.message}`);
@@ -397,26 +418,37 @@ function startDgramBrowse(
 
     sock.bind(MDNS_PORT, () => {
       try {
-        sock?.addMembership(MDNS_ADDR);
+        if (family === "udp4") {
+          sock?.addMembership(MDNS_ADDR);
+        } else {
+          for (const name of interfaces) {
+            try {
+              sock?.addMembership(MDNS_ADDR_V6, `::%${name}`);
+            } catch {
+              // A tunnel with a link-local address and no multicast. The rest still join.
+            }
+          }
+        }
         sock?.setMulticastTTL(255);
         sock?.setMulticastLoopback(true);
       } catch (err) {
         log(
-          `mDNS multicast setup error: ${
+          `mDNS multicast setup error${label}: ${
             err instanceof Error ? err.message : String(err)
           }`
         );
       }
 
       sendQuery();
-      log("mDNS: dgram socket bound, first query sent");
+      log(`mDNS: dgram socket bound, first query sent${label}`);
     });
 
     sock.on("message", (msg, rinfo) => {
       try {
         handleMdnsResponse(
           msg,
-          rinfo.address,
+          // An IPv6 answer carries AAAA records only, so the SRV target name stands in, as dns-sd gives.
+          family === "udp6" ? null : rinfo.address,
           win,
           log,
           discovered,
@@ -449,9 +481,9 @@ function startDgramBrowse(
   };
 }
 
-function handleMdnsResponse(
+export function handleMdnsResponse(
   pkt: Buffer,
-  senderIp: string,
+  senderIp: string | null,
   win: BrowserWindow,
   log: (msg: string) => void,
   discovered: Map<string, LanServer>,
@@ -515,7 +547,7 @@ function handleMdnsResponse(
     const srv = srvMap.get(ptrLower);
     if (!srv) continue;
 
-    const ip = aMap.get(srv.host.toLowerCase()) ?? senderIp;
+    const ip = aMap.get(srv.host.toLowerCase()) ?? senderIp ?? srv.host;
     const txt = txtMap.get(ptrLower);
 
     const version = txt?.version ?? null;
@@ -615,9 +647,24 @@ export function startLanDiscovery(
   log: (msg: string) => void
 ): CleanupFn {
   const begin = (): CleanupFn => {
-    if (process.platform === "darwin") {
+    // The App Sandbox lets dns-sd start but not reach mDNSResponder, so it would find nothing.
+    if (process.platform === "darwin" && !process.mas) {
       log("mDNS: using native dns-sd (macOS)");
       return startDnsSdBrowse(win, log);
+    }
+
+    // Both families, like dns-sd. Some networks carry mDNS over IPv6 only.
+    if (process.mas) {
+      log("mDNS: using raw dgram mDNS over IPv4 and IPv6 (Mac App Store)");
+      const discovered = new Map<string, LanServer>();
+      const discoveredByName = new Map<string, string>();
+      const stops = [
+        startDgramBrowse(win, log, "udp4", discovered, discoveredByName),
+        startDgramBrowse(win, log, "udp6", discovered, discoveredByName),
+      ];
+      return () => {
+        for (const stop of stops) stop();
+      };
     }
 
     log("mDNS: using raw dgram mDNS (Windows/Linux)");

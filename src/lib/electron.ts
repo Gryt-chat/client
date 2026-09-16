@@ -139,6 +139,8 @@ export interface ElectronAPI {
   isElectron: true;
   /** False where the compositor draws and places windows itself. */
   drawsWindowChrome: boolean;
+  /** The Mac App Store build. Absent on builds from before it existed. */
+  macAppStore?: boolean;
   /** Chromium's zoom, rather than CSS zoom. See setNativeZoom below. */
   setZoomFactor(factor: number): void;
   getAppVersion(): Promise<string>;
@@ -329,6 +331,11 @@ export function setNativeZoom(factor: number): boolean {
   if (!api?.setZoomFactor) return false;
   api.setZoomFactor(factor);
   return true;
+}
+
+/** The Mac App Store build, where the store installs updates and the sandbox hides other apps. */
+export function isMacAppStoreBuild(): boolean {
+  return window.electronAPI?.macAppStore === true;
 }
 
 /** False on a desktop that places windows itself, where Gryt draws no chrome. */

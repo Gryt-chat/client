@@ -47,6 +47,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // titlebar either. Set by main from --gryt-no-window-chrome. GRYT-1062.
   drawsWindowChrome: !process.argv.includes("--gryt-no-window-chrome"),
 
+  // The Mac App Store build: sandboxed, and updated by the store rather than by Gryt.
+  macAppStore: process.mas === true,
+
   /* Chromium's own zoom, which keeps rects and the viewport in one coordinate
      space. CSS zoom does not, and put every menu off screen (GRYT-1127). */
   setZoomFactor(factor: number): void {

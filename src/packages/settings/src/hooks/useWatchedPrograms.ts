@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { getElectronAPI, isElectron, type WatchedProgram } from "../../../../lib/electron";
+import { getElectronAPI, isElectron, isMacAppStoreBuild, type WatchedProgram } from "../../../../lib/electron";
 import { useSettings } from "./useSettings";
 
 /**
@@ -8,7 +8,7 @@ import { useSettings } from "./useSettings";
  * the global store rather than per user: it describes this machine (GRYT-931).
  */
 export interface WatchedProgramsState {
-  /** Whether this build can look at all. False in the browser. */
+  /** Whether this build can look at all. False in the browser and in the Mac App Store build. */
   supported: boolean;
   watched: WatchedProgram[];
   /** The names, from the list, that are running now. */
@@ -24,7 +24,7 @@ export interface WatchedProgramsState {
 
 export function useWatchedPrograms(): WatchedProgramsState {
   const api = isElectron() ? getElectronAPI() : null;
-  const supported = !!api?.getWatchedPrograms;
+  const supported = !!api?.getWatchedPrograms && !isMacAppStoreBuild();
 
   const [watched, setWatchedState] = useState<WatchedProgram[]>([]);
   const [consentedAt, setConsentedAt] = useState<string | null>(null);

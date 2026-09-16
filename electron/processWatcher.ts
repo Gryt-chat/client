@@ -27,6 +27,9 @@ export const DEFAULT_INTERVAL_MS = 10_000;
 /** Nobody needs to watch for two hundred programs, and every one is a comparison. */
 export const MAX_WATCHED = 32;
 
+/** The App Sandbox refuses to run `ps`, which is setuid, so the Mac App Store build can't look. */
+export const canListProcesses = !process.mas;
+
 /**
  * Path to last segment, `.exe` off, lowercased. Matching case-sensitively would
  * mean `factorio` never matching the `Factorio.exe` somebody actually runs.
@@ -148,6 +151,7 @@ async function listLinuxProcesses(userOnly: boolean): Promise<string[]> {
 }
 
 export async function listRunningExecutables(): Promise<string[]> {
+  if (!canListProcesses) return [];
   if (process.platform === "linux") return listLinuxProcesses(false);
 
   if (process.platform === "win32") {

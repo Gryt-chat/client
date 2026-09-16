@@ -28,6 +28,7 @@
     "test:narrow-dm-parity": "node scripts/check-narrow-dm-parity.mjs",
     "test:unread-split": "node --disable-warning=ExperimentalWarning scripts/check-unread-split.mjs",
     "test:lan-server-memory": "node scripts/check-lan-server-memory.mjs",
+    "test:lan-discovery": "node --disable-warning=ExperimentalWarning scripts/check-lan-discovery.mjs",
     "test:voice-presence": "node scripts/check-voice-presence.mjs",
     "test:reconnect-limit": "node scripts/check-reconnect-limit.mjs",
     "test:token-refresh-schedule": "node scripts/check-token-refresh-schedule.mjs",
