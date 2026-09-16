@@ -10,7 +10,9 @@ const path = require("node:path");
 
 /** Directory names node-gyp-build looks for, `${platform}-${arch}`. */
 function wantedDir(electronPlatformName, arch) {
-  return `${electronPlatformName}-${arch}`;
+  // A Mac App Store build packs as `mas`, but runs with process.platform "darwin".
+  const platform = electronPlatformName === "mas" ? "darwin" : electronPlatformName;
+  return `${platform}-${arch}`;
 }
 
 /**

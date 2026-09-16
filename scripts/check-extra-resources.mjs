@@ -6,7 +6,13 @@ import { readFileSync, existsSync, statSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
-import { EMBEDDED_RESOURCE_PREFIX, isSlimBuild } from "./variant.mjs";
+import {
+  EMBEDDED_RESOURCE_PREFIX,
+  isMasBuild,
+  isSlimBuild,
+  MAS_RUNTIME_PARTS,
+  MAS_RUNTIME_SOURCE,
+} from "./variant.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
@@ -33,12 +39,18 @@ function extraResourceSources(yml) {
 export default async function beforeBuild() {
   const yml = readFileSync(join(root, "electron-builder.yml"), "utf8");
   const slim = isSlimBuild();
+  const mas = isMasBuild();
 
   // A slim build drops these from the config too, so demanding them would fail a
   // correct build. This skips two known names, not the whole check.
   const sources = extraResourceSources(yml).filter(
-    (src) => !slim || !src.startsWith(EMBEDDED_RESOURCE_PREFIX),
+    (src) => !(slim || mas) || !src.startsWith(EMBEDDED_RESOURCE_PREFIX),
   );
+
+  // The store build ships the runtime unpacked instead, and a filter matching nothing copies nothing.
+  if (mas && !slim) {
+    sources.push(MAS_RUNTIME_SOURCE, ...MAS_RUNTIME_PARTS.map((part) => `${MAS_RUNTIME_SOURCE}/${part}`));
+  }
 
   const missing = [];
   const empty = [];
