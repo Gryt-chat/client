@@ -5,7 +5,7 @@ import { Wordmark } from "@/common";
 import { requestWhatsNew } from "@/socket";
 
 import { FaGithub } from "../../../../lib/brandIcons";
-import { getElectronAPI, isElectron, UpdateStatus } from "../../../../lib/electron";
+import { getElectronAPI, isElectron, isMacAppStoreBuild, UpdateStatus } from "../../../../lib/electron";
 import { PiArrowsClockwiseFill, PiArrowSquareOutFill, PiBugFill, PiChatCircleDotsFill, PiCheckCircleFill, PiClockClockwiseFill, PiDesktopFill, PiDownloadSimpleFill, PiXCircleFill } from "../../../../lib/icons";
 import { useReportForm } from "../../../../lib/reports/useReportForm";
 import { ConfirmDialog } from "../../../socket/src/components/ConfirmDialog";
@@ -251,6 +251,36 @@ function UpdateControls() {
   );
 }
 
+/** The store installs updates here, so none of the switches above would do anything. */
+function AppStoreUpdates() {
+  const [appVersion, setAppVersion] = useState<string>("…");
+
+  useEffect(() => {
+    void getElectronAPI()?.getAppVersion().then(setAppVersion);
+  }, []);
+
+  return (
+    <>
+      <Divider />
+
+      <h2>Updates</h2>
+
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-3">
+          <span className="font-medium">Running</span>
+          <Chip tone="neutral">v{appVersion}</Chip>
+          <Button tone="ghost" size="xsmall" onClick={requestWhatsNew}>
+            What&rsquo;s new
+          </Button>
+        </div>
+        <span className="text-gryt-muted">
+          Updates come from the Mac App Store. You can check for a new version there.
+        </span>
+      </div>
+    </>
+  );
+}
+
 function DesktopAppCard() {
   return (
     <>
@@ -372,7 +402,7 @@ export function UpdatesSettings() {
 
   return (
     <SettingsContainer>
-      {inElectron ? <UpdateControls /> : <DesktopAppCard />}
+      {!inElectron ? <DesktopAppCard /> : isMacAppStoreBuild() ? <AppStoreUpdates /> : <UpdateControls />}
     </SettingsContainer>
   );
 }

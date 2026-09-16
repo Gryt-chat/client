@@ -74,16 +74,23 @@ assert.doesNotMatch(main, /launchWindowsInstallerAfterExit/);
 
 assert.doesNotMatch(main, /WindowsPowerShell/);
 
-// Install-on-quit, off only for the MSIX package, where the NSIS installer adds an
-// unpackaged second copy. Pinned to `process.windowsStore`, not to "Windows".
+// Install-on-quit, off only for a store package: MSIX, where the NSIS installer adds an
+// unpackaged second copy, and the Mac App Store. Pinned to the process flags, not to a platform.
 assert.match(
   main,
-  /autoUpdater\.autoInstallOnAppQuit = !updatesAreManagedByWindows;/,
+  /autoUpdater\.autoInstallOnAppQuit = !updatesComeFromAStore;/,
 );
 
 assert.match(
   main,
   /const updatesAreManagedByWindows = process\.windowsStore === true;/,
+);
+
+assert.match(main, /const updatesComeFromTheAppStore = process\.mas === true;/);
+
+assert.match(
+  main,
+  /const updatesComeFromAStore = updatesAreManagedByWindows \|\| updatesComeFromTheAppStore;/,
 );
 
 assert.doesNotMatch(main, /autoInstallOnAppQuit = process\.platform/);
@@ -106,6 +113,19 @@ function bodyOf(name) {
 }
 
 const backgroundCheck = bodyOf("checkForUpdatesInBackground");
+
+// A store build never downloads. Both routes to a download stop before anything is fetched.
+for (const name of ["checkForUpdatesInBackground", "offerRelease"]) {
+  assert.match(bodyOf(name), /\{\s*(\/\*[\s\S]*?\*\/\s*)?if \(updatesComeFromAStore\) \{/, `${name} no longer stops first in a store build`);
+}
+
+// The Mac App Store build hides the tray's check and skips the variant switch's own check.
+assert.match(main, /\.\.\.\(updatesComeFromTheAppStore\s*\?\s*\[\]\s*:\s*\[\s*\{\s*label: "Check for Updates",/);
+
+assert.match(
+  main.slice(main.indexOf('"set-slim-variant"'), main.indexOf('"get-beta-channel"')),
+  /if \(updatesComeFromTheAppStore\) return;\s*void autoUpdater\.checkForUpdates\(\)/,
+);
 
 assert.match(backgroundCheck, /offerRelease\(/);
 

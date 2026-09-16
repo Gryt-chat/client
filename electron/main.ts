@@ -525,6 +525,14 @@ const autoUpdater =
     updater installs a second, unpackaged Gryt beside the packaged one. */
 const updatesAreManagedByWindows = process.windowsStore === true;
 
+/** The Mac App Store installs its own updates, and its Electron has no Squirrel to install with. */
+const updatesComeFromTheAppStore = process.mas === true;
+
+const updatesComeFromAStore = updatesAreManagedByWindows || updatesComeFromTheAppStore;
+
+/** For the log, which is where somebody looks when a check did nothing. */
+const STORE_PACKAGE = updatesComeFromTheAppStore ? "the Mac App Store" : "the MSIX package";
+
 autoUpdater.logger = {
   info: (m: unknown) => startupLog(`Update: ${String(m)}`),
   warn: (m: unknown) => startupLog(`Update WARN: ${String(m)}`),
@@ -538,7 +546,7 @@ autoUpdater.autoDownload = true;
 
 // On for Windows too now that installer.nsh moves the old install aside: while
 // it was off the PowerShell helper was the only route, and it did not parse.
-autoUpdater.autoInstallOnAppQuit = !updatesAreManagedByWindows;
+autoUpdater.autoInstallOnAppQuit = !updatesComeFromAStore;
 
 /** Read from the file Settings writes, at every check. Off, a check still says a
     release is out, and nothing downloads until somebody presses the button. */
@@ -1076,10 +1084,10 @@ function checkForUpdatesInBackground(
   reason: string,
   force = false
 ): void {
-  /* MSIX, where there is nothing useful to do. Logged rather than dropped: a
-     check reporting nothing is the same shape as a broken one. */
-  if (updatesAreManagedByWindows) {
-    startupLog(`Update: skipped (${reason}) — installed from the MSIX package`);
+  /* A store package, where there is nothing useful to do. Logged rather than dropped:
+     a check reporting nothing is the same shape as a broken one. */
+  if (updatesComeFromAStore) {
+    startupLog(`Update: skipped (${reason}) — installed from ${STORE_PACKAGE}`);
     return;
   }
 
@@ -1142,8 +1150,8 @@ function offerRelease(
   release: ReleaseRef,
   options: DownloadOptions = {}
 ): void {
-  if (updatesAreManagedByWindows) {
-    startupLog("Update: not downloading — installed from the MSIX package");
+  if (updatesComeFromAStore) {
+    startupLog(`Update: not downloading — installed from ${STORE_PACKAGE}`);
     return;
   }
 
@@ -2231,18 +2239,22 @@ function buildTrayContextMenu(): Menu {
         ]
       : []),
 
-    {
-      label: "Check for Updates",
-      click: () => {
-        /* Forced: somebody pressed this, so it skips the floor and answers
-           either way. */
-        checkForUpdatesInBackground("tray", true);
-      },
-    },
+    ...(updatesComeFromTheAppStore
+      ? []
+      : [
+          {
+            label: "Check for Updates",
+            click: () => {
+              /* Forced: somebody pressed this, so it skips the floor and answers
+                 either way. */
+              checkForUpdatesInBackground("tray", true);
+            },
+          },
 
-    {
-      type: "separator",
-    },
+          {
+            type: "separator",
+          } as const,
+        ]),
 
     {
       label: "Quit",
@@ -2503,6 +2515,9 @@ if (!gotSingleInstanceLock) {
 
           autoUpdater.channel = updateChannel();
           applyVariantSwitchSpoof();
+
+          // The store build is one variant or the other, and no check here can switch it.
+          if (updatesComeFromTheAppStore) return;
 
           void autoUpdater.checkForUpdates().then(updates.track).catch(() => {
             /* The renderer hears about failures through update-status; a
@@ -3353,7 +3368,7 @@ if (!gotSingleInstanceLock) {
 
         initBackgroundUpdater(true);
 
-        if (!updatesAreManagedByWindows) {
+        if (!updatesComeFromAStore) {
           void pinFeedToNewestCompleteRelease()
             .catch(pinFailed)
             .then((pin) => {
@@ -3768,6 +3783,11 @@ if (!gotSingleInstanceLock) {
       ipcMain.on(
         "check-for-updates",
         () => {
+          if (updatesComeFromTheAppStore) {
+            checkForUpdatesInBackground("settings", true);
+            return;
+          }
+
           /* Something is held already, so the question is whether a newer release
              replaces it. The background check answers that without the API. */
           if (updates.held()) {
