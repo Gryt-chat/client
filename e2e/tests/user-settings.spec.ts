@@ -80,6 +80,23 @@ test("user settings on a 390px phone: no page runs past the dialog", async ({ ne
   }
 });
 
+test("user settings on a 390px phone: a tapped picker stays on the screen and scrolls", async ({ newMember }) => {
+  const phone = await newMember({ phone: true, label: "phone" });
+  const dialog = await openUserSettings(phone.page);
+  const list = phone.page.getByRole("listbox");
+  const options = list.getByRole("option");
+
+  // A tap opens the popup below the trigger, where only its max height keeps it on the screen.
+  // Before @gryt/ui 0.34.2 it had none, and the last pages sat past the bottom (GRYT-1283).
+  await pickerIn(dialog).tap();
+  await expect(options.first()).toBeVisible();
+  await expect(list).toBeInViewport({ ratio: 1 });
+  await expect.poll(() => list.evaluate((el) => el.scrollHeight > el.clientHeight), "the list should scroll").toBe(true);
+
+  await options.last().scrollIntoViewIfNeeded();
+  await expect(options.last()).toBeInViewport({ ratio: 1 });
+});
+
 test("user settings on a 390px phone: the keyboard and search still reach a page", async ({ newMember }) => {
   const phone = await newMember({ phone: true, label: "phone" });
   const dialog = await openUserSettings(phone.page);
