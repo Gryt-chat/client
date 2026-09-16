@@ -22,6 +22,8 @@ assert.equal(wantedDir("darwin", "arm64"), "darwin-arm64");
 assert.equal(wantedDir("darwin", "x64"), "darwin-x64");
 assert.equal(wantedDir("win32", "x64"), "win32-x64");
 assert.equal(wantedDir("linux", "arm64"), "linux-arm64");
+// electron-builder names the Mac App Store platform `mas`; there is no mas-arm64 prebuild.
+assert.equal(wantedDir("mas", "arm64"), "darwin-arm64");
 
 // ── what goes, per target ──────────────────────────────────────────
 

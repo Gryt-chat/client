@@ -44,10 +44,13 @@ check(config, "electron-builder.yml");
 // this YAML with three edits, and an edit can leave the schema too.
 const configPath = join(here, "..", "electron-builder.config.cjs");
 
-function loadVariant(variant) {
+function loadVariant(variant, { mas = false } = {}) {
   const previous = process.env.GRYT_VARIANT;
+  const previousMas = process.env.GRYT_MAS;
   if (variant === undefined) delete process.env.GRYT_VARIANT;
   else process.env.GRYT_VARIANT = variant;
+  if (mas) process.env.GRYT_MAS = "1";
+  else delete process.env.GRYT_MAS;
 
   try {
     delete require.cache[require.resolve(configPath)];
@@ -55,6 +58,8 @@ function loadVariant(variant) {
   } finally {
     if (previous === undefined) delete process.env.GRYT_VARIANT;
     else process.env.GRYT_VARIANT = previous;
+    if (previousMas === undefined) delete process.env.GRYT_MAS;
+    else process.env.GRYT_MAS = previousMas;
   }
 }
 
@@ -97,6 +102,66 @@ if (!String(slim.artifactName).includes("slim")) {
 if (embeddedIn(loadVariant(undefined)).length === 0) {
   console.error("the default build has lost the embedded server.");
   process.exit(1);
+}
+
+// The Mac App Store build (GRYT-1273). The DMG must not pick up any of it.
+function fail(message) {
+  console.error(message);
+  process.exit(1);
+}
+
+const dmg = loadVariant(undefined);
+const masFull = loadVariant(undefined, { mas: true });
+const masSlim = loadVariant("slim", { mas: true });
+check(masFull, "electron-builder.config.cjs at GRYT_MAS=1");
+check(masSlim, "electron-builder.config.cjs at GRYT_MAS=1 GRYT_VARIANT=slim");
+
+if (dmg.appId !== "com.gryt.chat" || masFull.mas?.appId !== "chat.gryt.app") {
+  fail("The DMG has to stay com.gryt.chat and the store build has to be chat.gryt.app.");
+}
+
+const dmgTargets = (dmg.mac?.target ?? []).map((t) => t.target).sort().join(",");
+if (dmgTargets !== "dmg,zip" || "ITSAppUsesNonExemptEncryption" in (dmg.mac?.extendInfo ?? {})) {
+  fail(`The DMG config changed shape: targets ${dmgTargets}, or it picked up the store's Info.plist keys.`);
+}
+
+for (const [label, candidate] of [["GRYT_MAS=1", masFull], ["GRYT_MAS=1 slim", masSlim]]) {
+  const targets = (candidate.mac?.target ?? []).map((t) => t.target);
+  if (targets.join(",") !== "mas") fail(`${label} builds ${targets.join(", ")}, not only mas.`);
+  if (candidate.mac?.extendInfo?.ITSAppUsesNonExemptEncryption !== false) {
+    fail(`${label} is missing ITSAppUsesNonExemptEncryption, so every upload asks about export compliance.`);
+  }
+  if (candidate.mac?.extendInfo?.ElectronTeamID !== "8883W2XTQ8") {
+    fail(`${label} has no ElectronTeamID, so the app group is prefixed with whoever signed it.`);
+  }
+}
+
+// Sandboxed apps can't run what they unpack, so the store build ships the runtime as a folder.
+const masEmbedded = embeddedIn(masFull).map((entry) => entry.from);
+if (masEmbedded.join(",") !== "build/embedded-server/") {
+  fail(`GRYT_MAS=1 ships ${masEmbedded.join(", ") || "no runtime"} instead of build/embedded-server/ alone.`);
+}
+if (embeddedIn(masSlim).length > 0) fail("GRYT_MAS=1 slim still ships the embedded server.");
+
+function entitlementKeys(name) {
+  const plist = readFileSync(join(here, "..", "build", name), "utf8");
+  return [...plist.matchAll(/<key>([^<]+)<\/key>/g)].map((m) => m[1]).sort();
+}
+
+const inherit = entitlementKeys("entitlements.mas.inherit.plist");
+if (inherit.join(",") !== "com.apple.security.app-sandbox,com.apple.security.inherit") {
+  fail(`entitlements.mas.inherit.plist has ${inherit.join(", ")}. What inherits the sandbox gets those two and nothing else.`);
+}
+
+const app = entitlementKeys("entitlements.mas.plist");
+for (const key of [
+  "com.apple.security.app-sandbox",
+  "com.apple.security.network.client",
+  "com.apple.security.network.server",
+  "com.apple.security.device.audio-input",
+  "com.apple.security.device.camera",
+]) {
+  if (!app.includes(key)) fail(`entitlements.mas.plist is missing ${key}.`);
 }
 
 // The Linux icon set. electron-builder ships exactly what `linux.icon` points at,
@@ -195,4 +260,4 @@ for (const { target, text } of entries) {
   }
 }
 
-console.log(`builder-config: ok, both variants, ${entries.length} Linux desktop entries`);
+console.log(`builder-config: ok, both variants and the store build, ${entries.length} Linux desktop entries`);

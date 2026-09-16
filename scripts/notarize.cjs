@@ -8,6 +8,8 @@ const path = require("node:path");
  */
 exports.default = async function notarizeHook(context) {
   if (process.platform !== "darwin") return;
+  // App Store Connect checks a store build itself, and notarytool rejects its signature.
+  if (context.electronPlatformName === "mas") return;
 
   // Only run when credentials are provided (so dev builds don't block)
   const appleApiKey = process.env.APPLE_API_KEY;

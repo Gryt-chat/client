@@ -202,6 +202,22 @@ mac:
     NSAudioCaptureUsageDescription: "Gryt Chat can capture audio when you choose to share your screen."
     NSScreenCaptureUsageDescription: "Gryt Chat lets you share your screen."
 
+# The Mac App Store build, made with GRYT_MAS=1 (GRYT-1273). Only the mas and
+# mas-dev targets read this block, so the DMG and zip are built as before.
+mas:
+  # The listing is shared with the iPhone app. The DMG stays on com.gryt.chat:
+  # moving it would cost existing installs their permissions and keychain items.
+  appId: chat.gryt.app
+  # Sandboxed, with the network both ways because the built-in server listens.
+  entitlements: build/entitlements.mas.plist
+  # Every nested executable: Electron's helpers, the SFU and the capture helper.
+  entitlementsInherit: build/entitlements.mas.inherit.plist
+
+# A development-signed build for trying the sandbox on this Mac, with no profile.
+# The application identifier needs one, and macOS kills the app at launch without it.
+masDev:
+  preAutoEntitlements: false
+
 win:
   icon: build/icon.ico
   target:
