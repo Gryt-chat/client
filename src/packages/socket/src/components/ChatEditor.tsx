@@ -9,6 +9,7 @@ import {
 import toast from "react-hot-toast";
 
 import { PiCode, PiFileAudioFill, PiFileFill, PiFileTextFill, PiFileVideoFill, PiFileZipFill, PiImageFill, PiPaperclipFill, PiPaperPlaneTiltFill, PiSmileyFill, PiX } from "../../../../lib/icons";
+import { termsGate } from "../../../../lib/termsGate";
 const FaFilePdf = PiFileTextFill;
 
 import { type EmojiEntry, getCustomEmojis, recordRecentEmoji } from "../utils/emojiData";
@@ -278,16 +279,19 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
       // where it can be edited down, rather than bounced with the text cleared.
       if (text.length > MESSAGE_MAX_LENGTH) return;
 
-      onSendRef.current(text, files);
-      el.textContent = "";
-      autoResize(el);
-      pendingFilesRef.current.forEach((p) => { if (p.previewUrl) URL.revokeObjectURL(p.previewUrl); });
-      setPendingFiles([]);
-      setShowAutocomplete(false);
-      setEmojiQuery(null);
-      setShowMentionAutocomplete(false);
-      setMentionQuery(null);
-      onStopTypingRef.current?.();
+      // Until this device has agreed to the terms, the draft stays in the box while it asks.
+      termsGate.postAfterAgreeing(() => {
+        onSendRef.current(text, files);
+        el.textContent = "";
+        autoResize(el);
+        pendingFilesRef.current.forEach((p) => { if (p.previewUrl) URL.revokeObjectURL(p.previewUrl); });
+        setPendingFiles([]);
+        setShowAutocomplete(false);
+        setEmojiQuery(null);
+        setShowMentionAutocomplete(false);
+        setMentionQuery(null);
+        onStopTypingRef.current?.();
+      });
     }, []);
 
     const addFiles = useCallback((files: FileList | File[]) => {

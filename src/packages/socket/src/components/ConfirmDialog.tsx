@@ -1,5 +1,5 @@
 import { AlertDialog, Button, TextField } from "@gryt/ui";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { phraseMatches } from "../lib/confirmPhrase";
 
@@ -18,6 +18,7 @@ export function ConfirmDialog({
   confirmPhraseLabel,
   confirmDisabled = false,
   cancelLabel = "Cancel",
+  focusCancel = false,
   width,
   onConfirm,
   onCancel,
@@ -36,6 +37,8 @@ export function ConfirmDialog({
   /** For a caller with a reason of its own -- a request already in flight. */
   confirmDisabled?: boolean;
   cancelLabel?: string;
+  /** Open with Cancel focused. Otherwise the first link in `description` gets focus, and Enter follows it. */
+  focusCancel?: boolean;
   /**
    * Left unset, the popup keeps AlertDialog's own 32rem. GRYT-996 hardcoded
    * 26rem here and quietly narrowed six dialogs that had never asked to be.
@@ -51,6 +54,7 @@ export function ConfirmDialog({
   children?: ReactNode;
 }) {
   const [typed, setTyped] = useState("");
+  const cancelRef = useRef<HTMLButtonElement>(null);
 
   // Cleared on open rather than on close, so a phrase typed for one person cannot
   // still be sitting there for the next.
@@ -70,7 +74,7 @@ export function ConfirmDialog({
     >
       <AlertDialog.Portal>
         <AlertDialog.Backdrop />
-        <AlertDialog.Popup style={width ? { width } : undefined}>
+        <AlertDialog.Popup style={width ? { width } : undefined} initialFocus={focusCancel ? cancelRef : undefined}>
           <AlertDialog.Title>{title}</AlertDialog.Title>
           {description && (
             <AlertDialog.Description className="mt-2">{description}</AlertDialog.Description>
@@ -90,7 +94,7 @@ export function ConfirmDialog({
           )}
 
           <div className="flex flex-wrap gap-3 mt-4 justify-end">
-            <AlertDialog.Close render={<Button size="small" tone="neutral">{cancelLabel}</Button>} />
+            <AlertDialog.Close ref={cancelRef} render={<Button size="small" tone="neutral">{cancelLabel}</Button>} />
             {/* Close above routes through onOpenChange, so onCancel runs there
                 rather than on this button. */}
             {/* Deliberately not wrapped in AlertDialog.Close: it has to be able

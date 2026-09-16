@@ -72,6 +72,9 @@ jobs:
       # pasted URL used to open an empty emoji list that swallowed it.
       - run: yarn test:composer-enter
 
+      # Nothing is posted before the device agrees to the terms, and agreeing posts once.
+      - run: yarn test:terms-agreement
+
       # A member changing group moves their row to another section, which remounts
       # it. The open hover card has to survive that.
       - run: yarn test:member-card-state

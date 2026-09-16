@@ -55,8 +55,9 @@ Import `test` and `expect` from `support/fixtures`, not from `@playwright/test`.
 you:
 
 - `newMember()`: A new browser context that joins the worker's server as a guest, with its
-  own identity and a unique nickname. Pass `{ phone: true }` for a 390x844 touch screen, or
-  `{ join: false }` to stop at the empty app.
+  own identity and a unique nickname. It has already agreed to the terms, so its first
+  message doesn't ask. Pass `{ phone: true }` for a 390x844 touch screen, `{ join: false }`
+  to stop at the empty app, or `{ agreed: false }` for one that hasn't agreed yet.
 - `owner`: A page for the guest that joined first and owns the server.
 - `gryt.server`: The server's `host` and `httpBase`.
 - `freshServer()`: Another server, for a test that has to own one from a phone. Pass

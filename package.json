@@ -145,6 +145,7 @@
     "test:ai-toolkit": "node scripts/check-ai-toolkit.mjs",
     "test:empty-dm-copy": "node scripts/check-empty-dm-copy.mjs",
     "test:composer-enter": "node --disable-warning=ExperimentalWarning scripts/check-composer-enter.mjs",
+    "test:terms-agreement": "node --disable-warning=ExperimentalWarning scripts/check-terms-agreement.mjs",
     "test:history-merge": "node --disable-warning=ExperimentalWarning scripts/check-history-merge.mjs"
   },
   "dependencies": {
