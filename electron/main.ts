@@ -560,7 +560,9 @@ function isOnBetaChannel(): boolean {
     check-extra-resources.mjs catches a full build that lost it. */
 function isSlimInstall(): boolean {
   if (!app.isPackaged) return false;
-  return !existsSync(join(process.resourcesPath, "embedded-server.tar.gz"));
+  // The Mac App Store build ships the runtime unpacked instead of the archive.
+  const runtime = process.mas ? "embedded-server" : "embedded-server.tar.gz";
+  return !existsSync(join(process.resourcesPath, runtime));
 }
 
 /** Defaults to what was installed, so a first launch changes nothing. */

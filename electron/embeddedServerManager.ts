@@ -220,9 +220,9 @@ function packagedRuntimeRoot(): string | null {
     return extractedRuntimeRoot;
   }
 
-  // Compatibility with releases before the runtime was archived.
-  const legacy = join(process.resourcesPath, "embedded-server");
-  return existsSync(legacy) ? legacy : null;
+  // Unpacked in the bundle: the Mac App Store build, and releases before the runtime was archived.
+  const inBundle = join(process.resourcesPath, "embedded-server");
+  return existsSync(inBundle) ? inBundle : null;
 }
 
 function embeddedProcessesRunning(): boolean {
@@ -241,6 +241,8 @@ export async function prepareEmbeddedServerRuntime(
   report: (msg: string) => void = log,
 ): Promise<void> {
   if (!app.isPackaged) return;
+  // The sandbox won't run files the app wrote, so the store build runs the runtime where it ships.
+  if (process.mas) return;
 
   const archive = join(process.resourcesPath, "embedded-server.tar.gz");
   if (!existsSync(archive)) return;
