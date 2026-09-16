@@ -3,6 +3,7 @@ import { join } from "node:path";
 
 import { type BrowserContext, type BrowserContextOptions, expect, test as base } from "@playwright/test";
 
+import { agreementAt, TERMS_STORAGE_KEY } from "../../src/lib/termsAgreement";
 import { channelComposer, joinServer, type Member, membersPanel, nicknameOf, recordFrames } from "./app";
 import { routeExternal } from "./external";
 import { ProblemLog } from "./problems";
@@ -22,6 +23,8 @@ export interface MemberOptions {
   phone?: boolean;
   /** Leave the first-run welcome up, for the one test that goes through it. */
   welcome?: boolean;
+  /** False for a device that hasn't agreed to the terms, so the first message asks. */
+  agreed?: boolean;
   join?: boolean;
   /** Another server than the worker's, such as one from `freshServer`. */
   server?: GrytServer;
@@ -44,11 +47,18 @@ export function uniqueName(prefix: string): string {
 export async function prepare(
   context: BrowserContext,
   report: (problem: string) => void,
-  { nickname, welcome = false, allowHosts }: { nickname: string; welcome?: boolean; allowHosts?: string[] },
+  {
+    nickname,
+    welcome = false,
+    agreed = true,
+    allowHosts,
+  }: { nickname: string; welcome?: boolean; agreed?: boolean; allowHosts?: string[] },
 ) {
   await routeExternal(context, report, allowHosts);
+  // Agreed once here for every test but the one that asks, the way the welcome is seen.
+  const agreement = agreed ? { key: TERMS_STORAGE_KEY, value: JSON.stringify(agreementAt(new Date())) } : null;
   await context.addInitScript(
-    ({ nickname, welcome }) => {
+    ({ nickname, welcome, agreement }) => {
       try {
         if (!localStorage.getItem("gryt.deviceId")) {
           const device = `device:${crypto.randomUUID()}`;
@@ -56,11 +66,12 @@ export async function prepare(
           localStorage.setItem(`user:${device}:nickname`, JSON.stringify(nickname));
         }
         if (!welcome) localStorage.setItem("gryt.hasSeenWelcome", "true");
+        if (agreement && !localStorage.getItem(agreement.key)) localStorage.setItem(agreement.key, agreement.value);
       } catch {
         // An opaque origin, such as a fixture's iframe.
       }
     },
-    { nickname, welcome },
+    { nickname, welcome, agreement },
   );
 }
 
@@ -149,7 +160,7 @@ export const test = base.extend<
       const name = uniqueName(`Guest${contexts.length + 1}`);
       const context = await browser.newContext(options.phone ? PHONE : {});
       contexts.push(context);
-      await prepare(context, problems.report, { nickname: name, welcome: options.welcome });
+      await prepare(context, problems.report, { nickname: name, welcome: options.welcome, agreed: options.agreed });
       const page = await context.newPage();
       problems.watch(page, label, server.httpBase);
       const frames = recordFrames(page);
