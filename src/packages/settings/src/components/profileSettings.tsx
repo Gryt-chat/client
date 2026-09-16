@@ -297,7 +297,7 @@ function ActivityField() {
         Shown under your name on every server you are on. Leave it empty for nothing.
       </span>
       <TextField
-        placeholder="Heads down until 3"
+        placeholder="What are you up to?"
         /* The server caps at 96 and truncates, so this says the same number
            earlier: a box that stops is clearer than one that loses the end. */
         maxLength={96}
