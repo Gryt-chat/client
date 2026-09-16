@@ -3,10 +3,19 @@ import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
 
-import { isLoopbackHost, pickShareableHost } from "@/common";
+import {
+  ADD_PUBLIC_ADDRESS,
+  hostedAdvertisement,
+  inviteLink,
+  NO_PUBLIC_ADDRESS,
+  openServerLink,
+  pickShareableHost,
+} from "@/common";
 import { useEmbeddedServer } from "@/settings/src/hooks/useEmbeddedServer";
 
 import { PiCopyFill, PiInfoFill, PiPlus } from "../../../../lib/icons";
+import { useOpenInviteLink } from "../hooks/useOpenInviteLink";
+import { useServerJoinPolicy } from "../hooks/useServerJoinPolicy";
 import { useSocketEvent } from "../hooks/useSocketEvent";
 
 /** Stands in for "no role" so the row is not mistaken for the placeholder. */
@@ -95,14 +104,15 @@ export function ServerInvitesTab({
 
   /* The embedded server this host is, if it is one. Matched on the port, since a
      locally hosted server is only reached over loopback. */
-  const advertised = useMemo(() => {
-    if (!isLoopbackHost(host)) return null;
-    const port = Number(host.split(":").pop());
-    if (!Number.isFinite(port)) return null;
-    return (
-      embeddedServers.find((s) => s.config?.serverPort === port)?.config ?? null
-    );
-  }, [host, embeddedServers]);
+  const advertised = useMemo(
+    () => hostedAdvertisement(host, embeddedServers),
+    [host, embeddedServers],
+  );
+
+  /* On a server anyone can join, the address is enough, and the codes below are for roles and limits. */
+  const isOpen = useServerJoinPolicy(host) === "open";
+  const openLink = useMemo(() => openServerLink(host, advertised), [host, advertised]);
+  const { copy: copyOpenLink } = useOpenInviteLink(host);
 
   const [invites, setInvites] = useState<InviteItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -213,7 +223,7 @@ export function ServerInvitesTab({
     }
 
     try {
-      const url = `https://gryt.chat/invite?host=${encodeURIComponent(shareable.host)}&code=${encodeURIComponent(code)}`;
+      const url = inviteLink(shareable.host, code);
       await navigator.clipboard.writeText(url);
       toast.success(
         shareable.host === host
@@ -228,8 +238,38 @@ export function ServerInvitesTab({
   return (
     <div className="flex flex-col gap-4">
       <span className="text-sm">
-        This server is invite-only. Create invite codes to share with people you want to join.
+        {isOpen
+          ? "Anyone can join this server without a code. Make an invite code when you want to limit uses or time, or give people a role."
+          : "This server is invite-only. Create invite codes to share with people you want to join."}
       </span>
+
+      {isOpen && (
+        <Surface>
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium">Invite link</span>
+            {openLink.kind === "ok" ? (
+              <>
+                <div className="flex items-center gap-2">
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <TextField readOnly aria-label="Invite link" value={openLink.url} />
+                  </div>
+                  <Button size="small" onClick={() => void copyOpenLink()}>
+                    <PiCopyFill size={16} />
+                    Copy
+                  </Button>
+                </div>
+                <span className="text-xs text-gryt-muted">
+                  Anyone who can join this server can use this link.
+                </span>
+              </>
+            ) : (
+              <span className="text-xs text-gryt-muted">
+                {openLink.hosted ? `${NO_PUBLIC_ADDRESS} ${ADD_PUBLIC_ADDRESS}` : NO_PUBLIC_ADDRESS}
+              </span>
+            )}
+          </div>
+        </Surface>
+      )}
 
       <Surface>
         <div className="flex flex-col gap-3">

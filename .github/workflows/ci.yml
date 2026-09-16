@@ -114,6 +114,9 @@ jobs:
       - run: yarn test:webhook-avatar-upload
       - run: yarn test:webhook-cards
       - run: yarn test:member-invite
+      # A link to an open server names only the host. Pasting one, arriving on one, the
+      # address a shared one names, and what the invite dialog offers for each.
+      - run: yarn test:invite-link
       - run: yarn test:addon-capabilities
       - run: yarn test:actor-name
       - run: yarn test:plugin-messaging
