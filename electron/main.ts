@@ -98,6 +98,7 @@ import {
   type UpdateCheck,
 } from "./pendingUpdate";
 import {
+  canListProcesses,
   createProcessWatcher,
   listRunningPrograms,
   type ProcessWatcher,
@@ -1758,7 +1759,7 @@ function createMainWindow(): BrowserWindow {
 
   /* Here rather than at app start, since a match only reaches a renderer. Once,
      or a second window means two pollers asking the same question. */
-  if (!processWatcher) {
+  if (!processWatcher && canListProcesses) {
     processWatcher = createProcessWatcher({
       onChange: (running) => {
         mainWindow?.webContents.send("processes-changed", running);

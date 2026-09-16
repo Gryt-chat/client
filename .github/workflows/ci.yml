@@ -28,6 +28,7 @@ jobs:
       - run: yarn test:narrow-dm-parity
       - run: yarn test:unread-split
       - run: yarn test:lan-server-memory
+      - run: yarn test:lan-discovery
       - run: yarn test:voice-presence
       - run: yarn test:reconnect-limit
       - run: yarn test:token-refresh-schedule

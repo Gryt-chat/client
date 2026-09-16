@@ -1,7 +1,7 @@
 import { Button, Select, TextField } from "@gryt/ui";
 import { useEffect, useState } from "react";
 
-import type { WatchedProgram } from "../../../../lib/electron";
+import { isMacAppStoreBuild, type WatchedProgram } from "../../../../lib/electron";
 import { useWatchedPrograms } from "../hooks/useWatchedPrograms";
 
 /**
@@ -33,8 +33,14 @@ export function WatchedPrograms() {
       <div className="flex flex-col gap-1">
         <span className="text-sm font-bold">What you&rsquo;re playing</span>
         <span className="text-xs text-gryt-muted">
-          Only the desktop app can see what you have open. In a browser
-          there&rsquo;s nothing to look at.
+          {isMacAppStoreBuild() ? (
+            <>The Mac App Store version can&rsquo;t see what other apps you have open.</>
+          ) : (
+            <>
+              Only the desktop app can see what you have open. In a browser
+              there&rsquo;s nothing to look at.
+            </>
+          )}
         </span>
       </div>
     );

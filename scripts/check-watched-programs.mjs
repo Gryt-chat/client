@@ -307,6 +307,17 @@ check("the preload exposes no way to read the raw process list", () => {
   assert.ok(preload.includes("processes-list-running"), "the picker list went missing");
 });
 
+check("the Mac App Store build never runs ps", () => {
+  /* The sandbox refuses to run it, so the store build doesn't try, and never starts the poll. */
+  assert.ok(watcher.includes("export const canListProcesses = !process.mas;"), "canListProcesses no longer follows process.mas");
+  const list = watcher.slice(watcher.indexOf("export async function listRunningExecutables"));
+  assert.ok(
+    /^export async function listRunningExecutables\(\): Promise<string\[\]> \{\s*if \(!canListProcesses\) return \[\];/.test(list),
+    "listRunningExecutables reaches a platform branch before asking whether it may",
+  );
+  assert.ok(main.includes("if (!processWatcher && canListProcesses) {"), "the watcher starts where it can't list anything");
+});
+
 check("a poll cannot hold the app open", () => {
   assert.ok(watcher.includes("timer.unref?.()"), "the interval is no longer unref'd");
 });
