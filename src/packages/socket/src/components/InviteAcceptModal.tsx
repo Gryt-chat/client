@@ -1,87 +1,132 @@
-import { Alert, Avatar, Button, Dialog, IconButton, Spinner } from "@gryt/ui";
-import { useEffect, useRef, useState } from "react";
+import { Alert, Avatar, Button, Dialog, IconButton, Spinner, TextField } from "@gryt/ui";
+import { useEffect, useState } from "react";
 
-import { GeneratedServerIcon, getServerHttpBase, type PendingInvite } from "@/common";
+import { GeneratedServerIcon, getServerHttpBase, normalizeCode, type PendingInvite } from "@/common";
+import {
+  type FetchInfo,
+  fetchServerInfo,
+  type InfoResult,
+  type JoinOutcome,
+} from "@/settings/src/hooks/useServerJoin";
 
-import { PiEnvelopeFill, PiUsersFill, PiWarningFill, PiX } from "../../../../lib/icons";
+import { PiEnvelopeFill, PiSignInFill, PiUsersFill, PiWarningFill, PiX } from "../../../../lib/icons";
+import { type InviteDialogMessage, inviteDialogView } from "../lib/inviteDialog";
 
-type ServerPreview = {
-  name: string;
-  description?: string;
-  members?: string;
-};
+export interface InviteJoinRequest {
+  code: string;
+  info: FetchInfo | null;
+  note?: string;
+}
 
 interface InviteAcceptModalProps {
   invite: PendingInvite | null;
-  joining?: boolean;
-  joinError?: string;
   alreadyMember?: boolean;
-  onAccept: () => void | Promise<void>;
+  /** Undefined until the account check answers. */
+  isSignedIn?: boolean;
+  signingIn?: boolean;
+  onSignIn: () => void;
+  onJoin: (request: InviteJoinRequest) => Promise<JoinOutcome>;
   onDismiss: () => void;
   onGoToServer?: () => void;
 }
 
+type Lookup = { kind: "loading" } | Exclude<InfoResult, { kind: "superseded" }>;
+
+const MESSAGES: Record<InviteDialogMessage, string> = {
+  member: "You're already a member of this server.",
+  invited: "You've been invited to join this server. No password required.",
+  "needs-code": "This server needs an invite code.",
+  request: "Somebody who runs this server has to let you in.",
+  open: "Anyone can join this server.",
+  private: "This server doesn't share its details. You can still try to join.",
+  none: "",
+};
+
 export function InviteAcceptModal({
   invite,
-  joining = false,
-  joinError,
   alreadyMember = false,
-  onAccept,
+  isSignedIn,
+  signingIn = false,
+  onSignIn,
+  onJoin,
   onDismiss,
   onGoToServer,
 }: InviteAcceptModalProps) {
-  const [preview, setPreview] = useState<ServerPreview | null>(null);
-  const [loading, setLoading] = useState(false);
-  const abortRef = useRef<AbortController | null>(null);
-
   const host = invite?.host ?? "";
-  const code = invite?.code ?? "";
+  const linkCode = invite?.code ?? "";
+
+  const [lookup, setLookup] = useState<Lookup>({ kind: "loading" });
+  const [typedCode, setTypedCode] = useState("");
+  const [note, setNote] = useState("");
+  const [joining, setJoining] = useState(false);
+  const [joinError, setJoinError] = useState("");
+  const [inviteRequired, setInviteRequired] = useState(false);
+  const [accountRequired, setAccountRequired] = useState(false);
+  const [awaitingApproval, setAwaitingApproval] = useState(false);
 
   useEffect(() => {
-    if (!host) {
-      setPreview(null);
-      abortRef.current?.abort();
-      abortRef.current = null;
-      return;
+    setTypedCode("");
+    setNote("");
+    setJoinError("");
+    setInviteRequired(false);
+    setAccountRequired(false);
+    setAwaitingApproval(false);
+    if (!host) return;
+
+    setLookup({ kind: "loading" });
+    const controller = new AbortController();
+    void fetchServerInfo(host, controller.signal).then((result) => {
+      if (controller.signal.aborted || result.kind === "superseded") return;
+      setLookup(result);
+    });
+    return () => controller.abort();
+  }, [host, linkCode]);
+
+  const info = lookup.kind === "info" ? lookup.info : null;
+  const view = inviteDialogView({
+    linkCode,
+    typedCode,
+    lookup: lookup.kind,
+    info,
+    isSignedIn,
+    alreadyMember,
+    inviteRequired,
+    accountRequired,
+    awaitingApproval,
+  });
+
+  const displayName = info?.name || host;
+  const message = MESSAGES[view.message];
+
+  async function join() {
+    if (joining) return;
+    setJoining(true);
+    setJoinError("");
+    try {
+      const outcome = await onJoin({ code: view.code, info, note: note.trim() || undefined });
+      if (outcome.ok) return;
+      if (outcome.kind === "approval_pending") {
+        setAwaitingApproval(true);
+        return;
+      }
+      if (outcome.kind === "invite_required") setInviteRequired(true);
+      if (outcome.kind === "account_required") setAccountRequired(true);
+      setJoinError(outcome.message);
+    } finally {
+      setJoining(false);
     }
+  }
 
-    setLoading(true);
-    setPreview(null);
-
-    abortRef.current?.abort();
-    const ac = new AbortController();
-    abortRef.current = ac;
-
-    const httpBase = getServerHttpBase(host);
-    fetch(`${httpBase}/info`, { signal: ac.signal })
-      .then((r) => (r.ok ? (r.json() as Promise<ServerPreview>) : Promise.reject()))
-      .then((data) => {
-        setPreview({
-          name: data.name || host,
-          description: data.description,
-          members: data.members,
-        });
-      })
-      .catch((err: unknown) => {
-        if (err instanceof DOMException && err.name === "AbortError") return;
-        setPreview({ name: host });
-      })
-      .finally(() => setLoading(false));
-
-    return () => ac.abort();
-  }, [host, code]);
-
-  const isOpen = invite !== null;
-  const displayName = preview?.name || invite?.host || "";
+  function dismiss() {
+    if (joining) return;
+    onDismiss();
+  }
 
   return (
     <Dialog.Root
-      open={isOpen}
+      open={invite !== null}
       onOpenChange={(open) => {
-        if (!open) {
-          if (joining) return;
-          onDismiss();
-        }
+        if (!open) dismiss();
       }}
     >
       <Dialog.Portal>
@@ -93,20 +138,15 @@ export function InviteAcceptModal({
               <PiEnvelopeFill size={16} />
               <Dialog.Title>Server Invite</Dialog.Title>
             </div>
-            <Dialog.Close>
-              <IconButton tone="ghost" size="xsmall"
-                disabled={joining}
-                onClick={() => {
-                  if (joining) return;
-                  onDismiss();
-                }}
-              >
-                <PiX size={16} />
-              </IconButton>
+            <Dialog.Close
+              disabled={joining}
+              render={<IconButton tone="ghost" size="xsmall" aria-label="Close" />}
+            >
+              <PiX size={16} />
             </Dialog.Close>
           </div>
 
-          {loading ? (
+          {lookup.kind === "loading" ? (
             <div className="flex items-center justify-center py-8">
               <Spinner size={24} />
             </div>
@@ -116,7 +156,7 @@ export function InviteAcceptModal({
                 <Avatar
                   size="large"
                   className="h-24 w-24 text-3xl"
-                  src={`${getServerHttpBase(invite.host)}/icon`}
+                  src={info ? `${getServerHttpBase(invite.host)}/icon` : undefined}
                   fallback={<GeneratedServerIcon seed={displayName || invite.host} />}
                 />
               )}
@@ -125,9 +165,9 @@ export function InviteAcceptModal({
                 <span className="text-lg font-bold">
                   {displayName}
                 </span>
-                {preview?.description && (
+                {info?.description && (
                   <span className="text-sm text-gryt-muted text-center">
-                    {preview.description}
+                    {info.description}
                   </span>
                 )}
               </div>
@@ -136,56 +176,86 @@ export function InviteAcceptModal({
                 {invite?.host}
               </span>
 
-              {preview?.members && (
+              {info?.members && (
                 <div className="flex items-center gap-1">
                   <PiUsersFill size={14} style={{ color: "var(--gryt-neutral-9)" }} />
                   <span className="text-sm text-gryt-muted">
-                    {preview.members} members
+                    {info.members} members
                   </span>
                 </div>
               )}
             </div>
           )}
 
-          {alreadyMember ? (
+          {lookup.kind === "error" && !alreadyMember && (
+            <span className="text-sm text-gryt-muted text-center">{lookup.message}</span>
+          )}
+
+          {message && lookup.kind !== "loading" && (
             <span className="text-sm text-gryt-muted text-center">
-              You are already a member of this server.
-            </span>
-          ) : (
-            <span className="text-sm text-gryt-muted text-center">
-              You&apos;ve been invited to join this server. No password required.
+              {message}
             </span>
           )}
 
-          {!alreadyMember && joinError ? (
+          {view.needsAccount && !alreadyMember && (
+            <span className="text-sm text-center">
+              You need a Gryt account to join. Sign in and you&rsquo;ll come back to this invite.
+            </span>
+          )}
+
+          {view.showCodeField && !awaitingApproval && (
+            <TextField
+              aria-label="Invite code"
+              placeholder="Paste invite code"
+              disabled={joining}
+              value={typedCode}
+              onChange={(e) => setTypedCode(normalizeCode(e.target.value))}
+            />
+          )}
+
+          {view.showNote && (
+            <TextField
+              aria-label="Say who you are"
+              placeholder="Say who you are (optional)"
+              maxLength={300}
+              disabled={joining}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+            />
+          )}
+
+          {awaitingApproval && (
+            <Alert severity="info">
+              Asked. Somebody who runs this server has to let you in. It&rsquo;s in your server
+              list now, marked as waiting, and opens on its own once they do.
+            </Alert>
+          )}
+
+          {!alreadyMember && joinError && !view.needsAccount ? (
             <Alert severity="error" role="alert"><span className="inline-flex items-start gap-2"><PiWarningFill size={16} />{joinError}</span></Alert>
           ) : null}
 
           <div className="flex flex-wrap justify-end gap-2">
-            <Button tone="neutral" size="small"
-              disabled={joining}
-              onClick={() => {
-                if (joining) return;
-                onDismiss();
-              }}
-            >
-              {alreadyMember ? "Dismiss" : "Cancel"}
+            <Button tone="neutral" size="small" disabled={joining} onClick={dismiss}>
+              {alreadyMember || awaitingApproval ? "Close" : "Cancel"}
             </Button>
-            {alreadyMember ? (
+            {view.action.kind === "go-to-server" && (
               <Button size="small" onClick={() => onGoToServer?.()}>Go to Server</Button>
-            ) : (
-              <Button size="small"
-                onClick={() => {
-                  void onAccept();
-                }}
-                disabled={loading || joining}
-              >
+            )}
+            {view.action.kind === "sign-in" && (
+              <Button size="small" disabled={signingIn} onClick={onSignIn}>
+                <PiSignInFill size={16} />
+                {signingIn ? "Signing in…" : "Sign in to join"}
+              </Button>
+            )}
+            {view.action.kind === "join" && (
+              <Button size="small" disabled={view.action.disabled || joining} onClick={() => void join()}>
                 {joining ? (
                   <>
                     <Spinner size={20} /> Joining…
                   </>
                 ) : (
-                  "Accept Invite"
+                  view.action.label
                 )}
               </Button>
             )}
