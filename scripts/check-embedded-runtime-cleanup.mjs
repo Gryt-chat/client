@@ -304,6 +304,23 @@ try {
   await check("what it removed ends up in the startup log", () => {
     assert.match(stripped("electron/main.ts"), /prepareEmbeddedServerRuntime\(startupLog\)/);
   });
+
+  /* ── The Mac App Store build ────────────────────────────────────────── */
+
+  await check("the store build runs the runtime inside the app, and never unpacks it", () => {
+    const prepare = bodyOf(manager, "export async function prepareEmbeddedServerRuntime(");
+    const bail = prepare.indexOf("if (process.mas) return;");
+    assert.notEqual(bail, -1, "the Mac App Store build unpacks into userData, where the sandbox won't run it");
+    assert.ok(bail < prepare.indexOf("await extract("), "the store build bails out after extracting");
+
+    const root = bodyOf(manager, "function packagedRuntimeRoot(");
+    assert.match(root, /join\(process\.resourcesPath, "embedded-server"\)/, "the unpacked runtime in the app is not looked for");
+  });
+
+  await check("the store build still counts as the full build", () => {
+    const slim = bodyOf(stripped("electron/main.ts"), "function isSlimInstall(");
+    assert.match(slim, /process\.mas \? "embedded-server" : "embedded-server\.tar\.gz"/, "a full store build reads as slim");
+  });
 } finally {
   rmSync(scratch, { recursive: true, force: true });
 }
