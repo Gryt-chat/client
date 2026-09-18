@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
-
-import { useCamera, useScreenShare, useSFU } from "@gryt/voice";
 import {
   type InboundVideoStats,
   type OutboundVideoStats,
+  useCamera,
+  useScreenShare,
+  useSFU,
   useVideoStats,
 } from "@gryt/voice";
+import { useEffect, useState } from "react";
 
 import { PiVideoCameraFill } from "../lib/icons";
 import { DebugOverlay } from "./debugOverlay";
@@ -15,6 +16,25 @@ interface VideoDebugOverlayProps {
 }
 
 type VideoLabel = "camera" | "screen" | "video";
+
+interface DebugStat {
+  id: string;
+  type: string;
+  localCandidateId?: string;
+  remoteCandidateId?: string;
+  availableIncomingBitrate?: number;
+  bytesDiscardedOnSend?: number;
+  packetsDiscardedOnSend?: number;
+  candidateType?: string;
+  networkType?: string;
+  protocol?: string;
+  roundTripTime?: number;
+  jitter?: number;
+  packetsLost?: number;
+  fractionLost?: number;
+  reportsReceived?: number;
+  sdpFmtpLine?: string;
+}
 
 interface CandidateDiagnostics {
   availableInKbps: number | null;
@@ -162,16 +182,16 @@ function useVideoDebugDiagnostics(enabled: boolean): VideoDiagnostics {
 
       try {
         const report = await pc.getStats();
-        const byId = new Map<string, any>();
-        report.forEach((stat) => byId.set(stat.id, stat));
+        const byId = new Map<string, DebugStat>();
+        report.forEach((stat) => byId.set(stat.id, stat as DebugStat));
 
         const cameraTrackId = getCameraSenderTrackId?.() ?? null;
         const screenTrackId = getScreenSenderTrackId?.() ?? null;
 
-        let selectedPair: any = null;
+        let selectedPair: DebugStat | null = null;
         report.forEach((stat) => {
           if (stat.type === "candidate-pair" && stat.state === "succeeded" && stat.nominated) {
-            selectedPair = stat;
+            selectedPair = stat as DebugStat;
           }
         });
 
