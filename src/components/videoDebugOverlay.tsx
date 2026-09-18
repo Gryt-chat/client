@@ -188,12 +188,13 @@ function useVideoDebugDiagnostics(enabled: boolean): VideoDiagnostics {
         const cameraTrackId = getCameraSenderTrackId?.() ?? null;
         const screenTrackId = getScreenSenderTrackId?.() ?? null;
 
-        let selectedPair: DebugStat | null = null;
+        const selectedPairs: DebugStat[] = [];
         report.forEach((stat) => {
           if (stat.type === "candidate-pair" && stat.state === "succeeded" && stat.nominated) {
-            selectedPair = stat as DebugStat;
+            selectedPairs.push(stat as DebugStat);
           }
         });
+        const selectedPair = selectedPairs[0] ?? null;
 
         const localCandidate = selectedPair?.localCandidateId
           ? byId.get(selectedPair.localCandidateId)
