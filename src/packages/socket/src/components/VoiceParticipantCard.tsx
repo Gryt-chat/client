@@ -472,8 +472,16 @@ export function VoiceParticipantCard({
           nickname={screenTitle}
           radius={tileRadius}
           objectFit="contain"
-          pendingLabel="Connecting screen…"
-          stalledLabel="Screen isn't coming through"
+          pendingLabel={
+            isSelf
+              ? "Starting your screen share…"
+              : `${client.nickname} is starting their screen share…`
+          }
+          stalledLabel={
+            isSelf
+              ? "Your screen isn't coming through"
+              : `${client.nickname}'s screen isn't coming through`
+          }
           statusIcons={<PiScreencastFill size={10} color="var(--gryt-secondary-9)" />}
           onClick={
             screenStream
