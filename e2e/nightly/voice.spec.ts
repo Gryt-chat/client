@@ -27,8 +27,8 @@ test("two guests hear each other through the SFU's public address, and a camera 
   await expectFramesDecoded(bob, `${alice.name}'s camera`);
 });
 
-// GRYT-1251: the camera restarts as it starts, and the tile waits for a stream id nobody sends.
-test.fixme("GRYT-1251: the other guest's tile plays the camera", async ({ guest }) => {
+// GRYT-1251: a replacement camera track keeps the original WebRTC stream/MSID.
+test("GRYT-1251: the other guest's tile plays the camera", async ({ guest }) => {
   const alice = await guest();
   const bob = await guest();
   await joinVoice(alice);
