@@ -17,6 +17,8 @@ export default defineConfig({
     : [["list"], ["html", { outputFolder: "playwright-report", open: "never" }]],
   use: {
     ...devices["Desktop Chrome"],
+    // A public-looking address for the test servers, for the links that refuse loopback and LAN ones.
+    launchOptions: { args: ["--host-resolver-rules=MAP e2e.gryt.chat 127.0.0.1"] },
     baseURL: process.env.GRYT_E2E_APP_URL,
     viewport: { width: 1280, height: 800 },
     trace: "retain-on-failure",

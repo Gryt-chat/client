@@ -7,8 +7,8 @@ const APP_VERSION = (
   JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8")) as { version: string }
 ).version;
 
-/** Everything off this machine. The app and the test servers are all on 127.0.0.1. */
-const OFF_MACHINE = /^https?:\/\/(?!127\.0\.0\.1[:/]|localhost[:/])/;
+/** Everything off this machine. The app and the test servers are on 127.0.0.1, which PUBLIC_ALIAS is too. */
+const OFF_MACHINE = /^https?:\/\/(?!127\.0\.0\.1[:/]|localhost[:/]|e2e\.gryt\.chat[:/])/;
 
 const CORS = { "access-control-allow-origin": "*" };
 

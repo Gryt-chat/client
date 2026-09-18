@@ -21,9 +21,16 @@ export interface GrytServer {
   stop(): Promise<void>;
 }
 
+/** A public-looking name for 127.0.0.1, mapped in Chromium by the config. Nothing resolves it outside the browser. */
+export const PUBLIC_ALIAS = "e2e.gryt.chat";
+
 export interface ServerOptions {
   /** Published by /info. The port is then the same inside the container and out, like a server you host. */
   instanceId?: string;
+  /** Open unless a test asks. The first person to join owns the server whatever this is. */
+  joinPolicy?: "open" | "invite" | "request";
+  /** Guests unless a test asks for accounts only, which nobody in the suite can have. */
+  identityTiers?: "local" | "account";
 }
 
 async function docker(args: string[]): Promise<string> {
@@ -74,13 +81,13 @@ async function waitForHealth(httpBase: string, containerId: string | null): Prom
   throw new Error(`Gryt server at ${httpBase} never answered /health (${last})\n${tail}`);
 }
 
-async function openJoin(adminBase: string, token: string): Promise<void> {
+async function openJoin(adminBase: string, token: string, joinPolicy: ServerOptions["joinPolicy"] = "open"): Promise<void> {
   const res = await fetch(`${adminBase}/management/settings`, {
     method: "PATCH",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ joinPolicy: "open", displayName: "Gryt E2E" }),
+    body: JSON.stringify({ joinPolicy, displayName: "Gryt E2E" }),
   });
-  if (!res.ok) throw new Error(`Opening the server to joins failed: HTTP ${res.status} ${await res.text()}`);
+  if (!res.ok) throw new Error(`Setting the server's join policy failed: HTTP ${res.status} ${await res.text()}`);
 }
 
 /** A fresh server in its own container: guest identities, open join, files on its own disk. */
@@ -92,7 +99,7 @@ export async function startServer(appOrigin: string, runId: string, options: Ser
     PORT: String(serverPort),
     HOST: "0.0.0.0",
     SERVER_NAME: "Gryt E2E",
-    GRYT_IDENTITY_TIERS: "local",
+    GRYT_IDENTITY_TIERS: options.identityTiers ?? "local",
     CORS_ORIGIN: appOrigin,
     DATA_DIR: "/data",
     STORAGE_BACKEND: "filesystem",
@@ -119,7 +126,7 @@ export async function startServer(appOrigin: string, runId: string, options: Ser
     const adminPort = await hostPort(containerId, 5099);
     const httpBase = `http://127.0.0.1:${port}`;
     await waitForHealth(httpBase, containerId);
-    await openJoin(`http://127.0.0.1:${adminPort}`, adminToken);
+    await openJoin(`http://127.0.0.1:${adminPort}`, adminToken, options.joinPolicy);
 
     return {
       host: `127.0.0.1:${port}`,

@@ -2,6 +2,7 @@ import { Chip, IconButton, Menu, Surface, Tooltip } from "@gryt/ui";
 import toast from "react-hot-toast";
 
 import { PiDotsThreeVerticalBold, PiPushPinFill, PiPushPinSlashFill } from "../../../../lib/icons";
+import { useOpenInviteLink } from "../hooks/useOpenInviteLink";
 
 export const ServerHeader = ({
   serverName,
@@ -41,7 +42,11 @@ export const ServerHeader = ({
   onTogglePinned?: () => void;
 }) => {
   const canManage = role === "owner" || role === "admin";
-  const hasTopGroup = Boolean((canManage && (onOpenInvites || onOpenSettings)) || onManageServer);
+  /* Everyone's, not just managers': on a server anyone can join, sharing it gives nothing away. */
+  const openInvite = useOpenInviteLink(serverHost);
+  const hasTopGroup = Boolean(
+    (canManage && (onOpenInvites || onOpenSettings)) || onManageServer || openInvite.available,
+  );
 
   const copyHost = async () => {
     if (!serverHost) return;
@@ -112,6 +117,9 @@ export const ServerHeader = ({
               */}
               {canManage && onOpenInvites && (
                 <Menu.Item onClick={onOpenInvites}>Invite to server</Menu.Item>
+              )}
+              {openInvite.available && (
+                <Menu.Item onClick={() => void openInvite.copy()}>Copy invite link</Menu.Item>
               )}
               {canManage && onOpenSettings && (
                 <Menu.Item onClick={onOpenSettings}>

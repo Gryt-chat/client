@@ -432,7 +432,8 @@ function handleDeepLink(url: string): void {
       const host = parsed.searchParams.get("host") || "";
       const code = parsed.searchParams.get("code") || "";
 
-      if (host && code) {
+      // No code is still an invite: a server anyone can join is shared by its address alone.
+      if (host) {
         mainWindow.webContents.send("deep-link-invite", { host, code });
       }
     } else {
