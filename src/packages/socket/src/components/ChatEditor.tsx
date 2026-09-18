@@ -364,10 +364,8 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
         const text = e.clipboardData.getData("text/plain");
         if (!text) return;
 
-        // Do not let a giant paste become thousands of contentEditable nodes.
-        // Apart from being unsendable (> the server's message cap), that can
-        // freeze or crash the renderer before the user gets a chance to remove
-        // it. Attach the exact clipboard contents instead, like other chat apps.
+        // Oversized text is unsendable and can freeze contentEditable.
+        // Keep it out of the DOM and attach the exact clipboard contents instead.
         if (text.length > MESSAGE_MAX_LENGTH) {
           if (isEditing) {
             toast.error(
