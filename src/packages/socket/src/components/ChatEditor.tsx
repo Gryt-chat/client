@@ -27,6 +27,9 @@ const MESSAGE_MAX_LENGTH = 4000;
 /** Show the counter this far from the cap, not before. */
 const COUNTER_VISIBLE_FROM = MESSAGE_MAX_LENGTH - 500;
 
+/** A paste that cannot fit in one message becomes an ordinary text attachment. */
+const LARGE_PASTE_FILE_NAME = "pasted-text.txt";
+
 export interface ChatEditorHandle {
   clear: () => void;
   focus: () => void;
@@ -359,11 +362,29 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
 
         e.preventDefault();
         const text = e.clipboardData.getData("text/plain");
-        if (text) {
-          document.execCommand("insertText", false, text);
+        if (!text) return;
+
+        // Oversized text is unsendable and can freeze contentEditable.
+        // Keep it out of the DOM and attach the exact clipboard contents instead.
+        if (text.length > MESSAGE_MAX_LENGTH) {
+          if (isEditing) {
+            toast.error(
+              `Edited messages are limited to ${MESSAGE_MAX_LENGTH.toLocaleString("en")} characters.`,
+            );
+            return;
+          }
+
+          addFiles([
+            new File([text], LARGE_PASTE_FILE_NAME, {
+              type: "text/plain;charset=utf-8",
+            }),
+          ]);
+          return;
         }
+
+        document.execCommand("insertText", false, text);
       },
-      [addFiles]
+      [addFiles, isEditing]
     );
 
     const handleDrop = useCallback(

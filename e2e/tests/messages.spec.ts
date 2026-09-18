@@ -28,6 +28,24 @@ test("a pasted address with a port sends on the first Enter", async ({ newMember
   await expect(messageRow(bob.page, url)).toBeVisible();
 });
 
+
+test("an oversized paste becomes a text attachment instead of filling the composer", async ({ newMember }) => {
+  const alice = await newMember();
+  await alice.context.grantPermissions(["clipboard-read", "clipboard-write"]);
+
+  const box = channelComposer(alice.page);
+  await box.click();
+
+  const pasted = "x".repeat(4001);
+  await alice.page.evaluate((text) => navigator.clipboard.writeText(text), pasted);
+  await alice.page.keyboard.press("ControlOrMeta+V");
+
+  await expect(box).toHaveText("");
+  await expect(
+    alice.page.getByText("pasted-text.txt", { exact: true }),
+  ).toBeVisible();
+});
+
 test("editing a message changes it for everyone", async ({ newMember }) => {
   const alice = await newMember();
   const bob = await newMember();
