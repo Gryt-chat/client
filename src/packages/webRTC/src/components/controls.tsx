@@ -84,9 +84,8 @@ export function Controls({ onDisconnect }: ControlsProps) {
   } = useSettings();
 
   const prevCameraStreamRef = useRef<MediaStream | null>(null);
-  // RTCRtpSender.replaceTrack() keeps the original addTrack() stream/MSID.
-  // Advertise that stable ID to other clients, not whichever replacement
-  // MediaStream happens to be driving the sender now (GRYT-1251).
+  // replaceTrack() keeps addTrack()'s stream/MSID.
+  // Advertise that stable ID across camera replacements (GRYT-1251).
   const webrtcCameraStreamId = useRef<string | null>(null);
   const prevScreenVideoRef = useRef<MediaStream | null>(null);
   const prevScreenAudioRef = useRef<MediaStream | null>(null);
