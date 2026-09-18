@@ -84,6 +84,10 @@ export function Controls({ onDisconnect }: ControlsProps) {
   } = useSettings();
 
   const prevCameraStreamRef = useRef<MediaStream | null>(null);
+  // RTCRtpSender.replaceTrack() keeps the original addTrack() stream/MSID.
+  // Advertise that stable ID to other clients, not whichever replacement
+  // MediaStream happens to be driving the sender now (GRYT-1251).
+  const webrtcCameraStreamId = useRef<string | null>(null);
   const prevScreenVideoRef = useRef<MediaStream | null>(null);
   const prevScreenAudioRef = useRef<MediaStream | null>(null);
   const webrtcScreenVideoStreamId = useRef<string | null>(null);
@@ -106,6 +110,9 @@ export function Controls({ onDisconnect }: ControlsProps) {
           settings: videoTrack.getSettings(),
         });
         addVideoTrack(videoTrack, cameraStream, cameraCodec);
+        if (!webrtcCameraStreamId.current) {
+          webrtcCameraStreamId.current = cameraStream.id;
+        }
         prevCameraStreamRef.current = cameraStream;
 
         if (getPeerConnection) {
@@ -129,6 +136,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
       });
       removeVideoTrack();
       prevCameraStreamRef.current = null;
+      webrtcCameraStreamId.current = null;
     }
   }, [cameraEnabled, cameraStream, isConnected, addVideoTrack, removeVideoTrack, getPeerConnection, cameraCodec]);
 
@@ -300,7 +308,9 @@ export function Controls({ onDisconnect }: ControlsProps) {
     const socket = sockets[currentServerConnected];
     const payload = {
       enabled: cameraEnabled,
-      streamId: cameraStream?.id || "",
+      streamId: cameraEnabled
+        ? webrtcCameraStreamId.current || cameraStream?.id || ""
+        : "",
     };
     lastCameraStateRef.current = payload;
     if (socket) {
@@ -356,6 +366,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
     if (!isConnected) {
       if (cameraEnabled) setCameraEnabled(false);
       if (screenShareActive) stopScreenShare();
+      webrtcCameraStreamId.current = null;
       webrtcScreenVideoStreamId.current = null;
       webrtcScreenAudioStreamId.current = null;
     }
