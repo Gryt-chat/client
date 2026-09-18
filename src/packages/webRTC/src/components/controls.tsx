@@ -9,7 +9,7 @@ import { useSettings } from "@/settings";
 import { useSockets } from "@/socket";
 import { useVideoFraming } from "@/socket/src/hooks/useVideoFraming";
 
-import { getElectronAPI, isElectron } from "../../../../lib/electron";
+import { getElectronAPI } from "../../../../lib/electron";
 import { PiMicrophoneFill, PiMicrophoneSlashFill, PiMonitorArrowUpFill, PiPhoneDisconnectFill, PiScanSmileyFill, PiScreencastFill, PiSlidersHorizontalFill, PiSpeakerHighFill, PiSpeakerSimpleHighFill, PiSpeakerSimpleSlashFill, PiSpeakerSlashFill, PiVideoCameraFill, PiVideoCameraSlashFill } from "../../../../lib/icons";
 import { screenAudioProblemMessage, screenAudioStreamId } from "../../../../lib/screenShareAudio";
 import { useScreenAudioMute } from "../adapters/useScreenAudioMute";
