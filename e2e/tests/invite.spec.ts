@@ -138,7 +138,8 @@ test("an open server's invite link names a public address and carries no code", 
   await expect.poll(copied).toBe(link);
 
   await page.getByRole("button", { name: "Server menu" }).click();
-  await page.getByRole("menuitem", { name: "Server settings" }).click();
+  const serverMenu = page.getByRole("menu", { name: "Server menu" });
+  await serverMenu.getByRole("menuitem", { name: "Server settings" }).click();
   const settings = page.getByRole("dialog", { name: "Server settings" });
   await settings.getByRole("tab", { name: "Invites", exact: true }).click();
   await expect(settings.getByLabel("Invite link")).toHaveValue(link);
