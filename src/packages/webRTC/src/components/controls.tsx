@@ -90,6 +90,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
   const webrtcScreenAudioStreamId = useRef<string | null>(null);
   const [showCameraModal, setShowCameraModal] = useState(false);
   const [showScreenShareModal, setShowScreenShareModal] = useState(false);
+  const [isStartingScreenShare, setIsStartingScreenShare] = useState(false);
 
   // Sync camera stream to WebRTC peer connection
   useEffect(() => {
@@ -380,12 +381,26 @@ export function Controls({ onDisconnect }: ControlsProps) {
   const handleScreenShareClick = useCallback(() => {
     if (screenShareActive) {
       stopScreenShare();
-    } else if (isElectron()) {
-      setShowScreenShareModal(true);
-    } else {
+    } else if (!isStartingScreenShare) {
       setShowScreenShareModal(true);
     }
-  }, [screenShareActive, stopScreenShare]);
+  }, [screenShareActive, isStartingScreenShare, stopScreenShare]);
+
+  const handleStartScreenShare = useCallback(
+    async ({ sourceId, withAudio }: { sourceId?: string; withAudio: boolean }) => {
+      const toastId = "screen-share-starting";
+      setIsStartingScreenShare(true);
+      toast.loading("Starting screen share…", { id: toastId });
+
+      try {
+        await startScreenShare(withAudio, sourceId);
+      } finally {
+        setIsStartingScreenShare(false);
+        toast.dismiss(toastId);
+      }
+    },
+    [startScreenShare],
+  );
 
   function handleMute() {
     if (isServerMuted) {
@@ -468,12 +483,21 @@ export function Controls({ onDisconnect }: ControlsProps) {
             </Tooltip>
           )}
 
-          <IconButton tone="neutral" size="xsmall"
-            aria-label={screenShareActive ? "Stop sharing your screen" : "Share your screen"}
-            onClick={handleScreenShareClick}
-          >
-            {screenShareActive ? <PiMonitorArrowUpFill size={16} /> : <PiScreencastFill size={16} />}
-          </IconButton>
+          <MaybeTooltip content={isStartingScreenShare ? "Starting screen share…" : null}>
+            <IconButton tone="neutral" size="xsmall"
+              aria-label={
+                screenShareActive
+                  ? "Stop sharing your screen"
+                  : isStartingScreenShare
+                    ? "Starting screen share"
+                    : "Share your screen"
+              }
+              disabled={isStartingScreenShare}
+              onClick={handleScreenShareClick}
+            >
+              {screenShareActive ? <PiMonitorArrowUpFill size={16} /> : <PiScreencastFill size={16} />}
+            </IconButton>
+          </MaybeTooltip>
 
           {/* Next to the share button because that is what it acts on, and
               only while a share is actually carrying audio. */}
@@ -545,7 +569,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
         scalabilityMode={screenShareScalabilityMode}
         onScalabilityModeChange={setScreenShareScalabilityMode}
         nativeScreenCaptureAvailable={nativeScreenCaptureAvailable}
-        onStart={({ sourceId, withAudio }) => startScreenShare(withAudio, sourceId)}
+        onStart={handleStartScreenShare}
       />
     </>
   );
