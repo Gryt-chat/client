@@ -1,4 +1,4 @@
-import { Button, Chip, IconButton, Spinner, TextField, Tooltip } from "@gryt/ui";
+import { Button, Chip, IconButton, Spinner, Switch, TextField, Tooltip } from "@gryt/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -6,6 +6,8 @@ import type { KeycloakCredential } from "@/common";
 import {
   deleteCredential,
   fetchCredentials,
+  getAccessTokenStorageMode,
+  migrateAccessTokensToMode,
   startPasskeySetup,
   updateCredentialLabel,
   useAccount,
@@ -15,7 +17,7 @@ import { PiCheck, PiKeyFill, PiPencilSimpleFill, PiPlus, PiTrashFill, PiX } from
 import { ConfirmDialog } from "../../../socket/src/components/ConfirmDialog";
 import { LocalIdentitySection } from "./localIdentitySection";
 import { MessageKeySection } from "./messageKeySection";
-import { SettingsContainer } from "./settingsComponents";
+import { SettingGroup, SettingsContainer } from "./settingsComponents";
 
 const PASSKEY_TYPE = "webauthn-passwordless";
 
@@ -151,6 +153,11 @@ export function SecuritySettings() {
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [persistTokens, setPersistTokens] = useState(true);
+
+  useEffect(() => {
+    setPersistTokens(getAccessTokenStorageMode() === "local");
+  }, []);
 
   const loadCredentials = useCallback(async () => {
     try {
@@ -310,6 +317,22 @@ export function SecuritySettings() {
           </div>
         </div>
       )}
+
+      <SettingGroup
+        title="Persist server access tokens"
+        description="Keep server sign-in tokens between app sessions. Turn this off to keep them only until you close Gryt or the browser."
+      >
+        <label className="flex cursor-pointer items-center gap-3 text-sm">
+          <Switch
+            checked={persistTokens}
+            onCheckedChange={(enabled) => {
+              setPersistTokens(enabled);
+              migrateAccessTokensToMode(enabled ? "local" : "session");
+            }}
+          />
+          Keep server sessions between launches
+        </label>
+      </SettingGroup>
     </SettingsContainer>
   );
 }
