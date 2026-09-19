@@ -617,10 +617,23 @@ export function Settings() {
             color: var(--gryt-accent-11);
             font-weight: 600;
           }
-          /* Just the heart carries the colour. A filled button competes with the
-             active-item highlight and shouts in a settings sidebar. */
-          .gryt-settings-nav-cta svg { color: var(--gryt-danger-9); }
-          .gryt-settings-nav-cta:hover svg { color: var(--gryt-danger-10); }
+          /* Support is intentionally the one call to action in the rail. It stays
+             separated at the bottom, but uses the product accent rather than
+             danger red so it reads as something worth noticing, not a warning. */
+          .gryt-settings-nav-cta {
+            background: var(--gryt-accent-9);
+            color: var(--gryt-on-accent);
+            font-weight: 600;
+          }
+          .gryt-settings-nav-cta:hover {
+            background: var(--gryt-accent-10);
+            color: var(--gryt-on-accent);
+          }
+          .gryt-settings-nav-cta[data-active="true"] {
+            background: var(--gryt-accent-10);
+            color: var(--gryt-on-accent);
+          }
+          .gryt-settings-nav-cta svg { color: currentColor; }
           .gryt-settings-result {
             display: flex;
             flex-direction: column;
