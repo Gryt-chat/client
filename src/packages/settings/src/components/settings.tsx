@@ -617,9 +617,7 @@ export function Settings() {
             color: var(--gryt-accent-11);
             font-weight: 600;
           }
-          /* Support is intentionally the one call to action in the rail. It stays
-             separated at the bottom, but uses the product accent rather than
-             danger red so it reads as something worth noticing, not a warning. */
+          /* The pinned Support row is the rail's one accent CTA, not a danger state. */
           .gryt-settings-nav-cta {
             background: var(--gryt-accent-9);
             color: var(--gryt-on-accent);
