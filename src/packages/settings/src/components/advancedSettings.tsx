@@ -89,11 +89,6 @@ export function AdvancedSettings() {
           Display a floating debug overlay with real-time video codec, resolution, and bitrate information
         </span>
       </div>
-
-        <span className="text-gryt-muted mt-1">
-          Turn off to keep server access tokens in session storage (cleared when you close the browser).
-        </span>
-      </div>
       </>
       )}
     </SettingsContainer>
