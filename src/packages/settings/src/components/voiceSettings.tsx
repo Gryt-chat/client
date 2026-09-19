@@ -6,7 +6,7 @@ import disconnectMp3 from "@/audio/src/assets/disconnect.mp3";
 import { useSettings } from "@/settings";
 
 import { NoticeDialog } from "../../../socket/src/components/NoticeDialog";
-import { SettingGroup, SettingsContainer, ToggleSetting } from "./settingsComponents";
+import { SettingGroup, SettingsContainer, SliderSetting, ToggleSetting } from "./settingsComponents";
 import { SoundSettings } from "./SoundSettings";
 import { TileLayoutPicker } from "./tileLayoutPicker";
 import { TwoPersonLayoutPicker } from "./twoPersonLayoutPicker";
@@ -31,6 +31,8 @@ export function VoiceSettings() {
     setVoiceTileLayout,
     voiceTwoPersonLayout,
     setVoiceTwoPersonLayout,
+    afkTimeoutMinutes,
+    setAfkTimeoutMinutes,
   } = useSettings();
 
   const [alertDialog, setAlertDialog] = useState<{
@@ -68,6 +70,17 @@ export function VoiceSettings() {
           ? "Active — RNNoise off, noise gate bypassed, PTT enabled, 128kbps cap, ptime=10ms"
           : undefined
         }
+      />
+
+      <Divider />
+
+      <SliderSetting
+        title={`AFK timeout: ${afkTimeoutMinutes} minutes`}
+        description="You are marked AFK after this many minutes of silence, and only while you are connected to voice."
+        value={afkTimeoutMinutes}
+        onChange={setAfkTimeoutMinutes}
+        min={1}
+        max={30}
       />
 
       <Divider />
