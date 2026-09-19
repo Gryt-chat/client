@@ -569,7 +569,8 @@
 
 "@gryt/ui@^0.34.3":
   version "0.34.3"
-  resolved "https://registry.yarnpkg.com/@gryt/ui/-/ui-0.34.3.tgz"
+  resolved "https://registry.yarnpkg.com/@gryt/ui/-/ui-0.34.3.tgz#227d41bbe8af012c0087a35aeaa405bbc3df207f"
+  integrity sha512-4md5yqTnRFhl21QrtDVNo7/DJtOLpoacoEl4zjxeVv36rBiobIFuwTjck+nd8ngg9EbN4V1Ml8Rc58McIGIsFQ==
   dependencies:
     "@base-ui/react" "^1.7.0"
     "@gryt/owl" "^0.6.0"
