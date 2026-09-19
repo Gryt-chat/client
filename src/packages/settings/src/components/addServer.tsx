@@ -344,7 +344,7 @@ export function AddNewServer({
     >
       <Dialog.Portal>
         <Dialog.Backdrop />
-        <Dialog.Popup className="w-[30rem] max-w-[calc(100vw-2rem)] overflow-hidden">
+        <Dialog.Popup className="w-[30rem] max-w-[calc(100vw-2rem)] overflow-x-hidden">
             {/* Positioned by a wrapper rather than by a class on either the
                 Close or the IconButton. Close renders *as* the IconButton, and
                 the className does not survive that clone in either position —
