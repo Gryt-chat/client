@@ -1,5 +1,6 @@
-import { useSettings } from "@/settings";
 import { Divider, Switch } from "@gryt/ui";
+
+import { useSettings } from "@/settings";
 
 import { LatencyPanel } from "./latencyPanel";
 import { SettingsContainer } from "./settingsComponents";
