@@ -35,10 +35,7 @@ import { ThemeSettings } from "./theme/appearanceSettings";
 import { DisplaySettings } from "./theme/displaySettings";
 import { VoiceSettings } from "./voiceSettings";
 
-/**
- * Five destinations named for what you are trying to do rather than for which
- * subsystem owns the setting.
- */
+/** Settings are grouped by the thing somebody is trying to configure. */
 
 /**
  * A destination with `pages` is a category: the rail nests them and the pane shows
@@ -83,14 +80,14 @@ const DESTINATIONS: SettingsDestination[] = [
     label: "Servers",
     icon: PiHardDrivesFill,
     pages: [
+      ...(isElectron()
+        ? [{ value: "my-servers", label: "My servers", content: <MyServersSettings /> }]
+        : []),
       {
         value: "adding-servers",
         label: "Adding servers",
         content: <ServerPreferencesSettings />,
       },
-      ...(isElectron()
-        ? [{ value: "my-servers", label: "My servers", content: <MyServersSettings /> }]
-        : []),
       {
         value: "identities",
         label: "Server identities",
@@ -150,10 +147,10 @@ const DESTINATIONS: SettingsDestination[] = [
     label: "App",
     icon: PiFadersHorizontalFill,
     pages: [
-      { value: "hotkeys", label: "Hotkeys", content: <HotkeySettings /> },
       ...(isElectron()
         ? [{ value: "desktop", label: "Desktop", content: <DesktopSettings /> }]
         : []),
+      { value: "hotkeys", label: "Hotkeys", content: <HotkeySettings /> },
       {
         value: "advanced",
         label: "Advanced",
@@ -183,8 +180,8 @@ const DESTINATIONS: SettingsDestination[] = [
     label: "About",
     icon: PiInfoFill,
     pages: [
-      { value: "updates", label: "Updates", content: <UpdatesSettings /> },
       { value: "about", label: "About", content: <AboutSettings /> },
+      { value: "updates", label: "Updates", content: <UpdatesSettings /> },
     ],
   },
   {
