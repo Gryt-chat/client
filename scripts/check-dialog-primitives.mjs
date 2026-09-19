@@ -155,6 +155,11 @@ for (const file of files.filter((f) => f.endsWith(".tsx"))) {
       if (u.startsWith("min-w-") || (u.startsWith("max-w-") && !u.includes("vw"))) {
         problems.push(`${at(popup)} has ${token} on ${tag(popup)}, which lets it run past a narrow window.`);
       }
+      if (u === "overflow-hidden") {
+        problems.push(
+          `${at(popup)} has ${token} on ${tag(popup)}, which overrides the shared dialog's vertical scrolling. Use overflow-x-hidden if only horizontal clipping is intended.`,
+        );
+      }
     }
 
     if (!ts.isJsxElement(node)) return;

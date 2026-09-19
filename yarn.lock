@@ -567,10 +567,10 @@
   resolved "https://registry.yarnpkg.com/@gryt/theme/-/theme-0.12.0.tgz#e73de4e6d2c632aa5ee8b9af0cbca1af0efebddc"
   integrity sha512-MGiwgvk5VTqFNsAxrt/e7TFRGnOy/oCN5FpOa5eYjKivZyZHFstL5sLXL7fkNRPNxGBn+Xg87427ZvuzrCiSxQ==
 
-"@gryt/ui@^0.34.2":
-  version "0.34.2"
-  resolved "https://registry.yarnpkg.com/@gryt/ui/-/ui-0.34.2.tgz#d7304c4f44fea4e00a65d253f0e6ab62e1d05bfd"
-  integrity sha512-t8qFBHFMdej0RHy2Q53SrQ1bV8l6ahrmF9Es5DPWHHDpKfS+5qY07IkidsjqiYOuEzXVHIEPOYXr4DC3fBx8yw==
+"@gryt/ui@^0.34.3":
+  version "0.34.3"
+  resolved "https://registry.yarnpkg.com/@gryt/ui/-/ui-0.34.3.tgz#227d41bbe8af012c0087a35aeaa405bbc3df207f"
+  integrity sha512-4md5yqTnRFhl21QrtDVNo7/DJtOLpoacoEl4zjxeVv36rBiobIFuwTjck+nd8ngg9EbN4V1Ml8Rc58McIGIsFQ==
   dependencies:
     "@base-ui/react" "^1.7.0"
     "@gryt/owl" "^0.6.0"
@@ -579,9 +579,10 @@
     clsx "^2.1.1"
     tailwind-merge "^3.4.0"
 
-"@gryt/voice@0.5.5":
-  version "0.5.5"
-  resolved "https://registry.yarnpkg.com/@gryt/voice/-/voice-0.5.5.tgz#4e7dfc751150182b541e764d9e2c636def9948c6"
+"@gryt/voice@0.5.7":
+  version "0.5.7"
+  resolved "https://registry.yarnpkg.com/@gryt/voice/-/voice-0.5.7.tgz#bb3b15339fe0a7d2ec00d4ebb479badae97b6d76"
+  integrity sha512-ETJrBJIifQcnMJ3F0GRcOPymq6sl75dGTK7qU4iN88WbSWNv3raRWhCh+tkor7vonGI64UiMAL3banzw5fBOsA==
 
 "@humanwhocodes/config-array@^0.13.0":
   version "0.13.0"
