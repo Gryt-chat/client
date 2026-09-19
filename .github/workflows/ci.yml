@@ -18,7 +18,9 @@ jobs:
         with:
           node-version: 24
           cache: yarn
-      - run: yarn install --frozen-lockfile
+      - run: yarn install
+      - name: Show generated @gryt/voice lock entry
+        run: awk '/"@gryt\/voice@0.5.7":/{show=1} show{print} show && /^$/{exit}' yarn.lock
       - run: yarn test:updater-bridge
       - run: yarn test:update-feed-pin
       # A newer release has to replace a download that is waiting or still running,
