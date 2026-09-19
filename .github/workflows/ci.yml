@@ -19,6 +19,8 @@ jobs:
           node-version: 24
           cache: yarn
       - run: yarn install --frozen-lockfile
+      - name: Resolve @gryt/ui 0.34.3 registry metadata
+        run: npm view @gryt/ui@0.34.3 dist --json
       - run: yarn test:updater-bridge
       - run: yarn test:update-feed-pin
       # A newer release has to replace a download that is waiting or still running,
