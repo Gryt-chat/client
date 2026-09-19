@@ -204,7 +204,8 @@ for (const tab of ["my-servers", "profile", "sound-video/audio", "audio", ""]) {
     if (/\bicon:/.test(chunk)) destinations.push({ value: match[1] });
     else (destinations.at(-1).pages ??= []).push({ value: match[1] });
   }
-  assert.ok(destinations.some((d) => d.value === "my-servers"), `${SETTINGS} has no My servers destination`);
+  const serversDestination = destinations.find((d) => d.value === "servers");
+  assert.ok(serversDestination?.pages?.some((page) => page.value === "my-servers"), `${SETTINGS} has no My servers page under Servers`);
   assert.match(list, /\.\.\.\(isElectron\(\)\s*\?\s*\[\s*\{\s*value: "my-servers"/, "My servers is no longer Electron only");
 
   const start = settings.indexOf("const [active, activePage] = useMemo(() => {");
@@ -216,7 +217,7 @@ for (const tab of ["my-servers", "profile", "sound-video/audio", "audio", ""]) {
     "settingsTab",
     stripTypeScriptTypes(`function resolve() {${body}}`) + "\nreturn resolve();",
   );
-  assert.deepEqual(resolve(destinations, "profile", manageServerTab("cozy-den-1a2b3c")), ["my-servers", null], "Manage server's tab does not open My servers");
+  assert.deepEqual(resolve(destinations, "profile", manageServerTab("cozy-den-1a2b3c")), ["servers", "my-servers"], "Manage server's tab does not open Servers / My servers");
   assert.deepEqual(resolve(destinations, "profile", "sound-video/audio"), ["sound-video", "audio"], "the resolver run here is not the one settings uses");
 }
 

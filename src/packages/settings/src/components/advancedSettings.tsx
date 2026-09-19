@@ -1,7 +1,5 @@
 import { Divider, Switch } from "@gryt/ui";
-import { useEffect, useState } from "react";
 
-import { getAccessTokenStorageMode, migrateAccessTokensToMode } from "@/common";
 import { useSettings } from "@/settings";
 
 import { LatencyPanel } from "./latencyPanel";
@@ -18,13 +16,6 @@ export function AdvancedSettings() {
     showPeerLatency,
     setShowPeerLatency,
   } = useSettings();
-
-  const [persistTokens, setPersistTokens] = useState(true);
-
-  useEffect(() => {
-    const mode = getAccessTokenStorageMode();
-    setPersistTokens(mode === "local");
-  }, []);
 
   return (
     <SettingsContainer>
@@ -97,23 +88,6 @@ export function AdvancedSettings() {
         </div>
         <span className="text-gryt-muted mt-1">
           Display a floating debug overlay with real-time video codec, resolution, and bitrate information
-        </span>
-      </div>
-
-      <div>
-        <div className="flex items-center gap-3">
-          <span className="font-medium">Persist server access tokens</span>
-          <Switch
-            checked={persistTokens}
-            onCheckedChange={(v) => {
-              const next = !!v;
-              setPersistTokens(next);
-              migrateAccessTokensToMode(next ? "local" : "session");
-            }}
-          />
-        </div>
-        <span className="text-gryt-muted mt-1">
-          Turn off to keep server access tokens in session storage (cleared when you close the browser).
         </span>
       </div>
       </>

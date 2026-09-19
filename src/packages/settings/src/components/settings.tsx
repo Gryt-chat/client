@@ -6,7 +6,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { useSettings } from "@/settings";
 
 import { isElectron } from "../../../../lib/electron";
-import { PiBellFill, PiFadersHorizontalFill, PiFlaskFill, PiHardDrivesFill, PiHeartFill, PiInfoFill, PiMagnifyingGlassFill, PiMicrophoneFill, PiPaletteFill, PiPuzzlePieceFill, PiShieldCheckFill, PiUserFill, PiX } from "../../../../lib/icons";
+import { PiChatsFill, PiFadersHorizontalFill, PiFlaskFill, PiHardDrivesFill, PiHeartFill, PiInfoFill, PiMagnifyingGlassFill, PiMicrophoneFill, PiPaletteFill, PiPuzzlePieceFill, PiShieldCheckFill, PiUserFill, PiX } from "../../../../lib/icons";
 import { SettingsPicker } from "../../../socket/src/components/SettingsPicker";
 import { useRoomForSettingsRail } from "../../../socket/src/hooks/useNarrowWindow";
 import { USER_SETTINGS_CHROME } from "../../../socket/src/lib/narrowLayout";
@@ -24,21 +24,18 @@ import { DeveloperSettings } from "./developerSettings";
 import { HotkeySettings } from "./hotkeySettings";
 import { MyServersSettings } from "./myServersSettings";
 import { NotificationSettings } from "./notificationSettings";
-import { PresenceSettings } from "./presenceSettings";
 import { ProfileSettings } from "./profileSettings";
 import { ScreenShareSettings } from "./screenShareSettings";
 import { SecuritySettings } from "./securitySettings";
 import { ServerIdentitySettings } from "./serverIdentitySettings";
+import { ServerPreferencesSettings } from "./serverPreferencesSettings";
 import { HIGHLIGHT_MS } from "./settingsComponents";
 import { SupportSettings } from "./supportSettings";
 import { ThemeSettings } from "./theme/appearanceSettings";
 import { DisplaySettings } from "./theme/displaySettings";
 import { VoiceSettings } from "./voiceSettings";
 
-/**
- * Five destinations named for what you are trying to do rather than for which
- * subsystem owns the setting.
- */
+/** Settings are grouped by the thing somebody is trying to configure. */
 
 /**
  * A destination with `pages` is a category: the rail nests them and the pane shows
@@ -71,11 +68,26 @@ const DESTINATIONS: SettingsDestination[] = [
   },
   {
     value: "account",
-    label: "Account",
+    label: "Account & security",
     icon: PiShieldCheckFill,
     pages: [
       { value: "account", label: "Account", content: <AccountSettings /> },
       { value: "security", label: "Security", content: <SecuritySettings /> },
+    ],
+  },
+  {
+    value: "servers",
+    label: "Servers",
+    icon: PiHardDrivesFill,
+    pages: [
+      ...(isElectron()
+        ? [{ value: "my-servers", label: "My servers", content: <MyServersSettings /> }]
+        : []),
+      {
+        value: "adding-servers",
+        label: "Adding servers",
+        content: <ServerPreferencesSettings />,
+      },
       {
         value: "identities",
         label: "Server identities",
@@ -83,21 +95,22 @@ const DESTINATIONS: SettingsDestination[] = [
       },
     ],
   },
-  // Electron only, because the embedded server is. In a browser this would be
-  // a destination that can never have anything in it.
-  ...(isElectron()
-    ? [
-        {
-          value: "my-servers",
-          label: "My servers",
-          icon: PiHardDrivesFill,
-          content: <MyServersSettings />,
-        },
-      ]
-    : []),
+  {
+    value: "chat-notifications",
+    label: "Chat & notifications",
+    icon: PiChatsFill,
+    pages: [
+      { value: "chat", label: "Chat", content: <ChatSettings /> },
+      {
+        value: "notifications",
+        label: "Notifications",
+        content: <NotificationSettings />,
+      },
+    ],
+  },
   {
     value: "sound-video",
-    label: "Sound & video",
+    label: "Voice & video",
     icon: PiMicrophoneFill,
     pages: [
       {
@@ -127,32 +140,25 @@ const DESTINATIONS: SettingsDestination[] = [
     pages: [
       { value: "theme", label: "Theme", content: <ThemeSettings /> },
       { value: "display", label: "Display", content: <DisplaySettings /> },
-      { value: "chat", label: "Chat", content: <ChatSettings /> },
     ],
-  },
-  {
-    /* Its own destination rather than a section: it carries the global level and
-       a row per server, which is a page rather than a paragraph. */
-    value: "notifications",
-    label: "Notifications",
-    icon: PiBellFill,
-    content: <NotificationSettings />,
   },
   {
     value: "behaviour",
-    label: "Behaviour",
+    label: "App",
     icon: PiFadersHorizontalFill,
     pages: [
-      { value: "hotkeys", label: "Hotkeys", content: <HotkeySettings /> },
-      { value: "presence", label: "Presence", content: <PresenceSettings /> },
       ...(isElectron()
         ? [{ value: "desktop", label: "Desktop", content: <DesktopSettings /> }]
         : []),
-      { value: "advanced", label: "Advanced", mountWhenActive: true, content: <AdvancedSettings /> },
+      { value: "hotkeys", label: "Hotkeys", content: <HotkeySettings /> },
+      {
+        value: "advanced",
+        label: "Advanced",
+        mountWhenActive: true,
+        content: <AdvancedSettings />,
+      },
     ],
   },
-  // Dev builds only. `import.meta.env.DEV` folds to false in a release, so
-  // both the tab and the panel drop out of the bundle.
   ...(import.meta.env.DEV
     ? [
         {
@@ -165,8 +171,6 @@ const DESTINATIONS: SettingsDestination[] = [
     : []),
   {
     value: "extensions",
-    // "Addons" everywhere else; the nav was the only place calling them
-    // extensions. The tab's `value` stays "extensions" because it is persisted.
     label: "Addons",
     icon: PiPuzzlePieceFill,
     content: <AddonsSettings />,
@@ -176,16 +180,14 @@ const DESTINATIONS: SettingsDestination[] = [
     label: "About",
     icon: PiInfoFill,
     pages: [
-      { value: "updates", label: "Updates", content: <UpdatesSettings /> },
       { value: "about", label: "About", content: <AboutSettings /> },
+      { value: "updates", label: "Updates", content: <UpdatesSettings /> },
     ],
   },
   {
     value: "support",
     label: "Support Gryt",
     icon: PiHeartFill,
-    // Pinned to the bottom, below a spacer. It is not a setting, and burying a
-    // donation link inside "Extensions & about" made it findable by accident.
     pinBottom: true,
     content: <SupportSettings />,
   },
@@ -615,10 +617,21 @@ export function Settings() {
             color: var(--gryt-accent-11);
             font-weight: 600;
           }
-          /* Just the heart carries the colour. A filled button competes with the
-             active-item highlight and shouts in a settings sidebar. */
-          .gryt-settings-nav-cta svg { color: var(--gryt-danger-9); }
-          .gryt-settings-nav-cta:hover svg { color: var(--gryt-danger-10); }
+          /* The pinned Support row is the rail's one accent CTA, not a danger state. */
+          .gryt-settings-nav-cta {
+            background: var(--gryt-accent-9);
+            color: var(--gryt-on-accent);
+            font-weight: 600;
+          }
+          .gryt-settings-nav-cta:hover {
+            background: var(--gryt-accent-10);
+            color: var(--gryt-on-accent);
+          }
+          .gryt-settings-nav-cta[data-active="true"] {
+            background: var(--gryt-accent-10);
+            color: var(--gryt-on-accent);
+          }
+          .gryt-settings-nav-cta svg { color: currentColor; }
           .gryt-settings-result {
             display: flex;
             flex-direction: column;
