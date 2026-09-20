@@ -241,8 +241,23 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return () => ipcRenderer.removeListener("update-status", handler);
   },
 
-  showNotification(payload: { title: string; body?: string }) {
+  showNotification(payload: {
+    title: string;
+    body?: string;
+    destination?: { host: string; channelId: string };
+  }) {
     ipcRenderer.send("show-notification", payload);
+  },
+
+  onNotificationClick(
+    callback: (destination: { host: string; channelId: string }) => void,
+  ) {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      destination: { host: string; channelId: string },
+    ) => callback(destination);
+    ipcRenderer.on("notification-click", handler);
+    return () => ipcRenderer.removeListener("notification-click", handler);
   },
 
   setBadgeCount(count: number) {

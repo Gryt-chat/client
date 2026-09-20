@@ -50,6 +50,7 @@
     "test:sidebar-tree": "node scripts/check-sidebar-tree.mjs",
     "test:settings-index": "node scripts/check-settings-index.mjs",
     "test:notification-prefs": "node scripts/check-notification-prefs.mjs",
+    "test:notification-navigation": "node scripts/check-notification-navigation.mjs",
     "test:muted-channel-notifications": "node scripts/check-muted-channel-notifications.mjs",
     "test:hotkeys": "node scripts/check-hotkeys.mjs",
     "test:screen-audio": "node scripts/check-screen-audio.mjs",

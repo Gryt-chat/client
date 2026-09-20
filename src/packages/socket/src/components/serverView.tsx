@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
 import { clearMentions, clearSignedOut, getUploadsFileUrl, markChannelRead, useAccount, useMentionTracker, useThreadMentions, useUnreadTracker } from "@/common";
+import { NOTIFICATION_CHANNEL_OPEN_EVENT } from "@/lib/desktopNotification";
 import { useIsCompact, useIsMobile } from "@/mobile";
 import { useSettings } from "@/settings";
 import { useEmbeddedServer } from "@/settings/src/hooks/useEmbeddedServer";
@@ -152,6 +153,40 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     const opened = visibleDmId || visibleChannelId;
     if (opened) markChannelRead(currentlyViewingServer.host, opened);
   }, [currentlyViewingServer, visibleChannelId, visibleDmId]);
+
+  useEffect(() => {
+    const onNotificationChannelOpen = (event: Event) => {
+      const { host, channelId } = (
+        event as CustomEvent<{ host?: string; channelId?: string }>
+      ).detail ?? {};
+      if (!host || !channelId || host !== currentlyViewingServer?.host) return;
+
+      const channel = serverDetailsList[host]?.channels?.find(
+        (candidate) => candidate.id === channelId,
+      );
+      if (!channel) return;
+
+      setSelectedDmId(null);
+      setSelectedChannelId(channelId);
+      setLastSelectedChannelForServer(host, channelId);
+    };
+
+    window.addEventListener(
+      NOTIFICATION_CHANNEL_OPEN_EVENT,
+      onNotificationChannelOpen,
+    );
+    return () =>
+      window.removeEventListener(
+        NOTIFICATION_CHANNEL_OPEN_EVENT,
+        onNotificationChannelOpen,
+      );
+  }, [
+    currentlyViewingServer?.host,
+    serverDetailsList,
+    setLastSelectedChannelForServer,
+    setSelectedChannelId,
+    setSelectedDmId,
+  ]);
 
 
   const drawnVoicePanelWidth =

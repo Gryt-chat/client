@@ -8,6 +8,38 @@ const MAX_BODY = 140;
 
 export type NotificationPermissionState = "granted" | "denied" | "default" | "unsupported";
 
+export interface NotificationDestination {
+  host: string;
+  channelId: string;
+}
+
+const NOTIFICATION_OPEN_EVENT = "gryt:notification-open";
+export const NOTIFICATION_CHANNEL_OPEN_EVENT = "gryt:notification-channel-open";
+
+function dispatchNotificationOpen(destination: NotificationDestination): void {
+  window.dispatchEvent(
+    new CustomEvent<NotificationDestination>(NOTIFICATION_OPEN_EVENT, {
+      detail: destination,
+    }),
+  );
+}
+
+/** Listen for a notification click from Electron or the browser Notification API. */
+export function onDesktopNotificationOpen(
+  callback: (destination: NotificationDestination) => void,
+): () => void {
+  if (typeof window === "undefined") return () => {};
+
+  const bridge = window.electronAPI?.onNotificationClick;
+  if (bridge) return bridge(callback);
+
+  const handler = (event: Event) => {
+    callback((event as CustomEvent<NotificationDestination>).detail);
+  };
+  window.addEventListener(NOTIFICATION_OPEN_EVENT, handler);
+  return () => window.removeEventListener(NOTIFICATION_OPEN_EVENT, handler);
+}
+
 /** Whether this build can raise one at all. */
 export function canNotify(): boolean {
   if (typeof window === "undefined") return false;
@@ -58,13 +90,17 @@ export function notificationBody(msg: {
   return "Sent a message";
 }
 
-export function showDesktopNotification(title: string, body: string): void {
+export function showDesktopNotification(
+  title: string,
+  body: string,
+  destination?: NotificationDestination,
+): void {
   if (typeof window === "undefined" || !title) return;
 
   const bridge = window.electronAPI?.showNotification;
   if (bridge) {
     try {
-      bridge({ title, body });
+      bridge({ title, body, destination });
     } catch {
       /* The main process is the only thing that can fail here, and a missed
          notification is not worth an error to the person reading it. */
@@ -77,6 +113,7 @@ export function showDesktopNotification(title: string, body: string): void {
     const n = new Notification(title, { body, silent: true });
     n.onclick = () => {
       window.focus();
+      if (destination) dispatchNotificationOpen(destination);
       n.close();
     };
   } catch {

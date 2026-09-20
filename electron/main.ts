@@ -3890,7 +3890,11 @@ if (!gotSingleInstanceLock) {
         "show-notification",
         (
           _event,
-          payload: { title?: string; body?: string }
+          payload: {
+            title?: string;
+            body?: string;
+            destination?: { host: string; channelId: string };
+          }
         ) => {
           if (!Notification.isSupported()) return;
           if (!payload?.title) return;
@@ -3907,6 +3911,11 @@ if (!gotSingleInstanceLock) {
             if (!mainWindow.isVisible()) mainWindow.show();
             if (mainWindow.isMinimized()) mainWindow.restore();
             mainWindow.focus();
+
+            const destination = payload.destination;
+            if (destination?.host && destination.channelId) {
+              mainWindow.webContents.send("notification-click", destination);
+            }
           });
 
           notification.show();

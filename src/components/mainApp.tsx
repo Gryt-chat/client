@@ -1,5 +1,10 @@
 import { Button } from "@gryt/ui";
+import { useEffect } from "react";
 
+import {
+  NOTIFICATION_CHANNEL_OPEN_EVENT,
+  onDesktopNotificationOpen,
+} from "@/lib/desktopNotification";
 import { useSettings } from "@/settings";
 import { DmFeeds, useDmSpaceOpen, useRememberView, useServerManagement } from "@/socket";
 import { ServerView } from "@/socket/src/components/serverView";
@@ -11,13 +16,36 @@ import { OnboardingTour } from "./onboarding/OnboardingTour";
 import { Sidebar } from "./sidebar";
 
 export function MainApp() {
-  const { servers, setShowAddServer, showDiscovery, setShowDiscovery, currentlyViewingServer } = useServerManagement();
+  const {
+    servers,
+    setShowAddServer,
+    showDiscovery,
+    setShowDiscovery,
+    currentlyViewingServer,
+    switchToServer,
+    setLastSelectedChannelForServer,
+  } = useServerManagement();
   const { showTour, dismissTour } = useSettings();
 
   /* A window this small is one channel, so the shell around it goes: at 300px the
      padding and the rail are a fifth of it. `ServerView` drops the rest. */
   const isTiny = useIsTinyWindow();
   const dmSpaceOpen = useDmSpaceOpen();
+
+  useEffect(() => {
+    return onDesktopNotificationOpen(({ host, channelId }) => {
+      if (!servers[host]) return;
+
+      setLastSelectedChannelForServer(host, channelId);
+      switchToServer(host);
+
+      window.dispatchEvent(
+        new CustomEvent(NOTIFICATION_CHANNEL_OPEN_EVENT, {
+          detail: { host, channelId },
+        }),
+      );
+    });
+  }, [servers, setLastSelectedChannelForServer, switchToServer]);
 
   /* What a bug report calls "where you were". Recorded here rather than in the
      report form, which would always answer "the report form". */

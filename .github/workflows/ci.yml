@@ -82,6 +82,7 @@ jobs:
       - run: yarn test:sidebar-tree
       - run: yarn test:settings-index
       - run: yarn test:notification-prefs
+      - run: yarn test:notification-navigation
       - run: yarn test:muted-channel-notifications
       - run: yarn test:hotkeys
       - run: yarn test:screen-audio
