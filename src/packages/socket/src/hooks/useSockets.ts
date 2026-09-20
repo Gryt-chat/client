@@ -263,6 +263,7 @@ function useSocketsHook() {
     currentlyViewingServerRef,
     clientsRef,
     serversRef,
+    serverDetailsListRef,
     lastInviteJoinAttemptRef,
     setServers,
     setNewServerInfo,
