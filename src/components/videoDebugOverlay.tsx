@@ -6,7 +6,7 @@ import {
   useSFU,
   useVideoStats,
 } from "@gryt/voice";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { PiVideoCameraFill } from "../lib/icons";
 import { DebugOverlay } from "./debugOverlay";
@@ -78,6 +78,37 @@ interface OutboundDiagnostics {
   codecFmtp: string | null;
 }
 
+interface InboundDiagnostics {
+  trackId: string;
+  framesReceived: number | null;
+  averageDecodeTimeMs: number | null;
+  averageProcessingDelayMs: number | null;
+  averageJitterBufferDelayMs: number | null;
+  packetsDiscarded: number | null;
+  framesAssembledFromMultiplePackets: number | null;
+  averageAssemblyTimeMs: number | null;
+  freezeCount: number | null;
+  totalFreezesDurationMs: number | null;
+  recentDecodedFps: number | null;
+  recentDroppedFps: number | null;
+  recentDropPct: number | null;
+  recentPacketsReceivedPerSecond: number | null;
+  recentPacketsLostPerSecond: number | null;
+  recentLossPct: number | null;
+  recentNackCount: number | null;
+  recentPliCount: number | null;
+}
+
+interface InboundSnapshot {
+  timestampMs: number;
+  framesDecoded: number | null;
+  framesDropped: number | null;
+  packetsReceived: number | null;
+  packetsLost: number | null;
+  nackCount: number | null;
+  pliCount: number | null;
+}
+
 interface VideoDiagnostics {
   connectionState: RTCPeerConnectionState | null;
   iceConnectionState: RTCIceConnectionState | null;
@@ -85,6 +116,7 @@ interface VideoDiagnostics {
   candidate: CandidateDiagnostics;
   senders: SenderDiagnostics[];
   outbound: OutboundDiagnostics[];
+  inbound: InboundDiagnostics[];
 }
 
 const EMPTY_DIAGNOSTICS: VideoDiagnostics = {
@@ -102,6 +134,7 @@ const EMPTY_DIAGNOSTICS: VideoDiagnostics = {
   },
   senders: [],
   outbound: [],
+  inbound: [],
 };
 
 const sectionTitle: React.CSSProperties = {
@@ -157,6 +190,21 @@ function numberOrNull(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+function counterDelta(current: number | null, previous: number | null): number | null {
+  if (current == null || previous == null || current < previous) return null;
+  return current - previous;
+}
+
+function perSecond(delta: number | null, seconds: number | null): number | null {
+  if (delta == null || seconds == null || seconds <= 0) return null;
+  return delta / seconds;
+}
+
+function percent(numerator: number | null, denominator: number | null): number | null {
+  if (numerator == null || denominator == null || denominator <= 0) return null;
+  return (numerator / denominator) * 100;
+}
+
 function useVideoDebugDiagnostics(enabled: boolean): VideoDiagnostics {
   const {
     getPeerConnection,
@@ -164,10 +212,12 @@ function useVideoDebugDiagnostics(enabled: boolean): VideoDiagnostics {
     getScreenSenderTrackId,
   } = useSFU();
   const [diagnostics, setDiagnostics] = useState<VideoDiagnostics>(EMPTY_DIAGNOSTICS);
+  const inboundSnapshotsRef = useRef<Map<string, InboundSnapshot>>(new Map());
 
   useEffect(() => {
     if (!enabled) {
       setDiagnostics(EMPTY_DIAGNOSTICS);
+      inboundSnapshotsRef.current.clear();
       return;
     }
 
@@ -226,6 +276,8 @@ function useVideoDebugDiagnostics(enabled: boolean): VideoDiagnostics {
           });
 
         const outbound: OutboundDiagnostics[] = [];
+        const inbound: InboundDiagnostics[] = [];
+        const seenInboundKeys = new Set<string>();
         report.forEach((stat) => {
           if (stat.type !== "outbound-rtp" || stat.kind !== "video") return;
 
@@ -273,6 +325,116 @@ function useVideoDebugDiagnostics(enabled: boolean): VideoDiagnostics {
           });
         });
 
+        report.forEach((stat) => {
+          if (stat.type !== "inbound-rtp" || stat.kind !== "video") return;
+
+          const key = stat.id;
+          seenInboundKeys.add(key);
+
+          const framesDecoded = numberOrNull(stat.framesDecoded);
+          const framesDropped = numberOrNull(stat.framesDropped);
+          const packetsReceived = numberOrNull(stat.packetsReceived);
+          const packetsLost = numberOrNull(stat.packetsLost);
+          const nackCount = numberOrNull(stat.nackCount);
+          const pliCount = numberOrNull(stat.pliCount);
+          const previous = inboundSnapshotsRef.current.get(key);
+          const nowMs = performance.now();
+          const secondsSincePrevious = previous
+            ? (nowMs - previous.timestampMs) / 1000
+            : null;
+
+          const decodedDelta = counterDelta(framesDecoded, previous?.framesDecoded ?? null);
+          const droppedDelta = counterDelta(framesDropped, previous?.framesDropped ?? null);
+          const receivedDelta = counterDelta(
+            packetsReceived,
+            previous?.packetsReceived ?? null,
+          );
+          const lostDelta = counterDelta(packetsLost, previous?.packetsLost ?? null);
+          const nackDelta = counterDelta(nackCount, previous?.nackCount ?? null);
+          const pliDelta = counterDelta(pliCount, previous?.pliCount ?? null);
+
+          const totalDecodeTime = numberOrNull(stat.totalDecodeTime);
+          const totalProcessingDelay = numberOrNull(stat.totalProcessingDelay);
+          const jitterBufferDelay = numberOrNull(stat.jitterBufferDelay);
+          const jitterBufferEmittedCount = numberOrNull(stat.jitterBufferEmittedCount);
+          const framesAssembledFromMultiplePackets = numberOrNull(
+            stat.framesAssembledFromMultiplePackets,
+          );
+          const totalAssemblyTime = numberOrNull(stat.totalAssemblyTime);
+
+          inbound.push({
+            trackId:
+              typeof stat.trackIdentifier === "string"
+                ? stat.trackIdentifier
+                : typeof stat.ssrc === "number"
+                  ? String(stat.ssrc)
+                  : stat.id,
+            framesReceived: numberOrNull(stat.framesReceived),
+            averageDecodeTimeMs:
+              totalDecodeTime != null && framesDecoded != null && framesDecoded > 0
+                ? (totalDecodeTime * 1000) / framesDecoded
+                : null,
+            averageProcessingDelayMs:
+              totalProcessingDelay != null && framesDecoded != null && framesDecoded > 0
+                ? (totalProcessingDelay * 1000) / framesDecoded
+                : null,
+            averageJitterBufferDelayMs:
+              jitterBufferDelay != null &&
+              jitterBufferEmittedCount != null &&
+              jitterBufferEmittedCount > 0
+                ? (jitterBufferDelay * 1000) / jitterBufferEmittedCount
+                : null,
+            packetsDiscarded: numberOrNull(stat.packetsDiscarded),
+            framesAssembledFromMultiplePackets,
+            averageAssemblyTimeMs:
+              totalAssemblyTime != null &&
+              framesAssembledFromMultiplePackets != null &&
+              framesAssembledFromMultiplePackets > 0
+                ? (totalAssemblyTime * 1000) / framesAssembledFromMultiplePackets
+                : null,
+            freezeCount: numberOrNull(stat.freezeCount),
+            totalFreezesDurationMs:
+              typeof stat.totalFreezesDuration === "number"
+                ? stat.totalFreezesDuration * 1000
+                : null,
+            recentDecodedFps: perSecond(decodedDelta, secondsSincePrevious),
+            recentDroppedFps: perSecond(droppedDelta, secondsSincePrevious),
+            recentDropPct: percent(
+              droppedDelta,
+              decodedDelta != null && droppedDelta != null
+                ? decodedDelta + droppedDelta
+                : null,
+            ),
+            recentPacketsReceivedPerSecond: perSecond(
+              receivedDelta,
+              secondsSincePrevious,
+            ),
+            recentPacketsLostPerSecond: perSecond(lostDelta, secondsSincePrevious),
+            recentLossPct: percent(
+              lostDelta,
+              receivedDelta != null && lostDelta != null
+                ? receivedDelta + lostDelta
+                : null,
+            ),
+            recentNackCount: nackDelta,
+            recentPliCount: pliDelta,
+          });
+
+          inboundSnapshotsRef.current.set(key, {
+            timestampMs: nowMs,
+            framesDecoded,
+            framesDropped,
+            packetsReceived,
+            packetsLost,
+            nackCount,
+            pliCount,
+          });
+        });
+
+        for (const key of inboundSnapshotsRef.current.keys()) {
+          if (!seenInboundKeys.has(key)) inboundSnapshotsRef.current.delete(key);
+        }
+
         if (!cancelled) {
           setDiagnostics({
             connectionState: pc.connectionState,
@@ -306,6 +468,7 @@ function useVideoDebugDiagnostics(enabled: boolean): VideoDiagnostics {
             },
             senders,
             outbound,
+            inbound,
           });
         }
       } catch {
@@ -383,7 +546,14 @@ function OutboundSection({
             : "—"}
         </div>
         <div>Frames: {fmtInt(s.framesEncoded)} enc / {fmtInt(s.keyFramesEncoded)} key</div>
-        <div>Encode time: {s.totalEncodeTimeMs != null ? `${fmt(s.totalEncodeTimeMs)} ms` : "—"}</div>
+        <div>
+          Encode:{" "}
+          {s.totalEncodeTimeMs != null && s.framesEncoded != null && s.framesEncoded > 0
+            ? `${fmt(s.totalEncodeTimeMs / s.framesEncoded, 2)} ms/frame avg`
+            : "—"}
+          {" / "}
+          {s.totalEncodeTimeMs != null ? `${fmt(s.totalEncodeTimeMs)} ms total` : "—"}
+        </div>
         <div>Avg QP: {fmt(diagnostics?.averageQp ?? null, 1)}</div>
         <div>PLI: {fmtInt(s.pliCount)} / NACK: {fmtInt(s.nackCount)}</div>
         <div>
@@ -424,7 +594,24 @@ function OutboundSection({
   );
 }
 
-function InboundSection({ s, index }: { s: InboundVideoStats; index: number }) {
+function InboundSection({
+  s,
+  index,
+  diagnostics,
+}: {
+  s: InboundVideoStats;
+  index: number;
+  diagnostics?: InboundDiagnostics;
+}) {
+  const recentDropColor =
+    diagnostics?.recentDropPct != null && diagnostics.recentDropPct >= 2
+      ? "var(--gryt-warning-11)"
+      : undefined;
+  const recentLossColor =
+    diagnostics?.recentLossPct != null && diagnostics.recentLossPct >= 1
+      ? "var(--gryt-warning-11)"
+      : undefined;
+
   return (
     <div style={{ marginBottom: "8px" }}>
       <div style={sectionTitle}>Inbound #{index + 1}:</div>
@@ -434,10 +621,68 @@ function InboundSection({ s, index }: { s: InboundVideoStats; index: number }) {
         <div>FPS: {fmt(s.framesPerSecond, 0)}</div>
         <div>Bitrate: {s.bitrateKbps != null ? `${fmt(s.bitrateKbps)} kbps` : "—"}</div>
         <div>Jitter: {s.jitterMs != null ? `${fmt(s.jitterMs)} ms` : "—"}</div>
-        <div>Packets: {fmtInt(s.packetsReceived)} recv / {fmtInt(s.packetsLost)} lost</div>
-        <div>Frames: {fmtInt(s.framesDecoded)} decoded / {fmtInt(s.framesDropped)} dropped</div>
+        <div>
+          Packets: {fmtInt(s.packetsReceived)} recv / {fmtInt(s.packetsLost)} lost /{" "}
+          {fmtInt(diagnostics?.packetsDiscarded ?? null)} discarded
+        </div>
+        <div style={{ color: recentLossColor }}>
+          Recent loss:{" "}
+          {diagnostics?.recentLossPct != null
+            ? `${fmt(diagnostics.recentLossPct, 2)}%`
+            : "—"}
+          {" / "}
+          {fmt(diagnostics?.recentPacketsReceivedPerSecond ?? null, 1)} recv/s
+          {" / "}
+          {fmt(diagnostics?.recentPacketsLostPerSecond ?? null, 1)} lost/s
+        </div>
+        <div>
+          Frames: {fmtInt(diagnostics?.framesReceived ?? null)} recv / {fmtInt(s.framesDecoded)}{" "}
+          decoded / {fmtInt(s.framesDropped)} dropped
+        </div>
+        <div style={{ color: recentDropColor }}>
+          Recent drops:{" "}
+          {diagnostics?.recentDropPct != null
+            ? `${fmt(diagnostics.recentDropPct, 1)}%`
+            : "—"}
+          {" / "}
+          {fmt(diagnostics?.recentDecodedFps ?? null, 1)} decoded/s
+          {" / "}
+          {fmt(diagnostics?.recentDroppedFps ?? null, 1)} dropped/s
+        </div>
+        <div>
+          Decode: {diagnostics?.averageDecodeTimeMs != null
+            ? `${fmt(diagnostics.averageDecodeTimeMs, 2)} ms/frame avg`
+            : "—"}
+        </div>
+        <div>
+          Processing: {diagnostics?.averageProcessingDelayMs != null
+            ? `${fmt(diagnostics.averageProcessingDelayMs, 2)} ms/frame avg`
+            : "—"}
+        </div>
+        <div>
+          Jitter buffer: {diagnostics?.averageJitterBufferDelayMs != null
+            ? `${fmt(diagnostics.averageJitterBufferDelayMs, 2)} ms/frame avg`
+            : "—"}
+        </div>
+        <div>
+          Assembly: {diagnostics?.averageAssemblyTimeMs != null
+            ? `${fmt(diagnostics.averageAssemblyTimeMs, 2)} ms/frame avg`
+            : "—"}
+          {" / "}
+          {fmtInt(diagnostics?.framesAssembledFromMultiplePackets ?? null)} multi-packet
+        </div>
+        <div>
+          Freezes: {fmtInt(diagnostics?.freezeCount ?? null)} /{" "}
+          {diagnostics?.totalFreezesDurationMs != null
+            ? `${fmt(diagnostics.totalFreezesDurationMs / 1000, 1)}s total`
+            : "—"}
+        </div>
         <div>Decoder: {s.decoderImplementation ?? "—"}</div>
-        <div>PLI: {fmtInt(s.pliCount)} / FIR: {fmtInt(s.firCount)} / NACK: {fmtInt(s.nackCount)}</div>
+        <div>
+          PLI: {fmtInt(s.pliCount)} (+{fmtInt(diagnostics?.recentPliCount ?? null)}) / FIR:{" "}
+          {fmtInt(s.firCount)} / NACK: {fmtInt(s.nackCount)} (+
+          {fmtInt(diagnostics?.recentNackCount ?? null)})
+        </div>
       </div>
     </div>
   );
@@ -524,7 +769,12 @@ export function VideoDebugOverlay({ isVisible }: VideoDebugOverlayProps) {
           </div>
         )}
         {stats.inbound.map((s, i) => (
-          <InboundSection key={`in-${s.trackId}-${i}`} s={s} index={i} />
+          <InboundSection
+            key={`in-${s.trackId}-${i}`}
+            s={s}
+            index={i}
+            diagnostics={diagnostics.inbound.find((d) => d.trackId === s.trackId)}
+          />
         ))}
       </div>
     </DebugOverlay>
