@@ -14,6 +14,7 @@ export interface NotificationDestination {
 }
 
 const NOTIFICATION_OPEN_EVENT = "gryt:notification-open";
+export const NOTIFICATION_CHANNEL_OPEN_EVENT = "gryt:notification-channel-open";
 
 function dispatchNotificationOpen(destination: NotificationDestination): void {
   window.dispatchEvent(
