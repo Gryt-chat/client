@@ -1,8 +1,7 @@
 /* eslint-env node */
 
-// When camera and desktop video compete, the desktop share is the thing people
-// are trying to read/watch. Keep that sender high priority and let the webcam
-// give up resolution first.
+// When camera and desktop video compete, keep desktop high priority and let
+// the webcam give up resolution first.
 
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
