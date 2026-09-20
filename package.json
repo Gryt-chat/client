@@ -57,6 +57,7 @@
     "test:capture-set": "node scripts/check-capture-set.mjs",
     "test:capture-health": "node scripts/check-capture-health.mjs",
     "test:screen-audio-state": "node scripts/check-screen-audio-state.mjs",
+    "test:screen-share-priority": "node scripts/check-screen-share-priority.mjs",
     "test:avatar-precedence": "node scripts/check-avatar-precedence.mjs",
     "test:mention-tracker": "node scripts/check-mention-tracker.mjs",
     "test:unread-tracker": "node scripts/check-unread-tracker.mjs",

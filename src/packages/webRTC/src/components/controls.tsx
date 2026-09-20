@@ -123,6 +123,14 @@ export function Controls({ onDisconnect }: ControlsProps) {
             if (cameraSender) {
               const params = cameraSender.getParameters();
               params.degradationPreference = "maintain-framerate";
+              if (params.encodings && params.encodings.length > 0) {
+                params.encodings[0].priority = screenShareActive ? "low" : "medium";
+              }
+              const priority = params.encodings?.[0]?.priority ?? "default";
+              voiceLog.info(
+                "CAMERA",
+                `setParameters: priority=${priority} degradationPreference=${params.degradationPreference}`,
+              );
               cameraSender.setParameters(params).catch((err: unknown) => {
                 voiceLog.warn("CAMERA", `setParameters failed: ${err}`);
               });
@@ -138,7 +146,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
       prevCameraStreamRef.current = null;
       webrtcCameraStreamId.current = null;
     }
-  }, [cameraEnabled, cameraStream, isConnected, addVideoTrack, removeVideoTrack, getPeerConnection, cameraCodec]);
+  }, [cameraEnabled, cameraStream, isConnected, screenShareActive, addVideoTrack, removeVideoTrack, getPeerConnection, cameraCodec]);
 
   // Sync screen share video track to WebRTC
   useEffect(() => {
@@ -167,9 +175,12 @@ export function Controls({ onDisconnect }: ControlsProps) {
         const screenSender = getScreenVideoSender?.() ?? null;
         if (screenSender) {
           const params = screenSender.getParameters();
-          params.degradationPreference = "maintain-framerate";
+          params.degradationPreference = screenShareGamingMode
+            ? "maintain-framerate"
+            : "maintain-resolution";
           if (params.encodings && params.encodings.length > 0) {
             const effectiveBitrate = bitrate ?? 50_000_000;
+            params.encodings[0].priority = "high";
             params.encodings[0].maxBitrate = effectiveBitrate;
             params.encodings[0].maxFramerate = screenShareFps;
             const isH264 = screenShareCodec === "h264" || (!screenShareCodec || screenShareCodec === "auto");
@@ -178,7 +189,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
             }
           }
           const enc = params.encodings[0];
-          voiceLog.info("SCREEN", `setParameters: maxFramerate=${enc?.maxFramerate} maxBitrate=${enc?.maxBitrate} scalabilityMode=${enc?.scalabilityMode ?? "none"} degradationPreference=${params.degradationPreference}`);
+          voiceLog.info("SCREEN", `setParameters: priority=${enc?.priority ?? "default"} maxFramerate=${enc?.maxFramerate} maxBitrate=${enc?.maxBitrate} scalabilityMode=${enc?.scalabilityMode ?? "none"} degradationPreference=${params.degradationPreference}`);
           screenSender.setParameters(params).catch((err: unknown) => {
             voiceLog.warn("SCREEN", `setParameters failed: ${err}`);
           });
