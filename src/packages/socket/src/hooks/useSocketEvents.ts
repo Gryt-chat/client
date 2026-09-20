@@ -71,6 +71,7 @@ export interface SocketEventDeps {
   currentlyViewingServerRef: MutableRefObject<{ host: string; name: string } | null>;
   clientsRef: MutableRefObject<{ [host: string]: Clients }>;
   serversRef: MutableRefObject<Servers>;
+  serverDetailsListRef: MutableRefObject<serverDetailsList>;
   lastInviteJoinAttemptRef: MutableRefObject<Record<string, string | undefined>>;
   setServers: (servers: Servers) => void;
   setNewServerInfo: Dispatch<SetStateAction<Server[]>>;
@@ -114,6 +115,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
     currentlyViewingServerRef,
     clientsRef,
     serversRef,
+    serverDetailsListRef,
     lastInviteJoinAttemptRef,
     setServers,
     setNewServerInfo,
@@ -472,9 +474,20 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
           incrementUnreadRef.current();
         }
         if (desktopNotificationsEnabledRef.current) {
-          void sealedNotificationBody(msg, { host, memberId: myId }).then((body) =>
-            showDesktopNotification(msg.sender_nickname || "New message", body),
-          );
+          void sealedNotificationBody(msg, { host, memberId: myId }).then((body) => {
+            const isChannel =
+              !!msg.conversation_id &&
+              serverDetailsListRef.current[host]?.channels?.some(
+                (channel) => channel.id === msg.conversation_id,
+              ) === true;
+            showDesktopNotification(
+              msg.sender_nickname || "New message",
+              body,
+              isChannel && msg.conversation_id
+                ? { host, channelId: msg.conversation_id }
+                : undefined,
+            );
+          });
         }
       });
 
