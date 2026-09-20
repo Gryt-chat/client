@@ -46,6 +46,10 @@ test("user settings at 1280px: no page runs past the dialog", async ({ owner }) 
     // The category that just closed is still animating out, so wait for one open group.
     const group = dialog.locator(".gryt-settings-subnav-group");
     await expect(group).toHaveCount(1);
+    await expect.poll(
+      () => group.evaluate((el) => el.scrollHeight <= el.clientHeight),
+      `${name} subnav should expand to its full height`,
+    ).toBe(true);
     const subpages = group.getByRole("button");
     for (const [j, page] of (await subpages.allInnerTexts()).entries()) {
       await subpages.nth(j).click();

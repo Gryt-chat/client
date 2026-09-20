@@ -586,6 +586,7 @@ export function Settings() {
           .gryt-settings-subnav-group {
             display: flex;
             flex-direction: column;
+            flex-shrink: 0;
             gap: 4px;
             overflow: hidden;
           }
