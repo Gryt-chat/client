@@ -88,6 +88,7 @@ jobs:
       - run: yarn test:capture-set
       - run: yarn test:capture-health
       - run: yarn test:screen-audio-state
+      - run: yarn test:screen-share-priority
       - run: yarn test:avatar-precedence
       - run: yarn test:mention-tracker
       - run: yarn test:unread-tracker
