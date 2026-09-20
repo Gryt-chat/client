@@ -203,7 +203,15 @@ export interface ElectronAPI {
    * Raise an OS notification. Absent on builds older than the one that added
    * it, which is why the renderer falls back to the web Notification API.
    */
-  showNotification?(payload: { title: string; body?: string }): void;
+  showNotification?(payload: {
+    title: string;
+    body?: string;
+    destination?: { host: string; channelId: string };
+  }): void;
+  /** A native notification was clicked and named where it came from. */
+  onNotificationClick?(
+    callback: (destination: { host: string; channelId: string }) => void,
+  ): () => void;
   /**
    * Repaint the native window controls on Windows and Linux (GRYT-288).
    * Both colours must be `#rrggbb`. Absent on builds older than 1.6.16.
