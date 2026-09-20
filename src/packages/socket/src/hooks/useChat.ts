@@ -5,7 +5,7 @@ import useSound from "use-sound";
 
 import messageSoundMp3 from "@/audio/src/assets/universfield-computer-mouse-click-02-383961.mp3";
 import type { SealDecision } from "@/common";
-import { getServerAccessToken, getUploadsFileUrl, markChannelUnread, markThreadUnread, useUnreadBadge } from "@/common";
+import { getPlacement, getServerAccessToken, getUploadsFileUrl, markChannelUnread, markThreadUnread, resolveAnnounceLevel, shouldAnnounceMessage, useUnreadBadge } from "@/common";
 import { showDesktopNotification } from "@/lib/desktopNotification";
 import { useSettings } from "@/settings";
 import { type ForumTag,serverDetailsList as ServerDetailsList } from "@/settings/src/types/server";
@@ -407,6 +407,12 @@ export function useChat({
         markChannelUnread(serverHost, msg.conversation_id);
       }
       if (msg.sender_server_id !== currentUserId && !document.hasFocus()) {
+        const level = resolveAnnounceLevel(
+          serverHost,
+          getPlacement(serverHost, msg.conversation_id),
+        );
+        if (!shouldAnnounceMessage(level)) return;
+
         if (notificationBadgeEnabledRef.current) incrementUnread();
         if (desktopNotificationsEnabledRef.current) {
           /* Opened here rather than waited for: the row's own decrypt is a
