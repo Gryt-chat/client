@@ -87,6 +87,11 @@ export function useChat({
   conversationMembers,
 }: UseChatParams): UseChatReturn {
   const serverHost = currentlyViewingServer?.host || "";
+  const serverDetailsListRef = useRef(serverDetailsList);
+  useEffect(() => {
+    serverDetailsListRef.current = serverDetailsList;
+  }, [serverDetailsList]);
+
   const { incrementUnread } = useUnreadBadge();
   const { notificationBadgeEnabled, desktopNotificationsEnabled, messageSoundEnabled, messageSoundVolume, customMessageSoundFile } = useSettings();
   const notificationBadgeEnabledRef = useRef(notificationBadgeEnabled);
@@ -412,7 +417,17 @@ export function useChat({
           /* Opened here rather than waited for: the row's own decrypt is a
              separate effect, and a notification cannot hold for it. */
           void sealedNotificationBody(msg, { host: serverHost, memberId: currentUserId }).then(
-            (body) => showDesktopNotification(msg.sender_nickname || "New message", body),
+            (body) => {
+              const isChannel =
+                serverDetailsListRef.current[serverHost]?.channels?.some(
+                  (channel) => channel.id === msg.conversation_id,
+                ) === true;
+              showDesktopNotification(
+                msg.sender_nickname || "New message",
+                body,
+                isChannel ? { host: serverHost, channelId: msg.conversation_id } : undefined,
+              );
+            },
           );
         }
         if (messageSoundEnabledRef.current) {
