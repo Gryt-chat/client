@@ -1,8 +1,7 @@
 /* eslint-env node */
 
-// Muting a channel means no interruption from it. Messages still become unread,
-// but the active-server path must use the same notification resolver as every
-// background server instead of firing sound/OS notifications directly.
+// Muted messages stay unread, but the active-server path must use the same
+// notification resolver as background servers instead of firing directly.
 
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
