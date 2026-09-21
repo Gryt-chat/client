@@ -1,49 +1,21 @@
-import {
-  type InboundVideoStats,
-  type OutboundVideoStats,
-  useCamera,
-  useScreenShare,
-  useSFU,
-  useVideoStats,
-} from "@gryt/voice";
+import { useCamera, useScreenShare, useSFU } from "@gryt/voice";
 import { useEffect, useRef, useState } from "react";
 
 import { PiVideoCameraFill } from "../lib/icons";
 import { DebugOverlay } from "./debugOverlay";
+import {
+  type ConnectionDiagnostics,
+  type InboundDiagnostics,
+  labelForTrack,
+  type OutboundDiagnostics,
+  readVideoStats,
+  type SenderTracks,
+  type Stat,
+  type VideoLabel,
+} from "./videoDebugStats";
 
 interface VideoDebugOverlayProps {
   isVisible: boolean;
-}
-
-type VideoLabel = "camera" | "screen" | "video";
-
-interface DebugStat {
-  id: string;
-  type: string;
-  localCandidateId?: string;
-  remoteCandidateId?: string;
-  availableIncomingBitrate?: number;
-  bytesDiscardedOnSend?: number;
-  packetsDiscardedOnSend?: number;
-  candidateType?: string;
-  networkType?: string;
-  protocol?: string;
-  roundTripTime?: number;
-  jitter?: number;
-  packetsLost?: number;
-  fractionLost?: number;
-  reportsReceived?: number;
-  sdpFmtpLine?: string;
-}
-
-interface CandidateDiagnostics {
-  availableInKbps: number | null;
-  bytesDiscardedOnSend: number | null;
-  packetsDiscardedOnSend: number | null;
-  localCandidateType: string | null;
-  localNetworkType: string | null;
-  remoteCandidateType: string | null;
-  protocol: string | null;
 }
 
 interface SenderDiagnostics {
@@ -59,61 +31,11 @@ interface SenderDiagnostics {
   maxBitrateKbps: number | null;
 }
 
-interface OutboundDiagnostics {
-  label: VideoLabel;
-  targetBitrateKbps: number | null;
-  retransmittedPacketsSent: number | null;
-  retransmittedBytesSent: number | null;
-  averagePacketSendDelayMs: number | null;
-  remoteRttMs: number | null;
-  remoteJitterMs: number | null;
-  remotePacketsLost: number | null;
-  remoteLossPct: number | null;
-  reportsReceived: number | null;
-  bandwidthLimitedSeconds: number | null;
-  cpuLimitedSeconds: number | null;
-  otherLimitedSeconds: number | null;
-  resolutionChanges: number | null;
-  averageQp: number | null;
-  codecFmtp: string | null;
-}
-
-interface InboundDiagnostics {
-  trackId: string;
-  framesReceived: number | null;
-  averageDecodeTimeMs: number | null;
-  averageProcessingDelayMs: number | null;
-  averageJitterBufferDelayMs: number | null;
-  packetsDiscarded: number | null;
-  framesAssembledFromMultiplePackets: number | null;
-  averageAssemblyTimeMs: number | null;
-  freezeCount: number | null;
-  totalFreezesDurationMs: number | null;
-  recentDecodedFps: number | null;
-  recentDroppedFps: number | null;
-  recentDropPct: number | null;
-  recentPacketsReceivedPerSecond: number | null;
-  recentPacketsLostPerSecond: number | null;
-  recentLossPct: number | null;
-  recentNackCount: number | null;
-  recentPliCount: number | null;
-}
-
-interface InboundSnapshot {
-  timestampMs: number;
-  framesDecoded: number | null;
-  framesDropped: number | null;
-  packetsReceived: number | null;
-  packetsLost: number | null;
-  nackCount: number | null;
-  pliCount: number | null;
-}
-
 interface VideoDiagnostics {
   connectionState: RTCPeerConnectionState | null;
   iceConnectionState: RTCIceConnectionState | null;
   signalingState: RTCSignalingState | null;
-  candidate: CandidateDiagnostics;
+  connection: ConnectionDiagnostics;
   senders: SenderDiagnostics[];
   outbound: OutboundDiagnostics[];
   inbound: InboundDiagnostics[];
@@ -123,7 +45,9 @@ const EMPTY_DIAGNOSTICS: VideoDiagnostics = {
   connectionState: null,
   iceConnectionState: null,
   signalingState: null,
-  candidate: {
+  connection: {
+    rttMs: null,
+    availableOutKbps: null,
     availableInKbps: null,
     bytesDiscardedOnSend: null,
     packetsDiscardedOnSend: null,
@@ -147,6 +71,9 @@ const indent: React.CSSProperties = {
   marginLeft: "8px",
   fontSize: "11px",
 };
+
+/** Room left under the overlay for the call controls along the bottom of the voice panel. */
+const CALL_CONTROLS_CLEARANCE = 180;
 
 function fmt(v: number | null, decimals = 1): string {
   if (v == null) return "—";
@@ -176,314 +103,93 @@ function labelTitle(label: VideoLabel): string {
   return "Video";
 }
 
-function labelForTrack(
-  trackId: string | null,
-  cameraTrackId: string | null,
-  screenTrackId: string | null,
-): VideoLabel {
-  if (trackId && cameraTrackId && trackId === cameraTrackId) return "camera";
-  if (trackId && screenTrackId && trackId === screenTrackId) return "screen";
-  return "video";
-}
+function readSenders(pc: RTCPeerConnection, tracks: SenderTracks): SenderDiagnostics[] {
+  return pc.getSenders()
+    .filter((sender) => sender.track?.kind === "video")
+    .map((sender) => {
+      const track = sender.track;
+      const settings = track?.getSettings();
+      const encoding = sender.getParameters().encodings?.[0];
 
-function numberOrNull(value: unknown): number | null {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
-function counterDelta(current: number | null, previous: number | null): number | null {
-  if (current == null || previous == null || current < previous) return null;
-  return current - previous;
-}
-
-function perSecond(delta: number | null, seconds: number | null): number | null {
-  if (delta == null || seconds == null || seconds <= 0) return null;
-  return delta / seconds;
-}
-
-function percent(numerator: number | null, denominator: number | null): number | null {
-  if (numerator == null || denominator == null || denominator <= 0) return null;
-  return (numerator / denominator) * 100;
+      return {
+        label: labelForTrack(track?.id ?? null, tracks),
+        trackId: track?.id ?? null,
+        readyState: track?.readyState ?? null,
+        enabled: track?.enabled ?? null,
+        muted: track?.muted ?? null,
+        width: settings?.width ?? null,
+        height: settings?.height ?? null,
+        frameRate: settings?.frameRate ?? null,
+        encodingActive: typeof encoding?.active === "boolean" ? encoding.active : null,
+        maxBitrateKbps:
+          typeof encoding?.maxBitrate === "number" ? encoding.maxBitrate / 1000 : null,
+      };
+    });
 }
 
 function useVideoDebugDiagnostics(enabled: boolean): VideoDiagnostics {
-  const {
-    getPeerConnection,
-    getCameraSenderTrackId,
-    getScreenSenderTrackId,
-  } = useSFU();
+  const sfu = useSFU();
+  // useSFU hands out new getters every render, so the poll reads them here instead of restarting.
+  const sfuRef = useRef(sfu);
+  sfuRef.current = sfu;
   const [diagnostics, setDiagnostics] = useState<VideoDiagnostics>(EMPTY_DIAGNOSTICS);
-  const inboundSnapshotsRef = useRef<Map<string, InboundSnapshot>>(new Map());
 
   useEffect(() => {
     if (!enabled) {
       setDiagnostics(EMPTY_DIAGNOSTICS);
-      inboundSnapshotsRef.current.clear();
       return;
     }
 
     let cancelled = false;
+    let polling = false;
+    let lastPc: RTCPeerConnection | null = null;
+    let samples: ReadonlyMap<string, Stat> = new Map();
 
     const poll = async () => {
-      const pc = getPeerConnection?.();
+      if (polling) return;
+      const { getPeerConnection, getCameraSenderTrackId, getScreenSenderTrackId } = sfuRef.current;
+      const pc = getPeerConnection?.() ?? null;
+      if (pc !== lastPc) samples = new Map();
+      lastPc = pc;
       if (!pc) {
         if (!cancelled) setDiagnostics(EMPTY_DIAGNOSTICS);
         return;
       }
 
+      polling = true;
       try {
         const report = await pc.getStats();
-        const byId = new Map<string, DebugStat>();
-        report.forEach((stat) => byId.set(stat.id, stat as DebugStat));
-
-        const cameraTrackId = getCameraSenderTrackId?.() ?? null;
-        const screenTrackId = getScreenSenderTrackId?.() ?? null;
-
-        const selectedPairs: DebugStat[] = [];
-        report.forEach((stat) => {
-          if (stat.type === "candidate-pair" && stat.state === "succeeded" && stat.nominated) {
-            selectedPairs.push(stat as DebugStat);
-          }
+        if (cancelled) return;
+        const tracks: SenderTracks = {
+          camera: getCameraSenderTrackId?.() ?? null,
+          screen: getScreenSenderTrackId?.() ?? null,
+        };
+        const reading = readVideoStats(report.values() as Iterable<Stat>, samples, tracks);
+        samples = reading.samples;
+        setDiagnostics({
+          connectionState: pc.connectionState,
+          iceConnectionState: pc.iceConnectionState,
+          signalingState: pc.signalingState,
+          connection: reading.connection,
+          senders: readSenders(pc, tracks),
+          outbound: reading.outbound,
+          inbound: reading.inbound,
         });
-        const selectedPair = selectedPairs[0] ?? null;
-
-        const localCandidate = selectedPair?.localCandidateId
-          ? byId.get(selectedPair.localCandidateId)
-          : null;
-        const remoteCandidate = selectedPair?.remoteCandidateId
-          ? byId.get(selectedPair.remoteCandidateId)
-          : null;
-
-        const senders: SenderDiagnostics[] = pc.getSenders()
-          .filter((sender) => sender.track?.kind === "video")
-          .map((sender) => {
-            const track = sender.track;
-            const settings = track?.getSettings();
-            const encoding = sender.getParameters().encodings?.[0];
-
-            return {
-              label: labelForTrack(track?.id ?? null, cameraTrackId, screenTrackId),
-              trackId: track?.id ?? null,
-              readyState: track?.readyState ?? null,
-              enabled: track?.enabled ?? null,
-              muted: track?.muted ?? null,
-              width: numberOrNull(settings?.width),
-              height: numberOrNull(settings?.height),
-              frameRate: numberOrNull(settings?.frameRate),
-              encodingActive: typeof encoding?.active === "boolean" ? encoding.active : null,
-              maxBitrateKbps:
-                typeof encoding?.maxBitrate === "number" ? encoding.maxBitrate / 1000 : null,
-            };
-          });
-
-        const outbound: OutboundDiagnostics[] = [];
-        const inbound: InboundDiagnostics[] = [];
-        const seenInboundKeys = new Set<string>();
-        report.forEach((stat) => {
-          if (stat.type !== "outbound-rtp" || stat.kind !== "video") return;
-
-          const trackId = typeof stat.trackIdentifier === "string" ? stat.trackIdentifier : null;
-          const remote = stat.remoteId ? byId.get(stat.remoteId) : null;
-          const codec = stat.codecId ? byId.get(stat.codecId) : null;
-          const durations = stat.qualityLimitationDurations as
-            | Record<string, number>
-            | undefined;
-          const packetsSent = numberOrNull(stat.packetsSent);
-          const totalPacketSendDelay = numberOrNull(stat.totalPacketSendDelay);
-          const framesEncoded = numberOrNull(stat.framesEncoded);
-          const qpSum = numberOrNull(stat.qpSum);
-
-          outbound.push({
-            label: labelForTrack(trackId, cameraTrackId, screenTrackId),
-            targetBitrateKbps:
-              typeof stat.targetBitrate === "number" ? stat.targetBitrate / 1000 : null,
-            retransmittedPacketsSent: numberOrNull(stat.retransmittedPacketsSent),
-            retransmittedBytesSent: numberOrNull(stat.retransmittedBytesSent),
-            averagePacketSendDelayMs:
-              totalPacketSendDelay != null && packetsSent != null && packetsSent > 0
-                ? (totalPacketSendDelay * 1000) / packetsSent
-                : null,
-            remoteRttMs:
-              typeof remote?.roundTripTime === "number" ? remote.roundTripTime * 1000 : null,
-            remoteJitterMs:
-              typeof remote?.jitter === "number" ? remote.jitter * 1000 : null,
-            remotePacketsLost: numberOrNull(remote?.packetsLost),
-            remoteLossPct:
-              typeof remote?.fractionLost === "number" ? remote.fractionLost * 100 : null,
-            reportsReceived: numberOrNull(remote?.reportsReceived),
-            bandwidthLimitedSeconds: numberOrNull(durations?.bandwidth),
-            cpuLimitedSeconds: numberOrNull(durations?.cpu),
-            otherLimitedSeconds: numberOrNull(durations?.other),
-            resolutionChanges: numberOrNull(stat.qualityLimitationResolutionChanges),
-            averageQp:
-              qpSum != null && framesEncoded != null && framesEncoded > 0
-                ? qpSum / framesEncoded
-                : null,
-            codecFmtp:
-              typeof codec?.sdpFmtpLine === "string" && codec.sdpFmtpLine.length > 0
-                ? codec.sdpFmtpLine
-                : null,
-          });
-        });
-
-        report.forEach((stat) => {
-          if (stat.type !== "inbound-rtp" || stat.kind !== "video") return;
-
-          const key = stat.id;
-          seenInboundKeys.add(key);
-
-          const framesDecoded = numberOrNull(stat.framesDecoded);
-          const framesDropped = numberOrNull(stat.framesDropped);
-          const packetsReceived = numberOrNull(stat.packetsReceived);
-          const packetsLost = numberOrNull(stat.packetsLost);
-          const nackCount = numberOrNull(stat.nackCount);
-          const pliCount = numberOrNull(stat.pliCount);
-          const previous = inboundSnapshotsRef.current.get(key);
-          const nowMs = performance.now();
-          const secondsSincePrevious = previous
-            ? (nowMs - previous.timestampMs) / 1000
-            : null;
-
-          const decodedDelta = counterDelta(framesDecoded, previous?.framesDecoded ?? null);
-          const droppedDelta = counterDelta(framesDropped, previous?.framesDropped ?? null);
-          const receivedDelta = counterDelta(
-            packetsReceived,
-            previous?.packetsReceived ?? null,
-          );
-          const lostDelta = counterDelta(packetsLost, previous?.packetsLost ?? null);
-          const nackDelta = counterDelta(nackCount, previous?.nackCount ?? null);
-          const pliDelta = counterDelta(pliCount, previous?.pliCount ?? null);
-
-          const totalDecodeTime = numberOrNull(stat.totalDecodeTime);
-          const totalProcessingDelay = numberOrNull(stat.totalProcessingDelay);
-          const jitterBufferDelay = numberOrNull(stat.jitterBufferDelay);
-          const jitterBufferEmittedCount = numberOrNull(stat.jitterBufferEmittedCount);
-          const framesAssembledFromMultiplePackets = numberOrNull(
-            stat.framesAssembledFromMultiplePackets,
-          );
-          const totalAssemblyTime = numberOrNull(stat.totalAssemblyTime);
-
-          inbound.push({
-            trackId:
-              typeof stat.trackIdentifier === "string"
-                ? stat.trackIdentifier
-                : typeof stat.ssrc === "number"
-                  ? String(stat.ssrc)
-                  : stat.id,
-            framesReceived: numberOrNull(stat.framesReceived),
-            averageDecodeTimeMs:
-              totalDecodeTime != null && framesDecoded != null && framesDecoded > 0
-                ? (totalDecodeTime * 1000) / framesDecoded
-                : null,
-            averageProcessingDelayMs:
-              totalProcessingDelay != null && framesDecoded != null && framesDecoded > 0
-                ? (totalProcessingDelay * 1000) / framesDecoded
-                : null,
-            averageJitterBufferDelayMs:
-              jitterBufferDelay != null &&
-              jitterBufferEmittedCount != null &&
-              jitterBufferEmittedCount > 0
-                ? (jitterBufferDelay * 1000) / jitterBufferEmittedCount
-                : null,
-            packetsDiscarded: numberOrNull(stat.packetsDiscarded),
-            framesAssembledFromMultiplePackets,
-            averageAssemblyTimeMs:
-              totalAssemblyTime != null &&
-              framesAssembledFromMultiplePackets != null &&
-              framesAssembledFromMultiplePackets > 0
-                ? (totalAssemblyTime * 1000) / framesAssembledFromMultiplePackets
-                : null,
-            freezeCount: numberOrNull(stat.freezeCount),
-            totalFreezesDurationMs:
-              typeof stat.totalFreezesDuration === "number"
-                ? stat.totalFreezesDuration * 1000
-                : null,
-            recentDecodedFps: perSecond(decodedDelta, secondsSincePrevious),
-            recentDroppedFps: perSecond(droppedDelta, secondsSincePrevious),
-            recentDropPct: percent(
-              droppedDelta,
-              decodedDelta != null && droppedDelta != null
-                ? decodedDelta + droppedDelta
-                : null,
-            ),
-            recentPacketsReceivedPerSecond: perSecond(
-              receivedDelta,
-              secondsSincePrevious,
-            ),
-            recentPacketsLostPerSecond: perSecond(lostDelta, secondsSincePrevious),
-            recentLossPct: percent(
-              lostDelta,
-              receivedDelta != null && lostDelta != null
-                ? receivedDelta + lostDelta
-                : null,
-            ),
-            recentNackCount: nackDelta,
-            recentPliCount: pliDelta,
-          });
-
-          inboundSnapshotsRef.current.set(key, {
-            timestampMs: nowMs,
-            framesDecoded,
-            framesDropped,
-            packetsReceived,
-            packetsLost,
-            nackCount,
-            pliCount,
-          });
-        });
-
-        for (const key of inboundSnapshotsRef.current.keys()) {
-          if (!seenInboundKeys.has(key)) inboundSnapshotsRef.current.delete(key);
-        }
-
-        if (!cancelled) {
-          setDiagnostics({
-            connectionState: pc.connectionState,
-            iceConnectionState: pc.iceConnectionState,
-            signalingState: pc.signalingState,
-            candidate: {
-              availableInKbps:
-                typeof selectedPair?.availableIncomingBitrate === "number"
-                  ? selectedPair.availableIncomingBitrate / 1000
-                  : null,
-              bytesDiscardedOnSend: numberOrNull(selectedPair?.bytesDiscardedOnSend),
-              packetsDiscardedOnSend: numberOrNull(selectedPair?.packetsDiscardedOnSend),
-              localCandidateType:
-                typeof localCandidate?.candidateType === "string"
-                  ? localCandidate.candidateType
-                  : null,
-              localNetworkType:
-                typeof localCandidate?.networkType === "string"
-                  ? localCandidate.networkType
-                  : null,
-              remoteCandidateType:
-                typeof remoteCandidate?.candidateType === "string"
-                  ? remoteCandidate.candidateType
-                  : null,
-              protocol:
-                typeof remoteCandidate?.protocol === "string"
-                  ? remoteCandidate.protocol
-                  : typeof localCandidate?.protocol === "string"
-                    ? localCandidate.protocol
-                    : null,
-            },
-            senders,
-            outbound,
-            inbound,
-          });
-        }
       } catch {
         // getStats can race peer-connection shutdown.
+      } finally {
+        polling = false;
       }
     };
 
-    poll();
+    void poll();
     const interval = setInterval(poll, 1000);
 
     return () => {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [enabled, getPeerConnection, getCameraSenderTrackId, getScreenSenderTrackId]);
+  }, [enabled]);
 
   return diagnostics;
 }
@@ -513,63 +219,44 @@ function SenderSection({ s }: { s: SenderDiagnostics }) {
   );
 }
 
-function OutboundSection({
-  s,
-  diagnostics,
-}: {
-  s: OutboundVideoStats;
-  diagnostics?: OutboundDiagnostics;
-}) {
-  const title = s.label === "screen" ? "Screen Share" : "Camera";
+function OutboundSection({ s }: { s: OutboundDiagnostics }) {
   return (
     <div style={{ marginBottom: "8px" }}>
-      <div style={sectionTitle}>Outbound — {title}:</div>
+      <div style={sectionTitle}>Outbound — {labelTitle(s.label)}:</div>
       <div style={indent}>
         <div>Codec: {s.codec ?? "—"}</div>
-        {diagnostics?.codecFmtp && <div>Codec params: {diagnostics.codecFmtp}</div>}
+        {s.codecFmtp && <div>Codec params: {s.codecFmtp}</div>}
         <div>Resolution: {resolution(s.frameWidth, s.frameHeight)}</div>
         <div>FPS: {fmt(s.framesPerSecond, 0)}</div>
         <div>Bitrate: {s.bitrateKbps != null ? `${fmt(s.bitrateKbps)} kbps` : "—"}</div>
-        <div>
-          Target: {diagnostics?.targetBitrateKbps != null
-            ? `${fmtInt(diagnostics.targetBitrateKbps)} kbps`
-            : "—"}
-        </div>
+        <div>Target: {s.targetBitrateKbps != null ? `${fmtInt(s.targetBitrateKbps)} kbps` : "—"}</div>
         <div>Packets sent: {fmtInt(s.packetsSent)}</div>
         <div>
-          Retransmit: {fmtInt(diagnostics?.retransmittedPacketsSent ?? null)} pkts /{" "}
-          {fmtBytes(diagnostics?.retransmittedBytesSent ?? null)}
+          Retransmit: {fmtInt(s.retransmittedPacketsSent)} pkts /{" "}
+          {fmtBytes(s.retransmittedBytesSent)}
         </div>
         <div>
-          Send delay: {diagnostics?.averagePacketSendDelayMs != null
-            ? `${fmt(diagnostics.averagePacketSendDelayMs, 2)} ms/pkt`
+          Send delay: {s.averagePacketSendDelayMs != null
+            ? `${fmt(s.averagePacketSendDelayMs, 2)} ms/pkt`
             : "—"}
         </div>
         <div>Frames: {fmtInt(s.framesEncoded)} enc / {fmtInt(s.keyFramesEncoded)} key</div>
         <div>
           Encode:{" "}
-          {s.totalEncodeTimeMs != null && s.framesEncoded != null && s.framesEncoded > 0
-            ? `${fmt(s.totalEncodeTimeMs / s.framesEncoded, 2)} ms/frame avg`
-            : "—"}
+          {s.averageEncodeTimeMs != null ? `${fmt(s.averageEncodeTimeMs, 2)} ms/frame avg` : "—"}
           {" / "}
           {s.totalEncodeTimeMs != null ? `${fmt(s.totalEncodeTimeMs)} ms total` : "—"}
         </div>
-        <div>Avg QP: {fmt(diagnostics?.averageQp ?? null, 1)}</div>
+        <div>Avg QP: {fmt(s.averageQp, 1)}</div>
         <div>PLI: {fmtInt(s.pliCount)} / NACK: {fmtInt(s.nackCount)}</div>
         <div>
-          Remote RTCP: RTT {diagnostics?.remoteRttMs != null
-            ? `${fmt(diagnostics.remoteRttMs)} ms`
-            : "—"}
-          {" / "}jitter {diagnostics?.remoteJitterMs != null
-            ? `${fmt(diagnostics.remoteJitterMs)} ms`
-            : "—"}
+          Remote RTCP: RTT {s.remoteRttMs != null ? `${fmt(s.remoteRttMs)} ms` : "—"}
+          {" / "}jitter {s.remoteJitterMs != null ? `${fmt(s.remoteJitterMs)} ms` : "—"}
         </div>
         <div>
-          Remote loss: {diagnostics?.remoteLossPct != null
-            ? `${fmt(diagnostics.remoteLossPct, 2)}%`
-            : "—"}
-          {" / "}{fmtInt(diagnostics?.remotePacketsLost ?? null)} pkts
-          {" / "}{fmtInt(diagnostics?.reportsReceived ?? null)} reports
+          Remote loss: {s.remoteLossPct != null ? `${fmt(s.remoteLossPct, 2)}%` : "—"}
+          {" / "}{fmtInt(s.remotePacketsLost)} pkts
+          {" / "}{fmtInt(s.reportsReceived)} reports
         </div>
         <div
           style={{
@@ -582,11 +269,11 @@ function OutboundSection({
           Quality limit: {s.qualityLimitationReason ?? "—"}
         </div>
         <div>
-          Limit time: bw {fmt(diagnostics?.bandwidthLimitedSeconds ?? null, 1)}s / cpu{" "}
-          {fmt(diagnostics?.cpuLimitedSeconds ?? null, 1)}s / other{" "}
-          {fmt(diagnostics?.otherLimitedSeconds ?? null, 1)}s
+          Limit time: bw {fmt(s.bandwidthLimitedSeconds, 1)}s / cpu{" "}
+          {fmt(s.cpuLimitedSeconds, 1)}s / other{" "}
+          {fmt(s.otherLimitedSeconds, 1)}s
         </div>
-        <div>Resolution changes: {fmtInt(diagnostics?.resolutionChanges ?? null)}</div>
+        <div>Resolution changes: {fmtInt(s.resolutionChanges)}</div>
         <div>SVC mode: {s.scalabilityMode ?? "—"}</div>
         <div>Encoder: {s.encoderImplementation ?? "—"}</div>
       </div>
@@ -594,23 +281,11 @@ function OutboundSection({
   );
 }
 
-function InboundSection({
-  s,
-  index,
-  diagnostics,
-}: {
-  s: InboundVideoStats;
-  index: number;
-  diagnostics?: InboundDiagnostics;
-}) {
+function InboundSection({ s, index }: { s: InboundDiagnostics; index: number }) {
   const recentDropColor =
-    diagnostics?.recentDropPct != null && diagnostics.recentDropPct >= 2
-      ? "var(--gryt-warning-11)"
-      : undefined;
+    s.recentDropPct != null && s.recentDropPct >= 2 ? "var(--gryt-warning-11)" : undefined;
   const recentLossColor =
-    diagnostics?.recentLossPct != null && diagnostics.recentLossPct >= 1
-      ? "var(--gryt-warning-11)"
-      : undefined;
+    s.recentLossPct != null && s.recentLossPct >= 1 ? "var(--gryt-warning-11)" : undefined;
 
   return (
     <div style={{ marginBottom: "8px" }}>
@@ -623,65 +298,61 @@ function InboundSection({
         <div>Jitter: {s.jitterMs != null ? `${fmt(s.jitterMs)} ms` : "—"}</div>
         <div>
           Packets: {fmtInt(s.packetsReceived)} recv / {fmtInt(s.packetsLost)} lost /{" "}
-          {fmtInt(diagnostics?.packetsDiscarded ?? null)} discarded
+          {fmtInt(s.packetsDiscarded)} discarded
         </div>
         <div style={{ color: recentLossColor }}>
           Recent loss:{" "}
-          {diagnostics?.recentLossPct != null
-            ? `${fmt(diagnostics.recentLossPct, 2)}%`
-            : "—"}
+          {s.recentLossPct != null ? `${fmt(s.recentLossPct, 2)}%` : "—"}
           {" / "}
-          {fmt(diagnostics?.recentPacketsReceivedPerSecond ?? null, 1)} recv/s
+          {fmt(s.recentPacketsReceivedPerSecond, 1)} recv/s
           {" / "}
-          {fmt(diagnostics?.recentPacketsLostPerSecond ?? null, 1)} lost/s
+          {fmt(s.recentPacketsLostPerSecond, 1)} lost/s
         </div>
         <div>
-          Frames: {fmtInt(diagnostics?.framesReceived ?? null)} recv / {fmtInt(s.framesDecoded)}{" "}
+          Frames: {fmtInt(s.framesReceived)} recv / {fmtInt(s.framesDecoded)}{" "}
           decoded / {fmtInt(s.framesDropped)} dropped
         </div>
         <div style={{ color: recentDropColor }}>
           Recent drops:{" "}
-          {diagnostics?.recentDropPct != null
-            ? `${fmt(diagnostics.recentDropPct, 1)}%`
+          {s.recentDropPct != null ? `${fmt(s.recentDropPct, 1)}%` : "—"}
+          {" / "}
+          {fmt(s.recentDecodedFps, 1)} decoded/s
+          {" / "}
+          {fmt(s.recentDroppedFps, 1)} dropped/s
+        </div>
+        <div>
+          Decode: {s.averageDecodeTimeMs != null
+            ? `${fmt(s.averageDecodeTimeMs, 2)} ms/frame avg`
+            : "—"}
+        </div>
+        <div>
+          Processing: {s.averageProcessingDelayMs != null
+            ? `${fmt(s.averageProcessingDelayMs, 2)} ms/frame avg`
+            : "—"}
+        </div>
+        <div>
+          Jitter buffer: {s.averageJitterBufferDelayMs != null
+            ? `${fmt(s.averageJitterBufferDelayMs, 2)} ms/frame avg`
+            : "—"}
+        </div>
+        <div>
+          Assembly: {s.averageAssemblyTimeMs != null
+            ? `${fmt(s.averageAssemblyTimeMs, 2)} ms/frame avg`
             : "—"}
           {" / "}
-          {fmt(diagnostics?.recentDecodedFps ?? null, 1)} decoded/s
-          {" / "}
-          {fmt(diagnostics?.recentDroppedFps ?? null, 1)} dropped/s
+          {fmtInt(s.framesAssembledFromMultiplePackets)} multi-packet
         </div>
         <div>
-          Decode: {diagnostics?.averageDecodeTimeMs != null
-            ? `${fmt(diagnostics.averageDecodeTimeMs, 2)} ms/frame avg`
-            : "—"}
-        </div>
-        <div>
-          Processing: {diagnostics?.averageProcessingDelayMs != null
-            ? `${fmt(diagnostics.averageProcessingDelayMs, 2)} ms/frame avg`
-            : "—"}
-        </div>
-        <div>
-          Jitter buffer: {diagnostics?.averageJitterBufferDelayMs != null
-            ? `${fmt(diagnostics.averageJitterBufferDelayMs, 2)} ms/frame avg`
-            : "—"}
-        </div>
-        <div>
-          Assembly: {diagnostics?.averageAssemblyTimeMs != null
-            ? `${fmt(diagnostics.averageAssemblyTimeMs, 2)} ms/frame avg`
-            : "—"}
-          {" / "}
-          {fmtInt(diagnostics?.framesAssembledFromMultiplePackets ?? null)} multi-packet
-        </div>
-        <div>
-          Freezes: {fmtInt(diagnostics?.freezeCount ?? null)} /{" "}
-          {diagnostics?.totalFreezesDurationMs != null
-            ? `${fmt(diagnostics.totalFreezesDurationMs / 1000, 1)}s total`
+          Freezes: {fmtInt(s.freezeCount)} /{" "}
+          {s.totalFreezesDurationMs != null
+            ? `${fmt(s.totalFreezesDurationMs / 1000, 1)}s total`
             : "—"}
         </div>
         <div>Decoder: {s.decoderImplementation ?? "—"}</div>
         <div>
-          PLI: {fmtInt(s.pliCount)} (+{fmtInt(diagnostics?.recentPliCount ?? null)}) / FIR:{" "}
+          PLI: {fmtInt(s.pliCount)} (+{fmtInt(s.recentPliCount)}) / FIR:{" "}
           {fmtInt(s.firCount)} / NACK: {fmtInt(s.nackCount)} (+
-          {fmtInt(diagnostics?.recentNackCount ?? null)})
+          {fmtInt(s.recentNackCount)})
         </div>
       </div>
     </div>
@@ -689,18 +360,14 @@ function InboundSection({
 }
 
 export function VideoDebugOverlay({ isVisible }: VideoDebugOverlayProps) {
-  const stats = useVideoStats(isVisible);
   const diagnostics = useVideoDebugDiagnostics(isVisible);
   const { cameraEnabled } = useCamera();
   const { screenShareActive } = useScreenShare();
   const { isConnected } = useSFU();
 
-  const hasVideo = cameraEnabled || screenShareActive || stats.inbound.length > 0;
-  const localPath = [
-    diagnostics.candidate.localCandidateType,
-    diagnostics.candidate.localNetworkType,
-  ].filter(Boolean).join("/");
-  const remotePath = diagnostics.candidate.remoteCandidateType;
+  const { connection } = diagnostics;
+  const hasVideo = cameraEnabled || screenShareActive || diagnostics.inbound.length > 0;
+  const localPath = [connection.localCandidateType, connection.localNetworkType].filter(Boolean).join("/");
 
   return (
     <DebugOverlay
@@ -713,16 +380,15 @@ export function VideoDebugOverlay({ isVisible }: VideoDebugOverlayProps) {
       }}
       initialPosition={{ x: window.innerWidth - 680, y: 10 }}
     >
-      <div style={{ maxHeight: "calc(100vh - 100px)", overflowY: "auto", paddingRight: "4px" }}>
+      <div style={{ maxHeight: `calc(100vh - ${CALL_CONTROLS_CLEARANCE}px)`, overflowY: "auto", paddingRight: "4px" }}>
         <div style={{ marginBottom: "8px" }}>
           <div style={sectionTitle}>Connection:</div>
           <div style={indent}>
-            <div>RTT: {stats.connection.rttMs != null ? `${fmt(stats.connection.rttMs)} ms` : "—"}</div>
-            <div>Avail out: {stats.connection.availableOutKbps != null ? `${fmtInt(stats.connection.availableOutKbps)} kbps` : "—"}</div>
-            <div>Avail in: {diagnostics.candidate.availableInKbps != null ? `${fmtInt(diagnostics.candidate.availableInKbps)} kbps` : "—"}</div>
+            <div>RTT: {connection.rttMs != null ? `${fmt(connection.rttMs)} ms` : "—"}</div>
+            <div>Avail out: {connection.availableOutKbps != null ? `${fmtInt(connection.availableOutKbps)} kbps` : "—"}</div>
+            <div>Avail in: {connection.availableInKbps != null ? `${fmtInt(connection.availableInKbps)} kbps` : "—"}</div>
             <div>
-              Path: {localPath || "—"} → {remotePath ?? stats.connection.candidateType ?? "—"}{" "}
-              ({diagnostics.candidate.protocol ?? stats.connection.transportProtocol ?? "—"})
+              Path: {localPath || "—"} → {connection.remoteCandidateType ?? "—"} ({connection.protocol ?? "—"})
             </div>
             <div>
               States: {diagnostics.connectionState ?? "—"} / ICE{" "}
@@ -730,8 +396,8 @@ export function VideoDebugOverlay({ isVisible }: VideoDebugOverlayProps) {
               {diagnostics.signalingState ?? "—"}
             </div>
             <div>
-              Send discarded: {fmtBytes(diagnostics.candidate.bytesDiscardedOnSend)} /{" "}
-              {fmtInt(diagnostics.candidate.packetsDiscardedOnSend)} pkts
+              Send discarded: {fmtBytes(connection.bytesDiscardedOnSend)} /{" "}
+              {fmtInt(connection.packetsDiscardedOnSend)} pkts
             </div>
           </div>
         </div>
@@ -748,33 +414,24 @@ export function VideoDebugOverlay({ isVisible }: VideoDebugOverlayProps) {
           <SenderSection key={s.trackId ?? `sender-${i}`} s={s} />
         ))}
 
-        {stats.outbound.length === 0 && (
+        {diagnostics.outbound.length === 0 && (
           <div style={{ marginBottom: "8px" }}>
             <div style={sectionTitle}>Outbound:</div>
             <div style={{ ...indent, color: "var(--gryt-neutral-9)" }}>No outbound video</div>
           </div>
         )}
-        {stats.outbound.map((s, i) => (
-          <OutboundSection
-            key={`out-${s.label}-${i}`}
-            s={s}
-            diagnostics={diagnostics.outbound.find((d) => d.label === s.label)}
-          />
+        {diagnostics.outbound.map((s) => (
+          <OutboundSection key={s.id} s={s} />
         ))}
 
-        {stats.inbound.length === 0 && (
+        {diagnostics.inbound.length === 0 && (
           <div style={{ marginBottom: "8px" }}>
             <div style={sectionTitle}>Inbound:</div>
             <div style={{ ...indent, color: "var(--gryt-neutral-9)" }}>No inbound video</div>
           </div>
         )}
-        {stats.inbound.map((s, i) => (
-          <InboundSection
-            key={`in-${s.trackId}-${i}`}
-            s={s}
-            index={i}
-            diagnostics={diagnostics.inbound.find((d) => d.trackId === s.trackId)}
-          />
+        {diagnostics.inbound.map((s, i) => (
+          <InboundSection key={s.id} s={s} index={i} />
         ))}
       </div>
     </DebugOverlay>

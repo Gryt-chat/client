@@ -8,6 +8,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
+import { forgetSenderStreamId, senderStreamId } from "../src/packages/webRTC/src/utils/senderStreamIds.ts";
+
 const controls = readFileSync(
   new URL("../src/packages/webRTC/src/components/controls.tsx", import.meta.url),
   "utf8",
@@ -81,5 +83,43 @@ assert.match(
   /detail\?\.host && detail\.host !== host/,
   "the reconnect listener has to be filtered to the server that reconnected",
 );
+
+/* ── A Controls mounted mid-call announces the senders' own streams ─── */
+
+// Focusing a tile mounts a new Controls. The ids live per connection, so the new one
+// still names the streams the far side receives (GRYT-1319).
+const pc = {};
+assert.equal(senderStreamId(pc, "camera", "camera-1"), "camera-1");
+// replaceTrack keeps the first stream's id, so a camera restart doesn't rename it.
+assert.equal(senderStreamId(pc, "camera", "camera-2"), "camera-1");
+
+// A second share goes out on the first one's paused sender.
+assert.equal(senderStreamId(pc, "screenVideo", "share-1"), "share-1");
+assert.equal(senderStreamId(pc, "screenVideo", "share-2"), "share-1");
+assert.equal(senderStreamId(pc, "screenAudio", "share-2-audio"), "share-2-audio");
+
+// Turning the camera off removes its sender, so the next one is named after its own stream.
+forgetSenderStreamId(pc, "camera");
+assert.equal(senderStreamId(pc, "camera", "camera-3"), "camera-3");
+assert.equal(senderStreamId(pc, "screenVideo", "share-3"), "share-1");
+
+// A new connection has new senders. With no connection at all, the stream's own id.
+assert.equal(senderStreamId({}, "screenVideo", "share-4"), "share-4");
+assert.equal(senderStreamId(null, "camera", "camera-5"), "camera-5");
+
+for (const role of ["camera", "screenVideo", "screenAudio"]) {
+  assert.match(
+    controls,
+    new RegExp(`StreamId\\.current = senderStreamId\\([^\\n]*"${role}"`),
+    `Controls doesn't take the ${role} id from senderStreamIds`,
+  );
+}
+assert.match(
+  controls,
+  /removeVideoTrack\(\);\s*forgetSenderStreamId\([^\n]*"camera"\)/,
+  "turning the camera off has to forget its sender's id",
+);
+// A ref that fills itself on first use is empty again after a remount.
+assert.doesNotMatch(controls, /if \(!webrtc\w+StreamId\.current\)/, "Controls keeps sender ids in refs of its own");
 
 console.log("Media state re-assert checks passed");
