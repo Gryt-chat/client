@@ -8,6 +8,7 @@ import { getServerAccessToken } from "@/common";
 import { sliderToOutputGain } from "@/lib/audioVolume";
 import { useSettings } from "@/settings";
 
+import { type ChannelSelection, NO_CHANNEL, selectChannel } from "../utils/channelSelection";
 import { useServerManagement } from "./useServerManagement";
 import { VOICE_SIDEBAR_WIDTH } from "./useServerViewLayout";
 import { useSockets } from "./useSockets";
@@ -50,7 +51,7 @@ type UseServerStateResult = {
   setSelectedChannelId: Dispatch<SetStateAction<string | null>>;
   /**
    * The direct message being read, if one is. Kept apart from
-   * `selectedChannelId`, which the effect below bounces back to a real channel.
+   * `selectedChannelId`, which `selectChannel` bounces back to a real channel.
    */
   selectedDmId: string | null;
   setSelectedDmId: Dispatch<SetStateAction<string | null>>;
@@ -126,10 +127,31 @@ export function useServerState(): UseServerStateResult {
   >({});
   const [voiceWidth, setVoiceWidth] = useState("0px");
   const [pendingChannelId, setPendingChannelId] = useState<string | null>(null);
-  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(
-    null
-  );
   const [selectedDmId, setSelectedDmId] = useState<string | null>(null);
+
+  const viewingHost = currentlyViewingServer?.host ?? null;
+  const [selection, setSelection] = useState<ChannelSelection>(NO_CHANNEL);
+  const shownSelection = selectChannel(
+    selection,
+    viewingHost,
+    viewingHost ? serverDetailsList[viewingHost]?.channels : undefined,
+    viewingHost ? getLastSelectedChannel(viewingHost) : null,
+  );
+  // In render, not an effect: effects ran a commit late, still holding the last server's channel.
+  if (shownSelection !== selection) setSelection(shownSelection);
+  const selectedChannelId = shownSelection.channelId;
+
+  const viewingHostRef = useRef(viewingHost);
+  viewingHostRef.current = viewingHost;
+  /** A pick belongs to the server on screen when it was made. */
+  const setSelectedChannelId = useCallback<Dispatch<SetStateAction<string | null>>>((next) => {
+    setSelection((prev) => {
+      const host = viewingHostRef.current;
+      const current = prev.host === host ? prev.channelId : null;
+      const channelId = typeof next === "function" ? next(current) : next;
+      return prev.host === host && prev.channelId === channelId ? prev : { host, channelId };
+    });
+  }, []);
 
   const shouldAccessMic = useMemo(
     () => isConnecting || isConnected,
@@ -176,7 +198,7 @@ export function useServerState(): UseServerStateResult {
     if (currentChannelId) {
       setSelectedChannelId((prev) => prev ?? currentChannelId);
     }
-  }, [currentChannelId]);
+  }, [currentChannelId, setSelectedChannelId]);
 
   useEffect(() => {
     if (!currentlyViewingServer) return;
@@ -223,44 +245,6 @@ export function useServerState(): UseServerStateResult {
       serverLoadingTimerRef.current = {};
     };
   }, []);
-
-  useEffect(() => {
-    setSelectedChannelId(null);
-  }, [currentlyViewingServer?.host]);
-
-  useEffect(() => {
-    if (!currentlyViewingServer) return;
-    if (selectedChannelId) return;
-
-    const channels =
-      serverDetailsList[currentlyViewingServer.host]?.channels || [];
-
-    const lastId = getLastSelectedChannel(currentlyViewingServer.host);
-    if (lastId) {
-      const lastChannel = channels.find((c) => c.id === lastId);
-      if (lastChannel && lastChannel.type !== "voice") {
-        setSelectedChannelId(lastId);
-        return;
-      }
-    }
-
-    const firstText = channels.find((c) => c.type === "text");
-    if (firstText) setSelectedChannelId(firstText.id);
-  }, [
-    currentlyViewingServer,
-    serverDetailsList,
-    selectedChannelId,
-    getLastSelectedChannel,
-  ]);
-
-  useEffect(() => {
-    if (!currentlyViewingServer || !selectedChannelId) return;
-    const channels =
-      serverDetailsList[currentlyViewingServer.host]?.channels || [];
-    if (channels.some((c) => c.id === selectedChannelId)) return;
-    const fallback = channels.find((c) => c.type === "text") || channels[0];
-    setSelectedChannelId(fallback?.id ?? null);
-  }, [currentlyViewingServer, serverDetailsList, selectedChannelId]);
 
   // Conversations belong to the server they were opened on. Without this the id
   // survives the switch and is asked for on a server that never heard of it.
@@ -475,7 +459,7 @@ export function useServerState(): UseServerStateResult {
       const firstText = channels.find((c) => c.type === "text");
       setSelectedChannelId(firstText ? firstText.id : null);
     }
-  }, [currentlyViewingServer, serverDetailsList]);
+  }, [currentlyViewingServer, serverDetailsList, setSelectedChannelId]);
 
   useEffect(() => {
     const handler = (event: CustomEvent) => {
