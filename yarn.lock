@@ -542,10 +542,10 @@
   resolved "https://registry.yarnpkg.com/@floating-ui/utils/-/utils-0.2.12.tgz#afefe785949f16ac4cdd1e695935a321572dd56a"
   integrity sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==
 
-"@gryt/core@^0.6.0":
-  version "0.6.0"
-  resolved "https://registry.yarnpkg.com/@gryt/core/-/core-0.6.0.tgz#b888056e497d9505d029a361d5c7ee3b06b9b393"
-  integrity sha512-KXBnPmEX5r8eqPkrbxP5yLRvUt6HiJBTz+1aaEbdrVWJvkfF+oKLewwLrFTnUirki10zaPWsvBhSq/keSc7fJw==
+"@gryt/core@^0.7.0":
+  version "0.7.0"
+  resolved "https://registry.yarnpkg.com/@gryt/core/-/core-0.7.0.tgz#0420ab53f6ff1b75b6a41f7cf1b9d883d685ff6b"
+  integrity sha512-Yp/hVthKkTLMmA3OuAyKh83l106a7QuuBIoZnR/sUyodvD3YZk+uOk3//q1THbTaJZWjcf1ctjPZTkmNO1M2fw==
 
 "@gryt/crypto@^0.4.0":
   version "0.4.0"
@@ -568,9 +568,9 @@
   integrity sha512-MGiwgvk5VTqFNsAxrt/e7TFRGnOy/oCN5FpOa5eYjKivZyZHFstL5sLXL7fkNRPNxGBn+Xg87427ZvuzrCiSxQ==
 
 "@gryt/ui@^0.34.3":
-  version "0.34.3"
-  resolved "https://registry.yarnpkg.com/@gryt/ui/-/ui-0.34.3.tgz#227d41bbe8af012c0087a35aeaa405bbc3df207f"
-  integrity sha512-4md5yqTnRFhl21QrtDVNo7/DJtOLpoacoEl4zjxeVv36rBiobIFuwTjck+nd8ngg9EbN4V1Ml8Rc58McIGIsFQ==
+  version "0.34.4"
+  resolved "https://registry.yarnpkg.com/@gryt/ui/-/ui-0.34.4.tgz#4cea497282c70175379a7b0876d68c9d156b0216"
+  integrity sha512-In9FjP3L+dtKBVgmHajs6Ci9jMNCJwH4JJk2/AlhtSo1OgbjiQdEVPBf112FUI20XVhTWj0qsgn3C70h2jmSyg==
   dependencies:
     "@base-ui/react" "^1.7.0"
     "@gryt/owl" "^0.6.0"
