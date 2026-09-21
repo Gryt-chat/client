@@ -23,6 +23,7 @@ import { MarkAsReadItem } from "./MarkAsReadItem";
 import type { AdminActions,MemberInfo } from "./MemberSidebar";
 import {
   buildReorderPayload,
+  type ChannelPlacement,
   flattenSidebar,
   orderChanged,
   resolveDropParent,
@@ -88,7 +89,7 @@ export const ChannelList = ({
   /** A drag moves a channel into a folder as well as up the list, and the two
       arrive together, so an order alone cannot describe it. */
   onReorder?: (entries: SidebarReorderEntry[]) => void;
-  onAddItem?: (kind: string) => void;
+  onAddItem?: (kind: string, placement?: ChannelPlacement) => void;
   onDisconnectUser?: (targetServerUserId: string) => void;
   currentUserRole?: Role;
   adminActions?: AdminActions;
@@ -511,7 +512,7 @@ export const ChannelList = ({
     const isLast = index === effectiveItems.length - 1;
     const label = item.kind === "channel"
       ? (channelById.get(item.channelId ?? item.id)?.name || "channel")
-      : item.kind;
+      : item.kind === "folder" ? item.label || "Folder" : item.kind;
 
     return (
       <ContextMenu.Root>
@@ -561,9 +562,24 @@ export const ChannelList = ({
               <ContextMenu.Item onClick={() => onEditItem?.(item)}>
                 Edit
               </ContextMenu.Item>
+              {item.kind === "folder" ? (
+                <ContextMenu.Item
+                  onClick={() => {
+                    // Opened, so the channel is in sight when it lands.
+                    if (collapsed.has(item.id)) toggleCollapsed(item.id);
+                    onAddItem?.("channel:text", { folderId: item.id });
+                  }}
+                >
+                  Create channel in this folder
+                </ContextMenu.Item>
+              ) : null}
+              {item.kind === "channel" ? (
+                <ContextMenu.Item onClick={() => onAddItem?.("channel:text", { afterItemId: item.id })}>
+                  Create channel below
+                </ContextMenu.Item>
+              ) : null}
               {/* Right-click anywhere in the list to start a folder. The new
-                  one lands at the end, empty, and channels go in by being
-                  dragged. */}
+                  one lands at the end, empty. */}
               <ContextMenu.Item onClick={() => onAddItem?.("folder")}>
                 Add folder
               </ContextMenu.Item>

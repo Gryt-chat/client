@@ -15,6 +15,7 @@ import { type ChannelKind, NOTIFICATION_LEVEL_OPTIONS } from "./channelKind";
 import { ChannelKindPicker } from "./ChannelKindPicker";
 import { ChannelPermissionMatrix } from "./ChannelPermissionMatrix";
 import { type ForumTagDraft, ForumTagsField } from "./ForumTagsField";
+import { settingsTitle } from "./sidebarTree";
 
 export interface SidebarEditorFields {
   selectedSidebarItem: SidebarItem | null;
@@ -136,9 +137,7 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <Dialog.Title style={{ margin: 0 }}>
-              {selectedSidebarItem?.kind === "channel" ? "Channel settings"
-                : selectedSidebarItem?.kind === "separator" ? "Separator settings"
-                : "Spacer settings"}
+              {settingsTitle(selectedSidebarItem?.kind)}
             </Dialog.Title>
             <Dialog.Close>
               <IconButton size="xsmall"><PiX size={16} /></IconButton>

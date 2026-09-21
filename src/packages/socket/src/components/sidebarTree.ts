@@ -1,4 +1,4 @@
-import type { SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
+import type { SidebarItem, SidebarItemKind, SidebarReorderEntry } from "@/settings/src/types/server";
 
 /**
  * The sidebar is stored flat and drawn as one level of nesting; this turns one
@@ -160,4 +160,75 @@ export function orderChanged(
   const moved = before.find((r) => r.item.id === movedId);
   const was = moved?.item.parentItemId ?? null;
   return was !== movedParent;
+}
+
+/** Where a new channel goes. Neither field set means last at the top level. */
+export interface ChannelPlacement {
+  /** The folder to put it in. Null or absent is the top level. */
+  folderId?: string | null;
+  /** The row to put it under. Ignored unless that row is in `folderId`. */
+  afterItemId?: string | null;
+}
+
+export interface NewChannelSpot {
+  position: number;
+  parentItemId: string | null;
+  /** Set when there was no room under that row: it goes in beside it, and `orderBelow` moves it. */
+  reorderBelow: string | null;
+}
+
+/** The folder a row is drawn in, or null for the top level and for a row that isn't there. */
+export function folderOf(items: SidebarItem[], itemId: string): string | null {
+  const item = items.find((i) => i.id === itemId);
+  return item ? effectiveParent(item, folderIds(items)) : null;
+}
+
+/**
+ * Where a new channel's row goes. Only siblings share an order, so "under a row" is
+ * the gap before its next sibling, and a gap of one has no whole number in it.
+ */
+export function placeNewChannel(items: SidebarItem[], placement: ChannelPlacement = {}): NewChannelSpot {
+  const folders = folderIds(items);
+  const folder = placement.folderId && folders.has(placement.folderId) ? placement.folderId : null;
+  const after = placement.afterItemId ? items.find((i) => i.id === placement.afterItemId) : undefined;
+
+  if (after && effectiveParent(after, folders) === folder) {
+    const siblings = items.filter((i) => effectiveParent(i, folders) === folder).sort(byPosition);
+    const next = siblings[siblings.indexOf(after) + 1];
+    const at = after.position ?? 0;
+    if (!next) return { position: at + 10, parentItemId: folder, reorderBelow: null };
+    const room = (next.position ?? 0) - at;
+    if (room >= 2) return { position: at + Math.floor(room / 2), parentItemId: folder, reorderBelow: null };
+    return { position: at, parentItemId: folder, reorderBelow: after.id };
+  }
+
+  const last = Math.max(0, ...items.map((i) => i.position ?? 0));
+  return { position: last + 10, parentItemId: folder, reorderBelow: null };
+}
+
+/** The whole sidebar with `newId` moved to sit right under `afterId`, in that row's folder. */
+export function orderBelow(
+  items: SidebarItem[],
+  newId: string,
+  afterId: string,
+): SidebarReorderEntry[] | null {
+  const moved = items.find((i) => i.id === newId);
+  const after = items.find((i) => i.id === afterId);
+  if (!moved || !after || moved === after) return null;
+
+  const order = flattenSidebar(items).map((r) => r.item).filter((i) => i !== moved);
+  order.splice(order.indexOf(after) + 1, 0, moved);
+  return buildReorderPayload(order, items, newId, effectiveParent(after, folderIds(items)));
+}
+
+const SETTINGS_TITLES: Record<SidebarItemKind, string> = {
+  channel: "Channel settings",
+  folder: "Folder settings",
+  separator: "Separator settings",
+  spacer: "Spacer settings",
+};
+
+/** The edit dialog's title for a row of this kind. */
+export function settingsTitle(kind: SidebarItemKind | undefined): string {
+  return (kind && SETTINGS_TITLES[kind]) || "Settings";
 }

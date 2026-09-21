@@ -60,6 +60,7 @@ import { ServerLoadingStates } from "./ServerLoadingStates";
 import { ServerNoticePanel } from "./ServerNoticePanel";
 import { ServerSidebar } from "./ServerSidebar";
 import { SidebarEditDialog } from "./SidebarEditDialog";
+import { type ChannelPlacement, folderOf } from "./sidebarTree";
 import { VoiceSheetButton } from "./VoiceSheetButton";
 import { VoiceView } from "./VoiceView";
 
@@ -126,6 +127,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   const [focusedChatHidden, setFocusedChatHidden] = useState(false);
   const [createChannelOpen, setCreateChannelOpen] = useState(false);
   const [createChannelType, setCreateChannelType] = useState<"chat" | "voice" | "forum" | "automated">("chat");
+  const [createChannelPlacement, setCreateChannelPlacement] = useState<ChannelPlacement>({});
   const toggleFocusedChat = useCallback(() => setFocusedChatHidden((v) => !v), []);
 
   /** Only means anything while a stream is focused, but it is a press either
@@ -326,11 +328,16 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     reorderSidebar(ids);
   }, [effectiveSidebarItems, reorderSidebar]);
 
-  const handleAddItem = useCallback((kind: string) => {
+  const handleAddItem = useCallback((kind: string, placement?: ChannelPlacement) => {
     // "Add channel" opens the full create modal instead of dropping a default
     // channel that has to be edited after. Folders/spacers stay immediate. GRYT-983.
     if (kind === "channel:text" || kind === "channel:voice") {
       setCreateChannelType(kind === "channel:voice" ? "voice" : "chat");
+      const afterItemId = placement?.afterItemId ?? null;
+      setCreateChannelPlacement({
+        afterItemId,
+        folderId: afterItemId ? folderOf(effectiveSidebarItems, afterItemId) : placement?.folderId ?? null,
+      });
       setCreateChannelOpen(true);
       return;
     }
@@ -1097,7 +1104,13 @@ forumTags={activeDm ? [] : activeChannelForumTags}
       />
 
       <SidebarEditDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} editor={sidebarEditor} />
-      <CreateChannelDialog open={createChannelOpen} onOpenChange={setCreateChannelOpen} initialType={createChannelType} editor={sidebarEditor} />
+      <CreateChannelDialog
+        open={createChannelOpen}
+        onOpenChange={setCreateChannelOpen}
+        initialType={createChannelType}
+        placement={createChannelPlacement}
+        editor={sidebarEditor}
+      />
 
       <ReportUserDialog
         target={reportTarget}

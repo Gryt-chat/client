@@ -1,12 +1,20 @@
 import { Button, Dialog, IconButton, Select, TextField } from "@gryt/ui";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type { NotificationLevel } from "@/common";
+import type { SidebarItem } from "@/settings/src/types/server";
 
 import { PiX } from "../../../../lib/icons";
 import { type ChannelKind, defaultLevelForKind, kindToFields, NOTIFICATION_LEVEL_OPTIONS } from "./channelKind";
 import { ChannelKindPicker } from "./ChannelKindPicker";
+import { EmojiText } from "./EmojiText";
 import { type ForumTagDraft, ForumTagsField } from "./ForumTagsField";
+import { type ChannelPlacement, flattenSidebar } from "./sidebarTree";
+
+/* Prefixed, so no folder id can be mistaken for the top level. An empty value is
+   Base UI's placeholder, which would show a picked "No folder" as unpicked. */
+const TOP_LEVEL = "top";
+const FOLDER_VALUE = "folder:";
 
 /** What the create form collects, mapped onto the channel's stored fields. */
 export interface NewChannelOptions {
@@ -17,16 +25,22 @@ export interface NewChannelOptions {
   description?: string | null;
   forumTags?: ForumTagDraft[];
   defaultNotificationLevel?: NotificationLevel;
+  placement?: ChannelPlacement;
 }
 
 interface CreateChannelDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialType?: ChannelKind;
-  editor: { createChannel: (opts: NewChannelOptions) => void | Promise<void> };
+  /** Where it goes: a folder picked in advance, and the row it goes under. */
+  placement?: ChannelPlacement;
+  editor: {
+    createChannel: (opts: NewChannelOptions) => void | Promise<void>;
+    effectiveSidebarItems: SidebarItem[];
+  };
 }
 
-export function CreateChannelDialog({ open, onOpenChange, initialType = "chat", editor }: CreateChannelDialogProps) {
+export function CreateChannelDialog({ open, onOpenChange, initialType = "chat", placement, editor }: CreateChannelDialogProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [kind, setKind] = useState<ChannelKind>(initialType);
@@ -34,6 +48,14 @@ export function CreateChannelDialog({ open, onOpenChange, initialType = "chat", 
   // Null until picked by hand, so changing the kind can keep moving it.
   const [level, setLevel] = useState<NotificationLevel | null>(null);
   const effectiveLevel = level ?? defaultLevelForKind(kind);
+  const startFolder = placement?.folderId ?? null;
+  const [folderId, setFolderId] = useState<string | null>(startFolder);
+
+  const folders = useMemo(
+    () => flattenSidebar(editor.effectiveSidebarItems).map((r) => r.item).filter((i) => i.kind === "folder"),
+    [editor.effectiveSidebarItems],
+  );
+  const pickedFolder = folders.some((f) => f.id === folderId) ? folderId : null;
 
   // Start fresh each time the dialog opens, honouring the type it was opened for.
   useEffect(() => {
@@ -43,8 +65,9 @@ export function CreateChannelDialog({ open, onOpenChange, initialType = "chat", 
       setKind(initialType);
       setTags([]);
       setLevel(null);
+      setFolderId(startFolder);
     }
-  }, [open, initialType]);
+  }, [open, initialType, startFolder]);
 
   const canCreate = name.trim().length > 0;
 
@@ -59,6 +82,7 @@ export function CreateChannelDialog({ open, onOpenChange, initialType = "chat", 
       description: description.trim() || null,
       forumTags: kind === "forum" ? tags : [],
       defaultNotificationLevel: effectiveLevel,
+      placement: { folderId: pickedFolder, afterItemId: placement?.afterItemId ?? null },
     });
     onOpenChange(false);
   };
@@ -102,6 +126,26 @@ export function CreateChannelDialog({ open, onOpenChange, initialType = "chat", 
                   Tags <span style={{ color: "var(--gryt-neutral-10)", fontWeight: 400 }}>(optional)</span>
                 </span>
                 <ForumTagsField tags={tags} onChange={setTags} />
+              </div>
+            )}
+
+            {folders.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-medium">Folder</span>
+                <Select
+                  value={pickedFolder ? FOLDER_VALUE + pickedFolder : TOP_LEVEL}
+                  onValueChange={(v) => {
+                    if (typeof v !== "string") return;
+                    setFolderId(v.startsWith(FOLDER_VALUE) ? v.slice(FOLDER_VALUE.length) : null);
+                  }}
+                  options={[
+                    { label: "No folder", value: TOP_LEVEL },
+                    ...folders.map((f) => ({
+                      label: <EmojiText text={f.label || "Folder"} disableTooltip />,
+                      value: FOLDER_VALUE + f.id,
+                    })),
+                  ]}
+                />
               </div>
             )}
 
