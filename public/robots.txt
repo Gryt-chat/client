@@ -1,0 +1,4 @@
+# The Gryt web app. index.html is noindex, and a crawler can only drop a page it's
+# allowed to read, so nothing here is disallowed.
+User-agent: *
+Allow: /
