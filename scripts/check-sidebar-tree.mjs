@@ -67,8 +67,8 @@ const depths = (rows) => rows.map((r) => r.depth);
 }
 
 {
-  // The server sends every folder, so one whose channels are all hidden from
-  // this viewer arrives empty. A member is spared the header (GRYT-1305).
+  // An older server sends every folder, so one whose channels are all hidden
+  // from this viewer arrives empty. A member is spared the header (GRYT-1305).
   const items = [folder("empty", 10), folder("f", 20), channel("x", 30, "f"), channel("y", 40)];
   const hidden = { hideEmptyFolders: true };
   assert.deepEqual(ids(flattenSidebar(items, new Set(), hidden)), ["f", "x", "y"]);

@@ -18,8 +18,8 @@ const byPosition = (a: SidebarItem, b: SidebarItem) =>
   (a.position ?? 0) - (b.position ?? 0) || a.id.localeCompare(b.id);
 
 export interface FlattenOptions {
-  /** Leave out a folder with nothing under it. The server sends every folder,
-      so one whose channels are all hidden from this viewer arrives empty. */
+  /** Leave out a folder with nothing under it. Servers before GRYT-1306 send
+      every folder, so one whose channels are all hidden arrives empty. */
   hideEmptyFolders?: boolean;
 }
 

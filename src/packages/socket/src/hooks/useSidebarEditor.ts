@@ -52,6 +52,9 @@ export function useSidebarEditor({
   // dropdown is on a template so switching back does not lose what was drawn.
   const [sheetScopeRules, setSheetScopeRules] = useState<ChannelRule[]>([]);
   const [scopeLoading, setScopeLoading] = useState(false);
+  // The folder a channel sits in, and whether it takes that folder's scope.
+  const [sheetScopeFolder, setSheetScopeFolder] = useState<{ id: string; name: string | null } | null>(null);
+  const [sheetScopeFollowsFolder, setSheetScopeFollowsFolder] = useState(false);
   /*
    * What this channel could be pointed at, by name. Off `server:channels:scope`,
    * which needs the same `manage_channels` as opening this dialog.
@@ -148,84 +151,119 @@ export function useSidebarEditor({
       ? selectedSidebarItem.channelId ?? selectedSidebarItem.id
       : null;
 
+  /** A server says whether folders carry a scope; an older one ignores the events. */
+  const folderPermissions = Boolean(
+    currentlyViewingServer && serverDetailsList[currentlyViewingServer.host]?.server_info?.folder_permissions,
+  );
+  const editingFolderId =
+    selectedSidebarItem?.kind === "folder" && folderPermissions ? selectedSidebarItem.id : null;
+
   /*
-   * Clear the scope when a different channel is opened, and only then. In the
+   * Clear the scope when a different item is opened, and only then. In the
    * effect below it reset the dropdown a moment after a save (GRYT-892).
    */
   useEffect(() => {
     setSheetScopeChoice(EVERYONE_VALUE);
     setSheetScopeRules([]);
-  }, [editingChannelId]);
+    setSheetScopeFolder(null);
+    setSheetScopeFollowsFolder(false);
+  }, [editingChannelId, editingFolderId]);
 
   useEffect(() => {
     if (!editDialogOpen) return;
-    if (!editingChannelId) return;
+    const target = editingChannelId
+      ? { kind: "channel" as const, id: editingChannelId }
+      : editingFolderId
+        ? { kind: "folder" as const, id: editingFolderId }
+        : null;
+    if (!target) return;
     if (!currentlyViewingServer || !currentConnection?.connected) return;
 
     const accessToken = getFreshAccessToken();
     if (!accessToken) return;
 
-    const channelId = editingChannelId;
     let cancelled = false;
     setScopeLoading(true);
 
     const onScope = (payload: {
       channelId?: string;
+      folderId?: string;
       scopeId?: string | null;
       isTemplate?: boolean;
       permissions?: string[];
       rules?: ChannelRule[];
       templates?: { id: string; name: string | null; isSystem: boolean }[];
+      followsFolder?: boolean;
+      folder?: { id: string; name: string | null } | null;
     }) => {
-      // The reply names the channel it is about. Without this, opening one channel
+      // The reply names the item it is about. Without this, opening one channel
       // and quickly opening another paints the first one's rules into the second.
-      if (cancelled || payload?.channelId !== channelId) return;
+      const about = target.kind === "channel" ? payload?.channelId : payload?.folderId;
+      if (cancelled || about !== target.id) return;
       setSheetScopeChoice(scopeChoiceValue(payload.scopeId ?? null, Boolean(payload.isTemplate)));
       setSheetScopeRules(payload.rules ?? []);
       // Absent from a server too old to send it, which leaves the dropdown as
       // it was before: Everyone and Custom.
       setPermissionTemplates(payload.templates ?? []);
       if (payload.permissions?.length) setChannelPermissions(payload.permissions);
+      setSheetScopeFolder(payload.folder ?? null);
+      setSheetScopeFollowsFolder(Boolean(payload.followsFolder));
       setScopeLoading(false);
     };
 
-    currentConnection.on("server:channels:scope", onScope);
-    currentConnection.emit("server:channels:scope:get", { accessToken, channelId });
+    const reply = target.kind === "channel" ? "server:channels:scope" : "server:folders:scope";
+    currentConnection.on(reply, onScope);
+    if (target.kind === "channel") {
+      currentConnection.emit("server:channels:scope:get", { accessToken, channelId: target.id });
+    } else {
+      currentConnection.emit("server:folders:scope:get", { accessToken, folderId: target.id });
+    }
 
     return () => {
       cancelled = true;
-      currentConnection.off("server:channels:scope", onScope);
+      currentConnection.off(reply, onScope);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editDialogOpen, editingChannelId, currentlyViewingServer?.host, currentConnection]);
+  }, [editDialogOpen, editingChannelId, editingFolderId, currentlyViewingServer?.host, currentConnection]);
 
   /**
-   * Send the channel's scope choice. Separate from `saveSelectedSidebarItem`: a
-   * rename must never be able to change who can see the channel.
+   * Send the channel's or folder's scope choice. Separate from `saveSelectedSidebarItem`:
+   * a rename must never be able to change who can see anything.
    */
 
   /*
    * `choice` and `rules` are arguments, not state: this is held in a ref reassigned
    * during render, so a handler reads the value the control had before the change.
    */
-  const saveChannelScope = useCallback((choice?: string, rules?: ChannelRule[]) => {
+  const saveScope = useCallback((choice?: string, rules?: ChannelRule[]) => {
+    const item = selectedItemRef.current;
+    if (!currentlyViewingServer || (item?.kind !== "channel" && item?.kind !== "folder")) return;
+    if (!currentConnection?.connected) return toast.error("Not connected to the server yet.");
+    const accessToken = getFreshAccessToken();
+    if (!accessToken) return toast.error("Join the server first.");
+
+    const payload = scopeSetPayload(scopeChoiceFromValue(choice ?? sheetScopeChoice), rules ?? sheetScopeRules);
+    if (item.kind === "folder") {
+      currentConnection.emit("server:folders:scope:set", { accessToken, folderId: item.id, ...payload });
+      return;
+    }
+    currentConnection.emit("server:channels:scope:set", { accessToken, channelId: item.channelId ?? item.id, ...payload });
+    // Anything picked for a channel is its own now, as the server records it.
+    setSheetScopeFollowsFolder(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentlyViewingServer, currentConnection, sheetScopeChoice, sheetScopeRules]);
+
+  /** Back to the folder's scope. The server answers with the channel's scope again,
+      which the effect above picks up, so the dropdown shows the folder's choice. */
+  const followFolder = useCallback(() => {
     const item = selectedItemRef.current;
     if (!currentlyViewingServer || item?.kind !== "channel") return;
     if (!currentConnection?.connected) return toast.error("Not connected to the server yet.");
     const accessToken = getFreshAccessToken();
     if (!accessToken) return toast.error("Join the server first.");
-
-    const channelId = item.channelId ?? item.id;
-    currentConnection.emit("server:channels:scope:set", {
-      accessToken,
-      channelId,
-      ...scopeSetPayload(
-        scopeChoiceFromValue(choice ?? sheetScopeChoice),
-        rules ?? sheetScopeRules,
-      ),
-    });
+    currentConnection.emit("server:channels:scope:follow", { accessToken, channelId: item.channelId ?? item.id });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentlyViewingServer, currentConnection, sheetScopeChoice, sheetScopeRules]);
+  }, [currentlyViewingServer, currentConnection]);
 
   const closeEditDialog = useCallback(() => {
     setEditDialogOpen(false);
@@ -388,6 +426,8 @@ export function useSidebarEditor({
         automated: opts.automated ?? false,
         forumTags: opts.forumTags ?? [],
         defaultNotificationLevel: opts.defaultNotificationLevel ?? (opts.automated ? "none" : "all"),
+        // On both, so a channel made in a folder is never drawn outside it first.
+        parentItemId: spot.parentItemId,
       });
       currentConnection.emit("server:sidebar:item:upsert", {
         accessToken,
@@ -576,7 +616,11 @@ export function useSidebarEditor({
     channelPermissions,
     permissionTemplates,
     scopeLoading,
-    saveChannelScope,
+    saveScope,
+    sheetScopeFolder,
+    sheetScopeFollowsFolder,
+    followFolder,
+    folderPermissions,
     sheetSpacerHeight,
     setSheetSpacerHeight,
     sheetSeparatorLabel,
