@@ -96,7 +96,9 @@ export function httpProbe(log: EventWriter, base: string, everyMs = 10_000): Sto
       await res.arrayBuffer();
       log.write("http", { url, status: res.status, ms: Date.now() - started, ray: res.headers.get("cf-ray") ?? undefined });
     } catch (err) {
-      log.write("http", { url, error: (err as Error).message, ms: Date.now() - started });
+      // fetch says only "fetch failed". The code underneath tells a refusal from an unreachable host.
+      const cause = (err as { cause?: { code?: string } }).cause?.code;
+      log.write("http", { url, error: (err as Error).message, cause, ms: Date.now() - started });
     }
   };
   const timer = setInterval(() => void tick(), everyMs);

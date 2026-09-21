@@ -188,10 +188,22 @@ for (const [who, events] of byWho) {
   // What the machine and the paths looked like meanwhile.
   for (const e of events) {
     if (e.type === "ping" && e.lost > 0) network.push({ at: e.ts, who, what: `ping ${e.host}: ${e.lost} lost in a minute` });
-    if (e.type === "ping.lost") network.push({ at: e.ts, who, what: `ping ${e.host} lost` });
+    if (e.type === "ping.lost") {
+      // One line per run of lost pings, or a long outage prints a line every two seconds.
+      const last = network.findLast((n) => n.who === who && n.host === e.host && n.lostTo !== undefined);
+      if (last && e.ts - last.lostTo <= 5_000) {
+        last.lostTo = e.ts;
+        last.count++;
+        last.what = `ping ${e.host} lost ${last.count} in a row, until ${new Date(e.ts).toISOString().slice(11, 19)}`;
+      } else {
+        network.push({ at: e.ts, who, host: e.host, lostTo: e.ts, count: 1, what: `ping ${e.host} lost` });
+      }
+    }
     if (e.type === "net.route") network.push({ at: e.ts, who, what: `${e.family} default route ${e.iface ? `back on ${e.iface}` : "gone"}` });
     if (e.type === "net.change") network.push({ at: e.ts, who, what: `addresses +${e.added.length} -${e.removed.length} (${[...e.added, ...e.removed].map((a) => a.split("/")[0]).join(",")})` });
-    if (e.type === "http" && (e.error || e.ms > 2000)) network.push({ at: e.ts, who, what: `${e.url}: ${e.error ?? `${e.ms} ms`}` });
+    if (e.type === "http" && (e.error || e.ms > 2000)) {
+      network.push({ at: e.ts, who, what: `${e.url}: ${e.error ? `${e.error}${e.cause ? ` (${e.cause})` : ""}` : `${e.ms} ms`}` });
+    }
     if (e.type === "page.crash" || e.type === "browser.disconnected") network.push({ at: e.ts, who, what: e.type });
   }
 }
@@ -258,9 +270,10 @@ for (const [i, incident] of incidents.entries()) {
     console.log(`  ${iso(d.at).slice(11)} ${who.padEnd(16)} ${d.what.padEnd(13)} ${d.reason}; back in ${secs(d.downMs)}${extra.length ? ` (${extra.join(", ")})` : ""}`);
   }
   for (const n of incident.network) console.log(`  ${iso(n.at).slice(11)} ${n.who.padEnd(14)} ${n.what}`);
-  const from = new Date(incident.start - 60_000).toISOString().slice(0, 19);
-  const to = new Date(incident.end + 120_000).toISOString().slice(0, 19);
-  console.log(`  logs: journalctl -o short-iso-precise --since "${from}Z" --until "${to}Z" CONTAINER_NAME=gryt-test-server (and gryt-test-sfu, -u cloudflared)`);
+  // systemd 252 on dev.lan won't take an ISO time ending in Z, so it gets a plain one with UTC after it.
+  const plain = (ms) => new Date(ms).toISOString().slice(0, 19).replace("T", " ");
+  const span = `--since "${plain(incident.start - 60_000)} UTC" --until "${plain(incident.end + 120_000)} UTC"`;
+  console.log(`  logs: journalctl --utc -o short-iso-precise ${span} CONTAINER_NAME=gryt-test-server (and gryt-test-sfu, -u cloudflared)`);
 }
 
 console.log("\nCall quality per client (five-second samples while connected)");
