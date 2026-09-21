@@ -1,5 +1,5 @@
 import { IconButton, Tooltip } from "@gryt/ui";
-import { estimateBitrate, getIsBrowserSupported, type ScreenShareQuality, useCamera, useScreenShare } from "@gryt/voice";
+import { estimateBitrate, getIsBrowserSupported, type ScreenShareQuality, SFUConnectionState, useCamera, useScreenShare } from "@gryt/voice";
 import { useSFU } from "@gryt/voice";
 import { voiceLog } from "@gryt/voice";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -55,6 +55,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
     addScreenAudioTrack,
     removeScreenAudioTrack,
     isConnected,
+    connectionState,
     currentServerConnected,
     getPeerConnection,
     getScreenVideoSender,
@@ -372,18 +373,18 @@ export function Controls({ onDisconnect }: ControlsProps) {
     return () => window.removeEventListener("server_socket_reconnected", onReconnected);
   }, [currentServerConnected, sockets]);
 
-  // Stop camera and screen share on disconnect; reset the saved WebRTC stream
-  // IDs so the next voice session creates fresh sender transceivers.
+  /* A reconnect builds a new peer connection, so the saved ids go with the old one. The camera
+     and screen stop only when the call has ended, or the reconnect comes back without them. */
   useEffect(() => {
-    if (!isConnected) {
-      if (cameraEnabled) setCameraEnabled(false);
-      if (screenShareActive) stopScreenShare();
-      webrtcCameraStreamId.current = null;
-      webrtcScreenVideoStreamId.current = null;
-      webrtcScreenAudioStreamId.current = null;
-    }
+    if (isConnected) return;
+    webrtcCameraStreamId.current = null;
+    webrtcScreenVideoStreamId.current = null;
+    webrtcScreenAudioStreamId.current = null;
+    if (connectionState !== SFUConnectionState.DISCONNECTED) return;
+    if (cameraEnabled) setCameraEnabled(false);
+    if (screenShareActive) stopScreenShare();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isConnected]);
+  }, [isConnected, connectionState]);
 
   useEffect(() => {
     return getElectronAPI()?.onNativeAudioProblem?.((problem) => {
