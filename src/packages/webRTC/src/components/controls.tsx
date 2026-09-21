@@ -16,7 +16,7 @@ import { useScreenAudioMute } from "../adapters/useScreenAudioMute";
 import { useScreenAudioSources } from "../adapters/useScreenAudioSources";
 import { useVoiceSounds } from "../adapters/useVoiceSounds";
 import { attachEncodedTransform, type EncodedTransformHandle, isEncodedTransformSupported } from "../utils/encodedTransform";
-import { forgetSenderStreamId, senderStreamId } from "../utils/senderStreamIds";
+import { roleSender, senderStreamId } from "../utils/senderStreamIds";
 import { CameraPreviewModal } from "./CameraPreviewModal";
 import { ScreenAudioSourcesModal } from "./ScreenAudioSourcesModal";
 import { ScreenSharePickerModal } from "./ScreenSharePickerModal";
@@ -122,8 +122,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
 
         const pc = getPeerConnectionRef.current?.();
         if (pc) {
-          const senders = pc.getSenders();
-          const cameraSender = senders.find(s => s.track === videoTrack);
+          const cameraSender = roleSender(pc, "camera", videoTrack);
           if (cameraSender) {
             const params = cameraSender.getParameters();
             params.degradationPreference = "maintain-framerate";
@@ -145,8 +144,8 @@ export function Controls({ onDisconnect }: ControlsProps) {
       voiceLog.step("CAMERA", "sync", "Removing camera track", {
         prevStreamId: prevCameraStreamRef.current.id,
       });
+      // Pauses the sender, so the camera comes back under the id senderStreamIds already has.
       removeVideoTrack();
-      forgetSenderStreamId(getPeerConnectionRef.current?.(), "camera");
       prevCameraStreamRef.current = null;
       webrtcCameraStreamId.current = null;
     }

@@ -22,7 +22,19 @@ export function senderStreamId(
   return (ids[role] ??= streamId);
 }
 
-/** For after removeTrack, since the next track gets a new sender named after its own stream. */
-export function forgetSenderStreamId(pc: RTCPeerConnection | null | undefined, role: SenderRole): void {
-  if (pc) delete byConnection.get(pc)?.[role];
+const sendersByConnection = new WeakMap<RTCPeerConnection, Partial<Record<SenderRole, RTCRtpSender>>>();
+
+/**
+ * The role's sender, found by its track while that's on it. A resumed sender only gets its
+ * track when replaceTrack resolves, so until then this is the one found before (GRYT-1329).
+ */
+export function roleSender(pc: RTCPeerConnection, role: SenderRole, track: MediaStreamTrack): RTCRtpSender | null {
+  let senders = sendersByConnection.get(pc);
+  if (!senders) {
+    senders = {};
+    sendersByConnection.set(pc, senders);
+  }
+  const found = pc.getSenders().find((sender) => sender.track === track);
+  if (found) senders[role] = found;
+  return senders[role] ?? null;
 }

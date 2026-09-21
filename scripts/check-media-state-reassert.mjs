@@ -8,7 +8,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { forgetSenderStreamId, senderStreamId } from "../src/packages/webRTC/src/utils/senderStreamIds.ts";
+import { roleSender, senderStreamId } from "../src/packages/webRTC/src/utils/senderStreamIds.ts";
 
 const controls = readFileSync(
   new URL("../src/packages/webRTC/src/components/controls.tsx", import.meta.url),
@@ -98,9 +98,8 @@ assert.equal(senderStreamId(pc, "screenVideo", "share-1"), "share-1");
 assert.equal(senderStreamId(pc, "screenVideo", "share-2"), "share-1");
 assert.equal(senderStreamId(pc, "screenAudio", "share-2-audio"), "share-2-audio");
 
-// Turning the camera off removes its sender, so the next one is named after its own stream.
-forgetSenderStreamId(pc, "camera");
-assert.equal(senderStreamId(pc, "camera", "camera-3"), "camera-3");
+// Turning the camera off only pauses its sender (GRYT-1329), so it comes back under the first id.
+assert.equal(senderStreamId(pc, "camera", "camera-3"), "camera-1");
 assert.equal(senderStreamId(pc, "screenVideo", "share-3"), "share-1");
 
 // A new connection has new senders. With no connection at all, the stream's own id.
@@ -114,12 +113,21 @@ for (const role of ["camera", "screenVideo", "screenAudio"]) {
     `Controls doesn't take the ${role} id from senderStreamIds`,
   );
 }
-assert.match(
-  controls,
-  /removeVideoTrack\(\);\s*forgetSenderStreamId\([^\n]*"camera"\)/,
-  "turning the camera off has to forget its sender's id",
-);
 // A ref that fills itself on first use is empty again after a remount.
 assert.doesNotMatch(controls, /if \(!webrtc\w+StreamId\.current\)/, "Controls keeps sender ids in refs of its own");
+
+/* ── The camera's encoding settings reach a resumed sender ───────────── */
+
+// A resumed camera gets its track from replaceTrack a task later, so a lookup by track misses it
+// and the camera kept whatever priority it had before a share started (GRYT-1329).
+{
+  const sender = { track: "camera-track-1" };
+  const connection = { getSenders: () => [sender] };
+  assert.equal(roleSender(connection, "camera", "camera-track-1"), sender);
+  sender.track = null;
+  assert.equal(roleSender(connection, "camera", "camera-track-2"), sender, "a resumed camera's sender wasn't found");
+  assert.equal(roleSender({ getSenders: () => [] }, "camera", "camera-track-2"), null, "another connection got this one's sender");
+}
+assert.match(controls, /const cameraSender = roleSender\(pc, "camera", videoTrack\)/, "Controls looks the camera's sender up by its track alone");
 
 console.log("Media state re-assert checks passed");

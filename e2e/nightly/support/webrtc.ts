@@ -125,6 +125,19 @@ export function peerStats(page: Page): Promise<PeerStats> {
   });
 }
 
+/** The first encoding's priority on each video sender that is sending something, sorted. */
+export function videoSendPriorities(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const peers = (window as unknown as { __grytPeers?: { open: RTCPeerConnection[] } }).__grytPeers;
+    return (peers?.open ?? [])
+      .filter((pc) => pc.connectionState !== "closed")
+      .flatMap((pc) => pc.getSenders())
+      .filter((sender) => sender.track?.kind === "video")
+      .map((sender) => sender.getParameters().encodings[0]?.priority ?? "none")
+      .sort();
+  });
+}
+
 /** Loopback, RFC 1918, link-local, CGNAT, IPv6 unique-local and mDNS names. */
 export function isPrivateAddress(address: string): boolean {
   if (address.endsWith(".local")) return true;

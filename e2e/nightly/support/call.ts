@@ -57,6 +57,11 @@ export async function turnCameraOn(guest: Guest): Promise<void> {
   await expect(guest.page.getByRole("button", { name: "Turn camera off" })).toBeVisible();
 }
 
+export async function turnCameraOff(guest: Guest): Promise<void> {
+  await guest.page.getByRole("button", { name: "Turn camera off" }).click();
+  await expect(guest.page.getByRole("button", { name: "Turn camera on" })).toBeVisible();
+}
+
 /** In a browser the button calls getDisplayMedia straight away, and Chrome's fake capture answers it. */
 export async function shareScreen(guest: Guest): Promise<void> {
   await guest.page.getByRole("button", { name: "Share your screen" }).click();
