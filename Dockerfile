@@ -26,6 +26,8 @@ http {
     listen 80;
     root   /usr/share/nginx/html;
     index  index.html;
+    # Out of search, like index.html's meta tag, for every file including silent-check-sso.html.
+    add_header X-Robots-Tag "noindex" always;
 
     location / {
       try_files $uri $uri/ /index.html;
