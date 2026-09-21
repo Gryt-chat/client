@@ -62,6 +62,21 @@ const depths = (rows) => rows.map((r) => r.depth);
   assert.deepEqual(ids(flattenSidebar(items)), ["f", "x", "y"]);
 }
 
+{
+  // The server sends every folder, so one whose channels are all hidden from
+  // this viewer arrives empty. A member is spared the header (GRYT-1305).
+  const items = [folder("empty", 10), folder("f", 20), channel("x", 30, "f"), channel("y", 40)];
+  const hidden = { hideEmptyFolders: true };
+  assert.deepEqual(ids(flattenSidebar(items, new Set(), hidden)), ["f", "x", "y"]);
+  // An editor keeps it: a new folder is empty until something is dragged in.
+  assert.deepEqual(ids(flattenSidebar(items)), ["empty", "f", "x", "y"]);
+  // Shut is not empty. The children exist, they are just not drawn.
+  assert.deepEqual(ids(flattenSidebar(items, new Set(["f"]), hidden)), ["f", "y"]);
+  // A folder holding only a separator is empty too; that is not a channel to see into.
+  const rules = [folder("f", 10), { id: "s", kind: "separator", position: 20, parentItemId: "f" }];
+  assert.deepEqual(ids(flattenSidebar(rules, new Set(), hidden)), ["s"]);
+}
+
 // ── What a drag means ───────────────────────────────────────────────────────
 
 const nestable = [folder("f", 10), channel("c", 20)];
