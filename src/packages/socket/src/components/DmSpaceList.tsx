@@ -1,13 +1,13 @@
 import { Avatar, Button } from "@gryt/ui";
-import { useState } from "react";
 
-import { GeneratedServerIcon, getUploadsFileUrl, resolveAvatarSrc, serverIconSrc } from "@/common";
+import { getUploadsFileUrl, resolveAvatarSrc, serverIconSrc } from "@/common";
 
 import type { DirectoryEntry } from "../hooks/dmDirectory";
 import { conversationTitle, type DirectConversation } from "../hooks/useDirectMessages";
 import { useServerManagement } from "../hooks/useServerManagement";
 import { useSockets } from "../hooks/useSockets";
 import { EmojiText } from "./EmojiText";
+import { ServerMark } from "./ServerChip";
 import { UnreadIndicator } from "./UnreadIndicator";
 
 /**
@@ -24,21 +24,6 @@ function when(iso: string | null): string {
   if (days < 1) return at.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
   if (days < 7) return at.toLocaleDateString(undefined, { weekday: "short" });
   return at.toLocaleDateString(undefined, { day: "numeric", month: "short" });
-}
-
-/* The rail's icon, from the same source, so the row points back at it. A server
-   with no icon answers 404 and gets the generated one. */
-function ServerMark({ src, seed }: { src: string; seed: string }) {
-  const [failed, setFailed] = useState<string | null>(null);
-  if (failed === src) return <GeneratedServerIcon seed={seed} />;
-  return (
-    <img
-      src={src}
-      alt=""
-      onError={() => setFailed(src)}
-      style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "inherit" }}
-    />
-  );
 }
 
 function ConversationRow({
@@ -90,16 +75,20 @@ function ConversationRow({
         <span className={`truncate${unread > 0 ? " font-semibold text-gryt-text" : ""}`}>
           <EmojiText text={title} />
         </span>
-        {/* The server is half the identity: two rows can carry one name and be
-            two different people, and its own icon points back at the rail. */}
+        {/* The icon tells two rows with one name apart; the header names the server.
+            Labelled, so a screen reader can tell them apart too. */}
         <span
           className="flex shrink-0 items-center gap-1 text-xs"
           style={{ color: "var(--gryt-neutral-10)" }}
         >
-          <span style={{ width: 12, height: 12, borderRadius: 3, overflow: "hidden", display: "block" }}>
+          <span
+            role="img"
+            aria-label={serverName}
+            title={serverName}
+            style={{ width: 12, height: 12, borderRadius: 3, overflow: "hidden", display: "block" }}
+          >
             <ServerMark src={serverIcon} seed={serverName} />
           </span>
-          {serverName}
           {isGroup ? ` · ${conversation.members.length + 1}` : ""}
         </span>
       </span>

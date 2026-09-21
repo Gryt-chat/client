@@ -99,6 +99,7 @@ interface MobileServerViewProps {
   forumTags?: import("@/settings/src/types/server").ForumTag[];
   conversationKind?: "channel" | "dm";
   headerAction?: React.ReactNode;
+  headerDetail?: React.ReactNode;
   currentUserNickname?: string;
   socketConnection?: unknown;
   memberList: Record<string, MemberInfo>;
@@ -227,6 +228,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
           forumTags={props.forumTags}
           conversationKind={props.conversationKind}
           headerAction={props.headerAction}
+          headerDetail={props.headerDetail}
           serverName={props.serverName}
           currentUserNickname={props.currentUserNickname}
           socketConnection={props.socketConnection}
@@ -255,6 +257,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
               host={props.serverHost}
               selectedConversationId={props.selectedDmId ?? null}
               onOpen={handleSelectDmHere}
+              fill
             />
           </div>
         ) : (

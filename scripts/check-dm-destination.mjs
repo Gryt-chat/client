@@ -264,14 +264,28 @@ const dms = read("src/packages/socket/src/hooks/useDirectMessages.ts");
     "the conversation row does not take the server's icon from where the rail does",
   );
   assert.ok(/<ServerMark src=\{serverIcon\} seed=\{serverName\} \/>/.test(list), "the row draws something other than the server's icon");
-  const mark = list.slice(list.indexOf("function ServerMark"), list.indexOf("function ConversationRow"));
+  const chip = read("src/packages/socket/src/components/ServerChip.tsx");
+  const mark = chip.slice(chip.indexOf("function ServerMark"), chip.indexOf("function ServerChip"));
   assert.ok(
     /if \(failed === src\) return <GeneratedServerIcon seed=\{seed\} \/>;/.test(mark) && /onError=\{\(\) => setFailed\(src\)\}/.test(mark),
     "a server with no icon draws a broken image instead of the generated one",
   );
   const row = list.slice(list.indexOf("function ConversationRow"));
   assert.ok(!/<GeneratedServerIcon/.test(row), "the row draws the generated icon whether or not the server has its own");
+
+  // GRYT-1341: the header names the server, with the icon from the same place.
+  assert.ok(
+    /<ServerChip name=\{name\} icon=\{serverIconSrc\(host, stored \|\| "", serverDetailsList\)\} \/>/.test(view),
+    "the header's server takes its icon from somewhere other than the rail",
+  );
 }
+
+/* The server under a conversation is there for its socket. Lighting it in the rail
+   says you opened that server. GRYT-1341. */
+assert.ok(
+  /currentlyViewingServer=\{showDiscovery \|\| dmSpaceOpen \? null : currentlyViewingServer\}/.test(rail),
+  "the rail lights the server under the direct messages space",
+);
 
 /* ── surviving a restart ─────────────────────────────────────────────────── */
 

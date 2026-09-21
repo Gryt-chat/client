@@ -1,9 +1,9 @@
-import { Button } from "@gryt/ui";
+import { Button, IconButton, Tooltip } from "@gryt/ui";
 import { useSFU } from "@gryt/voice";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
-import { clearMentions, clearSignedOut, getUploadsFileUrl, markChannelRead, useAccount, useMentionTracker, useThreadMentions, useUnreadTracker } from "@/common";
+import { clearMentions, clearSignedOut, getUploadsFileUrl, markChannelRead, serverIconSrc, useAccount, useMentionTracker, useThreadMentions, useUnreadTracker } from "@/common";
 import { NOTIFICATION_CHANNEL_OPEN_EVENT } from "@/lib/desktopNotification";
 import { useIsCompact, useIsMobile } from "@/mobile";
 import { useSettings } from "@/settings";
@@ -11,6 +11,7 @@ import { useEmbeddedServer } from "@/settings/src/hooks/useEmbeddedServer";
 import { hostedServerAt, manageServerTab } from "@/settings/src/hostedServers";
 import { SidebarItem } from "@/settings/src/types/server";
 
+import { PiCaretLeftBold } from "../../../../lib/icons";
 import { useFakeChat } from "../dev/fakeChat";
 import { useFakeChatRunning } from "../dev/fakeChatController";
 import {
@@ -55,6 +56,7 @@ import { MobileServerView } from "./MobileServerView";
 import { ReportsPanel } from "./ReportsPanel";
 import { ReportUserDialog } from "./ReportUserDialog";
 import { SecurityNoticeBanner } from "./SecurityNoticeBanner";
+import { ServerChip } from "./ServerChip";
 import { ServerConfirmDialogs } from "./ServerConfirmDialogs";
 import { ServerLoadingStates } from "./ServerLoadingStates";
 import { ServerNoticePanel } from "./ServerNoticePanel";
@@ -523,6 +525,16 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     [dmSpace, selectedDmId, directConversations],
   );
 
+  /* The conversation the tiny window's list was opened over. Picking another one
+     moves the selection off it, so the list goes without being told. */
+  const [tinyListOver, setTinyListOver] = useState<string | null>(null);
+  const showTinyList = isTiny && dmSpace && (!activeDm || tinyListOver === activeDm.conversation_id);
+
+  const openFromTinyList = useCallback((conversation: { conversation_id: string }) => {
+    setTinyListOver(null);
+    handleSelectDm(conversation);
+  }, [handleSelectDm]);
+
   /** A lookup, not a test on the id, since a channel can be named to look like
       one. `currentChannelId` is the room joined, not the one on screen. */
   const connectedToACall = useMemo(
@@ -600,6 +612,26 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
       </div>
     );
   }, [activeDm, viewerPermissions, outgoingCall, cancelCall, ringConversation, setGroupDialog, connect, setShowVoiceView, handleVoiceDisconnect]);
+
+  /* Memoized like the actions: ChatView is memo'd, and a fresh element every render undoes it. */
+  const dmHeaderDetail = useMemo(() => {
+    if (!activeDm || !currentlyViewingServer) return undefined;
+    const { host, name: stored } = currentlyViewingServer;
+    const name = serverDetailsList[host]?.server_info?.name || stored || host;
+    return <ServerChip name={name} icon={serverIconSrc(host, stored || "", serverDetailsList)} />;
+  }, [activeDm, currentlyViewingServer, serverDetailsList]);
+
+  const tinyBack = useMemo(() => {
+    if (!isTiny || !dmSpace || !activeDm) return undefined;
+    const over = activeDm.conversation_id;
+    return (
+      <Tooltip title="Back to messages">
+        <IconButton aria-label="Back to messages" size="xsmall" tone="ghost" onClick={() => setTinyListOver(over)}>
+          <PiCaretLeftBold size={16} />
+        </IconButton>
+      </Tooltip>
+    );
+  }, [isTiny, dmSpace, activeDm]);
 
   const currentAdminActions = useMemo(() => {
     // One handler per permission, not a bundle per role name, which gave a role
@@ -784,6 +816,8 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
 forumTags={activeDm ? [] : activeChannelForumTags}
         conversationKind={activeDm ? "dm" : "channel"}
         headerAction={dmHeaderActions}
+        headerLead={tinyBack}
+        headerDetail={dmHeaderDetail}
         flush={isTiny}
         serverName={serverName}
         currentUserNickname={serverNickname}
@@ -807,7 +841,8 @@ forumTags={activeDm ? [] : activeChannelForumTags}
 
   return (
     <>
-      <div className="flex w-full h-full gap-4 flex-col" data-gryt="server-view">
+      {/* min-w-0, or a header's one-line name sets the narrowest this can get. */}
+      <div className="flex w-full h-full min-w-0 gap-4 flex-col" data-gryt="server-view">
         {isServerUnreachable && (
           <ConnectionBanner connectionStatus={currentConnectionStatus} onReconnect={() => reconnectServer(host)} />
         )}
@@ -819,7 +854,10 @@ forumTags={activeDm ? [] : activeChannelForumTags}
           /* One channel and no way to change it; the way out is a bigger window.
              A call is the exception, or the microphone has no button to close it. */
           <div className="flex" style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
-            {chatView}
+            {/* In the direct messages space, the list and a conversation take turns filling the window. */}
+            {showTinyList ? (
+              <DmSpaceSidebar host={host} selectedConversationId={visibleDmId} onOpen={openFromTinyList} fill />
+            ) : chatView}
             <VoiceSheetButton
               connected={isVoiceOnThisServer}
               serverHost={host}
@@ -899,6 +937,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
 forumTags={activeDm ? [] : activeChannelForumTags}
             conversationKind={activeDm ? "dm" : "channel"}
             headerAction={dmHeaderActions}
+            headerDetail={dmHeaderDetail}
             currentUserNickname={serverNickname}
             socketConnection={currentConnection}
             memberList={memberListMap}

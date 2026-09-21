@@ -67,6 +67,11 @@ const view = read(VIEW);
     /props\.dmSpace \?/.test(mobile),
     `${MOBILE} ignores dmSpace`,
   );
+  // GRYT-1343: at its own 300px the list lost its right edge to the 280px sheet.
+  assert.ok(
+    /<DmSpaceSidebar[^>]*\bfill\b[^>]*\/>/.test(mobile),
+    `${MOBILE} draws the conversation list at its column width inside a narrower sheet`,
+  );
 }
 
 /** The `useCallback(...)` argument list after a marker, parens balanced. */
