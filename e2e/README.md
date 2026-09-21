@@ -158,8 +158,8 @@ per line with a UTC time. You get socket.io connects and disconnects with the re
 close code, and every WebSocket opening and closing, with whether the page closed it. You
 also get ICE and peer connection states, the candidate pair, a `getStats` sample every 5
 seconds, the app's console, whether the window shows the call and how many of its videos are
-drawing. The app itself isn't
-changed. An init script watches it, the way the nightly's `watchPeerConnections` does.
+drawing. The app itself isn't changed. An init script watches it, the way the nightly's
+`watchPeerConnections` does.
 `status.txt` in the same folder has a line per client and gets rewritten every minute.
 
 ```bash
