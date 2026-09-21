@@ -1,14 +1,15 @@
 /* Capturing an invite the desktop was opened with. The parsing moved to
  * `@gryt/core` and is re-exported; what stayed touches `window.location`. */
 
-import {
+import { normalizeCode, normalizeHost } from "@gryt/core";
+
+export {
+  inviteLink,
   normalizeCode,
   normalizeHost,
-  parseServerInput as parseWithCore,
+  parseServerInput,
   type ServerInput,
 } from "@gryt/core";
-
-export { normalizeCode, normalizeHost, type ServerInput } from "@gryt/core";
 
 import { savePreLoginUrl } from "./preLoginUrl.ts";
 
@@ -26,36 +27,6 @@ const PENDING_INVITE_KEY = "pendingInvite";
  * and the only client served from such a path is the hosted one.
  */
 const DEFAULT_LEGACY_HOST = "app.gryt.chat";
-
-/**
- * Core up to 0.6.0 reads a link with a host and no code as gryt.chat itself. Drop this
- * once the release with the fix is pinned (GRYT-1300).
- */
-export function parseServerInput(
-  input: string,
-  opts?: { defaultLegacyHost?: string },
-): ServerInput {
-  const parsed = parseWithCore(input, opts);
-  if (parsed.code) return parsed;
-
-  const raw = String(input || "").trim();
-  if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(raw)) return parsed;
-  try {
-    const url = new URL(raw);
-    const isInvite = url.pathname.startsWith("/invite") || url.hostname === "invite";
-    const host = isInvite ? normalizeHost(url.searchParams.get("host") || "") : "";
-    return host ? { host, code: "" } : parsed;
-  } catch {
-    return parsed;
-  }
-}
-
-/** A copy of core's `inviteLink` until the release is pinned (GRYT-1300). */
-export function inviteLink(host: string, code?: string): string {
-  const cleanCode = normalizeCode(code ?? "");
-  const query = `host=${encodeURIComponent(normalizeHost(host))}`;
-  return `https://gryt.chat/invite?${query}${cleanCode ? `&code=${encodeURIComponent(cleanCode)}` : ""}`;
-}
 
 export function readPendingInvite(): PendingInvite | null {
   if (typeof window === "undefined") return null;
