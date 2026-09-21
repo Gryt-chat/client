@@ -18,6 +18,8 @@ const ALLOWED: Allowed[] = [
   // no CORS headers, so Chrome logs a block, and ensureSchemeKnown moves on to https.
   { text: /^Access to fetch at 'http:\/\/[^/']+\/info' from origin '[^']+' has been blocked by CORS policy/ },
   { text: /^Failed to load resource: net::ERR_FAILED$/, url: /^http:\/\/[^/]+\/info$/ },
+  // The failed-upload test refuses the upload on purpose, and Chrome logs the refusal.
+  { text: /^Failed to load resource: net::ERR_CONNECTION_REFUSED$/, url: /\/api\/uploads$/ },
 ];
 
 /** Everything that should fail a test without an assertion asking: console errors, crashes, live sites. */

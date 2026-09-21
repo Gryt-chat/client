@@ -5,6 +5,7 @@ import { clearThreadMentions, getServerAccessToken, setOpenThread } from "@/comm
 
 import type { ChatMessage } from "../components/chatUtils";
 import { mergeSender, mergeSenders } from "../utils/mergeSender";
+import { draftKey, returnDraft } from "./returnedDrafts";
 import { uploadChatFile } from "./uploadChatFile";
 
 /**
@@ -461,6 +462,7 @@ export function useThreads(
                 }
               : o,
           );
+          returnDraft(draftKey(serverHost || "", conversationId, cur.thread.thread_id), { text: trimmed, files });
           return;
         }
       }

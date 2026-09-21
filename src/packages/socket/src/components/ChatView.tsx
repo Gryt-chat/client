@@ -8,6 +8,7 @@ import { getUploadsFileUrl, resolveAvatarSrc, useTheme, useThreadMentions, useTh
 import { useSettings } from "@/settings";
 
 import { PiChatCircleFill, PiChatsFill, PiCloudArrowUpFill, PiLockOpen, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
+import { draftKey, takeReturnedDraft, useReturnedDraft } from "../hooks/returnedDrafts";
 import { useChatActions } from "../hooks/useChatActions";
 import { useChatScroll } from "../hooks/useChatScroll";
 import { useServerPermissions } from "../hooks/usePermissions";
@@ -303,6 +304,24 @@ export const ChatView = memo(({
       clearRestoreText?.();
     }
   }, [restoreText, clearRestoreText]);
+
+  // A send that failed, or was called off, comes back to the box it was typed in.
+  const channelDraftKey = serverHost && conversationKey ? draftKey(serverHost, conversationKey) : "";
+  const channelDraft = useReturnedDraft(channelDraftKey);
+  useEffect(() => {
+    if (!channelDraft || !editorRef.current) return;
+    const draft = takeReturnedDraft(channelDraftKey);
+    if (draft) editorRef.current.restore(draft);
+  }, [channelDraft, channelDraftKey]);
+
+  const openThreadId = threads.open?.thread.thread_id;
+  const threadDraftKey = serverHost && conversationKey && openThreadId ? draftKey(serverHost, conversationKey, openThreadId) : "";
+  const threadDraft = useReturnedDraft(threadDraftKey);
+  useEffect(() => {
+    if (!threadDraft || !threadEditorRef.current) return;
+    const draft = takeReturnedDraft(threadDraftKey);
+    if (draft) threadEditorRef.current.restore(draft);
+  }, [threadDraft, threadDraftKey]);
 
   // ── Sender helpers ────────────────────────────────────────────
   const getSenderName = useCallback((msg: ChatMessage): string => {

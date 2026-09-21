@@ -40,6 +40,16 @@ export function messageRow(page: Page, text: string | RegExp): Locator {
 
 export async function joinServer(page: Page, host: string): Promise<void> {
   await page.getByRole("button", { name: "Add a server" }).first().click();
+  await joinFromDialog(page, host);
+}
+
+/** For a page already in a server: the empty app's button is gone, and the rail's plus is left. */
+export async function joinAnotherServer(page: Page, host: string): Promise<void> {
+  await page.locator('[data-tour="add-server"]').click();
+  await joinFromDialog(page, host);
+}
+
+async function joinFromDialog(page: Page, host: string): Promise<void> {
   const dialog = page.getByRole("dialog", { name: "Join a server" });
   await dialog.getByLabel("Invite or server address").fill(host);
   await expect(dialog.getByText("No account needed")).toBeVisible();
@@ -93,6 +103,13 @@ export async function sendMessage(page: Page, text: string, channel = "General")
   await expect(row).toBeVisible();
   await expect(page.locator('[data-message-id^="pending-"]').filter({ hasText: text })).toHaveCount(0);
   return row;
+}
+
+/** Pastes through the clipboard with the keyboard. The page's context needs clipboard-read and clipboard-write. */
+export async function pasteText(page: Page, box: Locator, text: string): Promise<void> {
+  await box.click();
+  await page.evaluate((value) => navigator.clipboard.writeText(value), text);
+  await page.keyboard.press("ControlOrMeta+V");
 }
 
 /** A file in e2e/fixtures, as a path a file chooser takes. */

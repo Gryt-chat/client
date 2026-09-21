@@ -3,8 +3,8 @@ import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
 
 import {
-  attachAndSend, clipboardHoldsImage, composer, CONFIRMED_ROW, fixture, type Member, membersPanel, messageRow, savedFile,
-  sendMessage, sha256, unique,
+  attachAndSend, clipboardHoldsImage, composer, CONFIRMED_ROW, fixture, joinServer, type Member, membersPanel, messageRow,
+  pasteText, savedFile, sendMessage, sha256, unique,
 } from "../support/app";
 import { expect, test } from "../support/fixtures";
 
@@ -160,4 +160,40 @@ test("an encrypted DM's files save and copy as the files that were sent, with no
     sha256: hashOf("clip.webm"),
   });
   expect(fileFetches.length, "Save As downloaded a video that was already decrypted for play").toBe(fetchesAfterPlay);
+});
+
+/** A member whose app never publishes a message key, so a DM with them can't be encrypted. */
+function neverPublishKey() {
+  const send = WebSocket.prototype.send;
+  WebSocket.prototype.send = function (this: WebSocket, data: string | ArrayBufferLike | Blob | ArrayBufferView) {
+    if (typeof data === "string" && data.includes('"dm:key:publish"')) return;
+    send.call(this, data);
+  };
+}
+
+test("backing out of sending unencrypted puts the text and the file back", async ({ newMember, gryt }) => {
+  const alice = await newMember();
+  const bob = await newMember({ join: false });
+  await bob.context.addInitScript(neverPublishKey);
+  await bob.page.reload();
+  await joinServer(bob.page, gryt.server.host);
+  await alice.context.grantPermissions(["clipboard-read", "clipboard-write"]);
+
+  await openDmFromMembers(alice, bob);
+  const text = unique("not in the clear");
+  const box = composer(alice.page, `Message ${bob.name}`);
+  await box.click();
+  await alice.page.keyboard.insertText(text);
+  await pasteText(alice.page, box, "z".repeat(4001));
+  const files = alice.page.getByRole("button", { name: "Remove file" });
+  await expect(files).toHaveCount(1);
+  await box.press("Enter");
+
+  const ask = alice.page.getByRole("alertdialog", { name: "Send this without encryption?" });
+  await ask.getByRole("button", { name: "Cancel" }).click();
+  await expect(ask).toBeHidden();
+
+  await expect(box).toHaveText(text);
+  await expect(files).toHaveCount(1);
+  await expect(alice.page.locator("[data-message-id]").filter({ hasText: text })).toHaveCount(0);
 });

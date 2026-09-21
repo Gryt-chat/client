@@ -9,6 +9,7 @@ import { getServerAccessToken, getServerRefreshToken } from "@/common";
 import type { AttachmentMeta, ChatMessage } from "../components/chatUtils";
 import { getImageDimensions } from "../utils/imageUtils";
 import { shouldRefreshToken } from "../utils/tokenManager";
+import { draftKey, returnDraft } from "./returnedDrafts";
 import { uploadChatFile } from "./uploadChatFile";
 
 export interface RetryEntry {
@@ -76,7 +77,7 @@ interface UseChatSendReturn {
   plaintextPrompt: SealDecision | null;
   /** Send it unencrypted, and stop asking for this conversation. */
   confirmPlaintextSend: () => void;
-  /** Do not send it. The text goes back in the composer. */
+  /** Do not send it. The text and files go back in the composer. */
   cancelPlaintextSend: () => void;
 }
 
@@ -246,7 +247,7 @@ export function useChatSend({
    * again. A ref, not storage: asking once more is the safe way to be wrong.
    */
   const plaintextOkRef = useRef<Set<string>>(new Set());
-  const pendingSendRef = useRef<{ text: string; files: File[]; replyToMessageId?: string } | null>(null);
+  const pendingSendRef = useRef<{ text: string; files: File[]; replyToMessageId?: string; returnTo: string } | null>(null);
   const [plaintextPrompt, setPlaintextPrompt] = useState<SealDecision | null>(null);
 
   const plaintextGateKey = useCallback(() => {
@@ -262,10 +263,12 @@ export function useChatSend({
   const sendChat = useCallback((text: string, files: File[], replyToMessageId?: string) => {
     const body = text.trim();
     if (!body && files.length === 0) return;
+    // The composer this came from, if it has to go back.
+    const returnTo = draftKey(serverHost, activeConversationId);
 
     const gateKey = plaintextGateKey();
     if (gateKey && !plaintextOkRef.current.has(gateKey)) {
-      pendingSendRef.current = { text, files, replyToMessageId };
+      pendingSendRef.current = { text, files, replyToMessageId, returnTo };
       setPlaintextPrompt(sealDecisionRef.current);
       return;
     }
@@ -385,6 +388,12 @@ export function useChatSend({
         } catch (err) {
           const msg = err instanceof Error && err.message ? err.message : "Failed to upload file(s)";
           toast.error(msg);
+          // Nothing will confirm this row now, so it fails, and the files go back.
+          const failed = (m: ChatMessage) => (m.message_id === pendingId ? { ...m, pending: false, failed: true } : m);
+          const key = cacheKeyFor(activeConversationId);
+          setChatMessages((prev) => prev.map(failed));
+          setMessageCache((prev) => (prev[key] ? { ...prev, [key]: prev[key].map(failed) } : prev));
+          returnDraft(returnTo, { text: body, files });
           return;
         }
       }
@@ -430,12 +439,12 @@ export function useChatSend({
     if (pending) sendChat(pending.text, pending.files, pending.replyToMessageId);
   }, [plaintextGateKey, sendChat]);
 
-  /** Backed out: the text goes back in the composer. */
+  /** Backed out: the text and files go back in the composer. */
   const cancelPlaintextSend = useCallback(() => {
     const pending = pendingSendRef.current;
     pendingSendRef.current = null;
     setPlaintextPrompt(null);
-    if (pending?.text) setRestoreText(pending.text);
-  }, [setRestoreText]);
+    if (pending) returnDraft(pending.returnTo, { text: pending.text, files: pending.files });
+  }, []);
   return { sendChat, editMessage, retryQueueRef, performRetry, markLatestPendingFailed, plaintextPrompt, confirmPlaintextSend, cancelPlaintextSend };
 }
