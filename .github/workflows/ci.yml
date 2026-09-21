@@ -31,6 +31,7 @@ jobs:
       - run: yarn test:lan-discovery
       - run: yarn test:voice-presence
       - run: yarn test:reconnect-limit
+      - run: yarn test:reconnect-grace
       - run: yarn test:token-refresh-schedule
       - run: yarn test:server-notice
       - run: yarn test:auth-outage

@@ -480,9 +480,10 @@ function callbackOf(name) {
 
 /* ── the handling a replay runs ───────────────────────────────────────────── */
 {
-  const handler = bodyOf(hook, 'socket.io.on("reconnect", () =>', HOOK);
-  assert.match(handler, /dispatchEvent\(new CustomEvent\("server_socket_reconnected"/, "socket.io's reconnect handler no longer tells voice, so replaying it does not either");
-  assert.match(handler, /emit\("voice:state:update", voiceSelfStateRef\.current\)/, "socket.io's reconnect handler no longer re-sends voice state");
+  // watchReconnects runs onReconnected for socket.io's reconnect event, replayed ones included.
+  const handler = bodyOf(hook, "onReconnected: (wasShown) =>", HOOK);
+  assert.match(handler, /dispatchEvent\(new CustomEvent\("server_socket_reconnected"/, "the reconnect handling no longer tells voice, so replaying it does not either");
+  assert.match(handler, /emit\("voice:state:update", voiceSelfStateRef\.current\)/, "the reconnect handling no longer re-sends voice state");
   assert.match(hook, /railEntriesJustStarted\(lastSeen \?\? new Map\(\), states, serversRef\.current\)/, "the trigger matches hosted servers some other way than the rail does");
 }
 
