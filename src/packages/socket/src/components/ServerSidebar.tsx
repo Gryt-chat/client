@@ -9,6 +9,7 @@ import type { Client } from "../types/clients";
 import { ChannelList } from "./ChannelList";
 import type { AdminActions, MemberInfo } from "./MemberSidebar";
 import { ServerHeader } from "./ServerHeader";
+import type { ChannelPlacement } from "./sidebarTree";
 
 /** A role id. The server defines its own; these only pass one along. */
 type Role = string;
@@ -59,7 +60,7 @@ interface ServerSidebarProps {
   onDeleteItem: (item: SidebarItem) => void;
   onMoveItem: (item: SidebarItem, direction: "up" | "down") => void;
   onReorder: (entries: SidebarReorderEntry[]) => void;
-  onAddItem: (kind: string) => void;
+  onAddItem: (kind: string, placement?: ChannelPlacement) => void;
   onDisconnectUser: ((id: string) => void) | undefined;
   currentUserRole: Role | undefined;
   adminActions: AdminActions | undefined;
@@ -128,6 +129,7 @@ export const ServerSidebar = ({
             <ServerHeader
               serverName={serverName}
               role={serverRole}
+              canManageChannels={canManage}
               pinned={pinned}
               onTogglePinned={onTogglePinned}
               serverHost={serverHost}

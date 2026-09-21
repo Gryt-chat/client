@@ -19,6 +19,7 @@ import type { AdminActions, MemberInfo } from "./MemberSidebar";
 import { MemberSidebar } from "./MemberSidebar";
 import { MobileSheet } from "./MobileSheet";
 import { ServerHeader } from "./ServerHeader";
+import type { ChannelPlacement } from "./sidebarTree";
 import { VoiceSheetButton } from "./VoiceSheetButton";
 
 /** A role id. The server defines its own; these only pass one along. */
@@ -66,7 +67,7 @@ interface MobileServerViewProps {
   onDeleteItem: (item: SidebarItem) => void;
   onMoveItem: (item: SidebarItem, direction: "up" | "down") => void;
   onReorder: (entries: SidebarReorderEntry[]) => void;
-  onAddItem: (kind: string) => void;
+  onAddItem: (kind: string, placement?: ChannelPlacement) => void;
   onDisconnectUser?: (targetServerUserId: string) => void;
   currentUserRole?: Role;
   adminActions?: AdminActions;
@@ -263,6 +264,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
               serverName={props.serverName}
               serverHost={props.serverHost}
               role={props.serverRole}
+              canManageChannels={props.canManage}
               onCreateChannel={() => props.onAddItem("channel:text")}
               onCreateFolder={() => props.onAddItem("folder")}
               onOpenInvites={props.onOpenInvites}

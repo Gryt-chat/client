@@ -16,6 +16,7 @@ import { Channel, serverDetailsList as ServerDetailsList,SidebarItem, SidebarReo
 
 import { type ChannelKind, fieldsToKind, kindToFields } from "../components/channelKind";
 import type { ForumTagDraft } from "../components/ForumTagsField";
+import { type ChannelPlacement, orderBelow, placeNewChannel } from "../components/sidebarTree";
 
 interface UseSidebarEditorParams {
   currentlyViewingServer: { host: string; name: string } | null;
@@ -347,10 +348,23 @@ export function useSidebarEditor({
     [currentlyViewingServer, currentConnection, effectiveSidebarItems],
   );
 
+  /* A row that had no room under its neighbour went in beside it. Once it shows up,
+     a reorder moves it under; if that never happens it stays next to the neighbour. */
+  const pendingBelowRef = useRef<{ host: string; itemId: string; afterItemId: string } | null>(null);
+
+  useEffect(() => {
+    const pending = pendingBelowRef.current;
+    if (!pending || pending.host !== currentlyViewingServer?.host) return;
+    if (!effectiveSidebarItems.some((i) => i.id === pending.itemId)) return;
+    pendingBelowRef.current = null;
+    const order = orderBelow(effectiveSidebarItems, pending.itemId, pending.afterItemId);
+    if (order) reorderSidebar(order);
+  }, [effectiveSidebarItems, currentlyViewingServer?.host, reorderSidebar]);
+
   // Create a fully-configured channel in one confirmed step, instead of
   // dropping a default text channel that has to be edited after. GRYT-983.
   const createChannel = useCallback(
-    async (opts: { name: string; type: "text" | "voice"; layout?: "chat" | "forum"; automated?: boolean; description?: string | null; forumTags?: { id: string; name: string; emoji?: string | null; color?: string | null }[]; defaultNotificationLevel?: NotificationLevel }) => {
+    async (opts: { name: string; type: "text" | "voice"; layout?: "chat" | "forum"; automated?: boolean; description?: string | null; forumTags?: { id: string; name: string; emoji?: string | null; color?: string | null }[]; defaultNotificationLevel?: NotificationLevel; placement?: ChannelPlacement }) => {
       if (!currentlyViewingServer) return;
       if (!currentConnection || !currentConnection.connected) {
         toast.error("Not connected to the server yet.");
@@ -361,10 +375,7 @@ export function useSidebarEditor({
         toast.error("Join the server first.");
         return;
       }
-      const maxPos = Math.max(
-        0,
-        ...effectiveSidebarItems.map((i) => (typeof i.position === "number" ? i.position : 0)),
-      );
+      const spot = placeNewChannel(effectiveSidebarItems, opts.placement);
       const channelId = `chan_${uuidv4().slice(0, 10)}`;
       const itemId = `sb_${uuidv4().slice(0, 10)}`;
       currentConnection.emit("server:channels:upsert", {
@@ -383,8 +394,12 @@ export function useSidebarEditor({
         itemId,
         kind: "channel",
         channelId,
-        position: maxPos + 10,
+        position: spot.position,
+        parentItemId: spot.parentItemId,
       });
+      if (spot.reorderBelow) {
+        pendingBelowRef.current = { host: currentlyViewingServer.host, itemId, afterItemId: spot.reorderBelow };
+      }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [currentlyViewingServer, currentConnection, effectiveSidebarItems],

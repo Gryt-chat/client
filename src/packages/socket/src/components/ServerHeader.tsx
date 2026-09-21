@@ -1,7 +1,7 @@
 import { Chip, IconButton, Menu, Surface, Tooltip } from "@gryt/ui";
 import toast from "react-hot-toast";
 
-import { PiDotsThreeVerticalBold, PiPushPinFill, PiPushPinSlashFill } from "../../../../lib/icons";
+import { PiDotsThreeVerticalBold, PiPlusBold } from "../../../../lib/icons";
 import { useOpenInviteLink } from "../hooks/useOpenInviteLink";
 
 export const ServerHeader = ({
@@ -15,6 +15,7 @@ export const ServerHeader = ({
   onManageServer,
   onOpenReports,
   role,
+  canManageChannels,
   pendingReportCount,
   updateAvailable,
   pinned,
@@ -36,6 +37,8 @@ export const ServerHeader = ({
   onManageServer?: () => void;
   onOpenReports?: () => void;
   role?: string;
+  /** `manage_channels`, which the + is for. `role` gates the server's own settings. */
+  canManageChannels?: boolean;
   pendingReportCount?: number;
   updateAvailable?: boolean;
   pinned?: boolean;
@@ -47,6 +50,7 @@ export const ServerHeader = ({
   const hasTopGroup = Boolean(
     (canManage && (onOpenInvites || onOpenSettings)) || onManageServer || openInvite.available,
   );
+  const canCreate = Boolean(canManageChannels && (onCreateChannel || onCreateFolder));
 
   const copyHost = async () => {
     if (!serverHost) return;
@@ -70,15 +74,27 @@ export const ServerHeader = ({
       <div className="flex justify-between items-center">
         <span>{serverName}</span>
         <div className="flex items-center gap-2">
-          {onTogglePinned && (
-            <Tooltip title={pinned ? "Unpin sidebar" : "Pin sidebar"}>
-              <IconButton tone="neutral" size="xsmall"
-                onClick={onTogglePinned}
-                aria-label={pinned ? "Unpin sidebar" : "Pin sidebar"}
-              >
-                {pinned ? <PiPushPinFill size={14} /> : <PiPushPinSlashFill size={14} />}
-              </IconButton>
-            </Tooltip>
+          {canCreate && (
+            <Menu.Root>
+              <Tooltip title="Create channel or folder">
+                <Menu.Trigger
+                  render={
+                    <IconButton tone="neutral" size="xsmall" aria-label="Create channel or folder" />
+                  }
+                >
+                  <PiPlusBold size={14} />
+                </Menu.Trigger>
+              </Tooltip>
+              <Menu.Portal>
+                <Menu.Positioner>
+                  <Menu.Popup>
+                    {onCreateChannel && <Menu.Item onClick={onCreateChannel}>Channel</Menu.Item>}
+                    {/* Discord calls it a category. The sidebar already says folder, so this does too. */}
+                    {onCreateFolder && <Menu.Item onClick={onCreateFolder}>Folder</Menu.Item>}
+                  </Menu.Popup>
+                </Menu.Positioner>
+              </Menu.Portal>
+            </Menu.Root>
           )}
 
           <Menu.Root>
@@ -98,23 +114,8 @@ export const ServerHeader = ({
             <Menu.Portal>
               <Menu.Positioner>
                 <Menu.Popup>
-              {/*
-                Ordered to match the server menu people already know from
-                elsewhere: invite and settings, then the things you make, then
-                moderation, then the identifier, then leaving.
-
-                The items Gryt has no equivalent for are simply absent rather
-                than shown disabled — boosting, insights, events, threads, an
-                app directory, per-server profiles, and the raid tools. A
-                disabled row advertises a feature that does not exist.
-
-                Two are missing for a reason rather than by omission. Muting
-                this server is on the channel list's own right-click, where the
-                per-channel and per-folder choices live, and splitting one
-                setting across two menus is worse than one extra click. "Show
-                all channels" needs a per-person hidden-channel list, which
-                Gryt does not have — visibility here is a permission.
-              */}
+              {/* Invite and settings, moderation, the pin, the address, then leaving. Nothing is greyed
+                  out for a feature Gryt lacks, and muting is on the channel list's right-click. */}
               {canManage && onOpenInvites && (
                 <Menu.Item onClick={onOpenInvites}>Invite to server</Menu.Item>
               )}
@@ -137,19 +138,6 @@ export const ServerHeader = ({
                 <Menu.Item onClick={onManageServer}>Manage server</Menu.Item>
               )}
 
-              {hasTopGroup && canManage && (onCreateChannel || onCreateFolder) && (
-                <Menu.Separator />
-              )}
-
-              {canManage && onCreateChannel && (
-                <Menu.Item onClick={onCreateChannel}>Create channel</Menu.Item>
-              )}
-              {/* Discord calls this a category. Gryt's folders are the same
-                  idea and the sidebar already says folder, so it says folder. */}
-              {canManage && onCreateFolder && (
-                <Menu.Item onClick={onCreateFolder}>Create folder</Menu.Item>
-              )}
-
               {canManage && onOpenReports && <Menu.Separator />}
               {canManage && onOpenReports && (
                 <Menu.Item onClick={onOpenReports}>
@@ -162,6 +150,11 @@ export const ServerHeader = ({
                     )}
                   </div>
                 </Menu.Item>
+              )}
+
+              {onTogglePinned && (hasTopGroup || (canManage && onOpenReports)) && <Menu.Separator />}
+              {onTogglePinned && (
+                <Menu.Item onClick={onTogglePinned}>{pinned ? "Unpin sidebar" : "Pin sidebar"}</Menu.Item>
               )}
 
               {/* The address, not an id. It is what identifies a Gryt server,

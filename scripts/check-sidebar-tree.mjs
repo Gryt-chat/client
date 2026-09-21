@@ -11,7 +11,11 @@ const {
   NEST_THRESHOLD_PX,
   buildReorderPayload,
   flattenSidebar,
+  folderOf,
+  orderBelow,
+  placeNewChannel,
   resolveDropParent,
+  settingsTitle,
 } = await import("../src/packages/socket/src/components/sidebarTree.ts");
 
 const folder = (id, position) => ({ id, kind: "folder", label: id, position });
@@ -154,6 +158,143 @@ const order = [nestable[0], nestable[1]];
     { itemId: "hidden", parentItemId: "f" },
     { itemId: "c", parentItemId: null },
   ]);
+}
+
+// ── Where a new channel goes ────────────────────────────────────────────────
+
+/** The row the create dialog sends, added to the list the way the server stores it. */
+const withNew = (items, spot) => [
+  ...items,
+  { id: "new", kind: "channel", channelId: "chan-new", position: spot.position, parentItemId: spot.parentItemId },
+];
+
+/** What `server:sidebar:reorder` does with a payload: 10, 20, 30, in the order sent. */
+const reorderOnServer = (items, entries) => {
+  const byId = new Map(items.map((i) => [i.id, i]));
+  return entries.map((entry, n) => ({ ...byId.get(entry.itemId), position: (n + 1) * 10, parentItemId: entry.parentItemId }));
+};
+
+{
+  assert.equal(folderOf([folder("f", 10), channel("x", 20, "f")], "x"), "f");
+  assert.equal(folderOf([folder("f", 10), channel("x", 20)], "x"), null);
+  // A folder that has gone leaves its channel at the top level, which is where it is drawn.
+  assert.equal(folderOf([channel("x", 20, "gone")], "x"), null);
+  assert.equal(folderOf([channel("x", 20)], "nobody"), null);
+}
+
+{
+  // From the + or the list's own menu: last at the top level, below the last folder's channels.
+  const items = [channel("a", 10), folder("f", 20), channel("x", 90, "f"), channel("b", 30)];
+  const spot = placeNewChannel(items);
+  assert.deepEqual(spot, { position: 100, parentItemId: null, reorderBelow: null });
+  assert.deepEqual(ids(flattenSidebar(withNew(items, spot))), ["a", "f", "x", "b", "new"]);
+}
+
+{
+  // Create channel in this folder: last inside it, and the rows after the folder stay after it.
+  const items = [channel("a", 10), folder("f", 20), channel("x", 90, "f"), channel("b", 30)];
+  const spot = placeNewChannel(items, { folderId: "f" });
+  assert.deepEqual(spot, { position: 100, parentItemId: "f", reorderBelow: null });
+  const rows = flattenSidebar(withNew(items, spot));
+  assert.deepEqual(ids(rows), ["a", "f", "x", "new", "b"]);
+  assert.deepEqual(depths(rows), [0, 0, 1, 1, 0]);
+}
+
+{
+  // A folder id that is not a folder, or no longer exists, is the top level rather than an orphan.
+  const items = [channel("a", 10), folder("f", 20)];
+  assert.equal(placeNewChannel(items, { folderId: "a" }).parentItemId, null);
+  assert.equal(placeNewChannel(items, { folderId: "gone" }).parentItemId, null);
+}
+
+{
+  // Create channel below, with room: halfway to the next sibling, in the same folder.
+  const items = [folder("f", 10), channel("x", 20, "f"), channel("y", 40, "f"), channel("b", 50)];
+  const spot = placeNewChannel(items, { folderId: "f", afterItemId: "x" });
+  assert.deepEqual(spot, { position: 30, parentItemId: "f", reorderBelow: null });
+  assert.deepEqual(ids(flattenSidebar(withNew(items, spot))), ["f", "x", "new", "y", "b"]);
+}
+
+{
+  // Under the last channel in a folder. Its position ties with a top-level row, which is
+  // fine: only siblings are ordered against each other.
+  const items = [folder("f", 10), channel("x", 20, "f"), channel("y", 40, "f"), channel("b", 50)];
+  const spot = placeNewChannel(items, { folderId: "f", afterItemId: "y" });
+  assert.deepEqual(spot, { position: 50, parentItemId: "f", reorderBelow: null });
+  assert.deepEqual(ids(flattenSidebar(withNew(items, spot))), ["f", "x", "y", "new", "b"]);
+}
+
+{
+  // Under a top-level channel with a folder next: between the two, not inside the folder.
+  const items = [channel("a", 10), folder("f", 20), channel("x", 21, "f")];
+  const spot = placeNewChannel(items, { afterItemId: "a" });
+  assert.deepEqual(spot, { position: 15, parentItemId: null, reorderBelow: null });
+  assert.deepEqual(ids(flattenSidebar(withNew(items, spot))), ["a", "new", "f", "x"]);
+}
+
+for (const [label, gap] of [["one apart", 1], ["on the same position", 0]]) {
+  // No whole number fits, so it goes in beside the row and a reorder moves it under.
+  const items = [folder("f", 10), channel("x", 20, "f"), channel("y", 20 + gap, "f"), channel("b", 30)];
+  const spot = placeNewChannel(items, { folderId: "f", afterItemId: "x" });
+  assert.deepEqual(spot, { position: 20, parentItemId: "f", reorderBelow: "x" }, label);
+
+  // If the reorder never lands, it is still in the folder, next to the row it was made from.
+  const landed = withNew(items, spot);
+  const before = ids(flattenSidebar(landed));
+  assert.deepEqual(before.filter((id) => id !== "new"), ["f", "x", "y", "b"], label);
+  assert.equal(Math.abs(before.indexOf("new") - before.indexOf("x")), 1, label);
+
+  const entries = orderBelow(landed, "new", "x");
+  assert.deepEqual(entries.find((e) => e.itemId === "new"), { itemId: "new", parentItemId: "f" }, label);
+  assert.equal(entries.length, landed.length, `${label}: every row is in the reorder, once`);
+  const rows = flattenSidebar(reorderOnServer(landed, entries));
+  assert.deepEqual(ids(rows), ["f", "x", "new", "y", "b"], label);
+  assert.deepEqual(depths(rows), [0, 1, 1, 1, 0], label);
+}
+
+{
+  // The same at the top level, where folders and their channels are in the way.
+  const items = [channel("a", 10), channel("b", 11), folder("f", 20), channel("x", 21, "f")];
+  const spot = placeNewChannel(items, { afterItemId: "a" });
+  assert.equal(spot.reorderBelow, "a");
+  const landed = withNew(items, spot);
+  const rows = flattenSidebar(reorderOnServer(landed, orderBelow(landed, "new", "a")));
+  assert.deepEqual(ids(rows), ["a", "new", "b", "f", "x"]);
+  assert.deepEqual(depths(rows), [0, 0, 0, 0, 1]);
+}
+
+{
+  // The dialog's folder was changed away from the row's own, so "below" no longer applies.
+  const items = [folder("f", 10), channel("x", 20, "f"), channel("y", 40, "f"), folder("g", 50)];
+  assert.deepEqual(
+    placeNewChannel(items, { folderId: "g", afterItemId: "x" }),
+    { position: 60, parentItemId: "g", reorderBelow: null },
+  );
+  assert.deepEqual(
+    placeNewChannel(items, { folderId: null, afterItemId: "x" }),
+    { position: 60, parentItemId: null, reorderBelow: null },
+  );
+}
+
+{
+  // A row that has gone, or never arrived, makes no reorder at all.
+  const items = [channel("a", 10), channel("b", 20)];
+  assert.equal(orderBelow(items, "new", "a"), null);
+  assert.equal(orderBelow(items, "b", "gone"), null);
+  assert.equal(orderBelow(items, "a", "a"), null);
+}
+
+// ── The edit dialog's title ─────────────────────────────────────────────────
+
+{
+  // A folder used to fall through to "Spacer settings" (GRYT-1340).
+  assert.equal(settingsTitle("folder"), "Folder settings");
+  assert.equal(settingsTitle("channel"), "Channel settings");
+  assert.equal(settingsTitle("separator"), "Separator settings");
+  assert.equal(settingsTitle("spacer"), "Spacer settings");
+  // Nothing selected, which is the dialog closing, and a kind from a newer server.
+  assert.equal(settingsTitle(undefined), "Settings");
+  assert.equal(settingsTitle("category"), "Settings");
 }
 
 console.log("sidebar tree: ok");
