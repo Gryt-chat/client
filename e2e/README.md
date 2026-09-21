@@ -157,7 +157,8 @@ Every client and probe writes its own JSONL file to `e2e/soak/runs/<start time>/
 per line with a UTC time. You get socket.io connects and disconnects with the reason and the
 close code, and every WebSocket opening and closing, with whether the page closed it. You
 also get ICE and peer connection states, the candidate pair, a `getStats` sample every 5
-seconds, the app's console and whether the window shows the call. The app itself isn't
+seconds, the app's console, whether the window shows the call and how many of its videos are
+drawing. The app itself isn't
 changed. An init script watches it, the way the nightly's `watchPeerConnections` does.
 `status.txt` in the same folder has a line per client and gets rewritten every minute.
 
@@ -185,6 +186,7 @@ back. Drops less than 30 seconds apart count as one incident. For each incident 
 | `GRYT_SOAK_LOCAL_CLIENTS` | 2 | Call clients in the local group |
 | `GRYT_SOAK_CAMERA` | 1 | `0` for audio only |
 | `GRYT_SOAK_BROWSER_PROBE` | 1 | `0` leaves out the probe page |
+| `GRYT_SOAK_CHECK_SECONDS` | 10 | How often each window is checked for the call, the banner and drawing videos |
 | `GRYT_SOAK_OUT` | `e2e/soak/runs/<start time>` | Where the files go |
 
 Without `GRYT_TEST_INVITE_CODE`, the tunnel and direct groups only get probes. Port 3667 is on

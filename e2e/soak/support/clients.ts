@@ -67,6 +67,12 @@ function inviteLink(group: Group): string {
   return `https://app.gryt.chat/invite?${new URLSearchParams({ host: group.host, code: group.invite })}`;
 }
 
+export interface UiState {
+  inVoice: boolean;
+  banner: string | null;
+  videos: { total: number; drawing: number };
+}
+
 export interface CallClient {
   who: string;
   group: Group;
@@ -75,8 +81,8 @@ export interface CallClient {
   name: string;
   /** Back in the call when it has fallen out: the harness calls this after a minute outside. */
   rejoin(): Promise<void>;
-  /** What the window shows: in the call or not, and the server banner if one is up. */
-  ui(): Promise<{ inVoice: boolean; banner: string | null }>;
+  /** What the window shows: in the call or not, the server banner if one is up, and how many videos are drawing. */
+  ui(): Promise<UiState>;
   close(leave: boolean): Promise<void>;
 }
 
@@ -143,7 +149,12 @@ async function joinCall(
     ui: async () => {
       const inVoice = (await leaveVoiceButton(page).count()) > 0;
       const banner = page.getByText(/^(Reconnecting to server\.\.\.|Server is unreachable)$/).first();
-      return { inVoice, banner: (await banner.count()) ? await banner.textContent() : null };
+      // A tile is drawing when its video has a frame. A placeholder tile has no video at all.
+      const videos = await page.evaluate(() => {
+        const all = [...document.querySelectorAll("video")];
+        return { total: all.length, drawing: all.filter((v) => v.videoWidth > 0 && v.readyState >= 2).length };
+      });
+      return { inVoice, banner: (await banner.count()) ? await banner.textContent() : null, videos };
     },
     close: async (leave: boolean) => {
       try {

@@ -14,7 +14,7 @@ const config = readConfig();
 const REJOIN_AFTER_MS = 60_000;
 /** Joining now and then misses a step, and a fresh browser usually gets in. */
 const START_ATTEMPTS = 3;
-const CHECK_EVERY_MS = 10_000;
+const CHECK_EVERY_MS = Number(process.env.GRYT_SOAK_CHECK_SECONDS || 10) * 1000;
 const STATUS_EVERY_MS = 60_000;
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -80,14 +80,18 @@ test("soak", async () => {
     const started = Date.now();
     const deadline = started + config.minutes * 60_000;
     const outsideSince = new Map<CallClient, number>();
+    const lastVideos = new Map<CallClient, string>();
     let lastStatus = 0;
 
     while (Date.now() < deadline && !existsSync(run.path("STOP"))) {
       for (const client of clients) {
-        const ui = await client.ui().catch(() => ({ inVoice: false, banner: "page unreachable" }));
+        const ui = await client.ui().catch(() => ({ inVoice: false, banner: "page unreachable", videos: { total: 0, drawing: 0 } }));
         if (client.track.inVoice !== ui.inVoice) client.track.write("ui.voice", { inVoice: ui.inVoice });
         client.track.inVoice = ui.inVoice;
         if (ui.banner) client.track.write("ui.banner", { text: ui.banner });
+        const videos = `${ui.videos.drawing}/${ui.videos.total}`;
+        if (lastVideos.get(client) !== videos) client.track.write("ui.videos", ui.videos);
+        lastVideos.set(client, videos);
 
         if (ui.inVoice) {
           outsideSince.delete(client);
