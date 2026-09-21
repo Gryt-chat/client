@@ -75,8 +75,10 @@ export function useDirectMessages({
   useEffect(() => {
     if (!socket || !accessToken || !isConnected) return;
 
-    const onList = (payload: { items?: DirectConversation[] }) => {
+    const onList = (payload: { items?: DirectConversation[]; allow_dms?: boolean }) => {
       setConversations(Array.isArray(payload?.items) ? payload.items : []);
+      // An older server never says, and is heard from when it refuses one.
+      if (typeof payload?.allow_dms === "boolean") setDmsDisabled(!payload.allow_dms);
     };
 
     const onOpened = (conversation: DirectConversation) => {
@@ -102,14 +104,17 @@ export function useDirectMessages({
       setConversations((prev) => prev.filter((c) => c.conversation_id !== payload.conversation_id));
     };
 
+    /* Two of these hooks listen to the server on screen, the view's and the
+       space's feed, so the id is what keeps one refusal to one toast. */
     const onError = (payload: DmErrorPayload) => {
       if (payload?.error === "dms_disabled") {
         setDmsDisabled(true);
-        toast.error(payload.message || "Direct messages are turned off on this server");
+        const message = payload.message || "Direct messages are turned off on this server";
+        toast.error(message, { id: `dm:error:${message}` });
         return;
       }
       // Rate limiting already carries its own wait in the message.
-      if (payload?.message) toast.error(payload.message);
+      if (payload?.message) toast.error(payload.message, { id: `dm:error:${payload.message}` });
     };
 
     /* Read off the message, not the server: one older than 1.10.1 never says a

@@ -1,9 +1,11 @@
 import { conversationTitle, type DirectConversation } from "@gryt/core";
-import { TextField } from "@gryt/ui";
+import { IconButton, TextField, Tooltip } from "@gryt/ui";
 import { useMemo, useState } from "react";
 
+import { PiPlus } from "../../../../lib/icons";
 import { listedConversations, useDirectory } from "../hooks/dmDirectory";
 import { requestConversation, useVisitingConversation, visitConversation } from "../hooks/dmSpace";
+import { setNewMessageOpen } from "../hooks/newMessageDialog";
 import { useDirectoryUnread } from "../hooks/useDirectoryUnread";
 import { useServerManagement } from "../hooks/useServerManagement";
 import { DmSpaceList } from "./DmSpaceList";
@@ -63,9 +65,21 @@ export function DmSpaceSidebar({
       className={`flex shrink-0 flex-col overflow-hidden${fill ? "" : " rounded-(--gryt-radius-lg)"}`}
       style={{ width: fill ? "100%" : 300, height: fill ? "100%" : undefined, background: "var(--gryt-neutral-2)" }}
     >
-      <h1 className="px-4 pb-3 pt-4 text-lg" style={{ fontWeight: 700, letterSpacing: "-0.01em" }}>
-        Messages
-      </h1>
+      <div className="flex items-center justify-between gap-2 pb-3 pl-4 pr-3 pt-4">
+        <h1 className="text-lg" style={{ fontWeight: 700, letterSpacing: "-0.01em" }}>
+          Messages
+        </h1>
+        <Tooltip title="New message">
+          <IconButton
+            tone="ghost"
+            size="xsmall"
+            aria-label="New message"
+            onClick={() => setNewMessageOpen(true)}
+          >
+            <PiPlus size={16} />
+          </IconButton>
+        </Tooltip>
+      </div>
 
       {listed.length > 0 && (
         <div className="px-3 pb-2">

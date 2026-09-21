@@ -11,7 +11,7 @@ import { useEmbeddedServer } from "@/settings/src/hooks/useEmbeddedServer";
 import { hostedServerAt, manageServerTab } from "@/settings/src/hostedServers";
 import { SidebarItem } from "@/settings/src/types/server";
 
-import { PiCaretLeftBold } from "../../../../lib/icons";
+import { PiCaretLeftBold, PiGearSixFill } from "../../../../lib/icons";
 import { useFakeChat } from "../dev/fakeChat";
 import { useFakeChatRunning } from "../dev/fakeChatController";
 import {
@@ -257,7 +257,6 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     conversations: directConversations,
     openDm,
     setHidden: setDmHidden,
-    createGroup,
     updateGroup,
     addToGroup,
     leaveGroup,
@@ -514,9 +513,9 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     setDmHidden(conversation.conversation_id, true);
   }, [setDmHidden, setSelectedDmId]);
 
-  /** `null` is closed, a conversation is managing that one, and an array of ids
-      is a new group with those people ticked. */
-  const [groupDialog, setGroupDialog] = useState<DirectConversation | string[] | null>(null);
+  /** The group whose settings are open, or null. Starting one is the + next to
+      Messages, in `NewMessageDialog`. */
+  const [groupDialog, setGroupDialog] = useState<DirectConversation | null>(null);
 
   const activeDm = useMemo(
     () => (dmSpace && selectedDmId
@@ -571,10 +570,12 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   /** Built once for both layouts. Calling is offered whether or not one is
       going, and `start_calls` is not the permission for answering. */
   const dmHeaderActions = useMemo(() => {
-    if (!activeDm || !viewerPermissions.can("send_direct_messages")) return undefined;
+    if (!activeDm) return undefined;
     const conversationId = activeDm.conversation_id;
     const ringing = outgoingCall?.conversation_id === conversationId;
-    const mayCall = viewerPermissions.can("start_calls");
+    const mayCall = viewerPermissions.can("send_direct_messages") && viewerPermissions.can("start_calls");
+    // Group settings holds Leave, so a group gets it whatever else the role may do.
+    if (!mayCall && activeDm.kind !== "group") return undefined;
 
     /** The caller is in the room from the moment it rings, or answering joins a
         room with nobody in it. Cancel is offered until somebody answers. */
@@ -604,10 +605,14 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
             {ringing ? "Cancel" : "Call"}
           </Button>
         ) : null}
-        {activeDm.kind === "dm" ? (
-          <Button size="small" tone="ghost" onClick={() => setGroupDialog([activeDm.other.server_user_id])}>
-            New group
-          </Button>
+        {/* The only way into a group's settings since its section left the channel list.
+            An icon, so a 300px window still has room for the group's name. */}
+        {activeDm.kind === "group" ? (
+          <Tooltip title="Group settings">
+            <IconButton aria-label="Group settings" size="xsmall" tone="ghost" onClick={() => setGroupDialog(activeDm)}>
+              <PiGearSixFill size={16} />
+            </IconButton>
+          </Tooltip>
         ) : null}
       </div>
     );
@@ -785,7 +790,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     >
       {directory.some((entry) => entry.conversation.last_message_at !== null)
         ? "Choose a conversation."
-        : "No conversations yet. Click somebody in a server\u2019s member list to start one."}
+        : "No conversations yet. Start one with the + next to Messages."}
     </div>
   ) : (
       <ChatView
@@ -1131,9 +1136,8 @@ forumTags={activeDm ? [] : activeChannelForumTags}
         members={hostMembers ?? []}
         serverHost={host}
         currentServerUserId={currentServerUserId}
-        existing={Array.isArray(groupDialog) ? undefined : (groupDialog ?? undefined)}
-        initialMemberIds={Array.isArray(groupDialog) ? groupDialog : []}
-        onCreate={createGroup}
+        existing={groupDialog ?? undefined}
+        canAdd={viewerPermissions.can("create_groups")}
         onUpdate={updateGroup}
         onAdd={addToGroup}
         onLeave={(id) => {

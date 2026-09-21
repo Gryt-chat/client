@@ -3,7 +3,7 @@ import type { Socket } from "socket.io-client";
 
 import { getServerAccessToken } from "@/common";
 
-import { forgetHost, setHostConversations } from "../hooks/dmDirectory";
+import { forgetHost, setHostConversations, setHostDmsOff } from "../hooks/dmDirectory";
 import { useDirectMessages } from "../hooks/useDirectMessages";
 import { useSockets } from "../hooks/useSockets";
 
@@ -15,7 +15,7 @@ import { useSockets } from "../hooks/useSockets";
 /* One host. A component rather than a loop, because the thing underneath is a
    hook and the number of servers changes while the app is running. */
 function HostFeed({ host, socket, isConnected }: { host: string; socket: Socket; isConnected: boolean }) {
-  const { conversations } = useDirectMessages({
+  const { conversations, dmsDisabled } = useDirectMessages({
     socket,
     accessToken: getServerAccessToken(host),
     isConnected,
@@ -27,6 +27,11 @@ function HostFeed({ host, socket, isConnected }: { host: string; socket: Socket;
     setHostConversations(host, conversations);
     return () => forgetHost(host);
   }, [host, conversations]);
+
+  useEffect(() => {
+    setHostDmsOff(host, dmsDisabled);
+    return () => setHostDmsOff(host, false);
+  }, [host, dmsDisabled]);
 
   return null;
 }

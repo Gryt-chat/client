@@ -1,11 +1,12 @@
 import { Badge, Button, IconButton } from "@gryt/ui";
 import type { StreamSources } from "@gryt/voice";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import type { SealDecision } from "@/common";
 import type { Channel, SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
 
 import { PiChatsFill, PiList, PiUsersFill } from "../../../../lib/icons";
+import { useNewMessageOpen } from "../hooks/newMessageDialog";
 import type { DirectConversation } from "../hooks/useDirectMessages";
 import { useDirectoryUnread } from "../hooks/useDirectoryUnread";
 import { useOpenDmSpace } from "../hooks/useOpenDmSpace";
@@ -128,6 +129,13 @@ interface MobileServerViewProps {
 export const MobileServerView = (props: MobileServerViewProps) => {
   const { onChannelClick } = props;
   const [channelsOpen, setChannelsOpen] = useState(false);
+
+  /* The + in the sheet opens a dialog over the whole app. The sheet would sit between
+     it and the conversation it opens, so it gets out of the way. */
+  const newMessageOpen = useNewMessageOpen();
+  useEffect(() => {
+    if (newMessageOpen) setChannelsOpen(false);
+  }, [newMessageOpen]);
   const { total: dmUnread } = useDirectoryUnread();
   const openDmSpace = useOpenDmSpace();
   const [membersOpen, setMembersOpen] = useState(false);

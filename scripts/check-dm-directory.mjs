@@ -132,6 +132,27 @@ assert.deepEqual(ids(), ["a:1/dm_2"], "forgetting twice changed something");
   assert.deepEqual(entries, input, "listing sorted the directory's own array in place");
 }
 
+/* ── a renamed group reaches its row ────────────────────────────────────────
+   Its id and activity stay the same, and comparing only those kept the old name. */
+{
+  resetDirectory();
+  const members = [{ server_user_id: "u-bob", nickname: "Bob", avatar_file_id: null, avatar_worn: null }];
+  const group = (name, icon) => ({
+    conversation_id: "dm_g1", kind: "group", name, icon_file_id: icon, members,
+    last_message_at: null, created_at: "2026-09-21T10:00:00Z",
+  });
+  setHostConversations("a:1", [group(null, null)]);
+  const before = getDirectorySnapshot();
+  setHostConversations("a:1", [group("Weekend plans", null)]);
+  assert.notEqual(getDirectorySnapshot(), before, "a renamed group left the old name on the row");
+  assert.equal(getDirectorySnapshot()[0].conversation.name, "Weekend plans");
+
+  const named = getDirectorySnapshot();
+  setHostConversations("a:1", [group("Weekend plans", "file-1")]);
+  assert.notEqual(getDirectorySnapshot(), named, "a new picture left the old one on the row");
+  resetDirectory();
+}
+
 /* ── a new message moves a conversation that was already written in ─────────
    The server only says so for the first one, so the client bumps it. */
 {

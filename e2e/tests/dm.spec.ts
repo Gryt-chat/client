@@ -93,6 +93,64 @@ test("a DM in a window too narrow for the rail stays inside it, with the list a 
   }
 });
 
+/** The + next to Messages, from wherever the page is. */
+async function newMessageDialog(page: Page) {
+  const heading = page.getByRole("heading", { name: "Messages" });
+  if (!(await heading.isVisible())) await page.getByRole("button", { name: "Direct messages" }).click();
+  await page.getByRole("button", { name: "New message" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("heading", { name: "New message" })).toBeVisible();
+  return dialog;
+}
+
+test("the + next to Messages opens a conversation with somebody", async ({ newMember }) => {
+  const alice = await newMember();
+  const bob = await newMember();
+
+  const dialog = await newMessageDialog(bob.page);
+  await dialog.getByPlaceholder("Search people").fill(alice.name);
+  await expect(dialog.getByRole("button").filter({ hasText: bob.name })).toHaveCount(0);
+  await dialog.getByRole("button").filter({ hasText: alice.name }).click();
+
+  await expect(dialog).toBeHidden();
+  await expect(composer(bob.page, `Message ${alice.name}`)).toBeVisible();
+  await expect(bob.page.getByRole("button", { name: "New group" })).toHaveCount(0);
+});
+
+test("Create group makes a group everybody in it can see, then asks for a name", async ({ newMember }) => {
+  const alice = await newMember();
+  const bob = await newMember();
+  const carol = await newMember();
+
+  const dialog = await newMessageDialog(carol.page);
+  await dialog.getByRole("button", { name: "Create group" }).click();
+  await expect(dialog.getByRole("heading", { name: "New group" })).toBeVisible();
+  for (const who of [alice, bob]) {
+    await dialog.getByPlaceholder("Search people").fill(who.name);
+    await dialog.locator("label").filter({ hasText: who.name }).getByRole("checkbox").click();
+  }
+  await dialog.getByRole("button", { name: "Create group" }).click();
+
+  // The group is open behind the name step before anybody has written in it.
+  await expect(dialog.getByRole("heading", { name: "Name and picture" })).toBeVisible();
+  const name = unique("Weekend plans");
+  await dialog.getByRole("textbox").fill(name);
+  await dialog.getByRole("button", { name: "Done" }).click();
+  await expect(composer(carol.page, `Message ${name}`)).toBeVisible();
+  await expect(carol.page.getByRole("button", { name: "Group settings" })).toBeVisible();
+
+  for (const who of [alice, bob]) {
+    await who.page.getByRole("button", { name: "Direct messages" }).click();
+    await who.page.getByRole("button").filter({ hasText: name }).click();
+    await expect(composer(who.page, `Message ${name}`)).toBeVisible();
+  }
+
+  // A group's header carries Group settings where a DM's has nothing, and still fits.
+  await carol.page.setViewportSize({ width: 300, height: 800 });
+  await expect(carol.page.getByRole("button", { name: "Group settings" })).toBeVisible();
+  await expect.poll(() => pastWindowEdge(carol.page), { message: "the group at 300px" }).toEqual([]);
+});
+
 test("an encrypted DM: each side reads the other's message", async ({ newMember }) => {
   const alice = await newMember();
   const bob = await newMember();

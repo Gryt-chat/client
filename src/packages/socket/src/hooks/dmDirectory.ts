@@ -48,16 +48,48 @@ export function listedConversations(entries: DirectoryEntry[], visiting: string 
   const open: DirectoryEntry[] = [];
   const written: DirectoryEntry[] = [];
   for (const entry of entries) {
-    if (entry.conversation.last_message_at !== null) written.push(entry);
+    /* A group is listed from the start, as the server lists it. Hidden, nobody
+       could open it to write the first message. */
+    if (entry.conversation.last_message_at !== null || entry.conversation.kind === "group") written.push(entry);
     else if (entry.conversation.conversation_id === visiting) open.push(entry);
   }
   return [...open, ...written.sort(newestFirst)];
 }
 
-/** When something last happened here, or 0 for a conversation with nothing in it. */
+/** When something last happened here: the last message, else when it was made. */
 function lastActivity(conversation: DirectConversation): number {
-  const at = (conversation as { last_message_at?: string | null }).last_message_at;
-  return at ? Date.parse(at) || 0 : 0;
+  const { last_message_at: at, created_at: made } = conversation as {
+    last_message_at?: string | null;
+    created_at?: string;
+  };
+  const when = at ?? made;
+  return when ? Date.parse(when) || 0 : 0;
+}
+
+/* Servers that said they take no new conversations, so the new-message dialog
+   can leave their people out. A separate snapshot: the rows do not change. */
+let dmsOff: ReadonlySet<string> = new Set();
+const dmsOffListeners = new Set<() => void>();
+
+export function setHostDmsOff(host: string, off: boolean): void {
+  if (dmsOff.has(host) === off) return;
+  const next = new Set(dmsOff);
+  if (off) next.add(host);
+  else next.delete(host);
+  dmsOff = next;
+  for (const listener of dmsOffListeners) listener();
+}
+
+/** Hosts that turned direct messages off, per the last thing each one said. */
+export function useDmsOffHosts(): ReadonlySet<string> {
+  return useSyncExternalStore(
+    (listener) => {
+      dmsOffListeners.add(listener);
+      return () => dmsOffListeners.delete(listener);
+    },
+    () => dmsOff,
+    () => dmsOff,
+  );
 }
 
 /** One server's answer, replacing whatever it said before. */
@@ -79,15 +111,26 @@ export function forgetHost(host: string): void {
   rebuild();
 }
 
-/* Compared by id and activity rather than by reference: the hook hands back a
+/* Compared by what a row draws rather than by reference: the hook hands back a
    new array on every socket event, and rebuilding on each one repaints the list. */
 function sameList(a: DirectConversation[], b: DirectConversation[]): boolean {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) {
     if (a[i].conversation_id !== b[i].conversation_id) return false;
     if (lastActivity(a[i]) !== lastActivity(b[i])) return false;
+    if (face(a[i]) !== face(b[i])) return false;
   }
   return true;
+}
+
+/* A group renamed, repictured or joined arrives with its id and activity unchanged,
+   so those alone left the old name on the row. */
+function face(conversation: DirectConversation): string {
+  const { name, icon_file_id: icon, members } = conversation as Partial<DirectConversation>;
+  const people = (members ?? [])
+    .map((m) => `${m.server_user_id}:${m.nickname}:${m.avatar_file_id ?? ""}:${m.avatar_worn ?? ""}`)
+    .join(",");
+  return `${name ?? ""}|${icon ?? ""}|${people}`;
 }
 
 function subscribe(listener: () => void) {
@@ -116,6 +159,7 @@ export function directoryHostCount(): number {
 export function resetDirectory(): void {
   byHost = new Map();
   flat = [];
+  dmsOff = new Set();
   for (const listener of listeners) listener();
 }
 

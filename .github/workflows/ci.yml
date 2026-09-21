@@ -37,6 +37,7 @@ jobs:
       - run: yarn test:auth-outage
       - run: yarn test:focus-steal
       - run: yarn test:dm-directory
+      - run: yarn test:new-message
       - run: yarn test:server-hover-address
       - run: yarn test:ui-scale
       - run: yarn test:peer-in-clear
