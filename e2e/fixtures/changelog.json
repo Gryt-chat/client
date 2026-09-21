@@ -7,7 +7,8 @@
       "changes": [
         { "kind": "fixed", "area": "chat", "text": "The first Enter after a pasted address sends it." },
         { "kind": "new", "area": "settings", "text": "Every change in this dialog gets its own pill." },
-        { "kind": "fixed", "area": "servers", "text": "Server settings fit on a phone." }
+        { "kind": "fixed", "area": "servers", "text": "Server settings fit on a phone." },
+        { "kind": "security", "area": "chat", "text": "Security fixes get a block of their own, above the rest." }
       ]
     },
     {
