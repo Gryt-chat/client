@@ -587,10 +587,11 @@ export const ChannelList = ({
     );
   };
 
-  /** Drawn order: top level in position order, each folder followed by its own. */
+  /** Drawn order: top level in position order, each folder followed by its own.
+      A member gets no empty folder; an editor keeps one, to have somewhere to drag into. */
   const rows = useMemo(
-    () => flattenSidebar(effectiveItems, collapsed),
-    [effectiveItems, collapsed],
+    () => flattenSidebar(effectiveItems, collapsed, { hideEmptyFolders: !canManage }),
+    [effectiveItems, collapsed, canManage],
   );
 
   const [localItems, setLocalItems] = useState(() => rows.map((r) => r.item));

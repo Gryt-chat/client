@@ -17,6 +17,12 @@ export interface SidebarRow {
 const byPosition = (a: SidebarItem, b: SidebarItem) =>
   (a.position ?? 0) - (b.position ?? 0) || a.id.localeCompare(b.id);
 
+export interface FlattenOptions {
+  /** Leave out a folder with nothing under it. The server sends every folder,
+      so one whose channels are all hidden from this viewer arrives empty. */
+  hideEmptyFolders?: boolean;
+}
+
 /**
  * Which items are real folders, so a `parentItemId` can be checked against
  * something rather than believed.
@@ -43,6 +49,7 @@ function effectiveParent(item: SidebarItem, folders: Set<string>): string | null
 export function flattenSidebar(
   items: SidebarItem[],
   collapsed: ReadonlySet<string> = new Set(),
+  { hideEmptyFolders = false }: FlattenOptions = {},
 ): SidebarRow[] {
   const folders = folderIds(items);
   const children = new Map<string, SidebarItem[]>();
@@ -61,9 +68,11 @@ export function flattenSidebar(
 
   const rows: SidebarRow[] = [];
   for (const item of [...top].sort(byPosition)) {
+    const inside = children.get(item.id) ?? [];
+    if (item.kind === "folder" && hideEmptyFolders && inside.length === 0) continue;
     rows.push({ item, depth: 0 });
     if (item.kind !== "folder" || collapsed.has(item.id)) continue;
-    for (const child of (children.get(item.id) ?? []).sort(byPosition)) {
+    for (const child of inside.sort(byPosition)) {
       rows.push({ item: child, depth: 1 });
     }
   }
