@@ -15,7 +15,7 @@ function near(actual, expected) {
 }
 
 /** A report shaped like Chromium's: outbound-rtp carries mediaSourceId and no trackIdentifier. */
-function report(t, { screenBytes, cameraBytes, receivedBytes, decoded, dropped, received, lost }) {
+function report(t, { screenBytes, cameraBytes, receivedBytes, decoded, dropped, received, lost, rtt = 0.062, rttMeasurements = 59 }) {
   return [
     // Nominated too, and listed first. The transport's selected pair is the one in use.
     { id: "CPstale", type: "candidate-pair", timestamp: t, state: "succeeded", nominated: true, currentRoundTripTime: 0.5, localCandidateId: "L1", remoteCandidateId: "R1" },
@@ -33,7 +33,7 @@ function report(t, { screenBytes, cameraBytes, receivedBytes, decoded, dropped, 
       qualityLimitationReason: "none", qualityLimitationDurations: { none: 5, cpu: 0, bandwidth: 1.5, other: 0 },
     },
     { id: "OT01V2", type: "outbound-rtp", kind: "video", timestamp: t, ssrc: 2, mediaSourceId: "SV1", codecId: "COT01", bytesSent: cameraBytes, framesPerSecond: 20 },
-    { id: "RIV1", type: "remote-inbound-rtp", kind: "video", timestamp: t, jitter: 0.002, fractionLost: 0.01, packetsLost: 3 },
+    { id: "RIV1", type: "remote-inbound-rtp", kind: "video", timestamp: t, jitter: 0.002, fractionLost: 0.01, packetsLost: 3, roundTripTime: rtt, roundTripTimeMeasurements: rttMeasurements },
     {
       id: "IT01V3", type: "inbound-rtp", kind: "video", timestamp: t, ssrc: 3, trackIdentifier: "remote-track", codecId: "COT01",
       bytesReceived: receivedBytes, framesDecoded: decoded, framesDropped: dropped, packetsReceived: received, packetsLost: lost,
@@ -60,6 +60,16 @@ near(screen.remoteJitterMs, 2);
 near(screen.remoteLossPct, 1);
 assert.equal(screen.remotePacketsLost, 3);
 assert.equal(screen.bandwidthLimitedSeconds, 1.5);
+
+// Chrome counts the receiver reports that carried a round-trip time, and has no reportsReceived.
+near(screen.remoteRttMs, 62);
+assert.equal(screen.remoteRttMeasurements, 59);
+assert.equal(first.outbound[1].remoteRttMeasurements, null, "a sender with no remote-inbound entry has no count");
+
+// Reports with no LSR in them give Chrome nothing to time, so there is no RTT and the count sits at 0.
+const noLsr = readVideoStats(report(10_000, { ...counters, rtt: null, rttMeasurements: 0 }), new Map(), tracks).outbound[0];
+assert.equal(noLsr.remoteRttMs, null);
+assert.equal(noLsr.remoteRttMeasurements, 0);
 
 // A first reading has nothing to take a rate against, and still shows the rows.
 assert.equal(screen.bitrateKbps, null);
