@@ -428,7 +428,7 @@ const SEVERAL_FIXES = {
   assert.deepEqual(
     rows(html),
     [
-      { pills: ["Security/warning"], text: "Uploads are checked" },
+      { pills: ["Security/danger"], text: "Uploads are checked" },
       { pills: ["New/primary"], text: "Webhooks post cards" },
       { pills: ["Changed/neutral"], text: "Webhook avatars are resized" },
       { pills: ["Fixed/neutral"], text: "Updates said there were none" },
@@ -437,7 +437,15 @@ const SEVERAL_FIXES = {
     ],
     "a change is not its own row with its own pill, in KIND_ORDER with its label and tone",
   );
-  assert.doesNotMatch(html, /whats-new-plain/, "a release with changes also drew its one-sentence line");
+
+  // The line goes above everything, the security block included. Sivert asked for it on 2026-09-21.
+  const line = html.indexOf('<p class="whats-new-line">Six things.</p>');
+  assert.ok(line >= 0, "a release with changes no longer draws its one-sentence line");
+  assert.ok(
+    line < html.indexOf('class="whats-new-security"') && line < html.indexOf("<li"),
+    "the line is drawn below the security block or the changes, rather than above both",
+  );
+  assert.doesNotMatch(html, /whats-new-plain/, "a release with changes drew its line as the fallback for one without");
 }
 
 // A kind this build cannot name is labelled with the kind itself, and stays neutral.
@@ -525,30 +533,37 @@ assert.deepEqual(
   "an area that isn't a string became a heading of its own",
 );
 
-/** What the list draws, in order: each heading as `# name` and each row as `pill: text`. */
+/**
+ * What a release draws, in order: the line, each heading with its level, and each row
+ * as `pill: text`. Everything inside the security block is marked `security ›`.
+ */
 function drawn(html) {
-  const parts = /<(h[34]) class="whats-new-area">([^<]*)<\/h[34]>|<li\b[^>]*>([\s\S]*?)<\/li>/g;
-  return [...html.matchAll(parts)].map(([, level, heading, row]) =>
-    heading !== undefined
-      ? `${level} ${heading.replace(/&amp;/g, "&")}`
-      : row.replace(/<span class="whats-new-kind" data-tone="[^"]*">([^<]*)<\/span>/, "$1: ").replace(/<[^>]+>/g, ""),
-  );
+  const parts =
+    /<p class="whats-new-line">([^<]*)<\/p>|<div class="whats-new-security">([\s\S]*?<\/ul>)<\/div>|<(h[34]) class="whats-new-area">([^<]*)<\/h[34]>|<li\b[^>]*>([\s\S]*?)<\/li>/g;
+  const plain = (text) => text.replace(/&amp;/g, "&");
+  return [...html.matchAll(parts)].flatMap(([, line, security, level, heading, row]) => {
+    if (line !== undefined) return [`line: ${plain(line)}`];
+    if (security !== undefined) return drawn(security).map((part) => `security › ${part}`);
+    if (heading !== undefined) return [`${level} ${plain(heading)}`];
+    return [row.replace(/<span class="whats-new-kind" data-tone="[^"]*">([^<]*)<\/span>/, "$1: ").replace(/<[^>]+>/g, "")];
+  });
 }
 
 const SPREAD = {
   version: "1.11.32",
   date: "2026-09-21",
-  line: "Five things in three places.",
+  line: "Six things in three places.",
   changes: [
     at("servers", "new", "Copy an invite link"),
     at("voice", "fixed", "A call reconnects to its own server"),
     at("chat", "changed", "Long pastes become a file"),
+    at("chat", "security", "Messages only reach members who can read the channel"),
     at("voice", "changed", "The screen share gets the upload first"),
     c("fixed", "Something nobody filed"),
   ],
 };
 
-// One release across areas: a heading over each, in AREAS order, with the kinds ordered inside it.
+// One release across areas: the line, then security on its own, then a heading over each area in AREAS order.
 {
   const html = renderToStaticMarkup(
     createElement(WhatsNewDialog, { releases: [SPREAD], since: null, capped: false, onClose() {} }),
@@ -556,6 +571,9 @@ const SPREAD = {
   assert.deepEqual(
     drawn(html),
     [
+      "line: Six things in three places.",
+      "security › h3 Security",
+      "security › Security: Messages only reach members who can read the channel",
       "h3 Voice & video",
       "Changed: The screen share gets the upload first",
       "Fixed: A call reconnects to its own server",
@@ -566,29 +584,55 @@ const SPREAD = {
       "h3 Other",
       "Fixed: Something nobody filed",
     ],
-    "a release across areas is not drawn as a heading per area, AREAS first and Other last",
+    "a release across areas is not its line, then security, then a heading per area with Other last",
+  );
+  assert.equal(
+    html.split("Messages only reach members who can read the channel").length,
+    2,
+    "a security fix is drawn again under its own area",
   );
 }
 
-// Every change in one area, or a feed with no areas at all: no headings, and the rows as they always were.
+// Security fixes and nothing else: the line and the block, with no other heading.
+{
+  const html = renderToStaticMarkup(
+    createElement(ReleaseBody, { line: "Only this.", changes: [at("self-hosting", "security", "Registration is local")] }),
+  );
+  assert.deepEqual(
+    drawn(html),
+    ["line: Only this.", "security › h3 Security", "security › Security: Registration is local"],
+    "a release with only security fixes is not its line and the security block",
+  );
+}
+
+// Every change in one area, or a feed with no areas at all: security on its own, then no headings.
 for (const changes of [
   SEVERAL_FIXES.changes.map((change) => ({ ...change, area: "settings" })),
   SEVERAL_FIXES.changes,
 ]) {
   const html = renderToStaticMarkup(createElement(ReleaseBody, { line: "x", changes }));
-  assert.doesNotMatch(html, /whats-new-area/, "a release whose changes share one area, or have none, got headings");
   assert.deepEqual(
     drawn(html),
     [
-      "Security: Uploads are checked",
+      "line: x",
+      "security › h3 Security",
+      "security › Security: Uploads are checked",
       "New: Webhooks post cards",
       "Changed: Webhook avatars are resized",
       "Fixed: Updates said there were none",
       "Fixed: A hosted server said reconnecting",
       "Fixed: The desktop entry listed gryt five times",
     ],
-    "a release with one area or none is not the plain list of rows it was before areas",
+    "a release with one area or none is not its line, the security block, then its rows with no heading",
   );
+}
+
+// No security fix, no block.
+{
+  const html = renderToStaticMarkup(
+    createElement(ReleaseBody, { line: "x", changes: SEVERAL_FIXES.changes.filter((change) => change.kind !== "security") }),
+  );
+  assert.doesNotMatch(html, /whats-new-security|>Security</, "a release with no security fix drew a security block");
 }
 
 // Several releases: headings one level under the version, only where a release spans areas.
@@ -598,17 +642,24 @@ for (const changes of [
     createElement(WhatsNewDialog, { releases: [SPREAD, SEVERAL_FIXES, OLD], since: "1.9.3", capped: false, onClose() {} }),
   );
   const [spread, fixes, old] = html.split('<section class="whats-new-release">').slice(1);
+  const headings = (part) => drawn(part).filter((x) => /^(security › )?h[34] /.test(x));
   assert.deepEqual(
-    drawn(spread).filter((part) => part.startsWith("h")),
-    ["h4 Voice & video", "h4 Chat", "h4 Servers & invites", "h4 Other"],
+    headings(spread),
+    ["security › h4 Security", "h4 Voice & video", "h4 Chat", "h4 Servers & invites", "h4 Other"],
     "the headings in a range of releases are not one level under the version's",
   );
-  assert.doesNotMatch(fixes, /whats-new-area/, "a release with no areas got headings in a range");
-  assert.equal(drawn(fixes).length, SEVERAL_FIXES.changes.length, "a release with no areas lost rows in a range");
+  assert.equal(drawn(spread)[0], "line: Six things in three places.", "a release in a range doesn't start with its line");
+  assert.deepEqual(headings(fixes), ["security › h4 Security"], "a release with no areas got area headings in a range");
+  assert.equal(drawn(fixes)[0], "line: Six things.", "a release with no areas lost its line in a range");
+  assert.equal(
+    drawn(fixes).filter((x) => !x.startsWith("line: ") && !headings(fixes).includes(x)).length,
+    SEVERAL_FIXES.changes.length,
+    "a release with no areas lost rows in a range",
+  );
   assert.match(old, /whats-new-plain/, "a release from before 1.10 lost its one sentence in a range");
 }
 
-// The areas share the release's pill column too, and it stacks with the rest on a narrow card.
+// The line, the security block and the areas share the release's pill column, and stack together on a narrow card.
 {
   const style = readFileSync(join(root, "src/style.css"), "utf8");
   const rule = (selector) => {
@@ -616,14 +667,26 @@ for (const changes of [
     assert.notEqual(found, -1, `src/style.css no longer has ${selector}. Move this check with it.`);
     return style.slice(found, style.indexOf("}", found));
   };
-  assert.match(rule(".whats-new-areas"), /grid-template-columns:\s*max-content minmax\(0, 1fr\)/, "the areas don't share one pill column");
-  assert.match(rule(".whats-new-areas > .whats-new-changes"), /grid-template-columns:\s*subgrid/, "an area sizes its own pill column");
-  assert.match(style, /\.whats-new-release > \.whats-new-areas \{\s*display: grid;[^}]*subgrid/, "a release's areas size their own pill column in a range");
+  assert.match(rule(".whats-new-body"), /grid-template-columns:\s*max-content minmax\(0, 1fr\)/, "a release doesn't have one pill column");
+  assert.match(style, /\n\.whats-new-body > \.whats-new-changes,\n\.whats-new-security > \.whats-new-changes \{\s*grid-template-columns: subgrid;/, "an area or the security block sizes its own pill column");
+  assert.match(rule(".whats-new-security"), /grid-template-columns:\s*subgrid/, "the security block sizes its own pill column");
+  assert.match(style, /\.whats-new-release > \.whats-new-body \{\s*display: grid;[^}]*subgrid/, "a release sizes its own pill column in a range");
   assert.match(
     style.slice(style.indexOf("@container (max-width: 380px)")),
-    /^[^}]*\.whats-new-areas,[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/,
-    "the areas keep a pill column on a card too narrow for one",
+    /^[^}]*\.whats-new-body,[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/,
+    "a release keeps a pill column on a card too narrow for one",
   );
+
+  // Red from the theme, so it follows light and dark, and pulled out as far as it's padded so the pills line up.
+  const block = rule(".whats-new-security");
+  assert.match(block, /background: var\(--gryt-danger-2\)/, "the security block isn't tinted with the theme's danger red");
+  assert.match(block, /var\(--gryt-danger-6\)/, "the security block has no danger-red edge");
+  assert.match(rule(".whats-new-security > .whats-new-area"), /color: var\(--gryt-danger-11\)/, "the Security heading isn't danger red");
+  assert.doesNotMatch(block, /#[0-9a-f]{3,8}\b|rgb\(/i, "the security block uses a colour of its own instead of the theme's");
+  const inline = (value) => value.trim().split(/\s+/)[1];
+  const margin = inline(block.match(/\n\s*margin: ([^;]+);/)[1]);
+  const padding = inline(block.match(/\n\s*padding: ([^;]+);/)[1]);
+  assert.equal(margin, `-${padding}`, "the security block's side margin doesn't cancel its padding, so its pills leave the column");
 }
 
 /* `new Date("2026-09-08")` is UTC midnight, so west of Greenwich a release is
@@ -724,6 +787,6 @@ assert.deepEqual(notified, ["user_1"], "markLoaded does not tell its listeners")
 console.log(
   "what's new: ok, waits for the store, once per version, quiet on a fresh " +
     "install and with no line; revalidates and retries " +
-    `${RETRY_DELAYS_MS.length} times; a pill on every change, security first, unknown kinds kept, ` +
-    "a heading per area only when there are two, dates local",
+    `${RETRY_DELAYS_MS.length} times; a pill on every change, unknown kinds kept, the line on top, ` +
+    "security in a red block of its own, a heading per area only when there are two, dates local",
 );

@@ -36,7 +36,7 @@ const LABELS: Record<string, string> = {
  */
 const TONES: Record<string, ChipProps["tone"]> = {
   new: "primary",
-  security: "warning",
+  security: "danger",
 };
 
 /**
@@ -111,8 +111,8 @@ function ChangeRows({ changes }: { changes: WhatsNewChange[] }) {
 }
 
 /**
- * One release's changes, a pill on each and a heading over each area, or its one
- * sentence where it was never split. Changes that all share an area get no heading.
+ * One release: its line, then its security fixes in a block of their own, then the
+ * rest under a heading per area. Changes that all share an area get no heading.
  */
 function ReleaseBody({
   line,
@@ -127,18 +127,29 @@ function ReleaseBody({
      label. Their one sentence is shown as it is written. */
   if (!changes?.length) return <p className="whats-new-plain">{line}</p>;
 
-  const areas = grouped(changes);
-  if (areas.length === 1) return <ChangeRows changes={changes} />;
-
+  const security = changes.filter((c) => c.kind === "security");
+  const areas = grouped(changes.filter((c) => c.kind !== "security"));
   const Heading = heading;
+
   return (
-    <div className="whats-new-areas">
-      {areas.map(([area, inArea]) => (
-        <Fragment key={area}>
-          <Heading className="whats-new-area">{area}</Heading>
-          <ChangeRows changes={inArea} />
-        </Fragment>
-      ))}
+    <div className="whats-new-body">
+      <p className="whats-new-line">{line}</p>
+      {security.length > 0 && (
+        <div className="whats-new-security">
+          <Heading className="whats-new-area">Security</Heading>
+          <ChangeRows changes={security} />
+        </div>
+      )}
+      {areas.length === 1 ? (
+        <ChangeRows changes={areas[0][1]} />
+      ) : (
+        areas.map(([area, inArea]) => (
+          <Fragment key={area}>
+            <Heading className="whats-new-area">{area}</Heading>
+            <ChangeRows changes={inArea} />
+          </Fragment>
+        ))
+      )}
     </div>
   );
 }
