@@ -3,7 +3,7 @@ export interface Release {
   version: string;
   date: string;
   line: string;
-  changes?: { kind: string; text: string }[];
+  changes?: { kind: string; area?: string; text: string }[];
   channel?: string;
   note?: boolean;
 }
