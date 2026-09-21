@@ -30,6 +30,10 @@ const COUNTER_VISIBLE_FROM = MESSAGE_MAX_LENGTH - 500;
 /** A paste that cannot fit in one message becomes an ordinary text attachment. */
 const LARGE_PASTE_FILE_NAME = "pasted-text.txt";
 
+/** Said instead, where the attachment would be refused. */
+const LONG_PASTE_NO_FILES =
+  `That's too long to paste. Messages can be up to ${MESSAGE_MAX_LENGTH.toLocaleString("en")} characters, and you can't attach files here.`;
+
 export interface ChatEditorHandle {
   clear: () => void;
   focus: () => void;
@@ -37,6 +41,8 @@ export interface ChatEditorHandle {
   getFiles: () => File[];
   addFiles: (files: FileList | File[]) => void;
   setContent: (text: string) => void;
+  /** A message that did not go out: its files come back, and its text if the box is empty. */
+  restore: (draft: { text: string; files: File[] }) => void;
 }
 
 interface PendingFile {
@@ -373,6 +379,11 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
             );
             return;
           }
+          // The file below would be refused, and the paste gone with it.
+          if (allowFiles === false) {
+            toast.error(LONG_PASTE_NO_FILES);
+            return;
+          }
 
           addFiles([
             new File([text], LARGE_PASTE_FILE_NAME, {
@@ -384,7 +395,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
 
         document.execCommand("insertText", false, text);
       },
-      [addFiles, isEditing]
+      [addFiles, isEditing, allowFiles]
     );
 
     const handleDrop = useCallback(
@@ -475,6 +486,22 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
       setEmojiPickerOpen(false);
     }, [serverHost]);
 
+    const setContent = useCallback((text: string) => {
+      const el = editorRef.current;
+      if (!el) return;
+      el.textContent = text;
+      autoResize(el);
+      setLength(text.trim().length);
+      requestAnimationFrame(() => {
+        el.focus();
+        const sel = window.getSelection();
+        if (sel) {
+          sel.selectAllChildren(el);
+          sel.collapseToEnd();
+        }
+      });
+    }, []);
+
     useImperativeHandle(ref, () => ({
       clear: () => {
         if (editorRef.current) {
@@ -488,19 +515,14 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
       getMarkdown: () => editorRef.current ? serializeContentEditable(editorRef.current) : "",
       getFiles: () => pendingFiles.map((p) => p.file),
       addFiles,
-      setContent: (text: string) => {
+      setContent,
+      restore: ({ text, files }) => {
         const el = editorRef.current;
         if (!el) return;
-        el.textContent = text;
-        autoResize(el);
-        requestAnimationFrame(() => {
-          el.focus();
-          const sel = window.getSelection();
-          if (sel) {
-            sel.selectAllChildren(el);
-            sel.collapseToEnd();
-          }
-        });
+        // Whatever was typed since the send stays, and the files join it.
+        if (text && !serializeContentEditable(el).trim()) setContent(text);
+        else el.focus();
+        if (files.length > 0) addFiles(files);
       },
     }));
 

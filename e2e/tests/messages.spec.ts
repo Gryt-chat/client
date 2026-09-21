@@ -1,4 +1,5 @@
-import { channelComposer, messageRow, sendMessage, unique } from "../support/app";
+import { accessTokenOf, ask, withSocket } from "../support/admin";
+import { channelComposer, messageRow, pasteText, sendMessage, unique } from "../support/app";
 import { expect, test } from "../support/fixtures";
 
 test("a message sent with one Enter reaches the other members", async ({ newMember }) => {
@@ -34,16 +35,75 @@ test("an oversized paste becomes a text attachment instead of filling the compos
   await alice.context.grantPermissions(["clipboard-read", "clipboard-write"]);
 
   const box = channelComposer(alice.page);
-  await box.click();
-
-  const pasted = "x".repeat(4001);
-  await alice.page.evaluate((text) => navigator.clipboard.writeText(text), pasted);
-  await alice.page.keyboard.press("ControlOrMeta+V");
+  await pasteText(alice.page, box, "x".repeat(4001));
 
   await expect(box).toHaveText("");
   await expect(
     alice.page.getByText("pasted-text.txt", { exact: true }),
   ).toBeVisible();
+});
+
+test("an oversized paste where files can't be attached says so", async ({ newMember, freshServer }) => {
+  test.skip(!!process.env.GRYT_E2E_SERVER, "needs a server of its own, and GRYT_E2E_SERVER gives one");
+
+  const server = await freshServer();
+  const owner = await newMember({ server, label: "owner" });
+  const alice = await newMember({ server });
+  await alice.context.grantPermissions(["clipboard-read", "clipboard-write"]);
+
+  const attach = alice.page.getByRole("button", { name: "Attach file" });
+  await expect(attach).toBeVisible();
+  const accessToken = await accessTokenOf(owner.page, server.host);
+  await withSocket(server.httpBase, async (socket) => {
+    const state = await ask<{ roles?: { id: string; permissions: string[] }[] }>(
+      socket, "server:roles:definitions:list", { accessToken }, "server:roles:definitions",
+    );
+    const member = state.roles?.find((role) => role.id === "member");
+    expect(member?.permissions, "new guests should start as members who can attach").toContain("attach_files");
+    const refused = new Promise<never>((_, reject) =>
+      socket.once("server:error", (e: { message?: string }) => reject(new Error(`Saving the role was refused: ${e?.message}`))),
+    );
+    refused.catch(() => undefined);
+    socket.emit("server:roles:definitions:save", {
+      accessToken, roleId: "member", permissions: member!.permissions.filter((p) => p !== "attach_files"),
+    });
+    await Promise.race([expect(attach).toHaveCount(0), refused]);
+  });
+
+  const box = channelComposer(alice.page);
+  await pasteText(alice.page, box, "x".repeat(4001));
+
+  await expect(alice.page.getByText("That's too long to paste. Messages can be up to 4,000 characters, and you can't attach files here.")).toBeVisible();
+  await expect(box).toHaveText("");
+  await expect(alice.page.getByRole("button", { name: "Remove file" })).toHaveCount(0);
+});
+
+test("a message whose upload fails comes back to the composer, and its row says it failed", async ({ newMember }) => {
+  const alice = await newMember();
+  await alice.context.grantPermissions(["clipboard-read", "clipboard-write"]);
+
+  const text = unique("sent with a long paste");
+  const box = channelComposer(alice.page);
+  await box.click();
+  await alice.page.keyboard.insertText(text);
+  await pasteText(alice.page, box, "y".repeat(4001));
+  const files = alice.page.getByRole("button", { name: "Remove file" });
+  await expect(files).toHaveCount(1);
+
+  await alice.page.route("**/api/uploads", (route) => route.abort("connectionrefused"));
+  await box.press("Enter");
+
+  await expect(alice.page.locator("[data-message-id]").filter({ hasText: text })).toContainText("Failed to send");
+  await expect(box).toHaveText(text);
+  await expect(files).toHaveCount(1);
+
+  // What came back is the whole message: one Enter sends it.
+  await alice.page.unroute("**/api/uploads");
+  await box.press("Enter");
+  await expect(messageRow(alice.page, text)).toBeVisible();
+  await expect(messageRow(alice.page, text)).toContainText("pasted-text.txt");
+  await expect(box).toHaveText("");
+  await expect(files).toHaveCount(0);
 });
 
 test("editing a message changes it for everyone", async ({ newMember }) => {

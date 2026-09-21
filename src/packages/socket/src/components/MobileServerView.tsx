@@ -213,7 +213,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
           chatMessages={props.chatMessages}
           sealing={props.sealing}
           memberNames={props.memberNames}
-          conversationKey={props.selectedChannelId ?? undefined}
+          conversationKey={props.selectedDmId ?? props.selectedChannelId ?? undefined}
           canSend={props.canSend}
           canSendHere={props.canSendHere}
           sendChat={props.sendChat}
