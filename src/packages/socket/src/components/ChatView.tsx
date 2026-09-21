@@ -59,6 +59,8 @@ export const ChatView = memo(({
   memberNames,
   serverName,
   headerAction,
+  headerLead,
+  headerDetail,
   underHeader,
   flush,
   isRateLimited,
@@ -107,6 +109,10 @@ export const ChatView = memo(({
   /** A slot rather than a named button: the DM view puts "start a group" here
       and a channel puts nothing. */
   headerAction?: React.ReactNode;
+  /** Before the icon. The tiny window's direct messages put the way back to the list here. */
+  headerLead?: React.ReactNode;
+  /** Beside the name. A direct message puts the server it's on here. */
+  headerDetail?: React.ReactNode;
   /** A slot rather than the panel, because this is the same component for a DM
       and knows nothing about servers. */
   underHeader?: React.ReactNode;
@@ -580,12 +586,15 @@ export const ChatView = memo(({
         )}
         <div className="flex h-full w-full flex-col p-3" style={{ position: "relative" }}>
           {channelName && (
-            <div className="flex items-center gap-2" style={{ marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid var(--gryt-neutral-6)" }}>
+            <div className="flex min-w-0 items-center gap-2" data-gryt="chat-header" style={{ marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid var(--gryt-neutral-6)" }}>
+              {headerLead}
               {isForum ? <PiChatsFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : automated ? <PiRobotFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : channelType === "voice" && conversationKind === "channel" ? <PiSpeakerHighFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : <PiChatCircleFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} />}
-              <span className="text-lg font-bold" style={{ color: "var(--gryt-neutral-12)" }}>
+              {/* One line that gives way, or a long name pushes the buttons out of a narrow window. */}
+              <span className="min-w-0 truncate text-lg font-bold" title={channelName} style={{ color: "var(--gryt-neutral-12)" }}>
                 <EmojiText text={channelName} />
               </span>
-              {headerAction && <div style={{ marginLeft: "auto" }}>{headerAction}</div>}
+              {headerDetail}
+              {headerAction && <div className="shrink-0" style={{ marginLeft: "auto" }}>{headerAction}</div>}
             </div>
           )}
 

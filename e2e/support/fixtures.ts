@@ -29,6 +29,8 @@ export interface MemberOptions {
   /** Another server than the worker's, such as one from `freshServer`. */
   server?: GrytServer;
   label?: string;
+  /** In place of the generated one. Pass it through `uniqueName` to keep it unique. */
+  nickname?: string;
 }
 
 const PHONE: BrowserContextOptions = {
@@ -157,7 +159,7 @@ export const test = base.extend<
     await provide(async (options = {}) => {
       const label = options.label ?? `guest ${contexts.length + 1}`;
       const server = options.server ?? gryt.server;
-      const name = uniqueName(`Guest${contexts.length + 1}`);
+      const name = options.nickname ?? uniqueName(`Guest${contexts.length + 1}`);
       const context = await browser.newContext(options.phone ? PHONE : {});
       contexts.push(context);
       await prepare(context, problems.report, { nickname: name, welcome: options.welcome, agreed: options.agreed });

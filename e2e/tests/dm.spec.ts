@@ -6,7 +6,8 @@ import {
   attachAndSend, clipboardHoldsImage, composer, CONFIRMED_ROW, fixture, joinServer, type Member, membersPanel, messageRow,
   pasteText, savedFile, sendMessage, sha256, unique,
 } from "../support/app";
-import { expect, test } from "../support/fixtures";
+import { expect, test, uniqueName } from "../support/fixtures";
+import { pastWindowEdge } from "../support/overflow";
 
 const ENCRYPTED = "This conversation is encrypted.";
 
@@ -38,6 +39,58 @@ test("clicking a member opens a DM with them", async ({ newMember }) => {
 
   await expect(bob.page.getByText(`You and ${alice.name}.`)).toBeVisible();
   await expect(bob.page.getByText(ENCRYPTED)).toBeVisible();
+});
+
+test("a DM lights no server in the rail, and its header names the server instead", async ({ newMember }) => {
+  const alice = await newMember();
+  const bob = await newMember();
+  const rail = bob.page.locator('[data-gryt="sidebar"]');
+  const server = rail.getByRole("button", { name: "Gryt E2E", exact: true });
+  const dmButton = rail.getByRole("button", { name: "Direct messages" });
+  await expect(server).toHaveAttribute("aria-current", "true");
+
+  await openDmFromMembers(bob, alice);
+  await expect(dmButton).toHaveAttribute("aria-pressed", "true");
+  // The server is still underneath, holding the conversation's socket. Only the rail stops lighting it.
+  await expect(rail.locator("[aria-current]")).toHaveCount(0);
+  await expect(server).toHaveCSS("opacity", "0.5");
+
+  const header = bob.page.locator('[data-gryt="chat-header"]');
+  await expect(header).toContainText(alice.name);
+  await expect(header.getByTitle("Gryt E2E")).toBeVisible();
+
+  const row = bob.page.getByRole("button", { name: alice.name });
+  await expect(row.getByRole("img", { name: "Gryt E2E" })).toBeVisible();
+  await expect(row).not.toContainText("Gryt E2E");
+
+  await dmButton.click();
+  await expect(server).toHaveAttribute("aria-current", "true");
+});
+
+test("a DM in a window too narrow for the rail stays inside it, with the list a press away", async ({ newMember }) => {
+  // One word with nowhere to wrap, so the header has to cut it short to stay inside the window.
+  const alice = await newMember({ nickname: uniqueName("Aurora_Borealis_Nordlys") });
+  const bob = await newMember();
+  const { page } = bob;
+  await openDmFromMembers(bob, alice);
+  await send(page, alice.name, unique("in a small window"));
+
+  const back = page.locator('[data-gryt="chat-header"]').getByRole("button", { name: "Back to messages" });
+  const box = composer(page, `Message ${alice.name}`);
+  for (const width of [520, 400, 300]) {
+    await page.setViewportSize({ width, height: 800 });
+    await expect(back).toBeVisible();
+    await expect.poll(() => pastWindowEdge(page), { message: `the conversation at ${width}px` }).toEqual([]);
+
+    await back.click();
+    const row = page.getByRole("button", { name: alice.name });
+    await expect(row).toBeVisible();
+    await expect(box).toBeHidden();
+    await expect.poll(() => pastWindowEdge(page), { message: `the list at ${width}px` }).toEqual([]);
+
+    await row.click();
+    await expect(box).toBeVisible();
+  }
 });
 
 test("an encrypted DM: each side reads the other's message", async ({ newMember }) => {

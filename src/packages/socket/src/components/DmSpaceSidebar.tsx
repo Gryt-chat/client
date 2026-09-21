@@ -13,12 +13,14 @@ import { DmSpaceList } from "./DmSpaceList";
  * this one's: it is the only column in Gryt that crosses servers (GRYT-1134).
  */
 export function DmSpaceSidebar({
-  host, selectedConversationId, onOpen,
+  host, selectedConversationId, onOpen, fill = false,
 }: {
   /** The server currently rendered beside this, so a row on it opens directly. */
   host: string;
   selectedConversationId: string | null;
   onOpen: (conversation: { conversation_id: string }) => void;
+  /** The whole of what it's in, for the phone's sheet and the tiny window, rather than a 300px column. */
+  fill?: boolean;
 }) {
   const entries = useDirectory();
   const { countFor } = useDirectoryUnread();
@@ -58,8 +60,8 @@ export function DmSpaceSidebar({
 
   return (
     <aside
-      className="flex shrink-0 flex-col overflow-hidden rounded-(--gryt-radius-lg)"
-      style={{ width: 300, background: "var(--gryt-neutral-2)" }}
+      className={`flex shrink-0 flex-col overflow-hidden${fill ? "" : " rounded-(--gryt-radius-lg)"}`}
+      style={{ width: fill ? "100%" : 300, height: fill ? "100%" : undefined, background: "var(--gryt-neutral-2)" }}
     >
       <h1 className="px-4 pb-3 pt-4 text-lg" style={{ fontWeight: 700, letterSpacing: "-0.01em" }}>
         Messages

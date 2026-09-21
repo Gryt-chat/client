@@ -154,6 +154,7 @@ export const PiBugFill: Icon = weighted(Bug, "fill", "PiBugFill");
 export const PiCameraFill: Icon = weighted(Camera, "fill", "PiCameraFill");
 export const PiCaretDownBold: Icon = weighted(CaretDown, "bold", "PiCaretDownBold");
 export const PiCaretDownFill: Icon = weighted(CaretDown, "fill", "PiCaretDownFill");
+export const PiCaretLeftBold: Icon = weighted(CaretLeft, "bold", "PiCaretLeftBold");
 export const PiCaretLeftFill: Icon = weighted(CaretLeft, "fill", "PiCaretLeftFill");
 export const PiCaretRightBold: Icon = weighted(CaretRight, "bold", "PiCaretRightBold");
 export const PiCaretRightFill: Icon = weighted(CaretRight, "fill", "PiCaretRightFill");

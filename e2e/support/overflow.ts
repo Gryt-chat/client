@@ -1,4 +1,4 @@
-import type { Locator } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
 export interface Overflow {
   /** Elements whose visible part ends past the dialog's edge, and by how much. */
@@ -76,5 +76,31 @@ export function measureOverflow(scope: Locator): Promise<Overflow> {
       if (!el.parentElement || !flagged.has(el.parentElement)) pastEdge.push(`${describe(el)} by ${Math.round(over)}px`);
     }
     return { pastEdge, scrollsSideways };
+  });
+}
+
+/**
+ * GRYT-1343's measurement, for a page with no dialog: whatever ends past the window's right
+ * edge. Clipped counts too, since the chat pane clips the buttons a long name pushes out.
+ */
+export function pastWindowEdge(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const width = document.documentElement.clientWidth;
+    const past: string[] = [];
+    const flagged = new Set<Element>();
+    for (const el of document.body.querySelectorAll("*")) {
+      const style = getComputedStyle(el);
+      if (style.display === "none" || style.visibility === "hidden") continue;
+      const rect = el.getBoundingClientRect();
+      if (rect.width <= 1 || rect.height <= 1 || rect.right - width <= 1) continue;
+      flagged.add(el);
+      if (el.parentElement && flagged.has(el.parentElement)) continue;
+      const text = (el.textContent ?? "").trim().replace(/\s+/g, " ").slice(0, 40);
+      const label = el.getAttribute("aria-label");
+      past.push(`<${el.tagName.toLowerCase()}>${label ? ` [${label}]` : ""}${text ? ` "${text}"` : ""} by ${Math.round(rect.right - width)}px`);
+    }
+    const scroll = document.documentElement.scrollWidth - width;
+    if (scroll > 0) past.push(`the page scrolls sideways by ${scroll}px`);
+    return past;
   });
 }

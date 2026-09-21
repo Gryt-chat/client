@@ -116,6 +116,17 @@ for (let w = 300; w <= TINY_MAX_WIDTH; w += 1) {
   );
 }
 
+/* ── Direct messages in the tiny window ─────────────────────────────── */
+
+// GRYT-1343: the space kept its list only in the wide layout, and a long name pushed the header out.
+{
+  const view = readFileSync(new URL("../src/packages/socket/src/components/serverView.tsx", import.meta.url), "utf8");
+  const tiny = view.slice(view.indexOf("{isTiny ? ("), view.indexOf(") : isMobile ? ("));
+  assert.match(tiny, /showTinyList \? \(\s*<DmSpaceSidebar[^>]*\bfill\b/, "the tiny window has no conversation list to go back to");
+  assert.match(view, /headerLead=\{tinyBack\}/, "the tiny window's conversation has no way back to the list");
+  assert.match(view, /className="[^"]*\bmin-w-0\b[^"]*" data-gryt="server-view"/, "the server view can't shrink below its header's one-line name");
+}
+
 /* ── Server settings ───────────────────────────────────────────────── */
 
 // The rail keeps 400px of page beside it: 2rem margins, 21px padding, 200 rail, 16 gap.

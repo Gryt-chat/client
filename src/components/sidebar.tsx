@@ -168,9 +168,9 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
               key={host}
               host={host}
               servers={servers}
-              /* Nothing in the list is current while Discovery has the pane.
-                 Leaving the last server lit says you are looking at it. */
-              currentlyViewingServer={showDiscovery ? null : currentlyViewingServer}
+              /* Nothing in the list is current while Discovery or direct messages have the
+                 pane. A conversation's server sits underneath for its socket, not on screen. */
+              currentlyViewingServer={showDiscovery || dmSpaceOpen ? null : currentlyViewingServer}
               serverConnectionStatus={serverConnectionStatus}
               serverDetailsList={serverDetailsList}
               voice={voice}
@@ -457,6 +457,7 @@ function ServerItem({
                       type="button"
                       // The icon is the only content, so without this every server is an unnamed button.
                       aria-label={servers[host]?.name || host}
+                      aria-current={currentlyViewingServer?.host === host ? "true" : undefined}
                       style={{
                         cursor: isUnavailable ? "not-allowed" : "pointer",
                       }}
