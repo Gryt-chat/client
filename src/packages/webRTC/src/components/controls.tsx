@@ -92,9 +92,12 @@ export function Controls({ onDisconnect }: ControlsProps) {
   const webrtcCameraStreamId = useRef<string | null>(null);
   const webrtcScreenVideoStreamId = useRef<string | null>(null);
   const webrtcScreenAudioStreamId = useRef<string | null>(null);
-  // useSFU hands out a new getter every render, so the effects read it here rather than re-run.
+  // Getters through refs: as effect dependencies, voice 0.5.8's new-every-render getters re-ran
+  // the camera effect four times a second, and each run reset the camera's scaling (GRYT-1333).
   const getPeerConnectionRef = useRef(getPeerConnection);
   getPeerConnectionRef.current = getPeerConnection;
+  const getScreenVideoSenderRef = useRef(getScreenVideoSender);
+  getScreenVideoSenderRef.current = getScreenVideoSender;
   const [showCameraModal, setShowCameraModal] = useState(false);
   const [showScreenShareModal, setShowScreenShareModal] = useState(false);
   const [isStartingScreenShare, setIsStartingScreenShare] = useState(false);
@@ -117,26 +120,24 @@ export function Controls({ onDisconnect }: ControlsProps) {
         webrtcCameraStreamId.current = senderStreamId(getPeerConnectionRef.current?.(), "camera", cameraStream.id);
         prevCameraStreamRef.current = cameraStream;
 
-        if (getPeerConnection) {
-          const pc = getPeerConnection();
-          if (pc) {
-            const senders = pc.getSenders();
-            const cameraSender = senders.find(s => s.track === videoTrack);
-            if (cameraSender) {
-              const params = cameraSender.getParameters();
-              params.degradationPreference = "maintain-framerate";
-              if (params.encodings && params.encodings.length > 0) {
-                params.encodings[0].priority = screenShareActive ? "low" : "medium";
-              }
-              const priority = params.encodings?.[0]?.priority ?? "default";
-              voiceLog.info(
-                "CAMERA",
-                `setParameters: priority=${priority} degradationPreference=${params.degradationPreference}`,
-              );
-              cameraSender.setParameters(params).catch((err: unknown) => {
-                voiceLog.warn("CAMERA", `setParameters failed: ${err}`);
-              });
+        const pc = getPeerConnectionRef.current?.();
+        if (pc) {
+          const senders = pc.getSenders();
+          const cameraSender = senders.find(s => s.track === videoTrack);
+          if (cameraSender) {
+            const params = cameraSender.getParameters();
+            params.degradationPreference = "maintain-framerate";
+            if (params.encodings && params.encodings.length > 0) {
+              params.encodings[0].priority = screenShareActive ? "low" : "medium";
             }
+            const priority = params.encodings?.[0]?.priority ?? "default";
+            voiceLog.info(
+              "CAMERA",
+              `setParameters: priority=${priority} degradationPreference=${params.degradationPreference}`,
+            );
+            cameraSender.setParameters(params).catch((err: unknown) => {
+              voiceLog.warn("CAMERA", `setParameters failed: ${err}`);
+            });
           }
         }
       }
@@ -149,7 +150,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
       prevCameraStreamRef.current = null;
       webrtcCameraStreamId.current = null;
     }
-  }, [cameraEnabled, cameraStream, isConnected, screenShareActive, addVideoTrack, removeVideoTrack, getPeerConnection, cameraCodec]);
+  }, [cameraEnabled, cameraStream, isConnected, screenShareActive, addVideoTrack, removeVideoTrack, cameraCodec]);
 
   // Sync screen share video track to WebRTC
   useEffect(() => {
@@ -174,7 +175,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
         }
         /* **Asked for by name, not looked up by track.** A `getSenders()` lookup
          * matches only on the first share, so the cap stays too small (GRYT-13). */
-        const screenSender = getScreenVideoSender?.() ?? null;
+        const screenSender = getScreenVideoSenderRef.current?.() ?? null;
         if (screenSender) {
           const params = screenSender.getParameters();
           params.degradationPreference = screenShareGamingMode
@@ -206,7 +207,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
       removeScreenVideoTrack();
       prevScreenVideoRef.current = null;
     }
-  }, [screenShareActive, screenVideoStream, isConnected, addScreenVideoTrack, removeScreenVideoTrack, screenShareQuality, screenShareFps, screenShareGamingMode, screenShareCodec, screenShareMaxBitrate, screenShareScalabilityMode, getScreenVideoSender]);
+  }, [screenShareActive, screenVideoStream, isConnected, addScreenVideoTrack, removeScreenVideoTrack, screenShareQuality, screenShareFps, screenShareGamingMode, screenShareCodec, screenShareMaxBitrate, screenShareScalabilityMode]);
 
   // Attach Encoded Transform when native H.264 encoding is active: injects
   // pre-encoded NALs, bypassing the browser's decode-re-encode cycle.
@@ -218,10 +219,11 @@ export function Controls({ onDisconnect }: ControlsProps) {
       encodedTransformRef.current = null;
     }
 
-    if (!screenShareActive || nativeEncodedCodec !== "h264") return;
+    if (!isConnected || !screenShareActive || !screenVideoStream || nativeEncodedCodec !== "h264") return;
     if (!isEncodedTransformSupported()) return;
 
-    const sender = getScreenVideoSender?.();
+    // The sync effect above has put this share's track on the sender by now.
+    const sender = getScreenVideoSenderRef.current?.();
     if (!sender) return;
 
     const handle = attachEncodedTransform(sender);
@@ -242,7 +244,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
         voiceLog.info("SCREEN", "Encoded Transform detached");
       }
     };
-  }, [screenShareActive, nativeEncodedCodec, getScreenVideoSender, subscribeEncodedFrames]);
+  }, [isConnected, screenShareActive, screenVideoStream, nativeEncodedCodec, subscribeEncodedFrames]);
 
   // Sync screen share audio track to WebRTC
   useEffect(() => {
@@ -277,9 +279,9 @@ export function Controls({ onDisconnect }: ControlsProps) {
 
   // Delayed codec verification via getStats() — reports the actual codec once encoding starts
   useEffect(() => {
-    if (!screenShareActive || !screenVideoStream || !getPeerConnection) return;
+    if (!screenShareActive || !screenVideoStream) return;
     const timer = setTimeout(() => {
-      const pc = getPeerConnection();
+      const pc = getPeerConnectionRef.current?.();
       if (!pc) return;
       const videoTrack = screenVideoStream.getVideoTracks()[0];
       if (!videoTrack) return;
@@ -306,7 +308,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
       }).catch(() => { /* stats unavailable */ });
     }, 3000);
     return () => clearTimeout(timer);
-  }, [screenShareActive, screenVideoStream, getPeerConnection]);
+  }, [screenShareActive, screenVideoStream]);
 
   /* The last camera and screen payloads this client sent, readable from a listener
      wired once that would otherwise close over whatever they were then. */
