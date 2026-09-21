@@ -21,8 +21,3 @@ export function senderStreamId(
   }
   return (ids[role] ??= streamId);
 }
-
-/** For after removeTrack, since the next track gets a new sender named after its own stream. */
-export function forgetSenderStreamId(pc: RTCPeerConnection | null | undefined, role: SenderRole): void {
-  if (pc) delete byConnection.get(pc)?.[role];
-}
