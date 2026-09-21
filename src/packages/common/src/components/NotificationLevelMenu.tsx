@@ -57,21 +57,21 @@ export function NotificationLevelMenu({
   const own = getOwnLevel(host, scope);
   const global = getGlobalLevel();
 
-  /* What "Default" comes out as for a channel: its folder or server, quietened
-     by the level the server set for it. The socket layer recorded that level. */
-  const inherited: NotificationLevel | null =
+  /* What "Default" comes out as. A channel follows its folder or server, quietened
+     by the level the server set for it; a folder follows the server; the server hears everything. */
+  const inherited: NotificationLevel =
     scope.kind === "channel"
       ? resolveInheritedLevel(getStoredSnapshot().servers, host, {
           channelId: scope.id,
           parentItemId: placement?.parentItemId ?? null,
           defaultLevel: getPlacement(host, scope.id)?.defaultLevel ?? null,
         })
-      : null;
+      : scope.kind === "folder"
+        ? (getOwnLevel(host, { kind: "server" }) ?? "all")
+        : "all";
 
-  /* What this scope currently comes out as. Worked out per scope rather than
-     through `resolveLevel`, which answers for a channel and would mislead here. */
-  const resolved: NotificationLevel =
-    own ?? inherited ?? getOwnLevel(host, { kind: "server" }) ?? "all";
+  /* What this scope currently comes out as: its own setting, else what it inherits. */
+  const resolved: NotificationLevel = own ?? inherited;
 
   const overruled = globalOverrules(global, resolved);
 
@@ -80,7 +80,7 @@ export function NotificationLevelMenu({
     { label: "Only mentions", value: "mentions" },
     { label: "Nothing", value: "none" },
     {
-      label: inherited ? `Default (${LEVEL_WORDS[inherited]})` : "Default (everything)",
+      label: `Default (${LEVEL_WORDS[inherited]})`,
       value: null,
     },
   ];
