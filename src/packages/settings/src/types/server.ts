@@ -19,6 +19,8 @@ export type Channel = {
   layout?: "chat" | "forum";
   /** An automated channel: only bots and the system may post. People read only. GRYT-982. */
   automated?: boolean;
+  /** What a member hears here until they set the channel themselves. Absent on an older server. GRYT-1302. */
+  defaultNotificationLevel?: "all" | "mentions" | "none";
   /** A forum channel's tag palette. GRYT-981 Stage 3. */
   forumTags?: ForumTag[];
   /**

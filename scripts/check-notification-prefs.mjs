@@ -12,6 +12,7 @@ const {
   parsePrefs,
   parseStored,
   quieterOf,
+  resolveInheritedLevel,
   resolveLevel,
   shouldAnnounceMention,
   shouldAnnounceMessage,
@@ -74,6 +75,36 @@ assert.equal(
 // No placement at all still answers the server level, which is what a message
 // from a channel this client has not seen the sidebar for looks like.
 assert.equal(resolveLevel({ [HOST]: { server: "none" } }, HOST, null), "none");
+
+// ── The default the server carries for a channel ────────────────────────────
+
+const feed = { channelId: "feed", parentItemId: "f1", defaultLevel: "none" };
+const loudFeed = { channelId: "feed", parentItemId: "f1", defaultLevel: "all" };
+
+// Nothing set anywhere: the channel's default is the answer.
+assert.equal(resolveLevel({}, HOST, feed), "none");
+assert.equal(resolveLevel({}, HOST, { ...feed, defaultLevel: "mentions" }), "mentions");
+// No default, or one an older server never sent, is hearing everything as before.
+assert.equal(resolveLevel({}, HOST, { ...feed, defaultLevel: null }), "all");
+assert.equal(resolveLevel({}, HOST, { channelId: "feed", parentItemId: "f1" }), "all");
+
+// Setting the channel itself wins over its default, in both directions.
+assert.equal(resolveLevel({ [HOST]: { channels: { feed: "all" } } }, HOST, feed), "all");
+assert.equal(resolveLevel({ [HOST]: { channels: { feed: "none" } } }, HOST, loudFeed), "none");
+
+// The folder or the server turned up does not un-quiet a feed: the default only quietens.
+assert.equal(resolveLevel({ [HOST]: { folders: { f1: "all" } } }, HOST, feed), "none");
+assert.equal(resolveLevel({ [HOST]: { server: "all" } }, HOST, feed), "none");
+assert.equal(resolveLevel({ [HOST]: { server: "mentions" } }, HOST, feed), "none");
+
+// And a mute above the channel still beats a default of everything.
+assert.equal(resolveLevel({ [HOST]: { server: "none" } }, HOST, loudFeed), "none");
+assert.equal(resolveLevel({ [HOST]: { folders: { f1: "mentions" } } }, HOST, loudFeed), "mentions");
+
+// What "Default" in the menu would come out as: everything above the channel, never its own setting.
+assert.equal(resolveInheritedLevel({ [HOST]: { channels: { feed: "all" } } }, HOST, feed), "none");
+assert.equal(resolveInheritedLevel({ [HOST]: { server: "mentions" } }, HOST, loudFeed), "mentions");
+assert.equal(resolveInheritedLevel({}, HOST, loose), "all");
 
 // ── What each level lets through ────────────────────────────────────────────
 

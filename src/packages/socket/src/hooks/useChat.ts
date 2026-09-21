@@ -5,7 +5,7 @@ import useSound from "use-sound";
 
 import messageSoundMp3 from "@/audio/src/assets/universfield-computer-mouse-click-02-383961.mp3";
 import type { SealDecision } from "@/common";
-import { getPlacement, getServerAccessToken, getUploadsFileUrl, markChannelUnread, markThreadUnread, resolveAnnounceLevel, shouldAnnounceMessage, useUnreadBadge } from "@/common";
+import { getServerAccessToken, getUploadsFileUrl, markChannelUnread, markThreadUnread, shouldNotifyForMessage, useUnreadBadge } from "@/common";
 import { showDesktopNotification } from "@/lib/desktopNotification";
 import { useSettings } from "@/settings";
 import { type ForumTag,serverDetailsList as ServerDetailsList } from "@/settings/src/types/server";
@@ -411,34 +411,35 @@ export function useChat({
       if (msg.conversation_id !== activeConversationId && msg.sender_server_id !== currentUserId) {
         markChannelUnread(serverHost, msg.conversation_id);
       }
-      if (msg.sender_server_id !== currentUserId && !document.hasFocus()) {
-        const level = resolveAnnounceLevel(
-          serverHost,
-          getPlacement(serverHost, msg.conversation_id),
-        );
-        if (!shouldAnnounceMessage(level)) return;
+      /* The same question `useSocketEvents` asks for a background server, so
+         the two cannot disagree about focus, the channel default or a mute. */
+      const notify = shouldNotifyForMessage(serverHost, msg, {
+        myId: currentUserId,
+        viewingThisServer: true,
+        windowFocused: document.hasFocus(),
+      });
+      if (!notify) return;
 
-        if (notificationBadgeEnabledRef.current) incrementUnread();
-        if (desktopNotificationsEnabledRef.current) {
-          /* Opened here rather than waited for: the row's own decrypt is a
-             separate effect, and a notification cannot hold for it. */
-          void sealedNotificationBody(msg, { host: serverHost, memberId: currentUserId }).then(
-            (body) => {
-              const isChannel =
-                serverDetailsListRef.current[serverHost]?.channels?.some(
-                  (channel) => channel.id === msg.conversation_id,
-                ) === true;
-              showDesktopNotification(
-                msg.sender_nickname || "New message",
-                body,
-                isChannel ? { host: serverHost, channelId: msg.conversation_id } : undefined,
-              );
-            },
-          );
-        }
-        if (messageSoundEnabledRef.current) {
-          try { messageSoundRef.current(); } catch { /* ignore playback errors */ }
-        }
+      if (notificationBadgeEnabledRef.current) incrementUnread();
+      if (desktopNotificationsEnabledRef.current) {
+        /* Opened here rather than waited for: the row's own decrypt is a
+           separate effect, and a notification cannot hold for it. */
+        void sealedNotificationBody(msg, { host: serverHost, memberId: currentUserId }).then(
+          (body) => {
+            const isChannel =
+              serverDetailsListRef.current[serverHost]?.channels?.some(
+                (channel) => channel.id === msg.conversation_id,
+              ) === true;
+            showDesktopNotification(
+              msg.sender_nickname || "New message",
+              body,
+              isChannel ? { host: serverHost, channelId: msg.conversation_id } : undefined,
+            );
+          },
+        );
+      }
+      if (messageSoundEnabledRef.current) {
+        try { messageSoundRef.current(); } catch { /* ignore playback errors */ }
       }
     };
 

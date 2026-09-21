@@ -50,6 +50,8 @@ export function globalOverrules(
 export interface ChannelPlacement {
   channelId: string;
   parentItemId?: string | null;
+  /** What the server says this channel is heard at until this person decides. */
+  defaultLevel?: NotificationLevel | null;
 }
 
 const STORAGE_KEY = "gryt_notification_prefs";
@@ -108,30 +110,33 @@ export function parseStored(raw: unknown): StoredNotificationPrefs {
   return { global: "all", servers: parsePrefs(raw) };
 }
 
-/**
- * What this channel is set to, following the most specific answer there is. A
- * channel in no folder skips that step rather than treating it as a scope.
- */
-export function resolveLevel(
+/** What a channel comes out as when this person has not set it: its folder or
+    the server, quietened by the default the server carries for it. */
+export function resolveInheritedLevel(
   prefs: NotificationPrefs,
   host: string,
   placement: ChannelPlacement | null,
 ): NotificationLevel {
   const scope = prefs[host];
-  if (!scope) return "all";
+  let inherited: NotificationLevel = scope?.server ?? "all";
+  const parent = placement?.parentItemId;
+  const folder = parent ? scope?.folders?.[parent] : undefined;
+  if (folder) inherited = folder;
 
-  if (placement) {
-    const own = scope.channels?.[placement.channelId];
-    if (own) return own;
+  /* The channel's default only quietens: a server muted on purpose stays muted,
+     and a feed nobody asked to hear stays quiet under "everything". */
+  const preset = placement?.defaultLevel;
+  return preset ? quieterOf(inherited, preset) : inherited;
+}
 
-    const parent = placement.parentItemId;
-    if (parent) {
-      const folder = scope.folders?.[parent];
-      if (folder) return folder;
-    }
-  }
-
-  return scope.server ?? "all";
+/** What this channel is set to: this person's own answer for it, else the inherited one. */
+export function resolveLevel(
+  prefs: NotificationPrefs,
+  host: string,
+  placement: ChannelPlacement | null,
+): NotificationLevel {
+  const own = placement ? prefs[host]?.channels?.[placement.channelId] : undefined;
+  return own ?? resolveInheritedLevel(prefs, host, placement);
 }
 
 /** Whether a plain message in this channel should make any noise. */
@@ -254,10 +259,11 @@ export function setNotificationLevel(
 
 let placements: Record<string, Record<string, ChannelPlacement>> = {};
 
-/** Take the channel-to-folder map out of a fresh `server:details`. */
+/** Take the channel-to-folder map and each channel's default out of a fresh `server:details`. */
 export function rememberPlacements(
   host: string,
   items: { kind?: string; channelId?: string | null; parentItemId?: string | null }[],
+  channels: { id: string; defaultNotificationLevel?: NotificationLevel | null }[] = [],
 ) {
   const byChannel: Record<string, ChannelPlacement> = {};
   for (const item of items) {
@@ -266,6 +272,13 @@ export function rememberPlacements(
       channelId: item.channelId,
       parentItemId: item.parentItemId ?? null,
     };
+  }
+  /* A channel off the sidebar still gets a placement, so its default is not
+     lost with its folder. An older server sends no level, which reads as none. */
+  for (const channel of channels) {
+    const level = isLevel(channel.defaultNotificationLevel) ? channel.defaultNotificationLevel : null;
+    const known = byChannel[channel.id] ?? { channelId: channel.id, parentItemId: null };
+    byChannel[channel.id] = { ...known, defaultLevel: level };
   }
   placements = { ...placements, [host]: byChannel };
 }
@@ -276,6 +289,47 @@ export function rememberPlacements(
  */
 export function getPlacement(host: string, channelId: string): ChannelPlacement | null {
   return placements[host]?.[channelId] ?? null;
+}
+
+// ── Whether a message makes a noise ─────────────────────────────────────────
+//
+// One answer for the server on screen and for the ones in the background. The
+// two handlers used to decide on their own, and disagreed about focus.
+
+/** What the deciding function needs to know beyond the message itself. */
+export interface MessageNotificationContext {
+  /** This member's own server user id here, so their echo is never announced. */
+  myId?: string | null;
+  /** Whether this server is the one on screen. */
+  viewingThisServer: boolean;
+  /** Whether the app window has focus, which is `document.hasFocus()` in a browser. */
+  windowFocused: boolean;
+}
+
+/** The parts of a `chat:new` payload the decision reads. */
+export interface NotifiableMessage {
+  conversation_id?: string | null;
+  thread_id?: string | null;
+  sender_server_id?: string | null;
+}
+
+/**
+ * Whether a message just arrived should badge, sound and notify. Marking it unread
+ * is a separate question the handlers answer before asking this one.
+ */
+export function shouldNotifyForMessage(
+  host: string,
+  msg: NotifiableMessage,
+  ctx: MessageNotificationContext,
+): boolean {
+  if (ctx.myId && msg.sender_server_id === ctx.myId) return false;
+  // A thread reply is news about the thread, and the thread tracker holds it.
+  if (msg.thread_id) return false;
+  // On screen in a focused window: the message is in view or one click away.
+  if (ctx.viewingThisServer && ctx.windowFocused) return false;
+
+  const placement = msg.conversation_id ? getPlacement(host, msg.conversation_id) : null;
+  return shouldAnnounceMessage(resolveAnnounceLevel(host, placement));
 }
 
 /** What a scope is set to outright, ignoring anything it would inherit. */

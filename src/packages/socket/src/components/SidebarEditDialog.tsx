@@ -1,6 +1,7 @@
 import { Dialog, IconButton, Select, Switch, TextField } from "@gryt/ui";
 import { useCallback, useMemo, useRef } from "react";
 
+import type { NotificationLevel } from "@/common";
 import {
   type ChannelRule,
   CUSTOM_VALUE,
@@ -10,7 +11,7 @@ import {
 import type { SidebarItem } from "@/settings/src/types/server";
 
 import { PiX } from "../../../../lib/icons";
-import { type ChannelKind } from "./channelKind";
+import { type ChannelKind, NOTIFICATION_LEVEL_OPTIONS } from "./channelKind";
 import { ChannelKindPicker } from "./ChannelKindPicker";
 import { ChannelPermissionMatrix } from "./ChannelPermissionMatrix";
 import { type ForumTagDraft, ForumTagsField } from "./ForumTagsField";
@@ -35,6 +36,8 @@ export interface SidebarEditorFields {
   setSheetEsportsMode: (v: boolean) => void;
   sheetTextInVoice: boolean;
   setSheetTextInVoice: (v: boolean) => void;
+  sheetDefaultNotificationLevel: NotificationLevel;
+  setSheetDefaultNotificationLevel: (v: NotificationLevel) => void;
   sheetScopeChoice: string;
   setSheetScopeChoice: (v: string) => void;
   sheetScopeRules: ChannelRule[];
@@ -70,6 +73,7 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
     sheetMaxBitrate, setSheetMaxBitrate,
     sheetEsportsMode, setSheetEsportsMode,
     sheetTextInVoice, setSheetTextInVoice,
+    sheetDefaultNotificationLevel, setSheetDefaultNotificationLevel,
     sheetScopeChoice, setSheetScopeChoice,
     sheetScopeRules, setSheetScopeRules,
     scopeChoiceOptions, scopeRoles, channelPermissions, scopeLoading, saveChannelScope,
@@ -174,6 +178,21 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
                   />
                 </div>
               )}
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-medium">Default notifications</span>
+                <Select
+                  value={sheetDefaultNotificationLevel}
+                  onValueChange={(v) => {
+                    if (v !== "all" && v !== "mentions" && v !== "none") return;
+                    setSheetDefaultNotificationLevel(v);
+                    debouncedSave();
+                  }}
+                  options={NOTIFICATION_LEVEL_OPTIONS}
+                />
+                <span className="text-xs">
+                  What members get from this channel until they pick their own level for it.
+                </span>
+              </div>
               <div className="flex flex-col gap-2">
                 <span className="text-sm font-medium">Who can use this channel</span>
                 {/* Everyone, a shared template, or this channel's own rules.

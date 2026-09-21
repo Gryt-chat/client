@@ -17,7 +17,7 @@ import {
   resolveAnnounceLevel,
   setServerAccessToken,
   setServerFileToken,
-  shouldAnnounceMessage,
+  shouldNotifyForMessage,
 } from "@/common";
 import { showDesktopNotification } from "@/lib/desktopNotification";
 import { playNotificationSound, preloadNotificationSound } from "@/lib/notificationSound";
@@ -461,11 +461,14 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
           markChannelUnread(host, msg.conversation_id);
         }
 
-        const level = resolveAnnounceLevel(
-          host,
-          msg.conversation_id ? getPlacement(host, msg.conversation_id) : null,
-        );
-        if (!shouldAnnounceMessage(level)) return;
+        /* The same question `useChat` asks for the server on screen. Not viewing
+           this one is settled by the return above; the window's focus is not. */
+        const notify = shouldNotifyForMessage(host, msg, {
+          myId,
+          viewingThisServer: false,
+          windowFocused: document.hasFocus(),
+        });
+        if (!notify) return;
 
         if (messageSoundEnabledRef.current) {
           playNotificationSound(messageSoundFileRef.current, messageSoundVolumeRef.current);
