@@ -304,6 +304,8 @@ export interface MessageNotificationContext {
   viewingThisServer: boolean;
   /** Whether the app window has focus, which is `document.hasFocus()` in a browser. */
   windowFocused: boolean;
+  /** Whether the message names this member, as `mentionsMember` answers it. */
+  mentionsMe?: boolean;
 }
 
 /** The parts of a `chat:new` payload the decision reads. */
@@ -311,6 +313,39 @@ export interface NotifiableMessage {
   conversation_id?: string | null;
   thread_id?: string | null;
   sender_server_id?: string | null;
+}
+
+/** The server's own notices and webhook posts never record a mention, so they
+    cannot name anybody here either. The same two strings as chatViewHelpers.ts. */
+function isPersonSender(sender: string | null | undefined): boolean {
+  return !!sender && sender !== "system" && !sender.startsWith("webhook:");
+}
+
+/**
+ * Whether a message names this member, by the rule the server pings on: `@nickname`
+ * on its own, case-insensitive, or the `(mention:id)` link the composer writes.
+ */
+export function mentionsMember(
+  msg: { text?: string | null; sender_server_id?: string | null },
+  me: { serverUserId?: string | null; nickname?: string | null },
+): boolean {
+  const text = msg.text;
+  if (!text || !text.includes("@") || !isPersonSender(msg.sender_server_id)) return false;
+  if (me.serverUserId && text.includes(`(mention:${me.serverUserId})`)) return true;
+
+  const nickname = me.nickname?.trim().toLowerCase();
+  if (!nickname) return false;
+  const lower = text.toLowerCase();
+  let from = 0;
+  for (;;) {
+    const at = lower.indexOf(`@${nickname}`, from);
+    if (at === -1) return false;
+    // A word character either side means an email address, or a longer name.
+    const before = at > 0 ? lower[at - 1] : "";
+    const after = lower[at + 1 + nickname.length] ?? "";
+    if (!/\w/.test(before) && !/\w/.test(after)) return true;
+    from = at + 1;
+  }
 }
 
 /**
@@ -323,13 +358,16 @@ export function shouldNotifyForMessage(
   ctx: MessageNotificationContext,
 ): boolean {
   if (ctx.myId && msg.sender_server_id === ctx.myId) return false;
-  // A thread reply is news about the thread, and the thread tracker holds it.
-  if (msg.thread_id) return false;
   // On screen in a focused window: the message is in view or one click away.
   if (ctx.viewingThisServer && ctx.windowFocused) return false;
 
   const placement = msg.conversation_id ? getPlacement(host, msg.conversation_id) : null;
-  return shouldAnnounceMessage(resolveAnnounceLevel(host, placement));
+  const level = resolveAnnounceLevel(host, placement);
+  // Being named is being named, in a thread as much as in the channel.
+  if (ctx.mentionsMe) return shouldAnnounceMention(level);
+  // A plain thread reply is news about the thread, and the thread tracker holds it.
+  if (msg.thread_id) return false;
+  return shouldAnnounceMessage(level);
 }
 
 /** What a scope is set to outright, ignoring anything it would inherit. */

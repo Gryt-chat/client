@@ -5,7 +5,7 @@ import useSound from "use-sound";
 
 import messageSoundMp3 from "@/audio/src/assets/universfield-computer-mouse-click-02-383961.mp3";
 import type { SealDecision } from "@/common";
-import { getServerAccessToken, getUploadsFileUrl, markChannelUnread, markThreadUnread, shouldNotifyForMessage, useUnreadBadge } from "@/common";
+import { getServerAccessToken, getUploadsFileUrl, markChannelUnread, markThreadUnread, mentionsMember, shouldNotifyForMessage, useUnreadBadge } from "@/common";
 import { showDesktopNotification } from "@/lib/desktopNotification";
 import { useSettings } from "@/settings";
 import { type ForumTag,serverDetailsList as ServerDetailsList } from "@/settings/src/types/server";
@@ -405,18 +405,16 @@ export function useChat({
          open thread rather than this clearing it: handler order is arbitrary. */
       if (msg.thread_id) {
         if (msg.sender_server_id !== currentUserId) markThreadUnread(serverHost, msg.conversation_id, msg.thread_id);
-        return;
-      }
-
-      if (msg.conversation_id !== activeConversationId && msg.sender_server_id !== currentUserId) {
+      } else if (msg.conversation_id !== activeConversationId && msg.sender_server_id !== currentUserId) {
         markChannelUnread(serverHost, msg.conversation_id);
       }
-      /* The same question `useSocketEvents` asks for a background server, so
-         the two cannot disagree about focus, the channel default or a mute. */
+      /* The same question `useSocketEvents` asks for a background server, so the
+         two cannot disagree about focus, a mention, the channel default or a mute. */
       const notify = shouldNotifyForMessage(serverHost, msg, {
         myId: currentUserId,
         viewingThisServer: true,
         windowFocused: document.hasFocus(),
+        mentionsMe: mentionsMember(msg, { serverUserId: currentUserId, nickname }),
       });
       if (!notify) return;
 
