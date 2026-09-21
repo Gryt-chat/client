@@ -251,12 +251,12 @@ function OutboundSection({ s }: { s: OutboundDiagnostics }) {
         <div>PLI: {fmtInt(s.pliCount)} / NACK: {fmtInt(s.nackCount)}</div>
         <div>
           Remote RTCP: RTT {s.remoteRttMs != null ? `${fmt(s.remoteRttMs)} ms` : "—"}
+          {s.remoteRttMeasurements != null && ` (${fmtInt(s.remoteRttMeasurements)} samples)`}
           {" / "}jitter {s.remoteJitterMs != null ? `${fmt(s.remoteJitterMs)} ms` : "—"}
         </div>
         <div>
           Remote loss: {s.remoteLossPct != null ? `${fmt(s.remoteLossPct, 2)}%` : "—"}
           {" / "}{fmtInt(s.remotePacketsLost)} pkts
-          {" / "}{fmtInt(s.reportsReceived)} reports
         </div>
         <div
           style={{

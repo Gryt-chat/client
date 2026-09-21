@@ -46,7 +46,8 @@ export interface OutboundDiagnostics {
   remoteJitterMs: number | null;
   remotePacketsLost: number | null;
   remoteLossPct: number | null;
-  reportsReceived: number | null;
+  /** Receiver reports that carried a round-trip time. Chrome never fills in reportsReceived. */
+  remoteRttMeasurements: number | null;
   qualityLimitationReason: string | null;
   bandwidthLimitedSeconds: number | null;
   cpuLimitedSeconds: number | null;
@@ -221,7 +222,7 @@ function readOutbound(stat: Stat, before: Stat | undefined, byId: Map<string, St
     remoteJitterMs: scaled(num(remote?.jitter), 1000),
     remotePacketsLost: num(remote?.packetsLost),
     remoteLossPct: scaled(num(remote?.fractionLost), 100),
-    reportsReceived: num(remote?.reportsReceived),
+    remoteRttMeasurements: num(remote?.roundTripTimeMeasurements),
     qualityLimitationReason: text(stat.qualityLimitationReason),
     bandwidthLimitedSeconds: num(durations.bandwidth),
     cpuLimitedSeconds: num(durations.cpu),
