@@ -34,7 +34,7 @@ assert.match(
 // voice:state:restored at all.
 assert.match(
   sockets,
-  /socket\.io\.on\("reconnect"[\s\S]{0,700}emit\("voice:state:update", voiceSelfStateRef\.current\)/,
+  /onReconnected: \(wasShown\) =>[\s\S]{0,700}emit\("voice:state:update", voiceSelfStateRef\.current\)/,
 );
 
 console.log("Voice state re-assert checks passed");

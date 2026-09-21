@@ -31,6 +31,7 @@
     "test:lan-discovery": "node --disable-warning=ExperimentalWarning scripts/check-lan-discovery.mjs",
     "test:voice-presence": "node scripts/check-voice-presence.mjs",
     "test:reconnect-limit": "node scripts/check-reconnect-limit.mjs",
+    "test:reconnect-grace": "node --disable-warning=ExperimentalWarning scripts/check-reconnect-grace.mjs",
     "test:token-refresh-schedule": "node scripts/check-token-refresh-schedule.mjs",
     "test:identity-vault": "node scripts/check-identity-vault.mjs",
     "test:identity-restart": "node scripts/check-identity-restart.mjs",

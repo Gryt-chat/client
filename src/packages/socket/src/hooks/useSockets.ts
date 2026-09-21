@@ -23,6 +23,7 @@ import { type EmbeddedServerState, getElectronAPI } from "../../../../lib/electr
 import { showReconnectGaveUpToast, showReconnectingToast } from "../components/connectionToasts";
 import { MemberInfo } from "../components/MemberSidebar";
 import { Clients, ServerProfile } from "../types/clients";
+import { RECONNECT_GRACE_MS, watchReconnects } from "../utils/reconnectGrace";
 import { replayReconnect, retryNow } from "../utils/retryNow";
 import { guardSocket, serverProofErrorMessage, serverProofHelpUrl } from "../utils/serverAuth";
 import { syncAvatarToHost } from "../utils/syncAvatarToHost";
@@ -342,11 +343,6 @@ function useSocketsHook() {
           }
         });
 
-        socket.on("disconnect", () => {
-          setServerConnectionStatus(prev => ({ ...prev, [host]: 'reconnecting' }));
-          showReconnectingToast(toastId, serverName);
-        });
-
         /* Routed by the id the server stamped, so one server's plugin cannot
            reach another's listeners. `data` is unvalidated and typed `unknown`. */
         socket.on("plugin:message", (payload: { pluginId?: unknown; topic?: unknown; data?: unknown }) => {
@@ -365,22 +361,34 @@ function useSocketsHook() {
           }
         });
 
-        socket.io.on("reconnect", () => {
-          setServerConnectionStatus(prev => ({ ...prev, [host]: 'connected' }));
-          toast.success(`Reconnected to ${serverName}`, { id: toastId });
-          socket.emit("server:details");
-          socket.emit("members:fetch");
-          /* Unconditionally too, for a reconnect with no stash to restore, where
-             `voice:state:restored` never arrives at all. */
-          socket.emit("voice:state:update", voiceSelfStateRef.current);
-          /* The status lives on the connection, so a reconnect is blank until
-             this. Only when there is one, or it is a round trip for nothing. */
-          if (activityRef.current) {
-            socket.emit("presence:activity", { activity: activityRef.current });
-          }
-          window.dispatchEvent(new CustomEvent("server_socket_reconnected", {
-            detail: { host },
-          }));
+        /* A drop that is back within the grace shows nothing. A one-second blip
+           used to grey the server, spin the ring and raise two toasts (GRYT-1301). */
+        watchReconnects(socket, RECONNECT_GRACE_MS, {
+          onReconnecting: () => {
+            setServerConnectionStatus(prev => ({ ...prev, [host]: 'reconnecting' }));
+            showReconnectingToast(toastId, serverName);
+          },
+          onReconnected: (wasShown) => {
+            setServerConnectionStatus(prev => ({ ...prev, [host]: 'connected' }));
+            if (wasShown) toast.success(`Reconnected to ${serverName}`, { id: toastId });
+            socket.emit("server:details");
+            socket.emit("members:fetch");
+            /* Unconditionally too, for a reconnect with no stash to restore, where
+               `voice:state:restored` never arrives at all. */
+            socket.emit("voice:state:update", voiceSelfStateRef.current);
+            /* The status lives on the connection, so a reconnect is blank until
+               this. Only when there is one, or it is a round trip for nothing. */
+            if (activityRef.current) {
+              socket.emit("presence:activity", { activity: activityRef.current });
+            }
+            window.dispatchEvent(new CustomEvent("server_socket_reconnected", {
+              detail: { host },
+            }));
+          },
+          // Nothing is retrying, so "reconnecting" would be untrue. Whoever closed it says why.
+          onClosed: () => {
+            setServerConnectionStatus(prev => ({ ...prev, [host]: 'disconnected' }));
+          },
         });
 
         /* Reachable now that the attempts are capped. It never fired before, so
