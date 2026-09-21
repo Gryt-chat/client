@@ -16,6 +16,7 @@ import { useScreenAudioMute } from "../adapters/useScreenAudioMute";
 import { useScreenAudioSources } from "../adapters/useScreenAudioSources";
 import { useVoiceSounds } from "../adapters/useVoiceSounds";
 import { attachEncodedTransform, type EncodedTransformHandle, isEncodedTransformSupported } from "../utils/encodedTransform";
+import { forgetSenderStreamId, senderStreamId } from "../utils/senderStreamIds";
 import { CameraPreviewModal } from "./CameraPreviewModal";
 import { ScreenAudioSourcesModal } from "./ScreenAudioSourcesModal";
 import { ScreenSharePickerModal } from "./ScreenSharePickerModal";
@@ -84,13 +85,16 @@ export function Controls({ onDisconnect }: ControlsProps) {
   } = useSettings();
 
   const prevCameraStreamRef = useRef<MediaStream | null>(null);
-  // replaceTrack() keeps addTrack()'s stream/MSID.
-  // Advertise that stable ID across camera replacements (GRYT-1251).
-  const webrtcCameraStreamId = useRef<string | null>(null);
   const prevScreenVideoRef = useRef<MediaStream | null>(null);
   const prevScreenAudioRef = useRef<MediaStream | null>(null);
+  // Copies of senderStreamIds for the emits below. A layout change mounts a new Controls
+  // mid-call, so these start empty and can't be the only record (GRYT-1319).
+  const webrtcCameraStreamId = useRef<string | null>(null);
   const webrtcScreenVideoStreamId = useRef<string | null>(null);
   const webrtcScreenAudioStreamId = useRef<string | null>(null);
+  // useSFU hands out a new getter every render, so the effects read it here rather than re-run.
+  const getPeerConnectionRef = useRef(getPeerConnection);
+  getPeerConnectionRef.current = getPeerConnection;
   const [showCameraModal, setShowCameraModal] = useState(false);
   const [showScreenShareModal, setShowScreenShareModal] = useState(false);
   const [isStartingScreenShare, setIsStartingScreenShare] = useState(false);
@@ -110,9 +114,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
           settings: videoTrack.getSettings(),
         });
         addVideoTrack(videoTrack, cameraStream, cameraCodec);
-        if (!webrtcCameraStreamId.current) {
-          webrtcCameraStreamId.current = cameraStream.id;
-        }
+        webrtcCameraStreamId.current = senderStreamId(getPeerConnectionRef.current?.(), "camera", cameraStream.id);
         prevCameraStreamRef.current = cameraStream;
 
         if (getPeerConnection) {
@@ -143,6 +145,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
         prevStreamId: prevCameraStreamRef.current.id,
       });
       removeVideoTrack();
+      forgetSenderStreamId(getPeerConnectionRef.current?.(), "camera");
       prevCameraStreamRef.current = null;
       webrtcCameraStreamId.current = null;
     }
@@ -156,9 +159,8 @@ export function Controls({ onDisconnect }: ControlsProps) {
       if (videoTrack) {
         voiceLog.info("SCREEN", `controls: syncing video track=${videoTrack.id} stream=${screenVideoStream.id} prev=${prevScreenVideoRef.current?.id ?? "null"}`);
         addScreenVideoTrack(videoTrack, screenVideoStream, screenShareCodec);
-        if (!webrtcScreenVideoStreamId.current) {
-          webrtcScreenVideoStreamId.current = screenVideoStream.id;
-        }
+        // Kept after the share stops: the engine pauses this sender rather than removing it.
+        webrtcScreenVideoStreamId.current = senderStreamId(getPeerConnectionRef.current?.(), "screenVideo", screenVideoStream.id);
         prevScreenVideoRef.current = screenVideoStream;
 
         let bitrate: number | null;
@@ -250,9 +252,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
       if (audioTrack) {
         voiceLog.info("SCREEN", `controls: syncing audio track=${audioTrack.id} label="${audioTrack.label}" enabled=${audioTrack.enabled} readyState=${audioTrack.readyState} muted=${audioTrack.muted} stream=${screenAudioStream.id}`);
         addScreenAudioTrack(audioTrack, screenAudioStream);
-        if (!webrtcScreenAudioStreamId.current) {
-          webrtcScreenAudioStreamId.current = screenAudioStream.id;
-        }
+        webrtcScreenAudioStreamId.current = senderStreamId(getPeerConnectionRef.current?.(), "screenAudio", screenAudioStream.id);
         prevScreenAudioRef.current = screenAudioStream;
       } else {
         voiceLog.info("SCREEN", `controls: screenAudioStream present (id=${screenAudioStream.id}) but has NO audio tracks`);

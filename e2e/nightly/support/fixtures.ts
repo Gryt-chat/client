@@ -1,6 +1,6 @@
 import { expect, test as base } from "@playwright/test";
 
-import { channelComposer, joinServer } from "../../support/app";
+import { channelComposer, joinServer, recordFrames } from "../../support/app";
 import { prepare, uniqueName } from "../../support/fixtures";
 import { ProblemLog } from "../../support/problems";
 import { type Guest, leaveVoice } from "./call";
@@ -51,7 +51,7 @@ export const test = base.extend<{ problems: ProblemLog; server: TestServer; gues
       await watchPeerConnections(context, HIDE_LOCAL_CANDIDATES);
 
       const page = await context.newPage();
-      const guest = { page, name };
+      const guest = { page, name, frames: recordFrames(page) };
       joined.push({ guest, close: () => context.close() });
       problems.watch(page, name, server.httpBase);
       await page.goto("/");
