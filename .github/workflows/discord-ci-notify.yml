@@ -8,6 +8,7 @@ on:
     workflows:
       - API reference
       - CI
+      - Gryt Git notification
       - Nightly
       - Sync Vikunja task
     types: [completed]
