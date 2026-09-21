@@ -5,13 +5,9 @@ import { useGlobalHotkeys } from "@/audio";
 import {
   capturePendingInviteFromUrl,
   clearPendingInvite,
-  normalizeCode,
   normalizeHost,
   type PendingInvite,
   readPendingInvite,
-  setServerAccessToken,
-  setServerFileToken,
-  setServerRefreshToken,
   useAccount,
   writePendingInvite,
 } from "@/common";
@@ -23,13 +19,14 @@ import {
   useSettings,
   useSettingsShortcut,
 } from "@/settings";
+import { type JoinOutcome, useServerJoin } from "@/settings/src/hooks/useServerJoin";
 import {
   DeviceSwitchModal,
   InviteAcceptModal,
-  joinServerOnce,
   ServerSettingsModal,
   useServerManagement,
 } from "@/socket";
+import type { InviteJoinRequest } from "@/socket/src/components/InviteAcceptModal";
 import { useVoiceSounds } from "@/webRTC";
 
 import { AuthLoadingOverlay } from "./components/AuthLoadingOverlay";
@@ -45,14 +42,15 @@ import { VideoDebugOverlay } from "./components/videoDebugOverlay";
 import { Welcome } from "./components/welcome";
 
 export function App() {
-  const { isSignedIn } = useAccount();
+  const { isSignedIn, login, loginInProgress } = useAccount();
 
   // Waits for Keycloak to settle before mounting: mounting first would let a
   // signed-in person's saved servers reconnect as a guest (GRYT-170).
   const ready = isSignedIn !== undefined;
-  const { showAddServer, setShowAddServer, addServer, hasServer, switchToServer } =
+  const { showAddServer, setShowAddServer, hasServer, switchToServer } =
     useServerManagement();
-  const { nickname, showDebugOverlay, showVideoDebugOverlay } = useSettings();
+  const { showDebugOverlay, showVideoDebugOverlay } = useSettings();
+  const { join } = useServerJoin();
 
   useSettingsShortcut();
   const { disconnect } = useSFU();
@@ -69,10 +67,6 @@ export function App() {
 
   const [showSplash, setShowSplash] = useState(true);
   const [pendingInvite, setPendingInvite] = useState<PendingInvite | null>(null);
-  const [inviteJoinState, setInviteJoinState] = useState<{ joining: boolean; error: string }>({
-    joining: false,
-    error: "",
-  });
 
   // Capture invite links early (even before sign-in), then clean the URL.
   useEffect(() => {
@@ -83,80 +77,42 @@ export function App() {
   useEffect(() => {
     return window.electronAPI?.onDeepLinkInvite(({ host, code }) => {
       const pending = writePendingInvite(host, code);
-      if (pending) {
-        setPendingInvite(pending);
-        setInviteJoinState({ joining: false, error: "" });
-      }
+      if (pending) setPendingInvite(pending);
     });
   }, []);
 
   // Once in the app, show the invite acceptance modal instead of silently adding.
-  // An invite link is just as likely to be why somebody opened Gryt.
+  // Signing in from it comes back here too, since the invite waits in session storage.
   useEffect(() => {
     if (!ready) return;
     const pending = readPendingInvite();
     if (!pending) return;
     setPendingInvite(pending);
-    setInviteJoinState({ joining: false, error: "" });
   }, [ready]);
 
-  const handleAcceptInvite = useCallback(() => {
-    if (!pendingInvite) return;
-    if (inviteJoinState.joining) return;
-
-    void (async () => {
-      const host = normalizeHost(pendingInvite.host);
-      const code = normalizeCode(pendingInvite.code);
-      if (!host || !code) return;
-
-      setInviteJoinState({ joining: true, error: "" });
-
-      const result = await joinServerOnce({
-        host,
-        nickname,
-        inviteCode: code,
-      });
-      // Note: we don't persist invite codes; we just use it for the initial join.
-
-      if (!result.ok) {
-        const message =
-          result.error.message ||
-          (result.error.error === "invalid_invite"
-            ? "Invalid invite code."
-            : result.error.error === "invite_rate_limited" || result.error.error === "rate_limited"
-              ? "Too many attempts. Please wait and try again."
-              : `Failed to join server: ${result.error.error}`);
-        setInviteJoinState({ joining: false, error: message });
-        return;
-      }
-
-      setServerAccessToken(host, result.joinInfo.accessToken);
-      if (result.joinInfo.fileToken) setServerFileToken(host, result.joinInfo.fileToken);
-      if (result.joinInfo.refreshToken) setServerRefreshToken(host, result.joinInfo.refreshToken);
-
-      addServer({ host, name: host }, true);
-      clearPendingInvite();
-      setPendingInvite(null);
-      setInviteJoinState({ joining: false, error: "" });
-    })();
-  }, [addServer, inviteJoinState.joining, nickname, pendingInvite]);
-
-  const handleDismissInvite = useCallback(() => {
-    if (inviteJoinState.joining) return;
+  const forgetInvite = useCallback(() => {
     clearPendingInvite();
     setPendingInvite(null);
-    setInviteJoinState({ joining: false, error: "" });
-  }, [inviteJoinState.joining]);
+  }, []);
+
+  // A link's code goes with the join even on an open server, so a role bound to it is still given.
+  const handleJoinInvite = useCallback(
+    async ({ code, info, note }: InviteJoinRequest): Promise<JoinOutcome> => {
+      if (!pendingInvite) return { ok: false, kind: "error", message: "The invite is gone." };
+      const outcome = await join({ host: pendingInvite.host, info, inviteCode: code, note });
+      if (outcome.ok || outcome.kind === "already_member") forgetInvite();
+      return outcome;
+    },
+    [forgetInvite, join, pendingInvite],
+  );
 
   const alreadyMember = pendingInvite ? hasServer(normalizeHost(pendingInvite.host)) : false;
 
   const handleGoToServer = useCallback(() => {
     if (!pendingInvite) return;
     switchToServer(normalizeHost(pendingInvite.host));
-    clearPendingInvite();
-    setPendingInvite(null);
-    setInviteJoinState({ joining: false, error: "" });
-  }, [pendingInvite, switchToServer]);
+    forgetInvite();
+  }, [forgetInvite, pendingInvite, switchToServer]);
 
   useEffect(() => {
     if (isSignedIn === undefined) {
@@ -181,11 +137,12 @@ export function App() {
           <ServerSettingsModal />
           <InviteAcceptModal
             invite={pendingInvite}
-            joinError={inviteJoinState.error}
-            joining={inviteJoinState.joining}
             alreadyMember={alreadyMember}
-            onAccept={handleAcceptInvite}
-            onDismiss={handleDismissInvite}
+            isSignedIn={isSignedIn}
+            signingIn={loginInProgress}
+            onSignIn={() => void login()}
+            onJoin={handleJoinInvite}
+            onDismiss={forgetInvite}
             onGoToServer={handleGoToServer}
           />
           <IdentityClaimPrompt />

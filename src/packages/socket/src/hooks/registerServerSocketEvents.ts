@@ -52,6 +52,7 @@ import { fetchCustomEmojis, setCustomEmojis } from "../utils/emojiData";
 import { firstTimeOnThisSocket } from "../utils/publishedOnce";
 import { handleRateLimitError } from "../utils/rateLimitHandler";
 import { syncAvatarToHost } from "../utils/syncAvatarToHost";
+import { setServerJoinPolicy } from "./useServerJoinPolicy";
 
 const TOKEN_HEAL_COOLDOWN_MS = 10_000;
 const tokenHealLastAttempt = new Map<string, number>();
@@ -151,7 +152,8 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
   const { setServers, setNewServerInfo, setServerDetailsList, setFailedServerDetails } = ctx;
   const { setClients, setMemberLists, setMemberKeyStates, setServerProfiles, setIsServerMuted, setIsServerDeafened } = ctx;
 
-  socket.on("server:info", (data: { name?: string }) => {
+  socket.on("server:info", (data: { name?: string; joinPolicy?: unknown }) => {
+    setServerJoinPolicy(host, data?.joinPolicy);
     const current = serversRef.current[host];
     const updatedServer = {
       ...current,

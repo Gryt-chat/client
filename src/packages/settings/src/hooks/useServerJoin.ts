@@ -143,6 +143,8 @@ export type JoinOutcome =
   | { ok: false; kind: "approval_pending"; message: string }
   /** The server wants a code, or the one given was wrong. */
   | { ok: false; kind: "invite_required"; message: string }
+  /** The server takes accounts only, and this join went without one. */
+  | { ok: false; kind: "account_required"; message: string }
   /** Already a member. The caller has been switched to it. */
   | { ok: false; kind: "already_member"; message: string }
   | { ok: false; kind: "error"; message: string };
@@ -176,7 +178,7 @@ function describeJoinError(error: { error: string; message?: string }): JoinOutc
     case "identity_tier_refused":
       return {
         ok: false,
-        kind: "error",
+        kind: "account_required",
         message:
           "This server requires a Gryt account. Sign in from the menu at the bottom left, then try again.",
       };

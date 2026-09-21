@@ -28,6 +28,7 @@ import { MarkAsReadItem } from "@/socket/src/components/MarkAsReadItem";
 import { ServerDoctor } from "@/socket/src/components/ServerDoctor";
 import type { ServerRingState } from "@/socket/src/components/ServerStatusRing";
 import { ServerStatusRing } from "@/socket/src/components/ServerStatusRing";
+import { useOpenInviteLink } from "@/socket/src/hooks/useOpenInviteLink";
 import { useVoicePresence,type VoicePresence } from "@/webRTC";
 import { MiniControls } from "@/webRTC/src/components/miniControls";
 
@@ -383,6 +384,7 @@ function ServerItem({
   onManageServer,
 }: ServerItemProps) {
   const { canClaim, claim } = useIdentityClaim();
+  const openInvite = useOpenInviteLink(host);
   const [doctorOpen, setDoctorOpen] = useState(false);
   const [mergeOpen, setMergeOpen] = useState(false);
   // No entry yet is not the same as down: a server added a moment ago has no
@@ -575,6 +577,11 @@ function ServerItem({
             <ContextMenu.Item onClick={() => openServerSettings(host, "invites")}>
               Invite to server
             </ContextMenu.Item>
+            {openInvite.available && (
+              <ContextMenu.Item onClick={() => void openInvite.copy()}>
+                Copy invite link
+              </ContextMenu.Item>
+            )}
             <ContextMenu.Separator />
 
             {/* The same three levels the channel list offers per channel and
