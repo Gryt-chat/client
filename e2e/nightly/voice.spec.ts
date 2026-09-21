@@ -16,6 +16,7 @@ import {
   unfocusTile,
 } from "./support/call";
 import { expect, test } from "./support/fixtures";
+import { videoSendPriorities } from "./support/webrtc";
 
 test("two guests hear each other through the SFU's public address, and a camera gets through", async ({
   guest,
@@ -84,6 +85,10 @@ function watch(alice: Guest, bob: Guest) {
       await stopSharing(alice);
       await expect(screen).toHaveCount(0);
     },
+    /** The screen is the high-priority video and the camera gives way to it (check-screen-share-priority). */
+    async expectCameraYields() {
+      await expect.poll(() => videoSendPriorities(alice.page), "the camera doesn't give way to the screen").toEqual(["high", "low"]);
+    },
     /** Every id Alice announced is one Bob's tiles played. */
     expectAnnouncedPlayed() {
       expect(announcedStreams(alice, "voice:camera:state", "streamId")).toEqual([...new Set(played.camera)]);
@@ -109,6 +114,7 @@ test("GRYT-1329: a camera turned off and on again leaves room for a screen share
     await call.cameraOn(1);
     await call.share(1);
     await expectPlaying(call.camera, 1);
+    await call.expectCameraYields();
 
     await call.stopShare();
     await call.cameraOff();
@@ -132,6 +138,7 @@ test("GRYT-1329: a camera turned off and on again during a screen share still ge
     await call.cameraOff();
     await call.cameraOn(1);
     await expectPlaying(call.screen, 1);
+    await call.expectCameraYields();
 
     await call.stopShare();
     await call.cameraOff();

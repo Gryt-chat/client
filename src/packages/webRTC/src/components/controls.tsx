@@ -16,7 +16,7 @@ import { useScreenAudioMute } from "../adapters/useScreenAudioMute";
 import { useScreenAudioSources } from "../adapters/useScreenAudioSources";
 import { useVoiceSounds } from "../adapters/useVoiceSounds";
 import { attachEncodedTransform, type EncodedTransformHandle, isEncodedTransformSupported } from "../utils/encodedTransform";
-import { senderStreamId } from "../utils/senderStreamIds";
+import { roleSender, senderStreamId } from "../utils/senderStreamIds";
 import { CameraPreviewModal } from "./CameraPreviewModal";
 import { ScreenAudioSourcesModal } from "./ScreenAudioSourcesModal";
 import { ScreenSharePickerModal } from "./ScreenSharePickerModal";
@@ -122,8 +122,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
 
         const pc = getPeerConnectionRef.current?.();
         if (pc) {
-          const senders = pc.getSenders();
-          const cameraSender = senders.find(s => s.track === videoTrack);
+          const cameraSender = roleSender(pc, "camera", videoTrack);
           if (cameraSender) {
             const params = cameraSender.getParameters();
             params.degradationPreference = "maintain-framerate";
