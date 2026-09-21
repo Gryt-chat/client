@@ -150,8 +150,10 @@ Each group gets call clients and probes. A call client is a Chromium of its own.
 with the invite and sits in Voice Chat with the fake camera on. The probes need no invite.
 There's a bare socket.io connection and a raw WebSocket to the SFU from Node, the same two
 from one Chromium page, and a `GET /health` every 10 seconds. On top of that there's `ping`
-to anything you list, and a look at this machine's addresses every 5 seconds. Those are
-hashed, so the files don't carry them.
+to anything you list, a look at this machine's addresses every 5 seconds, and at its default
+routes every 2. The addresses are hashed, so the files don't carry them. A default route that
+goes away shows up as `net.route`: the house router dropping its IPv6 route took every socket
+through Cloudflare with it (GRYT-1357).
 
 Every client and probe writes its own JSONL file to `e2e/soak/runs/<start time>/`, one event
 per line with a UTC time. You get socket.io connects and disconnects with the reason and the

@@ -1,4 +1,4 @@
-import { type ChildProcess, spawn } from "node:child_process";
+import { type ChildProcess, execFile, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { networkInterfaces } from "node:os";
 
@@ -165,5 +165,38 @@ export function networkWatch(log: EventWriter, everyMs = 5000): Stoppable {
     if (added.length || removed.length) log.write("net.change", { added, removed });
     last = now;
   }, everyMs);
+  return { stop: () => clearInterval(timer) };
+}
+
+/** Which interface carries the default route for one family, or null when there isn't one. */
+function defaultRoute(family: "v4" | "v6"): Promise<string | null> {
+  const [cmd, args] =
+    process.platform === "darwin"
+      ? ["route", ["-n", "get", ...(family === "v6" ? ["-inet6"] : []), "default"]]
+      : ["ip", [family === "v6" ? "-6" : "-4", "route", "show", "default"]];
+  return new Promise((resolve) => {
+    execFile(cmd, args, { timeout: 4000 }, (err, stdout) => {
+      if (err) return resolve(null);
+      const iface = /interface:\s*(\S+)/.exec(stdout)?.[1] ?? / dev (\S+)/.exec(stdout)?.[1];
+      resolve(iface ?? null);
+    });
+  });
+}
+
+/**
+ * The default route for IPv4 and IPv6 every `everyMs`, logged when it comes or goes. A router withdrawing
+ * its IPv6 route kills every IPv6 connection from the house at once, which looked like Gryt dropping (GRYT-1357).
+ */
+export function routeWatch(log: EventWriter, everyMs = 2000): Stoppable {
+  const last: Record<string, string | null | undefined> = {};
+  const check = async () => {
+    for (const family of ["v4", "v6"] as const) {
+      const iface = await defaultRoute(family);
+      if (last[family] !== undefined && last[family] !== iface) log.write("net.route", { family, iface, was: last[family] });
+      last[family] = iface;
+    }
+  };
+  void check().then(() => log.write("net.route_snapshot", { v4: last.v4, v6: last.v6 }));
+  const timer = setInterval(() => void check(), everyMs);
   return { stop: () => clearInterval(timer) };
 }

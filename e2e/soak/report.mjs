@@ -87,6 +87,8 @@ for (const [who, events] of byWho) {
         lastPingAgoMs: e.lastPingAgoMs,
         upMs: e.upMs,
         downMs: back ? back.ts - e.ts : null,
+        // The id the server logs as `Client disconnected: <id>`.
+        socketId: e.id,
       });
     }
     // SFU sockets: an open WebSocket to the SFU that this side didn't close.
@@ -187,6 +189,7 @@ for (const [who, events] of byWho) {
   for (const e of events) {
     if (e.type === "ping" && e.lost > 0) network.push({ at: e.ts, who, what: `ping ${e.host}: ${e.lost} lost in a minute` });
     if (e.type === "ping.lost") network.push({ at: e.ts, who, what: `ping ${e.host} lost` });
+    if (e.type === "net.route") network.push({ at: e.ts, who, what: `${e.family} default route ${e.iface ? `back on ${e.iface}` : "gone"}` });
     if (e.type === "net.change") network.push({ at: e.ts, who, what: `addresses +${e.added.length} -${e.removed.length} (${[...e.added, ...e.removed].map((a) => a.split("/")[0]).join(",")})` });
     if (e.type === "http" && (e.error || e.ms > 2000)) network.push({ at: e.ts, who, what: `${e.url}: ${e.error ?? `${e.ms} ms`}` });
     if (e.type === "page.crash" || e.type === "browser.disconnected") network.push({ at: e.ts, who, what: e.type });
@@ -247,7 +250,8 @@ for (const [i, incident] of incidents.entries()) {
       d.code != null ? `code ${d.code}` : null,
       d.wasClean != null ? (d.wasClean ? "clean" : "not clean") : null,
       d.lastRecvAgoMs != null ? `last frame ${d.lastRecvAgoMs} ms before` : null,
-      d.lastPingAgoMs != null ? `last ping ${d.lastPingAgoMs} ms before` : null,
+      d.lastPingAgoMs != null ? `last ping at ${iso(d.at - d.lastPingAgoMs).slice(11)}` : null,
+      d.socketId ? `id ${d.socketId}` : null,
       d.upMs != null ? `up ${Math.round(d.upMs / 60000)} min` : null,
     ].filter(Boolean);
     const who = d.role === "node" || d.role === "browser" ? `${d.role}/${d.group}` : d.who;

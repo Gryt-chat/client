@@ -5,7 +5,7 @@ import { test } from "@playwright/test";
 import { type CallClient, startBrowserProbe, startCallClient } from "./support/clients";
 import { readConfig } from "./support/config";
 import { RunDir } from "./support/jsonl";
-import { httpProbe, networkWatch, pingProbe, sfuProbe, socketProbe, type Stoppable } from "./support/probes";
+import { httpProbe, networkWatch, pingProbe, routeWatch, sfuProbe, socketProbe, type Stoppable } from "./support/probes";
 import { Tracker } from "./support/tracker";
 
 const config = readConfig();
@@ -39,7 +39,7 @@ test("soak", async () => {
   const trackers: Tracker[] = [];
   const stoppers: Stoppable[] = [];
   const net = new Tracker(run.log("net"), "net");
-  stoppers.push(networkWatch(net));
+  stoppers.push(networkWatch(net), routeWatch(net));
   for (const host of config.ping) stoppers.push(pingProbe(net, host));
 
   for (const group of config.groups) {
