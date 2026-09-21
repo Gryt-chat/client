@@ -3,7 +3,7 @@ import toast from "react-hot-toast";
 import { Socket } from "socket.io-client";
 import { v4 as uuidv4 } from "uuid";
 
-import { getServerAccessToken } from "@/common";
+import { getServerAccessToken, type NotificationLevel } from "@/common";
 import {
   type ChannelRule,
   EVERYONE_VALUE,
@@ -44,6 +44,7 @@ export function useSidebarEditor({
   const [sheetMaxBitrate, setSheetMaxBitrate] = useState("");
   const [sheetEsportsMode, setSheetEsportsMode] = useState(false);
   const [sheetTextInVoice, setSheetTextInVoice] = useState(false);
+  const [sheetDefaultNotificationLevel, setSheetDefaultNotificationLevel] = useState<NotificationLevel>("all");
   // Which scope the channel is on: "everyone", a template id, or "custom".
   const [sheetScopeChoice, setSheetScopeChoice] = useState(EVERYONE_VALUE);
   // The matrix, only meaningful while the choice is "custom". Kept while the
@@ -106,6 +107,8 @@ export function useSidebarEditor({
       setSheetMaxBitrate(ch?.maxBitrate ? String(ch.maxBitrate) : "");
       setSheetEsportsMode(ch?.eSportsMode || false);
       setSheetTextInVoice(ch?.textInVoice || false);
+      // An older server sends no level; automated is quiet by default there too.
+      setSheetDefaultNotificationLevel(ch?.defaultNotificationLevel ?? (ch?.automated ? "none" : "all"));
       // The scope and its rules are not reset here. See the effect below.
     } else if (selectedSidebarItem.kind === "spacer") {
       setSheetSpacerHeight(String(selectedSidebarItem.spacerHeight ?? 16));
@@ -347,7 +350,7 @@ export function useSidebarEditor({
   // Create a fully-configured channel in one confirmed step, instead of
   // dropping a default text channel that has to be edited after. GRYT-983.
   const createChannel = useCallback(
-    async (opts: { name: string; type: "text" | "voice"; layout?: "chat" | "forum"; automated?: boolean; description?: string | null; forumTags?: { id: string; name: string; emoji?: string | null; color?: string | null }[] }) => {
+    async (opts: { name: string; type: "text" | "voice"; layout?: "chat" | "forum"; automated?: boolean; description?: string | null; forumTags?: { id: string; name: string; emoji?: string | null; color?: string | null }[]; defaultNotificationLevel?: NotificationLevel }) => {
       if (!currentlyViewingServer) return;
       if (!currentConnection || !currentConnection.connected) {
         toast.error("Not connected to the server yet.");
@@ -373,6 +376,7 @@ export function useSidebarEditor({
         layout: opts.layout ?? "chat",
         automated: opts.automated ?? false,
         forumTags: opts.forumTags ?? [],
+        defaultNotificationLevel: opts.defaultNotificationLevel ?? (opts.automated ? "none" : "all"),
       });
       currentConnection.emit("server:sidebar:item:upsert", {
         accessToken,
@@ -462,6 +466,7 @@ export function useSidebarEditor({
         layout: kindFields.layout,
         automated: kindFields.automated,
         forumTags: sheetForumTags,
+        defaultNotificationLevel: sheetDefaultNotificationLevel,
         // Always sent, including as null. The server treats an *absent* viewMinRank
         // as "leave it alone", so leaving it out here cannot clear a gate.
       });
@@ -515,6 +520,7 @@ export function useSidebarEditor({
     sheetMaxBitrate,
     sheetEsportsMode,
     sheetTextInVoice,
+    sheetDefaultNotificationLevel,
     sheetSpacerHeight,
     sheetSeparatorLabel,
   ]);
@@ -544,6 +550,8 @@ export function useSidebarEditor({
     setSheetEsportsMode,
     sheetTextInVoice,
     setSheetTextInVoice,
+    sheetDefaultNotificationLevel,
+    setSheetDefaultNotificationLevel,
     sheetScopeChoice,
     setSheetScopeChoice,
     sheetScopeRules,

@@ -1,8 +1,10 @@
-import { Button, Dialog, IconButton, TextField } from "@gryt/ui";
+import { Button, Dialog, IconButton, Select, TextField } from "@gryt/ui";
 import { useEffect, useState } from "react";
 
+import type { NotificationLevel } from "@/common";
+
 import { PiX } from "../../../../lib/icons";
-import { type ChannelKind, kindToFields } from "./channelKind";
+import { type ChannelKind, defaultLevelForKind, kindToFields, NOTIFICATION_LEVEL_OPTIONS } from "./channelKind";
 import { ChannelKindPicker } from "./ChannelKindPicker";
 import { type ForumTagDraft, ForumTagsField } from "./ForumTagsField";
 
@@ -14,6 +16,7 @@ export interface NewChannelOptions {
   automated?: boolean;
   description?: string | null;
   forumTags?: ForumTagDraft[];
+  defaultNotificationLevel?: NotificationLevel;
 }
 
 interface CreateChannelDialogProps {
@@ -28,6 +31,9 @@ export function CreateChannelDialog({ open, onOpenChange, initialType = "chat", 
   const [description, setDescription] = useState("");
   const [kind, setKind] = useState<ChannelKind>(initialType);
   const [tags, setTags] = useState<ForumTagDraft[]>([]);
+  // Null until picked by hand, so changing the kind can keep moving it.
+  const [level, setLevel] = useState<NotificationLevel | null>(null);
+  const effectiveLevel = level ?? defaultLevelForKind(kind);
 
   // Start fresh each time the dialog opens, honouring the type it was opened for.
   useEffect(() => {
@@ -36,6 +42,7 @@ export function CreateChannelDialog({ open, onOpenChange, initialType = "chat", 
       setDescription("");
       setKind(initialType);
       setTags([]);
+      setLevel(null);
     }
   }, [open, initialType]);
 
@@ -51,6 +58,7 @@ export function CreateChannelDialog({ open, onOpenChange, initialType = "chat", 
       automated: fields.automated,
       description: description.trim() || null,
       forumTags: kind === "forum" ? tags : [],
+      defaultNotificationLevel: effectiveLevel,
     });
     onOpenChange(false);
   };
@@ -96,6 +104,20 @@ export function CreateChannelDialog({ open, onOpenChange, initialType = "chat", 
                 <ForumTagsField tags={tags} onChange={setTags} />
               </div>
             )}
+
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">Default notifications</span>
+              <Select
+                value={effectiveLevel}
+                onValueChange={(v) => {
+                  if (v === "all" || v === "mentions" || v === "none") setLevel(v);
+                }}
+                options={NOTIFICATION_LEVEL_OPTIONS}
+              />
+              <span className="text-xs" style={{ color: "var(--gryt-neutral-11)" }}>
+                What members get from this channel until they pick their own level for it.
+              </span>
+            </div>
 
             <div className="flex flex-col gap-2">
               <span className="text-sm font-medium">

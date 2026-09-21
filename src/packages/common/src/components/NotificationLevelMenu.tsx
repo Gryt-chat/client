@@ -4,13 +4,20 @@ import { useSyncExternalStore } from "react";
 import {
   getGlobalLevel,
   getOwnLevel,
+  getPlacement,
   getStoredSnapshot,
   globalOverrules,
   type NotificationLevel,
-  resolveLevel,
+  resolveInheritedLevel,
   setNotificationLevel,
   subscribeToPrefs,
 } from "../hooks/notificationPrefs";
+
+const LEVEL_WORDS: Record<NotificationLevel, string> = {
+  all: "everything",
+  mentions: "only mentions",
+  none: "nothing",
+};
 
 /**
  * A scope somebody can set a level on: the whole server, one folder, or one
@@ -50,15 +57,21 @@ export function NotificationLevelMenu({
   const own = getOwnLevel(host, scope);
   const global = getGlobalLevel();
 
-  /* What this scope currently comes out as. Worked out per scope rather than
-     through `resolveLevel`, which answers for a channel and would mislead here. */
-  const resolved: NotificationLevel =
+  /* What "Default" comes out as. A channel follows its folder or server, quietened
+     by the level the server set for it; a folder follows the server; the server hears everything. */
+  const inherited: NotificationLevel =
     scope.kind === "channel"
-      ? resolveLevel(getStoredSnapshot().servers, host, {
+      ? resolveInheritedLevel(getStoredSnapshot().servers, host, {
           channelId: scope.id,
           parentItemId: placement?.parentItemId ?? null,
+          defaultLevel: getPlacement(host, scope.id)?.defaultLevel ?? null,
         })
-      : own ?? getOwnLevel(host, { kind: "server" }) ?? "all";
+      : scope.kind === "folder"
+        ? (getOwnLevel(host, { kind: "server" }) ?? "all")
+        : "all";
+
+  /* What this scope currently comes out as: its own setting, else what it inherits. */
+  const resolved: NotificationLevel = own ?? inherited;
 
   const overruled = globalOverrules(global, resolved);
 
@@ -67,7 +80,7 @@ export function NotificationLevelMenu({
     { label: "Only mentions", value: "mentions" },
     { label: "Nothing", value: "none" },
     {
-      label: scope.kind === "server" ? "Default (everything)" : "Default (inherit)",
+      label: `Default (${LEVEL_WORDS[inherited]})`,
       value: null,
     },
   ];

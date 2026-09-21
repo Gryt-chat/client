@@ -5,19 +5,18 @@ import { Socket } from "socket.io-client";
 import type { MemberKeyState } from "@/common";
 import {
   answerChallenge,
-  getPlacement,
   getServerRefreshToken,
   isSessionExpired,
   isSignedOut,
   markChannelUnread,
   markSignedOut,
   markThreadUnread,
+  mentionsMember,
   removeServerAccessToken,
   removeServerRefreshToken,
-  resolveAnnounceLevel,
   setServerAccessToken,
   setServerFileToken,
-  shouldAnnounceMessage,
+  shouldNotifyForMessage,
 } from "@/common";
 import { showDesktopNotification } from "@/lib/desktopNotification";
 import { playNotificationSound, preloadNotificationSound } from "@/lib/notificationSound";
@@ -446,26 +445,25 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
         if (host === currentlyViewingServerRef.current?.host) return;
         const myId = socket.id ? clientsRef.current[host]?.[socket.id]?.serverUserId : undefined;
         if (myId && msg.sender_server_id === myId) return;
-        // Counted against the thread rather than dropped: both trackers were keyed
-        // by conversation, and this one is keyed by thread.
+        // Counted against the thread rather than the channel: both trackers were
+        // keyed by conversation, and this one is keyed by thread.
         if (msg.thread_id) {
-          /* Returns either way: a thread reply never counts against the channel,
-             and one with no conversation id cannot be placed. */
           if (msg.conversation_id) markThreadUnread(host, msg.conversation_id, msg.thread_id);
-          return;
-        }
-
-        /* Unread whatever the level says: muting is about not being interrupted,
-           not about pretending nothing happened. */
-        if (msg.conversation_id) {
+        } else if (msg.conversation_id) {
+          /* Unread whatever the level says: muting is about not being interrupted,
+             not about pretending nothing happened. */
           markChannelUnread(host, msg.conversation_id);
         }
 
-        const level = resolveAnnounceLevel(
-          host,
-          msg.conversation_id ? getPlacement(host, msg.conversation_id) : null,
-        );
-        if (!shouldAnnounceMessage(level)) return;
+        /* The same question `useChat` asks for the server on screen. Not viewing
+           this one is settled by the return above; the window's focus is not. */
+        const notify = shouldNotifyForMessage(host, msg, {
+          myId,
+          viewingThisServer: false,
+          windowFocused: document.hasFocus(),
+          mentionsMe: mentionsMember(msg, { serverUserId: myId, nickname }),
+        });
+        if (!notify) return;
 
         if (messageSoundEnabledRef.current) {
           playNotificationSound(messageSoundFileRef.current, messageSoundVolumeRef.current);
@@ -488,25 +486,6 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
                 : undefined,
             );
           });
-        }
-      });
-
-      /* A second listener on an event `registerServerSocketEvents` also handles:
-         that one keeps the count, this one decides whether to make a noise. */
-      socket.on("mention:new", (payload: { conversationId?: string }) => {
-        if (host === currentlyViewingServerRef.current?.host) return;
-
-        const level = resolveAnnounceLevel(
-          host,
-          payload?.conversationId ? getPlacement(host, payload.conversationId) : null,
-        );
-        if (level !== "mentions") return;
-
-        if (messageSoundEnabledRef.current) {
-          playNotificationSound(messageSoundFileRef.current, messageSoundVolumeRef.current);
-        }
-        if (notificationBadgeEnabledRef.current) {
-          incrementUnreadRef.current();
         }
       });
 

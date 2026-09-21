@@ -194,7 +194,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     /* Where the sidebar arrives, and the layer deciding whether a message makes a
        noise has no other way to know a channel's folder. Before the join check. */
     if (Array.isArray(data.sidebar_items)) {
-      rememberPlacements(host, data.sidebar_items);
+      rememberPlacements(host, data.sidebar_items, Array.isArray(data.channels) ? data.channels : []);
     }
 
     /* Replaced rather than merged, so a removed plugin stops being listed on the

@@ -84,7 +84,9 @@ jobs:
       - run: yarn test:settings-index
       - run: yarn test:notification-prefs
       - run: yarn test:notification-navigation
-      - run: yarn test:muted-channel-notifications
+      # Whether a message badges, sounds and notifies is one function for the server on
+      # screen and the ones behind it. The two handlers used to disagree about focus and mentions.
+      - run: yarn test:message-notification
       - run: yarn test:hotkeys
       - run: yarn test:screen-audio
       - run: yarn test:audio-mixer
