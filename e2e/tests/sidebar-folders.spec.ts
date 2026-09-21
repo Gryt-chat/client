@@ -3,8 +3,8 @@ import { io, type Socket } from "socket.io-client";
 import { expect, test, uniqueName } from "../support/fixtures";
 
 /**
- * The server sends every folder, even one whose only channel is hidden from the
- * viewer, so leaving it out is the client's job (GRYT-1305).
+ * A server from before GRYT-1306 sends every folder, even one whose only channel
+ * is hidden from the viewer, so the client leaves it out as well (GRYT-1305).
  */
 
 /** Emits and waits for one reply, the way the settings dialogs talk to the server. */

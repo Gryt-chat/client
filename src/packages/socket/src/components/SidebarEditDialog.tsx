@@ -1,4 +1,4 @@
-import { Dialog, IconButton, Select, Switch, TextField } from "@gryt/ui";
+import { Button, Dialog, IconButton, Select, Switch, TextField } from "@gryt/ui";
 import { useCallback, useMemo, useRef } from "react";
 
 import type { NotificationLevel } from "@/common";
@@ -8,13 +8,14 @@ import {
   describeRules,
   EVERYONE_VALUE,
 } from "@/settings/src/channelPermissionRules";
+import { describeFolderRules, folderFollowNote } from "@/settings/src/folderPermissionRules";
 import type { SidebarItem } from "@/settings/src/types/server";
 
 import { PiX } from "../../../../lib/icons";
 import { type ChannelKind, NOTIFICATION_LEVEL_OPTIONS } from "./channelKind";
 import { ChannelKindPicker } from "./ChannelKindPicker";
-import { ChannelPermissionMatrix } from "./ChannelPermissionMatrix";
 import { type ForumTagDraft, ForumTagsField } from "./ForumTagsField";
+import { ScopePicker } from "./ScopePicker";
 import { settingsTitle } from "./sidebarTree";
 
 export interface SidebarEditorFields {
@@ -47,7 +48,11 @@ export interface SidebarEditorFields {
   scopeRoles: { id: string; name: string; rank: number; permissions: string[] }[];
   channelPermissions: string[];
   scopeLoading: boolean;
-  saveChannelScope: (choice?: string, rules?: ChannelRule[]) => void;
+  saveScope: (choice?: string, rules?: ChannelRule[]) => void;
+  sheetScopeFolder: { id: string; name: string | null } | null;
+  sheetScopeFollowsFolder: boolean;
+  followFolder: () => void;
+  folderPermissions: boolean;
   sheetSpacerHeight: string;
   setSheetSpacerHeight: (v: string) => void;
   sheetSeparatorLabel: string;
@@ -77,7 +82,8 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
     sheetDefaultNotificationLevel, setSheetDefaultNotificationLevel,
     sheetScopeChoice, setSheetScopeChoice,
     sheetScopeRules, setSheetScopeRules,
-    scopeChoiceOptions, scopeRoles, channelPermissions, scopeLoading, saveChannelScope,
+    scopeChoiceOptions, scopeRoles, channelPermissions, scopeLoading, saveScope,
+    sheetScopeFolder, sheetScopeFollowsFolder, followFolder, folderPermissions,
     sheetSpacerHeight, setSheetSpacerHeight,
     sheetSeparatorLabel, setSheetSeparatorLabel,
     closeEditDialog, saveSelectedSidebarItem,
@@ -100,25 +106,47 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
 
   // The scope has its own save because it has its own event. Same debounce shape
   // as the channel fields, so a matrix clicked four times sends once.
-  const scopeSaveRef = useRef(saveChannelScope);
-  scopeSaveRef.current = saveChannelScope;
+  const scopeSaveRef = useRef(saveScope);
+  scopeSaveRef.current = saveScope;
   const scopeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingScopeRulesRef = useRef<ChannelRule[] | undefined>(undefined);
 
   /* `rules` is threaded through the timer for the same reason the dropdown passes
      its choice: 600ms being long enough for a render is timing, not a guarantee. */
   const debouncedScopeSave = useCallback((rules?: ChannelRule[]) => {
     if (scopeTimerRef.current) clearTimeout(scopeTimerRef.current);
+    pendingScopeRulesRef.current = rules;
     scopeTimerRef.current = setTimeout(() => {
       scopeTimerRef.current = null;
       scopeSaveRef.current(undefined, rules);
     }, 600);
   }, []);
 
+  /* Only a save still waiting. Saving on every close made a channel that follows
+     its folder its own, and reset one to Everyone if closed before it loaded. */
   const flushScopeSave = useCallback(() => {
+    if (!scopeTimerRef.current) return;
+    clearTimeout(scopeTimerRef.current);
+    scopeTimerRef.current = null;
+    scopeSaveRef.current(undefined, pendingScopeRulesRef.current);
+  }, []);
+
+  const cancelScopeSave = useCallback(() => {
     if (scopeTimerRef.current) clearTimeout(scopeTimerRef.current);
     scopeTimerRef.current = null;
-    scopeSaveRef.current();
   }, []);
+
+  const pickScope = (next: string) => {
+    setSheetScopeChoice(next);
+    /* The new value goes with the call: `scopeSaveRef.current` is
+       the closure the last render built. */
+    scopeSaveRef.current(next);
+  };
+
+  const drawRules = (next: ChannelRule[]) => {
+    setSheetScopeRules(next);
+    debouncedScopeSave(next);
+  };
 
   /** Role id to name, for the sentence under the dropdown. */
   const roleNames = useMemo(
@@ -194,44 +222,43 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
               </div>
               <div className="flex flex-col gap-2">
                 <span className="text-sm font-medium">Who can use this channel</span>
-                {/* Everyone, a shared template, or this channel's own rules.
-                    A template is edited in server settings and applies to every
-                    channel on it, which is the point — the dropdown only picks
-                    one here. */}
-                <Select
-                  value={sheetScopeChoice || EVERYONE_VALUE}
-                  disabled={scopeLoading}
-                  onValueChange={(v) => {
-                    /* Base UI hands back null when a Select clears, and
-                       `String(null)` is the truthy string "null". */
-                    if (v === null || v === undefined) return;
-                    const next = String(v);
-                    setSheetScopeChoice(next);
-                    /* The new value goes with the call: `scopeSaveRef.current` is
-                       the closure the last render built. */
-                    scopeSaveRef.current(next);
-                  }}
-                  options={scopeChoiceOptions}
-                />
-                <span className="text-xs">
-                  {sheetScopeChoice === EVERYONE_VALUE
-                    ? "Everyone on the server can see and use this channel."
-                    : sheetScopeChoice === CUSTOM_VALUE
-                      ? describeRules(sheetScopeRules, roleNames)
-                      : "Follows a template. Change it in server settings and every channel using it changes with it."}
-                </span>
-                {sheetScopeChoice === CUSTOM_VALUE && (
-                  <ChannelPermissionMatrix
-                    roles={scopeRoles}
-                    permissions={channelPermissions}
-                    rules={sheetScopeRules}
-                    disabled={scopeLoading}
-                    onChange={(next) => {
-                      setSheetScopeRules(next);
-                      debouncedScopeSave(next);
-                    }}
-                  />
+                {/* In a folder, what shows below is the folder's until something
+                    is picked here, and then it is the channel's own. */}
+                {sheetScopeFolder && (
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-xs">
+                      {folderFollowNote(sheetScopeFolder.name, sheetScopeFollowsFolder)}
+                    </span>
+                    {!sheetScopeFollowsFolder && (
+                      <Button
+                        tone="neutral"
+                        size="xsmall"
+                        style={{ flexShrink: 0 }}
+                        disabled={scopeLoading}
+                        onClick={() => { cancelScopeSave(); followFolder(); }}
+                      >
+                        Follow folder
+                      </Button>
+                    )}
+                  </div>
                 )}
+                <ScopePicker
+                  choice={sheetScopeChoice}
+                  rules={sheetScopeRules}
+                  options={scopeChoiceOptions}
+                  roles={scopeRoles}
+                  permissions={channelPermissions}
+                  loading={scopeLoading}
+                  description={
+                    sheetScopeChoice === EVERYONE_VALUE
+                      ? "Everyone on the server can see and use this channel."
+                      : sheetScopeChoice === CUSTOM_VALUE
+                        ? describeRules(sheetScopeRules, roleNames)
+                        : "Follows a template. Change it in server settings and every channel using it changes with it."
+                  }
+                  onChoice={pickScope}
+                  onRules={drawRules}
+                />
               </div>
               {sheetChannelIsVoice && (
                 <>
@@ -320,6 +347,33 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
                 /* A separator with no label is a plain rule, which is reasonable
                    to want. A folder with no name is a row you cannot tell apart. */
                 placeholder={selectedSidebarItem.kind === "folder" ? "New folder" : "Optional"}
+              />
+            </div>
+          )}
+
+          {selectedSidebarItem?.kind === "folder" && folderPermissions && (
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">Who can use this folder</span>
+              <span className="text-xs">
+                Channels in this folder follow these permissions unless they have their own.
+                If someone can&rsquo;t see any of its channels, they won&rsquo;t see the folder either.
+              </span>
+              <ScopePicker
+                choice={sheetScopeChoice}
+                rules={sheetScopeRules}
+                options={scopeChoiceOptions}
+                roles={scopeRoles}
+                permissions={channelPermissions}
+                loading={scopeLoading}
+                description={
+                  sheetScopeChoice === EVERYONE_VALUE
+                    ? "Everyone on the server can see and use the channels in this folder."
+                    : sheetScopeChoice === CUSTOM_VALUE
+                      ? describeFolderRules(sheetScopeRules, roleNames)
+                      : "Uses a template. Edit it in server settings and everything using it changes too."
+                }
+                onChoice={pickScope}
+                onRules={drawRules}
               />
             </div>
           )}

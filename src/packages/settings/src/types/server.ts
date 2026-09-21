@@ -120,6 +120,8 @@ export type serverDetails = {
       homepage?: string;
       capabilities?: string[];
     }[];
+    /** Whether folders carry permissions their channels follow. Absent on an older server. */
+    folder_permissions?: boolean;
   };
   error?: string;
   message?: string;

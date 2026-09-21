@@ -20,6 +20,7 @@ import {
   scopeSetPayload,
   withCell,
 } from "../src/packages/settings/src/channelPermissionRules.ts";
+import { describeFolderRules, folderFollowNote } from "../src/packages/settings/src/folderPermissionRules.ts";
 
 // ── cells ──────────────────────────────────────────────────────────
 
@@ -131,5 +132,33 @@ assert.match(
   describeRules([{ roleId: "mod", permission: "send_messages", effect: "allow" }], NAMES),
   /1 change/,
 );
+
+// ── a folder's note, and a channel's line about its folder ─────────
+
+assert.match(describeFolderRules([], NAMES), /Everyone on the server can see and use the channels in this folder/);
+// Reading denied on a folder takes the folder off the sidebar too, so it says so.
+assert.equal(
+  describeFolderRules(
+    [
+      { roleId: "member", permission: "read_messages", effect: "deny" },
+      { roleId: "guest", permission: "read_messages", effect: "deny" },
+      { roleId: "mod", permission: "send_messages", effect: "allow" },
+    ],
+    NAMES,
+  ),
+  "Member and Guest won't see this folder or anything in it, and 1 other change.",
+);
+assert.equal(
+  describeFolderRules([{ roleId: "mod", permission: "send_messages", effect: "allow" }], NAMES),
+  "1 change to what roles can do in this folder's channels.",
+);
+
+assert.equal(
+  folderFollowNote("Staff", true),
+  "Follows the Staff folder. Pick something here to give this channel its own permissions.",
+);
+assert.equal(folderFollowNote("Staff", false), "Has its own permissions instead of the Staff folder's.");
+// A folder the server sends without a name still reads as a sentence.
+assert.equal(folderFollowNote(null, false), "Has its own permissions instead of its folder's.");
 
 console.log("channel permissions: ok");
