@@ -133,3 +133,62 @@ first. The build script looks for the server, SFU and image worker beside the cl
 the superproject. CI runs it on Linux under `xvfb-run`. It skips itself on macOS, where the
 app asks for camera access every time it starts until Electron has an answer in System
 Settings. Set `GRYT_E2E_ELECTRON_ON_MAC=1` once it does.
+
+## Soak
+
+`e2e/soak` keeps a call up for hours and logs everything on the way, so a drop can be put on
+the path or on Gryt. It isn't a test and CI doesn't run it. GRYT-1325 was the first run.
+
+Clients come in up to three groups, one for each way of reaching a server:
+
+- `tunnel`: `test.gryt.chat` through Cloudflare, with media going to the SFU's public address.
+- `direct`: the same server on the LAN. The page swaps the SFU's public address for its LAN
+  one before the WebSocket opens, so these calls skip the tunnel too.
+- `local`: a server on this machine that anyone can join, if you start one.
+
+Each group gets call clients and probes. A call client is a Chromium of its own. It joins
+with the invite and sits in Voice Chat with the fake camera on. The probes need no invite.
+There's a bare socket.io connection and a raw WebSocket to the SFU from Node, the same two
+from one Chromium page, and a `GET /health` every 10 seconds. On top of that there's `ping`
+to anything you list, and a look at this machine's addresses every 5 seconds. Those are
+hashed, so the files don't carry them.
+
+Every client and probe writes its own JSONL file to `e2e/soak/runs/<start time>/`, one event
+per line with a UTC time. You get socket.io connects and disconnects with the reason and the
+close code, and every WebSocket opening and closing, with whether the page closed it. You
+also get ICE and peer connection states, the candidate pair, a `getStats` sample every 5
+seconds, the app's console and whether the window shows the call. The app itself isn't
+changed. An init script watches it, the way the nightly's `watchPeerConnections` does.
+`status.txt` in the same folder has a line per client and gets rewritten every minute.
+
+```bash
+yarn vite build
+GRYT_E2E_APP_PORT=3667 \
+GRYT_TEST_SERVER_URL=https://test.gryt.chat GRYT_TEST_INVITE_CODE=… \
+GRYT_SOAK_TUNNEL_SFU=wss://test-sfu.gryt.chat \
+GRYT_SOAK_DIRECT_SERVER=http://192.168.50.147:5030 GRYT_SOAK_DIRECT_SFU=ws://192.168.50.147:5035 \
+GRYT_SOAK_PING=192.168.50.1,192.168.50.147,1.1.1.1 \
+  yarn playwright test --config e2e/soak/playwright.config.ts
+node e2e/soak/report.mjs e2e/soak/runs/<run>
+```
+
+The report lists every drop with its reason, its close code and how long it took to come
+back. Drops less than 30 seconds apart count as one incident. For each incident it prints the
+`journalctl` window to read on dev.lan for the server, the SFU and cloudflared.
+
+| Variable | Default | |
+|---|---|---|
+| `GRYT_SOAK_MINUTES` | 240 | How long the call stays up |
+| `GRYT_SOAK_CLIENTS` | 3 | Call clients in the tunnel group |
+| `GRYT_SOAK_DIRECT_CLIENTS` | 2 | Call clients in the direct group |
+| `GRYT_SOAK_LOCAL_SERVER`, `GRYT_SOAK_LOCAL_SFU` | | A server and SFU on this machine, for the local group |
+| `GRYT_SOAK_LOCAL_CLIENTS` | 2 | Call clients in the local group |
+| `GRYT_SOAK_CAMERA` | 1 | `0` for audio only |
+| `GRYT_SOAK_BROWSER_PROBE` | 1 | `0` leaves out the probe page |
+| `GRYT_SOAK_OUT` | `e2e/soak/runs/<start time>` | Where the files go |
+
+Without `GRYT_TEST_INVITE_CODE`, the tunnel and direct groups only get probes. Port 3667 is on
+the test server's CORS list like 4173 is, and it leaves 4173 free for the nightly. To stop
+early, create a file called `STOP` in the run's folder. The call clients then leave the call
+and the server, like the nightly's guests do. On a Mac, `caffeinate -i -w <pid>` keeps the
+machine awake until the run ends.
