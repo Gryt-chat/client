@@ -1731,6 +1731,36 @@ body {
   line-height: 1.52;
 }
 
+/* Changes across more than one area: a quiet heading over each, and one pill
+   column through all of them, so every change's text starts at the same place. */
+.whats-new-areas {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: 0.875rem;
+  margin: 1rem 0 0;
+}
+
+.whats-new-areas > .whats-new-changes {
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  margin: 0;
+}
+
+.whats-new-area {
+  grid-column: 1 / -1;
+  margin: 1.125rem 0 0.4375rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gryt-muted);
+}
+
+.whats-new-area:first-child {
+  margin-top: 0;
+}
+
 /* A release nobody split into kinds. Everything before 1.10 is this. */
 .whats-new-plain {
   margin-top: 1rem;
@@ -1747,7 +1777,8 @@ body {
 }
 
 .whats-new-release,
-.whats-new-release > .whats-new-changes {
+.whats-new-release > .whats-new-changes,
+.whats-new-release > .whats-new-areas {
   display: grid;
   grid-column: 1 / -1;
   grid-template-columns: subgrid;
@@ -1770,6 +1801,7 @@ body {
 }
 
 .whats-new-version + .whats-new-changes,
+.whats-new-version + .whats-new-areas,
 .whats-new-version + .whats-new-plain {
   margin-top: 0.5rem;
 }
@@ -1780,6 +1812,7 @@ body {
    two do not agree by the 3rem the popup keeps clear of the edges. */
 @container (max-width: 380px) {
   .whats-new-releases,
+  .whats-new-areas,
   .whats-new-changes {
     grid-template-columns: minmax(0, 1fr);
   }

@@ -343,8 +343,8 @@ const compiled = ts
     compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
   })
   .outputText.replace(/from "([^"]+)"/g, (_, spec) => `from "${STUBS[spec] ?? import.meta.resolve(spec)}"`);
-const { KIND_ORDER, ReleaseBody, WhatsNewDialog, ordered, readableDate } = await import(
-  moduleUrl(`${compiled}\nexport { KIND_ORDER, ReleaseBody, ordered, readableDate };`)
+const { AREAS, KIND_ORDER, ReleaseBody, WhatsNewDialog, grouped, ordered, readableDate } = await import(
+  moduleUrl(`${compiled}\nexport { AREAS, KIND_ORDER, ReleaseBody, grouped, ordered, readableDate };`)
 );
 const c = (kind, text) => ({ kind, text });
 
@@ -474,6 +474,158 @@ const SEVERAL_FIXES = {
   assert.match(rule(".whats-new-change"), /grid-template-columns:\s*subgrid/, "a row sizes its own pill column, so the text no longer lines up");
 }
 
+/* ── a heading over each area (GRYT-1339) ────────────────────────────────── */
+
+const at = (area, kind, text) => ({ kind, area, text });
+
+// The same seven as the site's AREAS, in the same order. An eighth there lands under its own id here.
+assert.deepEqual(
+  [...AREAS],
+  [
+    ["voice", "Voice & video"],
+    ["chat", "Chat"],
+    ["notifications", "Notifications"],
+    ["servers", "Servers & invites"],
+    ["settings", "Settings & app"],
+    ["phone", "Phone"],
+    ["self-hosting", "Self-hosting"],
+  ],
+  "the areas are named or ordered differently from the site's AREAS",
+);
+
+/** Each group's heading and its changes' text, for comparing. */
+const byArea = (changes) => grouped(changes).map(([heading, list]) => [heading, list.map((x) => x.text)]);
+
+// AREAS order however the release was written, as written inside an area, and no area last.
+assert.deepEqual(
+  byArea([c("fixed", "loose"), at("chat", "new", "c1"), at("voice", "fixed", "v1"), at("chat", "fixed", "c2")]),
+  [
+    ["Voice & video", ["v1"]],
+    ["Chat", ["c1", "c2"]],
+    ["Other", ["loose"]],
+  ],
+  "changes are not under one heading per area in AREAS order, with Other last",
+);
+
+// An area the site added after this build keeps its own name, before Other rather than dropped.
+assert.deepEqual(
+  byArea([c("fixed", "loose"), at("bots", "new", "b"), at("phone", "fixed", "p")]),
+  [
+    ["Phone", ["p"]],
+    ["bots", ["b"]],
+    ["Other", ["loose"]],
+  ],
+  "an unknown area was dropped or put somewhere other than before Other",
+);
+
+// Anything that isn't a string is no area, rather than a heading reading 7 or null.
+assert.deepEqual(
+  byArea([at(7, "fixed", "seven"), at(null, "fixed", "none")]),
+  [["Other", ["seven", "none"]]],
+  "an area that isn't a string became a heading of its own",
+);
+
+/** What the list draws, in order: each heading as `# name` and each row as `pill: text`. */
+function drawn(html) {
+  const parts = /<(h[34]) class="whats-new-area">([^<]*)<\/h[34]>|<li\b[^>]*>([\s\S]*?)<\/li>/g;
+  return [...html.matchAll(parts)].map(([, level, heading, row]) =>
+    heading !== undefined
+      ? `${level} ${heading.replace(/&amp;/g, "&")}`
+      : row.replace(/<span class="whats-new-kind" data-tone="[^"]*">([^<]*)<\/span>/, "$1: ").replace(/<[^>]+>/g, ""),
+  );
+}
+
+const SPREAD = {
+  version: "1.11.32",
+  date: "2026-09-21",
+  line: "Five things in three places.",
+  changes: [
+    at("servers", "new", "Copy an invite link"),
+    at("voice", "fixed", "A call reconnects to its own server"),
+    at("chat", "changed", "Long pastes become a file"),
+    at("voice", "changed", "The screen share gets the upload first"),
+    c("fixed", "Something nobody filed"),
+  ],
+};
+
+// One release across areas: a heading over each, in AREAS order, with the kinds ordered inside it.
+{
+  const html = renderToStaticMarkup(
+    createElement(WhatsNewDialog, { releases: [SPREAD], since: null, capped: false, onClose() {} }),
+  );
+  assert.deepEqual(
+    drawn(html),
+    [
+      "h3 Voice & video",
+      "Changed: The screen share gets the upload first",
+      "Fixed: A call reconnects to its own server",
+      "h3 Chat",
+      "Changed: Long pastes become a file",
+      "h3 Servers & invites",
+      "New: Copy an invite link",
+      "h3 Other",
+      "Fixed: Something nobody filed",
+    ],
+    "a release across areas is not drawn as a heading per area, AREAS first and Other last",
+  );
+}
+
+// Every change in one area, or a feed with no areas at all: no headings, and the rows as they always were.
+for (const changes of [
+  SEVERAL_FIXES.changes.map((change) => ({ ...change, area: "settings" })),
+  SEVERAL_FIXES.changes,
+]) {
+  const html = renderToStaticMarkup(createElement(ReleaseBody, { line: "x", changes }));
+  assert.doesNotMatch(html, /whats-new-area/, "a release whose changes share one area, or have none, got headings");
+  assert.deepEqual(
+    drawn(html),
+    [
+      "Security: Uploads are checked",
+      "New: Webhooks post cards",
+      "Changed: Webhook avatars are resized",
+      "Fixed: Updates said there were none",
+      "Fixed: A hosted server said reconnecting",
+      "Fixed: The desktop entry listed gryt five times",
+    ],
+    "a release with one area or none is not the plain list of rows it was before areas",
+  );
+}
+
+// Several releases: headings one level under the version, only where a release spans areas.
+{
+  const OLD = { version: "1.9.4", date: "2026-08-20", line: "Joining voice waits for the microphone." };
+  const html = renderToStaticMarkup(
+    createElement(WhatsNewDialog, { releases: [SPREAD, SEVERAL_FIXES, OLD], since: "1.9.3", capped: false, onClose() {} }),
+  );
+  const [spread, fixes, old] = html.split('<section class="whats-new-release">').slice(1);
+  assert.deepEqual(
+    drawn(spread).filter((part) => part.startsWith("h")),
+    ["h4 Voice & video", "h4 Chat", "h4 Servers & invites", "h4 Other"],
+    "the headings in a range of releases are not one level under the version's",
+  );
+  assert.doesNotMatch(fixes, /whats-new-area/, "a release with no areas got headings in a range");
+  assert.equal(drawn(fixes).length, SEVERAL_FIXES.changes.length, "a release with no areas lost rows in a range");
+  assert.match(old, /whats-new-plain/, "a release from before 1.10 lost its one sentence in a range");
+}
+
+// The areas share the release's pill column too, and it stacks with the rest on a narrow card.
+{
+  const style = readFileSync(join(root, "src/style.css"), "utf8");
+  const rule = (selector) => {
+    const found = style.indexOf(`\n${selector} {`);
+    assert.notEqual(found, -1, `src/style.css no longer has ${selector}. Move this check with it.`);
+    return style.slice(found, style.indexOf("}", found));
+  };
+  assert.match(rule(".whats-new-areas"), /grid-template-columns:\s*max-content minmax\(0, 1fr\)/, "the areas don't share one pill column");
+  assert.match(rule(".whats-new-areas > .whats-new-changes"), /grid-template-columns:\s*subgrid/, "an area sizes its own pill column");
+  assert.match(style, /\.whats-new-release > \.whats-new-areas \{\s*display: grid;[^}]*subgrid/, "a release's areas size their own pill column in a range");
+  assert.match(
+    style.slice(style.indexOf("@container (max-width: 380px)")),
+    /^[^}]*\.whats-new-areas,[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/,
+    "the areas keep a pill column on a card too narrow for one",
+  );
+}
+
 /* `new Date("2026-09-08")` is UTC midnight, so west of Greenwich a release is
    dated the day before it happened. */
 {
@@ -572,5 +724,6 @@ assert.deepEqual(notified, ["user_1"], "markLoaded does not tell its listeners")
 console.log(
   "what's new: ok, waits for the store, once per version, quiet on a fresh " +
     "install and with no line; revalidates and retries " +
-    `${RETRY_DELAYS_MS.length} times; a pill on every change, security first, unknown kinds kept, dates local`,
+    `${RETRY_DELAYS_MS.length} times; a pill on every change, security first, unknown kinds kept, ` +
+    "a heading per area only when there are two, dates local",
 );

@@ -5,9 +5,9 @@
       "date": "2026-09-15",
       "line": "A release made up for the end-to-end tests.",
       "changes": [
-        { "kind": "fixed", "text": "The first Enter after a pasted address sends it." },
-        { "kind": "new", "text": "Every change in this dialog gets its own pill." },
-        { "kind": "fixed", "text": "Server settings fit on a phone." }
+        { "kind": "fixed", "area": "chat", "text": "The first Enter after a pasted address sends it." },
+        { "kind": "new", "area": "settings", "text": "Every change in this dialog gets its own pill." },
+        { "kind": "fixed", "area": "servers", "text": "Server settings fit on a phone." }
       ]
     },
     {

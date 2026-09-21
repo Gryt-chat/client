@@ -1,9 +1,12 @@
 import { Button, Chip, type ChipProps, Dialog } from "@gryt/ui";
+import { Fragment } from "react";
 
 import { LogoIcon } from "@/common";
 
 export interface WhatsNewChange {
   kind: string;
+  /** The part of Gryt it touches. Releases before 1.11.0, and older sites, have none. */
+  area?: string;
   text: string;
 }
 
@@ -50,6 +53,34 @@ function ordered(changes: WhatsNewChange[]): WhatsNewChange[] {
   return order.flatMap((kind) => changes.filter((c) => c.kind === kind));
 }
 
+/** The site's AREAS, in the order the headings are drawn. A copy, like the kinds above. */
+const AREAS = new Map([
+  ["voice", "Voice & video"],
+  ["chat", "Chat"],
+  ["notifications", "Notifications"],
+  ["servers", "Servers & invites"],
+  ["settings", "Settings & app"],
+  ["phone", "Phone"],
+  ["self-hosting", "Self-hosting"],
+]);
+
+const areaOf = (change: WhatsNewChange) => (typeof change.area === "string" ? change.area : "");
+
+/**
+ * The changes under their area's heading, in AREAS order. An area this build doesn't
+ * know keeps its own name, and a change with no area goes last, under Other.
+ */
+function grouped(changes: WhatsNewChange[]): [string, WhatsNewChange[]][] {
+  const present = new Set(changes.map(areaOf));
+  const order = [
+    ...[...AREAS.keys()].filter((area) => present.has(area)),
+    ...[...present].filter((area) => area !== "" && !AREAS.has(area)),
+    ...(present.has("") ? [""] : []),
+  ];
+
+  return order.map((area) => [AREAS.get(area) ?? (area || "Other"), changes.filter((c) => areaOf(c) === area)]);
+}
+
 /**
  * The day and month, in the reader's locale. From the parts, because
  * `new Date("2026-09-08")` is UTC midnight and reads as the 7th in the Americas.
@@ -63,12 +94,8 @@ function readableDate(iso: string): string {
   });
 }
 
-/** One release's changes, a pill on each, or its one sentence where it was never split. */
-function ReleaseBody({ line, changes }: { line: string; changes?: WhatsNewChange[] }) {
-  /* Releases before 1.10 carry a line and no kinds, so there is nothing to
-     label. Their one sentence is shown as it is written. */
-  if (!changes?.length) return <p className="whats-new-plain">{line}</p>;
-
+/** A row per change, each with its kind's pill. */
+function ChangeRows({ changes }: { changes: WhatsNewChange[] }) {
   return (
     <ul className="whats-new-changes">
       {ordered(changes).map((change, i) => (
@@ -80,6 +107,39 @@ function ReleaseBody({ line, changes }: { line: string; changes?: WhatsNewChange
         </li>
       ))}
     </ul>
+  );
+}
+
+/**
+ * One release's changes, a pill on each and a heading over each area, or its one
+ * sentence where it was never split. Changes that all share an area get no heading.
+ */
+function ReleaseBody({
+  line,
+  changes,
+  heading = "h3",
+}: {
+  line: string;
+  changes?: WhatsNewChange[];
+  heading?: "h3" | "h4";
+}) {
+  /* Releases before 1.10 carry a line and no kinds, so there is nothing to
+     label. Their one sentence is shown as it is written. */
+  if (!changes?.length) return <p className="whats-new-plain">{line}</p>;
+
+  const areas = grouped(changes);
+  if (areas.length === 1) return <ChangeRows changes={changes} />;
+
+  const Heading = heading;
+  return (
+    <div className="whats-new-areas">
+      {areas.map(([area, inArea]) => (
+        <Fragment key={area}>
+          <Heading className="whats-new-area">{area}</Heading>
+          <ChangeRows changes={inArea} />
+        </Fragment>
+      ))}
+    </div>
   );
 }
 
@@ -156,7 +216,7 @@ export function WhatsNewDialog({
                     <h3 className="whats-new-version">
                       {release.version} · {readableDate(release.date)}
                     </h3>
-                    <ReleaseBody line={release.line} changes={release.changes} />
+                    <ReleaseBody line={release.line} changes={release.changes} heading="h4" />
                   </section>
                 ))}
               </div>

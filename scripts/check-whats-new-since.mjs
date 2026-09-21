@@ -126,6 +126,24 @@ assert.deepEqual(versions(releasesToShow(APP.slice(1), "1.11.8", "1.11.11", fals
   assert.equal(exact.capped, false, "exactly the cap reads as capped");
 }
 
+/* ── areas ride along with the range (GRYT-1339) ─────────────────────────── */
+{
+  const spread = rel("1.11.32", {
+    changes: [
+      { kind: "new", area: "servers", text: "Invite links" },
+      { kind: "fixed", area: "voice", text: "Calls reconnect to their own server" },
+    ],
+  });
+  const unsorted = rel("1.11.31", { changes: [{ kind: "fixed", text: "From a site with no areas" }] });
+  const p = releasesToShow([spread, unsorted, rel("1.11.30")], "1.11.30", "1.11.32", false);
+  assert.deepEqual(p.releases, [spread, unsorted], "the range lost a release, or rebuilt one without its areas");
+  assert.deepEqual(
+    p.releases.map((r) => r.changes.map((c) => c.area)),
+    [["servers", "voice"], [undefined]],
+    "a release's areas changed on the way through the range",
+  );
+}
+
 /* ── the effect uses it ──────────────────────────────────────────────────── */
 {
   const effect = whatsNew.slice(whatsNew.indexOf("onUserStoreLoaded(setStoreUser)"));
@@ -146,6 +164,11 @@ assert.deepEqual(versions(releasesToShow(APP.slice(1), "1.11.8", "1.11.11", fals
     `${DIALOG} does not draw each release`,
   );
   assert.match(dialog, /<h3 className="whats-new-version">\s*\{release\.version\} · \{readableDate\(release\.date\)\}/, `${DIALOG} releases have no heading`);
+  assert.match(
+    dialog,
+    /<ReleaseBody line=\{release\.line\} changes=\{release\.changes\} heading="h4" \/>/,
+    `${DIALOG} does not group each release in a range on its own, a level under its version`,
+  );
   assert.match(dialog, /What&rsquo;s new since \{since\}/, `${DIALOG} does not say it covers several releases`);
   assert.match(dialog, /Here&rsquo;s what&rsquo;s new in Gryt Chat/, `${DIALOG} lost the single-release greeting`);
   assert.match(dialog, /several \? "https:\/\/gryt\.chat\/changelog" :/, `${DIALOG} does not link several releases to the full changelog`);
@@ -153,5 +176,6 @@ assert.deepEqual(versions(releasesToShow(APP.slice(1), "1.11.8", "1.11.11", fals
 }
 
 console.log(
-  `what's new since: ok, semver order, betas below releases and only on beta, newest first, capped at ${MAX_RELEASES}, dialog draws a list`,
+  `what's new since: ok, semver order, betas below releases and only on beta, newest first, capped at ${MAX_RELEASES}, ` +
+    "areas kept, dialog draws a list",
 );

@@ -56,12 +56,22 @@ function fixtureFor(route: Route, url: URL) {
   }
 }
 
-/** The fixture changelog with these security notices in it, for one page. A page's routes win over its context's. */
-export async function serveSecurityNotices(page: Page, notices: unknown[]) {
+export interface ChangelogFeed {
+  app: Record<string, unknown>[];
+  securityNotices: unknown[];
+}
+
+/** The fixture changelog as `edit` leaves it, for one page. A page's routes win over its context's. */
+export async function serveChangelog(page: Page, edit: (feed: ChangelogFeed) => ChangelogFeed) {
   const url = "https://gryt.chat/changelog.json";
-  const body = JSON.stringify({ ...(JSON.parse(changelog()) as object), securityNotices: notices });
+  const body = JSON.stringify(edit(JSON.parse(changelog()) as ChangelogFeed));
   await page.unroute(url);
   await page.route(url, (route) => route.fulfill({ status: 200, contentType: "application/json", headers: CORS, body }));
+}
+
+/** The fixture changelog with these security notices in it, for one page. */
+export async function serveSecurityNotices(page: Page, notices: unknown[]) {
+  await serveChangelog(page, (feed) => ({ ...feed, securityNotices: notices }));
 }
 
 /** Stands in for every live site the app calls, and blocks and reports anything it doesn't know. */
