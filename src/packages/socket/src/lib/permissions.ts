@@ -57,6 +57,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       { id: "attach_files", label: "Attach files", description: "Upload images and files with a message." },
       { id: "add_reactions", label: "Add reactions", description: "React to somebody else's message." },
       { id: "send_direct_messages", label: "Send direct messages", description: "Open a conversation with another member, and post in one. Reading one they are already in is not gated on this." },
+      { id: "create_groups", label: "Create groups", description: "Start a group conversation, or add somebody to one. Talking in one they're already in only needs Send direct messages." },
       { id: "report_messages", label: "Report messages", description: "Put a message in front of the moderators." },
       { id: "use_link_previews", label: "See link previews", description: "Have links in the channel unfurled. Off means plain links." },
     ],

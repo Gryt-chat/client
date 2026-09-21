@@ -15,8 +15,116 @@ import { EmojiText } from "./EmojiText";
 import type { MemberInfo } from "./MemberSidebar";
 
 /**
- * Starting a group, and managing one. There is no owner: anybody can rename it,
- * add somebody, or leave, and nobody can remove anybody else.
+ * A group's picture and name. Group settings shows them, and so does the step after
+ * starting one in the new-message dialog; each decides when a change is sent.
+ */
+export function GroupFaceFields({
+  serverHost,
+  seed,
+  icon,
+  onIcon,
+  name,
+  onName,
+  onNameDone,
+  placeholder,
+  autoFocus = false,
+}: {
+  serverHost: string;
+  /** What the egg is drawn from, live, so it changes as the name is typed. */
+  seed: string;
+  /** The picture shown: an upload's file id, or null for the egg. */
+  icon: string | null;
+  onIcon: (fileId: string | null) => void;
+  name: string;
+  onName: (name: string) => void;
+  /** Focus left the field, or Enter was pressed. */
+  onNameDone?: () => void;
+  placeholder: string;
+  autoFocus?: boolean;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  const upload = async (file: File) => {
+    setUploading(true);
+    try {
+      const token = getServerAccessToken(serverHost);
+      if (!token) throw new Error("Not signed in to this server");
+      onIcon(await uploadGroupPicture(getServerHttpBase(serverHost), token, file, file.name || "group.png"));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not upload that");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <>
+      <div className="flex flex-col items-center gap-1">
+        <Avatar
+          size="large"
+          className="h-20 w-20 rounded-(--gryt-radius-md) text-2xl"
+          eggSeed={seed}
+          src={icon ? getUploadsFileUrl(serverHost, icon, { thumb: true }) : undefined}
+        />
+
+        <input
+          ref={fileInput}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (file) void upload(file);
+          }}
+        />
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="small"
+            tone="ghost"
+            disabled={uploading}
+            onClick={() => fileInput.current?.click()}
+          >
+            {uploading ? "Uploading…" : "Choose a picture"}
+          </Button>
+          {icon && (
+            <Button size="small" tone="ghost" onClick={() => onIcon(null)}>
+              Use the egg
+            </Button>
+          )}
+        </div>
+
+        <span className="text-xs text-gryt-muted">
+          {icon ? "Your picture" : "Drawn from the name"}
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <span className="text-sm font-bold">Name</span>
+        <TextField
+          autoFocus={autoFocus}
+          placeholder={placeholder}
+          value={name}
+          onChange={(e) => onName(e.target.value)}
+          onBlur={onNameDone}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") onNameDone?.();
+          }}
+          maxLength={80}
+        />
+        <span className="text-xs text-gryt-muted">
+          Leave it empty and the group is named after whoever is in it.
+        </span>
+      </div>
+    </>
+  );
+}
+
+/**
+ * A group's settings. There is no owner: anybody in it can rename it, add somebody
+ * or leave, and nobody can remove anybody else. Starting one is `NewMessageDialog`.
  */
 export const GroupDialog = ({
   open,
@@ -25,23 +133,21 @@ export const GroupDialog = ({
   serverHost,
   currentServerUserId,
   existing,
-  initialMemberIds = [],
-  onCreate,
+  canAdd,
   onUpdate,
   onAdd,
   onLeave,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Everybody on the server, to pick from. */
+  /** Everybody on the server, to add from. */
   members: MemberInfo[];
   serverHost: string;
   currentServerUserId?: string;
-  /** Managing this one, or starting a new one when absent. */
+  /** The group these are the settings of. Nothing opens without one. */
   existing?: DirectConversation;
-  /** Ticked to begin with — the person whose DM this was started from. */
-  initialMemberIds?: string[];
-  onCreate: (memberIds: string[], name?: string, iconFileId?: string | null) => void;
+  /** `create_groups`, which adding somebody asks for as well. */
+  canAdd: boolean;
   onUpdate: (
     conversationId: string,
     changes: { name?: string | null; iconFileId?: string | null },
@@ -49,31 +155,27 @@ export const GroupDialog = ({
   onAdd: (conversationId: string, targetServerUserId: string) => void;
   onLeave: (conversationId: string) => void;
 }) => {
-  const managing = !!existing;
-
   const [name, setName] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   /* `undefined` means "unchanged"; `null` means "go back to the drawn one".
      Two different answers, and a single string cannot carry both. */
   const [iconFileId, setIconFileId] = useState<string | null | undefined>(undefined);
-  const [uploading, setUploading] = useState(false);
-  const fileInput = useRef<HTMLInputElement>(null);
 
   /* Reset every time it opens rather than on mount. The dialog outlives one
      use of it, so a name typed and cancelled would still be there next time. */
   useEffect(() => {
     if (!open) return;
     setName(existing?.name ?? "");
-    setPicked(existing ? existing.members.map((m) => m.server_user_id) : initialMemberIds);
+    setPicked(existing ? existing.members.map((m) => m.server_user_id) : []);
     setIconFileId(undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, existing?.conversation_id]);
 
-  /** Everybody who could be added — not you, and not a bot. */
+  /** Everybody who could be added: not you, and not a bot, which the server refuses. */
   const candidates = useMemo(
     () =>
       members
-        .filter((m) => m.serverUserId !== currentServerUserId)
+        .filter((m) => m.serverUserId !== currentServerUserId && !m.isBot)
         .sort((a, b) => a.nickname.localeCompare(b.nickname)),
     [members, currentServerUserId],
   );
@@ -83,18 +185,7 @@ export const GroupDialog = ({
     [existing],
   );
 
-  /* What the icon is drawn from, live. Seeded on the name so it changes as you
-     type, which is the whole reason the picture is not something you pick. */
-  const previewSeed =
-    name.trim() ||
-    (existing ? conversationTitle(existing) : "") ||
-    candidates
-      .filter((m) => picked.includes(m.serverUserId))
-      .map((m) => m.nickname)
-      .join(", ") ||
-    "New group";
-
-  const enoughPeople = managing || picked.length >= 2;
+  if (!existing) return null;
 
   const toggle = (serverUserId: string) => {
     if (alreadyIn.has(serverUserId)) return;
@@ -106,36 +197,18 @@ export const GroupDialog = ({
   };
 
   /** What the preview shows: just-uploaded, cleared, or whatever is stored. */
-  const shownIcon = iconFileId === undefined ? (existing?.icon_file_id ?? null) : iconFileId;
-
-  const upload = async (file: File) => {
-    setUploading(true);
-    try {
-      const token = getServerAccessToken(serverHost);
-      if (!token) throw new Error("Not signed in to this server");
-      setIconFileId(
-        await uploadGroupPicture(getServerHttpBase(serverHost), token, file, file.name || "group.png"),
-      );
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not upload that");
-    } finally {
-      setUploading(false);
-    }
-  };
+  const shownIcon = iconFileId === undefined ? (existing.icon_file_id ?? null) : iconFileId;
 
   const submit = () => {
-    if (managing && existing) {
-      const trimmed = name.trim();
-      const changes: { name?: string | null; iconFileId?: string | null } = {};
-      if ((existing.name ?? "") !== trimmed) changes.name = trimmed || null;
-      if (iconFileId !== undefined) changes.iconFileId = iconFileId;
-      if (Object.keys(changes).length > 0) onUpdate(existing.conversation_id, changes);
+    const trimmed = name.trim();
+    const changes: { name?: string | null; iconFileId?: string | null } = {};
+    if ((existing.name ?? "") !== trimmed) changes.name = trimmed || null;
+    if (iconFileId !== undefined) changes.iconFileId = iconFileId;
+    if (Object.keys(changes).length > 0) onUpdate(existing.conversation_id, changes);
+    if (canAdd) {
       for (const id of picked) {
         if (!alreadyIn.has(id)) onAdd(existing.conversation_id, id);
       }
-    } else {
-      if (!enoughPeople) return;
-      onCreate(picked, name.trim() || undefined, iconFileId ?? undefined);
     }
     onOpenChange(false);
   };
@@ -145,136 +218,81 @@ export const GroupDialog = ({
       <Dialog.Portal>
         <Dialog.Backdrop />
         <Dialog.Popup>
-          <Dialog.Title>{managing ? "Group settings" : "New group"}</Dialog.Title>
+          <Dialog.Title>Group settings</Dialog.Title>
           <Dialog.Description>
-            {managing
+            {canAdd
               ? "Anybody here can rename it or add people. Nobody can remove anybody else."
-              : "The conversation you already had with them stays where it is."}
+              : "Anybody here can rename it. Nobody can remove anybody else."}
           </Dialog.Description>
 
           <div className="flex flex-col gap-4">
-            <div className="flex flex-col items-center gap-1">
-              <Avatar
-                size="large"
-                className="h-20 w-20 rounded-(--gryt-radius-md) text-2xl"
-                eggSeed={previewSeed}
-                src={shownIcon ? getUploadsFileUrl(serverHost, shownIcon, { thumb: true }) : undefined}
-              />
+            <GroupFaceFields
+              serverHost={serverHost}
+              seed={name.trim() || conversationTitle(existing)}
+              icon={shownIcon}
+              onIcon={setIconFileId}
+              name={name}
+              onName={setName}
+              placeholder={conversationTitle(existing)}
+              autoFocus
+            />
 
-              <input
-                ref={fileInput}
-                type="file"
-                accept="image/*"
-                hidden
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  e.target.value = "";
-                  if (file) void upload(file);
-                }}
-              />
-
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  size="small"
-                  tone="ghost"
-                  disabled={uploading}
-                  onClick={() => fileInput.current?.click()}
-                >
-                  {uploading ? "Uploading…" : "Choose a picture"}
-                </Button>
-                {shownIcon && (
-                  <Button size="small" tone="ghost" onClick={() => setIconFileId(null)}>
-                    Use the egg
-                  </Button>
-                )}
-              </div>
-
-              <span className="text-xs text-gryt-muted">
-                {shownIcon ? "Your picture" : "Drawn from the name"}
-              </span>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <span className="text-sm font-bold">Name</span>
-              <TextField
-                autoFocus
-                placeholder={managing ? conversationTitle(existing) : "Optional"}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                maxLength={80}
-              />
-              <span className="text-xs text-gryt-muted">
-                Leave it empty and the group is named after whoever is in it.
-              </span>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <span className="text-sm font-bold">
-                {managing ? "Add people" : `People — ${picked.length} picked`}
-              </span>
-              <div className="flex max-h-60 flex-col gap-1 overflow-y-auto">
-                {candidates.map((member) => {
-                  const inAlready = alreadyIn.has(member.serverUserId);
-                  return (
-                    <label
-                      key={member.serverUserId}
-                      className="flex cursor-pointer items-center gap-2 rounded-(--gryt-radius-md) px-2 py-1 hover:bg-gryt-surface-raised"
-                    >
-                      <Checkbox
-                        checked={inAlready || picked.includes(member.serverUserId)}
-                        disabled={inAlready}
-                        onCheckedChange={() => toggle(member.serverUserId)}
-                      />
-                      <Avatar
-                        size="small"
-                        fallback={member.nickname[0]}
-                        src={resolveAvatarSrc(
-                          member.avatarFileId
-                            ? getUploadsFileUrl(serverHost, member.avatarFileId, { thumb: true })
-                            : undefined,
-                          member.nickname,
-                          member.avatarWorn,
+            {canAdd && (
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-bold">Add people</span>
+                <div className="flex max-h-60 flex-col gap-1 overflow-y-auto">
+                  {candidates.map((member) => {
+                    const inAlready = alreadyIn.has(member.serverUserId);
+                    return (
+                      <label
+                        key={member.serverUserId}
+                        className="flex cursor-pointer items-center gap-2 rounded-(--gryt-radius-md) px-2 py-1 hover:bg-gryt-surface-raised"
+                      >
+                        <Checkbox
+                          checked={inAlready || picked.includes(member.serverUserId)}
+                          disabled={inAlready}
+                          onCheckedChange={() => toggle(member.serverUserId)}
+                        />
+                        <Avatar
+                          size="small"
+                          fallback={member.nickname[0]}
+                          src={resolveAvatarSrc(
+                            member.avatarFileId
+                              ? getUploadsFileUrl(serverHost, member.avatarFileId, { thumb: true })
+                              : undefined,
+                            member.nickname,
+                            member.avatarWorn,
+                          )}
+                        />
+                        <span className="truncate text-sm">
+                          <EmojiText text={member.nickname} />
+                        </span>
+                        {inAlready && (
+                          <span className="ml-auto text-xs text-gryt-muted">Already in</span>
                         )}
-                      />
-                      <span className="truncate text-sm">
-                        <EmojiText text={member.nickname} />
-                      </span>
-                      {inAlready && (
-                        <span className="ml-auto text-xs text-gryt-muted">Already in</span>
-                      )}
-                    </label>
-                  );
-                })}
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
-              {!managing && !enoughPeople && (
-                <span className="text-xs text-gryt-muted">
-                  Pick at least two people. Two of you is a direct message, which you already have.
-                </span>
-              )}
-            </div>
+            )}
           </div>
 
           <Dialog.Footer className="flex-wrap justify-between">
-            {managing && existing ? (
-              <Button
-                tone="danger"
-                onClick={() => {
-                  onLeave(existing.conversation_id);
-                  onOpenChange(false);
-                }}
-              >
-                Leave group
-              </Button>
-            ) : (
-              <span />
-            )}
+            <Button
+              tone="danger"
+              onClick={() => {
+                onLeave(existing.conversation_id);
+                onOpenChange(false);
+              }}
+            >
+              Leave group
+            </Button>
             <div className="flex flex-wrap gap-2">
               <Button tone="ghost" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button onClick={submit} disabled={!enoughPeople}>
-                {managing ? "Save" : "Create group"}
-              </Button>
+              <Button onClick={submit}>Save</Button>
             </div>
           </Dialog.Footer>
         </Dialog.Popup>

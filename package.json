@@ -147,6 +147,7 @@
     "test:auth-outage": "node scripts/check-auth-outage.mjs",
     "test:focus-steal": "node scripts/check-focus-steal.mjs",
     "test:dm-directory": "node scripts/check-dm-directory.mjs",
+    "test:new-message": "node scripts/check-new-message.mjs",
     "test:server-hover-address": "node scripts/check-server-hover-address.mjs",
     "test:ui-scale": "node scripts/check-ui-scale.mjs",
     "test:peer-in-clear": "node scripts/check-peer-in-clear.mjs",

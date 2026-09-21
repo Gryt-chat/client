@@ -85,14 +85,15 @@ export function visitingConversation(): string | null {
 }
 
 /**
- * An empty conversation an earlier visit left selected. The list dropped it on the
- * way out, so the space counts it as nothing open rather than show a row you can't find.
+ * An empty conversation an earlier visit left selected, which the list dropped on the way
+ * out. The space counts it as nothing open. A group is never dropped, so never left over.
  */
 export function leftOver(
-  conversation: { conversation_id: string; last_message_at: string | null } | undefined,
+  conversation: { conversation_id: string; last_message_at: string | null; kind?: string } | undefined,
   visitingNow: string | null,
 ): boolean {
   return conversation !== undefined
+    && conversation.kind !== "group"
     && conversation.last_message_at === null
     && conversation.conversation_id !== visitingNow;
 }

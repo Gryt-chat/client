@@ -12,6 +12,20 @@ export type ServerRoleSummary = {
   isSystem: boolean;
 };
 
+/** The hook's `can` below, for any server and outside a component: the direct
+    messages space asks it of every server at once. */
+export function canOnServer(
+  info: { permissions?: string[]; permission_catalogue?: string[] } | undefined,
+  permission: string,
+): boolean {
+  if (!Array.isArray(info?.permissions)) return true;
+  if (info.permissions.includes(permission)) return true;
+  const catalogue = Array.isArray(info.permission_catalogue)
+    ? info.permission_catalogue
+    : PERMISSIONS_BEFORE_CATALOGUE;
+  return !catalogue.includes(permission);
+}
+
 /**
  * What this client may do on one server, and what the roles are called. `can`
  * answers true where the server has not said no — the server is enforcing it.
