@@ -89,3 +89,72 @@ test("a member doesn't see a folder whose only channel is hidden from them", asy
     socket.disconnect();
   }
 });
+
+test("dragging a folder carries its channels with it", async ({ owner, gryt }) => {
+  const host = gryt.server.host;
+  const page = owner.page;
+  const accessToken = await page.evaluate(
+    (host) => localStorage.getItem(`accessToken_${host}`) ?? sessionStorage.getItem(`accessToken_${host}`),
+    host,
+  );
+  const suffix = uniqueName("");
+  const folderId = `sb-drag-folder${suffix}`;
+  const folderLabel = uniqueName("Ops");
+  const above = uniqueName("lounge");
+  const kids = [uniqueName("pager"), uniqueName("runbook")];
+
+  const socket = io(gryt.server.httpBase, { transports: ["websocket"], forceNew: true });
+  await new Promise<void>((resolve, reject) => {
+    socket.once("connect", () => resolve());
+    socket.once("connect_error", reject);
+  });
+  try {
+    socket.emit("server:channels:upsert", { accessToken, channelId: `chan-above${suffix}`, name: above, type: "text", description: null });
+    socket.emit("server:sidebar:item:upsert", { accessToken, itemId: `sb-above${suffix}`, kind: "channel", channelId: `chan-above${suffix}`, position: 6000 });
+    socket.emit("server:sidebar:item:upsert", { accessToken, itemId: folderId, kind: "folder", label: folderLabel, position: 6010 });
+    kids.forEach((name, i) => {
+      const channelId = `chan-kid${i}${suffix}`;
+      socket.emit("server:channels:upsert", { accessToken, channelId, name, type: "text", description: null, parentItemId: folderId });
+      socket.emit("server:sidebar:item:upsert", { accessToken, itemId: `sb-kid${i}${suffix}`, kind: "channel", channelId, position: 6011 + i, parentItemId: folderId });
+    });
+    await expect(page.getByText(kids[1], { exact: true })).toBeVisible();
+  } finally {
+    socket.disconnect();
+  }
+
+  const folderRow = page.getByRole("button", { name: folderLabel });
+  const rowTops = async () => Promise.all(
+    [folderRow, ...kids.map((k) => page.getByText(k, { exact: true }))].map(async (l) => (await l.boundingBox())!.y),
+  );
+  await folderRow.hover();
+  const before = await rowTops();
+  const box = (await folderRow.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 - 30, { steps: 6 });
+  // Mid-drag, the channels are drawn inside the folder's row and move with it.
+  const during = await rowTops();
+  const moved = during.map((y, i) => y - before[i]);
+  expect(moved[0], "the folder should follow the pointer").toBeLessThan(-10);
+  for (const d of moved.slice(1)) expect(Math.abs(d - moved[0]), "each channel moves as far as its folder").toBeLessThan(2);
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 - 80, { steps: 10 });
+  await page.mouse.up();
+  // Reloading before the move has gone out would throw it away.
+  await expect.poll(() => owner.frames.some((f) => f.includes("server:sidebar:reorder") && f.includes(folderId))).toBe(true);
+
+  // What the server kept, read back after a reload: the folder above, its channels still in it.
+  await page.reload();
+  await expect(page.getByText(kids[1], { exact: true })).toBeVisible();
+  const order = await page.evaluate(
+    (names) => {
+      const rows = [...document.querySelectorAll("button, span, div")]
+        .filter((el) => el.childElementCount === 0 && names.includes(el.textContent ?? ""));
+      return [...new Set(rows.map((el) => el.textContent))];
+    },
+    [folderLabel, above, ...kids],
+  );
+  expect(order).toEqual([folderLabel, ...kids, above]);
+  const indent = async (name: string) =>
+    (await page.getByText(name, { exact: true }).first().boundingBox())!.x;
+  expect(await indent(kids[0]), "a channel stays indented under its folder").toBeGreaterThan(await indent(above));
+});

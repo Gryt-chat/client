@@ -25,7 +25,9 @@ import {
   buildReorderPayload,
   type ChannelPlacement,
   flattenSidebar,
+  folderChildrenInRows,
   orderChanged,
+  regroupFolder,
   resolveDropParent,
 } from "./sidebarTree";
 import { UnreadIndicator } from "./UnreadIndicator";
@@ -35,6 +37,10 @@ type Role = string;
 
 /** How far a row inside a folder is inset. Matches the caret's own width. */
 const INDENT_PX = 14;
+
+const exitVariants = {
+  gone: (instant: boolean) => (instant ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, y: -8 }),
+};
 
 export const ChannelList = ({
   channels,
@@ -621,6 +627,10 @@ export const ChannelList = ({
   const dragOffsetX = useRef(0);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [pendingParent, setPendingParent] = useState<string | null>(null);
+  /** A dragged folder's rows, taken out of the list and drawn inside its own row until the drop. */
+  const [draggedGroup, setDraggedGroup] = useState<{ folderId: string; children: SidebarItem[] } | null>(null);
+  /** Those channels once dropped, which go back into the list already in place. */
+  const [landedIds, setLandedIds] = useState<ReadonlySet<string>>(() => new Set());
 
   useEffect(() => {
     if (!isDragging.current) {
@@ -637,16 +647,31 @@ export const ChannelList = ({
     setPendingParent(resolveDropParent(localItems, item.id, offsetX, effectiveItems));
   }, [localItems, effectiveItems]);
 
+  const handleDragStart = useCallback((item: SidebarItem) => {
+    isDragging.current = true;
+    setDraggingId(item.id);
+    if (item.kind !== "folder") return;
+    const children = folderChildrenInRows(rows, item.id);
+    if (children.length === 0) return;
+    const ids = new Set(children.map((c) => c.id));
+    setLocalItems((prev) => prev.filter((i) => !ids.has(i.id)));
+    setDraggedGroup({ folderId: item.id, children });
+  }, [rows]);
+
   const handleDragEnd = useCallback((item: SidebarItem) => {
     isDragging.current = false;
-    const parent = resolveDropParent(localItems, item.id, dragOffsetX.current, effectiveItems);
+    const order = draggedGroup ? regroupFolder(localItems, draggedGroup.folderId, draggedGroup.children) : localItems;
+    const parent = resolveDropParent(order, item.id, dragOffsetX.current, effectiveItems);
     dragOffsetX.current = 0;
     setDraggingId(null);
     setPendingParent(null);
+    setDraggedGroup(null);
+    if (draggedGroup) setLandedIds(new Set(draggedGroup.children.map((c) => c.id)));
+    setLocalItems(order);
 
-    if (!orderChanged(rows, localItems.map((i) => i.id), item.id, parent)) return;
-    onReorder?.(buildReorderPayload(localItems, effectiveItems, item.id, parent), { itemId: item.id, parentItemId: parent });
-  }, [localItems, effectiveItems, rows, onReorder]);
+    if (!orderChanged(rows, order.map((i) => i.id), item.id, parent)) return;
+    onReorder?.(buildReorderPayload(order, effectiveItems, item.id, parent), { itemId: item.id, parentItemId: parent });
+  }, [localItems, draggedGroup, effectiveItems, rows, onReorder]);
 
   const depthById = useMemo(() => {
     const map = new Map<string, 0 | 1>();
@@ -755,16 +780,19 @@ export const ChannelList = ({
       as="div"
       style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center", width: "100%" }}
     >
-      <AnimatePresence initial={false} mode="popLayout">
+      {/* `custom` reaches rows already leaving: a folder's channels leave the list
+          for its row at once, rather than fading beside the copy it carries. */}
+      <AnimatePresence initial={false} mode="popLayout" custom={draggedGroup !== null}>
         {localItems.map((item, index) => (
           <Reorder.Item
             key={stableKeyById.get(item.id) ?? item.id}
             value={item}
             as="div"
             layout
-            initial={{ opacity: 0, y: -8 }}
+            initial={landedIds.has(item.id) ? false : { opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
+            variants={exitVariants}
+            exit="gone"
             transition={{
               layout: { type: "spring", stiffness: 350, damping: 30 },
               opacity: { duration: 0.2 },
@@ -778,13 +806,23 @@ export const ChannelList = ({
               zIndex: 50,
               borderRadius: "var(--gryt-radius-md)",
             }}
-            onDragStart={() => { isDragging.current = true; setDraggingId(item.id); }}
+            onDragStart={() => handleDragStart(item)}
             /* `axis="y"` pins the row and not the pointer, so `info.offset.x`
                still reports the depth half of the gesture. */
             onDrag={(_event, info) => handleDrag(item, info.offset.x)}
             onDragEnd={() => handleDragEnd(item)}
           >
-            {wrapWithContextMenu(item, index, renderItem(item))}
+            {draggedGroup?.folderId === item.id ? (
+              /* The folder carries its channels while it moves, so they are drawn with it. */
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%" }}>
+                {renderItem(item)}
+                {draggedGroup.children.map((child) => (
+                  <div key={child.id} style={{ paddingLeft: INDENT_PX }}>{renderItem(child)}</div>
+                ))}
+              </div>
+            ) : (
+              wrapWithContextMenu(item, index, renderItem(item))
+            )}
           </Reorder.Item>
         ))}
       </AnimatePresence>
