@@ -55,6 +55,7 @@ export const ChannelList = ({
   onDeleteItem,
   onMoveItem,
   onReorder,
+  orderResetKey,
   onAddItem,
   onDisconnectUser,
   currentUserRole,
@@ -88,7 +89,9 @@ export const ChannelList = ({
   onMoveItem?: (item: SidebarItem, direction: "up" | "down") => void;
   /** A drag moves a channel into a folder as well as up the list, and the two
       arrive together, so an order alone cannot describe it. */
-  onReorder?: (entries: SidebarReorderEntry[]) => void;
+  onReorder?: (entries: SidebarReorderEntry[], moved?: { itemId: string; parentItemId: string | null }) => void;
+  /** Changes when a move is called off, so the order drawn for it goes back. */
+  orderResetKey?: number;
   onAddItem?: (kind: string, placement?: ChannelPlacement) => void;
   onDisconnectUser?: (targetServerUserId: string) => void;
   currentUserRole?: Role;
@@ -623,7 +626,7 @@ export const ChannelList = ({
     if (!isDragging.current) {
       setLocalItems(rows.map((r) => r.item));
     }
-  }, [rows]);
+  }, [rows, orderResetKey]);
 
   const handleReorder = useCallback((newItems: SidebarItem[]) => {
     setLocalItems(newItems);
@@ -642,7 +645,7 @@ export const ChannelList = ({
     setPendingParent(null);
 
     if (!orderChanged(rows, localItems.map((i) => i.id), item.id, parent)) return;
-    onReorder?.(buildReorderPayload(localItems, effectiveItems, item.id, parent));
+    onReorder?.(buildReorderPayload(localItems, effectiveItems, item.id, parent), { itemId: item.id, parentItemId: parent });
   }, [localItems, effectiveItems, rows, onReorder]);
 
   const depthById = useMemo(() => {

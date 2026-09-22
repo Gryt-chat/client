@@ -12,11 +12,12 @@ import {
   scopeOptions,
   scopeSetPayload,
 } from "@/settings/src/channelPermissionRules";
+import { type ChannelScopeState, folderMoveAction } from "@/settings/src/folderPermissionRules";
 import { Channel, serverDetailsList as ServerDetailsList,SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
 
 import { type ChannelKind, fieldsToKind, kindToFields } from "../components/channelKind";
 import type { ForumTagDraft } from "../components/ForumTagsField";
-import { type ChannelPlacement, orderBelow, placeNewChannel } from "../components/sidebarTree";
+import { type ChannelPlacement, folderOf, orderBelow, placeNewChannel } from "../components/sidebarTree";
 
 interface UseSidebarEditorParams {
   currentlyViewingServer: { host: string; name: string } | null;
@@ -262,6 +263,8 @@ export function useSidebarEditor({
     const accessToken = getFreshAccessToken();
     if (!accessToken) return toast.error("Join the server first.");
     currentConnection.emit("server:channels:scope:follow", { accessToken, channelId: item.channelId ?? item.id });
+    // The reply brings the folder's rules; the choice is already made.
+    setSheetScopeFollowsFolder(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentlyViewingServer, currentConnection]);
 
@@ -286,6 +289,89 @@ export function useSidebarEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [currentlyViewingServer, currentConnection],
   );
+
+  /** Every channel's own scope, off `server:channels`. Null when it cannot be
+      had, which leaves a move as it was before folders had permissions. */
+  const fetchChannelScopes = useCallback((): Promise<Map<string, ChannelScopeState> | null> => {
+    const socket = currentConnection;
+    const accessToken = getFreshAccessToken();
+    if (!socket?.connected || !accessToken) return Promise.resolve(null);
+    return new Promise((resolve) => {
+      const done = (value: Map<string, ChannelScopeState> | null) => {
+        clearTimeout(timer);
+        socket.off("server:channels", onList);
+        resolve(value);
+      };
+      const onList = (payload: { channels?: ({ id: string } & ChannelScopeState)[] }) =>
+        done(new Map((payload?.channels ?? []).map((c) => [c.id, c])));
+      const timer = setTimeout(() => done(null), 4000);
+      socket.on("server:channels", onList);
+      socket.emit("server:channels:list", { accessToken });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentConnection, currentlyViewingServer?.host]);
+
+  /* The follow waits for the move to show up: sent first, a channel still at the
+     top level would follow nothing and read as Everyone until the move landed. */
+  const pendingFollowRef = useRef<{ host: string; itemId: string; channelId: string; folderId: string; until: number } | null>(null);
+
+  useEffect(() => {
+    const pending = pendingFollowRef.current;
+    if (!pending || pending.host !== currentlyViewingServer?.host) return;
+    if (Date.now() > pending.until) { pendingFollowRef.current = null; return; }
+    if (folderOf(effectiveSidebarItems, pending.itemId) !== pending.folderId) return;
+    pendingFollowRef.current = null;
+    const accessToken = getFreshAccessToken();
+    if (!accessToken || !currentConnection?.connected) return;
+    currentConnection.emit("server:channels:scope:follow", { accessToken, channelId: pending.channelId });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveSidebarItems, currentlyViewingServer?.host, currentConnection]);
+
+  /** A drag that put a channel in a different folder, waiting on whether it keeps its own permissions. */
+  const [pendingFolderMove, setPendingFolderMove] = useState<{
+    order: SidebarReorderEntry[];
+    itemId: string;
+    channelId: string;
+    folderId: string;
+  } | null>(null);
+  /** Bumped when a move is called off, so the sidebar drops the order it drew for it. */
+  const [orderResetKey, setOrderResetKey] = useState(0);
+
+  const sendMove = useCallback((order: SidebarReorderEntry[], follow: { itemId: string; channelId: string; folderId: string } | null) => {
+    if (follow && currentlyViewingServer) {
+      pendingFollowRef.current = { host: currentlyViewingServer.host, ...follow, until: Date.now() + 10_000 };
+    }
+    reorderSidebar(order);
+  }, [currentlyViewingServer, reorderSidebar]);
+
+  /** A drag's order. Into a different folder, a channel with no permissions of its
+      own follows it, and one with its own asks first. */
+  const moveSidebarItem = useCallback(
+    async (order: SidebarReorderEntry[], moved?: { itemId: string; parentItemId: string | null }) => {
+      const item = moved ? effectiveSidebarItems.find((i) => i.id === moved.itemId) : undefined;
+      const from = item ? folderOf(effectiveSidebarItems, item.id) : null;
+      if (!moved || item?.kind !== "channel" || !moved.parentItemId || moved.parentItemId === from) {
+        reorderSidebar(order);
+        return;
+      }
+      const channelId = item.channelId ?? item.id;
+      const scopes = await fetchChannelScopes();
+      const action = folderMoveAction(from, moved.parentItemId, scopes?.get(channelId));
+      const target = { itemId: item.id, channelId, folderId: moved.parentItemId };
+      if (action === "ask") setPendingFolderMove({ order, ...target });
+      else sendMove(order, action === "follow" ? target : null);
+    },
+    [effectiveSidebarItems, reorderSidebar, fetchChannelScopes, sendMove],
+  );
+
+  const answerFolderMove = useCallback((answer: "follow" | "keep" | "cancel") => {
+    const move = pendingFolderMove;
+    setPendingFolderMove(null);
+    if (!move) return;
+    if (answer === "cancel") { setOrderResetKey((k) => k + 1); return; }
+    const { itemId, channelId, folderId } = move;
+    sendMove(move.order, answer === "follow" ? { itemId, channelId, folderId } : null);
+  }, [pendingFolderMove, sendMove]);
 
   const insertFromPalette = useCallback(
     async (paletteKind: string, index: number) => {
@@ -627,6 +713,10 @@ export function useSidebarEditor({
     setSheetSeparatorLabel,
     closeEditDialog,
     reorderSidebar,
+    moveSidebarItem,
+    pendingFolderMove,
+    answerFolderMove,
+    orderResetKey,
     insertFromPalette,
     createChannel,
     pendingDeleteItem,

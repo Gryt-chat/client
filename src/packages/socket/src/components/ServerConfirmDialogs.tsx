@@ -28,6 +28,9 @@ interface ServerConfirmDialogsProps {
   onBanUser: (id: string, reason?: string, expiresInMinutes?: number | null, deleteContent?: boolean, revokeInvite?: boolean) => void;
   /** How the member got in, so the ban dialog can offer to close that door too. */
   fetchMemberInvite?: (targetServerUserId: string) => Promise<MemberInviteInfo | null>;
+  /** A channel with its own permissions dragged into a folder. */
+  pendingFolderMove?: { channelName: string; folderName: string | null } | null;
+  answerFolderMove?: (answer: "follow" | "keep" | "cancel") => void;
 }
 
 export const ServerConfirmDialogs = ({
@@ -35,6 +38,7 @@ export const ServerConfirmDialogs = ({
   pendingDisconnectUser, setPendingDisconnectUser, onDisconnectUser,
   pendingKickUser, setPendingKickUser, onKickUser,
   pendingBanUser, setPendingBanUser, onBanUser, fetchMemberInvite,
+  pendingFolderMove, answerFolderMove,
 }: ServerConfirmDialogsProps) => {
   // Optional on both: a moderator acting quickly should not have to justify
   // themselves first. Given, the target sees it verbatim; it is logged either way.
@@ -82,6 +86,18 @@ export const ServerConfirmDialogs = ({
 
   return (
   <>
+    <ConfirmDialog
+      open={!!pendingFolderMove}
+      title="Follow the folder's permissions?"
+      description={`#${pendingFolderMove?.channelName} has its own permissions. Replace them with ${pendingFolderMove?.folderName ? `the ${pendingFolderMove.folderName} folder's` : "the folder's"}?`}
+      confirmLabel="Follow folder"
+      confirmTone="primary"
+      secondaryLabel="Keep its own"
+      onSecondary={() => answerFolderMove?.("keep")}
+      onConfirm={() => answerFolderMove?.("follow")}
+      onCancel={() => answerFolderMove?.("cancel")}
+    />
+
     <ConfirmDialog
       open={!!pendingDeleteItem}
       onOpenChange={(open) => { if (!open) cancelDelete(); }}

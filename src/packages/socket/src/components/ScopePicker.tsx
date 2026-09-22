@@ -13,6 +13,8 @@ interface ScopePickerProps {
   loading: boolean;
   /** The sentence under the dropdown, for whatever is picked. */
   description: string;
+  /** Show the matrix greyed out: what a channel follows, which is edited on the folder. */
+  lockedMatrix?: boolean;
   onChoice: (value: string) => void;
   onRules: (rules: ChannelRule[]) => void;
 }
@@ -27,6 +29,7 @@ export function ScopePicker({
   permissions,
   loading,
   description,
+  lockedMatrix = false,
   onChoice,
   onRules,
 }: ScopePickerProps) {
@@ -44,12 +47,12 @@ export function ScopePicker({
         options={options}
       />
       <span className="text-xs">{description}</span>
-      {choice === CUSTOM_VALUE && (
+      {(choice === CUSTOM_VALUE || lockedMatrix) && (
         <ChannelPermissionMatrix
           roles={roles}
           permissions={permissions}
           rules={rules}
-          disabled={loading}
+          disabled={loading || lockedMatrix}
           onChange={onRules}
         />
       )}

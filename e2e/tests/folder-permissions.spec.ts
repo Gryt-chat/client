@@ -102,9 +102,11 @@ test("a folder's permissions hide it, and a channel with its own keeps them", as
   }
 
   // One channel gets its own permissions, and the folder comes back holding only it.
+  const follow = `Follow the ${folderLabel} folder`;
   const keptDialog = await editRow(owner.page, kept);
-  await expect(keptDialog.getByText(`Follows the ${folderLabel} folder.`, { exact: false })).toBeVisible();
-  await pick(owner.page, keptDialog.getByRole("combobox").filter({ hasText: template }), "Everyone");
+  await expect(keptDialog.getByRole("combobox").filter({ hasText: follow })).toBeVisible();
+  await expect(keptDialog.getByText(`The ${folderLabel} folder decides who can use this channel.`, { exact: false })).toBeVisible();
+  await pick(owner.page, keptDialog.getByRole("combobox").filter({ hasText: follow }), "Everyone");
   await expect(keptDialog.getByText(`Has its own permissions instead of the ${folderLabel} folder's.`)).toBeVisible();
 
   await expect(member.page.getByRole("button", { name: folderLabel })).toBeVisible();
@@ -112,8 +114,8 @@ test("a folder's permissions hide it, and a channel with its own keeps them", as
   await expect(member.page.getByText(hidden, { exact: true })).toBeHidden();
 
   // Back to following, which takes the folder away again.
-  await keptDialog.getByRole("button", { name: "Follow folder" }).click();
-  await expect(keptDialog.getByText(`Follows the ${folderLabel} folder.`, { exact: false })).toBeVisible();
+  await pick(owner.page, keptDialog.getByRole("combobox").filter({ hasText: "Everyone" }), follow);
+  await expect(keptDialog.getByText(`The ${folderLabel} folder decides who can use this channel.`, { exact: false })).toBeVisible();
   await owner.page.keyboard.press("Escape");
   await expect(keptDialog).toBeHidden();
   await expect(member.page.getByRole("button", { name: folderLabel })).toBeHidden();
@@ -121,7 +123,7 @@ test("a folder's permissions hide it, and a channel with its own keeps them", as
 
   // Opening a following channel's settings and closing them again changes nothing.
   const hiddenDialog = await editRow(owner.page, hidden);
-  await expect(hiddenDialog.getByText(`Follows the ${folderLabel} folder.`, { exact: false })).toBeVisible();
+  await expect(hiddenDialog.getByRole("combobox").filter({ hasText: follow })).toBeVisible();
   await owner.page.keyboard.press("Escape");
   await expect(hiddenDialog).toBeHidden();
   const scope = await withSocket(httpBase, (socket) =>
@@ -130,4 +132,124 @@ test("a folder's permissions hide it, and a channel with its own keeps them", as
     ),
   );
   expect(scope.followsFolder, "closing the dialog gave the channel permissions of its own").toBe(true);
+});
+
+/** Drags a sidebar row right, which drops it into the folder above it. */
+async function dragIntoFolderAbove(page: Page, rowName: string): Promise<void> {
+  const row = page.getByText(rowName, { exact: true }).first();
+  // Hover waits for the row to stop moving, which it does for a moment after the last drop.
+  await row.hover();
+  const box = await row.boundingBox();
+  if (!box) throw new Error(`No row for ${rowName}`);
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + 60, y, { steps: 12 });
+  await page.mouse.up();
+}
+
+test("a channel dragged into a folder follows it, and one with its own permissions asks first", async ({ owner, newMember, gryt }) => {
+  const { host, httpBase } = gryt.server;
+  const accessToken = await accessTokenOf(owner.page, host);
+
+  const suffix = uniqueName("");
+  const folderId = `sb-folder-move${suffix}`;
+  const folderLabel = uniqueName("Back office");
+  const template = uniqueName("Staff only");
+  const names = { plain: uniqueName("lobby"), mine: uniqueName("minutes"), kept: uniqueName("payroll") };
+  const ids = { plain: `chan-lobby${suffix}`, mine: `chan-minutes${suffix}`, kept: `chan-payroll${suffix}` };
+  // Something harmless, so the channel has permissions of its own that a guest can still read through.
+  const ownRules = [{ roleId: "guest", permission: "add_reactions", effect: "deny" }];
+
+  const followsFolder = (channelId: string) =>
+    withSocket(httpBase, (socket) =>
+      ask<{ followsFolder?: boolean; folder?: { id: string } | null }>(
+        socket, "server:channels:scope:get", { accessToken, channelId }, "server:channels:scope",
+        (reply) => (reply as { channelId?: string }).channelId === channelId,
+      ),
+    );
+
+  const supported = await withSocket(httpBase, async (socket) => {
+    if (!(await hasFolderScopes(socket, accessToken))) return false;
+
+    socket.emit("server:permissions:template:save", {
+      accessToken,
+      name: template,
+      rules: [
+        { roleId: "guest", permission: "read_messages", effect: "deny" },
+        { roleId: "member", permission: "read_messages", effect: "deny" },
+      ],
+    });
+    let templateId: string | undefined;
+    await expect.poll(async () => {
+      const reply = await ask<{ templates: { id: string; name: string }[] }>(
+        socket, "server:permissions:templates:list", { accessToken }, "server:permissions:templates",
+      );
+      templateId = reply.templates.find((t) => t.name === template)?.id;
+      return Boolean(templateId);
+    }, "the template should be saved before the folder is put on it").toBe(true);
+
+    socket.emit("server:sidebar:item:upsert", { accessToken, itemId: folderId, kind: "folder", label: folderLabel, position: 5000 });
+    socket.emit("server:folders:scope:set", { accessToken, folderId, templateId });
+    let position = 5010;
+    for (const key of ["plain", "mine", "kept"] as const) {
+      socket.emit("server:channels:upsert", { accessToken, channelId: ids[key], name: names[key], type: "text", description: null });
+      socket.emit("server:sidebar:item:upsert", {
+        accessToken, itemId: `sb-${ids[key]}`, kind: "channel", channelId: ids[key], position, parentItemId: null,
+      });
+      position += 10;
+    }
+    // Scopes only once the channels exist, or the server has nothing to put them on.
+    await expect(owner.page.getByText(names.kept, { exact: true })).toBeVisible();
+    // Everyone picked by hand, so it stops following folders without a scope of its own.
+    socket.emit("server:channels:scope:set", { accessToken, channelId: ids.plain, templateId: null });
+    for (const key of ["mine", "kept"] as const) {
+      socket.emit("server:channels:scope:set", { accessToken, channelId: ids[key], custom: true, rules: ownRules });
+      await expect.poll(async () => {
+        const reply = await ask<{ channelId: string; scopeId?: string | null }>(
+          socket, "server:channels:scope:get", { accessToken, channelId: ids[key] }, "server:channels:scope",
+          (r) => r.channelId === ids[key],
+        );
+        return Boolean(reply.scopeId);
+      }, `${names[key]} should have permissions of its own`).toBe(true);
+    }
+    return true;
+  });
+  test.skip(!supported, "the server image has no folder permissions yet (GRYT-1306)");
+
+  const member = await newMember();
+  for (const name of Object.values(names)) await expect(member.page.getByText(name, { exact: true })).toBeVisible();
+
+  const confirm = owner.page.getByRole("alertdialog");
+
+  // Nothing of its own: it goes in and follows, with no question.
+  await dragIntoFolderAbove(owner.page, names.plain);
+  await expect(member.page.getByText(names.plain, { exact: true })).toBeHidden();
+  await expect(confirm).toBeHidden();
+  await expect.poll(async () => (await followsFolder(ids.plain)).followsFolder).toBe(true);
+
+  // Its own permissions, kept: it moves and a guest can still read it.
+  await dragIntoFolderAbove(owner.page, names.mine);
+  await expect(confirm).toBeVisible();
+  await expect(confirm).toContainText(`#${names.mine} has its own permissions.`);
+  await confirm.getByRole("button", { name: "Keep its own" }).click();
+  await expect(confirm).toBeHidden();
+  await expect.poll(async () => (await followsFolder(ids.mine)).folder?.id).toBe(folderId);
+  expect((await followsFolder(ids.mine)).followsFolder).toBe(false);
+  await expect(member.page.getByText(names.mine, { exact: true })).toBeVisible();
+
+  // Called off: it stays where it was.
+  await dragIntoFolderAbove(owner.page, names.kept);
+  await expect(confirm).toBeVisible();
+  await owner.page.keyboard.press("Escape");
+  await expect(confirm).toBeHidden();
+  expect((await followsFolder(ids.kept)).folder ?? null).toBeNull();
+
+  // Following instead: the folder's template takes it away from the guest.
+  await dragIntoFolderAbove(owner.page, names.kept);
+  await expect(confirm).toBeVisible();
+  await confirm.getByRole("button", { name: "Follow folder" }).click();
+  await expect(member.page.getByText(names.kept, { exact: true })).toBeHidden();
+  await expect.poll(async () => (await followsFolder(ids.kept)).followsFolder).toBe(true);
 });

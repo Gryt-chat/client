@@ -1,4 +1,4 @@
-import { Button, Dialog, IconButton, Select, Switch, TextField } from "@gryt/ui";
+import { Dialog, IconButton, Select, Switch, TextField } from "@gryt/ui";
 import { useCallback, useMemo, useRef } from "react";
 
 import type { NotificationLevel } from "@/common";
@@ -8,7 +8,13 @@ import {
   describeRules,
   EVERYONE_VALUE,
 } from "@/settings/src/channelPermissionRules";
-import { describeFolderRules, folderFollowNote } from "@/settings/src/folderPermissionRules";
+import {
+  describeFolderRules,
+  folderFollowNote,
+  FOLLOW_FOLDER_VALUE,
+  followFolderLabel,
+  followingFolderDescription,
+} from "@/settings/src/folderPermissionRules";
 import type { SidebarItem } from "@/settings/src/types/server";
 
 import { PiX } from "../../../../lib/icons";
@@ -143,6 +149,20 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
     scopeSaveRef.current(next);
   };
 
+  /* Only a channel in a folder gets Follow folder, and it is first because it is
+     what a new channel there does. */
+  const following = Boolean(sheetScopeFolder) && sheetScopeFollowsFolder;
+  const channelScopeOptions = sheetScopeFolder
+    ? [{ label: followFolderLabel(sheetScopeFolder.name), value: FOLLOW_FOLDER_VALUE }, ...scopeChoiceOptions]
+    : scopeChoiceOptions;
+
+  const pickChannelScope = (next: string) => {
+    if (next !== FOLLOW_FOLDER_VALUE) return pickScope(next);
+    if (following) return;
+    cancelScopeSave();
+    followFolder();
+  };
+
   const drawRules = (next: ChannelRule[]) => {
     setSheetScopeRules(next);
     debouncedScopeSave(next);
@@ -222,41 +242,34 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
               </div>
               <div className="flex flex-col gap-2">
                 <span className="text-sm font-medium">Who can use this channel</span>
-                {/* In a folder, what shows below is the folder's until something
-                    is picked here, and then it is the channel's own. */}
-                {sheetScopeFolder && (
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-xs">
-                      {folderFollowNote(sheetScopeFolder.name, sheetScopeFollowsFolder)}
-                    </span>
-                    {!sheetScopeFollowsFolder && (
-                      <Button
-                        tone="neutral"
-                        size="xsmall"
-                        style={{ flexShrink: 0 }}
-                        disabled={scopeLoading}
-                        onClick={() => { cancelScopeSave(); followFolder(); }}
-                      >
-                        Follow folder
-                      </Button>
-                    )}
-                  </div>
+                {sheetScopeFolder && !sheetScopeFollowsFolder && (
+                  <span className="text-xs">{folderFollowNote(sheetScopeFolder.name)}</span>
                 )}
                 <ScopePicker
-                  choice={sheetScopeChoice}
+                  choice={following ? FOLLOW_FOLDER_VALUE : sheetScopeChoice}
                   rules={sheetScopeRules}
-                  options={scopeChoiceOptions}
+                  options={channelScopeOptions}
                   roles={scopeRoles}
                   permissions={channelPermissions}
                   loading={scopeLoading}
+                  lockedMatrix={following && sheetScopeChoice === CUSTOM_VALUE}
                   description={
-                    sheetScopeChoice === EVERYONE_VALUE
-                      ? "Everyone on the server can see and use this channel."
-                      : sheetScopeChoice === CUSTOM_VALUE
-                        ? describeRules(sheetScopeRules, roleNames)
-                        : "Follows a template. Change it in server settings and every channel using it changes with it."
+                    following
+                      ? followingFolderDescription(
+                          sheetScopeFolder?.name ?? null,
+                          sheetScopeRules,
+                          roleNames,
+                          sheetScopeChoice !== EVERYONE_VALUE && sheetScopeChoice !== CUSTOM_VALUE
+                            ? scopeChoiceOptions.find((o) => o.value === sheetScopeChoice)?.label ?? null
+                            : null,
+                        )
+                      : sheetScopeChoice === EVERYONE_VALUE
+                        ? "Everyone on the server can see and use this channel."
+                        : sheetScopeChoice === CUSTOM_VALUE
+                          ? describeRules(sheetScopeRules, roleNames)
+                          : "Follows a template. Change it in server settings and every channel using it changes with it."
                   }
-                  onChoice={pickScope}
+                  onChoice={pickChannelScope}
                   onRules={drawRules}
                 />
               </div>

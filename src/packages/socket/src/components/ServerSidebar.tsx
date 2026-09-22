@@ -59,7 +59,8 @@ interface ServerSidebarProps {
   onEditItem: (item: SidebarItem) => void;
   onDeleteItem: (item: SidebarItem) => void;
   onMoveItem: (item: SidebarItem, direction: "up" | "down") => void;
-  onReorder: (entries: SidebarReorderEntry[]) => void;
+  onReorder: (entries: SidebarReorderEntry[], moved?: { itemId: string; parentItemId: string | null }) => void;
+  orderResetKey?: number;
   onAddItem: (kind: string, placement?: ChannelPlacement) => void;
   onDisconnectUser: ((id: string) => void) | undefined;
   currentUserRole: Role | undefined;
@@ -85,7 +86,7 @@ export const ServerSidebar = ({
   currentChannelId, currentServerConnected, showVoiceView,
   isConnecting, currentConnectionId, selectedChannelId,
   onChannelClick, clientsSpeaking, streamSources,
-  canManage, onEditItem, onDeleteItem, onMoveItem, onReorder, onAddItem,
+  canManage, onEditItem, onDeleteItem, onMoveItem, onReorder, orderResetKey, onAddItem,
   onDisconnectUser, currentUserRole, adminActions, unreadCounts, mentionCounts,
   directConversations, selectedDmId, onSelectDm, onHideDm, onManageGroup,
 }: ServerSidebarProps) => (
@@ -193,6 +194,7 @@ export const ServerSidebar = ({
                 onDeleteItem={onDeleteItem}
                 onMoveItem={onMoveItem}
                 onReorder={onReorder}
+                orderResetKey={orderResetKey}
                 onAddItem={onAddItem}
                 onDisconnectUser={onDisconnectUser}
                 currentUserRole={currentUserRole}

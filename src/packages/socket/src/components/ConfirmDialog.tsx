@@ -18,6 +18,8 @@ export function ConfirmDialog({
   confirmPhraseLabel,
   confirmDisabled = false,
   cancelLabel = "Cancel",
+  secondaryLabel,
+  onSecondary,
   focusCancel = false,
   width,
   onConfirm,
@@ -37,6 +39,9 @@ export function ConfirmDialog({
   /** For a caller with a reason of its own -- a request already in flight. */
   confirmDisabled?: boolean;
   cancelLabel?: string;
+  /** A second answer that is not cancelling, drawn between Cancel and the confirm button. */
+  secondaryLabel?: string;
+  onSecondary?: () => void;
   /** Open with Cancel focused. Otherwise the first link in `description` gets focus, and Enter follows it. */
   focusCancel?: boolean;
   /**
@@ -99,6 +104,18 @@ export function ConfirmDialog({
                 rather than on this button. */}
             {/* Deliberately not wrapped in AlertDialog.Close: it has to be able
                 to stay disabled, and Close renders its own button. */}
+            {secondaryLabel && onSecondary && (
+              <Button
+                size="small"
+                tone="secondary"
+                onClick={() => {
+                  onSecondary();
+                  onOpenChange?.(false);
+                }}
+              >
+                {secondaryLabel}
+              </Button>
+            )}
             <Button
               size="small"
               tone={confirmTone}
