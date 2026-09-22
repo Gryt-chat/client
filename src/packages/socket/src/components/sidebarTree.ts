@@ -148,6 +148,23 @@ export function buildReorderPayload(
   return entries;
 }
 
+/** The rows drawn under a folder: what goes with it when it is dragged. None while it is collapsed. */
+export function folderChildrenInRows(rows: SidebarRow[], folderId: string): SidebarItem[] {
+  const at = rows.findIndex((r) => r.item.id === folderId && r.item.kind === "folder");
+  if (at < 0) return [];
+  const children: SidebarItem[] = [];
+  for (let i = at + 1; i < rows.length && rows[i].depth === 1; i++) children.push(rows[i].item);
+  return children;
+}
+
+/** `order` with `children` put back right under their folder, wherever the folder ended up. */
+export function regroupFolder(order: SidebarItem[], folderId: string, children: SidebarItem[]): SidebarItem[] {
+  const ids = new Set(children.map((c) => c.id));
+  return order
+    .filter((i) => !ids.has(i.id))
+    .flatMap((i) => (i.id === folderId ? [i, ...children] : [i]));
+}
+
 /** Whether an order differs from another, by id and by folder. */
 export function orderChanged(
   before: SidebarRow[],

@@ -11,9 +11,11 @@ const {
   NEST_THRESHOLD_PX,
   buildReorderPayload,
   flattenSidebar,
+  folderChildrenInRows,
   folderOf,
   orderBelow,
   placeNewChannel,
+  regroupFolder,
   resolveDropParent,
   settingsTitle,
 } = await import("../src/packages/socket/src/components/sidebarTree.ts");
@@ -295,6 +297,36 @@ for (const [label, gap] of [["one apart", 1], ["on the same position", 0]]) {
   // Nothing selected, which is the dialog closing, and a kind from a newer server.
   assert.equal(settingsTitle(undefined), "Settings");
   assert.equal(settingsTitle("category"), "Settings");
+}
+
+// ── Dragging a folder ───────────────────────────────────────────────────────
+
+{
+  // A folder takes the rows under it, and only those.
+  const items = [channel("a", 10), folder("f", 20), channel("in1", 21, "f"), channel("in2", 22, "f"), channel("b", 30)];
+  const rows = flattenSidebar(items);
+  assert.deepEqual(folderChildrenInRows(rows, "f").map((i) => i.id), ["in1", "in2"]);
+  // Collapsed, it has nothing drawn under it to carry.
+  assert.deepEqual(folderChildrenInRows(flattenSidebar(items, new Set(["f"])), "f"), []);
+  // A channel is not a folder, even at an index with depth-1 rows after it.
+  assert.deepEqual(folderChildrenInRows(rows, "a"), []);
+
+  // Dropped above "a": the children land right under it and stay in the folder.
+  const children = folderChildrenInRows(rows, "f");
+  const dragged = [folder("f", 20), channel("a", 10), channel("b", 30)];
+  const order = regroupFolder(dragged, "f", children);
+  assert.deepEqual(order.map((i) => i.id), ["f", "in1", "in2", "a", "b"]);
+  assert.deepEqual(buildReorderPayload(order, items, "f", null), [
+    { itemId: "f", parentItemId: null },
+    { itemId: "in1", parentItemId: "f" },
+    { itemId: "in2", parentItemId: "f" },
+    { itemId: "a", parentItemId: null },
+    { itemId: "b", parentItemId: null },
+  ]);
+  // A folder never lands in anything, itself included.
+  assert.equal(resolveDropParent(order, "f", 200, items), null);
+  // Put back once, even if the list still held one of them.
+  assert.deepEqual(regroupFolder([...dragged, channel("in1", 21, "f")], "f", children).map((i) => i.id), ["f", "in1", "in2", "a", "b"]);
 }
 
 console.log("sidebar tree: ok");
