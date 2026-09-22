@@ -465,7 +465,7 @@ export function VoiceParticipantCard({
         }
       >
         <VideoCard
-          key={`${itemId}:${client.screenShareVideoStreamID || "local"}:${
+          key={`${serverUserId ?? itemId}:${client.screenShareVideoStreamID || "local"}:${
             screenStream?.id || "pending"
           }`}
           stream={screenStream}
@@ -735,7 +735,7 @@ export function VoiceParticipantCard({
         style={{ width: "100%", height: "100%" }}
       >
         <VideoCard
-          key={`${itemId}:${cameraStreamID || "local"}:${cameraStream?.id || "pending"}`}
+          key={`${serverUserId ?? itemId}:${cameraStreamID || "local"}:${cameraStream?.id || "pending"}`}
           stream={cameraStream}
           nickname={client.nickname}
           mirrored={isSelf ? cameraMirrored : false}

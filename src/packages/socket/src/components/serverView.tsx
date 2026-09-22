@@ -31,6 +31,7 @@ import { useCalls } from "../hooks/useCalls";
 import { useChannelSettings, useHandleChannelClick } from "../hooks/useChannelSettings";
 import { useChat } from "../hooks/useChat";
 import { conversationTitle, type DirectConversation,useDirectMessages } from "../hooks/useDirectMessages";
+import { useHeldVoicePresence } from "../hooks/useHeldVoicePresence";
 import { useLatencyReporting } from "../hooks/useLatencyReporting";
 import { useIsTinyWindow, useRoomForMemberList, useRoomForVoicePanel } from "../hooks/useNarrowWindow";
 import { usePeerLatency } from "../hooks/usePeerLatency";
@@ -43,6 +44,7 @@ import { SIDEBAR_HOVER_PX, SIDEBAR_WIDTH_PX, useMediaAutoShow, useSidebarHover, 
 import { useSidebarEditor } from "../hooks/useSidebarEditor";
 import { useSockets } from "../hooks/useSockets";
 import { getUpdateAvailable } from "../hooks/useVersionStatus";
+import type { Clients } from "../types/clients";
 import { getCustomEmojis } from "../utils/emojiData";
 import { ChatView } from "./ChatView";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -75,6 +77,7 @@ const fakeParticipantOptionsFromUrl = readFakeParticipantOptions(
 /** `?fakering=1` rings the open conversation, `?fakepeer=1` puts somebody in the
     call, and `&fakecallmembers=0` reproduces a call that drew nobody. */
 const fakeCallOptionsFromUrl = readFakeCallOptions(window.location.search);
+const NO_CLIENTS: Clients = {};
 
 /**
  * `dmSpace` swaps the channel sidebar for every server's conversations and drops
@@ -206,7 +209,16 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     openLeftSidebar, closeLeftSidebar, openRightSidebar, closeRightSidebar,
   } = useSidebarHover({ pinChannelsSidebar, pinMembersSidebar, isDraggingResize: false, isCompact, roomForMembers });
 
-  const serverClients = currentlyViewingServer ? clients[currentlyViewingServer.host] : undefined;
+  const heldHost = currentlyViewingServer?.host ?? "";
+  const { clients: heldHostClients, selfClientId } = useHeldVoicePresence({
+    host: heldHost,
+    clients: clients[heldHost] ?? NO_CLIENTS,
+    socketId: currentConnection?.id,
+    selfInVoice: isConnected && currentServerConnected === heldHost,
+    videoStreams,
+    streamSources,
+  });
+  const serverClients = currentlyViewingServer ? heldHostClients : undefined;
   const { mediaAutoShownRef } = useMediaAutoShow({
     showVoiceView, setShowVoiceView, isCompact, roomForVoice, isConnected,
     currentChannelId, serverClients,
@@ -743,7 +755,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
 
   const { clients: hostClients, videoStreams: voiceVideoStreams } =
     withFakeParticipants(
-      clients[host] || {},
+      heldHostClients,
       videoStreams,
       currentChannelId,
       fakeParticipantOptions,
@@ -872,7 +884,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
               members={hostMembers}
               clientsSpeaking={voiceClientsSpeaking}
               isConnecting={isConnecting}
-              currentConnectionId={currentConnection?.id}
+              currentConnectionId={selfClientId}
               isCall={connectedToACall}
               onDisconnect={handleVoiceDisconnect}
               peerLatency={peerLatency}
@@ -907,7 +919,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
             currentServerConnected={currentServerConnected}
             showVoiceView={showVoiceView}
             isConnecting={isConnecting}
-            currentConnectionId={currentConnection?.id}
+            currentConnectionId={selfClientId}
             selectedChannelId={visibleChannelId}
             onChannelClick={handleChannelClickAndCloseDm}
             directConversations={directConversations}
@@ -1007,7 +1019,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
               currentServerConnected={currentServerConnected}
               showVoiceView={showVoiceView}
               isConnecting={isConnecting}
-              currentConnectionId={currentConnection?.id}
+              currentConnectionId={selfClientId}
               selectedChannelId={visibleChannelId}
               onChannelClick={handleChannelClickAndCloseDm}
             directConversations={directConversations}
@@ -1056,7 +1068,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
                 members={hostMembers}
                 clientsSpeaking={voiceClientsSpeaking}
                 isConnecting={isConnecting}
-                currentConnectionId={currentConnection?.id}
+                currentConnectionId={selfClientId}
                 isCall={connectedToACall}
                 onDisconnect={handleVoiceDisconnect}
                 peerLatency={peerLatency}
@@ -1092,7 +1104,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
               onMouseEnter={!canViewMembers ? undefined : openRightSidebar}
               onMouseLeave={closeRightSidebar}
               members={hostMembers}
-              currentConnectionId={currentConnection?.id}
+              currentConnectionId={selfClientId}
               currentServerUserId={currentServerUserId}
               currentUserRole={currentUserRole}
               currentServerConnected={currentServerConnected}

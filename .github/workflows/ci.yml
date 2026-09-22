@@ -178,6 +178,7 @@ jobs:
       - run: yarn test:calls
       - run: yarn test:call-members
       - run: yarn test:alone-in-call
+      - run: yarn test:held-voice-presence
       - run: yarn test:fake-server-events
       - run: yarn test:channel-permissions
       - run: yarn test:report-user

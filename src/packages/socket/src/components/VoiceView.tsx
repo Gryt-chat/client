@@ -1109,10 +1109,12 @@ export const VoiceView = ({
 
     const isSelf = clientId === currentConnectionId;
     const serverUserId = client?.serverUserId;
+    // By person, not socket: a reconnect hands out a new socket id, and a new key remounts the video.
+    const tileKey = serverUserId ? `${isScreenTile ? "screen:" : ""}${serverUserId}` : itemId;
 
     return (
       <motion.div
-        key={itemId}
+        key={tileKey}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
