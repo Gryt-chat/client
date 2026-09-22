@@ -67,7 +67,8 @@ interface MobileServerViewProps {
   onEditItem: (item: SidebarItem) => void;
   onDeleteItem: (item: SidebarItem) => void;
   onMoveItem: (item: SidebarItem, direction: "up" | "down") => void;
-  onReorder: (entries: SidebarReorderEntry[]) => void;
+  onReorder: (entries: SidebarReorderEntry[], moved?: { itemId: string; parentItemId: string | null }) => void;
+  orderResetKey?: number;
   onAddItem: (kind: string, placement?: ChannelPlacement) => void;
   onDisconnectUser?: (targetServerUserId: string) => void;
   currentUserRole?: Role;
@@ -325,6 +326,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
               onDeleteItem={props.onDeleteItem}
               onMoveItem={props.onMoveItem}
               onReorder={props.onReorder}
+              orderResetKey={props.orderResetKey}
               onAddItem={props.onAddItem}
               onDisconnectUser={props.canManage ? props.onDisconnectUser : undefined}
               currentUserRole={props.currentUserRole}

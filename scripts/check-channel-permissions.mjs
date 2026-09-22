@@ -20,7 +20,14 @@ import {
   scopeSetPayload,
   withCell,
 } from "../src/packages/settings/src/channelPermissionRules.ts";
-import { describeFolderRules, folderFollowNote } from "../src/packages/settings/src/folderPermissionRules.ts";
+import {
+  describeFolderRules,
+  FOLLOW_FOLDER_VALUE,
+  folderFollowNote,
+  folderMoveAction,
+  followFolderLabel,
+  followingFolderDescription,
+} from "../src/packages/settings/src/folderPermissionRules.ts";
 
 // ── cells ──────────────────────────────────────────────────────────
 
@@ -153,12 +160,48 @@ assert.equal(
   "1 change to what roles can do in this folder's channels.",
 );
 
-assert.equal(
-  folderFollowNote("Staff", true),
-  "Follows the Staff folder. Pick something here to give this channel its own permissions.",
-);
-assert.equal(folderFollowNote("Staff", false), "Has its own permissions instead of the Staff folder's.");
+assert.equal(folderFollowNote("Staff"), "Has its own permissions instead of the Staff folder's.");
 // A folder the server sends without a name still reads as a sentence.
-assert.equal(folderFollowNote(null, false), "Has its own permissions instead of its folder's.");
+assert.equal(folderFollowNote(null), "Has its own permissions instead of its folder's.");
+
+// ── Follow folder in the picker ────────────────────────────────────
+
+// Not "", which the Select paints over with its placeholder, and not a value
+// the other options could have.
+assert.notEqual(FOLLOW_FOLDER_VALUE, "");
+assert.ok(![EVERYONE_VALUE, CUSTOM_VALUE].includes(FOLLOW_FOLDER_VALUE));
+assert.equal(followFolderLabel("Staff"), "Follow the Staff folder");
+assert.equal(followFolderLabel(null), "Follow folder");
+
+assert.equal(
+  followingFolderDescription("Staff", [], NAMES, null),
+  "The Staff folder decides who can use this channel. Everyone on the server can see and use the channels in this folder.",
+);
+assert.equal(
+  followingFolderDescription("Staff", [], NAMES, "Staff only"),
+  "The Staff folder decides who can use this channel. It uses the Staff only template.",
+);
+assert.match(followingFolderDescription(null, [], NAMES, null), /^Its folder decides/);
+
+// ── Moving a channel into a folder ─────────────────────────────────
+
+const topOwn = { permissionScopeId: "scope_1", followsFolder: false };
+const topNone = { permissionScopeId: null, followsFolder: false };
+const inFollowing = { permissionScopeId: "scope_folder", followsFolder: true };
+const inDetached = { permissionScopeId: null, followsFolder: false };
+
+// Nothing of its own, including a top-level channel once set to Everyone: it follows.
+assert.equal(folderMoveAction(null, "f", topNone), "follow");
+// Its own scope, or detached from the folder it was in: ask before replacing it.
+assert.equal(folderMoveAction(null, "f", topOwn), "ask");
+assert.equal(folderMoveAction("a", "f", inDetached), "ask");
+// Following one folder already means following the next.
+assert.equal(folderMoveAction("a", "f", inFollowing), "none");
+// Out of a folder, or within one, decides nothing.
+assert.equal(folderMoveAction("a", null, inDetached), "none");
+assert.equal(folderMoveAction("f", "f", topOwn), "none");
+// Not knowing is not a reason to ask: a server too old to say, or no answer.
+assert.equal(folderMoveAction(null, "f", undefined), "none");
+assert.equal(folderMoveAction(null, "f", { permissionScopeId: "scope_1" }), "none");
 
 console.log("channel permissions: ok");

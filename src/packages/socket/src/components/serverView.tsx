@@ -117,7 +117,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   const sidebarEditor = useSidebarEditor({ currentlyViewingServer, currentConnection, accessToken, serverDetailsList });
   const {
     editDialogOpen, setEditDialogOpen, setSelectedSidebarItemId,
-    effectiveSidebarItems, reorderSidebar, insertFromPalette,
+    effectiveSidebarItems, reorderSidebar, moveSidebarItem, orderResetKey, insertFromPalette,
     pendingDeleteItem, requestDeleteSidebarItem, cancelDelete, confirmDelete,
   } = sidebarEditor;
 
@@ -932,7 +932,8 @@ forumTags={activeDm ? [] : activeChannelForumTags}
             onEditItem={handleEditItem}
             onDeleteItem={requestDeleteSidebarItem}
             onMoveItem={handleMoveItem}
-            onReorder={reorderSidebar}
+            onReorder={moveSidebarItem}
+            orderResetKey={orderResetKey}
             onAddItem={handleAddItem}
             onDisconnectUser={canDisconnectFromVoice ? requestDisconnectUser : undefined}
             currentUserRole={currentUserRole}
@@ -1032,7 +1033,8 @@ forumTags={activeDm ? [] : activeChannelForumTags}
               onEditItem={handleEditItem}
               onDeleteItem={requestDeleteSidebarItem}
               onMoveItem={handleMoveItem}
-              onReorder={reorderSidebar}
+              onReorder={moveSidebarItem}
+              orderResetKey={orderResetKey}
               onAddItem={handleAddItem}
               onDisconnectUser={canDisconnectFromVoice ? requestDisconnectUser : undefined}
               currentUserRole={currentUserRole}
@@ -1194,6 +1196,16 @@ forumTags={activeDm ? [] : activeChannelForumTags}
         setPendingBanUser={setPendingBanUser}
         onBanUser={handleBanUser}
         fetchMemberInvite={fetchMemberInvite}
+        pendingFolderMove={
+          sidebarEditor.pendingFolderMove
+            ? {
+                channelName: channelById.get(sidebarEditor.pendingFolderMove.channelId)?.name || "channel",
+                folderName:
+                  effectiveSidebarItems.find((i) => i.id === sidebarEditor.pendingFolderMove?.folderId)?.label ?? null,
+              }
+            : null
+        }
+        answerFolderMove={sidebarEditor.answerFolderMove}
       />
 
       <ReportsPanel
