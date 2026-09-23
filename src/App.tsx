@@ -13,7 +13,6 @@ import {
 } from "@/common";
 import {
   AddNewServer,
-  Nickname,
   PushToTalkModal,
   Settings,
   useSettings,
@@ -129,7 +128,6 @@ export function App() {
         <>
           <MainApp />
           <Settings />
-          <Nickname />
           <Welcome />
           <AddNewServer showAddServer={showAddServer} setShowAddServer={setShowAddServer} />
           <LeaveServer />

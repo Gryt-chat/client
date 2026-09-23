@@ -47,7 +47,6 @@ function useSettingsHook() {
 
   const [showSettings, setShowSettings] = useState(false);
   const [settingsTab, setSettingsTab] = useState("profile");
-  const [showNickname, setShowNickname] = useState(false);
   const [hasSeenWelcome, setHasSeenWelcome] = useState(false);
   /** Until the load runs, every default is a guess — and `hasSeenWelcome`
       defaults to false, so the app is briefly certain everybody is new. */
@@ -533,8 +532,6 @@ function useSettingsHook() {
     settingsTab,
     setSettingsTab,
     openSettings,
-    showNickname,
-    setShowNickname,
     hasSeenWelcome,
     settingsLoaded,
     completeWelcome,
