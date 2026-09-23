@@ -107,15 +107,19 @@ export function useThreads(
   // than leaving it sitting there looking sent.
   const pendingReply = useRef<string | null>(null);
 
-  // Reset when the open conversation changes — summaries and the panel belong
-  // to one channel.
+  // The panel belongs to one channel, so it closes on a switch.
   useEffect(() => {
-    setSummaries({});
     setOpenThread(serverHost || "", null);
     setOpen(null);
     openRef.current = null;
     pendingOpenRoot.current = null;
   }, [conversationId, serverHost]);
+
+  /* Summaries outlive a channel switch, the way the message cache does: come
+     back inside the cache window and no chat:fetch reseeds them (GRYT-1386). */
+  useEffect(() => {
+    setSummaries({});
+  }, [serverHost]);
 
   useEffect(() => {
     const socket = asSocket(socketConnection);
@@ -203,6 +207,21 @@ export function useThreads(
           loadingOlder: false,
           hasOlder: p.hasMore ?? false,
         };
+      });
+    };
+
+    /* Every page of channel history carries the threads hanging off it, so a
+       reload reads the same counts as somebody who watched them arrive. */
+    const onChannelHistory = (p: { conversation_id: string; threads?: ThreadSummary[] }) => {
+      const incoming = p?.threads;
+      if (!Array.isArray(incoming) || incoming.length === 0) return;
+      setSummaries((prev) => {
+        const next = { ...prev };
+        for (const t of incoming) {
+          if (!t?.root_message_id) continue;
+          next[t.root_message_id] = { ...next[t.root_message_id], ...t };
+        }
+        return next;
       });
     };
 
@@ -316,6 +335,7 @@ export function useThreads(
     socket.on("thread:updated", onUpdated as (p: never) => void);
     socket.on("thread:deleted", onDeleted as (p: never) => void);
     socket.on("thread:history", onHistory as (p: never) => void);
+    socket.on("chat:history", onChannelHistory as (p: never) => void);
     socket.on("thread:error", onError as (p: never) => void);
     socket.on("chat:error", onChatError as (p: never) => void);
     socket.on("chat:new", onChatNew as (p: never) => void);
@@ -328,6 +348,7 @@ export function useThreads(
       socket.off("thread:updated", onUpdated as (p: never) => void);
       socket.off("thread:deleted", onDeleted as (p: never) => void);
       socket.off("thread:history", onHistory as (p: never) => void);
+      socket.off("chat:history", onChannelHistory as (p: never) => void);
       socket.off("thread:error", onError as (p: never) => void);
       socket.off("chat:error", onChatError as (p: never) => void);
       socket.off("chat:new", onChatNew as (p: never) => void);
