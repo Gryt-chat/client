@@ -22,12 +22,19 @@ export const CHECKS = {
   },
 };
 
-// Download now in the toast, and an install button with nothing downloaded yet.
+// Download now in the toast, an install button with nothing downloaded yet, and the
+// Built-in server switch, which is asking for the other build.
 export const PRESSES = {
   "download now, or install with nothing downloaded": {
     from: "function downloadAnnouncedRelease(",
     to: "\n}\n",
     call: "offerRelease(release, { bypassRollout: true, asked: true, installWhenReady })",
+    options: { bypassRollout: true, asked: true },
+  },
+  "the Built-in server switch": {
+    from: '"set-slim-variant",',
+    to: '"get-beta-channel"',
+    call: "offerRelease(pin.release, { bypassRollout: true, asked: true })",
     options: { bypassRollout: true, asked: true },
   },
 };

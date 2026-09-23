@@ -244,7 +244,7 @@ export function createPendingUpdate(deps: PendingUpdateDeps) {
     return "looking";
   }
 
-  /** A check nobody offered, like the variant switch's: its download can be replaced too. */
+  /** A check nobody offered: its download lands in the slot, so a newer release can replace it. */
   function track(result: UpdateCheck): UpdateCheck {
     if (!slot) occupy(Promise.resolve(result), downloading);
     return result;
