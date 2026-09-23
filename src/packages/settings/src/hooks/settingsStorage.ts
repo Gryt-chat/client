@@ -97,9 +97,6 @@ export interface Settings {
   showSettings: boolean;
   setShowSettings: (value: boolean) => void;
 
-  showNickname: boolean;
-  setShowNickname: (value: boolean) => void;
-
   hasSeenWelcome: boolean;
   /**
    * Whether the stored settings have been read yet. Anything deciding whether to
@@ -290,8 +287,6 @@ export const settingsInit: Settings = {
   setIsServerDeafened: noop,
   showSettings: false,
   setShowSettings: noop,
-  showNickname: false,
-  setShowNickname: noop,
   nickname: "Unknown",
   setNickname: noop,
   activity: "",
