@@ -35,6 +35,9 @@ interface ThreadPanelProps {
   hasOlder?: boolean;
   /** One is already on its way. */
   loadingOlder?: boolean;
+  /** Why the replies are not here. Drawn in their place, with Try again. */
+  error?: string | null;
+  onRetry?: () => void;
   /** Ask for it. Called when the list is scrolled near its top. */
   onLoadOlder?: () => void;
   /**
@@ -49,12 +52,12 @@ interface ThreadPanelProps {
   onSetTags?: (tagIds: string[]) => void;
 }
 
-export function ThreadPanel({ thread, root, messages, loading, renderMessage, renderComposer, hasOlder, loadingOlder, onLoadOlder, typingIndicator, onClose, onSetStatus, forumTags = [], onSetTags }: ThreadPanelProps) {
-  // Escape closes the panel. Without it the only way out is the ×, which sits
-  // next to "Mark solved" — and a miss there changes the topic's state.
+export function ThreadPanel({ thread, root, messages, loading, renderMessage, renderComposer, hasOlder, loadingOlder, onLoadOlder, typingIndicator, onClose, onSetStatus, forumTags = [], onSetTags, error, onRetry }: ThreadPanelProps) {
+  /* Escape closes the panel, but only when nothing inside it took the key
+     first: an autocomplete or an edit being called off used to close it too. */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !e.defaultPrevented) onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -67,10 +70,19 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
   const scrollRef = useRef<HTMLDivElement>(null);
   const anchorRef = useRef<number | null>(null);
   const firstIdRef = useRef<string | null>(null);
+  /* Whether the newest reply should stay in view. True on open, and again
+     whenever the list is scrolled back down to the bottom. */
+  const pinnedRef = useRef(true);
+
+  useEffect(() => {
+    pinnedRef.current = true;
+  }, [thread.thread_id]);
 
   const onScroll = () => {
     const el = scrollRef.current;
-    if (!el || !onLoadOlder || !hasOlder || loadingOlder) return;
+    if (!el) return;
+    pinnedRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    if (!onLoadOlder || !hasOlder || loadingOlder) return;
     if (el.scrollTop > 120) return;
     anchorRef.current = el.scrollHeight - el.scrollTop;
     onLoadOlder();
@@ -81,10 +93,16 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
     const firstId = messages[0]?.message_id ?? null;
     const grew = anchorRef.current !== null && firstId !== firstIdRef.current;
     firstIdRef.current = firstId;
-    if (!el || !grew) return;
-    el.scrollTop = el.scrollHeight - anchorRef.current!;
-    anchorRef.current = null;
-  }, [messages]);
+    if (!el) return;
+    if (grew) {
+      el.scrollTop = el.scrollHeight - anchorRef.current!;
+      anchorRef.current = null;
+      return;
+    }
+    // A thread with 54 replies opened 2585px above the newest one, which a
+    // channel never does.
+    if (pinnedRef.current) el.scrollTop = el.scrollHeight;
+  }, [messages, root, loading]);
 
   return (
     <aside
@@ -194,7 +212,16 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
             {renderMessage(root)}
           </div>
         )}
-        {loading ? (
+        {error ? (
+          <div style={{ padding: 16, fontSize: 13, color: "var(--gryt-neutral-11)", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 10 }}>
+            <span>{error}</span>
+            {onRetry && (
+              <Button size="xsmall" tone="neutral" onClick={onRetry}>
+                Try again
+              </Button>
+            )}
+          </div>
+        ) : loading ? (
           <div style={{ padding: 16, fontSize: 13, color: "var(--gryt-neutral-10)" }}>Loading…</div>
         ) : messages.length === 0 && root ? (
           <div style={{ padding: 16, fontSize: 13, color: "var(--gryt-neutral-10)" }}>No replies yet. Start the conversation.</div>

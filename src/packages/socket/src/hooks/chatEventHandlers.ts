@@ -222,7 +222,8 @@ function getLatestRetryableEntry(queue: Map<string, RetryQueueEntry>): RetryQueu
   return latest;
 }
 
-function isNonRetryableError(error: ChatErrorPayload): boolean {
+/** Exported for the thread panel, which queues its replies the same way. */
+export function isNonRetryableError(error: ChatErrorPayload): boolean {
   const msg = typeof error === "string" ? error : error.message || error.error || "";
   return NON_RETRYABLE_ERRORS.some((e) => msg.includes(e));
 }
