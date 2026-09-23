@@ -42,13 +42,10 @@ async function replyInThread(page: Page, text: string): Promise<void> {
   await expect(panel(page).locator("[data-message-id]").filter({ hasText: text })).toBeVisible();
 }
 
-/** The open thread, read off the wire: the panel draws no ids. */
-function openThreadIds(frames: string[]): { conversationId: string; threadId: string } {
-  const history = frames.filter((f) => f.includes('"thread:history"')).at(-1);
-  const conversationId = history && /"conversation_id":"([^"]+)"/.exec(history)?.[1];
-  const threadId = history && /"thread_id":"([^"]+)"/.exec(history)?.[1];
-  if (!conversationId || !threadId) throw new Error("no thread:history frame to read ids from");
-  return { conversationId, threadId };
+/** Close topic sits in the header's menu, where it does not squeeze the title. */
+async function closeTopic(page: Page): Promise<void> {
+  await panel(page).getByRole("button", { name: "More for this topic" }).click();
+  await page.getByRole("menuitem", { name: "Close topic" }).click();
 }
 
 async function deleteMessage(page: Page, text: string): Promise<void> {
@@ -70,7 +67,7 @@ test("a thread deleted elsewhere leaves your panel open", async ({ newMember, ow
   // Both need a thread, or there is no thread:deleted to arrive.
   await startThread(alice.page, doomed);
   await replyInThread(alice.page, unique("a reply in the doomed thread"));
-  await alice.page.getByRole("button", { name: "Close thread" }).click();
+  await alice.page.getByRole("button", { name: "Close the thread panel" }).click();
   await startThread(alice.page, keep);
   await replyInThread(alice.page, unique("a reply worth keeping in view"));
 
@@ -133,7 +130,7 @@ test("a thread opens at its newest reply", async ({ newMember }) => {
   const last = unique("the newest reply, the one to land on");
   await replyInThread(alice.page, `${last} ${filler}`);
 
-  await alice.page.getByRole("button", { name: "Close thread" }).click();
+  await alice.page.getByRole("button", { name: "Close the thread panel" }).click();
   await openThread(alice.page, root);
 
   const newest = panel(alice.page).locator("[data-message-id]").filter({ hasText: last });
@@ -187,18 +184,7 @@ test("a refused fetch says so where the replies would be", async ({ newMember })
   await expect(panel(alice.page).getByRole("button", { name: "Try again" })).toBeVisible();
 });
 
-/** Closes the open thread from outside the app: nothing in the UI can. */
-async function closeOpenThread(frames: string[], token: string, httpBase: string): Promise<void> {
-  const { conversationId, threadId } = openThreadIds(frames);
-  await withSocket(httpBase, async (socket) => {
-    socket.emit("thread:status:set", { conversationId, threadId, status: "closed", accessToken: token });
-    await expect
-      .poll(() => frames.some((f) => f.includes('"thread:updated"') && f.includes('"status":"closed"')))
-      .toBe(true);
-  });
-}
-
-test("a closed thread says so instead of drawing a composer", async ({ newMember, owner, gryt }) => {
+test("a closed thread says so instead of drawing a composer", async ({ newMember, owner }) => {
   const alice = await newMember();
 
   const root = unique("a thread about to be closed");
@@ -206,8 +192,10 @@ test("a closed thread says so instead of drawing a composer", async ({ newMember
   await startThread(alice.page, root);
   await replyInThread(alice.page, unique("a reply while it is still open"));
 
-  const accessToken = await accessTokenOf(owner.page, gryt.server.host);
-  await closeOpenThread(alice.frames, accessToken, gryt.server.httpBase);
+  // The owner holds manage_messages, so somebody else's thread is theirs to close.
+  await openThread(owner.page, root);
+  await closeTopic(owner.page);
+  await expect(panel(owner.page).getByRole("button", { name: "More for this topic" })).toHaveCount(0);
 
   await expect(threadComposer(alice.page), "the composer goes with the thread").toBeHidden();
   await expect(panel(alice.page)).toContainText("This thread is closed, so you can’t reply to it.");
@@ -228,16 +216,19 @@ test("the status control is drawn for the author and a moderator, and nobody els
   await replyInThread(alice.page, unique("a reply so the line shows for everybody"));
 
   await expect(panel(alice.page).getByRole("button", { name: "Mark solved" }), "hers to settle").toBeVisible();
+  await expect(panel(alice.page).getByRole("button", { name: "More for this topic" }), "and hers to close").toBeVisible();
 
   await openThread(bob.page, root);
   await expect(
     panel(bob.page).getByRole("button", { name: "Mark solved" }),
     "the server refuses Bob, so he does not get the button",
   ).toHaveCount(0);
+  await expect(panel(bob.page).getByRole("button", { name: "More for this topic" })).toHaveCount(0);
 
   // The owner holds manage_messages, which is what the server checks.
   await openThread(owner.page, root);
   await expect(panel(owner.page).getByRole("button", { name: "Mark solved" })).toBeVisible();
+  await expect(panel(owner.page).getByRole("button", { name: "More for this topic" })).toBeVisible();
 });
 
 test("deleting a threaded message counts the replies going with it", async ({ newMember }) => {
@@ -250,7 +241,7 @@ test("deleting a threaded message counts the replies going with it", async ({ ne
   await startThread(alice.page, root);
   await replyInThread(alice.page, unique("the first reply that goes too"));
   await replyInThread(alice.page, unique("the second reply that goes too"));
-  await alice.page.getByRole("button", { name: "Close thread" }).click();
+  await alice.page.getByRole("button", { name: "Close the thread panel" }).click();
 
   const dialog = alice.page.getByRole("alertdialog");
 
