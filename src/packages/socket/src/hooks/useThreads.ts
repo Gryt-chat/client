@@ -6,6 +6,7 @@ import { clearThreadMentions, getServerAccessToken, setOpenThread } from "@/comm
 import type { ChatMessage } from "../components/chatUtils";
 import { mergeSender, mergeSenders } from "../utils/mergeSender";
 import { type ChatErrorPayload, isNonRetryableError } from "./chatEventHandlers";
+import { forgetOpenThread, recallOpenThread, rememberOpenThread } from "./openThreadMemory";
 import { draftKey, returnDraft } from "./returnedDrafts";
 import { uploadChatFile } from "./uploadChatFile";
 
@@ -157,13 +158,22 @@ export function useThreads(
      queue in useChatSend; a refusal retries once and then gives the text back. */
   const retryQueueRef = useRef<Map<string, ThreadRetryEntry>>(new Map());
 
-  // The panel belongs to one channel, so it closes on a switch.
+  /* The panel belongs to one channel, so it closes on a switch — but not when
+     this hook is mounted again on the same one, which a resize does (GRYT-1390). */
   useEffect(() => {
+    if (recallOpenThread(serverHost || "", conversationId)) return;
     setOpenThread(serverHost || "", null);
+    forgetOpenThread();
     setOpen(null);
     openRef.current = null;
     pendingOpenRoot.current = null;
   }, [conversationId, serverHost]);
+
+  /* Remembered on every change, so what comes back after a remount carries the
+     title and the reply count rather than the placeholder the fetch starts from. */
+  useEffect(() => {
+    if (open) rememberOpenThread(serverHost || "", conversationId, open.thread);
+  }, [open, conversationId, serverHost]);
 
   /* Summaries outlive a channel switch, the way the message cache does: come
      back inside the cache window and no chat:fetch reseeds them (GRYT-1386). */
@@ -217,6 +227,7 @@ export function useThreads(
       // the channel shut whatever you had open (GRYT-1387).
       if (openRef.current?.thread.thread_id === p.thread_id) {
         setOpenThread(serverHost || "", null);
+        forgetOpenThread();
         setOpen(null);
       }
     };
@@ -423,6 +434,11 @@ export function useThreads(
       toast.error(errorText(e));
     };
 
+    /* The panel was open before the window was resized and this hook was mounted
+       again. Ask for the thread a second time rather than drawing a stale one. */
+    const recalled = recallOpenThread(serverHost || "", conversationId);
+    if (recalled && openRef.current?.thread.thread_id !== recalled.thread_id) fetchThread(recalled);
+
     socket.on("thread:created", onCreated as (p: never) => void);
     socket.on("thread:updated", onUpdated as (p: never) => void);
     socket.on("thread:deleted", onDeleted as (p: never) => void);
@@ -503,6 +519,7 @@ export function useThreads(
 
   const closeThread = useCallback(() => {
     setOpenThread(serverHost || "", null);
+    forgetOpenThread();
     setOpen(null);
   }, [serverHost]);
 

@@ -1,6 +1,6 @@
 import {  } from "@gryt/ui";
 import { AnimatePresence } from "motion/react";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Socket } from "socket.io-client";
 
 import type { SealDecision } from "@/common";
@@ -75,6 +75,7 @@ export const ChatView = memo(({
   onLoadOlder,
   isLoadingOlder,
   hasOlderMessages,
+  threadBeside = false,
 }: {
   chatMessages: ChatMessage[];
   conversationKey?: string;
@@ -131,6 +132,8 @@ export const ChatView = memo(({
   onLoadOlder?: () => void;
   isLoadingOlder?: boolean;
   hasOlderMessages?: boolean;
+  /** Whether an open thread shares the pane with the conversation, or takes it. */
+  threadBeside?: boolean;
 }) => {
   const { chatMediaVolume, setChatMediaVolume, blurProfanity, smileyConversion, disabledSmileys } = useSettings();
   const editorRef = useRef<ChatEditorHandle>(null);
@@ -345,6 +348,22 @@ export const ChatView = memo(({
     const draft = takeReturnedDraft(threadDraftKey);
     if (draft) threadEditorRef.current.restore(draft);
   }, [threadDraft, threadDraftKey]);
+
+  /* A resize swaps this whole view out for the other layout's, and both editors
+     go with it. Hand what is in them back the way a cancelled send does. */
+  const stashDraftsRef = useRef<() => void>(() => {});
+  stashDraftsRef.current = () => {
+    const stash = (key: string, editor: ChatEditorHandle | null) => {
+      const text = editor?.getMarkdown().trim() ?? "";
+      const files = editor?.getFiles() ?? [];
+      if (key && (text || files.length > 0)) returnDraft(key, { text, files });
+    };
+    stash(threadDraftKey, threadEditorRef.current);
+    stash(channelDraftKey, editorRef.current);
+  };
+  /* A layout effect, not a passive one: React has already detached the editor's
+     ref by the time a passive cleanup for a deleted tree runs. */
+  useLayoutEffect(() => () => stashDraftsRef.current(), []);
 
   /* Escape and the × both come through here. A half-written reply waits for
      this thread instead of going with the panel (GRYT-1387). */
@@ -614,7 +633,10 @@ export const ChatView = memo(({
             </div>
           </div>
         )}
-        <div className="flex h-full w-full flex-col p-3" style={{ position: "relative" }}>
+        {/* The conversation and the thread share this row. Beside it the panel is
+            a column of its own; below the breakpoint it covers the row instead. */}
+        <div className="flex h-full w-full" style={{ position: "relative" }}>
+        <div className="flex min-w-0 grow flex-col p-3" style={{ position: "relative" }}>
           {channelName && (
             <div className="flex min-w-0 items-center gap-2" data-gryt="chat-header" style={{ marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid var(--gryt-neutral-6)" }}>
               {headerLead}
@@ -801,8 +823,10 @@ export const ChatView = memo(({
           )}
           </>
           )}
+          </div>
           {threads.open && (
             <ThreadPanel
+              beside={threadBeside}
               thread={threads.open.thread}
               root={threads.open.root}
               messages={visibleThreadMessages}

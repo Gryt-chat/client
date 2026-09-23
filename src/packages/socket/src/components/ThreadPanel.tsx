@@ -1,8 +1,9 @@
-import { Button, Divider, IconButton } from "@gryt/ui";
+import { Button, Divider, IconButton, Tooltip } from "@gryt/ui";
 import type { ReactNode } from "react";
 import { Fragment, useEffect, useLayoutEffect, useRef } from "react";
 
-import { PiChatsFill, PiCheck, PiX } from "../../../../lib/icons";
+import { PiCaretLeftBold, PiChatsFill, PiCheck, PiX } from "../../../../lib/icons";
+import { THREAD_PANEL_WIDTH } from "../lib/narrowLayout";
 import type { ChatMessage } from "./chatUtils";
 import { EmojiText } from "./EmojiText";
 import { ForumTagChip } from "./ForumTagChip";
@@ -52,9 +53,14 @@ interface ThreadPanelProps {
   /** The channel's tag palette. Empty on a plain chat thread. */
   forumTags?: { id: string; name: string; emoji?: string | null; color?: string | null }[];
   onSetTags?: (tagIds: string[]) => void;
+  /**
+   * Whether the window is wide enough to put this beside the conversation. It
+   * takes the whole chat pane otherwise, rather than covering half a message row.
+   */
+  beside?: boolean;
 }
 
-export function ThreadPanel({ thread, root, messages, loading, renderMessage, renderComposer, hasOlder, loadingOlder, onLoadOlder, typingIndicator, onClose, onSetStatus, forumTags = [], onSetTags, error, onRetry }: ThreadPanelProps) {
+export function ThreadPanel({ thread, root, messages, loading, renderMessage, renderComposer, hasOlder, loadingOlder, onLoadOlder, typingIndicator, onClose, onSetStatus, forumTags = [], onSetTags, error, onRetry, beside = false }: ThreadPanelProps) {
   /* What chat:send checks before it takes a reply. Drawing a composer the
      server will refuse is what GRYT-1389 was about. */
   const takesReplies = thread.status !== "closed" && thread.locked !== true;
@@ -113,12 +119,15 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
   return (
     <aside
       aria-label="Thread"
+      data-beside={beside ? "yes" : "no"}
       style={{
-        position: "absolute", top: 0, right: 0, bottom: 0,
-        width: "min(380px, 100%)", zIndex: 20,
-        display: "flex", flexDirection: "column",
-        background: "var(--gryt-neutral-1)", borderLeft: "1px solid var(--gryt-neutral-6)",
-        boxShadow: "-8px 0 24px rgba(0,0,0,0.18)",
+        /* Beside: a column in the row, so the conversation keeps the width it is
+           drawn at. Otherwise the whole pane, so nothing is left half covered. */
+        ...(beside
+          ? { position: "relative", width: THREAD_PANEL_WIDTH, flexShrink: 0, borderLeft: "1px solid var(--gryt-neutral-6)" }
+          : { position: "absolute", inset: 0, zIndex: 20 }),
+        display: "flex", flexDirection: "column", minWidth: 0,
+        background: "var(--gryt-neutral-1)",
       }}
     >
       <header
@@ -127,7 +136,17 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
           borderBottom: "1px solid var(--gryt-neutral-6)", flexShrink: 0,
         }}
       >
-        <PiChatsFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} />
+        {/* Taking the pane leaves nothing else on screen, so the icon gives way
+            to the way back. */}
+        {beside ? (
+          <PiChatsFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} />
+        ) : (
+          <Tooltip title="Back to the conversation">
+            <IconButton size="xsmall" tone="ghost" aria-label="Back to the conversation" onClick={onClose}>
+              <PiCaretLeftBold size={16} />
+            </IconButton>
+          </Tooltip>
+        )}
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ fontWeight: 700, fontSize: 14, color: "var(--gryt-neutral-12)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {thread.title ? <EmojiText text={thread.title} /> : "Thread"}
@@ -163,12 +182,14 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
             Mark solved
           </Button>
         ))}
-        {onSetStatus && (
+        {onSetStatus && beside && (
           <Divider orientation="vertical" className="my-1 self-stretch" />
         )}
-        <IconButton size="xsmall" aria-label="Close thread" onClick={onClose}>
-          <PiX size={16} />
-        </IconButton>
+        {beside && (
+          <IconButton size="xsmall" aria-label="Close thread" onClick={onClose}>
+            <PiX size={16} />
+          </IconButton>
+        )}
       </header>
 
       {forumTags.length > 0 && (

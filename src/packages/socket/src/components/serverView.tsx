@@ -26,6 +26,7 @@ import { useFakeSpeech } from "../dev/fakeSpeech";
 import { useDirectory } from "../hooks/dmDirectory";
 import { conversationFor, conversationOpened, leftOver, rememberConversation, requestConversation, setDmSpaceOpen, usePendingConversation, useVisitingConversation, visitConversation } from "../hooks/dmSpace";
 import { hideConversation, isHiddenConversation } from "../hooks/hiddenConversations";
+import { useOpenThread } from "../hooks/openThreadMemory";
 import { useAdminActions } from "../hooks/useAdminActions";
 import { useBlocks } from "../hooks/useBlocks";
 import { useCalls } from "../hooks/useCalls";
@@ -34,7 +35,7 @@ import { useChat } from "../hooks/useChat";
 import { conversationTitle, type DirectConversation,useDirectMessages } from "../hooks/useDirectMessages";
 import { useHeldVoicePresence } from "../hooks/useHeldVoicePresence";
 import { useLatencyReporting } from "../hooks/useLatencyReporting";
-import { useIsTinyWindow, useRoomForMemberList, useRoomForVoicePanel } from "../hooks/useNarrowWindow";
+import { useIsTinyWindow, useRoomForMemberList, useRoomForThreadBeside, useRoomForVoicePanel } from "../hooks/useNarrowWindow";
 import { usePeerLatency } from "../hooks/usePeerLatency";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { useReportUser } from "../hooks/useReportUser";
@@ -45,6 +46,7 @@ import { SIDEBAR_HOVER_PX, SIDEBAR_WIDTH_PX, useMediaAutoShow, useSidebarHover, 
 import { useSidebarEditor } from "../hooks/useSidebarEditor";
 import { useSockets } from "../hooks/useSockets";
 import { getUpdateAvailable } from "../hooks/useVersionStatus";
+import { THREAD_PANEL_WIDTH } from "../lib/narrowLayout";
 import type { Clients } from "../types/clients";
 import { getCustomEmojis } from "../utils/emojiData";
 import { ChatView } from "./ChatView";
@@ -201,7 +203,14 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     showVoiceView && voiceWidth !== "0px" && !isMaximized && !chatTakenOver
       ? shownVoiceWidth
       : 0;
-  const roomForMembers = useRoomForMemberList(drawnVoicePanelWidth);
+  /* A thread beside the conversation is a third panel in the row, and the member
+     list yields to it the way it already yields to the voice panel. */
+  const threadOpen = useOpenThread();
+  const threadBeside = useRoomForThreadBeside(drawnVoicePanelWidth);
+  const roomForMembers = useRoomForMemberList(
+    drawnVoicePanelWidth,
+    threadBeside && threadOpen ? THREAD_PANEL_WIDTH : 0,
+  );
   const roomForVoice = useRoomForVoicePanel();
 
   const {
@@ -823,6 +832,9 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     </div>
   ) : (
       <ChatView
+        /* Wide enough for the thread to sit beside the conversation rather than
+           take the chat pane. */
+        threadBeside={threadBeside}
         /* Under the header, not above: above is app chrome, and this is somebody
            else's machine talking. */
         underHeader={

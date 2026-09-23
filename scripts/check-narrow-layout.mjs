@@ -13,9 +13,11 @@ import {
   COMPACT_MAX_WIDTH,
   hasRoomForMemberList,
   hasRoomForSettingsRail,
+  hasRoomForThreadBeside,
   hasRoomForVoicePanel,
   isTinyWindow,
   SERVER_SETTINGS_CHROME,
+  THREAD_PANEL_WIDTH,
   TINY_MAX_WIDTH,
   USER_SETTINGS_CHROME,
   VOICE_PANEL_WIDTH,
@@ -127,6 +129,94 @@ for (let w = 300; w <= TINY_MAX_WIDTH; w += 1) {
   assert.match(view, /className="[^"]*\bmin-w-0\b[^"]*" data-gryt="server-view"/, "the server view can't shrink below its header's one-line name");
 }
 
+/* ── The thread panel ────────────────────────────────────────── */
+
+// GRYT-1390: the panel was `position: absolute` at every width, so at 1280 it
+// covered 62% of a message row and a click at the row's centre landed in it.
+
+// Rail 32, padding 32, two gaps, a 240 channel list, 440 of conversation, the
+// 380 panel and the collapsed member strip: 1164.
+assert.equal(hasRoomForThreadBeside({ windowWidth: 1164, voicePanelWidth: 0 }), true);
+assert.equal(hasRoomForThreadBeside({ windowWidth: 1163, voicePanelWidth: 0 }), false);
+assert.equal(hasRoomForThreadBeside({ windowWidth: 1280, voicePanelWidth: 0 }), true);
+
+// The Electron minimum, a phone and the tiny window are all far below it, so the
+// panel takes the chat pane there rather than covering half a message.
+for (const width of [300, 390, 520, 768, 1024]) {
+  assert.equal(
+    hasRoomForThreadBeside({ windowWidth: width, voicePanelWidth: 0 }),
+    false,
+    `the thread panel claimed room beside the conversation at ${width}px`,
+  );
+}
+
+// A voice panel in the row has to be paid for as well, the same way the member
+// list pays for it.
+assert.equal(hasRoomForThreadBeside({ windowWidth: 1780, voicePanelWidth: VOICE_PANEL_WIDTH }), true);
+assert.equal(hasRoomForThreadBeside({ windowWidth: 1779, voicePanelWidth: VOICE_PANEL_WIDTH }), false);
+
+// The member list yields to it, as it yields to the voice panel, and comes back
+// when the row holds a channel list, 440 of conversation, the panel and itself.
+assert.equal(
+  hasRoomForMemberList({ windowWidth: 1280, voicePanelWidth: 0, threadPanelWidth: THREAD_PANEL_WIDTH }),
+  false,
+);
+assert.equal(
+  hasRoomForMemberList({ windowWidth: 1412, voicePanelWidth: 0, threadPanelWidth: THREAD_PANEL_WIDTH }),
+  true,
+);
+assert.equal(
+  hasRoomForMemberList({ windowWidth: 1411, voicePanelWidth: 0, threadPanelWidth: THREAD_PANEL_WIDTH }),
+  false,
+);
+
+// Nothing changes while no thread is drawn beside the conversation.
+assert.equal(hasRoomForMemberList({ windowWidth: 1280, voicePanelWidth: 0, threadPanelWidth: 0 }), true);
+
+// Wherever the panel sits beside the conversation, the conversation keeps its
+// 440 once the member list has yielded.
+for (let w = 300; w <= 2400; w += 1) {
+  if (!hasRoomForThreadBeside({ windowWidth: w, voicePanelWidth: 0 })) continue;
+  const members = hasRoomForMemberList({ windowWidth: w, voicePanelWidth: 0, threadPanelWidth: THREAD_PANEL_WIDTH });
+  const used = 32 + 32 + 16 + 240 + 16 + 440 + THREAD_PANEL_WIDTH + (members ? 16 + 240 : 8);
+  assert.ok(used <= w, `the thread panel sits beside the conversation at ${w}px, needing ${used}px`);
+}
+
+// The panel is drawn at the width the layout rule is written against, and the
+// conversation column it sits beside can shrink under it.
+const chatView = readFileSync(
+  new URL("../src/packages/socket/src/components/ChatView.tsx", import.meta.url),
+  "utf8",
+);
+const serverView = readFileSync(
+  new URL("../src/packages/socket/src/components/serverView.tsx", import.meta.url),
+  "utf8",
+);
+assert.match(serverView, /threadBeside=\{threadBeside\}/, "the thread panel no longer hears about the width it has");
+assert.match(serverView, /useRoomForThreadBeside\(drawnVoicePanelWidth\)/, "the thread panel's width rule stopped paying for the voice panel");
+assert.match(
+  serverView,
+  /threadBeside && threadOpen \? THREAD_PANEL_WIDTH : 0/,
+  "the member list stopped yielding to a thread beside the conversation",
+);
+assert.match(chatView, /beside=\{threadBeside\}/, "ChatView stopped passing the width rule to the panel");
+assert.match(
+  chatView,
+  /<div className="flex min-w-0 grow flex-col p-3"/,
+  "the conversation column cannot shrink beside the thread panel",
+);
+const panel = readFileSync(
+  new URL("../src/packages/socket/src/components/ThreadPanel.tsx", import.meta.url),
+  "utf8",
+);
+assert.match(panel, /width: THREAD_PANEL_WIDTH/, "the thread panel stopped drawing at the width the rule assumes");
+assert.match(panel, /position: "absolute", inset: 0/, "the thread panel no longer takes the pane below the breakpoint");
+assert.match(
+  panel,
+  /aria-label="Back to the conversation"/,
+  "the thread panel covering the pane has no way back to it",
+);
+
 /* ── Server settings ───────────────────────────────────────────────── */
 
 // The rail keeps 400px of page beside it: 2rem margins, 21px padding, 200 rail, 16 gap.
@@ -223,4 +313,4 @@ const opened = [];
 accountStep.enter?.({ openSettings: (tab) => opened.push(tab), closeSettings() {}, setShowAddServer() {} });
 assert.deepEqual(opened, ["account"], "the tour's account step has no way to Account without the rail");
 
-console.log("narrow layout ok: member list yields to the voice panel, tiny window is desktop-only, both settings dialogs fit");
+console.log("narrow layout ok: member list yields to the voice and thread panels, tiny window is desktop-only, both settings dialogs fit");

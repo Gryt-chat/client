@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import {
   hasRoomForMemberList,
   hasRoomForSettingsRail,
+  hasRoomForThreadBeside,
   hasRoomForVoicePanel,
   isTinyWindow,
 } from "../lib/narrowLayout";
@@ -40,12 +41,21 @@ function usePointerFine() {
 }
 
 /**
- * Whether the member list fits, given what the voice panel has taken. Pass the
- * width the panel is drawing at, not the width it would like.
+ * Whether the member list fits, given what the voice and thread panels have
+ * taken. Pass the widths they are drawing at, not the ones they would like.
  */
-export function useRoomForMemberList(voicePanelWidth: number): boolean {
+export function useRoomForMemberList(voicePanelWidth: number, threadPanelWidth = 0): boolean {
   const windowWidth = useWindowWidth();
-  return hasRoomForMemberList({ windowWidth, voicePanelWidth });
+  return hasRoomForMemberList({ windowWidth, voicePanelWidth, threadPanelWidth });
+}
+
+/**
+ * Whether an open thread is drawn beside the conversation rather than over the
+ * whole chat pane. Pass the width the voice panel is drawing at, as above.
+ */
+export function useRoomForThreadBeside(voicePanelWidth: number): boolean {
+  const windowWidth = useWindowWidth();
+  return hasRoomForThreadBeside({ windowWidth, voicePanelWidth });
 }
 
 /**

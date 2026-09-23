@@ -32,10 +32,58 @@ const COMPACT_MAX_WIDTH = 1024;
 const TINY_MAX_WIDTH = 520;
 
 /**
+ * The thread panel's width when it sits beside the conversation. Over it, it is
+ * `min(380px, 100%)` instead, because there is nothing to share with.
+ */
+export const THREAD_PANEL_WIDTH = 380;
+
+/**
+ * What the conversation keeps beside an open thread: 440px of pane, measured at
+ * about 45 characters a line. `TINY_MAX_WIDTH`'s 520 draws about 57.
+ */
+const MIN_CHAT_BESIDE_THREAD = 440;
+
+/**
  * Room for the member list, given what else is in the row. `useIsCompact` is the
  * window width alone, so the voice panel pushed the member panel off the edge.
  */
 export function hasRoomForMemberList({
+  windowWidth,
+  voicePanelWidth,
+  threadPanelWidth = 0,
+}: {
+  windowWidth: number;
+  /** 0 when the voice view is minimized or the user is not in a call. */
+  voicePanelWidth: number;
+  /** 0 unless a thread is drawn beside the conversation rather than over it. */
+  threadPanelWidth?: number;
+}): boolean {
+  if (voicePanelWidth <= 0 && threadPanelWidth <= 0) return windowWidth > COMPACT_MAX_WIDTH;
+
+  /* The thread panel takes its room out of the conversation, so what is left has
+     to stay readable rather than only stay a chat. */
+  const chat = threadPanelWidth > 0 ? MIN_CHAT_BESIDE_THREAD : MIN_CHAT_WIDTH;
+
+  const needed =
+    PAGE_PADDING +
+    RAIL_WIDTH +
+    GAP +
+    SIDEBAR_WIDTH + // channels
+    (voicePanelWidth > 0 ? GAP + voicePanelWidth : 0) +
+    (threadPanelWidth > 0 ? GAP : 0) +
+    chat +
+    threadPanelWidth +
+    GAP +
+    SIDEBAR_WIDTH; // members
+
+  return windowWidth >= needed;
+}
+
+/**
+ * Whether the thread fits beside the conversation instead of over it. Below this
+ * it takes the whole chat pane, which is a screen rather than a covered one.
+ */
+export function hasRoomForThreadBeside({
   windowWidth,
   voicePanelWidth,
 }: {
@@ -43,18 +91,16 @@ export function hasRoomForMemberList({
   /** 0 when the voice view is minimized or the user is not in a call. */
   voicePanelWidth: number;
 }): boolean {
-  if (voicePanelWidth <= 0) return windowWidth > COMPACT_MAX_WIDTH;
-
   const needed =
     PAGE_PADDING +
     RAIL_WIDTH +
     GAP +
     SIDEBAR_WIDTH + // channels
+    (voicePanelWidth > 0 ? GAP + voicePanelWidth : 0) +
     GAP +
-    voicePanelWidth +
-    MIN_CHAT_WIDTH +
-    GAP +
-    SIDEBAR_WIDTH; // members
+    MIN_CHAT_BESIDE_THREAD +
+    THREAD_PANEL_WIDTH +
+    MEMBER_STRIP; // the collapsed member panel is still in the row
 
   return windowWidth >= needed;
 }
