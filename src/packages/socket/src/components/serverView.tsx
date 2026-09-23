@@ -3,7 +3,7 @@ import { useSFU } from "@gryt/voice";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
-import { clearMentions, clearSignedOut, getUploadsFileUrl, markChannelRead, serverIconSrc, useAccount, useMentionTracker, useThreadMentions, useUnreadTracker } from "@/common";
+import { clearMentions, clearSignedOut, getOwnServerUserId, getUploadsFileUrl, markChannelRead, serverIconSrc, useAccount, useMentionTracker, useThreadMentions, useUnreadTracker } from "@/common";
 import { NOTIFICATION_CHANNEL_OPEN_EVENT } from "@/lib/desktopNotification";
 import { useIsCompact, useIsMobile } from "@/mobile";
 import { useSettings } from "@/settings";
@@ -25,6 +25,7 @@ import { readFakeCallOptions, useFakeCallEvents } from "../dev/fakeServerEvents"
 import { useFakeSpeech } from "../dev/fakeSpeech";
 import { useDirectory } from "../hooks/dmDirectory";
 import { conversationFor, conversationOpened, leftOver, rememberConversation, requestConversation, setDmSpaceOpen, usePendingConversation, useVisitingConversation, visitConversation } from "../hooks/dmSpace";
+import { hideConversation, isHiddenConversation } from "../hooks/hiddenConversations";
 import { useAdminActions } from "../hooks/useAdminActions";
 import { useBlocks } from "../hooks/useBlocks";
 import { useCalls } from "../hooks/useCalls";
@@ -52,6 +53,7 @@ import { ConnectionBanner } from "./ConnectionBanner";
 import { CreateChannelDialog } from "./CreateChannelDialog";
 import { DmSpaceSidebar } from "./DmSpaceSidebar";
 import { GroupDialog } from "./GroupDialog";
+import { hideConversationWithUndo } from "./hideConversation";
 import { IncomingCallCard } from "./IncomingCallCard";
 import { MemberSidebarPanel } from "./MemberSidebarPanel";
 import { MobileServerView } from "./MobileServerView";
@@ -268,7 +270,6 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   const {
     conversations: directConversations,
     openDm,
-    setHidden: setDmHidden,
     updateGroup,
     addToGroup,
     leaveGroup,
@@ -465,6 +466,9 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     const stale = leftOver(selected?.conversation, visiting);
     if (selectedDmId && !stale) return;
     const recent = directory
+      /* Otherwise hiding the one being read picks it straight back up, since
+         the server still sends it and only this device is holding it back. */
+      .filter((entry) => !isHiddenConversation(entry.host, getOwnServerUserId(entry.host) ?? "", entry.conversation))
       .filter((entry) => entry.conversation.last_message_at !== null)
       .sort((a, b) =>
         (b.conversation.last_message_at ?? "").localeCompare(a.conversation.last_message_at ?? ""))[0];
@@ -518,12 +522,37 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     setSelectedDmId(conversation.conversation_id);
   }, [setSelectedDmId]);
 
-  /* Hiding the one being read points the view at a conversation no longer in the
-     list, so the selection goes back to the channels. */
+  /* Hiding the one being read points the view at a conversation that has moved
+     under the Hidden group, so the selection goes back to the channels. */
+  const forgetHiddenDm = useCallback((conversationId: string) => {
+    setSelectedDmId((current) => (current === conversationId ? null : current));
+  }, [setSelectedDmId]);
+
   const handleHideDm = useCallback((conversation: { conversation_id: string }) => {
-    setSelectedDmId((current) => (current === conversation.conversation_id ? null : current));
-    setDmHidden(conversation.conversation_id, true);
-  }, [setDmHidden, setSelectedDmId]);
+    const viewingHost = currentlyViewingServer?.host;
+    if (!viewingHost) return;
+    const found = directConversations.find((c) => c.conversation_id === conversation.conversation_id);
+    hideConversationWithUndo(
+      viewingHost,
+      currentServerUserId ?? "",
+      conversation.conversation_id,
+      found ? conversationTitle(found) : "the conversation",
+    );
+    forgetHiddenDm(conversation.conversation_id);
+  }, [currentlyViewingServer, directConversations, forgetHiddenDm, currentServerUserId]);
+
+  /* Blocking used to take the conversation off the list on the server. It is
+     this device's own now, so the block does the same thing here. GRYT-1379. */
+  const blockAndHide = useCallback((targetServerUserId: string) => {
+    block(targetServerUserId);
+    const viewingHost = currentlyViewingServer?.host;
+    const found = directConversations.find(
+      (c) => c.kind !== "group" && c.other?.server_user_id === targetServerUserId,
+    );
+    if (!viewingHost || !found) return;
+    hideConversation(viewingHost, currentServerUserId ?? "", found.conversation_id);
+    forgetHiddenDm(found.conversation_id);
+  }, [block, currentlyViewingServer, directConversations, forgetHiddenDm, currentServerUserId]);
 
   /** The group whose settings are open, or null. Starting one is the + next to
       Messages, in `NewMessageDialog`. */
@@ -873,7 +902,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
           <div className="flex" style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
             {/* In the direct messages space, the list and a conversation take turns filling the window. */}
             {showTinyList ? (
-              <DmSpaceSidebar host={host} selectedConversationId={visibleDmId} onOpen={openFromTinyList} fill />
+              <DmSpaceSidebar host={host} selectedConversationId={visibleDmId} onOpen={openFromTinyList} onHidden={forgetHiddenDm} fill />
             ) : chatView}
             <VoiceSheetButton
               connected={isVoiceOnThisServer}
@@ -990,6 +1019,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
                 host={host}
                 selectedConversationId={visibleDmId}
                 onOpen={handleSelectDm}
+                onHidden={forgetHiddenDm}
               />
             ) : (
             <ServerSidebar
@@ -1115,7 +1145,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
               onOpenDm={requestOpenDm}
               isBlocked={isBlocked}
               onToggleBlock={(targetServerUserId) =>
-                (isBlocked(targetServerUserId) ? unblock : block)(targetServerUserId)
+                (isBlocked(targetServerUserId) ? unblock : blockAndHide)(targetServerUserId)
               }
               onReport={setReportTarget}
               pinned={pinMembersSidebar}
@@ -1177,7 +1207,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
           reportUser({ serverUserId, reason });
           /* The reporter's own act, so it does not wait on the report landing:
              on a server too old for `user:report` the block still works. */
-          if (alsoBlock) block(serverUserId);
+          if (alsoBlock) blockAndHide(serverUserId);
         }}
       />
 

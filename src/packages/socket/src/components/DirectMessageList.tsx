@@ -52,7 +52,7 @@ export const DirectMessageList = ({
   /** Unseen mentions per conversation id. Absent means none. */
   mentionCounts?: Map<string, number>;
   onSelect: (conversation: DirectConversation) => void;
-  /** Take it out of this person's own list. Absent on a server without it. */
+  /** Take it out of this device's list. Absent where there is no hiding. */
   onHide?: (conversation: DirectConversation) => void;
   /** Open a group's settings. Only passed for the groups section. */
   onManage?: (conversation: DirectConversation) => void;
@@ -170,10 +170,9 @@ export const DirectMessageList = ({
                       <div className="flex flex-col">
                         <span>Hide this conversation</span>
                         {/* Says what it does not do. "Hide" on its own reads as
-                            a soft delete to enough people that the second line
-                            earns its space. */}
+                            a soft delete, and since GRYT-1379 it is per device. */}
                         <span className="text-xs text-gryt-muted">
-                          Keeps the messages. Comes back if they write.
+                          Only on this device. Comes back if they write.
                         </span>
                       </div>
                     </ContextMenu.Item>
